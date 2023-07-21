@@ -15,11 +15,15 @@
     "ui": "workspace:*"
   },
   "devDependencies": {
+    "@testing-library/jest-dom": "^5.17.0",
+    "@testing-library/react": "^14.0.0",
     "@types/node": "^18.11.17",
     "@types/react": "^18.2.5",
     "@types/react-dom": "^18.2.4",
     "autoprefixer": "^10.4.13",
     "eslint-config-custom": "workspace:*",
+    "jest": "^29.6.1",
+    "jest-environment-jsdom": "^29.6.1",
     "postcss": "^8.4.20",
     "tailwind-config": "workspace:*",
     "tailwindcss": "^3.2.4",

@@ -1,0 +1,11 @@
+{
+  "name": "igloo-kit",
+  "version": "0.0.0",
+  "description": "a framework to build data-intensive applications",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "Tim Delisle",
+  "license": "Apache 2.0"
+}

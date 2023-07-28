@@ -16,7 +16,7 @@ importers:
       prettier-plugin-tailwindcss: 0.1.13_prettier@2.8.8
       turbo: 1.10.9
 
-  apps/docs:
+  apps/igloo-kit-docs:
     specifiers:
       '@testing-library/jest-dom': ^5.17.0
       '@testing-library/react': ^14.0.0

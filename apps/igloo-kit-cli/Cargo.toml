@@ -9,3 +9,4 @@ license = "Apache-2.0"
 
 [dependencies]
 clap = { version = "4.3.17", features = ["derive"] }
+reqwest = "0.11.18"

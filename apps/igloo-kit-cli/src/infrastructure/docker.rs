@@ -8,6 +8,13 @@ fn network_command(command: &str) -> std::io::Result<std::process::Output>{
         .output()
 }
 
+pub fn network_list() -> std::io::Result<std::process::Output>{
+    Command::new("docker")
+        .arg("network")
+        .arg("ls")
+        .output()
+}
+
 pub fn remove_network() -> std::io::Result<std::process::Output>{
     network_command("rm")
 }

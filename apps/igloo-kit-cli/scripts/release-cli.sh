@@ -8,11 +8,12 @@ if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-BUILD\.[0-9]+$ ]]; then
    # change all the dependencies in the package.json optionalDependencies to use 
    #the BUILD version
    jq -r '.optionalDependencies | keys[]' package.json | while read dep; do
-      npm install --save-optional "$dep@$version"
+    #   pnpm up $dep $version
+      jq --arg DEP "$dep" --arg VERSION "$version" '.["optionalDependencies"][$DEP] = $VERSION' package.json > package.json.tmp && mv package.json.tmp package.json
    done
 fi
 
-# pnpm install # requires optional dependencies to be present in the registry
-# turbo build --filter @514labs/igloo-cli
+pnpm install # requires optional dependencies to be present in the registry
+turbo build --filter @514labs/igloo-cli
 
-# npm publish --access public
+pnpm publish --access public

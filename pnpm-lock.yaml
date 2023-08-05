@@ -18,7 +18,7 @@ importers:
 
   apps/igloo-kit-cli:
     specifiers:
-      '@types/node': ^18.11.18
+      '@types/node': 18.16.19
       '@typescript-eslint/eslint-plugin': ^5.48.0
       '@typescript-eslint/parser': ^5.48.0
       eslint: ^8.31.0
@@ -1561,6 +1561,7 @@ packages:
 
   /@types/node/18.16.19:
     resolution: {integrity: sha512-IXl7o+R9iti9eBW4Wg2hx1xQDig183jj7YLn8F7udNceyfkbn1ZxmzZXuak20gR40D7pIkIY1kYGx5VIGbaHKA==}
+    requiresBuild: true
     dev: true
 
   /@types/prettier/2.7.3:
@@ -1625,6 +1626,7 @@ packages:
   /@typescript-eslint/eslint-plugin/5.62.0_qe654ii6t7wri3iauos2e6o25y:
     resolution: {integrity: sha512-TiZzBSJja/LbhNPvk6yc0JrX9XqhQ0hdh6M2svYfsHGejaKFIAGd9MQ+ERIMzLGlN/kZoYIgdxFV0PuljTKXag==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    requiresBuild: true
     peerDependencies:
       '@typescript-eslint/parser': ^5.0.0
       eslint: ^6.0.0 || ^7.0.0 || ^8.0.0
@@ -1653,6 +1655,7 @@ packages:
   /@typescript-eslint/parser/5.62.0_mhvizudgavq6jzvqzwcqcv4nnm:
     resolution: {integrity: sha512-VlJEV0fOQ7BExOsHYAGrgbEiZoi8D+Bl2+f6V2RrXerRSylnp+ZBHmPvaIa8cz0Ajx7WO7Z5RqfgYg7ED1nRhA==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
+    requiresBuild: true
     peerDependencies:
       eslint: ^6.0.0 || ^7.0.0 || ^8.0.0
       typescript: '*'
@@ -3404,6 +3407,7 @@ packages:
     resolution: {integrity: sha512-pd8KSxiQpdYRfYa9Wufvdoct3ZPQQuVuU5O6scNgMuOMYuxvH0IGaYK0wUFjo4UYYQQCUndlXiMbnxopwvvTiw==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
     hasBin: true
+    requiresBuild: true
     dependencies:
       '@eslint-community/eslint-utils': 4.4.0_eslint@8.45.0
       '@eslint-community/regexpp': 4.5.1

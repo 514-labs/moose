@@ -1,9 +1,19 @@
 use std::{path::PathBuf, io::{Error, ErrorKind}};
 
 use super::{CommandTerminal, user_messages::show_message, MessageType, Message};
-use crate::{infrastructure::setup::scaffold::{create_red_panda_mount_volume, create_clickhouse_mount_volume, validate_mount_volumes}, framework::{TopLevelObjects, self}};
+use crate::infrastructure::setup::scaffold::{create_red_panda_mount_volume, create_clickhouse_mount_volume, validate_mount_volumes};
 
 
+const APP_DIR: [&str; 8] = [
+    "app",
+    "app/ingestion_points",
+    "app/dataframes",
+    "app/flows",
+    "app/insights",
+    "app/insights/dashboards",
+    "app/insights/models",
+    "app/insights/metrics",
+];
 
 fn create_igloo_directory() -> Result<PathBuf, Error> {
     let current_dir = std::env::current_dir()?;
@@ -119,7 +129,7 @@ fn create_temp_data_volumes(term: &mut CommandTerminal) -> Result<(), std::io::E
 }
 
 
-fn create_project_directories(term: &mut CommandTerminal) {
+fn create_project_directories(term: &mut CommandTerminal) -> Result<(), std::io::Error> {
     let current_dir = std::env::current_dir().unwrap();
 
     show_message( term, MessageType::Info, Message {
@@ -127,33 +137,30 @@ fn create_project_directories(term: &mut CommandTerminal) {
         details: "app directory in current working directory",
     });
 
-    let app_dir: PathBuf = current_dir.join("app");
 
-    let ingestion_dir = app_dir.join("ingestion_points");
-    let dataframes_dir = app_dir.join("dataframes");
-    let flows_dir = app_dir.join("flows");
-    let insights_dir = app_dir.join("insights");
-
-
-    let models_dir = insights_dir.join("models");
-    let dashboards_dir = insights_dir.join("dashboards");
-    let metrics_dir = insights_dir.join("metrics");
-
-    let dirs = vec![app_dir, ingestion_dir, dataframes_dir, flows_dir, insights_dir, models_dir, dashboards_dir, metrics_dir];
-
-    for dir in dirs.iter() {
-        std::fs::create_dir_all(dir).unwrap();
+    for dir in APP_DIR.iter() {
+        std::fs::create_dir_all(current_dir.join(dir))?;
     }
 
-    show_message( term, MessageType::Success, Message {
-        action: "Finished",
-        details: "project initialization",
-    });
+    Ok(())
 }
-
 
 pub fn initialize_project(term: &mut CommandTerminal) -> Result<(), Error> {
     create_temp_data_volumes(term)?;
-    create_project_directories(term);
+    match create_project_directories(term) {
+        Ok(_) => {
+            show_message( term, MessageType::Success, Message {
+                action: "Finished",
+                details: "initializing project directory",
+            });
+        },
+        Err(err) => {
+            show_message( term, MessageType::Error, Message {
+                action: "Failed",
+                details: "to create project directories",
+            });
+            return Err(err)
+        }
+    };
     Ok(())
 }

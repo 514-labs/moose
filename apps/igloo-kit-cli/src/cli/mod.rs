@@ -1,14 +1,12 @@
 mod commands;
 mod routines;
+mod user_messages;
 
 use commands::Commands;
 use std::path::PathBuf;
-
 use clap::Parser;
-
 use crate::framework::AddableObjects;
-
-use self::commands::AddArgs;
+use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}, routines::initialize_project};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -21,8 +19,8 @@ struct Cli {
     config: Option<PathBuf>,
 
     /// Turn debugging information on
-    #[arg(short, long, action = clap::ArgAction::Count)]
-    debug: u8,
+    #[arg(short, long)]
+    debug: bool,
 
     #[command(subcommand)]
     command: Option<Commands>,
@@ -31,7 +29,7 @@ struct Cli {
 fn add_handler(add_arg: &AddArgs) {
     match &add_arg.command {
         Some(AddableObjects::IngestPoint) => {
-            println!("Adding ingestion point...");
+            println!("Adding ingest point...")
         }
         Some(AddableObjects::Flow) => {
             println!("Adding flow...");
@@ -52,10 +50,35 @@ fn add_handler(add_arg: &AddArgs) {
     }
 }
 
-fn top_command_handler(commands: &Option<Commands>) {
+pub struct CommandTerminal {
+    term: console::Term,
+    counter: usize,
+}
+
+impl CommandTerminal {
+    pub fn new() -> CommandTerminal {
+        CommandTerminal {
+            term: console::Term::stdout(),
+            counter: 0,
+        }
+    }
+
+    pub fn clear(&mut self) {
+        self.term.clear_last_lines(self.counter).expect("failed to clear the terminal");
+        self.counter = 0;
+    }
+
+    pub fn clear_with_delay(&mut self, delay: u64) {
+        std::thread::sleep(std::time::Duration::from_millis(delay));
+        self.clear();
+    }
+}
+
+fn top_command_handler(commands: &Option<Commands>, debug: bool) {
     match commands {
         Some(Commands::Init {}) => {
-            routines::initialize_project();
+            let mut term: CommandTerminal = CommandTerminal::new();
+            routines::initialize_project(&mut term);
         }
         Some(Commands::Dev{}) => {
             println!("Starting development environment...");
@@ -85,14 +108,5 @@ pub fn cli_run() {
         println!("Value for config: {}", config_path.display());
     }
 
-    // You can see how many times a particular flag or argument occurred
-    // Note, only flags can have multiple occurrences
-    match cli.debug {
-        0 => println!("Debug mode is off"),
-        1 => println!("Debug mode is kind of on"),
-        2 => println!("Debug mode is on"),
-        _ => println!("Don't be crazy"),
-    }
-
-    top_command_handler(&cli.command)
+    top_command_handler(&cli.command, cli.debug)
 }

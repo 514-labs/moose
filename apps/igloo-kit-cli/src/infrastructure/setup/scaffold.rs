@@ -47,7 +47,7 @@ pub fn delete_clickhouse_mount_volume(igloo_dir: &PathBuf) -> Result<(), Error> 
     }
 }
 
-pub fn create_red_panda_mount_volume(igloo_dir: &PathBuf) -> Result<(), Error> {
+pub fn create_red_panda_mount_volume(igloo_dir: &PathBuf) -> Result<PathBuf, Error> {
     let mount_dir = igloo_dir.join(".panda_house");
     
     // This function will fail silently if the directory already exists
@@ -55,18 +55,15 @@ pub fn create_red_panda_mount_volume(igloo_dir: &PathBuf) -> Result<(), Error> {
 
     match output {
         Ok(_) => {
-            println!("Created mount directory at {}", mount_dir.display());
-            Ok(())
+            Ok(mount_dir)
         },
         Err(err) => {
-            println!("Failed to create mount directory at {}", mount_dir.display());
-            println!("error: {}", err);
             Err(err)
         },
     }
 }
 
-pub fn create_clickhouse_mount_volume(igloo_dir: &PathBuf) -> Result<(), Error> {
+pub fn create_clickhouse_mount_volume(igloo_dir: &PathBuf) -> Result<PathBuf, Error> {
     let mount_dir = igloo_dir.join(".clickhouse");
 
     // This function will fail silently if the directory already exists
@@ -76,31 +73,24 @@ pub fn create_clickhouse_mount_volume(igloo_dir: &PathBuf) -> Result<(), Error> 
 
     match main_dir_result {
         Ok(_) => {
-            println!("Created main mount directory at {}", mount_dir.display());
 
             match data_dir_result {
-                Ok(_) => println!("Created data mount directory at {}", mount_dir.clone().join("data").display()),
+                Ok(_) => (),
                 Err(err) => {
-                    println!("Failed to create data mount directory at {}", mount_dir.clone().join("data").display());
-                    println!("error: {}", err);
                     return Err(err);
                 },
             }
 
             match logs_dir_result {
-                Ok(_) => println!("Created logs mount directory at {}", mount_dir.clone().join("logs").display()),
+                Ok(_) => (),
                 Err(err) => {
-                    println!("Failed to create logs mount directory at {}", mount_dir.clone().join("logs").display());
-                    println!("error: {}", err);
                     return Err(err);
                 },
             }
 
-            Ok(())
+            Ok(mount_dir)
         },
         Err(err) => {
-            println!("Failed to create mount directory at {}", mount_dir.display());
-            println!("error: {}", err);
             return Err(err)
         },
     }

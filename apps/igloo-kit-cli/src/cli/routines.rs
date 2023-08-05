@@ -1,9 +1,8 @@
 use std::io::Error;
 
-use crate::{framework::directories::{create_project_directories, self}, infrastructure::{setup::scaffold::create_temp_data_volumes, self}};
+use crate::{infrastructure::{self, setup::scaffold}, framework::directories};
 
 use super::{CommandTerminal, user_messages::show_message, MessageType, Message};
-
 
 pub fn start_containers(term: &mut CommandTerminal) -> Result<(), Error> {
     show_message( term, MessageType::Info, Message {
@@ -16,8 +15,8 @@ pub fn start_containers(term: &mut CommandTerminal) -> Result<(), Error> {
 }
 
 pub fn initialize_project(term: &mut CommandTerminal) -> Result<(), Error> {
-    create_temp_data_volumes(term)?;
-    match create_project_directories(term) {
+    scaffold::create_temp_data_volumes(term)?;
+    match directories::create_project_directories(term) {
         Ok(_) => {
             show_message( term, MessageType::Success, Message {
                 action: "Finished",

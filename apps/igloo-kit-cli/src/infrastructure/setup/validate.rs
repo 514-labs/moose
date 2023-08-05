@@ -101,14 +101,7 @@ pub fn validate_panda_house_network(term: &mut CommandTerminal, debug: bool) -> 
                 });
                 Ok(())
             } else {
-                show_message(
-                    term,
-                    MessageType::Error,
-                    Message {
-                        action: "Failed",
-                        details: "to validate panda_house docker network",
-                    },
-                );
+                println!("Failed to validate panda_house_network");
                 Err(io::Error::new(io::ErrorKind::Other, "Failed to validate panda_house network"))
             }
         },
@@ -120,7 +113,7 @@ pub fn validate_panda_house_network(term: &mut CommandTerminal, debug: bool) -> 
     }
 }
 
-pub fn validate_red_panda_cluster(term: &mut CommandTerminal, debug: bool) -> Result<(),  Error> {
+pub fn validate_red_panda_cluster(term: &mut CommandTerminal, debug: bool) -> Result<(), Error> {
     let output = docker::run_rpk_list();
 
     match output {

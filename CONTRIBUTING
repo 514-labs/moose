@@ -1,0 +1,18 @@
+## Setup
+
+Requirements:
+* `Rust`: We recommend using [rustup](https://rustup.rs/) to manage your rust toolchain
+* `Node`: We recommend using [nvm](https://github.com/nvm-sh/nvm#nvmrc) to manage your node versions
+* [`Pnpm`](https://pnpm.io/installation)
+* [`TurboRepo`](https://turbo.build/repo/docs/installing): `pnpm install turbo --global`
+
+
+```bash
+$ pnpm install
+```
+
+## Build 
+
+```bash
+turbo build
+```

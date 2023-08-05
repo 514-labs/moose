@@ -1,5 +1,5 @@
 [package]
-name = "iceblock"
+name = "igloo"
 version = "0.0.1"
 edition = "2021"
 description = "Build tool for igloo apps"

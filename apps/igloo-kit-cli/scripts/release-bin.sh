@@ -6,7 +6,7 @@ build_os=$3
 build_name=$4
 
 # set the binary name
-bin="igloo"
+bin="igloo-cli"
 # derive the OS and architecture from the build matrix name
 # note: when split by a hyphen, first part is the OS and the second is the architecture
 node_os=$(echo ${build_name} | cut -d '-' -f1)

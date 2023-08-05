@@ -1,5 +1,5 @@
 [package]
-name = "igloo"
+name = "igloo-cli"
 version = "0.0.1"
 edition = "2021"
 description = "Build tool for igloo apps"

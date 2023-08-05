@@ -1,9 +1,18 @@
 #/usr/bin/env bash
 
-cd apps/igloo-kit-cli
+version=$1
 
-pnpm install # requires optional dependencies to be present in the registry
-pnpm build
+if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-BUILD\.[0-9]+$ ]]; then
+   npm version $version --no-git-tag-version
 
-npm version 
-npm publish --access public
+   # change all the dependencies in the package.json optionalDependencies to use 
+   #the BUILD version
+   jq -r '.optionalDependencies | keys[]' package.json | while read dep; do
+      npm install --save-optional "$dep@$version"
+   done
+fi
+
+# pnpm install # requires optional dependencies to be present in the registry
+# turbo build --filter @514labs/igloo-cli
+
+# npm publish --access public

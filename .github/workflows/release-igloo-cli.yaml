@@ -1,16 +1,18 @@
 name: Release Igloo CLI
 
 on:
-  workflow_call:
+  workflow_dispatch:
     inputs:
-      release_version:
-        description: 'The release version'
+      folder:
+        description: "Folder of the project to release"
         required: true
 
 jobs:
   publish-npm-binaries:
     name: Publish NPM packages
     runs-on: ${{ matrix.build.os }}
+    outputs:
+      version: ${{ steps.step1.outputs.version }}
     strategy:
       fail-fast: false
       matrix:
@@ -75,9 +77,14 @@ jobs:
           node-version: "18"
           registry-url: "https://registry.npmjs.org"
 
+      - name: Set the version for the package
+        shell: bash
+        id: version
+        run: ./scripts/version.sh ${{ inputs.folder }} >> "$GITHUB_OUTPUT"
+
       - name: Publish to NPM
         shell: bash
-        run: ./apps/igloo-kit-cli/scripts/release-bin.sh ${{ inputs.release_version }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
+        run: ./apps/igloo-kit-cli/scripts/release-bin.sh ${{ steps.step1.outputs.version }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -97,6 +104,6 @@ jobs:
 
       - name: Publish the package
         shell: bash
-        run: ./apps/igloo-kit-cli/scripts/release-cli.sh ${{ inputs.release_version }}
+        run: ./apps/igloo-kit-cli/scripts/release-cli.sh ${{needs.publish-npm-binaries.outputs.version}}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

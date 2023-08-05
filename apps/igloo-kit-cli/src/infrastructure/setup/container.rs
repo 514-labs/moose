@@ -1,4 +1,4 @@
-use std::{fs, env, io::{self, Write}};
+use std::{env, io::{self, Write}};
 use crate::infrastructure::docker::{self, run_clickhouse};
 
 pub fn stop_red_panda_container() {

@@ -1,4 +1,4 @@
-use std::{process::Command, path::{Path, PathBuf}};
+use std::{process::Command, path::PathBuf};
 
 fn network_command(command: &str) -> std::io::Result<std::process::Output>{
     Command::new("docker")
@@ -77,6 +77,8 @@ pub fn run_red_panda(current_dir: PathBuf) -> std::io::Result<std::process::Outp
 pub fn run_clickhouse(current_dir: PathBuf) -> std::io::Result<std::process::Output> {
     let data_mount_dir = current_dir.join(".clickhouse/data");
     let logs_mount_dir = current_dir.join(".clickhouse/logs");
+    let config_mount_dir = current_dir.join(".clickhouse/configs");
+    
 
     Command::new("docker")
         .arg("run")
@@ -86,6 +88,7 @@ pub fn run_clickhouse(current_dir: PathBuf) -> std::io::Result<std::process::Out
         .arg("--rm")
         .arg("--volume=".to_owned() + data_mount_dir.to_str().unwrap() + ":/var/lib/clickhouse/")
         .arg("--volume=".to_owned() + logs_mount_dir.to_str().unwrap() + ":/var/log/clickhouse-server/")
+        .arg("--volume=".to_owned() + config_mount_dir.to_str().unwrap() + ":/etc/clickhouse-server/config.d/*.xml")
         .arg("--network=panda-house")
         .arg("--publish=18123:8123")
         .arg("--ulimit=nofile=262144:262144")

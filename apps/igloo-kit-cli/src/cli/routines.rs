@@ -56,11 +56,10 @@ fn create_temp_mount_volumes(term: &mut CommandTerminal,igloo_dir: PathBuf) -> R
         }
     };
     match create_clickhouse_mount_volume(&igloo_dir) {
-        Ok(dir) => {
-            let dir_display = dir.display();
+        Ok(_) => {
             show_message( term, MessageType::Success, Message {
                 action: "Created",
-                details: &format!("Red Panda mount volume in {dir_display}"),
+                details: &format!("Clickhouse mount volumes in .clickhouse directory"),
             });
         },
         Err(err) => {

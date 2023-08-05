@@ -68,7 +68,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: -c ./apps/igloo-cli-kit --release --locked --target ${{ matrix.build.TARGET }}
+          args: -C ./apps/igloo-cli-kit --release --locked --target ${{ matrix.build.TARGET }}
           use-cross: ${{ matrix.build.OS == 'ubuntu-20.04' }} # use `cross` for Linux builds
 
       - name: Install node

@@ -1,11 +1,11 @@
 name: Release Igloo CLI
 
 on:
-  workflow_dispatch:
-    inputs:
-      folder:
-        description: "Folder of the project to release"
-        required: true
+  push:
+    branches:
+      - main
+    tags:
+      - v*
 
 jobs:
   publish-npm-binaries:
@@ -80,7 +80,7 @@ jobs:
       - name: Set the version for the package
         shell: bash
         id: version
-        run: ./scripts/version.sh ${{ inputs.folder }} >> "$GITHUB_OUTPUT"
+        run: ./scripts/version.sh ./apps/igloo-cli-kit >> "$GITHUB_OUTPUT"
 
       - name: Publish to NPM
         shell: bash

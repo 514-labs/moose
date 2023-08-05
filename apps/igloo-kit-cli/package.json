@@ -1,6 +1,6 @@
 {
   "name": "@514labs/igloo-cli",
-  "version": "0.0.1-BUILD.1",
+  "version": "0.0.2",
   "private": true,
   "bin": "dist/index.js",
   "scripts": {
@@ -19,11 +19,11 @@
     "typescript": "^4.9.4"
   },
   "optionalDependencies": {
-    "app-darwin-arm64": "0.0.1-BUILD.1",
-    "app-darwin-x64": "0.0.1-BUILD.1",
-    "app-linux-arm64": "0.0.1-BUILD.1",
-    "app-linux-x64": "0.0.1-BUILD.1",
-    "app-windows-arm64": "0.0.1-BUILD.1",
-    "app-windows-x64": "0.0.1-BUILD.1"
+    "app-darwin-arm64": "0.0.2",
+    "app-darwin-x64": "0.0.2",
+    "app-linux-arm64": "0.0.2",
+    "app-linux-x64": "0.0.2",
+    "app-windows-arm64": "0.0.2",
+    "app-windows-x64": "0.0.2"
   }
 }

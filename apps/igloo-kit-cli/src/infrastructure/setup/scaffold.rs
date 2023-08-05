@@ -1,5 +1,7 @@
 use std::{fs, path::PathBuf, io::Error};
 
+use super::database;
+
 // Validate that the clickhouse and redpanda volume paths exist
 pub fn validate_mount_volumes(igloo_dir: &PathBuf) -> Result<(), String> {
     let panda_house = igloo_dir.join(".panda_house").exists();
@@ -62,34 +64,15 @@ pub fn create_red_panda_mount_volume(igloo_dir: &PathBuf) -> Result<PathBuf, Err
     }
 }
 
-pub fn create_clickhouse_mount_volume(igloo_dir: &PathBuf) -> Result<PathBuf, Error> {
+pub fn create_clickhouse_mount_volume(igloo_dir: &PathBuf) -> Result<(), Error> {
     let mount_dir = igloo_dir.join(".clickhouse");
 
-    let main_dir_result = fs::create_dir_all(mount_dir.clone());
-    let data_dir_result = fs::create_dir_all(mount_dir.clone().join("data"));
-    let logs_dir_result = fs::create_dir_all(mount_dir.clone().join("logs"));
+    fs::create_dir_all(mount_dir.clone())?;
+    fs::create_dir_all(mount_dir.clone().join("data"))?;
+    fs::create_dir_all(mount_dir.clone().join("logs"))?;
 
-    match main_dir_result {
-        Ok(_) => {
-
-            match data_dir_result {
-                Ok(_) => (),
-                Err(err) => {
-                    return Err(err);
-                },
-            }
-
-            match logs_dir_result {
-                Ok(_) => (),
-                Err(err) => {
-                    return Err(err);
-                },
-            }
-
-            Ok(mount_dir)
-        },
-        Err(err) => {
-            return Err(err)
-        },
-    }
+    let config_path = mount_dir.clone().join("configs");
+    fs::create_dir_all(&config_path)?;
+    database::create_config_file(&config_path)?;
+    Ok(())
 }

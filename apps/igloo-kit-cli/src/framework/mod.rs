@@ -1,4 +1,4 @@
-use std::path::{PathBuf, Path};
+use std::path::PathBuf;
 
 use clap::Subcommand;
 use reqwest::Url;
@@ -9,6 +9,7 @@ mod metric;
 mod dataframe;
 mod dashboard;
 mod model;
+pub mod directories;
 
 enum Languages {
     Python,

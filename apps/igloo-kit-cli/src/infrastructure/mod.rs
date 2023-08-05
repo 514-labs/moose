@@ -1,7 +1,9 @@
 use std::{path::PathBuf, io::Error};
 
+use crate::cli::CommandTerminal;
+
 use self::setup::{
-    scaffold::{create_red_panda_mount_volume, create_clickhouse_mount_volume, delete_clickhouse_mount_volume, delete_red_panda_mount_volume, validate_mount_volumes}, 
+    scaffold::{ delete_clickhouse_mount_volume, delete_red_panda_mount_volume, validate_mount_volumes, create_volumes}, 
     container::{stop_red_panda_container, stop_ch_container, run_red_panda_docker_container, run_ch_docker_container}, 
     network::{create_docker_network, remove_docker_network}, 
     validate::validate_docker_run
@@ -11,15 +13,10 @@ use self::setup::{
 pub mod setup;
 mod docker;
 
-pub fn init_volumes(igloo_dir: &PathBuf) -> Result<(), Error> {
-    create_red_panda_mount_volume(igloo_dir)?;
-    create_clickhouse_mount_volume(igloo_dir)?;
-    Ok(())
-}
 
-pub fn init(igloo_dir: &PathBuf) -> Result<(), Error> {
+pub fn init(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result<(), Error> {
     create_docker_network();
-    init_volumes(igloo_dir)?;
+    create_volumes(term, igloo_dir)?;
     Ok(())
 }
 
@@ -33,13 +30,13 @@ pub fn clean(igloo_dir: &PathBuf) {
     delete_red_panda_mount_volume(igloo_dir);
 }
 
-pub fn spin_up(igloo_dir: &PathBuf) {
+pub fn spin_up(term: &mut CommandTerminal,igloo_dir: &PathBuf) -> Result<(), Error> {
      match validate_mount_volumes(igloo_dir) {
         Ok(_) => {
             create_docker_network();
-            run_red_panda_docker_container(true);
+            run_red_panda_docker_container(term,true)?;
             validate_docker_run(true);
-            run_ch_docker_container(true)
+            run_ch_docker_container(term, true)?;
         },
         Err(err) => {
             println!("{}", err);
@@ -47,7 +44,8 @@ pub fn spin_up(igloo_dir: &PathBuf) {
         }
     };
     create_docker_network();
-    run_red_panda_docker_container(true);
+    run_red_panda_docker_container(term, true)?;
     validate_docker_run(true);
-    run_ch_docker_container(true)
+    run_ch_docker_container(term, true)?;
+    Ok(())
 }

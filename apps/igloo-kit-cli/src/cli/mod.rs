@@ -1,12 +1,12 @@
 mod commands;
 mod routines;
-mod user_messages;
+pub mod user_messages;
 
 use commands::Commands;
 use std::path::PathBuf;
 use clap::Parser;
 use crate::framework::AddableObjects;
-use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}, routines::initialize_project};
+use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -82,6 +82,7 @@ fn top_command_handler(commands: &Option<Commands>, debug: bool) {
         }
         Some(Commands::Dev{}) => {
             println!("Starting development environment...");
+
         }
         Some(Commands::Update{}) => {
             println!("Updating...");

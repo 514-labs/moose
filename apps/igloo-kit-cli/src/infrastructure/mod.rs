@@ -8,7 +8,7 @@ use self::setup::{
 };
 
 
-mod setup;
+pub mod setup;
 mod docker;
 
 pub fn init_volumes(igloo_dir: &PathBuf) -> Result<(), Error> {

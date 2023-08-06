@@ -1,4 +1,4 @@
-use std::{env, io::{self, Write}};
+use std::{io::{self, Write}};
 use crate::{infrastructure::docker::{self, run_clickhouse}, cli::{CommandTerminal, user_messages::{show_message, MessageType, Message}}, framework::directories};
 
 // TODO: Print output to terminal with proper messages

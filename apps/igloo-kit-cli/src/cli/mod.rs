@@ -6,7 +6,7 @@ use commands::Commands;
 use std::path::PathBuf;
 use clap::Parser;
 use crate::framework::AddableObjects;
-use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}};
+use self::{commands::AddArgs, user_messages::{MessageType, Message}};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -74,7 +74,7 @@ impl CommandTerminal {
     }
 }
 
-fn top_command_handler(commands: &Option<Commands>, debug: bool) {
+fn top_command_handler(commands: &Option<Commands>, _debug: bool) {
     let mut term: CommandTerminal = CommandTerminal::new();
 
     match commands {
@@ -93,7 +93,7 @@ fn top_command_handler(commands: &Option<Commands>, debug: bool) {
         Some(Commands::Clean{}) => {
             todo!("clean the underlying infrastructure and remove any temp data volumes")
         }
-        Some(Commands::Add(add_arg)) => {
+        Some(Commands::Add(_add_arg)) => {
             todo!("add templatized objects to the project");
         }
         None => {}

@@ -90,7 +90,8 @@ jobs:
 
       - name: Publish to NPM
         shell: bash
-        run: ./apps/igloo-kit-cli/scripts/release-bin.sh ${{ steps.version.outputs.VERSION }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
+        working-directory: ./apps/igloo-kit-cli
+        run: ./scripts/release-bin.sh ${{ steps.version.outputs.VERSION }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 

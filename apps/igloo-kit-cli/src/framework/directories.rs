@@ -1,6 +1,6 @@
 use std::{path::PathBuf, io::{Error, ErrorKind}};
 
-use crate::{infrastructure::{setup::scaffold::{create_red_panda_mount_volume, create_clickhouse_mount_volume, validate_mount_volumes}}, cli::{user_messages::{show_message, MessageType, Message}, CommandTerminal}};
+use crate::{infrastructure::setup::scaffold::{create_red_panda_mount_volume, create_clickhouse_mount_volume, validate_mount_volumes}, cli::{user_messages::{show_message, MessageType, Message}, CommandTerminal}};
 
 
 const APP_DIR: [&str; 8] = [
@@ -23,7 +23,7 @@ fn create_igloo_directory() -> Result<PathBuf, Error> {
     Ok(igloo_dir)
 }
 
-pub fn check_for_igloo_directory() -> Result<PathBuf, Error> {
+pub fn get_igloo_directory() -> Result<PathBuf, Error> {
     let current_dir = std::env::current_dir()?;
     let igloo_dir = current_dir.join(".igloo");
 

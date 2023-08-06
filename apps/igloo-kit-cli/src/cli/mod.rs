@@ -75,13 +75,15 @@ impl CommandTerminal {
 }
 
 fn top_command_handler(commands: &Option<Commands>, debug: bool) {
+    let mut term: CommandTerminal = CommandTerminal::new();
+
     match commands {
         Some(Commands::Init {}) => {
-            let mut term: CommandTerminal = CommandTerminal::new();
+            
             routines::initialize_project(&mut term);
         }
         Some(Commands::Dev{}) => {
-            println!("Starting development environment...");
+            routines::start_containers(&mut term);
 
         }
         Some(Commands::Update{}) => {
@@ -98,6 +100,7 @@ fn top_command_handler(commands: &Option<Commands>, debug: bool) {
         }
         None => {}
     }
+    
 }
 
 pub fn cli_run() {

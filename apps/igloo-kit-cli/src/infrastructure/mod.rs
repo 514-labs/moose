@@ -1,15 +1,13 @@
 use std::{path::PathBuf, io::Error};
 
-use crate::cli::CommandTerminal;
+use crate::{cli::{CommandTerminal, user_messages::{show_message, MessageType, Message}}, framework::directories};
 
 use self::setup::{
     scaffold::{ delete_clickhouse_mount_volume, delete_red_panda_mount_volume, validate_mount_volumes, create_volumes}, 
     container::{stop_red_panda_container, stop_ch_container, run_red_panda_docker_container, run_ch_docker_container}, 
     network::{create_docker_network, remove_docker_network}, 
-    validate::validate_docker_run
+    validate::{validate_red_panda_run, validate_clickhouse_run}
 };
-
-
 pub mod setup;
 mod docker;
 
@@ -30,22 +28,34 @@ pub fn clean(igloo_dir: &PathBuf) {
     delete_red_panda_mount_volume(igloo_dir);
 }
 
-pub fn spin_up(term: &mut CommandTerminal,igloo_dir: &PathBuf) -> Result<(), Error> {
-     match validate_mount_volumes(igloo_dir) {
+pub fn spin_up(term: &mut CommandTerminal) -> Result<(), Error> {
+    let igloo_dir = match directories::get_igloo_directory() {
+        Ok(dir) => dir,
+        Err(err) => {
+            show_message( term, MessageType::Error, Message {
+                action: "Failed",
+                details: "Please run `igloo init` to create the necessary mount volumes",
+            });
+            return Err(err);
+        }
+    };
+
+    println!("runnign spin up");
+     match validate_mount_volumes(&igloo_dir) {
         Ok(_) => {
             create_docker_network();
             run_red_panda_docker_container(term,true)?;
-            validate_docker_run(true);
+            validate_red_panda_run(term,true)?;
             run_ch_docker_container(term, true)?;
+            validate_clickhouse_run(term, true)?;
+            Ok(())
         },
         Err(err) => {
-            println!("{}", err);
-            println!("Please run `igloo init` to create the necessary mount volumes");
+            show_message( term, MessageType::Error, Message {
+                action: "Failed",
+                details: "Please run `igloo init` to create the necessary mount volumes",
+            });
+            return Err(err);
         }
-    };
-    create_docker_network();
-    run_red_panda_docker_container(term, true)?;
-    validate_docker_run(true);
-    run_ch_docker_container(term, true)?;
-    Ok(())
+    }
 }

@@ -1,5 +1,5 @@
 use std::{env, io::{self, Write}};
-use crate::{infrastructure::docker::{self, run_clickhouse}, cli::{CommandTerminal, user_messages::{show_message, MessageType, Message}}};
+use crate::{infrastructure::docker::{self, run_clickhouse}, cli::{CommandTerminal, user_messages::{show_message, MessageType, Message}}, framework::directories};
 
 // TODO: Print output to terminal with proper messages
 pub fn stop_red_panda_container() {
@@ -12,9 +12,8 @@ pub fn stop_red_panda_container() {
 }
 
 pub fn run_red_panda_docker_container(term: &mut CommandTerminal, debug: bool) -> Result<(), io::Error> {
-    let current_dir = env::current_dir().unwrap();
-
-    let output = docker::run_red_panda(current_dir);
+    let igloo_dir = directories::get_igloo_directory()?;
+    let output = docker::run_red_panda(igloo_dir);
 
     match output {
         Ok(o) => {
@@ -40,8 +39,8 @@ pub fn run_red_panda_docker_container(term: &mut CommandTerminal, debug: bool) -
 }
 
 pub fn run_ch_docker_container(term: &mut CommandTerminal, debug: bool) -> Result<(), io::Error> {
-    let current_dir = env::current_dir().unwrap();
-    let output = run_clickhouse(current_dir);
+    let igloo_dir = directories::get_igloo_directory()?;
+    let output = run_clickhouse(igloo_dir);
 
     match  output {
         Ok(o) => {

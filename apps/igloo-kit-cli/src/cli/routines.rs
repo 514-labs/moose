@@ -1,17 +1,17 @@
 use std::io::Error;
 
-use crate::{framework::directories::create_project_directories, infrastructure::setup::scaffold::create_temp_data_volumes};
+use crate::{framework::directories::{create_project_directories, self}, infrastructure::{setup::scaffold::create_temp_data_volumes, self}};
 
 use super::{CommandTerminal, user_messages::show_message, MessageType, Message};
 
 
 pub fn start_containers(term: &mut CommandTerminal) -> Result<(), Error> {
     show_message( term, MessageType::Info, Message {
-        action: "Starting",
-        details: "Red Panda and Clickhouse containers",
+        action: "Running",
+        details: "infrastructure spin up",
     });
-
-
+    
+    infrastructure::spin_up(term)?;
     Ok(())
 }
 

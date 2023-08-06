@@ -1,18 +1,19 @@
-use std::{fs, path::PathBuf, io::Error};
+use std::{fs, path::PathBuf, io::{Error, ErrorKind}};
 
-use crate::{cli::{CommandTerminal, user_messages::{MessageType, Message, show_message}}, framework::directories::{check_for_igloo_directory, create_top_level_temp_dir}};
+use crate::{cli::{CommandTerminal, user_messages::{MessageType, Message, show_message}}, framework::directories::{get_igloo_directory, create_top_level_temp_dir}};
 
 use super::database;
 
 // Validate that the clickhouse and redpanda volume paths exist
-pub fn validate_mount_volumes(igloo_dir: &PathBuf) -> Result<(), String> {
+pub fn validate_mount_volumes(igloo_dir: &PathBuf) -> Result<(), Error> {
     let panda_house = igloo_dir.join(".panda_house").exists();
     let clickhouse = igloo_dir.join(".clickhouse").exists();
 
     if panda_house && clickhouse {
         Ok(())
     } else {
-        Err(format!("Mount volume status: redpanda: {panda_house}, clickhouse: {clickhouse}"))
+        
+        Err(Error::new(ErrorKind::Other, format!("Mount volume status: redpanda: {panda_house}, clickhouse: {clickhouse}")))
     }
 }
 
@@ -89,7 +90,7 @@ pub fn create_volumes(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result
 }
 
 pub fn create_temp_data_volumes(term: &mut CommandTerminal) -> Result<(), std::io::Error> {
-    match check_for_igloo_directory() {
+    match get_igloo_directory() {
         Ok(igloo_dir) => {
             create_red_panda_mount_volume(&igloo_dir)?;
             create_clickhouse_mount_volume(&igloo_dir)?;

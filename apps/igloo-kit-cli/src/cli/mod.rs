@@ -79,24 +79,22 @@ fn top_command_handler(commands: &Option<Commands>, debug: bool) {
 
     match commands {
         Some(Commands::Init {}) => {
-            
             routines::initialize_project(&mut term);
         }
         Some(Commands::Dev{}) => {
             routines::start_containers(&mut term);
-
         }
         Some(Commands::Update{}) => {
-            println!("Updating...");
+            todo!("Will update the project's underlying infrascructure based on any added objects")
         }
         Some(Commands::Stop{}) => {
-            println!("Stopping...");
+            todo!("stop the underlying infrastructure")
         }
         Some(Commands::Clean{}) => {
-            println!("Cleaning...");
+            todo!("clean the underlying infrastructure and remove any temp data volumes")
         }
         Some(Commands::Add(add_arg)) => {
-            add_handler(&add_arg)
+            todo!("add templatized objects to the project");
         }
         None => {}
     }

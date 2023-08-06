@@ -4,7 +4,7 @@ use crate::{cli::{CommandTerminal, user_messages::{show_message, MessageType, Me
 
 use self::setup::{
     scaffold::{ delete_clickhouse_mount_volume, delete_red_panda_mount_volume, validate_mount_volumes, create_volumes}, 
-    container::{stop_red_panda_container, stop_ch_container, run_red_panda_docker_container, run_ch_docker_container}, 
+    container::{stop_red_panda_container, stop_clickhouse_container, run_red_panda_docker_container, run_ch_docker_container}, 
     network::{create_docker_network, remove_docker_network}, 
     validate::{validate_red_panda_run, validate_clickhouse_run}
 };
@@ -13,19 +13,20 @@ mod docker;
 
 
 pub fn init(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result<(), Error> {
-    create_docker_network();
+    create_docker_network(term)?;
     create_volumes(term, igloo_dir)?;
     Ok(())
 }
 
 
 // Stop the redpanda and clickhouse containers, removes the docker network, and deletes the temporary data volumes
-pub fn clean(igloo_dir: &PathBuf) {
-    stop_red_panda_container();
-    stop_ch_container();
-    remove_docker_network();
-    delete_clickhouse_mount_volume(igloo_dir);
-    delete_red_panda_mount_volume(igloo_dir);
+pub fn clean(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result<(), Error> {
+    stop_red_panda_container(term)?;
+    stop_clickhouse_container(term)?;
+    remove_docker_network(term)?;
+    delete_clickhouse_mount_volume(igloo_dir)?;
+    delete_red_panda_mount_volume(igloo_dir)?;
+    Ok(())
 }
 
 pub fn spin_up(term: &mut CommandTerminal) -> Result<(), Error> {
@@ -43,7 +44,7 @@ pub fn spin_up(term: &mut CommandTerminal) -> Result<(), Error> {
     println!("runnign spin up");
      match validate_mount_volumes(&igloo_dir) {
         Ok(_) => {
-            create_docker_network();
+            create_docker_network(term)?;
             run_red_panda_docker_container(term,true)?;
             validate_red_panda_run(term,true)?;
             run_ch_docker_container(term, true)?;

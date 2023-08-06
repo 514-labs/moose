@@ -1,6 +1,6 @@
 use std::io::Error;
 
-use crate::{framework::directories::{create_project_directories, self}, infrastructure::{setup::scaffold::create_temp_data_volumes, self}};
+use crate::{framework::directories::{create_project_directories}, infrastructure::{setup::scaffold::create_temp_data_volumes, self}};
 
 use super::{CommandTerminal, user_messages::show_message, MessageType, Message};
 

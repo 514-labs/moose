@@ -101,7 +101,14 @@ pub fn validate_panda_house_network(term: &mut CommandTerminal, debug: bool) -> 
                 });
                 Ok(())
             } else {
-                println!("Failed to validate panda_house_network");
+                show_message(
+                    term,
+                    MessageType::Error,
+                    Message {
+                        action: "Failed",
+                        details: "to validate panda_house docker network",
+                    },
+                );
                 Err(io::Error::new(io::ErrorKind::Other, "Failed to validate panda_house network"))
             }
         },

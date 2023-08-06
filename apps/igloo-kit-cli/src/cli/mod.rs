@@ -5,7 +5,7 @@ pub mod user_messages;
 use commands::Commands;
 use std::path::PathBuf;
 use clap::Parser;
-use crate::{framework::{AddableObjects, directories::get_igloo_directory, self}, infrastructure};
+use crate::{framework::{AddableObjects, directories::get_igloo_directory}, infrastructure};
 use self::{commands::AddArgs, user_messages::{MessageType, Message}};
 
 #[derive(Parser)]

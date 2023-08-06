@@ -5,7 +5,7 @@ pub mod user_messages;
 use commands::Commands;
 use std::path::PathBuf;
 use clap::Parser;
-use crate::framework::AddableObjects;
+use crate::{framework::{AddableObjects, directories::get_igloo_directory, self}, infrastructure};
 use self::{commands::AddArgs, user_messages::{MessageType, Message}};
 
 #[derive(Parser)]
@@ -29,24 +29,26 @@ struct Cli {
 fn add_handler(add_arg: &AddArgs) {
     match &add_arg.command {
         Some(AddableObjects::IngestPoint) => {
-            println!("Adding ingest point...")
+            todo!("add ingestion point object");
         }
         Some(AddableObjects::Flow) => {
-            println!("Adding flow...");
+            todo!("add flow object");
         }
         Some(AddableObjects::Dataframe) => {
-            println!("Adding dataframe...");
+            todo!("add dataframe object");
         }
         Some(AddableObjects::Metric) => {
-            println!("Adding metric...");
+            todo!("add metric object");
         }
         Some(AddableObjects::Dashboard) => {
-            println!("Adding dashboard...");
+            todo!("add dashboard object")
         }
         Some(AddableObjects::Model) => {
-            println!("Adding model...");
+            todo!("add model object")
         }
-        None => {}
+        None => {
+            todo!("add a great, piffy, and helpful message here")
+        }
     }
 }
 
@@ -74,7 +76,7 @@ impl CommandTerminal {
     }
 }
 
-fn top_command_handler(commands: &Option<Commands>, _debug: bool) {
+fn top_command_handler(commands: &Option<Commands>, debug: bool, igloo_dir: PathBuf) {
     let mut term: CommandTerminal = CommandTerminal::new();
 
     match commands {
@@ -83,18 +85,21 @@ fn top_command_handler(commands: &Option<Commands>, _debug: bool) {
         }
         Some(Commands::Dev{}) => {
             routines::start_containers(&mut term);
+            infrastructure::setup::validate::validate_red_panda_cluster(&mut term, debug);
         }
         Some(Commands::Update{}) => {
             todo!("Will update the project's underlying infrascructure based on any added objects")
         }
         Some(Commands::Stop{}) => {
-            todo!("stop the underlying infrastructure")
+            routines::stop_containers(&mut term);
         }
         Some(Commands::Clean{}) => {
-            todo!("clean the underlying infrastructure and remove any temp data volumes")
+            routines::clean_project(&mut term, &igloo_dir);
+
         }
-        Some(Commands::Add(_add_arg)) => {
-            todo!("add templatized objects to the project");
+        Some(Commands::Add(add_args)) => {
+            
+            add_handler(add_args);   
         }
         None => {}
     }
@@ -106,9 +111,7 @@ pub fn cli_run() {
 
     let cli = Cli::parse();
 
-    if let Some(config_path) = cli.config.as_deref() {
-        println!("Value for config: {}", config_path.display());
-    }
+    let igloo_dir = cli.config.unwrap_or(get_igloo_directory().unwrap());
 
-    top_command_handler(&cli.command, cli.debug)
+    top_command_handler(&cli.command, cli.debug, igloo_dir)
 }

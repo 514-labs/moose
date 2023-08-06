@@ -92,8 +92,7 @@ pub fn create_volumes(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result
 pub fn create_temp_data_volumes(term: &mut CommandTerminal) -> Result<(), std::io::Error> {
     match get_igloo_directory() {
         Ok(igloo_dir) => {
-            create_red_panda_mount_volume(&igloo_dir)?;
-            create_clickhouse_mount_volume(&igloo_dir)?;
+            create_volumes(term, &igloo_dir)?;
             Ok(())
         },
         Err(_) => {
@@ -107,8 +106,7 @@ pub fn create_temp_data_volumes(term: &mut CommandTerminal) -> Result<(), std::i
             });
             match create_top_level_temp_dir(term) {
                 Ok(path) => {
-                    create_red_panda_mount_volume(&path)?;
-                    create_clickhouse_mount_volume(&path)?;
+                    create_volumes(term, &path)?;
                     Ok(())
                 },
                 Err(err) => {
@@ -122,12 +120,12 @@ pub fn create_temp_data_volumes(term: &mut CommandTerminal) -> Result<(), std::i
     }}
 }
 
-pub fn create_red_panda_mount_volume(igloo_dir: &PathBuf) -> Result<PathBuf, Error> {
+fn create_red_panda_mount_volume(igloo_dir: &PathBuf) -> Result<PathBuf, Error> {
     let mount_dir = igloo_dir.join(".panda_house");
     fs::create_dir_all(mount_dir.clone()).map(|_| mount_dir)
 }
 
-pub fn create_clickhouse_mount_volume(igloo_dir: &PathBuf) -> Result<(), Error> {
+fn create_clickhouse_mount_volume(igloo_dir: &PathBuf) -> Result<(), Error> {
     let mount_dir = igloo_dir.join(".clickhouse");
 
     fs::create_dir_all(mount_dir.clone())?;

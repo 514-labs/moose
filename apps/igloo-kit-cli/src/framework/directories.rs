@@ -1,6 +1,6 @@
 use std::{path::PathBuf, io::{Error, ErrorKind}};
 
-use crate::{infrastructure::setup::scaffold::{create_red_panda_mount_volume, create_clickhouse_mount_volume, validate_mount_volumes}, cli::{user_messages::{show_message, MessageType, Message}, CommandTerminal}};
+use crate::{infrastructure::setup::scaffold::{validate_mount_volumes, create_temp_data_volumes}, cli::{user_messages::{show_message, MessageType, Message}, CommandTerminal}};
 
 
 const APP_DIR: [&str; 8] = [
@@ -34,6 +34,7 @@ pub fn get_igloo_directory() -> Result<PathBuf, Error> {
     }
 }
 
+// Creates the .igloo directory and the Red Panda and Clickhouse mount volumes
 pub fn create_top_level_temp_dir(term: &mut CommandTerminal) -> Result<PathBuf, std::io::Error> {
     match create_igloo_directory() {
         Ok(igloo_dir) => {
@@ -51,40 +52,7 @@ pub fn create_top_level_temp_dir(term: &mut CommandTerminal) -> Result<PathBuf, 
                         details: "Red Panda and Clickhouse mount volumes in .igloo directory",
                     });
                     {
-                        let igloo_dir = &igloo_dir;
-                        match create_red_panda_mount_volume(&igloo_dir) {
-                            Ok(dir) => {
-                                let dir_display = dir.display();
-                                show_message( term, MessageType::Success, Message {
-                                    action: "Created",
-                                    details: &format!("Red Panda mount volume in {dir_display}"),
-                                });
-                            },
-                            Err(err) => {
-                                let dir_display = igloo_dir.display();
-                                show_message( term, MessageType::Error, Message {
-                                    action: "Failed",
-                                    details: &format!("to create Red Panda mount volume in {dir_display}"),
-                                });
-                                return Err(err)
-                            }
-                        };
-                        match create_clickhouse_mount_volume(&igloo_dir) {
-                            Ok(_) => {
-                                show_message( term, MessageType::Success, Message {
-                                    action: "Created",
-                                    details: &format!("Clickhouse mount volumes in .clickhouse directory"),
-                                });
-                            },
-                            Err(err) => {
-                                let dir_display = igloo_dir.display();
-                                show_message( term, MessageType::Error, Message {
-                                    action: "Failed",
-                                    details: &format!("to create Red Panda mount volume in {dir_display}"),
-                                });
-                                return Err(err)
-                            }
-                        };
+                        create_temp_data_volumes(term)?;
                     };
                 }
             }

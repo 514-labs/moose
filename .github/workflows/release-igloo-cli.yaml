@@ -108,6 +108,10 @@ jobs:
         with:
           node-version: "18"
           registry-url: "https://registry.npmjs.org"
+          
+      - uses: pnpm/action-setup@v2
+          with:
+            version: 8
 
       - name: Publish the package
         shell: bash

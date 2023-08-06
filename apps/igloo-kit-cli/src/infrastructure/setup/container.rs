@@ -1,15 +1,6 @@
-use std::{io::{self, Write}};
+use std::io::{self, Write};
 use crate::{infrastructure::docker::{self, run_clickhouse}, cli::{CommandTerminal, user_messages::{show_message, MessageType, Message}}, framework::directories};
 
-// TODO: Print output to terminal with proper messages
-pub fn stop_red_panda_container() {
-    let output = docker::stop_container("redpanda-1");
-
-    match output {
-        Ok(_) => println!("Stopped docker container"),
-        Err(_) => println!("Failed to stop docker container"),
-    }
-}
 
 pub fn run_red_panda_docker_container(term: &mut CommandTerminal, debug: bool) -> Result<(), io::Error> {
     let igloo_dir = directories::get_igloo_directory()?;
@@ -64,12 +55,54 @@ pub fn run_ch_docker_container(term: &mut CommandTerminal, debug: bool) -> Resul
     }
 }
 
-// TODO: Print output to terminal with proper messages
-pub fn stop_ch_container() {
+pub fn stop_clickhouse_container(term: &mut CommandTerminal) -> Result<(), io::Error> {
     let output = docker::stop_container("clickhousedb-1");
 
     match output {
-        Ok(_) => println!("Stopped docker container"),
-        Err(_) => println!("Failed to stop docker container"),
-    }
+        Ok(_) => {
+            show_message(
+                term,
+                MessageType::Success,
+                Message {
+                    action: "Successfully",
+                    details: "stopped clickhouse container",
+                },
+            );
+            Ok(())
+        },
+        Err(_) => {show_message(
+            term,
+            MessageType::Error,
+            Message {
+                action: "Failed",
+                details: "to stop clickhouse container",
+            });
+            Err(io::Error::new(io::ErrorKind::Other, "Failed to stop clickhouse container"))
+    }}
+}
+
+pub fn stop_red_panda_container(term: &mut CommandTerminal) -> Result<(), io::Error> {
+    let output = docker::stop_container("redpanda-1");
+
+    match output {
+        Ok(_) => {
+            show_message(
+                term,
+                MessageType::Success,
+                Message {
+                    action: "Successfully",
+                    details: "stopped redpanda container",
+                },
+            );
+            Ok(())
+        },
+        Err(_) => {show_message(
+            term,
+            MessageType::Error,
+            Message {
+                action: "Failed",
+                details: "to stop redpanda container",
+            });
+            Err(io::Error::new(io::ErrorKind::Other, "Failed to stop redpanda container"))
+    }}
 }

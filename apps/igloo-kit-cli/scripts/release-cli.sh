@@ -2,6 +2,8 @@
 
 version=$1
 
+pnpm install
+
 if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-BUILD\.[0-9]+$ ]]; then
    npm version $version --no-git-tag-version
 
@@ -13,6 +15,7 @@ if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-BUILD\.[0-9]+$ ]]; then
    done
 fi
 
+# This is run twice since the change the value of the dependencies in the previous step
 pnpm install # requires optional dependencies to be present in the registry
 turbo build --filter @514labs/igloo-cli
 

@@ -3,10 +3,10 @@ use std::{path::PathBuf, io::Error};
 use crate::{cli::{CommandTerminal, user_messages::{show_message, MessageType, Message}}, framework::directories};
 
 use self::setup::{
-    scaffold::{ delete_clickhouse_mount_volume, delete_red_panda_mount_volume, validate_mount_volumes, create_volumes}, 
+    scaffold::{delete_clickhouse_mount_volume, delete_red_panda_mount_volume, validate_mount_volumes, create_volumes}, 
     container::{stop_red_panda_container, stop_clickhouse_container, run_red_panda_docker_container, run_ch_docker_container}, 
     network::{create_docker_network, remove_docker_network}, 
-    validate::{validate_red_panda_run, validate_clickhouse_run}
+    validate::{validate_red_panda_run, validate_clickhouse_run, validate_panda_house_network}
 };
 pub mod setup;
 mod docker;
@@ -18,8 +18,6 @@ pub fn init(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result<(), Error
     Ok(())
 }
 
-
-// Stop the redpanda and clickhouse containers, removes the docker network, and deletes the temporary data volumes
 pub fn clean(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result<(), Error> {
     stop_red_panda_container(term)?;
     stop_clickhouse_container(term)?;
@@ -41,10 +39,37 @@ pub fn spin_up(term: &mut CommandTerminal) -> Result<(), Error> {
         }
     };
 
-    println!("runnign spin up");
-     match validate_mount_volumes(&igloo_dir) {
+    show_message(
+        term,
+        MessageType::Info,
+        Message {
+            action: "Spinning up",
+            details: "igloo cluster",
+        },
+    );
+    match validate_mount_volumes(&igloo_dir) {
         Ok(_) => {
-            create_docker_network(term)?;
+            match validate_panda_house_network(term, true) {
+                Ok(_) => {
+                    show_message( term, MessageType::Success, Message {
+                        action: "Successfully",
+                        details: "found docker network",
+                    });
+                },
+                Err(_) => {
+                    create_docker_network(term)?;
+                    match validate_panda_house_network(term, true) {
+                        Ok(_) => {},
+                        Err(err) => {
+                            show_message( term, MessageType::Error, Message {
+                                action: "Failed",
+                                details: "to recover and create docker network please contact support",
+                            });
+                            return Err(err);
+                        }
+                    }
+                }
+            };
             run_red_panda_docker_container(term,true)?;
             validate_red_panda_run(term,true)?;
             run_ch_docker_container(term, true)?;
@@ -59,4 +84,18 @@ pub fn spin_up(term: &mut CommandTerminal) -> Result<(), Error> {
             return Err(err);
         }
     }
+}
+
+pub fn spin_down(term: &mut CommandTerminal) -> Result<(), Error> {
+    show_message(
+        term,
+        MessageType::Info,
+        Message {
+            action: "Spinning down",
+            details: "igloo cluster",
+        },
+    );
+    stop_red_panda_container(term)?;
+    stop_clickhouse_container(term)?;
+    Ok(())
 }

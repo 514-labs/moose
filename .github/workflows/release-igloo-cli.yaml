@@ -64,6 +64,13 @@ jobs:
           target: ${{ matrix.build.TARGET }}
           override: true
 
+      - name: Install Rust toolchain
+        uses: actions-rs/toolchain@v1
+        if:  ${{ matrix.build.os }} == 'ubuntu-20.04'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libssl-dev
+
       - name: Build
         uses: actions-rs/cargo@v1
         with:
@@ -80,7 +87,7 @@ jobs:
       - name: Set the version for the package
         shell: bash
         id: version
-        run: ./scripts/version.sh ./apps/igloo-cli-kit >> "$GITHUB_OUTPUT"
+        run: ./scripts/version.sh ./apps/igloo-kit-cli >> "$GITHUB_OUTPUT"
 
       - name: Publish to NPM
         shell: bash

@@ -8,6 +8,7 @@ license = "Apache-2.0"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+openssl = { version = "0.10", features = ["vendored"] }
 clap = { version = "4.3.17", features = ["derive"] }
 console = "0.15.7"
 dialoguer = "0.10.4"

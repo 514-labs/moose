@@ -64,11 +64,11 @@ jobs:
           target: ${{ matrix.build.TARGET }}
           override: true
 
-      - name: Install Rust OpenSSL
-        if:  ${{ matrix.build.os == 'ubuntu-20.04'}}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y pkg-config
+      # - name: Install pkg-config
+      #   if:  ${{ matrix.build.os == 'ubuntu-20.04'}}
+      #   run: |
+      #     sudo apt-get update -y
+      #     sudo apt-get install -y pkg-config
 
       - name: Build
         uses: actions-rs/cargo@v1
@@ -90,7 +90,7 @@ jobs:
 
       - name: Publish to NPM
         shell: bash
-        run: ./apps/igloo-kit-cli/scripts/release-bin.sh ${{ steps.step1.outputs.version }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
+        run: ./apps/igloo-kit-cli/scripts/release-bin.sh ${{ steps.version.outputs.VERSION }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -110,6 +110,6 @@ jobs:
 
       - name: Publish the package
         shell: bash
-        run: ./apps/igloo-kit-cli/scripts/release-cli.sh ${{needs.publish-npm-binaries.outputs.version}}
+        run: ./apps/igloo-kit-cli/scripts/release-cli.sh ${{needs.publish-npm-binaries.outputs.VERSION}}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

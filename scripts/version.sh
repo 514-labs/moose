@@ -12,7 +12,7 @@ buildId="$GITHUB_RUN_NUMBER"
 folder="$1"
 
 if [[ "$ref" =~ ^refs/tags/[a-z\-]+([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
-   echo -n "${BASH_REMATCH[1]}"
+   echo "VERSION=${BASH_REMATCH[1]}"
 else
-   echo -n "$(cat $folder/package.json | jq -r .version)-BUILD.$buildId"
+   echo "VERSION=$(cat $folder/package.json | jq -r .version)-BUILD.$buildId"
 fi

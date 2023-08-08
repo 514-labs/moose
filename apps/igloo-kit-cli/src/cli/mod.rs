@@ -1,12 +1,12 @@
 mod commands;
 mod routines;
-mod user_messages;
+pub mod user_messages;
 
 use commands::Commands;
 use std::path::PathBuf;
 use clap::Parser;
 use crate::framework::AddableObjects;
-use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}, routines::initialize_project};
+use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -75,28 +75,30 @@ impl CommandTerminal {
 }
 
 fn top_command_handler(commands: &Option<Commands>, debug: bool) {
+    let mut term: CommandTerminal = CommandTerminal::new();
+
     match commands {
         Some(Commands::Init {}) => {
-            let mut term: CommandTerminal = CommandTerminal::new();
             routines::initialize_project(&mut term);
         }
         Some(Commands::Dev{}) => {
-            println!("Starting development environment...");
+            routines::start_containers(&mut term);
         }
         Some(Commands::Update{}) => {
-            println!("Updating...");
+            todo!("Will update the project's underlying infrascructure based on any added objects")
         }
         Some(Commands::Stop{}) => {
-            println!("Stopping...");
+            todo!("stop the underlying infrastructure")
         }
         Some(Commands::Clean{}) => {
-            println!("Cleaning...");
+            todo!("clean the underlying infrastructure and remove any temp data volumes")
         }
         Some(Commands::Add(add_arg)) => {
-            add_handler(&add_arg)
+            todo!("add templatized objects to the project");
         }
         None => {}
     }
+    
 }
 
 pub fn cli_run() {

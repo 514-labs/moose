@@ -1,6 +1,6 @@
 mod infrastructure;
 mod cli;
-mod framework;
+pub mod framework;
 
 fn main() {
     cli::cli_run();

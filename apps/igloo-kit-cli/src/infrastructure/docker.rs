@@ -48,8 +48,8 @@ pub fn run_rpk_list() -> std::io::Result<std::process::Output>{
         .output()
 }
 
-pub fn run_red_panda(current_dir: PathBuf) -> std::io::Result<std::process::Output>{
-    let mount_dir = current_dir.join(".panda_house");
+pub fn run_red_panda(igloo_dir:  PathBuf) -> std::io::Result<std::process::Output>{
+    let mount_dir = igloo_dir.join(".panda_house");
 
     Command::new("docker")
         .arg("run")
@@ -74,12 +74,14 @@ pub fn run_red_panda(current_dir: PathBuf) -> std::io::Result<std::process::Outp
         .output()
 }
 
-pub fn run_clickhouse(current_dir: PathBuf) -> std::io::Result<std::process::Output> {
-    let data_mount_dir = current_dir.join(".clickhouse/data");
-    let logs_mount_dir = current_dir.join(".clickhouse/logs");
-    let config_mount_dir = current_dir.join(".clickhouse/configs");
+pub fn run_clickhouse(igloo_dir: PathBuf) -> std::io::Result<std::process::Output> {
+    let data_mount_dir = igloo_dir.join(".clickhouse/data");
+    let logs_mount_dir = igloo_dir.join(".clickhouse/logs");
+    let config_mount_dir = igloo_dir.join(".clickhouse/configs");
     
-
+    // TODO: Make this configurable by the user
+    // Specifying the user and password in plain text here. This should be a user input
+    // Double check the access management flag and why it needs to be set to 1
     Command::new("docker")
         .arg("run")
         .arg("-d")
@@ -89,8 +91,13 @@ pub fn run_clickhouse(current_dir: PathBuf) -> std::io::Result<std::process::Out
         .arg("--volume=".to_owned() + data_mount_dir.to_str().unwrap() + ":/var/lib/clickhouse/")
         .arg("--volume=".to_owned() + logs_mount_dir.to_str().unwrap() + ":/var/log/clickhouse-server/")
         .arg("--volume=".to_owned() + config_mount_dir.to_str().unwrap() + ":/etc/clickhouse-server/config.d/*.xml")
+        .arg("--env=CLICKHOUSE_DB=panda_house")
+        .arg("--env=CLICKHOUSE_USER=panda")
+        .arg("--env=CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1") // Might be unsafe
+        .arg("--env=CLICKHOUSE_PASSWORD=pandapass")
         .arg("--network=panda-house")
         .arg("--publish=18123:8123")
+        .arg("--publish=9005:9005")
         .arg("--ulimit=nofile=262144:262144")
         .arg("docker.io/clickhouse/clickhouse-server")
         .output()

@@ -94,7 +94,6 @@ pub fn validate_panda_house_network(term: &mut CommandTerminal, debug: bool) -> 
             }
             let output = String::from_utf8(o.stdout).unwrap();
             if output.contains("panda_house") {
-                println!("Successfully validated docker panda_house network");
                 show_message(term, MessageType::Success, Message {
                     action: "Successfully",
                     details: "validated panda_house docker network",
@@ -120,7 +119,7 @@ pub fn validate_panda_house_network(term: &mut CommandTerminal, debug: bool) -> 
     }
 }
 
-pub fn validate_red_panda_cluster(term: &mut CommandTerminal, debug: bool) -> Result<(),  Error> {
+pub fn validate_red_panda_cluster(term: &mut CommandTerminal, debug: bool) -> Result<(), Error> {
     let output = docker::run_rpk_list();
 
     match output {
@@ -130,20 +129,30 @@ pub fn validate_red_panda_cluster(term: &mut CommandTerminal, debug: bool) -> Re
             }
             let output = String::from_utf8(o.stdout).unwrap();
             if output.contains("redpanda-1") {
-                println!("Successfully validated red panda cluster");
                 show_message(term, MessageType::Success, Message {
                     action: "Successfully",
                     details: "validated red panda cluster",
                 });
                 Ok(())
             } else {
-                println!("Failed to validate docker container");
+                show_message(
+                    term,
+                    MessageType::Error,
+                    Message {
+                        action: "Failed",
+                        details: "to validate red panda cluster",
+                    },
+                );
                 Err(io::Error::new(io::ErrorKind::Other, "Failed to validate red panda cluster"))
-
             }
         },
         Err(err) => {
-            println!("Failed to validate redpanda cluster");
+            show_message(term, MessageType::Error,
+                Message {
+                    action: "Failed",
+                    details: "to validate red panda cluster",
+                },
+            );
             Err(err)
         },
     }

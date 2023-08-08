@@ -89,11 +89,13 @@ pub fn validate_panda_house_network(term: &mut CommandTerminal, debug: bool) -> 
 
     match output {
         Ok(o) => {
+            
             if debug {
                 io::stdout().write_all(&o.stdout).unwrap();
             }
-            let output = String::from_utf8(o.stdout).unwrap();
-            if output.contains("panda_house") {
+ 
+            let res = String::from_utf8(o.stdout).unwrap();
+            if res.contains("panda-house") {
                 show_message(term, MessageType::Success, Message {
                     action: "Successfully",
                     details: "validated panda_house docker network",

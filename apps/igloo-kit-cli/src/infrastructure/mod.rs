@@ -43,8 +43,8 @@ pub fn spin_up(term: &mut CommandTerminal) -> Result<(), Error> {
         term,
         MessageType::Info,
         Message {
-            action: "Spinning up",
-            details: "igloo cluster",
+            action: "Running",
+            details: "igloo cluster spin up",
         },
     );
     match validate_mount_volumes(&igloo_dir) {

@@ -17,6 +17,6 @@ fi
 
 # This is run twice since the change the value of the dependencies in the previous step
 pnpm install # requires optional dependencies to be present in the registry
-turbo build --filter @514labs/igloo-cli
+pnpm build --filter @514labs/igloo-cli
 
-pnpm publish --access public
+pnpm publish --filter @514labs/igloo-cli --access public

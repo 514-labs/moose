@@ -14,5 +14,10 @@ folder="$1"
 if [[ "$ref" =~ ^refs/tags/[a-z\-]+([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
    echo "VERSION=${BASH_REMATCH[1]}"
 else
-   echo "VERSION=$(cat $folder/package.json | jq -r .version)-BUILD.$buildId"
+   currentVersion=$(cat $folder/package.json | jq -r .version)
+   if [[ "$currentVersion" =~ ^([0-9]+\.[0-9]+\.[0-9]+)\-BUILD\.[0-9]+$ ]]; then
+      echo "VERSION=${BASH_REMATCH[1]}-BUILD.$buildId"
+   else
+      echo "VERSION=$currentVersion-BUILD.$buildId"
+   fi
 fi

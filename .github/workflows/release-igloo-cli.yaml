@@ -115,6 +115,6 @@ jobs:
 
       - name: Publish the package
         shell: bash
-        run: ./apps/igloo-kit-cli/scripts/release-cli.sh ${{needs.publish-npm-binaries.outputs.VERSION}}
+        run: ./apps/igloo-kit-cli/scripts/release-cli.sh ${{needs.publish-npm-binaries.outputs.version}}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

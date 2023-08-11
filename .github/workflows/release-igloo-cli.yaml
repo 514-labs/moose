@@ -12,7 +12,7 @@ jobs:
     name: Publish NPM packages
     runs-on: ${{ matrix.build.os }}
     outputs:
-      version: ${{ steps.step1.outputs.version }}
+      version: ${{ steps.version.outputs.version }}
     strategy:
       fail-fast: false
       matrix:
@@ -63,12 +63,6 @@ jobs:
           toolchain: ${{ matrix.build.TOOLCHAIN }}
           target: ${{ matrix.build.TARGET }}
           override: true
-
-      # - name: Install pkg-config
-      #   if:  ${{ matrix.build.os == 'ubuntu-20.04'}}
-      #   run: |
-      #     sudo apt-get update -y
-      #     sudo apt-get install -y pkg-config
 
       - name: Build
         uses: actions-rs/cargo@v1

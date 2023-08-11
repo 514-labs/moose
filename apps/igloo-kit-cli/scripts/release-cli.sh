@@ -4,8 +4,6 @@
 
 version=$1
 
-pnpm install
-
 if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-BUILD\.[0-9]+$ ]]; then
    cd apps/igloo-kit-cli
    npm version $version --no-git-tag-version

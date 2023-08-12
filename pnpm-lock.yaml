@@ -25,6 +25,25 @@ importers:
         version: 1.10.12
 
   apps/igloo-kit-cli:
+    optionalDependencies:
+      '@514labs/igloo-cli-darwin-arm64':
+        specifier: 0.0.2-BUILD.29
+        version: 0.0.2-BUILD.29
+      '@514labs/igloo-cli-darwin-x64':
+        specifier: 0.0.2-BUILD.29
+        version: 0.0.2-BUILD.29
+      '@514labs/igloo-cli-linux-arm64':
+        specifier: 0.0.2-BUILD.29
+        version: 0.0.2-BUILD.29
+      '@514labs/igloo-cli-linux-x64':
+        specifier: 0.0.2-BUILD.29
+        version: 0.0.2-BUILD.29
+      '@514labs/igloo-cli-windows-arm64':
+        specifier: 0.0.2-BUILD.29
+        version: 0.0.2-BUILD.29
+      '@514labs/igloo-cli-windows-x64':
+        specifier: 0.0.2-BUILD.29
+        version: 0.0.2-BUILD.29
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -226,6 +245,54 @@ importers:
         version: 4.9.5
 
 packages:
+
+  /@514labs/igloo-cli-darwin-arm64@0.0.2-BUILD.29:
+    resolution: {integrity: sha512-Uj+E/OgCLESYlHyLf7hSs7f4Nuwzdh6jwq/6rjpP1FfZIyRPKryMMeo/im2Jac0mwGTpLQhfGOkWv4Qf9SMM5w==}
+    cpu: [arm64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@514labs/igloo-cli-darwin-x64@0.0.2-BUILD.29:
+    resolution: {integrity: sha512-e9WCKEs1Gw98zZ3sjJmHBZB+oPInPSXs+3i/ul5qzS7JgDixT77hd8ZgardSSs7Sqxdu5aPlGElXZ1g5CgPtuQ==}
+    cpu: [x64]
+    os: [darwin]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@514labs/igloo-cli-linux-arm64@0.0.2-BUILD.29:
+    resolution: {integrity: sha512-r79w9PwlKkN/wiXUR0v0g2xdPLMY+8v8F1Q4gfKQpXihr6287/A2z+J63h+nu81a2cUMYwi0HD1zMqUP/ljfPg==}
+    cpu: [arm64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@514labs/igloo-cli-linux-x64@0.0.2-BUILD.29:
+    resolution: {integrity: sha512-EFCGYjb2HeriyV88eU/ja0/tPEbaQ5xnWs9tHCAK1L/DWdlu17dogusoLP675OvqOkg+4HZnr4hkB4TVzTCOLA==}
+    cpu: [x64]
+    os: [linux]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@514labs/igloo-cli-windows-arm64@0.0.2-BUILD.29:
+    resolution: {integrity: sha512-ED/6AO8i9tapT+CWw00lwlId2aBL+9ttosgKaQ9kso1lmXj7omwmvRWv6Xj+BSYngbdzwAjgwKIwQOdBPpVaMw==}
+    cpu: [arm64]
+    os: [win32]
+    requiresBuild: true
+    dev: false
+    optional: true
+
+  /@514labs/igloo-cli-windows-x64@0.0.2-BUILD.29:
+    resolution: {integrity: sha512-Y1I1EH7+bDBCblqdbKzZZ2tff1GLJDGW4erMTkmJAOVmOQPkLqYH4xaKUceAIr3eaF26iYf2YxY0FeOzuUTWSw==}
+    cpu: [x64]
+    os: [win32]
+    requiresBuild: true
+    dev: false
+    optional: true
 
   /@aashutoshrathi/word-wrap@1.2.6:
     resolution: {integrity: sha512-1Yjs2SvM8TflER/OD3cOjhWWOZb58A2t7wpE2S9XfBYTiIl+XFhQG2bjy4Pu1I+EAlCNUzRDYDdFwFYUKvXcIA==}

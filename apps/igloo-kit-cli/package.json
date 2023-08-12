@@ -19,11 +19,11 @@
     "typescript": "^4.9.5"
   },
   "optionalDependencies": {
-    "app-darwin-arm64": "0.0.2-BUILD.19",
-    "app-darwin-x64": "0.0.2-BUILD.19",
-    "app-linux-arm64": "0.0.2-BUILD.19",
-    "app-linux-x64": "0.0.2-BUILD.19",
-    "app-windows-arm64": "0.0.2-BUILD.19",
-    "app-windows-x64": "0.0.2-BUILD.19"
+    "@514labs/igloo-cli-darwin-arm64": "0.0.2-BUILD.29",
+    "@514labs/igloo-cli-darwin-x64": "0.0.2-BUILD.29",
+    "@514labs/igloo-cli-linux-arm64": "0.0.2-BUILD.29",
+    "@514labs/igloo-cli-linux-x64": "0.0.2-BUILD.29",
+    "@514labs/igloo-cli-windows-arm64": "0.0.2-BUILD.29",
+    "@514labs/igloo-cli-windows-x64": "0.0.2-BUILD.29"
   }
 }

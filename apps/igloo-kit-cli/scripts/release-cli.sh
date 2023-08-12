@@ -25,4 +25,4 @@ fi
 pnpm install --no-frozen-lockfile # requires optional dependencies to be present in the registry
 pnpm build --filter @514labs/igloo-cli
 
-pnpm publish --filter @514labs/igloo-cli --access public
+pnpm publish --filter @514labs/igloo-cli --access public --no-git-checks

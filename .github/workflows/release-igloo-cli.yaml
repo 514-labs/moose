@@ -97,16 +97,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
       - name: Install node
         uses: actions/setup-node@v3
         with:
           node-version: "18"
-          registry-url: "https://registry.npmjs.org"
+          cache: "pnpm"
 
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
-          run_install: true
+      - name: Install dependencies
+        shell: bash
+        run: pnpm install
 
       - name: Publish the package
         shell: bash

@@ -22,7 +22,7 @@ if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-BUILD\.[0-9]+$ ]]; then
 fi
 
 # # This is run twice since the change the value of the dependencies in the previous step
-pnpm install # requires optional dependencies to be present in the registry
+pnpm install --no-frozen-lockfile # requires optional dependencies to be present in the registry
 pnpm build --filter @514labs/igloo-cli
 
 pnpm publish --filter @514labs/igloo-cli --access public

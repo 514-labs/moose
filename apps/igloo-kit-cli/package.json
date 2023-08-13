@@ -1,7 +1,6 @@
 {
   "name": "@514labs/igloo-cli",
   "version": "0.0.2-BUILD.29",
-  "private": true,
   "bin": "dist/index.js",
   "files": [
     "dist"

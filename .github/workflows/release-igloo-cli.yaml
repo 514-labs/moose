@@ -106,6 +106,7 @@ jobs:
         with:
           node-version: "18"
           cache: "pnpm"
+          registry-url: https://npm.pkg.github.com/
 
       - name: Install dependencies
         shell: bash

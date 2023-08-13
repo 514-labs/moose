@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "build": "cargo build & tsc",
+    "build-native": "cargo build",
+    "build": "tsc",
     "dev": "pnpm build && node lib/index.js"
   },
   "devDependencies": {

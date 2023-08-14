@@ -21,7 +21,7 @@ function getExePath() {
 
   try {
     // Since the binary will be located inside `node_modules`, we can simply call `require.resolve`
-    return require.resolve(`igloo-${os}-${arch}/bin/app${extension}`);
+    return require.resolve(`@514labs/igloo-cli-${os}-${arch}/bin/app${extension}`);
   } catch (e) {
     throw new Error(
       `Couldn't find application binary inside node_modules for ${os}-${arch}`

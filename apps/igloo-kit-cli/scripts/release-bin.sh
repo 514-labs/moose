@@ -19,9 +19,9 @@ export node_arch
 # set the package name
 # note: use 'windows' as OS name instead of 'win32'
 if [ ${build_os} = "windows-2022" ]; then
-export node_pkg="${bin}-windows-${node_arch}"
+    export node_pkg="${bin}-windows-${node_arch}"
 else
-export node_pkg="${bin}-${node_os}-${node_arch}"
+    export node_pkg="${bin}-${node_os}-${node_arch}"
 fi
 # create the package directory
 mkdir -p "${node_pkg}/bin"
@@ -30,9 +30,11 @@ envsubst < package.json.tmpl > "${node_pkg}/package.json"
 # copy the binary into the package
 # note: windows binaries has '.exe' extension
 if [ $build_os = "windows-2022" ]; then
-bin="${bin}.exe"
+    bin="${bin}.exe"
 fi
-cp "../target/${build_target}/release/${bin}" "${node_pkg}/bin"
+pwd
+ls "./target/${build_target}/release/${bin}"
+cp "./target/${build_target}/release/${bin}" "${node_pkg}/bin"
 # publish the package
 cd "${node_pkg}"
 npm publish --access public

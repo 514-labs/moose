@@ -14,9 +14,10 @@ struct Cli {
     /// Optional name to operate on
     name: Option<String>,
 
+    // TODD: Add a config file option
     /// Sets a custom config file
-    #[arg(short, long, value_name = "FILE")]
-    config: Option<PathBuf>,
+    // #[arg(short, long, value_name = "FILE")]
+    // config: Option<PathBuf>,
 
     /// Turn debugging information on
     #[arg(short, long)]
@@ -76,7 +77,7 @@ impl CommandTerminal {
     }
 }
 
-fn top_command_handler(commands: &Option<Commands>, debug: bool, igloo_dir: PathBuf) {
+fn top_command_handler(commands: &Option<Commands>, debug: bool) {
     let mut term: CommandTerminal = CommandTerminal::new();
 
     match commands {
@@ -94,11 +95,11 @@ fn top_command_handler(commands: &Option<Commands>, debug: bool, igloo_dir: Path
             routines::stop_containers(&mut term);
         }
         Some(Commands::Clean{}) => {
+            let igloo_dir = get_igloo_directory().expect("Nothing to clean, no .igloo directory found");
             routines::clean_project(&mut term, &igloo_dir);
 
         }
         Some(Commands::Add(add_args)) => {
-            
             add_handler(add_args);   
         }
         None => {}
@@ -107,11 +108,10 @@ fn top_command_handler(commands: &Option<Commands>, debug: bool, igloo_dir: Path
 }
 
 pub fn cli_run() {
-    // Validate the CLI is running in a project directory or that a project must be created
 
     let cli = Cli::parse();
 
-    let igloo_dir = cli.config.unwrap_or(get_igloo_directory().unwrap());
+    // let igloo_dir = cli.config;
 
-    top_command_handler(&cli.command, cli.debug, igloo_dir)
+    top_command_handler(&cli.command, cli.debug)
 }

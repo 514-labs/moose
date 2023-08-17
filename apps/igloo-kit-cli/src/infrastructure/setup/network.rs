@@ -1,7 +1,7 @@
 use crate::{infrastructure::docker::{self}, cli::user_messages::show_message};
 
-pub fn create_docker_network(term: &mut crate::cli::CommandTerminal) -> Result<(), std::io::Error> {
-    let output = docker::create_network();
+pub fn create_docker_network(term: &mut crate::cli::CommandTerminal, network_name: &str) -> Result<(), std::io::Error> {
+    let output = docker::create_network(network_name);
 
     match output {
         Ok(_) =>{
@@ -29,8 +29,8 @@ pub fn create_docker_network(term: &mut crate::cli::CommandTerminal) -> Result<(
     }
 }
 
-pub fn remove_docker_network(term: &mut crate::cli::CommandTerminal) -> Result<(), std::io::Error> {
-    let output = docker::remove_network();
+pub fn remove_docker_network(term: &mut crate::cli::CommandTerminal, network_name: &str) -> Result<(), std::io::Error> {
+    let output = docker::remove_network(network_name);
 
     match output {
         Ok(_) => {

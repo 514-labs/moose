@@ -83,7 +83,7 @@ pub fn validate_red_panda_run(term: &mut CommandTerminal, debug: bool) -> Result
     }
 }
 
-pub fn validate_panda_house_network(term: &mut CommandTerminal, debug: bool) -> Result<(), Error> {
+pub fn validate_panda_house_network(term: &mut CommandTerminal, panda_network: &str , debug: bool) -> Result<(), Error> {
     let output = docker::network_list();
 
     match output {
@@ -92,8 +92,8 @@ pub fn validate_panda_house_network(term: &mut CommandTerminal, debug: bool) -> 
                 io::stdout().write_all(&o.stdout).unwrap();
             }
             let output = String::from_utf8(o.stdout).unwrap();
-            if output.contains("panda_house") {
-                println!("Successfully validated docker panda_house network");
+            if output.contains(panda_network) {
+                println!("Successfully validated docker {panda_network} network");
                 show_message(term, MessageType::Success, Message {
                     action: "Successfully",
                     details: "validated panda_house docker network",
@@ -105,14 +105,14 @@ pub fn validate_panda_house_network(term: &mut CommandTerminal, debug: bool) -> 
                     MessageType::Error,
                     Message {
                         action: "Failed",
-                        details: "to validate panda_house docker network",
+                        details: format!("to validate {panda_network} docker network").as_str(),
                     },
                 );
-                Err(io::Error::new(io::ErrorKind::Other, "Failed to validate panda_house network"))
+                Err(io::Error::new(io::ErrorKind::Other, "Failed to validate {panda_network} network"))
             }
         },
         Err(err) => {
-            println!("Failed to validate panda_house_network");
+            println!("Failed to validate {panda_network} network");
             Err(err)
         },
         

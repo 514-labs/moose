@@ -1,10 +1,10 @@
 use std::{process::Command, path::PathBuf};
 
-fn network_command(command: &str) -> std::io::Result<std::process::Output>{
+fn network_command(command: &str, network_name: &str) -> std::io::Result<std::process::Output>{
     Command::new("docker")
         .arg("network")
         .arg(command)
-        .arg("panda-house")
+        .arg(network_name)
         .output()
 }
 
@@ -15,12 +15,12 @@ pub fn network_list() -> std::io::Result<std::process::Output>{
         .output()
 }
 
-pub fn remove_network() -> std::io::Result<std::process::Output>{
-    network_command("rm")
+pub fn remove_network(network_name: &str) -> std::io::Result<std::process::Output>{
+    network_command("rm", network_name)
 }
 
-pub fn create_network() -> std::io::Result<std::process::Output>{
-    network_command("create")
+pub fn create_network(network_name: &str) -> std::io::Result<std::process::Output>{
+    network_command("create", network_name)
 }
 
 pub fn stop_container(name: &str) -> std::io::Result<std::process::Output>{

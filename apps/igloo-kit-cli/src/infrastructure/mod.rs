@@ -12,8 +12,10 @@ pub mod setup;
 mod docker;
 
 
+const PANDA_NETWORK: &str = "panda-house";
+
 pub fn init(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result<(), Error> {
-    create_docker_network(term)?;
+    create_docker_network(term, PANDA_NETWORK)?;
     create_volumes(term, igloo_dir)?;
     Ok(())
 }
@@ -21,7 +23,7 @@ pub fn init(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result<(), Error
 pub fn clean(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result<(), Error> {
     stop_red_panda_container(term)?;
     stop_clickhouse_container(term)?;
-    remove_docker_network(term)?;
+    remove_docker_network(term, PANDA_NETWORK)?;
     delete_clickhouse_mount_volume(igloo_dir)?;
     delete_red_panda_mount_volume(igloo_dir)?;
     Ok(())
@@ -49,7 +51,8 @@ pub fn spin_up(term: &mut CommandTerminal) -> Result<(), Error> {
     );
     match validate_mount_volumes(&igloo_dir) {
         Ok(_) => {
-            match validate_panda_house_network(term, true) {
+
+            match validate_panda_house_network(term, PANDA_NETWORK, true) {
                 Ok(_) => {
                     show_message( term, MessageType::Success, Message {
                         action: "Successfully",
@@ -57,8 +60,8 @@ pub fn spin_up(term: &mut CommandTerminal) -> Result<(), Error> {
                     });
                 },
                 Err(_) => {
-                    create_docker_network(term)?;
-                    match validate_panda_house_network(term, true) {
+                    create_docker_network(term, PANDA_NETWORK)?;
+                    match validate_panda_house_network(term, PANDA_NETWORK, true) {
                         Ok(_) => {},
                         Err(err) => {
                             show_message( term, MessageType::Error, Message {

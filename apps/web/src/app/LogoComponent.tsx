@@ -18,15 +18,10 @@ export const LogoComponent = () => {
       gsap.set(imgageRef.current, { visibility: "visible" });
 
       tl.from(imgageRef.current, {
-        delay: 2,
-        duration: 1,
+        y: "-50%",
         opacity: 0,
-        scale: 0,
-        y: 80,
-        rotationX: 180,
-        transformOrigin: "0% 50% 50",
-        ease: "expo.out",
-        });    
+        stagger: { each: 0.02 },
+        });   
     });
     return () => {
       ctx.revert();

@@ -19,17 +19,11 @@ export const HeroTextSubComponent = () => {
       gsap.set(titleRef.current, { perspective: 400 });  
       gsap.set(titleRef.current, { visibility: "visible" });
 
-      tl.from(splitTextChars, {
-        delay: 1,
-        duration: 1,
+      tl.from(splitTextChars,{
+        y: "-50%",
         opacity: 0,
-        scale: 0,
-        y: 80,
-        rotationX: 180,
-        transformOrigin: "0% 50% -50",
-        ease: "expo.out",
-        stagger: 0.01,
-        });    
+        stagger: { each: 0.02 },
+        });   
     });
     return () => {
       ctx.revert();

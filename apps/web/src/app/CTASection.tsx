@@ -62,7 +62,7 @@ export const CTASection = () => {
         </div>
         <div className="flex flex-col grow flex-1">
           <div className="text-typography-primary my-3">
-            igloo is a framework to build data-intensive apps using typescript and sql. it comes with all the typescript primitives you'll need to build a fully featured app that's secure and scales. igloo also provides comes with a CLI to help you be productive while you build your data-intensive application right along side your web app on local machine. no need to configure clusters and networking to start building.
+            igloo is a framework to build data-intensive apps using typescript and sql. it comes with all the typescript primitives you&apos;ll need to build a fully featured app that&apos;s secure and scales. igloo also provides comes with a CLI to help you be productive while you build your data-intensive application right along side your web app on local machine. no need to configure clusters and networking to start building.
           </div>
           <div>
             <CodeBlockCTA />
@@ -71,10 +71,10 @@ export const CTASection = () => {
         </div>
         
       </div>
-      <div className="flex sm:flex-row content-center grow flex-col gap-y-6">
-            <RightsComponent />
-            <LogoComponent />
-          </div>
+      <div className="flex sm:flex-row content-center grow flex-col gap-y-6 mt-6">
+        <RightsComponent />
+        <LogoComponent />
+      </div>
     </div>
   );
 };

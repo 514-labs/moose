@@ -7,6 +7,9 @@ import { CTASection } from "./CTASection";
 
 export const metadata: Metadata = {
   title: "Igloo | Data-intensive web apps",
+  openGraph: {
+    images: "/og_image_person_02_1x.webp"
+  }
 };
 
 export default function Home() {

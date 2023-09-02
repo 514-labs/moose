@@ -13,4 +13,4 @@ jq \
 cd ../..
 pnpm build --filter create-igloo-app
 cd apps/create-igloo-app
-pnpm publish --access public --no-git-checks --dry-run
+pnpm publish --access public --no-git-checks

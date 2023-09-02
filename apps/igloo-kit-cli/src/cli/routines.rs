@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::{io::Error, path::PathBuf};
 
 use crate::{infrastructure, framework};
@@ -8,6 +9,10 @@ use std::convert::Infallible;
 use std::net::SocketAddr;
 use hyper::{Body, Request, Response, Server};
 use hyper::service::{make_service_fn, service_fn};
+use notify::{Watcher, RecommendedWatcher, RecursiveMode, Config};
+
+
+
 
 
 pub fn start_containers(term: &mut CommandTerminal) -> Result<(), Error> {
@@ -67,18 +72,55 @@ pub fn stop_containers(term: &mut CommandTerminal) -> Result<(), Error> {
     Ok(())
 }
 
+fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
+
+    let (tx, rx) = std::sync::mpsc::channel();
+
+    // Automatically select the best implementation for your platform.
+    // You can also access each implementation directly e.g. INotifyWatcher.
+    let mut watcher = RecommendedWatcher::new(tx, Config::default())?;
+
+    // Add a path to be watched. All files and directories at that path and
+    // below will be monitored for changes.
+    watcher.watch(path.as_ref(), RecursiveMode::Recursive)?;
+
+    for res in rx {
+        match res {
+            Ok(event) => println!("Change: {event:?}"),
+            Err(error) => println!("Error: {error:?}"),
+        }
+    }
+
+    Ok(())
+}
+
+
 pub fn start_file_watcher() -> Result<(), Error> {
-    todo!()
+
+    let path = "/Users/timdelisle/Dev/igloo-stack/apps/igloo-kit-cli/app";
+
+    println!("Watching {path}");
+
+    tokio::spawn( async move {
+        if let Err(error) = watch(path) {
+            println!("Error: {error:?}");
+        }
+    });
+    
+    Ok(())
 }
 
 
-async fn hello_world(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
-    Ok(Response::new("Hello, World".into()))
-}
+
 
 // TODO Figure out how to stop the web server
 pub async fn start_webserver(term: &mut CommandTerminal) {
     let addr = SocketAddr::from(([127,0,0,1], 4000));
+
+
+    async fn hello_world(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+        Ok(Response::new("Hello, World".into()))
+    }
 
 
     show_message( term, MessageType::Info, Message {

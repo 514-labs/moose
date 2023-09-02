@@ -27,7 +27,7 @@ importers:
   apps/create-igloo-app:
     dependencies:
       '@514labs/igloo-cli':
-        specifier: ^0.0.2-BUILD.42
+        specifier: 0.0.2-BUILD.42
         version: 0.0.2-BUILD.42
     devDependencies:
       '@types/node':

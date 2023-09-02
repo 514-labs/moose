@@ -94,6 +94,15 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
     Ok(())
 }
 
+pub async fn start_development_mode(term: &mut CommandTerminal) -> Result<(), Error> {
+    show_message( term, MessageType::Success, Message {
+        action: "Starting",
+        details: "development mode...",
+    });
+    start_file_watcher()?;
+    start_webserver(term).await;
+    Ok(())
+}
 
 pub fn start_file_watcher() -> Result<(), Error> {
 
@@ -109,9 +118,6 @@ pub fn start_file_watcher() -> Result<(), Error> {
     
     Ok(())
 }
-
-
-
 
 // TODO Figure out how to stop the web server
 pub async fn start_webserver(term: &mut CommandTerminal) {

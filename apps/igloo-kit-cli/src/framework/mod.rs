@@ -1,7 +1,6 @@
 use std::path::PathBuf;
 
 use clap::Subcommand;
-use reqwest::Url;
 
 mod ingestion;
 mod flow;
@@ -20,7 +19,7 @@ struct Template {
     name: String,
     language: Languages,
     path: PathBuf, // The path to the local file
-    remote_path: Url, // The path to the remote file
+    // remote_path: Url, // The path to the remote file
 }
 
 trait FrameworkObject {

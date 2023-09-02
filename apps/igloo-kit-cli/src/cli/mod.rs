@@ -86,11 +86,11 @@ async fn top_command_handler(commands: &Option<Commands>, debug: bool) {
         }
         Some(Commands::Dev{}) => {
 
-            // Only start the web server for now
+            // Only start the file watcher for now
             // routines::start_containers(&mut term);
             // infrastructure::setup::validate::validate_red_panda_cluster(&mut term, debug);
-
-            routines::start_webserver(&mut term).await;
+            routines::start_file_watcher();
+            routines::start_webserver(&mut term).await;      
         }
         Some(Commands::Update{}) => {
             todo!("Will update the project's underlying infrascructure based on any added objects")

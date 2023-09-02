@@ -4,6 +4,12 @@ use crate::{infrastructure, framework};
 
 use super::{CommandTerminal, user_messages::show_message, MessageType, Message};
 
+use std::convert::Infallible;
+use std::net::SocketAddr;
+use hyper::{Body, Request, Response, Server};
+use hyper::service::{make_service_fn, service_fn};
+
+
 pub fn start_containers(term: &mut CommandTerminal) -> Result<(), Error> {
     show_message( term, MessageType::Info, Message {
         action: "Running",
@@ -59,5 +65,37 @@ pub fn stop_containers(term: &mut CommandTerminal) -> Result<(), Error> {
     });
     infrastructure::spin_down(term)?;
     Ok(())
+}
+
+pub fn start_file_watcher() -> Result<(), Error> {
+    todo!()
+}
+
+
+async fn hello_world(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
+    Ok(Response::new("Hello, World".into()))
+}
+
+// TODO Figure out how to stop the web server
+pub async fn start_webserver(term: &mut CommandTerminal) {
+    let addr = SocketAddr::from(([127,0,0,1], 4000));
+
+
+    show_message( term, MessageType::Info, Message {
+        action: "starting",
+        details: " server on port 4000",
+    });
+
+    let make_svc = make_service_fn(|_conn| async {
+        // service_fn converts our function into a `Service`
+        Ok::<_, Infallible>(service_fn(hello_world))
+    });
+
+    let server = Server::bind(&addr).serve(make_svc);
+
+    // Run this server for... forever!
+    if let Err(e) = server.await {
+        eprintln!("server error: {}", e);
+    }
 }
     

@@ -1,48 +1,34 @@
 import { Metadata } from "next";
-import { Button, Card } from "ui";
-
-const CARD_CONTENT = [
-  {
-    title: "Caching Tasks",
-    href: "https://turbo.build/repo/docs/core-concepts/caching",
-    cta: "Read More",
-  },
-  {
-    title: "Running Tasks",
-    href: "https://turbo.build/repo/docs/core-concepts/monorepos/running-tasks",
-    cta: "Read More",
-  },
-  {
-    title: "Configuration Options",
-    href: "https://turbo.build/repo/docs/reference/configuration",
-    cta: "Read More",
-  },
-];
+import { HeroTextMainComponent } from "./HeroTextMainComponent";
+import { HeroTextSubComponent } from "./HeroTextSubComponent";
+import { RightsComponent } from "./RightsComponent";
+import { LogoComponent } from "./LogoComponent";
+import { CTASection } from "./CTASection";
 
 export const metadata: Metadata = {
-  title: "Web - Turborepo Example",
+  title: "Igloo | Data-intensive web apps",
+  openGraph: {
+    images: "/og_image_person_02_1x.webp"
+  }
 };
 
 export default function Home() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center py-2">
-      <main className="mx-auto w-auto px-4 pt-16 pb-8 sm:pt-24 lg:px-8">
-        <h1 className="mx-auto text-center text-6xl font-extrabold tracking-tight text-white sm:text-7xl lg:text-8xl xl:text-8xl">
-          Web
-          <span className="block bg-gradient-to-r from-brandred to-brandblue bg-clip-text text-transparent px-2">
-            Turborepo Example
-          </span>
-        </h1>
-        <div className="mx-auto mt-5 max-w-xl sm:flex sm:justify-center md:mt-8">
-          <Button />
+    <div className="h-full flex ">
+      <div className="w-full h-full fixed bg-[url('/cover_bg_woman_2_1x.webp')] bg-bottom bg-cover brightness-50 "/>
+      <div className="z-10 flex">
+        <div className="flex sm:p-8 p-4 flex-col xl:justify-center xl:content-center">
+        <div className="flex grow md:flex-nowrap flex-wrap flex-col text-typography-primary content-center justify-center">
+          <div className="flex md:flex-nowrap flex-wrap flex-row text-typography-primary content-center justify-center z-10">
+            <HeroTextMainComponent />
+            <HeroTextSubComponent />
+          </div>
         </div>
-
-        <div className="mt-12 grid grid-cols-1 sm:grid-cols-3 gap-4 place-content-evenly">
-          {CARD_CONTENT.map((card) => (
-            <Card key={card.title} {...card} />
-          ))}
+        <div>
+            < CTASection />
         </div>
-      </main>
+      </div>
     </div>
+  </div>
   );
 }

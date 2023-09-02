@@ -77,7 +77,7 @@ impl CommandTerminal {
     }
 }
 
-fn top_command_handler(commands: &Option<Commands>, debug: bool) {
+async fn top_command_handler(commands: &Option<Commands>, debug: bool) {
     let mut term: CommandTerminal = CommandTerminal::new();
 
     match commands {
@@ -85,8 +85,12 @@ fn top_command_handler(commands: &Option<Commands>, debug: bool) {
             routines::initialize_project(&mut term);
         }
         Some(Commands::Dev{}) => {
-            routines::start_containers(&mut term);
-            infrastructure::setup::validate::validate_red_panda_cluster(&mut term, debug);
+
+            // Only start the web server for now
+            // routines::start_containers(&mut term);
+            // infrastructure::setup::validate::validate_red_panda_cluster(&mut term, debug);
+
+            routines::start_webserver(&mut term).await;
         }
         Some(Commands::Update{}) => {
             todo!("Will update the project's underlying infrascructure based on any added objects")
@@ -107,11 +111,11 @@ fn top_command_handler(commands: &Option<Commands>, debug: bool) {
     
 }
 
-pub fn cli_run() {
+pub async fn cli_run() {
 
     let cli = Cli::parse();
 
     // let igloo_dir = cli.config;
 
-    top_command_handler(&cli.command, cli.debug)
+    top_command_handler(&cli.command, cli.debug).await
 }

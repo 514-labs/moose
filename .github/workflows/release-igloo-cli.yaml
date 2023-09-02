@@ -112,8 +112,14 @@ jobs:
         shell: bash
         run: pnpm install
 
-      - name: Publish the package
+      - name: Publish the CLI package
         shell: bash
         run: ./apps/igloo-kit-cli/scripts/release-cli.sh ${{needs.publish-npm-binaries.outputs.version}}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish the create app package
+        shell: bash
+        run: ./apps/create-igloo-app/scripts/release.sh ${{needs.publish-npm-binaries.outputs.version}}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

@@ -1,12 +1,13 @@
 mod commands;
 mod routines;
+mod config;
 pub mod user_messages;
 
 use commands::Commands;
-use std::path::PathBuf;
+use config::{read_config, Config};
 use clap::Parser;
 use crate::{framework::{AddableObjects, directories::get_igloo_directory}, infrastructure};
-use self::{commands::AddArgs, user_messages::{MessageType, Message}};
+use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -77,45 +78,52 @@ impl CommandTerminal {
     }
 }
 
-async fn top_command_handler(commands: &Option<Commands>, debug: bool) {
-    let mut term: CommandTerminal = CommandTerminal::new();
+async fn top_command_handler(term: &mut CommandTerminal, config: Config, commands: &Option<Commands>, debug: bool) {
 
-    match commands {
-        Some(Commands::Init {}) => {
-            routines::initialize_project(&mut term);
-        }
-        Some(Commands::Dev{}) => {
+    if (!config.features.coming_soon_wall) {
+        match commands {
+            Some(Commands::Init {}) => {
+                routines::initialize_project(term);
+            }
+            Some(Commands::Dev{}) => {
 
             // Only start the file watcher for now
             // routines::start_containers(&mut term);
             // infrastructure::setup::validate::validate_red_panda_cluster(&mut term, debug);
             routines::start_file_watcher();
-            routines::start_webserver(&mut term).await;      
+            routines::start_webserver(term).await;      
         }
         Some(Commands::Update{}) => {
             todo!("Will update the project's underlying infrascructure based on any added objects")
         }
         Some(Commands::Stop{}) => {
-            routines::stop_containers(&mut term);
+            routines::stop_containers(term);
         }
         Some(Commands::Clean{}) => {
             let igloo_dir = get_igloo_directory().expect("Nothing to clean, no .igloo directory found");
-            routines::clean_project(&mut term, &igloo_dir);
+            routines::clean_project(term, &igloo_dir);
 
+            }
+            Some(Commands::Add(add_args)) => {
+                add_handler(add_args);   
+            }
+            None => {}
         }
-        Some(Commands::Add(add_args)) => {
-            add_handler(add_args);   
-        }
-        None => {}
+    } else {
+        show_message(term, MessageType::Info, Message {
+            action: "Coming Soon",
+            details: "Join the IglooKit community to stay up to date on the latest features: https://discord.gg/WX3V3K4QCc",
+        });
     }
     
 }
 
 pub async fn cli_run() {
-
+    let mut term: CommandTerminal = CommandTerminal::new();
+    let config = read_config(&mut term);
     let cli = Cli::parse();
 
     // let igloo_dir = cli.config;
 
-    top_command_handler(&cli.command, cli.debug).await
+    top_command_handler(&mut term, config, &cli.command, cli.debug).await
 }

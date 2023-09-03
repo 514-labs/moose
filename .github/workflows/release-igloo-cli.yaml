@@ -101,12 +101,17 @@ jobs:
         with:
           version: 8
 
+      - name: Login GSAP
+        shell: bash
+        run: |
+          pnpm config set //<https://npm.greensock.com>/:_authToken ${{ secrets.GSAP_TOKEN }}
+          pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
+
       - name: Install node
         uses: actions/setup-node@v3
         with:
           node-version: "18"
           cache: "pnpm"
-          registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
         shell: bash
@@ -115,11 +120,7 @@ jobs:
       - name: Publish the CLI package
         shell: bash
         run: ./apps/igloo-kit-cli/scripts/release-cli.sh ${{needs.publish-npm-binaries.outputs.version}}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish the create app package
         shell: bash
         run: ./apps/create-igloo-app/scripts/release.sh ${{needs.publish-npm-binaries.outputs.version}}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

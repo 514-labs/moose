@@ -104,7 +104,7 @@ jobs:
       - name: Login GSAP
         shell: bash
         run: |
-          pnpm config set //<https://npm.greensock.com>/:_authToken ${{ secrets.GSAP_TOKEN }}
+          pnpm config set //npm.greensock.com/:_authToken ${{ secrets.GSAP_TOKEN }}
           pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
 
       - name: Install node

@@ -68,11 +68,9 @@ pub fn create_top_level_temp_dir(term: &mut CommandTerminal) -> Result<PathBuf, 
     }
 }
 
-
-
-
-pub fn create_project_directories(term: &mut CommandTerminal) -> Result<(), std::io::Error> {
-    let current_dir = std::env::current_dir().unwrap();
+// Create the app directory and subdirectories in the current directory
+pub fn create_app_directories(term: &mut CommandTerminal) -> Result<(), std::io::Error> {
+    let current_dir = std::env::current_dir()?;
 
     show_message( term, MessageType::Info, Message {
         action: "Creating",
@@ -84,4 +82,20 @@ pub fn create_project_directories(term: &mut CommandTerminal) -> Result<(), std:
     }
 
     Ok(())
+}
+
+// Retrieved the app directory in the directory the current directory
+pub fn get_app_directory(term: &mut CommandTerminal) -> Result<PathBuf, std::io::Error> {
+    let current_dir = std::env::current_dir()?;
+    let app_dir = current_dir.join("app");
+
+    if app_dir.exists() {
+        Ok(app_dir)
+    } else {
+        show_message( term, MessageType::Error, Message {
+            action: "Failed",
+            details: "to find app directory in current working directory",
+        });
+        Err(Error::new(ErrorKind::NotFound, "App directory not found"))
+    }
 }

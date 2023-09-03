@@ -1,4 +1,6 @@
+use std::collections::HashSet;
 use std::path::Path;
+use std::sync::Arc;
 use std::{io::Error, path::PathBuf};
 
 use crate::{infrastructure, framework};
@@ -6,11 +8,11 @@ use crate::{infrastructure, framework};
 use super::{CommandTerminal, user_messages::show_message, MessageType, Message};
 
 use std::convert::Infallible;
-use std::net::SocketAddr;
-use hyper::{Body, Request, Response, Server};
-use hyper::service::{make_service_fn, service_fn};
 use notify::{Watcher, RecommendedWatcher, RecursiveMode, Config};
 
+use hyper::{Body, Request, Response, Server, StatusCode};
+use hyper::service::{make_service_fn, service_fn};
+use std::sync::Mutex;
 
 
 
@@ -72,7 +74,7 @@ pub fn stop_containers(term: &mut CommandTerminal) -> Result<(), Error> {
     Ok(())
 }
 
-fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
+fn watch<P: AsRef<Path>>(path: P, route_table: &Arc<Mutex<HashSet<String>>> ) -> notify::Result<()> {
 
     let (tx, rx) = std::sync::mpsc::channel();
 
@@ -86,7 +88,24 @@ fn watch<P: AsRef<Path>>(path: P) -> notify::Result<()> {
 
     for res in rx {
         match res {
-            Ok(event) => println!("Change: {event:?}"),
+            Ok(event) => {
+                match event.kind {
+                    notify::EventKind::Create(_) => {
+                        let route = event.paths[0].file_name().unwrap().to_str().unwrap().to_string();
+                        let mut route_table = route_table.lock().unwrap();
+                        route_table.insert("/".to_owned() + &route);
+                        println!("Route table: {:#?}", route_table)
+                    },
+                    notify::EventKind::Remove(_) => {
+                        let route = event.paths[0].file_name().unwrap().to_str().unwrap().to_string();
+                        let mut route_table = route_table.lock().unwrap();
+                        let path = "/".to_owned() + &route;
+                        route_table.remove(&path);
+                        println!("Route table: {:#?}", route_table)
+                    },
+                    _ => {}
+                }
+            },
             Err(error) => println!("Error: {error:?}"),
         }
     }
@@ -99,19 +118,22 @@ pub async fn start_development_mode(term: &mut CommandTerminal) -> Result<(), Er
         action: "Starting",
         details: "development mode...",
     });
-    start_file_watcher()?;
-    start_webserver(term).await;
+
+    let route_table = Arc::new(Mutex::new(HashSet::<String>::new()));
+
+    start_file_watcher(Arc::clone(&route_table))?;
+    start_webserver(term, Arc::clone(&route_table)).await;
     Ok(())
 }
 
-pub fn start_file_watcher() -> Result<(), Error> {
+pub fn start_file_watcher(route_table:  Arc<Mutex<HashSet<String>>>) -> Result<(), Error> {
 
-    let path = "/Users/timdelisle/Dev/igloo-stack/apps/igloo-kit-cli/app";
+    let path = PathBuf::from("/Users/timdelisle/Dev/igloo-stack/apps/igloo-kit-cli/app");
 
-    println!("Watching {path}");
+    println!("Watching {:?}", path.display());
 
     tokio::spawn( async move {
-        if let Err(error) = watch(path) {
+        if let Err(error) = watch(path, &route_table) {
             println!("Error: {error:?}");
         }
     });
@@ -120,12 +142,29 @@ pub fn start_file_watcher() -> Result<(), Error> {
 }
 
 // TODO Figure out how to stop the web server
-pub async fn start_webserver(term: &mut CommandTerminal) {
-    let addr = SocketAddr::from(([127,0,0,1], 4000));
+pub async fn start_webserver(term: &mut CommandTerminal, route_table: Arc<Mutex<HashSet<String>>>) {
+    
+    let addr = ([127, 0, 0, 1], 4000).into();
 
 
-    async fn hello_world(_req: Request<Body>) -> Result<Response<Body>, Infallible> {
-        Ok(Response::new("Hello, World".into()))
+    async fn handler(req: Request<Body>, route_table: Arc<Mutex<HashSet<String>>>) -> Result<Response<String>, Infallible> {
+        let route = req.uri().path().to_string();
+
+        println!("Route: {}", route);
+        // Check if route is in the route table
+        if route_table.lock().unwrap().contains(&route) {
+            return Ok(Response::builder()
+            .status(StatusCode::FOUND)
+            .body("FOUND".to_string())
+            .unwrap())
+            
+        }
+        
+        // If not, return a 404
+        Ok(Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body("NOTFOUND".to_string())
+                .unwrap())
     }
 
 
@@ -134,16 +173,25 @@ pub async fn start_webserver(term: &mut CommandTerminal) {
         details: " server on port 4000",
     });
 
-    let make_svc = make_service_fn(|_conn| async {
-        // service_fn converts our function into a `Service`
-        Ok::<_, Infallible>(service_fn(hello_world))
+    let main_service = make_service_fn(move |_| {
+        let route_table = route_table.clone();
+
+        async {
+            Ok::<_, Infallible>(service_fn(move |req| {
+                handler(req, route_table.clone())
+            }))
+        }
+
     });
 
-    let server = Server::bind(&addr).serve(make_svc);
+    let server = Server::bind(&addr).serve(main_service);
 
     // Run this server for... forever!
     if let Err(e) = server.await {
-        eprintln!("server error: {}", e);
+        show_message(term, MessageType::Error, Message {
+            action: "Error",
+            details: e.to_string().as_str(),
+        });
     }
 }
     

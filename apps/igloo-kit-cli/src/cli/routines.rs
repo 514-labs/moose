@@ -75,6 +75,7 @@ pub async fn start_development_mode(term: &mut CommandTerminal) -> Result<(), Er
         details: "development mode...",
     });
 
+    // TODO: Explore using a RWLock instead of a Mutex to ensure concurrent reads without locks
     let route_table = Arc::new(Mutex::new(HashSet::<PathBuf>::new()));
 
     watcher::start_file_watcher(term, Arc::clone(&route_table))?;

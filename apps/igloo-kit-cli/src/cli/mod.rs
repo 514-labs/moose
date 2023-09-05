@@ -88,8 +88,8 @@ async fn top_command_handler(term: &mut CommandTerminal, config: Config, command
                 routines::initialize_project(term);
             }
             Some(Commands::Dev{}) => {
-            routines::start_containers(&mut term);
-            infrastructure::setup::validate::validate_red_panda_cluster(&mut term, debug);
+            routines::start_containers(term);
+            infrastructure::setup::validate::validate_red_panda_cluster(term, debug);
             routines::start_development_mode(term).await;      
         }
         Some(Commands::Update{}) => {

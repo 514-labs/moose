@@ -129,7 +129,7 @@ export const CTASection = () => {
         </div>
         <div className="flex flex-col grow flex-1">
           <div className="text-typography-primary my-3">
-            Igloo is a framework to build data-intensive apps using typescript and sql. It comes with all the typescript primitives you&apos;ll need to build a fully featured app that&apos;s secure and scales. Igloo also provides comes with a CLI to help you be productive while you build your data-intensive application right along side your web app on local machine. No need to configure clusters and networking to start building.
+            Igloo is a batteries-included framework for building data intensive application using typescript & SQL. It comes with a powerful CLI to help automate development tasks, an intuitive abstraction to help you standardize your data intensive applications and a streamlined local development workflow.
           </div>
           <div>
             <CodeBlockCTA />

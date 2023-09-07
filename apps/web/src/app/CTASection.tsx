@@ -34,7 +34,7 @@ const CodeBlockCTA = () => {
         navigator.clipboard.writeText("npx create-igloo-app");
 
         gsap.set(outboundRef.current, {display: "none"})
-        gsap.set(inboundRef.current, {delay:  0.2, display: "block"})
+        gsap.set(inboundRef.current, { display: "block"})
 
         gsap.fromTo(splitTextCharsInbound, {
 
@@ -73,7 +73,7 @@ const CodeBlockCTA = () => {
 
   return (
     <div className="flex flex-col lg:flex-row cursor-pointer" ref={wrapperRef}>
-    <div className="flex flex-row items-center justify-center bg-base-black-250 md:w-72" >
+    <div className="flex flex-row items-center justify-center bg-base-black-250 w-full h-13 lg:w-72" >
       <span className="font-mono py-3 px-6 text-typography-primary " ref={outboundRef}> npx create-igloo-app</span>
       <span className="font-mono py-3 px-6 text-typography-secondary hidden" ref={inboundRef}> copied to clipboard</span>
     </div>

@@ -30,6 +30,8 @@ const CodeBlockCTA = () => {
       const splitTextCharsInbound = splitTextInbound.chars;
 
       wrapperRef.current.addEventListener("click", () => {
+        // copy to clipboard
+        navigator.clipboard.writeText("npx create-igloo-app");
 
         gsap.set(outboundRef.current, {display: "none"})
         gsap.set(inboundRef.current, {delay:  0.2, display: "block"})

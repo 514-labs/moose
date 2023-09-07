@@ -31,7 +31,7 @@ export const HeroTextSubComponent = () => {
   }, []);
 
   return (
-    <div className="w-full 2xl:text-8xl sm:text-5xl text-4xl md:text-right flex flex-col shrink">
+    <div className="w-full 2xl:text-8xl sm:text-5xl text-4xl md:text-left flex flex-col shrink">
       <span className="inline-block invisible" ref={titleRef}> a framework to build data-intensive apps</span>
     </div>
   );

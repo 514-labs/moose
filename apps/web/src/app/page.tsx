@@ -12,21 +12,32 @@ export const metadata: Metadata = {
   }
 };
 
+
+const Nav = () => {
+  return (
+    <div className="flex flex-row justify-between z-20 fixed text-typography-primary sm:p-8 sm: p-4">
+      igloo
+    </div>
+  )
+}
+
 export default function Home() {
   return (
     <div className="h-full flex ">
-      <div className="w-full h-full fixed bg-[url('/cover_bg_woman_2_1x.webp')] bg-bottom bg-cover brightness-50 "/>
+      <div className="invisible sm:visible sm:w-full sm:h-full sm:fixed bg-[url('/bg_igloo_image_person_02_4x.webp')] bg-bottom bg-cover brightness-50 "/>
+      <Nav />
       <div className="z-10 flex">
-        <div className="flex sm:p-8 p-4 flex-col xl:justify-center xl:content-center">
-        <div className="flex grow md:flex-nowrap flex-wrap flex-col text-typography-primary content-center justify-center">
-          <div className="flex md:flex-nowrap flex-wrap flex-row text-typography-primary content-center justify-center z-10">
-            <HeroTextMainComponent />
-            <HeroTextSubComponent />
+        <div className="flex flex-col xl:justify-center xl:content-center">
+          <div className="flex grow md:flex-nowrap flex-wrap flex-col text-typography-primary content-center justify-center relative">
+            <div className="flex md:flex-nowrap flex-wrap flex-row text-typography-primary content-center justify-center z-10 sm:p-8 p-4">
+              <HeroTextMainComponent />
+              <HeroTextSubComponent />
+            </div>
+            <div className="visibile absolute h-full w-full sm:invisible bg-[url('/bg_igloo_image_person_02_4x.webp')] bg-bottom bg-cover brightness-50 "/>
           </div>
-        </div>
-        <div>
+          <div>
             < CTASection />
-        </div>
+          </div>  
       </div>
     </div>
   </div>

@@ -29,7 +29,7 @@ export default function Home() {
           </div>
           <div>
             < CTASection />
-          </div>  d
+          </div> 
       </div>
     </div>
   </div>

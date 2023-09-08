@@ -12,7 +12,7 @@ export const BackgroundImage = () => {
       
       gsap.from(imageRef.current,{
         opacity: 0,
-        duration: 1,
+        duration: 2,
       });
     });
     return () => {

@@ -7,9 +7,9 @@ import { BackgroundImage } from "./BackgroundImage";
 import { Nav } from "./Nav";
 
 export const metadata: Metadata = {
-  title: "Igloo | Data-intensive web apps",
+  title: "Igloo | Build Data-intensive apps with ease",
   openGraph: {
-    images: "/og_image_person_02_1x.webp"
+    images: "/og_igloo_image_person_012_2x.webp"
   }
 };
 
@@ -29,7 +29,7 @@ export default function Home() {
           </div>
           <div>
             < CTASection />
-          </div>  
+          </div>  d
       </div>
     </div>
   </div>

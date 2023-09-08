@@ -20,8 +20,8 @@ export default function Home() {
       <Nav />
       <div className="z-10 flex grow">
         <div className="flex flex-col xl:justify-center xl:content-center grow">
-          <div className="flex grow md:flex-nowrap flex-wrap flex-col text-typography-primary content-center justify-center relative">
-            <div className="flex md:flex-nowrap flex-wrap flex-row text-typography-primary content-center justify-center z-10 sm:p-8 p-4">
+          <div className="py-20 flex grow md:flex-nowrap flex-wrap flex-col text-typography-primary content-center justify-center relative">
+            <div className="flex md:flex-nowrap flex-wrap flex-row text-typography-primary content-center justify-center z-10 sm:p-8 p-4 shrink-0 min-h-[50%]">
               <HeroTextMainComponent />
               <HeroTextSubComponent />
             </div>

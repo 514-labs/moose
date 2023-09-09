@@ -73,6 +73,7 @@ jobs:
         run: |
           cargo install cargo-edit
           cargo set-version ${{ steps.version.outputs.VERSION }}
+        working-directory: ./apps/igloo-kit-cli
 
       - name: Build
         uses: actions-rs/cargo@v1

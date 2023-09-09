@@ -64,6 +64,16 @@ jobs:
           target: ${{ matrix.build.TARGET }}
           override: true
 
+      - name: Set the version for the package
+        shell: bash
+        id: version
+        run: ./scripts/version.sh ./apps/igloo-kit-cli >> "$GITHUB_OUTPUT"
+
+      - name: Install Set Version
+        run: |
+          cargo install cargo-edit
+          cargo set-version ${{ steps.version.outputs.VERSION }}
+
       - name: Build
         uses: actions-rs/cargo@v1
         with:
@@ -76,11 +86,6 @@ jobs:
         with:
           node-version: "18"
           registry-url: "https://registry.npmjs.org"
-
-      - name: Set the version for the package
-        shell: bash
-        id: version
-        run: ./scripts/version.sh ./apps/igloo-kit-cli >> "$GITHUB_OUTPUT"
 
       - name: Publish to NPM
         shell: bash
@@ -122,3 +127,13 @@ jobs:
       - name: Publish the create app package
         shell: bash
         run: ./apps/create-igloo-app/scripts/release.sh ${{needs.publish-npm-binaries.outputs.version}}
+
+      - name: Notify Sentry release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: ${{ secrets.SENTRY_IGLOO_CLI_PROJECT }}
+        with:
+          environment: production
+          version: ${{needs.publish-npm-binaries.outputs.version}}

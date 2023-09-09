@@ -9,6 +9,8 @@ use self::setup::{
     validate::{validate_red_panda_run, validate_clickhouse_run, validate_panda_house_network}
 };
 pub mod setup;
+pub mod db;
+pub mod stream;
 mod docker;
 
 

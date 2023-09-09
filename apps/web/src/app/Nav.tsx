@@ -33,7 +33,7 @@ export const Nav = () => {
 
 
   return (
-    <div className="flex flex-row justify-between z-20 fixed text-typography-primary sm:p-8 sm: p-4 invisible shrink-0" ref={titleRef}>
+    <div className="flex flex-row justify-between z-20 absolute text-typography-primary sm:p-8 sm: p-4 invisible shrink-0" ref={titleRef}>
       igloo
     </div>
   );

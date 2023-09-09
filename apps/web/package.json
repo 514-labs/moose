@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@types/heap": "^0.2.31",
     "@vercel/analytics": "^1.0.1",
     "gsap": "npm:@gsap/business@^3.12.2",
     "next": "^13.4.1",

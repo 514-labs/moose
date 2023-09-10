@@ -162,8 +162,8 @@ importers:
         specifier: ^1.0.1
         version: 1.0.1
       gsap:
-        specifier: npm:@gsap/business@^3.12.2
-        version: /@gsap/business@3.12.2
+        specifier: file:gsap-bonus.tgz
+        version: file:apps/web/gsap-bonus.tgz
       next:
         specifier: ^13.4.1
         version: 13.4.10(@babel/core@7.22.9)(react-dom@18.2.0)(react@18.2.0)
@@ -1012,10 +1012,6 @@ packages:
   /@eslint/js@8.48.0:
     resolution: {integrity: sha512-ZSjtmelB7IJfWD2Fvb7+Z+ChTIKWq6kjda95fLcQKNS5aheVHn4IkfgRQE3sIIzTcSLwLcLZUD9UBt+V7+h+Pw==}
     engines: {node: ^12.22.0 || ^14.17.0 || >=16.0.0}
-    dev: false
-
-  /@gsap/business@3.12.2:
-    resolution: {integrity: sha512-AkkhzjaOOJ5Jk9Qyo5PB4C0sL+uUj3SsAN+F+HvM71QVs/jISXgwAyrap2CjK8CzTXrC3T74sHkoOVlqU0Fbfg==}
     dev: false
 
   /@headlessui/react@1.7.15(react-dom@18.2.0)(react@18.2.0):
@@ -8182,4 +8178,10 @@ packages:
 
   /zwitch@2.0.4:
     resolution: {integrity: sha512-bXE4cR/kVZhKZX/RjPEflHaKVhUVl85noU3v6b8apfQEc1x4A+zBxjZ4lN8LqGd6WZ3dl98pY4o717VFmoPp+A==}
+    dev: false
+
+  file:apps/web/gsap-bonus.tgz:
+    resolution: {integrity: sha512-F/gcKtbqBb6ozpphFq8GLhZeB5KtterViGvNUJFgXCjvFaGvF47ySaWP+zW/D0af2OMjKxmdgzUyby/LsplDIA==, tarball: file:apps/web/gsap-bonus.tgz}
+    name: gsap
+    version: 3.12.2
     dev: false

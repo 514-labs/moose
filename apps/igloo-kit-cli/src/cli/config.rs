@@ -1,6 +1,6 @@
 use serde::Deserialize;
 use std::fs;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 use home::home_dir;
 use super::CommandTerminal;
 use super::user_messages::{show_message, MessageType, Message};

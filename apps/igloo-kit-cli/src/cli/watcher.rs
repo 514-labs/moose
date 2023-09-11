@@ -1,10 +1,16 @@
-use std::{sync::{Arc, Mutex}, collections::HashSet, path::{PathBuf, self}, io::Error};
+use std::{sync::{Arc, Mutex}, collections::HashSet, path::PathBuf, io::Error};
 
 use notify::{RecommendedWatcher, Config, RecursiveMode, Watcher, event::ModifyKind};
 
-use crate::{framework::directories::get_app_directory, cli::user_messages::show_message};
+use crate::{framework::directories::get_app_directory, cli::user_messages::show_message, infrastructure::stream::redpanda};
 
 use super::{CommandTerminal, user_messages::{MessageType, Message}};
+
+fn route_to_topic_name(route: PathBuf) -> String {
+    let route = route.to_str().unwrap().to_string();
+    let route = route.replace("/", ".");
+    route
+}
 
 fn process_event(project_dir: PathBuf, event: notify::Event, route_table:  Arc<Mutex<HashSet<PathBuf>>>) {
     match event.kind {
@@ -12,7 +18,8 @@ fn process_event(project_dir: PathBuf, event: notify::Event, route_table:  Arc<M
             let route = event.paths[0].clone();
             let clean_route = route.strip_prefix(project_dir).unwrap().to_path_buf();
             let mut route_table = route_table.lock().unwrap();
-            route_table.insert(clean_route);
+            route_table.insert(clean_route.clone());
+            redpanda::create_topic_from_name(route_to_topic_name(clean_route));
         },
         notify::EventKind::Modify(mk) => {
             match mk {
@@ -24,9 +31,11 @@ fn process_event(project_dir: PathBuf, event: notify::Event, route_table:  Arc<M
 
                     // remove the file from the routes if they don't exist in the file directory
                     if route.exists() {
-                        route_table.insert(clean_route);
+                        route_table.insert(clean_route.clone()); 
+                        redpanda::create_topic_from_name(route_to_topic_name(clean_route));
                     } else {
                         route_table.remove(&clean_route);
+                        redpanda::delete_topic_from_name(route_to_topic_name(clean_route));
                     };
 
                 }

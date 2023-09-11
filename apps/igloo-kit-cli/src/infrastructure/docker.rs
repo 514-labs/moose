@@ -38,13 +38,22 @@ pub fn filter_list_containers(name: &str) -> std::io::Result<std::process::Outpu
         .output()
 }
 
-pub fn run_rpk_list() -> std::io::Result<std::process::Output>{
+pub fn run_rpk_cluster_info() -> std::io::Result<std::process::Output>{
     Command::new("docker")
         .arg("exec")
         .arg("redpanda-1")
         .arg("rpk")
         .arg("cluster")
         .arg("info")
+        .output()
+}
+
+pub fn run_rpk_command(args: Vec<String>) -> std::io::Result<std::process::Output>{
+    Command::new("docker")
+        .arg("exec")
+        .arg("redpanda-1")
+        .arg("rpk")
+        .args(args)
         .output()
 }
 

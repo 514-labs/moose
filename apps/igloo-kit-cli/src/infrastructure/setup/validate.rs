@@ -120,7 +120,7 @@ pub fn validate_panda_house_network(term: &mut CommandTerminal, panda_network: &
 }
 
 pub fn validate_red_panda_cluster(term: &mut CommandTerminal, debug: bool) -> Result<(),  Error> {
-    let output = docker::run_rpk_list();
+    let output = docker::run_rpk_cluster_info();
 
     match output {
         Ok(o) => {

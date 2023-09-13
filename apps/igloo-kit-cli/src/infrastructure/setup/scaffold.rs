@@ -81,8 +81,9 @@ pub fn create_volumes(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result
             let dir_display = igloo_dir.display();
             show_message( term, MessageType::Error, Message {
                 action: "Failed",
-                details: &format!("to create Red Panda mount volume in {dir_display}"),
+                details: &format!("to create Clickhouse mount volume in {dir_display}"),
             });
+            println!("error: {}", err);
             return Err(err)
         }
     };
@@ -133,7 +134,16 @@ fn create_clickhouse_mount_volume(igloo_dir: &PathBuf) -> Result<(), Error> {
     fs::create_dir_all(mount_dir.clone().join("logs"))?;
 
     let config_path = mount_dir.clone().join("configs");
-    fs::create_dir_all(&config_path)?;
-    database::create_config_file(&config_path)?;
+
+    let server_config_path = config_path.clone().join("server");
+    let user_config_path = config_path.clone().join("users");
+    let scripts_path = config_path.clone().join("scripts");
+
+    // fs::create_dir_all(&server_config_path)?;
+    fs::create_dir_all(&user_config_path)?;
+    fs::create_dir_all(&scripts_path)?;
+    // database::create_server_config_file(&server_config_path)?;
+    // database::create_user_config_file(&user_config_path)?;
+    // database::create_init_script(&scripts_path)?;
     Ok(())
 }

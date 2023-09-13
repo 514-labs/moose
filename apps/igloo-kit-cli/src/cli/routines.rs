@@ -2,21 +2,23 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use std::{io::Error, path::PathBuf};
 
+use tokio::sync::Mutex;
+
+use crate::infrastructure::db::clickhouse::ClickhouseConfig;
 use crate::{infrastructure, framework};
 
 use super::{watcher, webserver};
 use super::{CommandTerminal, user_messages::show_message, MessageType, Message};
 
-use std::sync::Mutex;
 
 
-pub fn start_containers(term: &mut CommandTerminal) -> Result<(), Error> {
+pub fn start_containers(term: &mut CommandTerminal, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {
     show_message( term, MessageType::Info, Message {
         action: "Running",
         details: "infrastructure spin up",
     });
     
-    infrastructure::spin_up(term)?;
+    infrastructure::spin_up(term, clickhouse_config)?;
     Ok(())
 }
 
@@ -68,7 +70,7 @@ pub fn stop_containers(term: &mut CommandTerminal) -> Result<(), Error> {
 }
 
 // Starts the file watcher and the webserver
-pub async fn start_development_mode(term: &mut CommandTerminal) -> Result<(), Error> {
+pub async fn start_development_mode(term: &mut CommandTerminal, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {
     show_message( term, MessageType::Success, Message {
         action: "Starting",
         details: "development mode...",
@@ -80,7 +82,7 @@ pub async fn start_development_mode(term: &mut CommandTerminal) -> Result<(), Er
     // TODO: When starting the file watcher, we should check the current directory for files that have been 
     // added or removed since the last time the file watcher was started and ensure that the infra reflects 
     // the application state
-    watcher::start_file_watcher(term, Arc::clone(&route_table))?;
+    watcher::start_file_watcher(term, Arc::clone(&route_table), clickhouse_config)?;
     webserver::start_webserver(term, Arc::clone(&route_table)).await;
     Ok(())
 }

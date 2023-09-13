@@ -8,7 +8,7 @@ pub mod user_messages;
 use commands::Commands;
 use config::{read_config, Config};
 use clap::Parser;
-use crate::{framework::{AddableObjects, directories::get_igloo_directory}, infrastructure};
+use crate::{framework::{AddableObjects, directories::get_igloo_directory}, infrastructure::{self, db::{clickhouse::ClickhouseConfig, self}, PANDA_NETWORK}};
 use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}};
 
 #[derive(Parser)]
@@ -81,6 +81,18 @@ impl CommandTerminal {
 }
 
 async fn top_command_handler(term: &mut CommandTerminal, config: Config, commands: &Option<Commands>, debug: bool) {
+    let clickhouse_config = ClickhouseConfig {
+        db_name: "local".to_string(),
+        user: "panda".to_string(),
+        password: "pandapass".to_string(),
+        host: "localhost".to_string(),
+        host_port: 18123,
+        postgres_port: 9005,
+        kafka_port: 9092,
+        cluster_network: PANDA_NETWORK.to_owned(),
+    };
+
+    
 
     if (!config.features.coming_soon_wall) {
         match commands {
@@ -88,9 +100,9 @@ async fn top_command_handler(term: &mut CommandTerminal, config: Config, command
                 routines::initialize_project(term);
             }
             Some(Commands::Dev{}) => {
-            routines::start_containers(term);
+            routines::start_containers(term, clickhouse_config.clone());
             infrastructure::setup::validate::validate_red_panda_cluster(term, debug);
-            routines::start_development_mode(term).await;      
+            routines::start_development_mode(term, clickhouse_config.clone()).await;      
         }
         Some(Commands::Update{}) => {
             // This command may not be needed if we have incredible automation

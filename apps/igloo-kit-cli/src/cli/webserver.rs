@@ -4,6 +4,7 @@ use hyper::Response;
 use hyper::Server;
 use hyper::StatusCode;
 use hyper::service::service_fn;
+use tokio::sync::Mutex;
 use std::convert::Infallible;
 use std::path::PathBuf;
 use hyper::service::make_service_fn;
@@ -11,7 +12,6 @@ use super::Message;
 use super::MessageType;
 use super::user_messages::show_message;
 use std::collections::HashSet;
-use std::sync::Mutex;
 use std::sync::Arc;
 use super::CommandTerminal;
 
@@ -21,7 +21,7 @@ async fn handler(req: Request<Body>, route_table: Arc<Mutex<HashSet<PathBuf>>>) 
     let route = PathBuf::from(req.uri().path()).strip_prefix(route_prefix).unwrap().to_path_buf();
 
     // Check if route is in the route table
-    if route_table.lock().unwrap().contains(&route) {
+    if route_table.lock().await.contains(&route) {
         return Ok(Response::builder()
         .status(StatusCode::FOUND)
         .body("FOUND".to_string())

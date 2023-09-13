@@ -2,19 +2,19 @@ use std::{path::PathBuf, io::Error};
 
 use crate::{cli::{CommandTerminal, user_messages::{show_message, MessageType, Message}}, framework::directories};
 
-use self::setup::{
+use self::{setup::{
     scaffold::{delete_clickhouse_mount_volume, delete_red_panda_mount_volume, validate_mount_volumes, create_volumes}, 
     container::{stop_red_panda_container, stop_clickhouse_container, run_red_panda_docker_container, run_ch_docker_container}, 
     network::{create_docker_network, remove_docker_network}, 
     validate::{validate_red_panda_run, validate_clickhouse_run, validate_panda_house_network}
-};
+}, db::clickhouse::ClickhouseConfig};
 pub mod setup;
 pub mod db;
 pub mod stream;
 mod docker;
 
 
-const PANDA_NETWORK: &str = "panda-house";
+pub const PANDA_NETWORK: &str = "panda-house";
 
 pub fn init(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result<(), Error> {
     create_docker_network(term, PANDA_NETWORK)?;
@@ -31,7 +31,7 @@ pub fn clean(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result<(), Erro
     Ok(())
 }
 
-pub fn spin_up(term: &mut CommandTerminal) -> Result<(), Error> {
+pub fn spin_up(term: &mut CommandTerminal, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {
     let igloo_dir = match directories::get_igloo_directory() {
         Ok(dir) => dir,
         Err(err) => {
@@ -77,7 +77,7 @@ pub fn spin_up(term: &mut CommandTerminal) -> Result<(), Error> {
             };
             run_red_panda_docker_container(term,true)?;
             validate_red_panda_run(term,true)?;
-            run_ch_docker_container(term, true)?;
+            run_ch_docker_container(term, clickhouse_config, true, )?;
             validate_clickhouse_run(term, true)?;
             Ok(())
         },

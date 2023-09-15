@@ -3,13 +3,14 @@ mod routines;
 mod config;
 mod watcher;
 mod webserver;
+mod schema;
 pub mod user_messages;
 
 use commands::Commands;
 use config::{read_config, Config};
 use clap::Parser;
 use crate::{framework::{AddableObjects, directories::get_igloo_directory}, infrastructure::{self, db::{clickhouse::ClickhouseConfig, self}, PANDA_NETWORK}};
-use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}};
+use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}, schema::parse_schema_file};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -106,7 +107,8 @@ async fn top_command_handler(term: &mut CommandTerminal, config: Config, command
         }
         Some(Commands::Update{}) => {
             // This command may not be needed if we have incredible automation
-            todo!("Will update the project's underlying infrascructure based on any added objects")
+            // todo!("Will update the project's underlying infrascructure based on any added objects")
+            parse_schema_file();
         }
         Some(Commands::Stop{}) => {
             routines::stop_containers(term);

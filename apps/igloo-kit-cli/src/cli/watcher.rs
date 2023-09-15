@@ -1,6 +1,5 @@
 use std::{sync::Arc, collections::HashSet, path::PathBuf, io::{Error, ErrorKind}};
 
-
 use notify::{RecommendedWatcher, Config, RecursiveMode, Watcher, event::ModifyKind};
 use tokio::sync::Mutex;
 

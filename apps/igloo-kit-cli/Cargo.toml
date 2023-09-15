@@ -21,7 +21,8 @@ serde = { version = "1.0", features = ["derive"] }
 home = "0.5.5"
 sentry = "0.31.6"
 clickhouse = "0.11.5"
-schema-ast = { git = "http://github.com/prisma/prisma-engines/tree/main/psl/schema-ast"}
+schema-ast = { git = "https://github.com/prisma/prisma-engines.git"}
+diagnostics = { git = "https://github.com/prisma/prisma-engines.git"}
 
 
 

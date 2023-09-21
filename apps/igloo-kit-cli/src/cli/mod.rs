@@ -104,10 +104,7 @@ async fn top_command_handler(term: &mut CommandTerminal, config: Config, command
         }
         Some(Commands::Update{}) => {
             // This command may not be needed if we have incredible automation
-            // todo!("Will update the project's underlying infrascructure based on any added objects")
-            let path = "/Users/timdelisle/Dev/igloo-stack/apps/igloo-kit-cli/tests/psl/simple.prisma";
-            let tables = parse_schema_file(path.into());
-            println!("{:?}", tables);
+            todo!("Will update the project's underlying infrascructure based on any added objects")
         }
         Some(Commands::Stop{}) => {
             routines::stop_containers(term);

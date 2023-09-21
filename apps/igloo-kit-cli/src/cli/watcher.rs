@@ -80,7 +80,7 @@ async fn remove_table_and_topics_from_dataframe_route(route: &PathBuf, project_d
     // This doesn't have to be as fast as the scanning for routes in the web server so we're ok with the scan here.
     for (k, meta) in route_table.clone().into_iter() {
         if meta.original_file_path == route.clone() {
-            let ingest_route = dataframe_path_to_ingest_route(project_dir.clone(), k.clone());
+            let ingest_route = k.clone();
             stream::redpanda::delete_topic(ingest_route.to_str().unwrap().to_string());
             
             db::clickhouse::delete_table(meta.table_name, configured_client).await

@@ -1,9 +1,9 @@
-use std::{sync::Arc, collections::HashSet, path::PathBuf, io::{Error, ErrorKind}};
+use std::{sync::Arc, collections::HashMap, path::PathBuf, io::{Error, ErrorKind}};
 
 use notify::{RecommendedWatcher, Config, RecursiveMode, Watcher, event::ModifyKind};
 use tokio::sync::Mutex;
 
-use crate::{framework::directories::get_app_directory, cli::user_messages::show_message, infrastructure::{stream, db::{self, clickhouse::{ConfiguredClient, ClickhouseConfig}}}};
+use crate::{framework::{directories::get_app_directory, schema::{parse_schema_file, OpsTable}}, cli::user_messages::show_message, infrastructure::{stream, db::{self, clickhouse::{ConfiguredClient, ClickhouseConfig}}}};
 
 use super::{CommandTerminal, user_messages::{MessageType, Message}};
 
@@ -13,35 +13,31 @@ fn route_to_topic_name(route: PathBuf) -> String {
     route
 }
 
-async fn process_event(project_dir: PathBuf, event: notify::Event, route_table:  Arc<Mutex<HashSet<PathBuf>>>, configured_client: &ConfiguredClient) -> Result<(), clickhouse::error::Error> {
+fn dataframe_path_to_ingest_route(project_dir: PathBuf, path: PathBuf) -> PathBuf {
+    let dataframe_path = project_dir.join("dataframes");
+    let route = path.strip_prefix(dataframe_path).unwrap().to_path_buf();
+    PathBuf::from("ingest").join(route)
+}
+
+async fn process_event(project_dir: PathBuf, event: notify::Event, route_table:  Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, configured_client: &ConfiguredClient) -> Result<(), Error> {
     let route = event.paths[0].clone();
-    let clean_route = route.strip_prefix(project_dir).unwrap().to_path_buf();
-    let table_name = clean_route.file_name().unwrap().to_str().unwrap().to_string();
-    let topic_name = clean_route.file_name().unwrap().to_str().unwrap().to_string();
     let mut route_table = route_table.lock().await;
 
     match event.kind {
         notify::EventKind::Create(_) => {
-            route_table.insert(clean_route.clone());
-            
-            stream::redpanda::create_topic_from_name(topic_name.clone());
-            db::clickhouse::create_table(table_name, topic_name, configured_client).await
+            // Only create tables and topics from prisma files in the dataframes directory
+            create_table_and_topics_from_dataframe_route(&route, project_dir, &mut route_table, configured_client).await
         },
         notify::EventKind::Modify(mk) => {
             match mk {
                 ModifyKind::Name(_) => {
                     // remove the file from the routes if they don't exist in the file directory
                     if route.exists() {
-                        route_table.insert(clean_route.clone());
-                        stream::redpanda::create_topic_from_name(topic_name.clone());
-                        db::clickhouse::create_table(table_name, topic_name, configured_client).await?
+                        create_table_and_topics_from_dataframe_route(&route, project_dir, &mut route_table, configured_client).await
+                            
                     } else {
-                        route_table.remove(&clean_route);
-                        stream::redpanda::delete_topic_from_name(topic_name.clone());
-                        db::clickhouse::delete_table(topic_name, configured_client).await?
-                    };
-                    Ok(())
-
+                        remove_table_and_topics_from_dataframe_route(&route, project_dir, &mut route_table, configured_client).await
+                    }
                 }
                 _ => {Ok(())}
             }
@@ -51,7 +47,52 @@ async fn process_event(project_dir: PathBuf, event: notify::Event, route_table: 
     }
 }
 
-async fn watch(path: PathBuf, route_table: Arc<Mutex<HashSet<PathBuf>>>, configured_client: &ConfiguredClient ) -> Result<(), Error> {
+#[derive(Debug, Clone)]
+pub struct RouteMeta {
+    original_file_path: PathBuf,
+    table_name: String,
+}
+
+async fn create_table_and_topics_from_dataframe_route(route: &PathBuf, project_dir: PathBuf, route_table: &mut tokio::sync::MutexGuard<'_, HashMap::<PathBuf, RouteMeta>>, configured_client: &ConfiguredClient) -> Result<(), Error> {
+    if let Some(ext) = route.extension() {
+            if ext == "prisma" && route.as_path().to_str().unwrap().contains("dataframes")  {
+                let tables = parse_schema_file(route.clone())
+                    .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to parse schema file. Error {}", e)))?;
+    
+                for table in tables {
+                    let ingest_route = dataframe_path_to_ingest_route(project_dir.clone(), route.clone());
+                    route_table.insert(ingest_route, RouteMeta { original_file_path: route.clone(), table_name: table.name.clone() });
+                    stream::redpanda::create_topic_from_name(table.name.clone());
+                    let query = table.create_table_query()
+                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to get clickhouse query: {:?}", e)))?;
+                    db::clickhouse::run_query(query, configured_client).await
+                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create table in clickhouse: {}", e)))?;
+                };
+            }
+        } else {
+            println!("No primsa extension found. Likely created unsupported file type")
+        }
+    Ok(())
+}
+
+async fn remove_table_and_topics_from_dataframe_route(route: &PathBuf, project_dir: PathBuf, route_table: &mut tokio::sync::MutexGuard<'_, HashMap::<PathBuf, RouteMeta>>, configured_client: &ConfiguredClient) -> Result<(), Error> {
+    //need to get the path of the file, scan the route table and remove all the files that need to be deleted. 
+    // This doesn't have to be as fast as the scanning for routes in the web server so we're ok with the scan here.
+    for (k, meta) in route_table.clone().into_iter() {
+        if meta.original_file_path == route.clone() {
+            let ingest_route = dataframe_path_to_ingest_route(project_dir.clone(), k.clone());
+            stream::redpanda::delete_topic(ingest_route.to_str().unwrap().to_string());
+            
+            db::clickhouse::delete_table(meta.table_name, configured_client).await
+                .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create table in clickhouse: {}", e)))?;
+
+            route_table.remove(&k);
+        }
+    }
+    Ok(())
+}
+
+async fn watch(path: PathBuf, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, configured_client: &ConfiguredClient ) -> Result<(), Error> {
 
     let (tx, rx) = std::sync::mpsc::channel();
 
@@ -72,11 +113,12 @@ async fn watch(path: PathBuf, route_table: Arc<Mutex<HashSet<PathBuf>>>, configu
             },
             Err(error) => return Err(Error::new(ErrorKind::Other, format!("File watcher event caused a failure: {}", error)))
         }
+        println!("{:?}", route_table)
     }
     Ok(())
 }
 
-pub fn start_file_watcher(term: &mut CommandTerminal, route_table:  Arc<Mutex<HashSet<PathBuf>>>, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {
+pub fn start_file_watcher(term: &mut CommandTerminal, route_table:  Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {
 
     let path = get_app_directory(term)?;
 

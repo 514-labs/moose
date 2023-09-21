@@ -1,4 +1,4 @@
-mod infrastructure;
+pub mod infrastructure;
 mod cli;
 pub mod framework;
 

@@ -1,11 +1,12 @@
 use std::fmt;
 
 use clickhouse::Client;
-use diagnostics::Diagnostics;
 use reqwest::Url;
-use schema_ast::ast::{SchemaAst, Top, WithName, Field};
+use schema_ast::ast::FieldArity;
 
-#[derive(Clone)]
+use crate::framework::schema::{OpsTable, templates::clickhouse::sql::{CreateTableQuery, DropTableQuery}, UnsupportedDataTypeError};
+
+#[derive(Debug, Clone)]
 pub struct ClickhouseConfig {
     pub db_name: String, // ex. local
     pub user: String,
@@ -15,6 +16,111 @@ pub struct ClickhouseConfig {
     pub postgres_port: i32, // ex. 9005
     pub kafka_port: i32, // ex. 9092
     pub cluster_network: String, // ex. panda-house
+}
+
+#[derive(Debug, Clone)]
+pub enum ClickhouseTableType {
+    Table,
+    View,
+    MaterializedView,
+    Unsupported
+}
+
+#[derive(Debug, Clone)]
+pub enum ClickhouseColumnType {
+    String,
+    Boolean,
+    ClickhouseInt(ClickhouseInt),
+    ClickhouseFloat(ClickhouseFloat),
+    Decimal,
+    DateTime,
+    Json,
+    Bytes,
+    Unsupported,
+}
+
+impl fmt::Display for ClickhouseColumnType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ClickhouseInt {
+    Int8,
+    Int16,
+    Int32,
+    Int64,
+    Int128,
+    Int256,
+    UInt8,
+    UInt16,
+    UInt32,
+    UInt64,
+    UInt128,
+    UInt256,
+}
+
+impl fmt::Display for ClickhouseInt {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ClickhouseFloat {
+    Float32,
+    Float64,
+}
+
+impl fmt::Display for ClickhouseFloat {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub enum ClickhouseColumnDefaults {
+    Now,
+}
+
+#[derive(Debug, Clone)]
+pub struct ClickhouseColumn {
+    pub name: String,
+    pub column_type: ClickhouseColumnType,
+    pub arity: FieldArity,
+    pub unique: bool,
+    pub primary_key: bool,
+    pub default: Option<ClickhouseColumnDefaults>
+}
+
+#[derive(Debug, Clone)]
+pub struct ClickhouseTable {
+    pub db_name: String,
+    pub name: String,
+    pub columns: Vec<ClickhouseColumn>,
+    pub table_type: ClickhouseTableType,
+}
+
+impl ClickhouseTable {
+    pub fn new(db_name: String, name: String, columns: Vec<ClickhouseColumn>, table_type: ClickhouseTableType) -> ClickhouseTable {
+        ClickhouseTable {
+            db_name,
+            name,
+            columns,
+            table_type,
+        }
+    }
+}
+
+impl OpsTable for ClickhouseTable {
+    fn create_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
+        CreateTableQuery::new(self.clone(), "panda-house".to_string(), 9092, "test".to_string())
+    }
+
+    fn drop_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
+        DropTableQuery::new(self.clone())
+    }
 }
 
 pub struct ConfiguredClient {
@@ -32,6 +138,12 @@ pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredClient {
         .with_database(format!("{}", clickhouse_config.db_name)),
         config: clickhouse_config,
     }    
+}
+
+// Run an arbitrary clickhouse query
+pub async fn run_query(query: String, configured_client: &ConfiguredClient) -> Result<(), clickhouse::error::Error> {
+    let client = &configured_client.client;
+    client.query(query.as_str()).execute().await
 }
 
 // Creates a table in clickhouse from a file name. this table should have a single field that accepts a json blob
@@ -53,67 +165,4 @@ pub async fn delete_table(table_name: String, configured_client: &ConfiguredClie
     let db_name = &configured_client.config.db_name;
 
     client.query(format!("DROP TABLE {db_name}.{table_name}").as_str()).execute().await
-}
-
-#[derive(Debug, Clone)]
-pub struct Table {
-    pub name: String,
-    pub columns: Vec<Column>,
-}
-
-#[derive(Debug, Clone)]
-pub struct Column {
-    pub name: String,
-    pub data_type: String,
-}
-#[derive(Debug, Clone)]
-pub struct UnsupportedDataTypeError {
-    type_name: String,
-}
-
-impl fmt::Display for UnsupportedDataTypeError {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "The following type is unsupported: {}", self.type_name)
-    }
-}
-
-
-fn field_to_column(f: &Field) -> Result<Column, UnsupportedDataTypeError> {
-    match &f.field_type {
-        schema_ast::ast::FieldType::Supported(ft) => {
-            Ok(Column {
-                name: f.name().to_string(),
-                data_type: ft.name.to_string(),
-            })
-        },
-        schema_ast::ast::FieldType::Unsupported(x, _) => {
-            Err(UnsupportedDataTypeError{type_name: x.to_string()})
-        }
-    }
-}
-
-fn top_to_table(t: &Top) -> Result<Table, UnsupportedDataTypeError> {
-    match t {
-        Top::Model(m) => {
-            let table_name = m.name().to_string();
-
-            let columns: Result<Vec<Column>, UnsupportedDataTypeError> = m.iter_fields().map(|(_id, f)| {
-                field_to_column(f)
-            }).collect();
-            
-            Ok(Table {
-                name: table_name,
-                columns: columns?
-            })
-        }
-        _ => { 
-            Err(UnsupportedDataTypeError {type_name: "anything that isn't a model".to_string()})
-        }
-    }
-}
-
-pub fn ast_mapper(ast: SchemaAst) -> Result<Vec<Table>, UnsupportedDataTypeError>  {
-    ast.iter_tops().map(|(id, t)| {
-        top_to_table(t)
-    }).collect::<Result<Vec<Table>, UnsupportedDataTypeError>>()
 }

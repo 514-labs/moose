@@ -3,14 +3,13 @@ mod routines;
 mod config;
 mod watcher;
 mod webserver;
-mod schema;
 pub mod user_messages;
 
 use commands::Commands;
 use config::{read_config, Config};
 use clap::Parser;
-use crate::{framework::{AddableObjects, directories::get_igloo_directory}, infrastructure::{self, db::{clickhouse::ClickhouseConfig, self}, PANDA_NETWORK}};
-use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}, schema::parse_schema_file};
+use crate::{framework::{AddableObjects, directories::get_igloo_directory, schema::parse_schema_file}, infrastructure::{self, db::{clickhouse::ClickhouseConfig, self}, PANDA_NETWORK}};
+use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -93,9 +92,7 @@ async fn top_command_handler(term: &mut CommandTerminal, config: Config, command
         cluster_network: PANDA_NETWORK.to_owned(),
     };
 
-    
-
-    if (!config.features.coming_soon_wall) {
+    if !config.features.coming_soon_wall {
         match commands {
             Some(Commands::Init {}) => {
                 routines::initialize_project(term);
@@ -108,7 +105,9 @@ async fn top_command_handler(term: &mut CommandTerminal, config: Config, command
         Some(Commands::Update{}) => {
             // This command may not be needed if we have incredible automation
             // todo!("Will update the project's underlying infrascructure based on any added objects")
-            parse_schema_file();
+            let path = "/Users/timdelisle/Dev/igloo-stack/apps/igloo-kit-cli/tests/psl/simple.prisma";
+            let tables = parse_schema_file(path.into());
+            println!("{:?}", tables);
         }
         Some(Commands::Stop{}) => {
             routines::stop_containers(term);
@@ -124,7 +123,7 @@ async fn top_command_handler(term: &mut CommandTerminal, config: Config, command
             None => {}
         }
     } else {
-        show_message(term, MessageType::Info, Message {
+        show_message(term, MessageType::Banner, Message {
             action: "Coming Soon",
             details: "Join the IglooKit community to stay up to date on the latest features: https://discord.gg/WX3V3K4QCc",
         });

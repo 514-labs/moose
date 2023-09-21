@@ -21,8 +21,9 @@ pub fn create_topic_from_name(topic_name: String) {
 }
 
 // Deletes a topic from a file name
-pub fn delete_topic_from_name(topic_name: String) {
-    let output = docker::run_rpk_command(rpk::create_rpk_command_args(rpk::RPKCommand::Topic(rpk::TopicCommand::Delete {topic_name})));
+pub fn delete_topic(topic_name: String) {
+    let valid_topic_name = topic_name.to_lowercase();
+    let output = docker::run_rpk_command(rpk::create_rpk_command_args(rpk::RPKCommand::Topic(rpk::TopicCommand::Delete {topic_name: valid_topic_name})));
 
     match output {
         Ok(o) => {

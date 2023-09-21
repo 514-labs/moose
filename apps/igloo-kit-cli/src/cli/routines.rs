@@ -1,4 +1,5 @@
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
+use bimap::BiMap;
 use std::sync::Arc;
 use std::{io::Error, path::PathBuf};
 
@@ -7,6 +8,7 @@ use tokio::sync::Mutex;
 use crate::infrastructure::db::clickhouse::ClickhouseConfig;
 use crate::{infrastructure, framework};
 
+use super::watcher::RouteMeta;
 use super::{watcher, webserver};
 use super::{CommandTerminal, user_messages::show_message, MessageType, Message};
 
@@ -77,7 +79,7 @@ pub async fn start_development_mode(term: &mut CommandTerminal, clickhouse_confi
     });
 
     // TODO: Explore using a RWLock instead of a Mutex to ensure concurrent reads without locks
-    let route_table = Arc::new(Mutex::new(HashSet::<PathBuf>::new()));
+    let route_table = Arc::new(Mutex::new(HashMap::<PathBuf, RouteMeta>::new()));
 
     // TODO: When starting the file watcher, we should check the current directory for files that have been 
     // added or removed since the last time the file watcher was started and ensure that the infra reflects 

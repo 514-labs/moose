@@ -23,7 +23,9 @@ sentry = "0.31.6"
 clickhouse = "0.11.5"
 schema-ast = { git = "https://github.com/prisma/prisma-engines.git"}
 diagnostics = { git = "https://github.com/prisma/prisma-engines.git"}
-
+tinytemplate = "1.1"
+rdkafka = "0.34.0"
+bimap = "0.6.3"
 
 
 [dev-dependencies]

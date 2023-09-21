@@ -2,13 +2,8 @@ use std::path::PathBuf;
 
 use clap::Subcommand;
 
-mod ingestion;
-mod flow;
-mod metric;
-mod dataframe;
-mod dashboard;
-mod model;
 pub mod directories;
+pub mod schema;
 
 enum Languages {
     Python,

@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use crate::{infrastructure::docker::{self, run_clickhouse}, cli::{CommandTerminal, user_messages::{show_message, MessageType, Message}}, framework::directories};
+use crate::{infrastructure::{docker::{self, run_clickhouse}, db::clickhouse::ClickhouseConfig}, cli::{CommandTerminal, user_messages::{show_message, MessageType, Message}}, framework::directories};
 
 
 pub fn run_red_panda_docker_container(term: &mut CommandTerminal, debug: bool) -> Result<(), io::Error> {
@@ -9,7 +9,8 @@ pub fn run_red_panda_docker_container(term: &mut CommandTerminal, debug: bool) -
     match output {
         Ok(o) => {
             if debug {
-                println!("Debugging docker container run");
+                println!("Debugging red panda container run");
+                println!("{}", &o.status);
                 io::stdout().write_all(&o.stdout).unwrap();
             }
             show_message( term, MessageType::Success, Message {
@@ -29,14 +30,15 @@ pub fn run_red_panda_docker_container(term: &mut CommandTerminal, debug: bool) -
         
 }
 
-pub fn run_ch_docker_container(term: &mut CommandTerminal, debug: bool) -> Result<(), io::Error> {
-    let igloo_dir = directories::get_igloo_directory()?;
-    let output = run_clickhouse(igloo_dir);
+pub fn run_ch_docker_container(term: &mut CommandTerminal, clickhouse_config: ClickhouseConfig, debug: bool) -> Result<(), io::Error> {
+    let igloo_dir: std::path::PathBuf = directories::get_igloo_directory()?;
+
+    let output = run_clickhouse(igloo_dir, clickhouse_config);
 
     match  output {
         Ok(o) => {
             if debug {
-                println!("Debugging docker container run");
+                println!("Debugging clickhouse container run");
                 io::stdout().write_all(&o.stdout).unwrap();
             }
             show_message( term, MessageType::Success, Message {

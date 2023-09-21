@@ -12,8 +12,6 @@ const copyAnimation = () => {
   
 }
 
-
-
 const CodeBlockCTA = () => {
   const inboundRef = React.useRef(null);
   const outboundRef = React.useRef(null);
@@ -129,12 +127,11 @@ export const CTASection = () => {
         </div>
         <div className="flex flex-col grow flex-1">
           <div className="text-typography-primary my-3">
-            Igloo is a batteries-included framework for building data-intensive application using typescript & SQL. It comes with a powerful CLI to help automate development tasks, an intuitive abstraction to help you standardize your data-intensive applications, and a streamlined local development workflow.
+            Igloo is a batteries-included framework for building data-intensive applications using typescript & SQL. It comes with a powerful CLI to help automate development tasks, an intuitive abstraction to help you standardize your data-intensive applications, and a streamlined local development workflow.
           </div>
           <div>
             <CodeBlockCTA />
           </div>
-          
         </div>
         
       </div>

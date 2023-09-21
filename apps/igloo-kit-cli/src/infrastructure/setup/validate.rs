@@ -96,7 +96,7 @@ pub fn validate_panda_house_network(term: &mut CommandTerminal, panda_network: &
                 println!("Successfully validated docker {panda_network} network");
                 show_message(term, MessageType::Success, Message {
                     action: "Successfully",
-                    details: "validated panda_house docker network",
+                    details: format!("validated {panda_network} docker network").as_str(),
                 });
                 Ok(())
             } else {
@@ -108,7 +108,7 @@ pub fn validate_panda_house_network(term: &mut CommandTerminal, panda_network: &
                         details: format!("to validate {panda_network} docker network").as_str(),
                     },
                 );
-                Err(io::Error::new(io::ErrorKind::Other, "Failed to validate {panda_network} network"))
+                Err(io::Error::new(io::ErrorKind::Other, format!("Failed to validate {panda_network} network")))
             }
         },
         Err(err) => {
@@ -136,9 +136,7 @@ pub fn validate_red_panda_cluster(term: &mut CommandTerminal, debug: bool) -> Re
                 });
                 Ok(())
             } else {
-                println!("Failed to validate docker container");
                 Err(io::Error::new(io::ErrorKind::Other, "Failed to validate red panda cluster"))
-
             }
         },
         Err(err) => {

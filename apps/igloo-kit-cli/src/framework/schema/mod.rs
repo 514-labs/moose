@@ -1,5 +1,4 @@
 use std::{fmt, path::PathBuf};
-use std::io::{Error, ErrorKind};
 
 use diagnostics::Diagnostics;
 
@@ -121,9 +120,9 @@ pub struct FieldAttributes {
 
 impl FieldAttributes {
     fn new(attributes :Vec<Attribute>) -> Result<FieldAttributes, ParsingError> {
-        let mut unique: bool = false;
-        let mut primary_key: bool = false;
-        let mut default: Option<ColumnDefaults> = None;
+        let unique: bool = false;
+        let primary_key: bool = false;
+        let default: Option<ColumnDefaults> = None;
 
         // TODO: Implement default values and primary keys once we have the ingestion table architecture setup
         for attribute in attributes {

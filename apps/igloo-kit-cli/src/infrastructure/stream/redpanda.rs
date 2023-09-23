@@ -1,4 +1,5 @@
 use std::io::{self, Write};
+use rdkafka::{ClientConfig, producer::FutureProducer};
 
 use crate::infrastructure::{stream::rpk, docker};
 
@@ -33,5 +34,30 @@ pub fn delete_topic(topic_name: String) {
         Err(err) => {
             println!("{}",err)
         },
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct RedpandaConfig {
+    pub broker: &'static str,
+    pub message_timeout_ms: i32,
+}
+
+#[derive(Clone)]
+pub struct ConfiguredProducer {
+    pub producer: FutureProducer,
+    pub config: RedpandaConfig,
+}
+
+pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
+    let producer = ClientConfig::new()
+        .set("bootstrap.servers", config.broker)
+        .set("message.timeout.ms", config.message_timeout_ms.to_string())
+        .create()
+        .expect("Failed to create producer");
+
+    ConfiguredProducer {
+        producer,
+        config,
     }
 }

@@ -19,6 +19,10 @@ function getExePath() {
     extension = ".exe";
   }
 
+  if (os.startsWith("windows")) {
+    throw new Error("Windows is not supported yet. If you are a windows user, interested in windows support, please give us a shout at https://discord.gg/WX3V3K4QCc")
+  }
+
   try {
     // Since the binary will be located inside `node_modules`, we can simply call `require.resolve`
     return require.resolve(`@514labs/igloo-cli-${os}-${arch}/bin/igloo-cli${extension}`);

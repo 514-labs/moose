@@ -1,5 +1,6 @@
 use std::io::{self, Write};
-use crate::{infrastructure::{docker::{self, run_clickhouse}, db::clickhouse::ClickhouseConfig}, cli::{CommandTerminal, user_messages::{show_message, MessageType, Message}}, framework::directories};
+
+use crate::{cli::{CommandTerminal, user_messages::{show_message, MessageType, Message}}, framework::directories, utilities::docker::{self, run_clickhouse}, infrastructure::olap::clickhouse::ClickhouseConfig};
 
 
 pub fn run_red_panda_docker_container(term: &mut CommandTerminal, debug: bool) -> Result<(), io::Error> {

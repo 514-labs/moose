@@ -1,7 +1,7 @@
 use std::{process::Command, path::PathBuf};
 
-use super::db::clickhouse::ClickhouseConfig;
-use crate::infrastructure::PANDA_NETWORK;
+
+use crate::infrastructure::{PANDA_NETWORK, olap::clickhouse::ClickhouseConfig};
 
 fn network_command(command: &str, network_name: &str) -> std::io::Result<std::process::Output>{
     Command::new("docker")

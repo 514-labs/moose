@@ -1,6 +1,6 @@
 use std::{path::PathBuf, io::{Error, ErrorKind}};
 
-use crate::{infrastructure::setup::scaffold::{validate_mount_volumes, create_temp_data_volumes}, cli::{user_messages::{show_message, MessageType, Message}, CommandTerminal}};
+use crate::{infrastructure::setup::scaffold::{validate_mount_volumes, create_temp_data_volumes}, cli::{CommandTerminal, user_messages::{show_message, Message, MessageType}}};
 
 
 const APP_DIR: [&str; 8] = [

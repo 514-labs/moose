@@ -1,4 +1,4 @@
-use crate::infrastructure::db::clickhouse::{ClickhouseColumnType, ClickhouseInt, ClickhouseFloat, ClickhouseTableType, ClickhouseTable, ClickhouseColumn};
+use crate::infrastructure::olap::clickhouse::{ClickhouseColumnType, ClickhouseInt, ClickhouseFloat, ClickhouseTableType, ClickhouseTable, ClickhouseColumn};
 
 use super::{ColumnType, TableType, Table};
 

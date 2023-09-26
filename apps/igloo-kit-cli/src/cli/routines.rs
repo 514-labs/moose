@@ -5,7 +5,7 @@ use std::{io::Error, path::PathBuf};
 
 use tokio::sync::Mutex;
 
-use crate::infrastructure::db::clickhouse::ClickhouseConfig;
+use crate::infrastructure::olap::clickhouse::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::{self, RedpandaConfig};
 use crate::{infrastructure, framework};
 

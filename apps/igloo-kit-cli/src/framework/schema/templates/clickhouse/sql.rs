@@ -2,7 +2,7 @@ use schema_ast::ast::FieldArity;
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
 
-use crate::{framework::schema::{UnsupportedDataTypeError}, infrastructure::db::clickhouse::{ClickhouseColumn, ClickhouseColumnType, ClickhouseTable, ClickhouseInt, ClickhouseFloat}};
+use crate::{framework::schema::{UnsupportedDataTypeError}, infrastructure::olap::clickhouse::{ClickhouseColumn, ClickhouseColumnType, ClickhouseTable, ClickhouseInt, ClickhouseFloat}};
 
 // TODO: Add column comment capability to the schemna and template
 pub static CREATE_TABLE_TEMPLATE: &str = r#"

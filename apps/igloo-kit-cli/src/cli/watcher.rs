@@ -3,7 +3,7 @@ use std::{sync::Arc, collections::HashMap, path::PathBuf, io::{Error, ErrorKind}
 use notify::{RecommendedWatcher, Config, RecursiveMode, Watcher, event::ModifyKind};
 use tokio::sync::Mutex;
 
-use crate::{framework::{directories::get_app_directory, schema::{parse_schema_file, OpsTable}}, cli::user_messages::show_message, infrastructure::{stream, db::{self, clickhouse::{ConfiguredClient, ClickhouseConfig}}}};
+use crate::{framework::{directories::get_app_directory, schema::{parse_schema_file, OpsTable}}, cli::user_messages::show_message, infrastructure::{stream, olap::{self, clickhouse::{ConfiguredClient, ClickhouseConfig}}}};
 
 use super::{CommandTerminal, user_messages::{MessageType, Message}};
 
@@ -68,7 +68,7 @@ async fn create_table_and_topics_from_dataframe_route(route: &PathBuf, project_d
                     stream::redpanda::create_topic_from_name(table.name.clone());
                     let query = table.create_table_query()
                         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to get clickhouse query: {:?}", e)))?;
-                    db::clickhouse::run_query(query, configured_client).await
+                    olap::clickhouse::run_query(query, configured_client).await
                         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create table in clickhouse: {}", e)))?;
                 };
             }
@@ -85,7 +85,7 @@ async fn remove_table_and_topics_from_dataframe_route(route: &PathBuf, route_tab
         if meta.original_file_path == route.clone() {
             stream::redpanda::delete_topic(meta.table_name.clone());
             
-            db::clickhouse::delete_table(meta.table_name, configured_client).await
+            olap::clickhouse::delete_table(meta.table_name, configured_client).await
                 .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create table in clickhouse: {}", e)))?;
 
             route_table.remove(&k);
@@ -133,7 +133,7 @@ pub fn start_file_watcher(term: &mut CommandTerminal, route_table:  Arc<Mutex<Ha
 
     tokio::spawn( async move {
         // Need to spin up client in thread to ensure it lives long enough
-        let db_client = db::clickhouse::create_client(clickhouse_config.clone());
+        let db_client = olap::clickhouse::create_client(clickhouse_config.clone());
 
         if let Err(error) = watch(path, Arc::clone(&route_table), &db_client).await {
             println!("Error: {error:?}");

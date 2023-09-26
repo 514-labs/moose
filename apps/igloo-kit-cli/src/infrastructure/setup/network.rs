@@ -1,4 +1,4 @@
-use crate::{infrastructure::docker::{self}, cli::user_messages::show_message};
+use crate::{cli::user_messages::show_message, utilities::docker};
 
 pub fn create_docker_network(term: &mut crate::cli::CommandTerminal, network_name: &str) -> Result<(), std::io::Error> {
     let output = docker::create_network(network_name);

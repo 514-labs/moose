@@ -4,7 +4,7 @@ use diagnostics::Diagnostics;
 
 use schema_ast::{parse_schema, ast::{SchemaAst, FieldArity, Top, Field, WithName, Attribute}};
 
-use crate::infrastructure::db::clickhouse::ClickhouseTable;
+use crate::infrastructure::olap::clickhouse::ClickhouseTable;
 mod clickhouse_mappers;
 pub mod templates;
 

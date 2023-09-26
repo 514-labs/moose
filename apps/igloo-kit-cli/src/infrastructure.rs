@@ -7,11 +7,10 @@ use self::{setup::{
     container::{stop_red_panda_container, stop_clickhouse_container, run_red_panda_docker_container, run_ch_docker_container}, 
     network::{create_docker_network, remove_docker_network}, 
     validate::{validate_red_panda_run, validate_clickhouse_run, validate_panda_house_network}
-}, db::clickhouse::ClickhouseConfig};
+}, olap::clickhouse::ClickhouseConfig};
 pub mod setup;
-pub mod db;
+pub mod olap;
 pub mod stream;
-mod docker;
 
 
 pub const PANDA_NETWORK: &str = "panda-house";

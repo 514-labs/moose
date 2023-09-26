@@ -8,7 +8,7 @@ pub mod user_messages;
 use commands::Commands;
 use config::{read_config, Config};
 use clap::Parser;
-use crate::{framework::{AddableObjects, directories::get_igloo_directory, schema::parse_schema_file}, infrastructure::{self, db::{clickhouse::ClickhouseConfig, self}, PANDA_NETWORK}};
+use crate::{framework::{AddableObjects, directories::get_igloo_directory}, infrastructure::{self, db::clickhouse::ClickhouseConfig, PANDA_NETWORK, stream::redpanda::RedpandaConfig}};
 use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}};
 
 #[derive(Parser)]
@@ -92,6 +92,12 @@ async fn top_command_handler(term: &mut CommandTerminal, config: Config, command
         cluster_network: PANDA_NETWORK.to_owned(),
     };
 
+    let redpanda_config: RedpandaConfig = RedpandaConfig {
+        broker: "localhost:19092",
+        message_timeout_ms: 1000,
+
+    };
+
     if !config.features.coming_soon_wall {
         match commands {
             Some(Commands::Init {}) => {
@@ -100,7 +106,7 @@ async fn top_command_handler(term: &mut CommandTerminal, config: Config, command
             Some(Commands::Dev{}) => {
                 routines::start_containers(term, clickhouse_config.clone());
                 infrastructure::setup::validate::validate_red_panda_cluster(term, debug);
-                routines::start_development_mode(term, clickhouse_config.clone()).await;      
+                routines::start_development_mode(term, clickhouse_config.clone(), redpanda_config.clone()).await;      
             }
             Some(Commands::Update{}) => {
                 // This command may not be needed if we have incredible automation
@@ -132,8 +138,6 @@ pub async fn cli_run() {
     let mut term: CommandTerminal = CommandTerminal::new();
     let config = read_config(&mut term);
     let cli = Cli::parse();
-
-    // let igloo_dir = cli.config;
 
     top_command_handler(&mut term, config, &cli.command, cli.debug).await
 }

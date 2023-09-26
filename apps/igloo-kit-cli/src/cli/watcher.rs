@@ -13,9 +13,12 @@ fn route_to_topic_name(route: PathBuf) -> String {
     route
 }
 
-fn dataframe_path_to_ingest_route(project_dir: PathBuf, path: PathBuf) -> PathBuf {
+fn dataframe_path_to_ingest_route(project_dir: PathBuf, path: PathBuf, table_name: String) -> PathBuf {
     let dataframe_path = project_dir.join("dataframes");
-    let route = path.strip_prefix(dataframe_path).unwrap().to_path_buf();
+    let mut route = path.strip_prefix(dataframe_path).unwrap().to_path_buf();
+
+    route.set_file_name(table_name);
+
     PathBuf::from("ingest").join(route)
 }
 
@@ -36,7 +39,7 @@ async fn process_event(project_dir: PathBuf, event: notify::Event, route_table: 
                         create_table_and_topics_from_dataframe_route(&route, project_dir, &mut route_table, configured_client).await
                             
                     } else {
-                        remove_table_and_topics_from_dataframe_route(&route, project_dir, &mut route_table, configured_client).await
+                        remove_table_and_topics_from_dataframe_route(&route, &mut route_table, configured_client).await
                     }
                 }
                 _ => {Ok(())}
@@ -49,8 +52,8 @@ async fn process_event(project_dir: PathBuf, event: notify::Event, route_table: 
 
 #[derive(Debug, Clone)]
 pub struct RouteMeta {
-    original_file_path: PathBuf,
-    table_name: String,
+    pub original_file_path: PathBuf,
+    pub table_name: String,
 }
 
 async fn create_table_and_topics_from_dataframe_route(route: &PathBuf, project_dir: PathBuf, route_table: &mut tokio::sync::MutexGuard<'_, HashMap::<PathBuf, RouteMeta>>, configured_client: &ConfiguredClient) -> Result<(), Error> {
@@ -60,7 +63,7 @@ async fn create_table_and_topics_from_dataframe_route(route: &PathBuf, project_d
                     .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to parse schema file. Error {}", e)))?;
     
                 for table in tables {
-                    let ingest_route = dataframe_path_to_ingest_route(project_dir.clone(), route.clone());
+                    let ingest_route = dataframe_path_to_ingest_route(project_dir.clone(), route.clone(), table.name.clone());
                     route_table.insert(ingest_route, RouteMeta { original_file_path: route.clone(), table_name: table.name.clone() });
                     stream::redpanda::create_topic_from_name(table.name.clone());
                     let query = table.create_table_query()
@@ -75,13 +78,12 @@ async fn create_table_and_topics_from_dataframe_route(route: &PathBuf, project_d
     Ok(())
 }
 
-async fn remove_table_and_topics_from_dataframe_route(route: &PathBuf, project_dir: PathBuf, route_table: &mut tokio::sync::MutexGuard<'_, HashMap::<PathBuf, RouteMeta>>, configured_client: &ConfiguredClient) -> Result<(), Error> {
+async fn remove_table_and_topics_from_dataframe_route(route: &PathBuf, route_table: &mut tokio::sync::MutexGuard<'_, HashMap::<PathBuf, RouteMeta>>, configured_client: &ConfiguredClient) -> Result<(), Error> {
     //need to get the path of the file, scan the route table and remove all the files that need to be deleted. 
     // This doesn't have to be as fast as the scanning for routes in the web server so we're ok with the scan here.
     for (k, meta) in route_table.clone().into_iter() {
         if meta.original_file_path == route.clone() {
-            let ingest_route = k.clone();
-            stream::redpanda::delete_topic(ingest_route.to_str().unwrap().to_string());
+            stream::redpanda::delete_topic(meta.table_name.clone());
             
             db::clickhouse::delete_table(meta.table_name, configured_client).await
                 .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create table in clickhouse: {}", e)))?;

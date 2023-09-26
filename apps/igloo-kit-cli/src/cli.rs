@@ -2,7 +2,7 @@ mod commands;
 mod routines;
 mod config;
 mod watcher;
-mod webserver;
+mod local_webserver;
 mod display;
 
 use commands::Commands;

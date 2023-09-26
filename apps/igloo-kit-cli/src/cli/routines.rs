@@ -11,7 +11,7 @@ use self::start::spin_up;
 use self::stop::spin_down;
 
 use super::watcher::RouteMeta;
-use super::{watcher, webserver};
+use super::{watcher, local_webserver};
 use super::{CommandTerminal, display::show_message, MessageType, Message};
 
 pub mod clean;
@@ -39,7 +39,7 @@ pub fn clean_project(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result<
         action: "Cleaning",
         details: "project directory",
     });
-    clean_project(term, igloo_dir)?;
+    clean::clean_project(term, igloo_dir)?;
     show_message(
         term,
         MessageType::Success,
@@ -89,6 +89,6 @@ pub async fn start_development_mode(term: &mut CommandTerminal, clickhouse_confi
     // added or removed since the last time the file watcher was started and ensure that the infra reflects 
     // the application state
     watcher::start_file_watcher(term, Arc::clone(&route_table), clickhouse_config)?;
-    webserver::start_webserver(term, Arc::clone(&route_table), redpanda_config).await;
+    local_webserver::start_webserver(term, Arc::clone(&route_table), redpanda_config).await;
     Ok(())
 }

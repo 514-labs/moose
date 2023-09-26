@@ -1,57 +1,45 @@
-use std::collections::{HashSet, HashMap};
-use bimap::BiMap;
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::{io::Error, path::PathBuf};
 
 use tokio::sync::Mutex;
 
 use crate::infrastructure::olap::clickhouse::ClickhouseConfig;
-use crate::infrastructure::stream::redpanda::{self, RedpandaConfig};
-use crate::{infrastructure, framework};
+use crate::infrastructure::stream::redpanda::RedpandaConfig;
+
+use self::start::spin_up;
+use self::stop::spin_down;
 
 use super::watcher::RouteMeta;
 use super::{watcher, webserver};
-use super::{CommandTerminal, user_messages::show_message, MessageType, Message};
+use super::{CommandTerminal, display::show_message, MessageType, Message};
+
+pub mod clean;
+pub mod initialize;
+pub mod start;
+pub mod stop;
+pub mod validate;
 
 
-
+// Routines run a sequence of operations and give feedback to the user. 
 pub fn start_containers(term: &mut CommandTerminal, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {
     show_message( term, MessageType::Info, Message {
         action: "Running",
         details: "infrastructure spin up",
     });
     
-    infrastructure::spin_up(term, clickhouse_config)?;
+    spin_up(term, clickhouse_config)?;
     Ok(())
 }
 
-pub fn initialize_project(term: &mut CommandTerminal) -> Result<(), Error> {
-    let igloo_dir = framework::directories::create_top_level_temp_dir(term)?;
-    match framework::directories::create_app_directories(term) {
-        Ok(_) => {
-            show_message( term, MessageType::Success, Message {
-                action: "Finished",
-                details: "initializing project directory",
-            });
-        },
-        Err(err) => {
-            show_message( term, MessageType::Error, Message {
-                action: "Failed",
-                details: "to create project directories",
-            });
-            return Err(err)
-        }
-    };
-    infrastructure::init(term, &igloo_dir)?;
-    Ok(())
-}
+
 
 pub fn clean_project(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result<(), Error> {
     show_message( term, MessageType::Info, Message {
         action: "Cleaning",
         details: "project directory",
     });
-    infrastructure::clean(term, igloo_dir)?;
+    clean_project(term, igloo_dir)?;
     show_message(
         term,
         MessageType::Success,
@@ -68,8 +56,23 @@ pub fn stop_containers(term: &mut CommandTerminal) -> Result<(), Error> {
         action: "Stopping",
         details: "local infrastructure",
     });
-    infrastructure::spin_down(term)?;
-    Ok(())
+    match spin_down(term) {
+        Ok(_) => {
+            show_message(term, MessageType::Info, Message {
+                    action: "Spinning down",
+                    details: "igloo cluster",
+                },
+            );
+            Ok(())
+        },
+        Err(err) => {
+            show_message( term, MessageType::Error, Message {
+                action: "Failed",
+                details: "to stop local infrastructure",
+            });
+            return Err(err)
+        }
+    }
 }
 
 // Starts the file watcher and the webserver

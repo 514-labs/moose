@@ -18,7 +18,7 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
 use super::Message;
 use super::MessageType;
-use super::user_messages::show_message;
+use super::display::show_message;
 use super::watcher::RouteMeta;
 use std::sync::Arc;
 use super::CommandTerminal;
@@ -92,8 +92,6 @@ pub async fn start_webserver(term: &mut CommandTerminal, route_table: Arc<Mutex<
         details: " server on port 4000",
     });
 
-    
-
     let producer = Arc::new(Mutex::new(redpanda::create_producer(redpanda_config)));
 
     let main_service = make_service_fn(move |_| {
@@ -105,7 +103,6 @@ pub async fn start_webserver(term: &mut CommandTerminal, route_table: Arc<Mutex<
                 handler(req, route_table.clone(), producer.clone())
             }))
         }
-
     });
 
     let server = Server::bind(&addr).serve(main_service);

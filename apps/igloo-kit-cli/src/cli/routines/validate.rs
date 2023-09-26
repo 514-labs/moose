@@ -1,6 +1,6 @@
 use std::io::{self, Write, Error};
 
-use crate::{cli::{CommandTerminal, user_messages::{show_message, MessageType, Message}}, utilities::docker};
+use crate::{cli::{CommandTerminal, display::{show_message, MessageType, Message}}, utilities::docker};
 
 
 pub fn validate_clickhouse_run(term: &mut CommandTerminal, debug: bool) -> Result<(), Error> {

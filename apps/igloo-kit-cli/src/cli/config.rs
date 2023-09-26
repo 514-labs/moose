@@ -3,7 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 use home::home_dir;
 use super::CommandTerminal;
-use super::user_messages::{show_message, MessageType, Message};
+use super::display::{show_message, MessageType, Message};
 const CONFIG_FILE: &str = ".igloo-config.toml";
 
 #[derive(Deserialize, Debug)]

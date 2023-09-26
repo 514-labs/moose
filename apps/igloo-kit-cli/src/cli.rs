@@ -3,13 +3,13 @@ mod routines;
 mod config;
 mod watcher;
 mod webserver;
-pub mod user_messages;
+mod display;
 
 use commands::Commands;
 use config::{read_config, Config};
 use clap::Parser;
 use crate::{framework::{AddableObjects, directories::get_igloo_directory}, infrastructure::{self, olap::clickhouse::ClickhouseConfig, PANDA_NETWORK, stream::redpanda::RedpandaConfig}};
-use self::{commands::AddArgs, user_messages::{MessageType, Message, show_message}};
+use self::{commands::AddArgs, display::{MessageType, Message, show_message}, routines::{initialize::initialize_project, validate::validate_red_panda_cluster}};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -101,11 +101,11 @@ async fn top_command_handler(term: &mut CommandTerminal, config: Config, command
     if !config.features.coming_soon_wall {
         match commands {
             Some(Commands::Init {}) => {
-                routines::initialize_project(term);
+                initialize_project(term);
             }
             Some(Commands::Dev{}) => {
                 routines::start_containers(term, clickhouse_config.clone());
-                infrastructure::setup::validate::validate_red_panda_cluster(term, debug);
+                validate_red_panda_cluster(term, debug);
                 routines::start_development_mode(term, clickhouse_config.clone(), redpanda_config.clone()).await;      
             }
             Some(Commands::Update{}) => {

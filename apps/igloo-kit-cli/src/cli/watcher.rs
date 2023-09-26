@@ -3,15 +3,15 @@ use std::{sync::Arc, collections::HashMap, path::PathBuf, io::{Error, ErrorKind}
 use notify::{RecommendedWatcher, Config, RecursiveMode, Watcher, event::ModifyKind};
 use tokio::sync::Mutex;
 
-use crate::{framework::{directories::get_app_directory, schema::{parse_schema_file, OpsTable}}, cli::user_messages::show_message, infrastructure::{stream, olap::{self, clickhouse::{ConfiguredClient, ClickhouseConfig}}}};
+use crate::{framework::{directories::get_app_directory, schema::{parse_schema_file, OpsTable}}, cli::display::show_message, infrastructure::{stream, olap::{self, clickhouse::{ConfiguredClient, ClickhouseConfig}}}};
 
-use super::{CommandTerminal, user_messages::{MessageType, Message}};
+use super::{CommandTerminal, display::{MessageType, Message}};
 
-fn route_to_topic_name(route: PathBuf) -> String {
-    let route = route.to_str().unwrap().to_string();
-    let route = route.replace("/", ".");
-    route
-}
+// fn route_to_topic_name(route: PathBuf) -> String {
+//     let route = route.to_str().unwrap().to_string();
+//     let route = route.replace("/", ".");
+//     route
+// }
 
 fn dataframe_path_to_ingest_route(project_dir: PathBuf, path: PathBuf, table_name: String) -> PathBuf {
     let dataframe_path = project_dir.join("dataframes");
@@ -122,7 +122,7 @@ async fn watch(path: PathBuf, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMet
 
 pub fn start_file_watcher(term: &mut CommandTerminal, route_table:  Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {
 
-    let path = get_app_directory(term)?;
+    let path = get_app_directory()?;
 
     show_message(term, MessageType::Info, {
         Message {

@@ -1,79 +1,89 @@
-use std::{path::PathBuf, io::Error, fs};
+use std::{path::PathBuf, fs};
 
-use crate::{cli::{CommandTerminal, display::show_message}, infrastructure::PANDA_NETWORK, utilities::docker};
+use crate::{cli::display::Message, infrastructure::PANDA_NETWORK, utilities::docker};
 
-use super::stop::{stop_red_panda_container, stop_clickhouse_container};
+use super::{Routine, RoutineSuccess, RoutineFailure, stop::StopLocalInfrastructure, RunMode};
 
-pub fn clean_project(term: &mut CommandTerminal, igloo_dir: &PathBuf) -> Result<(), Error> {
-    stop_red_panda_container(term)?;
-    stop_clickhouse_container(term)?;
-    remove_docker_network(term, PANDA_NETWORK)?;
-    delete_clickhouse_mount_volume(igloo_dir)?;
-    delete_red_panda_mount_volume(igloo_dir)?;
-    Ok(())
+
+pub struct CleanProject {
+    igloo_dir: PathBuf,
+    run_mode: RunMode,
+}
+impl CleanProject {
+    pub fn new(igloo_dir: PathBuf, run_mode: RunMode) -> Self {
+        Self { igloo_dir, run_mode }
+    }
 }
 
+impl Routine for CleanProject {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let run_mode = self.run_mode.clone();
+        StopLocalInfrastructure::new(run_mode.clone()).run(run_mode.clone())?;
+        RemoveDockerNetwork::new(PANDA_NETWORK).run(run_mode.clone())?;
+        DeleteRedpandaMountVolume::new(self.igloo_dir.clone()).run(run_mode.clone())?;
+        DeleteClickhouseMountVolume::new(self.igloo_dir.clone()).run(run_mode.clone())?;
 
-pub fn remove_docker_network(term: &mut crate::cli::CommandTerminal, network_name: &str) -> Result<(), std::io::Error> {
-    let output = docker::remove_network(network_name);
-
-    match output {
-        Ok(_) => {
-            show_message(
-                term,
-                crate::cli::display::MessageType::Success,
-                crate::cli::display::Message {
-                    action: "Successfully",
-                    details: "removed docker network",
-                },
-            );
-            Ok(())
-        },
-        Err(_) => {
-            show_message(
-                term,
-                crate::cli::display::MessageType::Error,
-                crate::cli::display::Message {
-                    action: "Failed",
-                    details: "to remove docker network",
-                },
-            );
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "Failed to remove docker network"))
-        },
+        Ok(RoutineSuccess::success(Message::new("Cleaned".to_string(), "project".to_string())))
     }
 }
 
 
-pub fn delete_red_panda_mount_volume(igloo_dir: &PathBuf) -> Result<(), Error> {
-    let mount_dir = igloo_dir.join(".panda_house");
-    let output = fs::remove_dir_all(mount_dir.clone());
-
-    match output {
-        Ok(_) =>{ 
-            println!("Removed mount directory at {}", mount_dir.display());
-            Ok(())
-        },
-        Err(err) => {
-            println!("Failed to remove mount directory at {}", mount_dir.display());
-            println!("error: {}", err);
-            Err(err)
-        },
+struct RemoveDockerNetwork {
+    network_name: String,
+}
+impl RemoveDockerNetwork {
+    fn new(network_name: &str) -> Self {
+        Self { network_name: network_name.to_string() }
     }
 }
 
-pub fn delete_clickhouse_mount_volume(igloo_dir: &PathBuf) -> Result<(), Error> {
-    let mount_dir = igloo_dir.join(".clickhouse");
-    let output = fs::remove_dir_all(mount_dir.clone());
+impl Routine for RemoveDockerNetwork {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        docker::remove_network(&self.network_name).map_err(|err| {
+            RoutineFailure::new(Message::new("Failed".to_string(), "to remove docker network".to_string()), err)
+        })?;
 
-    match output {
-        Ok(_) => {
-            println!("Removed mount directory at {}", mount_dir.display());
-            Ok(())
-        },
-        Err(err) => {
-            println!("Failed to remove mount directory at {}", mount_dir.display());
-            println!("error: {}", err);
-            Err(err)
-        },
+        Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "removed docker network".to_string())))
+    }
+}
+
+struct DeleteRedpandaMountVolume {
+    igloo_dir: PathBuf,
+}
+impl DeleteRedpandaMountVolume {
+    fn new(igloo_dir: PathBuf) -> Self {
+        Self { igloo_dir }
+    }
+}
+
+impl Routine for DeleteRedpandaMountVolume {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let mount_dir = self.igloo_dir.join(".panda_house");
+        fs::remove_dir_all(&mount_dir).map_err(|err| {
+            RoutineFailure::new(Message::new("Failed".to_string(), format!("to remove Red Panda mount volume at {}", mount_dir.display())), err)
+        })?;
+
+        Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "removed Red Panda mount volume".to_string())))    
+    }
+}
+
+
+
+struct DeleteClickhouseMountVolume {
+    igloo_dir: PathBuf,
+}
+impl DeleteClickhouseMountVolume {
+    fn new(igloo_dir: PathBuf) -> Self {
+        Self { igloo_dir }
+    }
+}
+impl Routine for DeleteClickhouseMountVolume {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let mount_dir = self.igloo_dir.join(".clickhouse");
+        fs::remove_dir_all(&mount_dir).map_err(|err| {
+            RoutineFailure::new(Message::new("Failed".to_string(), format!("to remove Clickhouse mount volume at {}", mount_dir.display())), err)
+        })?;
+
+        Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "removed Clickhouse mount volume".to_string())))    
     }
 }

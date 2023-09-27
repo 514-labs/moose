@@ -5,11 +5,13 @@ mod watcher;
 mod local_webserver;
 mod display;
 
+use std::{sync::{RwLock, Arc}, rc::Rc};
+
 use commands::Commands;
 use config::{read_config, Config};
 use clap::Parser;
-use crate::{framework::{AddableObjects, directories::get_igloo_directory}, infrastructure::{self, olap::clickhouse::ClickhouseConfig, PANDA_NETWORK, stream::redpanda::RedpandaConfig}};
-use self::{commands::AddArgs, display::{MessageType, Message, show_message}, routines::{initialize::initialize_project, validate::validate_red_panda_cluster}};
+use crate::{framework::{AddableObjects, directories::get_igloo_directory}, infrastructure::{olap::clickhouse::ClickhouseConfig, PANDA_NETWORK, stream::redpanda::RedpandaConfig}};
+use self::{commands::AddArgs, display::{MessageType, Message, show_message}, routines::{initialize::InitializeProject, validate::ValidateRedPandaCluster, RoutineController, RunMode, start::RunLocalInfratructure, Routine, stop::StopLocalInfrastructure, clean::CleanProject}};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -56,9 +58,16 @@ fn add_handler(add_arg: &AddArgs) {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct CommandTerminal {
     term: console::Term,
     counter: usize,
+}
+
+#[derive(PartialEq, Clone, Copy)]
+pub enum DebugStatus {
+    Debug,
+    Silent,
 }
 
 impl CommandTerminal {
@@ -80,7 +89,7 @@ impl CommandTerminal {
     }
 }
 
-async fn top_command_handler(term: &mut CommandTerminal, config: Config, commands: &Option<Commands>, debug: bool) {
+async fn top_command_handler(term: Arc<RwLock<CommandTerminal>>, config: Config, commands: &Option<Commands>, debug: bool) {
     let clickhouse_config = ClickhouseConfig {
         db_name: "local".to_string(),
         user: "panda".to_string(),
@@ -101,23 +110,32 @@ async fn top_command_handler(term: &mut CommandTerminal, config: Config, command
     if !config.features.coming_soon_wall {
         match commands {
             Some(Commands::Init {}) => {
-                initialize_project(term);
+                let mut controller = RoutineController::new();
+                let run_mode = RunMode::Explicit { term };
+                controller.add_routine(Box::new(InitializeProject::new(run_mode.clone())));
+                controller.run_routines(run_mode);
             }
             Some(Commands::Dev{}) => {
-                routines::start_containers(term, clickhouse_config.clone());
-                validate_red_panda_cluster(term, debug);
-                routines::start_development_mode(term, clickhouse_config.clone(), redpanda_config.clone()).await;      
+                let mut controller = RoutineController::new();
+                let run_mode = RunMode::Explicit { term };
+                controller.add_routine(Box::new(RunLocalInfratructure::new(DebugStatus::Debug, clickhouse_config.clone(), redpanda_config.clone())));
+                controller.add_routine(Box::new(ValidateRedPandaCluster::new(DebugStatus::Debug)));
+                controller.run_routines(run_mode);
+                routines::start_development_mode(clickhouse_config.clone(), redpanda_config.clone()).await;      
+
             }
             Some(Commands::Update{}) => {
                 // This command may not be needed if we have incredible automation
                 todo!("Will update the project's underlying infrascructure based on any added objects")
             }
             Some(Commands::Stop{}) => {
-                routines::stop_containers(term);
+                let run_mode = RunMode::Explicit { term };
+                StopLocalInfrastructure::new(run_mode.clone()).run(run_mode);
             }
             Some(Commands::Clean{}) => {
+                let run_mode = RunMode::Explicit { term };
                 let igloo_dir = get_igloo_directory().expect("Nothing to clean, no .igloo directory found");
-                routines::clean_project(term, &igloo_dir);
+                CleanProject::new(igloo_dir,run_mode.clone()).run(run_mode);
 
             }
             Some(Commands::Add(add_args)) => {
@@ -127,17 +145,17 @@ async fn top_command_handler(term: &mut CommandTerminal, config: Config, command
         }
     } else {
         show_message(term, MessageType::Banner, Message {
-            action: "Coming Soon",
-            details: "Join the IglooKit community to stay up to date on the latest features: https://discord.gg/WX3V3K4QCc",
+            action: "Coming Soon".to_string(),
+            details: "Join the IglooKit community to stay up to date on the latest features: https://discord.gg/WX3V3K4QCc".to_string(),
         });
     }
     
 }
 
 pub async fn cli_run() {
-    let mut term: CommandTerminal = CommandTerminal::new();
-    let config = read_config(&mut term);
+    let term = Arc::new(RwLock::new(CommandTerminal::new()));
+    let config = read_config(term.clone());
     let cli = Cli::parse();
 
-    top_command_handler(&mut term, config, &cli.command, cli.debug).await
+    top_command_handler(term.clone(), config, &cli.command, cli.debug).await
 }

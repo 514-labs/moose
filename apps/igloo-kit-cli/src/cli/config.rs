@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use std::fs;
 use std::path::PathBuf;
+use std::sync::{RwLock, Arc};
 use home::home_dir;
 use super::CommandTerminal;
 use super::display::{show_message, MessageType, Message};
@@ -26,13 +27,13 @@ fn default_config() -> Config {
    Config { features: Features { coming_soon_wall: true } }
 }
 
-pub fn read_config(term: &mut CommandTerminal) -> Config {
+pub fn read_config(term: Arc<RwLock<CommandTerminal>>) -> Config {
     let config_file_location: PathBuf = config_path();
     match config_file_location.try_exists() {
         Ok(true) => {
             show_message(term, MessageType::Info, Message {
-                action: "Loading Config",
-                details: "Reading configuration from ~/.igloo-config.toml",
+                action: "Loading Config".to_string(),
+                details: "Reading configuration from ~/.igloo-config.toml".to_string(),
             });
             let contents: String = fs::read_to_string(config_file_location)
                 .expect("Something went wrong reading the config file ");

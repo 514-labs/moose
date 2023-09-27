@@ -1,147 +1,111 @@
-use std::io::{self, Write, Error};
+use std::io::{self, Write, Error, ErrorKind};
 
-use crate::{cli::{CommandTerminal, display::{show_message, MessageType, Message}}, utilities::docker};
+use crate::{cli::{display::Message, DebugStatus}, utilities::docker};
+
+use super::{Routine, RoutineSuccess, RoutineFailure};
 
 
-pub fn validate_clickhouse_run(term: &mut CommandTerminal, debug: bool) -> Result<(), Error> {
-    let output = docker::filter_list_containers("clickhousedb-1");
+pub struct ValidateClickhouseRun(DebugStatus);
+impl ValidateClickhouseRun {
+    pub fn new(debug: DebugStatus) -> Self {
+        Self(debug)
+    }
+}
+impl Routine for ValidateClickhouseRun {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let output = docker::filter_list_containers("clickhousedb-1").map_err(|err| {
+            RoutineFailure::new(Message::new("Failed".to_string(), "to validate clickhouse docker container".to_string()), err)
+        })?;
 
-    match output {
-        Ok(o) => {
-            if debug {
-                io::stdout().write_all(&o.stdout).unwrap();
-            }
-            let output = String::from_utf8(o.stdout).unwrap();
-            if output.contains("clickhouse") {
-                show_message(term, MessageType::Success, Message {
-                    action: "Successfully",
-                    details: "validated clickhouse docker container",
-                });
-                Ok(())
-            } else {
-                show_message(term,
-                    MessageType::Error,
-                    Message {
-                        action: "Failed",
-                        details: "to validate clickhouse docker container",
-                    },
-                );
-                return Err(io::Error::new(io::ErrorKind::Other, "Failed to validate clickhouse container exists"))
-            }
-        },
-        Err(err) => {
-            show_message(term,
-                    MessageType::Error,
-                    Message {
-                        action: "Failed",
-                        details: "to validate red panda docker container",
-                    },
-                );
-            Err(err)
-        },
+        if self.0 == DebugStatus::Debug {
+            io::stdout().write_all(&output.stdout).unwrap();
+        }
+
+        let string_output = String::from_utf8(output.stdout).unwrap();
+
+        if string_output.contains("clickhouse") {
+            Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "validated clickhouse docker container".to_string())))
+        } else {
+            Err(RoutineFailure::new(Message::new("Failed".to_string(), "to validate clickhouse docker container".to_string()), Error::new(ErrorKind::Other, "Failed to validate clickhouse container exists")))
+        }
     }
 }
 
-
-
-pub fn validate_red_panda_run(term: &mut CommandTerminal, debug: bool) -> Result<(), Error> {
-    let output = docker::filter_list_containers("redpanda-1");
-
-    match output {
-        Ok(o) => {
-            if debug {
-                io::stdout().write_all(&o.stdout).unwrap();
-            }
-            let output = String::from_utf8(o.stdout).unwrap();
-            if output.contains("redpanda-1") {
-                show_message(term, MessageType::Success, Message {
-                    action: "Successfully",
-                    details: "validated red panda docker container",
-                });
-                Ok(())
-            } else {
-                show_message(term,
-                    MessageType::Error,
-                    Message {
-                        action: "Failed",
-                        details: "to validate red panda docker container",
-                    },
-                );
-                return Err(io::Error::new(io::ErrorKind::Other, "Failed to validate red panda container exists"))
-            }
-        },
-        Err(err) => {
-            show_message(term,
-                    MessageType::Error,
-                    Message {
-                        action: "Failed",
-                        details: "to validate red panda docker container",
-                    },
-                );
-            Err(err)
-        },
+pub struct ValidateRedPandaRun(DebugStatus);
+impl ValidateRedPandaRun {
+    pub fn new(debug: DebugStatus) -> Self {
+        Self(debug)
     }
 }
 
-pub fn validate_panda_house_network(term: &mut CommandTerminal, panda_network: &str , debug: bool) -> Result<(), Error> {
-    let output = docker::network_list();
+impl Routine for ValidateRedPandaRun {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let output = docker::filter_list_containers("redpanda-1").map_err(|err| {
+            RoutineFailure::new(Message::new("Failed".to_string(), "to validate red panda docker container".to_string()), err)
+        })?;
 
-    match output {
-        Ok(o) => {
-            if debug {
-                io::stdout().write_all(&o.stdout).unwrap();
-            }
-            let output = String::from_utf8(o.stdout).unwrap();
-            if output.contains(panda_network) {
-                println!("Successfully validated docker {panda_network} network");
-                show_message(term, MessageType::Success, Message {
-                    action: "Successfully",
-                    details: format!("validated {panda_network} docker network").as_str(),
-                });
-                Ok(())
-            } else {
-                show_message(
-                    term,
-                    MessageType::Error,
-                    Message {
-                        action: "Failed",
-                        details: format!("to validate {panda_network} docker network").as_str(),
-                    },
-                );
-                Err(io::Error::new(io::ErrorKind::Other, format!("Failed to validate {panda_network} network")))
-            }
-        },
-        Err(err) => {
-            println!("Failed to validate {panda_network} network");
-            Err(err)
-        },
-        
+        if self.0 == DebugStatus::Debug {
+            io::stdout().write_all(&output.stdout).unwrap();
+        }
+
+        let string_output = String::from_utf8(output.stdout).unwrap();
+
+        if string_output.contains("redpanda-1") {
+            Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "validated red panda docker container".to_string())))
+        } else {
+            Err(RoutineFailure::new(Message::new("Failed".to_string(), "to validate red panda docker container".to_string()), Error::new(ErrorKind::Other, "Failed to validate red panda container exists")))
+        }
     }
 }
 
-pub fn validate_red_panda_cluster(term: &mut CommandTerminal, debug: bool) -> Result<(),  Error> {
-    let output = docker::run_rpk_cluster_info();
+pub struct ValidatePandaHouseNetwork(DebugStatus);
+impl ValidatePandaHouseNetwork {
+    pub fn new(debug: DebugStatus) -> Self {
+        Self(debug)
+    }
+}
+impl Routine for ValidatePandaHouseNetwork {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let output = docker::network_list().map_err(|err| {
+            RoutineFailure::new(Message::new("Failed".to_string(), "to validate panda house docker network".to_string()), err)
+        })?;
 
-    match output {
-        Ok(o) => {
-            if debug {
-                io::stdout().write_all(&o.stdout).unwrap();
-            }
-            let output = String::from_utf8(o.stdout).unwrap();
-            if output.contains("redpanda-1") {
-                println!("Successfully validated red panda cluster");
-                show_message(term, MessageType::Success, Message {
-                    action: "Successfully",
-                    details: "validated red panda cluster",
-                });
-                Ok(())
-            } else {
-                Err(io::Error::new(io::ErrorKind::Other, "Failed to validate red panda cluster"))
-            }
-        },
-        Err(err) => {
-            println!("Failed to validate redpanda cluster");
-            Err(err)
-        },
+        if self.0 == DebugStatus::Debug {
+            io::stdout().write_all(&output.stdout).unwrap();
+        }
+
+        let string_output = String::from_utf8(output.stdout).unwrap();
+
+        if string_output.contains("panda_house") {
+            Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "validated panda house docker network".to_string())))
+        } else {
+            Err(RoutineFailure::new(Message::new("Failed".to_string(), "to validate panda house docker network".to_string()), Error::new(ErrorKind::Other, "Failed to validate panda house network exists")))
+        }
+    }
+}
+
+pub struct ValidateRedPandaCluster(DebugStatus);
+impl ValidateRedPandaCluster {
+    pub fn new(debug: DebugStatus) -> Self {
+        Self(debug)
+    }
+}
+impl Routine for ValidateRedPandaCluster {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let output = docker::run_rpk_cluster_info().map_err(|err| {
+            RoutineFailure::new(Message::new("Failed".to_string(), "to validate red panda cluster".to_string()), err)
+        })?;
+
+        if self.0 == DebugStatus::Debug {
+            io::stdout().write_all(&output.stdout).unwrap();
+        }
+
+        let string_output = String::from_utf8(output.stdout).unwrap();
+
+        if string_output.contains("redpanda-1") {
+            Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "validated red panda cluster".to_string())))
+        } else {
+            Err(RoutineFailure::new(Message::new("Failed".to_string(), "to validate red panda cluster".to_string()), Error::new(ErrorKind::Other, "Failed to validate red panda cluster")))
+        }
     }
 }

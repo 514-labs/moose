@@ -1,62 +1,51 @@
-use std::io::{Error, ErrorKind};
+use crate::{utilities::docker, cli::display::Message};
+use super::{Routine, RoutineSuccess, RoutineFailure, RunMode};
 
-use crate::{cli::{CommandTerminal, display::{show_message, MessageType, Message}}, utilities::docker};
-
-
-pub fn spin_down(term: &mut CommandTerminal) -> Result<(), Error> {
-    stop_red_panda_container(term)?;
-    stop_clickhouse_container(term)?;
-    Ok(())
+pub struct StopLocalInfrastructure {
+    run_mode: RunMode,
+}
+impl StopLocalInfrastructure {
+    pub fn new(run_mode: RunMode) -> Self {
+        Self {run_mode}
+    }
+}
+impl Routine for StopLocalInfrastructure {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let run_mode = self.run_mode.clone();
+        StopRedPandaContainer::new().run(run_mode.clone())?;
+        StopClickhouseContainer::new().run(run_mode.clone())?;
+        Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "stopped local infrastructure".to_string())))
+    }
 }
 
-pub fn stop_clickhouse_container(term: &mut CommandTerminal) -> Result<(), Error> {
-    let output = docker::stop_container("clickhousedb-1");
+pub struct StopRedPandaContainer;
+impl StopRedPandaContainer {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Routine for StopRedPandaContainer {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        docker::stop_container("redpanda-1").map_err(|err| {
+            RoutineFailure::new(Message::new("Failed".to_string(), "to stop redpanda container".to_string()), err)
+        })?;
 
-    match output {
-        Ok(_) => {
-            show_message(
-                term,
-                MessageType::Success,
-                Message {
-                    action: "Successfully",
-                    details: "stopped clickhouse container",
-                },
-            );
-            Ok(())
-        },
-        Err(_) => {show_message(
-            term,
-            MessageType::Error,
-            Message {
-                action: "Failed",
-                details: "to stop clickhouse container",
-            });
-            Err(Error::new(ErrorKind::Other, "Failed to stop clickhouse container"))
-    }}
+        Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "stopped redpanda container".to_string())))
+    }
 }
 
-pub fn stop_red_panda_container(term: &mut CommandTerminal) -> Result<(), Error> {
-    let output = docker::stop_container("redpanda-1");
+pub struct StopClickhouseContainer;
+impl StopClickhouseContainer {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Routine for StopClickhouseContainer {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        docker::stop_container("clickhousedb-1").map_err(|err| {
+            RoutineFailure::new(Message::new("Failed".to_string(), "to stop clickhouse container".to_string()), err)
+        })?;
 
-    match output {
-        Ok(_) => {
-            show_message(
-                term,
-                MessageType::Success,
-                Message {
-                    action: "Successfully",
-                    details: "stopped redpanda container",
-                },
-            );
-            Ok(())
-        },
-        Err(_) => {show_message(
-            term,
-            MessageType::Error,
-            Message {
-                action: "Failed",
-                details: "to stop redpanda container",
-            });
-            Err(Error::new(ErrorKind::Other, "Failed to stop redpanda container"))
-    }}
+        Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "stopped clickhouse container".to_string())))
+    }
 }

@@ -1,99 +1,132 @@
 use std::{io::{Error, ErrorKind}, path::PathBuf, fs};
 
-use crate::{cli::{CommandTerminal, display::{show_message, MessageType, Message}}, framework::{self, directories::{create_igloo_directory, get_igloo_directory, create_app_directories}}, infrastructure::PANDA_NETWORK, utilities::docker};
+use crate::{cli::display::Message, framework::directories::{create_igloo_directory, get_igloo_directory, create_app_directories}, utilities::docker, infrastructure::PANDA_NETWORK};
 
-use super::{Routine, RoutineFailure, RoutineSuccess};
+use super::{Routine, RoutineFailure, RoutineSuccess, RunMode};
 
 
-struct InitializeProject;
+pub struct InitializeProject {
+    run_mode: RunMode,
+}
+impl InitializeProject {
+    pub fn new(run_mode: RunMode) -> Self {
+        Self {run_mode}
+    }
+}
 impl Routine for InitializeProject {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        CreateIglooTempDirectoryTree.run_silent()?;
+        let run_mode = self.run_mode.clone();
+        CreateIglooTempDirectoryTree::new(run_mode.clone()).run(run_mode.clone())?;
         let igloo_dir = get_igloo_directory().map_err(|err| {
-            RoutineFailure::new(Message::new("Failed", "to create .igloo directory. Check permissions or contact us`"), err)
+            RoutineFailure::new(Message::new("Failed".to_string(), "to create .igloo directory. Check permissions or contact us`".to_string()), err)
         })?;
         create_app_directories().map_err(|err| {
-            RoutineFailure::new(Message::new("Failed", "to create app directory. Check permissions or contact us`"), err)
+            RoutineFailure::new(Message::new("Failed".to_string(), "to create app directory. Check permissions or contact us`".to_string()), err)
         })?;
-        CreateDockerNetwork::new(PANDA_NETWORK).run_silent()?;
-        CreateVolumes::new(igloo_dir).run_silent()?;
+        CreateDockerNetwork::new(PANDA_NETWORK).run(run_mode.clone())?;
+        CreateVolumes::new(igloo_dir, run_mode.clone()).run(run_mode.clone())?;
 
-        Ok(RoutineSuccess::success(Message::new("Created", "Igloo directory with Red Panda and Clickhouse mount volumes")))
+        Ok(RoutineSuccess::success(Message::new("Created".to_string(), "Igloo directory with Red Panda and Clickhouse mount volumes".to_string())))
     }
 }
 
 
-struct CreateVolumes {
+pub struct CreateVolumes {
     igloo_dir: PathBuf,
+    run_mode: RunMode,
 }
 
 impl CreateVolumes {
-    fn new(igloo_dir: PathBuf) -> Self {
-        Self { igloo_dir }
+    fn new(igloo_dir: PathBuf, run_mode: RunMode) -> Self {
+        Self { igloo_dir, run_mode }
     }
 }
 
 impl Routine for CreateVolumes {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        CreateRedPandaMountVolume::new(self.igloo_dir).run_silent()?;
-        CreateClickhouseMountVolume::new(self.igloo_dir).run_silent()?;
+        let igloo_dir = self.igloo_dir.clone();
+        let run_mode = self.run_mode.clone();
+        CreateRedPandaMountVolume::new(igloo_dir.clone()).run(run_mode.clone())?;
+        CreateClickhouseMountVolume::new(igloo_dir.clone()).run(run_mode.clone())?;
 
-        Ok(RoutineSuccess::success(Message::new("Created", "Red Panda and Clickhouse mount volumes")))
+        Ok(RoutineSuccess::success(Message::new("Created".to_string(), "Red Panda and Clickhouse mount volumes".to_string())))
     }
 }
 
 
-struct ValidateMountVolumes<'a> {
-    igloo_dir: &'a PathBuf,
+pub struct ValidateMountVolumes {
+    igloo_dir: PathBuf,
 }
-impl Routine for ValidateMountVolumes<'_> {
+impl ValidateMountVolumes {
+    pub fn new(igloo_dir: PathBuf) -> Self {
+        Self { igloo_dir }
+    }
+}
+impl Routine for ValidateMountVolumes {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let panda_house = self.igloo_dir.join(".panda_house").exists();
         let clickhouse = self.igloo_dir.join(".clickhouse").exists();
 
         if panda_house && clickhouse {
-            Ok(RoutineSuccess::success(Message::new("Valid", "Red Panda and Clickhouse mount volumes exist.")))
+            Ok(RoutineSuccess::success(Message::new("Valid".to_string(), "Red Panda and Clickhouse mount volumes exist.".to_string())))
         } else {
             let message = format!("redpanda: {panda_house}, clickhouse: {clickhouse}");
-            Err(RoutineFailure::new(Message::new("Mount volume status", &message), Error::new(ErrorKind::NotFound, message)))
+            Err(RoutineFailure::new(Message::new("Mount volume status".to_string(), message.clone()), Error::new(ErrorKind::NotFound, message)))
         }
     }
 }
 
 
-struct CreateIglooTempDirectoryTree;
+pub struct CreateIglooTempDirectoryTree {
+    run_mode: RunMode,
+}
+impl CreateIglooTempDirectoryTree {
+    pub fn new(run_mode: RunMode) -> Self {
+        Self { run_mode }
+    }
+}
 impl Routine for CreateIglooTempDirectoryTree {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let igloo_dir = create_igloo_directory().map_err(|err| {
-            RoutineFailure::new(Message::new("Failed", "to create .igloo directory. Check permissions or contact us`"), err)
+            RoutineFailure::new(Message::new("Failed".to_string(), "to create .igloo directory. Check permissions or contact us`".to_string()), err)
         })?;
+        let run_mode = self.run_mode.clone();
 
-        CreateTempDataVolumes.run_silent()?;
+        CreateTempDataVolumes::new(run_mode.clone()).run(run_mode.clone())?;
+        ValidateMountVolumes::new(igloo_dir).run(run_mode.clone())?;
 
-        // Add validate data volume routine here
-
-        Ok(RoutineSuccess::success(Message::new("Created", "Igloo directory with Red Panda and Clickhouse mount volumes")))
+        Ok(RoutineSuccess::success(Message::new("Created".to_string(), "Igloo directory with Red Panda and Clickhouse mount volumes".to_string())))
     }
 }
 
 
-struct CreateTempDataVolumes;
+pub struct CreateTempDataVolumes{
+    run_mode: RunMode,
+}
+
+impl CreateTempDataVolumes {
+    fn new(run_mode: RunMode) -> Self {
+        Self { run_mode }
+    }
+}
 impl Routine for CreateTempDataVolumes {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         if let Ok(igloo_dir) = get_igloo_directory() {
-            CreateVolumes::new(igloo_dir).run_silent()?;
-            Ok(RoutineSuccess::success(Message::new("Created", "Red Panda and Clickhouse mount volumes")))
+            let run_mode = self.run_mode.clone();
+            CreateVolumes::new(igloo_dir, run_mode.clone()).run(run_mode.clone())?;
+            Ok(RoutineSuccess::success(Message::new("Created".to_string(), "Red Panda and Clickhouse mount volumes".to_string())))
         } else {
             let igloo_dir = create_igloo_directory().map_err(|err| {
-                RoutineFailure::new(Message::new("Failed", "to create .igloo directory. Check permissions or contact us`"), err)
+                RoutineFailure::new(Message::new("Failed".to_string(), "to create .igloo directory. Check permissions or contact us`".to_string()), err)
             })?;
-            CreateVolumes::new(igloo_dir).run_silent()?;
-            Ok(RoutineSuccess::success(Message::new("Created", "Red Panda and Clickhouse mount volumes")))
+            let run_mode = self.run_mode.clone();
+            CreateVolumes::new(igloo_dir, run_mode.clone()).run(run_mode.clone())?;
+            Ok(RoutineSuccess::success(Message::new("Created".to_string(), "Red Panda and Clickhouse mount volumes".to_string())))
         }
     }}
 
 
-struct CreateRedPandaMountVolume {
+pub struct CreateRedPandaMountVolume {
     igloo_dir: PathBuf,
 }
 
@@ -107,15 +140,15 @@ impl Routine for CreateRedPandaMountVolume {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let mount_dir = self.igloo_dir.join(".panda_house");
         match fs::create_dir_all(mount_dir.clone()) {
-            Ok(_) => Ok(RoutineSuccess::success(Message::new("Created", "Red Panda mount volume"))),
+            Ok(_) => Ok(RoutineSuccess::success(Message::new("Created".to_string(), "Red Panda mount volume".to_string()))),
             Err(err) => {
-                Err(RoutineFailure::new(Message::new("Failed", &format!("to create Red Panda mount volume in {}", mount_dir.display())), err))
+                Err(RoutineFailure::new(Message::new("Failed".to_string(), format!("to create Red Panda mount volume in {}", mount_dir.display())), err))
             }
         }
     }
 }
 
-struct CreateClickhouseMountVolume {
+pub struct CreateClickhouseMountVolume {
     igloo_dir: PathBuf,
 }
 
@@ -131,43 +164,43 @@ impl Routine for CreateClickhouseMountVolume {
         
         // fs::create_dir_all(&server_config_path)?;
         fs::create_dir_all(&mount_dir).map_err(|err| {
-            RoutineFailure::new(Message::new("Failed", &format!("to create Clickhouse mount volume {}", mount_dir.display())), err)
+            RoutineFailure::new(Message::new("Failed".to_string(), format!("to create Clickhouse mount volume {}", mount_dir.display())), err)
         })?;
         fs::create_dir_all(&mount_dir.join("data")).map_err(|err| {
-            RoutineFailure::new(Message::new("Failed", &format!("to create Clickhouse data mount volume in {}", mount_dir.display())), err)
+            RoutineFailure::new(Message::new("Failed".to_string(), format!("to create Clickhouse data mount volume in {}", mount_dir.display())), err)
         })?;
         fs::create_dir_all(&mount_dir.join("logs")).map_err(|err| {
-            RoutineFailure::new(Message::new("Failed", &format!("to create Clickhouse logs mount volume in {}", mount_dir.display())), err)
+            RoutineFailure::new(Message::new("Failed".to_string(), format!("to create Clickhouse logs mount volume in {}", mount_dir.display())), err)
         })?;
         // database::create_server_config_file(&server_config_path)?;
         // database::create_user_config_file(&user_config_path)?;
         // database::create_init_script(&scripts_path)?;
 
-        Ok(RoutineSuccess::success(Message::new("Created", "Clickhouse mount volumes")))
+        Ok(RoutineSuccess::success(Message::new("Created".to_string(), "Clickhouse mount volumes".to_string())))
     }
         
 }
 
-struct CreateDockerNetwork<'a> {
-    network_name: &'a str,
+pub struct CreateDockerNetwork {
+    network_name: &'static str,
 }
 
-impl CreateDockerNetwork<'_> {
-    fn new(network_name: &str) -> Self {
+impl CreateDockerNetwork {
+    fn new(network_name: &'static str) -> Self {
         Self { network_name }
     }
 }
 
-impl Routine for CreateDockerNetwork<'_> {
+impl Routine for CreateDockerNetwork {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let output = docker::create_network(&self.network_name);
 
         match output {
             Ok(_) => {
-                Ok(RoutineSuccess::success(Message::new("Created", &format!("docker network {}", &self.network_name))))
+                Ok(RoutineSuccess::success(Message::new("Created".to_string(), format!("docker network {}", &self.network_name))))
             },
             Err(err) => {
-                Err(RoutineFailure::new(Message::new("Failed", &format!("to create docker network {}", &self.network_name)), err))
+                Err(RoutineFailure::new(Message::new("Failed".to_string(), format!("to create docker network {}", &self.network_name)), err))
             },
         }
     }

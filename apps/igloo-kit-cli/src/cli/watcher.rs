@@ -1,4 +1,4 @@
-use std::{sync::Arc, collections::HashMap, path::PathBuf, io::{Error, ErrorKind}};
+use std::{sync::{Arc, RwLock}, collections::HashMap, path::PathBuf, io::{Error, ErrorKind}, rc::Rc};
 
 use notify::{RecommendedWatcher, Config, RecursiveMode, Watcher, event::ModifyKind};
 use tokio::sync::Mutex;
@@ -120,14 +120,14 @@ async fn watch(path: PathBuf, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMet
     Ok(())
 }
 
-pub fn start_file_watcher(term: &mut CommandTerminal, route_table:  Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {
+pub fn start_file_watcher(term: Arc<RwLock<CommandTerminal>>, route_table:  Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {
 
     let path = get_app_directory()?;
 
     show_message(term, MessageType::Info, {
         Message {
-            action: "Watching",
-            details: &format!("{:?}", path.display()),
+            action: "Watching".to_string(),
+            details: format!("{:?}", path.display()),
         }
     });
 

@@ -1,5 +1,5 @@
 use std::io::{self, Write};
-use crate::{cli::{display::Message, DebugStatus}, framework::directories, utilities::docker::{self}, infrastructure::{olap::clickhouse::ClickhouseConfig, stream::redpanda::RedpandaConfig}};
+use crate::{cli::{display::Message, DebugStatus}, framework::directories, utilities::docker::{self}, infrastructure::{ stream::redpanda::RedpandaConfig, olap::clickhouse::config::ClickhouseConfig}};
 use super::{RoutineFailure, RoutineSuccess, Routine, initialize::ValidateMountVolumes, validate::{ValidateRedPandaRun, ValidateClickhouseRun, ValidatePandaHouseNetwork}};
 
 pub struct RunLocalInfratructure {

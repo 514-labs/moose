@@ -1,7 +1,7 @@
 use std::{process::Command, path::PathBuf};
 
 
-use crate::infrastructure::{PANDA_NETWORK, olap::clickhouse::ClickhouseConfig};
+use crate::infrastructure::{PANDA_NETWORK, olap::clickhouse::config::ClickhouseConfig,};
 
 fn network_command(command: &str, network_name: &str) -> std::io::Result<std::process::Output>{
     Command::new("docker")
@@ -93,7 +93,7 @@ pub fn run_red_panda(igloo_dir:  PathBuf) -> std::io::Result<std::process::Outpu
 pub fn run_clickhouse(igloo_dir: PathBuf, config: ClickhouseConfig) -> std::io::Result<std::process::Output> {
     let data_mount_dir = igloo_dir.join(".clickhouse/data");
     let logs_mount_dir = igloo_dir.join(".clickhouse/logs");
-    let server_config_mount_dir = igloo_dir.join(".clickhouse/configs/server");
+    // let server_config_mount_dir = igloo_dir.join(".clickhouse/configs/server");
     let user_config_mount_dir = igloo_dir.join(".clickhouse/configs/users");
     let scripts_config_mount_dir = igloo_dir.join(".clickhouse/configs/scripts");
     

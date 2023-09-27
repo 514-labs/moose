@@ -10,8 +10,9 @@ use std::sync::{RwLock, Arc};
 use commands::Commands;
 use config::{read_config, Config};
 use clap::Parser;
-use crate::{framework::{AddableObjects, directories::get_igloo_directory}, infrastructure::{olap::clickhouse::ClickhouseConfig, PANDA_NETWORK, stream::redpanda::RedpandaConfig}};
-use self::{commands::AddArgs, display::{MessageType, Message, show_message, CommandTerminal}, routines::{initialize::InitializeProject, validate::ValidateRedPandaCluster, RoutineController, RunMode, start::RunLocalInfratructure, Routine, stop::StopLocalInfrastructure, clean::CleanProject}};
+use crate::{framework::{AddableObjects, directories::get_igloo_directory}, infrastructure::{PANDA_NETWORK, stream::redpanda::RedpandaConfig, olap::clickhouse::config::ClickhouseConfig}};
+use self::{commands::AddArgs, display::{MessageType, Message, show_message, CommandTerminal}, routines::{
+    initialize::InitializeProject, validate::ValidateRedPandaCluster, RoutineController, RunMode, start::RunLocalInfratructure,  stop::StopLocalInfrastructure, clean::CleanProject}};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -96,10 +97,10 @@ async fn top_command_handler(term: Arc<RwLock<CommandTerminal>>, config: Config,
             Some(Commands::Dev{}) => {
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit { term };
-                controller.add_routine(Box::new(RunLocalInfratructure::new(DebugStatus::Debug, clickhouse_config.clone(), redpanda_config.clone())));
-                controller.add_routine(Box::new(ValidateRedPandaCluster::new(DebugStatus::Debug)));
+                controller.add_routine(Box::new(RunLocalInfratructure::new(debug, clickhouse_config.clone(), redpanda_config.clone())));
+                controller.add_routine(Box::new(ValidateRedPandaCluster::new(debug)));
                 controller.run_routines(run_mode);
-                routines::start_development_mode(clickhouse_config.clone(), redpanda_config.clone()).await;      
+                let _ = routines::start_development_mode(clickhouse_config.clone(), redpanda_config.clone()).await;      
 
             }
             Some(Commands::Update{}) => {

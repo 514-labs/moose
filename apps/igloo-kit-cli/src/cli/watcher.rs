@@ -1,9 +1,9 @@
-use std::{sync::{Arc, RwLock}, collections::HashMap, path::PathBuf, io::{Error, ErrorKind}, rc::Rc};
+use std::{sync::{Arc, RwLock}, collections::HashMap, path::PathBuf, io::{Error, ErrorKind}};
 
 use notify::{RecommendedWatcher, Config, RecursiveMode, Watcher, event::ModifyKind};
 use tokio::sync::Mutex;
 
-use crate::{framework::{directories::get_app_directory, schema::{parse_schema_file, OpsTable}}, cli::display::show_message, infrastructure::{stream, olap::{self, clickhouse::{ConfiguredClient, ClickhouseConfig}}}};
+use crate::{framework::{directories::get_app_directory, schema::{parse_schema_file, OpsTable}}, cli::display::show_message, infrastructure::{stream, olap::{self, clickhouse::{ConfiguredClient, mapper, ClickhouseTable, config::ClickhouseConfig}}}};
 
 use super::{CommandTerminal, display::{MessageType, Message}};
 
@@ -59,7 +59,7 @@ pub struct RouteMeta {
 async fn create_table_and_topics_from_dataframe_route(route: &PathBuf, project_dir: PathBuf, route_table: &mut tokio::sync::MutexGuard<'_, HashMap::<PathBuf, RouteMeta>>, configured_client: &ConfiguredClient) -> Result<(), Error> {
     if let Some(ext) = route.extension() {
             if ext == "prisma" && route.as_path().to_str().unwrap().contains("dataframes")  {
-                let tables = parse_schema_file(route.clone())
+                let tables = parse_schema_file::<ClickhouseTable>(route.clone(), mapper::std_table_to_clickhouse_table)
                     .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to parse schema file. Error {}", e)))?;
     
                 for table in tables {

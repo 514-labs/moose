@@ -76,6 +76,7 @@
 //! - Explore using a RWLock instead of a Mutex to ensure concurrent reads without locks
 //! - Simplify the API for the user when using RunMode::Explicit since it creates lifetime and ownership issues
 //! - Enable creating nested routines and cascading down the RunMode to show messages to the user
+//! - Organize routines better in the file hiearchy
 //! 
 
 
@@ -86,7 +87,7 @@ use std::{io::Error, path::PathBuf};
 
 use tokio::sync::Mutex;
 
-use crate::infrastructure::olap::clickhouse::ClickhouseConfig;
+use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use super::watcher::RouteMeta;
 use super::{watcher, local_webserver};

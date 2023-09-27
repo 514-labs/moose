@@ -1,6 +1,5 @@
-use crate::infrastructure::olap::clickhouse::{ClickhouseColumnType, ClickhouseInt, ClickhouseFloat, ClickhouseTableType, ClickhouseTable, ClickhouseColumn};
+use crate::{infrastructure::olap::clickhouse::{ClickhouseColumnType, ClickhouseInt, ClickhouseFloat, ClickhouseTableType, ClickhouseTable, ClickhouseColumn}, framework::schema::{TableType, ColumnType, Table}};
 
-use super::{ColumnType, TableType, Table};
 
 pub fn clickhouse_table_type_mapper(table_type: TableType) -> ClickhouseTableType {
     match table_type {

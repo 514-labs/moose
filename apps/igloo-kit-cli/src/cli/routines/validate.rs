@@ -1,9 +1,6 @@
 use std::io::{self, Write, Error, ErrorKind};
-
 use crate::{cli::{display::Message, DebugStatus}, utilities::docker};
-
 use super::{Routine, RoutineSuccess, RoutineFailure};
-
 
 pub struct ValidateClickhouseRun(DebugStatus);
 impl ValidateClickhouseRun {

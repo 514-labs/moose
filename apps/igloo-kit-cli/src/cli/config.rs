@@ -5,6 +5,18 @@ use std::sync::{RwLock, Arc};
 use home::home_dir;
 use super::CommandTerminal;
 use super::display::{show_message, MessageType, Message};
+
+/// # Config
+/// Module to handle reading the config file from the user's home directory and configuring the CLI
+/// 
+/// ## Suggested Improvements
+/// - add clickhouse and redpanda config to the config file
+/// - add a config file option to the CLI
+/// - add a config file generator to the CLI
+/// - add a config file validation and error handling
+/// 
+
+
 const CONFIG_FILE: &str = ".igloo-config.toml";
 
 #[derive(Deserialize, Debug)]

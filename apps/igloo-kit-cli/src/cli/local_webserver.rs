@@ -24,14 +24,14 @@ use std::sync::Arc;
 use super::CommandTerminal;
 
 
-async fn handler(req: Request<Body>, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, configured_producer: Arc<Mutex<ConfiguredProducer>>) -> Result<Response<String>, hyper::http::Error> {
+async fn handler(req: Request<Body>, term: Arc<RwLock<CommandTerminal>>, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, configured_producer: Arc<Mutex<ConfiguredProducer>>) -> Result<Response<String>, hyper::http::Error> {
     let route_prefix = PathBuf::from("/");
     let route = PathBuf::from(req.uri().path()).strip_prefix(route_prefix).unwrap().to_path_buf().clone();
     
 
     // Check if route is in the route table
     if route_table.lock().await.contains_key(&route) {
-        let term = Arc::new(RwLock::new(CommandTerminal::new()));
+
         match req.method() {
             &hyper::Method::POST => {
                 show_message( term.clone(), MessageType::Info, Message {
@@ -99,10 +99,11 @@ pub async fn start_webserver(term: Arc<RwLock<CommandTerminal>>, route_table: Ar
     let main_service = make_service_fn(move |_| {
         let route_table = route_table.clone();
         let producer = producer.clone();
+        let term = term.clone();
 
         async {
             Ok::<_, Infallible>(service_fn(move |req| {
-                handler(req, route_table.clone(), producer.clone())
+                handler(req, term.clone(), route_table.clone(), producer.clone())
             }))
         }
     });
@@ -111,9 +112,6 @@ pub async fn start_webserver(term: Arc<RwLock<CommandTerminal>>, route_table: Ar
 
     // Run this server for... forever!
     if let Err(e) = server.await {
-        show_message(term, MessageType::Error, Message {
-            action: "Error".to_string(),
-            details: e.to_string(),
-        });
+        println!("server error: {}", e)
     }
 }

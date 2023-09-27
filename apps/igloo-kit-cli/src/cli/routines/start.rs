@@ -1,8 +1,6 @@
 use std::io::{self, Write};
-
 use crate::{cli::{display::Message, DebugStatus}, framework::directories, utilities::docker::{self}, infrastructure::{olap::clickhouse::ClickhouseConfig, stream::redpanda::RedpandaConfig}};
-
-use super::{RoutineFailure, RoutineSuccess, Routine, initialize::ValidateMountVolumes, validate::{ValidateRedPandaRun, ValidateClickhouseRun}};
+use super::{RoutineFailure, RoutineSuccess, Routine, initialize::ValidateMountVolumes, validate::{ValidateRedPandaRun, ValidateClickhouseRun, ValidatePandaHouseNetwork}};
 
 pub struct RunLocalInfratructure {
     debug: DebugStatus,
@@ -22,6 +20,7 @@ impl Routine for RunLocalInfratructure {
         })?;
         // Model this after the `spin_up` function in `apps/igloo-kit-cli/src/cli/routines/start.rs` but use routines instead
         ValidateMountVolumes::new(igloo_dir).run_silent()?;
+        ValidatePandaHouseNetwork::new(self.debug).run_silent()?;
         RunRedPandaContainer::new(self.debug, self.redpanda_config).run_silent()?;
         ValidateRedPandaRun::new(self.debug).run_silent()?;
         RunClickhouseContainer::new(self.debug, self.clickhouse_config.clone()).run_silent()?;

@@ -11,7 +11,7 @@ use commands::Commands;
 use config::{read_config, Config};
 use clap::Parser;
 use crate::{framework::{AddableObjects, directories::get_igloo_directory}, infrastructure::{olap::clickhouse::ClickhouseConfig, PANDA_NETWORK, stream::redpanda::RedpandaConfig}};
-use self::{commands::AddArgs, display::{MessageType, Message, show_message}, routines::{initialize::InitializeProject, validate::ValidateRedPandaCluster, RoutineController, RunMode, start::RunLocalInfratructure, Routine, stop::StopLocalInfrastructure, clean::CleanProject}};
+use self::{commands::AddArgs, display::{MessageType, Message, show_message, CommandTerminal}, routines::{initialize::InitializeProject, validate::ValidateRedPandaCluster, RoutineController, RunMode, start::RunLocalInfratructure, Routine, stop::StopLocalInfrastructure, clean::CleanProject}};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -58,11 +58,8 @@ fn add_handler(add_arg: &AddArgs) {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct CommandTerminal {
-    term: console::Term,
-    counter: usize,
-}
+
+
 
 #[derive(PartialEq, Clone, Copy)]
 pub enum DebugStatus {
@@ -70,24 +67,6 @@ pub enum DebugStatus {
     Silent,
 }
 
-impl CommandTerminal {
-    pub fn new() -> CommandTerminal {
-        CommandTerminal {
-            term: console::Term::stdout(),
-            counter: 0,
-        }
-    }
-
-    pub fn clear(&mut self) {
-        self.term.clear_last_lines(self.counter).expect("failed to clear the terminal");
-        self.counter = 0;
-    }
-
-    pub fn clear_with_delay(&mut self, delay_milli: u64) {
-        std::thread::sleep(std::time::Duration::from_millis(delay_milli));
-        self.clear();
-    }
-}
 
 async fn top_command_handler(term: Arc<RwLock<CommandTerminal>>, config: Config, commands: &Option<Commands>, debug: bool) {
     let clickhouse_config = ClickhouseConfig {

@@ -5,7 +5,7 @@ mod watcher;
 mod local_webserver;
 mod display;
 
-use std::{sync::{RwLock, Arc}, rc::Rc};
+use std::sync::{RwLock, Arc};
 
 use commands::Commands;
 use config::{read_config, Config};
@@ -67,8 +67,7 @@ pub enum DebugStatus {
     Silent,
 }
 
-
-async fn top_command_handler(term: Arc<RwLock<CommandTerminal>>, config: Config, commands: &Option<Commands>, debug: bool) {
+async fn top_command_handler(term: Arc<RwLock<CommandTerminal>>, config: Config, commands: &Option<Commands>, debug: DebugStatus) {
     let clickhouse_config = ClickhouseConfig {
         db_name: "local".to_string(),
         user: "panda".to_string(),
@@ -108,13 +107,18 @@ async fn top_command_handler(term: Arc<RwLock<CommandTerminal>>, config: Config,
                 todo!("Will update the project's underlying infrascructure based on any added objects")
             }
             Some(Commands::Stop{}) => {
+                let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit { term };
-                StopLocalInfrastructure::new(run_mode.clone()).run(run_mode);
+                controller.add_routine(Box::new(StopLocalInfrastructure::new(run_mode.clone())));
+                controller.run_routines(run_mode);
             }
             Some(Commands::Clean{}) => {
                 let run_mode = RunMode::Explicit { term };
                 let igloo_dir = get_igloo_directory().expect("Nothing to clean, no .igloo directory found");
-                CleanProject::new(igloo_dir,run_mode.clone()).run(run_mode);
+                let mut controller = RoutineController::new();
+                controller.add_routine(Box::new(CleanProject::new(igloo_dir,run_mode.clone())));
+                controller.run_routines(run_mode);
+                
 
             }
             Some(Commands::Add(add_args)) => {
@@ -135,6 +139,7 @@ pub async fn cli_run() {
     let term = Arc::new(RwLock::new(CommandTerminal::new()));
     let config = read_config(term.clone());
     let cli = Cli::parse();
+    let debug_status = if cli.debug { DebugStatus::Debug } else { DebugStatus::Silent };
 
-    top_command_handler(term.clone(), config, &cli.command, cli.debug).await
+    top_command_handler(term.clone(), config, &cli.command, debug_status).await
 }

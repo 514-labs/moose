@@ -44,6 +44,14 @@ pub struct Message<'a> {
     pub action: &'a str,
     pub details: &'a str,
 }
+impl Message<'_> {
+    pub fn new<'a>(action: &'a str, details: &'a str) -> Message<'a> {
+        Message {
+            action,
+            details,
+        }
+    }
+}
 
 // Prints a action & message to the terminal and increments the terminal line count by 1. 
 // Actions should be things like "Adding", "Removing", "Updating", or a count of things to be done like [1/3].

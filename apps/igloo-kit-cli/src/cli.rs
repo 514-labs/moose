@@ -74,8 +74,8 @@ impl CommandTerminal {
         self.counter = 0;
     }
 
-    pub fn clear_with_delay(&mut self, delay: u64) {
-        std::thread::sleep(std::time::Duration::from_millis(delay));
+    pub fn clear_with_delay(&mut self, delay_milli: u64) {
+        std::thread::sleep(std::time::Duration::from_millis(delay_milli));
         self.clear();
     }
 }
@@ -119,11 +119,11 @@ async fn top_command_handler(term: &mut CommandTerminal, config: Config, command
                 let igloo_dir = get_igloo_directory().expect("Nothing to clean, no .igloo directory found");
                 routines::clean_project(term, &igloo_dir);
 
-                }
-                Some(Commands::Add(add_args)) => {
-                    add_handler(add_args);   
-                }
-                None => {}
+            }
+            Some(Commands::Add(add_args)) => {
+                add_handler(add_args);   
+            }
+            None => {}
         }
     } else {
         show_message(term, MessageType::Banner, Message {

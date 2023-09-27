@@ -1,8 +1,10 @@
 use std::io::{self, Write, Error};
 
-use crate::{cli::{CommandTerminal, display::{show_message, MessageType, Message}}, framework::directories, utilities::docker::{self, run_clickhouse}, infrastructure::{olap::clickhouse::ClickhouseConfig, PANDA_NETWORK}};
+use crate::{cli::{CommandTerminal, display::{show_message, MessageType, Message}}, framework::directories, utilities::docker::{self, run_clickhouse}, infrastructure::{olap::clickhouse::ClickhouseConfig, PANDA_NETWORK, stream::redpanda::RedpandaConfig}};
 
-use super::{initialize::{create_docker_network, validate_mount_volumes}, validate::{validate_panda_house_network, validate_red_panda_run, validate_clickhouse_run}};
+use super::{RoutineFailure, RoutineSuccess};
+
+use {super::initialize::{create_docker_network, validate_mount_volumes}, super::validate::{validate_panda_house_network, validate_red_panda_run, validate_clickhouse_run}, super::Routine, super::DebugStatus};
 
 
 pub fn run_red_panda_docker_container(term: &mut CommandTerminal, debug: bool) -> Result<(), io::Error> {
@@ -59,6 +61,66 @@ pub fn run_ch_docker_container(term: &mut CommandTerminal, clickhouse_config: Cl
         },
     }
 }
+
+pub struct RunLocalInfratructure {
+    debug: DebugStatus,
+    clickhouse_config: ClickhouseConfig,
+    redpanda_config: RedpandaConfig,
+}
+impl Routine for RunLocalInfratructure {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let igloo_dir = directories::get_igloo_directory().map_err(|err| {
+            RoutineFailure::new(Message::new("Failed", "to get .igloo directory. Try running `igloo init`"), err)
+        })?;
+        // Model this after the `spin_up` function in `apps/igloo-kit-cli/src/cli/routines/start.rs` but use routines instead
+    }
+}
+
+    
+pub struct RunRedPandaContainer { debug: DebugStatus, redpanda_config: RedpandaConfig }
+impl Routine for RunRedPandaContainer {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let igloo_dir = directories::get_igloo_directory().map_err(|err| {
+            RoutineFailure::new(Message::new("Failed", "to get .igloo directory. Try running `igloo init`"), err)
+        })?;
+
+        let output = docker::run_red_panda(igloo_dir).map_err(|err| {
+            RoutineFailure::new(Message::new("Failed", "to run redpanda container"), err)
+        })?;
+
+        if self.debug == DebugStatus::Debug {
+            println!("Debugging red panda container run");
+            println!("{}", &output.status);
+            io::stdout().write_all(&output.stdout).unwrap();
+        } 
+        
+        Ok(RoutineSuccess::success(Message::new("Successfully", "ran redpanda container")))
+    }
+}
+
+pub struct RunClickhouseContainer{ debug: DebugStatus, clickhouse_config: ClickhouseConfig }
+impl Routine for RunClickhouseContainer {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let igloo_dir = directories::get_igloo_directory().map_err(|err| {
+            RoutineFailure::new(Message::new("Failed", "to get .igloo directory. Try running `igloo init`"), err)
+        })?;
+
+        let output = docker::run_clickhouse(igloo_dir, self.clickhouse_config).map_err(|err| {
+            RoutineFailure::new(Message::new("Failed", "to run clickhouse container"), err)
+        })?;
+
+        if self.debug == DebugStatus::Debug {
+            println!("Debugging clickhouse container run");
+            io::stdout().write_all(&output.stdout).unwrap();
+        } 
+        
+        Ok(RoutineSuccess::success(Message::new("Successfully", "ran clickhouse container")))
+    }
+}
+    
+
+
+
 
 pub fn spin_up(term: &mut CommandTerminal, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {
     let igloo_dir = match directories::get_igloo_directory() {

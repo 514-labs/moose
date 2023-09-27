@@ -20,6 +20,87 @@ pub mod start;
 pub mod stop;
 pub mod validate;
 
+#[derive(PartialEq)]
+enum DebugStatus {
+    Debug,
+    Silent,
+}
+
+pub struct RoutineSuccess<'a> {
+    message: Message<'a>,
+    message_type: MessageType,
+}
+
+// Implement success and info contructors and a new constructor that lets the user choose which type of message to display
+impl RoutineSuccess<'_> {
+    pub fn new<'a>(message: Message<'a>, message_type: MessageType) -> Self {
+        Self { message, message_type }
+    }
+
+    pub fn success<'a>(message: Message<'a>) -> Self {
+        Self { message, message_type: MessageType::Success }
+    }
+
+    pub fn info<'a>(message: Message<'a>) -> Self {
+        Self { message, message_type: MessageType::Info }
+    }
+}
+
+
+pub struct RoutineFailure<'a> {
+    message: Message<'a>,
+    message_type: MessageType,
+    error: Error,
+}
+impl RoutineFailure<'_> {
+    pub fn new<'a>(message: Message<'a>, error: Error) -> Self {
+        Self { message, message_type: MessageType::Error, error }
+    }
+}
+
+
+/// Routines are a collection of operations that are run in sequence.
+pub trait Routine {
+    // Runs the routine and returns a result without displaying any messages
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure>;
+
+    // Runs the routine and displays messages to the user
+    fn run_explicit(&self, term: &mut CommandTerminal) -> Result<RoutineSuccess, RoutineFailure> {
+        match self.run_silent() {
+            Ok(success) => {
+                show_message(term, success.message_type, success.message);
+                Ok(success)
+            },
+            Err(failure) => {
+                show_message(term, failure.message_type, failure.message);
+                Err(failure)
+            },  
+        }
+    }
+}
+
+struct RoutineController {
+    routines: Vec<Box<dyn Routine>>,
+}
+
+impl RoutineController {
+    fn new() -> Self {
+        Self { routines: vec![] }
+    }
+
+    fn add_routine(&mut self, routine: Box<dyn Routine>) {
+        self.routines.push(routine);
+    }
+
+    fn run_silent_routines(&self, term: &mut CommandTerminal) -> Vec<Result<RoutineSuccess, RoutineFailure>> {
+        self.routines.iter().map(|routine| routine.run_silent()).collect()
+    }
+
+    fn run_explicit_routines(&self, term: &mut CommandTerminal) -> Vec<Result<RoutineSuccess, RoutineFailure>> {
+        self.routines.iter().map(|routine| routine.run_explicit(term)).collect()
+    }
+}
+
 
 // Routines run a sequence of operations and give feedback to the user. 
 pub fn start_containers(term: &mut CommandTerminal, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {

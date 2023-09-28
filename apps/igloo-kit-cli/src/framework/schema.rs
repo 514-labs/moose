@@ -4,10 +4,6 @@ use diagnostics::Diagnostics;
 
 use schema_ast::{parse_schema, ast::{SchemaAst, FieldArity, Top, Field, WithName, Attribute}};
 
-use crate::infrastructure::db::clickhouse::ClickhouseTable;
-mod clickhouse_mappers;
-pub mod templates;
-
 #[derive(Debug, Clone)]
 pub enum ParsingError {
     FileNotFound {path: PathBuf},
@@ -22,7 +18,7 @@ pub struct UnsupportedDataTypeError {
 
 
 // TODO: Make the parse schema file a variable and pass it into the function
-pub fn parse_schema_file(path: PathBuf) -> Result<Vec<ClickhouseTable>, ParsingError>  {
+pub fn parse_schema_file<T>(path: PathBuf, mapper: fn (db_name: String, table: Table) -> T) -> Result<Vec<T>, ParsingError>  {
     let schema_file = std::fs::read_to_string(path.clone()).map_err(
         |_| ParsingError::FileNotFound {path: path.clone()}
     )?;
@@ -33,7 +29,7 @@ pub fn parse_schema_file(path: PathBuf) -> Result<Vec<ClickhouseTable>, ParsingE
 
     let tables = ast_mapper(ast)?
         .into_iter().map(|table| {
-            clickhouse_mappers::std_table_to_clickhouse_table("local".to_string(), table)
+            mapper("local".to_string(), table)
         }).collect();
 
     Ok(tables)

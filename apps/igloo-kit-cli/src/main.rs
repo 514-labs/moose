@@ -1,6 +1,7 @@
 pub mod infrastructure;
 mod cli;
 pub mod framework;
+pub mod utilities;
 
 // This is not Aysnc because we need to have sentry instrument
 // before Tokio takes over the main thread.

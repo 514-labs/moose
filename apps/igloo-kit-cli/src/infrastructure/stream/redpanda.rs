@@ -1,7 +1,7 @@
 use std::io::{self, Write};
 use rdkafka::{ClientConfig, producer::FutureProducer};
 
-use crate::infrastructure::{stream::rpk, docker};
+use crate::{infrastructure::stream::rpk, utilities::docker};
 
 // TODO: We need to configure the application based on the current project directory structure to ensure that we catch changes made outside of development mode
 

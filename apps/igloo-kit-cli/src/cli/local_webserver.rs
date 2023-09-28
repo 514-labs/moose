@@ -10,31 +10,33 @@ use tokio::sync::Mutex;
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::path::PathBuf;
+use std::sync::RwLock;
 use std::time::Duration;
 use hyper::service::make_service_fn;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
-
-use super::Message;
-use super::MessageType;
-use super::user_messages::show_message;
+use super::display::Message;
+use super::display::MessageType;
+use super::display::show_message;
 use super::watcher::RouteMeta;
 use std::sync::Arc;
 use super::CommandTerminal;
 
 
-async fn handler(req: Request<Body>, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, configured_producer: Arc<Mutex<ConfiguredProducer>>) -> Result<Response<String>, hyper::http::Error> {
+async fn handler(req: Request<Body>, term: Arc<RwLock<CommandTerminal>>, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, configured_producer: Arc<Mutex<ConfiguredProducer>>) -> Result<Response<String>, hyper::http::Error> {
     let route_prefix = PathBuf::from("/");
-    let route = PathBuf::from(req.uri().path()).strip_prefix(route_prefix).unwrap().to_path_buf();
+    let route = PathBuf::from(req.uri().path()).strip_prefix(route_prefix).unwrap().to_path_buf().clone();
+    
 
     // Check if route is in the route table
     if route_table.lock().await.contains_key(&route) {
+
         match req.method() {
             &hyper::Method::POST => {
-                show_message( &mut CommandTerminal::new(), MessageType::Info, Message {
-                    action: "POST",
-                    details: route.to_str().unwrap(),
+                show_message( term.clone(), MessageType::Info, Message {
+                    action: "POST".to_string(),
+                    details: route.to_str().unwrap().to_string().to_string(),
                 });
 
                 let bytes = hyper::body::to_bytes(req.into_body()).await.unwrap();
@@ -51,9 +53,9 @@ async fn handler(req: Request<Body>, route_table: Arc<Mutex<HashMap::<PathBuf, R
 
                 match res {
                     Ok(_) => {
-                        show_message( &mut CommandTerminal::new(), MessageType::Success, Message {
-                            action: "SUCCESS",
-                            details: route.to_str().unwrap(),
+                        show_message( term.clone(), MessageType::Success, Message {
+                            action: "SUCCESS".to_string(),
+                            details: route.to_str().unwrap().to_string(),
                         });
                         return Ok(Response::new("SUCCESS".to_string()))
                     },
@@ -64,9 +66,9 @@ async fn handler(req: Request<Body>, route_table: Arc<Mutex<HashMap::<PathBuf, R
                 }
             },
             _ => {
-                show_message( &mut CommandTerminal::new(), MessageType::Info, Message {
-                    action: "UNKNOWN METHOD",
-                    details: route.to_str().unwrap(),
+                show_message( term.clone(), MessageType::Info, Message {
+                    action: "UNKNOWN METHOD".to_string(),
+                    details: route.to_str().unwrap().to_string(),
                 });
                 // If not, return a 404
                 return Ok(Response::builder()
@@ -83,38 +85,33 @@ async fn handler(req: Request<Body>, route_table: Arc<Mutex<HashMap::<PathBuf, R
 }
 
 // TODO Figure out how to stop the web server
-pub async fn start_webserver(term: &mut CommandTerminal, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, redpanda_config: RedpandaConfig) {
+pub async fn start_webserver(term: Arc<RwLock<CommandTerminal>>, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, redpanda_config: RedpandaConfig) {
 
     let addr = ([127, 0, 0, 1], 4000).into();
 
-    show_message( term, MessageType::Info, Message {
-        action: "starting",
-        details: " server on port 4000",
+    show_message( term.clone(), MessageType::Info, Message {
+        action: "starting".to_string(),
+        details: " server on port 4000".to_string(),
     });
-
-    
 
     let producer = Arc::new(Mutex::new(redpanda::create_producer(redpanda_config)));
 
     let main_service = make_service_fn(move |_| {
         let route_table = route_table.clone();
         let producer = producer.clone();
+        let term = term.clone();
 
         async {
             Ok::<_, Infallible>(service_fn(move |req| {
-                handler(req, route_table.clone(), producer.clone())
+                handler(req, term.clone(), route_table.clone(), producer.clone())
             }))
         }
-
     });
 
     let server = Server::bind(&addr).serve(main_service);
 
     // Run this server for... forever!
     if let Err(e) = server.await {
-        show_message(term, MessageType::Error, Message {
-            action: "Error",
-            details: e.to_string().as_str(),
-        });
+        println!("server error: {}", e)
     }
 }

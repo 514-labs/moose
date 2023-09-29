@@ -59,7 +59,7 @@ export const CodeBlockCTA = () => {
 
   return (
     <div className="flex flex-col lg:flex-row cursor-pointer" ref={wrapperRef}>
-      <div className="flex flex-row items-center justify-start bg-white/10 w-full h-13 ">
+      <div className="flex flex-row items-center justify-center sm:justify-start bg-white/10 w-full h-13 ">
         <span className="font-mono py-3 px-6 text-typography-secondary " ref={outboundRef}> npx create-igloo-app</span>
         <span className="font-mono py-3 px-6 text-typography-primary hidden" ref={inboundRef}> copied to clipboard</span>
       </div>

@@ -6,6 +6,7 @@ import Head from 'next/head';
 import Script from 'next/script';
 
 import { Analytics } from '@vercel/analytics/react';
+import { Nav } from "./Nav";
 
 // Font files can be colocated inside of `app`
 const monoFont = localFont({
@@ -34,6 +35,7 @@ export default function RootLayout({
          heap.load("1717463140");`}
       </Script>
       <body className="h-full font-sans font-regular">
+        <Nav />
         {children}
         <Analytics />
       </body>

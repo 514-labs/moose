@@ -5,6 +5,9 @@ import { CTASection } from "./CTASection";
 import React from "react";
 import { BackgroundImage } from "./BackgroundImage";
 import { Nav } from "./Nav";
+import { CodeBlockCTA } from "./CodeBlockCTA";
+import { RightsComponent } from "./RightsComponent";
+import { LogoComponent } from "./LogoComponent";
 
 export const metadata: Metadata = {
   title: "Igloo | Build Data-intensive apps with ease",
@@ -13,25 +16,84 @@ export const metadata: Metadata = {
   }
 };
 
+
+const features = [
+  {
+    heading: "Local first",
+    description: "Build your application locally, and deploy to the cloud when you're ready. No need to configure a cloud environment to get started.",
+  },
+  {
+    heading: "Languages you love",
+    description: "Write your application in Typescript or Python, build your data models in prisma and your database queries in SQL.",
+  },
+  // {
+  //   heading: "Realtime ready",
+  //   description: "Build realtime data-intensive applications with ease. Igloo comes with realtime support out of the box. ",
+  // },
+  {
+    heading: "Easy to test",
+    description: "Write tests for your application using the languages you love. Igloo supports your favorite frameworks in Typescript and Python.",
+  },
+  {
+    heading: "Zero configuration",
+    description: "Get up and running with your application in minutes. Igloo comes with a powerful CLI to help you automate development tasks.",
+  },
+  {
+    heading: "Abstracted complexity",
+    description: "Igloos abstractions help you focus on building your end-to-end application without worrying about the underlying infrastructure.",
+  }
+]
+
+
 export default function Home() {
   return (
-    <div className="h-full w-screen flex grow-1">
-      <BackgroundImage />
-      <Nav />
-      <div className="z-10 flex grow">
-        <div className="flex flex-col xl:justify-center xl:content-center grow">
-          <div className="py-20 flex grow md:flex-nowrap flex-wrap flex-col text-typography-primary content-center justify-center relative">
-            <div className="flex md:flex-nowrap flex-wrap flex-row text-typography-primary content-center justify-center z-10 sm:p-8 p-4 shrink-0 min-h-[50%]">
-              <HeroTextMainComponent />
-              <HeroTextSubComponent />
+    <div className="h-full">
+      <div className=" pt-32 w-screen flex grow-1 flex-col md:pt-16 md:h-full">
+        <div className="h-full flex flex-col md:flex-row flex-grow md:justify-center md:items-center">
+          <div className="text-white flex-col px-5 md:flex-1 ">
+            <div className="px-5 text-5xl sm:text-6xl 2xl:text-9xl">
+              The application framework for the modern data stack
             </div>
-            <div className="visibile absolute h-full w-full sm:invisible bg-[url('/bg_igloo_image_person_02_4x.webp')] bg-bottom bg-cover brightness-50 "/>
+            <div className="flex flex-col grow md:flex-1 p-5 space-y-5">
+              <div className="text-typography-primary my-3">
+                Igloo is a batteries-included framework for building data-intensive applications using typescript & SQL. It comes with a powerful CLI to help automate development tasks, an intuitive abstraction to help you standardize your data-intensive applications, and a streamlined local development workflow.
+              </div>
+              <div>
+                <CodeBlockCTA />
+              </div>
+            </div>
           </div>
-          <div>
-            < CTASection />
-          </div> 
+          <div className="flex flex-auto md:flex-1 flex-row md:h-full w-full md:justify-center md:items-center py-10">
+            <div className="flex w-full relative h-96 md:h-1/2 md:overflow-hidden ">
+              <BackgroundImage />
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="text-white px-10 text-5xl sm:text-6xl 2xl:text-9xl py-10">
+        Decades of framework best practices, brought to the modern data stack
+      </div>
+      <div className="flex flex-col  px-10 py-5 space-y-5 lg:space-y-0 lg:flex-row lg:space-x-5">
+        {features.map((feature, index) => {
+          return (
+            <div key={index} className="flex flex-col md:flex-row flex-1">
+              <div className="flex flex-col md:flex-1">
+                <div className="text-action-primary text-2xl">
+                  {feature.heading}
+                </div>
+                <div className="text-typography-primary my-3">
+                  {feature.description}
+                </div>
+              </div>
+              
+            </div>
+          )
+        })}
+      </div>
+      <div className="flex sm:flex-row content-center grow flex-col gap-y-6 mt-6 px-10 py-10 sm:py-5">
+        <RightsComponent />
+        <LogoComponent />
       </div>
     </div>
-  </div>
   );
 }

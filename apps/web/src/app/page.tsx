@@ -1,10 +1,6 @@
 import { Metadata } from "next";
-import { HeroTextMainComponent } from "./HeroTextMainComponent";
-import { HeroTextSubComponent } from "./HeroTextSubComponent";
-import { CTASection } from "./CTASection";
 import React from "react";
 import { BackgroundImage } from "./BackgroundImage";
-import { Nav } from "./Nav";
 import { CodeBlockCTA } from "./CodeBlockCTA";
 import { RightsComponent } from "./RightsComponent";
 import { LogoComponent } from "./LogoComponent";
@@ -24,7 +20,7 @@ const features = [
   },
   {
     heading: "Languages you love",
-    description: "Write your application in Typescript or Python, build your data models in prisma and your database queries in SQL.",
+    description: "Write your application in Typescript or Python, build your data models in Prisma and use SQL to interact with your OLAP database.",
   },
   // {
   //   heading: "Realtime ready",
@@ -52,7 +48,7 @@ export default function Home() {
         <div className="h-full flex flex-col md:flex-row flex-grow md:justify-center md:items-center">
           <div className="text-white flex-col px-5 md:flex-1 ">
             <div className="px-5 text-5xl sm:text-6xl 2xl:text-9xl">
-              The application framework for the modern data stack
+              the application framework for the modern data stack
             </div>
             <div className="flex flex-col grow md:flex-1 p-5 space-y-5">
               <div className="text-typography-primary my-3">
@@ -71,7 +67,7 @@ export default function Home() {
         </div>
       </div>
       <div className="text-white px-10 text-5xl sm:text-6xl 2xl:text-9xl py-10">
-        Decades of framework best practices, brought to the modern data stack
+        decades of framework best practices, brought to the modern data stack
       </div>
       <div className="flex flex-col  px-10 py-5 space-y-5 lg:space-y-0 lg:flex-row lg:space-x-5">
         {features.map((feature, index) => {

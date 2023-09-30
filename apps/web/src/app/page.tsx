@@ -17,7 +17,7 @@ export const metadata: Metadata = {
 const features = [
   {
     heading: "Local first",
-    description: "Build your application locally, and deploy to the cloud when you're ready. No need to configure a cloud environment to get started.",
+    description: "Build your application locally, and deploy to the cloud when you&apos;re ready. No need to configure a cloud environment to get started.",
   },
   {
     heading: "Languages you love",
@@ -45,11 +45,11 @@ const features = [
 const stack = [
   {
     "name": "End-to-end on your laptop",
-    "description": "We've composed igloo from best-in-class data infrastructure to enable you to run your entire stack on your local machine. No more configuring connections to start building.",
+    "description": "We&apos;ve composed igloo from best-in-class data infrastructure to enable you to run your entire stack on your local machine. No more configuring connections to start building.",
   },
   {
     "name": "Best-in-class streaming",
-    "description": "We've created a highly performant and scalable data capture stack that scales with your data volumes and is lightweight enough to run locally. Rust ingestion points & native support for Redpanda.",
+    "description": "We&apos;ve created a highly performant and scalable data capture stack that scales with your data volumes and is lightweight enough to run locally. Rust ingestion points & native support for Redpanda.",
   },
   {
     "name": "Modern analyics storage",
@@ -57,7 +57,7 @@ const stack = [
   },
   {
     "name": "Intuitive data modeling",
-    "description": "We love working with Prisma in when building web apps. We've brought their modeling language to the modern data stack to help you create intuitive and readable data models.",
+    "description": "We love working with Prisma in when building web apps. We&apos;ve brought their modeling language to the modern data stack to help you create intuitive and readable data models.",
   },
 ]
 
@@ -114,7 +114,7 @@ export default function Home() {
         <div className="h-full flex flex-col md:flex-row flex-grow md:justify-center md:items-center">
           <div className="flex flex-auto md:flex-1 flex-row md:h-full w-full md:justify-center md:items-center py-10">
             <div className="flex w-full relative md:overflow-hidden ">
-              <Image  src={'/laptop.png'} className="" width={1024} height={1024} alt="developer in action" />
+              <Image  src={"/laptop.png"} className="" width={1024} height={1024} alt="developer in action" />
             </div>
           </div>
           <div className="text-white flex-col px-10 md:flex-1 space-y-5">
@@ -148,7 +148,7 @@ export default function Home() {
             </div>
             <div className="flex flex-col grow md:flex-1 p-5 space-y-5">
               <div className="text-typography-primary my-3">
-                Start building your data-intensive application today. Igloo is free to use and open source. If you'd like to contribute, check out our github or join our discord.
+                Start building your data-intensive application today. Igloo is free to use and open source. If you&apos;d like to contribute, check out our github or join our discord.
               </div>
               <div>
                 <CodeBlockCTA />
@@ -157,7 +157,7 @@ export default function Home() {
           </div>
           <div className="flex flex-auto md:flex-1 flex-row  w-full md:justify-center md:items-center py-10">
             <div className="flex w-full relative md:overflow-hidden ">
-              <Image  src={'/hoodie.png'} className="" width={1024} height={1024} alt="developer in action" />
+              <Image  src={"/hoodie.png"} className="" width={1024} height={1024} alt="developer in action" />
             </div>
           </div>
         </div>

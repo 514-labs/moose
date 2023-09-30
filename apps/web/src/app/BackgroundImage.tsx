@@ -23,6 +23,6 @@ export const BackgroundImage = () => {
 
   return (
     // <div className="bg-[url('/bg_igloo_image_person_02_4x.webp')] brightness-50 flex h-full" ref={imageRef} />
-    <Image  src={'/bg_igloo_image_person_02_4x.webp'} className="invisible object-cover" fill alt="developer in action" sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" ref={imageRef}/>
+    <Image  src={'/hero.png'} className="invisible" width={1024} height={1024} alt="developer in action" ref={imageRef}/>
   );
 };

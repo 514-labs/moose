@@ -1,17 +1,32 @@
-## Setup
+# Contributing
+
+## Ways to contribute
+
+You can help the project several ways
+
+- Give us feedback on your experience with the ecosystem through [Discord](https://discord.gg/WX3V3K4QCc) or [Github Discussions](https://github.com/514-labs/igloo-stack/discussions)
+- Report bugs through [Github Issues](https://github.com/514-labs/igloo-stack/issues)
+- Propose changes by [opening an RFD](./rfd/0001/README.mdx)
+- Give you perspective on an existing opened RFD
+- Contribute to the documentation
+- Contribute features and functionality by picking up issues. A good way to start is to pick up issues marked as `Good First Issue`
+
+## Code Contributions
+
+### Setup
 
 Requirements:
-* `Rust`: We recommend using [rustup](https://rustup.rs/) to manage your rust toolchain
-* `Node`: We recommend using [nvm](https://github.com/nvm-sh/nvm#nvmrc) to manage your node versions
-* [`Pnpm`](https://pnpm.io/installation)
-* [`TurboRepo`](https://turbo.build/repo/docs/installing): `pnpm install turbo --global`
 
+- `Rust`: We recommend using [rustup](https://rustup.rs/) to manage your rust toolchain
+- `Node`: We recommend using [nvm](https://github.com/nvm-sh/nvm#nvmrc) to manage your node versions
+- [`Pnpm`](https://pnpm.io/installation)
+- [`TurboRepo`](https://turbo.build/repo/docs/installing): `pnpm install turbo --global`
 
 ```bash
 $ pnpm install
 ```
 
-## Build 
+### Build
 
 ```bash
 turbo build

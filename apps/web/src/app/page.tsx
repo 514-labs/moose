@@ -44,8 +44,8 @@ const features = [
 
 const stack = [
   {
-    "name": "Fully intergrated locally",
-    "description": "We've composed igloo from best-in-class data infrastructure to enable you to run your entire stack on your local machine. No more configuring connections to start building.",
+    "name": "Fully integrated data stack",
+    "description": "We've composed igloo from best-in-class data infrastructure to enable you to run your entire modern data stack on your local machine. No more configuring connections to start building.",
   },
   {
     "name": "Best-in-class streaming",

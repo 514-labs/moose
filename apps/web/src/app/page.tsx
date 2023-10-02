@@ -4,7 +4,6 @@ import { AnimateImage } from "./AnimateImage";
 import { CodeBlockCTA } from "./CodeBlockCTA";
 import { RightsComponent } from "./RightsComponent";
 import { LogoComponent } from "./LogoComponent";
-import Image from "next/image";
 
 export const metadata: Metadata = {
   title: "Igloo | Build Data-intensive apps with ease",

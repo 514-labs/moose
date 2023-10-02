@@ -3,17 +3,16 @@ import { useLayoutEffect } from "react";
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
 import React from "react";
-import { Fragment } from 'react'
-import { Disclosure, Menu, Transition } from '@headlessui/react'
-import { Bars3Icon, BellIcon, XMarkIcon } from '@heroicons/react/24/outline'
+import { Disclosure } from '@headlessui/react'
+import { Bars3Icon,  XMarkIcon } from '@heroicons/react/24/outline'
 
 gsap.registerPlugin(SplitText);
 
 const navigation = [
-  { name: 'Docs', href: '#' },
-  { name: 'Github', href: '#' },
-  { name: 'Discord', href: '#' },
-  { name: 'Join us', href: '#' },
+  // { name: "Docs", href: "#" },
+  { name: "Github", href: "https://github.com/514-labs/igloo-stack" },
+  { name: "Discord", href: "https://discord.gg/WX3V3K4QCc" },
+  // { name: "Join us", href: "#" },
 ]
 
 export const Nav = () => {
@@ -40,7 +39,6 @@ export const Nav = () => {
     // }
   }, []);
 
-
   return (
     <Disclosure as="nav" className="fixed w-full z-50">
       {({ open }) => (
@@ -49,19 +47,23 @@ export const Nav = () => {
             <div className="flex h-16 justify-between">
               <div className="flex flex-grow">
                 <div className="flex flex-shrink-0 grow items-center text-white">
-                  igloo
+                  <a  href="/">
+                    igloo
+                  </a>
                 </div>
+                
                 <div className="hidden sm:ml-6 sm:flex sm:flex-grow">
                   {/* Current: "border-action-primary text-gray-900", Default: "border-transparent text-gray-500  hover:text-action-primary" */}
                   {
                     navigation.map((item) => (
+                      <div className="flex-grow flex items-center justify-end text-white  " key={item.name}>
                       <a
-                        key={item.name}
                         href={item.href}
-                        className="flex-grow flex items-center justify-end text-white  hover:text-action-primary"
+                        className="hover:text-action-primary" 
                       >
                         {item.name}
                       </a>
+                      </div>
                     ))
                   }
                 </div>

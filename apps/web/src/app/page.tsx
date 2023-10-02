@@ -1,6 +1,6 @@
 import { Metadata } from "next";
 import React from "react";
-import { BackgroundImage } from "./BackgroundImage";
+import { AnimateImage } from "./AnimateImage";
 import { CodeBlockCTA } from "./CodeBlockCTA";
 import { RightsComponent } from "./RightsComponent";
 import { LogoComponent } from "./LogoComponent";
@@ -44,12 +44,12 @@ const features = [
 
 const stack = [
   {
-    "name": "End-to-end on your laptop",
-    "description": "We&apos;ve composed igloo from best-in-class data infrastructure to enable you to run your entire stack on your local machine. No more configuring connections to start building.",
+    "name": "Fully intergrated locally",
+    "description": "We've composed igloo from best-in-class data infrastructure to enable you to run your entire stack on your local machine. No more configuring connections to start building.",
   },
   {
     "name": "Best-in-class streaming",
-    "description": "We&apos;ve created a highly performant and scalable data capture stack that scales with your data volumes and is lightweight enough to run locally. Rust ingestion points & native support for Redpanda.",
+    "description": "We've created a highly performant and scalable data capture stack that scales with your data volumes and is lightweight enough to run locally. Rust ingestion points & native support for Redpanda.",
   },
   {
     "name": "Modern analyics storage",
@@ -57,7 +57,7 @@ const stack = [
   },
   {
     "name": "Intuitive data modeling",
-    "description": "We love working with Prisma in when building web apps. We&apos;ve brought their modeling language to the modern data stack to help you create intuitive and readable data models.",
+    "description": "We love working with Prisma in when building web apps. We've brought their modeling language to the modern data stack to help you create intuitive and readable data models.",
   },
 ]
 
@@ -73,7 +73,7 @@ export default function Home() {
             </div>
             <div className="flex flex-col grow md:flex-1 p-5 space-y-5">
               <div className="text-typography-primary my-3">
-                Igloo is a batteries-included framework for building data-intensive applications using typescript & SQL. It comes with a powerful CLI to help automate development tasks, an intuitive abstraction to help you build quickly, and a streamlined local development workflow.
+                Igloo is a batteries-included framework for building data-intensive applications using Typescript or Python, and SQL. It comes with a powerful CLI to help automate development tasks, an intuitive abstraction to help you build quickly, and a streamlined local development workflow.
               </div>
               <div>
                 <CodeBlockCTA />
@@ -82,7 +82,7 @@ export default function Home() {
           </div>
           <div className="flex flex-auto md:flex-1 flex-row md:h-full w-full md:justify-center md:items-center py-10">
             <div className="flex w-full relative md:overflow-hidden ">
-              <BackgroundImage />
+              <AnimateImage src="/hero.png" width={1024} height={1024}alt="developer lifestyle" priority/>
             </div>
           </div>
         </div>
@@ -114,7 +114,7 @@ export default function Home() {
         <div className="h-full flex flex-col md:flex-row flex-grow md:justify-center md:items-center">
           <div className="flex flex-auto md:flex-1 flex-row md:h-full w-full md:justify-center md:items-center py-10">
             <div className="flex w-full relative md:overflow-hidden ">
-              <Image  src={"/laptop.png"} className="" width={1024} height={1024} alt="developer in action" />
+              <AnimateImage src="/laptop.png" width={1024} height={1024}alt="developer in action" />
             </div>
           </div>
           <div className="text-white flex-col px-10 md:flex-1 space-y-5">
@@ -157,7 +157,7 @@ export default function Home() {
           </div>
           <div className="flex flex-auto md:flex-1 flex-row  w-full md:justify-center md:items-center py-10">
             <div className="flex w-full relative md:overflow-hidden ">
-              <Image  src={"/hoodie.png"} className="" width={1024} height={1024} alt="developer in action" />
+              <AnimateImage src="/hoodie.png" width={1024} height={1024}alt="developer in style" />
             </div>
           </div>
         </div>

@@ -75,25 +75,22 @@ export const FeatureSection = () => {
         opacity: 0,
         ease: "quint",
         stagger: { each: 0.03 },
-        });
+      });
 
       tl.from(splitTextFeatureHeadingChars,{
         y: "-20",
         opacity: 0,
         ease: "quint",
         stagger: { each: 0.03 },
-        },0);
+      },0);
 
       tl.from(
-        splitTextLines,
-        {
+        splitTextLines, {
           y: "-10",
           opacity: 0,
           ease: "quint",
           stagger: { each: 0.03 },
-        },
-        1
-      )
+      },1)
 
     });
     return () => {

@@ -20,7 +20,11 @@ export const AnimateImage = ({src, width, height, alt, priority}: AnimateImagePr
       
       gsap.from(imageRef.current,{
         opacity: 0,
-        duration: 2,
+        y:100,
+        duration: 1,
+        ease: "quint",
+        delay: 1.2,
+        stagger: 0.05
       });
     });
     return () => {

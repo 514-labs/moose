@@ -12,7 +12,7 @@ export const CodeBlockCTA = () => {
   useLayoutEffect(() => {
     let ctx = gsap.context(() => {
 
-      // const tl = gsap.timeline();
+      const tl = gsap.timeline();
       const splitTextOutbound = new SplitText(outboundRef.current, { type: "words, chars" });
       const splitTextCharsOutbount = splitTextOutbound.chars;
 
@@ -51,14 +51,27 @@ export const CodeBlockCTA = () => {
 
         );
       });
+
+      gsap.set(wrapperRef.current, { visibility: "visible" });
+
+
+      tl.from(wrapperRef.current, {
+        opacity:0,
+        y: 30,
+        duration: 1,
+        delay: 0.7,
+        stagger: 0.04
+      })
     });
+
+
     return () => {
       ctx.revert();
     };
   }, []);
 
   return (
-    <div className="flex flex-col lg:flex-row cursor-pointer" ref={wrapperRef}>
+    <div className="flex flex-col lg:flex-row cursor-pointer invisible" ref={wrapperRef}>
       <div className="flex flex-row items-center justify-center sm:justify-start bg-white/10 w-full h-13 ">
         <span className="font-mono py-3 px-6 text-typography-secondary " ref={outboundRef}> npx create-igloo-app</span>
         <span className="font-mono py-3 px-6 text-typography-primary hidden" ref={inboundRef}> copied to clipboard</span>

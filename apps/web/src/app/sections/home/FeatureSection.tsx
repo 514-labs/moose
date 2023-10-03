@@ -67,8 +67,6 @@ export const FeatureSection = () => {
       const splitTextByLines = new SplitText(featureDescriptionRef.current, {type: "lines"});
       const splitTextLines = splitTextByLines.lines;
 
-      // gsap.set(descriptionRef.current, {visibility: "visible"})
-
       gsap.from(splitTextHeadingChars,{
         scrollTrigger: {
           onEnter: () => {
@@ -104,8 +102,6 @@ export const FeatureSection = () => {
       ctx.revert();
     }
   }, []);
-
-
 
   return (
     <div className="my-24">

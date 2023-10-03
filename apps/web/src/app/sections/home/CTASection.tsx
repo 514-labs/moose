@@ -11,7 +11,7 @@ export const ctaSection = {
 
 export const CTASection = () => {
   return (
-    <div className=" pt-32 w-screen flex grow-1 flex-col my-24">
+    <div className="w-screen flex grow-1 flex-col">
       <div className="h-full flex flex-col md:flex-row flex-grow md:justify-center md:items-center">
         <div className="text-white flex-col px-5 md:flex-1 ">
           <div className="px-5 text-5xl sm:text-6xl 2xl:text-9xl">
@@ -26,7 +26,7 @@ export const CTASection = () => {
             </div>
           </div>
         </div>
-        <div className="flex flex-auto md:flex-1 flex-row  w-full md:justify-center md:items-center">
+        <div className="flex flex-auto md:flex-1 flex-row  w-full md:justify-center md:items-center mt-24">
           <div className="flex w-full relative md:overflow-hidden ">
             <AnimateImage src="/hoodie.png" width={1024} height={1024} alt="developer in style" />
           </div>

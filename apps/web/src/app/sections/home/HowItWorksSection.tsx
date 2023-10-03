@@ -31,7 +31,7 @@ const howItWorksSection = {
 
 export const HowItWorksSection = () => {
   return (
-    <div className="my-24">
+    <div>
       <div className="text-white px-10 text-5xl sm:text-6xl 2xl:text-9xl my-24">
         {howItWorksSection.heading}
       </div>
@@ -41,7 +41,7 @@ export const HowItWorksSection = () => {
             <AnimateImage src="/laptop.png" width={1024} height={1024} alt="developer in action" />
           </div>
         </div>
-        <div className="text-white flex-col px-10 md:flex-1 space-y-5">
+        <div className="text-white flex-col px-10 md:flex-1 space-y-5 my-24">
           {howItWorksSection.stack.map((item, index) => {
             return (
               <div key={index} className="flex flex-col md:flex-row flex-1">

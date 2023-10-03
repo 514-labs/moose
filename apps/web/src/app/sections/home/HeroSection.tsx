@@ -67,7 +67,7 @@ export const HeroSection = () => {
           </div>
         </div>
       </div>
-      <div className="flex flex-auto md:flex-1 flex-row md:h-full w-full md:justify-center md:items-center">
+      <div className="flex flex-auto md:flex-1 flex-row md:h-full w-full md:justify-center md:items-center mt-24">
         <div className="flex w-full relative md:overflow-hidden ">
           <AnimateImage src="/hero.png" width={1024} height={1024} alt="developer lifestyle" priority />
         </div>

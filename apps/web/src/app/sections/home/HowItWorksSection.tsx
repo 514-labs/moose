@@ -5,6 +5,7 @@ import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
+gsap.registerPlugin(SplitText);
 gsap.registerPlugin(ScrollTrigger);
 
 
@@ -50,6 +51,7 @@ export const HowItWorksSection = () => {
           }
         },
       });
+      
       const splitTextHeading = new SplitText(headingRef.current, { type: "words, chars" });
       const splitTextHeadingChars = splitTextHeading.chars;
 
@@ -60,7 +62,9 @@ export const HowItWorksSection = () => {
       const splitTextLines = splitTextByLines.lines;
 
       gsap.from(splitTextHeadingChars,{
+        
         scrollTrigger: {
+          trigger: headingRef.current,
           onEnter: () => {
             gsap.set(headingRef.current, { visibility: "visible" });
           }

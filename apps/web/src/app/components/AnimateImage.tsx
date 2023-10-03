@@ -9,6 +9,7 @@ interface AnimateImageProps {
   height: number,
   alt: string,
   priority?: boolean,
+  onScroll?: boolean
 }
 
 export const AnimateImage = ({src, width, height, alt, priority}: AnimateImageProps) => {
@@ -16,9 +17,14 @@ export const AnimateImage = ({src, width, height, alt, priority}: AnimateImagePr
 
   useLayoutEffect(() => {
     let ctx = gsap.context(() => {
-      gsap.set(imageRef.current, { visibility: "visible" });
       
       gsap.from(imageRef.current,{
+        scrollTrigger: {
+          trigger: imageRef.current,
+          onEnter: () => {
+            gsap.set(imageRef.current, { visibility: "visible" });
+          }
+        },
         opacity: 0,
         y:100,
         duration: 1,

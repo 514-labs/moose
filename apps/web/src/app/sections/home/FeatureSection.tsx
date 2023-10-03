@@ -4,6 +4,7 @@ import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
+gsap.registerPlugin(SplitText);
 gsap.registerPlugin(ScrollTrigger);
 
 const features = [
@@ -67,6 +68,7 @@ export const FeatureSection = () => {
 
       gsap.from(splitTextHeadingChars,{
         scrollTrigger: {
+          trigger: headingRef.current,
           onEnter: () => {
             gsap.set(headingRef.current, { visibility: "visible" });
           }

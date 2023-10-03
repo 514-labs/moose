@@ -1,4 +1,10 @@
-import React from "react";
+'use client'
+import React, { useLayoutEffect } from "react";
+import { gsap } from "gsap";
+import { SplitText } from "gsap/SplitText";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 const features = [
   {
@@ -33,10 +39,81 @@ const featureSection = {
 }
 
 export const FeatureSection = () => {
+  const headingRef = React.useRef(null);
+  
+  const featureHeadingRef = React.useRef([]);
+  const featureDescriptionRef = React.useRef([]);
+
+
+
+  useLayoutEffect(() => {
+    let ctx = gsap.context(() => {
+
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          onEnter: () => {
+            gsap.set(featureHeadingRef.current, { visibility: "visible" });
+            gsap.set(featureDescriptionRef.current, { visibility: "visible" });
+          }
+        },
+      });
+      const splitTextHeading = new SplitText(headingRef.current, { type: "words, chars" });
+      const splitTextHeadingChars = splitTextHeading.chars;
+
+      const splitTextFeatureHeading = new SplitText(featureHeadingRef.current, { type: "words, chars" });
+      const splitTextFeatureHeadingChars = splitTextFeatureHeading.chars;
+
+      const splitTextByLines = new SplitText(featureDescriptionRef.current, {type: "lines"});
+      const splitTextLines = splitTextByLines.lines;
+
+      // gsap.set(descriptionRef.current, {visibility: "visible"})
+
+      gsap.from(splitTextHeadingChars,{
+        scrollTrigger: {
+          onEnter: () => {
+            gsap.set(headingRef.current, { visibility: "visible" });
+          }
+        },
+        y: "-20",
+        opacity: 0,
+        ease: "quint",
+        stagger: { each: 0.03 },
+        });
+
+
+
+        tl.from(splitTextFeatureHeadingChars,{
+          y: "-20",
+          opacity: 0,
+          ease: "quint",
+          stagger: { each: 0.03 },
+          },0);
+
+      tl.from(
+        splitTextLines,
+        {
+          y: "-10",
+          opacity: 0,
+          ease: "quint",
+          stagger: { each: 0.03 },
+        },
+        1
+      )
+
+    });
+    return () => {
+      ctx.revert();
+    }
+  }, []);
+
+
+
   return (
     <div className="my-24">
     <div className="text-white px-10 text-5xl sm:text-6xl 2xl:text-9xl my-24">
-      {featureSection.heading}
+      <span className="invisible" ref={headingRef}>
+        {featureSection.heading}
+      </span>
     </div>
     <div className="flex flex-col  px-10 py-5 space-y-5 lg:space-y-0 lg:flex-row lg:space-x-5">
       {featureSection.features.map((feature, index) => {
@@ -44,10 +121,14 @@ export const FeatureSection = () => {
           <div key={index} className="flex flex-col md:flex-row flex-1">
             <div className="flex flex-col md:flex-1">
               <div className="text-action-primary text-2xl">
-                {feature.heading}
+                <span className="invisible" ref={el => featureHeadingRef.current[index] = el}>
+                  {feature.heading}
+                </span>
               </div>
               <div className="text-typography-primary my-3">
-                {feature.description}
+                <span className="invisible" ref={el => featureDescriptionRef.current[index] = el}>
+                  {feature.description}
+                </span>
               </div>
             </div>
 

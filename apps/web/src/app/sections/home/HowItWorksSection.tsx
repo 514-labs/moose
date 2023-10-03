@@ -1,5 +1,11 @@
-import React from "react";
+'use client'
+import React, { useLayoutEffect } from "react";
 import { AnimateImage } from "../../components/AnimateImage";
+import { gsap } from "gsap";
+import { SplitText } from "gsap/SplitText";
+import { ScrollTrigger } from "gsap/ScrollTrigger";
+
+gsap.registerPlugin(ScrollTrigger);
 
 
 const stack = [
@@ -30,10 +36,75 @@ const howItWorksSection = {
 
 
 export const HowItWorksSection = () => {
+  const headingRef = React.useRef(null);
+  
+  const featureHeadingRef = React.useRef([]);
+  const featureDescriptionRef = React.useRef([]);
+
+  useLayoutEffect(() => {
+    let ctx = gsap.context(() => {
+
+      const tl = gsap.timeline({
+        scrollTrigger: {
+          trigger: featureHeadingRef.current,
+          onEnter: () => {
+            gsap.set(featureHeadingRef.current, { visibility: "visible" });
+            gsap.set(featureDescriptionRef.current, { visibility: "visible" });
+          }
+        },
+      });
+      const splitTextHeading = new SplitText(headingRef.current, { type: "words, chars" });
+      const splitTextHeadingChars = splitTextHeading.chars;
+
+      const splitTextFeatureHeading = new SplitText(featureHeadingRef.current, { type: "words, chars" });
+      const splitTextFeatureHeadingChars = splitTextFeatureHeading.chars;
+
+      const splitTextByLines = new SplitText(featureDescriptionRef.current, {type: "lines"});
+      const splitTextLines = splitTextByLines.lines;
+
+      gsap.from(splitTextHeadingChars,{
+        scrollTrigger: {
+          onEnter: () => {
+            gsap.set(headingRef.current, { visibility: "visible" });
+          }
+        },
+        y: "-20",
+        opacity: 0,
+        ease: "quint",
+        stagger: { each: 0.03 },
+        });
+
+      tl.from(splitTextFeatureHeadingChars,{
+        y: "-20",
+        opacity: 0,
+        ease: "quint",
+        stagger: { each: 0.03 },
+        },0);
+
+      tl.from(
+        splitTextLines,
+        {
+          y: "-10",
+          opacity: 0,
+          ease: "quint",
+          stagger: { each: 0.03 },
+        },
+        1
+      )
+
+    });
+    return () => {
+      ctx.revert();
+    }
+  }, []);
+
+
   return (
     <div>
       <div className="text-white px-10 text-5xl sm:text-6xl 2xl:text-9xl my-24">
-        {howItWorksSection.heading}
+        <span className="invisible" ref={headingRef}>
+          {howItWorksSection.heading}
+        </span>
       </div>
       <div className="h-full flex flex-col md:flex-row flex-grow md:justify-center md:items-center">
         <div className="flex flex-auto md:flex-1 flex-row md:h-full w-full md:justify-center md:items-center">
@@ -47,10 +118,14 @@ export const HowItWorksSection = () => {
               <div key={index} className="flex flex-col md:flex-row flex-1">
                 <div className="flex flex-col md:flex-1">
                   <div className="text-action-primary text-2xl">
-                    {item.name}
+                    <span className="invisible" ref={el => featureHeadingRef.current[index] = el}>
+                      {item.name}
+                    </span>
                   </div>
                   <div className="text-typography-primary my-3">
-                    {item.description}
+                    <span className="invisible" ref={el => featureDescriptionRef.current[index] = el}>
+                      {item.description}
+                    </span>
                   </div>
                 </div>
 

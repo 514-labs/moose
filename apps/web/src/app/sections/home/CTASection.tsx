@@ -75,7 +75,7 @@ export const CTASection = () => {
     <div className="w-screen flex grow-1 flex-col">
       <div className="h-full flex flex-col md:flex-row flex-grow md:justify-center md:items-center">
         <div className="text-white flex-col px-5 md:flex-1 ">
-          <div className="px-5 text-5xl sm:text-6xl 2xl:text-9xl">
+          <div className="px-5 text-5xl sm:text-6xl 2xl:text-8xl 3xl:text-9xl">
             <span className="invisible" ref={headingRef}>
               {ctaSection.heading}
             </span>

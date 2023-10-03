@@ -51,7 +51,7 @@ export const HowItWorksSection = () => {
           }
         },
       });
-      
+
       const splitTextHeading = new SplitText(headingRef.current, { type: "words, chars" });
       const splitTextHeadingChars = splitTextHeading.chars;
 
@@ -102,7 +102,7 @@ export const HowItWorksSection = () => {
 
   return (
     <div>
-      <div className="text-white px-10 text-5xl sm:text-6xl 2xl:text-9xl my-24">
+      <div className="text-white px-10 text-5xl my-24 sm:text-6xl 2xl:text-8xl 3xl:text-9xl">
         <span className="invisible" ref={headingRef}>
           {howItWorksSection.heading}
         </span>

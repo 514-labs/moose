@@ -13,8 +13,6 @@ export const metadata: Metadata = {
   }
 };
 
-
-
 export default function Home() {
   return (
     <div className="h-full">
@@ -27,10 +25,8 @@ export default function Home() {
       {/* How it works Section */}
       <HowItWorksSection />
       
-
       {/* CTA Section */}
       <CTASection />
-      
 
       {/* Footer */}
       <FooterSection />

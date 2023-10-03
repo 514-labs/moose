@@ -51,6 +51,7 @@ export const FeatureSection = () => {
 
       const tl = gsap.timeline({
         scrollTrigger: {
+          trigger: featureHeadingRef.current,
           onEnter: () => {
             gsap.set(featureHeadingRef.current, { visibility: "visible" });
             gsap.set(featureDescriptionRef.current, { visibility: "visible" });
@@ -80,14 +81,12 @@ export const FeatureSection = () => {
         stagger: { each: 0.03 },
         });
 
-
-
-        tl.from(splitTextFeatureHeadingChars,{
-          y: "-20",
-          opacity: 0,
-          ease: "quint",
-          stagger: { each: 0.03 },
-          },0);
+      tl.from(splitTextFeatureHeadingChars,{
+        y: "-20",
+        opacity: 0,
+        ease: "quint",
+        stagger: { each: 0.03 },
+        },0);
 
       tl.from(
         splitTextLines,

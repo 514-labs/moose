@@ -32,9 +32,6 @@ const howItWorksSection = {
   stack: stack
 }
 
-
-
-
 export const HowItWorksSection = () => {
   const headingRef = React.useRef(null);
   

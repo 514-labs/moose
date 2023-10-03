@@ -47,7 +47,6 @@ export const HeroSection = () => {
     }
   }, []);
 
-
   return <div className=" w-screen flex grow-1 flex-col pt-24 mb-24">
     <div className="h-full flex flex-col md:flex-row flex-grow md:justify-center md:items-center">
       <div className="text-white flex-col px-5 md:flex-1 ">

@@ -44,8 +44,6 @@ export const FeatureSection = () => {
   const featureHeadingRef = React.useRef([]);
   const featureDescriptionRef = React.useRef([]);
 
-
-
   useLayoutEffect(() => {
     let ctx = gsap.context(() => {
 

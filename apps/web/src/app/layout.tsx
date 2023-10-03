@@ -2,11 +2,11 @@ import "../styles/globals.css";
 // include styles from the ui package
 import "ui/styles.css";
 import localFont from 'next/font/local'
-import Head from 'next/head';
+
 import Script from 'next/script';
 
 import { Analytics } from '@vercel/analytics/react';
-import { Nav } from "./Nav";
+import { Nav } from "./components/Nav";
 
 // Font files can be colocated inside of `app`
 const monoFont = localFont({

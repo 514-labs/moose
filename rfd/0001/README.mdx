@@ -1,7 +1,7 @@
 ---
 authors: Nicolas Joseph <nicolas@nicolasjoseph.com>
 title: Request for Discussion (RFD) Process
-state: discussion
+state: published
 ---
 
 This is a Request for Discussion (RFD) for the RFD process itself. This RFD is intended to be a living document that evolves as the process evolves. It [is heavily inspired](https://oxide.computer/blog/rfd-1-requests-for-discussion) by the process used by [Oxide Computer Company](https://oxide.computer/). We started from the before mentioned RFD and adapted it to our needs.
@@ -72,10 +72,10 @@ We will go over this in more detail. Let’s walk through the life of a RFD.
 
 ## RFD life-cycle
 
-There is a prototype script in this repository, `scripts/new.js`, that will automate the process.
+There is a prototype script in this repository, `./scripts/rfd/new.js`, that will automate the process.
 
 ```shell
-$ node scripts/new.js “My title here”
+$ ./scripts/rfd/new.js “My title here”
 ```
 
 If you wish to create a new RFD by hand, or understand the process in greater detail, read on.
@@ -92,7 +92,7 @@ You will first need to reserve the number you wish to use for your RFC. This num
 Now you will need to create a new git branch, named after the RFD number you wish to reserve. This number should have leading zeros if less than 4 digits. Before creating the branch, verify that it does not already exist:
 
 ```shell
-$ git branch -rl "rfd/0042"
+$ git branch -rl "*rfd/0042"
 ```
 
 If you see a branch there (but not a corresponding sub-directory in rfd in main), it is possible that the RFD is currently being created; stop and check with co-workers before proceeding! Once you have verified that the branch doesn’t exist, create it locally and switch to it:
@@ -140,14 +140,14 @@ It is up to you as to whether you would like to squash all your commits down to 
 
 ### Discuss your RFD
 
-When you are ready to get feedback on your RFD, make sure all your local changes are pushed to the remote branch. At this point you are likely at the stage where you will want to change the status of the RFD from prediscussion to discussionfor a fully formed RFD or to ideation for one where only the topic is specified. Do this in your branch.
+When you are ready to get feedback on your RFD, make sure all your local changes are pushed to the remote branch. At this point you are likely at the stage where you will want to change the status of the RFD from prediscussion to discussion for a fully formed RFD or to ideation for one where only the topic is specified. Do this in your branch.
 
 ### Update the RFD state to discussion
 
 Along with your RFD content, update the RFD’s state to discussion in your branch, then:
 
 ```shell
-$ git commit -am ‘frd(0042): Add RFD for <Title>’
+$ git commit -am ‘rfd(0042): Add RFD for <Title>’
 $ git push origin "rfd/0042"
 ```
 

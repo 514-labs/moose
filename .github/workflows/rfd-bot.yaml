@@ -1,0 +1,44 @@
+name: RFD Bot - RFD Claim
+# TODO debug this with the first RFD going through the automation: RFD 0002
+on:
+  pull_request:
+    types:
+      - opened
+      - draft
+    branches:
+      - rfd/*
+    paths:
+      - "rfd/*"
+
+jobs:
+  claim-rfd-number:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # we only need the head
+          fetch-depth: 0
+          ref: main
+
+      - name: Set RFD Number
+        run: |
+          echo "RFD_NUMBER=$(echo ${{ github.event.pull_request.head.ref }} | sed 's/rfd\///')" >> $GITHUB_ENV
+
+      - name: Claim RFD number if available
+        run: |
+          if [ ! -d "rfd/${RFD_NUMBER}" ]; then
+            echo "Attempting to claim RFD ${RFD_NUMBER}..."
+            mkdir "rfd/${RFD_NUMBER}"
+            touch "rfd/${RFD_NUMBER}/README.mdx"
+            echo "RFD_CLAIMED=true" >> $GITHUB_ENV
+          else
+            echo "RFD ${RFD_NUMBER} already exists, skipping..."
+          fi
+
+        - uses: EndBug/add-and-commit@v9
+          if: env.RFD_CLAIMED == 'true'
+          with:
+            add: 'rfd'
+            author_name: '🤖 RFD Bot'
+            message: 'chore(rfd): 🤖 claim RFD ${{ env.RFD_NUMBER }}'

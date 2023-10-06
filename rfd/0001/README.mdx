@@ -72,11 +72,14 @@ We will go over this in more detail. Let’s walk through the life of a RFD.
 
 ## RFD life-cycle
 
-There is a prototype script in this repository, `./scripts/rfd/new.js`, that will automate the process.
+There is a script in this repository, `./scripts/rfd/new.js`, that will automate the process.
 
 ```shell
 $ ./scripts/rfd/new.js “My title here”
 ```
+
+Once you have run the script, you will have a new branch with a placeholder RFD.
+You can then push your branch to the remote and open a draft pull request.
 
 If you wish to create a new RFD by hand, or understand the process in greater detail, read on.
 
@@ -85,7 +88,7 @@ If you wish to create a new RFD by hand, or understand the process in greater de
 
 ### Reserve a RFD number
 
-You will first need to reserve the number you wish to use for your RFC. This number should be the next available RFD number from looking at the current git branch -r output.
+You will first need to reserve the number you wish to use for your RFD. This number should be the next available RFD number from looking at the current `git branch -r` output.
 
 ### Create a branch for your RFD
 
@@ -124,15 +127,11 @@ $ git commit -m ‘rfd(0042): Adding placeholder for RFD <Title>’
 $ git push origin rfd/0042
 ```
 
-After your branch is pushed, the table in the README on the main branch will update automatically with the new RFD. If you ever change the name of the RFD in the future, the table will update as well. Whenever information about the state of the RFD changes, this updates the table as well. The single source of truth for information about the RFD comes from the RFD in the branch until it is merged.
+And Open a Pull Request, the pull request can be in draft mode until you are ready to open it up for discussion.
+
+After your Pull Request is opened, a github action will automatically add a folder for your RFD in the main branch. This will allow others to see that the RFD number has been claimed and is being worked on.
 
 ### Iterate on your RFD in your branch
-
-Now, you can work on writing your RFD in your branch.
-
-```shell
-$ git checkout "rfd/0042"
-```
 
 Now you can gather your thoughts and get your RFD to a state where you would like to get feedback and discuss with others. It’s recommended to push your branch remotely to make sure the changes you make stay in sync with the remote in case your local gets damaged.
 
@@ -154,8 +153,6 @@ $ git push origin "rfd/0042"
 ### Open a Pull Request
 
 Open a pull request on GitHub to merge your branch, in this case `rfd/0042` into the main branch.
-
-If you move your RFD into discussion but fail to open a pull request, a friendly bot will do it for you. If you open a pull request but fail to update the state of the RFD to discussion, the bot will automatically correct the state by moving it into discussion. The bot will also cleanup the title of the pull request to be RFD {num} {title}. The bot will automatically add the link to the pull request to the discussion: metadata.
 
 After the pull request is opened, anyone subscribed to the repo will get a notification that you have opened a pull request and can read your RFD and give any feedback.
 
@@ -194,3 +191,7 @@ We will start with a very small set of tooling and expand it as we need.
 ### CLI RFD Creation shortcut
 
 We have a script that will automate the process of creating a new RFD. It will create the branch, create the placeholder RFD, and push the branch.
+
+### Github Actions Bot
+
+We have a very simple github actions script that will claim an RFD number when a pull request is created. It will create a folder for the RFD in the main branch and add a placeholder README.mdx file.

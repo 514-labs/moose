@@ -6,6 +6,10 @@ on:
       - main
     tags:
       - v*
+    paths:
+      - "apps/igloo-kit-cli/**"
+      - "apps/create-igloo-app/**"
+      - "packages/**"
 
 jobs:
   publish-npm-binaries:

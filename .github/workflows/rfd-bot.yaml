@@ -6,6 +6,7 @@ on:
       - rfd/*
     paths:
       - "rfd/*"
+      - ".github/workflows/rfd-bot.yml"
 
 jobs:
   claim-rfd-number:

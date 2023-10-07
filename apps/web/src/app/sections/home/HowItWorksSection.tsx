@@ -113,7 +113,7 @@ export const HowItWorksSection = () => {
           {howItWorksSection.heading}
         </span>
       </div>
-      <div className="grid mb-24 grid-cols-1 grid-row-2 md:grid-cols-2 md:grid-row-1  place-items-center">
+      <div className="grid mb-24 grid-cols-1 grid-row-2 space-y-24 md:space-y-0 md:grid-cols-2 md:grid-row-1  place-items-center">
         <div className="h-full w-full min-h-[30vh] relative ">
           <AnimateImage src="/laptop.png" alt="developer lifestyle" priority />
         </div>

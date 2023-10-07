@@ -27,8 +27,8 @@ export const AnimateImage = ({src, alt, priority}: AnimateImageProps) => {
         y:100,
         duration: 1,
         ease: "quint",
-        delay: 1.2,
-        stagger: 0.05
+        delay: 1.0,
+
       });
     });
     return () => {
@@ -37,7 +37,7 @@ export const AnimateImage = ({src, alt, priority}: AnimateImageProps) => {
   }, []);
 
   return (
-    <Image  src={src} className="invisible object-cover " fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" alt={alt} ref={imageRef} priority={priority}/>
+    <Image  src={src} className="invisible object-cover" fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" alt={alt} ref={imageRef} priority={priority}/>
   );
 };
 

@@ -10,7 +10,7 @@ gsap.registerPlugin(ScrollTrigger);
 const features = [
   {
     heading: "Local first",
-    description: "Build your application locally, and deploy to the cloud when you&apos;re ready. No need to configure a cloud environment to get started.",
+    description: "Build your application locally, and deploy to the cloud when you're ready. No need to configure a cloud environment to get started.",
   },
   {
     heading: "Languages you love",
@@ -93,6 +93,11 @@ export const FeatureSection = () => {
           ease: "quint",
           stagger: { each: 0.03 },
       },1)
+
+      tl.then(() => {
+        splitTextByLines.revert()
+      })
+
 
     });
     return () => {

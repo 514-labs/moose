@@ -4,6 +4,7 @@ import { AnimateImage } from "../../components/AnimateImage";
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import sectionImg from "../../../../public/04_4x.webp"
 
 gsap.registerPlugin(SplitText);
 gsap.registerPlugin(ScrollTrigger);
@@ -115,7 +116,7 @@ export const HowItWorksSection = () => {
       </div>
       <div className="grid mb-24 grid-cols-1 grid-row-2 space-y-24 md:space-y-0 md:grid-cols-2 md:grid-row-1  place-items-center">
         <div className="h-full w-full min-h-[30vh] relative ">
-          <AnimateImage src="/laptop.png" alt="developer lifestyle" priority />
+          <AnimateImage src={sectionImg} alt="developer lifestyle" priority />
         </div>
         <div className="text-white flex-col px-10 md:flex-1 space-y-5">
           {howItWorksSection.stack.map((item, index) => {

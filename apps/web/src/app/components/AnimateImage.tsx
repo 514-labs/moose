@@ -1,10 +1,10 @@
 'use client'
 import React, { useLayoutEffect } from "react";
 import { gsap } from "gsap";
-import Image from "next/image";
+import Image, { StaticImageData } from "next/image";
 
 interface AnimateImageProps {
-  src: string,
+  src: string | StaticImageData,
   alt: string,
   priority?: boolean,
   onScroll?: boolean

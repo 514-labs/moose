@@ -4,7 +4,7 @@ import { AnimateImage } from "../../components/AnimateImage";
 import { CodeBlockCTA } from "../../components/CodeBlockCTA";
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
-import { ScrollTrigger } from "gsap/ScrollTrigger";
+import heroImg from "../../../../public/03_4x.webp"
 
 export const heroContent = {
   heading: "the application framework for the modern data stack",
@@ -73,7 +73,7 @@ export const HeroSection = () => {
           </div>
       </div>
       <div className="h-full w-full min-h-[30vh] relative lg:min-h-[50vh] xl:min-h-[75vh]">
-          <AnimateImage src="/hero.png" alt="developer lifestyle" priority />
+          <AnimateImage src={heroImg} alt="developer lifestyle" priority />
       </div>
     </div>
   );

@@ -7,6 +7,8 @@ import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 
+import sectionImg from "../../../../public/01_4x.webp"
+
 gsap.registerPlugin(SplitText);
 gsap.registerPlugin(ScrollTrigger);
 
@@ -96,7 +98,7 @@ export const CTASection = () => {
           </div>
       </div>
       <div className="h-full w-full min-h-[30vh] relative lg:min-h-[50vh]">
-          <AnimateImage src="/hoodie.png" alt="developer lifestyle" priority />
+          <AnimateImage src={sectionImg} alt="developer lifestyle" priority />
       </div>
     </div> 
     </div>

@@ -21,8 +21,6 @@ const sansFont = localFont({
   variable: '--font-grotesk'
 });
 
-
-
 export default function RootLayout({
   children,
 }: {

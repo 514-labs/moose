@@ -92,7 +92,7 @@ export const Nav = () => {
                     as="a"
                     href={item.href}
                     key={item.name}
-                    className="block py-2 pl-5 pr-4 text-5xl text-white  hover:text-action-primary"
+                    className="block py-2 pl-10 pr-4 text-5xl text-white  hover:text-action-primary"
                   >
                     {item.name}
                   </Disclosure.Button>

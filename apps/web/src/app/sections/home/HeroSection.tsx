@@ -72,7 +72,7 @@ export const HeroSection = () => {
             </div>
           </div>
       </div>
-      <div className="h-full w-full min-h-[30vh] relative lg:min-h-[50vh]">
+      <div className="h-full w-full min-h-[30vh] relative lg:min-h-[50vh] xl:min-h-[75vh]">
           <AnimateImage src="/hero.png" alt="developer lifestyle" priority />
       </div>
     </div>

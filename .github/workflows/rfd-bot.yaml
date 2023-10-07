@@ -1,11 +1,12 @@
 name: RFD Bot - RFD Claim
 # TODO debug this with the first RFD going through the automation: RFD 0002
 on:
+  workflow_dispatch:
   push:
     branches:
       - rfd/*
     paths:
-      - "rfd/*"
+      - "rfd/**"
       - ".github/workflows/rfd-bot.yml"
 
 jobs:

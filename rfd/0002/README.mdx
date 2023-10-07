@@ -1,7 +1,24 @@
 —--
 authors: Nicolas Joseph <nicolas@nicolasjoseph.com>
-title: Framework Skeleton Architecture
+title: Ecosystem Skeleton Architecture
 state: prediscussion
 —--
 
-# Framework Skeleton Architecture
+## Framework Problem Statement:
+
+We are building an opinionated framework to enabled engineers that are building data infrastructure and pipeline to focus on the business logic and not the infrastructure. We aim at providing them with the same user experience as a front end engineer building a web application. We want to provide a framework that is easy to use, easy to maintain, easy to extend and most importantly, gives the user feedback on a code iteration immediately.
+
+## Principles
+
+- Local first: We optimize for the user experience first and we will figure out how to deploy to production later.
+- Easy to use: We want to provide a framework that is easy to use, easy to maintain, easy to extend and most importantly, gives the user feedback on a code iteration immediately.
+- Easy to test: We want to provide a framework that has built in unit testing from the get go.
+- Performance: We want to provide a framework that is fast and can scale to large data sets for real life use cases.
+- Extensible: We want to provide a framework that is easy to extend and that can be used to build a wide range of data applications.
+
+## Architecture
+
+### Overview
+
+- Data Ingest SDK: The data ingest SDK is a simple library that can be embedded in the user's application to send data to an igloo deployment. It is typed with the User's Business Objects to ensure that the data sent to igloo is valid.
+- Igloo Server:

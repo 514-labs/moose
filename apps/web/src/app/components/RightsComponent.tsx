@@ -26,7 +26,7 @@ export const RightsComponent = () => {
 
   return (
     <div className="flex grow flex-wrap flex-row sm:justify-start  h-full content-center sm:-order-none order-3">
-      <span className="text-white sm:text-start invisible" ref={titleRef}> ©2023 fiveonefour inc all rights reserved</span>
+      <span className="text-white sm:text-start invisible" ref={titleRef}> ©2023 fiveonefour labs inc all rights reserved</span>
     </div>
   );
 };

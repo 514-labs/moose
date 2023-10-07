@@ -9,6 +9,8 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@headlessui/react": "^1.7.17",
+    "@heroicons/react": "^2.0.18",
     "@sentry/nextjs": "^7.68.0",
     "@types/heap": "^0.2.31",
     "@vercel/analytics": "^1.0.1",

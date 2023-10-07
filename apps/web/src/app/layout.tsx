@@ -2,10 +2,11 @@ import "../styles/globals.css";
 // include styles from the ui package
 import "ui/styles.css";
 import localFont from 'next/font/local'
-import Head from 'next/head';
+
 import Script from 'next/script';
 
 import { Analytics } from '@vercel/analytics/react';
+import { Nav } from "./components/Nav";
 
 // Font files can be colocated inside of `app`
 const monoFont = localFont({
@@ -20,8 +21,6 @@ const sansFont = localFont({
   variable: '--font-grotesk'
 });
 
-
-
 export default function RootLayout({
   children,
 }: {
@@ -34,6 +33,7 @@ export default function RootLayout({
          heap.load("1717463140");`}
       </Script>
       <body className="h-full font-sans font-regular">
+        <Nav />
         {children}
         <Analytics />
       </body>

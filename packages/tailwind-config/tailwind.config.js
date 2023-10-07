@@ -3,7 +3,7 @@ const colors = require("tailwindcss/colors");
 const baseColors = {
   black: {
     500: "#000000",
-    250: "#383838",
+    250: "#1A1A1A",
   },
   white: {
     500: "#FFFFFF",

@@ -22,7 +22,7 @@ jobs:
 
       - name: Set RFD Number
         run: |
-          echo "RFD_NUMBER=$(echo ${{ github.event.pull_request.head.ref }} | sed 's/rfd\///')" >> $GITHUB_ENV
+          echo "RFD_NUMBER=$(echo ${{ github.head_ref }} | sed 's/refs\/heads\/rfd\///')" >> $GITHUB_ENV
 
       - name: Claim RFD number if available
         run: |

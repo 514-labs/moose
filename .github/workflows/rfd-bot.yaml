@@ -24,7 +24,7 @@ jobs:
         run: |
           RFD_NUMBER=$(echo ${{ github.ref }} | sed 's/refs\/heads\/rfd\///')
           echo "Found RFD Number: $RFD_NUMBER from branch name"
-          echo "RFD_NUMBER=$RFD_NUMBER"" >> $GITHUB_ENV
+          echo "RFD_NUMBER=$RFD_NUMBER" >> $GITHUB_ENV
 
       - name: Claim RFD number if available
         run: |

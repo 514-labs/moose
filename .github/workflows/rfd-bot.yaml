@@ -4,7 +4,6 @@ on:
   pull_request:
     types:
       - opened
-      - draft
     branches:
       - rfd/*
     paths:
@@ -36,9 +35,9 @@ jobs:
             echo "RFD ${RFD_NUMBER} already exists, skipping..."
           fi
 
-        - uses: EndBug/add-and-commit@v9
-          if: env.RFD_CLAIMED == 'true'
-          with:
-            add: 'rfd'
-            author_name: '🤖 RFD Bot'
-            message: 'chore(rfd): 🤖 claim RFD ${{ env.RFD_NUMBER }}'
+      - uses: EndBug/add-and-commit@v9
+        if: env.RFD_CLAIMED == 'true'
+        with:
+          add: "rfd"
+          author_name: "🤖 RFD Bot"
+          message: "chore(rfd): 🤖 claim RFD ${{ env.RFD_NUMBER }}"

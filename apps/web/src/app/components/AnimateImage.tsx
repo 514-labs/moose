@@ -5,14 +5,12 @@ import Image from "next/image";
 
 interface AnimateImageProps {
   src: string,
-  width: number,
-  height: number,
   alt: string,
   priority?: boolean,
   onScroll?: boolean
 }
 
-export const AnimateImage = ({src, width, height, alt, priority}: AnimateImageProps) => {
+export const AnimateImage = ({src, alt, priority}: AnimateImageProps) => {
   const imageRef = React.useRef(null);
 
   useLayoutEffect(() => {
@@ -39,7 +37,7 @@ export const AnimateImage = ({src, width, height, alt, priority}: AnimateImagePr
   }, []);
 
   return (
-    <Image  src={src} className="invisible" width={width} height={height} alt={alt} ref={imageRef} priority={priority}/>
+    <Image  src={src} className="invisible object-cover " fill sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw" alt={alt} ref={imageRef} priority={priority}/>
   );
 };
 

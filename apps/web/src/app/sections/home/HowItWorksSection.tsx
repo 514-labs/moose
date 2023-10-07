@@ -93,6 +93,10 @@ export const HowItWorksSection = () => {
         1
       )
 
+      tl.then(() => {
+        splitTextByLines.revert()
+      })
+
     });
     return () => {
       ctx.revert();
@@ -101,19 +105,19 @@ export const HowItWorksSection = () => {
 
 
   return (
+
+    
     <div>
       <div className="text-white px-10 text-5xl my-24 sm:text-6xl 2xl:text-8xl 3xl:text-9xl">
         <span className="invisible" ref={headingRef}>
           {howItWorksSection.heading}
         </span>
       </div>
-      <div className="h-full flex flex-col md:flex-row flex-grow md:justify-center md:items-center">
-        <div className="flex flex-auto md:flex-1 flex-row md:h-full w-full md:justify-center md:items-center">
-          <div className="flex w-full relative md:overflow-hidden ">
-            <AnimateImage src="/laptop.png" width={1024} height={1024} alt="developer in action" />
-          </div>
+      <div className="grid mb-24 grid-cols-1 grid-row-2 md:grid-cols-2 md:grid-row-1  place-items-center">
+        <div className="h-full w-full min-h-[30vh] relative ">
+          <AnimateImage src="/laptop.png" alt="developer lifestyle" priority />
         </div>
-        <div className="text-white flex-col px-10 md:flex-1 space-y-5 my-24">
+        <div className="text-white flex-col px-10 md:flex-1 space-y-5">
           {howItWorksSection.stack.map((item, index) => {
             return (
               <div key={index} className="flex flex-col md:flex-row flex-1">
@@ -134,7 +138,8 @@ export const HowItWorksSection = () => {
             );
           })}
         </div>
-      </div>
+    </div> 
+      
     </div>
   );
 };

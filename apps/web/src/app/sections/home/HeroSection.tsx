@@ -41,36 +41,41 @@ export const HeroSection = () => {
         ease: "quint",
         stagger: { each: 0.03 },
         }, 1);
+
+      tl.then(() => {
+        splitTextByLines.revert()
+      })
+      
+      
     });
     return () => {
       ctx.revert();
     }
   }, []);
 
-  return <div className=" w-screen flex grow-1 flex-col pt-24 mb-24">
-    <div className="h-full flex flex-col md:flex-row flex-grow md:justify-center md:items-center">
-      <div className="text-white flex-col px-5 md:flex-1 ">
-        <div className="px-5 text-5xl sm:text-6xl 2xl:text-8xl 3xl:text-9xl">
-        <span  ref={headingRef} className="invisible">
-          {heroContent.heading}
-          </span>
-        </div>
-        <div className="flex flex-col grow md:flex-1 p-5 space-y-5">
-          <div className="text-typography-primary my-3">
-            <span className="invisible" ref={descriptionRef}>
-            {heroContent.description}
+  return (
+    <div className="grid pt-24 mb-24 grid-cols-1 grid-row-2 md:grid-cols-2 md:grid-row-1  place-items-center">
+        <div className="flex text-white flex-col px-5 md:flex-1 md:justify-center">
+          <div className="px-5 text-5xl sm:text-6xl 2xl:text-8xl 3xl:text-9xl">
+            <span  ref={headingRef} className="invisible">
+              {heroContent.heading}
             </span>
           </div>
-          <div>
-            <CodeBlockCTA />
+          <div className="flex flex-col grow md:flex-1 p-5 space-y-5">
+            <div className="text-typography-primary my-3">
+              <span className="invisible" ref={descriptionRef}>
+              {heroContent.description}
+              </span>
+            </div>
+            <div>
+              <CodeBlockCTA />
+            </div>
           </div>
-        </div>
       </div>
-      <div className="flex flex-auto md:flex-1 flex-row md:h-full w-full md:justify-center md:items-center">
-        <div className="flex w-full relative md:overflow-hidden ">
-          <AnimateImage src="/hero.png" width={1024} height={1024} alt="developer lifestyle" priority />
-        </div>
+      <div className="h-full w-full min-h-[30vh] relative lg:min-h-[50vh]">
+          <AnimateImage src="/hero.png" alt="developer lifestyle" priority />
       </div>
     </div>
-  </div>;
+  );
 };
+

@@ -107,7 +107,7 @@ export const FeatureSection = () => {
         {featureSection.heading}
       </span>
     </div>
-    <div className="flex flex-col  px-10 py-5 space-y-5 lg:space-y-0 lg:flex-row lg:space-x-5">
+    <div className="flex flex-col  px-10 space-y-5 lg:space-y-0 lg:flex-row lg:space-x-5">
       {featureSection.features.map((feature, index) => {
         return (
           <div key={index} className="flex flex-col md:flex-row flex-1">

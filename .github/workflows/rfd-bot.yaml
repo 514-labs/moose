@@ -1,9 +1,7 @@
 name: RFD Bot - RFD Claim
 # TODO debug this with the first RFD going through the automation: RFD 0002
 on:
-  pull_request:
-    types:
-      - opened
+  push:
     branches:
       - rfd/*
     paths:

@@ -9,7 +9,7 @@ import { FeatureSection } from "./sections/home/FeatureSection";
 export const metadata: Metadata = {
   title: "Igloo | Build Data-intensive apps with ease",
   openGraph: {
-    images: "/og_igloo_image_person_012_2x.webp"
+    images: "/og_igloo_4x.webp"
   }
 };
 

@@ -64,7 +64,7 @@ export const HeroSection = () => {
           <div className="flex flex-col grow md:flex-1 p-5 space-y-5">
             <div className="text-typography-primary my-3">
               <span className="invisible" ref={descriptionRef}>
-              {heroContent.description}
+                {heroContent.description}
               </span>
             </div>
             <div>

@@ -10,8 +10,8 @@ gsap.registerPlugin(SplitText);
 
 const navigation = [
   // { name: "Docs", href: "#" },
-  { name: "Github", href: "https://github.com/514-labs/igloo-stack" },
-  { name: "Discord", href: "https://discord.gg/WX3V3K4QCc" },
+  { name: "github", href: "https://github.com/514-labs/igloo-stack" },
+  { name: "discord", href: "https://discord.gg/WX3V3K4QCc" },
   // { name: "Join us", href: "#" },
 ]
 

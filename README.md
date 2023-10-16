@@ -28,3 +28,11 @@ You can create one with the following content
 # if you want to try features as they are built, set this to false
 coming_soon_wall=true
 ```
+
+## Versioning
+
+All packages and builds are synced in version when published to repositories. It makes it easy to understand the compatibility levels in the different components. 
+
+Prior to 1.0.0, there is no guaranteed compatibility between components of different versions, beside the components with the exact same version numbers. 
+
+i.e. You can expect same major and minor and patch versions of components to be compatible with each other.

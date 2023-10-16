@@ -1,6 +1,6 @@
 [package]
 name = "igloo-cli"
-version = "0.0.1"
+version = "0.0.0"
 edition = "2021"
 description = "Build tool for igloo apps"
 license = "Apache-2.0"

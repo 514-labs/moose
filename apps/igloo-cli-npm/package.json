@@ -1,6 +1,6 @@
 {
   "name": "@514labs/igloo-cli",
-  "version": "0.0.2-BUILD.29",
+  "version": "0.0.0",
   "bin": {
     "igloo": "dist/index.js",
     "igloo-cli": "dist/index.js"
@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "build-native": "cargo build",
     "build": "tsc",
     "dev": "pnpm build && node lib/index.js"
   },
@@ -25,11 +24,11 @@
     "typescript": "^4.9.5"
   },
   "optionalDependencies": {
-    "@514labs/igloo-cli-darwin-arm64": "0.0.2-BUILD.29",
-    "@514labs/igloo-cli-darwin-x64": "0.0.2-BUILD.29",
-    "@514labs/igloo-cli-linux-arm64": "0.0.2-BUILD.29",
-    "@514labs/igloo-cli-linux-x64": "0.0.2-BUILD.29",
-    "@514labs/igloo-cli-windows-arm64": "0.0.2-BUILD.29",
-    "@514labs/igloo-cli-windows-x64": "0.0.2-BUILD.29"
+    "@514labs/igloo-cli-darwin-arm64": "0.0.0",
+    "@514labs/igloo-cli-darwin-x64": "0.0.0",
+    "@514labs/igloo-cli-linux-arm64": "0.0.0",
+    "@514labs/igloo-cli-linux-x64": "0.0.0",
+    "@514labs/igloo-cli-windows-arm64": "0.0.0",
+    "@514labs/igloo-cli-windows-x64": "0.0.0"
   }
 }

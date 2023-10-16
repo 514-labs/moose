@@ -1,6 +1,6 @@
 {
   "name": "create-igloo-app",
-  "version": "0.0.2-BUILD.42",
+  "version": "0.0.0",
   "description": "Create Igloo apps with one command",
   "repository": {
     "type": "git",
@@ -24,6 +24,6 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
-    "@514labs/igloo-cli": "0.0.2-BUILD.42"
+    "@514labs/igloo-cli": "0.0.0"
   }
 }

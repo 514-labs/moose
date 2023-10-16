@@ -11,6 +11,7 @@ buildId="$GITHUB_RUN_NUMBER"
 # Folder with a package.json file inside to read the version from
 folder="$1"
 
+currentVersion=$(cat .version)
 if [[ "$ref" =~ ^refs/tags/[a-z\-]+([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
    echo "VERSION=${BASH_REMATCH[1]}"
 else

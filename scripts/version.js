@@ -6,6 +6,7 @@
 // some of the variables are set by github actions
 
 const { execSync } = require("child_process");
+const { parse } = require("path");
 
 if (process.argv.length !== 3) {
     console.error("Expected only one argument!");
@@ -33,21 +34,25 @@ const latestTag = execSync("git describe --tags --abbrev=0").toString().trim();
 // We parse the version number from the tag
 const version = latestTag.match(/v(\d+)\.(\d+)\.(\d+)/);
 
+const major = parseInt(version[1]);
+const minor = parseInt(version[2]);
+const patch = parseInt(version[3]);
+
 const commitMessage = execSync(`git log -1 --pretty=%B ${commit}`).toString().trim();
 
-if (commitMessage.contains(NO_RELEASE_COMMIT_MESSAGE)){
+if (commitMessage.includes(NO_RELEASE_COMMIT_MESSAGE)){
     console.log(latestTag)
     process.exit(0)
 }
 
-if (commitMessage.contains(MAJOR_COMMIT_MESSAGE)){
-    console.log(`v${version[1] + 1}.0.0`)
+if (commitMessage.includes(MAJOR_COMMIT_MESSAGE)){
+    console.log(`v${major + 1}.0.0`)
     process.exit(0)
 }
 
-if (commitMessage.contains(MINOR_COMMIT_MESSAGE)){
-    console.log(`v${version[1]}.${version[2] + 1}.0`)
+if (commitMessage.includes(MINOR_COMMIT_MESSAGE)){
+    console.log(`v${major}.${minor + 1}.0`)
     process.exit(0)
 }
 
-console.log(`v${version[1]}.${version[2]}.${version[3] + 1}`)
+console.log(`v${major}.${minor}.${patch + 1}`)

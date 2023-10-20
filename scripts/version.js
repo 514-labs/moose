@@ -6,7 +6,6 @@
 // some of the variables are set by github actions
 
 const { execSync } = require("child_process");
-const { parse } = require("path");
 
 if (process.argv.length !== 3) {
     console.error("Expected only one argument!");
@@ -18,7 +17,9 @@ const NO_RELEASE_COMMIT_MESSAGE = "[no-release]"
 const MAJOR_COMMIT_MESSAGE = "[major-release]"
 const MINOR_COMMIT_MESSAGE = "[minor-release]"
 
-
+const printVersion = (major, minor, patch) => {
+    console.log(`VERSION=v${major}.${minor}.${patch}`)
+}
 // We check that the current commit is not tagged yet. If it is, 
 // we return its value as the version
 execSync("git fetch --tags");
@@ -41,18 +42,18 @@ const patch = parseInt(version[3]);
 const commitMessage = execSync(`git log -1 --pretty=%B ${commit}`).toString().trim();
 
 if (commitMessage.includes(NO_RELEASE_COMMIT_MESSAGE)){
-    console.log(latestTag)
+    printVersion(major, minor, patch)
     process.exit(0)
 }
 
 if (commitMessage.includes(MAJOR_COMMIT_MESSAGE)){
-    console.log(`v${major + 1}.0.0`)
+    printVersion(major + 1, 0, 0)
     process.exit(0)
 }
 
 if (commitMessage.includes(MINOR_COMMIT_MESSAGE)){
-    console.log(`v${major}.${minor + 1}.0`)
+    printVersion(major, minor + 1, 0)
     process.exit(0)
 }
 
-console.log(`v${major}.${minor}.${patch + 1}`)
+printVersion(major, minor, patch + 1)

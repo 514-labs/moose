@@ -33,8 +33,8 @@ if [ $build_os = "windows-2022" ]; then
     bin="${bin}.exe"
 fi
 pwd
-ls "./target/${build_target}/release/${bin}"
-cp "./target/${build_target}/release/${bin}" "${node_pkg}/bin"
+ls "../igloo-kit-cli/target/${build_target}/release/${bin}"
+cp "../igloo-kit-cli/target/${build_target}/release/${bin}" "${node_pkg}/bin"
 # publish the package
 cd "${node_pkg}"
 npm publish --access public

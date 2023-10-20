@@ -13,14 +13,27 @@ on:
 jobs:
   version:
     concurrency: release
+    if: ! contains(github.event.head_commit.message , '[no-release]')
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.version.outputs.version }}
+      version: ${{ steps.version.outputs.VERSION }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-  build-binaries:
+      - name: Generate Version
+        id: version
+        run: |
+          ./scripts/version.js ${{ github.sha }} >> "$GITHUB_OUTPUT"
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ steps.version.outputs.VERSION }}
+          generateReleaseNotes: true
+          commit: ${{ github.sha }}
+
+  build-and-publish-binaries:
     name: Build CLI Binaries
     runs-on: ${{ matrix.build.os }}
     needs: version
@@ -65,15 +78,10 @@ jobs:
           target: ${{ matrix.build.TARGET }}
           override: true
 
-      - name: Set the version for the package
-        shell: bash
-        id: version
-        run: ./scripts/version.sh ./apps/igloo-kit-cli >> "$GITHUB_OUTPUT"
-
       - name: Install Set Version
         run: |
           cargo install cargo-edit
-          cargo set-version ${{ steps.version.outputs.VERSION }}
+          cargo set-version ${{ needs.version.outputs.version }}
         working-directory: ./apps/igloo-kit-cli
 
       - name: Build
@@ -91,14 +99,16 @@ jobs:
 
       - name: Publish to NPM
         shell: bash
-        working-directory: ./apps/igloo-kit-cli
+        working-directory: ./apps/igloo-cli-npm
         run: ./scripts/release-bin.sh ${{ steps.version.outputs.VERSION }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
   publish-npm-base:
     name: Publish the base NPM package
-    needs: publish-npm-binaries
+    needs:
+      - version
+      - build-and-publish-binaries
     runs-on: ubuntu-20.04
     steps:
       - name: Checkout
@@ -122,13 +132,13 @@ jobs:
           node-version: "18"
           cache: "pnpm"
 
-      - name: Publish the CLI package
+      - name: Publish the NPM CLI package
         shell: bash
-        run: ./apps/igloo-kit-cli/scripts/release-cli.sh ${{needs.publish-npm-binaries.outputs.version}}
+        run: ./apps/igloo-cli-npm/scripts/release-cli.sh ${{ steps.version.outputs.VERSION }}
 
-      - name: Publish the create app package
+      - name: Publish the NPM create app package
         shell: bash
-        run: ./apps/create-igloo-app/scripts/release.sh ${{needs.publish-npm-binaries.outputs.version}}
+        run: ./apps/create-igloo-app/scripts/release.sh ${{ steps.version.outputs.VERSION }}
 
       - name: Notify Sentry release
         uses: getsentry/action-release@v1
@@ -138,4 +148,4 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_IGLOO_CLI_PROJECT }}
         with:
           environment: production
-          version: ${{needs.publish-npm-binaries.outputs.version}}
+          version: ${{ steps.version.outputs.VERSION }}

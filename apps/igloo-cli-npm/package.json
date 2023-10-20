@@ -24,11 +24,11 @@
     "typescript": "^4.9.5"
   },
   "optionalDependencies": {
-    "@514labs/igloo-cli-darwin-arm64": "0.0.0",
-    "@514labs/igloo-cli-darwin-x64": "0.0.0",
-    "@514labs/igloo-cli-linux-arm64": "0.0.0",
-    "@514labs/igloo-cli-linux-x64": "0.0.0",
-    "@514labs/igloo-cli-windows-arm64": "0.0.0",
-    "@514labs/igloo-cli-windows-x64": "0.0.0"
+    "@514labs/igloo-cli-darwin-arm64": "latest",
+    "@514labs/igloo-cli-darwin-x64": "latest",
+    "@514labs/igloo-cli-linux-arm64": "latest",
+    "@514labs/igloo-cli-linux-x64": "latest",
+    "@514labs/igloo-cli-windows-arm64": "latest",
+    "@514labs/igloo-cli-windows-x64": "latest"
   }
 }

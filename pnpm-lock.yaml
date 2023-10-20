@@ -27,8 +27,8 @@ importers:
   apps/create-igloo-app:
     dependencies:
       '@514labs/igloo-cli':
-        specifier: 0.0.2-BUILD.42
-        version: 0.0.2-BUILD.42
+        specifier: latest
+        version: 0.0.2-BUILD.29
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -52,23 +52,23 @@ importers:
   apps/igloo-cli-npm:
     optionalDependencies:
       '@514labs/igloo-cli-darwin-arm64':
-        specifier: 0.0.2-BUILD.29
-        version: 0.0.2-BUILD.29
+        specifier: latest
+        version: 0.3.0
       '@514labs/igloo-cli-darwin-x64':
-        specifier: 0.0.2-BUILD.29
-        version: 0.0.2-BUILD.29
+        specifier: latest
+        version: 0.3.0
       '@514labs/igloo-cli-linux-arm64':
-        specifier: 0.0.2-BUILD.29
-        version: 0.0.2-BUILD.29
+        specifier: latest
+        version: 0.3.0
       '@514labs/igloo-cli-linux-x64':
-        specifier: 0.0.2-BUILD.29
-        version: 0.0.2-BUILD.29
+        specifier: latest
+        version: 0.3.0
       '@514labs/igloo-cli-windows-arm64':
-        specifier: 0.0.2-BUILD.29
-        version: 0.0.2-BUILD.29
+        specifier: latest
+        version: 0.0.2-BUILD.73
       '@514labs/igloo-cli-windows-x64':
-        specifier: 0.0.2-BUILD.29
-        version: 0.0.2-BUILD.29
+        specifier: latest
+        version: 0.0.2-BUILD.73
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -295,8 +295,8 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-darwin-arm64@0.0.2-BUILD.42:
-    resolution: {integrity: sha512-zKq8FksaCrFxg++ZsVbzT2RNWQa08CrEQkcdalZ1OQjM2RDJj0YLnJoyQ6iN4XEyURM68Yy3i+2JefOZG/sCmg==}
+  /@514labs/igloo-cli-darwin-arm64@0.3.0:
+    resolution: {integrity: sha512-5IuhaV+aTRmGHukd7NsjZgBDeMsh+AYOFVXVfJtov53xMN/p3XjKPYEHw4h7jr5yZT7fwF0+oXgTfHCMoH4uAg==}
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
@@ -311,8 +311,8 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-darwin-x64@0.0.2-BUILD.42:
-    resolution: {integrity: sha512-W4OoGJjPaNF0hSXaCDEOjfeb/h/NVNgDSdpPJO16mrgNVErjisQQ91NxJEqrs+j4EWVpX8MuhI6jdQt/h+mL4w==}
+  /@514labs/igloo-cli-darwin-x64@0.3.0:
+    resolution: {integrity: sha512-MWo0+Cc/d90sTEIrGO+JuuffkVgrQ2E2ARSFaT71Ycnk6gfcbKxwC99K3ZMYWDrFAXfDz3zvX5wX+NWYh2g2nA==}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
@@ -327,8 +327,8 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-linux-arm64@0.0.2-BUILD.42:
-    resolution: {integrity: sha512-BWYorGvEqJcudYlyFK9P7ZAo/267XR29tWpT1FSaeezsIZTot+SYZrinF4qPo8RC08qCbVBcAQjykyD+3A6QRQ==}
+  /@514labs/igloo-cli-linux-arm64@0.3.0:
+    resolution: {integrity: sha512-3OR5iK3wkdJULxUn4V5QDaycqKDtPeLPcOAhz7sMPwXQl1idcppDbB7XprGs/WCZm0TxOwuAVuaZeLfDHSLacQ==}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
@@ -343,8 +343,8 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-linux-x64@0.0.2-BUILD.42:
-    resolution: {integrity: sha512-M6Bqt2E5awStGxIsPKAJf9tHrmKZjqFZNKXi7EmXhI+CvN5SmTlHZGSNNWW0NFhHe04gv9NWOZdSyINCG1dpeQ==}
+  /@514labs/igloo-cli-linux-x64@0.3.0:
+    resolution: {integrity: sha512-wwW+Ds0JpnnZrBT32ByQMZzoAw+bIWZt1GHyjtv0o2DJ83BN0J+UQ1uaO1OktJ6iQJ/qLvqQuhOhwoCzaskkcQ==}
     cpu: [x64]
     os: [linux]
     requiresBuild: true
@@ -359,8 +359,8 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-windows-arm64@0.0.2-BUILD.42:
-    resolution: {integrity: sha512-H3ihg7QU3WWAgmqGwTh0lRkOc/KG9kDdbobZypqye0J7SgR9R4jVwPbt1FdCXrUNNmWtMtncQ5PWMFG55TZRoQ==}
+  /@514labs/igloo-cli-windows-arm64@0.0.2-BUILD.73:
+    resolution: {integrity: sha512-5lPs3p4VJtpB2giqhvvXbaVkHq1or55REIPS6NBJ8bQEsPjlj+AIXtC/nR+EfQw6j9BJ6qEe0j4jmqYNW0SIHg==}
     cpu: [arm64]
     os: [win32]
     requiresBuild: true
@@ -375,24 +375,24 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-windows-x64@0.0.2-BUILD.42:
-    resolution: {integrity: sha512-CckXuBhA0ica3rnrChtZr2VlZ/LygF5IBiP/TCrPKFpUyhj5BwdVA2Ikkp1rsfWHBEVTPdBZF8Ax0zQTxeF6Kw==}
+  /@514labs/igloo-cli-windows-x64@0.0.2-BUILD.73:
+    resolution: {integrity: sha512-61HHhsEf+1TOQ0qpXEs4vJey3WoFb7h3OmAIe7QKu8Vh1BtlfbUXDHIjGbfOEgHSPvRr/quQkZsWJE2KvCFB1A==}
     cpu: [x64]
     os: [win32]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli@0.0.2-BUILD.42:
-    resolution: {integrity: sha512-x5YRL3KODmhcoTG6Wvj+M+GTpbM27zdbYdb7Va9PdwpfBlqI8QRCab68n6Qxwy6BSNb2qmpqrueufA5p3I3APA==}
+  /@514labs/igloo-cli@0.0.2-BUILD.29:
+    resolution: {integrity: sha512-xg7qbwNd4jBlgstiQrHnrIZ+jpJGU6d1mB35AjWl43QF7d5O5Tm8upgN4x3wKLq+2toWyY3suyiftsu0A8yu8Q==}
     hasBin: true
     optionalDependencies:
-      '@514labs/igloo-cli-darwin-arm64': 0.0.2-BUILD.42
-      '@514labs/igloo-cli-darwin-x64': 0.0.2-BUILD.42
-      '@514labs/igloo-cli-linux-arm64': 0.0.2-BUILD.42
-      '@514labs/igloo-cli-linux-x64': 0.0.2-BUILD.42
-      '@514labs/igloo-cli-windows-arm64': 0.0.2-BUILD.42
-      '@514labs/igloo-cli-windows-x64': 0.0.2-BUILD.42
+      '@514labs/igloo-cli-darwin-arm64': 0.0.2-BUILD.29
+      '@514labs/igloo-cli-darwin-x64': 0.0.2-BUILD.29
+      '@514labs/igloo-cli-linux-arm64': 0.0.2-BUILD.29
+      '@514labs/igloo-cli-linux-x64': 0.0.2-BUILD.29
+      '@514labs/igloo-cli-windows-arm64': 0.0.2-BUILD.29
+      '@514labs/igloo-cli-windows-x64': 0.0.2-BUILD.29
     dev: false
 
   /@aashutoshrathi/word-wrap@1.2.6:

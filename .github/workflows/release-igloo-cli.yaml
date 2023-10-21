@@ -32,7 +32,7 @@ jobs:
       - name: Create Release
         uses: ncipollo/release-action@v1
         with:
-          tag: ${{ steps.version.outputs.VERSION }}
+          tag: v${{ steps.version.outputs.VERSION }}
           generateReleaseNotes: true
           commit: ${{ github.sha }}
 

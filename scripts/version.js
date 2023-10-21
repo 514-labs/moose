@@ -8,26 +8,26 @@
 const { execSync } = require("child_process");
 
 if (process.argv.length !== 3) {
-    console.error("Expected only one argument!");
-    process.exit(1);
+  console.error("Expected only one argument!");
+  process.exit(1);
 }
 
 const commit = process.argv[2];
-const NO_RELEASE_COMMIT_MESSAGE = "[no-release]"
-const MAJOR_COMMIT_MESSAGE = "[major-release]"
-const MINOR_COMMIT_MESSAGE = "[minor-release]"
+const NO_RELEASE_COMMIT_MESSAGE = "[no-release]";
+const MAJOR_COMMIT_MESSAGE = "[major-release]";
+const MINOR_COMMIT_MESSAGE = "[minor-release]";
 
 const printVersion = (major, minor, patch) => {
-    console.log(`VERSION=v${major}.${minor}.${patch}`)
-}
-// We check that the current commit is not tagged yet. If it is, 
+  console.log(`VERSION=${major}.${minor}.${patch}`);
+};
+// We check that the current commit is not tagged yet. If it is,
 // we return its value as the version
 execSync("git fetch --tags");
 const tags = execSync(`git tag --points-at ${commit}`).toString().trim();
 
 if (tags.length > 0) {
-    console.log(tags)
-    process.exit(0)
+  console.log(tags);
+  process.exit(0);
 }
 
 // We retrieve the last release tag.
@@ -39,21 +39,23 @@ const major = parseInt(version[1]);
 const minor = parseInt(version[2]);
 const patch = parseInt(version[3]);
 
-const commitMessage = execSync(`git log -1 --pretty=%B ${commit}`).toString().trim();
+const commitMessage = execSync(`git log -1 --pretty=%B ${commit}`)
+  .toString()
+  .trim();
 
-if (commitMessage.includes(NO_RELEASE_COMMIT_MESSAGE)){
-    printVersion(major, minor, patch)
-    process.exit(0)
+if (commitMessage.includes(NO_RELEASE_COMMIT_MESSAGE)) {
+  printVersion(major, minor, patch);
+  process.exit(0);
 }
 
-if (commitMessage.includes(MAJOR_COMMIT_MESSAGE)){
-    printVersion(major + 1, 0, 0)
-    process.exit(0)
+if (commitMessage.includes(MAJOR_COMMIT_MESSAGE)) {
+  printVersion(major + 1, 0, 0);
+  process.exit(0);
 }
 
-if (commitMessage.includes(MINOR_COMMIT_MESSAGE)){
-    printVersion(major, minor + 1, 0)
-    process.exit(0)
+if (commitMessage.includes(MINOR_COMMIT_MESSAGE)) {
+  printVersion(major, minor + 1, 0);
+  process.exit(0);
 }
 
-printVersion(major, minor, patch + 1)
+printVersion(major, minor, patch + 1);

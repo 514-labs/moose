@@ -8,10 +8,16 @@ Supports Linux and MacOS
 $ npx create-igloo-app
 ```
 
-## Install the CLI (Node)
+## NPM Install of the CLI
 
 ```bash
 $ npm install -g @514labs/igloo-cli
+```
+
+## Pip Install of the CLI
+
+```bash
+pip install igloo-cli
 ```
 
 ## Config file
@@ -28,3 +34,11 @@ You can create one with the following content
 # if you want to try features as they are built, set this to false
 coming_soon_wall=true
 ```
+
+## Versioning
+
+All packages and builds are synced in version when published to repositories. It makes it easy to understand the compatibility levels in the different components.
+
+Prior to 1.0.0, there is no guaranteed compatibility between components of different versions, beside the components with the exact same version numbers.
+
+i.e. You can expect same major and minor and patch versions of components to be compatible with each other.

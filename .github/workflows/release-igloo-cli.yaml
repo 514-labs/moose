@@ -5,6 +5,7 @@ on:
     branches:
       - main
     paths:
+      - ".github/workflows/release-igloo-cli.yaml"
       - "apps/igloo-cli-npm/**"
       - "apps/igloo-kit-cli/**"
       - "apps/create-igloo-app/**"

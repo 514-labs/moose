@@ -103,9 +103,17 @@ jobs:
       - name: Publish to NPM
         shell: bash
         working-directory: ./apps/igloo-cli-npm
-        run: ./scripts/release-bin.sh ${{ steps.version.outputs.VERSION }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
+        run: ./scripts/release-bin.sh ${{ needs.version.outputs.version }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Upload binary
+        uses: ncipollo/release-action@v1
+        with:
+          tag: v${{ needs.version.outputs.version }}
+          allowUpdates: "true"
+          artifacts: |
+            ./apps/igloo-kit-cli/target/${{ matrix.build.TARGET }}/release/igloo-cli
 
   publish-npm-base:
     name: Publish the base NPM package
@@ -137,11 +145,11 @@ jobs:
 
       - name: Publish the NPM CLI package
         shell: bash
-        run: ./apps/igloo-cli-npm/scripts/release-cli.sh ${{ steps.version.outputs.VERSION }}
+        run: ./apps/igloo-cli-npm/scripts/release-cli.sh ${{ needs.version.outputs.version }}
 
       - name: Publish the NPM create app package
         shell: bash
-        run: ./apps/create-igloo-app/scripts/release.sh ${{ steps.version.outputs.VERSION }}
+        run: ./apps/create-igloo-app/scripts/release.sh ${{ needs.version.outputs.version }}
 
       - name: Notify Sentry release
         uses: getsentry/action-release@v1
@@ -151,4 +159,4 @@ jobs:
           SENTRY_PROJECT: ${{ secrets.SENTRY_IGLOO_CLI_PROJECT }}
         with:
           environment: production
-          version: ${{ steps.version.outputs.VERSION }}
+          version: ${{ needs.version.outputs.version }}

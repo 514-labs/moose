@@ -22,13 +22,13 @@ importers:
         version: 0.1.13(prettier@2.8.8)
       turbo:
         specifier: latest
-        version: 1.10.15
+        version: 1.10.16
 
   apps/create-igloo-app:
     dependencies:
       '@514labs/igloo-cli':
         specifier: latest
-        version: 0.0.2-BUILD.29
+        version: 0.3.4
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -53,16 +53,16 @@ importers:
     optionalDependencies:
       '@514labs/igloo-cli-darwin-arm64':
         specifier: latest
-        version: 0.3.0
+        version: 0.3.4
       '@514labs/igloo-cli-darwin-x64':
         specifier: latest
-        version: 0.3.0
+        version: 0.3.4
       '@514labs/igloo-cli-linux-arm64':
         specifier: latest
-        version: 0.3.0
+        version: 0.3.4
       '@514labs/igloo-cli-linux-x64':
         specifier: latest
-        version: 0.3.0
+        version: 0.3.4
       '@514labs/igloo-cli-windows-arm64':
         specifier: latest
         version: 0.0.2-BUILD.73
@@ -130,7 +130,7 @@ importers:
         version: 18.2.7
       autoprefixer:
         specifier: ^10.4.13
-        version: 10.4.14(postcss@8.4.26)
+        version: 10.4.14(postcss@8.4.31)
       eslint-config-custom:
         specifier: workspace:*
         version: link:../../packages/eslint-config-custom
@@ -141,8 +141,8 @@ importers:
         specifier: ^29.6.1
         version: 29.6.1
       postcss:
-        specifier: ^8.4.20
-        version: 8.4.26
+        specifier: ^8.4.31
+        version: 8.4.31
       tailwind-config:
         specifier: workspace:*
         version: link:../../packages/tailwind-config
@@ -203,13 +203,13 @@ importers:
         version: 18.2.7
       autoprefixer:
         specifier: ^10.4.13
-        version: 10.4.14(postcss@8.4.26)
+        version: 10.4.14(postcss@8.4.31)
       eslint-config-custom:
         specifier: workspace:*
         version: link:../../packages/eslint-config-custom
       postcss:
-        specifier: ^8.4.20
-        version: 8.4.26
+        specifier: ^8.4.31
+        version: 8.4.31
       tailwind-config:
         specifier: workspace:*
         version: link:../../packages/tailwind-config
@@ -267,8 +267,8 @@ importers:
         specifier: workspace:*
         version: link:../eslint-config-custom
       postcss:
-        specifier: ^8.4.20
-        version: 8.4.26
+        specifier: ^8.4.31
+        version: 8.4.31
       react:
         specifier: ^18.2.0
         version: 18.2.0
@@ -280,81 +280,41 @@ importers:
         version: link:../tsconfig
       tsup:
         specifier: ^6.1.3
-        version: 6.7.0(postcss@8.4.26)(typescript@4.9.5)
+        version: 6.7.0(postcss@8.4.31)(typescript@4.9.5)
       typescript:
         specifier: ^4.9.4
         version: 4.9.5
 
 packages:
 
-  /@514labs/igloo-cli-darwin-arm64@0.0.2-BUILD.29:
-    resolution: {integrity: sha512-Uj+E/OgCLESYlHyLf7hSs7f4Nuwzdh6jwq/6rjpP1FfZIyRPKryMMeo/im2Jac0mwGTpLQhfGOkWv4Qf9SMM5w==}
+  /@514labs/igloo-cli-darwin-arm64@0.3.4:
+    resolution: {integrity: sha512-m+2uKKnb9BGxKc1oAy67VJ8UOQ/MNORkNq7sPSLZSQYbYTCiLKLVdqlyGm9I4bfX987zlJa6aVMfUGt+230R4A==}
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-darwin-arm64@0.3.0:
-    resolution: {integrity: sha512-5IuhaV+aTRmGHukd7NsjZgBDeMsh+AYOFVXVfJtov53xMN/p3XjKPYEHw4h7jr5yZT7fwF0+oXgTfHCMoH4uAg==}
-    cpu: [arm64]
-    os: [darwin]
-    requiresBuild: true
-    dev: false
-    optional: true
-
-  /@514labs/igloo-cli-darwin-x64@0.0.2-BUILD.29:
-    resolution: {integrity: sha512-e9WCKEs1Gw98zZ3sjJmHBZB+oPInPSXs+3i/ul5qzS7JgDixT77hd8ZgardSSs7Sqxdu5aPlGElXZ1g5CgPtuQ==}
+  /@514labs/igloo-cli-darwin-x64@0.3.4:
+    resolution: {integrity: sha512-2NiLRyXFGIO4QcmP8wbEs3IwOnNlFwFTPSLU5gDQAXGKICGjqmYJ/oKwxpDsPyLf3m/47ULgFVkzI/Bh13+PIQ==}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-darwin-x64@0.3.0:
-    resolution: {integrity: sha512-MWo0+Cc/d90sTEIrGO+JuuffkVgrQ2E2ARSFaT71Ycnk6gfcbKxwC99K3ZMYWDrFAXfDz3zvX5wX+NWYh2g2nA==}
-    cpu: [x64]
-    os: [darwin]
-    requiresBuild: true
-    dev: false
-    optional: true
-
-  /@514labs/igloo-cli-linux-arm64@0.0.2-BUILD.29:
-    resolution: {integrity: sha512-r79w9PwlKkN/wiXUR0v0g2xdPLMY+8v8F1Q4gfKQpXihr6287/A2z+J63h+nu81a2cUMYwi0HD1zMqUP/ljfPg==}
+  /@514labs/igloo-cli-linux-arm64@0.3.4:
+    resolution: {integrity: sha512-vcsGCeZNVK3qKAGq27RHU88ZNNIkKD7qTa5MCBR8fHKdXrZzxYtQ8lEQr9uus45uh/jHGWpys6a65YPTXgIhiw==}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-linux-arm64@0.3.0:
-    resolution: {integrity: sha512-3OR5iK3wkdJULxUn4V5QDaycqKDtPeLPcOAhz7sMPwXQl1idcppDbB7XprGs/WCZm0TxOwuAVuaZeLfDHSLacQ==}
-    cpu: [arm64]
-    os: [linux]
-    requiresBuild: true
-    dev: false
-    optional: true
-
-  /@514labs/igloo-cli-linux-x64@0.0.2-BUILD.29:
-    resolution: {integrity: sha512-EFCGYjb2HeriyV88eU/ja0/tPEbaQ5xnWs9tHCAK1L/DWdlu17dogusoLP675OvqOkg+4HZnr4hkB4TVzTCOLA==}
+  /@514labs/igloo-cli-linux-x64@0.3.4:
+    resolution: {integrity: sha512-azsRLQ2Rt2vDgJ8caf0BcUxgj40LFplTPPLzVO5pSEuZxUE1iZZUvBcovyqKTT9YvbTHNjKShC8hh1AaTMoluA==}
     cpu: [x64]
     os: [linux]
-    requiresBuild: true
-    dev: false
-    optional: true
-
-  /@514labs/igloo-cli-linux-x64@0.3.0:
-    resolution: {integrity: sha512-wwW+Ds0JpnnZrBT32ByQMZzoAw+bIWZt1GHyjtv0o2DJ83BN0J+UQ1uaO1OktJ6iQJ/qLvqQuhOhwoCzaskkcQ==}
-    cpu: [x64]
-    os: [linux]
-    requiresBuild: true
-    dev: false
-    optional: true
-
-  /@514labs/igloo-cli-windows-arm64@0.0.2-BUILD.29:
-    resolution: {integrity: sha512-ED/6AO8i9tapT+CWw00lwlId2aBL+9ttosgKaQ9kso1lmXj7omwmvRWv6Xj+BSYngbdzwAjgwKIwQOdBPpVaMw==}
-    cpu: [arm64]
-    os: [win32]
     requiresBuild: true
     dev: false
     optional: true
@@ -362,14 +322,6 @@ packages:
   /@514labs/igloo-cli-windows-arm64@0.0.2-BUILD.73:
     resolution: {integrity: sha512-5lPs3p4VJtpB2giqhvvXbaVkHq1or55REIPS6NBJ8bQEsPjlj+AIXtC/nR+EfQw6j9BJ6qEe0j4jmqYNW0SIHg==}
     cpu: [arm64]
-    os: [win32]
-    requiresBuild: true
-    dev: false
-    optional: true
-
-  /@514labs/igloo-cli-windows-x64@0.0.2-BUILD.29:
-    resolution: {integrity: sha512-Y1I1EH7+bDBCblqdbKzZZ2tff1GLJDGW4erMTkmJAOVmOQPkLqYH4xaKUceAIr3eaF26iYf2YxY0FeOzuUTWSw==}
-    cpu: [x64]
     os: [win32]
     requiresBuild: true
     dev: false
@@ -383,16 +335,14 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/igloo-cli@0.0.2-BUILD.29:
-    resolution: {integrity: sha512-xg7qbwNd4jBlgstiQrHnrIZ+jpJGU6d1mB35AjWl43QF7d5O5Tm8upgN4x3wKLq+2toWyY3suyiftsu0A8yu8Q==}
+  /@514labs/igloo-cli@0.3.4:
+    resolution: {integrity: sha512-rVHFX+VOBxvFwkDMbEXGEbCyyKlIPKQGGCisjutgqKNBMNR4sIQFS4O9UIWV4uXe3Gv4B1c9HUnS+uv13u2ZJg==}
     hasBin: true
     optionalDependencies:
-      '@514labs/igloo-cli-darwin-arm64': 0.0.2-BUILD.29
-      '@514labs/igloo-cli-darwin-x64': 0.0.2-BUILD.29
-      '@514labs/igloo-cli-linux-arm64': 0.0.2-BUILD.29
-      '@514labs/igloo-cli-linux-x64': 0.0.2-BUILD.29
-      '@514labs/igloo-cli-windows-arm64': 0.0.2-BUILD.29
-      '@514labs/igloo-cli-windows-x64': 0.0.2-BUILD.29
+      '@514labs/igloo-cli-darwin-arm64': 0.3.4
+      '@514labs/igloo-cli-darwin-x64': 0.3.4
+      '@514labs/igloo-cli-linux-arm64': 0.3.4
+      '@514labs/igloo-cli-linux-x64': 0.3.4
     dev: false
 
   /@aashutoshrathi/word-wrap@1.2.6:
@@ -2541,7 +2491,7 @@ packages:
     resolution: {integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==}
     dev: true
 
-  /autoprefixer@10.4.14(postcss@8.4.26):
+  /autoprefixer@10.4.14(postcss@8.4.31):
     resolution: {integrity: sha512-FQzyfOsTlwVzjHxKEqRIAdJx9niO6VCBCoEwax/VLSoQF29ggECcPuBqUMZ+u8jCZOPSy8b8/8KnuFbp0SaFZQ==}
     engines: {node: ^10 || ^12 || >=14}
     hasBin: true
@@ -2553,7 +2503,7 @@ packages:
       fraction.js: 4.2.0
       normalize-range: 0.1.2
       picocolors: 1.0.0
-      postcss: 8.4.26
+      postcss: 8.4.31
       postcss-value-parser: 4.2.0
     dev: true
 
@@ -6608,6 +6558,7 @@ packages:
   /nanoid@3.3.6:
     resolution: {integrity: sha512-BGcqMMJuToF7i1rt+2PWSNVnWIkGCU78jBG3RxO/bZlnZPK2Cmi2QaffxGO/2RvWi9sL+FAiRiXMgsyxQ1DIDA==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
+    hasBin: true
 
   /napi-build-utils@1.0.2:
     resolution: {integrity: sha512-ONmRUqK7zj7DWX0D9ADe03wbwOBZxNAfF20PlGfCWQcD3+/MakShIHrMqx9YwPTfxDdF1zLeL+RGZiR9kGMLdg==}
@@ -7096,29 +7047,29 @@ packages:
       find-up: 4.1.0
     dev: true
 
-  /postcss-import@15.1.0(postcss@8.4.26):
+  /postcss-import@15.1.0(postcss@8.4.31):
     resolution: {integrity: sha512-hpr+J05B2FVYUAXHeK1YyI267J/dDDhMU6B6civm8hSY1jYJnBXxzKDKDswzJmtLHryrjhnDjqqp/49t8FALew==}
     engines: {node: '>=14.0.0'}
     peerDependencies:
       postcss: ^8.0.0
     dependencies:
-      postcss: 8.4.26
+      postcss: 8.4.31
       postcss-value-parser: 4.2.0
       read-cache: 1.0.0
       resolve: 1.22.2
     dev: true
 
-  /postcss-js@4.0.1(postcss@8.4.26):
+  /postcss-js@4.0.1(postcss@8.4.31):
     resolution: {integrity: sha512-dDLF8pEO191hJMtlHFPRa8xsizHaM82MLfNkUHdUtVEV3tgTp5oj+8qbEqYM57SLfc74KSbw//4SeJma2LRVIw==}
     engines: {node: ^12 || ^14 || >= 16}
     peerDependencies:
       postcss: ^8.4.21
     dependencies:
       camelcase-css: 2.0.1
-      postcss: 8.4.26
+      postcss: 8.4.31
     dev: true
 
-  /postcss-load-config@3.1.4(postcss@8.4.26):
+  /postcss-load-config@3.1.4(postcss@8.4.31):
     resolution: {integrity: sha512-6DiM4E7v4coTE4uzA8U//WhtPwyhiim3eyjEMFCnUpzbrkK9wJHgKDT2mR+HbtSrd/NubVaYTOpSpjUl8NQeRg==}
     engines: {node: '>= 10'}
     peerDependencies:
@@ -7131,11 +7082,11 @@ packages:
         optional: true
     dependencies:
       lilconfig: 2.1.0
-      postcss: 8.4.26
+      postcss: 8.4.31
       yaml: 1.10.2
     dev: true
 
-  /postcss-load-config@4.0.1(postcss@8.4.26):
+  /postcss-load-config@4.0.1(postcss@8.4.31):
     resolution: {integrity: sha512-vEJIc8RdiBRu3oRAI0ymerOn+7rPuMvRXslTvZUKZonDHFIczxztIyJ1urxM1x9JXEikvpWWTUUqal5j/8QgvA==}
     engines: {node: '>= 14'}
     peerDependencies:
@@ -7148,17 +7099,17 @@ packages:
         optional: true
     dependencies:
       lilconfig: 2.1.0
-      postcss: 8.4.26
+      postcss: 8.4.31
       yaml: 2.3.1
     dev: true
 
-  /postcss-nested@6.0.1(postcss@8.4.26):
+  /postcss-nested@6.0.1(postcss@8.4.31):
     resolution: {integrity: sha512-mEp4xPMi5bSWiMbsgoPfcP74lsWLHkQbZc3sY+jWYd65CUwXrUaTp0fmNpa01ZcETKlIgUdFN/MpS2xZtqL9dQ==}
     engines: {node: '>=12.0'}
     peerDependencies:
       postcss: ^8.2.14
     dependencies:
-      postcss: 8.4.26
+      postcss: 8.4.31
       postcss-selector-parser: 6.0.13
     dev: true
 
@@ -7183,8 +7134,8 @@ packages:
       source-map-js: 1.0.2
     dev: false
 
-  /postcss@8.4.26:
-    resolution: {integrity: sha512-jrXHFF8iTloAenySjM/ob3gSj7pCu0Ji49hnjqzsgSRa50hkWCKD0HQ+gMNJkW38jBI68MpAAg7ZWwHwX8NMMw==}
+  /postcss@8.4.31:
+    resolution: {integrity: sha512-PS08Iboia9mts/2ygV3eLpY5ghnUcfLV/EXTOW1E2qYxJKGGBUtNjN76FYHnMs36RmARn41bC0AZmn+rR0OVpQ==}
     engines: {node: ^10 || ^12 || >=14}
     dependencies:
       nanoid: 3.3.6
@@ -8055,11 +8006,11 @@ packages:
       normalize-path: 3.0.0
       object-hash: 3.0.0
       picocolors: 1.0.0
-      postcss: 8.4.26
-      postcss-import: 15.1.0(postcss@8.4.26)
-      postcss-js: 4.0.1(postcss@8.4.26)
-      postcss-load-config: 4.0.1(postcss@8.4.26)
-      postcss-nested: 6.0.1(postcss@8.4.26)
+      postcss: 8.4.31
+      postcss-import: 15.1.0(postcss@8.4.31)
+      postcss-js: 4.0.1(postcss@8.4.31)
+      postcss-load-config: 4.0.1(postcss@8.4.31)
+      postcss-nested: 6.0.1(postcss@8.4.31)
       postcss-selector-parser: 6.0.13
       resolve: 1.22.2
       sucrase: 3.34.0
@@ -8230,7 +8181,7 @@ packages:
     resolution: {integrity: sha512-7At1WUettjcSRHXCyYtTselblcHl9PJFFVKiCAy/bY97+BPZXSQ2wbq0P9s8tK2G7dFQfNnlJnPAiArVBVBsfA==}
     dev: false
 
-  /tsup@6.7.0(postcss@8.4.26)(typescript@4.9.5):
+  /tsup@6.7.0(postcss@8.4.31)(typescript@4.9.5):
     resolution: {integrity: sha512-L3o8hGkaHnu5TdJns+mCqFsDBo83bJ44rlK7e6VdanIvpea4ArPcU3swWGsLVbXak1PqQx/V+SSmFPujBK+zEQ==}
     engines: {node: '>=14.18'}
     hasBin: true
@@ -8254,8 +8205,8 @@ packages:
       execa: 5.1.1
       globby: 11.1.0
       joycon: 3.1.1
-      postcss: 8.4.26
-      postcss-load-config: 3.1.4(postcss@8.4.26)
+      postcss: 8.4.31
+      postcss-load-config: 3.1.4(postcss@8.4.31)
       resolve-from: 5.0.0
       rollup: 3.26.3
       source-map: 0.8.0-beta.0
@@ -8282,64 +8233,64 @@ packages:
       safe-buffer: 5.2.1
     dev: false
 
-  /turbo-darwin-64@1.10.15:
-    resolution: {integrity: sha512-Sik5uogjkRTe1XVP9TC2GryEMOJCaKE2pM/O9uLn4koQDnWKGcLQv+mDU+H+9DXvKLnJnKCD18OVRkwK5tdpoA==}
+  /turbo-darwin-64@1.10.16:
+    resolution: {integrity: sha512-+Jk91FNcp9e9NCLYlvDDlp2HwEDp14F9N42IoW3dmHI5ZkGSXzalbhVcrx3DOox3QfiNUHxzWg4d7CnVNCuuMg==}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
     dev: true
     optional: true
 
-  /turbo-darwin-arm64@1.10.15:
-    resolution: {integrity: sha512-xwqyFDYUcl2xwXyGPmHkmgnNm4Cy0oNzMpMOBGRr5x64SErS7QQLR4VHb0ubiR+VAb8M+ECPklU6vD1Gm+wekg==}
+  /turbo-darwin-arm64@1.10.16:
+    resolution: {integrity: sha512-jqGpFZipIivkRp/i+jnL8npX0VssE6IAVNKtu573LXtssZdV/S+fRGYA16tI46xJGxSAivrZ/IcgZrV6Jk80bw==}
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
     dev: true
     optional: true
 
-  /turbo-linux-64@1.10.15:
-    resolution: {integrity: sha512-dM07SiO3RMAJ09Z+uB2LNUSkPp3I1IMF8goH5eLj+d8Kkwoxd/+qbUZOj9RvInyxU/IhlnO9w3PGd3Hp14m/nA==}
+  /turbo-linux-64@1.10.16:
+    resolution: {integrity: sha512-PpqEZHwLoizQ6sTUvmImcRmACyRk9EWLXGlqceogPZsJ1jTRK3sfcF9fC2W56zkSIzuLEP07k5kl+ZxJd8JMcg==}
     cpu: [x64]
     os: [linux]
     requiresBuild: true
     dev: true
     optional: true
 
-  /turbo-linux-arm64@1.10.15:
-    resolution: {integrity: sha512-MkzKLkKYKyrz4lwfjNXH8aTny5+Hmiu4SFBZbx+5C0vOlyp6fV5jZANDBvLXWiDDL4DSEAuCEK/2cmN6FVH1ow==}
+  /turbo-linux-arm64@1.10.16:
+    resolution: {integrity: sha512-TMjFYz8to1QE0fKVXCIvG/4giyfnmqcQIwjdNfJvKjBxn22PpbjeuFuQ5kNXshUTRaTJihFbuuCcb5OYFNx4uw==}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
     dev: true
     optional: true
 
-  /turbo-windows-64@1.10.15:
-    resolution: {integrity: sha512-3TdVU+WEH9ThvQGwV3ieX/XHebtYNHv9HARHauPwmVj3kakoALkpGxLclkHFBLdLKkqDvmHmXtcsfs6cXXRHJg==}
+  /turbo-windows-64@1.10.16:
+    resolution: {integrity: sha512-+jsf68krs0N66FfC4/zZvioUap/Tq3sPFumnMV+EBo8jFdqs4yehd6+MxIwYTjSQLIcpH8KoNMB0gQYhJRLZzw==}
     cpu: [x64]
     os: [win32]
     requiresBuild: true
     dev: true
     optional: true
 
-  /turbo-windows-arm64@1.10.15:
-    resolution: {integrity: sha512-l+7UOBCbfadvPMYsX08hyLD+UIoAkg6ojfH+E8aud3gcA1padpjCJTh9gMpm3QdMbKwZteT5uUM+wyi6Rbbyww==}
+  /turbo-windows-arm64@1.10.16:
+    resolution: {integrity: sha512-sKm3hcMM1bl0B3PLG4ifidicOGfoJmOEacM5JtgBkYM48ncMHjkHfFY7HrJHZHUnXM4l05RQTpLFoOl/uIo2HQ==}
     cpu: [arm64]
     os: [win32]
     requiresBuild: true
     dev: true
     optional: true
 
-  /turbo@1.10.15:
-    resolution: {integrity: sha512-mKKkqsuDAQy1wCCIjCdG+jOCwUflhckDMSRoeBPcIL/CnCl7c5yRDFe7SyaXloUUkt4tUR0rvNIhVCcT7YeQpg==}
+  /turbo@1.10.16:
+    resolution: {integrity: sha512-2CEaK4FIuSZiP83iFa9GqMTQhroW2QryckVqUydmg4tx78baftTOS0O+oDAhvo9r9Nit4xUEtC1RAHoqs6ZEtg==}
     hasBin: true
     optionalDependencies:
-      turbo-darwin-64: 1.10.15
-      turbo-darwin-arm64: 1.10.15
-      turbo-linux-64: 1.10.15
-      turbo-linux-arm64: 1.10.15
-      turbo-windows-64: 1.10.15
-      turbo-windows-arm64: 1.10.15
+      turbo-darwin-64: 1.10.16
+      turbo-darwin-arm64: 1.10.16
+      turbo-linux-64: 1.10.16
+      turbo-linux-arm64: 1.10.16
+      turbo-windows-64: 1.10.16
+      turbo-windows-arm64: 1.10.16
     dev: true
 
   /type-check@0.4.0:

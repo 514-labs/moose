@@ -112,8 +112,9 @@ jobs:
         with:
           tag: v${{ needs.version.outputs.version }}
           allowUpdates: "true"
+          replacesArtifacts: "false"
           artifacts: |
-            ./apps/igloo-kit-cli/target/${{ matrix.build.TARGET }}/release/igloo-cli
+            ./apps/igloo-kit-cli/target/${{ matrix.build.TARGET }}/release/igloo-cli-${{ matrix.build.TARGET }}
 
   publish-npm-base:
     name: Publish the base NPM package

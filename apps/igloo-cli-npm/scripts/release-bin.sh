@@ -34,6 +34,7 @@ if [ $build_os = "windows-2022" ]; then
 fi
 pwd
 ls "../igloo-kit-cli/target/${build_target}/release/${bin}"
+cp "../igloo-kit-cli/target/${build_target}/release/${bin}" "../igloo-kit-cli/target/${build_target}/release/${bin}-${build_target}"
 cp "../igloo-kit-cli/target/${build_target}/release/${bin}" "${node_pkg}/bin"
 # publish the package
 cd "${node_pkg}"

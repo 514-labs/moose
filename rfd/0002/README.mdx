@@ -21,10 +21,14 @@ We are building an opinionated framework to enabled engineers that are building 
 ### Overview
 
 - Data Ingest SDK: The data ingest SDK is a simple library that can be embedded in the user's application to send data to an igloo deployment. It is typed with the User's Business Objects to ensure that the data sent to igloo is valid.
-- Igloo Server: This is a component that abstracts away several parts of the architecture. It contains a web server that will ingest the data, a streaming engine that will store the data in streams and an OLAP Database that will store the data in a columnar format. It also runs all the code that is supplied by the user to transform the data.
+- Igloo Server: This is a component that abstracts away several parts of the architecture. It contains a web server that will ingest the data, a streaming engine that will store the data in streams and an OLAP Database that will store the data in a columnar format. The OLAP system will need the ability to run on different storage Tiers to make economical sense. It also runs all the code that is supplied by the user to transform the data.
 - Igloo CLI: This is a command line interface that will allow the user to interact with the igloo server. It will allow the user to create a new project, run the project locally and deploy the project to a cloud provider.
 - Data Consumption SDK: This SDK is typed with the user's data and allows the user to query the data from the Igloo Server. It will also allow the user to subscribe to data changes and receive updates in real time.
-- Data Visualization SDK: This SDK plays well with the data Consumption SDK and contains web components of common data visualizations that can be used to build a dashboard.
+- Data Visualization SDK: This SDK plays well with the data Consumption SDK and contains web components of common data visualizations that can be used to build a dashboard. The sdk would be used in a web application that wraps the dashbaord with business logic.
+
+The 3 sdks would be independent dependencies that can be used in isolation or together.
+
+They will be calling HTTP APIs on the igloo server that could be called by any other client, provided that the client implements the same protocol.
 
 ```mermaid
 ---
@@ -58,13 +62,15 @@ In Local mode it can be the same process serving both, in a production setting, 
 
 ### Lambda Ingestion Function
 
+> Note: Here lambda function refers to a function that is invoked on every event that is received by the HTTP Server. It is not a reference to AWS Lambda.
+
 This is a lambda function is that is provided as a hook for the user to be able to add arbitrary code to transform events that are coming from the ingest layer.
 
 The input of the function inputs and outputs will be typed so that the user can properly encode the mapping.
 
 The lambda function writes back to the streaming engine. To Increase throughput the instances of this function can be arbitrarily scaled horizontally.
 
-Random idea: we could have those be state machines. In state machine mode we would not have concurrency enabled. in standard mode they could be scaled horizontally.
+Random idea: we could have those be state machines. In state machine mode we would not have concurrency enabled. in standard mode they could be scaled horizontally. That would enable us to have windowed computations for example.
 
 ### Table Writer Process
 
@@ -81,7 +87,7 @@ The igloo CLI is a tool to help the user get setup really quickly. It helps with
 - Orchestrate the ingest functions and runs them
 - Orchestrate the Table Writer
 - Runs the API server locally
-- Runs the developper console for the project
+- Runs the developer console for the project
 
 ## Ingest MVP Definition
 
@@ -134,12 +140,17 @@ flowchart LR
 
 ### Open Questions
 
+Those questions will probably require their own RFDs and some experimentation to answer them.
+
 - In Production how to we deploy everything?
 - Do we provide configurations for the OLAP cluster?
 - Do we provide configurations for the streaming cluster?
 - Do we point the user to cloud offerings for storage to be plugged in?
 - How scalable do we need the first version of this to be?
 - Should we just bundle this all in one docker container?
+- How do we handle Data Governance?
+- How do we handle Authentication?
+- How to provide access to production or production like data locally?
 
 # Appendix
 
@@ -147,13 +158,19 @@ flowchart LR
 
 ### Rust
 
-As a high performant language we chose rust to be the glue we write that can be common across multiple user environments. Whether the user is leveraging a higher level language like Typescript or Javascript.
+As a high performant language we chose rust to be the glue we write that can be common across multiple user environments. Whether the user is leveraging a higher level language like Typescript or Javascript. By using Rust we can ensure that the glue is performant, lightweight, can be cross compiled to multiple Operating Systems and can interoperate with mulitple runtimes (Node, Python...).
+
+By Glue we mean:
+
+- The HTTP Web server
+- The Generic Table Writer Process
+- The CLI that orchestrates the whole thing
 
 It is also used to build the CLI which is cross compiled for linux and macOS
 
 ### Clickhouse
 
-Clickhouse is a high performance data storage with a small footprint. Ideal for both being deployed on the developper machine when he or she is iterating and deployed in the cloud for massive scale
+Clickhouse is a high performance data storage with a small footprint. Ideal for both being deployed on the developer machine when he or she is iterating and deployed in the cloud for massive scale
 
 ### Redpandas
 
@@ -161,7 +178,7 @@ Red pandas is an implementation of Kafka written in C/C++. Highly performant and
 
 ### Prisma
 
-We are using prisma files to describe tables and provision them in the olap system
+We are using prisma files to describe tables and provision them in the olap system. We looked for a high level language agnostic way to describe tables and prisma was a good candidate. The language is simple, and the tooling is great, written in Rust, and it has a great community behind it.
 
 ## Technologies we are testing
 

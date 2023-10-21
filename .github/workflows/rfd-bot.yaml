@@ -1,4 +1,4 @@
-name: RFD Bot - RFD Claim
+name: RFD Bot
 # TODO debug this with the first RFD going through the automation: RFD 0002
 on:
   workflow_dispatch:
@@ -7,7 +7,7 @@ on:
       - rfd/*
     paths:
       - "rfd/**"
-      - ".github/workflows/rfd-bot.yml"
+      - ".github/workflows/rfd-bot.yaml"
 
 jobs:
   claim-rfd-number:
@@ -22,7 +22,9 @@ jobs:
 
       - name: Set RFD Number
         run: |
-          echo "RFD_NUMBER=$(echo ${{ github.event.pull_request.head.ref }} | sed 's/rfd\///')" >> $GITHUB_ENV
+          RFD_NUMBER=$(echo ${{ github.ref }} | sed 's/refs\/heads\/rfd\///')
+          echo "Found RFD Number: $RFD_NUMBER from branch name"
+          echo "RFD_NUMBER=$RFD_NUMBER" >> $GITHUB_ENV
 
       - name: Claim RFD number if available
         run: |

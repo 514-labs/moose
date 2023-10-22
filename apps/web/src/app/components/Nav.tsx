@@ -11,7 +11,7 @@ gsap.registerPlugin(SplitText);
 const navigation = [
   // { name: "Docs", href: "#" },
   { name: "github", href: "https://github.com/514-labs/igloo-stack" },
-  { name: "discord", href: "https://discord.gg/WX3V3K4QCc" },
+  { name: "community", href: "https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg" },
   // { name: "Join us", href: "#" },
 ]
 

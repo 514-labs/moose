@@ -1,5 +1,5 @@
 use std::io::{self, Write, Error, ErrorKind};
-use crate::{cli::{display::Message, DebugStatus}, utilities::docker};
+use crate::{cli::{display::Message, DebugStatus}, utilities::docker, infrastructure::PANDA_NETWORK};
 use super::{Routine, RoutineSuccess, RoutineFailure};
 
 pub struct ValidateClickhouseRun(DebugStatus);
@@ -73,7 +73,7 @@ impl Routine for ValidatePandaHouseNetwork {
 
         let string_output = String::from_utf8(output.stdout).unwrap();
 
-        if string_output.contains("panda_house") {
+        if string_output.contains(PANDA_NETWORK) {
             Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "validated panda house docker network".to_string())))
         } else {
             Err(RoutineFailure::new(Message::new("Failed".to_string(), "to validate panda house docker network".to_string()), Error::new(ErrorKind::Other, "Failed to validate panda house network exists")))

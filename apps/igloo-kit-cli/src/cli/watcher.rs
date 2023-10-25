@@ -3,15 +3,9 @@ use std::{sync::{Arc, RwLock}, collections::HashMap, path::PathBuf, io::{Error, 
 use notify::{RecommendedWatcher, Config, RecursiveMode, Watcher, event::ModifyKind};
 use tokio::sync::Mutex;
 
-use crate::{framework::{directories::get_app_directory, schema::{parse_schema_file, OpsTable}}, cli::display::show_message, infrastructure::{stream, olap::{self, clickhouse::{ConfiguredClient, mapper, ClickhouseTable, config::ClickhouseConfig}}}};
+use crate::{framework::{directories::get_app_directory, schema::{parse_schema_file, TableOps, MatViewOps}}, cli::display::show_message, infrastructure::{stream, olap::{self, clickhouse::{ConfiguredClient, mapper, ClickhouseTable, config::ClickhouseConfig, ClickhouseView}}}};
 
 use super::{CommandTerminal, display::{MessageType, Message}};
-
-// fn route_to_topic_name(route: PathBuf) -> String {
-//     let route = route.to_str().unwrap().to_string();
-//     let route = route.replace("/", ".");
-//     route
-// }
 
 fn dataframe_path_to_ingest_route(project_dir: PathBuf, path: PathBuf, table_name: String) -> PathBuf {
     let dataframe_path = project_dir.join("dataframes");
@@ -54,6 +48,7 @@ async fn process_event(project_dir: PathBuf, event: notify::Event, route_table: 
 pub struct RouteMeta {
     pub original_file_path: PathBuf,
     pub table_name: String,
+    pub view_name: Option<String>,
 }
 
 async fn create_table_and_topics_from_dataframe_route(route: &PathBuf, project_dir: PathBuf, route_table: &mut tokio::sync::MutexGuard<'_, HashMap::<PathBuf, RouteMeta>>, configured_client: &ConfiguredClient) -> Result<(), Error> {
@@ -64,12 +59,25 @@ async fn create_table_and_topics_from_dataframe_route(route: &PathBuf, project_d
     
                 for table in tables {
                     let ingest_route = dataframe_path_to_ingest_route(project_dir.clone(), route.clone(), table.name.clone());
-                    route_table.insert(ingest_route, RouteMeta { original_file_path: route.clone(), table_name: table.name.clone() });
+                    
                     stream::redpanda::create_topic_from_name(table.name.clone());
-                    let query = table.create_table_query()
+                    let table_query = table.create_table_query()
                         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to get clickhouse query: {:?}", e)))?;
-                    olap::clickhouse::run_query(query, configured_client).await
+                    
+                    olap::clickhouse::run_query(table_query, configured_client).await
                         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create table in clickhouse: {}", e)))?;
+
+                    let view = ClickhouseView::new(
+                        table.db_name.clone(), 
+                        format!("{}_view", table.name), 
+                        table.clone());
+                    let view_query = view.create_materialized_view_query()
+                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to get clickhouse query: {:?}", e)))?;
+
+                    olap::clickhouse::run_query(view_query, configured_client).await
+                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create table in clickhouse: {}", e)))?;
+
+                    route_table.insert(ingest_route, RouteMeta { original_file_path: route.clone(), table_name: table.name.clone(), view_name: Some(view.name.clone()) });
                 };
             }
         } else {
@@ -85,8 +93,13 @@ async fn remove_table_and_topics_from_dataframe_route(route: &PathBuf, route_tab
         if meta.original_file_path == route.clone() {
             stream::redpanda::delete_topic(meta.table_name.clone());
             
-            olap::clickhouse::delete_table(meta.table_name, configured_client).await
+            olap::clickhouse::delete_table_or_view(meta.table_name, configured_client).await
                 .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create table in clickhouse: {}", e)))?;
+
+            if let Some(view_name) = meta.view_name {
+                olap::clickhouse::delete_table_or_view(view_name, configured_client).await
+                    .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create table in clickhouse: {}", e)))?;
+            }
 
             route_table.remove(&k);
         }

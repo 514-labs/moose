@@ -51,16 +51,31 @@ pub struct RouteMeta {
     pub view_name: Option<String>,
 }
 
-async fn create_table_and_topics_from_dataframe_route(route: &PathBuf, project_dir: PathBuf, route_table: &mut tokio::sync::MutexGuard<'_, HashMap::<PathBuf, RouteMeta>>, configured_client: &ConfiguredClient) -> Result<(), Error> {
+
+struct FrameworkObject {
+    pub table: ClickhouseTable,
+    pub topic: String,
+    pub ts_interface: TypescriptInterface,
+}
+
+fn framework_object_mapper(t: Table) -> FrameworkObject {
+    return FrameworkObject {
+            table: olap::clickhouse::mapper::std_table_to_clickhouse_table(t.clone()),
+            topic: t.name.clone(),
+            ts_interface: framework::typescript::mapper::std_table_to_typescript_interface(t),
+        }
+}
+
+async fn create_framework_objects_from_dataframe_route(route: &PathBuf, project_dir: PathBuf, route_table: &mut tokio::sync::MutexGuard<'_, HashMap::<PathBuf, RouteMeta>>, configured_client: &ConfiguredDBClient) -> Result<(), Error> {
     if let Some(ext) = route.extension() {
             if ext == "prisma" && route.as_path().to_str().unwrap().contains("dataframes")  {
                 let tables = parse_schema_file::<ClickhouseTable>(route.clone(), mapper::std_table_to_clickhouse_table)
                     .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to parse schema file. Error {}", e)))?;
     
-                for table in tables {
-                    let ingest_route = dataframe_path_to_ingest_route(project_dir.clone(), route.clone(), table.name.clone());
-                    
-                    stream::redpanda::create_topic_from_name(table.name.clone());
+                for fo in framework_objects {
+                    let ingest_route = dataframe_path_to_ingest_route(project_dir.clone(), route.clone(), fo.table.name.clone());
+                    route_table.insert(ingest_route, RouteMeta { original_file_path: route.clone(), table_name: fo.table.name.clone() });
+                    stream::redpanda::create_topic_from_name(fo.topic.clone());
                     let table_query = table.create_table_query()
                         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to get clickhouse query: {:?}", e)))?;
                     
@@ -75,7 +90,17 @@ async fn create_table_and_topics_from_dataframe_route(route: &PathBuf, project_d
                         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to get clickhouse query: {:?}", e)))?;
 
                     olap::clickhouse::run_query(view_query, configured_client).await
-                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create table in clickhouse: {}", e)))?;
+                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create view in clickhouse: {}", e)))?;
+                    
+                    let ts_interface = fo.ts_interface.create_code()
+                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to get typescript interface: {:?}", e)))?;
+
+                    let typescript_dir = get_typescript_models_dir()?;
+
+                    framework::languages::write_code_to_file(SupportedLanguages::Typescript, typescript_dir.join(format!("{}.ts", fo.ts_interface.name)), ts_interface)
+                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to write typescript interface to file: {:?}", e)))?;
+
+                    
 
                     route_table.insert(ingest_route, RouteMeta { original_file_path: route.clone(), table_name: table.name.clone(), view_name: Some(view.name.clone()) });
                 };

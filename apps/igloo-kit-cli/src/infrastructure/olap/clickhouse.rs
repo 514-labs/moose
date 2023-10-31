@@ -151,13 +151,42 @@ impl MatViewOps for ClickhouseView {
     }
 }
 
-pub struct ConfiguredClient {
+#[derive(Debug, Clone)]
+pub struct ClickhouseView {
+    pub db_name: String,
+    pub name: String,
+    pub source_table: ClickhouseTable,
+}
+
+impl ClickhouseView {
+    pub fn new(db_name: String, name: String, source_table: ClickhouseTable) -> ClickhouseView {
+        ClickhouseView {
+            db_name,
+            name,
+            source_table,
+        }
+    }
+}
+
+pub type QueryString = String;
+
+impl MatViewOps for ClickhouseView {
+    fn create_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
+        CreateMaterializedViewQuery::new(self.clone())
+    }
+    fn drop_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
+        DropMaterializedViewQuery::new(self.clone())
+    }
+}
+
+pub struct ConfiguredDBClient {
     pub client: Client,
     pub config: ClickhouseConfig,
 }
 
-pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredClient {
-    ConfiguredClient {
+
+pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredDBClient {
+    ConfiguredDBClient {
         client: Client::default()
         .with_url(Url::parse(&format!("http://{}:{}", clickhouse_config.host, clickhouse_config.host_port)).unwrap())
         .with_user(format!("{}", clickhouse_config.user))
@@ -168,12 +197,12 @@ pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredClient {
 }
 
 // Run an arbitrary clickhouse query
-pub async fn run_query(query: QueryString, configured_client: &ConfiguredClient) -> Result<(), clickhouse::error::Error> {
+pub async fn run_query(query: QueryString, configured_client: &ConfiguredDBClient) -> Result<(), clickhouse::error::Error> {
     let client = &configured_client.client;
     client.query(query.as_str()).execute().await
 }
 
-pub async fn delete_table_or_view(table_or_view_name: String, configured_client: &ConfiguredClient) -> Result<(), clickhouse::error::Error> {
+pub async fn delete_table_or_view(table_or_view_name: String, configured_client: &ConfiguredDBClient) -> Result<(), clickhouse::error::Error> {
     let client = &configured_client.client;
     let db_name = &configured_client.config.db_name;
 

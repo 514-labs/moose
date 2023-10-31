@@ -21,7 +21,7 @@ impl Routine for RunLocalInfratructure {
         // Model this after the `spin_up` function in `apps/igloo-kit-cli/src/cli/routines/start.rs` but use routines instead
         ValidateMountVolumes::new(igloo_dir).run_silent()?;
         ValidatePandaHouseNetwork::new(self.debug).run_silent()?;
-        RunRedPandaContainer::new(self.debug, self.redpanda_config).run_silent()?;
+        RunRedPandaContainer::new(self.debug, self.redpanda_config.clone()).run_silent()?;
         ValidateRedPandaRun::new(self.debug).run_silent()?;
         RunClickhouseContainer::new(self.debug, self.clickhouse_config.clone()).run_silent()?;
         ValidateClickhouseRun::new(self.debug).run_silent()?;

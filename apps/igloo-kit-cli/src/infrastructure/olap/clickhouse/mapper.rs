@@ -21,7 +21,7 @@ pub fn std_field_type_to_clickhouse_type_mapper(field_type: ColumnType) -> Click
     }
 }
 
-pub fn std_table_to_clickhouse_table (db_name: String, table: Table) -> ClickhouseTable {
+pub fn std_table_to_clickhouse_table (table: Table) -> ClickhouseTable {
     let columns = table.columns.into_iter().map(|column| {
         ClickhouseColumn {
             name: column.name,
@@ -34,7 +34,7 @@ pub fn std_table_to_clickhouse_table (db_name: String, table: Table) -> Clickhou
     }).collect::<Vec<ClickhouseColumn>>();
 
     ClickhouseTable {
-        db_name,
+        db_name: table.db_name,
         name: table.name,
         columns,
         table_type: clickhouse_table_type_mapper(table.table_type),

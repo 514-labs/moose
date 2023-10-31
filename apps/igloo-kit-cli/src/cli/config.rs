@@ -3,8 +3,13 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::{RwLock, Arc};
 use home::home_dir;
+use crate::infrastructure::PANDA_NETWORK;
+use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
+use crate::infrastructure::stream::redpanda::RedpandaConfig;
+
 use super::CommandTerminal;
 use super::display::{show_message, MessageType, Message};
+use super::local_webserver::LocalWebserverConfig;
 
 /// # Config
 /// Module to handle reading the config file from the user's home directory and configuring the CLI
@@ -21,7 +26,13 @@ const CONFIG_FILE: &str = ".igloo-config.toml";
 
 #[derive(Deserialize, Debug)]
 pub struct Config {
-   pub features: Features
+    pub features: Features,
+    #[serde(default)]
+    pub clickhouse: ClickhouseConfig,
+    #[serde(default)]
+    pub redpanda: RedpandaConfig,
+    #[serde(default)]
+    pub local_webserver: LocalWebserverConfig,
 }
 
 #[derive(Deserialize, Debug)]
@@ -36,7 +47,12 @@ fn config_path() -> PathBuf {
 }
 
 fn default_config() -> Config {
-   Config { features: Features { coming_soon_wall: true } }
+    Config { 
+        features: Features { coming_soon_wall: true } , 
+        clickhouse: ClickhouseConfig::default(), 
+        redpanda: RedpandaConfig::default(), 
+        local_webserver: LocalWebserverConfig::default() 
+    }
 }
 
 pub fn read_config(term: Arc<RwLock<CommandTerminal>>) -> Config {

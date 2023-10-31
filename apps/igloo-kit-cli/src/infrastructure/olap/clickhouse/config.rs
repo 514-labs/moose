@@ -5,7 +5,11 @@
 //! - we need to understand clickhouse configuration better before we can go deep on it's configuration
 //! 
 
-#[derive(Debug, Clone)]
+use serde::Deserialize;
+
+use crate::infrastructure::PANDA_NETWORK;
+
+#[derive(Deserialize, Debug, Clone)]
 pub struct ClickhouseConfig {
     pub db_name: String, // ex. local
     pub user: String,
@@ -15,6 +19,21 @@ pub struct ClickhouseConfig {
     pub postgres_port: i32, // ex. 9005
     pub kafka_port: i32, // ex. 9092
     pub cluster_network: String, // ex. panda-house
+}
+
+impl Default for ClickhouseConfig {
+    fn default() -> Self {
+        Self {
+            db_name: "local".to_string(),
+            user: "panda".to_string(),
+            password: "pandapass".to_string(),
+            host: "localhost".to_string(),
+            host_port: 18123,
+            postgres_port: 9005,
+            kafka_port: 9092,
+            cluster_network: PANDA_NETWORK.to_owned(),
+        }
+    }
 }
 
 // *** The following configurations work. They just didn't solve the problem I needed them to solve. ***

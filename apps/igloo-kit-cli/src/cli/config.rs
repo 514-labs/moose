@@ -3,7 +3,6 @@ use std::fs;
 use std::path::PathBuf;
 use std::sync::{RwLock, Arc};
 use home::home_dir;
-use crate::infrastructure::PANDA_NETWORK;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 

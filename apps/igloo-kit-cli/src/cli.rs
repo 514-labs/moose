@@ -115,7 +115,7 @@ async fn top_command_handler(term: Arc<RwLock<CommandTerminal>>, config: Config,
     } else {
         show_message(term, MessageType::Banner, Message {
             action: "Coming Soon".to_string(),
-            details: "Join the IglooKit community to stay up to date on the latest features: https://discord.gg/WX3V3K4QCc".to_string(),
+            details: "Join the IglooKit community to stay up to date on the latest features: https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg".to_string(),
         });
     }
     

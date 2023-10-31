@@ -151,34 +151,6 @@ impl MatViewOps for ClickhouseView {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ClickhouseView {
-    pub db_name: String,
-    pub name: String,
-    pub source_table: ClickhouseTable,
-}
-
-impl ClickhouseView {
-    pub fn new(db_name: String, name: String, source_table: ClickhouseTable) -> ClickhouseView {
-        ClickhouseView {
-            db_name,
-            name,
-            source_table,
-        }
-    }
-}
-
-pub type QueryString = String;
-
-impl MatViewOps for ClickhouseView {
-    fn create_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
-        CreateMaterializedViewQuery::new(self.clone())
-    }
-    fn drop_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
-        DropMaterializedViewQuery::new(self.clone())
-    }
-}
-
 pub struct ConfiguredDBClient {
     pub client: Client,
     pub config: ClickhouseConfig,

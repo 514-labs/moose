@@ -1,6 +1,6 @@
 use std::{io::{Error, ErrorKind}, path::PathBuf, fs};
 
-use crate::{cli::display::Message, framework::directories::{create_igloo_directory, get_igloo_directory, create_app_directories}, utilities::docker, infrastructure::PANDA_NETWORK};
+use crate::{cli::display::Message, framework::{directories::{create_igloo_directory, get_igloo_directory, create_app_directories}, typescript::create_typescript_models_dir, languages::create_models_dir}, utilities::docker, infrastructure::PANDA_NETWORK};
 
 use super::{Routine, RoutineFailure, RoutineSuccess, RunMode};
 
@@ -23,6 +23,7 @@ impl Routine for InitializeProject {
         create_app_directories().map_err(|err| {
             RoutineFailure::new(Message::new("Failed".to_string(), "to create app directory. Check permissions or contact us`".to_string()), err)
         })?;
+        CreateModelsVolume::new(igloo_dir.clone()).run(run_mode.clone())?;
         CreateDockerNetwork::new(PANDA_NETWORK).run(run_mode.clone())?;
         CreateVolumes::new(igloo_dir, run_mode.clone()).run(run_mode.clone())?;
 
@@ -53,7 +54,6 @@ impl Routine for CreateVolumes {
     }
 }
 
-
 pub struct ValidateMountVolumes {
     igloo_dir: PathBuf,
 }
@@ -76,7 +76,6 @@ impl Routine for ValidateMountVolumes {
     }
 }
 
-
 pub struct CreateIglooTempDirectoryTree {
     run_mode: RunMode,
 }
@@ -98,7 +97,6 @@ impl Routine for CreateIglooTempDirectoryTree {
         Ok(RoutineSuccess::success(Message::new("Created".to_string(), "Igloo directory with Red Panda and Clickhouse mount volumes".to_string())))
     }
 }
-
 
 pub struct CreateTempDataVolumes{
     run_mode: RunMode,
@@ -179,6 +177,30 @@ impl Routine for CreateClickhouseMountVolume {
         Ok(RoutineSuccess::success(Message::new("Created".to_string(), "Clickhouse mount volumes".to_string())))
     }
         
+}
+
+pub struct CreateModelsVolume {
+    igloo_dir: PathBuf,
+}
+
+impl CreateModelsVolume {
+    fn new(igloo_dir: PathBuf) -> Self {
+        Self { igloo_dir }
+    }
+}
+
+impl Routine for CreateModelsVolume {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        create_models_dir().map_err(|err| {
+            RoutineFailure::new(Message::new("Failed".to_string(), format!("to create models volume in {}", err)), err)
+        })?;
+
+        create_typescript_models_dir().map_err(|err| {
+            RoutineFailure::new(Message::new("Failed".to_string(), format!("to create models volume in {}", err)), err)
+        })?;
+
+        Ok(RoutineSuccess::success(Message::new("Created".to_string(), "Models volume".to_string())))
+    }
 }
 
 pub struct CreateDockerNetwork {

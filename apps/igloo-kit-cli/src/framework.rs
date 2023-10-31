@@ -2,6 +2,9 @@ use clap::Subcommand;
 
 pub mod directories;
 pub mod schema;
+pub mod typescript;
+pub mod languages;
+
 pub enum Insights {
     Metric,
     Dashboard,

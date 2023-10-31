@@ -1,5 +1,6 @@
 use std::io::{self, Write};
 use rdkafka::{ClientConfig, producer::FutureProducer};
+use serde::Deserialize;
 
 use crate::{infrastructure::stream::rpk, utilities::docker};
 
@@ -37,10 +38,19 @@ pub fn delete_topic(topic_name: String) {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct RedpandaConfig {
-    pub broker: &'static str,
+    pub broker: String,
     pub message_timeout_ms: i32,
+}
+
+impl Default for RedpandaConfig {
+    fn default() -> Self {
+        Self {
+            broker: "localhost:19092".to_string(),
+            message_timeout_ms: 1000,
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -51,8 +61,8 @@ pub struct ConfiguredProducer {
 
 pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
     let producer = ClientConfig::new()
-        .set("bootstrap.servers", config.broker)
-        .set("message.timeout.ms", config.message_timeout_ms.to_string())
+        .set("bootstrap.servers", config.clone().broker)
+        .set("message.timeout.ms", config.clone().message_timeout_ms.to_string())
         .create()
         .expect("Failed to create producer");
 

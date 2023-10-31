@@ -6,6 +6,7 @@ use hyper::StatusCode;
 use hyper::service::service_fn;
 use rdkafka::producer::FutureRecord;
 use rdkafka::util::Timeout;
+use serde::Deserialize;
 use tokio::sync::Mutex;
 use std::collections::HashMap;
 use std::convert::Infallible;
@@ -23,6 +24,19 @@ use super::watcher::RouteMeta;
 use std::sync::Arc;
 use super::CommandTerminal;
 
+
+#[derive(Deserialize, Debug)]
+pub struct LocalWebserverConfig {
+    pub port: u16,
+}
+
+impl Default for LocalWebserverConfig {
+    fn default() -> Self {
+        Self {
+            port: 4000,
+        }
+    }
+}
 
 async fn handler(req: Request<Body>, term: Arc<RwLock<CommandTerminal>>, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, configured_producer: Arc<Mutex<ConfiguredProducer>>) -> Result<Response<String>, hyper::http::Error> {
     let route_prefix = PathBuf::from("/");

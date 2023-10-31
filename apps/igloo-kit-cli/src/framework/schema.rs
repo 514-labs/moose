@@ -16,9 +16,12 @@ pub struct UnsupportedDataTypeError {
     pub type_name: String
 }
 
+/// A function that maps an input type to an output type
+type MapperFunc<I, O>  = fn (i: I) -> O;
+
 
 // TODO: Make the parse schema file a variable and pass it into the function
-pub fn parse_schema_file<T>(path: PathBuf, mapper: fn (db_name: String, table: Table) -> T) -> Result<Vec<T>, ParsingError>  {
+pub fn parse_schema_file<O>(path: PathBuf, mapper: MapperFunc<Table, O>) -> Result<Vec<O>, ParsingError>  {
     let schema_file = std::fs::read_to_string(path.clone()).map_err(
         |_| ParsingError::FileNotFound {path: path.clone()}
     )?;
@@ -27,12 +30,12 @@ pub fn parse_schema_file<T>(path: PathBuf, mapper: fn (db_name: String, table: T
 
     let ast = parse_schema(&schema_file, &mut diagnostics);
 
-    let tables = ast_mapper(ast)?
+    let mapped_tables = ast_mapper(ast)?
         .into_iter().map(|table| {
-            mapper("local".to_string(), table)
+            mapper(table)
         }).collect();
 
-    Ok(tables)
+    Ok(mapped_tables)
 }
 
 #[derive(Debug, Clone)]
@@ -45,6 +48,7 @@ pub enum TableType {
 
 #[derive(Debug, Clone)]
 pub struct Table {
+    pub db_name: String,
     pub table_type: TableType,
     pub name: String,
     pub columns: Vec<Column>,
@@ -78,15 +82,13 @@ pub enum ColumnDefaults {
     Now
 }
 
-
-
 impl fmt::Display for ParsingError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "The following type is unsupported: {:?}", self)
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug,  Clone)]
 pub enum ColumnType {
     String,
     Boolean,
@@ -98,6 +100,12 @@ pub enum ColumnType {
     Json, // TODO: Eventually support for only views and tables (not topics)
     Bytes, // TODO: Explore if we ever need this type
     Unsupported
+}
+
+impl fmt::Display for ColumnType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 fn map_column_string_type_to_column_type (string_type: &str) -> ColumnType {
@@ -171,6 +179,7 @@ fn top_to_table(t: &Top) -> Result<Table, ParsingError> {
             }).collect();
             
             Ok(Table {
+                db_name: "local".to_string(),
                 table_type: TableType::Table,
                 name: table_name,
                 columns: columns?

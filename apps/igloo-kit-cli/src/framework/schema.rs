@@ -50,9 +50,14 @@ pub struct Table {
     pub columns: Vec<Column>,
 }
 
-pub trait OpsTable {
+pub trait TableOps {
     fn create_table_query(&self) -> Result<String, UnsupportedDataTypeError>;
     fn drop_table_query(&self) -> Result<String, UnsupportedDataTypeError>;
+}
+
+pub trait MatViewOps {
+    fn create_materialized_view_query(&self) -> Result<String, UnsupportedDataTypeError>;
+    fn drop_materialized_view_query(&self) -> Result<String, UnsupportedDataTypeError>;
 }
 
 #[derive(Debug, Clone)]

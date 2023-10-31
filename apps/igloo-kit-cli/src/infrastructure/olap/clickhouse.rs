@@ -2,15 +2,15 @@ pub mod config;
 pub mod mapper;
 mod queries;
 
-use std::fmt;
+use std::fmt::{self};
 
 use clickhouse::Client;
 use reqwest::Url;
 use schema_ast::ast::FieldArity;
 
-use crate::framework::schema::{OpsTable, UnsupportedDataTypeError};
+use crate::framework::schema::{TableOps, UnsupportedDataTypeError, MatViewOps};
 
-use self::{queries::{CreateTableQuery, DropTableQuery}, config::ClickhouseConfig};
+use self::{queries::{CreateTableQuery, DropTableQuery, CreateMaterializedViewQuery, DropMaterializedViewQuery}, config::ClickhouseConfig};
 
 #[derive(Debug, Clone)]
 pub enum ClickhouseTableType {
@@ -18,6 +18,12 @@ pub enum ClickhouseTableType {
     View,
     MaterializedView,
     Unsupported
+}
+
+impl fmt::Display for ClickhouseTableType {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -107,7 +113,7 @@ impl ClickhouseTable {
     }
 }
 
-impl OpsTable for ClickhouseTable {
+impl TableOps for ClickhouseTable {
     fn create_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
         CreateTableQuery::new(self.clone(), "redpanda-1".to_string(), 9092, self.name.clone())
     }
@@ -117,11 +123,38 @@ impl OpsTable for ClickhouseTable {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct ClickhouseView {
+    pub db_name: String,
+    pub name: String,
+    pub source_table: ClickhouseTable,
+}
+
+impl ClickhouseView {
+    pub fn new(db_name: String, name: String, source_table: ClickhouseTable) -> ClickhouseView {
+        ClickhouseView {
+            db_name,
+            name,
+            source_table,
+        }
+    }
+}
+
+pub type QueryString = String;
+
+impl MatViewOps for ClickhouseView {
+    fn create_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
+        CreateMaterializedViewQuery::new(self.clone())
+    }
+    fn drop_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
+        DropMaterializedViewQuery::new(self.clone())
+    }
+}
+
 pub struct ConfiguredClient {
     pub client: Client,
     pub config: ClickhouseConfig,
 }
-
 
 pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredClient {
     ConfiguredClient {
@@ -135,28 +168,14 @@ pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredClient {
 }
 
 // Run an arbitrary clickhouse query
-pub async fn run_query(query: String, configured_client: &ConfiguredClient) -> Result<(), clickhouse::error::Error> {
+pub async fn run_query(query: QueryString, configured_client: &ConfiguredClient) -> Result<(), clickhouse::error::Error> {
     let client = &configured_client.client;
     client.query(query.as_str()).execute().await
 }
 
-// Creates a table in clickhouse from a file name. this table should have a single field that accepts a json blob
-pub async fn create_table(table_name: String, topic: String, configured_client: &ConfiguredClient) -> Result<(), clickhouse::error::Error> {
-    let client = &configured_client.client;
-    let config = &configured_client.config;
-    let db_name = &config.db_name;
-    let cluster_network = &config.cluster_network;
-    let kafka_port = &config.kafka_port;
-
-    // If you want to change the settings when doing a query you can do it as follows: SETTINGS allow_experimental_object_type = 1;
-    client.query(format!("CREATE TABLE IF NOT EXISTS {db_name}.{table_name} 
-        (data String) ENGINE = Kafka('{cluster_network}:{kafka_port}', '{topic}', 'clickhouse-group', 'JSONEachRow') ;")
-        .as_str() ).execute().await
-}
-
-pub async fn delete_table(table_name: String, configured_client: &ConfiguredClient) -> Result<(), clickhouse::error::Error> {
+pub async fn delete_table_or_view(table_or_view_name: String, configured_client: &ConfiguredClient) -> Result<(), clickhouse::error::Error> {
     let client = &configured_client.client;
     let db_name = &configured_client.config.db_name;
 
-    client.query(format!("DROP TABLE {db_name}.{table_name}").as_str()).execute().await
+    client.query(format!("DROP TABLE {db_name}.{table_or_view_name}").as_str()).execute().await
 }

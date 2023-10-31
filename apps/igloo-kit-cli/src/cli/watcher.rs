@@ -86,6 +86,7 @@ async fn create_framework_objects_from_dataframe_route(route: &PathBuf, project_
                         fo.table.db_name.clone(), 
                         format!("{}_view", fo.table.name), 
                         fo.table.clone());
+
                     let view_query = view.create_materialized_view_query()
                         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to get clickhouse query: {:?}", e)))?;
 

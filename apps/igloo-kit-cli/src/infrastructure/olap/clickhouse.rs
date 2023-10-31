@@ -156,7 +156,6 @@ pub struct ConfiguredDBClient {
     pub config: ClickhouseConfig,
 }
 
-
 pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredDBClient {
     ConfiguredDBClient {
         client: Client::default()

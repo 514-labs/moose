@@ -89,8 +89,9 @@ use tokio::sync::Mutex;
 
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
-use super::watcher::RouteMeta;
-use super::{watcher, local_webserver};
+use crate::project::Project;
+use super::local_webserver::{Webserver, LocalWebserverConfig};
+use super::watcher::{RouteMeta, FileWatcher};
 use super::{CommandTerminal, display::show_message, MessageType, Message};
 
 pub mod clean;
@@ -204,7 +205,7 @@ impl RoutineController {
 
 
 // Starts the file watcher and the webserver
-pub async fn start_development_mode(clickhouse_config: ClickhouseConfig, redpanda_config: RedpandaConfig) -> Result<(), Error> {
+pub async fn start_development_mode(project: Project, clickhouse_config: ClickhouseConfig, redpanda_config: RedpandaConfig, local_webserver_config: LocalWebserverConfig) -> Result<(), Error> {
     let term = Arc::new(RwLock::new(CommandTerminal::new()));
 
     show_message( term.clone(), MessageType::Success, Message {
@@ -218,7 +219,12 @@ pub async fn start_development_mode(clickhouse_config: ClickhouseConfig, redpand
     // TODO: When starting the file watcher, we should check the current directory for files that have been 
     // added or removed since the last time the file watcher was started and ensure that the infra reflects 
     // the application state
-    watcher::start_file_watcher(term.clone(), Arc::clone(&route_table), clickhouse_config)?;
-    local_webserver::start_webserver(term.clone(), Arc::clone(&route_table), redpanda_config).await;
+    
+    let web_server = Webserver::new(local_webserver_config.host, local_webserver_config.port);
+    let file_watcher = FileWatcher::new();
+    
+    file_watcher.start(project, web_server.clone(), term.clone(), Arc::clone(&route_table), clickhouse_config)?;
+    web_server.start(term.clone(), Arc::clone(&route_table), redpanda_config).await;
+
     Ok(())
 }

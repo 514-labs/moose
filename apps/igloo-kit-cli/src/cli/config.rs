@@ -50,10 +50,12 @@ fn default_config() -> Config {
         features: Features { coming_soon_wall: true } , 
         clickhouse: ClickhouseConfig::default(), 
         redpanda: RedpandaConfig::default(), 
-        local_webserver: LocalWebserverConfig::default() 
+        local_webserver: LocalWebserverConfig::default(),
     }
 }
 
+
+// TODO: Turn this part of the code into a routine
 pub fn read_config(term: Arc<RwLock<CommandTerminal>>) -> Config {
     let config_file_location: PathBuf = config_path();
     match config_file_location.try_exists() {

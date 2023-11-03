@@ -4,7 +4,7 @@ use tinytemplate::TinyTemplate;
 
 use crate::{framework::schema::UnsupportedDataTypeError, infrastructure::olap::clickhouse::{ClickhouseColumn, ClickhouseColumnType, ClickhouseTable, ClickhouseInt, ClickhouseFloat}};
 
-use super::{ClickhouseTableType, ClickhouseView};
+use super::ClickhouseView;
 
 // TODO: Add column comment capability to the schemna and template
 pub static CREATE_TABLE_TEMPLATE: &str = r#"

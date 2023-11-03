@@ -10,6 +10,7 @@ use serde::Deserialize;
 use tokio::sync::Mutex;
 use std::collections::HashMap;
 use std::convert::Infallible;
+use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::sync::RwLock;
 use std::time::Duration;
@@ -27,12 +28,14 @@ use super::CommandTerminal;
 
 #[derive(Deserialize, Debug)]
 pub struct LocalWebserverConfig {
+    pub host: String,
     pub port: u16,
 }
 
 impl Default for LocalWebserverConfig {
     fn default() -> Self {
         Self {
+            host: "localhost".to_string(),
             port: 4000,
         }
     }
@@ -98,34 +101,59 @@ async fn handler(req: Request<Body>, term: Arc<RwLock<CommandTerminal>>, route_t
             .body("NOTFOUND".to_string())?)
 }
 
-// TODO Figure out how to stop the web server
-pub async fn start_webserver(term: Arc<RwLock<CommandTerminal>>, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, redpanda_config: RedpandaConfig) {
 
-    let addr = ([127, 0, 0, 1], 4000).into();
+#[derive(Debug, Clone)]
+pub struct Webserver {
+    host: String,
+    port: u16,
+}
 
-    show_message( term.clone(), MessageType::Info, Message {
-        action: "starting".to_string(),
-        details: " server on port 4000".to_string(),
-    });
-
-    let producer = Arc::new(Mutex::new(redpanda::create_producer(redpanda_config)));
-
-    let main_service = make_service_fn(move |_| {
-        let route_table = route_table.clone();
-        let producer = producer.clone();
-        let term = term.clone();
-
-        async {
-            Ok::<_, Infallible>(service_fn(move |req| {
-                handler(req, term.clone(), route_table.clone(), producer.clone())
-            }))
+impl Webserver {
+    pub fn new(host: String, port: u16) -> Self {
+        Self {
+            host,
+            port,
         }
-    });
+    }
 
-    let server = Server::bind(&addr).serve(main_service);
+    pub fn url(&self) -> String {
+        format!("http://{}:{}", self.host, self.port)
+    }
 
-    // Run this server for... forever!
-    if let Err(e) = server.await {
-        println!("server error: {}", e)
+    pub async fn socket(&self) -> SocketAddr {  
+        let socket = tokio::net::lookup_host(format!("{}:{}", self.host, self.port)).await.unwrap().next().unwrap();
+        return socket;
+    }
+
+    pub async fn start(&self, term: Arc<RwLock<CommandTerminal>>, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, redpanda_config: RedpandaConfig) {
+
+        let socket = self.socket().await;
+
+        show_message( term.clone(), MessageType::Info, Message {
+            action: "starting".to_string(),
+            details: format!(" server on port {}", socket.port()),
+        });
+
+        let producer = Arc::new(Mutex::new(redpanda::create_producer(redpanda_config)));
+
+        let main_service = make_service_fn(move |_| {
+            let route_table = route_table.clone();
+            let producer = producer.clone();
+            let term = term.clone();
+
+            async {
+                Ok::<_, Infallible>(service_fn(move |req| {
+                    handler(req, term.clone(), route_table.clone(), producer.clone())
+                }))
+            }
+        });
+
+        let server = Server::bind(&socket).serve(main_service);
+
+        // Run this server for... forever!
+        if let Err(e) = server.await {
+            println!("server error: {}", e)
+        }   
     }
 }
+

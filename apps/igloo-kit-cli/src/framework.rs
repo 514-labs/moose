@@ -4,6 +4,7 @@ pub mod directories;
 pub mod schema;
 pub mod typescript;
 pub mod languages;
+pub mod client_app;
 
 pub enum Insights {
     Metric,
@@ -17,8 +18,6 @@ pub enum TopLevelObjects {
     Dataframe,
     Insights(Insights),
 }
-
-
 
 #[derive(Debug, Subcommand)]
 pub enum AddableObjects {

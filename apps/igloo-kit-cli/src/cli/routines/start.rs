@@ -1,50 +1,51 @@
 use std::io::{self, Write};
-use crate::{cli::{display::Message, DebugStatus}, framework::directories, utilities::docker::{self}, infrastructure::{ stream::redpanda::RedpandaConfig, olap::clickhouse::config::ClickhouseConfig}};
+use crate::{cli::{display::Message, DebugStatus}, framework::directories, utilities::docker::{self}, infrastructure::{ stream::redpanda::RedpandaConfig, olap::clickhouse::config::ClickhouseConfig}, project::{Project, self}};
 use super::{RoutineFailure, RoutineSuccess, Routine, initialize::ValidateMountVolumes, validate::{ValidateRedPandaRun, ValidateClickhouseRun, ValidatePandaHouseNetwork}};
 
 pub struct RunLocalInfratructure {
     debug: DebugStatus,
     clickhouse_config: ClickhouseConfig,
     redpanda_config: RedpandaConfig,
+    project: Project,
 }
 impl RunLocalInfratructure {
-    pub fn new(debug: DebugStatus, clickhouse_config: ClickhouseConfig, redpanda_config: RedpandaConfig) -> Self {
-        Self { debug, clickhouse_config, redpanda_config }
+    pub fn new(debug: DebugStatus, clickhouse_config: ClickhouseConfig, redpanda_config: RedpandaConfig, project: Project) -> Self {
+        Self { debug, clickhouse_config, redpanda_config, project }
     }
 }
 
 impl Routine for RunLocalInfratructure {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = directories::get_igloo_directory().map_err(|err| {
+        let igloo_dir = directories::get_igloo_directory(self.project.clone()).map_err(|err| {
             RoutineFailure::new(Message::new("Failed".to_string(), "to get .igloo directory. Try running `igloo init`".to_string()), err)
         })?;
         // Model this after the `spin_up` function in `apps/igloo-kit-cli/src/cli/routines/start.rs` but use routines instead
         ValidateMountVolumes::new(igloo_dir).run_silent()?;
         ValidatePandaHouseNetwork::new(self.debug).run_silent()?;
-        RunRedPandaContainer::new(self.debug, self.redpanda_config.clone()).run_silent()?;
+        RunRedPandaContainer::new(self.debug, self.redpanda_config.clone(), self.project.clone()).run_silent()?;
         ValidateRedPandaRun::new(self.debug).run_silent()?;
-        RunClickhouseContainer::new(self.debug, self.clickhouse_config.clone()).run_silent()?;
+        RunClickhouseContainer::new(self.debug, self.clickhouse_config.clone(), self.project.clone()).run_silent()?;
         ValidateClickhouseRun::new(self.debug).run_silent()?;
         Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "ran local infrastructure".to_string())))
     }
 }
 
     
-pub struct RunRedPandaContainer { debug: DebugStatus, redpanda_config: RedpandaConfig }
+pub struct RunRedPandaContainer { debug: DebugStatus, redpanda_config: RedpandaConfig, project: Project }
 impl RunRedPandaContainer {
-    pub fn new(debug: DebugStatus, redpanda_config: RedpandaConfig) -> Self {
-        Self { debug, redpanda_config }
+    pub fn new(debug: DebugStatus, redpanda_config: RedpandaConfig, project: Project) -> Self {
+        Self { debug, redpanda_config, project }
     }
 }
 
 impl Routine for RunRedPandaContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = directories::get_igloo_directory().map_err(|err| {
+        let igloo_dir = directories::get_igloo_directory(self.project.clone()).map_err(|err| {
             RoutineFailure::new(Message::new("Failed".to_string(), "to get .igloo directory. Try running `igloo init`".to_string()), err)
         })?;
 
         let output = docker::run_red_panda(igloo_dir).map_err(|err| {
-            RoutineFailure::new(Message::new("Failed".to_string(), "to run redpanda container".to_string()), err)
+            RoutineFailure::new(Message::new("Failed".to_string(), format!("to run redpanda container with following config: {:#?}", self.redpanda_config)), err)
         })?;
 
         if self.debug == DebugStatus::Debug {
@@ -58,16 +59,16 @@ impl Routine for RunRedPandaContainer {
 }
 
 
-pub struct RunClickhouseContainer{ debug: DebugStatus, clickhouse_config: ClickhouseConfig }
+pub struct RunClickhouseContainer{ debug: DebugStatus, clickhouse_config: ClickhouseConfig, project: Project }
 impl RunClickhouseContainer {
-    pub fn new(debug: DebugStatus, clickhouse_config: ClickhouseConfig) -> Self {
-        Self { debug, clickhouse_config }
+    pub fn new(debug: DebugStatus, clickhouse_config: ClickhouseConfig, project: Project) -> Self {
+        Self { debug, clickhouse_config, project }
     }
 }
 
 impl Routine for RunClickhouseContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = directories::get_igloo_directory().map_err(|err| {
+        let igloo_dir = directories::get_igloo_directory(self.project.clone()).map_err(|err| {
             RoutineFailure::new(Message::new("Failed".to_string(), "to get .igloo directory. Try running `igloo init`".to_string()), err)
         })?;
 

@@ -3,9 +3,9 @@ use std::{sync::{Arc, RwLock}, collections::HashMap, path::PathBuf, io::{Error, 
 use notify::{RecommendedWatcher, Config, RecursiveMode, Watcher, event::ModifyKind};
 use tokio::sync::Mutex;
 
-use crate::{framework::{directories::get_app_directory, schema::{parse_schema_file, TableOps, MatViewOps, Table}, typescript::{TypescriptInterface, get_typescript_models_dir}, self, languages::{CodeGenerator, SupportedLanguages}}, cli::display::show_message, infrastructure::{stream, olap::{self, clickhouse::{ConfiguredDBClient, ClickhouseTable, config::ClickhouseConfig, ClickhouseView}}}};
+use crate::{framework::{schema::{parse_schema_file, TableOps, MatViewOps, Table}, typescript::{TypescriptInterface, get_typescript_models_dir, SendFunction}, self, languages::{CodeGenerator, SupportedLanguages}}, cli::display::show_message, infrastructure::{stream, olap::{self, clickhouse::{ConfiguredDBClient, ClickhouseTable, config::ClickhouseConfig, ClickhouseView}}}, project::Project};
 
-use super::{CommandTerminal, display::{MessageType, Message}};
+use super::{CommandTerminal, display::{MessageType, Message}, local_webserver::Webserver};
 
 fn dataframe_path_to_ingest_route(project_dir: PathBuf, path: PathBuf, table_name: String) -> PathBuf {
     let dataframe_path = project_dir.join("dataframes");
@@ -16,21 +16,21 @@ fn dataframe_path_to_ingest_route(project_dir: PathBuf, path: PathBuf, table_nam
     PathBuf::from("ingest").join(route)
 }
 
-async fn process_event(project_dir: PathBuf, event: notify::Event, route_table:  Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, configured_client: &ConfiguredDBClient) -> Result<(), Error> {
+async fn process_event(web_server: Webserver, project: Project, event: notify::Event, route_table:  Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, configured_client: &ConfiguredDBClient) -> Result<(), Error> {
     let route = event.paths[0].clone();
     let mut route_table = route_table.lock().await;
 
     match event.kind {
         notify::EventKind::Create(_) => {
             // Only create tables and topics from prisma files in the dataframes directory
-            create_framework_objects_from_dataframe_route(&route, project_dir, &mut route_table, configured_client).await
+            create_framework_objects_from_dataframe_route(project, web_server, &route, &mut route_table, configured_client).await
         },
         notify::EventKind::Modify(mk) => {
             match mk {
                 ModifyKind::Name(_) => {
                     // remove the file from the routes if they don't exist in the file directory
                     if route.exists() {
-                        create_framework_objects_from_dataframe_route(&route, project_dir, &mut route_table, configured_client).await
+                        create_framework_objects_from_dataframe_route(project, web_server, &route, &mut route_table, configured_client).await
                             
                     } else {
                         remove_table_and_topics_from_dataframe_route(&route, &mut route_table, configured_client).await
@@ -67,14 +67,21 @@ fn framework_object_mapper(t: Table) -> FrameworkObject {
         }
 }
 
-async fn create_framework_objects_from_dataframe_route(route: &PathBuf, project_dir: PathBuf, route_table: &mut tokio::sync::MutexGuard<'_, HashMap::<PathBuf, RouteMeta>>, configured_client: &ConfiguredDBClient) -> Result<(), Error> {
+async fn create_framework_objects_from_dataframe_route(
+        project: Project,
+        web_server: Webserver,
+        route: &PathBuf,
+        route_table: &mut tokio::sync::MutexGuard<'_, HashMap::<PathBuf, RouteMeta>>, 
+        configured_client: &ConfiguredDBClient
+    ) -> Result<(), Error> {
+
     if let Some(ext) = route.extension() {
             if ext == "prisma" && route.as_path().to_str().unwrap().contains("dataframes")  {
                 let framework_objects = parse_schema_file::<FrameworkObject>(route.clone(), framework_object_mapper)
                     .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to parse schema file. Error {}", e)))?;
     
                 for fo in framework_objects {
-                    let ingest_route = dataframe_path_to_ingest_route(project_dir.clone(), route.clone(), fo.table.name.clone());
+                    let ingest_route = dataframe_path_to_ingest_route(project.location.clone(), route.clone(), fo.table.name.clone());
                     stream::redpanda::create_topic_from_name(fo.topic.clone());
                     let table_query = fo.table.create_table_query()
                         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to get clickhouse query: {:?}", e)))?;
@@ -93,13 +100,29 @@ async fn create_framework_objects_from_dataframe_route(route: &PathBuf, project_
                     olap::clickhouse::run_query(view_query, configured_client).await
                         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create view in clickhouse: {}", e)))?;
                     
-                    let ts_interface = fo.ts_interface.create_code()
+                    let ts_interface_code = fo.ts_interface.create_code()
                         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to get typescript interface: {:?}", e)))?;
 
-                    let typescript_dir = get_typescript_models_dir()?;
+                    let send_func = SendFunction::new(
+                        fo.ts_interface.clone(),
+                        web_server.url(),
+                        ingest_route.to_str().unwrap().to_string(),
+                    );
+                    
+                    let send_func_code = send_func.create_code()
+                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to generate send function: {:?}", e)))?;
 
-                    framework::languages::write_code_to_file(SupportedLanguages::Typescript, typescript_dir.join(format!("{}.ts", fo.ts_interface.name)), ts_interface)
+
+                    let typescript_dir = get_typescript_models_dir(project.clone())?;
+
+                    let interface_file_path = typescript_dir.join(format!("{}.ts", fo.ts_interface.file_name()));
+                    let send_func_file_path = typescript_dir.join(format!("send{}.ts", send_func.interface.file_name()));
+
+                    framework::languages::write_code_to_file(SupportedLanguages::Typescript, interface_file_path, ts_interface_code)
                         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to write typescript interface to file: {:?}", e)))?;
+
+                    framework::languages::write_code_to_file(SupportedLanguages::Typescript,send_func_file_path , send_func_code)
+                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to write typescript function to file: {:?}", e)))?;
 
                     route_table.insert(ingest_route, RouteMeta { original_file_path: route.clone(), table_name: fo.table.name.clone(), view_name: Some(view.name.clone()) });
                 };
@@ -131,7 +154,7 @@ async fn remove_table_and_topics_from_dataframe_route(route: &PathBuf, route_tab
     Ok(())
 }
 
-async fn watch(path: PathBuf, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, configured_client: &ConfiguredDBClient ) -> Result<(), Error> {
+async fn watch(web_server: Webserver, project: Project, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, configured_client: &ConfiguredDBClient ) -> Result<(), Error> {
 
     let (tx, rx) = std::sync::mpsc::channel();
 
@@ -139,14 +162,14 @@ async fn watch(path: PathBuf, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMet
         |e| Error::new(ErrorKind::Other, format!("Failed to create file watcher: {}", e))
     )?;
 
-    watcher.watch(path.as_ref(), RecursiveMode::Recursive).map_err(
+    watcher.watch(&project.location.as_ref(), RecursiveMode::Recursive).map_err(
         |e| Error::new(ErrorKind::Other, format!("Failed to watch file: {}", e))
     )?;
 
     for res in rx {
         match res {
             Ok(event) => {
-                process_event(path.clone(), event.clone(), Arc::clone(&route_table), configured_client).await.map_err(
+                process_event(web_server.clone(), project.clone(), event.clone(), Arc::clone(&route_table), configured_client).await.map_err(
                     |e| Error::new(ErrorKind::Other, format!("clickhouse error has occured: {}", e))
                 )?;
             },
@@ -157,25 +180,31 @@ async fn watch(path: PathBuf, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMet
     Ok(())
 }
 
-pub fn start_file_watcher(term: Arc<RwLock<CommandTerminal>>, route_table:  Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {
+pub struct FileWatcher;
 
-    let path = get_app_directory()?;
+impl FileWatcher {
+    pub fn new() -> Self {
+        Self {}
+    }
 
-    show_message(term, MessageType::Info, {
-        Message {
-            action: "Watching".to_string(),
-            details: format!("{:?}", path.display()),
-        }
-    });
+    pub fn start(&self, project: Project, web_server: Webserver, term: Arc<RwLock<CommandTerminal>>, route_table:  Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {
 
-    tokio::spawn( async move {
-        // Need to spin up client in thread to ensure it lives long enough
-        let db_client = olap::clickhouse::create_client(clickhouse_config.clone());
+        show_message(term, MessageType::Info, {
+            Message {
+                action: "Watching".to_string(),
+                details: format!("{:?}", project.location.display()),
+            }
+        });
 
-        if let Err(error) = watch(path, Arc::clone(&route_table), &db_client).await {
-            println!("Error: {error:?}");
-        }
-    });
-    
-    Ok(())
+        tokio::spawn( async move {
+            // Need to spin up client in thread to ensure it lives long enough
+            let db_client = olap::clickhouse::create_client(clickhouse_config.clone());
+
+            if let Err(error) = watch(web_server, project, Arc::clone(&route_table), &db_client).await {
+                println!("Error: {error:?}");
+            }
+        });
+        
+        Ok(())
+    }
 }

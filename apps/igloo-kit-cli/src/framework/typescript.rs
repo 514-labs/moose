@@ -1,5 +1,9 @@
 use std::{fmt, path::PathBuf};
 
+use convert_case::{Casing, Case};
+
+use crate::project::Project;
+
 use super::{languages::{CodeGenerator, get_models_dir}, schema::UnsupportedDataTypeError};
 
 mod templates;
@@ -19,7 +23,16 @@ impl TypescriptInterface {
             fields,
         }
     }
+
+    pub fn file_name (&self) -> String {
+        return self.name.to_case(Case::Pascal)
+    }
+
+    pub fn var_name (&self) -> String {
+        return self.name.to_case(Case::Camel)
+    }
 }
+
 
 impl CodeGenerator for TypescriptInterface {
     fn create_code(&self) -> Result<String, UnsupportedDataTypeError> {
@@ -71,9 +84,35 @@ impl fmt::Display for InterfaceFieldType {
     }
 }
 
+pub struct SendFunction {
+    pub interface: TypescriptInterface,
+    server_url: String,
+    api_route_name: String,
+}
 
-pub fn create_typescript_models_dir() -> Result<PathBuf, std::io::Error> {
-    let models_dir = get_models_dir();
+impl SendFunction {
+    pub fn new(interface: TypescriptInterface, server_url: String, api_route_name: String) -> Self {
+        Self {
+            interface,
+            server_url,
+            api_route_name,
+        }
+    }
+}
+
+impl CodeGenerator for SendFunction {
+    fn create_code(&self) -> Result<String, UnsupportedDataTypeError> {
+        Ok(templates::SendFunctionTemplate::new(
+            self.interface.clone(),
+            self.server_url.clone(),
+            self.api_route_name.clone(),
+        ))
+    }
+}
+
+
+pub fn create_typescript_models_dir(project: Project) -> Result<PathBuf, std::io::Error> {
+    let models_dir = get_models_dir(project);
     match models_dir {
         Ok(dir) => {
             std::fs::create_dir_all(dir.join("typescript"))?;
@@ -85,8 +124,8 @@ pub fn create_typescript_models_dir() -> Result<PathBuf, std::io::Error> {
     }
 }
 
-pub fn get_typescript_models_dir() -> Result<PathBuf, std::io::Error> {
-    let models_dir = get_models_dir()?;
+pub fn get_typescript_models_dir(project: Project) -> Result<PathBuf, std::io::Error> {
+    let models_dir = get_models_dir(project)?;
     let typescript_dir = models_dir.clone().join("typescript");
     if typescript_dir.exists() {
         Ok(typescript_dir)

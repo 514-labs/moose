@@ -1,29 +1,30 @@
 use std::{io::{Error, ErrorKind}, path::PathBuf, fs};
 
-use crate::{cli::display::Message, framework::{directories::{create_igloo_directory, get_igloo_directory, create_app_directories}, typescript::create_typescript_models_dir, languages::create_models_dir}, utilities::docker, infrastructure::PANDA_NETWORK};
+use crate::{cli::display::Message, framework::{directories::{create_igloo_directory, get_igloo_directory, create_app_directories}, typescript::create_typescript_models_dir, languages::create_models_dir}, utilities::docker, infrastructure::PANDA_NETWORK, project::{Project, self}};
 
 use super::{Routine, RoutineFailure, RoutineSuccess, RunMode};
 
 
 pub struct InitializeProject {
     run_mode: RunMode,
+    project: Project,
 }
 impl InitializeProject {
-    pub fn new(run_mode: RunMode) -> Self {
-        Self {run_mode}
+    pub fn new(run_mode: RunMode, project: Project) -> Self {
+        Self {run_mode, project}
     }
 }
 impl Routine for InitializeProject {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let run_mode = self.run_mode.clone();
-        CreateIglooTempDirectoryTree::new(run_mode.clone()).run(run_mode.clone())?;
-        let igloo_dir = get_igloo_directory().map_err(|err| {
+        CreateIglooTempDirectoryTree::new(run_mode.clone(), self.project.clone()).run(run_mode.clone())?;
+        let igloo_dir = get_igloo_directory(self.project.clone()).map_err(|err| {
             RoutineFailure::new(Message::new("Failed".to_string(), "to create .igloo directory. Check permissions or contact us`".to_string()), err)
         })?;
-        create_app_directories().map_err(|err| {
+        create_app_directories(self.project.clone()).map_err(|err| {
             RoutineFailure::new(Message::new("Failed".to_string(), "to create app directory. Check permissions or contact us`".to_string()), err)
         })?;
-        CreateModelsVolume::new(igloo_dir.clone()).run(run_mode.clone())?;
+        CreateModelsVolume::new(igloo_dir.clone(), self.project.clone()).run(run_mode.clone())?;
         CreateDockerNetwork::new(PANDA_NETWORK).run(run_mode.clone())?;
         CreateVolumes::new(igloo_dir, run_mode.clone()).run(run_mode.clone())?;
 
@@ -78,20 +79,21 @@ impl Routine for ValidateMountVolumes {
 
 pub struct CreateIglooTempDirectoryTree {
     run_mode: RunMode,
+    project: Project,
 }
 impl CreateIglooTempDirectoryTree {
-    pub fn new(run_mode: RunMode) -> Self {
-        Self { run_mode }
+    pub fn new(run_mode: RunMode, project: Project) -> Self {
+        Self { run_mode, project }
     }
 }
 impl Routine for CreateIglooTempDirectoryTree {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = create_igloo_directory().map_err(|err| {
+        let igloo_dir = create_igloo_directory(self.project.clone()).map_err(|err| {
             RoutineFailure::new(Message::new("Failed".to_string(), "to create .igloo directory. Check permissions or contact us`".to_string()), err)
         })?;
         let run_mode = self.run_mode.clone();
 
-        CreateTempDataVolumes::new(run_mode.clone()).run(run_mode.clone())?;
+        CreateTempDataVolumes::new(run_mode.clone(), self.project.clone()).run(run_mode.clone())?;
         ValidateMountVolumes::new(igloo_dir).run(run_mode.clone())?;
 
         Ok(RoutineSuccess::success(Message::new("Created".to_string(), "Igloo directory with Red Panda and Clickhouse mount volumes".to_string())))
@@ -100,21 +102,22 @@ impl Routine for CreateIglooTempDirectoryTree {
 
 pub struct CreateTempDataVolumes{
     run_mode: RunMode,
+    project: Project,
 }
 
 impl CreateTempDataVolumes {
-    fn new(run_mode: RunMode) -> Self {
-        Self { run_mode }
+    fn new(run_mode: RunMode, project: Project) -> Self {
+        Self { run_mode, project }
     }
 }
 impl Routine for CreateTempDataVolumes {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        if let Ok(igloo_dir) = get_igloo_directory() {
+        if let Ok(igloo_dir) = get_igloo_directory(self.project.clone()) {
             let run_mode = self.run_mode.clone();
             CreateVolumes::new(igloo_dir, run_mode.clone()).run(run_mode.clone())?;
             Ok(RoutineSuccess::success(Message::new("Created".to_string(), "Red Panda and Clickhouse mount volumes".to_string())))
         } else {
-            let igloo_dir = create_igloo_directory().map_err(|err| {
+            let igloo_dir = create_igloo_directory(self.project.clone()).map_err(|err| {
                 RoutineFailure::new(Message::new("Failed".to_string(), "to create .igloo directory. Check permissions or contact us`".to_string()), err)
             })?;
             let run_mode = self.run_mode.clone();
@@ -181,21 +184,22 @@ impl Routine for CreateClickhouseMountVolume {
 
 pub struct CreateModelsVolume {
     igloo_dir: PathBuf,
+    project: Project,
 }
 
 impl CreateModelsVolume {
-    fn new(igloo_dir: PathBuf) -> Self {
-        Self { igloo_dir }
+    fn new(igloo_dir: PathBuf, project: Project) -> Self {
+        Self { igloo_dir, project }
     }
 }
 
 impl Routine for CreateModelsVolume {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        create_models_dir().map_err(|err| {
+        create_models_dir(self.project.clone()).map_err(|err| {
             RoutineFailure::new(Message::new("Failed".to_string(), format!("to create models volume in {}", err)), err)
         })?;
 
-        create_typescript_models_dir().map_err(|err| {
+        create_typescript_models_dir(self.project.clone()).map_err(|err| {
             RoutineFailure::new(Message::new("Failed".to_string(), format!("to create models volume in {}", err)), err)
         })?;
 

@@ -6,7 +6,7 @@ use std::io::{prelude::*, ErrorKind, Error};
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 
-use crate::project::{Project, self};
+use crate::project::Project;
 
 use super::directories::get_igloo_directory;
 use super::schema::UnsupportedDataTypeError;
@@ -50,17 +50,12 @@ pub fn write_code_to_file(language: SupportedLanguages, path: PathBuf, code: Str
             file.write_all(code.as_bytes())?;
             Ok(())
         }
-        _ => {Err(std::io::Error::new(std::io::ErrorKind::Other, "Unsupported language"))}
     }
 }
 
 pub fn create_models_dir(project: Project) -> Result<PathBuf, std::io::Error> {
-
     let igloo_dir = get_igloo_directory(project)?;
-    std::fs::create_dir_all(igloo_dir.join("models").clone()).map_err(|err| {
-        println!("Failed to create models directory: {}", err);
-        err
-    })?;
+    std::fs::create_dir_all(igloo_dir.join("models").clone())?;
     Ok(igloo_dir)
 }
 

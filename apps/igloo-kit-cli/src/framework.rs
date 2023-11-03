@@ -5,6 +5,7 @@ pub mod schema;
 pub mod typescript;
 pub mod languages;
 pub mod client_app;
+pub mod sdks;
 
 pub enum Insights {
     Metric,

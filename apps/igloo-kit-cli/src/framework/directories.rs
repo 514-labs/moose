@@ -1,6 +1,6 @@
 use std::{path::PathBuf, io::{Error, ErrorKind}};
 
-use crate::project::{self, Project};
+use crate::project::Project;
 
 const APP_DIR: [&str; 8] = [
     "app",

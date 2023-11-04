@@ -1,13 +1,43 @@
-use std::{sync::{Arc, RwLock}, collections::HashMap, path::PathBuf, io::{Error, ErrorKind}};
+use std::{
+    collections::HashMap,
+    io::{Error, ErrorKind},
+    path::PathBuf,
+    sync::{Arc, RwLock},
+};
 
-use notify::{RecommendedWatcher, Config, RecursiveMode, Watcher, event::ModifyKind};
+use notify::{event::ModifyKind, Config, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::Mutex;
 
-use crate::{framework::{directories::get_app_directory, schema::{parse_schema_file, TableOps, MatViewOps, Table}, typescript::{TypescriptInterface, get_typescript_models_dir}, self, languages::{CodeGenerator, SupportedLanguages}}, cli::display::show_message, infrastructure::{stream, olap::{self, clickhouse::{ConfiguredDBClient, ClickhouseTable, config::ClickhouseConfig, ClickhouseView}}}};
+use crate::{
+    cli::display::show_message,
+    framework::{
+        self,
+        directories::get_app_directory,
+        languages::{CodeGenerator, SupportedLanguages},
+        schema::{parse_schema_file, MatViewOps, Table, TableOps},
+        typescript::{get_typescript_models_dir, TypescriptInterface},
+    },
+    infrastructure::{
+        olap::{
+            self,
+            clickhouse::{
+                config::ClickhouseConfig, ClickhouseTable, ClickhouseView, ConfiguredDBClient,
+            },
+        },
+        stream,
+    },
+};
 
-use super::{CommandTerminal, display::{MessageType, Message}};
+use super::{
+    display::{Message, MessageType},
+    CommandTerminal,
+};
 
-fn dataframe_path_to_ingest_route(project_dir: PathBuf, path: PathBuf, table_name: String) -> PathBuf {
+fn dataframe_path_to_ingest_route(
+    project_dir: PathBuf,
+    path: PathBuf,
+    table_name: String,
+) -> PathBuf {
     let dataframe_path = project_dir.join("dataframes");
     let mut route = path.strip_prefix(dataframe_path).unwrap().to_path_buf();
 
@@ -16,31 +46,52 @@ fn dataframe_path_to_ingest_route(project_dir: PathBuf, path: PathBuf, table_nam
     PathBuf::from("ingest").join(route)
 }
 
-async fn process_event(project_dir: PathBuf, event: notify::Event, route_table:  Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, configured_client: &ConfiguredDBClient) -> Result<(), Error> {
+async fn process_event(
+    project_dir: PathBuf,
+    event: notify::Event,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+    configured_client: &ConfiguredDBClient,
+) -> Result<(), Error> {
     let route = event.paths[0].clone();
     let mut route_table = route_table.lock().await;
 
     match event.kind {
         notify::EventKind::Create(_) => {
             // Only create tables and topics from prisma files in the dataframes directory
-            create_framework_objects_from_dataframe_route(&route, project_dir, &mut route_table, configured_client).await
-        },
+            create_framework_objects_from_dataframe_route(
+                &route,
+                project_dir,
+                &mut route_table,
+                configured_client,
+            )
+            .await
+        }
         notify::EventKind::Modify(mk) => {
             match mk {
                 ModifyKind::Name(_) => {
                     // remove the file from the routes if they don't exist in the file directory
                     if route.exists() {
-                        create_framework_objects_from_dataframe_route(&route, project_dir, &mut route_table, configured_client).await
-                            
+                        create_framework_objects_from_dataframe_route(
+                            &route,
+                            project_dir,
+                            &mut route_table,
+                            configured_client,
+                        )
+                        .await
                     } else {
-                        remove_table_and_topics_from_dataframe_route(&route, &mut route_table, configured_client).await
+                        remove_table_and_topics_from_dataframe_route(
+                            &route,
+                            &mut route_table,
+                            configured_client,
+                        )
+                        .await
                     }
                 }
-                _ => {Ok(())}
+                _ => Ok(()),
             }
-        },   
-        notify::EventKind::Remove(_) => {Ok(())},
-        _ => {Ok(())}         
+        }
+        notify::EventKind::Remove(_) => Ok(()),
+        _ => Ok(()),
     }
 }
 
@@ -51,7 +102,6 @@ pub struct RouteMeta {
     pub view_name: Option<String>,
 }
 
-
 struct FrameworkObject {
     pub table: ClickhouseTable,
     pub topic: String,
@@ -61,68 +111,140 @@ struct FrameworkObject {
 fn framework_object_mapper(t: Table) -> FrameworkObject {
     let clickhouse_table = olap::clickhouse::mapper::std_table_to_clickhouse_table(t.clone());
     return FrameworkObject {
-            table: clickhouse_table.clone(),
-            topic: t.name.clone(),
-            ts_interface: framework::typescript::mapper::std_table_to_typescript_interface(t),
-        }
+        table: clickhouse_table.clone(),
+        topic: t.name.clone(),
+        ts_interface: framework::typescript::mapper::std_table_to_typescript_interface(t),
+    };
 }
 
-async fn create_framework_objects_from_dataframe_route(route: &PathBuf, project_dir: PathBuf, route_table: &mut tokio::sync::MutexGuard<'_, HashMap::<PathBuf, RouteMeta>>, configured_client: &ConfiguredDBClient) -> Result<(), Error> {
+async fn create_framework_objects_from_dataframe_route(
+    route: &PathBuf,
+    project_dir: PathBuf,
+    route_table: &mut tokio::sync::MutexGuard<'_, HashMap<PathBuf, RouteMeta>>,
+    configured_client: &ConfiguredDBClient,
+) -> Result<(), Error> {
     if let Some(ext) = route.extension() {
-            if ext == "prisma" && route.as_path().to_str().unwrap().contains("dataframes")  {
-                let framework_objects = parse_schema_file::<FrameworkObject>(route.clone(), framework_object_mapper)
-                    .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to parse schema file. Error {}", e)))?;
-    
-                for fo in framework_objects {
-                    let ingest_route = dataframe_path_to_ingest_route(project_dir.clone(), route.clone(), fo.table.name.clone());
-                    stream::redpanda::create_topic_from_name(fo.topic.clone());
-                    let table_query = fo.table.create_table_query()
-                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to get clickhouse query: {:?}", e)))?;
-                    
-                    olap::clickhouse::run_query(table_query, configured_client).await
-                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create table in clickhouse: {}", e)))?;
+        if ext == "prisma" && route.as_path().to_str().unwrap().contains("dataframes") {
+            let framework_objects =
+                parse_schema_file::<FrameworkObject>(route.clone(), framework_object_mapper)
+                    .map_err(|e| {
+                        Error::new(
+                            ErrorKind::Other,
+                            format!("Failed to parse schema file. Error {}", e),
+                        )
+                    })?;
 
-                    let view = ClickhouseView::new(
-                        fo.table.db_name.clone(), 
-                        format!("{}_view", fo.table.name), 
-                        fo.table.clone());
+            for fo in framework_objects {
+                let ingest_route = dataframe_path_to_ingest_route(
+                    project_dir.clone(),
+                    route.clone(),
+                    fo.table.name.clone(),
+                );
+                stream::redpanda::create_topic_from_name(fo.topic.clone());
+                let table_query = fo.table.create_table_query().map_err(|e| {
+                    Error::new(
+                        ErrorKind::Other,
+                        format!("Failed to get clickhouse query: {:?}", e),
+                    )
+                })?;
 
-                    let view_query = view.create_materialized_view_query()
-                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to get clickhouse query: {:?}", e)))?;
+                olap::clickhouse::run_query(table_query, configured_client)
+                    .await
+                    .map_err(|e| {
+                        Error::new(
+                            ErrorKind::Other,
+                            format!("Failed to create table in clickhouse: {}", e),
+                        )
+                    })?;
 
-                    olap::clickhouse::run_query(view_query, configured_client).await
-                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create view in clickhouse: {}", e)))?;
-                    
-                    let ts_interface = fo.ts_interface.create_code()
-                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to get typescript interface: {:?}", e)))?;
+                let view = ClickhouseView::new(
+                    fo.table.db_name.clone(),
+                    format!("{}_view", fo.table.name),
+                    fo.table.clone(),
+                );
 
-                    let typescript_dir = get_typescript_models_dir()?;
+                let view_query = view.create_materialized_view_query().map_err(|e| {
+                    Error::new(
+                        ErrorKind::Other,
+                        format!("Failed to get clickhouse query: {:?}", e),
+                    )
+                })?;
 
-                    framework::languages::write_code_to_file(SupportedLanguages::Typescript, typescript_dir.join(format!("{}.ts", fo.ts_interface.name)), ts_interface)
-                        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to write typescript interface to file: {:?}", e)))?;
+                olap::clickhouse::run_query(view_query, configured_client)
+                    .await
+                    .map_err(|e| {
+                        Error::new(
+                            ErrorKind::Other,
+                            format!("Failed to create view in clickhouse: {}", e),
+                        )
+                    })?;
 
-                    route_table.insert(ingest_route, RouteMeta { original_file_path: route.clone(), table_name: fo.table.name.clone(), view_name: Some(view.name.clone()) });
-                };
+                let ts_interface = fo.ts_interface.create_code().map_err(|e| {
+                    Error::new(
+                        ErrorKind::Other,
+                        format!("Failed to get typescript interface: {:?}", e),
+                    )
+                })?;
+
+                let typescript_dir = get_typescript_models_dir()?;
+
+                framework::languages::write_code_to_file(
+                    SupportedLanguages::Typescript,
+                    typescript_dir.join(format!("{}.ts", fo.ts_interface.name)),
+                    ts_interface,
+                )
+                .map_err(|e| {
+                    Error::new(
+                        ErrorKind::Other,
+                        format!("Failed to write typescript interface to file: {:?}", e),
+                    )
+                })?;
+
+                route_table.insert(
+                    ingest_route,
+                    RouteMeta {
+                        original_file_path: route.clone(),
+                        table_name: fo.table.name.clone(),
+                        view_name: Some(view.name.clone()),
+                    },
+                );
             }
-        } else {
-            println!("No primsa extension found. Likely created unsupported file type")
         }
+    } else {
+        println!("No primsa extension found. Likely created unsupported file type")
+    }
     Ok(())
 }
 
-async fn remove_table_and_topics_from_dataframe_route(route: &PathBuf, route_table: &mut tokio::sync::MutexGuard<'_, HashMap::<PathBuf, RouteMeta>>, configured_client: &ConfiguredDBClient) -> Result<(), Error> {
-    //need to get the path of the file, scan the route table and remove all the files that need to be deleted. 
+async fn remove_table_and_topics_from_dataframe_route(
+    route: &PathBuf,
+    route_table: &mut tokio::sync::MutexGuard<'_, HashMap<PathBuf, RouteMeta>>,
+    configured_client: &ConfiguredDBClient,
+) -> Result<(), Error> {
+    //need to get the path of the file, scan the route table and remove all the files that need to be deleted.
     // This doesn't have to be as fast as the scanning for routes in the web server so we're ok with the scan here.
     for (k, meta) in route_table.clone().into_iter() {
         if meta.original_file_path == route.clone() {
             stream::redpanda::delete_topic(meta.table_name.clone());
-            
-            olap::clickhouse::delete_table_or_view(meta.table_name, configured_client).await
-                .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create table in clickhouse: {}", e)))?;
+
+            olap::clickhouse::delete_table_or_view(meta.table_name, configured_client)
+                .await
+                .map_err(|e| {
+                    Error::new(
+                        ErrorKind::Other,
+                        format!("Failed to create table in clickhouse: {}", e),
+                    )
+                })?;
 
             if let Some(view_name) = meta.view_name {
-                olap::clickhouse::delete_table_or_view(view_name, configured_client).await
-                    .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to create table in clickhouse: {}", e)))?;
+                olap::clickhouse::delete_table_or_view(view_name, configured_client)
+                    .await
+                    .map_err(|e| {
+                        Error::new(
+                            ErrorKind::Other,
+                            format!("Failed to create table in clickhouse: {}", e),
+                        )
+                    })?;
             }
 
             route_table.remove(&k);
@@ -131,34 +253,58 @@ async fn remove_table_and_topics_from_dataframe_route(route: &PathBuf, route_tab
     Ok(())
 }
 
-async fn watch(path: PathBuf, route_table: Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, configured_client: &ConfiguredDBClient ) -> Result<(), Error> {
-
+async fn watch(
+    path: PathBuf,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+    configured_client: &ConfiguredDBClient,
+) -> Result<(), Error> {
     let (tx, rx) = std::sync::mpsc::channel();
 
-    let mut watcher = RecommendedWatcher::new(tx, Config::default()).map_err(
-        |e| Error::new(ErrorKind::Other, format!("Failed to create file watcher: {}", e))
-    )?;
+    let mut watcher = RecommendedWatcher::new(tx, Config::default()).map_err(|e| {
+        Error::new(
+            ErrorKind::Other,
+            format!("Failed to create file watcher: {}", e),
+        )
+    })?;
 
-    watcher.watch(path.as_ref(), RecursiveMode::Recursive).map_err(
-        |e| Error::new(ErrorKind::Other, format!("Failed to watch file: {}", e))
-    )?;
+    watcher
+        .watch(path.as_ref(), RecursiveMode::Recursive)
+        .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to watch file: {}", e)))?;
 
     for res in rx {
         match res {
             Ok(event) => {
-                process_event(path.clone(), event.clone(), Arc::clone(&route_table), configured_client).await.map_err(
-                    |e| Error::new(ErrorKind::Other, format!("clickhouse error has occured: {}", e))
-                )?;
-            },
-            Err(error) => return Err(Error::new(ErrorKind::Other, format!("File watcher event caused a failure: {}", error)))
+                process_event(
+                    path.clone(),
+                    event.clone(),
+                    Arc::clone(&route_table),
+                    configured_client,
+                )
+                .await
+                .map_err(|e| {
+                    Error::new(
+                        ErrorKind::Other,
+                        format!("clickhouse error has occured: {}", e),
+                    )
+                })?;
+            }
+            Err(error) => {
+                return Err(Error::new(
+                    ErrorKind::Other,
+                    format!("File watcher event caused a failure: {}", error),
+                ))
+            }
         }
         println!("{:?}", route_table)
     }
     Ok(())
 }
 
-pub fn start_file_watcher(term: Arc<RwLock<CommandTerminal>>, route_table:  Arc<Mutex<HashMap::<PathBuf, RouteMeta>>>, clickhouse_config: ClickhouseConfig) -> Result<(), Error> {
-
+pub fn start_file_watcher(
+    term: Arc<RwLock<CommandTerminal>>,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+    clickhouse_config: ClickhouseConfig,
+) -> Result<(), Error> {
     let path = get_app_directory()?;
 
     show_message(term, MessageType::Info, {
@@ -168,7 +314,7 @@ pub fn start_file_watcher(term: Arc<RwLock<CommandTerminal>>, route_table:  Arc<
         }
     });
 
-    tokio::spawn( async move {
+    tokio::spawn(async move {
         // Need to spin up client in thread to ensure it lives long enough
         let db_client = olap::clickhouse::create_client(clickhouse_config.clone());
 
@@ -176,6 +322,6 @@ pub fn start_file_watcher(term: Arc<RwLock<CommandTerminal>>, route_table:  Arc<
             println!("Error: {error:?}");
         }
     });
-    
+
     Ok(())
 }

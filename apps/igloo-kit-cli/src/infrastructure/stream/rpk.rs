@@ -27,10 +27,10 @@ pub fn create_rpk_command_args(rpk_command: RPKCommand) -> Vec<String> {
     match rpk_command {
         RPKCommand::Topic(command) => match command {
             TopicCommand::Create { topic_name } => {
-                return vec!["topic".to_string(), "create".to_string(), topic_name]
+                vec!["topic".to_string(), "create".to_string(), topic_name]
             }
             TopicCommand::Delete { topic_name } => {
-                return vec!["topic".to_string(), "delete".to_string(), topic_name]
+                vec!["topic".to_string(), "delete".to_string(), topic_name]
             }
             _ => {
                 todo!("Command not yet implemented, implement other commands")

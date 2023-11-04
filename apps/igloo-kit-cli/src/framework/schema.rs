@@ -36,7 +36,7 @@ pub fn parse_schema_file<O>(
 
     let mapped_tables = ast_mapper(ast)?
         .into_iter()
-        .map(|table| mapper(table))
+        .map(mapper)
         .collect();
 
     Ok(mapped_tables)
@@ -151,11 +151,11 @@ impl FieldAttributes {
             }
         }
 
-        return Ok(FieldAttributes {
+        Ok(FieldAttributes {
             unique,
             primary_key,
             default,
-        });
+        })
     }
 }
 
@@ -166,7 +166,7 @@ fn field_to_column(f: &Field) -> Result<Column, ParsingError> {
         schema_ast::ast::FieldType::Supported(ft) => Ok(Column {
             name: f.name().to_string(),
             data_type: map_column_string_type_to_column_type(ft.name.as_str()),
-            arity: f.arity.clone(),
+            arity: f.arity,
             unique: attributes.unique,
             primary_key: attributes.primary_key,
             default: attributes.default,

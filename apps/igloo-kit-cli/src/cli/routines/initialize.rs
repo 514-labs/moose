@@ -239,7 +239,7 @@ impl Routine for CreateClickhouseMountVolume {
                 err,
             )
         })?;
-        fs::create_dir_all(&mount_dir.join("data")).map_err(|err| {
+        fs::create_dir_all(mount_dir.join("data")).map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),
@@ -251,7 +251,7 @@ impl Routine for CreateClickhouseMountVolume {
                 err,
             )
         })?;
-        fs::create_dir_all(&mount_dir.join("logs")).map_err(|err| {
+        fs::create_dir_all(mount_dir.join("logs")).map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),
@@ -325,7 +325,7 @@ impl CreateDockerNetwork {
 
 impl Routine for CreateDockerNetwork {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let output = docker::create_network(&self.network_name);
+        let output = docker::create_network(self.network_name);
 
         match output {
             Ok(_) => Ok(RoutineSuccess::success(Message::new(

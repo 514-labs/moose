@@ -110,11 +110,11 @@ struct FrameworkObject {
 
 fn framework_object_mapper(t: Table) -> FrameworkObject {
     let clickhouse_table = olap::clickhouse::mapper::std_table_to_clickhouse_table(t.clone());
-    return FrameworkObject {
+    FrameworkObject {
         table: clickhouse_table.clone(),
         topic: t.name.clone(),
         ts_interface: framework::typescript::mapper::std_table_to_typescript_interface(t),
-    };
+    }
 }
 
 async fn create_framework_objects_from_dataframe_route(

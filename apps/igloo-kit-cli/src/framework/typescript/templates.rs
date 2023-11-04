@@ -23,7 +23,7 @@ impl InterfaceContext {
             fields: interface
                 .fields
                 .into_iter()
-                .map(|field| InterfaceFieldContext::new(field))
+                .map(InterfaceFieldContext::new)
                 .collect::<Vec<InterfaceFieldContext>>(),
         }
     }
@@ -53,7 +53,7 @@ impl InterfaceTemplate {
         let mut tt = TinyTemplate::new();
         tt.add_template("interface", INTERFACE_TEMPLATE).unwrap();
         let context = InterfaceContext::new(interface);
-        let rendered = tt.render("interface", &context).unwrap();
-        rendered
+        
+        tt.render("interface", &context).unwrap()
     }
 }

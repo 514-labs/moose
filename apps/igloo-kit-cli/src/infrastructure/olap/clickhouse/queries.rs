@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-use super::{ClickhouseTableType, ClickhouseView};
+use super::{ClickhouseView};
 
 // TODO: Add column comment capability to the schemna and template
 pub static CREATE_TABLE_TEMPLATE: &str = r#"
@@ -74,9 +74,9 @@ impl CreateTableContext {
             fields: table
                 .columns
                 .into_iter()
-                .map(|column| CreateTableFieldContext::new(column))
+                .map(CreateTableFieldContext::new)
                 .collect::<Result<Vec<CreateTableFieldContext>, UnsupportedDataTypeError>>()?,
-            primary_key_string: if primary_key.len() > 0 {
+            primary_key_string: if !primary_key.is_empty() {
                 Some(primary_key.join(", "))
             } else {
                 None
@@ -245,7 +245,7 @@ fn clickhouse_column_to_create_table_field_context(
     column: ClickhouseColumn,
 ) -> Result<CreateTableFieldContext, UnsupportedDataTypeError> {
     if column.arity == FieldArity::List {
-        return Ok(CreateTableFieldContext {
+        Ok(CreateTableFieldContext {
             field_name: column.name,
             field_type: format!("Array({})", field_type_to_string(column.column_type)?),
             field_arity: if column.arity.is_required() {
@@ -253,9 +253,9 @@ fn clickhouse_column_to_create_table_field_context(
             } else {
                 "NULL".to_string()
             },
-        });
+        })
     } else {
-        return Ok(CreateTableFieldContext {
+        Ok(CreateTableFieldContext {
             field_name: column.name,
             field_type: field_type_to_string(column.column_type)?,
             field_arity: if column.arity.is_required() {
@@ -263,6 +263,6 @@ fn clickhouse_column_to_create_table_field_context(
             } else {
                 "NULL".to_string()
             },
-        });
+        })
     }
 }

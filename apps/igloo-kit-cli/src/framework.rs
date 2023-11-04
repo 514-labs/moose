@@ -1,11 +1,11 @@
 use clap::Subcommand;
 
-pub mod directories;
-pub mod schema;
-pub mod typescript;
-pub mod languages;
 pub mod client_app;
+pub mod directories;
+pub mod languages;
+pub mod schema;
 pub mod sdks;
+pub mod typescript;
 
 pub enum Insights {
     Metric,
@@ -29,4 +29,3 @@ pub enum AddableObjects {
     Dashboard,
     Model,
 }
-

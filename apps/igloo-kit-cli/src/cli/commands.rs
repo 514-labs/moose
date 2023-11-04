@@ -1,10 +1,9 @@
 //! # CLI Commands
 //! A module for all the commands that can be run from the CLI
 
-use clap::{Args,  Subcommand};
+use clap::{Args, Subcommand};
 
 use crate::framework::{self, languages::SupportedLanguages};
-
 
 #[derive(Subcommand)]
 pub enum Commands {
@@ -25,13 +24,13 @@ pub enum Commands {
     // Adds a new templated object to the project
     Add(AddArgs),
     /// Starts a local development environment to build your data-intensive app or service
-    Dev{},
+    Dev {},
     // Updates the redpanda cluster and clickhouse database with the latest objects
-    Update{},
+    Update {},
     // Stops development infrastructure
-    Stop{},
+    Stop {},
     // Clears all temporary data and stops development infrastructure
-    Clean{},
+    Clean {},
 }
 
 #[derive(Debug, Args)]
@@ -40,5 +39,3 @@ pub struct AddArgs {
     #[command(subcommand)]
     pub command: Option<framework::AddableObjects>,
 }
-
-

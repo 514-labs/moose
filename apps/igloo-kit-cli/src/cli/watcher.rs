@@ -14,6 +14,7 @@ use crate::{
         self,
         languages::{CodeGenerator, SupportedLanguages},
         schema::{parse_schema_file, MatViewOps, Table, TableOps},
+        sdks::{generate_ts_sdk, TypescriptObjects},
         typescript::{get_typescript_models_dir, SendFunction, TypescriptInterface},
     },
     infrastructure::{
@@ -34,12 +35,10 @@ use super::{
     CommandTerminal,
 };
 
-fn dataframe_path_to_ingest_route(
-    project_dir: PathBuf,
-    path: PathBuf,
-    table_name: String,
-) -> PathBuf {
-    let dataframe_path = project_dir.join("dataframes");
+fn dataframe_path_to_ingest_route(app_dir: PathBuf, path: PathBuf, table_name: String) -> PathBuf {
+    let dataframe_path = app_dir.join("dataframes");
+    println!("dataframe path: {:?}", dataframe_path);
+    println!("path: {:?}", path);
     let mut route = path.strip_prefix(dataframe_path).unwrap().to_path_buf();
 
     route.set_file_name(table_name);
@@ -139,16 +138,20 @@ async fn create_framework_objects_from_dataframe_route(
                         )
                     })?;
 
+            let mut process_further: Vec<TypescriptObjects> = Vec::new();
+
             for fo in framework_objects {
                 let ingest_route = dataframe_path_to_ingest_route(
-                    project.location.clone(),
+                    project.app_folder.clone(),
                     route.clone(),
                     fo.table.name.clone(),
                 );
                 stream::redpanda::create_topic_from_name(fo.topic.clone());
                 let view_name = format!("{}_view", fo.table.name);
                 create_db_objects(&fo, configured_client, view_name.clone()).await?;
-                create_language_objects(&fo, &web_server, &ingest_route, &project)?;
+                let typescript_objects =
+                    create_language_objects(&fo, &web_server, &ingest_route, &project)?;
+                process_further.push(typescript_objects);
 
                 route_table.insert(
                     ingest_route,
@@ -159,6 +162,8 @@ async fn create_framework_objects_from_dataframe_route(
                     },
                 );
             }
+
+            generate_ts_sdk(&project, process_further)?;
         }
     } else {
         println!("No primsa extension found. Likely created unsupported file type")
@@ -208,7 +213,7 @@ fn create_language_objects(
     web_server: &Webserver,
     ingest_route: &PathBuf,
     project: &Project,
-) -> Result<(), Error> {
+) -> Result<TypescriptObjects, Error> {
     let ts_interface_code = fo.ts_interface.create_code().map_err(|e| {
         Error::new(
             ErrorKind::Other,
@@ -229,7 +234,7 @@ fn create_language_objects(
     let typescript_dir = get_typescript_models_dir(project.clone())?;
     let interface_file_path = typescript_dir.join(format!("{}.ts", fo.ts_interface.file_name()));
     let send_func_file_path =
-        typescript_dir.join(format!("send{}.ts", send_func.interface.file_name()));
+        typescript_dir.join(format!("{}", send_func.interface.send_function_file_name()));
     framework::languages::write_code_to_file(
         SupportedLanguages::Typescript,
         interface_file_path,
@@ -252,7 +257,7 @@ fn create_language_objects(
             format!("Failed to write typescript function to file: {:?}", e),
         )
     })?;
-    Ok(())
+    Ok(TypescriptObjects::new(fo.ts_interface.clone(), send_func))
 }
 
 async fn remove_table_and_topics_from_dataframe_route(
@@ -308,7 +313,7 @@ async fn watch(
     })?;
 
     watcher
-        .watch(&project.location.as_ref(), RecursiveMode::Recursive)
+        .watch(&&project.app_folder.as_ref(), RecursiveMode::Recursive)
         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to watch file: {}", e)))?;
 
     for res in rx {
@@ -359,7 +364,7 @@ impl FileWatcher {
         show_message(term, MessageType::Info, {
             Message {
                 action: "Watching".to_string(),
-                details: format!("{:?}", project.location.display()),
+                details: format!("{:?}", project.app_folder.display()),
             }
         });
 

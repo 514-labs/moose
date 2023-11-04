@@ -1,27 +1,43 @@
 //! # Project
-//! 
+//!
 //! This module contains the `Project` struct, which represents a users project. These projects are data-intensive applications or services. A project is initialized using the `igloo init` command and is stored in the `~/.igloo` directory. The `Project` struct contains the following fields:
 //! - `name` - The name of the project
 //! - `language` - The language of the project
-//! 
+//!
 //! ## Example
 //! ```
 //! use igloo::framework::Project;
 //! use igloo::framework::languages::SupportedLanguages;
-//! 
+//!
 //! let project = Project::new("my-project".to_string(), SupportedLanguages::Typescript);
 //! ```
 
 use std::path::{Path, PathBuf};
 
+use crate::framework::{
+    directories::{get_igloo_directory, get_igloo_directory_from_current},
+    languages::SupportedLanguages,
+};
 use serde::{Deserialize, Serialize};
-use crate::framework::{languages::SupportedLanguages, directories::{get_igloo_directory_from_current, get_igloo_directory}};
+
+fn parse_path(path: &str) -> PathBuf {
+    match path {
+        "." => std::env::current_dir().unwrap(),
+        ".." => std::env::current_dir()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .to_path_buf(),
+        _ => Path::new(path).to_path_buf(),
+    }
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Project {
     pub name: String,
     pub language: SupportedLanguages,
     pub location: PathBuf,
+    pub app_folder: PathBuf,
 }
 
 impl Project {
@@ -29,7 +45,8 @@ impl Project {
         Self {
             name,
             language,
-            location: Path::new(&path).to_path_buf(),
+            location: parse_path(&path),
+            app_folder: parse_path(&path).join("app"),
         }
     }
 
@@ -49,10 +66,13 @@ impl Project {
             Ok(project) => {
                 std::fs::write(project_file, project)?;
                 Ok(())
-            },
+            }
             Err(err) => {
                 println!("Failed to serialize project: {}", err);
-                Err(std::io::Error::new(std::io::ErrorKind::Other, "Failed to serialize project"))
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Failed to serialize project",
+                ))
             }
         }
     }

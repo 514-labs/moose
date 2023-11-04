@@ -1,4 +1,7 @@
-use std::{path::PathBuf, io::{Error, ErrorKind}};
+use std::{
+    io::{Error, ErrorKind},
+    path::PathBuf,
+};
 
 use crate::project::Project;
 
@@ -44,7 +47,6 @@ pub fn get_igloo_directory_from_current() -> Result<PathBuf, Error> {
 
 // Create the app directory and subdirectories in the current directory
 pub fn create_app_directories(project: Project) -> Result<(), std::io::Error> {
-
     for dir in APP_DIR.iter() {
         std::fs::create_dir_all(project.location.join(dir))?;
     }
@@ -54,7 +56,6 @@ pub fn create_app_directories(project: Project) -> Result<(), std::io::Error> {
 
 // Retrieved the app directory in the directory the current directory
 pub fn get_app_directory(project: Project) -> Result<PathBuf, std::io::Error> {
-    
     let app_dir = project.location.join("app");
 
     if app_dir.exists() {

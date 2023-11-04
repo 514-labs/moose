@@ -1,7 +1,9 @@
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
 
-use super::{TypescriptInterface, InterfaceField};
+use crate::{framework::sdks::TypescriptObjects, project::Project};
+
+use super::{InterfaceField, TypescriptInterface};
 
 pub static INTERFACE_TEMPLATE: &str = r#"
 export interface {name} \{
@@ -18,12 +20,17 @@ struct InterfaceContext {
 }
 
 impl InterfaceContext {
-    fn new(interface: TypescriptInterface) -> InterfaceContext {
+    fn new(interface: &TypescriptInterface) -> InterfaceContext {
         InterfaceContext {
             name: interface.name.clone(),
             file_name: interface.file_name(),
             var_name: interface.var_name(),
-            fields: interface.fields.into_iter().map(|field| InterfaceFieldContext::new(field)).collect::<Vec<InterfaceFieldContext>>(),
+            fields: interface
+                .fields
+                .clone()
+                .into_iter()
+                .map(|field| InterfaceFieldContext::new(field))
+                .collect::<Vec<InterfaceFieldContext>>(),
         }
     }
 }
@@ -48,7 +55,7 @@ impl InterfaceFieldContext {
 pub struct InterfaceTemplate;
 
 impl InterfaceTemplate {
-    pub fn new(interface: TypescriptInterface) -> String {
+    pub fn new(interface: &TypescriptInterface) -> String {
         let mut tt = TinyTemplate::new();
         tt.add_template("interface", INTERFACE_TEMPLATE).unwrap();
         let context = InterfaceContext::new(interface);
@@ -57,11 +64,11 @@ impl InterfaceTemplate {
     }
 }
 
-
-pub static SEND_TEMPLATE: &str = r#"
+pub static SEND_FUNC_TEMPLATE: &str = r#"
 import \{ {interface_context.name} } from './{interface_context.file_name}';
+import fetch from 'node-fetch';
 
-export async function send{interface_context.name}({interface_context.var_name}: {interface_context.name}) \{
+export async function {declaration_name}({interface_context.var_name}: {interface_context.name}) \{
     return fetch('{server_url}/{api_route_name}', \{
         method: 'POST',
         headers: \{
@@ -72,139 +79,100 @@ export async function send{interface_context.name}({interface_context.var_name}:
 }
 "#;
 
-
 #[derive(Serialize)]
 pub struct SendFunctionContext {
     interface_context: InterfaceContext,
+    declaration_name: String,
+    file_name: String,
     server_url: String,
     api_route_name: String,
+}
+
+impl SendFunctionContext {
+    fn new(
+        interface: &TypescriptInterface,
+        server_url: String,
+        api_route_name: String,
+    ) -> SendFunctionContext {
+        SendFunctionContext {
+            interface_context: InterfaceContext::new(interface),
+            declaration_name: interface.send_function_name(),
+            file_name: interface.send_function_file_name(),
+            server_url,
+            api_route_name,
+        }
+    }
 }
 
 pub struct SendFunctionTemplate;
 
 impl SendFunctionTemplate {
-    pub fn new(interface: TypescriptInterface, server_url: String, api_route_name: String) -> String {
+    pub fn new(
+        interface: &TypescriptInterface,
+        server_url: String,
+        api_route_name: String,
+    ) -> String {
         let mut tt = TinyTemplate::new();
-        tt.add_template("send", SEND_TEMPLATE).unwrap();
-        let context = SendFunctionContext {
-            interface_context: InterfaceContext::new(interface),
-            server_url,
-            api_route_name,
-        };
+        tt.add_template("send", SEND_FUNC_TEMPLATE).unwrap();
+        let context = SendFunctionContext::new(interface, server_url, api_route_name);
         let rendered = tt.render("send", &context).unwrap();
         rendered
     }
 }
 
 pub static INDEX_TEMPLATE: &str = r#"
-import \{ {interface_context.name} } from './{interface_context.file_name}';
-import \{ send{interface_context.name} } from './send{interface_context.file_name}';
+{{- for ts_object in ts_objects}}
+import \{ {ts_object.interface_context.name} } from './{ts_object.interface_context.name}';
+import \{ {ts_object.send_function_context.declaration_name} } from './{ts_object.send_function_context.file_name}';
+{{endfor}}
 
-export \{ {interface_context.name}, send{interface_context.name} };
+{{for ts_object in ts_objects}}
+export \{ {ts_object.interface_context.name} };
+export \{ {ts_object.send_function_context.declaration_name} };
+{{- endfor}}
 "#;
 
 #[derive(Serialize)]
-struct IndexContext {
+struct TypescriptObjectsContext {
     interface_context: InterfaceContext,
+    send_function_context: SendFunctionContext,
+}
+
+impl TypescriptObjectsContext {
+    fn new(ts_objects: &TypescriptObjects) -> TypescriptObjectsContext {
+        TypescriptObjectsContext {
+            interface_context: InterfaceContext::new(&ts_objects.interface),
+            send_function_context: SendFunctionContext::new(
+                &ts_objects.interface,
+                ts_objects.send_function.server_url.clone(),
+                ts_objects.send_function.api_route_name.clone(),
+            ),
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct IndexContext {
+    ts_objects: Vec<TypescriptObjectsContext>,
 }
 impl IndexContext {
-    fn new(interface: TypescriptInterface) -> IndexContext {
+    fn new(ts_objects: &Vec<TypescriptObjects>) -> IndexContext {
         IndexContext {
-            interface_context: InterfaceContext::new(interface),
+            ts_objects: ts_objects
+                .into_iter()
+                .map(|ts_object| TypescriptObjectsContext::new(ts_object))
+                .collect::<Vec<TypescriptObjectsContext>>(),
         }
     }
 }
 pub struct IndexTemplate;
 
 impl IndexTemplate {
-    pub fn new(interface: TypescriptInterface) -> String {
+    pub fn new(ts_objects: &Vec<TypescriptObjects>) -> String {
         let mut tt = TinyTemplate::new();
         tt.add_template("index", INDEX_TEMPLATE).unwrap();
-        let context = IndexContext::new(interface);
+        let context = IndexContext::new(ts_objects);
         let rendered = tt.render("index", &context).unwrap();
-        rendered
-    }
-}
-
-
-pub static PACKAGE_JSON_TEMPLATE: &str = r#"
-\{
-    "name": "{package_name}",
-    "version": "{package_version}",
-    "description": "",
-    "main": "index.js",
-    "scripts": {
-        "build": "tsc --build",
-        "clean": "tsc --build --clean"
-      },
-    "keywords": [],
-    "author": "{package_author}",
-    "license": "ISC",
-}
-"#;
-
-#[derive(Serialize)]
-struct PackageJsonContext {
-    package_name: String,
-    package_version: String,
-    package_author: String,
-}
-
-impl PackageJsonContext {
-    fn new(package_name: String, package_version: String, package_author: String) -> PackageJsonContext {
-        PackageJsonContext {
-            package_name,
-            package_version,
-            package_author,
-        }
-    }
-}
-
-pub struct PackageJsonTemplate;
-
-impl PackageJsonTemplate {
-    pub fn new(package_name: String, package_version: String, package_author: String) -> String {
-        let mut tt = TinyTemplate::new();
-        tt.add_template("package_json", PACKAGE_JSON_TEMPLATE).unwrap();
-        let context = PackageJsonContext::new(package_name, package_version, package_author);
-        let rendered = tt.render("package_json", &context).unwrap();
-        rendered
-    }
-}
-
-
-// I'm using the same pattern since we may want to allow the user to configure this in the future.
-pub static TS_CONFIG_TEMPLATE: &str = r#"
-\{
-    "compilerOptions": \{
-        "target": "ES2017",
-        "module": "commonjs",
-        "lib": ["es6"],
-        "strict": true,
-        "declaration": true,
-        "removeComments": false,
-        "outDir": "./dist",
-    }
-}
-"#;
-
-#[derive(Serialize)]
-struct TsConfigContext;
-
-impl TsConfigContext {
-    fn new() -> TsConfigContext {
-        TsConfigContext
-    }
-}
-
-pub struct TsConfigTemplate;
-
-impl TsConfigTemplate {
-    pub fn new() -> String {
-        let mut tt = TinyTemplate::new();
-        tt.add_template("ts_config", TS_CONFIG_TEMPLATE).unwrap();
-        let context = TsConfigContext::new();
-        let rendered = tt.render("ts_config", &context).unwrap();
         rendered
     }
 }

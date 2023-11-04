@@ -1,7 +1,6 @@
-
-use std::path::PathBuf;
 use std::fs::File;
-use std::io::{prelude::*, ErrorKind, Error};
+use std::io::{prelude::*, Error, ErrorKind};
+use std::path::PathBuf;
 
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
@@ -38,12 +37,15 @@ impl std::str::FromStr for SupportedLanguages {
     }
 }
 
-
 pub trait CodeGenerator {
     fn create_code(&self) -> Result<String, UnsupportedDataTypeError>;
 }
 
-pub fn write_code_to_file(language: SupportedLanguages, path: PathBuf, code: String) -> Result<(), std::io::Error> {
+pub fn write_code_to_file(
+    language: SupportedLanguages,
+    path: PathBuf,
+    code: String,
+) -> Result<(), std::io::Error> {
     match language {
         SupportedLanguages::Typescript => {
             let mut file = File::create(path)?;
@@ -60,14 +62,15 @@ pub fn create_models_dir(project: Project) -> Result<PathBuf, std::io::Error> {
 }
 
 pub fn get_models_dir(project: Project) -> Result<PathBuf, std::io::Error> {
-
     let igloo_dir = get_igloo_directory(project)?;
     let models_dir = igloo_dir.join("models");
-    
 
     if models_dir.exists() {
         Ok(models_dir)
     } else {
-        Err(Error::new(ErrorKind::NotFound, "Models directory not found"))
+        Err(Error::new(
+            ErrorKind::NotFound,
+            "Models directory not found",
+        ))
     }
 }

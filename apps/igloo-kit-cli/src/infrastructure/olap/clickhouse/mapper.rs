@@ -1,5 +1,10 @@
-use crate::{infrastructure::olap::clickhouse::{ClickhouseColumnType, ClickhouseInt, ClickhouseFloat, ClickhouseTableType, ClickhouseTable, ClickhouseColumn}, framework::schema::{TableType, ColumnType, Table}};
-
+use crate::{
+    framework::schema::{ColumnType, Table, TableType},
+    infrastructure::olap::clickhouse::{
+        ClickhouseColumn, ClickhouseColumnType, ClickhouseFloat, ClickhouseInt, ClickhouseTable,
+        ClickhouseTableType,
+    },
+};
 
 pub fn clickhouse_table_type_mapper(table_type: TableType) -> ClickhouseTableType {
     match table_type {
@@ -21,17 +26,21 @@ pub fn std_field_type_to_clickhouse_type_mapper(field_type: ColumnType) -> Click
     }
 }
 
-pub fn std_table_to_clickhouse_table (table: Table) -> ClickhouseTable {
-    let columns = table.columns.into_iter().map(|column| {
-        ClickhouseColumn {
-            name: column.name,
-            column_type: std_field_type_to_clickhouse_type_mapper(column.data_type),
-            arity: column.arity,
-            unique: column.unique,
-            primary_key: column.primary_key,
-            default: None, // TODO: Implement the default mapper
-        }
-    }).collect::<Vec<ClickhouseColumn>>();
+pub fn std_table_to_clickhouse_table(table: Table) -> ClickhouseTable {
+    let columns = table
+        .columns
+        .into_iter()
+        .map(|column| {
+            ClickhouseColumn {
+                name: column.name,
+                column_type: std_field_type_to_clickhouse_type_mapper(column.data_type),
+                arity: column.arity,
+                unique: column.unique,
+                primary_key: column.primary_key,
+                default: None, // TODO: Implement the default mapper
+            }
+        })
+        .collect::<Vec<ClickhouseColumn>>();
 
     ClickhouseTable {
         db_name: table.db_name,

@@ -1,13 +1,12 @@
-pub mod infrastructure;
 mod cli;
 pub mod framework;
+pub mod infrastructure;
 pub mod utilities;
 
 // This is not Aysnc because we need to have sentry instrument
 // before Tokio takes over the main thread.
 // REF: https://docs.sentry.io/platforms/rust/#asynchronous
 fn main() {
-
     let envionment = if cfg!(debug_assertions) {
         "development"
     } else {
@@ -25,8 +24,5 @@ fn main() {
         .enable_all()
         .build()
         .unwrap()
-        .block_on(
-            cli::cli_run()
-        );
+        .block_on(cli::cli_run());
 }
-

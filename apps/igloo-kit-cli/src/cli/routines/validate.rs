@@ -1,6 +1,10 @@
-use std::io::{self, Write, Error, ErrorKind};
-use crate::{cli::{display::Message, DebugStatus}, utilities::docker, infrastructure::PANDA_NETWORK};
-use super::{Routine, RoutineSuccess, RoutineFailure};
+use super::{Routine, RoutineFailure, RoutineSuccess};
+use crate::{
+    cli::{display::Message, DebugStatus},
+    infrastructure::PANDA_NETWORK,
+    utilities::docker,
+};
+use std::io::{self, Error, ErrorKind, Write};
 
 pub struct ValidateClickhouseRun(DebugStatus);
 impl ValidateClickhouseRun {
@@ -11,7 +15,13 @@ impl ValidateClickhouseRun {
 impl Routine for ValidateClickhouseRun {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let output = docker::filter_list_containers("clickhousedb-1").map_err(|err| {
-            RoutineFailure::new(Message::new("Failed".to_string(), "to validate clickhouse docker container".to_string()), err)
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to validate clickhouse docker container".to_string(),
+                ),
+                err,
+            )
         })?;
 
         if self.0 == DebugStatus::Debug {
@@ -21,9 +31,21 @@ impl Routine for ValidateClickhouseRun {
         let string_output = String::from_utf8(output.stdout).unwrap();
 
         if string_output.contains("clickhouse") {
-            Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "validated clickhouse docker container".to_string())))
+            Ok(RoutineSuccess::success(Message::new(
+                "Successfully".to_string(),
+                "validated clickhouse docker container".to_string(),
+            )))
         } else {
-            Err(RoutineFailure::new(Message::new("Failed".to_string(), "to validate clickhouse docker container".to_string()), Error::new(ErrorKind::Other, "Failed to validate clickhouse container exists")))
+            Err(RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to validate clickhouse docker container".to_string(),
+                ),
+                Error::new(
+                    ErrorKind::Other,
+                    "Failed to validate clickhouse container exists",
+                ),
+            ))
         }
     }
 }
@@ -38,7 +60,13 @@ impl ValidateRedPandaRun {
 impl Routine for ValidateRedPandaRun {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let output = docker::filter_list_containers("redpanda-1").map_err(|err| {
-            RoutineFailure::new(Message::new("Failed".to_string(), "to validate red panda docker container".to_string()), err)
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to validate red panda docker container".to_string(),
+                ),
+                err,
+            )
         })?;
 
         if self.0 == DebugStatus::Debug {
@@ -48,9 +76,21 @@ impl Routine for ValidateRedPandaRun {
         let string_output = String::from_utf8(output.stdout).unwrap();
 
         if string_output.contains("redpanda-1") {
-            Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "validated red panda docker container".to_string())))
+            Ok(RoutineSuccess::success(Message::new(
+                "Successfully".to_string(),
+                "validated red panda docker container".to_string(),
+            )))
         } else {
-            Err(RoutineFailure::new(Message::new("Failed".to_string(), "to validate red panda docker container".to_string()), Error::new(ErrorKind::Other, "Failed to validate red panda container exists")))
+            Err(RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to validate red panda docker container".to_string(),
+                ),
+                Error::new(
+                    ErrorKind::Other,
+                    "Failed to validate red panda container exists",
+                ),
+            ))
         }
     }
 }
@@ -64,7 +104,13 @@ impl ValidatePandaHouseNetwork {
 impl Routine for ValidatePandaHouseNetwork {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let output = docker::network_list().map_err(|err| {
-            RoutineFailure::new(Message::new("Failed".to_string(), "to validate panda house docker network".to_string()), err)
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to validate panda house docker network".to_string(),
+                ),
+                err,
+            )
         })?;
 
         if self.0 == DebugStatus::Debug {
@@ -74,9 +120,21 @@ impl Routine for ValidatePandaHouseNetwork {
         let string_output = String::from_utf8(output.stdout).unwrap();
 
         if string_output.contains(PANDA_NETWORK) {
-            Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "validated panda house docker network".to_string())))
+            Ok(RoutineSuccess::success(Message::new(
+                "Successfully".to_string(),
+                "validated panda house docker network".to_string(),
+            )))
         } else {
-            Err(RoutineFailure::new(Message::new("Failed".to_string(), "to validate panda house docker network".to_string()), Error::new(ErrorKind::Other, "Failed to validate panda house network exists")))
+            Err(RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to validate panda house docker network".to_string(),
+                ),
+                Error::new(
+                    ErrorKind::Other,
+                    "Failed to validate panda house network exists",
+                ),
+            ))
         }
     }
 }
@@ -90,7 +148,13 @@ impl ValidateRedPandaCluster {
 impl Routine for ValidateRedPandaCluster {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let output = docker::run_rpk_cluster_info().map_err(|err| {
-            RoutineFailure::new(Message::new("Failed".to_string(), "to validate red panda cluster".to_string()), err)
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to validate red panda cluster".to_string(),
+                ),
+                err,
+            )
         })?;
 
         if self.0 == DebugStatus::Debug {
@@ -100,9 +164,18 @@ impl Routine for ValidateRedPandaCluster {
         let string_output = String::from_utf8(output.stdout).unwrap();
 
         if string_output.contains("redpanda-1") {
-            Ok(RoutineSuccess::success(Message::new("Successfully".to_string(), "validated red panda cluster".to_string())))
+            Ok(RoutineSuccess::success(Message::new(
+                "Successfully".to_string(),
+                "validated red panda cluster".to_string(),
+            )))
         } else {
-            Err(RoutineFailure::new(Message::new("Failed".to_string(), "to validate red panda cluster".to_string()), Error::new(ErrorKind::Other, "Failed to validate red panda cluster")))
+            Err(RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to validate red panda cluster".to_string(),
+                ),
+                Error::new(ErrorKind::Other, "Failed to validate red panda cluster"),
+            ))
         }
     }
 }

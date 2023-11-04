@@ -1,7 +1,7 @@
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
 
-use super::{TypescriptInterface, InterfaceField};
+use super::{InterfaceField, TypescriptInterface};
 
 pub static INTERFACE_TEMPLATE: &str = r#"
 export interface {name} \{
@@ -9,8 +9,6 @@ export interface {name} \{
     {{endfor}}
 }
 "#;
-
-
 
 #[derive(Serialize)]
 struct InterfaceContext {
@@ -22,7 +20,11 @@ impl InterfaceContext {
     fn new(interface: TypescriptInterface) -> InterfaceContext {
         InterfaceContext {
             name: interface.name,
-            fields: interface.fields.into_iter().map(|field| InterfaceFieldContext::new(field)).collect::<Vec<InterfaceFieldContext>>(),
+            fields: interface
+                .fields
+                .into_iter()
+                .map(|field| InterfaceFieldContext::new(field))
+                .collect::<Vec<InterfaceFieldContext>>(),
         }
     }
 }

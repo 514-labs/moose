@@ -1,9 +1,8 @@
-use std::{process::Command, path::PathBuf};
+use std::{path::PathBuf, process::Command};
 
+use crate::infrastructure::{olap::clickhouse::config::ClickhouseConfig, PANDA_NETWORK};
 
-use crate::infrastructure::{PANDA_NETWORK, olap::clickhouse::config::ClickhouseConfig,};
-
-fn network_command(command: &str, network_name: &str) -> std::io::Result<std::process::Output>{
+fn network_command(command: &str, network_name: &str) -> std::io::Result<std::process::Output> {
     Command::new("docker")
         .arg("network")
         .arg(command)
@@ -11,29 +10,23 @@ fn network_command(command: &str, network_name: &str) -> std::io::Result<std::pr
         .output()
 }
 
-pub fn network_list() -> std::io::Result<std::process::Output>{
-    Command::new("docker")
-        .arg("network")
-        .arg("ls")
-        .output()
+pub fn network_list() -> std::io::Result<std::process::Output> {
+    Command::new("docker").arg("network").arg("ls").output()
 }
 
-pub fn remove_network(network_name: &str) -> std::io::Result<std::process::Output>{
+pub fn remove_network(network_name: &str) -> std::io::Result<std::process::Output> {
     network_command("rm", network_name)
 }
 
-pub fn create_network(network_name: &str) -> std::io::Result<std::process::Output>{
+pub fn create_network(network_name: &str) -> std::io::Result<std::process::Output> {
     network_command("create", network_name)
 }
 
-pub fn stop_container(name: &str) -> std::io::Result<std::process::Output>{
-    Command::new("docker")
-        .arg("stop")
-        .arg(name)
-        .output()
+pub fn stop_container(name: &str) -> std::io::Result<std::process::Output> {
+    Command::new("docker").arg("stop").arg(name).output()
 }
 
-pub fn filter_list_containers(name: &str) -> std::io::Result<std::process::Output>{
+pub fn filter_list_containers(name: &str) -> std::io::Result<std::process::Output> {
     Command::new("docker")
         .arg("ps")
         .arg("--filter")
@@ -41,7 +34,7 @@ pub fn filter_list_containers(name: &str) -> std::io::Result<std::process::Outpu
         .output()
 }
 
-pub fn run_rpk_cluster_info() -> std::io::Result<std::process::Output>{
+pub fn run_rpk_cluster_info() -> std::io::Result<std::process::Output> {
     Command::new("docker")
         .arg("exec")
         .arg("redpanda-1")
@@ -51,7 +44,7 @@ pub fn run_rpk_cluster_info() -> std::io::Result<std::process::Output>{
         .output()
 }
 
-pub fn run_rpk_command(args: Vec<String>) -> std::io::Result<std::process::Output>{
+pub fn run_rpk_command(args: Vec<String>) -> std::io::Result<std::process::Output> {
     Command::new("docker")
         .arg("exec")
         .arg("redpanda-1")
@@ -60,7 +53,7 @@ pub fn run_rpk_command(args: Vec<String>) -> std::io::Result<std::process::Outpu
         .output()
 }
 
-pub fn run_red_panda(igloo_dir:  PathBuf) -> std::io::Result<std::process::Output>{
+pub fn run_red_panda(igloo_dir: PathBuf) -> std::io::Result<std::process::Output> {
     let mount_dir = igloo_dir.join(".panda_house");
 
     Command::new("docker")
@@ -78,9 +71,15 @@ pub fn run_red_panda(igloo_dir:  PathBuf) -> std::io::Result<std::process::Outpu
         .arg("redpanda")
         .arg("start")
         .arg("--kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092")
-        .arg(format!("--advertise-kafka-addr internal://{}:9092,external://localhost:19092", "redpanda-1"))
+        .arg(format!(
+            "--advertise-kafka-addr internal://{}:9092,external://localhost:19092",
+            "redpanda-1"
+        ))
         .arg("--pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082")
-        .arg(format!("--advertise-pandaproxy-addr internal://{}:8082,external://localhost:18082", "redpanda-1"))
+        .arg(format!(
+            "--advertise-pandaproxy-addr internal://{}:8082,external://localhost:18082",
+            "redpanda-1"
+        ))
         .arg("--overprovisioned")
         .arg("--smp 1")
         .arg("--memory 2G")
@@ -90,13 +89,16 @@ pub fn run_red_panda(igloo_dir:  PathBuf) -> std::io::Result<std::process::Outpu
         .output()
 }
 
-pub fn run_clickhouse(igloo_dir: PathBuf, config: ClickhouseConfig) -> std::io::Result<std::process::Output> {
+pub fn run_clickhouse(
+    igloo_dir: PathBuf,
+    config: ClickhouseConfig,
+) -> std::io::Result<std::process::Output> {
     let data_mount_dir = igloo_dir.join(".clickhouse/data");
     let logs_mount_dir = igloo_dir.join(".clickhouse/logs");
     // let server_config_mount_dir = igloo_dir.join(".clickhouse/configs/server");
     let user_config_mount_dir = igloo_dir.join(".clickhouse/configs/users");
     let scripts_config_mount_dir = igloo_dir.join(".clickhouse/configs/scripts");
-    
+
     // TODO: Make this configurable by the user
     // Specifying the user and password in plain text here. This should be a user input
     // Double check the access management flag and why it needs to be set to 1
@@ -106,11 +108,23 @@ pub fn run_clickhouse(igloo_dir: PathBuf, config: ClickhouseConfig) -> std::io::
         .arg("--pull=always")
         .arg("--name=clickhousedb-1")
         .arg("--rm")
-        .arg("--volume=".to_owned() + scripts_config_mount_dir.to_str().unwrap() + ":/docker-entrypoint-initdb.d")
+        .arg(
+            "--volume=".to_owned()
+                + scripts_config_mount_dir.to_str().unwrap()
+                + ":/docker-entrypoint-initdb.d",
+        )
         .arg("--volume=".to_owned() + data_mount_dir.to_str().unwrap() + ":/var/lib/clickhouse/")
-        .arg("--volume=".to_owned() + logs_mount_dir.to_str().unwrap() + ":/var/log/clickhouse-server/")
+        .arg(
+            "--volume=".to_owned()
+                + logs_mount_dir.to_str().unwrap()
+                + ":/var/log/clickhouse-server/",
+        )
         // .arg("--volume=".to_owned() + server_config_mount_dir.to_str().unwrap() + ":/etc/clickhouse-server/config.d")
-        .arg("--volume=".to_owned() + user_config_mount_dir.to_str().unwrap() + ":/etc/clickhouse-server/users.d")
+        .arg(
+            "--volume=".to_owned()
+                + user_config_mount_dir.to_str().unwrap()
+                + ":/etc/clickhouse-server/users.d",
+        )
         .arg(format!("--env=CLICKHOUSE_DB={}", config.db_name))
         .arg(format!("--env=CLICKHOUSE_USER={}", config.user))
         .arg("--env=CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1") // Might be unsafe
@@ -121,5 +135,4 @@ pub fn run_clickhouse(igloo_dir: PathBuf, config: ClickhouseConfig) -> std::io::
         .arg("--ulimit=nofile=262144:262144")
         .arg("docker.io/clickhouse/clickhouse-server")
         .output()
-
 }

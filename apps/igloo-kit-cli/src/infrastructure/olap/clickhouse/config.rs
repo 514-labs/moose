@@ -1,9 +1,9 @@
 //! # Clickhouse Config
 //! Module to handle the creation of the Clickhouse config files
-//! 
+//!
 //! ## Suggested Improvements
 //! - we need to understand clickhouse configuration better before we can go deep on it's configuration
-//! 
+//!
 
 use serde::Deserialize;
 
@@ -14,10 +14,10 @@ pub struct ClickhouseConfig {
     pub db_name: String, // ex. local
     pub user: String,
     pub password: String,
-    pub host: String, // ex. localhost
-    pub host_port: i32, // ex. 18123
-    pub postgres_port: i32, // ex. 9005
-    pub kafka_port: i32, // ex. 9092
+    pub host: String,            // ex. localhost
+    pub host_port: i32,          // ex. 18123
+    pub postgres_port: i32,      // ex. 9005
+    pub kafka_port: i32,         // ex. 9092
     pub cluster_network: String, // ex. panda-house
 }
 
@@ -37,9 +37,9 @@ impl Default for ClickhouseConfig {
 }
 
 // *** The following configurations work. They just didn't solve the problem I needed them to solve. ***
-// 
-// We should continue to explore them 
-// 
+//
+// We should continue to explore them
+//
 // use std::fs::File;
 // use std::io::prelude::*;
 // use std::path::PathBuf;

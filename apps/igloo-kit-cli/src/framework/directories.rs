@@ -1,7 +1,4 @@
-use std::{
-    io::{Error, ErrorKind},
-    path::PathBuf,
-};
+use std::{path::PathBuf, io::{Error, ErrorKind}};
 
 const APP_DIR: [&str; 8] = [
     "app",

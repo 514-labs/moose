@@ -53,7 +53,7 @@ impl InterfaceTemplate {
         let mut tt = TinyTemplate::new();
         tt.add_template("interface", INTERFACE_TEMPLATE).unwrap();
         let context = InterfaceContext::new(interface);
-        
+
         tt.render("interface", &context).unwrap()
     }
 }

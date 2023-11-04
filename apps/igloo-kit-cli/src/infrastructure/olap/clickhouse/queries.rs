@@ -9,7 +9,7 @@ use crate::{
     },
 };
 
-use super::{ClickhouseView};
+use super::ClickhouseView;
 
 // TODO: Add column comment capability to the schemna and template
 pub static CREATE_TABLE_TEMPLATE: &str = r#"

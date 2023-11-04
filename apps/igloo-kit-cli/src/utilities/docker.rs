@@ -1,7 +1,15 @@
 use std::{process::Command, path::PathBuf};
-
-
 use crate::infrastructure::{PANDA_NETWORK, olap::clickhouse::config::ClickhouseConfig,};
+
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn internal() {
+        assert_eq!(4, 4);
+    }
+}
+
 
 fn network_command(command: &str, network_name: &str) -> std::io::Result<std::process::Output>{
     Command::new("docker")

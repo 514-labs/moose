@@ -3,6 +3,7 @@ name: Test Igloo CLI
 on:
   push:
     branches:
+      - "**"
       - "!main"
     paths:
       - ".github/workflows/test-igloo-cli.yaml"

@@ -1,12 +1,10 @@
 use std::{fmt, path::PathBuf};
 
-use super::{
-    languages::{get_models_dir, CodeGenerator},
-    schema::UnsupportedDataTypeError,
-};
+use super::{languages::{CodeGenerator, get_models_dir}, schema::UnsupportedDataTypeError};
 
-pub mod mapper;
 mod templates;
+pub mod mapper;
+
 
 #[derive(Debug, Clone)]
 pub struct TypescriptInterface {
@@ -16,7 +14,10 @@ pub struct TypescriptInterface {
 
 impl TypescriptInterface {
     pub fn new(name: String, fields: Vec<InterfaceField>) -> TypescriptInterface {
-        TypescriptInterface { name, fields }
+        TypescriptInterface {
+            name,
+            fields,
+        }
     }
 }
 
@@ -35,12 +36,7 @@ pub struct InterfaceField {
 }
 
 impl InterfaceField {
-    pub fn new(
-        name: String,
-        comment: Option<String>,
-        is_optional: bool,
-        field_type: InterfaceFieldType,
-    ) -> InterfaceField {
+    pub fn new(name: String, comment: Option<String>, is_optional: bool, field_type: InterfaceFieldType) -> InterfaceField {
         InterfaceField {
             name,
             comment,
@@ -75,14 +71,17 @@ impl fmt::Display for InterfaceFieldType {
     }
 }
 
+
 pub fn create_typescript_models_dir() -> Result<PathBuf, std::io::Error> {
     let models_dir = get_models_dir();
     match models_dir {
         Ok(dir) => {
             std::fs::create_dir_all(dir.join("typescript"))?;
             Ok(dir)
+        },
+        Err(err) => {
+            Err(err)
         }
-        Err(err) => Err(err),
     }
 }
 
@@ -92,9 +91,6 @@ pub fn get_typescript_models_dir() -> Result<PathBuf, std::io::Error> {
     if typescript_dir.exists() {
         Ok(typescript_dir)
     } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::NotFound,
-            "Typescript models directory not found",
-        ))
+        Err(std::io::Error::new(std::io::ErrorKind::NotFound, "Typescript models directory not found"))
     }
 }

@@ -8,21 +8,16 @@ use clickhouse::Client;
 use reqwest::Url;
 use schema_ast::ast::FieldArity;
 
-use crate::framework::schema::{MatViewOps, TableOps, UnsupportedDataTypeError};
+use crate::framework::schema::{TableOps, UnsupportedDataTypeError, MatViewOps};
 
-use self::{
-    config::ClickhouseConfig,
-    queries::{
-        CreateMaterializedViewQuery, CreateTableQuery, DropMaterializedViewQuery, DropTableQuery,
-    },
-};
+use self::{queries::{CreateTableQuery, DropTableQuery, CreateMaterializedViewQuery, DropMaterializedViewQuery}, config::ClickhouseConfig};
 
 #[derive(Debug, Clone)]
 pub enum ClickhouseTableType {
     Table,
     View,
     MaterializedView,
-    Unsupported,
+    Unsupported
 }
 
 impl fmt::Display for ClickhouseTableType {
@@ -96,7 +91,7 @@ pub struct ClickhouseColumn {
     pub arity: FieldArity,
     pub unique: bool,
     pub primary_key: bool,
-    pub default: Option<ClickhouseColumnDefaults>,
+    pub default: Option<ClickhouseColumnDefaults>
 }
 
 #[derive(Debug, Clone)]
@@ -108,12 +103,7 @@ pub struct ClickhouseTable {
 }
 
 impl ClickhouseTable {
-    pub fn new(
-        db_name: String,
-        name: String,
-        columns: Vec<ClickhouseColumn>,
-        table_type: ClickhouseTableType,
-    ) -> ClickhouseTable {
+    pub fn new(db_name: String, name: String, columns: Vec<ClickhouseColumn>, table_type: ClickhouseTableType) -> ClickhouseTable {
         ClickhouseTable {
             db_name,
             name,
@@ -125,12 +115,7 @@ impl ClickhouseTable {
 
 impl TableOps for ClickhouseTable {
     fn create_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
-        CreateTableQuery::new(
-            self.clone(),
-            "redpanda-1".to_string(),
-            9092,
-            self.name.clone(),
-        )
+        CreateTableQuery::new(self.clone(), "redpanda-1".to_string(), 9092, self.name.clone())
     }
 
     fn drop_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
@@ -174,38 +159,23 @@ pub struct ConfiguredDBClient {
 pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredDBClient {
     ConfiguredDBClient {
         client: Client::default()
-            .with_url(
-                Url::parse(&format!(
-                    "http://{}:{}",
-                    clickhouse_config.host, clickhouse_config.host_port
-                ))
-                .unwrap(),
-            )
-            .with_user(format!("{}", clickhouse_config.user))
-            .with_password(format!("{}", clickhouse_config.password))
-            .with_database(format!("{}", clickhouse_config.db_name)),
+        .with_url(Url::parse(&format!("http://{}:{}", clickhouse_config.host, clickhouse_config.host_port)).unwrap())
+        .with_user(format!("{}", clickhouse_config.user))
+        .with_password(format!("{}", clickhouse_config.password))
+        .with_database(format!("{}", clickhouse_config.db_name)),
         config: clickhouse_config,
-    }
+    }    
 }
 
 // Run an arbitrary clickhouse query
-pub async fn run_query(
-    query: QueryString,
-    configured_client: &ConfiguredDBClient,
-) -> Result<(), clickhouse::error::Error> {
+pub async fn run_query(query: QueryString, configured_client: &ConfiguredDBClient) -> Result<(), clickhouse::error::Error> {
     let client = &configured_client.client;
     client.query(query.as_str()).execute().await
 }
 
-pub async fn delete_table_or_view(
-    table_or_view_name: String,
-    configured_client: &ConfiguredDBClient,
-) -> Result<(), clickhouse::error::Error> {
+pub async fn delete_table_or_view(table_or_view_name: String, configured_client: &ConfiguredDBClient) -> Result<(), clickhouse::error::Error> {
     let client = &configured_client.client;
     let db_name = &configured_client.config.db_name;
 
-    client
-        .query(format!("DROP TABLE {db_name}.{table_or_view_name}").as_str())
-        .execute()
-        .await
+    client.query(format!("DROP TABLE {db_name}.{table_or_view_name}").as_str()).execute().await
 }

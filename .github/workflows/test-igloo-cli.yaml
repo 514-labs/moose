@@ -3,7 +3,6 @@ name: Test Igloo CLI
 on:
   push:
     branches:
-      - "**"
       - "!main"
     paths:
       - ".github/workflows/test-igloo-cli.yaml"
@@ -73,11 +72,11 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml --all -- --check
+          args: --all -- --check --manifest-path ./apps/igloo-kit-cli/Cargo.toml
 
       - name: Run cargo clippy
         uses: actions-rs/cargo@v1
         continue-on-error: true # WARNING: only for this example, remove it!
         with:
           command: clippy
-          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml -- -D warnings
+          args: -- -D warnings --manifest-path ./apps/igloo-kit-cli/Cargo.toml

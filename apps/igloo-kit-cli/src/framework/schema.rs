@@ -34,10 +34,7 @@ pub fn parse_schema_file<O>(
 
     let ast = parse_schema(&schema_file, &mut diagnostics);
 
-    let mapped_tables = ast_mapper(ast)?
-        .into_iter()
-        .map(mapper)
-        .collect();
+    let mapped_tables = ast_mapper(ast)?.into_iter().map(mapper).collect();
 
     Ok(mapped_tables)
 }

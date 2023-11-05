@@ -60,7 +60,7 @@ impl PackageJsonTemplate {
         tt.add_template("package_json", PACKAGE_JSON_TEMPLATE)
             .unwrap();
         let context = PackageJsonContext::new(package.name.clone());
-        
+
         tt.render("package_json", &context).unwrap()
     }
 
@@ -69,7 +69,7 @@ impl PackageJsonTemplate {
         tt.add_template("package_json", PACKAGE_JSON_TEMPLATE)
             .unwrap();
         let context = PackageJsonContext::from_project(project);
-        
+
         tt.render("package_json", &context).unwrap()
     }
 }
@@ -105,7 +105,7 @@ impl TsConfigTemplate {
         let mut tt = TinyTemplate::new();
         tt.add_template("ts_config", TS_CONFIG_TEMPLATE).unwrap();
         let context = TsConfigContext::new();
-        
+
         tt.render("ts_config", &context).unwrap()
     }
 }

@@ -233,8 +233,7 @@ fn create_language_objects(
     })?;
     let typescript_dir = get_typescript_models_dir(project.clone())?;
     let interface_file_path = typescript_dir.join(format!("{}.ts", fo.ts_interface.file_name()));
-    let send_func_file_path =
-        typescript_dir.join(send_func.interface.send_function_file_name());
+    let send_func_file_path = typescript_dir.join(send_func.interface.send_function_file_name());
     framework::languages::write_code_to_file(
         SupportedLanguages::Typescript,
         interface_file_path,

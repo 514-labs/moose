@@ -143,7 +143,6 @@ impl Webserver {
     }
 
     pub async fn socket(&self) -> SocketAddr {
-        
         tokio::net::lookup_host(format!("{}:{}", self.host, self.port))
             .await
             .unwrap()

@@ -1,7 +1,7 @@
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
 
-use crate::{framework::sdks::TypescriptObjects};
+use crate::framework::sdks::TypescriptObjects;
 
 use super::{InterfaceField, TypescriptInterface};
 
@@ -59,7 +59,7 @@ impl InterfaceTemplate {
         let mut tt = TinyTemplate::new();
         tt.add_template("interface", INTERFACE_TEMPLATE).unwrap();
         let context = InterfaceContext::new(interface);
-        
+
         tt.render("interface", &context).unwrap()
     }
 }
@@ -115,7 +115,7 @@ impl SendFunctionTemplate {
         let mut tt = TinyTemplate::new();
         tt.add_template("send", SEND_FUNC_TEMPLATE).unwrap();
         let context = SendFunctionContext::new(interface, server_url, api_route_name);
-        
+
         tt.render("send", &context).unwrap()
     }
 }
@@ -172,7 +172,7 @@ impl IndexTemplate {
         let mut tt = TinyTemplate::new();
         tt.add_template("index", INDEX_TEMPLATE).unwrap();
         let context = IndexContext::new(ts_objects);
-        
+
         tt.render("index", &context).unwrap()
     }
 }

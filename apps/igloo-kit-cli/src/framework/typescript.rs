@@ -2,7 +2,6 @@ use std::{fmt, path::PathBuf};
 
 use convert_case::{Case, Casing};
 
-
 use crate::project::Project;
 
 use super::{

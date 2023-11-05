@@ -168,11 +168,11 @@ pub trait Routine {
     ) -> Result<RoutineSuccess, RoutineFailure> {
         match self.run_silent() {
             Ok(success) => {
-                show_message(term, success.message_type.clone(), success.message.clone());
+                show_message(term, success.message_type, success.message.clone());
                 Ok(success)
             }
             Err(failure) => {
-                show_message(term, failure.message_type.clone(), failure.message.clone());
+                show_message(term, failure.message_type, failure.message.clone());
                 Err(failure)
             }
         }

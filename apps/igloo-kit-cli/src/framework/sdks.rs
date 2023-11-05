@@ -1,7 +1,7 @@
 use std::{
     fs::File,
     io::Write,
-    path::{self, PathBuf},
+    path::{PathBuf},
 };
 mod mapper;
 mod templates;

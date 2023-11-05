@@ -91,7 +91,7 @@ async fn top_command_handler(
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit { term };
 
-                let project = Project::new(name.clone(), language.clone(), location.clone());
+                let project = Project::new(name.clone(), *language, location.clone());
 
                 controller.add_routine(Box::new(InitializeProject::new(
                     run_mode.clone(),

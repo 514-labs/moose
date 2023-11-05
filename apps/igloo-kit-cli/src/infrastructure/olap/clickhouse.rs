@@ -181,9 +181,9 @@ pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredDBClient 
                 ))
                 .unwrap(),
             )
-            .with_user(format!("{}", clickhouse_config.user))
-            .with_password(format!("{}", clickhouse_config.password))
-            .with_database(format!("{}", clickhouse_config.db_name)),
+            .with_user(clickhouse_config.user.to_string())
+            .with_password(clickhouse_config.password.to_string())
+            .with_database(clickhouse_config.db_name.to_string()),
         config: clickhouse_config,
     }
 }

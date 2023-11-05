@@ -1,7 +1,7 @@
 use std::{fmt, path::PathBuf};
 
 use convert_case::{Case, Casing};
-use serde::Serialize;
+
 
 use crate::project::Project;
 
@@ -26,29 +26,29 @@ impl TypescriptInterface {
 
     pub fn file_name(&self) -> String {
         //! Use when an interface is used in a file name. Does not include the .ts extension.
-        return self.name.to_case(Case::Pascal);
+        self.name.to_case(Case::Pascal)
     }
 
     pub fn file_name_with_extension(&self) -> String {
         //! The interface's file name with the .ts extension.
-        return format!("{}.ts", self.file_name());
+        format!("{}.ts", self.file_name())
     }
 
     pub fn send_function_name(&self) -> String {
-        return format!("send{}", self.name.to_case(Case::Pascal));
+        format!("send{}", self.name.to_case(Case::Pascal))
     }
 
     pub fn send_function_file_name(&self) -> String {
-        return format!("Send{}", self.file_name());
+        format!("Send{}", self.file_name())
     }
 
     pub fn send_function_file_name_with_extension(&self) -> String {
-        return format!("{}.ts", self.send_function_file_name());
+        format!("{}.ts", self.send_function_file_name())
     }
 
     pub fn var_name(&self) -> String {
         //! Use when an interface is used in a function, it is passed as a variable.
-        return self.name.to_case(Case::Camel);
+        self.name.to_case(Case::Camel)
     }
 }
 
@@ -122,11 +122,11 @@ impl SendFunction {
         }
     }
     pub fn file_name(&self) -> String {
-        return format!("{}", self.interface.send_function_file_name());
+        self.interface.send_function_file_name().to_string()
     }
 
     pub fn file_name_with_extension(&self) -> String {
-        return format!("{}.ts", self.interface.send_function_file_name());
+        format!("{}.ts", self.interface.send_function_file_name())
     }
 }
 

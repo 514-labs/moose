@@ -113,11 +113,11 @@ struct FrameworkObject {
 
 fn framework_object_mapper(t: Table) -> FrameworkObject {
     let clickhouse_table = olap::clickhouse::mapper::std_table_to_clickhouse_table(t.clone());
-    return FrameworkObject {
+    FrameworkObject {
         table: clickhouse_table.clone(),
         topic: t.name.clone(),
         ts_interface: framework::typescript::mapper::std_table_to_typescript_interface(t),
-    };
+    }
 }
 
 async fn create_framework_objects_from_dataframe_route(
@@ -234,7 +234,7 @@ fn create_language_objects(
     let typescript_dir = get_typescript_models_dir(project.clone())?;
     let interface_file_path = typescript_dir.join(format!("{}.ts", fo.ts_interface.file_name()));
     let send_func_file_path =
-        typescript_dir.join(format!("{}", send_func.interface.send_function_file_name()));
+        typescript_dir.join(send_func.interface.send_function_file_name());
     framework::languages::write_code_to_file(
         SupportedLanguages::Typescript,
         interface_file_path,
@@ -313,7 +313,7 @@ async fn watch(
     })?;
 
     watcher
-        .watch(&&project.app_folder.as_ref(), RecursiveMode::Recursive)
+        .watch(project.app_folder.as_ref(), RecursiveMode::Recursive)
         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to watch file: {}", e)))?;
 
     for res in rx {

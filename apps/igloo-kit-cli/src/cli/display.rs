@@ -87,9 +87,9 @@ impl CommandTerminal {
 pub enum MessageType {
     Info,
     Success,
-   Warning,
+    Warning,
     Error,
-   Typographic,
+    Typographic,
     Banner,
 }
 

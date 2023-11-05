@@ -14,6 +14,9 @@ importers:
       eslint-config-custom:
         specifier: workspace:*
         version: link:packages/eslint-config-custom
+      husky:
+        specifier: ^8.0.0
+        version: 8.0.3
       prettier:
         specifier: ^2.8.8
         version: 2.8.8
@@ -28,7 +31,7 @@ importers:
     dependencies:
       '@514labs/igloo-cli':
         specifier: latest
-        version: 0.3.4
+        version: 0.3.11
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -53,16 +56,16 @@ importers:
     optionalDependencies:
       '@514labs/igloo-cli-darwin-arm64':
         specifier: latest
-        version: 0.3.4
+        version: 0.3.11
       '@514labs/igloo-cli-darwin-x64':
         specifier: latest
-        version: 0.3.4
+        version: 0.3.11
       '@514labs/igloo-cli-linux-arm64':
         specifier: latest
-        version: 0.3.4
+        version: 0.3.11
       '@514labs/igloo-cli-linux-x64':
         specifier: latest
-        version: 0.3.4
+        version: 0.3.11
       '@514labs/igloo-cli-windows-arm64':
         specifier: latest
         version: 0.0.2-BUILD.73
@@ -287,32 +290,32 @@ importers:
 
 packages:
 
-  /@514labs/igloo-cli-darwin-arm64@0.3.4:
-    resolution: {integrity: sha512-m+2uKKnb9BGxKc1oAy67VJ8UOQ/MNORkNq7sPSLZSQYbYTCiLKLVdqlyGm9I4bfX987zlJa6aVMfUGt+230R4A==}
+  /@514labs/igloo-cli-darwin-arm64@0.3.11:
+    resolution: {integrity: sha512-y+JqzTBS0YRNC66imP93JMaCTitIAZdObBwEo+e8wW/fL+0zvy8oxsQtGHuZIAQT6xiRcnUb3gHBsg8O6g+uCw==}
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-darwin-x64@0.3.4:
-    resolution: {integrity: sha512-2NiLRyXFGIO4QcmP8wbEs3IwOnNlFwFTPSLU5gDQAXGKICGjqmYJ/oKwxpDsPyLf3m/47ULgFVkzI/Bh13+PIQ==}
+  /@514labs/igloo-cli-darwin-x64@0.3.11:
+    resolution: {integrity: sha512-UIZsNqGa7iqhRLIYpqKaSBYh5WLTLR6TxIt1UuAzso45KiR8fS0ik8PYe74C8Y1/K48dCnJBCQtxDbtFgB+yhQ==}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-linux-arm64@0.3.4:
-    resolution: {integrity: sha512-vcsGCeZNVK3qKAGq27RHU88ZNNIkKD7qTa5MCBR8fHKdXrZzxYtQ8lEQr9uus45uh/jHGWpys6a65YPTXgIhiw==}
+  /@514labs/igloo-cli-linux-arm64@0.3.11:
+    resolution: {integrity: sha512-iBIxDyXzSX3mhNHCVdCyChLC+VZqZpQuCVE0EOE1bpBwK3sIThlXx+f3MTBjYeXSgXXcJ35/npVXMwjA6a+hCg==}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-linux-x64@0.3.4:
-    resolution: {integrity: sha512-azsRLQ2Rt2vDgJ8caf0BcUxgj40LFplTPPLzVO5pSEuZxUE1iZZUvBcovyqKTT9YvbTHNjKShC8hh1AaTMoluA==}
+  /@514labs/igloo-cli-linux-x64@0.3.11:
+    resolution: {integrity: sha512-adxGd0n0tHWilCsM/Zr5mtPXC9n7Hh8yMiAAtfiFmfbL8DPJ0dl5JxSoIA+BD2vTQaPISFF5lGgJ4gez4rgYLQ==}
     cpu: [x64]
     os: [linux]
     requiresBuild: true
@@ -335,14 +338,14 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/igloo-cli@0.3.4:
-    resolution: {integrity: sha512-rVHFX+VOBxvFwkDMbEXGEbCyyKlIPKQGGCisjutgqKNBMNR4sIQFS4O9UIWV4uXe3Gv4B1c9HUnS+uv13u2ZJg==}
+  /@514labs/igloo-cli@0.3.11:
+    resolution: {integrity: sha512-G1UzEzWBcqIuEQf4eeshKLE22jduOBSGn390ur/S2j86xz8zMGZ0S+a+eII1i8wYHhR7TembiBWdsTsUO0mvFA==}
     hasBin: true
     optionalDependencies:
-      '@514labs/igloo-cli-darwin-arm64': 0.3.4
-      '@514labs/igloo-cli-darwin-x64': 0.3.4
-      '@514labs/igloo-cli-linux-arm64': 0.3.4
-      '@514labs/igloo-cli-linux-x64': 0.3.4
+      '@514labs/igloo-cli-darwin-arm64': 0.3.11
+      '@514labs/igloo-cli-darwin-x64': 0.3.11
+      '@514labs/igloo-cli-linux-arm64': 0.3.11
+      '@514labs/igloo-cli-linux-x64': 0.3.11
     dev: false
 
   /@aashutoshrathi/word-wrap@1.2.6:
@@ -4785,6 +4788,12 @@ packages:
     resolution: {integrity: sha512-nZXjEF2nbo7lIw3mgYjItAfgQXog3OjJogSbKa2CQIIvSGWcKgeJnQlNXip6NglNzYH45nSRiEVimMvYL8DDqQ==}
     engines: {node: '>=14.18.0'}
     dev: false
+
+  /husky@8.0.3:
+    resolution: {integrity: sha512-+dQSyqPh4x1hlO1swXBiNb2HzTDN1I2IGLQx1GrBuiqFJfoMrnZWwVmatvSiO+Iz8fBUnf+lekwNo4c2LlXItg==}
+    engines: {node: '>=14'}
+    hasBin: true
+    dev: true
 
   /iconv-lite@0.6.3:
     resolution: {integrity: sha512-4fCk79wshMdzMp2rH06qWrJE4iolqLhCUH+OiuIgU++RB0+94NlDL81atO7GX55uUKueo0txHNtvEyI6D7WdMw==}

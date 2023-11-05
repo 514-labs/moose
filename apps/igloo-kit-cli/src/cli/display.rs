@@ -60,7 +60,7 @@ pub struct CommandTerminal {
     counter: usize,
 }
 
-#[allow(dead_code)]
+
 impl CommandTerminal {
     pub fn new() -> CommandTerminal {
         CommandTerminal {
@@ -68,44 +68,16 @@ impl CommandTerminal {
             counter: 0,
         }
     }
-
-    pub fn clear(&mut self) {
-        self.term
-            .clear_last_lines(self.counter)
-            .expect("failed to clear the terminal");
-        self.counter = 0;
-    }
-
-    pub fn clear_with_delay(&mut self, delay_milli: u64) {
-        std::thread::sleep(std::time::Duration::from_millis(delay_milli));
-        self.clear();
-    }
 }
 
-#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub enum MessageType {
     Info,
     Success,
-    Warning,
     Error,
-    Typographic,
     Banner,
 }
 
-const TYPOGRAPHIC: &str = r#"
-      ___         ___         ___         ___     
-     /\__\       /\  \       /\  \       /\  \    
-    /:/ _/_     /::\  \     /::\  \      \:\  \   
-   /:/ /\  \   /:/\:\  \   /:/\:\  \      \:\  \  
-  /:/ /::\  \ /:/  \:\  \ /:/  \:\  \ _____\:\  \ 
- /:/_/:/\:\__/:/__/ \:\__/:/__/ \:\__/::::::::\__\
- \:\/:/ /:/  \:\  \ /:/  \:\  \ /:/  \:\~~\~~\/__/
-  \::/ /:/  / \:\  /:/  / \:\  /:/  / \:\  \      
-   \/_/:/  /   \:\/:/  /   \:\/:/  /   \:\  \     
-     /:/  /     \::/  /     \::/  /     \:\__\    
-     \/__/       \/__/       \/__/       \/__/    
-"#;
 
 fn styled_banner() -> String {
     format!(
@@ -185,24 +157,6 @@ pub fn show_message(
                 .expect("failed to write message to terminal");
             command_terminal.counter += 1;
         }
-        MessageType::Warning => {
-            command_terminal
-                .term
-                .write_line(&format!(
-                    "{} {}",
-                    style(pad_str(
-                        messsage.action.as_str(),
-                        padder,
-                        console::Alignment::Right,
-                        Some("...")
-                    ))
-                    .yellow()
-                    .bold(),
-                    messsage.details
-                ))
-                .expect("failed to write message to terminal");
-            command_terminal.counter += 1;
-        }
         MessageType::Error => {
             command_terminal
                 .term
@@ -220,13 +174,6 @@ pub fn show_message(
                 ))
                 .expect("failed to write message to terminal");
             command_terminal.counter += 1;
-        }
-        MessageType::Typographic => {
-            command_terminal
-                .term
-                .write_line(TYPOGRAPHIC)
-                .expect("failed to write message to terminal");
-            command_terminal.counter += TYPOGRAPHIC.lines().count();
         }
         MessageType::Banner => {
             command_terminal

@@ -1,8 +1,6 @@
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
 
-use crate::project::Project;
-
 use super::TypescriptPackage;
 
 pub static PACKAGE_JSON_TEMPLATE: &str = r#"
@@ -34,7 +32,6 @@ pub struct PackageJsonContext {
     // package_author: String,
 }
 
-#[allow(dead_code)]
 impl PackageJsonContext {
     fn new(package_name: String) -> PackageJsonContext {
         PackageJsonContext {
@@ -43,34 +40,16 @@ impl PackageJsonContext {
             // package_author,
         }
     }
-
-    fn from_project(project: &super::Project) -> PackageJsonContext {
-        PackageJsonContext {
-            package_name: format!("{}-sdk", project.name.clone()),
-            // package_version: project.version.clone(),
-            // package_author: project.author.clone(),
-        }
-    }
 }
 
 pub struct PackageJsonTemplate;
 
-#[allow(dead_code)]
 impl PackageJsonTemplate {
     pub fn new(package: &TypescriptPackage) -> String {
         let mut tt = TinyTemplate::new();
         tt.add_template("package_json", PACKAGE_JSON_TEMPLATE)
             .unwrap();
         let context = PackageJsonContext::new(package.name.clone());
-
-        tt.render("package_json", &context).unwrap()
-    }
-
-    pub fn from_project(project: &Project) -> String {
-        let mut tt = TinyTemplate::new();
-        tt.add_template("package_json", PACKAGE_JSON_TEMPLATE)
-            .unwrap();
-        let context = PackageJsonContext::from_project(project);
 
         tt.render("package_json", &context).unwrap()
     }

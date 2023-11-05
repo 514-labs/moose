@@ -105,30 +105,15 @@ pub struct RoutineSuccess {
 }
 
 // Implement success and info contructors and a new constructor that lets the user choose which type of message to display
-#[allow(dead_code)]
 impl RoutineSuccess {
-    pub fn new(message: Message, message_type: MessageType) -> Self {
-        Self {
-            message,
-            message_type,
-        }
-    }
-
     pub fn success(message: Message) -> Self {
         Self {
             message,
             message_type: MessageType::Success,
         }
     }
-
-    pub fn info(message: Message) -> Self {
-        Self {
-            message,
-            message_type: MessageType::Info,
-        }
-    }
 }
-#[allow(dead_code)]
+
 pub struct RoutineFailure {
     message: Message,
     message_type: MessageType,
@@ -144,10 +129,8 @@ impl RoutineFailure {
     }
 }
 
-#[allow(dead_code)]
 #[derive(Clone)]
 pub enum RunMode {
-    Silent,
     Explicit { term: Arc<RwLock<CommandTerminal>> },
 }
 
@@ -155,7 +138,6 @@ pub enum RunMode {
 pub trait Routine {
     fn run(&self, mode: RunMode) -> Result<RoutineSuccess, RoutineFailure> {
         match mode {
-            RunMode::Silent => self.run_silent(),
             RunMode::Explicit { term } => self.run_explicit(term),
         }
     }
@@ -174,7 +156,7 @@ pub trait Routine {
                 Ok(success)
             }
             Err(failure) => {
-                show_message(term, failure.message_type, failure.message.clone());
+                show_message(term, failure.message_type, Message::new(failure.message.action.clone(), format!("{}: {}", failure.message.details.clone(), failure.error)));
                 Err(failure)
             }
         }
@@ -185,7 +167,7 @@ pub struct RoutineController {
     routines: Vec<Box<dyn Routine>>,
 }
 
-#[allow(dead_code)]
+
 impl RoutineController {
     pub fn new() -> Self {
         Self { routines: vec![] }
@@ -201,26 +183,6 @@ impl RoutineController {
             .map(|routine| {
                 let run_mode = run_mode.clone();
                 routine.run(run_mode)
-            })
-            .collect()
-    }
-
-    pub fn run_silent_routines(&self) -> Vec<Result<RoutineSuccess, RoutineFailure>> {
-        self.routines
-            .iter()
-            .map(|routine| routine.run_silent())
-            .collect()
-    }
-
-    pub fn run_explicit_routines(
-        &self,
-        term: Arc<RwLock<CommandTerminal>>,
-    ) -> Vec<Result<RoutineSuccess, RoutineFailure>> {
-        self.routines
-            .iter()
-            .map(|routine| {
-                let term = Arc::clone(&term);
-                routine.run_explicit(term)
             })
             .collect()
     }

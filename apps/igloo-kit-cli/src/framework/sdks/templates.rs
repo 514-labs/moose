@@ -34,6 +34,7 @@ pub struct PackageJsonContext {
     // package_author: String,
 }
 
+#[allow(dead_code)]
 impl PackageJsonContext {
     fn new(package_name: String) -> PackageJsonContext {
         PackageJsonContext {
@@ -54,6 +55,7 @@ impl PackageJsonContext {
 
 pub struct PackageJsonTemplate;
 
+#[allow(dead_code)]
 impl PackageJsonTemplate {
     pub fn new(package: &TypescriptPackage) -> String {
         let mut tt = TinyTemplate::new();

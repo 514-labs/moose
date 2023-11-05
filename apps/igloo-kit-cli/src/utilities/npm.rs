@@ -1,5 +1,6 @@
 use std::{path::PathBuf, process::Command};
 
+#[allow(dead_code)]
 fn get_root() -> Result<PathBuf, std::io::Error> {
     let result = Command::new("npm").arg("root").arg("-g").output()?;
 

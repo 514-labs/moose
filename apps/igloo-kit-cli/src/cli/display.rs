@@ -60,6 +60,7 @@ pub struct CommandTerminal {
     counter: usize,
 }
 
+#[allow(dead_code)]
 impl CommandTerminal {
     pub fn new() -> CommandTerminal {
         CommandTerminal {
@@ -81,13 +82,14 @@ impl CommandTerminal {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Clone, Copy)]
 pub enum MessageType {
     Info,
     Success,
-    Warning,
+   Warning,
     Error,
-    Typographic,
+   Typographic,
     Banner,
 }
 

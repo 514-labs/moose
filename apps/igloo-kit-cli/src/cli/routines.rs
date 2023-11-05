@@ -105,6 +105,7 @@ pub struct RoutineSuccess {
 }
 
 // Implement success and info contructors and a new constructor that lets the user choose which type of message to display
+#[allow(dead_code)]
 impl RoutineSuccess {
     pub fn new(message: Message, message_type: MessageType) -> Self {
         Self {
@@ -127,7 +128,7 @@ impl RoutineSuccess {
         }
     }
 }
-
+#[allow(dead_code)]
 pub struct RoutineFailure {
     message: Message,
     message_type: MessageType,
@@ -143,6 +144,7 @@ impl RoutineFailure {
     }
 }
 
+#[allow(dead_code)]
 #[derive(Clone)]
 pub enum RunMode {
     Silent,
@@ -183,6 +185,7 @@ pub struct RoutineController {
     routines: Vec<Box<dyn Routine>>,
 }
 
+#[allow(dead_code)]
 impl RoutineController {
     pub fn new() -> Self {
         Self { routines: vec![] }

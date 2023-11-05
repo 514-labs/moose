@@ -222,7 +222,7 @@ pub fn show_message(
         MessageType::Typographic => {
             command_terminal
                 .term
-                .write_line(&format!("{TYPOGRAPHIC}"))
+                .write_line(TYPOGRAPHIC)
                 .expect("failed to write message to terminal");
             command_terminal.counter += TYPOGRAPHIC.lines().count();
         }

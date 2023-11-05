@@ -112,19 +112,19 @@ async fn handler(
                     },
                 );
                 // If not, return a 404
-                return Ok(Response::builder()
+                return Response::builder()
                     .status(StatusCode::METHOD_NOT_ALLOWED)
                     .body(
                         "Please use a POST method to send data to your ingestion point".to_string(),
-                    )?);
+                    );
             }
         }
     }
 
     // If not, return a 404
-    Ok(Response::builder()
+    Response::builder()
         .status(StatusCode::NOT_FOUND)
-        .body("NOTFOUND".to_string())?)
+        .body("NOTFOUND".to_string())
 }
 
 #[derive(Debug, Clone)]
@@ -143,12 +143,11 @@ impl Webserver {
     }
 
     pub async fn socket(&self) -> SocketAddr {
-        let socket = tokio::net::lookup_host(format!("{}:{}", self.host, self.port))
+        tokio::net::lookup_host(format!("{}:{}", self.host, self.port))
             .await
             .unwrap()
             .next()
-            .unwrap();
-        return socket;
+            .unwrap()
     }
 
     pub async fn start(

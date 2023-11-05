@@ -60,17 +60,17 @@ impl PackageJsonTemplate {
         tt.add_template("package_json", PACKAGE_JSON_TEMPLATE)
             .unwrap();
         let context = PackageJsonContext::new(package.name.clone());
-        let rendered = tt.render("package_json", &context).unwrap();
-        rendered
+
+        tt.render("package_json", &context).unwrap()
     }
 
     pub fn from_project(project: &Project) -> String {
         let mut tt = TinyTemplate::new();
         tt.add_template("package_json", PACKAGE_JSON_TEMPLATE)
             .unwrap();
-        let context = PackageJsonContext::from_project(&project);
-        let rendered = tt.render("package_json", &context).unwrap();
-        rendered
+        let context = PackageJsonContext::from_project(project);
+
+        tt.render("package_json", &context).unwrap()
     }
 }
 
@@ -105,7 +105,7 @@ impl TsConfigTemplate {
         let mut tt = TinyTemplate::new();
         tt.add_template("ts_config", TS_CONFIG_TEMPLATE).unwrap();
         let context = TsConfigContext::new();
-        let rendered = tt.render("ts_config", &context).unwrap();
-        rendered
+
+        tt.render("ts_config", &context).unwrap()
     }
 }

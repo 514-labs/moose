@@ -1,7 +1,7 @@
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
 
-use crate::{framework::sdks::TypescriptObjects, project::Project};
+use crate::framework::sdks::TypescriptObjects;
 
 use super::{InterfaceField, TypescriptInterface};
 
@@ -29,7 +29,7 @@ impl InterfaceContext {
                 .fields
                 .clone()
                 .into_iter()
-                .map(|field| InterfaceFieldContext::new(field))
+                .map(InterfaceFieldContext::new)
                 .collect::<Vec<InterfaceFieldContext>>(),
         }
     }
@@ -59,8 +59,8 @@ impl InterfaceTemplate {
         let mut tt = TinyTemplate::new();
         tt.add_template("interface", INTERFACE_TEMPLATE).unwrap();
         let context = InterfaceContext::new(interface);
-        let rendered = tt.render("interface", &context).unwrap();
-        rendered
+
+        tt.render("interface", &context).unwrap()
     }
 }
 
@@ -115,8 +115,8 @@ impl SendFunctionTemplate {
         let mut tt = TinyTemplate::new();
         tt.add_template("send", SEND_FUNC_TEMPLATE).unwrap();
         let context = SendFunctionContext::new(interface, server_url, api_route_name);
-        let rendered = tt.render("send", &context).unwrap();
-        rendered
+
+        tt.render("send", &context).unwrap()
     }
 }
 
@@ -159,8 +159,8 @@ impl IndexContext {
     fn new(ts_objects: &Vec<TypescriptObjects>) -> IndexContext {
         IndexContext {
             ts_objects: ts_objects
-                .into_iter()
-                .map(|ts_object| TypescriptObjectsContext::new(ts_object))
+                .iter()
+                .map(TypescriptObjectsContext::new)
                 .collect::<Vec<TypescriptObjectsContext>>(),
         }
     }
@@ -172,7 +172,7 @@ impl IndexTemplate {
         let mut tt = TinyTemplate::new();
         tt.add_template("index", INDEX_TEMPLATE).unwrap();
         let context = IndexContext::new(ts_objects);
-        let rendered = tt.render("index", &context).unwrap();
-        rendered
+
+        tt.render("index", &context).unwrap()
     }
 }

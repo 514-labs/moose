@@ -1,8 +1,4 @@
-use std::{
-    fs::File,
-    io::Write,
-    path::{self, PathBuf},
-};
+use std::{fs::File, io::Write, path::PathBuf};
 mod mapper;
 mod templates;
 

@@ -156,7 +156,14 @@ pub trait Routine {
                 Ok(success)
             }
             Err(failure) => {
-                show_message(term, failure.message_type, Message::new(failure.message.action.clone(), format!("{}: {}", failure.message.details.clone(), failure.error)));
+                show_message(
+                    term,
+                    failure.message_type,
+                    Message::new(
+                        failure.message.action.clone(),
+                        format!("{}: {}", failure.message.details.clone(), failure.error),
+                    ),
+                );
                 Err(failure)
             }
         }
@@ -166,7 +173,6 @@ pub trait Routine {
 pub struct RoutineController {
     routines: Vec<Box<dyn Routine>>,
 }
-
 
 impl RoutineController {
     pub fn new() -> Self {

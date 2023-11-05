@@ -60,7 +60,6 @@ pub struct CommandTerminal {
     counter: usize,
 }
 
-
 impl CommandTerminal {
     pub fn new() -> CommandTerminal {
         CommandTerminal {
@@ -77,7 +76,6 @@ pub enum MessageType {
     Error,
     Banner,
 }
-
 
 fn styled_banner() -> String {
     format!(

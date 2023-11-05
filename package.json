@@ -10,10 +10,14 @@
   "devDependencies": {
     "eslint": "^7.32.0",
     "eslint-config-custom": "workspace:*",
+    "husky": "^8.0.0",
+    "lint-staged": "^15.0.2",
     "prettier": "^2.8.8",
     "prettier-plugin-tailwindcss": "^0.1.13",
-    "turbo": "latest",
-    "husky": "^8.0.0"
+    "turbo": "latest"
   },
-  "packageManager": "pnpm@8.6.12"
+  "packageManager": "pnpm@8.6.12",
+  "lint-staged": {
+    "*.rs": "rustfmt --edition 2021"
+  }
 }

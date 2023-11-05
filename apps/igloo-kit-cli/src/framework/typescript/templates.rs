@@ -66,7 +66,6 @@ impl InterfaceTemplate {
 
 pub static SEND_FUNC_TEMPLATE: &str = r#"
 import \{ {interface_context.name} } from './{interface_context.file_name}';
-import fetch from 'node-fetch';
 
 export async function {declaration_name}({interface_context.var_name}: {interface_context.name}) \{
     return fetch('{server_url}/{api_route_name}', \{

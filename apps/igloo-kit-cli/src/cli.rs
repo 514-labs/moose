@@ -123,6 +123,21 @@ async fn top_command_handler(
                 )
                 .await;
             }
+            // Some(Commands::Link { name, language, location, project }) => {
+            //     let mut controller = RoutineController::new();
+            //     let run_mode = RunMode::Explicit { term };
+
+                
+
+            //     // controller.add_routine(Box::new(InitializeClient::new(
+            //     //     run_mode.clone(),
+            //     //     project.clone(),
+            //     // )));
+            //     controller.run_routines(run_mode);
+            //     project
+            //         .write_to_file()
+            //         .expect("Failed to write project to file");
+            // }
             Some(Commands::Update {}) => {
                 // This command may not be needed if we have incredible automation
                 todo!("Will update the project's underlying infrascructure based on any added objects")

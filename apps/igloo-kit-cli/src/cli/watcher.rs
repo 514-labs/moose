@@ -14,7 +14,7 @@ use crate::{
         self,
         languages::{CodeGenerator, SupportedLanguages},
         schema::{parse_schema_file, MatViewOps, Table, TableOps},
-        sdks::{generate_ts_sdk, TypescriptObjects},
+        sdks::{generate_ts_sdk, TypescriptObjects, move_to_npm_global_dir},
         typescript::{get_typescript_models_dir, SendFunction, TypescriptInterface},
     },
     infrastructure::{
@@ -26,7 +26,7 @@ use crate::{
         },
         stream,
     },
-    project::Project,
+    project::Project, utilities::npm,
 };
 
 use super::{
@@ -163,7 +163,11 @@ async fn create_framework_objects_from_dataframe_route(
                 );
             }
 
-            generate_ts_sdk(&project, process_further)?;
+            let sdk_location = generate_ts_sdk(&project, process_further)?;
+            npm::install_packages(&sdk_location)?;
+            npm::run_build(&sdk_location)?;
+
+            move_to_npm_global_dir(&sdk_location)?;
         }
     } else {
         println!("No primsa extension found. Likely created unsupported file type")

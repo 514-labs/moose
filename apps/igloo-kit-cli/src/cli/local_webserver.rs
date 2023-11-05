@@ -55,6 +55,7 @@ async fn handler(
 
     // Check if route is in the route table
     if route_table.lock().await.contains_key(&route) {
+        println!("req: {:?}", req);
         match req.method() {
             &hyper::Method::POST => {
                 show_message(
@@ -101,6 +102,25 @@ async fn handler(
                         return Ok(Response::new("ERROR".to_string()));
                     }
                 }
+            }
+            &hyper::Method::OPTIONS => {
+                show_message(
+                    term.clone(),
+                    MessageType::Info,
+                    Message {
+                        action: "OPTIONS".to_string(),
+                        details: route.to_str().unwrap().to_string(),
+                    },
+                );
+                let response = Response::builder()
+                    .status(StatusCode::OK)
+                    .header("Access-Control-Allow-Origin", "*")
+                    .header("Access-Control-Allow-Methods", "POST, OPTIONS")
+                    .header("Access-Control-Allow-Headers", "Content-Type, Baggage, Sentry-Trace")
+                    .body("".to_string())
+                    .unwrap();
+
+                return Ok(response);
             }
             _ => {
                 show_message(

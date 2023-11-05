@@ -8,7 +8,8 @@ pub static PACKAGE_JSON_TEMPLATE: &str = r#"
     "name": "{package_name}",
     "version": "0.0",
     "description": "",
-    "main": "index.js",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
     "scripts": \{
         "build": "tsc --build",
         "clean": "tsc --build --clean"
@@ -60,7 +61,8 @@ pub static TS_CONFIG_TEMPLATE: &str = r#"
 \{
     "compilerOptions": \{
         "target": "ES2017",
-        "module": "commonjs",
+        "module": "esnext",
+        "moduleResolution": "node",
         "lib": ["es6"],
         "strict": true,
         "declaration": true,

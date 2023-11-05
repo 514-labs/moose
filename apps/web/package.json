@@ -19,7 +19,8 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "sharp": "^0.32.6",
-    "ui": "workspace:*"
+    "ui": "workspace:*",
+    "my-awesome-sdk": "latest"
   },
   "devDependencies": {
     "@types/node": "^18.11.17",

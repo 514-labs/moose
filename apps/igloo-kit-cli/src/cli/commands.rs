@@ -21,6 +21,21 @@ pub enum Commands {
         #[arg(default_value = ".")]
         location: String,
     },
+    // Link {
+    //     /// Name of your client application or service (ex. `my-blog`)
+    //     name: String,
+
+    //     /// Language of your app or service
+    //     #[arg(default_value_t = SupportedLanguages::Typescript, value_enum)]
+    //     language: SupportedLanguages,
+
+    //     /// Location of your app or service
+    //     #[arg(default_value = ".")]
+    //     location: String,
+
+    //     /// Name of the project to link to. Pulls the list of projects from the config file
+    //     project: String,
+    // },
     // Adds a new templated object to the project
     Add(AddArgs),
     /// Starts a local development environment to build your data-intensive app or service

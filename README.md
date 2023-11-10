@@ -1,6 +1,6 @@
 # Igloo-stack
 
-[![slack](https://img.shields.io/badge/slack-brigade-brightgreen.svg?logo=slack)](https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg)
+[![slack](https://img.shields.io/badge/slack-igloo-brightgreen.svg?logo=slack)](https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg)
 
 ## Requirements
 

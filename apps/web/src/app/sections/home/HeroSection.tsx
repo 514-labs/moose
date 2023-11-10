@@ -55,6 +55,7 @@ export const HeroSection = () => {
 
   return (
     <div className="grid pt-24 mb-24 grid-cols-1 grid-row-2 space-y-24 md:space-y-0 md:grid-cols-2 md:grid-row-1  place-items-center">
+        
         <div className="flex text-white flex-col px-5 md:flex-1 md:justify-center">
           <div className="px-5 text-5xl sm:text-6xl 2xl:text-8xl 3xl:text-9xl">
             <span  ref={headingRef} className="invisible">

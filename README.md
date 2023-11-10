@@ -14,12 +14,6 @@ $ npx create-igloo-app
 $ npm install -g @514labs/igloo-cli
 ```
 
-## Pip Install of the CLI
-
-```bash
-pip install igloo-cli
-```
-
 ## Config file
 
 The config file is located in `~/.igloo-config.toml`

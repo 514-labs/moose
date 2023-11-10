@@ -1,6 +1,16 @@
 # Igloo-stack
 
-Supports Linux and MacOS
+[![slack](https://img.shields.io/badge/slack-brigade-brightgreen.svg?logo=slack)](https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg)
+
+## Requirements
+
+- OS
+  - Linux
+  - MacOS
+- Languages
+  - Typescript
+  - Javascript
+  - ... want something else? Let us know on [the slack](https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg)!
 
 ## Generate a new igloo project
 

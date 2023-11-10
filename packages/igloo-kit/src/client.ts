@@ -1,3 +1,0 @@
-interface Client {
-    serverURL: string;
-}

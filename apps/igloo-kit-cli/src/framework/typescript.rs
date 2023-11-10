@@ -1,10 +1,16 @@
 use std::{fmt, path::PathBuf};
 
-use super::{languages::{CodeGenerator, get_models_dir}, schema::UnsupportedDataTypeError};
+use convert_case::{Case, Casing};
 
-mod templates;
+use crate::project::Project;
+
+use super::{
+    languages::{get_models_dir, CodeGenerator},
+    schema::UnsupportedDataTypeError,
+};
+
 pub mod mapper;
-
+pub mod templates;
 
 #[derive(Debug, Clone)]
 pub struct TypescriptInterface {
@@ -14,16 +20,40 @@ pub struct TypescriptInterface {
 
 impl TypescriptInterface {
     pub fn new(name: String, fields: Vec<InterfaceField>) -> TypescriptInterface {
-        TypescriptInterface {
-            name,
-            fields,
-        }
+        TypescriptInterface { name, fields }
+    }
+
+    pub fn file_name(&self) -> String {
+        //! Use when an interface is used in a file name. Does not include the .ts extension.
+        self.name.to_case(Case::Pascal)
+    }
+
+    pub fn file_name_with_extension(&self) -> String {
+        //! The interface's file name with the .ts extension.
+        format!("{}.ts", self.file_name())
+    }
+
+    pub fn send_function_name(&self) -> String {
+        format!("send{}", self.name.to_case(Case::Pascal))
+    }
+
+    pub fn send_function_file_name(&self) -> String {
+        format!("Send{}", self.file_name())
+    }
+
+    pub fn send_function_file_name_with_extension(&self) -> String {
+        format!("{}.ts", self.send_function_file_name())
+    }
+
+    pub fn var_name(&self) -> String {
+        //! Use when an interface is used in a function, it is passed as a variable.
+        self.name.to_case(Case::Camel)
     }
 }
 
 impl CodeGenerator for TypescriptInterface {
     fn create_code(&self) -> Result<String, UnsupportedDataTypeError> {
-        Ok(templates::InterfaceTemplate::new(self.clone()))
+        Ok(templates::InterfaceTemplate::new(self))
     }
 }
 
@@ -36,7 +66,12 @@ pub struct InterfaceField {
 }
 
 impl InterfaceField {
-    pub fn new(name: String, comment: Option<String>, is_optional: bool, field_type: InterfaceFieldType) -> InterfaceField {
+    pub fn new(
+        name: String,
+        comment: Option<String>,
+        is_optional: bool,
+        field_type: InterfaceFieldType,
+    ) -> InterfaceField {
         InterfaceField {
             name,
             comment,
@@ -70,27 +105,60 @@ impl fmt::Display for InterfaceFieldType {
         }
     }
 }
+#[derive(Debug, Clone)]
+pub struct SendFunction {
+    pub interface: TypescriptInterface,
+    server_url: String,
+    api_route_name: String,
+}
 
+impl SendFunction {
+    pub fn new(interface: TypescriptInterface, server_url: String, api_route_name: String) -> Self {
+        Self {
+            interface,
+            server_url,
+            api_route_name,
+        }
+    }
+    pub fn file_name(&self) -> String {
+        self.interface.send_function_file_name().to_string()
+    }
 
-pub fn create_typescript_models_dir() -> Result<PathBuf, std::io::Error> {
-    let models_dir = get_models_dir();
+    pub fn file_name_with_extension(&self) -> String {
+        format!("{}.ts", self.interface.send_function_file_name())
+    }
+}
+
+impl CodeGenerator for SendFunction {
+    fn create_code(&self) -> Result<String, UnsupportedDataTypeError> {
+        Ok(templates::SendFunctionTemplate::new(
+            &self.interface,
+            self.server_url.clone(),
+            self.api_route_name.clone(),
+        ))
+    }
+}
+
+pub fn create_typescript_models_dir(project: Project) -> Result<PathBuf, std::io::Error> {
+    let models_dir = get_models_dir(project);
     match models_dir {
         Ok(dir) => {
             std::fs::create_dir_all(dir.join("typescript"))?;
             Ok(dir)
-        },
-        Err(err) => {
-            Err(err)
         }
+        Err(err) => Err(err),
     }
 }
 
-pub fn get_typescript_models_dir() -> Result<PathBuf, std::io::Error> {
-    let models_dir = get_models_dir()?;
+pub fn get_typescript_models_dir(project: Project) -> Result<PathBuf, std::io::Error> {
+    let models_dir = get_models_dir(project)?;
     let typescript_dir = models_dir.clone().join("typescript");
     if typescript_dir.exists() {
         Ok(typescript_dir)
     } else {
-        Err(std::io::Error::new(std::io::ErrorKind::NotFound, "Typescript models directory not found"))
+        Err(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "Typescript models directory not found",
+        ))
     }
 }

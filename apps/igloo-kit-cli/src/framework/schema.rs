@@ -2,38 +2,39 @@ use std::{fmt, path::PathBuf};
 
 use diagnostics::Diagnostics;
 
-use schema_ast::{parse_schema, ast::{SchemaAst, FieldArity, Top, Field, WithName, Attribute}};
+use schema_ast::{
+    ast::{Attribute, Field, FieldArity, SchemaAst, Top, WithName},
+    parse_schema,
+};
 
 #[derive(Debug, Clone)]
 pub enum ParsingError {
-    FileNotFound {path: PathBuf},
-    UnsupportedDataTypeError {type_name: String},
-    OtherError
+    FileNotFound { path: PathBuf },
+    UnsupportedDataTypeError { type_name: String },
+    OtherError,
 }
 
 #[derive(Debug, Clone)]
 pub struct UnsupportedDataTypeError {
-    pub type_name: String
+    pub type_name: String,
 }
 
 /// A function that maps an input type to an output type
-type MapperFunc<I, O>  = fn (i: I) -> O;
-
+type MapperFunc<I, O> = fn(i: I) -> O;
 
 // TODO: Make the parse schema file a variable and pass it into the function
-pub fn parse_schema_file<O>(path: PathBuf, mapper: MapperFunc<Table, O>) -> Result<Vec<O>, ParsingError>  {
-    let schema_file = std::fs::read_to_string(path.clone()).map_err(
-        |_| ParsingError::FileNotFound {path: path.clone()}
-    )?;
+pub fn parse_schema_file<O>(
+    path: PathBuf,
+    mapper: MapperFunc<Table, O>,
+) -> Result<Vec<O>, ParsingError> {
+    let schema_file = std::fs::read_to_string(path.clone())
+        .map_err(|_| ParsingError::FileNotFound { path: path.clone() })?;
 
     let mut diagnostics = Diagnostics::default();
 
     let ast = parse_schema(&schema_file, &mut diagnostics);
 
-    let mapped_tables = ast_mapper(ast)?
-        .into_iter().map(|table| {
-            mapper(table)
-        }).collect();
+    let mapped_tables = ast_mapper(ast)?.into_iter().map(mapper).collect();
 
     Ok(mapped_tables)
 }
@@ -44,7 +45,6 @@ pub enum TableType {
     View,
     Unsupported,
 }
-
 
 #[derive(Debug, Clone)]
 pub struct Table {
@@ -71,7 +71,7 @@ pub struct Column {
     pub arity: FieldArity,
     pub unique: bool,
     pub primary_key: bool,
-    pub default: Option<ColumnDefaults>
+    pub default: Option<ColumnDefaults>,
 }
 
 #[derive(Debug, Clone)]
@@ -79,7 +79,7 @@ pub enum ColumnDefaults {
     AutoIncrement,
     CUID,
     UUID,
-    Now
+    Now,
 }
 
 impl fmt::Display for ParsingError {
@@ -88,7 +88,7 @@ impl fmt::Display for ParsingError {
     }
 }
 
-#[derive(Debug,  Clone)]
+#[derive(Debug, Clone)]
 pub enum ColumnType {
     String,
     Boolean,
@@ -97,9 +97,9 @@ pub enum ColumnType {
     Float,
     Decimal,
     DateTime,
-    Json, // TODO: Eventually support for only views and tables (not topics)
+    Json,  // TODO: Eventually support for only views and tables (not topics)
     Bytes, // TODO: Explore if we ever need this type
-    Unsupported
+    Unsupported,
 }
 
 impl fmt::Display for ColumnType {
@@ -108,7 +108,7 @@ impl fmt::Display for ColumnType {
     }
 }
 
-fn map_column_string_type_to_column_type (string_type: &str) -> ColumnType {
+fn map_column_string_type_to_column_type(string_type: &str) -> ColumnType {
     match string_type {
         "String" => ColumnType::String,
         "Boolean" => ColumnType::Boolean,
@@ -117,18 +117,18 @@ fn map_column_string_type_to_column_type (string_type: &str) -> ColumnType {
         "Float" => ColumnType::Float,
         "Decimal" => ColumnType::Decimal,
         "DateTime" => ColumnType::DateTime,
-        _ => ColumnType::Unsupported
+        _ => ColumnType::Unsupported,
     }
 }
 
 pub struct FieldAttributes {
     unique: bool,
     primary_key: bool,
-    default: Option<ColumnDefaults>
+    default: Option<ColumnDefaults>,
 }
 
 impl FieldAttributes {
-    fn new(attributes :Vec<Attribute>) -> Result<FieldAttributes, ParsingError> {
+    fn new(attributes: Vec<Attribute>) -> Result<FieldAttributes, ParsingError> {
         let unique: bool = false;
         let primary_key: bool = false;
         let default: Option<ColumnDefaults> = None;
@@ -137,14 +137,21 @@ impl FieldAttributes {
         for attribute in attributes {
             match attribute.name() {
                 // "id" => {primary_key = true},
-                _ => {return Err(ParsingError::UnsupportedDataTypeError{type_name: format!("we currently don't support attribute {}", attribute.name())})}
+                _ => {
+                    return Err(ParsingError::UnsupportedDataTypeError {
+                        type_name: format!(
+                            "we currently don't support attribute {}",
+                            attribute.name()
+                        ),
+                    })
+                }
             }
         }
 
-        return Ok(FieldAttributes {
+        Ok(FieldAttributes {
             unique,
             primary_key,
-            default
+            default,
         })
     }
 }
@@ -153,18 +160,18 @@ fn field_to_column(f: &Field) -> Result<Column, ParsingError> {
     let attributes = FieldAttributes::new(f.attributes.clone())?;
 
     match &f.field_type {
-        schema_ast::ast::FieldType::Supported(ft) => {
-            Ok(Column {
-                name: f.name().to_string(),
-                data_type: map_column_string_type_to_column_type(ft.name.as_str()),
-                arity: f.arity.clone(),
-                unique: attributes.unique,
-                primary_key: attributes.primary_key,
-                default: attributes.default,
-            })
-        },
+        schema_ast::ast::FieldType::Supported(ft) => Ok(Column {
+            name: f.name().to_string(),
+            data_type: map_column_string_type_to_column_type(ft.name.as_str()),
+            arity: f.arity,
+            unique: attributes.unique,
+            primary_key: attributes.primary_key,
+            default: attributes.default,
+        }),
         schema_ast::ast::FieldType::Unsupported(x, _) => {
-            Err(ParsingError::UnsupportedDataTypeError{type_name: x.to_string()})
+            Err(ParsingError::UnsupportedDataTypeError {
+                type_name: x.to_string(),
+            })
         }
     }
 }
@@ -174,25 +181,24 @@ fn top_to_table(t: &Top) -> Result<Table, ParsingError> {
         Top::Model(m) => {
             let table_name = m.name().to_string();
 
-            let columns: Result<Vec<Column>, ParsingError> = m.iter_fields().map(|(_id, f)| {
-                field_to_column(f)
-            }).collect();
-            
+            let columns: Result<Vec<Column>, ParsingError> =
+                m.iter_fields().map(|(_id, f)| field_to_column(f)).collect();
+
             Ok(Table {
                 db_name: "local".to_string(),
                 table_type: TableType::Table,
                 name: table_name,
-                columns: columns?
+                columns: columns?,
             })
         }
-        _ => { 
-            Err(ParsingError::UnsupportedDataTypeError {type_name: "we don't currently support anything other than models".to_string()})
-        }
+        _ => Err(ParsingError::UnsupportedDataTypeError {
+            type_name: "we don't currently support anything other than models".to_string(),
+        }),
     }
 }
 
-pub fn ast_mapper(ast: SchemaAst) -> Result<Vec<Table>, ParsingError>  {
-    ast.iter_tops().map(|(_id, t)| {
-        top_to_table(t)
-    }).collect::<Result<Vec<Table>, ParsingError>>()
+pub fn ast_mapper(ast: SchemaAst) -> Result<Vec<Table>, ParsingError> {
+    ast.iter_tops()
+        .map(|(_id, t)| top_to_table(t))
+        .collect::<Result<Vec<Table>, ParsingError>>()
 }

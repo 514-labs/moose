@@ -10,8 +10,8 @@ pub enum RPKCommand {
 }
 
 pub enum TopicCommand {
-    Create {topic_name: String},
-    Delete {topic_name: String},
+    Create { topic_name: String },
+    Delete { topic_name: String },
     Consume,
     Describe,
     List,
@@ -25,19 +25,16 @@ pub enum TopicCommand {
 // Creates the RPK command arguments that would be passed to the RPK CLI after calling `rpk`
 pub fn create_rpk_command_args(rpk_command: RPKCommand) -> Vec<String> {
     match rpk_command {
-        RPKCommand::Topic(command) => {
-            match command {
-                TopicCommand::Create {topic_name} => {
-                    return vec!["topic".to_string(), "create".to_string(), topic_name]
-                },
-                TopicCommand::Delete {topic_name} => {
-                    return vec!["topic".to_string(), "delete".to_string(), topic_name]
-                },
-                _ => {
-                    todo!("Command not yet implemented, implement other commands")
-                }
+        RPKCommand::Topic(command) => match command {
+            TopicCommand::Create { topic_name } => {
+                vec!["topic".to_string(), "create".to_string(), topic_name]
             }
-            
+            TopicCommand::Delete { topic_name } => {
+                vec!["topic".to_string(), "delete".to_string(), topic_name]
+            }
+            _ => {
+                todo!("Command not yet implemented, implement other commands")
+            }
         },
         _ => {
             todo!("not topic, implement other commands")

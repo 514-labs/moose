@@ -1,0 +1,70 @@
+name: Test Igloo CLI
+
+on:
+  push:
+    branches:
+      - "**"
+      - "!main"
+    paths:
+      - ".github/workflows/test-igloo-cli.yaml"
+      - "apps/igloo-kit-cli/**"
+      - "packages/**"
+
+defaults:
+  run:
+    working-directory: ./apps/igloo-kit-cli
+
+jobs:
+  check:
+    name: Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Run cargo check
+        uses: actions-rs/cargo@v1
+        with:
+          command: check
+          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml
+
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml
+
+  lints:
+    name: Lints
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v2
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: rustfmt, clippy
+
+      - name: Run cargo fmt
+        uses: actions-rs/cargo@v1
+        with:
+          command: fmt
+          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml --all -- --check
+
+      - name: Run cargo clippy
+        uses: actions-rs/cargo@v1
+        continue-on-error: true # Keeping this as long as not all errors are fixed
+        with:
+          command: clippy
+          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml -- -D warnings

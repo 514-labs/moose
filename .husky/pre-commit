@@ -1,13 +1,4 @@
 #!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
 
-# Get the set of all the apps directory that have rust files that got changed
-changes=$(git diff-index --name-only HEAD | grep '\.rs$' | cut -d '/' -f 2 | sort -u)
-
-if [ -n "$changes" ]; then
-    for directory in "${changes[@]}"; do
-        echo $directory
-        cd "apps/$directory"
-        cargo fmt
-    done
-fi
+npx lint-staged

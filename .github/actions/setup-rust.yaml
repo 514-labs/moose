@@ -1,0 +1,83 @@
+name: "Setup Rust"
+description: "Setups rust with compilation cache"
+inputs:
+  target:
+    description: "Which platform to compile for"
+    required: false
+    default: "x86_64-unknown-linux-gnu"
+  components:
+    description: "Which components to install"
+    required: false
+    default: ""
+runs:
+  using: "composite"
+  steps:
+    - uses: actions-rust-lang/setup-rust-toolchain@v1
+      with:
+        components: ${{ inputs.components }}
+        toolchain: stable
+        target: ${{ inputs.target }}
+
+    - name: Install sccache (Linux)
+       if: startsWith(inputs.target, 'linux')
+      env:
+        LINK: https://github.com/mozilla/sccache/releases/download
+        SCCACHE_VERSION: 0.7.1
+      run: |
+        SCCACHE_FILE=sccache-$SCCACHE_VERSION-x86_64-unknown-linux-musl
+        mkdir -p $HOME/.local/bin
+        curl -L "$LINK/$SCCACHE_VERSION/$SCCACHE_FILE.tar.gz" | tar xz
+        mv -f $SCCACHE_FILE/sccache $HOME/.local/bin/sccache
+        echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+    - name: Install sccache (darwin)
+      if: startsWith(inputs.target, 'darwin')
+      run: |
+        brew update
+        brew install sccache
+
+    - name: Setup Cache cargo registry
+      uses: actions/cache@v3
+      continue-on-error: false
+      with:
+        path: |
+          ~/.cargo/registry
+          ~/.cargo/git            
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-cargo-  
+
+    - name: Setup GA sccache (Linux)
+      uses: actions/cache@v3
+      continue-on-error: false
+      if: startsWith(inputs.target, 'linux')
+      with:
+        path: /home/runner/.cache/sccache
+        key: ${{ runner.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-sccache-    
+
+    - name: Setup GA sccache (darwin)
+      uses: actions/cache@v3
+      continue-on-error: false
+      if: startsWith(inputs.target, 'darwin')
+      with:
+        path: /Users/runner/Library/Caches/Mozilla.sccache
+        key: ${{ runner.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}
+        restore-keys: |
+          ${{ runner.os }}-sccache-    
+
+    - name: Start sccache server (Linux)
+      if: startsWith(inputs.target, 'linu
+      run: sccache --start-server
+      env:
+        SCCACHE_CACHE_SIZE: 2G
+        SCCACHE_DIR: /home/runner/.cache/sccache
+
+    - name: Start sccache server (darwin)
+      run: sccache --start-server
+      if: startsWith(inputs.target, 'darwin')
+      env:
+        SCCACHE_CACHE_SIZE: 2G
+        SCCACHE_DIR: /Users/runner/Library/Caches/Mozilla.sccache
+

@@ -40,6 +40,8 @@ jobs:
     name: Build CLI Binaries
     runs-on: ${{ matrix.build.os }}
     needs: version
+    env:
+      RUSTC_WRAPPER: sccache
     outputs:
       version: ${{ steps.version.outputs.version }}
     strategy:
@@ -49,35 +51,23 @@ jobs:
           - {
               NAME: linux-x64-glibc,
               OS: ubuntu-20.04,
-              TOOLCHAIN: stable,
               TARGET: x86_64-unknown-linux-gnu,
             }
           - {
               NAME: linux-arm64-glibc,
               OS: ubuntu-20.04,
-              TOOLCHAIN: stable,
               TARGET: aarch64-unknown-linux-gnu,
             }
-          - {
-              NAME: darwin-x64,
-              OS: macos-11,
-              TOOLCHAIN: stable,
-              TARGET: x86_64-apple-darwin,
-            }
-          - {
-              NAME: darwin-arm64,
-              OS: macos-11,
-              TOOLCHAIN: stable,
-              TARGET: aarch64-apple-darwin,
-            }
+          - { NAME: darwin-x64, OS: macos-11, TARGET: x86_64-apple-darwin }
+          - { NAME: darwin-arm64, OS: macos-11, TARGET: aarch64-apple-darwin }
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Install Rust toolchain
-        uses: actions-rust-lang/setup-rust-toolchain@v1
+      - name: Setup Rust
+        uses: ./.github/actions/setup-rust.yaml
         with:
-          toolchain: ${{ matrix.build.TOOLCHAIN }}
           target: ${{ matrix.build.TARGET }}
 
       - name: Install Set Version
@@ -92,6 +82,9 @@ jobs:
           command: build
           args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml --release --locked --target ${{ matrix.build.TARGET }}
           use-cross: ${{ matrix.build.OS == 'ubuntu-20.04' }} # use `cross` for Linux builds
+
+      - name: Print sccache stats
+        run: sccache --show-stats
 
       - name: Install node
         uses: actions/setup-node@v3

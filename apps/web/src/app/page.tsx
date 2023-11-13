@@ -100,7 +100,7 @@ export default function Home() {
   return (
     <div className="h-full relative">
 
-      <SectionGrid className="mt-12 mb-24 2xl:mt-0" gapStyle="gap-y-24 xl:gap-y-48">
+      <SectionGrid className="mt-12 mb-24 2xl:mt-0" gapStyle="gap-y-12 xl:gap-y-36">
           <div className="flex flex-col px-10 w-full space-y-5 col-span-3 sm:col-span-12 2xl:col-span-6">
             <AnimatedHeading position={0} className="" content={fiveonefourSection.heading} size="display" />
             <AnimatedDescription position={1} className="" content={fiveonefourSection.description} />
@@ -115,7 +115,7 @@ export default function Home() {
         <AnimatedHeading position={1} className="px-10 w-full" content="our mission is to enable developers to build, deploy & scale data-intensive apps through igloo, an open-source data-intensive application framework." size="express" onScroll/>
       </div> */}
         <div className="flex flex-col w-full px-10 space-y-10 col-span-3 sm:col-span-12 2xl:col-span-6">
-            <AnimatedHeading position={0} className="" content={secondSection.heading} size="display" />
+            <AnimatedHeading position={1} className="" content={secondSection.heading} size="display" />
           </div>
 
 
@@ -163,11 +163,11 @@ export default function Home() {
 
           <SectionGrid className="mt-12 mb-24 2xl:mt-0" gapStyle="gap-y-24 xl:gap-y-48">
           <div className="relative h-full w-full min-h-[80vw] sm:min-h-[50vw] col-span-3 sm:col-span-12 2xl:col-span-6">
-            <AnimatedImage src={fourthImg} position={0} alt="the crew" priority/>
+            <AnimatedImage src={fourthImg} position={0} alt="the crew" onScroll />
           </div>
           <div className="flex flex-col px-10 w-full space-y-5 col-span-3 sm:col-span-12 2xl:col-span-6">
-            <AnimatedHeading position={0} className="" content={finalSection.heading} size="display" />
-            <AnimatedDescription position={0} className="" content={finalSection.description} />
+            <AnimatedHeading position={1} className="" content={finalSection.heading} size="display" />
+            <AnimatedDescription position={2} className="" content={finalSection.description} />
             <CodeBlockCTA />
           </div>
        </SectionGrid>

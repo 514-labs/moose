@@ -42,7 +42,7 @@ export const LogoComponent = () => {
           <Image 
             // className="invisible"
             ref={imgageRef}
-            src="/logo-514.svg"
+            src="svg/logo-igloo.svg"
             width={40}
             height={40}
             alt="Logo of the company" />      

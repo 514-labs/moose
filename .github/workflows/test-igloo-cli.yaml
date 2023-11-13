@@ -17,6 +17,9 @@ defaults:
 jobs:
   check:
     name: Check
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -35,6 +38,9 @@ jobs:
 
   test:
     name: Test Suite
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -53,6 +59,9 @@ jobs:
 
   lints:
     name: Lints
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources

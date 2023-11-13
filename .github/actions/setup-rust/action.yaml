@@ -19,7 +19,7 @@ runs:
         target: ${{ inputs.target }}
 
     - name: Install sccache (Linux)
-       if: startsWith(inputs.target, 'linux')
+      if: startsWith(inputs.target, 'linux')
       env:
         LINK: https://github.com/mozilla/sccache/releases/download
         SCCACHE_VERSION: 0.7.1
@@ -42,10 +42,10 @@ runs:
       with:
         path: |
           ~/.cargo/registry
-          ~/.cargo/git            
+          ~/.cargo/git
         key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
-          ${{ runner.os }}-cargo-  
+          ${{ runner.os }}-cargo-
 
     - name: Setup GA sccache (Linux)
       uses: actions/cache@v3
@@ -55,7 +55,7 @@ runs:
         path: /home/runner/.cache/sccache
         key: ${{ runner.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
-          ${{ runner.os }}-sccache-    
+          ${{ runner.os }}-sccache-
 
     - name: Setup GA sccache (darwin)
       uses: actions/cache@v3
@@ -65,7 +65,7 @@ runs:
         path: /Users/runner/Library/Caches/Mozilla.sccache
         key: ${{ runner.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}
         restore-keys: |
-          ${{ runner.os }}-sccache-    
+          ${{ runner.os }}-sccache-
 
     - name: Start sccache server (Linux)
       if: startsWith(inputs.target, 'linu
@@ -80,4 +80,3 @@ runs:
       env:
         SCCACHE_CACHE_SIZE: 2G
         SCCACHE_DIR: /Users/runner/Library/Caches/Mozilla.sccache
-

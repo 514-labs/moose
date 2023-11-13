@@ -71,6 +71,7 @@ jobs:
           target: ${{ matrix.build.TARGET }}
 
       - name: Install Set Version
+        shell: bash
         run: |
           cargo install cargo-edit
           cargo set-version ${{ needs.version.outputs.version }}

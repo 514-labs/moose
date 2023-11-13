@@ -71,6 +71,7 @@ runs:
 
     - name: Start sccache server (Linux)
       if: startsWith(inputs.target, 'linux')
+      shell: bash
       run: sccache --start-server
       env:
         SCCACHE_CACHE_SIZE: 2G
@@ -78,6 +79,7 @@ runs:
 
     - name: Start sccache server (darwin)
       run: sccache --start-server
+      shell: bash
       if: startsWith(inputs.target, 'darwin')
       env:
         SCCACHE_CACHE_SIZE: 2G

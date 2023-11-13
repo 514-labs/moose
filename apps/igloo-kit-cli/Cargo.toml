@@ -36,3 +36,5 @@ uuid = {version = "1.6", features = ["v4"]}
 
 [dev-dependencies]
 clickhouse = { version = "0.11.5", features = ["test-util"] }
+assert_cmd = "2.0.12"
+predicates = "3.0.4"

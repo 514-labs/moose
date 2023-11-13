@@ -77,3 +77,4 @@ jobs:
         with:
           command: clippy
           args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml -- -D warnings
+#test

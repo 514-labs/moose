@@ -14,8 +14,8 @@ const navigation = [
   // { name: "Docs", href: "#" },
  // { name: "about", href: "/about" },
   //{ name: "community", href: "/community" },
-  { name: "slack", href: "#" },
-  { name: "github", href: "#" },
+  { name: "slack", href: "https://join.slack.com/t/igloocommunity/shared_invite/zt-26oekgzol-99e8I2lQvHHKk1aa1Fnwpg", target: "_blank" },
+  { name: "github", href: "https://github.com/514-labs/igloo-stack", target: "_blank" },
   // { name: "Join us", href: "#" },
 ]
 

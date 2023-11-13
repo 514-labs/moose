@@ -161,7 +161,7 @@ export default function Home() {
           })}
         </SectionGrid>
 
-          <SectionGrid className="mt-12 mb-24 2xl:mt-0" gapStyle="gap-y-24 xl:gap-y-48">
+          <SectionGrid className="mt-12 mb-24 2xl:mt-0" gapStyle="gap-y-24 xl:gap-y-36">
           <div className="relative h-full w-full min-h-[80vw] sm:min-h-[50vw] col-span-3 sm:col-span-12 2xl:col-span-6">
             <AnimatedImage src={fourthImg} position={0} alt="the crew" onScroll />
           </div>

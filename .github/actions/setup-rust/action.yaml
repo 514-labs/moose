@@ -23,6 +23,7 @@ runs:
       env:
         LINK: https://github.com/mozilla/sccache/releases/download
         SCCACHE_VERSION: 0.7.1
+      shell: bash
       run: |
         SCCACHE_FILE=sccache-$SCCACHE_VERSION-x86_64-unknown-linux-musl
         mkdir -p $HOME/.local/bin
@@ -32,6 +33,7 @@ runs:
 
     - name: Install sccache (darwin)
       if: startsWith(inputs.target, 'darwin')
+      shell: bash
       run: |
         brew update
         brew install sccache
@@ -68,7 +70,7 @@ runs:
           ${{ runner.os }}-sccache-
 
     - name: Start sccache server (Linux)
-      if: startsWith(inputs.target, 'linu
+      if: startsWith(inputs.target, 'linux')
       run: sccache --start-server
       env:
         SCCACHE_CACHE_SIZE: 2G

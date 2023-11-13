@@ -19,7 +19,7 @@ runs:
         target: ${{ inputs.target }}
 
     - name: Install sccache (Linux)
-      if: startsWith(inputs.target, 'linux')
+      if: contains(inputs.target, 'linux')
       env:
         LINK: https://github.com/mozilla/sccache/releases/download
         SCCACHE_VERSION: 0.7.1
@@ -32,7 +32,7 @@ runs:
         echo "$HOME/.local/bin" >> $GITHUB_PATH
 
     - name: Install sccache (darwin)
-      if: startsWith(inputs.target, 'darwin')
+      if: contains(inputs.target, 'darwin')
       shell: bash
       run: |
         brew update
@@ -52,7 +52,7 @@ runs:
     - name: Setup GA sccache (Linux)
       uses: actions/cache@v3
       continue-on-error: false
-      if: startsWith(inputs.target, 'linux')
+      if: contains(inputs.target, 'linux')
       with:
         path: /home/runner/.cache/sccache
         key: ${{ runner.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}
@@ -62,7 +62,7 @@ runs:
     - name: Setup GA sccache (darwin)
       uses: actions/cache@v3
       continue-on-error: false
-      if: startsWith(inputs.target, 'darwin')
+      if: contains(inputs.target, 'darwin')
       with:
         path: /Users/runner/Library/Caches/Mozilla.sccache
         key: ${{ runner.os }}-sccache-${{ hashFiles('**/Cargo.lock') }}
@@ -70,7 +70,7 @@ runs:
           ${{ runner.os }}-sccache-
 
     - name: Start sccache server (Linux)
-      if: startsWith(inputs.target, 'linux')
+      if: contains(inputs.target, 'linux')
       shell: bash
       run: sccache --start-server
       env:
@@ -80,7 +80,7 @@ runs:
     - name: Start sccache server (darwin)
       run: sccache --start-server
       shell: bash
-      if: startsWith(inputs.target, 'darwin')
+      if: contains(inputs.target, 'darwin')
       env:
         SCCACHE_CACHE_SIZE: 2G
         SCCACHE_DIR: /Users/runner/Library/Caches/Mozilla.sccache

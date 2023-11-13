@@ -43,7 +43,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust.yaml
+        uses: ./.github/actions/setup-rust
 
       - name: Test
         uses: actions-rs/cargo@v1
@@ -61,7 +61,7 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Setup Rust
-        uses: ./.github/actions/setup-rust.yaml
+        uses: ./.github/actions/setup-rust
         with:
           components: rustfmt, clippy
 

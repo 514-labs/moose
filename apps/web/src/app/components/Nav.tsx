@@ -12,8 +12,10 @@ gsap.registerPlugin(SplitText);
 
 const navigation = [
   // { name: "Docs", href: "#" },
-  { name: "slack", href: "https://join.slack.com/t/igloocommunity/shared_invite/zt-26oekgzol-99e8I2lQvHHKk1aa1Fnwpg" },
-  { name: "github", href: "https://github.com/514-labs/igloo-stack" },
+ // { name: "about", href: "/about" },
+  //{ name: "community", href: "/community" },
+  { name: "slack", href: "#" },
+  { name: "github", href: "#" },
   // { name: "Join us", href: "#" },
 ]
 
@@ -43,7 +45,7 @@ export const Nav = () => {
   const pathname = usePathname()
 
   return (
-    <Disclosure as="nav" className="fixed top-0 w-full z-50">
+    <Disclosure as="nav" className="sticky top-0 w-full z-50">
       {({ open }) => (
         <>
           <div className="px-8 z-50 sticky w-full bg-black backdrop-blur-2xl bg-black/80 lg:px-10 py-2">

@@ -5,19 +5,14 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "clean": "turbo clean",
-    "prepare": "husky install"
+    "format": "prettier --write \"**/*.{ts,tsx,md}\""
   },
   "devDependencies": {
     "eslint": "^7.32.0",
     "eslint-config-custom": "workspace:*",
-    "husky": "^8.0.0",
-    "lint-staged": "^15.0.2",
-    "prettier": "^2.8.8",
-    "prettier-plugin-tailwindcss": "^0.1.13",
+    "prettier": "^2.7.1",
+    "prettier-plugin-tailwindcss": "^0.1.11",
     "turbo": "latest"
   },
-  "packageManager": "pnpm@8.6.12",
-  "lint-staged": {
-    "*.rs": "rustfmt --edition 2021"
-  }
+  "packageManager": "pnpm@8.6.10"
 }

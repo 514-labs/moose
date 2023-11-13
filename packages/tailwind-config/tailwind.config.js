@@ -28,6 +28,15 @@ module.exports = {
   ],
   theme: {
     extend: {
+      screens: {
+        '3xl': '1664px',
+        '4xl': '2500px'
+      },
+      fontSize: {
+        '10xl': ['12rem', {
+          lineHeight: '12rem',
+        }],
+      },
       colors: {
         typography: {
           primary: baseColors.white[500],

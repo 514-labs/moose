@@ -80,6 +80,9 @@ jobs:
           toolchain: ${{ matrix.build.TOOLCHAIN }}
           target: ${{ matrix.build.TARGET }}
 
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
       - name: Install Set Version
         run: |
           cargo install cargo-edit

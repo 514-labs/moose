@@ -55,7 +55,6 @@ async fn handler(
 
     // Check if route is in the route table
     if route_table.lock().await.contains_key(&route) {
-        println!("req: {:?}", req);
         match req.method() {
             &hyper::Method::POST => {
                 show_message(

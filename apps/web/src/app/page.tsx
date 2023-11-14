@@ -6,6 +6,8 @@ import { HowItWorksSection } from "./sections/home/HowItWorksSection";
 import { HeroSection } from "./sections/home/HeroSection";
 import { FeatureSection } from "./sections/home/FeatureSection";
 
+
+
 export const metadata: Metadata = {
   title: "Igloo | Build Data-intensive apps with ease",
   openGraph: {

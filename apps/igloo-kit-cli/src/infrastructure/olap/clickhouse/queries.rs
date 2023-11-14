@@ -15,7 +15,6 @@ use super::ClickhouseView;
 pub static CREATE_TABLE_TEMPLATE: &str = r#"
 CREATE TABLE IF NOT EXISTS {db_name}.{table_name} 
 (
-
 {{for field in fields}}{field.field_name} {field.field_type} {field.field_arity},
 {{endfor}}
 {{if primary_key_string}}

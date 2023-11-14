@@ -17,12 +17,18 @@ defaults:
 jobs:
   check:
     name: Check
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Run cargo check
         uses: actions-rs/cargo@v1
@@ -32,12 +38,18 @@ jobs:
 
   test:
     name: Test Suite
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Test
         uses: actions-rs/cargo@v1
@@ -47,6 +59,9 @@ jobs:
 
   lints:
     name: Lints
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
@@ -55,6 +70,9 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt, clippy
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1

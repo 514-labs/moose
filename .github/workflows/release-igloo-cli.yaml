@@ -40,6 +40,9 @@ jobs:
     name: Build CLI Binaries
     runs-on: ${{ matrix.build.os }}
     needs: version
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
     outputs:
       version: ${{ steps.version.outputs.version }}
     strategy:
@@ -79,6 +82,9 @@ jobs:
         with:
           toolchain: ${{ matrix.build.TOOLCHAIN }}
           target: ${{ matrix.build.TARGET }}
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Install Set Version
         run: |

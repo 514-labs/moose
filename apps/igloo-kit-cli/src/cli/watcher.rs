@@ -14,7 +14,7 @@ use crate::{
         self,
         languages::{CodeGenerator, SupportedLanguages},
         schema::{parse_schema_file, MatViewOps, Table, TableOps},
-        sdks::{generate_ts_sdk, TypescriptObjects, move_to_npm_global_dir},
+        sdks::{generate_ts_sdk, TypescriptObjects},
         typescript::{get_typescript_models_dir, SendFunction, TypescriptInterface},
     },
     infrastructure::{

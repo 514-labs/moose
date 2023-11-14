@@ -6,7 +6,7 @@ use super::TypescriptPackage;
 pub static PACKAGE_JSON_TEMPLATE: &str = r#"
 \{
     "name": "{package_name}",
-    "version": "0.0",
+    "version": "0.0.0",
     "description": "",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",

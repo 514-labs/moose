@@ -6,7 +6,7 @@ use std::{
 mod mapper;
 mod templates;
 
-use crate::{project::Project, utilities::{npm, system}};
+use crate::{project::Project, utilities::{package_managers, system}};
 
 use self::templates::{PackageJsonTemplate, TsConfigTemplate};
 
@@ -120,13 +120,15 @@ pub fn generate_ts_sdk(
 pub fn move_to_npm_global_dir(sdk_location: &PathBuf) -> Result<PathBuf, std::io::Error> {
     //! Moves the generated SDK to the NPM global directory.
     //! 
+    //! *** Note *** This here doesn't work for typescript due to package resolution issues.
+    //! 
     //! # Arguments
     //! - `sdk_location` - The location of the generated SDK.
     //! 
     //! # Returns
     //! - `Result<PathBuf, std::io::Error>` - A result containing the path where the SDK was moved to.
     //! 
-    let global_node_modules = npm::get_or_create_global_folder()?;
+    let global_node_modules = package_managers::get_or_create_global_folder()?;
 
     system::copy_directory(&sdk_location, &global_node_modules)?;
 

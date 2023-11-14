@@ -26,7 +26,7 @@ use crate::{
         },
         stream,
     },
-    project::Project, utilities::npm,
+    project::Project, utilities::package_managers,
 };
 
 use super::{
@@ -164,10 +164,10 @@ async fn create_framework_objects_from_dataframe_route(
             }
 
             let sdk_location = generate_ts_sdk(&project, process_further)?;
-            npm::install_packages(&sdk_location)?;
-            npm::run_build(&sdk_location)?;
-
-            move_to_npm_global_dir(&sdk_location)?;
+            let package_manager = package_managers::PackageManager::Pnpm;
+            package_managers::install_packages(&sdk_location, &package_manager)?;
+            package_managers::run_build(&sdk_location, &package_manager)?;
+            package_managers::link_sdk(&sdk_location, None, &package_manager)?;
         }
     } else {
         println!("No primsa extension found. Likely created unsupported file type")

@@ -70,6 +70,7 @@ import \{ {interface_context.name} } from './{interface_context.file_name}';
 export async function {declaration_name}({interface_context.var_name}: {interface_context.name}) \{
     return fetch('{server_url}/{api_route_name}', \{
         method: 'POST',
+        mode: 'no-cors',
         headers: \{
             'Content-Type': 'application/json'
         },

@@ -1,6 +1,6 @@
 //! Utilities for interacting with npm.
 
-use std::{path::PathBuf, process::Command};
+use std::{path::PathBuf, process::Command, fmt};
 
 use home::home_dir;
 
@@ -33,10 +33,24 @@ pub fn get_or_create_global_folder() -> Result<PathBuf, std::io::Error> {
     Ok(global_mod_folder)
 }
 
-pub fn install_packages(directory: &PathBuf) -> Result<(), std::io::Error> {
+pub enum PackageManager {
+    Npm,
+    Pnpm,
+}
+
+impl fmt::Display for PackageManager {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PackageManager::Npm => write!(f, "npm"),
+            PackageManager::Pnpm => write!(f, "pnpm"),   
+        }
+    }
+}
+
+pub fn install_packages(directory: &PathBuf, package_manager: &PackageManager) -> Result<(), std::io::Error> {
     //! Install packages in a directory.
     //! This is useful for installing packages in a directory other than the current directory.
-    let mut command = Command::new("npm");
+    let mut command = Command::new(package_manager.to_string());
     command.current_dir(&directory);
     command.arg("install");
 
@@ -46,11 +60,29 @@ pub fn install_packages(directory: &PathBuf) -> Result<(), std::io::Error> {
     Ok(())
 }
 
-pub fn run_build(directory: &PathBuf) -> Result<(), std::io::Error> {
-    let mut command = Command::new("npm");
+pub fn run_build(directory: &PathBuf, package_manager: &PackageManager) -> Result<(), std::io::Error> {
+    let mut command = Command::new(package_manager.to_string());
     command.current_dir(&directory);
     command.arg("run");
     command.arg("build");
+
+    let output = command.output()?; // We should explore not using output here and instead using spawn.
+    println!("{}", String::from_utf8(output.stdout).unwrap());
+
+    Ok(())
+}
+
+pub fn link_sdk(directory: &PathBuf, package_name: Option<String>, package_manager: &PackageManager) -> Result<(), std::io::Error> {
+    //! Links a package to the global pnpm folder if package_name is None. If the package_name is Some, then it will link the package to 
+    //! the global pnpm folder with the given name.
+    let mut command = Command::new(package_manager.to_string());
+    command.current_dir(&directory);
+    command.arg("link");
+    command.arg("--global");
+
+    if package_name.is_some() {
+        command.arg(package_name.unwrap());
+    }
 
     let output = command.output()?; // We should explore not using output here and instead using spawn.
     println!("{}", String::from_utf8(output.stdout).unwrap());

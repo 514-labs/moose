@@ -5,7 +5,6 @@ import { SplitText } from "gsap/SplitText";
 import React from "react";
 import { Disclosure } from '@headlessui/react'
 import { Bars3Icon,  XMarkIcon } from '@heroicons/react/24/outline'
-import { sendUser } from "my-awesome-sdk";
 
 gsap.registerPlugin(SplitText);
 
@@ -54,9 +53,6 @@ export const Nav = () => {
                 </div>
                 
                 <div className="hidden sm:ml-6 sm:flex sm:flex-grow">
-                  <div onClick={() => {sendUser({id: 0, email: "tim@test.tst", name: "tim"})}} className="text-white">
-                    button
-                  </div>
                   {/* Current: "border-action-primary text-gray-900", Default: "border-transparent text-gray-500  hover:text-action-primary" */}
                   {
                     navigation.map((item) => (

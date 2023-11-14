@@ -16,19 +16,19 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <div className="h-full">
-      {}
+      {/* Hero Section */}
       < HeroSection/>
       
-      {}
+      {/* Features Section */}
       <FeatureSection />
 
-      {}
+      {/* How it works Section */}
       <HowItWorksSection />
       
-      {}
+      {/* CTA Section */}
       <CTASection />
 
-      {}
+      {/* Footer */}
       <FooterSection />
     </div>
   );

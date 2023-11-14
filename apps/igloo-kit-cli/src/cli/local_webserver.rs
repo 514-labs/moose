@@ -116,7 +116,10 @@ async fn handler(
                     .status(StatusCode::OK)
                     .header("Access-Control-Allow-Origin", "*")
                     .header("Access-Control-Allow-Methods", "POST, OPTIONS")
-                    .header("Access-Control-Allow-Headers", "Content-Type, Baggage, Sentry-Trace")
+                    .header(
+                        "Access-Control-Allow-Headers",
+                        "Content-Type, Baggage, Sentry-Trace",
+                    )
                     .body("".to_string())
                     .unwrap();
 

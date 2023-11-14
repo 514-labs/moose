@@ -1,12 +1,11 @@
-use std::{
-    fs::File,
-    io::Write,
-    path::PathBuf,
-};
+use std::{fs::File, io::Write, path::PathBuf};
 mod mapper;
 mod templates;
 
-use crate::{project::Project, utilities::{package_managers, system}};
+use crate::{
+    project::Project,
+    utilities::{package_managers, system},
+};
 
 use self::templates::{PackageJsonTemplate, TsConfigTemplate};
 
@@ -60,15 +59,15 @@ pub fn generate_ts_sdk(
     ts_objects: Vec<TypescriptObjects>,
 ) -> Result<PathBuf, std::io::Error> {
     //! Generates a Typescript SDK for the given project and returns the path where the SDK was generated.
-    //! 
+    //!
     //! # Arguments
     //! - `project` - The project to generate the SDK for.
     //! - `ts_objects` - The objects to generate the SDK for.
-    //! 
-    //! 
+    //!
+    //!
     //! # Returns
     //! - `Result<PathBuf, std::io::Error>` - A result containing the path where the SDK was generated.
-    //! 
+    //!
     let igloo_dir = get_igloo_directory(project.clone())?;
 
     let package = TypescriptPackage::from_project(project);
@@ -119,15 +118,15 @@ pub fn generate_ts_sdk(
 
 pub fn move_to_npm_global_dir(sdk_location: &PathBuf) -> Result<PathBuf, std::io::Error> {
     //! Moves the generated SDK to the NPM global directory.
-    //! 
+    //!
     //! *** Note *** This here doesn't work for typescript due to package resolution issues.
-    //! 
+    //!
     //! # Arguments
     //! - `sdk_location` - The location of the generated SDK.
-    //! 
+    //!
     //! # Returns
     //! - `Result<PathBuf, std::io::Error>` - A result containing the path where the SDK was moved to.
-    //! 
+    //!
     let global_node_modules = package_managers::get_or_create_global_folder()?;
 
     system::copy_directory(&sdk_location, &global_node_modules)?;

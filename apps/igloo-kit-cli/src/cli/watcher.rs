@@ -26,7 +26,8 @@ use crate::{
         },
         stream,
     },
-    project::Project, utilities::package_managers,
+    project::Project,
+    utilities::package_managers,
 };
 
 use super::{

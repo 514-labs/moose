@@ -127,8 +127,6 @@ async fn top_command_handler(
             //     let mut controller = RoutineController::new();
             //     let run_mode = RunMode::Explicit { term };
 
-                
-
             //     // controller.add_routine(Box::new(InitializeClient::new(
             //     //     run_mode.clone(),
             //     //     project.clone(),

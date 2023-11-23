@@ -60,6 +60,8 @@ const practices = [
   },
 ];
 
+// Some comment
+
 const features = [
   {
     heading: "full data stack",

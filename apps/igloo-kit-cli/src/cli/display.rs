@@ -92,7 +92,7 @@ Join our community to keep up with our progress, contribute to igloo or join our
 
 "#,
         style("# Igloo is coming soon").bold(),
-        style("https://discord.gg/WX3V3K4QCc").color256(118).bold()
+        style("https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg").color256(118).bold()
     )
 }
 

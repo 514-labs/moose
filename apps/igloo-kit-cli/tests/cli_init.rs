@@ -1,6 +1,7 @@
 use assert_cmd::prelude::*; // Add methods on commands
 use assert_fs::prelude::*;
 use predicates::prelude::*; // Used for writing assertions
+use std::fs;
 use std::process::Command; // Run programs
 
 #[test]
@@ -20,6 +21,13 @@ fn can_run_igloo_init() -> Result<(), Box<dyn std::error::Error>> {
     let temp = assert_fs::TempDir::new().unwrap();
     let dir = temp.path().to_str().unwrap();
     println!("dir: {}", dir);
+    let entries = fs::read_dir(dir)?;
+    for entry in entries {
+        let entry = entry?;
+        println!("{}", entry.path().display());
+    }
+    // List the content of dir
+    temp.child(".igloo").assert(predicate::path::missing());
 
     let mut cmd = Command::cargo_bin("igloo-cli")?;
 

@@ -1,0 +1,50 @@
+# Contributing
+
+## Ways to contribute
+
+You can help the project several ways
+
+- Give us feedback on your experience with the ecosystem through [Discord](https://discord.gg/WX3V3K4QCc) or [Github Discussions](https://github.com/514-labs/igloo-stack/discussions)
+- Report bugs through [Github Issues](https://github.com/514-labs/igloo-stack/issues)
+- Propose changes by [opening an RFD](./rfd/0001/README.mdx)
+- Give you perspective on an existing opened RFD
+- Contribute to the documentation
+- Contribute features and functionality by picking up issues. A good way to start is to pick up issues marked as `Good First Issue`
+
+## Code Contributions
+
+### Setup
+
+Requirements:
+
+- `Rust`: We recommend using [rustup](https://rustup.rs/) to manage your rust toolchain
+- `Node`: We recommend using [nvm](https://github.com/nvm-sh/nvm#nvmrc) to manage your node versions
+- [`Pnpm`](https://pnpm.io/installation)
+- [`TurboRepo`](https://turbo.build/repo/docs/installing): `pnpm install turbo --global`
+
+```bash
+$ pnpm install
+```
+
+### Build
+
+```bash
+turbo build
+```
+
+## Versioning Scheme.
+
+We use [semantic versioning](https://semver.org/) to denote versions of the different components of the system.
+
+We have automation that helps keep a really high cadence as we develop the initial version of the framework and ecosystem. 
+
+> We might change how we release later in the lifecycle of the project.
+
+Currently we release every time code that changes the framework or the CLI is merged to the `main` branch. We are [releasing from the trunk](https://trunkbaseddevelopment.com/release-from-trunk/).
+
+* By Default, every commit on `main` will increase the patch version. ie in `x.y.(z+1)`
+* if the commit message contains `[minor-version]`, the bot will pick up on it and will set the version of the released packages as `x.(y + 1).0`
+* if the commit message contains `[major-version]`, the bot will pick up on it and will set the version of the released packages as `(x+1).0.0`
+* if the commit message contains `[no-release]` in the commit message. We do not release anything.
+
+We ensure that we don't have conflicts as branches get merged in main by leveraging git linear history as well as the [`concurrency`](https://docs.github.com/en/actions/using-jobs/using-concurrency) github actions concept to enforce order. 

@@ -3,6 +3,7 @@ import { Button } from "ui";
 import { gsap } from "gsap";
 import React, { useLayoutEffect } from "react";
 import { SplitText } from "gsap/SplitText";
+import { AnimatedComponent } from "../components/AnimatedComponent";
 
 export const CodeBlockCTA = () => {
   const inboundRef = React.useRef(null);
@@ -59,7 +60,7 @@ export const CodeBlockCTA = () => {
         opacity:0,
         y: 30,
         duration: 1,
-        delay: 0.7,
+        delay: 1.4,
         stagger: 0.04
       })
     });
@@ -73,10 +74,10 @@ export const CodeBlockCTA = () => {
   return (
     <div className="flex flex-col lg:flex-row cursor-pointer invisible" ref={wrapperRef}>
       <div className="flex flex-row items-center justify-center sm:justify-start bg-white/10 w-full h-13 ">
-        <span className="font-mono py-3 px-6 text-typography-secondary " ref={outboundRef}> npx create-igloo-app</span>
-        <span className="font-mono py-3 px-6 text-typography-primary hidden" ref={inboundRef}> copied to clipboard</span>
+        <span className="font-mono py-4 px-6 text-typography-secondary " ref={outboundRef}> npx create-igloo-app</span>
+        <span className="font-mono py-4 px-6 text-typography-primary hidden" ref={inboundRef}> copied to clipboard</span>
       </div>
-      <Button>copy</Button>
+        <Button className="py-4 text-center font-medium no-underline bg-action-primary text-black hover:bg-gray-300 sm:inline-block sm:grow-0 md:py-6 md:px-10 md:text-lg md:leading-8">copy</Button>
     </div>
   );
 };

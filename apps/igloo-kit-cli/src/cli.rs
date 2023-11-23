@@ -8,7 +8,7 @@ mod watcher;
 
 use std::sync::{Arc, RwLock};
 
-use self::settings::setup_igloo_user_directory;
+use self::settings::setup_user_directory;
 use log::info;
 
 use self::{
@@ -180,7 +180,7 @@ async fn top_command_handler(
 }
 
 pub async fn cli_run() {
-    setup_igloo_user_directory().expect("Failed to setup igloo user directory");
+    setup_user_directory().expect("Failed to setup igloo user directory");
 
     let term = Arc::new(RwLock::new(CommandTerminal::new()));
 

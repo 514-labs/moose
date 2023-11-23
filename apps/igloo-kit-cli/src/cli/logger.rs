@@ -2,7 +2,9 @@ use serde::Deserialize;
 use std::time::SystemTime;
 use uuid::Uuid;
 
-use super::settings::igloo_user_directory;
+use super::settings::user_directory;
+
+const LOG_FILE: &str = "cli.log";
 
 #[derive(Deserialize, Debug, Clone)]
 pub enum LoggerLevel {
@@ -31,8 +33,8 @@ pub struct LoggerSettings {
 
 impl Default for LoggerSettings {
     fn default() -> Self {
-        let mut dir = igloo_user_directory();
-        dir.push("igloo-cli.log");
+        let mut dir = user_directory();
+        dir.push(LOG_FILE);
         LoggerSettings {
             log_file: dir.to_str().unwrap().to_string(),
             level: LoggerLevel::INFO,

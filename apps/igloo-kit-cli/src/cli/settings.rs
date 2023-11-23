@@ -58,14 +58,14 @@ fn config_path() -> PathBuf {
     path.to_owned()
 }
 
-pub fn igloo_user_directory() -> PathBuf {
+pub fn user_directory() -> PathBuf {
     let mut path: PathBuf = home_dir().unwrap();
     path.push(USER_DIRECTORY);
     path.to_owned()
 }
 
-pub fn setup_igloo_user_directory() -> Result<(), std::io::Error> {
-    let path = igloo_user_directory();
+pub fn setup_user_directory() -> Result<(), std::io::Error> {
+    let path = user_directory();
     std::fs::create_dir_all(path.clone())?;
     Ok(())
 }

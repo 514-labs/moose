@@ -1,11 +1,15 @@
 mod commands;
 mod display;
 mod local_webserver;
+mod logger;
 mod routines;
 mod settings;
 mod watcher;
 
 use std::sync::{Arc, RwLock};
+
+use self::settings::setup_igloo_user_directory;
+use log::info;
 
 use self::{
     commands::AddArgs,
@@ -22,6 +26,7 @@ use crate::{
 };
 use clap::Parser;
 use commands::Commands;
+use logger::setup_logging;
 use settings::{read_settings, Settings};
 
 #[derive(Parser)]
@@ -88,6 +93,11 @@ async fn top_command_handler(
                 language,
                 location,
             }) => {
+                info!(
+                    "Running init command with name: {}, language: {}, location: {}",
+                    name, language, location
+                );
+
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit { term };
 
@@ -170,8 +180,15 @@ async fn top_command_handler(
 }
 
 pub async fn cli_run() {
+    setup_igloo_user_directory().expect("Failed to setup igloo user directory");
+
     let term = Arc::new(RwLock::new(CommandTerminal::new()));
+
     let config = read_settings(term.clone()).unwrap();
+    setup_logging(config.logger.clone()).expect("Failed to setup logging");
+
+    info!("Configuration loaded and logging setup");
+
     let cli = Cli::parse();
     let debug_status = if cli.debug {
         DebugStatus::Debug

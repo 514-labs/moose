@@ -28,6 +28,10 @@ tinytemplate = "1.1"
 rdkafka = { version = "0.34", features = ["cmake-build"] }
 bimap = "0.6.3"
 convert_case = "0.6.0"
+log = "0.4"
+fern = "0.6"
+humantime = "2.1.0"
+uuid = {version = "1.6", features = ["v4"]}
 
 
 [dev-dependencies]

@@ -8,6 +8,7 @@ use std::sync::{Arc, RwLock};
 
 use super::display::{show_message, Message, MessageType};
 use super::local_webserver::LocalWebserverConfig;
+use super::logger::LoggerSettings;
 use super::CommandTerminal;
 
 /// # Config
@@ -21,6 +22,8 @@ use super::CommandTerminal;
 ///
 
 const CONFIG_FILE: &str = ".igloo-config.toml";
+const USER_DIRECTORY: &str = ".igloo";
+const ENVIRONMENT_VARIABLE_PREFIX: &str = "IGLOO";
 
 #[derive(Deserialize, Debug)]
 pub struct Features {
@@ -38,6 +41,8 @@ impl Default for Features {
 #[derive(Deserialize, Debug)]
 pub struct Settings {
     #[serde(default)]
+    pub logger: LoggerSettings,
+    #[serde(default)]
     pub features: Features,
     #[serde(default)]
     pub clickhouse: ClickhouseConfig,
@@ -51,6 +56,18 @@ fn config_path() -> PathBuf {
     let mut path: PathBuf = home_dir().unwrap();
     path.push(CONFIG_FILE);
     path.to_owned()
+}
+
+pub fn igloo_user_directory() -> PathBuf {
+    let mut path: PathBuf = home_dir().unwrap();
+    path.push(USER_DIRECTORY);
+    path.to_owned()
+}
+
+pub fn setup_igloo_user_directory() -> Result<(), std::io::Error> {
+    let path = igloo_user_directory();
+    std::fs::create_dir_all(path.clone())?;
+    Ok(())
 }
 
 // TODO: Turn this part of the code into a routine
@@ -72,7 +89,7 @@ pub fn read_settings(term: Arc<RwLock<CommandTerminal>>) -> Result<Settings, Con
         .add_source(File::from(config_file_location).required(false))
         // Add in settings from the environment (with a prefix of APP)
         // Eg.. `IGLOO_DEBUG=1 ./target/app` would set the `debug` key
-        .add_source(Environment::with_prefix("IGLOO"))
+        .add_source(Environment::with_prefix(ENVIRONMENT_VARIABLE_PREFIX))
         .build()?;
 
     s.try_deserialize()

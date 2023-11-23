@@ -21,11 +21,7 @@ fn can_run_igloo_init() -> Result<(), Box<dyn std::error::Error>> {
     let temp = assert_fs::TempDir::new().unwrap();
     let dir = temp.path().to_str().unwrap();
     println!("dir: {}", dir);
-    let entries = fs::read_dir(dir)?;
-    for entry in entries {
-        let entry = entry?;
-        println!("{}", entry.path().display());
-    }
+
     // List the content of dir
     temp.child(".igloo").assert(predicate::path::missing());
 
@@ -34,6 +30,12 @@ fn can_run_igloo_init() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg("init").arg("test-app").arg("ts").arg(dir);
 
     cmd.assert().success();
+
+    let entries = fs::read_dir(dir)?;
+    for entry in entries {
+        let entry = entry?;
+        println!("{}", entry.path().display());
+    }
 
     // TODO add more specific tests when the layout of the
     // app is more stable

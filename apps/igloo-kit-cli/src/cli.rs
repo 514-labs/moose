@@ -1,8 +1,8 @@
 mod commands;
-mod config;
 mod display;
 mod local_webserver;
 mod routines;
+mod settings;
 mod watcher;
 
 use std::sync::{Arc, RwLock};
@@ -22,7 +22,7 @@ use crate::{
 };
 use clap::Parser;
 use commands::Commands;
-use config::{read_config, Config};
+use settings::{read_settings, Settings};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -77,11 +77,11 @@ pub enum DebugStatus {
 
 async fn top_command_handler(
     term: Arc<RwLock<CommandTerminal>>,
-    config: Config,
+    settings: Settings,
     commands: &Option<Commands>,
     debug: DebugStatus,
 ) {
-    if !config.features.coming_soon_wall {
+    if !settings.features.coming_soon_wall {
         match commands {
             Some(Commands::Init {
                 name,
@@ -109,17 +109,17 @@ async fn top_command_handler(
                     .expect("No project found, please run `igloo init` to create a project");
                 controller.add_routine(Box::new(RunLocalInfratructure::new(
                     debug,
-                    config.clickhouse.clone(),
-                    config.redpanda.clone(),
+                    settings.clickhouse.clone(),
+                    settings.redpanda.clone(),
                     project.clone(),
                 )));
                 controller.add_routine(Box::new(ValidateRedPandaCluster::new(debug)));
                 controller.run_routines(run_mode);
                 let _ = routines::start_development_mode(
                     project.clone(),
-                    config.clickhouse.clone(),
-                    config.redpanda.clone(),
-                    config.local_webserver,
+                    settings.clickhouse.clone(),
+                    settings.redpanda.clone(),
+                    settings.local_webserver,
                 )
                 .await;
             }
@@ -171,7 +171,7 @@ async fn top_command_handler(
 
 pub async fn cli_run() {
     let term = Arc::new(RwLock::new(CommandTerminal::new()));
-    let config = read_config(term.clone());
+    let config = read_settings(term.clone()).unwrap();
     let cli = Cli::parse();
     let debug_status = if cli.debug {
         DebugStatus::Debug

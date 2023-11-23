@@ -1,8 +1,8 @@
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use config::{Config, ConfigError, Environment, File};
 use home::home_dir;
 use serde::Deserialize;
-use std::fs;
 use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
@@ -23,7 +23,21 @@ use super::CommandTerminal;
 const CONFIG_FILE: &str = ".igloo-config.toml";
 
 #[derive(Deserialize, Debug)]
-pub struct Config {
+pub struct Features {
+    pub coming_soon_wall: bool,
+}
+
+impl Default for Features {
+    fn default() -> Self {
+        Features {
+            coming_soon_wall: true,
+        }
+    }
+}
+
+#[derive(Deserialize, Debug)]
+pub struct Settings {
+    #[serde(default)]
     pub features: Features,
     #[serde(default)]
     pub clickhouse: ClickhouseConfig,
@@ -33,45 +47,33 @@ pub struct Config {
     pub local_webserver: LocalWebserverConfig,
 }
 
-#[derive(Deserialize, Debug)]
-pub struct Features {
-    pub coming_soon_wall: bool,
-}
-
 fn config_path() -> PathBuf {
     let mut path: PathBuf = home_dir().unwrap();
     path.push(CONFIG_FILE);
     path.to_owned()
 }
 
-fn default_config() -> Config {
-    Config {
-        features: Features {
-            coming_soon_wall: true,
-        },
-        clickhouse: ClickhouseConfig::default(),
-        redpanda: RedpandaConfig::default(),
-        local_webserver: LocalWebserverConfig::default(),
-    }
-}
-
 // TODO: Turn this part of the code into a routine
-pub fn read_config(term: Arc<RwLock<CommandTerminal>>) -> Config {
+pub fn read_settings(term: Arc<RwLock<CommandTerminal>>) -> Result<Settings, ConfigError> {
+    show_message(
+        term,
+        MessageType::Info,
+        Message {
+            action: "Init".to_string(),
+            details: "Loading config...".to_string(),
+        },
+    );
+
     let config_file_location: PathBuf = config_path();
-    match config_file_location.try_exists() {
-        Ok(true) => {
-            show_message(
-                term,
-                MessageType::Info,
-                Message {
-                    action: "Loading Config".to_string(),
-                    details: "Reading configuration from ~/.igloo-config.toml".to_string(),
-                },
-            );
-            let contents: String = fs::read_to_string(config_file_location)
-                .expect("Something went wrong reading the config file ");
-            toml::from_str(&contents).expect("Something went wrong parsing the config file ")
-        }
-        _ => default_config(),
-    }
+
+    let s = Config::builder()
+        // Start off by merging in the "default" values
+        // Add the local configuration
+        .add_source(File::from(config_file_location).required(false))
+        // Add in settings from the environment (with a prefix of APP)
+        // Eg.. `IGLOO_DEBUG=1 ./target/app` would set the `debug` key
+        .add_source(Environment::with_prefix("IGLOO"))
+        .build()?;
+
+    s.try_deserialize()
 }

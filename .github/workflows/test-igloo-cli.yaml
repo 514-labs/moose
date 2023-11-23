@@ -41,6 +41,7 @@ jobs:
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
+      RUST_BACKTRACE: full
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false

@@ -62,6 +62,10 @@ jobs:
           command: test
           args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml
 
+      - name: Inspect Logs
+        run: |
+          cat ~/.igloo/cli.log
+
   test-ubuntu:
     name: Test Suite (Ubuntu)
     env:
@@ -87,6 +91,10 @@ jobs:
         with:
           command: test
           args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml
+
+      - name: Inspect Logs
+        run: |
+          cat ~/.igloo/cli.log
 
   lints:
     name: Lints

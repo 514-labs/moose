@@ -83,9 +83,6 @@ jobs:
           toolchain: ${{ matrix.build.TOOLCHAIN }}
           target: ${{ matrix.build.TARGET }}
 
-      - name: Cargo Cache
-        uses: Swatinem/rust-cache@v2
-
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 

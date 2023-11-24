@@ -4,7 +4,7 @@ use predicates::prelude::*; // Used for writing assertions
 use std::process::Command; // Run programs
 
 #[test]
-fn cannot_run_igloo_init_without_args() -> Result<(), Box<dyn std::error::Error>> {
+fn cannot_run_cli_init_without_args() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("igloo-cli")?;
 
     cmd.arg("init");
@@ -16,7 +16,7 @@ fn cannot_run_igloo_init_without_args() -> Result<(), Box<dyn std::error::Error>
 }
 
 #[test]
-fn can_run_igloo_init() -> Result<(), Box<dyn std::error::Error>> {
+fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
     let temp = assert_fs::TempDir::new().unwrap();
     let dir: &str = temp.path().to_str().unwrap();
 
@@ -42,7 +42,7 @@ fn can_run_igloo_init() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 #[test]
-fn should_not_run_if_coming_soon_wall_is_blcoking() -> Result<(), Box<dyn std::error::Error>> {
+fn should_not_run_if_coming_soon_wall_is_blocking() -> Result<(), Box<dyn std::error::Error>> {
     let temp = assert_fs::TempDir::new().unwrap();
     let dir: &str = temp.path().to_str().unwrap();
 

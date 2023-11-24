@@ -28,7 +28,11 @@ fn can_run_igloo_init() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut cmd = Command::cargo_bin("igloo-cli")?;
 
-    cmd.arg("init").arg("test-app").arg("ts").arg(dir);
+    cmd.env("IGLOO_FEATURES_COMING_SOON_WALL", "true")
+        .arg("init")
+        .arg("test-app")
+        .arg("ts")
+        .arg(dir);
 
     let ten_millis = time::Duration::from_millis(500);
 

@@ -63,6 +63,7 @@ jobs:
           args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml
 
       - name: Inspect Logs
+        if: always()
         run: |
           cat ~/.igloo/cli.log
 
@@ -93,6 +94,7 @@ jobs:
           args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml
 
       - name: Inspect Logs
+        if: always()
         run: |
           cat ~/.igloo/cli.log
 

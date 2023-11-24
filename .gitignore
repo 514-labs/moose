@@ -52,6 +52,5 @@ Cargo.lock
 *.pdb
 
 .igloo/
-app/
 
 

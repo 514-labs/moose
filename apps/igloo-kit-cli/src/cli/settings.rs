@@ -89,7 +89,11 @@ pub fn read_settings(term: Arc<RwLock<CommandTerminal>>) -> Result<Settings, Con
         .add_source(File::from(config_file_location).required(false))
         // Add in settings from the environment (with a prefix of APP)
         // Eg.. `IGLOO_DEBUG=1 ./target/app` would set the `debug` key
-        .add_source(Environment::with_prefix(ENVIRONMENT_VARIABLE_PREFIX))
+        .add_source(
+            Environment::with_prefix(ENVIRONMENT_VARIABLE_PREFIX)
+                .try_parsing(true)
+                .separator("-"),
+        )
         .build()?;
 
     s.try_deserialize()

@@ -188,6 +188,7 @@ pub async fn cli_run() {
     setup_logging(config.logger.clone()).expect("Failed to setup logging");
 
     info!("Configuration loaded and logging setup");
+    info!("Feature Configuration: {:?}", config.features);
 
     let cli = Cli::parse();
     let debug_status = if cli.debug {

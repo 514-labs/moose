@@ -92,7 +92,7 @@ pub fn read_settings(term: Arc<RwLock<CommandTerminal>>) -> Result<Settings, Con
         .add_source(
             Environment::with_prefix(ENVIRONMENT_VARIABLE_PREFIX)
                 .try_parsing(true)
-                .separator("_"),
+                .separator("-"),
         )
         .build()?;
 

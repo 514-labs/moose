@@ -27,9 +27,6 @@ jobs:
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
 
-      - name: Cargo Cache
-        uses: Swatinem/rust-cache@v2
-
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 
@@ -55,9 +52,6 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: stable
-
-      - name: Cargo Cache
-        uses: Swatinem/rust-cache@v2
 
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
@@ -90,9 +84,6 @@ jobs:
         with:
           toolchain: stable
 
-      - name: Cargo Cache
-        uses: Swatinem/rust-cache@v2
-
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 
@@ -120,9 +111,6 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt, clippy
-
-      - name: Cargo Cache
-        uses: Swatinem/rust-cache@v2
 
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3

@@ -31,7 +31,6 @@ fn can_run_igloo_init() -> Result<(), Box<dyn std::error::Error>> {
     cmd.arg("init").arg("test-app").arg("ts").arg(dir);
 
     let ten_millis = time::Duration::from_millis(500);
-    let now = time::Instant::now();
 
     thread::sleep(ten_millis);
 

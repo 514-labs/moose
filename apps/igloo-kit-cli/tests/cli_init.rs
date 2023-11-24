@@ -1,9 +1,7 @@
 use assert_cmd::prelude::*; // Add methods on commands
 use assert_fs::prelude::*;
 use predicates::prelude::*; // Used for writing assertions
-use std::fs;
 use std::process::Command; // Run programs
-use std::{thread, time};
 
 #[test]
 fn cannot_run_igloo_init_without_args() -> Result<(), Box<dyn std::error::Error>> {
@@ -20,8 +18,7 @@ fn cannot_run_igloo_init_without_args() -> Result<(), Box<dyn std::error::Error>
 #[test]
 fn can_run_igloo_init() -> Result<(), Box<dyn std::error::Error>> {
     let temp = assert_fs::TempDir::new().unwrap();
-    let dir = temp.path().to_str().unwrap();
-    println!("dir: {}", dir);
+    let dir: &str = temp.path().to_str().unwrap();
 
     // List the content of dir
     temp.child(".igloo").assert(predicate::path::missing());
@@ -34,22 +31,36 @@ fn can_run_igloo_init() -> Result<(), Box<dyn std::error::Error>> {
         .arg("ts")
         .arg(dir);
 
-    let ten_millis = time::Duration::from_millis(500);
-
-    thread::sleep(ten_millis);
-
     cmd.assert().success();
-
-    let entries = fs::read_dir(dir)?;
-    for entry in entries {
-        let entry = entry?;
-        println!("{}", entry.path().display());
-    }
 
     // TODO add more specific tests when the layout of the
     // app is more stable
     temp.child(".igloo").assert(predicate::path::exists());
     temp.child("app").assert(predicate::path::exists());
+
+    Ok(())
+}
+
+#[test]
+fn should_not_run_if_coming_soon_wall_is_blcoking() -> Result<(), Box<dyn std::error::Error>> {
+    let temp = assert_fs::TempDir::new().unwrap();
+    let dir: &str = temp.path().to_str().unwrap();
+
+    // List the content of dir
+    temp.child(".igloo").assert(predicate::path::missing());
+
+    let mut cmd = Command::cargo_bin("igloo-cli")?;
+
+    cmd.env("IGLOO-FEATURES-COMING_SOON_WALL", "true")
+        .arg("init")
+        .arg("test-app")
+        .arg("ts")
+        .arg(dir);
+
+    cmd.assert().success();
+
+    temp.child(".igloo").assert(predicate::path::missing());
+    temp.child("app").assert(predicate::path::missing());
 
     Ok(())
 }

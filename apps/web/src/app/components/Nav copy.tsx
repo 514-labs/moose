@@ -7,17 +7,15 @@ import { Disclosure } from '@headlessui/react'
 import { Bars3Icon,  XMarkIcon } from '@heroicons/react/24/outline'
 import { useRouter, usePathname } from 'next/navigation'
 import { AnimatedDescription } from "./AnimatedDescription";
-import { AnimatedComponent } from "./AnimatedComponent";
-
 
 gsap.registerPlugin(SplitText);
 
 const navigation = [
   // { name: "Docs", href: "#" },
-  //{ name: "about", href: "/about" },
-  //{ name: "careers", href: "/careers" },
-  { name: "slack", href: "https://join.slack.com/t/igloocommunity/shared_invite/zt-26oekgzol-99e8I2lQvHHKk1aa1Fnwpg", target:"_blank"},
-  { name: "github", href: "https://github.com/514-labs/", target:"_blank"},
+  { name: "about", href: "/about" },
+  { name: "careers", href: "/careers" },
+  { name: "community", href: "/community" },
+  // { name: "Join us", href: "#" },
 ]
 
 export const Nav = () => {
@@ -46,7 +44,7 @@ export const Nav = () => {
   const pathname = usePathname()
 
   return (
-    <Disclosure as="nav" className="fixed top-0 w-full z-50">
+    <Disclosure as="nav" className="sticky top-0 w-full z-50">
       {({ open }) => (
         <>
           <div className="px-8 z-50 sticky w-full bg-black backdrop-blur-2xl bg-black/80 lg:px-10 py-2">
@@ -54,7 +52,7 @@ export const Nav = () => {
               <div className="flex flex-grow">
                 <div className="flex flex-shrink-0 grow items-center text-white">
                   <a href="/">
-                  <AnimatedDescription position={1} className="px-0 w-full" content="igloo"/>
+                  <AnimatedDescription position={1} className="px-0 w-full" content="fiveonefour"/>
                   </a>
                 </div>
                 
@@ -78,7 +76,6 @@ export const Nav = () => {
                 </div>
               </div>
               <div className="-mr-2 flex items-center sm:hidden">
-
                 {/* Mobile menu button */}
                 <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-2 text-white hover:text-action-primary focus:outline-none focus:ring-2 focus:ring-inset focus:ring-action-primary">
                   <span className="absolute -inset-0.5" />
@@ -119,7 +116,6 @@ export const Nav = () => {
           </Disclosure.Panel>
         </>
       )}
-      
     </Disclosure>
   );
 };

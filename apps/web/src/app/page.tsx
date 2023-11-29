@@ -82,20 +82,20 @@ export default function Home() {
 
   return (
     <div className="h-full relative">
-      <SectionGrid className="py-36 2xl:py-24" gapStyle="gap-y-36">
+      <SectionGrid className="py-36 pb-0 2xl:pt-24" gapStyle="gap-y-36">
           <div className="flex flex-col px-10 w-full space-y-5 col-span-3 sm:col-span-12 2xl:col-span-6">
             <AnimatedHeading position={0} className="" content={fiveonefourSection.heading} size="display" />
-            <AnimatedDescription position={1} className="" content={fiveonefourSection.description} />
+            <AnimatedDescription position={0.75} className="" content={fiveonefourSection.description} />
             <div>
               <CodeBlockCTA/>
             </div>
           </div>
           <div className="relative h-full w-full min-h-[80vw] sm:min-h-[50vw] col-span-3 sm:col-span-12 2xl:col-span-6">
-            <AnimatedImage src={heroImg} position={2} alt="the crew"/>
+            <AnimatedImage src={heroImg} position={1} alt="the crew"/>
           </div>
        </SectionGrid>
 
-      <div className="py-36 pt-0">
+      <div className="py-36">
       <AnimatedHeading position={1} className="px-10 w-full" content="decades of best practices" size="display" onScroll />
       </div>
       
@@ -117,11 +117,11 @@ export default function Home() {
       </SectionGrid>
 
       <div className="py-24">
-        <AnimatedHeading position={0} className="px-10 w-full" content="modernized & open for all" size="display" onScroll/>
+        <AnimatedHeading position={0.25} className="px-10 w-full" content="modernized & open for all" size="display" onScroll/>
       </div>
 
       <div className="relative h-full w-full min-h-[80vw] sm:min-h-[50vw] w-full space-y-5 mt-12 mb-24 2xl:mt-0">
-          <AnimatedImage src={middleImg} position={0} alt="the crew" priority onScroll/>
+          <AnimatedImage src={middleImg} position={0.5} alt="the crew" priority onScroll/>
         </div>
 
         <SectionGrid gapStyle="gap-10" itemPosition="start" className="px-10 pb-24 lg:space-y-0 lg:flex-row">

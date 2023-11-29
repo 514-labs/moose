@@ -90,6 +90,8 @@ export const AnimatedImage = ({
       alt={alt}
       ref={imageRef}
       priority={priority}
+      // placeholder="blur"
+      // blurDataURL="encoded.txt"
     />
   );
 };

@@ -9,9 +9,9 @@ import { Button } from "./components/Button";
 import { AnimatedDescription } from "./components/AnimatedDescription";
 
 
-import heroImg from "../../public/03_3x.webp";
-import middleImg from "../../public/04_3x.webp";
-import footerImg from "../../public/01_3x.webp";
+import heroImg from "../../public/03_2x.webp";
+import middleImg from "../../public/04_2x.webp";
+import footerImg from "../../public/01_2x.webp";
 import { FooterSection } from "./sections//home/FooterSection";
 import { AnimatedComponent } from "./components/AnimatedComponent";
 import { CodeBlockCTA } from "./components/CodeBlockCTA";
@@ -19,7 +19,7 @@ import { CodeBlockCTA } from "./components/CodeBlockCTA";
 export const metadata: Metadata = {
   title: "Igloo | Build for the modern data stack",
   openGraph: {
-    images: "../../public/open-graph/image_1_4x.webp"
+    images: "/open-graph/image_1_4x.webp"
   }
 };
 

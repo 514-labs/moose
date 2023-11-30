@@ -9,7 +9,7 @@ mod watcher;
 use std::sync::{Arc, RwLock};
 
 use self::settings::setup_user_directory;
-use log::info;
+use log::{debug, info};
 
 use self::{
     commands::AddArgs,
@@ -20,14 +20,12 @@ use self::{
         RunMode,
     },
 };
-use crate::{
-    framework::{directories::get_igloo_directory, AddableObjects},
-    project::Project,
-};
+use crate::{framework::AddableObjects, project::Project};
 use clap::Parser;
 use commands::Commands;
 use logger::setup_logging;
 use settings::{read_settings, Settings};
+use std::path::Path;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -98,32 +96,41 @@ async fn top_command_handler(
                     name, language, location
                 );
 
+                let dir_path = Path::new(location);
+                let project = Project::from_dir(dir_path, name.clone(), *language);
+
+                debug!("Project: {:?}", project);
+
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit { term };
-
-                let project = Project::new(name.clone(), *language, location.clone());
 
                 controller.add_routine(Box::new(InitializeProject::new(
                     run_mode.clone(),
                     project.clone(),
                 )));
+
                 controller.run_routines(run_mode);
+
                 project
                     .write_to_file()
                     .expect("Failed to write project to file");
             }
             Some(Commands::Dev {}) => {
+                let project = Project::load_from_current_dir()
+                    .expect("No project found, please run `igloo init` to create a project");
+
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit { term };
-                let project = Project::from_file()
-                    .expect("No project found, please run `igloo init` to create a project");
+
                 controller.add_routine(Box::new(RunLocalInfratructure::new(
                     debug,
                     settings.clickhouse.clone(),
                     settings.redpanda.clone(),
                     project.clone(),
                 )));
+
                 controller.add_routine(Box::new(ValidateRedPandaCluster::new(debug)));
+
                 controller.run_routines(run_mode);
                 let _ = routines::start_development_mode(
                     project.clone(),
@@ -158,10 +165,11 @@ async fn top_command_handler(
             }
             Some(Commands::Clean {}) => {
                 let run_mode = RunMode::Explicit { term };
-                let project = Project::from_file()
+                let project = Project::load_from_current_dir()
                     .expect("No project found, please run `igloo init` to create a project");
-                let igloo_dir = get_igloo_directory(project)
-                    .expect("Nothing to clean, no .igloo directory found");
+
+                let igloo_dir = project.internal_dir();
+
                 let mut controller = RoutineController::new();
                 controller.add_routine(Box::new(CleanProject::new(igloo_dir, run_mode.clone())));
                 controller.run_routines(run_mode);

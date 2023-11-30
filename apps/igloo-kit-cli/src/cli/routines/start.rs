@@ -5,7 +5,6 @@ use super::{
 };
 use crate::{
     cli::{display::Message, DebugStatus},
-    framework::directories,
     infrastructure::{
         olap::clickhouse::config::ClickhouseConfig, stream::redpanda::RedpandaConfig,
     },
@@ -38,15 +37,7 @@ impl RunLocalInfratructure {
 
 impl Routine for RunLocalInfratructure {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = directories::get_igloo_directory(self.project.clone()).map_err(|err| {
-            RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to get .igloo directory. Try running `igloo init`".to_string(),
-                ),
-                err,
-            )
-        })?;
+        let igloo_dir = self.project.internal_dir();
         // Model this after the `spin_up` function in `apps/igloo-kit-cli/src/cli/routines/start.rs` but use routines instead
         ValidateMountVolumes::new(igloo_dir).run_silent()?;
         ValidatePandaHouseNetwork::new(self.debug).run_silent()?;
@@ -88,15 +79,7 @@ impl RunRedPandaContainer {
 
 impl Routine for RunRedPandaContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = directories::get_igloo_directory(self.project.clone()).map_err(|err| {
-            RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to get .igloo directory. Try running `igloo init`".to_string(),
-                ),
-                err,
-            )
-        })?;
+        let igloo_dir = self.project.internal_dir();
 
         let output = docker::run_red_panda(igloo_dir).map_err(|err| {
             RoutineFailure::new(
@@ -141,15 +124,7 @@ impl RunClickhouseContainer {
 
 impl Routine for RunClickhouseContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = directories::get_igloo_directory(self.project.clone()).map_err(|err| {
-            RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to get .igloo directory. Try running `igloo init`".to_string(),
-                ),
-                err,
-            )
-        })?;
+        let igloo_dir = self.project.internal_dir();
 
         let output =
             docker::run_clickhouse(igloo_dir, self.clickhouse_config.clone()).map_err(|err| {

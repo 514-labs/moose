@@ -19,7 +19,7 @@ import { CodeBlockCTA } from "./components/CodeBlockCTA";
 export const metadata: Metadata = {
   title: "Igloo | Build for the modern data stack",
   openGraph: {
-    images: "/open-graph/image_1_4x.webp"
+    images: "/open-graph/og_igloo_4x.webp"
   }
 };
 

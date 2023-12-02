@@ -35,6 +35,7 @@ use super::{
     local_webserver::Webserver,
     CommandTerminal,
 };
+use log::debug;
 
 fn dataframe_path_to_ingest_route(app_dir: PathBuf, path: PathBuf, table_name: String) -> PathBuf {
     let dataframe_path = app_dir.join("dataframes");
@@ -54,6 +55,11 @@ async fn process_event(
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
+    debug!(
+        "File Watcher Event Received: {:?}, with Route Table {:?}",
+        event, route_table
+    );
+
     let route = event.paths[0].clone();
     let mut route_table = route_table.lock().await;
 

@@ -111,16 +111,19 @@ impl Project {
 
         if !internal_dir.is_dir() {
             if internal_dir.exists() {
+                debug!("Internal dir exists as a file: {:?}", internal_dir);
                 std::io::Error::new(
                     std::io::ErrorKind::Other,
                     "The .igloo file exists but is not a directory",
                 );
             } else {
+                debug!("Creating internal dir: {:?}", internal_dir);
                 std::fs::create_dir_all(&internal_dir)?;
             }
+        } else {
+            debug!("Internal directory Exists: {:?}", internal_dir);
         }
 
-        debug!("Internal dir: {:?}", internal_dir);
         Ok(internal_dir)
     }
 

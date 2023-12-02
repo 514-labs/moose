@@ -61,7 +61,8 @@ fn should_not_run_if_coming_soon_wall_is_blocking() -> Result<(), Box<dyn std::e
     cmd.assert().success();
 
     temp.child(".igloo").assert(predicate::path::missing());
-    temp.child("project.toml").assert(predicate::path::exists());
+    temp.child("project.toml")
+        .assert(predicate::path::missing());
     temp.child("app").assert(predicate::path::missing());
 
     Ok(())

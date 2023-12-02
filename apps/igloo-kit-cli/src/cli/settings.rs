@@ -10,19 +10,17 @@ use super::display::{show_message, Message, MessageType};
 use super::local_webserver::LocalWebserverConfig;
 use super::logger::LoggerSettings;
 use super::CommandTerminal;
+use crate::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
 
 /// # Config
 /// Module to handle reading the config file from the user's home directory and configuring the CLI
 ///
 /// ## Suggested Improvements
-/// - add clickhouse and redpanda config to the config file
 /// - add a config file option to the CLI
 /// - add a config file generator to the CLI
 /// - add a config file validation and error handling
 ///
 
-const CONFIG_FILE: &str = ".igloo-config.toml";
-const USER_DIRECTORY: &str = ".igloo";
 const ENVIRONMENT_VARIABLE_PREFIX: &str = "IGLOO";
 
 #[derive(Deserialize, Debug)]
@@ -54,13 +52,13 @@ pub struct Settings {
 
 fn config_path() -> PathBuf {
     let mut path: PathBuf = home_dir().unwrap();
-    path.push(CONFIG_FILE);
+    path.push(CLI_CONFIG_FILE);
     path.to_owned()
 }
 
 pub fn user_directory() -> PathBuf {
     let mut path: PathBuf = home_dir().unwrap();
-    path.push(USER_DIRECTORY);
+    path.push(CLI_USER_DIRECTORY);
     path.to_owned()
 }
 

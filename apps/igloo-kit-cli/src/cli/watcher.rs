@@ -35,6 +35,7 @@ use super::{
     local_webserver::Webserver,
     CommandTerminal,
 };
+use log::debug;
 
 fn dataframe_path_to_ingest_route(app_dir: PathBuf, path: PathBuf, table_name: String) -> PathBuf {
     let dataframe_path = app_dir.join("dataframes");
@@ -54,6 +55,11 @@ async fn process_event(
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
+    debug!(
+        "File Watcher Event Received: {:?}, with Route Table {:?}",
+        event, route_table
+    );
+
     let route = event.paths[0].clone();
     let mut route_table = route_table.lock().await;
 
@@ -157,7 +163,7 @@ async fn create_framework_objects_from_dataframe_route(
 
             for fo in framework_objects {
                 let ingest_route = dataframe_path_to_ingest_route(
-                    project.app_folder.clone(),
+                    project.app_dir().clone(),
                     route.clone(),
                     fo.table.name.clone(),
                 );
@@ -331,7 +337,7 @@ async fn watch(
     })?;
 
     watcher
-        .watch(project.app_folder.as_ref(), RecursiveMode::Recursive)
+        .watch(project.app_dir().as_ref(), RecursiveMode::Recursive)
         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to watch file: {}", e)))?;
 
     for res in rx {
@@ -382,7 +388,7 @@ impl FileWatcher {
         show_message(term, MessageType::Info, {
             Message {
                 action: "Watching".to_string(),
-                details: format!("{:?}", project.app_folder.display()),
+                details: format!("{:?}", project.app_dir().display()),
             }
         });
 

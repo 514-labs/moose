@@ -13,6 +13,7 @@ use hyper::Request;
 use hyper::Response;
 use hyper::Server;
 use hyper::StatusCode;
+use log::debug;
 use rdkafka::producer::FutureRecord;
 use rdkafka::util::Timeout;
 use serde::Deserialize;
@@ -46,6 +47,11 @@ async fn handler(
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_producer: Arc<Mutex<ConfiguredProducer>>,
 ) -> Result<Response<String>, hyper::http::Error> {
+    debug!(
+        "HTTP Request Received: {:?}, with Route Table {:?}",
+        req, route_table
+    );
+
     let route_prefix = PathBuf::from("/");
     let route = PathBuf::from(req.uri().path())
         .strip_prefix(route_prefix)

@@ -27,17 +27,27 @@ impl LoggerLevel {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct LoggerSettings {
+    #[serde(default = "default_log_file")]
     pub log_file: String,
+    #[serde(default = "default_log_level")]
     pub level: LoggerLevel,
+}
+
+fn default_log_file() -> String {
+    let mut dir = user_directory();
+    dir.push(LOG_FILE);
+    dir.to_str().unwrap().to_string()
+}
+
+fn default_log_level() -> LoggerLevel {
+    LoggerLevel::INFO
 }
 
 impl Default for LoggerSettings {
     fn default() -> Self {
-        let mut dir = user_directory();
-        dir.push(LOG_FILE);
         LoggerSettings {
-            log_file: dir.to_str().unwrap().to_string(),
-            level: LoggerLevel::INFO,
+            log_file: default_log_file(),
+            level: default_log_level(),
         }
     }
 }

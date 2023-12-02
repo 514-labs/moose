@@ -67,7 +67,7 @@ pub fn generate_ts_sdk(
     //! # Returns
     //! - `Result<PathBuf, std::io::Error>` - A result containing the path where the SDK was generated.
     //!
-    let igloo_dir = project.internal_dir();
+    let igloo_dir = project.internal_dir()?;
 
     let package = TypescriptPackage::from_project(project);
     let package_json_code = PackageJsonTemplate::new(&package);

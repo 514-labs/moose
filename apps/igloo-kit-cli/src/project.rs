@@ -81,12 +81,6 @@ impl Project {
         s.try_deserialize()
     }
 
-    fn setup_internal_dir(&self) -> Result<(), std::io::Error> {
-        let internal_dir = self.internal_dir();
-        std::fs::create_dir_all(internal_dir)?;
-        Ok(())
-    }
-
     pub fn setup_app_dir(&self) -> Result<(), std::io::Error> {
         let app_dir = self.app_dir();
         std::fs::create_dir_all(&app_dir)?;
@@ -108,21 +102,26 @@ impl Project {
         app_dir
     }
 
-    pub fn internal_dir(&self) -> PathBuf {
+    // This is a Result of io::Error because the caller
+    // can be retruning a Result of io::Error or a  Routine Failure
+    pub fn internal_dir(&self) -> std::io::Result<PathBuf> {
         let mut internal_dir = self.project_file_location.clone();
         internal_dir.pop();
         internal_dir.push(CLI_PROJECT_INTERNAL_DIR);
 
         if !internal_dir.is_dir() {
             if internal_dir.exists() {
-                panic!("The .igloo file exists but is not a directory");
+                std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "The .igloo file exists but is not a directory",
+                );
             } else {
-                std::fs::create_dir_all(internal_dir).expect("Failed to create .igloo directory");
+                std::fs::create_dir_all(&internal_dir)?;
             }
         }
 
         debug!("Internal dir: {:?}", internal_dir);
-        internal_dir
+        Ok(internal_dir)
     }
 
     pub fn write_to_file(&self) -> Result<(), std::io::Error> {

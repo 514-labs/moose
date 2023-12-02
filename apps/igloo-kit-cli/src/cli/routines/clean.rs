@@ -1,30 +1,40 @@
 use std::{fs, path::PathBuf};
 
-use crate::{cli::display::Message, infrastructure::PANDA_NETWORK, utilities::docker};
+use crate::{
+    cli::display::Message, infrastructure::PANDA_NETWORK, project::Project, utilities::docker,
+};
 
 use super::{stop::StopLocalInfrastructure, Routine, RoutineFailure, RoutineSuccess, RunMode};
 
 pub struct CleanProject {
-    igloo_dir: PathBuf,
+    project: Project,
     run_mode: RunMode,
 }
 impl CleanProject {
-    pub fn new(igloo_dir: PathBuf, run_mode: RunMode) -> Self {
-        Self {
-            igloo_dir,
-            run_mode,
-        }
+    pub fn new(project: Project, run_mode: RunMode) -> Self {
+        Self { project, run_mode }
     }
 }
 
 impl Routine for CleanProject {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let run_mode = self.run_mode.clone();
+        // TODO this pattern of mapping errors is repeated - could be refactored into a helper
+        let internal_dir = self.project.internal_dir().map_err(|err| {
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to get internal directory for project".to_string(),
+                ),
+                err,
+            )
+        })?;
+
         StopLocalInfrastructure::new(run_mode.clone()).run(run_mode.clone())?;
         RemoveDockerNetwork::new(PANDA_NETWORK).run(run_mode.clone())?;
-        DeleteRedpandaMountVolume::new(self.igloo_dir.clone()).run(run_mode.clone())?;
-        DeleteClickhouseMountVolume::new(self.igloo_dir.clone()).run(run_mode.clone())?;
-        DeleteModelVolume::new(self.igloo_dir.clone()).run(run_mode.clone())?;
+        DeleteRedpandaMountVolume::new(internal_dir.clone()).run(run_mode.clone())?;
+        DeleteClickhouseMountVolume::new(internal_dir.clone()).run(run_mode.clone())?;
+        DeleteModelVolume::new(internal_dir.clone()).run(run_mode.clone())?;
 
         Ok(RoutineSuccess::success(Message::new(
             "Cleaned".to_string(),

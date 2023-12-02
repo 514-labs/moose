@@ -37,7 +37,15 @@ impl RunLocalInfratructure {
 
 impl Routine for RunLocalInfratructure {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = self.project.internal_dir();
+        let igloo_dir = self.project.internal_dir().map_err(|err| {
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to create .igloo directory. Check permissions or contact us`".to_string(),
+                ),
+                err,
+            )
+        })?;
         // Model this after the `spin_up` function in `apps/igloo-kit-cli/src/cli/routines/start.rs` but use routines instead
         ValidateMountVolumes::new(igloo_dir).run_silent()?;
         ValidatePandaHouseNetwork::new(self.debug).run_silent()?;
@@ -79,7 +87,15 @@ impl RunRedPandaContainer {
 
 impl Routine for RunRedPandaContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = self.project.internal_dir();
+        let igloo_dir = self.project.internal_dir().map_err(|err| {
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to create .igloo directory. Check permissions or contact us`".to_string(),
+                ),
+                err,
+            )
+        })?;
 
         let output = docker::run_red_panda(igloo_dir).map_err(|err| {
             RoutineFailure::new(
@@ -124,7 +140,15 @@ impl RunClickhouseContainer {
 
 impl Routine for RunClickhouseContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = self.project.internal_dir();
+        let igloo_dir = self.project.internal_dir().map_err(|err| {
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to create .igloo directory. Check permissions or contact us`".to_string(),
+                ),
+                err,
+            )
+        })?;
 
         let output =
             docker::run_clickhouse(igloo_dir, self.clickhouse_config.clone()).map_err(|err| {

@@ -168,10 +168,8 @@ async fn top_command_handler(
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `igloo init` to create a project");
 
-                let igloo_dir = project.internal_dir();
-
                 let mut controller = RoutineController::new();
-                controller.add_routine(Box::new(CleanProject::new(igloo_dir, run_mode.clone())));
+                controller.add_routine(Box::new(CleanProject::new(project, run_mode.clone())));
                 controller.run_routines(run_mode);
             }
             Some(Commands::Add(add_args)) => {

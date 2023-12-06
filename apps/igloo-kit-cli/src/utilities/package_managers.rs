@@ -3,6 +3,7 @@
 use std::{fmt, path::PathBuf, process::Command};
 
 use home::home_dir;
+use log::debug;
 
 pub fn get_root() -> Result<PathBuf, std::io::Error> {
     let result = Command::new("npm").arg("root").arg("-g").output()?;
@@ -52,6 +53,9 @@ pub fn install_packages(
 ) -> Result<(), std::io::Error> {
     //! Install packages in a directory.
     //! This is useful for installing packages in a directory other than the current directory.
+
+    debug!("Installing packages in directory: {:?}", directory);
+
     let mut command = Command::new(package_manager.to_string());
     command.current_dir(&directory);
     command.arg("install");

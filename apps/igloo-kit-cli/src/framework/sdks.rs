@@ -128,7 +128,7 @@ pub fn move_to_npm_global_dir(sdk_location: &PathBuf) -> Result<PathBuf, std::io
     //!
     let global_node_modules = package_managers::get_or_create_global_folder()?;
 
-    system::copy_directory(&sdk_location, &global_node_modules)?;
+    system::copy_directory(sdk_location, &global_node_modules)?;
 
     Ok(global_node_modules)
 }

@@ -130,7 +130,7 @@ impl Project {
     pub fn write_to_file(&self) -> Result<(), std::io::Error> {
         let config_file = ProjectConfigFile {
             name: self.name.clone(),
-            language: self.language.clone(),
+            language: self.language,
         };
 
         let toml_project = toml::to_string(&config_file);

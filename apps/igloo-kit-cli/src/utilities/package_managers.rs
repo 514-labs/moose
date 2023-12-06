@@ -57,7 +57,7 @@ pub fn install_packages(
     debug!("Installing packages in directory: {:?}", directory);
 
     let mut command = Command::new(package_manager.to_string());
-    command.current_dir(&directory);
+    command.current_dir(directory);
     command.arg("install");
 
     let output = command.output()?; // We should explore not using output here and instead using spawn.
@@ -71,7 +71,7 @@ pub fn run_build(
     package_manager: &PackageManager,
 ) -> Result<(), std::io::Error> {
     let mut command = Command::new(package_manager.to_string());
-    command.current_dir(&directory);
+    command.current_dir(directory);
     command.arg("run");
     command.arg("build");
 
@@ -89,7 +89,7 @@ pub fn link_sdk(
     //! Links a package to the global pnpm folder if package_name is None. If the package_name is Some, then it will link the package to
     //! the global pnpm folder with the given name.
     let mut command = Command::new(package_manager.to_string());
-    command.current_dir(&directory);
+    command.current_dir(directory);
     command.arg("link");
     command.arg("--global");
 

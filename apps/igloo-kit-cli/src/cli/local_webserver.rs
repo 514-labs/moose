@@ -31,8 +31,6 @@ use std::sync::RwLock;
 use std::time::Duration;
 use tokio::sync::Mutex;
 
-
-
 #[derive(Deserialize, Debug)]
 pub struct LocalWebserverConfig {
     pub host: String,

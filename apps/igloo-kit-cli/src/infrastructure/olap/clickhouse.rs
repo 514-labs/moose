@@ -4,11 +4,11 @@ mod queries;
 
 use std::fmt::{self};
 
-use clickhouse::{Client, query::RowCursor};
+use clickhouse::Client;
 use log::debug;
 use reqwest::Url;
 use schema_ast::ast::FieldArity;
-use serde::{Deserialize, de::{DeserializeOwned, self}, Serialize};
+use serde::{Deserialize, Serialize};
 
 use crate::framework::schema::{MatViewOps, TableOps, UnsupportedDataTypeError};
 

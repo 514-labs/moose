@@ -1,6 +1,12 @@
-use rdkafka::{producer::{FutureProducer, Producer}, ClientConfig};
+use rdkafka::{
+    producer::{FutureProducer, Producer},
+    ClientConfig,
+};
 use serde::Deserialize;
-use std::{io::{self, Write}, time::Duration};
+use std::{
+    io::{self, Write},
+    time::Duration,
+};
 
 use crate::{infrastructure::stream::rpk, utilities::docker};
 
@@ -77,17 +83,22 @@ pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
     ConfiguredProducer { producer, config }
 }
 
-pub async fn fetch_topics(config: &RedpandaConfig) -> Result<Vec<String>, rdkafka::error::KafkaError> {
+pub async fn fetch_topics(
+    config: &RedpandaConfig,
+) -> Result<Vec<String>, rdkafka::error::KafkaError> {
     let producer: FutureProducer = ClientConfig::new()
         .set("bootstrap.servers", &config.broker)
-        .set(
-            "message.timeout.ms",
-            config.message_timeout_ms.to_string(),
-        )
+        .set("message.timeout.ms", config.message_timeout_ms.to_string())
         .create()
         .expect("Failed to create producer");
 
-    let metadata = producer.client().fetch_metadata(None, Duration::from_secs(5))?;
-    let topics = metadata.topics().iter().map(|t| t.name().to_string()).collect();
+    let metadata = producer
+        .client()
+        .fetch_metadata(None, Duration::from_secs(5))?;
+    let topics = metadata
+        .topics()
+        .iter()
+        .map(|t| t.name().to_string())
+        .collect();
     Ok(topics)
 }

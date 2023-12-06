@@ -230,7 +230,12 @@ pub async fn start_development_mode(
         clickhouse_config.clone(),
     )?;
     web_server
-        .start(term.clone(), Arc::clone(&route_table), redpanda_config, clickhouse_config)
+        .start(
+            term.clone(),
+            Arc::clone(&route_table),
+            redpanda_config,
+            clickhouse_config,
+        )
         .await;
 
     Ok(())

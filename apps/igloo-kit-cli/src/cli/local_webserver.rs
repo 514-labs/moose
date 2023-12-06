@@ -4,8 +4,8 @@ use super::display::MessageType;
 use super::watcher::RouteMeta;
 use super::CommandTerminal;
 use crate::infrastructure::olap;
-use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
+use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
@@ -30,8 +30,6 @@ use std::sync::Arc;
 use std::sync::RwLock;
 use std::time::Duration;
 use tokio::sync::Mutex;
-
-
 
 #[derive(Deserialize, Debug)]
 pub struct LocalWebserverConfig {
@@ -183,15 +181,21 @@ async fn handler(
                 let route_table_guard = route_table.lock().await;
 
                 let tables = olap::clickhouse::fetch_all_tables(&db_guard).await.unwrap();
-                let topics = redpanda::fetch_topics(&producer_guard.config).await.unwrap();
-                let routes_table: Vec<RouteInfo> = route_table_guard.clone().iter().map(|(k, v)| {
-                    RouteInfo::new(
-                        k.to_str().unwrap().to_string(),
-                        v.original_file_path.to_str().unwrap().to_string(),
-                        v.table_name.clone(),
-                        v.view_name.clone(),
-                    )
-                }).collect();
+                let topics = redpanda::fetch_topics(&producer_guard.config)
+                    .await
+                    .unwrap();
+                let routes_table: Vec<RouteInfo> = route_table_guard
+                    .clone()
+                    .iter()
+                    .map(|(k, v)| {
+                        RouteInfo::new(
+                            k.to_str().unwrap().to_string(),
+                            v.original_file_path.to_str().unwrap().to_string(),
+                            v.table_name.clone(),
+                            v.view_name.clone(),
+                        )
+                    })
+                    .collect();
 
                 if route == PathBuf::from("console") {
                     let response = Response::builder()
@@ -202,12 +206,15 @@ async fn handler(
                             "Access-Control-Allow-Headers",
                             "Content-Type, Baggage, Sentry-Trace",
                         )
-                        .body(json!({
-                            "tables": tables,
-                            "topics": topics,
-                            "routes": routes_table
-                        }).to_string())?;
-                    return Ok(response);    
+                        .body(
+                            json!({
+                                "tables": tables,
+                                "topics": topics,
+                                "routes": routes_table
+                            })
+                            .to_string(),
+                        )?;
+                    return Ok(response);
                 }
             }
             _ => {
@@ -277,9 +284,9 @@ impl Webserver {
         );
 
         let producer = Arc::new(Mutex::new(redpanda::create_producer(redpanda_config)));
-        let db_client = Arc::new(Mutex::new(
-            olap::clickhouse::create_client(clickhouse_config)
-        ));
+        let db_client = Arc::new(Mutex::new(olap::clickhouse::create_client(
+            clickhouse_config,
+        )));
 
         let main_service = make_service_fn(move |_| {
             let route_table = route_table.clone();
@@ -289,7 +296,13 @@ impl Webserver {
 
             async {
                 Ok::<_, Infallible>(service_fn(move |req| {
-                    handler(req, term.clone(), route_table.clone(), producer.clone(), db_client.clone())
+                    handler(
+                        req,
+                        term.clone(),
+                        route_table.clone(),
+                        producer.clone(),
+                        db_client.clone(),
+                    )
                 }))
             }
         });

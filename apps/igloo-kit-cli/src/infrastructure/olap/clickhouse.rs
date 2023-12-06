@@ -129,7 +129,6 @@ pub struct ClickhouseSystemTable {
 }
 
 impl ClickhouseSystemTableRow {
-    
     pub fn to_table(&self) -> ClickhouseSystemTable {
         ClickhouseSystemTable {
             uuid: self.uuid.to_string(),
@@ -231,8 +230,9 @@ pub async fn run_query(
     client.query(query.as_str()).execute().await
 }
 
-
-pub async fn fetch_all_tables(configured_client: &ConfiguredDBClient) -> Result<Vec<ClickhouseSystemTable>, clickhouse::error::Error> {
+pub async fn fetch_all_tables(
+    configured_client: &ConfiguredDBClient,
+) -> Result<Vec<ClickhouseSystemTable>, clickhouse::error::Error> {
     let client = &configured_client.client;
     let db_name = &configured_client.config.db_name;
 

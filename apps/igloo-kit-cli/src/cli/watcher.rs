@@ -268,7 +268,10 @@ fn create_language_objects(
     let interface_file_path = typescript_dir.join(format!("{}.ts", fo.ts_interface.file_name()));
     let send_func_file_path = typescript_dir.join(send_func.interface.send_function_file_name());
 
-    debug!("Writing typescript interface to file: {:?}", interface_file_path);
+    debug!(
+        "Writing typescript interface to file: {:?}",
+        interface_file_path
+    );
 
     framework::languages::write_code_to_file(
         SupportedLanguages::Typescript,
@@ -363,10 +366,7 @@ async fn watch(
                 )
                 .await
                 .map_err(|e| {
-                    Error::new(
-                        ErrorKind::Other,
-                        format!("Processing error occured: {}", e),
-                    )
+                    Error::new(ErrorKind::Other, format!("Processing error occured: {}", e))
                 })?;
             }
             Err(error) => {

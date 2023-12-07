@@ -13,7 +13,9 @@
 
 use std::path::PathBuf;
 
-use crate::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, PROJECT_CONFIG_FILE};
+use crate::constants::{
+    APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, PROJECT_CONFIG_FILE, SCHEMAS_DIR,
+};
 use crate::framework::languages::SupportedLanguages;
 use config::{Config, ConfigError, File};
 use log::debug;
@@ -100,6 +102,14 @@ impl Project {
 
         debug!("App dir: {:?}", app_dir);
         app_dir
+    }
+
+    pub fn schemas_dir(&self) -> PathBuf {
+        let mut schemas_dir = self.app_dir();
+        schemas_dir.push(SCHEMAS_DIR);
+
+        debug!("Schemas dir: {:?}", schemas_dir);
+        schemas_dir
     }
 
     // This is a Result of io::Error because the caller

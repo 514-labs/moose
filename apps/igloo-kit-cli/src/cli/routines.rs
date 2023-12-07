@@ -80,14 +80,18 @@
 //!
 
 use std::collections::HashMap;
+use std::fs::DirEntry;
+use std::path::Path;
 use std::sync::{Arc, RwLock};
 use std::{io::Error, path::PathBuf};
 
+use log::debug;
 use tokio::sync::Mutex;
 
 use super::local_webserver::{LocalWebserverConfig, Webserver};
-use super::watcher::{FileWatcher, RouteMeta};
+use super::watcher::FileWatcher;
 use super::{display::show_message, CommandTerminal, Message, MessageType};
+use crate::framework::controller::RouteMeta;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::Project;
@@ -241,6 +245,46 @@ pub async fn start_development_mode(
             clickhouse_config,
         )
         .await;
+
+    Ok(())
+}
+
+fn crawl_dir(dir: &Path, callback: &dyn Fn(&DirEntry)) -> Result<(), Error> {
+    if dir.is_dir() {
+        for entry in std::fs::read_dir(dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                crawl_dir(&path, callback)?;
+            } else {
+                callback(&entry);
+            }
+        }
+    }
+    Ok(())
+}
+
+// Processes a file and adds it to the route table if it's a prisma schema
+fn process_file(entry: &DirEntry) {
+    let path = entry.path();
+    if path.is_file() {
+        if let Some(extension) = path.extension() {
+            if extension == "prisma" {
+                debug!("Found prisma schema: {:?}", path);
+            }
+        }
+    }
+}
+
+async fn initialize_route_table(
+    project: Project,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+) -> Result<(), Error> {
+    let schemas_dir = project.schemas_dir();
+
+    let paths = std::fs::read_dir(schemas_dir)?;
+
+    let mut route_table = route_table.lock().await;
 
     Ok(())
 }

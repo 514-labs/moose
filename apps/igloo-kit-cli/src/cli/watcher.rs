@@ -10,19 +10,19 @@ use tokio::sync::Mutex;
 
 use crate::{
     cli::display::show_message,
+    constants::SCHEMAS_DIR,
     framework::{
-        self,
-        languages::{CodeGenerator, SupportedLanguages},
-        schema::{parse_schema_file, MatViewOps, Table, TableOps},
+        controller::{
+            create_language_objects, create_or_replace_table, create_or_replace_view,
+            get_framework_objects, remove_table_and_topics_from_dataframe_route, FrameworkObject,
+            RouteMeta,
+        },
         sdks::{generate_ts_sdk, TypescriptObjects},
-        typescript::{get_typescript_models_dir, SendFunction, TypescriptInterface},
     },
     infrastructure::{
         olap::{
             self,
-            clickhouse::{
-                config::ClickhouseConfig, ClickhouseTable, ClickhouseView, ConfiguredDBClient,
-            },
+            clickhouse::{config::ClickhouseConfig, ConfiguredDBClient},
         },
         stream,
     },
@@ -38,7 +38,7 @@ use super::{
 use log::debug;
 
 fn dataframe_path_to_ingest_route(app_dir: PathBuf, path: PathBuf, table_name: String) -> PathBuf {
-    let dataframe_path = app_dir.join("dataframes");
+    let dataframe_path = app_dir.join(SCHEMAS_DIR);
     println!("dataframe path: {:?}", dataframe_path);
     println!("path: {:?}", path);
     let mut route = path.strip_prefix(dataframe_path).unwrap().to_path_buf();
@@ -119,28 +119,6 @@ async fn process_event(
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct RouteMeta {
-    pub original_file_path: PathBuf,
-    pub table_name: String,
-    pub view_name: Option<String>,
-}
-
-struct FrameworkObject {
-    pub table: ClickhouseTable,
-    pub topic: String,
-    pub ts_interface: TypescriptInterface,
-}
-
-fn framework_object_mapper(t: Table) -> FrameworkObject {
-    let clickhouse_table = olap::clickhouse::mapper::std_table_to_clickhouse_table(t.clone());
-    FrameworkObject {
-        table: clickhouse_table.clone(),
-        topic: t.name.clone(),
-        ts_interface: framework::typescript::mapper::std_table_to_typescript_interface(t),
-    }
-}
-
 async fn create_framework_objects_from_dataframe_route(
     project: Project,
     web_server: Webserver,
@@ -149,50 +127,26 @@ async fn create_framework_objects_from_dataframe_route(
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
     if let Some(ext) = route.extension() {
-        if ext == "prisma" && route.as_path().to_str().unwrap().contains("dataframes") {
-            let framework_objects =
-                parse_schema_file::<FrameworkObject>(route.clone(), framework_object_mapper)
-                    .map_err(|e| {
-                        Error::new(
-                            ErrorKind::Other,
-                            format!("Failed to parse schema file. Error {}", e),
-                        )
-                    })?;
+        if ext == "prisma" && route.as_path().to_str().unwrap().contains(SCHEMAS_DIR) {
+            let framework_objects = get_framework_objects(route)?;
 
-            let mut process_further: Vec<TypescriptObjects> = Vec::new();
+            // Objects that require compilation after processing. Currently only typescript objects require this
+            let mut compilable_objects: Vec<TypescriptObjects> = Vec::new();
 
-            for fo in framework_objects {
-                let ingest_route = dataframe_path_to_ingest_route(
-                    project.app_dir().clone(),
-                    route.clone(),
-                    fo.table.name.clone(),
-                );
-                stream::redpanda::create_topic_from_name(fo.topic.clone());
-
-                debug!("Creating table & view: {:?}", fo.table.name);
-
-                let view_name = format!("{}_view", fo.table.name);
-                create_db_objects(&fo, configured_client, view_name.clone()).await?;
-
-                debug!("Table created: {:?}", fo.table.name);
-
-                let typescript_objects =
-                    create_language_objects(&fo, &web_server, &ingest_route, &project)?;
-                process_further.push(typescript_objects);
-
-                route_table.insert(
-                    ingest_route,
-                    RouteMeta {
-                        original_file_path: route.clone(),
-                        table_name: fo.table.name.clone(),
-                        view_name: Some(view_name),
-                    },
-                );
-            }
+            process_objects(
+                framework_objects,
+                &project,
+                route,
+                configured_client,
+                web_server,
+                &mut compilable_objects,
+                route_table,
+            )
+            .await?;
 
             debug!("All objects created, generating sdk...");
 
-            let sdk_location = generate_ts_sdk(&project, process_further)?;
+            let sdk_location = generate_ts_sdk(&project, compilable_objects)?;
             let package_manager = package_managers::PackageManager::Npm;
             package_managers::install_packages(&sdk_location, &package_manager)?;
             package_managers::run_build(&sdk_location, &package_manager)?;
@@ -204,133 +158,42 @@ async fn create_framework_objects_from_dataframe_route(
     Ok(())
 }
 
-async fn create_db_objects(
-    fo: &FrameworkObject,
-    configured_client: &ConfiguredDBClient,
-    view_name: String,
-) -> Result<(), Error> {
-    let table_query = fo.table.create_table_query().map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to get clickhouse query: {:?}", e),
-        )
-    })?;
-    olap::clickhouse::run_query(table_query, configured_client)
-        .await
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Failed to create table in clickhouse: {}", e),
-            )
-        })?;
-    let view = ClickhouseView::new(fo.table.db_name.clone(), view_name, fo.table.clone());
-    let view_query = view.create_materialized_view_query().map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to get clickhouse query: {:?}", e),
-        )
-    })?;
-    olap::clickhouse::run_query(view_query, configured_client)
-        .await
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Failed to create view in clickhouse: {}", e),
-            )
-        })?;
-    Ok(())
-}
-
-fn create_language_objects(
-    fo: &FrameworkObject,
-    web_server: &Webserver,
-    ingest_route: &PathBuf,
+async fn process_objects(
+    framework_objects: Vec<FrameworkObject>,
     project: &Project,
-) -> Result<TypescriptObjects, Error> {
-    let ts_interface_code = fo.ts_interface.create_code().map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to get typescript interface: {:?}", e),
-        )
-    })?;
-    let send_func = SendFunction::new(
-        fo.ts_interface.clone(),
-        web_server.url(),
-        ingest_route.to_str().unwrap().to_string(),
-    );
-    let send_func_code = send_func.create_code().map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to generate send function: {:?}", e),
-        )
-    })?;
-    let typescript_dir = get_typescript_models_dir(project.clone())?;
-    let interface_file_path = typescript_dir.join(format!("{}.ts", fo.ts_interface.file_name()));
-    let send_func_file_path = typescript_dir.join(send_func.interface.send_function_file_name());
-
-    debug!(
-        "Writing typescript interface to file: {:?}",
-        interface_file_path
-    );
-
-    framework::languages::write_code_to_file(
-        SupportedLanguages::Typescript,
-        interface_file_path,
-        ts_interface_code,
-    )
-    .map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to write typescript interface to file: {:?}", e),
-        )
-    })?;
-    framework::languages::write_code_to_file(
-        SupportedLanguages::Typescript,
-        send_func_file_path,
-        send_func_code,
-    )
-    .map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to write typescript function to file: {:?}", e),
-        )
-    })?;
-    Ok(TypescriptObjects::new(fo.ts_interface.clone(), send_func))
-}
-
-async fn remove_table_and_topics_from_dataframe_route(
     route: &PathBuf,
-    route_table: &mut tokio::sync::MutexGuard<'_, HashMap<PathBuf, RouteMeta>>,
     configured_client: &ConfiguredDBClient,
+    web_server: Webserver,
+    compilable_objects: &mut Vec<TypescriptObjects>, // Objects that require compilation after processing
+    route_table: &mut tokio::sync::MutexGuard<'_, HashMap<PathBuf, RouteMeta>>,
 ) -> Result<(), Error> {
-    //need to get the path of the file, scan the route table and remove all the files that need to be deleted.
-    // This doesn't have to be as fast as the scanning for routes in the web server so we're ok with the scan here.
-    for (k, meta) in route_table.clone().into_iter() {
-        if meta.original_file_path == route.clone() {
-            stream::redpanda::delete_topic(meta.table_name.clone());
+    for fo in framework_objects {
+        let ingest_route = dataframe_path_to_ingest_route(
+            project.app_dir().clone(),
+            route.clone(),
+            fo.table.name.clone(),
+        );
+        stream::redpanda::create_topic_from_name(fo.topic.clone());
 
-            olap::clickhouse::delete_table_or_view(meta.table_name, configured_client)
-                .await
-                .map_err(|e| {
-                    Error::new(
-                        ErrorKind::Other,
-                        format!("Failed to create table in clickhouse: {}", e),
-                    )
-                })?;
+        debug!("Creating table & view: {:?}", fo.table.name);
 
-            if let Some(view_name) = meta.view_name {
-                olap::clickhouse::delete_table_or_view(view_name, configured_client)
-                    .await
-                    .map_err(|e| {
-                        Error::new(
-                            ErrorKind::Other,
-                            format!("Failed to create table in clickhouse: {}", e),
-                        )
-                    })?;
-            }
+        let view_name = format!("{}_view", fo.table.name);
+        create_or_replace_table(&fo, configured_client).await?;
+        create_or_replace_view(&fo, view_name.clone(), configured_client).await?;
 
-            route_table.remove(&k);
-        }
+        debug!("Table created: {:?}", fo.table.name);
+
+        let typescript_objects = create_language_objects(&fo, &web_server, &ingest_route, project)?;
+        compilable_objects.push(typescript_objects);
+
+        route_table.insert(
+            ingest_route,
+            RouteMeta {
+                original_file_path: route.clone(),
+                table_name: fo.table.name.clone(),
+                view_name: Some(view_name),
+            },
+        );
     }
     Ok(())
 }

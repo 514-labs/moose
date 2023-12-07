@@ -1,8 +1,9 @@
 use super::display::show_message;
 use super::display::Message;
 use super::display::MessageType;
-use super::watcher::RouteMeta;
+
 use super::CommandTerminal;
+use crate::framework::controller::RouteMeta;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;

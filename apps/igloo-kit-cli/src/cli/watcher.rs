@@ -168,8 +168,14 @@ async fn create_framework_objects_from_dataframe_route(
                     fo.table.name.clone(),
                 );
                 stream::redpanda::create_topic_from_name(fo.topic.clone());
+
+                debug!("Creating table & view: {:?}", fo.table.name);
+
                 let view_name = format!("{}_view", fo.table.name);
                 create_db_objects(&fo, configured_client, view_name.clone()).await?;
+
+                debug!("Table created: {:?}", fo.table.name);
+
                 let typescript_objects =
                     create_language_objects(&fo, &web_server, &ingest_route, &project)?;
                 process_further.push(typescript_objects);
@@ -184,8 +190,10 @@ async fn create_framework_objects_from_dataframe_route(
                 );
             }
 
+            debug!("All objects created, generating sdk...");
+
             let sdk_location = generate_ts_sdk(&project, process_further)?;
-            let package_manager = package_managers::PackageManager::Pnpm;
+            let package_manager = package_managers::PackageManager::Npm;
             package_managers::install_packages(&sdk_location, &package_manager)?;
             package_managers::run_build(&sdk_location, &package_manager)?;
             package_managers::link_sdk(&sdk_location, None, &package_manager)?;
@@ -259,6 +267,12 @@ fn create_language_objects(
     let typescript_dir = get_typescript_models_dir(project.clone())?;
     let interface_file_path = typescript_dir.join(format!("{}.ts", fo.ts_interface.file_name()));
     let send_func_file_path = typescript_dir.join(send_func.interface.send_function_file_name());
+
+    debug!(
+        "Writing typescript interface to file: {:?}",
+        interface_file_path
+    );
+
     framework::languages::write_code_to_file(
         SupportedLanguages::Typescript,
         interface_file_path,
@@ -352,10 +366,7 @@ async fn watch(
                 )
                 .await
                 .map_err(|e| {
-                    Error::new(
-                        ErrorKind::Other,
-                        format!("clickhouse error has occured: {}", e),
-                    )
+                    Error::new(ErrorKind::Other, format!("Processing error occured: {}", e))
                 })?;
             }
             Err(error) => {

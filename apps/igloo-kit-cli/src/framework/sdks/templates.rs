@@ -18,7 +18,8 @@ pub static PACKAGE_JSON_TEMPLATE: &str = r#"
     "author": "igloo-cli",
     "license": "ISC",
     "devDependencies": \{
-        "@types/node": "^18.*.*"
+        "@types/node": "^18.*.*",
+        "typescript": "^5.*.*"
     },
     "dependencies": \{
 

@@ -5,8 +5,10 @@ mod queries;
 use std::fmt::{self};
 
 use clickhouse::Client;
+use log::debug;
 use reqwest::Url;
 use schema_ast::ast::FieldArity;
+use serde::{Deserialize, Serialize};
 
 use crate::framework::schema::{MatViewOps, TableOps, UnsupportedDataTypeError};
 
@@ -107,6 +109,37 @@ pub struct ClickhouseTable {
     pub table_type: ClickhouseTableType,
 }
 
+#[derive(Debug, Clone, Deserialize, Serialize, clickhouse::Row)]
+pub struct ClickhouseSystemTableRow {
+    #[serde(with = "clickhouse::serde::uuid")]
+    pub uuid: uuid::Uuid,
+    pub database: String,
+    pub name: String,
+    pub dependencies_table: Vec<String>,
+    pub engine: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, clickhouse::Row)]
+pub struct ClickhouseSystemTable {
+    pub uuid: String,
+    pub database: String,
+    pub name: String,
+    pub dependencies_table: Vec<String>,
+    pub engine: String,
+}
+
+impl ClickhouseSystemTableRow {
+    pub fn to_table(&self) -> ClickhouseSystemTable {
+        ClickhouseSystemTable {
+            uuid: self.uuid.to_string(),
+            database: self.database.to_string(),
+            name: self.name.to_string(),
+            dependencies_table: self.dependencies_table.to_vec(),
+            engine: self.engine.to_string(),
+        }
+    }
+}
+
 impl ClickhouseTable {
     pub fn new(
         db_name: String,
@@ -195,6 +228,35 @@ pub async fn run_query(
 ) -> Result<(), clickhouse::error::Error> {
     let client = &configured_client.client;
     client.query(query.as_str()).execute().await
+}
+
+pub async fn fetch_all_tables(
+    configured_client: &ConfiguredDBClient,
+) -> Result<Vec<ClickhouseSystemTable>, clickhouse::error::Error> {
+    let client = &configured_client.client;
+    let db_name = &configured_client.config.db_name;
+
+    // NOTE: The order of the columns in the query is important and must match the order of your struct fields.
+    let query = format!(
+        "SELECT uuid, database, name, dependencies_table, engine FROM system.tables WHERE database = '{}'",
+        db_name
+    );
+
+    debug!("Fetching tables from: {:?}", db_name);
+
+    let mut cursor = client
+        .query(query.as_str())
+        .fetch::<ClickhouseSystemTableRow>()?;
+
+    let mut tables = vec![];
+
+    while let Some(row) = cursor.next().await? {
+        tables.push(row.to_table());
+    }
+
+    debug!("Fetched tables: {:?}", tables);
+
+    Ok(tables)
 }
 
 pub async fn delete_table_or_view(

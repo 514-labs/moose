@@ -3,6 +3,9 @@ use super::display::Message;
 use super::display::MessageType;
 use super::watcher::RouteMeta;
 use super::CommandTerminal;
+use crate::infrastructure::olap;
+use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
+use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
@@ -17,6 +20,8 @@ use log::debug;
 use rdkafka::producer::FutureRecord;
 use rdkafka::util::Timeout;
 use serde::Deserialize;
+use serde::Serialize;
+use serde_json::json;
 use std::collections::HashMap;
 use std::convert::Infallible;
 use std::net::SocketAddr;
@@ -41,11 +46,36 @@ impl Default for LocalWebserverConfig {
     }
 }
 
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RouteInfo {
+    pub route_path: String,
+    pub file_path: String,
+    pub table_name: String,
+    pub view_name: Option<String>,
+}
+
+impl RouteInfo {
+    pub fn new(
+        route_path: String,
+        file_path: String,
+        table_name: String,
+        view_name: Option<String>,
+    ) -> Self {
+        Self {
+            route_path,
+            file_path,
+            table_name,
+            view_name,
+        }
+    }
+}
+
 async fn handler(
     req: Request<Body>,
     term: Arc<RwLock<CommandTerminal>>,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_producer: Arc<Mutex<ConfiguredProducer>>,
+    configured_db_client: Arc<Mutex<ConfiguredDBClient>>,
 ) -> Result<Response<String>, hyper::http::Error> {
     debug!(
         "HTTP Request Received: {:?}, with Route Table {:?}",
@@ -59,8 +89,13 @@ async fn handler(
         .to_path_buf()
         .clone();
 
+    debug!(
+        "Processing route: {:?}, with Route Table {:?}",
+        route, route_table
+    );
+
     // Check if route is in the route table
-    if route_table.lock().await.contains_key(&route) {
+    if route_table.lock().await.contains_key(&route) || route == PathBuf::from("console") {
         match req.method() {
             &hyper::Method::POST => {
                 show_message(
@@ -130,6 +165,58 @@ async fn handler(
 
                 return Ok(response);
             }
+            // Get method allows the user to navigate to /console route only
+            &hyper::Method::GET => {
+                show_message(
+                    term.clone(),
+                    MessageType::Info,
+                    Message {
+                        action: "GET".to_string(),
+                        details: route.to_str().unwrap().to_string(),
+                    },
+                );
+
+                let db_guard = configured_db_client.lock().await;
+                let producer_guard = configured_producer.lock().await;
+                let route_table_guard = route_table.lock().await;
+
+                let tables = olap::clickhouse::fetch_all_tables(&db_guard).await.unwrap();
+                let topics = redpanda::fetch_topics(&producer_guard.config)
+                    .await
+                    .unwrap();
+                let routes_table: Vec<RouteInfo> = route_table_guard
+                    .clone()
+                    .iter()
+                    .map(|(k, v)| {
+                        RouteInfo::new(
+                            k.to_str().unwrap().to_string(),
+                            v.original_file_path.to_str().unwrap().to_string(),
+                            v.table_name.clone(),
+                            v.view_name.clone(),
+                        )
+                    })
+                    .collect();
+
+                if route == PathBuf::from("console") {
+                    let response = Response::builder()
+                        .status(StatusCode::OK)
+                        .header("Access-Control-Allow-Origin", "*")
+                        .header("Access-Control-Allow-Methods", "GET")
+                        .header(
+                            "Access-Control-Allow-Headers",
+                            "Content-Type, Baggage, Sentry-Trace",
+                        )
+                        .body(
+                            json!({
+                                "tables": tables,
+                                "topics": topics,
+                                "routes": routes_table
+                            })
+                            .to_string(),
+                        )?;
+                    return Ok(response);
+                }
+            }
             _ => {
                 show_message(
                     term.clone(),
@@ -183,6 +270,7 @@ impl Webserver {
         term: Arc<RwLock<CommandTerminal>>,
         route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
         redpanda_config: RedpandaConfig,
+        clickhouse_config: ClickhouseConfig,
     ) {
         let socket = self.socket().await;
 
@@ -196,15 +284,25 @@ impl Webserver {
         );
 
         let producer = Arc::new(Mutex::new(redpanda::create_producer(redpanda_config)));
+        let db_client = Arc::new(Mutex::new(olap::clickhouse::create_client(
+            clickhouse_config,
+        )));
 
         let main_service = make_service_fn(move |_| {
             let route_table = route_table.clone();
             let producer = producer.clone();
+            let db_client = db_client.clone();
             let term = term.clone();
 
             async {
                 Ok::<_, Infallible>(service_fn(move |req| {
-                    handler(req, term.clone(), route_table.clone(), producer.clone())
+                    handler(
+                        req,
+                        term.clone(),
+                        route_table.clone(),
+                        producer.clone(),
+                        db_client.clone(),
+                    )
                 }))
             }
         });

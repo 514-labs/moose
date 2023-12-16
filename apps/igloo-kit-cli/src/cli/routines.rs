@@ -91,6 +91,7 @@ use super::{display::show_message, CommandTerminal, Message, MessageType};
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::Project;
+use log::info;
 
 pub mod clean;
 pub mod initialize;
@@ -229,6 +230,9 @@ pub async fn start_development_mode(
         Arc::clone(&route_table),
         clickhouse_config.clone(),
     )?;
+
+    info!("Starting web server...");
+
     web_server
         .start(
             term.clone(),

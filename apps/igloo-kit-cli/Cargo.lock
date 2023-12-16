@@ -916,7 +916,6 @@ dependencies = [
  "openssl",
  "predicates",
  "rdkafka",
- "reqwest",
  "schema-ast",
  "sentry",
  "serde",

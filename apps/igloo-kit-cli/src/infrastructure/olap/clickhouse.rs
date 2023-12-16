@@ -6,7 +6,6 @@ use std::fmt::{self};
 
 use clickhouse::Client;
 use log::debug;
-use reqwest::Url;
 use schema_ast::ast::FieldArity;
 use serde::{Deserialize, Serialize};
 
@@ -207,13 +206,10 @@ pub struct ConfiguredDBClient {
 pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredDBClient {
     ConfiguredDBClient {
         client: Client::default()
-            .with_url(
-                Url::parse(&format!(
-                    "http://{}:{}",
-                    clickhouse_config.host, clickhouse_config.host_port
-                ))
-                .unwrap(),
-            )
+            .with_url(&format!(
+                "http://{}:{}",
+                clickhouse_config.host, clickhouse_config.host_port
+            ))
             .with_user(clickhouse_config.user.to_string())
             .with_password(clickhouse_config.password.to_string())
             .with_database(clickhouse_config.db_name.to_string()),

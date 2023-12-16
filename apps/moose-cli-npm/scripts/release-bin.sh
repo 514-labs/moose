@@ -21,7 +21,7 @@ export node_arch
 # note: use 'windows' as OS name instead of 'win32'
 if [ ${build_os} = "windows-2022" ]; then
     export node_pkg="${future_bin}-windows-${node_arch}"
-elsen
+else
     export node_pkg="${future_bin}-${node_os}-${node_arch}"
 fi
 # create the package directory

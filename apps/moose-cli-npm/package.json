@@ -1,5 +1,5 @@
 {
-  "name": "moose",
+  "name": "@514labs/moose-cli",
   "version": "0.0.0",
   "bin": {
     "igloo": "dist/index.js",

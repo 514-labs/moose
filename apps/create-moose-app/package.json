@@ -1,0 +1,29 @@
+{
+  "name": "create-moose-app",
+  "version": "0.0.0",
+  "description": "Create Moose apps with one command",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/514-labs/igloo-stack/issues",
+    "directory": "apps/create-moose-app"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc"
+  },
+  "license": "MIT",
+  "bin": "./dist/index.js",
+  "devDependencies": {
+    "@types/node": "18.16.19",
+    "@typescript-eslint/eslint-plugin": "^5.62.0",
+    "@typescript-eslint/parser": "^5.62.0",
+    "eslint": "^8.46.0",
+    "tsconfig": "workspace:0.0.0",
+    "typescript": "^4.9.5"
+  },
+  "dependencies": {
+    "@514labs/moose-cli": "latest"
+  }
+}

@@ -5,10 +5,12 @@ on:
     branches:
       - main
     paths:
-      - ".github/workflows/release-igloo-cli.yaml"
+      - ".github/workflows/release-cli.yaml"
       - "apps/igloo-cli-npm/**"
+      - "apps/moose-cli-npm/**"
       - "apps/igloo-kit-cli/**"
       - "apps/create-igloo-app/**"
+      - "apps/create-moose-app/**"
       - "packages/**"
 
 jobs:
@@ -105,9 +107,17 @@ jobs:
           node-version: "18"
           registry-url: "https://registry.npmjs.org"
 
-      - name: Publish to NPM
+      # TO Be DELETED when migration to new name is over
+      - name: Publish to NPM Igloo
         shell: bash
         working-directory: ./apps/igloo-cli-npm
+        run: ./scripts/release-bin.sh ${{ needs.version.outputs.version }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish to NPM Moose
+        shell: bash
+        working-directory: ./apps/moose-cli-npm
         run: ./scripts/release-bin.sh ${{ needs.version.outputs.version }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -149,13 +159,23 @@ jobs:
           node-version: "18"
           cache: "pnpm"
 
-      - name: Publish the NPM CLI package
+      # TO Be DELETED when migration to new name is over
+      - name: Publish the NPM Igloo CLI package
         shell: bash
         run: ./apps/igloo-cli-npm/scripts/release-cli.sh ${{ needs.version.outputs.version }}
 
-      - name: Publish the NPM create app package
+      # TO Be DELETED when migration to new name is over
+      - name: Publish the NPM Igloo create app package
         shell: bash
         run: ./apps/create-igloo-app/scripts/release.sh ${{ needs.version.outputs.version }}
+
+      - name: Publish the NPM Moose CLI package
+        shell: bash
+        run: ./apps/moose-cli-npm/scripts/release-cli.sh ${{ needs.version.outputs.version }}
+
+      - name: Publish the NPM Moose create app package
+        shell: bash
+        run: ./apps/create-moose-app/scripts/release.sh ${{ needs.version.outputs.version }}
 
       - name: Notify Sentry release
         uses: getsentry/action-release@v1

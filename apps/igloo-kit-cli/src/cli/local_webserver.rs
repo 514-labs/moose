@@ -279,6 +279,7 @@ impl Webserver {
         route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
         project: &Project,
     ) {
+        //! Starts the local webserver
         let socket = self.socket().await;
 
         show_message(

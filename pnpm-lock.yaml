@@ -93,7 +93,7 @@ importers:
         version: 0.3.23
       '@514labs/igloo-cli-linux-x64':
         specifier: latest
-        version: 0.3.24
+        version: 0.3.25
       '@514labs/igloo-cli-windows-arm64':
         specifier: latest
         version: 0.0.2-BUILD.73
@@ -373,8 +373,8 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-linux-x64@0.3.24:
-    resolution: {integrity: sha512-oRQKf6X9PSrm1VPZjQwQn3xKdh8ABvUC8D6/AEyQ36NDTDkOpqDQnKIb+MbvSvYrwEpU3nzFwz5AXbMUU2makA==}
+  /@514labs/igloo-cli-linux-x64@0.3.25:
+    resolution: {integrity: sha512-O+6L+a31PETJ2Ip00c5UII52IqoN2z6M+wLeMQRBv/RFiZ3HUzDK7F/VVkk/RrgyK7upVoL7LF9FKR0iIVY7wg==}
     cpu: [x64]
     os: [linux]
     requiresBuild: true

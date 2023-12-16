@@ -122,18 +122,13 @@ async fn top_command_handler(
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit { term };
 
-                controller.add_routine(Box::new(RunLocalInfratructure::new(
-                    debug,
-                    project.clone(),
-                )));
+                controller
+                    .add_routine(Box::new(RunLocalInfratructure::new(debug, project.clone())));
 
                 controller.add_routine(Box::new(ValidateRedPandaCluster::new(debug)));
 
                 controller.run_routines(run_mode);
-                let _ = routines::start_development_mode(
-                    &project,
-                )
-                .await;
+                let _ = routines::start_development_mode(&project).await;
             }
             Some(Commands::Update {}) => {
                 // This command may not be needed if we have incredible automation

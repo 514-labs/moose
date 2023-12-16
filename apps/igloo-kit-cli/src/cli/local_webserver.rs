@@ -60,7 +60,7 @@ impl Default for LocalWebserverConfig {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RouteInfo {
-pub route_path: String,
+    pub route_path: String,
     pub file_path: String,
     pub table_name: String,
     pub view_name: Option<String>,
@@ -290,7 +290,9 @@ impl Webserver {
             },
         );
 
-        let producer = Arc::new(Mutex::new(redpanda::create_producer(project.redpanda_config.clone())));
+        let producer = Arc::new(Mutex::new(redpanda::create_producer(
+            project.redpanda_config.clone(),
+        )));
         let db_client = Arc::new(Mutex::new(olap::clickhouse::create_client(
             project.clickhouse_config.clone(),
         )));

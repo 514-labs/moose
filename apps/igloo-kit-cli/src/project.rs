@@ -47,15 +47,15 @@ impl Project {
             name,
             language,
             project_file_location: location,
-            redpanda_config: RedpandaConfig::default(), 
-            clickhouse_config: ClickhouseConfig::default(), 
+            redpanda_config: RedpandaConfig::default(),
+            clickhouse_config: ClickhouseConfig::default(),
             local_webserver_config: LocalWebserverConfig::default(),
         }
     }
 
     pub fn from_dir(dir_location: &Path, name: String, language: SupportedLanguages) -> Self {
         //! Creates a new `Project` from a directory path.
-        //! 
+        //!
         //! This function cleans up any relative paths and canonicalizes the path.
         let mut location = dir_location.to_path_buf();
         location = location

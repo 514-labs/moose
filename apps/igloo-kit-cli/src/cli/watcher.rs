@@ -20,10 +20,7 @@ use crate::{
         sdks::{generate_ts_sdk, TypescriptObjects},
     },
     infrastructure::{
-        olap::{
-            self,
-            clickhouse::ConfiguredDBClient,
-        },
+        olap::{self, clickhouse::ConfiguredDBClient},
         stream,
     },
     project::Project,
@@ -253,14 +250,11 @@ impl FileWatcher {
                 action: "Watching".to_string(),
                 details: format!("{:?}", project.app_dir().display()),
             }
-        }); 
+        });
         let project = project.clone();
-        
-        tokio::spawn(async move {
 
-            if let Err(error) =
-                watch(&project, Arc::clone(&route_table)).await
-            {
+        tokio::spawn(async move {
+            if let Err(error) = watch(&project, Arc::clone(&route_table)).await {
                 println!("Error: {error:?}");
             }
         });

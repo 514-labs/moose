@@ -198,9 +198,7 @@ impl RoutineController {
 }
 
 // Starts the file watcher and the webserver
-pub async fn start_development_mode(
-    project: &Project,
-) -> Result<(), Error> {
+pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
     let term = Arc::new(RwLock::new(CommandTerminal::new()));
 
     show_message(
@@ -219,23 +217,18 @@ pub async fn start_development_mode(
     // added or removed since the last time the file watcher was started and ensure that the infra reflects
     // the application state
 
-    let web_server = Webserver::new(project.local_webserver_config.host.clone(), project.local_webserver_config.port.clone());
+    let web_server = Webserver::new(
+        project.local_webserver_config.host.clone(),
+        project.local_webserver_config.port.clone(),
+    );
     let file_watcher = FileWatcher::new();
 
-    file_watcher.start(
-        project,
-        term.clone(),
-        Arc::clone(&route_table),
-    )?;
+    file_watcher.start(project, term.clone(), Arc::clone(&route_table))?;
 
     info!("Starting web server...");
 
     web_server
-        .start(
-            term.clone(),
-            Arc::clone(&route_table),
-            project
-        )
+        .start(term.clone(), Arc::clone(&route_table), project)
         .await;
 
     Ok(())
@@ -262,7 +255,10 @@ fn crawl_dir_project_dir(
 }
 
 // Processes a file and adds it to the route table if it's a prisma schema
-fn process_file(entry: &DirEntry, processing_function: &dyn Fn(&Project, Arc<Mutex<HashMap<PathBuf, RouteMeta>>>)) {
+fn process_file(
+    entry: &DirEntry,
+    processing_function: &dyn Fn(&Project, Arc<Mutex<HashMap<PathBuf, RouteMeta>>>),
+) {
     let path = entry.path();
     if path.is_file() {
         if let Some(extension) = path.extension() {
@@ -273,18 +269,12 @@ fn process_file(entry: &DirEntry, processing_function: &dyn Fn(&Project, Arc<Mut
     }
 }
 
-
 // Initialize the route table, topic, and table for a prisma schema
 fn initialize_infra_for_prisma_schema(
     project: &Project,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
 ) {
-    
 }
-
-
-
-
 
 // async fn initialize_route_table(
 //     project: Project,

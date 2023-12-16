@@ -15,14 +15,8 @@ pub struct RunLocalInfratructure {
     project: Project,
 }
 impl RunLocalInfratructure {
-    pub fn new(
-        debug: DebugStatus,
-        project: Project,
-    ) -> Self {
-        Self {
-            debug,
-            project,
-        }
+    pub fn new(debug: DebugStatus, project: Project) -> Self {
+        Self { debug, project }
     }
 }
 
@@ -40,17 +34,9 @@ impl Routine for RunLocalInfratructure {
         // Model this after the `spin_up` function in `apps/igloo-kit-cli/src/cli/routines/start.rs` but use routines instead
         ValidateMountVolumes::new(igloo_dir).run_silent()?;
         ValidatePandaHouseNetwork::new(self.debug).run_silent()?;
-        RunRedPandaContainer::new(
-            self.debug,
-            self.project.clone(),
-        )
-        .run_silent()?;
+        RunRedPandaContainer::new(self.debug, self.project.clone()).run_silent()?;
         ValidateRedPandaRun::new(self.debug).run_silent()?;
-        RunClickhouseContainer::new(
-            self.debug,
-            self.project.clone(),
-        )
-        .run_silent()?;
+        RunClickhouseContainer::new(self.debug, self.project.clone()).run_silent()?;
         ValidateClickhouseRun::new(self.debug).run_silent()?;
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
@@ -65,10 +51,7 @@ pub struct RunRedPandaContainer {
 }
 impl RunRedPandaContainer {
     pub fn new(debug: DebugStatus, project: Project) -> Self {
-        Self {
-            debug,
-            project,
-        }
+        Self { debug, project }
     }
 }
 
@@ -116,10 +99,7 @@ pub struct RunClickhouseContainer {
 }
 impl RunClickhouseContainer {
     pub fn new(debug: DebugStatus, project: Project) -> Self {
-        Self {
-            debug,
-            project,
-        }
+        Self { debug, project }
     }
 }
 
@@ -135,8 +115,8 @@ impl Routine for RunClickhouseContainer {
             )
         })?;
 
-        let output =
-            docker::run_clickhouse(igloo_dir, self.project.clickhouse_config.clone()).map_err(|err| {
+        let output = docker::run_clickhouse(igloo_dir, self.project.clickhouse_config.clone())
+            .map_err(|err| {
                 RoutineFailure::new(
                     Message::new(
                         "Failed".to_string(),

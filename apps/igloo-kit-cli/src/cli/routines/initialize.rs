@@ -7,9 +7,8 @@ use std::{
 use crate::{
     cli::display::Message,
     framework::{languages::create_models_dir, typescript::create_typescript_models_dir},
-    infrastructure::PANDA_NETWORK,
     project::Project,
-    utilities::docker,
+    utilities::docker, constants::PANDA_NETWORK,
 };
 
 use super::{Routine, RoutineFailure, RoutineSuccess, RunMode};

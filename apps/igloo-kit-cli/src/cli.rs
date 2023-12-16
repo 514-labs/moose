@@ -124,8 +124,6 @@ async fn top_command_handler(
 
                 controller.add_routine(Box::new(RunLocalInfratructure::new(
                     debug,
-                    settings.clickhouse.clone(),
-                    settings.redpanda.clone(),
                     project.clone(),
                 )));
 
@@ -133,10 +131,7 @@ async fn top_command_handler(
 
                 controller.run_routines(run_mode);
                 let _ = routines::start_development_mode(
-                    project.clone(),
-                    settings.clickhouse.clone(),
-                    settings.redpanda.clone(),
-                    settings.local_webserver,
+                    &project,
                 )
                 .await;
             }

@@ -5,11 +5,12 @@ use super::display::MessageType;
 use super::CommandTerminal;
 use crate::framework::controller::RouteMeta;
 use crate::infrastructure::olap;
-use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
+
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
-use crate::infrastructure::stream::redpanda::RedpandaConfig;
+
+use crate::project::Project;
 use hyper::service::make_service_fn;
 use hyper::service::service_fn;
 use hyper::Body;
@@ -32,10 +33,20 @@ use std::sync::RwLock;
 use std::time::Duration;
 use tokio::sync::Mutex;
 
-#[derive(Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LocalWebserverConfig {
     pub host: String,
     pub port: u16,
+}
+
+impl LocalWebserverConfig {
+    pub fn new(host: String, port: u16) -> Self {
+        Self { host, port }
+    }
+
+    pub fn url(&self) -> String {
+        format!("http://{}:{}", self.host, self.port)
+    }
 }
 
 impl Default for LocalWebserverConfig {
@@ -49,7 +60,7 @@ impl Default for LocalWebserverConfig {
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
 pub struct RouteInfo {
-    pub route_path: String,
+pub route_path: String,
     pub file_path: String,
     pub table_name: String,
     pub view_name: Option<String>,
@@ -243,7 +254,7 @@ async fn handler(
         .body("NOTFOUND".to_string())
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Webserver {
     host: String,
     port: u16,
@@ -252,10 +263,6 @@ pub struct Webserver {
 impl Webserver {
     pub fn new(host: String, port: u16) -> Self {
         Self { host, port }
-    }
-
-    pub fn url(&self) -> String {
-        format!("http://{}:{}", self.host, self.port)
     }
 
     pub async fn socket(&self) -> SocketAddr {
@@ -270,8 +277,7 @@ impl Webserver {
         &self,
         term: Arc<RwLock<CommandTerminal>>,
         route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
-        redpanda_config: RedpandaConfig,
-        clickhouse_config: ClickhouseConfig,
+        project: &Project,
     ) {
         let socket = self.socket().await;
 
@@ -284,9 +290,9 @@ impl Webserver {
             },
         );
 
-        let producer = Arc::new(Mutex::new(redpanda::create_producer(redpanda_config)));
+        let producer = Arc::new(Mutex::new(redpanda::create_producer(project.redpanda_config.clone())));
         let db_client = Arc::new(Mutex::new(olap::clickhouse::create_client(
-            clickhouse_config,
+            project.clickhouse_config.clone(),
         )));
 
         let main_service = make_service_fn(move |_| {

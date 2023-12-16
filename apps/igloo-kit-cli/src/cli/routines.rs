@@ -88,12 +88,10 @@ use std::{io::Error, path::PathBuf};
 use log::debug;
 use tokio::sync::Mutex;
 
-use super::local_webserver::{LocalWebserverConfig, Webserver};
+use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
 use super::{display::show_message, CommandTerminal, Message, MessageType};
 use crate::framework::controller::RouteMeta;
-use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
-use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::Project;
 use log::info;
 
@@ -201,10 +199,7 @@ impl RoutineController {
 
 // Starts the file watcher and the webserver
 pub async fn start_development_mode(
-    project: Project,
-    clickhouse_config: ClickhouseConfig,
-    redpanda_config: RedpandaConfig,
-    local_webserver_config: LocalWebserverConfig,
+    project: &Project,
 ) -> Result<(), Error> {
     let term = Arc::new(RwLock::new(CommandTerminal::new()));
 
@@ -224,15 +219,13 @@ pub async fn start_development_mode(
     // added or removed since the last time the file watcher was started and ensure that the infra reflects
     // the application state
 
-    let web_server = Webserver::new(local_webserver_config.host, local_webserver_config.port);
+    let web_server = Webserver::new(project.local_webserver_config.host.clone(), project.local_webserver_config.port.clone());
     let file_watcher = FileWatcher::new();
 
     file_watcher.start(
         project,
-        web_server.clone(),
         term.clone(),
         Arc::clone(&route_table),
-        clickhouse_config.clone(),
     )?;
 
     info!("Starting web server...");
@@ -241,23 +234,27 @@ pub async fn start_development_mode(
         .start(
             term.clone(),
             Arc::clone(&route_table),
-            redpanda_config,
-            clickhouse_config,
+            project
         )
         .await;
 
     Ok(())
 }
 
-fn crawl_dir(dir: &Path, callback: &dyn Fn(&DirEntry)) -> Result<(), Error> {
+fn crawl_dir_project_dir(
+    dir: &Path,
+    project: &Project,
+    processing_function: &dyn Fn(&Project, Arc<Mutex<HashMap<PathBuf, RouteMeta>>>),
+    callback: &dyn Fn(&DirEntry, &dyn Fn(&Project, Arc<Mutex<HashMap<PathBuf, RouteMeta>>>)),
+) -> Result<(), Error> {
     if dir.is_dir() {
         for entry in std::fs::read_dir(dir)? {
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
-                crawl_dir(&path, callback)?;
+                crawl_dir_project_dir(&path, project, processing_function, callback)?;
             } else {
-                callback(&entry);
+                callback(&entry, processing_function);
             }
         }
     }
@@ -265,7 +262,7 @@ fn crawl_dir(dir: &Path, callback: &dyn Fn(&DirEntry)) -> Result<(), Error> {
 }
 
 // Processes a file and adds it to the route table if it's a prisma schema
-fn process_file(entry: &DirEntry) {
+fn process_file(entry: &DirEntry, processing_function: &dyn Fn(&Project, Arc<Mutex<HashMap<PathBuf, RouteMeta>>>)) {
     let path = entry.path();
     if path.is_file() {
         if let Some(extension) = path.extension() {
@@ -276,15 +273,28 @@ fn process_file(entry: &DirEntry) {
     }
 }
 
-async fn initialize_route_table(
-    project: Project,
+
+// Initialize the route table, topic, and table for a prisma schema
+fn initialize_infra_for_prisma_schema(
+    project: &Project,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
-) -> Result<(), Error> {
-    let schemas_dir = project.schemas_dir();
-
-    let paths = std::fs::read_dir(schemas_dir)?;
-
-    let mut route_table = route_table.lock().await;
-
-    Ok(())
+) {
+    
 }
+
+
+
+
+
+// async fn initialize_route_table(
+//     project: Project,
+//     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+// ) -> Result<(), Error> {
+//     let schemas_dir = project.schemas_dir();
+
+//     let paths = std::fs::read_dir(schemas_dir)?;
+
+//     let mut route_table = route_table.lock().await;
+
+//     Ok(())
+// }

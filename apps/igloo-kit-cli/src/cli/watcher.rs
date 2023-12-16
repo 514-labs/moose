@@ -22,7 +22,7 @@ use crate::{
     infrastructure::{
         olap::{
             self,
-            clickhouse::{config::ClickhouseConfig, ConfiguredDBClient},
+            clickhouse::ConfiguredDBClient,
         },
         stream,
     },
@@ -32,7 +32,6 @@ use crate::{
 
 use super::{
     display::{Message, MessageType},
-    local_webserver::Webserver,
     CommandTerminal,
 };
 use log::debug;
@@ -49,7 +48,6 @@ fn dataframe_path_to_ingest_route(app_dir: PathBuf, path: PathBuf, table_name: S
 }
 
 async fn process_event(
-    web_server: Webserver,
     project: Project,
     event: notify::Event,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
@@ -68,7 +66,6 @@ async fn process_event(
             // Only create tables and topics from prisma files in the dataframes directory
             create_framework_objects_from_dataframe_route(
                 project,
-                web_server,
                 &route,
                 &mut route_table,
                 configured_client,
@@ -82,7 +79,6 @@ async fn process_event(
                     if route.exists() {
                         create_framework_objects_from_dataframe_route(
                             project,
-                            web_server,
                             &route,
                             &mut route_table,
                             configured_client,
@@ -102,7 +98,6 @@ async fn process_event(
                     if route.exists() {
                         create_framework_objects_from_dataframe_route(
                             project,
-                            web_server,
                             &route,
                             &mut route_table,
                             configured_client,
@@ -121,7 +116,6 @@ async fn process_event(
 
 async fn create_framework_objects_from_dataframe_route(
     project: Project,
-    web_server: Webserver,
     route: &PathBuf,
     route_table: &mut tokio::sync::MutexGuard<'_, HashMap<PathBuf, RouteMeta>>,
     configured_client: &ConfiguredDBClient,
@@ -138,7 +132,6 @@ async fn create_framework_objects_from_dataframe_route(
                 &project,
                 route,
                 configured_client,
-                web_server,
                 &mut compilable_objects,
                 route_table,
             )
@@ -163,7 +156,6 @@ async fn process_objects(
     project: &Project,
     route: &PathBuf,
     configured_client: &ConfiguredDBClient,
-    web_server: Webserver,
     compilable_objects: &mut Vec<TypescriptObjects>, // Objects that require compilation after processing
     route_table: &mut tokio::sync::MutexGuard<'_, HashMap<PathBuf, RouteMeta>>,
 ) -> Result<(), Error> {
@@ -183,7 +175,7 @@ async fn process_objects(
 
         debug!("Table created: {:?}", fo.table.name);
 
-        let typescript_objects = create_language_objects(&fo, &web_server, &ingest_route, project)?;
+        let typescript_objects = create_language_objects(&fo, &ingest_route, project)?;
         compilable_objects.push(typescript_objects);
 
         route_table.insert(
@@ -199,11 +191,11 @@ async fn process_objects(
 }
 
 async fn watch(
-    web_server: Webserver,
-    project: Project,
+    project: &Project,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
-    configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
+    let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
+
     let (tx, rx) = std::sync::mpsc::channel();
 
     let mut watcher = RecommendedWatcher::new(tx, Config::default()).map_err(|e| {
@@ -221,11 +213,10 @@ async fn watch(
         match res {
             Ok(event) => {
                 process_event(
-                    web_server.clone(),
                     project.clone(),
                     event.clone(),
                     Arc::clone(&route_table),
-                    configured_client,
+                    &configured_client,
                 )
                 .await
                 .map_err(|e| {
@@ -253,25 +244,22 @@ impl FileWatcher {
 
     pub fn start(
         &self,
-        project: Project,
-        web_server: Webserver,
+        project: &Project,
         term: Arc<RwLock<CommandTerminal>>,
         route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
-        clickhouse_config: ClickhouseConfig,
     ) -> Result<(), Error> {
         show_message(term, MessageType::Info, {
             Message {
                 action: "Watching".to_string(),
                 details: format!("{:?}", project.app_dir().display()),
             }
-        });
-
+        }); 
+        let project = project.clone();
+        
         tokio::spawn(async move {
-            // Need to spin up client in thread to ensure it lives long enough
-            let db_client = olap::clickhouse::create_client(clickhouse_config.clone());
 
             if let Err(error) =
-                watch(web_server, project, Arc::clone(&route_table), &db_client).await
+                watch(&project, Arc::clone(&route_table)).await
             {
                 println!("Error: {error:?}");
             }

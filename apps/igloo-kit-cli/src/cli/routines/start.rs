@@ -5,9 +5,6 @@ use super::{
 };
 use crate::{
     cli::{display::Message, DebugStatus},
-    infrastructure::{
-        olap::clickhouse::config::ClickhouseConfig, stream::redpanda::RedpandaConfig,
-    },
     project::Project,
     utilities::docker::{self},
 };
@@ -15,21 +12,15 @@ use std::io::{self, Write};
 
 pub struct RunLocalInfratructure {
     debug: DebugStatus,
-    clickhouse_config: ClickhouseConfig,
-    redpanda_config: RedpandaConfig,
     project: Project,
 }
 impl RunLocalInfratructure {
     pub fn new(
         debug: DebugStatus,
-        clickhouse_config: ClickhouseConfig,
-        redpanda_config: RedpandaConfig,
         project: Project,
     ) -> Self {
         Self {
             debug,
-            clickhouse_config,
-            redpanda_config,
             project,
         }
     }
@@ -51,14 +42,12 @@ impl Routine for RunLocalInfratructure {
         ValidatePandaHouseNetwork::new(self.debug).run_silent()?;
         RunRedPandaContainer::new(
             self.debug,
-            self.redpanda_config.clone(),
             self.project.clone(),
         )
         .run_silent()?;
         ValidateRedPandaRun::new(self.debug).run_silent()?;
         RunClickhouseContainer::new(
             self.debug,
-            self.clickhouse_config.clone(),
             self.project.clone(),
         )
         .run_silent()?;
@@ -72,14 +61,12 @@ impl Routine for RunLocalInfratructure {
 
 pub struct RunRedPandaContainer {
     debug: DebugStatus,
-    redpanda_config: RedpandaConfig,
     project: Project,
 }
 impl RunRedPandaContainer {
-    pub fn new(debug: DebugStatus, redpanda_config: RedpandaConfig, project: Project) -> Self {
+    pub fn new(debug: DebugStatus, project: Project) -> Self {
         Self {
             debug,
-            redpanda_config,
             project,
         }
     }
@@ -103,7 +90,7 @@ impl Routine for RunRedPandaContainer {
                     "Failed".to_string(),
                     format!(
                         "to run redpanda container with following config: {:#?}",
-                        self.redpanda_config
+                        self.project.redpanda_config
                     ),
                 ),
                 err,
@@ -125,14 +112,12 @@ impl Routine for RunRedPandaContainer {
 
 pub struct RunClickhouseContainer {
     debug: DebugStatus,
-    clickhouse_config: ClickhouseConfig,
     project: Project,
 }
 impl RunClickhouseContainer {
-    pub fn new(debug: DebugStatus, clickhouse_config: ClickhouseConfig, project: Project) -> Self {
+    pub fn new(debug: DebugStatus, project: Project) -> Self {
         Self {
             debug,
-            clickhouse_config,
             project,
         }
     }
@@ -151,7 +136,7 @@ impl Routine for RunClickhouseContainer {
         })?;
 
         let output =
-            docker::run_clickhouse(igloo_dir, self.clickhouse_config.clone()).map_err(|err| {
+            docker::run_clickhouse(igloo_dir, self.project.clickhouse_config.clone()).map_err(|err| {
                 RoutineFailure::new(
                     Message::new(
                         "Failed".to_string(),

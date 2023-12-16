@@ -3,7 +3,7 @@ use rdkafka::{
     producer::{FutureProducer, Producer},
     ClientConfig,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     io::{self, Write},
     time::Duration,
@@ -48,7 +48,7 @@ pub fn delete_topic(topic_name: String) {
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RedpandaConfig {
     pub broker: String,
     pub message_timeout_ms: i32,

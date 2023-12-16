@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use crate::{
-    cli::display::Message, infrastructure::PANDA_NETWORK, project::Project, utilities::docker,
+    cli::display::Message, project::Project, utilities::docker, constants::PANDA_NETWORK,
 };
 
 use super::{stop::StopLocalInfrastructure, Routine, RoutineFailure, RoutineSuccess, RunMode};

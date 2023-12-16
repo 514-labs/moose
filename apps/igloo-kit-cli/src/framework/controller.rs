@@ -1,4 +1,3 @@
-use crate::cli::local_webserver::Webserver;
 use crate::framework::languages::CodeGenerator;
 use crate::infrastructure::olap::clickhouse::ClickhouseTable;
 use crate::infrastructure::stream;
@@ -150,7 +149,6 @@ pub(crate) async fn create_or_replace_table(
 
 pub(crate) fn create_language_objects(
     fo: &FrameworkObject,
-    web_server: &Webserver,
     ingest_route: &PathBuf,
     project: &Project,
 ) -> Result<TypescriptObjects, Error> {
@@ -162,7 +160,7 @@ pub(crate) fn create_language_objects(
     })?;
     let send_func = SendFunction::new(
         fo.ts_interface.clone(),
-        web_server.url(),
+        project.local_webserver_config.url(),
         ingest_route.to_str().unwrap().to_string(),
     );
     let send_func_code = send_func.create_code().map_err(|e| {

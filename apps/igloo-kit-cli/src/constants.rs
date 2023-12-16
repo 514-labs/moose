@@ -6,6 +6,8 @@ pub const CLI_PROJECT_INTERNAL_DIR: &str = ".igloo";
 
 pub const SCHEMAS_DIR: &str = "dataframes";
 
+pub const PANDA_NETWORK: &str = "panda-house";
+
 pub const APP_DIR: &str = "app";
 pub const APP_DIR_LAYOUT: [&str; 7] = [
     "ingestion_points",

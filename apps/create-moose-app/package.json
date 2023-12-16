@@ -24,6 +24,6 @@
     "typescript": "^4.9.5"
   },
   "dependencies": {
-    "moose": "latest"
+    "@514labs/moose-cli": "latest"
   }
 }

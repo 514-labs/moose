@@ -7,7 +7,7 @@ npm version $version --no-git-tag-version
 
 jq \
     --arg VERSION "$version" \
-    '.["dependencies"]["@514labs/moose-cli"] = $VERSION' package.json > package.json.tmp \
+    '.["dependencies"]["moose"] = $VERSION' package.json > package.json.tmp \
     && mv package.json.tmp package.json
 
 cd ../..

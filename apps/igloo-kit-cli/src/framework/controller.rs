@@ -3,12 +3,14 @@ use crate::infrastructure::olap::clickhouse::ClickhouseTable;
 use crate::infrastructure::stream;
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use crate::framework::languages::SupportedLanguages;
 
 use crate::framework;
 
 use log::debug;
+use tokio::sync::Mutex;
 
 use crate::framework::typescript::get_typescript_models_dir;
 
@@ -203,15 +205,17 @@ pub(crate) fn create_language_objects(
     Ok(TypescriptObjects::new(fo.ts_interface.clone(), send_func))
 }
 
-pub(crate) async fn remove_table_and_topics_from_dataframe_route(
-    route: &PathBuf,
-    route_table: &mut tokio::sync::MutexGuard<'_, HashMap<PathBuf, RouteMeta>>,
+pub async fn remove_table_and_topics_from_schema_file_path(
+    shcema_file_path: &PathBuf,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
     //need to get the path of the file, scan the route table and remove all the files that need to be deleted.
     // This doesn't have to be as fast as the scanning for routes in the web server so we're ok with the scan here.
+    let mut route_table = route_table.lock().await;
+
     for (k, meta) in route_table.clone().into_iter() {
-        if meta.original_file_path == route.clone() {
+        if meta.original_file_path == shcema_file_path.clone() {
             stream::redpanda::delete_topic(meta.table_name.clone());
 
             olap::clickhouse::delete_table_or_view(meta.table_name, configured_client)

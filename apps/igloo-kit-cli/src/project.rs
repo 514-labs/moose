@@ -36,8 +36,11 @@ pub struct Project {
     pub name: String,
     pub language: SupportedLanguages,
     pub project_file_location: PathBuf,
+    #[serde(default)]
     pub redpanda_config: RedpandaConfig,
+    #[serde(default)]
     pub clickhouse_config: ClickhouseConfig,
+    #[serde(default)]
     pub local_webserver_config: LocalWebserverConfig,
 }
 

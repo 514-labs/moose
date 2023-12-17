@@ -91,9 +91,15 @@ use tokio::sync::Mutex;
 use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
 use super::{display::show_message, CommandTerminal, Message, MessageType};
+use crate::cli::watcher::process_schema_file;
+
 use crate::framework::controller::RouteMeta;
+use crate::infrastructure::olap;
+use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::project::Project;
 use log::info;
+
+use async_recursion::async_recursion;
 
 pub mod clean;
 pub mod initialize;
@@ -213,9 +219,10 @@ pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
     // TODO: Explore using a RWLock instead of a Mutex to ensure concurrent reads without locks
     let route_table = Arc::new(Mutex::new(HashMap::<PathBuf, RouteMeta>::new()));
 
-    // TODO: When starting the file watcher, we should check the current directory for files that have been
-    // added or removed since the last time the file watcher was started and ensure that the infra reflects
-    // the application state
+    debug!("Starting schema crawler...");
+
+    // WRAP this function with an initialization function to ensure that we don't initialize the client multiple times as we go through the recursion
+    initialize_project_state(project.schemas_dir(), project, Arc::clone(&route_table)).await?;
 
     let web_server = Webserver::new(
         project.local_webserver_config.host.clone(),
@@ -234,46 +241,53 @@ pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
     Ok(())
 }
 
-fn crawl_dir_project_dir(
-    dir: &Path,
+async fn initialize_project_state(
+    schema_dir: PathBuf,
     project: &Project,
-    processing_function: &dyn Fn(&Project, Arc<Mutex<HashMap<PathBuf, RouteMeta>>>),
-    callback: &dyn Fn(&DirEntry, &dyn Fn(&Project, Arc<Mutex<HashMap<PathBuf, RouteMeta>>>)),
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
 ) -> Result<(), Error> {
-    if dir.is_dir() {
-        for entry in std::fs::read_dir(dir)? {
+    let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
+
+    crawl_schema_project_dir(&schema_dir, project, &configured_client, route_table).await
+}
+
+#[async_recursion]
+async fn crawl_schema_project_dir(
+    schema_dir: &Path,
+    project: &Project,
+    configured_client: &ConfiguredDBClient,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+) -> Result<(), Error> {
+    if schema_dir.is_dir() {
+        for entry in std::fs::read_dir(schema_dir)? {
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
-                crawl_dir_project_dir(&path, project, processing_function, callback)?;
+                crawl_schema_project_dir(&path, project, configured_client, route_table.clone())
+                    .await?;
             } else {
-                callback(&entry, processing_function);
+                process_entry(&entry, project, configured_client, route_table.clone()).await?;
             }
         }
     }
     Ok(())
 }
 
-// Processes a file and adds it to the route table if it's a prisma schema
-fn process_file(
+async fn process_entry(
     entry: &DirEntry,
-    processing_function: &dyn Fn(&Project, Arc<Mutex<HashMap<PathBuf, RouteMeta>>>),
-) {
+    project: &Project,
+    configured_client: &ConfiguredDBClient,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+) -> Result<(), Error> {
+    //! Processes a file and adds it to the route table if it's a prisma schema
+    //!
+    //! Suggestion: We could drastically simplify the paradigm here by returning the initial
+    //! hashmap and minimizing the use of the Arc Mutex
     let path = entry.path();
     if path.is_file() {
-        if let Some(extension) = path.extension() {
-            if extension == "prisma" {
-                debug!("Found prisma schema: {:?}", path);
-            }
-        }
+        process_schema_file(&path, project, configured_client, route_table).await?
     }
-}
-
-// Initialize the route table, topic, and table for a prisma schema
-fn initialize_infra_for_prisma_schema(
-    project: &Project,
-    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
-) {
+    Ok(())
 }
 
 // async fn initialize_route_table(

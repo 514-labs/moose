@@ -14,7 +14,7 @@ use crate::{
     framework::{
         controller::{
             create_language_objects, create_or_replace_table, create_or_replace_view,
-            get_framework_objects, remove_table_and_topics_from_dataframe_route, FrameworkObject,
+            get_framework_objects, remove_table_and_topics_from_schema_file_path, FrameworkObject,
             RouteMeta,
         },
         sdks::{generate_ts_sdk, TypescriptObjects},
@@ -31,9 +31,13 @@ use super::{
     display::{Message, MessageType},
     CommandTerminal,
 };
-use log::debug;
+use log::{debug, info};
 
-fn dataframe_path_to_ingest_route(app_dir: PathBuf, path: PathBuf, table_name: String) -> PathBuf {
+fn schema_file_path_to_ingest_route(
+    app_dir: PathBuf,
+    path: PathBuf,
+    table_name: String,
+) -> PathBuf {
     let dataframe_path = app_dir.join(SCHEMAS_DIR);
     println!("dataframe path: {:?}", dataframe_path);
     println!("path: {:?}", path);
@@ -56,15 +60,14 @@ async fn process_event(
     );
 
     let route = event.paths[0].clone();
-    let mut route_table = route_table.lock().await;
 
     match event.kind {
         notify::EventKind::Create(_) => {
             // Only create tables and topics from prisma files in the dataframes directory
-            create_framework_objects_from_dataframe_route(
-                project,
+            create_framework_objects_from_schema_file_path(
+                &project,
                 &route,
-                &mut route_table,
+                route_table,
                 configured_client,
             )
             .await
@@ -74,17 +77,17 @@ async fn process_event(
                 ModifyKind::Name(_) => {
                     // remove the file from the routes if they don't exist in the file directory
                     if route.exists() {
-                        create_framework_objects_from_dataframe_route(
-                            project,
+                        create_framework_objects_from_schema_file_path(
+                            &project,
                             &route,
-                            &mut route_table,
+                            route_table,
                             configured_client,
                         )
                         .await
                     } else {
-                        remove_table_and_topics_from_dataframe_route(
+                        remove_table_and_topics_from_schema_file_path(
                             &route,
-                            &mut route_table,
+                            route_table,
                             configured_client,
                         )
                         .await
@@ -93,10 +96,10 @@ async fn process_event(
 
                 ModifyKind::Data(_) => {
                     if route.exists() {
-                        create_framework_objects_from_dataframe_route(
-                            project,
+                        create_framework_objects_from_schema_file_path(
+                            &project,
                             &route,
-                            &mut route_table,
+                            route_table,
                             configured_client,
                         )
                         .await?
@@ -111,55 +114,70 @@ async fn process_event(
     }
 }
 
-async fn create_framework_objects_from_dataframe_route(
-    project: Project,
-    route: &PathBuf,
-    route_table: &mut tokio::sync::MutexGuard<'_, HashMap<PathBuf, RouteMeta>>,
+async fn create_framework_objects_from_schema_file_path(
+    project: &Project,
+    schema_file_path: &PathBuf,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
-    if let Some(ext) = route.extension() {
-        if ext == "prisma" && route.as_path().to_str().unwrap().contains(SCHEMAS_DIR) {
-            let framework_objects = get_framework_objects(route)?;
+    //! Creates the route, topics and tables from a path to the schema file
 
-            // Objects that require compilation after processing. Currently only typescript objects require this
-            let mut compilable_objects: Vec<TypescriptObjects> = Vec::new();
-
-            process_objects(
-                framework_objects,
-                &project,
-                route,
-                configured_client,
-                &mut compilable_objects,
-                route_table,
-            )
-            .await?;
-
-            debug!("All objects created, generating sdk...");
-
-            let sdk_location = generate_ts_sdk(&project, compilable_objects)?;
-            let package_manager = package_managers::PackageManager::Npm;
-            package_managers::install_packages(&sdk_location, &package_manager)?;
-            package_managers::run_build(&sdk_location, &package_manager)?;
-            package_managers::link_sdk(&sdk_location, None, &package_manager)?;
+    if let Some(ext) = schema_file_path.extension() {
+        if ext == "prisma"
+            && schema_file_path
+                .as_path()
+                .to_str()
+                .unwrap()
+                .contains(SCHEMAS_DIR)
+        {
+            process_schema_file(schema_file_path, project, configured_client, route_table).await?;
         }
     } else {
-        println!("No primsa extension found. Likely created unsupported file type")
+        info!("No primsa extension found. Likely created unsupported file type")
     }
+    Ok(())
+}
+
+pub async fn process_schema_file(
+    schema_file_path: &PathBuf,
+    project: &Project,
+    configured_client: &ConfiguredDBClient,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+) -> Result<(), Error> {
+    let framework_objects = get_framework_objects(schema_file_path)?;
+    let mut compilable_objects: Vec<TypescriptObjects> = Vec::new();
+    process_objects(
+        framework_objects,
+        project,
+        schema_file_path,
+        configured_client,
+        &mut compilable_objects,
+        route_table,
+    )
+    .await?;
+    debug!("All objects created, generating sdk...");
+    let sdk_location = generate_ts_sdk(project, compilable_objects)?;
+    let package_manager = package_managers::PackageManager::Npm;
+    package_managers::install_packages(&sdk_location, &package_manager)?;
+    package_managers::run_build(&sdk_location, &package_manager)?;
+    package_managers::link_sdk(&sdk_location, None, &package_manager)?;
     Ok(())
 }
 
 async fn process_objects(
     framework_objects: Vec<FrameworkObject>,
     project: &Project,
-    route: &PathBuf,
+    schema_file_path: &PathBuf,
     configured_client: &ConfiguredDBClient,
     compilable_objects: &mut Vec<TypescriptObjects>, // Objects that require compilation after processing
-    route_table: &mut tokio::sync::MutexGuard<'_, HashMap<PathBuf, RouteMeta>>,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
 ) -> Result<(), Error> {
+    let mut route_table = route_table.lock().await;
+
     for fo in framework_objects {
-        let ingest_route = dataframe_path_to_ingest_route(
+        let ingest_route = schema_file_path_to_ingest_route(
             project.app_dir().clone(),
-            route.clone(),
+            schema_file_path.clone(),
             fo.table.name.clone(),
         );
         stream::redpanda::create_topic_from_name(fo.topic.clone());
@@ -178,7 +196,7 @@ async fn process_objects(
         route_table.insert(
             ingest_route,
             RouteMeta {
-                original_file_path: route.clone(),
+                original_file_path: schema_file_path.clone(),
                 table_name: fo.table.name.clone(),
                 view_name: Some(view_name),
             },

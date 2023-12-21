@@ -289,16 +289,3 @@ async fn process_entry(
     }
     Ok(())
 }
-
-// async fn initialize_route_table(
-//     project: Project,
-//     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
-// ) -> Result<(), Error> {
-//     let schemas_dir = project.schemas_dir();
-
-//     let paths = std::fs::read_dir(schemas_dir)?;
-
-//     let mut route_table = route_table.lock().await;
-
-//     Ok(())
-// }

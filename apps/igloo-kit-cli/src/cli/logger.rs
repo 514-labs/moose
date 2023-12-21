@@ -1,3 +1,39 @@
+//! # Logger Module
+//!
+//! This module provides logging functionality for the application.
+//!
+//! ## Components
+//!
+//! - `LoggerLevel`: An enumeration representing the different levels of logging: DEBUG, INFO, WARN, and ERROR.
+//! - `LoggerSettings`: A struct that holds the settings for the logger, including the log file's name and the logging level.
+//! - `setup_logging`: A function used to set up the logging system with the provided settings.
+//!
+//! ## Usage
+//!
+//! The logger is configured by creating a `LoggerSettings` instance and passing it to the `setup_logging` function.
+//! The `LoggerSettings` can be configured with a log file and a log level. If these are not provided, default values are used.
+//! The default log file is "cli.log" in the user's directory, and the default log level is INFO.
+//! Use the macros to write to the log file.
+//!
+//! The log levels have the following uses:
+//! - `DEBUG`: Use this level for detailed information typically of use only when diagnosing problems. You would usually only expect to see these logs in a development environment. For example, you might log method entry/exit points, variable values, query results, etc.
+//! - `INFO`: Use this level to confirm that things are working as expected. This is the default log level and will give you general operational insights into the application behavior. For example, you might log start/stop of a process, configuration details, successful completion of significant transactions, etc.
+//! - `WARN`: Use this level when something unexpected happened in the system, or there might be a problem in the near future (like 'disk space low'). The software is still working as expected, so it's not an error. For example, you might log deprecated API usage, poor performance issues, retrying an operation, etc.
+//! - `ERROR`: Use this level when the system is in distress, customers are probably being affected but the program is not terminated. An operator should definitely look into it. For example, you might log exceptions, potential data inconsistency, or system overloads.
+//!
+//! ## Example
+//!
+//! ```rust
+//! debug!("This is a DEBUG message. Typically used for detailed information useful in a development environment.");
+//! info!("This is an INFO message. Used to confirm that things are working as expected.");
+//! warn!("This is a WARN message. Indicates something unexpected happened or there might be a problem in the near future.");
+//! error!("This is an ERROR message. Used when the system is in distress, customers are probably being affected but the program is not terminated.");
+//! ```
+//!
+//! ## Future Enhancements
+//!
+//! - Log file rotation: The log file should be rotated after it reaches a certain size to manage disk space.
+
 use serde::Deserialize;
 use std::time::SystemTime;
 use uuid::Uuid;

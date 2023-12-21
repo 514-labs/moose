@@ -12,6 +12,13 @@ on:
       - "apps/create-igloo-app/**"
       - "apps/create-moose-app/**"
       - "packages/**"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        type: boolean
+        description: "Run the release in dry-run mode"
+        required: true
+        default: true
 
 jobs:
   version:
@@ -33,6 +40,7 @@ jobs:
 
       - name: Create Release
         uses: ncipollo/release-action@v1
+        if: ${{ !inputs.dry-run }}
         with:
           tag: v${{ steps.version.outputs.VERSION }}
           generateReleaseNotes: true
@@ -109,6 +117,7 @@ jobs:
 
       # TO Be DELETED when migration to new name is over
       - name: Publish to NPM Igloo
+        if: ${{ !inputs.dry-run }}
         shell: bash
         working-directory: ./apps/igloo-cli-npm
         run: ./scripts/release-bin.sh ${{ needs.version.outputs.version }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
@@ -116,6 +125,7 @@ jobs:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to NPM Moose
+        if: ${{ !inputs.dry-run }}
         shell: bash
         working-directory: ./apps/moose-cli-npm
         run: ./scripts/release-bin.sh ${{ needs.version.outputs.version }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
@@ -124,6 +134,7 @@ jobs:
 
       - name: Upload binary
         uses: ncipollo/release-action@v1
+        if: ${{ !inputs.dry-run }}
         with:
           tag: v${{ needs.version.outputs.version }}
           allowUpdates: "true"
@@ -137,6 +148,7 @@ jobs:
       - version
       - build-and-publish-binaries
     runs-on: ubuntu-20.04
+    if: ${{ !inputs.dry-run }}
     steps:
       - name: Checkout
         uses: actions/checkout@v3

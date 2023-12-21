@@ -80,18 +80,26 @@
 //!
 
 use std::collections::HashMap;
+use std::fs::DirEntry;
+use std::path::Path;
 use std::sync::{Arc, RwLock};
 use std::{io::Error, path::PathBuf};
 
+use log::debug;
 use tokio::sync::Mutex;
 
-use super::local_webserver::{LocalWebserverConfig, Webserver};
-use super::watcher::{FileWatcher, RouteMeta};
+use super::local_webserver::Webserver;
+use super::watcher::FileWatcher;
 use super::{display::show_message, CommandTerminal, Message, MessageType};
-use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
-use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use crate::cli::watcher::process_schema_file;
+
+use crate::framework::controller::RouteMeta;
+use crate::infrastructure::olap;
+use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::project::Project;
 use log::info;
+
+use async_recursion::async_recursion;
 
 pub mod clean;
 pub mod initialize;
@@ -196,12 +204,7 @@ impl RoutineController {
 }
 
 // Starts the file watcher and the webserver
-pub async fn start_development_mode(
-    project: Project,
-    clickhouse_config: ClickhouseConfig,
-    redpanda_config: RedpandaConfig,
-    local_webserver_config: LocalWebserverConfig,
-) -> Result<(), Error> {
+pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
     let term = Arc::new(RwLock::new(CommandTerminal::new()));
 
     show_message(
@@ -216,31 +219,73 @@ pub async fn start_development_mode(
     // TODO: Explore using a RWLock instead of a Mutex to ensure concurrent reads without locks
     let route_table = Arc::new(Mutex::new(HashMap::<PathBuf, RouteMeta>::new()));
 
-    // TODO: When starting the file watcher, we should check the current directory for files that have been
-    // added or removed since the last time the file watcher was started and ensure that the infra reflects
-    // the application state
+    debug!("Starting schema crawler...");
 
-    let web_server = Webserver::new(local_webserver_config.host, local_webserver_config.port);
+    // WRAP this function with an initialization function to ensure that we don't initialize the client multiple times as we go through the recursion
+    initialize_project_state(project.schemas_dir(), project, Arc::clone(&route_table)).await?;
+
+    let web_server = Webserver::new(
+        project.local_webserver_config.host.clone(),
+        project.local_webserver_config.port.clone(),
+    );
     let file_watcher = FileWatcher::new();
 
-    file_watcher.start(
-        project,
-        web_server.clone(),
-        term.clone(),
-        Arc::clone(&route_table),
-        clickhouse_config.clone(),
-    )?;
+    file_watcher.start(project, term.clone(), Arc::clone(&route_table))?;
 
     info!("Starting web server...");
 
     web_server
-        .start(
-            term.clone(),
-            Arc::clone(&route_table),
-            redpanda_config,
-            clickhouse_config,
-        )
+        .start(term.clone(), Arc::clone(&route_table), project)
         .await;
 
+    Ok(())
+}
+
+async fn initialize_project_state(
+    schema_dir: PathBuf,
+    project: &Project,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+) -> Result<(), Error> {
+    let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
+
+    crawl_schema_project_dir(&schema_dir, project, &configured_client, route_table).await
+}
+
+#[async_recursion]
+async fn crawl_schema_project_dir(
+    schema_dir: &Path,
+    project: &Project,
+    configured_client: &ConfiguredDBClient,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+) -> Result<(), Error> {
+    if schema_dir.is_dir() {
+        for entry in std::fs::read_dir(schema_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                crawl_schema_project_dir(&path, project, configured_client, route_table.clone())
+                    .await?;
+            } else {
+                process_entry(&entry, project, configured_client, route_table.clone()).await?;
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn process_entry(
+    entry: &DirEntry,
+    project: &Project,
+    configured_client: &ConfiguredDBClient,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+) -> Result<(), Error> {
+    //! Processes a file and adds it to the route table if it's a prisma schema
+    //!
+    //! Suggestion: We could drastically simplify the paradigm here by returning the initial
+    //! hashmap and minimizing the use of the Arc Mutex
+    let path = entry.path();
+    if path.is_file() {
+        process_schema_file(&path, project, configured_client, route_table).await?
+    }
     Ok(())
 }

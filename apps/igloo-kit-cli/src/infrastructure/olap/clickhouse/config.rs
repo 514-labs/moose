@@ -5,11 +5,11 @@
 //! - we need to understand clickhouse configuration better before we can go deep on it's configuration
 //!
 
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 
-use crate::infrastructure::PANDA_NETWORK;
+use crate::constants::PANDA_NETWORK;
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClickhouseConfig {
     pub db_name: String, // ex. local
     pub user: String,

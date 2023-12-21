@@ -13,8 +13,13 @@
 
 use std::path::PathBuf;
 
-use crate::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, PROJECT_CONFIG_FILE};
+use crate::cli::local_webserver::LocalWebserverConfig;
+use crate::constants::{
+    APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, PROJECT_CONFIG_FILE, SCHEMAS_DIR,
+};
 use crate::framework::languages::SupportedLanguages;
+use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
+use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use config::{Config, ConfigError, File};
 use log::debug;
 use serde::{Deserialize, Serialize};
@@ -31,6 +36,12 @@ pub struct Project {
     pub name: String,
     pub language: SupportedLanguages,
     pub project_file_location: PathBuf,
+    #[serde(default)]
+    pub redpanda_config: RedpandaConfig,
+    #[serde(default)]
+    pub clickhouse_config: ClickhouseConfig,
+    #[serde(default)]
+    pub local_webserver_config: LocalWebserverConfig,
 }
 
 impl Project {
@@ -39,10 +50,16 @@ impl Project {
             name,
             language,
             project_file_location: location,
+            redpanda_config: RedpandaConfig::default(),
+            clickhouse_config: ClickhouseConfig::default(),
+            local_webserver_config: LocalWebserverConfig::default(),
         }
     }
 
     pub fn from_dir(dir_location: &Path, name: String, language: SupportedLanguages) -> Self {
+        //! Creates a new `Project` from a directory path.
+        //!
+        //! This function cleans up any relative paths and canonicalizes the path.
         let mut location = dir_location.to_path_buf();
         location = location
             .canonicalize()
@@ -55,6 +72,9 @@ impl Project {
             name,
             language,
             project_file_location: location,
+            redpanda_config: RedpandaConfig::default(), // TODO: Add the ability for the developer to configure this
+            clickhouse_config: ClickhouseConfig::default(), // TODO: Add the ability for the developer to configure this
+            local_webserver_config: LocalWebserverConfig::default(), // TODO: Add the ability for the developer to configure this
         }
     }
 
@@ -100,6 +120,14 @@ impl Project {
 
         debug!("App dir: {:?}", app_dir);
         app_dir
+    }
+
+    pub fn schemas_dir(&self) -> PathBuf {
+        let mut schemas_dir = self.app_dir();
+        schemas_dir.push(SCHEMAS_DIR);
+
+        debug!("Schemas dir: {:?}", schemas_dir);
+        schemas_dir
     }
 
     // This is a Result of io::Error because the caller

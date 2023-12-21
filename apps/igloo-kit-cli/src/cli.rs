@@ -1,6 +1,6 @@
 mod commands;
 mod display;
-mod local_webserver;
+pub mod local_webserver;
 mod logger;
 mod routines;
 mod settings;
@@ -122,37 +122,14 @@ async fn top_command_handler(
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit { term };
 
-                controller.add_routine(Box::new(RunLocalInfratructure::new(
-                    debug,
-                    settings.clickhouse.clone(),
-                    settings.redpanda.clone(),
-                    project.clone(),
-                )));
+                controller
+                    .add_routine(Box::new(RunLocalInfratructure::new(debug, project.clone())));
 
                 controller.add_routine(Box::new(ValidateRedPandaCluster::new(debug)));
 
                 controller.run_routines(run_mode);
-                let _ = routines::start_development_mode(
-                    project.clone(),
-                    settings.clickhouse.clone(),
-                    settings.redpanda.clone(),
-                    settings.local_webserver,
-                )
-                .await;
+                let _ = routines::start_development_mode(&project).await;
             }
-            // Some(Commands::Link { name, language, location, project }) => {
-            //     let mut controller = RoutineController::new();
-            //     let run_mode = RunMode::Explicit { term };
-
-            //     // controller.add_routine(Box::new(InitializeClient::new(
-            //     //     run_mode.clone(),
-            //     //     project.clone(),
-            //     // )));
-            //     controller.run_routines(run_mode);
-            //     project
-            //         .write_to_file()
-            //         .expect("Failed to write project to file");
-            // }
             Some(Commands::Update {}) => {
                 // This command may not be needed if we have incredible automation
                 todo!("Will update the project's underlying infrascructure based on any added objects")

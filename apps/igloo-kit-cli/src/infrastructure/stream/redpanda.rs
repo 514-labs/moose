@@ -1,8 +1,9 @@
+use log::debug;
 use rdkafka::{
     producer::{FutureProducer, Producer},
     ClientConfig,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     io::{self, Write},
     time::Duration,
@@ -20,11 +21,10 @@ pub fn create_topic_from_name(topic_name: String) {
 
     match output {
         Ok(o) => {
-            println!("Debugging docker container run");
             io::stdout().write_all(&o.stdout).unwrap();
         }
         Err(err) => {
-            println!("{}", err)
+            debug!("Error: {}", err)
         }
     }
 }
@@ -40,16 +40,15 @@ pub fn delete_topic(topic_name: String) {
 
     match output {
         Ok(o) => {
-            println!("Debugging docker container run");
             io::stdout().write_all(&o.stdout).unwrap();
         }
         Err(err) => {
-            println!("{}", err)
+            debug!("Error: {}", err)
         }
     }
 }
 
-#[derive(Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RedpandaConfig {
     pub broker: String,
     pub message_timeout_ms: i32,

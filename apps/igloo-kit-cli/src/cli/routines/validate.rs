@@ -1,7 +1,7 @@
 use super::{Routine, RoutineFailure, RoutineSuccess};
 use crate::{
     cli::{display::Message, DebugStatus},
-    infrastructure::PANDA_NETWORK,
+    constants::PANDA_NETWORK,
     utilities::docker,
 };
 use std::io::{self, Error, ErrorKind, Write};

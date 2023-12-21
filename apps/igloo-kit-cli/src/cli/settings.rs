@@ -1,5 +1,3 @@
-use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
-use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use config::{Config, ConfigError, Environment, File};
 use home::home_dir;
 use serde::Deserialize;
@@ -7,7 +5,6 @@ use std::path::PathBuf;
 use std::sync::{Arc, RwLock};
 
 use super::display::{show_message, Message, MessageType};
-use super::local_webserver::LocalWebserverConfig;
 use super::logger::LoggerSettings;
 use super::CommandTerminal;
 use crate::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
@@ -42,12 +39,6 @@ pub struct Settings {
     pub logger: LoggerSettings,
     #[serde(default)]
     pub features: Features,
-    #[serde(default)]
-    pub clickhouse: ClickhouseConfig,
-    #[serde(default)]
-    pub redpanda: RedpandaConfig,
-    #[serde(default)]
-    pub local_webserver: LocalWebserverConfig,
 }
 
 fn config_path() -> PathBuf {

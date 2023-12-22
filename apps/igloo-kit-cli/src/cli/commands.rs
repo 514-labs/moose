@@ -1,9 +1,9 @@
 //! # CLI Commands
 //! A module for all the commands that can be run from the CLI
 
-use clap::{Args, Subcommand};
+use clap::Subcommand;
 
-use crate::framework::{self, languages::SupportedLanguages};
+use crate::framework::languages::SupportedLanguages;
 
 #[derive(Subcommand)]
 pub enum Commands {
@@ -36,8 +36,6 @@ pub enum Commands {
     //     /// Name of the project to link to. Pulls the list of projects from the config file
     //     project: String,
     // },
-    // Adds a new templated object to the project
-    Add(AddArgs),
     /// Starts a local development environment to build your data-intensive app or service
     Dev {},
     // Updates the redpanda cluster and clickhouse database with the latest objects
@@ -46,11 +44,4 @@ pub enum Commands {
     Stop {},
     // Clears all temporary data and stops development infrastructure
     Clean {},
-}
-
-#[derive(Debug, Args)]
-#[command()]
-pub struct AddArgs {
-    #[command(subcommand)]
-    pub command: Option<framework::AddableObjects>,
 }

@@ -12,7 +12,6 @@ use self::settings::setup_user_directory;
 use log::{debug, info};
 
 use self::{
-    commands::AddArgs,
     display::{show_message, CommandTerminal, Message, MessageType},
     routines::{
         clean::CleanProject, initialize::InitializeProject, start::RunLocalInfratructure,
@@ -20,7 +19,7 @@ use self::{
         RunMode,
     },
 };
-use crate::{framework::AddableObjects, project::Project};
+use crate::project::Project;
 use clap::Parser;
 use commands::Commands;
 use logger::setup_logging;
@@ -44,32 +43,6 @@ struct Cli {
 
     #[command(subcommand)]
     command: Option<Commands>,
-}
-
-fn add_handler(add_arg: &AddArgs) {
-    match &add_arg.command {
-        Some(AddableObjects::IngestPoint) => {
-            todo!("add ingestion point object");
-        }
-        Some(AddableObjects::Flow) => {
-            todo!("add flow object");
-        }
-        Some(AddableObjects::Dataframe) => {
-            todo!("add dataframe object");
-        }
-        Some(AddableObjects::Metric) => {
-            todo!("add metric object");
-        }
-        Some(AddableObjects::Dashboard) => {
-            todo!("add dashboard object")
-        }
-        Some(AddableObjects::Model) => {
-            todo!("add model object")
-        }
-        None => {
-            todo!("add a great, piffy, and helpful message here")
-        }
-    }
 }
 
 #[derive(PartialEq, Clone, Copy)]
@@ -148,9 +121,6 @@ async fn top_command_handler(
                 let mut controller = RoutineController::new();
                 controller.add_routine(Box::new(CleanProject::new(project, run_mode.clone())));
                 controller.run_routines(run_mode);
-            }
-            Some(Commands::Add(add_args)) => {
-                add_handler(add_args);
             }
             None => {}
         }

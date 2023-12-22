@@ -1,4 +1,4 @@
-name: Release Igloo CLI
+name: Release CLI
 
 on:
   push:
@@ -106,7 +106,8 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: build
-          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml --release --locked --target ${{ matrix.build.TARGET }}
+          # --features rdkafka/cmake-build is necessary for cross compilation builds
+          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml --features rdkafka/cmake-build --release --locked --target ${{ matrix.build.TARGET }}
           use-cross: ${{ matrix.build.OS == 'ubuntu-20.04' }} # use `cross` for Linux builds
 
       - name: Install node

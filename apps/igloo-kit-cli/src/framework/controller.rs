@@ -34,7 +34,7 @@ use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 
 use super::schema::parse_schema_file;
 use super::schema::MatViewOps;
-use super::schema::Table;
+use super::schema::Schema;
 use super::schema::TableOps;
 use super::typescript::TypescriptInterface;
 
@@ -44,12 +44,14 @@ pub struct FrameworkObject {
     pub ts_interface: TypescriptInterface,
 }
 
-pub fn framework_object_mapper(t: Table) -> FrameworkObject {
-    let clickhouse_table = olap::clickhouse::mapper::std_table_to_clickhouse_table(t.clone());
+pub fn framework_object_mapper(s: Schema) -> FrameworkObject {
+    let clickhouse_table = olap::clickhouse::mapper::std_table_to_clickhouse_table(s.to_table());
     FrameworkObject {
         table: clickhouse_table.clone(),
-        topic: t.name.clone(),
-        ts_interface: framework::typescript::mapper::std_table_to_typescript_interface(t),
+        topic: s.name.clone(),
+        ts_interface: framework::typescript::mapper::std_table_to_typescript_interface(
+            s.to_table(),
+        ),
     }
 }
 

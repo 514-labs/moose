@@ -26,8 +26,6 @@
     "@514labs/moose-cli-darwin-arm64": "latest",
     "@514labs/moose-cli-darwin-x64": "latest",
     "@514labs/moose-cli-linux-arm64": "latest",
-    "@514labs/moose-cli-linux-x64": "latest",
-    "@514labs/moose-cli-windows-arm64": "latest",
-    "@514labs/moose-cli-windows-x64": "latest"
+    "@514labs/moose-cli-linux-x64": "latest"
   }
 }

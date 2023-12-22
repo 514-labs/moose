@@ -94,12 +94,6 @@ importers:
       '@514labs/igloo-cli-linux-x64':
         specifier: latest
         version: 0.3.31
-      '@514labs/igloo-cli-windows-arm64':
-        specifier: latest
-        version: 0.0.2-BUILD.73
-      '@514labs/igloo-cli-windows-x64':
-        specifier: latest
-        version: 0.0.2-BUILD.73
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -374,22 +368,6 @@ packages:
     resolution: {integrity: sha512-xIoQ5KkSPwPvSYsqQcDSyBwJ1MLnZi/CXsitW/72qgD3nHVeoRF6LaEB0zi0vBRsKapu9db0DnlSF16ecGy3kA==}
     cpu: [x64]
     os: [linux]
-    requiresBuild: true
-    dev: false
-    optional: true
-
-  /@514labs/igloo-cli-windows-arm64@0.0.2-BUILD.73:
-    resolution: {integrity: sha512-5lPs3p4VJtpB2giqhvvXbaVkHq1or55REIPS6NBJ8bQEsPjlj+AIXtC/nR+EfQw6j9BJ6qEe0j4jmqYNW0SIHg==}
-    cpu: [arm64]
-    os: [win32]
-    requiresBuild: true
-    dev: false
-    optional: true
-
-  /@514labs/igloo-cli-windows-x64@0.0.2-BUILD.73:
-    resolution: {integrity: sha512-61HHhsEf+1TOQ0qpXEs4vJey3WoFb7h3OmAIe7QKu8Vh1BtlfbUXDHIjGbfOEgHSPvRr/quQkZsWJE2KvCFB1A==}
-    cpu: [x64]
-    os: [win32]
     requiresBuild: true
     dev: false
     optional: true

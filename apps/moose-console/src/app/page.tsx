@@ -45,6 +45,8 @@ async function getData(): Promise<ConsoleResponse> {
   const res = await fetch('http://localhost:4000/console', {cache: 'no-store'})
   // The return value is *not* serialized
   // You can return Date, Map, Set, etc.
+
+  console.log(res)
  
   if (!res.ok) {
     // This will activate the closest `error.js` Error Boundary

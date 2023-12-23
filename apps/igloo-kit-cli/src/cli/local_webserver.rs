@@ -15,7 +15,6 @@ use http_body_util::BodyExt;
 use http_body_util::Full;
 use hyper::body::Bytes;
 use hyper::body::Incoming;
-use hyper::service::service_fn;
 use hyper::service::Service;
 use hyper::Request;
 use hyper::Response;
@@ -23,13 +22,13 @@ use hyper::StatusCode;
 use hyper_util::rt::TokioIo;
 use hyper_util::{rt::TokioExecutor, server::conn::auto};
 use log::debug;
+use log::error;
 use rdkafka::producer::FutureRecord;
 use rdkafka::util::Timeout;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::json;
 use std::collections::HashMap;
-use std::convert::Infallible;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -354,21 +353,29 @@ impl Webserver {
             // `hyper::rt` IO traits.
             let io = TokioIo::new(stream);
 
-            // Run this server for... forever!
-            if let Err(e) = auto::Builder::new(TokioExecutor::new())
-                .serve_connection(
-                    io,
-                    RouteService {
-                        route_table: route_table.clone(),
-                        configured_producer: producer.clone(),
-                        configured_db_client: db_client.clone(),
-                        term: term.clone(),
-                    },
-                )
-                .await
-            {
-                println!("server error: {}", e)
-            }
+            let route_table = route_table.clone();
+            let producer = producer.clone();
+            let db_client = db_client.clone();
+            let term = term.clone();
+
+            // Spawn a tokio task to serve multiple connections concurrently
+            tokio::task::spawn(async move {
+                // Run this server for... forever!
+                if let Err(e) = auto::Builder::new(TokioExecutor::new())
+                    .serve_connection(
+                        io,
+                        RouteService {
+                            route_table: route_table.clone(),
+                            configured_producer: producer.clone(),
+                            configured_db_client: db_client.clone(),
+                            term: term.clone(),
+                        },
+                    )
+                    .await
+                {
+                    error!("server error: {}", e);
+                }
+            });
         }
     }
 }

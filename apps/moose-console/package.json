@@ -1,0 +1,36 @@
+{
+  "name": "moose-console",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@headlessui/react": "^1.7.17",
+    "@heroicons/react": "^2.0.18",
+    "@sentry/nextjs": "^7.77.0",
+    "@types/heap": "^0.2.31",
+    "@vercel/analytics": "^1.0.1",
+    "gsap": "file:gsap-bonus.tgz",
+    "next": "^14.0.4",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "sharp": "^0.32.6",
+    "ui": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "^18.11.17",
+    "@types/react": "^18.2.5",
+    "@types/react-dom": "^18.2.4",
+    "autoprefixer": "^10.4.13",
+    "eslint-config-custom": "workspace:*",
+    "postcss": "^8.4.31",
+    "tailwind-config": "workspace:*",
+    "tailwindcss": "^3.2.4",
+    "tsconfig": "workspace:*",
+    "typescript": "^4.9.4"
+  }
+}

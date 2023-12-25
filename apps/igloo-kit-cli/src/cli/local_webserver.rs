@@ -1,7 +1,6 @@
 use super::display::Message;
 use super::display::MessageType;
 
-use super::CommandTerminal;
 use crate::framework::controller::RouteMeta;
 use crate::infrastructure::olap;
 
@@ -33,7 +32,6 @@ use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
-use std::sync::RwLock;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::Mutex;
@@ -91,7 +89,6 @@ struct RouteService {
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_producer: Arc<Mutex<ConfiguredProducer>>,
     configured_db_client: Arc<Mutex<ConfiguredDBClient>>,
-    term: Arc<RwLock<CommandTerminal>>,
 }
 
 impl Service<Request<Incoming>> for RouteService {
@@ -102,7 +99,6 @@ impl Service<Request<Incoming>> for RouteService {
     fn call(&self, req: Request<Incoming>) -> Self::Future {
         Box::pin(router(
             req,
-            self.term.clone(),
             self.route_table.clone(),
             self.configured_producer.clone(),
             self.configured_db_client.clone(),
@@ -110,18 +106,7 @@ impl Service<Request<Incoming>> for RouteService {
     }
 }
 
-fn options_route(
-    term: Arc<RwLock<CommandTerminal>>,
-) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
-    show_message(
-        term.clone(),
-        MessageType::Info,
-        Message {
-            action: "OPTIONS".to_string(),
-            details: "options route has been called. Likely a CORS request".to_string(),
-        },
-    );
-
+fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
         .header("Access-Control-Allow-Origin", "*")
@@ -141,15 +126,13 @@ async fn ingest_route(
     route: PathBuf,
     configured_producer: Arc<Mutex<ConfiguredProducer>>,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
-    term: Arc<RwLock<CommandTerminal>>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
-    show_message(
-        term.clone(),
+    show_message!(
         MessageType::Info,
         Message {
             action: "POST".to_string(),
             details: route.to_str().unwrap().to_string().to_string(),
-        },
+        }
     );
     if route_table.lock().await.contains_key(&route) {
         let body = req.collect().await.unwrap().to_bytes().to_vec();
@@ -171,13 +154,12 @@ async fn ingest_route(
 
         match res {
             Ok(_) => {
-                show_message(
-                    term.clone(),
+                show_message!(
                     MessageType::Success,
                     Message {
                         action: "SUCCESS".to_string(),
                         details: route.to_str().unwrap().to_string(),
-                    },
+                    }
                 );
                 return Ok(Response::new(Full::new(Bytes::from("SUCCESS"))));
             }
@@ -199,15 +181,13 @@ async fn console_route(
     configured_db_client: Arc<Mutex<ConfiguredDBClient>>,
     configured_producer: Arc<Mutex<ConfiguredProducer>>,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
-    term: Arc<RwLock<CommandTerminal>>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
-    show_message(
-        term.clone(),
+    show_message!(
         MessageType::Info,
         Message {
             action: "GET".to_string(),
             details: "Console API".to_string(),
-        },
+        }
     );
 
     let db_guard = configured_db_client.lock().await;
@@ -252,7 +232,6 @@ async fn console_route(
 
 async fn router(
     req: Request<hyper::body::Incoming>,
-    term: Arc<RwLock<CommandTerminal>>,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_producer: Arc<Mutex<ConfiguredProducer>>,
     configured_db_client: Arc<Mutex<ConfiguredDBClient>>,
@@ -278,12 +257,11 @@ async fn router(
 
     match (req.method(), &route_split[..]) {
         (&hyper::Method::POST, ["ingest", _]) => {
-            return ingest_route(req, route, configured_producer, route_table, term).await;
+            return ingest_route(req, route, configured_producer, route_table).await;
         }
 
         (&hyper::Method::GET, ["console"]) => {
-            return console_route(configured_db_client, configured_producer, route_table, term)
-                .await;
+            return console_route(configured_db_client, configured_producer, route_table).await;
         }
         (&hyper::Method::GET, ["console", "routes"]) => {
             todo!("get all routes");
@@ -299,7 +277,7 @@ async fn router(
             todo!("get specific table");
         }
 
-        (&hyper::Method::OPTIONS, _) => return options_route(term),
+        (&hyper::Method::OPTIONS, _) => return options_route(),
         _ => {
             return Response::builder()
                 .status(StatusCode::NOT_FOUND)
@@ -329,7 +307,6 @@ impl Webserver {
 
     pub async fn start(
         &self,
-        term: Arc<RwLock<CommandTerminal>>,
         route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
         project: &Project,
     ) {
@@ -364,7 +341,6 @@ impl Webserver {
             let route_table = route_table.clone();
             let producer = producer.clone();
             let db_client = db_client.clone();
-            let term = term.clone();
 
             // Spawn a tokio task to serve multiple connections concurrently
             tokio::task::spawn(async move {
@@ -376,7 +352,6 @@ impl Webserver {
                             route_table: route_table.clone(),
                             configured_producer: producer.clone(),
                             configured_db_client: db_client.clone(),
-                            term: term.clone(),
                         },
                     )
                     .await

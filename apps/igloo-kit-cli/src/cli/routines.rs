@@ -232,9 +232,7 @@ pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
 
     info!("Starting web server...");
 
-    web_server
-        .start(term.clone(), Arc::clone(&route_table), project)
-        .await;
+    web_server.start(Arc::clone(&route_table), project).await;
 
     Ok(())
 }

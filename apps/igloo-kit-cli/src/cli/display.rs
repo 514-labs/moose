@@ -1,4 +1,4 @@
-use console::{pad_str, style};
+use console::style;
 use std::sync::{Arc, RwLock};
 
 /// # Display Module
@@ -121,10 +121,10 @@ macro_rules! show_message {
         use console::{pad_str, style};
 
         let padder = 14;
-        let mut command_terminal = TERM.write().unwrap();
 
         match $message_type {
             MessageType::Info => {
+                let mut command_terminal = TERM.write().unwrap();
                 command_terminal
                     .term
                     .write_line(&format!(
@@ -143,6 +143,7 @@ macro_rules! show_message {
                 command_terminal.counter += 1;
             }
             MessageType::Success => {
+                let mut command_terminal = TERM.write().unwrap();
                 command_terminal
                     .term
                     .write_line(&format!(
@@ -161,6 +162,7 @@ macro_rules! show_message {
                 command_terminal.counter += 1;
             }
             MessageType::Error => {
+                let mut command_terminal = TERM.write().unwrap();
                 command_terminal
                     .term
                     .write_line(&format!(
@@ -179,6 +181,7 @@ macro_rules! show_message {
                 command_terminal.counter += 1;
             }
             MessageType::Banner => {
+                let mut command_terminal = TERM.write().unwrap();
                 command_terminal
                     .term
                     .write_line(&styled_banner())

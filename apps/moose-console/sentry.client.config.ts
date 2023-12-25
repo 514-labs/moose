@@ -1,12 +1,11 @@
 // This file configures the initialization of Sentry on the client.
 // The config you add here will be used whenever a users loads a page in their browser.
 // https://docs.sentry.io/platforms/javascript/guides/nextjs/
-// Automatically generated
 
 import * as Sentry from "@sentry/nextjs";
 
 Sentry.init({
-  dsn: "https://ad3e8eb464c321b18b78c8402e80a8e5@o4505851966128128.ingest.sentry.io/4505852583084032",
+  dsn: "https://420ad9a138f36701dadb42fd8640357f@o4505851966128128.ingest.sentry.io/4506458108919808",
 
   // Adjust this value in production, or use tracesSampler for greater control
   tracesSampleRate: 1,

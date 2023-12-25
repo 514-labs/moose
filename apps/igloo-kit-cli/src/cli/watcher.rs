@@ -2,7 +2,7 @@ use std::{
     collections::HashMap,
     io::{Error, ErrorKind},
     path::PathBuf,
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 use notify::{event::ModifyKind, Config, RecommendedWatcher, RecursiveMode, Watcher};
@@ -26,10 +26,7 @@ use crate::{
     utilities::package_managers,
 };
 
-use super::{
-    display::{Message, MessageType},
-    CommandTerminal,
-};
+use super::display::{Message, MessageType};
 use log::{debug, info};
 
 fn schema_file_path_to_ingest_route(
@@ -259,7 +256,6 @@ impl FileWatcher {
     pub fn start(
         &self,
         project: &Project,
-        term: Arc<RwLock<CommandTerminal>>,
         route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     ) -> Result<(), Error> {
         show_message!(MessageType::Info, {

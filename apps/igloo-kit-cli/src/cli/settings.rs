@@ -2,11 +2,9 @@ use config::{Config, ConfigError, Environment, File};
 use home::home_dir;
 use serde::Deserialize;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
 
 use super::display::{Message, MessageType};
 use super::logger::LoggerSettings;
-use super::CommandTerminal;
 use crate::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
 
 /// # Config
@@ -60,7 +58,7 @@ pub fn setup_user_directory() -> Result<(), std::io::Error> {
 }
 
 // TODO: Turn this part of the code into a routine
-pub fn read_settings(term: Arc<RwLock<CommandTerminal>>) -> Result<Settings, ConfigError> {
+pub fn read_settings() -> Result<Settings, ConfigError> {
     show_message!(
         MessageType::Info,
         Message {

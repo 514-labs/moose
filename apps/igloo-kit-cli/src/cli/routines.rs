@@ -82,7 +82,7 @@
 use std::collections::HashMap;
 use std::fs::DirEntry;
 use std::path::Path;
-use std::sync::{Arc, RwLock};
+use std::sync::Arc;
 use std::{io::Error, path::PathBuf};
 
 use log::debug;
@@ -90,7 +90,7 @@ use tokio::sync::Mutex;
 
 use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
-use super::{CommandTerminal, Message, MessageType};
+use super::{Message, MessageType};
 use crate::cli::watcher::process_schema_file;
 
 use crate::framework::controller::RouteMeta;
@@ -140,14 +140,14 @@ impl RoutineFailure {
 
 #[derive(Clone)]
 pub enum RunMode {
-    Explicit { term: Arc<RwLock<CommandTerminal>> },
+    Explicit {},
 }
 
 /// Routines are a collection of operations that are run in sequence.
 pub trait Routine {
     fn run(&self, mode: RunMode) -> Result<RoutineSuccess, RoutineFailure> {
         match mode {
-            RunMode::Explicit { term } => self.run_explicit(term),
+            RunMode::Explicit {} => self.run_explicit(),
         }
     }
 
@@ -155,10 +155,7 @@ pub trait Routine {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure>;
 
     // Runs the routine and displays messages to the user
-    fn run_explicit(
-        &self,
-        term: Arc<RwLock<CommandTerminal>>,
-    ) -> Result<RoutineSuccess, RoutineFailure> {
+    fn run_explicit(&self) -> Result<RoutineSuccess, RoutineFailure> {
         match self.run_silent() {
             Ok(success) => {
                 show_message!(success.message_type, success.message.clone());
@@ -204,8 +201,6 @@ impl RoutineController {
 
 // Starts the file watcher and the webserver
 pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
-    let term = Arc::new(RwLock::new(CommandTerminal::new()));
-
     show_message!(
         MessageType::Success,
         Message {
@@ -228,7 +223,7 @@ pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
     );
     let file_watcher = FileWatcher::new();
 
-    file_watcher.start(project, term.clone(), Arc::clone(&route_table))?;
+    file_watcher.start(project, Arc::clone(&route_table))?;
 
     info!("Starting web server...");
 

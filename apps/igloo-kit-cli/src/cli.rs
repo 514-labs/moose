@@ -8,13 +8,11 @@ mod routines;
 mod settings;
 mod watcher;
 
-use std::sync::{Arc, RwLock};
-
 use self::settings::setup_user_directory;
 use log::{debug, info};
 
 use self::{
-    display::{CommandTerminal, Message, MessageType},
+    display::{Message, MessageType},
     routines::{
         clean::CleanProject, initialize::InitializeProject, start::RunLocalInfratructure,
         stop::StopLocalInfrastructure, validate::ValidateRedPandaCluster, RoutineController,
@@ -53,12 +51,7 @@ pub enum DebugStatus {
     Silent,
 }
 
-async fn top_command_handler(
-    term: Arc<RwLock<CommandTerminal>>,
-    settings: Settings,
-    commands: &Option<Commands>,
-    debug: DebugStatus,
-) {
+async fn top_command_handler(settings: Settings, commands: &Option<Commands>, debug: DebugStatus) {
     if !settings.features.coming_soon_wall {
         match commands {
             Some(Commands::Init {
@@ -77,7 +70,7 @@ async fn top_command_handler(
                 debug!("Project: {:?}", project);
 
                 let mut controller = RoutineController::new();
-                let run_mode = RunMode::Explicit { term };
+                let run_mode = RunMode::Explicit {};
 
                 controller.add_routine(Box::new(InitializeProject::new(
                     run_mode.clone(),
@@ -95,7 +88,7 @@ async fn top_command_handler(
                     .expect("No project found, please run `igloo init` to create a project");
 
                 let mut controller = RoutineController::new();
-                let run_mode = RunMode::Explicit { term };
+                let run_mode = RunMode::Explicit {};
 
                 controller
                     .add_routine(Box::new(RunLocalInfratructure::new(debug, project.clone())));
@@ -111,12 +104,12 @@ async fn top_command_handler(
             }
             Some(Commands::Stop {}) => {
                 let mut controller = RoutineController::new();
-                let run_mode = RunMode::Explicit { term };
+                let run_mode = RunMode::Explicit {};
                 controller.add_routine(Box::new(StopLocalInfrastructure::new(run_mode.clone())));
                 controller.run_routines(run_mode);
             }
             Some(Commands::Clean {}) => {
-                let run_mode = RunMode::Explicit { term };
+                let run_mode = RunMode::Explicit {};
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `igloo init` to create a project");
 
@@ -137,9 +130,7 @@ async fn top_command_handler(
 pub async fn cli_run() {
     setup_user_directory().expect("Failed to setup igloo user directory");
 
-    let term = Arc::new(RwLock::new(CommandTerminal::new()));
-
-    let config = read_settings(term.clone()).unwrap();
+    let config = read_settings().unwrap();
     setup_logging(config.logger.clone()).expect("Failed to setup logging");
 
     info!("Configuration loaded and logging setup");
@@ -153,5 +144,5 @@ pub async fn cli_run() {
         DebugStatus::Silent
     };
 
-    top_command_handler(term.clone(), config, &cli.command, debug_status).await
+    top_command_handler(config, &cli.command, debug_status).await
 }

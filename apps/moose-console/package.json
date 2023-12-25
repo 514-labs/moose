@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@clickhouse/client-web": "^0.2.7",
     "@headlessui/react": "^1.7.17",
     "@heroicons/react": "^2.0.18",
     "@sentry/nextjs": "^7.77.0",

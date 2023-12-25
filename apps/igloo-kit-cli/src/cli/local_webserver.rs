@@ -287,11 +287,19 @@ async fn router(
                 .await;
         }
         (&hyper::Method::GET, ["console", "routes"]) => {
-            todo!("get route");
+            todo!("get all routes");
         }
         (&hyper::Method::GET, ["console", "routes", route_id]) => {
-            todo!("get route");
+            todo!("get specific route");
         }
+
+        (&hyper::Method::GET, ["console", "tables"]) => {
+            todo!("get all tables");
+        }
+        (&hyper::Method::GET, ["console", "tables", table_name]) => {
+            todo!("get specific table");
+        }
+
         (&hyper::Method::OPTIONS, _) => return options_route(term),
         _ => {
             return Response::builder()

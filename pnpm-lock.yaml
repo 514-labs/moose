@@ -217,6 +217,9 @@ importers:
 
   apps/moose-console:
     dependencies:
+      '@clickhouse/client-web':
+        specifier: ^0.2.7
+        version: 0.2.7
       '@headlessui/react':
         specifier: ^1.7.17
         version: 1.7.17(react-dom@18.2.0)(react@18.2.0)
@@ -834,6 +837,16 @@ packages:
 
   /@braintree/sanitize-url@6.0.2:
     resolution: {integrity: sha512-Tbsj02wXCbqGmzdnXNk0SOF19ChhRU70BsroIi4Pm6Ehp56in6vch94mfbdQ17DozxkL3BAVjbZ4Qc1a0HFRAg==}
+    dev: false
+
+  /@clickhouse/client-common@0.2.7:
+    resolution: {integrity: sha512-vgZm+8c5Cu1toIx1/xplF5dEHlCPw+7pJDOOEtLv2CIUVZ0Bl6nGVZ43EWxRdHeah9ivTfoRWhN1zI1PxjH0xQ==}
+    dev: false
+
+  /@clickhouse/client-web@0.2.7:
+    resolution: {integrity: sha512-X0xwqKh3bdG23HzHxYi6luPEdZOanEWJZHZmiigKlNI4i7WMm4TbXCT2AnXKEBg5+Oa39S/I6Gwh3fLZzN9vzg==}
+    dependencies:
+      '@clickhouse/client-common': 0.2.7
     dev: false
 
   /@esbuild/android-arm64@0.17.19:

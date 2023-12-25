@@ -45,8 +45,6 @@ async function getData(): Promise<ConsoleResponse> {
   const res = await fetch('http://localhost:4000/console', {cache: 'no-store'})
   // The return value is *not* serialized
   // You can return Date, Map, Set, etc.
-
-  console.log(res)
  
   if (!res.ok) {
     // This will activate the closest `error.js` Error Boundary
@@ -67,7 +65,14 @@ export const RoutesList = ({ routes }: RoutesListProps) => (
 export const TablesList = ({ tables }) => (
   <ul>
     {tables.map((table, index) => (
-      <li key={index}>{table.name}</li>
+      <li key={index}>
+        {/* Add a link to the table if it's a view */}
+        {table.name.includes("_view") ? (
+          <a href={`/tables/${table.name}`}>{table.name}</a>
+        ) : (
+          table.name
+        )}
+        </li>
     ))}
   </ul>
 );

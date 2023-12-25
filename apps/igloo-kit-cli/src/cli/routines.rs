@@ -219,7 +219,7 @@ pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
 
     let web_server = Webserver::new(
         project.local_webserver_config.host.clone(),
-        project.local_webserver_config.port.clone(),
+        project.local_webserver_config.port,
     );
     let file_watcher = FileWatcher::new();
 

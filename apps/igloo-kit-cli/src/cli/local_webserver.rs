@@ -118,7 +118,7 @@ fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
         .body(Full::new(Bytes::from("Success")))
         .unwrap();
 
-    return Ok(response);
+    Ok(response)
 }
 
 async fn ingest_route(
@@ -161,19 +161,19 @@ async fn ingest_route(
                         details: route.to_str().unwrap().to_string(),
                     }
                 );
-                return Ok(Response::new(Full::new(Bytes::from("SUCCESS"))));
+                Ok(Response::new(Full::new(Bytes::from("SUCCESS"))))
             }
             Err(e) => {
                 println!("Error: {:?}", e);
-                return Ok(Response::new(Full::new(Bytes::from("Error"))));
+                Ok(Response::new(Full::new(Bytes::from("Error"))))
             }
         }
     } else {
-        return Response::builder()
+        Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Full::new(Bytes::from(
                 "Please visit /console to view your routes",
-            )));
+            )))
     }
 }
 
@@ -253,36 +253,34 @@ async fn router(
         route, route_table
     );
 
-    let route_split = route.to_str().unwrap().split("/").collect::<Vec<&str>>();
+    let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
 
     match (req.method(), &route_split[..]) {
         (&hyper::Method::POST, ["ingest", _]) => {
-            return ingest_route(req, route, configured_producer, route_table).await;
+            ingest_route(req, route, configured_producer, route_table).await
         }
 
         (&hyper::Method::GET, ["console"]) => {
-            return console_route(configured_db_client, configured_producer, route_table).await;
+            console_route(configured_db_client, configured_producer, route_table).await
         }
         (&hyper::Method::GET, ["console", "routes"]) => {
             todo!("get all routes");
         }
-        (&hyper::Method::GET, ["console", "routes", route_id]) => {
+        (&hyper::Method::GET, ["console", "routes", _route_id]) => {
             todo!("get specific route");
         }
 
         (&hyper::Method::GET, ["console", "tables"]) => {
             todo!("get all tables");
         }
-        (&hyper::Method::GET, ["console", "tables", table_name]) => {
+        (&hyper::Method::GET, ["console", "tables", _table_name]) => {
             todo!("get specific table");
         }
 
-        (&hyper::Method::OPTIONS, _) => return options_route(),
-        _ => {
-            return Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Full::new(Bytes::from("no match")))
-        }
+        (&hyper::Method::OPTIONS, _) => options_route(),
+        _ => Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Full::new(Bytes::from("no match"))),
     }
 }
 

@@ -206,7 +206,7 @@ pub struct ConfiguredDBClient {
 pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredDBClient {
     ConfiguredDBClient {
         client: Client::default()
-            .with_url(&format!(
+            .with_url(format!(
                 "http://{}:{}",
                 clickhouse_config.host, clickhouse_config.host_port
             ))

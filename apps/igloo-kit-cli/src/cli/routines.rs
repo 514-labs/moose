@@ -90,7 +90,7 @@ use tokio::sync::Mutex;
 
 use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
-use super::{display::show_message, CommandTerminal, Message, MessageType};
+use super::{CommandTerminal, Message, MessageType};
 use crate::cli::watcher::process_schema_file;
 
 use crate::framework::controller::RouteMeta;
@@ -161,17 +161,16 @@ pub trait Routine {
     ) -> Result<RoutineSuccess, RoutineFailure> {
         match self.run_silent() {
             Ok(success) => {
-                show_message(term, success.message_type, success.message.clone());
+                show_message!(success.message_type, success.message.clone());
                 Ok(success)
             }
             Err(failure) => {
-                show_message(
-                    term,
+                show_message!(
                     failure.message_type,
                     Message::new(
                         failure.message.action.clone(),
                         format!("{}: {}", failure.message.details.clone(), failure.error),
-                    ),
+                    )
                 );
                 Err(failure)
             }
@@ -207,13 +206,12 @@ impl RoutineController {
 pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
     let term = Arc::new(RwLock::new(CommandTerminal::new()));
 
-    show_message(
-        term.clone(),
+    show_message!(
         MessageType::Success,
         Message {
             action: "Starting".to_string(),
             details: "development mode...".to_string(),
-        },
+        }
     );
 
     // TODO: Explore using a RWLock instead of a Mutex to ensure concurrent reads without locks

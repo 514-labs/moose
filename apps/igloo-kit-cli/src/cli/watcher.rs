@@ -9,7 +9,6 @@ use notify::{event::ModifyKind, Config, RecommendedWatcher, RecursiveMode, Watch
 use tokio::sync::Mutex;
 
 use crate::{
-    cli::display::show_message,
     constants::SCHEMAS_DIR,
     framework::{
         controller::{
@@ -263,7 +262,7 @@ impl FileWatcher {
         term: Arc<RwLock<CommandTerminal>>,
         route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     ) -> Result<(), Error> {
-        show_message(term, MessageType::Info, {
+        show_message!(MessageType::Info, {
             Message {
                 action: "Watching".to_string(),
                 details: format!("{:?}", project.app_dir().display()),

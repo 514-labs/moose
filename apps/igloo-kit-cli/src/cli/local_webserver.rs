@@ -1,4 +1,3 @@
-use super::display::show_message;
 use super::display::Message;
 use super::display::MessageType;
 
@@ -340,13 +339,12 @@ impl Webserver {
         // We create a TcpListener and bind it to 127.0.0.1:3000
         let listener = TcpListener::bind(socket).await.unwrap();
 
-        show_message(
-            term.clone(),
+        show_message!(
             MessageType::Info,
             Message {
                 action: "starting".to_string(),
                 details: format!(" server on port {}", socket.port()),
-            },
+            }
         );
 
         let producer = Arc::new(Mutex::new(redpanda::create_producer(

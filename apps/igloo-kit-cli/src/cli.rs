@@ -1,5 +1,7 @@
-mod commands;
+#[macro_use]
 mod display;
+
+mod commands;
 pub mod local_webserver;
 mod logger;
 mod routines;
@@ -12,7 +14,7 @@ use self::settings::setup_user_directory;
 use log::{debug, info};
 
 use self::{
-    display::{show_message, CommandTerminal, Message, MessageType},
+    display::{CommandTerminal, Message, MessageType},
     routines::{
         clean::CleanProject, initialize::InitializeProject, start::RunLocalInfratructure,
         stop::StopLocalInfrastructure, validate::ValidateRedPandaCluster, RoutineController,
@@ -125,7 +127,7 @@ async fn top_command_handler(
             None => {}
         }
     } else {
-        show_message(term, MessageType::Banner, Message {
+        show_message!(MessageType::Banner, Message {
             action: "Coming Soon".to_string(),
             details: "Join the IglooKit community to stay up to date on the latest features: https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg".to_string(),
         });
@@ -141,6 +143,7 @@ pub async fn cli_run() {
     setup_logging(config.logger.clone()).expect("Failed to setup logging");
 
     info!("Configuration loaded and logging setup");
+
     info!("Feature Configuration: {:?}", config.features);
 
     let cli = Cli::parse();

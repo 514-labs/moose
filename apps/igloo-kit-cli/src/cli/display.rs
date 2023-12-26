@@ -2,32 +2,19 @@ use console::style;
 use std::sync::{Arc, RwLock};
 
 /// # Display Module
-/// Standardizes the way we display messages to the user in the CLI
+/// Standardizes the way we display messages to the user in the CLI. This module
+/// provides a macro that takes a message type and a message struct and displays
+/// the message to the user.
 ///
-/// ## Module Usage
-/// ```
-/// use igloo::cli::display::{MessageType, Message, show_message};
-/// use std::sync::{RwLock, Arc};
-///
-/// let term = Arc::new(RwLock::new(CommandTerminal::new());
-/// show_message(term.clone(), MessageType::Info, Message {
-///    action: "Loading Config".to_string(),
-///   details: "Reading configuration from ~/.igloo-config.toml".to_string(),
-/// });
-/// ```
-///
-/// ## Command Terminal
-/// The CommandTerminal struct is used to keep track of the number of lines that have been written to the
-/// terminal and gives a handle on the terminal itself to run commands like clearing the terminal.
 ///
 /// ### Usage
 /// ```
-/// let term = Arc::new(RwLock::new(CommandTerminal::new());
-/// show_message(term.clone(), MessageType::Info, Message {
-///   action: "Loading Config".to_string(),
-///   details: "Reading configuration from ~/.igloo-config.toml".to_string(),
-/// });
-/// term.clear();
+/// show_message!(
+///     MessageType::Info,
+///     Message {
+///         action: "Loading Config".to_string(),
+///         details: "Reading configuration from ~/.igloo-config.toml".to_string(),
+///     });
 /// ```
 ///
 ///
@@ -48,11 +35,10 @@ use std::sync::{Arc, RwLock};
 /// ```
 ///
 /// ## Suggested Improvements
-/// - remove the need for users to use .to_string() on the action and details fields
 /// - add a message type for a "waiting" message
 /// - add a message type for a "loading" message with a progress bar
-/// - remove the arc and rwlock from show_message and instead pass in a reference to the terminal
-///
+/// - add specific macros for each message type
+/// - add a clear screen macro
 
 #[derive(Debug, Clone)]
 pub struct CommandTerminal {

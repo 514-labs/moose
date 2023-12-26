@@ -1018,6 +1018,7 @@ dependencies = [
  "humantime",
  "hyper 1.1.0",
  "hyper-util",
+ "lazy_static",
  "log",
  "notify",
  "openssl",

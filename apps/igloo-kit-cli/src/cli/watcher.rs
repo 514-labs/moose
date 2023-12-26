@@ -2,14 +2,13 @@ use std::{
     collections::HashMap,
     io::{Error, ErrorKind},
     path::PathBuf,
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 use notify::{event::ModifyKind, Config, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::Mutex;
 
 use crate::{
-    cli::display::show_message,
     constants::SCHEMAS_DIR,
     framework::{
         controller::{
@@ -27,10 +26,7 @@ use crate::{
     utilities::package_managers,
 };
 
-use super::{
-    display::{Message, MessageType},
-    CommandTerminal,
-};
+use super::display::{Message, MessageType};
 use log::{debug, info};
 
 fn schema_file_path_to_ingest_route(
@@ -260,10 +256,9 @@ impl FileWatcher {
     pub fn start(
         &self,
         project: &Project,
-        term: Arc<RwLock<CommandTerminal>>,
         route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     ) -> Result<(), Error> {
-        show_message(term, MessageType::Info, {
+        show_message!(MessageType::Info, {
             Message {
                 action: "Watching".to_string(),
                 details: format!("{:?}", project.app_dir().display()),

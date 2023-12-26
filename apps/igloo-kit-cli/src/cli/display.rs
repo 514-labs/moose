@@ -1,33 +1,20 @@
-use console::{pad_str, style};
+use console::style;
 use std::sync::{Arc, RwLock};
 
 /// # Display Module
-/// Standardizes the way we display messages to the user in the CLI
+/// Standardizes the way we display messages to the user in the CLI. This module
+/// provides a macro that takes a message type and a message struct and displays
+/// the message to the user.
 ///
-/// ## Module Usage
-/// ```
-/// use igloo::cli::display::{MessageType, Message, show_message};
-/// use std::sync::{RwLock, Arc};
-///
-/// let term = Arc::new(RwLock::new(CommandTerminal::new());
-/// show_message(term.clone(), MessageType::Info, Message {
-///    action: "Loading Config".to_string(),
-///   details: "Reading configuration from ~/.igloo-config.toml".to_string(),
-/// });
-/// ```
-///
-/// ## Command Terminal
-/// The CommandTerminal struct is used to keep track of the number of lines that have been written to the
-/// terminal and gives a handle on the terminal itself to run commands like clearing the terminal.
 ///
 /// ### Usage
 /// ```
-/// let term = Arc::new(RwLock::new(CommandTerminal::new());
-/// show_message(term.clone(), MessageType::Info, Message {
-///   action: "Loading Config".to_string(),
-///   details: "Reading configuration from ~/.igloo-config.toml".to_string(),
-/// });
-/// term.clear();
+/// show_message!(
+///     MessageType::Info,
+///     Message {
+///         action: "Loading Config".to_string(),
+///         details: "Reading configuration from ~/.igloo-config.toml".to_string(),
+///     });
 /// ```
 ///
 ///
@@ -48,16 +35,15 @@ use std::sync::{Arc, RwLock};
 /// ```
 ///
 /// ## Suggested Improvements
-/// - remove the need for users to use .to_string() on the action and details fields
 /// - add a message type for a "waiting" message
 /// - add a message type for a "loading" message with a progress bar
-/// - remove the arc and rwlock from show_message and instead pass in a reference to the terminal
-///
+/// - add specific macros for each message type
+/// - add a clear screen macro
 
 #[derive(Debug, Clone)]
 pub struct CommandTerminal {
-    term: console::Term,
-    counter: usize,
+    pub term: console::Term,
+    pub counter: usize,
 }
 
 impl CommandTerminal {
@@ -77,7 +63,7 @@ pub enum MessageType {
     Banner,
 }
 
-fn styled_banner() -> String {
+pub fn styled_banner() -> String {
     format!(
         r#"
 
@@ -107,78 +93,87 @@ impl Message {
     }
 }
 
-/// Prints a action & message to the terminal and increments the terminal line count by 1.
-/// Actions should be things like "Adding", "Removing", "Updating", or a count of things to be done like [1/3].
-/// Message types control the color of the action text.
-pub fn show_message(
-    term: Arc<RwLock<CommandTerminal>>,
-    message_type: MessageType,
-    messsage: Message,
-) {
-    let padder = 14;
-    let mut command_terminal = term.write().unwrap();
+use lazy_static::lazy_static;
 
-    match message_type {
-        MessageType::Info => {
-            command_terminal
-                .term
-                .write_line(&format!(
-                    "{} {}",
-                    style(pad_str(
-                        messsage.action.as_str(),
-                        padder,
-                        console::Alignment::Right,
-                        Some("...")
+lazy_static! {
+    pub static ref TERM: Arc<RwLock<CommandTerminal>> =
+        Arc::new(RwLock::new(CommandTerminal::new()));
+}
+
+macro_rules! show_message {
+    ($message_type:expr, $message:expr) => {
+        use crate::cli::display::styled_banner;
+        use crate::cli::display::TERM;
+        use console::{pad_str, style};
+
+        let padder = 14;
+
+        match $message_type {
+            MessageType::Info => {
+                let mut command_terminal = TERM.write().unwrap();
+                command_terminal
+                    .term
+                    .write_line(&format!(
+                        "{} {}",
+                        style(pad_str(
+                            $message.action.as_str(),
+                            padder,
+                            console::Alignment::Right,
+                            Some("...")
+                        ))
+                        .blue()
+                        .bold(),
+                        $message.details
                     ))
-                    .blue()
-                    .bold(),
-                    messsage.details
-                ))
-                .expect("failed to write message to terminal");
-            command_terminal.counter += 1;
-        }
-        MessageType::Success => {
-            command_terminal
-                .term
-                .write_line(&format!(
-                    "{} {}",
-                    style(pad_str(
-                        messsage.action.as_str(),
-                        padder,
-                        console::Alignment::Right,
-                        Some("...")
+                    .expect("failed to write message to terminal");
+                command_terminal.counter += 1;
+            }
+            MessageType::Success => {
+                let mut command_terminal = TERM.write().unwrap();
+                command_terminal
+                    .term
+                    .write_line(&format!(
+                        "{} {}",
+                        style(pad_str(
+                            $message.action.as_str(),
+                            padder,
+                            console::Alignment::Right,
+                            Some("...")
+                        ))
+                        .green()
+                        .bold(),
+                        $message.details
                     ))
-                    .green()
-                    .bold(),
-                    messsage.details
-                ))
-                .expect("failed to write message to terminal");
-            command_terminal.counter += 1;
-        }
-        MessageType::Error => {
-            command_terminal
-                .term
-                .write_line(&format!(
-                    "{} {}",
-                    style(pad_str(
-                        messsage.action.as_str(),
-                        padder,
-                        console::Alignment::Right,
-                        Some("...")
+                    .expect("failed to write message to terminal");
+                command_terminal.counter += 1;
+            }
+            MessageType::Error => {
+                let mut command_terminal = TERM.write().unwrap();
+                command_terminal
+                    .term
+                    .write_line(&format!(
+                        "{} {}",
+                        style(pad_str(
+                            $message.action.as_str(),
+                            padder,
+                            console::Alignment::Right,
+                            Some("...")
+                        ))
+                        .red()
+                        .bold(),
+                        $message.details
                     ))
-                    .red()
-                    .bold(),
-                    messsage.details
-                ))
-                .expect("failed to write message to terminal");
-            command_terminal.counter += 1;
-        }
-        MessageType::Banner => {
-            command_terminal
-                .term
-                .write_line(&styled_banner())
-                .expect("failed to write message to terminal");
-            command_terminal.counter += styled_banner().lines().count();
-        }
+                    .expect("failed to write message to terminal");
+                command_terminal.counter += 1;
+            }
+            MessageType::Banner => {
+                let mut command_terminal = TERM.write().unwrap();
+                command_terminal
+                    .term
+                    .write_line(&styled_banner())
+                    .expect("failed to write message to terminal");
+                command_terminal.counter += styled_banner().lines().count();
+            }
+        };
     };
 }

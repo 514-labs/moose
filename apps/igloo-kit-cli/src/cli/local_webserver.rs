@@ -1,6 +1,9 @@
 use super::display::Message;
 use super::display::MessageType;
 
+use crate::cli::routines::stop::StopLocalInfrastructure;
+use crate::cli::routines::Routine;
+use crate::cli::routines::RunMode;
 use crate::framework::controller::RouteMeta;
 use crate::infrastructure::olap;
 
@@ -314,14 +317,6 @@ impl Webserver {
         // We create a TcpListener and bind it to 127.0.0.1:3000
         let listener = TcpListener::bind(socket).await.unwrap();
 
-        show_message!(
-            MessageType::Info,
-            Message {
-                action: "starting".to_string(),
-                details: format!(" server on port {}", socket.port()),
-            }
-        );
-
         let producer = Arc::new(Mutex::new(redpanda::create_producer(
             project.redpanda_config.clone(),
         )));
@@ -329,34 +324,57 @@ impl Webserver {
             project.clickhouse_config.clone(),
         )));
 
+        show_message!(
+            MessageType::Info,
+            Message {
+                action: "starting".to_string(),
+                details: format!(" server on port {}", socket.port()),
+            }
+        );
+        let mut sigterm =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()).unwrap();
+        let mut sigint =
+            tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()).unwrap();
+
         loop {
-            let (stream, _) = listener.accept().await.unwrap();
-
-            // Use an adapter to access something implementing `tokio::io` traits as if they implement
-            // `hyper::rt` IO traits.
-            let io = TokioIo::new(stream);
-
-            let route_table = route_table.clone();
-            let producer = producer.clone();
-            let db_client = db_client.clone();
-
-            // Spawn a tokio task to serve multiple connections concurrently
-            tokio::task::spawn(async move {
-                // Run this server for... forever!
-                if let Err(e) = auto::Builder::new(TokioExecutor::new())
-                    .serve_connection(
-                        io,
-                        RouteService {
-                            route_table: route_table.clone(),
-                            configured_producer: producer.clone(),
-                            configured_db_client: db_client.clone(),
-                        },
-                    )
-                    .await
-                {
-                    error!("server error: {}", e);
+            tokio::select! {
+                _ = sigint.recv() => {
+                    let run_mode = RunMode::Explicit;
+                    StopLocalInfrastructure::new(run_mode).run(run_mode).unwrap();
+                    std::process::exit(0);
                 }
-            });
+                _ = sigterm.recv() => {
+                    let run_mode = RunMode::Explicit;
+                    StopLocalInfrastructure::new(run_mode).run(run_mode).unwrap();
+                    std::process::exit(0);
+                }
+                listener_result = listener.accept() => {
+                    let (stream, _) = listener_result.unwrap();
+                    // Use an adapter to access something implementing `tokio::io` traits as if they implement
+                    // `hyper::rt` IO traits.
+                    let io = TokioIo::new(stream);
+
+                    let route_table = route_table.clone();
+                    let producer = producer.clone();
+                    let db_client = db_client.clone();
+
+                    // Spawn a tokio task to serve multiple connections concurrently
+                    tokio::task::spawn(async move {
+                        // Run this server for... forever!
+                        if let Err(e) = auto::Builder::new(TokioExecutor::new()).serve_connection(
+                                io,
+                                RouteService {
+                                    route_table: route_table.clone(),
+                                    configured_producer: producer.clone(),
+                                    configured_db_client: db_client.clone(),
+                                },
+                            ).await {
+                                error!("server error: {}", e);
+                            }
+
+                    });
+                }
+            }
         }
     }
 }

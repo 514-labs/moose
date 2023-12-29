@@ -123,6 +123,7 @@ impl RoutineSuccess {
     }
 }
 
+#[derive(Debug)]
 pub struct RoutineFailure {
     message: Message,
     message_type: MessageType,
@@ -138,16 +139,16 @@ impl RoutineFailure {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum RunMode {
-    Explicit {},
+    Explicit,
 }
 
 /// Routines are a collection of operations that are run in sequence.
 pub trait Routine {
     fn run(&self, mode: RunMode) -> Result<RoutineSuccess, RoutineFailure> {
         match mode {
-            RunMode::Explicit {} => self.run_explicit(),
+            RunMode::Explicit => self.run_explicit(),
         }
     }
 

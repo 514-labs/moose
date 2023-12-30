@@ -222,6 +222,7 @@ pub async fn run_query(
     query: QueryString,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), clickhouse::error::Error> {
+    debug!("Running query: {:?}", query);
     let client = &configured_client.client;
     client.query(query.as_str()).execute().await
 }

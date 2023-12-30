@@ -35,11 +35,13 @@ fn schema_file_path_to_ingest_route(
     table_name: String,
 ) -> PathBuf {
     let dataframe_path = app_dir.join(SCHEMAS_DIR);
-    println!("dataframe path: {:?}", dataframe_path);
-    println!("path: {:?}", path);
+    debug!("got dataframe path: {:?}", dataframe_path);
+    debug!("processing schema file into route: {:?}", path);
     let mut route = path.strip_prefix(dataframe_path).unwrap().to_path_buf();
 
     route.set_file_name(table_name);
+
+    debug!("route: {:?}", route);
 
     PathBuf::from("ingest").join(route)
 }

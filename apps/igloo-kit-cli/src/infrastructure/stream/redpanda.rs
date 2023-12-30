@@ -1,4 +1,4 @@
-use log::debug;
+use log::{debug, info};
 use rdkafka::{
     producer::{FutureProducer, Producer},
     ClientConfig,
@@ -15,12 +15,14 @@ use crate::{infrastructure::stream::rpk, utilities::docker};
 
 // Creates a topic from a file name
 pub fn create_topic_from_name(topic_name: String) {
+    info!("Creating topic: {}", topic_name);
     let output = docker::run_rpk_command(rpk::create_rpk_command_args(rpk::RPKCommand::Topic(
         rpk::TopicCommand::Create { topic_name },
     )));
 
     match output {
         Ok(o) => {
+            debug!("Topic created: {:?}", &o.stdout);
             io::stdout().write_all(&o.stdout).unwrap();
         }
         Err(err) => {
@@ -31,6 +33,7 @@ pub fn create_topic_from_name(topic_name: String) {
 
 // Deletes a topic from a file name
 pub fn delete_topic(topic_name: String) {
+    info!("Deleting topic: {}", topic_name);
     let valid_topic_name = topic_name.to_lowercase();
     let output = docker::run_rpk_command(rpk::create_rpk_command_args(rpk::RPKCommand::Topic(
         rpk::TopicCommand::Delete {

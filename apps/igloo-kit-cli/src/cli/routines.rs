@@ -213,9 +213,7 @@ pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
     // TODO: Explore using a RWLock instead of a Mutex to ensure concurrent reads without locks
     let route_table = Arc::new(Mutex::new(HashMap::<PathBuf, RouteMeta>::new()));
 
-    debug!("Starting schema crawler...");
-
-    // WRAP this function with an initialization function to ensure that we don't initialize the client multiple times as we go through the recursion
+    info!("Initializing project state...");
     initialize_project_state(project.schemas_dir(), project, Arc::clone(&route_table)).await?;
 
     let web_server = Webserver::new(
@@ -240,6 +238,7 @@ async fn initialize_project_state(
 ) -> Result<(), Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
 
+    info!("Starting schema directory crawl...");
     crawl_schema_project_dir(&schema_dir, project, &configured_client, route_table).await
 }
 
@@ -255,9 +254,11 @@ async fn crawl_schema_project_dir(
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
+                debug!("Processing directory: {:?}", path);
                 crawl_schema_project_dir(&path, project, configured_client, route_table.clone())
                     .await?;
             } else {
+                debug!("Processing file: {:?}", path);
                 process_entry(&entry, project, configured_client, route_table.clone()).await?;
             }
         }

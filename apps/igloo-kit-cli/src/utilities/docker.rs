@@ -2,6 +2,66 @@ use std::{path::PathBuf, process::Command};
 
 use crate::constants::PANDA_NETWORK;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
+use serde::{Deserialize, Serialize};
+use serde_json::from_str;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ContainerRow {
+    #[serde(rename = "Command")]
+    pub command: String,
+    #[serde(rename = "CreatedAt")]
+    pub created_at: String,
+    #[serde(rename = "ID")]
+    pub id: String,
+    #[serde(rename = "Image")]
+    pub image: String,
+    #[serde(rename = "Labels")]
+    pub labels: String,
+    #[serde(rename = "LocalVolumes")]
+    pub local_volumes: String,
+    #[serde(rename = "Mounts")]
+    pub mounts: String,
+    #[serde(rename = "Names")]
+    pub names: String,
+    #[serde(rename = "Networks")]
+    pub networks: String,
+    #[serde(rename = "Ports")]
+    pub ports: String,
+    #[serde(rename = "RunningFor")]
+    pub running_for: String,
+    #[serde(rename = "Size")]
+    pub size: String,
+    #[serde(rename = "State")]
+    pub state: String,
+    #[serde(rename = "Status")]
+    pub status: String,
+}
+
+pub fn list_containers() -> std::io::Result<Vec<ContainerRow>> {
+    let output = Command::new("docker")
+        .arg("ps")
+        .arg("-a")
+        .arg("--no-trunc")
+        .arg("--format")
+        .arg("json")
+        .output()?;
+
+    if !output.status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Failed to list Docker containers",
+        ));
+    }
+
+    let output_str = String::from_utf8_lossy(&output.stdout);
+    let containers: Vec<ContainerRow> = output_str
+        .split('\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| from_str(line).expect("Failed to parse container row"))
+        .collect();
+
+    Ok(containers)
+}
 
 fn network_command(command: &str, network_name: &str) -> std::io::Result<std::process::Output> {
     Command::new("docker")
@@ -25,14 +85,6 @@ pub fn create_network(network_name: &str) -> std::io::Result<std::process::Outpu
 
 pub fn stop_container(name: &str) -> std::io::Result<std::process::Output> {
     Command::new("docker").arg("stop").arg(name).output()
-}
-
-pub fn filter_list_containers(name: &str) -> std::io::Result<std::process::Output> {
-    Command::new("docker")
-        .arg("ps")
-        .arg("--filter")
-        .arg("name=".to_owned() + name)
-        .output()
 }
 
 pub fn run_rpk_cluster_info() -> std::io::Result<std::process::Output> {
@@ -62,7 +114,7 @@ pub fn run_red_panda(igloo_dir: PathBuf) -> std::io::Result<std::process::Output
         .arg("-d")
         .arg("--pull=always")
         .arg("--name=redpanda-1")
-        .arg("--rm")
+        // .arg("--rm")
         .arg(format!("--network={PANDA_NETWORK}"))
         .arg("--volume=".to_owned() + mount_dir.to_str().unwrap() + ":/tmp/panda_house")
         .arg("--publish=9092:9092")
@@ -108,7 +160,7 @@ pub fn run_clickhouse(
         .arg("-d")
         .arg("--pull=always")
         .arg("--name=clickhousedb-1")
-        .arg("--rm")
+        // .arg("--rm")
         .arg(
             "--volume=".to_owned()
                 + scripts_config_mount_dir.to_str().unwrap()

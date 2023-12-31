@@ -1,15 +1,11 @@
 use super::{Routine, RoutineFailure, RoutineSuccess};
-use crate::{
-    cli::{display::Message, DebugStatus},
-    constants::PANDA_NETWORK,
-    utilities::docker,
-};
-use std::io::{self, Error, ErrorKind, Write};
+use crate::{cli::display::Message, constants::PANDA_NETWORK, utilities::docker};
+use std::io::{Error, ErrorKind};
 
-pub struct ValidateClickhouseRun(DebugStatus);
+pub struct ValidateClickhouseRun;
 impl ValidateClickhouseRun {
-    pub fn new(debug: DebugStatus) -> Self {
-        Self(debug)
+    pub fn new() -> Self {
+        Self
     }
 }
 impl Routine for ValidateClickhouseRun {
@@ -44,10 +40,10 @@ impl Routine for ValidateClickhouseRun {
     }
 }
 
-pub struct ValidateRedPandaRun(DebugStatus);
+pub struct ValidateRedPandaRun;
 impl ValidateRedPandaRun {
-    pub fn new(debug: DebugStatus) -> Self {
-        Self(debug)
+    pub fn new() -> Self {
+        Self
     }
 }
 
@@ -83,54 +79,51 @@ impl Routine for ValidateRedPandaRun {
     }
 }
 
-pub struct ValidatePandaHouseNetwork(DebugStatus);
+pub struct ValidatePandaHouseNetwork;
 impl ValidatePandaHouseNetwork {
-    pub fn new(debug: DebugStatus) -> Self {
-        Self(debug)
+    pub fn new() -> Self {
+        Self
     }
 }
 impl Routine for ValidatePandaHouseNetwork {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let output = docker::network_list().map_err(|err| {
+        let docker_networks = docker::network_list().map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),
-                    "to validate panda house docker network".to_string(),
+                    "to get list of docker networks".to_string(),
                 ),
                 err,
             )
         })?;
 
-        if self.0 == DebugStatus::Debug {
-            io::stdout().write_all(&output.stdout).unwrap();
-        }
+        docker_networks
+            .iter()
+            .find(|network| network.name == PANDA_NETWORK)
+            .ok_or_else(|| {
+                RoutineFailure::new(
+                    Message::new(
+                        "Failed".to_string(),
+                        "to find panda house docker network".to_string(),
+                    ),
+                    Error::new(
+                        ErrorKind::Other,
+                        "Failed to validate panda house docker network",
+                    ),
+                )
+            })?;
 
-        let string_output = String::from_utf8(output.stdout).unwrap();
-
-        if string_output.contains(PANDA_NETWORK) {
-            Ok(RoutineSuccess::success(Message::new(
-                "Successfully".to_string(),
-                "validated panda house docker network".to_string(),
-            )))
-        } else {
-            Err(RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to validate panda house docker network".to_string(),
-                ),
-                Error::new(
-                    ErrorKind::Other,
-                    "Failed to validate panda house network exists",
-                ),
-            ))
-        }
+        Ok(RoutineSuccess::success(Message::new(
+            "Successfully".to_string(),
+            "validated panda house docker network".to_string(),
+        )))
     }
 }
 
-pub struct ValidateRedPandaCluster(DebugStatus);
+pub struct ValidateRedPandaCluster;
 impl ValidateRedPandaCluster {
-    pub fn new(debug: DebugStatus) -> Self {
-        Self(debug)
+    pub fn new() -> Self {
+        Self
     }
 }
 impl Routine for ValidateRedPandaCluster {
@@ -145,13 +138,7 @@ impl Routine for ValidateRedPandaCluster {
             )
         })?;
 
-        if self.0 == DebugStatus::Debug {
-            io::stdout().write_all(&output.stdout).unwrap();
-        }
-
-        let string_output = String::from_utf8(output.stdout).unwrap();
-
-        if string_output.contains("redpanda-1") {
+        if output.contains("redpanda-1") {
             Ok(RoutineSuccess::success(Message::new(
                 "Successfully".to_string(),
                 "validated red panda cluster".to_string(),

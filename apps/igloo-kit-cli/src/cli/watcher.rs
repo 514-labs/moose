@@ -178,11 +178,12 @@ async fn process_objects(
             schema_file_path.clone(),
             fo.table.name.clone(),
         );
-        stream::redpanda::create_topic_from_name(fo.topic.clone());
+        stream::redpanda::create_topic_from_name(fo.topic.clone())?;
 
         debug!("Creating table & view: {:?}", fo.table.name);
 
         let view_name = format!("{}_view", fo.table.name);
+
         create_or_replace_table(&fo, configured_client).await?;
         create_or_replace_view(&fo, view_name.clone(), configured_client).await?;
 

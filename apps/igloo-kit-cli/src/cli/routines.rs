@@ -80,7 +80,6 @@
 //!
 
 use std::collections::HashMap;
-use std::fs::DirEntry;
 use std::path::Path;
 use std::sync::Arc;
 use std::{io::Error, path::PathBuf};
@@ -206,14 +205,14 @@ pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
         MessageType::Success,
         Message {
             action: "Starting".to_string(),
-            details: "development mode...".to_string(),
+            details: "development mode".to_string(),
         }
     );
 
     // TODO: Explore using a RWLock instead of a Mutex to ensure concurrent reads without locks
     let route_table = Arc::new(Mutex::new(HashMap::<PathBuf, RouteMeta>::new()));
 
-    info!("Initializing project state...");
+    info!("Initializing project state");
     initialize_project_state(project.schemas_dir(), project, Arc::clone(&route_table)).await?;
 
     let web_server = Webserver::new(
@@ -239,7 +238,20 @@ async fn initialize_project_state(
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
 
     info!("Starting schema directory crawl...");
-    crawl_schema_project_dir(&schema_dir, project, &configured_client, route_table).await
+    let crawl_result =
+        crawl_schema_project_dir(&schema_dir, project, &configured_client, route_table).await;
+
+    match crawl_result {
+        Ok(_) => {
+            info!("Schema directory crawl completed successfully");
+            Ok(())
+        }
+        Err(e) => {
+            debug!("Schema directory crawl failed");
+            debug!("Error: {:?}", e);
+            Err(e)
+        }
+    }
 }
 
 #[async_recursion]
@@ -259,26 +271,9 @@ async fn crawl_schema_project_dir(
                     .await?;
             } else {
                 debug!("Processing file: {:?}", path);
-                process_entry(&entry, project, configured_client, route_table.clone()).await?;
+                process_schema_file(&path, project, configured_client, route_table.clone()).await?
             }
         }
-    }
-    Ok(())
-}
-
-async fn process_entry(
-    entry: &DirEntry,
-    project: &Project,
-    configured_client: &ConfiguredDBClient,
-    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
-) -> Result<(), Error> {
-    //! Processes a file and adds it to the route table if it's a prisma schema
-    //!
-    //! Suggestion: We could drastically simplify the paradigm here by returning the initial
-    //! hashmap and minimizing the use of the Arc Mutex
-    let path = entry.path();
-    if path.is_file() {
-        process_schema_file(&path, project, configured_client, route_table).await?
     }
     Ok(())
 }

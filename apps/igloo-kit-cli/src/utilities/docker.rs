@@ -245,21 +245,21 @@ fn run_red_panda(igloo_dir: PathBuf) -> std::io::Result<String> {
         .arg("docker.redpanda.com/redpandadata/redpanda:latest")
         .arg("redpanda")
         .arg("start")
-        .arg("--kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092")
+        .arg("--kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092")
         .arg(format!(
-            "--advertise-kafka-addr internal://{}:9092,external://localhost:19092",
+            "--advertise-kafka-addr=internal://{}:9092,external://localhost:19092",
             "redpanda-1"
         ))
-        .arg("--pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082")
+        .arg("--pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082")
         .arg(format!(
-            "--advertise-pandaproxy-addr internal://{}:8082,external://localhost:18082",
+            "--advertise-pandaproxy-addr=internal://{}:8082,external://localhost:18082",
             "redpanda-1"
         ))
         .arg("--overprovisioned")
-        .arg("--smp 1")
-        .arg("--memory 2G")
-        .arg("--reserve-memory 200M")
-        .arg("--node-id 0")
+        .arg("--smp=1")
+        .arg("--memory=2G")
+        .arg("--reserve-memory=200M")
+        .arg("--node-id=0")
         .arg("--check=false")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

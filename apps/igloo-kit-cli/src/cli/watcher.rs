@@ -110,20 +110,14 @@ async fn process_event(
 
 async fn create_framework_objects_from_schema_file_path(
     project: &Project,
-    schema_file_path: &PathBuf,
+    schema_file_path: &Path,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
     //! Creates the route, topics and tables from a path to the schema file
 
     if let Some(ext) = schema_file_path.extension() {
-        if ext == "prisma"
-            && schema_file_path
-                .as_path()
-                .to_str()
-                .unwrap()
-                .contains(SCHEMAS_DIR)
-        {
+        if ext == "prisma" && schema_file_path.to_str().unwrap().contains(SCHEMAS_DIR) {
             process_schema_file(schema_file_path, project, configured_client, route_table).await?;
         }
     } else {

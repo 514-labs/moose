@@ -70,7 +70,7 @@ pub fn generate_ts_sdk(
     let igloo_dir = project.internal_dir()?;
 
     let package = TypescriptPackage::from_project(project);
-    let package_json_code = PackageJsonTemplate::new(&package);
+    let package_json_code = PackageJsonTemplate::build(&package);
     let ts_config_code = TsConfigTemplate::new();
     let index_code = IndexTemplate::new(&ts_objects);
 

@@ -3,6 +3,7 @@ use crate::infrastructure::olap::clickhouse::ClickhouseTable;
 use crate::infrastructure::stream;
 
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 
 use crate::framework::languages::SupportedLanguages;
@@ -61,7 +62,7 @@ pub struct RouteMeta {
     pub view_name: Option<String>,
 }
 
-pub fn get_framework_objects(route: &PathBuf) -> Result<Vec<FrameworkObject>, Error> {
+pub fn get_framework_objects(route: &Path) -> Result<Vec<FrameworkObject>, Error> {
     let framework_objects =
         parse_schema_file::<FrameworkObject>(route.clone(), framework_object_mapper).map_err(
             |e| {

@@ -1,68 +1,242 @@
-use std::{path::PathBuf, process::Command};
+use std::{
+    path::PathBuf,
+    process::{Command, Stdio},
+};
 
 use crate::constants::PANDA_NETWORK;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
+use serde::{Deserialize, Serialize};
+use serde_json::from_str;
 
-fn network_command(command: &str, network_name: &str) -> std::io::Result<std::process::Output> {
-    Command::new("docker")
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct ContainerRow {
+    pub command: String,
+    pub created_at: String,
+    #[serde(rename = "ID")]
+    pub id: String,
+    pub image: String,
+    pub labels: String,
+    pub local_volumes: String,
+    pub mounts: String,
+    pub names: String,
+    pub networks: String,
+    pub ports: String,
+    pub running_for: String,
+    pub size: String,
+    pub state: String,
+    pub status: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "PascalCase")]
+pub struct NetworkRow {
+    pub created_at: String,
+    pub driver: String,
+    #[serde(rename = "ID")]
+    pub id: String,
+    #[serde(rename = "IPv6")]
+    pub ipv6: String,
+    pub internal: String,
+    pub labels: String,
+    pub name: String,
+    pub scope: String,
+}
+
+pub fn list_containers() -> std::io::Result<Vec<ContainerRow>> {
+    let child = Command::new("docker")
+        .arg("ps")
+        .arg("-a")
+        .arg("--no-trunc")
+        .arg("--format")
+        .arg("json")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    if !output.status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Failed to list Docker containers",
+        ));
+    }
+
+    let output_str = String::from_utf8_lossy(&output.stdout);
+    let containers: Vec<ContainerRow> = output_str
+        .split('\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| from_str(line).expect("Failed to parse container row"))
+        .collect();
+
+    Ok(containers)
+}
+
+fn network_command(command: &str, network_name: &str) -> std::io::Result<String> {
+    let child = Command::new("docker")
         .arg("network")
         .arg(command)
         .arg(network_name)
-        .output()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            String::from_utf8_lossy(&output.stderr),
+        ))
+    }
 }
 
-pub fn network_list() -> std::io::Result<std::process::Output> {
-    Command::new("docker").arg("network").arg("ls").output()
+pub fn network_list() -> std::io::Result<Vec<NetworkRow>> {
+    let child = Command::new("docker")
+        .arg("network")
+        .arg("ls")
+        .arg("--format")
+        .arg("json")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    if !output.status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            String::from_utf8_lossy(&output.stderr),
+        ));
+    }
+
+    let output_str = String::from_utf8_lossy(&output.stdout);
+    let networks: Vec<NetworkRow> = output_str
+        .split('\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| from_str(line).expect("Failed to parse network row"))
+        .collect();
+
+    Ok(networks)
 }
 
-pub fn remove_network(network_name: &str) -> std::io::Result<std::process::Output> {
+pub fn remove_network(network_name: &str) -> std::io::Result<String> {
     network_command("rm", network_name)
 }
 
-pub fn create_network(network_name: &str) -> std::io::Result<std::process::Output> {
+pub fn create_network(network_name: &str) -> std::io::Result<String> {
     network_command("create", network_name)
 }
 
-pub fn stop_container(name: &str) -> std::io::Result<std::process::Output> {
-    Command::new("docker").arg("stop").arg(name).output()
+pub fn stop_container(name: &str) -> std::io::Result<String> {
+    let child = Command::new("docker")
+        .arg("stop")
+        .arg(name)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let output = child.wait_with_output()?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            String::from_utf8_lossy(&output.stderr),
+        ))
+    }
 }
 
-pub fn filter_list_containers(name: &str) -> std::io::Result<std::process::Output> {
-    Command::new("docker")
-        .arg("ps")
-        .arg("--filter")
-        .arg("name=".to_owned() + name)
-        .output()
-}
-
-pub fn run_rpk_cluster_info() -> std::io::Result<std::process::Output> {
-    Command::new("docker")
+pub fn run_rpk_cluster_info() -> std::io::Result<String> {
+    let child = Command::new("docker")
         .arg("exec")
         .arg("redpanda-1")
         .arg("rpk")
         .arg("cluster")
         .arg("info")
-        .output()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            String::from_utf8_lossy(&output.stderr),
+        ))
+    }
 }
 
-pub fn run_rpk_command(args: Vec<String>) -> std::io::Result<std::process::Output> {
-    Command::new("docker")
+pub fn run_rpk_command(args: Vec<String>) -> std::io::Result<String> {
+    let child = Command::new("docker")
         .arg("exec")
         .arg("redpanda-1")
         .arg("rpk")
         .args(args)
-        .output()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else if output.stderr.is_empty() {
+        if output.stdout.is_empty() {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "No output from command",
+            ));
+        }
+
+        if String::from_utf8_lossy(&output.stdout).contains("TOPIC_ALREADY_EXISTS") {
+            return Ok(String::from_utf8_lossy(&output.stdout).to_string());
+        }
+
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            String::from_utf8_lossy(&output.stdout),
+        ));
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!(
+                "stdout: {}, stderr: {}",
+                String::from_utf8_lossy(&output.stdout),
+                &String::from_utf8_lossy(&output.stderr)
+            ),
+        ))
+    }
 }
 
-pub fn run_red_panda(igloo_dir: PathBuf) -> std::io::Result<std::process::Output> {
+pub fn safe_start_redpanda_container(igloo_dir: PathBuf) -> std::io::Result<String> {
+    //! Starts a redpanda container if it is not already running. If the doesn't exist, it will be created.
+    //!
+    //! # Arguments
+    //!
+    //! * `igloo_dir` - The path to the igloo directory
+
+    match start_redpanda_container() {
+        Ok(output) => Ok(output),
+        Err(_) => run_red_panda(igloo_dir),
+    }
+}
+
+fn run_red_panda(igloo_dir: PathBuf) -> std::io::Result<String> {
     let mount_dir = igloo_dir.join(".panda_house");
 
-    Command::new("docker")
+    let child = Command::new("docker")
         .arg("run")
         .arg("-d")
         .arg("--pull=always")
         .arg("--name=redpanda-1")
-        .arg("--rm")
+        // .arg("--rm")
         .arg(format!("--network={PANDA_NETWORK}"))
         .arg("--volume=".to_owned() + mount_dir.to_str().unwrap() + ":/tmp/panda_house")
         .arg("--publish=9092:9092")
@@ -71,29 +245,56 @@ pub fn run_red_panda(igloo_dir: PathBuf) -> std::io::Result<std::process::Output
         .arg("docker.redpanda.com/redpandadata/redpanda:latest")
         .arg("redpanda")
         .arg("start")
-        .arg("--kafka-addr internal://0.0.0.0:9092,external://0.0.0.0:19092")
+        .arg("--kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092")
         .arg(format!(
-            "--advertise-kafka-addr internal://{}:9092,external://localhost:19092",
+            "--advertise-kafka-addr=internal://{}:9092,external://localhost:19092",
             "redpanda-1"
         ))
-        .arg("--pandaproxy-addr internal://0.0.0.0:8082,external://0.0.0.0:18082")
+        .arg("--pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082")
         .arg(format!(
-            "--advertise-pandaproxy-addr internal://{}:8082,external://localhost:18082",
+            "--advertise-pandaproxy-addr=internal://{}:8082,external://localhost:18082",
             "redpanda-1"
         ))
         .arg("--overprovisioned")
-        .arg("--smp 1")
-        .arg("--memory 2G")
-        .arg("--reserve-memory 200M")
-        .arg("--node-id 0")
+        .arg("--smp=1")
+        .arg("--memory=2G")
+        .arg("--reserve-memory=200M")
+        .arg("--node-id=0")
         .arg("--check=false")
-        .output()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            String::from_utf8_lossy(&output.stderr),
+        ))
+    }
 }
 
-pub fn run_clickhouse(
+pub fn safe_start_clickhouse_container(
     igloo_dir: PathBuf,
     config: ClickhouseConfig,
-) -> std::io::Result<std::process::Output> {
+) -> std::io::Result<String> {
+    //! Starts a clickhouse container if it is not already running. If the doesn't exist, it will be created.
+    //!
+    //! # Arguments
+    //!
+    //! * `igloo_dir` - The path to the igloo directory
+    //! * `config` - The clickhouse configuration
+
+    match start_clickhouse_container() {
+        Ok(output) => Ok(output),
+        Err(_) => run_clickhouse(igloo_dir, config),
+    }
+}
+
+fn run_clickhouse(igloo_dir: PathBuf, config: ClickhouseConfig) -> std::io::Result<String> {
     let data_mount_dir = igloo_dir.join(".clickhouse/data");
     let logs_mount_dir = igloo_dir.join(".clickhouse/logs");
     // let server_config_mount_dir = igloo_dir.join(".clickhouse/configs/server");
@@ -103,12 +304,12 @@ pub fn run_clickhouse(
     // TODO: Make this configurable by the user
     // Specifying the user and password in plain text here. This should be a user input
     // Double check the access management flag and why it needs to be set to 1
-    Command::new("docker")
+    let child = Command::new("docker")
         .arg("run")
         .arg("-d")
         .arg("--pull=always")
         .arg("--name=clickhousedb-1")
-        .arg("--rm")
+        // .arg("--rm")
         .arg(
             "--volume=".to_owned()
                 + scripts_config_mount_dir.to_str().unwrap()
@@ -135,5 +336,46 @@ pub fn run_clickhouse(
         .arg(format!("--publish={}:9005", config.postgres_port))
         .arg("--ulimit=nofile=262144:262144")
         .arg("docker.io/clickhouse/clickhouse-server")
-        .output()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            String::from_utf8_lossy(&output.stderr),
+        ))
+    }
+}
+
+fn start_redpanda_container() -> std::io::Result<String> {
+    start_container("redpanda-1")
+}
+
+fn start_clickhouse_container() -> std::io::Result<String> {
+    start_container("clickhousedb-1")
+}
+
+fn start_container(name: &str) -> std::io::Result<String> {
+    let child = Command::new("docker")
+        .arg("start")
+        .arg(name)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            String::from_utf8_lossy(&output.stderr),
+        ))
+    }
 }

@@ -45,13 +45,7 @@ struct Cli {
     command: Option<Commands>,
 }
 
-#[derive(PartialEq, Clone, Copy)]
-pub enum DebugStatus {
-    Debug,
-    Silent,
-}
-
-async fn top_command_handler(settings: Settings, commands: &Option<Commands>, debug: DebugStatus) {
+async fn top_command_handler(settings: Settings, commands: &Option<Commands>) {
     if !settings.features.coming_soon_wall {
         match commands {
             Some(Commands::Init {
@@ -72,10 +66,7 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>, de
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
 
-                controller.add_routine(Box::new(InitializeProject::new(
-                    run_mode.clone(),
-                    project.clone(),
-                )));
+                controller.add_routine(Box::new(InitializeProject::new(run_mode, project.clone())));
 
                 controller.run_routines(run_mode);
 
@@ -90,12 +81,17 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>, de
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
 
-                controller
-                    .add_routine(Box::new(RunLocalInfratructure::new(debug, project.clone())));
+                controller.add_routine(Box::new(RunLocalInfratructure::new(project.clone())));
 
-                controller.add_routine(Box::new(ValidateRedPandaCluster::new(debug)));
+                controller.add_routine(Box::new(ValidateRedPandaCluster::new()));
 
                 controller.run_routines(run_mode);
+
+                // sleep to allow infra to be spun up and realease resources.
+                //
+                // TODO: This is a hack and should be replaced with a better solution
+                // 500 ms seems to be enough time to allow the infra to spin up completely and release resources
+                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                 let _ = routines::start_development_mode(&project).await;
             }
             Some(Commands::Update {}) => {
@@ -105,7 +101,7 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>, de
             Some(Commands::Stop {}) => {
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
-                controller.add_routine(Box::new(StopLocalInfrastructure::new(run_mode.clone())));
+                controller.add_routine(Box::new(StopLocalInfrastructure::new(run_mode)));
                 controller.run_routines(run_mode);
             }
             Some(Commands::Clean {}) => {
@@ -114,7 +110,7 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>, de
                     .expect("No project found, please run `igloo init` to create a project");
 
                 let mut controller = RoutineController::new();
-                controller.add_routine(Box::new(CleanProject::new(project, run_mode.clone())));
+                controller.add_routine(Box::new(CleanProject::new(project, run_mode)));
                 controller.run_routines(run_mode);
             }
             None => {}
@@ -138,11 +134,6 @@ pub async fn cli_run() {
     info!("Feature Configuration: {:?}", config.features);
 
     let cli = Cli::parse();
-    let debug_status = if cli.debug {
-        DebugStatus::Debug
-    } else {
-        DebugStatus::Silent
-    };
 
-    top_command_handler(config, &cli.command, debug_status).await
+    top_command_handler(config, &cli.command).await
 }

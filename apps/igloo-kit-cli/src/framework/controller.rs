@@ -3,6 +3,7 @@ use crate::infrastructure::olap::clickhouse::ClickhouseTable;
 use crate::infrastructure::stream;
 
 use std::collections::HashMap;
+use std::path::Path;
 use std::sync::Arc;
 
 use crate::framework::languages::SupportedLanguages;
@@ -10,6 +11,7 @@ use crate::framework::languages::SupportedLanguages;
 use crate::framework;
 
 use log::debug;
+use log::info;
 use tokio::sync::Mutex;
 
 use crate::framework::typescript::get_typescript_models_dir;
@@ -60,16 +62,14 @@ pub struct RouteMeta {
     pub view_name: Option<String>,
 }
 
-pub fn get_framework_objects(route: &PathBuf) -> Result<Vec<FrameworkObject>, Error> {
-    let framework_objects =
-        parse_schema_file::<FrameworkObject>(route.clone(), framework_object_mapper).map_err(
-            |e| {
-                Error::new(
-                    ErrorKind::Other,
-                    format!("Failed to parse schema file. Error {}", e),
-                )
-            },
-        )?;
+pub fn get_framework_objects(route: &Path) -> Result<Vec<FrameworkObject>, Error> {
+    let framework_objects = parse_schema_file::<FrameworkObject>(route, framework_object_mapper)
+        .map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("Failed to parse schema file. Error {}", e),
+            )
+        })?;
     Ok(framework_objects)
 }
 
@@ -116,6 +116,7 @@ pub(crate) async fn create_or_replace_table(
     fo: &FrameworkObject,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
+    info!("Creating table: {:?}", fo.table.name);
     let create_table_query = fo.table.create_table_query().map_err(|e| {
         Error::new(
             ErrorKind::Other,
@@ -151,9 +152,10 @@ pub(crate) async fn create_or_replace_table(
 
 pub(crate) fn create_language_objects(
     fo: &FrameworkObject,
-    ingest_route: &PathBuf,
+    ingest_route: &Path,
     project: &Project,
 ) -> Result<TypescriptObjects, Error> {
+    info!("Creating typescript interface: {:?}", fo.ts_interface);
     let ts_interface_code = fo.ts_interface.create_code().map_err(|e| {
         Error::new(
             ErrorKind::Other,
@@ -206,7 +208,7 @@ pub(crate) fn create_language_objects(
 }
 
 pub async fn remove_table_and_topics_from_schema_file_path(
-    shcema_file_path: &PathBuf,
+    shcema_file_path: &Path,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
@@ -215,8 +217,8 @@ pub async fn remove_table_and_topics_from_schema_file_path(
     let mut route_table = route_table.lock().await;
 
     for (k, meta) in route_table.clone().into_iter() {
-        if meta.original_file_path == shcema_file_path.clone() {
-            stream::redpanda::delete_topic(meta.table_name.clone());
+        if meta.original_file_path == shcema_file_path {
+            stream::redpanda::delete_topic(meta.table_name.clone())?;
 
             olap::clickhouse::delete_table_or_view(meta.table_name, configured_client)
                 .await

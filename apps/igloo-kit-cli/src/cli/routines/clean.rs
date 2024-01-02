@@ -16,7 +16,7 @@ impl CleanProject {
 
 impl Routine for CleanProject {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let run_mode = self.run_mode.clone();
+        let run_mode = self.run_mode;
         // TODO this pattern of mapping errors is repeated - could be refactored into a helper
         let internal_dir = self.project.internal_dir().map_err(|err| {
             RoutineFailure::new(
@@ -28,11 +28,11 @@ impl Routine for CleanProject {
             )
         })?;
 
-        StopLocalInfrastructure::new(run_mode.clone()).run(run_mode.clone())?;
-        RemoveDockerNetwork::new(PANDA_NETWORK).run(run_mode.clone())?;
-        DeleteRedpandaMountVolume::new(internal_dir.clone()).run(run_mode.clone())?;
-        DeleteClickhouseMountVolume::new(internal_dir.clone()).run(run_mode.clone())?;
-        DeleteModelVolume::new(internal_dir.clone()).run(run_mode.clone())?;
+        StopLocalInfrastructure::new(run_mode).run(run_mode)?;
+        RemoveDockerNetwork::new(PANDA_NETWORK).run(run_mode)?;
+        DeleteRedpandaMountVolume::new(internal_dir.clone()).run(run_mode)?;
+        DeleteClickhouseMountVolume::new(internal_dir.clone()).run(run_mode)?;
+        DeleteModelVolume::new(internal_dir.clone()).run(run_mode)?;
 
         Ok(RoutineSuccess::success(Message::new(
             "Cleaned".to_string(),

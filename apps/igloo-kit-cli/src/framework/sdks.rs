@@ -70,9 +70,9 @@ pub fn generate_ts_sdk(
     let igloo_dir = project.internal_dir()?;
 
     let package = TypescriptPackage::from_project(project);
-    let package_json_code = PackageJsonTemplate::new(&package);
-    let ts_config_code = TsConfigTemplate::new();
-    let index_code = IndexTemplate::new(&ts_objects);
+    let package_json_code = PackageJsonTemplate::build(&package);
+    let ts_config_code = TsConfigTemplate::build();
+    let index_code = IndexTemplate::build(&ts_objects);
 
     // This needs to write to the root of the NPM folder... creating in the current project location for now
     let sdk_dir = igloo_dir.join(package.name);

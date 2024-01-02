@@ -47,7 +47,7 @@ impl PackageJsonContext {
 pub struct PackageJsonTemplate;
 
 impl PackageJsonTemplate {
-    pub fn new(package: &TypescriptPackage) -> String {
+    pub fn build(package: &TypescriptPackage) -> String {
         let mut tt = TinyTemplate::new();
         tt.add_template("package_json", PACKAGE_JSON_TEMPLATE)
             .unwrap();
@@ -85,7 +85,7 @@ impl TsConfigContext {
 pub struct TsConfigTemplate;
 
 impl TsConfigTemplate {
-    pub fn new() -> String {
+    pub fn build() -> String {
         let mut tt = TinyTemplate::new();
         tt.add_template("ts_config", TS_CONFIG_TEMPLATE).unwrap();
         let context = TsConfigContext::new();

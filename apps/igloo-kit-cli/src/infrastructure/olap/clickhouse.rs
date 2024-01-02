@@ -157,7 +157,7 @@ impl ClickhouseTable {
 
 impl TableOps for ClickhouseTable {
     fn create_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
-        CreateTableQuery::new(
+        CreateTableQuery::build(
             self.clone(),
             "redpanda-1".to_string(),
             9092,
@@ -166,7 +166,7 @@ impl TableOps for ClickhouseTable {
     }
 
     fn drop_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
-        DropTableQuery::new(self.clone())
+        DropTableQuery::build(self.clone())
     }
 }
 
@@ -191,10 +191,10 @@ pub type QueryString = String;
 
 impl MatViewOps for ClickhouseView {
     fn create_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
-        CreateMaterializedViewQuery::new(self.clone())
+        CreateMaterializedViewQuery::build(self.clone())
     }
     fn drop_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
-        DropMaterializedViewQuery::new(self.clone())
+        DropMaterializedViewQuery::build(self.clone())
     }
 }
 
@@ -222,6 +222,7 @@ pub async fn run_query(
     query: QueryString,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), clickhouse::error::Error> {
+    debug!("Running query: {:?}", query);
     let client = &configured_client.client;
     client.query(query.as_str()).execute().await
 }

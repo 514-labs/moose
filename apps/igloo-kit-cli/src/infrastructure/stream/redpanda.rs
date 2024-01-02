@@ -1,51 +1,32 @@
-use log::debug;
+use log::info;
 use rdkafka::{
     producer::{FutureProducer, Producer},
     ClientConfig,
 };
 use serde::{Deserialize, Serialize};
-use std::{
-    io::{self, Write},
-    time::Duration,
-};
+use std::time::Duration;
 
 use crate::{infrastructure::stream::rpk, utilities::docker};
 
 // TODO: We need to configure the application based on the current project directory structure to ensure that we catch changes made outside of development mode
 
 // Creates a topic from a file name
-pub fn create_topic_from_name(topic_name: String) {
-    let output = docker::run_rpk_command(rpk::create_rpk_command_args(rpk::RPKCommand::Topic(
+pub fn create_topic_from_name(topic_name: String) -> std::io::Result<String> {
+    info!("Creating topic: {}", topic_name);
+    docker::run_rpk_command(rpk::create_rpk_command_args(rpk::RPKCommand::Topic(
         rpk::TopicCommand::Create { topic_name },
-    )));
-
-    match output {
-        Ok(o) => {
-            io::stdout().write_all(&o.stdout).unwrap();
-        }
-        Err(err) => {
-            debug!("Error: {}", err)
-        }
-    }
+    )))
 }
 
 // Deletes a topic from a file name
-pub fn delete_topic(topic_name: String) {
+pub fn delete_topic(topic_name: String) -> std::io::Result<String> {
+    info!("Deleting topic: {}", topic_name);
     let valid_topic_name = topic_name.to_lowercase();
-    let output = docker::run_rpk_command(rpk::create_rpk_command_args(rpk::RPKCommand::Topic(
+    docker::run_rpk_command(rpk::create_rpk_command_args(rpk::RPKCommand::Topic(
         rpk::TopicCommand::Delete {
             topic_name: valid_topic_name,
         },
-    )));
-
-    match output {
-        Ok(o) => {
-            io::stdout().write_all(&o.stdout).unwrap();
-        }
-        Err(err) => {
-            debug!("Error: {}", err)
-        }
-    }
+    )))
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

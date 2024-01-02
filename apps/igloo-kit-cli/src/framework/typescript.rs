@@ -53,7 +53,7 @@ impl TypescriptInterface {
 
 impl CodeGenerator for TypescriptInterface {
     fn create_code(&self) -> Result<String, UnsupportedDataTypeError> {
-        Ok(templates::InterfaceTemplate::new(self))
+        Ok(templates::InterfaceTemplate::build(self))
     }
 }
 
@@ -131,7 +131,7 @@ impl SendFunction {
 
 impl CodeGenerator for SendFunction {
     fn create_code(&self) -> Result<String, UnsupportedDataTypeError> {
-        Ok(templates::SendFunctionTemplate::new(
+        Ok(templates::SendFunctionTemplate::build(
             &self.interface,
             self.server_url.clone(),
             self.api_route_name.clone(),

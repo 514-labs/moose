@@ -25,10 +25,9 @@ impl InitializeProject {
 }
 impl Routine for InitializeProject {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let run_mode: RunMode = self.run_mode.clone();
+        let run_mode: RunMode = self.run_mode;
 
-        CreateIglooTempDirectoryTree::new(run_mode.clone(), self.project.clone())
-            .run(run_mode.clone())?;
+        CreateIglooTempDirectoryTree::new(run_mode, self.project.clone()).run(run_mode)?;
 
         let igloo_dir = self.project.internal_dir().map_err(|err| {
             RoutineFailure::new(
@@ -50,9 +49,9 @@ impl Routine for InitializeProject {
             )
         })?;
 
-        CreateModelsVolume::new(self.project.clone()).run(run_mode.clone())?;
-        CreateDockerNetwork::new(PANDA_NETWORK).run(run_mode.clone())?;
-        CreateVolumes::new(igloo_dir, run_mode.clone()).run(run_mode.clone())?;
+        CreateModelsVolume::new(self.project.clone()).run(run_mode)?;
+        CreateDockerNetwork::new(PANDA_NETWORK).run(run_mode)?;
+        CreateVolumes::new(igloo_dir, run_mode).run(run_mode)?;
 
         Ok(RoutineSuccess::success(Message::new(
             "Created".to_string(),
@@ -78,9 +77,9 @@ impl CreateVolumes {
 impl Routine for CreateVolumes {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let igloo_dir = self.igloo_dir.clone();
-        let run_mode = self.run_mode.clone();
-        CreateRedPandaMountVolume::new(igloo_dir.clone()).run(run_mode.clone())?;
-        CreateClickhouseMountVolume::new(igloo_dir.clone()).run(run_mode.clone())?;
+        let run_mode = self.run_mode;
+        CreateRedPandaMountVolume::new(igloo_dir.clone()).run(run_mode)?;
+        CreateClickhouseMountVolume::new(igloo_dir.clone()).run(run_mode)?;
 
         Ok(RoutineSuccess::success(Message::new(
             "Created".to_string(),
@@ -137,10 +136,10 @@ impl Routine for CreateIglooTempDirectoryTree {
                 err,
             )
         })?;
-        let run_mode = self.run_mode.clone();
+        let run_mode = self.run_mode;
 
-        CreateTempDataVolumes::new(run_mode.clone(), self.project.clone()).run(run_mode.clone())?;
-        ValidateMountVolumes::new(internal_dir).run(run_mode.clone())?;
+        CreateTempDataVolumes::new(run_mode, self.project.clone()).run(run_mode)?;
+        ValidateMountVolumes::new(internal_dir).run(run_mode)?;
 
         Ok(RoutineSuccess::success(Message::new(
             "Created".to_string(),
@@ -171,8 +170,8 @@ impl Routine for CreateTempDataVolumes {
             )
         })?;
 
-        let run_mode = self.run_mode.clone();
-        CreateVolumes::new(igloo_dir, run_mode.clone()).run(run_mode.clone())?;
+        let run_mode = self.run_mode;
+        CreateVolumes::new(igloo_dir, run_mode).run(run_mode)?;
         Ok(RoutineSuccess::success(Message::new(
             "Created".to_string(),
             "Red Panda and Clickhouse mount volumes".to_string(),

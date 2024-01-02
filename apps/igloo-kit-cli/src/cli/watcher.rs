@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     io::{Error, ErrorKind},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -29,17 +29,15 @@ use crate::{
 use super::display::{Message, MessageType};
 use log::{debug, info};
 
-fn schema_file_path_to_ingest_route(
-    app_dir: PathBuf,
-    path: PathBuf,
-    table_name: String,
-) -> PathBuf {
+fn schema_file_path_to_ingest_route(app_dir: PathBuf, path: &Path, table_name: String) -> PathBuf {
     let dataframe_path = app_dir.join(SCHEMAS_DIR);
-    println!("dataframe path: {:?}", dataframe_path);
-    println!("path: {:?}", path);
+    debug!("got dataframe path: {:?}", dataframe_path);
+    debug!("processing schema file into route: {:?}", path);
     let mut route = path.strip_prefix(dataframe_path).unwrap().to_path_buf();
 
     route.set_file_name(table_name);
+
+    debug!("route: {:?}", route);
 
     PathBuf::from("ingest").join(route)
 }
@@ -112,20 +110,14 @@ async fn process_event(
 
 async fn create_framework_objects_from_schema_file_path(
     project: &Project,
-    schema_file_path: &PathBuf,
+    schema_file_path: &Path,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
     //! Creates the route, topics and tables from a path to the schema file
 
     if let Some(ext) = schema_file_path.extension() {
-        if ext == "prisma"
-            && schema_file_path
-                .as_path()
-                .to_str()
-                .unwrap()
-                .contains(SCHEMAS_DIR)
-        {
+        if ext == "prisma" && schema_file_path.to_str().unwrap().contains(SCHEMAS_DIR) {
             process_schema_file(schema_file_path, project, configured_client, route_table).await?;
         }
     } else {
@@ -135,7 +127,7 @@ async fn create_framework_objects_from_schema_file_path(
 }
 
 pub async fn process_schema_file(
-    schema_file_path: &PathBuf,
+    schema_file_path: &Path,
     project: &Project,
     configured_client: &ConfiguredDBClient,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
@@ -163,7 +155,7 @@ pub async fn process_schema_file(
 async fn process_objects(
     framework_objects: Vec<FrameworkObject>,
     project: &Project,
-    schema_file_path: &PathBuf,
+    schema_file_path: &Path,
     configured_client: &ConfiguredDBClient,
     compilable_objects: &mut Vec<TypescriptObjects>, // Objects that require compilation after processing
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
@@ -173,14 +165,15 @@ async fn process_objects(
     for fo in framework_objects {
         let ingest_route = schema_file_path_to_ingest_route(
             project.app_dir().clone(),
-            schema_file_path.clone(),
+            schema_file_path,
             fo.table.name.clone(),
         );
-        stream::redpanda::create_topic_from_name(fo.topic.clone());
+        stream::redpanda::create_topic_from_name(fo.topic.clone())?;
 
         debug!("Creating table & view: {:?}", fo.table.name);
 
         let view_name = format!("{}_view", fo.table.name);
+
         create_or_replace_table(&fo, configured_client).await?;
         create_or_replace_view(&fo, view_name.clone(), configured_client).await?;
 
@@ -192,7 +185,7 @@ async fn process_objects(
         route_table.insert(
             ingest_route,
             RouteMeta {
-                original_file_path: schema_file_path.clone(),
+                original_file_path: schema_file_path.to_path_buf(),
                 table_name: fo.table.name.clone(),
                 view_name: Some(view_name),
             },

@@ -133,7 +133,7 @@ async fn create_framework_objects_from_schema_file_path(
 }
 
 pub async fn process_schema_file(
-    schema_file_path: &PathBuf,
+    schema_file_path: &Path,
     project: &Project,
     configured_client: &ConfiguredDBClient,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,

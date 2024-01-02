@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     io::{Error, ErrorKind},
-    path::PathBuf,
+    path::{Path, PathBuf},
     sync::Arc,
 };
 
@@ -29,11 +29,7 @@ use crate::{
 use super::display::{Message, MessageType};
 use log::{debug, info};
 
-fn schema_file_path_to_ingest_route(
-    app_dir: PathBuf,
-    path: PathBuf,
-    table_name: String,
-) -> PathBuf {
+fn schema_file_path_to_ingest_route(app_dir: PathBuf, path: &Path, table_name: String) -> PathBuf {
     let dataframe_path = app_dir.join(SCHEMAS_DIR);
     debug!("got dataframe path: {:?}", dataframe_path);
     debug!("processing schema file into route: {:?}", path);
@@ -165,7 +161,7 @@ pub async fn process_schema_file(
 async fn process_objects(
     framework_objects: Vec<FrameworkObject>,
     project: &Project,
-    schema_file_path: &PathBuf,
+    schema_file_path: &Path,
     configured_client: &ConfiguredDBClient,
     compilable_objects: &mut Vec<TypescriptObjects>, // Objects that require compilation after processing
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
@@ -175,7 +171,7 @@ async fn process_objects(
     for fo in framework_objects {
         let ingest_route = schema_file_path_to_ingest_route(
             project.app_dir().clone(),
-            schema_file_path.clone(),
+            schema_file_path,
             fo.table.name.clone(),
         );
         stream::redpanda::create_topic_from_name(fo.topic.clone())?;
@@ -195,7 +191,7 @@ async fn process_objects(
         route_table.insert(
             ingest_route,
             RouteMeta {
-                original_file_path: schema_file_path.clone(),
+                original_file_path: schema_file_path.to_path_buf(),
                 table_name: fo.table.name.clone(),
                 view_name: Some(view_name),
             },

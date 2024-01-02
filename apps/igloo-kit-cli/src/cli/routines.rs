@@ -191,10 +191,7 @@ impl RoutineController {
     pub fn run_routines(&self, run_mode: RunMode) -> Vec<Result<RoutineSuccess, RoutineFailure>> {
         self.routines
             .iter()
-            .map(|routine| {
-                let run_mode = run_mode;
-                routine.run(run_mode)
-            })
+            .map(|routine| routine.run(run_mode))
             .collect()
     }
 }

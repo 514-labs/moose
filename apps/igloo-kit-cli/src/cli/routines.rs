@@ -192,7 +192,7 @@ impl RoutineController {
         self.routines
             .iter()
             .map(|routine| {
-                let run_mode = run_mode.clone();
+                let run_mode = run_mode;
                 routine.run(run_mode)
             })
             .collect()

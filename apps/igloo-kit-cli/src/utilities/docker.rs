@@ -187,33 +187,31 @@ pub fn run_rpk_command(args: Vec<String>) -> std::io::Result<String> {
 
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    } else {
-        if output.stderr.is_empty() {
-            if output.stdout.is_empty() {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "No output from command",
-                ));
-            }
-
-            if String::from_utf8_lossy(&output.stdout).contains("TOPIC_ALREADY_EXISTS") {
-                return Ok(String::from_utf8_lossy(&output.stdout).to_string());
-            }
-
+    } else if output.stderr.is_empty() {
+        if output.stdout.is_empty() {
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
-                String::from_utf8_lossy(&output.stdout),
+                "No output from command",
             ));
-        } else {
-            Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!(
-                    "stdout: {}, stderr: {}",
-                    String::from_utf8_lossy(&output.stdout),
-                    &String::from_utf8_lossy(&output.stderr)
-                ),
-            ))
         }
+
+        if String::from_utf8_lossy(&output.stdout).contains("TOPIC_ALREADY_EXISTS") {
+            return Ok(String::from_utf8_lossy(&output.stdout).to_string());
+        }
+
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            String::from_utf8_lossy(&output.stdout),
+        ));
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            format!(
+                "stdout: {}, stderr: {}",
+                String::from_utf8_lossy(&output.stdout),
+                &String::from_utf8_lossy(&output.stderr)
+            ),
+        ))
     }
 }
 
@@ -397,7 +395,7 @@ mod tests {
 
         // Assert
         assert!(result.is_ok(), "Expected Ok result");
-        let containers = result.unwrap();
+        let _containers = result.unwrap();
         // assert!(!containers.is_empty(), "Expected non-empty container list");
     }
 

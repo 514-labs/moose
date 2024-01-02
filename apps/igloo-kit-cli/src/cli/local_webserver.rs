@@ -364,9 +364,9 @@ impl Webserver {
                         if let Err(e) = auto::Builder::new(TokioExecutor::new()).serve_connection(
                                 io,
                                 RouteService {
-                                    route_table: route_table.clone(),
-                                    configured_producer: producer.clone(),
-                                    configured_db_client: db_client.clone(),
+                                    route_table: route_table,
+                                    configured_producer: producer,
+                                    configured_db_client: db_client,
                                 },
                             ).await {
                                 error!("server error: {}", e);

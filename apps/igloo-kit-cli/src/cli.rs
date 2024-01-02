@@ -66,10 +66,7 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>) {
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
 
-                controller.add_routine(Box::new(InitializeProject::new(
-                    run_mode.clone(),
-                    project.clone(),
-                )));
+                controller.add_routine(Box::new(InitializeProject::new(run_mode, project.clone())));
 
                 controller.run_routines(run_mode);
 
@@ -104,7 +101,7 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>) {
             Some(Commands::Stop {}) => {
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
-                controller.add_routine(Box::new(StopLocalInfrastructure::new(run_mode.clone())));
+                controller.add_routine(Box::new(StopLocalInfrastructure::new(run_mode)));
                 controller.run_routines(run_mode);
             }
             Some(Commands::Clean {}) => {
@@ -113,7 +110,7 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>) {
                     .expect("No project found, please run `igloo init` to create a project");
 
                 let mut controller = RoutineController::new();
-                controller.add_routine(Box::new(CleanProject::new(project, run_mode.clone())));
+                controller.add_routine(Box::new(CleanProject::new(project, run_mode)));
                 controller.run_routines(run_mode);
             }
             None => {}

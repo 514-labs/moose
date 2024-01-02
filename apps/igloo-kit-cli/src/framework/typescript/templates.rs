@@ -168,7 +168,7 @@ impl IndexContext {
 pub struct IndexTemplate;
 
 impl IndexTemplate {
-    pub fn new(ts_objects: &[TypescriptObjects]) -> String {
+    pub fn build(ts_objects: &[TypescriptObjects]) -> String {
         let mut tt = TinyTemplate::new();
         tt.add_template("index", INDEX_TEMPLATE).unwrap();
         let context = IndexContext::new(ts_objects);

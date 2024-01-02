@@ -166,7 +166,7 @@ impl TableOps for ClickhouseTable {
     }
 
     fn drop_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
-        DropTableQuery::new(self.clone())
+        DropTableQuery::build(self.clone())
     }
 }
 
@@ -191,10 +191,10 @@ pub type QueryString = String;
 
 impl MatViewOps for ClickhouseView {
     fn create_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
-        CreateMaterializedViewQuery::new(self.clone())
+        CreateMaterializedViewQuery::build(self.clone())
     }
     fn drop_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
-        DropMaterializedViewQuery::new(self.clone())
+        DropMaterializedViewQuery::build(self.clone())
     }
 }
 

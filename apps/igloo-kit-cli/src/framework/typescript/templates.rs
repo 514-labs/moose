@@ -55,7 +55,7 @@ impl InterfaceFieldContext {
 pub struct InterfaceTemplate;
 
 impl InterfaceTemplate {
-    pub fn new(interface: &TypescriptInterface) -> String {
+    pub fn build(interface: &TypescriptInterface) -> String {
         let mut tt = TinyTemplate::new();
         tt.add_template("interface", INTERFACE_TEMPLATE).unwrap();
         let context = InterfaceContext::new(interface);
@@ -107,7 +107,7 @@ impl SendFunctionContext {
 pub struct SendFunctionTemplate;
 
 impl SendFunctionTemplate {
-    pub fn new(
+    pub fn build(
         interface: &TypescriptInterface,
         server_url: String,
         api_route_name: String,
@@ -156,7 +156,7 @@ struct IndexContext {
     ts_objects: Vec<TypescriptObjectsContext>,
 }
 impl IndexContext {
-    fn new(ts_objects: &Vec<TypescriptObjects>) -> IndexContext {
+    fn new(ts_objects: &[TypescriptObjects]) -> IndexContext {
         IndexContext {
             ts_objects: ts_objects
                 .iter()
@@ -168,7 +168,7 @@ impl IndexContext {
 pub struct IndexTemplate;
 
 impl IndexTemplate {
-    pub fn new(ts_objects: &Vec<TypescriptObjects>) -> String {
+    pub fn new(ts_objects: &[TypescriptObjects]) -> String {
         let mut tt = TinyTemplate::new();
         tt.add_template("index", INDEX_TEMPLATE).unwrap();
         let context = IndexContext::new(ts_objects);

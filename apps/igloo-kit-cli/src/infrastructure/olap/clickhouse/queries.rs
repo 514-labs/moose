@@ -27,7 +27,7 @@ ENGINE = Kafka('{cluster_network}:{kafka_port}', '{topic}', 'clickhouse-group', 
 pub struct CreateTableQuery;
 
 impl CreateTableQuery {
-    pub fn new(
+    pub fn build(
         table: ClickhouseTable,
         cluster_network: String,
         kafka_port: u16,

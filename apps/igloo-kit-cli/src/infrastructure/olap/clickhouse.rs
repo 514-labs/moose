@@ -157,7 +157,7 @@ impl ClickhouseTable {
 
 impl TableOps for ClickhouseTable {
     fn create_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
-        CreateTableQuery::new(
+        CreateTableQuery::build(
             self.clone(),
             "redpanda-1".to_string(),
             9092,

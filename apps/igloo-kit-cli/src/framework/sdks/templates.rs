@@ -85,7 +85,7 @@ impl TsConfigContext {
 pub struct TsConfigTemplate;
 
 impl TsConfigTemplate {
-    pub fn new() -> String {
+    pub fn build() -> String {
         let mut tt = TinyTemplate::new();
         tt.add_template("ts_config", TS_CONFIG_TEMPLATE).unwrap();
         let context = TsConfigContext::new();

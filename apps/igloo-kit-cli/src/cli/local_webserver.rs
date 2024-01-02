@@ -24,6 +24,7 @@ use hyper_util::rt::TokioIo;
 use hyper_util::{rt::TokioExecutor, server::conn::auto};
 use log::debug;
 use log::error;
+use log::info;
 use rdkafka::producer::FutureRecord;
 use rdkafka::util::Timeout;
 use serde::Deserialize;
@@ -316,6 +317,16 @@ impl Webserver {
 
         // We create a TcpListener and bind it to 127.0.0.1:3000
         let listener = TcpListener::bind(socket).await.unwrap();
+
+        info!("Webserver CLI listening on socket {:?}", socket);
+
+        show_message!(
+            MessageType::Info,
+            Message {
+                action: "Started".to_string(),
+                details: format!("local webserver on port: {}", socket.port()),
+            }
+        );
 
         let producer = Arc::new(Mutex::new(redpanda::create_producer(
             project.redpanda_config.clone(),

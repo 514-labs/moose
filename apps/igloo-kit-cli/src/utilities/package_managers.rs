@@ -93,8 +93,8 @@ pub fn link_sdk(
     command.arg("link");
     command.arg("--global");
 
-    if package_name.is_some() {
-        command.arg(package_name.unwrap());
+    if let Some(name) = package_name {
+        command.arg(name);
     }
 
     let output = command.output()?; // We should explore not using output here and instead using spawn.

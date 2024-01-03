@@ -1,0 +1,13 @@
+{
+    "index": {
+        "title": "Introduction",
+        "display": "hidden",
+        "theme": {
+            "breadcrumb": false
+        }
+    },
+    "getting-started": {
+        "title": "Getting Started",
+        "type": "separator"
+    }
+}

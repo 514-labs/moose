@@ -29,16 +29,6 @@ impl Routine for InitializeProject {
 
         CreateIglooTempDirectoryTree::new(run_mode, self.project.clone()).run(run_mode)?;
 
-        let igloo_dir = self.project.internal_dir().map_err(|err| {
-            RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to create .igloo directory. Check permissions or contact us`".to_string(),
-                ),
-                err,
-            )
-        })?;
-
         self.project.setup_app_dir().map_err(|err| {
             RoutineFailure::new(
                 Message::new(
@@ -51,7 +41,6 @@ impl Routine for InitializeProject {
 
         CreateModelsVolume::new(self.project.clone()).run(run_mode)?;
         CreateDockerNetwork::new(PANDA_NETWORK).run(run_mode)?;
-        CreateVolumes::new(igloo_dir, run_mode).run(run_mode)?;
 
         Ok(RoutineSuccess::success(Message::new(
             "Created".to_string(),

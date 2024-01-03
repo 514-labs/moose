@@ -20,7 +20,7 @@ done
 cd ../..
 
 # # This is run twice since the change the value of the dependencies in the previous step
-pnpm install --no-frozen-lockfile # requires optional dependencies to be present in the registry
+pnpm install --filter "@514labs/moose-cli" --no-frozen-lockfile # requires optional dependencies to be present in the registry
 pnpm build --filter @514labs/moose-cli
 
 cd apps/moose-cli-npm

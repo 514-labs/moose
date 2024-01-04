@@ -132,6 +132,7 @@ pub struct FieldAttributes {
 }
 
 impl FieldAttributes {
+    #[allow(clippy::never_loop, clippy::match_single_binding)]
     fn new(attributes: Vec<Attribute>) -> Result<FieldAttributes, ParsingError> {
         let unique: bool = false;
         let primary_key: bool = false;
@@ -147,7 +148,7 @@ impl FieldAttributes {
                             "we currently don't support attribute {}",
                             attribute.name()
                         ),
-                    })
+                    });
                 }
             }
         }

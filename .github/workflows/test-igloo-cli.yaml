@@ -123,7 +123,6 @@ jobs:
 
       - name: Run cargo clippy
         uses: actions-rs/cargo@v1
-        continue-on-error: true # Keeping this as long as not all errors are fixed
         with:
           command: clippy
           args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml -- -D warnings

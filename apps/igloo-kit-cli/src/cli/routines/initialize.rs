@@ -26,8 +26,6 @@ impl InitializeProject {
 }
 impl Routine for InitializeProject {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        ensure_docker_running()?;
-
         let run_mode: RunMode = self.run_mode;
 
         CreateIglooTempDirectoryTree::new(run_mode, self.project.clone()).run(run_mode)?;
@@ -41,6 +39,8 @@ impl Routine for InitializeProject {
                 err,
             )
         })?;
+
+        ensure_docker_running()?;
 
         CreateModelsVolume::new(self.project.clone()).run(run_mode)?;
         CreateDockerNetwork::new(PANDA_NETWORK).run(run_mode)?;

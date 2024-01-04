@@ -51,3 +51,7 @@ div.nx-border-t {
 
   box-shadow: none;
 }
+
+[data-theme="dark"]#logo-path {
+  color: white;
+}

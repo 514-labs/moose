@@ -15,7 +15,7 @@ pub enum Insights {
 pub enum TopLevelObjects {
     Ingestion,
     Flow,
-    Dataframe,
+    DataModel,
     Insights(Insights),
 }
 
@@ -23,7 +23,7 @@ pub enum TopLevelObjects {
 pub enum AddableObjects {
     IngestPoint,
     Flow,
-    Dataframe,
+    DataModel,
     Metric,
     Dashboard,
     Model,

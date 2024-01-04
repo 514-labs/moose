@@ -30,10 +30,10 @@ use super::display::{Message, MessageType};
 use log::{debug, info};
 
 fn schema_file_path_to_ingest_route(app_dir: PathBuf, path: &Path, table_name: String) -> PathBuf {
-    let dataframe_path = app_dir.join(SCHEMAS_DIR);
-    debug!("got dataframe path: {:?}", dataframe_path);
+    let data_model_path = app_dir.join(SCHEMAS_DIR);
+    debug!("got data model path: {:?}", data_model_path);
     debug!("processing schema file into route: {:?}", path);
-    let mut route = path.strip_prefix(dataframe_path).unwrap().to_path_buf();
+    let mut route = path.strip_prefix(data_model_path).unwrap().to_path_buf();
 
     route.set_file_name(table_name);
 
@@ -57,7 +57,7 @@ async fn process_event(
 
     match event.kind {
         notify::EventKind::Create(_) => {
-            // Only create tables and topics from prisma files in the dataframes directory
+            // Only create tables and topics from prisma files in the datamodels directory
             create_framework_objects_from_schema_file_path(
                 &project,
                 &route,

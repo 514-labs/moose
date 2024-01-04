@@ -101,10 +101,8 @@ pub enum ColumnType {
     Float,
     Decimal,
     DateTime,
-    Json,
-    // TODO: Eventually support for only views and tables (not topics)
-    Bytes,
-    // TODO: Explore if we ever need this type
+    Json,  // TODO: Eventually support for only views and tables (not topics)
+    Bytes, // TODO: Explore if we ever need this type
     Unsupported,
 }
 

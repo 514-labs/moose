@@ -8,7 +8,8 @@ export default {
           titleTemplate: '%s – MooseJS'
         }
       },
-
+      primaryHue: 220,
+      primarySaturation: 20,
       footer: {
         text: (
           <span>
@@ -21,3 +22,4 @@ export default {
         )
       }
   }
+

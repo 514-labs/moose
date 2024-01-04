@@ -3,8 +3,9 @@ use log::debug;
 use super::{
     initialize::ValidateMountVolumes,
     validate::{ValidateClickhouseRun, ValidatePandaHouseNetwork, ValidateRedPandaRun},
-    Routine, RoutineFailure, RoutineSuccess,
+    Routine, RoutineFailure, RoutineSuccess, RunMode,
 };
+use crate::cli::routines::initialize::CreateIglooTempDirectoryTree;
 use crate::{
     cli::display::Message,
     project::Project,
@@ -32,6 +33,8 @@ impl Routine for RunLocalInfratructure {
             )
         })?;
         // Model this after the `spin_up` function in `apps/igloo-kit-cli/src/cli/routines/start.rs` but use routines instead
+        CreateIglooTempDirectoryTree::new(RunMode::Explicit {}, self.project.clone())
+            .run_explicit()?;
         ValidateMountVolumes::new(igloo_dir).run_explicit()?;
         ValidatePandaHouseNetwork::new().run_explicit()?;
         RunRedPandaContainer::new(self.project.clone()).run_explicit()?;

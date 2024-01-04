@@ -83,15 +83,7 @@ fn network_command(command: &str, network_name: &str) -> std::io::Result<String>
         .spawn()?;
 
     let output = child.wait_with_output()?;
-
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            String::from_utf8_lossy(&output.stderr),
-        ))
-    }
+    output_to_result(output)
 }
 
 pub fn network_list() -> std::io::Result<Vec<NetworkRow>> {
@@ -140,14 +132,7 @@ pub fn stop_container(name: &str) -> std::io::Result<String> {
         .spawn()?;
     let output = child.wait_with_output()?;
 
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            String::from_utf8_lossy(&output.stderr),
-        ))
-    }
+    output_to_result(output)
 }
 
 pub fn run_rpk_cluster_info() -> std::io::Result<String> {
@@ -163,14 +148,7 @@ pub fn run_rpk_cluster_info() -> std::io::Result<String> {
 
     let output = child.wait_with_output()?;
 
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            String::from_utf8_lossy(&output.stderr),
-        ))
-    }
+    output_to_result(output)
 }
 
 pub fn run_rpk_command(args: Vec<String>) -> std::io::Result<String> {
@@ -267,14 +245,7 @@ fn run_red_panda(igloo_dir: PathBuf) -> std::io::Result<String> {
 
     let output = child.wait_with_output()?;
 
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            String::from_utf8_lossy(&output.stderr),
-        ))
-    }
+    output_to_result(output)
 }
 
 pub fn safe_start_clickhouse_container(
@@ -342,14 +313,7 @@ fn run_clickhouse(igloo_dir: PathBuf, config: ClickhouseConfig) -> std::io::Resu
 
     let output = child.wait_with_output()?;
 
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            String::from_utf8_lossy(&output.stderr),
-        ))
-    }
+    output_to_result(output)
 }
 
 fn start_redpanda_container() -> std::io::Result<String> {
@@ -370,6 +334,10 @@ fn start_container(name: &str) -> std::io::Result<String> {
 
     let output = child.wait_with_output()?;
 
+    output_to_result(output)
+}
+
+fn output_to_result(output: std::process::Output) -> std::io::Result<String> {
     if output.status.success() {
         Ok(String::from_utf8_lossy(&output.stdout).to_string())
     } else {

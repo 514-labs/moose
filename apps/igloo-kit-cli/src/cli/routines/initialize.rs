@@ -4,6 +4,7 @@ use std::{
     path::PathBuf,
 };
 
+use crate::cli::routines::util::ensure_docker_running;
 use crate::{
     cli::display::Message,
     constants::PANDA_NETWORK,
@@ -25,6 +26,8 @@ impl InitializeProject {
 }
 impl Routine for InitializeProject {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        ensure_docker_running()?;
+
         let run_mode: RunMode = self.run_mode;
 
         CreateIglooTempDirectoryTree::new(run_mode, self.project.clone()).run(run_mode)?;

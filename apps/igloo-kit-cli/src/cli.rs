@@ -14,7 +14,7 @@ use log::{debug, info};
 use self::{
     display::{Message, MessageType},
     routines::{
-        clean::CleanProject, initialize::InitializeProject, start::RunLocalInfratructure,
+        clean::CleanProject, initialize::InitializeProject, start::RunLocalInfrastructure,
         stop::StopLocalInfrastructure, validate::ValidateRedPandaCluster, RoutineController,
         RunMode,
     },
@@ -81,7 +81,7 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>) {
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
 
-                controller.add_routine(Box::new(RunLocalInfratructure::new(project.clone())));
+                controller.add_routine(Box::new(RunLocalInfrastructure::new(project.clone())));
 
                 controller.add_routine(Box::new(ValidateRedPandaCluster::new()));
 
@@ -96,7 +96,7 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>) {
             }
             Some(Commands::Update {}) => {
                 // This command may not be needed if we have incredible automation
-                todo!("Will update the project's underlying infrascructure based on any added objects")
+                todo!("Will update the project's underlying infrastructure based on any added objects")
             }
             Some(Commands::Stop {}) => {
                 let mut controller = RoutineController::new();

@@ -6,7 +6,7 @@ use std::{
 use crate::constants::PANDA_NETWORK;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use serde::{Deserialize, Serialize};
-use serde_json::from_str;
+use serde_json::{from_slice, from_str};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -335,6 +335,28 @@ fn start_container(name: &str) -> std::io::Result<String> {
     let output = child.wait_with_output()?;
 
     output_to_result(output)
+}
+
+pub fn check_status() -> std::io::Result<Vec<String>> {
+    let child = Command::new("docker")
+        .arg("info")
+        .arg("--format")
+        .arg("{{json .ServerErrors}}")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    if !output.status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Failed to get Docker info",
+        ));
+    }
+
+    let errors: Option<Vec<String>> = from_slice(&output.stdout)?;
+    Ok(errors.unwrap_or_default())
 }
 
 fn output_to_result(output: std::process::Output) -> std::io::Result<String> {

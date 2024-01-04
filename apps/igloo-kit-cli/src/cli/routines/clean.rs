@@ -1,5 +1,6 @@
 use std::{fs, path::PathBuf};
 
+use crate::cli::routines::util::ensure_docker_running;
 use crate::{cli::display::Message, constants::PANDA_NETWORK, project::Project, utilities::docker};
 
 use super::{stop::StopLocalInfrastructure, Routine, RoutineFailure, RoutineSuccess, RunMode};
@@ -28,6 +29,7 @@ impl Routine for CleanProject {
             )
         })?;
 
+        ensure_docker_running()?;
         StopLocalInfrastructure::new(run_mode).run(run_mode)?;
         RemoveDockerNetwork::new(PANDA_NETWORK).run(run_mode)?;
         DeleteRedpandaMountVolume::new(internal_dir.clone()).run(run_mode)?;

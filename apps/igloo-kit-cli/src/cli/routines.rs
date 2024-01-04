@@ -104,6 +104,7 @@ pub mod clean;
 pub mod initialize;
 pub mod start;
 pub mod stop;
+mod util;
 pub mod validate;
 
 #[derive(Clone)]

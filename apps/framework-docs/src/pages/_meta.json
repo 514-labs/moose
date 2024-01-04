@@ -7,7 +7,9 @@
         }
     },
     "getting-started": {
-        "title": "Getting Started",
-        "type": "separator"
+        "title": "Getting Started"
+    },
+    "building": {
+        "title": "Building a Data Service"
     }
 }

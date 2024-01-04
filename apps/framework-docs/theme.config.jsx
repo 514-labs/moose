@@ -11,7 +11,7 @@ export default {
         }
       },
       primaryHue: 220,
-      primarySaturation: 20,
+      primarySaturation: 0,
       footer: {
         text: (
           <span>

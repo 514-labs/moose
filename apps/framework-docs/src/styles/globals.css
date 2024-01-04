@@ -55,3 +55,29 @@ div.nx-border-t {
 [data-theme="dark"]#logo-path {
   color: white;
 }
+
+th, td {
+  border: none;
+}
+
+th {
+  text-align: left;
+}
+
+tr:nth-child(2n) {
+  background-color: inherit !important;
+}
+
+table {
+  table-layout: auto;
+  
+}
+
+thead > tr {
+  border-top: none;
+}
+
+table, thead, tbody {
+  display: table;
+  width: 100%;
+}

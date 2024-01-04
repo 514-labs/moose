@@ -127,10 +127,10 @@ impl RoutineSuccess {
 pub struct RoutineFailure {
     message: Message,
     message_type: MessageType,
-    error: Error,
+    error: Option<Error>,
 }
 impl RoutineFailure {
-    pub fn new(message: Message, error: Error) -> Self {
+    pub fn new(message: Message, error: Option<Error>) -> Self {
         Self {
             message,
             message_type: MessageType::Error,
@@ -167,7 +167,14 @@ pub trait Routine {
                     failure.message_type,
                     Message::new(
                         failure.message.action.clone(),
-                        format!("{}: {}", failure.message.details.clone(), failure.error),
+                        match &failure.error {
+                            None => {
+                                failure.message.details.clone()
+                            }
+                            Some(error) => {
+                                format!("{}: {}", failure.message.details.clone(), error)
+                            }
+                        },
                     )
                 );
                 Err(failure)

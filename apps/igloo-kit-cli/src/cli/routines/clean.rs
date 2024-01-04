@@ -25,7 +25,7 @@ impl Routine for CleanProject {
                     "Failed".to_string(),
                     "to get internal directory for project".to_string(),
                 ),
-                err,
+                Some(err),
             )
         })?;
 
@@ -59,7 +59,7 @@ impl Routine for RemoveDockerNetwork {
         docker::remove_network(&self.network_name).map_err(|err| {
             RoutineFailure::new(
                 Message::new("Failed".to_string(), "to remove docker network".to_string()),
-                err,
+                Some(err),
             )
         })?;
 
@@ -91,7 +91,7 @@ impl Routine for DeleteRedpandaMountVolume {
                         mount_dir.display()
                     ),
                 ),
-                err,
+                Some(err),
             )
         })?;
 
@@ -122,7 +122,7 @@ impl Routine for DeleteClickhouseMountVolume {
                         mount_dir.display()
                     ),
                 ),
-                err,
+                Some(err),
             )
         })?;
 
@@ -152,7 +152,7 @@ impl Routine for DeleteModelVolume {
                     "Failed".to_string(),
                     format!("to remove Model mount volume at {}", mount_dir.display()),
                 ),
-                err,
+                Some(err),
             )
         })?;
 

@@ -51,7 +51,6 @@ div.nx-border-t {
 }
 
 :is(html[class~=dark] .dark\:nx-shadow-\[0_-12px_16px_\#111\]) {
-
   box-shadow: none;
 }
 
@@ -84,3 +83,8 @@ table, thead, tbody {
   display: table;
   width: 100%;
 }
+
+:is(html[class~=dark] tr) {
+  border-color: rgba(38,38,38,var(--tw-border-opacity));
+}
+

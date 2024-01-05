@@ -14,12 +14,12 @@
 use std::path::PathBuf;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
-use crate::constants::{
-    APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, PROJECT_CONFIG_FILE, SCHEMAS_DIR,
-};
 use crate::framework::languages::SupportedLanguages;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use crate::utilities::constants::{
+    APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, PROJECT_CONFIG_FILE, SCHEMAS_DIR,
+};
 use config::{Config, ConfigError, File};
 use log::debug;
 use serde::{Deserialize, Serialize};

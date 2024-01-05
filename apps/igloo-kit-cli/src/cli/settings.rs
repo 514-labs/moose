@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 use super::display::{Message, MessageType};
 use super::logger::LoggerSettings;
-use crate::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
+use crate::utilities::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
 
 /// # Config
 /// Module to handle reading the config file from the user's home directory and configuring the CLI

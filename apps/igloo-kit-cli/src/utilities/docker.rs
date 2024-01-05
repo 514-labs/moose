@@ -3,8 +3,8 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::constants::PANDA_NETWORK;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
+use crate::utilities::constants::PANDA_NETWORK;
 use serde::{Deserialize, Serialize};
 use serde_json::from_str;
 

@@ -14,4 +14,7 @@ Once you commit your changes, MooseJS will automatically create a new version of
 If you already have a version of the SDK instrumented, that version will remain live and be marked for deprecation. This allows you to test your changes in without needing to update all your exiting instrumentation.
 
 ### In production
-Once you're ready to deploy your changes to production, you can merge your branch into the `master` branch. MooseJS will automatically detect the merge and create a new version of your data stack with all the migrations taken care of behind the scenes.
+Once you're ready to deploy your changes to production, you can merge your branch into the `main` branch. MooseJS will automatically detect the merge and create a new version of your data stack with all the migrations taken care of behind the scenes while ensuring that your SDKs historical SDKs continue to work.
+
+## Deleting a data model
+Deleting a data model is as simple as deleting the model from the file. MooseJS will automatically flag the model for deprecation and create a new version of your data stack. This allows you to remove data models that are no longer needed without worrying about breaking systems that depend on your data service. Once no more data is being pushed to your service or consumed, Moose will automatically clean up your infrastructure.

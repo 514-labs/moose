@@ -7,11 +7,11 @@ Adding a new data source is as simple as adding a new model to an existing or ne
 ## Changing an existing data model
 
 ### During development
-Whenever you save a file, Moose will automatically detect the change and update your data stack. Under the hood, MooseJS manages the state of your stack and creates temporary tables each time you save your file. This allows you to test your changes without worrying the effects on the existing data. 
+Whenever you save a file, Moose will automatically detect the change and update your data stack locally. Under the hood, MooseJS manages the state of your stack and creates temporary tables each time you save your file. This allows you to test your changes without worrying the effects on the existing data. 
 
 Once you commit your changes, MooseJS will automatically create a new version of your data stack and turn on the migration mechanisms that ensure that historical data is present in your modified schema. The migration mechanisms assume that the initial state of your data starts at the initial state of your branch. This limits the number of active migrations that are running in your stack to optimize performance and costs.
 
-If you already have a version of the SDK instrumented, that version will remain live and be marked for deprecation. This allows you to test your changes in without needing to update all your exiting instrumentation.
+If you are already using a version of the sdk, that version will remain live and be marked for deprecation. This allows you to test your changes in without needing to update all your exiting instrumentation.  
 
 ### In production
 Once you're ready to deploy your changes to production, you can merge your branch into the `main` branch. MooseJS will automatically detect the merge and create a new version of your data stack with all the migrations taken care of behind the scenes while ensuring that your SDKs historical SDKs continue to work.

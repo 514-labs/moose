@@ -1,0 +1,29 @@
+import { Cards, Card } from 'nextra/components'
+
+# Building a Data Service
+MooseJS helps you build data intensive applications and service. In its current state, MooseJS can't be used to build a full fledged web application. However, it can be used to build a data service which you can use to power adhoc analytics use cases.
+
+## What is a data service?
+With the MooseJS's current functionality a data service can be thought of as a microservice that's used to capture, store and serve data. It interfaces with best in-class data infrastructure and allows you to build a data warehouse wihtout any data engineering skills. A service is composed of:
+
+- A series of data models which define the structure of the data you want to caputre
+- An ingestion API to capture data from other applications or services
+- A storage layer that queues up data on ingestion and stores it for later processing
+
+We recommend that you use all the standard software development practices to build your service. 
+
+**We'd recommend at least the following:**
+- Using version control. We like managing our data services along side our main user applications in a mono-repo
+- Using a CI/CD pipeline to deploy your service to production ensuring that tests are run before deployment
+
+## What can data services be used for?
+Data services can be used to capture data from your user applications and store it in a data warehouse. That means you can replace dedicated data capture tooling such as Segment or Mixpanel with your own data service and generic BI solution. This greatly reduces the cost of running your data infrastructure and gives you more control over your data.
+
+## Next steps
+Let's get started by building a data service. 
+
+<Cards>
+  <Card title="Model Data" href="/building/model-data" />
+  <Card title="Capture Data" href="/building/capture-data" />
+  <Card title="Make Changes" href="/building/make-changes" />
+</Cards>

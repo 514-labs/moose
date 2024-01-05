@@ -6,9 +6,9 @@ use std::{
 
 use crate::{
     cli::display::Message,
-    constants::PANDA_NETWORK,
     framework::{languages::create_models_dir, typescript::create_typescript_models_dir},
     project::Project,
+    utilities::constants::PANDA_NETWORK,
     utilities::docker,
 };
 

@@ -1,5 +1,5 @@
 use super::{Routine, RoutineFailure, RoutineSuccess};
-use crate::{cli::display::Message, constants::PANDA_NETWORK, utilities::docker};
+use crate::{cli::display::Message, utilities::constants::PANDA_NETWORK, utilities::docker};
 use std::io::{Error, ErrorKind};
 
 pub struct ValidateClickhouseRun;

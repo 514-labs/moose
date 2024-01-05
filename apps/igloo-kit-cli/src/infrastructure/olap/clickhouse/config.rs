@@ -7,7 +7,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::constants::PANDA_NETWORK;
+use crate::utilities::constants::PANDA_NETWORK;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ClickhouseConfig {

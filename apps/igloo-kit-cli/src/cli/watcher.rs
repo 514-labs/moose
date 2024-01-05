@@ -9,7 +9,6 @@ use notify::{event::ModifyKind, Config, RecommendedWatcher, RecursiveMode, Watch
 use tokio::sync::Mutex;
 
 use crate::{
-    constants::SCHEMAS_DIR,
     framework::{
         controller::{
             create_language_objects, create_or_replace_table, create_or_replace_view,
@@ -23,6 +22,7 @@ use crate::{
         stream,
     },
     project::Project,
+    utilities::constants::SCHEMAS_DIR,
     utilities::package_managers,
 };
 

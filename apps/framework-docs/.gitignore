@@ -36,5 +36,3 @@ yarn-error.log*
 # Sentry Auth Token
 .sentryclirc
 
-# Sentry Config File
-.sentryclirc

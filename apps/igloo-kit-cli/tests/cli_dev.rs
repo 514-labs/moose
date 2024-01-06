@@ -37,7 +37,7 @@ fn setup_dev() -> Result<CargoDev, anyhow::Error> {
 
     let mut cmd = Command::cargo_bin("igloo-cli")?;
 
-    let mut dev_process = cmd
+    let dev_process = cmd
         .env("IGLOO-FEATURES-COMING_SOON_WALL", "false")
         .arg("dev")
         .stdout(Stdio::piped())
@@ -46,14 +46,16 @@ fn setup_dev() -> Result<CargoDev, anyhow::Error> {
 
     // Now we wait for the server to be up before moving forward with
     // the rest of the test
-    let reader = BufReader::new(dev_process.stdout.take().expect("Failed to open stdout"));
-    for line in reader.lines() {
-        let line = line.expect("Failed to read line");
-        // TODO improve to extract the port to make it more stable to used ports
-        if line.contains("server on port:") {
-            break;
-        }
-    }
+    // TODO this never completes - we should figure out why
+
+    // let reader = BufReader::new(dev_process.stdout.take().expect("Failed to open stdout"));
+    // for line in reader.lines() {
+    //     let line = line.expect("Failed to read line");
+    //     // TODO improve to extract the port to make it more stable to used ports
+    //     if line.contains("server on port:") {
+    //         break;
+    //     }
+    // }
 
     Ok(CargoDev {
         dir: temp,

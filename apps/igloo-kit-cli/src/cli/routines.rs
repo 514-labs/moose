@@ -114,6 +114,13 @@ pub struct RoutineSuccess {
 
 // Implement success and info contructors and a new constructor that lets the user choose which type of message to display
 impl RoutineSuccess {
+    pub fn info(message: Message) -> Self {
+        Self {
+            message,
+            message_type: MessageType::Info,
+        }
+    }
+
     pub fn success(message: Message) -> Self {
         Self {
             message,

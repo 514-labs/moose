@@ -317,13 +317,21 @@ impl Routine for CreateDockerNetwork {
                 "Created".to_string(),
                 format!("docker network {}", &self.network_name),
             ))),
-            Err(err) => Err(RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    format!("to create docker network {}", &self.network_name),
-                ),
-                err,
-            )),
+            Err(err) => match err.kind() {
+                ErrorKind::AlreadyExists => {
+                    return Ok(RoutineSuccess::info(Message::new(
+                        "Exists".to_string(),
+                        format!("docker network {}", &self.network_name),
+                    )))
+                }
+                _ => Err(RoutineFailure::new(
+                    Message::new(
+                        "Failed".to_string(),
+                        format!("to create docker network {}", &self.network_name),
+                    ),
+                    err,
+                )),
+            },
         }
     }
 }

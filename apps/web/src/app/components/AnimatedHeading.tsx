@@ -22,15 +22,15 @@ type Size = "display" | "display-md" | "express" | "heading";
 
 const getDefaultStyle = (size: Size) => {
     if (size === "display") {
-        return "text-typography-primary text-5xl sm:text-7xl md:text-8xl lg:text-9xl 4xl:text-10xl 4xl:leading-none"
+        return "text-typography-primary text-5xl sm:text-7xl md:text-8xl lg:text-9xl 4xl:text-10xl 4xl:leading-none text-grey-300"
     }
 
     if (size === "display-md") {
-        return "text-typography-primary text-5xl 2xl:text-6xl 3xl:text-7xl"
+        return "text-typography-primary text-5xl 2xl:text-6xl 3xl:text-7xl text-grey-300"
     }
 
     if (size === "express") {
-        return "text-typography-primary text-center text-3xl lg:text-4xl 2xl:text-6xl 3xl:text-7xl"
+        return "text-typography-primary text-center text-3xl lg:text-4xl 2xl:text-6xl 3xl:text-7xl text-grey-300"
     }
 
     if (size === "heading") {

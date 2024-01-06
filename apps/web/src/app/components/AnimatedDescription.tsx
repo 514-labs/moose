@@ -20,9 +20,9 @@ interface DescriptionProps {
 
 const getStyle = (className: string) => {
     if (className) {
-        return className + "text-typography-primary my-3"
+        return className + "text-typography-primary my-3 text-gray-300"
     } else {
-        return "text-typography-primary my-3";
+        return "text-typography-primary my-3 text-gray-300";
     }
 }
 

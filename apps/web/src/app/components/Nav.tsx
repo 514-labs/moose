@@ -15,7 +15,7 @@ gsap.registerPlugin(SplitText);
 const navigation = [
   // { name: "Docs", href: "#" },
   //{ name: "about", href: "/about" },
-  //{ name: "careers", href: "/careers" },
+  { name: "docs", href: "https://framework-docs-git-tim-514-218-build-clear-on-brand-cc089a-514.vercel.app/getting-started/using-moose-cli", target:"_blank"},
   { name: "slack", href: "https://join.slack.com/t/igloocommunity/shared_invite/zt-26oekgzol-99e8I2lQvHHKk1aa1Fnwpg", target:"_blank"},
   { name: "github", href: "https://github.com/514-labs/", target:"_blank"},
 ]
@@ -54,7 +54,7 @@ export const Nav = () => {
               <div className="flex flex-grow">
                 <div className="flex flex-shrink-0 grow items-center text-white">
                   <a href="/">
-                  <AnimatedDescription position={1} className="px-0 w-full" content="igloo"/>
+                  <AnimatedDescription position={1} className="px-0 w-full" content="moosejs"/>
                   </a>
                 </div>
                 

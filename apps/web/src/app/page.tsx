@@ -9,15 +9,15 @@ import { Button } from "./components/Button";
 import { AnimatedDescription } from "./components/AnimatedDescription";
 
 
-import heroImg from "../../public/03_3x.webp";
-import middleImg from "../../public/04_3x.webp";
-import footerImg from "../../public/01_3x.webp";
+import heroImg from "../../public/bg-image-man/bg-image-hero_3x.webp";
+import middleImg from "../../public/bg-image-computer/bg-image-computer_3x.webp";
+import footerImg from "../../public/bg-image-moose/bg-image-moose_3x.webp";
 import { FooterSection } from "./sections//home/FooterSection";
 import { AnimatedComponent } from "./components/AnimatedComponent";
 import { CodeBlockCTA } from "./components/CodeBlockCTA";
 
 export const metadata: Metadata = {
-  title: "Igloo | Build for the modern data stack",
+  title: "Moose.js | Build for the modern data stack",
   openGraph: {
     images: "/open-graph/og_igloo_4x.webp"
   }
@@ -25,12 +25,12 @@ export const metadata: Metadata = {
 
 const iglooSection = {
   heading: "start building today",
-  description: "Start building your data-intensive application today. Igloo is free to use and open source. If you'd like to contribute, check out our github or join our discord.",
+  description: "Start building your data-intensive application today. Moose.js is free to use and open source. If you'd like to contribute, check out our github or join our discord.",
 }
 
 const fiveonefourSection = {
   heading: "build for the modern data stack",
-  description: "Igloo is a batteries-included framework for building data-intensive applications using Typescript or Python, and SQL. It comes with a powerful CLI to help automate development tasks, an intuitive abstraction to help you build quickly, and a streamlined local development workflow..",
+  description: "Moose.js is a batteries-included framework for building data-intensive applications using Typescript or Python, and SQL. It comes with a powerful CLI to help automate development tasks, an intuitive abstraction to help you build quickly, and a streamlined local development workflow..",
 }
 
 const practices = [
@@ -82,7 +82,7 @@ export default function Home() {
 
   return (
     <div className="h-full relative">
-      <SectionGrid className="py-36 pb-0 2xl:pt-24" gapStyle="gap-y-36">
+      <SectionGrid className="py-36 pb-0 2xl:pt-20" gapStyle="gap-y-36">
           <div className="flex flex-col px-10 w-full space-y-5 col-span-3 sm:col-span-12 2xl:col-span-6">
             <AnimatedHeading position={0} className="" content={fiveonefourSection.heading} size="display" />
             <AnimatedDescription position={0.75} className="" content={fiveonefourSection.description} />
@@ -104,10 +104,10 @@ export default function Home() {
           return (
             <div key={index} className="flex flex-col md:flex-row flex-1 col-span-3 sm:col-span-6 lg:col-span-4">
               <div className="flex flex-col md:flex-1">
-                <div className="text-action-primary text-2xl">
-                  <AnimatedHeading position={0.5} size="heading" content={feature.heading} onScroll />
+              <div className="text-typography-primary">
+                  <AnimatedHeading className="text-gray-300" position={0.5} size="heading" content={feature.heading} onScroll />
                 </div>
-                <div className="text-typography-primary">
+                <div className="text-typography-secondary">
                   <AnimatedDescription position={1} content={feature.description} onScroll />
                 </div>
               </div>
@@ -117,7 +117,7 @@ export default function Home() {
       </SectionGrid>
 
       <div className="py-24">
-        <AnimatedHeading position={0.25} className="px-10 w-full" content="modernized & open for all" size="display" onScroll/>
+        <AnimatedHeading position={0.25} className="px-10 w-ful text-gray-300" content="modernized & open for all" size="display" onScroll/>
       </div>
 
       <div className="relative h-full w-full min-h-[80vw] sm:min-h-[50vw] w-full space-y-5 mt-12 mb-24 2xl:mt-0">
@@ -129,8 +129,8 @@ export default function Home() {
           return (
             <div key={index} className="flex flex-col md:flex-row flex-1 col-span-3 sm:col-span-4 lg:col-span-4">
               <div className="flex flex-col md:flex-1">
-              <div className="text-action-primary text-2xl">
-                  <AnimatedHeading position={0.5} size="heading" content={feature.heading} onScroll />
+              <div className="text-typography-primary">
+                  <AnimatedHeading  className="text-gray-300" position={0.5} content={feature.heading} onScroll size="heading" />
                 </div>
                 <div className="text-typography-primary">
                   <AnimatedDescription position={1} content={feature.description} onScroll />
@@ -146,7 +146,7 @@ export default function Home() {
           <AnimatedImage src={footerImg} position={1.5} alt="the crew" onScroll/>
         </div>
         <div className="flex flex-col px-10 w-full space-y-5 col-span-3 sm:col-span-12 xl:col-span-6">
-          <AnimatedHeading position={0.5} className="" content={iglooSection.heading} onScroll  size="display" />
+          <AnimatedHeading  className="text-gray-300" position={0.5} content={iglooSection.heading} onScroll  size="display" />
           <AnimatedDescription position={1} className="" content={iglooSection.description} onScroll />
           <div>
             <CodeBlockCTA/>

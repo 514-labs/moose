@@ -91,6 +91,20 @@ async fn process_event(
                         .await
                     }
                 }
+
+                ModifyKind::Data(_) => {
+                    if route.exists() {
+                        create_framework_objects_from_dataframe_route(
+                            project,
+                            web_server,
+                            &route,
+                            &mut route_table,
+                            configured_client,
+                        )
+                        .await?
+                    }
+                    Ok(())
+                }
                 _ => Ok(()),
             }
         }

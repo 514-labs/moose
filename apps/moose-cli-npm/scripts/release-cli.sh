@@ -1,5 +1,7 @@
 #/usr/bin/env bash
 
+set -eo pipefail
+
 # This script should be called from the root of the repository
 
 version=$1

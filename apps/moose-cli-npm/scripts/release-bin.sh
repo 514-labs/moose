@@ -1,5 +1,7 @@
 #/usr/bin/env bash
 
+set -eo pipefail
+
 export node_version=$1
 build_target=$2
 build_os=$3

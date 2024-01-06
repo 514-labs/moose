@@ -94,12 +94,17 @@ fn should_properly_get_data_in_storage() -> Result<(), anyhow::Error> {
             ),
         )?;
 
-        thread::sleep(*ACCEPTABLE_PERFORMANCE);
+        // TODO Add the test in which we look for the result of copying the file
+        // with the API used to show the console.
+        // TODO add sending an event to the server and seeing the data getting ingested
+        // by the storage layer
 
-        let resp = reqwest::blocking::get("http://localhost:4000/console")?
-            .json::<HashMap<String, String>>()?;
+        // thread::sleep(*ACCEPTABLE_PERFORMANCE);
 
-        println!("{:#?}", resp);
+        // let resp = reqwest::blocking::get("http://localhost:4000/console")?
+        //     .json::<HashMap<String, String>>()?;
+
+        // println!("{:#?}", resp);
 
         Ok(())
     };

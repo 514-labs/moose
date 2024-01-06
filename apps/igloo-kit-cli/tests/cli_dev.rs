@@ -90,7 +90,7 @@ fn should_properly_get_data_in_storage() -> Result<(), anyhow::Error> {
         fs::copy(
             "tests/psl/simple.prisma",
             format!(
-                "{}/app/dataframes/users.prisma",
+                "{}/app/datamodels/users.prisma",
                 dev.dir.path().to_str().unwrap()
             ),
         )?;

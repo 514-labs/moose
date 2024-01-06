@@ -2,7 +2,7 @@ use assert_cmd::prelude::*;
 use assert_fs::TempDir;
 use lazy_static::lazy_static;
 use std::fs;
-use std::io::{BufRead, BufReader};
+// use std::io::{BufRead, BufReader};
 use std::process::Child;
 use std::process::{Command, Stdio};
 use std::time;

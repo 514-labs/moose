@@ -160,6 +160,11 @@ jobs:
         with:
           version: 8
 
+      - name: Login GSAP
+        shell: bash
+        run: |
+          pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
+
       - name: Install node
         uses: actions/setup-node@v3
         with:

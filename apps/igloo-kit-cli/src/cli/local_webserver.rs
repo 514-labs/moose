@@ -327,10 +327,11 @@ impl Webserver {
         show_message!(
             MessageType::Info,
             Message {
-                action: "starting".to_string(),
+                action: "Started".to_string(),
                 details: format!(" server on port {}", socket.port()),
             }
         );
+
         let mut sigterm =
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()).unwrap();
         let mut sigint =

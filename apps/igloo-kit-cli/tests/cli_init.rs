@@ -1,7 +1,7 @@
 use assert_cmd::prelude::*; // Add methods on commands
 use assert_fs::prelude::*;
 use predicates::prelude::*; // Used for writing assertions
-use std::process::Command; // Run programs
+use std::process::Command;
 
 #[test]
 fn cannot_run_cli_init_without_args() -> Result<(), Box<dyn std::error::Error>> {

@@ -154,7 +154,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 10
+          fetch-depth: 100
 
       - uses: pnpm/action-setup@v2
         with:

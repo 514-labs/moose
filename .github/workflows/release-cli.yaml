@@ -160,14 +160,6 @@ jobs:
         with:
           version: 8
 
-      - name: Login GSAP
-        shell: bash
-        run: |
-          pnpm config set //npm.greensock.com/:_authToken ${{ secrets.GSAP_TOKEN }}
-          pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
-          cd ./apps/web
-          pnpm install gsap@npm:@gsap/business
-
       - name: Install node
         uses: actions/setup-node@v3
         with:

@@ -1,6 +1,18 @@
+const remarkMdxDisableExplicitJsx = import('remark-mdx-disable-explicit-jsx') 
+
+
 const withNextra = require('nextra')({
   theme: 'nextra-theme-docs',
-  themeConfig: './theme.config.jsx'
+  themeConfig: './theme.config.jsx',
+  mdxOptions: {
+    remarkPlugins: [
+      [
+        remarkMdxDisableExplicitJsx,
+        { whiteList: ['table', 'thead', 'tbody', 'tr', 'th', 'td'] }
+      ]
+    ]
+  }
+  
 })
  
 module.exports = withNextra({
@@ -20,9 +32,8 @@ module.exports = withSentryConfig(
 
     // Suppresses source map uploading logs during build
     silent: true,
-
     org: "polarized-capital-135ae572e",
-    project: "igloo-docs",
+    project: "framework-docs",
   },
   {
     // For all available options, see:
@@ -42,5 +53,11 @@ module.exports = withSentryConfig(
 
     // Automatically tree-shake Sentry logger statements to reduce bundle size
     disableLogger: true,
+
+    // Enables automatic instrumentation of Vercel Cron Monitors.
+    // See the following for more information:
+    // https://docs.sentry.io/product/crons/
+    // https://vercel.com/docs/cron-jobs
+    automaticVercelMonitors: true,
   }
 );

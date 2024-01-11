@@ -1,0 +1,43 @@
+import { FileTree } from 'nextra/components'
+
+# Project Structure
+MooseJS relies heavily on structural conventions to make sure you can build quickly and reliably. That means the project structure is important.
+
+
+The following is the basic structure of a MooseJS project:
+ 
+<FileTree>
+  <FileTree.Folder name=".moose"  />
+  <FileTree.Folder name="app" defaultOpen>
+    <FileTree.Folder name="datamodels" defaultOpen>
+        <FileTree.File name="models.prisma" />
+    </FileTree.Folder>
+    <FileTree.Folder name="flows (coming soon)" defaultOpen>
+        <FileTree.Folder name="transformations">
+            <FileTree.File name="augment.ts" />
+        </FileTree.Folder>
+        <FileTree.File name="stage1.ts" />
+    </FileTree.Folder>
+    <FileTree.Folder name="insights (coming soon)" />
+  </FileTree.Folder>
+  <FileTree.File name="project.toml" />
+</FileTree>
+
+## Top-level Folders
+|  |  |
+| ------ | ----------- |
+| app | The main folder for your application. |
+| .moose | Moose internals. You shouldn't ever have to touch anything in here. |
+
+
+## Top-level Files
+|  |  |
+| ------ | ----------- |
+| project.toml | The main configuration file for your application. |
+
+## App folders
+|  |  |
+| ------ | ----------- |
+| datamodels | The folder where you define your data models. |
+| flows (coming soon) | The folder where you define your data flows. |
+| insights (coming soon) | The folder where you define your data insights. |

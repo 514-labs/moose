@@ -34,7 +34,7 @@ importers:
     dependencies:
       '@514labs/igloo-cli':
         specifier: latest
-        version: 0.3.37
+        version: 0.3.39
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -59,7 +59,7 @@ importers:
     dependencies:
       '@514labs/moose-cli':
         specifier: latest
-        version: 0.3.37
+        version: 0.3.39
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -100,6 +100,9 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
+      remark-mdx-disable-explicit-jsx:
+        specifier: ^0.1.0
+        version: 0.1.0
       ui:
         specifier: workspace:*
         version: link:../../packages/ui
@@ -151,16 +154,16 @@ importers:
     optionalDependencies:
       '@514labs/igloo-cli-darwin-arm64':
         specifier: latest
-        version: 0.3.37
+        version: 0.3.39
       '@514labs/igloo-cli-darwin-x64':
         specifier: latest
-        version: 0.3.37
+        version: 0.3.39
       '@514labs/igloo-cli-linux-arm64':
         specifier: latest
-        version: 0.3.37
+        version: 0.3.39
       '@514labs/igloo-cli-linux-x64':
         specifier: latest
-        version: 0.3.37
+        version: 0.3.39
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -185,16 +188,16 @@ importers:
     optionalDependencies:
       '@514labs/moose-cli-darwin-arm64':
         specifier: latest
-        version: 0.3.37
+        version: 0.3.39
       '@514labs/moose-cli-darwin-x64':
         specifier: latest
-        version: 0.3.37
+        version: 0.3.39
       '@514labs/moose-cli-linux-arm64':
         specifier: latest
-        version: 0.3.37
+        version: 0.3.39
       '@514labs/moose-cli-linux-x64':
         specifier: latest
-        version: 0.3.37
+        version: 0.3.39
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -247,6 +250,9 @@ importers:
       react-dom:
         specifier: ^18.2.0
         version: 18.2.0(react@18.2.0)
+      remark-mdx-disable-explicit-jsx:
+        specifier: ^0.1.0
+        version: 0.1.0
       sharp:
         specifier: ^0.32.6
         version: 0.32.6
@@ -410,88 +416,88 @@ importers:
 
 packages:
 
-  /@514labs/igloo-cli-darwin-arm64@0.3.37:
-    resolution: {integrity: sha512-Vxm6nSpP2OeblbAc7fGj+N3YzwyWSr+bdfdDdoG8gDGbz0cGO2c1UlPiSZgJeLNbAYZiU3vReGGFKwr62IUjaw==}
+  /@514labs/igloo-cli-darwin-arm64@0.3.39:
+    resolution: {integrity: sha512-0dsMWOTJ65cavQCwpKl/cu09EBHIXmMHpneYU03MzgMKmwL7H26f+JtURClIwZTLIuNlBMSxKAqkGrWCj+azTQ==}
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-darwin-x64@0.3.37:
-    resolution: {integrity: sha512-0rcDzslBZXNb9+MkQZ76oSNYt1Z1E8DGJbAIxR4LyD3Tlc5Z3is7QFCRi8QU2uzn08904Ubk7wzy6AZqA2JIcg==}
+  /@514labs/igloo-cli-darwin-x64@0.3.39:
+    resolution: {integrity: sha512-lpb7ZojC4Af+hKFwKMeVZ/+GuYVW3wU9rwK5StbXDwQ/FyBJGtjl2OdAzymHK4fLkF9JiG+hwp5sAP/6UwzbeA==}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-linux-arm64@0.3.37:
-    resolution: {integrity: sha512-gQkg5rst9eAF3bsy6N/5pgqhDZbFpG9IPWf7FnZN9ZehOOkNcbwBAchebaYU2WnylPdTif62Z9cdzNoVlYX+SQ==}
+  /@514labs/igloo-cli-linux-arm64@0.3.39:
+    resolution: {integrity: sha512-Jm23HbLY51jtCrwoCK9gqOVQfdvjDFN9B5v2+9j8LQZvJskVB0RbJIFISd9kXlvd91sMOCKMb3PQ8jr6q6g3+A==}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-linux-x64@0.3.37:
-    resolution: {integrity: sha512-vsZgqh4e/cllz3wLaU5sASmyXGZlIv1Exsk6tNAlNOCW0CuOI+MqxqwSHFZx2SGS4e9ebvbqF3gbbiba6RY2YQ==}
+  /@514labs/igloo-cli-linux-x64@0.3.39:
+    resolution: {integrity: sha512-c0hVd43n2DCJWxSuYlLhG36ZY36KUvjpjixgJ+2sjbC3km/HtQq2IKzxlP0ih98tmiXCaWVGRuqil1n2Q6qEWg==}
     cpu: [x64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli@0.3.37:
-    resolution: {integrity: sha512-7gEgaLETqs2w7MZ6zV1ShPIh87iT2LUXUhnjdn7jJYCBftcG2MdV3A+ws7Mv6hcqxkfUjqi5AHzgIGNAJT04EA==}
+  /@514labs/igloo-cli@0.3.39:
+    resolution: {integrity: sha512-iz2QSS+RpvMJsobRLyP8klBCA92ctELCJ8LOkiikER0U6vqmRKGm0vLmLpZfmgxsDRWeSYCAOFBFDrzfgIYeUw==}
     hasBin: true
     optionalDependencies:
-      '@514labs/igloo-cli-darwin-arm64': 0.3.37
-      '@514labs/igloo-cli-darwin-x64': 0.3.37
-      '@514labs/igloo-cli-linux-arm64': 0.3.37
-      '@514labs/igloo-cli-linux-x64': 0.3.37
+      '@514labs/igloo-cli-darwin-arm64': 0.3.39
+      '@514labs/igloo-cli-darwin-x64': 0.3.39
+      '@514labs/igloo-cli-linux-arm64': 0.3.39
+      '@514labs/igloo-cli-linux-x64': 0.3.39
     dev: false
 
-  /@514labs/moose-cli-darwin-arm64@0.3.37:
-    resolution: {integrity: sha512-esggVmgB4Mo41YukXNGs/3cP7gvILxN5laJWKxXVJw6d4+SGa61Ck3KXeGnM2Ws276dBXl2ppzPemMOpdcnLrg==}
+  /@514labs/moose-cli-darwin-arm64@0.3.39:
+    resolution: {integrity: sha512-1lXcPzbQ7k4fE+ybONzw01JDx/F9LUr3bw9Pw3n7HDsH/9QdRScxPu9VeHnffCJVo2eEx3RyltQz6225dJF76w==}
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-x64@0.3.37:
-    resolution: {integrity: sha512-fjTEuwLjz4ojd6c9L8YmNnRwfHFAzuWRnYXWuCroxP88iSdh160ZvrtLfLAOLmCtu9Pl8SAhVxn6XHnUXEsT3A==}
+  /@514labs/moose-cli-darwin-x64@0.3.39:
+    resolution: {integrity: sha512-dXQkomSaGVoJqqp+K6A9brdLSDn8M+2v2MFZrsLjwmpUfkbtXSK8GJahMP5z44/3Y1I+FDqBCdQOElfeplD2eQ==}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-arm64@0.3.37:
-    resolution: {integrity: sha512-zFuxZlbq6qTNQgZ/JK1Fgm6iQOKdSRHlQU8xWDOkOQ1BmtpUUu4q0ox+qgeI0KRaYOPUZIPnU6jNRBE1VrNxUQ==}
+  /@514labs/moose-cli-linux-arm64@0.3.39:
+    resolution: {integrity: sha512-r1HH0IJbUiJKcuOdb5dlUjivU9vCcs1MoncE23lq7G1MNHHSIHORbNtF8oTymtNZTD6C3QgnyxmaRdSziocfkQ==}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-x64@0.3.37:
-    resolution: {integrity: sha512-c1jkGqLcSiDfN3HriSS8iLSVGqz+ljaH9Zcnp1q/TqKGUxGToqw93zkIw/mOlIcZ9pqD2tZ7m24bPxMJjs4XMQ==}
+  /@514labs/moose-cli-linux-x64@0.3.39:
+    resolution: {integrity: sha512-RM1VtL263spuwZCS913FT+knweaKW+ztwqrPfCHtl94/jRocR6Y6bZW5ZbTC0F1LMtrgdgSJxEr5CZvPkNIi1Q==}
     cpu: [x64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli@0.3.37:
-    resolution: {integrity: sha512-BJqDemUKV6R6H3npOfDdalhtntTR+KTEWkb1Is0AUOpVcE3/8mEnlLxGZxgGcmDcBtP4S1lcB/K1FjznHVbG5w==}
+  /@514labs/moose-cli@0.3.39:
+    resolution: {integrity: sha512-ysALtbU7zxui2K4vR5M6418gVhuaOO8Cvc6bDk0WfDiGyI6/oFRJUAlk/YpTCELkIoXj9kUeUtE/VOb+TQmkkw==}
     hasBin: true
     optionalDependencies:
-      '@514labs/moose-cli-darwin-arm64': 0.3.37
-      '@514labs/moose-cli-darwin-x64': 0.3.37
-      '@514labs/moose-cli-linux-arm64': 0.3.37
-      '@514labs/moose-cli-linux-x64': 0.3.37
+      '@514labs/moose-cli-darwin-arm64': 0.3.39
+      '@514labs/moose-cli-darwin-x64': 0.3.39
+      '@514labs/moose-cli-linux-arm64': 0.3.39
+      '@514labs/moose-cli-linux-x64': 0.3.39
     dev: false
 
   /@aashutoshrathi/word-wrap@1.2.6:
@@ -8694,6 +8700,14 @@ packages:
       mdast-util-math: 2.0.2
       micromark-extension-math: 2.1.2
       unified: 10.1.2
+    dev: false
+
+  /remark-mdx-disable-explicit-jsx@0.1.0:
+    resolution: {integrity: sha512-NC7NUbu4bExZnsWDTJE3UhBRZujW3gyqMufhTHn2GHhZ5LetWzyieyuZerBPdSniLx4d7QKDbf+d3u/qmMGyaQ==}
+    dependencies:
+      '@types/hast': 2.3.9
+      unified: 10.1.2
+      unist-util-visit: 4.1.2
     dev: false
 
   /remark-mdx@2.3.0:

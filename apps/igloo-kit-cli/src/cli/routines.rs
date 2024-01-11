@@ -104,6 +104,7 @@ pub mod clean;
 pub mod initialize;
 pub mod start;
 pub mod stop;
+mod util;
 pub mod validate;
 
 #[derive(Clone)]
@@ -133,14 +134,23 @@ impl RoutineSuccess {
 pub struct RoutineFailure {
     message: Message,
     message_type: MessageType,
-    error: Error,
+    error: Option<Error>,
 }
 impl RoutineFailure {
     pub fn new(message: Message, error: Error) -> Self {
         Self {
             message,
             message_type: MessageType::Error,
-            error,
+            error: Some(error),
+        }
+    }
+
+    /// create a RoutineFailure error without an io error
+    pub fn error(message: Message) -> Self {
+        Self {
+            message,
+            message_type: MessageType::Error,
+            error: None,
         }
     }
 }
@@ -173,7 +183,14 @@ pub trait Routine {
                     failure.message_type,
                     Message::new(
                         failure.message.action.clone(),
-                        format!("{}: {}", failure.message.details.clone(), failure.error),
+                        match &failure.error {
+                            None => {
+                                failure.message.details.clone()
+                            }
+                            Some(error) => {
+                                format!("{}: {}", failure.message.details.clone(), error)
+                            }
+                        },
                     )
                 );
                 Err(failure)

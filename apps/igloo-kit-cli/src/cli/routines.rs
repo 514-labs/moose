@@ -115,6 +115,13 @@ pub struct RoutineSuccess {
 
 // Implement success and info contructors and a new constructor that lets the user choose which type of message to display
 impl RoutineSuccess {
+    pub fn info(message: Message) -> Self {
+        Self {
+            message,
+            message_type: MessageType::Info,
+        }
+    }
+
     pub fn success(message: Message) -> Self {
         Self {
             message,
@@ -130,11 +137,20 @@ pub struct RoutineFailure {
     error: Option<Error>,
 }
 impl RoutineFailure {
-    pub fn new(message: Message, error: Option<Error>) -> Self {
+    pub fn new(message: Message, error: Error) -> Self {
         Self {
             message,
             message_type: MessageType::Error,
-            error,
+            error: Some(error),
+        }
+    }
+
+    /// create a RoutineFailure error without an io error
+    pub fn error(message: Message) -> Self {
+        Self {
+            message,
+            message_type: MessageType::Error,
+            error: None,
         }
     }
 }

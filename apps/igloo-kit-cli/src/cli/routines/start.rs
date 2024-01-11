@@ -31,7 +31,7 @@ impl Routine for RunLocalInfrastructure {
                     "Failed".to_string(),
                     "to create .igloo directory. Check permissions or contact us`".to_string(),
                 ),
-                Some(err),
+                err,
             )
         })?;
         // Model this after the `spin_up` function in `apps/igloo-kit-cli/src/cli/routines/start.rs` but use routines instead
@@ -67,7 +67,7 @@ impl Routine for RunRedPandaContainer {
                     "Failed".to_string(),
                     "to create .igloo directory. Check permissions or contact us`".to_string(),
                 ),
-                Some(err),
+                err,
             )
         })?;
 
@@ -80,7 +80,7 @@ impl Routine for RunRedPandaContainer {
                         self.project.redpanda_config
                     ),
                 ),
-                Some(err),
+                err,
             )
         })?;
 
@@ -110,7 +110,7 @@ impl Routine for RunClickhouseContainer {
                     "Failed".to_string(),
                     "to create .igloo directory. Check permissions or contact us`".to_string(),
                 ),
-                Some(err),
+                err,
             )
         })?;
 
@@ -124,7 +124,7 @@ impl Routine for RunClickhouseContainer {
                     "Failed".to_string(),
                     "to run clickhouse container".to_string(),
                 ),
-                Some(err),
+                err,
             )
         })?;
 

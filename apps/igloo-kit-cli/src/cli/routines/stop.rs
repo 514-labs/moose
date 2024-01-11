@@ -37,7 +37,7 @@ impl Routine for StopRedPandaContainer {
                     "Failed".to_string(),
                     "to stop redpanda container".to_string(),
                 ),
-                Some(err),
+                err,
             )
         })?;
 
@@ -62,7 +62,7 @@ impl Routine for StopClickhouseContainer {
                     "Failed".to_string(),
                     "to stop clickhouse container".to_string(),
                 ),
-                Some(err),
+                err,
             )
         })?;
 

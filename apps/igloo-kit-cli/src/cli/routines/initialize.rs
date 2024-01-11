@@ -1,11 +1,12 @@
+use std::io::ErrorKind;
 use std::{fs, path::PathBuf};
 
 use crate::cli::routines::util::ensure_docker_running;
 use crate::{
     cli::display::Message,
-    constants::PANDA_NETWORK,
     framework::{languages::create_models_dir, typescript::create_typescript_models_dir},
     project::Project,
+    utilities::constants::PANDA_NETWORK,
     utilities::docker,
 };
 
@@ -32,7 +33,7 @@ impl Routine for InitializeProject {
                     "Failed".to_string(),
                     "to create app directory. Check permissions or contact us`".to_string(),
                 ),
-                Some(err),
+                err,
             )
         })?;
 
@@ -96,10 +97,10 @@ impl Routine for ValidateMountVolumes {
             )))
         } else {
             let message = format!("redpanda: {panda_house}, clickhouse: {clickhouse}");
-            Err(RoutineFailure::new(
-                Message::new("Mount volume status".to_string(), message.clone()),
-                None,
-            ))
+            Err(RoutineFailure::error(Message::new(
+                "Mount volume status".to_string(),
+                message.clone(),
+            )))
         }
     }
 }
@@ -121,7 +122,7 @@ impl Routine for CreateIglooTempDirectoryTree {
                     "Failed".to_string(),
                     "to create .igloo directory. Check permissions or contact us`".to_string(),
                 ),
-                Some(err),
+                err,
             )
         })?;
         let run_mode = self.run_mode;
@@ -154,7 +155,7 @@ impl Routine for CreateTempDataVolumes {
                     "Failed".to_string(),
                     "to create .igloo directory. Check permissions or contact us`".to_string(),
                 ),
-                Some(err),
+                err,
             )
         })?;
 
@@ -193,7 +194,7 @@ impl Routine for CreateRedPandaMountVolume {
                         mount_dir.display()
                     ),
                 ),
-                Some(err),
+                err,
             )),
         }
     }
@@ -220,7 +221,7 @@ impl Routine for CreateClickhouseMountVolume {
                     "Failed".to_string(),
                     format!("to create Clickhouse mount volume {}", mount_dir.display()),
                 ),
-                Some(err),
+                err,
             )
         })?;
         fs::create_dir_all(mount_dir.join("data")).map_err(|err| {
@@ -232,7 +233,7 @@ impl Routine for CreateClickhouseMountVolume {
                         mount_dir.display()
                     ),
                 ),
-                Some(err),
+                err,
             )
         })?;
         fs::create_dir_all(mount_dir.join("logs")).map_err(|err| {
@@ -244,7 +245,7 @@ impl Routine for CreateClickhouseMountVolume {
                         mount_dir.display()
                     ),
                 ),
-                Some(err),
+                err,
             )
         })?;
         // database::create_server_config_file(&server_config_path)?;
@@ -276,7 +277,7 @@ impl Routine for CreateModelsVolume {
                     "Failed".to_string(),
                     format!("to create models volume in {}", err),
                 ),
-                Some(err),
+                err,
             )
         })?;
 
@@ -286,7 +287,7 @@ impl Routine for CreateModelsVolume {
                     "Failed".to_string(),
                     format!("to create models volume in {}", err),
                 ),
-                Some(err),
+                err,
             )
         })?;
 
@@ -316,13 +317,19 @@ impl Routine for CreateDockerNetwork {
                 "Created".to_string(),
                 format!("docker network {}", &self.network_name),
             ))),
-            Err(err) => Err(RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    format!("to create docker network {}", &self.network_name),
-                ),
-                Some(err),
-            )),
+            Err(err) => match err.kind() {
+                ErrorKind::AlreadyExists => Ok(RoutineSuccess::info(Message::new(
+                    "Exists".to_string(),
+                    format!("docker network {}", &self.network_name),
+                ))),
+                _ => Err(RoutineFailure::new(
+                    Message::new(
+                        "Failed".to_string(),
+                        format!("to create docker network {}", &self.network_name),
+                    ),
+                    err,
+                )),
+            },
         }
     }
 }

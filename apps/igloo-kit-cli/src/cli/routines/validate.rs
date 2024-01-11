@@ -1,5 +1,5 @@
 use super::{Routine, RoutineFailure, RoutineSuccess};
-use crate::{cli::display::Message, constants::PANDA_NETWORK, utilities::docker};
+use crate::{cli::display::Message, utilities::constants::PANDA_NETWORK, utilities::docker};
 
 pub struct ValidateClickhouseRun;
 impl ValidateClickhouseRun {
@@ -12,7 +12,7 @@ impl Routine for ValidateClickhouseRun {
         let containers = docker::list_containers().map_err(|err| {
             RoutineFailure::new(
                 Message::new("Failed".to_string(), "to get the containers".to_string()),
-                Some(err),
+                err,
             )
         })?;
 
@@ -21,13 +21,10 @@ impl Routine for ValidateClickhouseRun {
             .iter()
             .find(|container| container.names.contains("clickhousedb-1"))
             .ok_or_else(|| {
-                RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        "to find clickhouse docker container".to_string(),
-                    ),
-                    None,
-                )
+                RoutineFailure::error(Message::new(
+                    "Failed".to_string(),
+                    "to find clickhouse docker container".to_string(),
+                ))
             })?;
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
@@ -48,7 +45,7 @@ impl Routine for ValidateRedPandaRun {
         let containers = docker::list_containers().map_err(|err| {
             RoutineFailure::new(
                 Message::new("Failed".to_string(), "to get the containers".to_string()),
-                Some(err),
+                err,
             )
         })?;
 
@@ -57,13 +54,10 @@ impl Routine for ValidateRedPandaRun {
             .iter()
             .find(|container| container.names.contains("redpanda-1"))
             .ok_or_else(|| {
-                RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        "to find redpanda docker container".to_string(),
-                    ),
-                    None,
-                )
+                RoutineFailure::error(Message::new(
+                    "Failed".to_string(),
+                    "to find redpanda docker container".to_string(),
+                ))
             })?;
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
@@ -86,7 +80,7 @@ impl Routine for ValidatePandaHouseNetwork {
                     "Failed".to_string(),
                     "to get list of docker networks".to_string(),
                 ),
-                Some(err),
+                err,
             )
         })?;
 
@@ -94,13 +88,10 @@ impl Routine for ValidatePandaHouseNetwork {
             .iter()
             .find(|network| network.name == PANDA_NETWORK)
             .ok_or_else(|| {
-                RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        "to find panda house docker network".to_string(),
-                    ),
-                    None,
-                )
+                RoutineFailure::error(Message::new(
+                    "Failed".to_string(),
+                    "to find panda house docker network".to_string(),
+                ))
             })?;
 
         Ok(RoutineSuccess::success(Message::new(
@@ -124,7 +115,7 @@ impl Routine for ValidateRedPandaCluster {
                     "Failed".to_string(),
                     "to validate red panda cluster".to_string(),
                 ),
-                Some(err),
+                err,
             )
         })?;
 
@@ -134,13 +125,10 @@ impl Routine for ValidateRedPandaCluster {
                 "validated red panda cluster".to_string(),
             )))
         } else {
-            Err(RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to validate red panda cluster".to_string(),
-                ),
-                None,
-            ))
+            Err(RoutineFailure::error(Message::new(
+                "Failed".to_string(),
+                "to validate red panda cluster".to_string(),
+            )))
         }
     }
 }

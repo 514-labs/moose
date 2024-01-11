@@ -29,7 +29,7 @@ jobs:
       version: ${{ steps.version.outputs.VERSION }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           fetch-depth: 10
 
@@ -85,7 +85,7 @@ jobs:
             }
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install Rust toolchain
         uses: actions-rust-lang/setup-rust-toolchain@v1
@@ -152,7 +152,9 @@ jobs:
     if: ${{ !inputs.dry-run }}
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 100
 
       - uses: pnpm/action-setup@v2
         with:
@@ -161,10 +163,7 @@ jobs:
       - name: Login GSAP
         shell: bash
         run: |
-          pnpm config set //npm.greensock.com/:_authToken ${{ secrets.GSAP_TOKEN }}
           pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
-          cd ./apps/web
-          pnpm install gsap@npm:@gsap/business
 
       - name: Install node
         uses: actions/setup-node@v3

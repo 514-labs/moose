@@ -1,7 +1,9 @@
 use std::{fs, path::PathBuf};
 
 use crate::cli::routines::util::ensure_docker_running;
-use crate::{cli::display::Message, constants::PANDA_NETWORK, project::Project, utilities::docker};
+use crate::{
+    cli::display::Message, project::Project, utilities::constants::PANDA_NETWORK, utilities::docker,
+};
 
 use super::{stop::StopLocalInfrastructure, Routine, RoutineFailure, RoutineSuccess, RunMode};
 
@@ -25,7 +27,7 @@ impl Routine for CleanProject {
                     "Failed".to_string(),
                     "to get internal directory for project".to_string(),
                 ),
-                Some(err),
+                err,
             )
         })?;
 
@@ -59,7 +61,7 @@ impl Routine for RemoveDockerNetwork {
         docker::remove_network(&self.network_name).map_err(|err| {
             RoutineFailure::new(
                 Message::new("Failed".to_string(), "to remove docker network".to_string()),
-                Some(err),
+                err,
             )
         })?;
 
@@ -91,7 +93,7 @@ impl Routine for DeleteRedpandaMountVolume {
                         mount_dir.display()
                     ),
                 ),
-                Some(err),
+                err,
             )
         })?;
 
@@ -122,7 +124,7 @@ impl Routine for DeleteClickhouseMountVolume {
                         mount_dir.display()
                     ),
                 ),
-                Some(err),
+                err,
             )
         })?;
 
@@ -152,7 +154,7 @@ impl Routine for DeleteModelVolume {
                     "Failed".to_string(),
                     format!("to remove Model mount volume at {}", mount_dir.display()),
                 ),
-                Some(err),
+                err,
             )
         })?;
 

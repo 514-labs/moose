@@ -6,7 +6,7 @@ pub fn ensure_docker_running() -> Result<(), RoutineFailure> {
     let errors = docker::check_status().map_err(|err| {
         RoutineFailure::new(
             Message::new("Failed".to_string(), "to run `docker info`".to_string()),
-            Some(err),
+            err,
         )
     })?;
 
@@ -16,17 +16,14 @@ pub fn ensure_docker_running() -> Result<(), RoutineFailure> {
         .iter()
         .any(|s| s.ends_with("Is the docker daemon running?"))
     {
-        Err(RoutineFailure::new(
-            Message::new(
-                "Failed".to_string(),
-                "to run docker commands. Is docker running?".to_string(),
-            ),
-            None,
-        ))
+        Err(RoutineFailure::error(Message::new(
+            "Failed".to_string(),
+            "to run docker commands. Is docker running?".to_string(),
+        )))
     } else {
-        Err(RoutineFailure::new(
-            Message::new("Failed".to_string(), errors.join("\n")),
-            None,
-        ))
+        Err(RoutineFailure::error(Message::new(
+            "Failed".to_string(),
+            errors.join("\n"),
+        )))
     }
 }

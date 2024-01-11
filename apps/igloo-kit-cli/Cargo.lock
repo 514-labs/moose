@@ -86,6 +86,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "anyhow"
+version = "1.0.77"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c9d19de80eff169429ac1e9f48fffb163916b448a44e8e046186232046d9e1f9"
+
+[[package]]
 name = "assert_cmd"
 version = "2.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1001,6 +1007,7 @@ dependencies = [
 name = "igloo-cli"
 version = "0.0.0"
 dependencies = [
+ "anyhow",
  "assert_cmd",
  "assert_fs",
  "async-recursion",
@@ -1024,6 +1031,7 @@ dependencies = [
  "openssl",
  "predicates",
  "rdkafka",
+ "reqwest",
  "schema-ast",
  "sentry",
  "serde",

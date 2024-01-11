@@ -3,8 +3,8 @@ use std::{
     process::{Command, Stdio},
 };
 
-use crate::constants::PANDA_NETWORK;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
+use crate::utilities::constants::PANDA_NETWORK;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_slice, from_str};
 
@@ -83,7 +83,27 @@ fn network_command(command: &str, network_name: &str) -> std::io::Result<String>
         .spawn()?;
 
     let output = child.wait_with_output()?;
-    output_to_result(output)
+
+    if output.status.success() {
+        Ok(String::from_utf8_lossy(&output.stdout).to_string())
+    } else {
+        // match std error with a regex and a match statement if it contains network and already exists
+        let owned = String::from_utf8_lossy(&output.stderr).into_owned();
+        let std_error_str = owned.as_str();
+
+        match std_error_str {
+            _ if std_error_str.contains("network") && std_error_str.contains("already exists") => {
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::AlreadyExists,
+                    String::from_utf8_lossy(&output.stderr),
+                ))
+            }
+            _ => Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                String::from_utf8_lossy(&output.stderr),
+            )),
+        }
+    }
 }
 
 pub fn network_list() -> std::io::Result<Vec<NetworkRow>> {

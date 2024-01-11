@@ -15,13 +15,13 @@
 ## Generate a new igloo project
 
 ```bash
-$ npx create-igloo-app
+npx create-igloo-app
 ```
 
 ## NPM Install of the CLI
 
 ```bash
-$ npm install -g @514labs/igloo-cli
+npm install -g @514labs/igloo-cli
 ```
 
 ## Config file

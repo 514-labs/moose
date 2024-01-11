@@ -75,6 +75,8 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>) {
                     .expect("Failed to write project to file");
             }
             Some(Commands::Dev {}) => {
+                info!("Running dev command");
+
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `igloo init` to create a project");
 
@@ -129,9 +131,7 @@ pub async fn cli_run() {
     let config = read_settings().unwrap();
     setup_logging(config.logger.clone()).expect("Failed to setup logging");
 
-    info!("Configuration loaded and logging setup");
-
-    info!("Feature Configuration: {:?}", config.features);
+    info!("CLI Configuration loaded and logging setup: {:?}", config);
 
     let cli = Cli::parse();
 

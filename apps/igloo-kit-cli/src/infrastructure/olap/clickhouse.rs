@@ -237,8 +237,6 @@ pub async fn check_ready(
             i < 5
                 && match e {
                     clickhouse::error::Error::Network(v) => {
-                        println!("{:?}", v);
-                        println!("{:?}", v.to_string());
                         let err_string = v.to_string();
                         err_string.contains("connection closed before message completed")
                             || err_string.contains("connection error: Connection reset by peer")

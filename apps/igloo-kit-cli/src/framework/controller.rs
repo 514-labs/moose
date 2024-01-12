@@ -93,7 +93,7 @@ pub(crate) async fn create_or_replace_view(
             format!("Failed to get clickhouse query: {:?}", e),
         )
     })?;
-    olap::clickhouse::run_query(drop_view_query, configured_client)
+    olap::clickhouse::run_query(&drop_view_query, configured_client)
         .await
         .map_err(|e| {
             Error::new(
@@ -101,7 +101,7 @@ pub(crate) async fn create_or_replace_view(
                 format!("Failed to drop view in clickhouse: {}", e),
             )
         })?;
-    olap::clickhouse::run_query(create_view_query, configured_client)
+    olap::clickhouse::run_query(&create_view_query, configured_client)
         .await
         .map_err(|e| {
             Error::new(
@@ -130,8 +130,17 @@ pub(crate) async fn create_or_replace_table(
         )
     })?;
 
+    olap::clickhouse::check_ready(configured_client)
+        .await
+        .map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("Failed to connect to clickhouse: {}", e),
+            )
+        })?;
+
     // Clickhouse doesn't support dropping a view if it doesn't exist so we need to drop it first in case the schema has changed
-    olap::clickhouse::run_query(drop_table_query, configured_client)
+    olap::clickhouse::run_query(&drop_table_query, configured_client)
         .await
         .map_err(|e| {
             Error::new(
@@ -139,7 +148,7 @@ pub(crate) async fn create_or_replace_table(
                 format!("Failed to drop table in clickhouse: {}", e),
             )
         })?;
-    olap::clickhouse::run_query(create_table_query, configured_client)
+    olap::clickhouse::run_query(&create_table_query, configured_client)
         .await
         .map_err(|e| {
             Error::new(

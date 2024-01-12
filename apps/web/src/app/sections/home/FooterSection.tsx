@@ -6,7 +6,7 @@ import { AnimatedDescription } from "../../components/AnimatedDescription";
 export const FooterSection = () => {
   return (
     <div>
-      <div className="flex sm:flex-row content-center justify-center grow flex-col gap-y-6 mt-6 p-10 sm:py-5">
+      <div className="flex sm:flex-row content-center justify-center grow flex-col gap-y-6 mt-6 p-10 sm:py-8">
         <RightsComponent />
         <LogoComponent />
       </div>

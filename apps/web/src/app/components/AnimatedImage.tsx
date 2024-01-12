@@ -64,10 +64,10 @@ export const AnimatedImage = ({
 
       const animation = {
         opacity: 0,
-        y: 100,
+        y: 20,
         duration: 1,
         ease: "quint",
-        delay: delay || 0,
+        delay: delay || 1,
       }
 
       tl.set(imageRef.current, { visibility: "visible" });

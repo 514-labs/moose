@@ -18,6 +18,9 @@ RUN sed -i "s|http://archive.ubuntu.com|${apt_archive}|g" /etc/apt/sources.list
 RUN groupadd -r redpanda --gid=101 \
     && useradd -r -g redpanda --uid=101 --home-dir=/var/lib/redpanda --shell=/bin/bash redpanda
 
+RUN groupadd -r clickhouse --gid=102 \
+    && useradd -r -g clickhouse --uid=102 --home-dir=/var/lib/clickhouse --shell=/bin/bash clickhouse
+
 # Some common dependencies
 RUN apt-get update \
     && apt-get upgrade -yq \
@@ -28,6 +31,9 @@ RUN apt-get update \
         wget \
         curl \
         supervisor \
+        apt-transport-https \
+        dirmngr \
+        gnupg2 \
     && apt-get clean \
     && rm -rf \
         /var/lib/apt/lists/* \
@@ -37,6 +43,8 @@ RUN apt-get update \
 RUN mkdir -p /var/log/supervisor
 
 # Install Redpandas
+# TODO pin version
+
 RUN curl -1sLf 'https://dl.redpanda.com/nzc4ZYQK3WRGd9sy/redpanda/cfg/setup/bash.deb.sh' | bash && apt install redpanda -y
 
 RUN curl -1sLf 'https://dl.redpanda.com/nzc4ZYQK3WRGd9sy/redpanda/cfg/setup/bash.deb.sh' | bash && apt install redpanda-console -y
@@ -47,7 +55,57 @@ RUN rpk redpanda mode production && \
 
 RUN mkdir -p /var/lib/redpanda/data
 
+VOLUME /var/lib/redpanda
+
 # Install Clickhouse
+# Steps taken from https://github.com/ClickHouse/ClickHouse/blob/master/docker/server/Dockerfile.ubuntu
+
+ARG CLICKHOUSE_REPO_CHANNEL="stable"
+ARG CLICKHOUSE_REPOSITORY="deb [signed-by=/usr/share/keyrings/clickhouse-keyring.gpg] https://packages.clickhouse.com/deb ${CLICKHOUSE_REPO_CHANNEL} main"
+ARG CLICKHOUSE_VERSION="23.12.2.59"
+ARG CLICKHOUSE_PACKAGES="clickhouse-client clickhouse-server clickhouse-common-static"
+
+RUN mkdir -p /etc/apt/sources.list.d \
+    && GNUPGHOME=$(mktemp -d) \
+    && GNUPGHOME="$GNUPGHOME" gpg --no-default-keyring \
+        --keyring /usr/share/keyrings/clickhouse-keyring.gpg \
+        --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys 8919F6BD2B48D754 \
+    && rm -rf "$GNUPGHOME" \
+    && chmod +r /usr/share/keyrings/clickhouse-keyring.gpg \
+    && echo "${CLICKHOUSE_REPOSITORY}" > /etc/apt/sources.list.d/clickhouse.list \
+    && echo "installing from repository: ${CLICKHOUSE_REPOSITORY}" \
+    && apt-get update \
+    && for package in ${CLICKHOUSE_PACKAGES}; do \
+         packages="${packages} ${package}=${CLICKHOUSE_VERSION}" \
+    ; done \
+    && apt-get install --allow-unauthenticated --yes --no-install-recommends ${packages} || exit 1 \
+    && rm -rf \
+        /var/lib/apt/lists/* \
+        /var/cache/debconf \
+        /tmp/* \
+    && apt-get autoremove --purge -yq libksba8 \
+    && apt-get autoremove -yq
+
+# post install
+# we need to allow "others" access to clickhouse folder, because docker container
+# can be started with arbitrary uid (openshift usecase)
+RUN clickhouse-local -q 'SELECT * FROM system.build_options' \
+    && mkdir -p /var/lib/clickhouse /var/log/clickhouse-server /etc/clickhouse-server /etc/clickhouse-client \
+    && chmod ugo+Xrw -R /var/lib/clickhouse /var/log/clickhouse-server /etc/clickhouse-server /etc/clickhouse-client
+
+RUN locale-gen en_US.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en
+ENV LC_ALL en_US.UTF-8
+ENV TZ UTC
+
+RUN mkdir /docker-entrypoint-initdb.d
+
+COPY clickhouse-config.xml /etc/clickhouse-server/config.d/
+COPY run-clickhouse.sh /run-clickhouse.sh
+RUN chmod +x /run-clickhouse.sh
+
+VOLUME /var/lib/clickhouse
 
 # Install Moose
 

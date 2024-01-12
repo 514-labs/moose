@@ -244,7 +244,10 @@ pub async fn check_ready(
                                 .contains("operation was canceled: connection was not ready")
                             || err_string.contains("channel closed")
                     }
-                    _ => false,
+                    _ => {
+                        debug!("Error is {} instead of network error. Will not retry.", e);
+                        false
+                    }
                 }
         },
         tokio::time::Duration::from_millis(200),

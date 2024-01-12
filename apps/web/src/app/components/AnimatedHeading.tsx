@@ -22,19 +22,19 @@ type Size = "display" | "display-md" | "express" | "heading";
 
 const getDefaultStyle = (size: Size) => {
     if (size === "display") {
-        return "text-typography-primary text-5xl sm:text-7xl md:text-8xl lg:text-9xl 4xl:text-10xl 4xl:leading-none text-grey-300"
+        return "text-typography text-5xl sm:text-7xl md:text-8xl lg:text-9xl 4xl:text-10xl 4xl:leading-none text-black"
     }
 
     if (size === "display-md") {
-        return "text-typography-primary text-5xl 2xl:text-6xl 3xl:text-7xl text-grey-300"
+        return "text-typography text-5xl 2xl:text-6xl 3xl:text-7xl text-black"
     }
 
     if (size === "express") {
-        return "text-typography-primary text-center text-3xl lg:text-4xl 2xl:text-6xl 3xl:text-7xl text-grey-300"
+        return "text-typography text-center text-3xl lg:text-4xl 2xl:text-6xl 3xl:text-7xl text-black"
     }
 
     if (size === "heading") {
-        return "text-3xl text-action-primary"
+        return "text-3xl text-action"
     }
 }
 
@@ -70,13 +70,13 @@ export const AnimatedHeading = ({content, size, onScroll, triggerRef, className,
                 tl.set(headingRef.current, { visibility: "visible" });
             }
             
-            const splitText = new SplitText(headingRef.current, { type: "words, chars" });
+            const splitText = new SplitText(headingRef.current, { type: "words, chars, lines" });
             const splitTextChars = splitText.chars;
 
-            const stagger = size === "express" ? 0.01 : 0.03;
+            const stagger = size === "express" ? 0.01 : 0.02;
 
             const animation = {
-                y: "-20",
+                y: "10",
                 opacity: 0,
                 duration: 1,
                 ease: "quint",

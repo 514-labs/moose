@@ -20,9 +20,9 @@ interface DescriptionProps {
 
 const getStyle = (className: string) => {
     if (className) {
-        return className + "text-typography-primary my-3 text-gray-300"
+        return className + "text-typography my-3 text-black"
     } else {
-        return "text-typography-primary my-3 text-gray-300";
+        return "text-typography my-3 text-black";
     }
 }
 
@@ -61,11 +61,11 @@ export const AnimatedDescription = ({content, onScroll, triggerRef, className, p
             }
 
             const animation = {
-                y: "-10",
+                y: "20",
                 opacity: 0,
                 duration: 1,
                 ease: "quint",
-                stagger: { each: 0.03 },
+                stagger: { each: 0.04 },
             }
 
             tl.from(splitTextLines,animation, position || 0);

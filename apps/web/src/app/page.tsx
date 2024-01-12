@@ -10,8 +10,8 @@ import { AnimatedDescription } from "./components/AnimatedDescription";
 
 
 import heroImg from "../../public/bg-image-man/bg-image-hero_3x.webp";
-import middleImg from "../../public/bg-image-computer/bg-image-computer_3x.webp";
-import footerImg from "../../public/bg-image-moose/bg-image-moose_3x.webp";
+import middleImg from '../../public/bg-image-computer/bg-image-computer_4x.webp'
+import footerImg from "../../public/bg-image-moose/bg-image-moose_4x.webp";
 import { FooterSection } from "./sections//home/FooterSection";
 import { AnimatedComponent } from "./components/AnimatedComponent";
 import { CodeBlockCTA } from "./components/CodeBlockCTA";
@@ -19,13 +19,13 @@ import { CodeBlockCTA } from "./components/CodeBlockCTA";
 export const metadata: Metadata = {
   title: "Moose.js | Build for the modern data stack",
   openGraph: {
-    images: "/open-graph/og_igloo_4x.webp"
+    images: "/open-graph/og_moose_4x.png"
   }
 };
 
 const iglooSection = {
   heading: "start building today",
-  description: "Start building your data-intensive application today. Moose.js is free to use and open source. If you'd like to contribute, check out our github or join our discord.",
+  description: "Start building your data-intensive application today. Moose.js is free to use and open source. If you'd like to contribute, check out our github or join our Slack.",
 }
 
 const fiveonefourSection = {
@@ -82,21 +82,21 @@ export default function Home() {
 
   return (
     <div className="h-full relative">
-      <SectionGrid className="py-36 pb-0 2xl:pt-20" gapStyle="gap-y-36">
+      <SectionGrid className="py-36 pb-0 2xl:pt-24" gapStyle="gap-y-36">
           <div className="flex flex-col px-10 w-full space-y-5 col-span-3 sm:col-span-12 2xl:col-span-6">
-            <AnimatedHeading position={0} className="" content={fiveonefourSection.heading} size="display" />
+            <AnimatedHeading position={0} className="2xl:text-8xl" content={fiveonefourSection.heading} size="display" />
             <AnimatedDescription position={0.75} className="" content={fiveonefourSection.description} />
             <div>
-              <CodeBlockCTA/>
+                <CodeBlockCTA/>
             </div>
           </div>
           <div className="relative h-full w-full min-h-[80vw] sm:min-h-[50vw] col-span-3 sm:col-span-12 2xl:col-span-6">
-            <AnimatedImage src={heroImg} position={1} alt="the crew"/>
+            <AnimatedImage src={heroImg} position={0.5} alt="the crew"/>
           </div>
        </SectionGrid>
 
-      <div className="py-36">
-      <AnimatedHeading position={1} className="px-10 w-full" content="decades of best practices" size="display" onScroll />
+      <div className="py-24">
+      <AnimatedHeading className="px-10 w-full 2xl:text-8xl" content="decades of best practices" size="display" position={0.5} onScroll />
       </div>
       
       <SectionGrid gapStyle="gap-10" itemPosition="start" className="px-10 lg:space-y-0 lg:flex-row md:pb-12">
@@ -105,7 +105,7 @@ export default function Home() {
             <div key={index} className="flex flex-col md:flex-row flex-1 col-span-3 sm:col-span-6 lg:col-span-4">
               <div className="flex flex-col md:flex-1">
               <div className="text-typography-primary">
-                  <AnimatedHeading className="text-gray-300" position={0.5} size="heading" content={feature.heading} onScroll />
+                  <AnimatedHeading className="text-black" position={0.8} size="heading" content={feature.heading} onScroll />
                 </div>
                 <div className="text-typography-secondary">
                   <AnimatedDescription position={1} content={feature.description} onScroll />
@@ -116,21 +116,31 @@ export default function Home() {
         })}
       </SectionGrid>
 
-      <div className="py-24">
-        <AnimatedHeading position={0.25} className="px-10 w-ful text-gray-300" content="modernized & open for all" size="display" onScroll/>
+      {/* <div className="py-20">
+        <AnimatedHeading position={0.5} className="px-10 w-ful text-black" content="modernized & open for all" size="display" onScroll/>
       </div>
 
       <div className="relative h-full w-full min-h-[80vw] sm:min-h-[50vw] w-full space-y-5 mt-12 mb-24 2xl:mt-0">
-          <AnimatedImage src={middleImg} position={0.5} alt="the crew" priority onScroll/>
-        </div>
+          <AnimatedImage src={middleImg} position={0} alt="the crew" priority onScroll/>
+        </div> */}
 
-        <SectionGrid gapStyle="gap-10" itemPosition="start" className="px-10 pb-24 lg:space-y-0 lg:flex-row">
+        <SectionGrid className="py-24 pb-0 2xl:pt-20" gapStyle="gap-y-36">
+        <div className="flex flex-col px-10 w-full space-y-5 col-span-3 sm:col-span-12 2xl:col-span-6">
+            <AnimatedHeading position={0.5} className="2xl:text-8xl" content="modernized & open for all" size="display" onScroll />          
+          </div>
+        <div className="relative h-full w-full min-h-[80vw] sm:min-h-[50vw] col-span-3 sm:col-span-12 2xl:col-span-6">
+            <AnimatedImage src={middleImg} position={0.25} alt="the crew" onScroll />
+          </div>
+   
+       </SectionGrid>
+
+        <SectionGrid gapStyle="gap-10" itemPosition="start" className="px-10 p-24 lg:space-y-0 lg:flex-row">
         {features.map((feature, index) => {
           return (
             <div key={index} className="flex flex-col md:flex-row flex-1 col-span-3 sm:col-span-4 lg:col-span-4">
               <div className="flex flex-col md:flex-1">
               <div className="text-typography-primary">
-                  <AnimatedHeading  className="text-gray-300" position={0.5} content={feature.heading} onScroll size="heading" />
+                  <AnimatedHeading  className="text-black" position={0.75} content={feature.heading} onScroll size="heading" />
                 </div>
                 <div className="text-typography-primary">
                   <AnimatedDescription position={1} content={feature.description} onScroll />
@@ -141,15 +151,15 @@ export default function Home() {
         })}
       </SectionGrid>
 
-      <SectionGrid gapStyle="gap-y-24 pb-24">
+      <SectionGrid gapStyle="gap-y-24 pb-0">
         <div className="relative h-full w-full min-h-[80vw] sm:min-h-[50vw] col-span-3 sm:col-span-12 xl:col-span-6">
-          <AnimatedImage src={footerImg} position={1.5} alt="the crew" onScroll/>
+          <AnimatedImage src={footerImg} position={0.25} alt="the crew" onScroll/>
         </div>
         <div className="flex flex-col px-10 w-full space-y-5 col-span-3 sm:col-span-12 xl:col-span-6">
-          <AnimatedHeading  className="text-gray-300" position={0.5} content={iglooSection.heading} onScroll  size="display" />
+          <AnimatedHeading  className="text-black 2xl:text-8xl" position={0.75} content={iglooSection.heading} onScroll  size="display" />
           <AnimatedDescription position={1} className="" content={iglooSection.description} onScroll />
           <div>
-            <CodeBlockCTA/>
+             <CodeBlockCTA/>
           </div>
         </div>
       </SectionGrid>

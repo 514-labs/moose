@@ -11,9 +11,9 @@ impl StopLocalInfrastructure {
 }
 impl Routine for StopLocalInfrastructure {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let run_mode = self.run_mode.clone();
-        StopRedPandaContainer::new().run(run_mode.clone())?;
-        StopClickhouseContainer::new().run(run_mode.clone())?;
+        let run_mode = self.run_mode;
+        StopRedPandaContainer::new().run(run_mode)?;
+        StopClickhouseContainer::new().run(run_mode)?;
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
             "stopped local infrastructure".to_string(),

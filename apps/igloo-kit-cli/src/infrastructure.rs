@@ -17,5 +17,3 @@
 pub mod ingest;
 pub mod olap;
 pub mod stream;
-
-pub const PANDA_NETWORK: &str = "panda-house";

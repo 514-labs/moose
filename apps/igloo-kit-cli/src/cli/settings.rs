@@ -1,28 +1,21 @@
-use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
-use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use config::{Config, ConfigError, Environment, File};
 use home::home_dir;
 use serde::Deserialize;
 use std::path::PathBuf;
-use std::sync::{Arc, RwLock};
 
-use super::display::{show_message, Message, MessageType};
-use super::local_webserver::LocalWebserverConfig;
+use super::display::{Message, MessageType};
 use super::logger::LoggerSettings;
-use super::CommandTerminal;
+use crate::utilities::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
 
 /// # Config
 /// Module to handle reading the config file from the user's home directory and configuring the CLI
 ///
 /// ## Suggested Improvements
-/// - add clickhouse and redpanda config to the config file
 /// - add a config file option to the CLI
 /// - add a config file generator to the CLI
 /// - add a config file validation and error handling
 ///
 
-const CONFIG_FILE: &str = ".igloo-config.toml";
-const USER_DIRECTORY: &str = ".igloo";
 const ENVIRONMENT_VARIABLE_PREFIX: &str = "IGLOO";
 
 #[derive(Deserialize, Debug)]
@@ -44,23 +37,17 @@ pub struct Settings {
     pub logger: LoggerSettings,
     #[serde(default)]
     pub features: Features,
-    #[serde(default)]
-    pub clickhouse: ClickhouseConfig,
-    #[serde(default)]
-    pub redpanda: RedpandaConfig,
-    #[serde(default)]
-    pub local_webserver: LocalWebserverConfig,
 }
 
 fn config_path() -> PathBuf {
     let mut path: PathBuf = home_dir().unwrap();
-    path.push(CONFIG_FILE);
+    path.push(CLI_CONFIG_FILE);
     path.to_owned()
 }
 
 pub fn user_directory() -> PathBuf {
     let mut path: PathBuf = home_dir().unwrap();
-    path.push(USER_DIRECTORY);
+    path.push(CLI_USER_DIRECTORY);
     path.to_owned()
 }
 
@@ -71,14 +58,13 @@ pub fn setup_user_directory() -> Result<(), std::io::Error> {
 }
 
 // TODO: Turn this part of the code into a routine
-pub fn read_settings(term: Arc<RwLock<CommandTerminal>>) -> Result<Settings, ConfigError> {
-    show_message(
-        term,
+pub fn read_settings() -> Result<Settings, ConfigError> {
+    show_message!(
         MessageType::Info,
         Message {
             action: "Init".to_string(),
             details: "Loading config...".to_string(),
-        },
+        }
     );
 
     let config_file_location: PathBuf = config_path();

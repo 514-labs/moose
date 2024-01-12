@@ -80,17 +80,25 @@
 //!
 
 use std::collections::HashMap;
-use std::sync::{Arc, RwLock};
+use std::path::Path;
+use std::sync::Arc;
 use std::{io::Error, path::PathBuf};
 
+use log::debug;
 use tokio::sync::Mutex;
 
-use super::local_webserver::{LocalWebserverConfig, Webserver};
-use super::watcher::{FileWatcher, RouteMeta};
-use super::{display::show_message, CommandTerminal, Message, MessageType};
-use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
-use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use super::local_webserver::Webserver;
+use super::watcher::FileWatcher;
+use super::{Message, MessageType};
+use crate::cli::watcher::process_schema_file;
+
+use crate::framework::controller::RouteMeta;
+use crate::infrastructure::olap;
+use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::project::Project;
+use log::info;
+
+use async_recursion::async_recursion;
 
 pub mod clean;
 pub mod initialize;
@@ -106,6 +114,13 @@ pub struct RoutineSuccess {
 
 // Implement success and info contructors and a new constructor that lets the user choose which type of message to display
 impl RoutineSuccess {
+    pub fn info(message: Message) -> Self {
+        Self {
+            message,
+            message_type: MessageType::Info,
+        }
+    }
+
     pub fn success(message: Message) -> Self {
         Self {
             message,
@@ -114,6 +129,7 @@ impl RoutineSuccess {
     }
 }
 
+#[derive(Debug)]
 pub struct RoutineFailure {
     message: Message,
     message_type: MessageType,
@@ -129,16 +145,16 @@ impl RoutineFailure {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub enum RunMode {
-    Explicit { term: Arc<RwLock<CommandTerminal>> },
+    Explicit,
 }
 
 /// Routines are a collection of operations that are run in sequence.
 pub trait Routine {
     fn run(&self, mode: RunMode) -> Result<RoutineSuccess, RoutineFailure> {
         match mode {
-            RunMode::Explicit { term } => self.run_explicit(term),
+            RunMode::Explicit => self.run_explicit(),
         }
     }
 
@@ -146,23 +162,19 @@ pub trait Routine {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure>;
 
     // Runs the routine and displays messages to the user
-    fn run_explicit(
-        &self,
-        term: Arc<RwLock<CommandTerminal>>,
-    ) -> Result<RoutineSuccess, RoutineFailure> {
+    fn run_explicit(&self) -> Result<RoutineSuccess, RoutineFailure> {
         match self.run_silent() {
             Ok(success) => {
-                show_message(term, success.message_type, success.message.clone());
+                show_message!(success.message_type, success.message.clone());
                 Ok(success)
             }
             Err(failure) => {
-                show_message(
-                    term,
+                show_message!(
                     failure.message_type,
                     Message::new(
                         failure.message.action.clone(),
                         format!("{}: {}", failure.message.details.clone(), failure.error),
-                    ),
+                    )
                 );
                 Err(failure)
             }
@@ -186,52 +198,86 @@ impl RoutineController {
     pub fn run_routines(&self, run_mode: RunMode) -> Vec<Result<RoutineSuccess, RoutineFailure>> {
         self.routines
             .iter()
-            .map(|routine| {
-                let run_mode = run_mode.clone();
-                routine.run(run_mode)
-            })
+            .map(|routine| routine.run(run_mode))
             .collect()
     }
 }
 
 // Starts the file watcher and the webserver
-pub async fn start_development_mode(
-    project: Project,
-    clickhouse_config: ClickhouseConfig,
-    redpanda_config: RedpandaConfig,
-    local_webserver_config: LocalWebserverConfig,
-) -> Result<(), Error> {
-    let term = Arc::new(RwLock::new(CommandTerminal::new()));
-
-    show_message(
-        term.clone(),
+pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
+    show_message!(
         MessageType::Success,
         Message {
             action: "Starting".to_string(),
-            details: "development mode...".to_string(),
-        },
+            details: "development mode".to_string(),
+        }
     );
 
     // TODO: Explore using a RWLock instead of a Mutex to ensure concurrent reads without locks
     let route_table = Arc::new(Mutex::new(HashMap::<PathBuf, RouteMeta>::new()));
 
-    // TODO: When starting the file watcher, we should check the current directory for files that have been
-    // added or removed since the last time the file watcher was started and ensure that the infra reflects
-    // the application state
+    info!("Initializing project state");
+    initialize_project_state(project.schemas_dir(), project, Arc::clone(&route_table)).await?;
 
-    let web_server = Webserver::new(local_webserver_config.host, local_webserver_config.port);
+    let web_server = Webserver::new(
+        project.local_webserver_config.host.clone(),
+        project.local_webserver_config.port,
+    );
     let file_watcher = FileWatcher::new();
 
-    file_watcher.start(
-        project,
-        web_server.clone(),
-        term.clone(),
-        Arc::clone(&route_table),
-        clickhouse_config,
-    )?;
-    web_server
-        .start(term.clone(), Arc::clone(&route_table), redpanda_config)
-        .await;
+    file_watcher.start(project, Arc::clone(&route_table))?;
 
+    info!("Starting web server...");
+
+    web_server.start(Arc::clone(&route_table), project).await;
+
+    Ok(())
+}
+
+async fn initialize_project_state(
+    schema_dir: PathBuf,
+    project: &Project,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+) -> Result<(), Error> {
+    let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
+
+    info!("Starting schema directory crawl...");
+    let crawl_result =
+        crawl_schema_project_dir(&schema_dir, project, &configured_client, route_table).await;
+
+    match crawl_result {
+        Ok(_) => {
+            info!("Schema directory crawl completed successfully");
+            Ok(())
+        }
+        Err(e) => {
+            debug!("Schema directory crawl failed");
+            debug!("Error: {:?}", e);
+            Err(e)
+        }
+    }
+}
+
+#[async_recursion]
+async fn crawl_schema_project_dir(
+    schema_dir: &Path,
+    project: &Project,
+    configured_client: &ConfiguredDBClient,
+    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+) -> Result<(), Error> {
+    if schema_dir.is_dir() {
+        for entry in std::fs::read_dir(schema_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                debug!("Processing directory: {:?}", path);
+                crawl_schema_project_dir(&path, project, configured_client, route_table.clone())
+                    .await?;
+            } else {
+                debug!("Processing file: {:?}", path);
+                process_schema_file(&path, project, configured_client, route_table.clone()).await?
+            }
+        }
+    }
     Ok(())
 }

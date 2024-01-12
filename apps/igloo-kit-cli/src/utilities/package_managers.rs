@@ -3,6 +3,7 @@
 use std::{fmt, path::PathBuf, process::Command};
 
 use home::home_dir;
+use log::debug;
 
 pub fn get_root() -> Result<PathBuf, std::io::Error> {
     let result = Command::new("npm").arg("root").arg("-g").output()?;
@@ -52,8 +53,11 @@ pub fn install_packages(
 ) -> Result<(), std::io::Error> {
     //! Install packages in a directory.
     //! This is useful for installing packages in a directory other than the current directory.
+
+    debug!("Installing packages in directory: {:?}", directory);
+
     let mut command = Command::new(package_manager.to_string());
-    command.current_dir(&directory);
+    command.current_dir(directory);
     command.arg("install");
 
     let output = command.output()?; // We should explore not using output here and instead using spawn.
@@ -67,7 +71,7 @@ pub fn run_build(
     package_manager: &PackageManager,
 ) -> Result<(), std::io::Error> {
     let mut command = Command::new(package_manager.to_string());
-    command.current_dir(&directory);
+    command.current_dir(directory);
     command.arg("run");
     command.arg("build");
 
@@ -85,12 +89,12 @@ pub fn link_sdk(
     //! Links a package to the global pnpm folder if package_name is None. If the package_name is Some, then it will link the package to
     //! the global pnpm folder with the given name.
     let mut command = Command::new(package_manager.to_string());
-    command.current_dir(&directory);
+    command.current_dir(directory);
     command.arg("link");
     command.arg("--global");
 
-    if package_name.is_some() {
-        command.arg(package_name.unwrap());
+    if let Some(name) = package_name {
+        command.arg(name);
     }
 
     let output = command.output()?; // We should explore not using output here and instead using spawn.

@@ -6,13 +6,9 @@ use std::{
 
 use crate::{
     cli::display::Message,
-    framework::{
-        directories::{create_app_directories, create_igloo_directory, get_igloo_directory},
-        languages::create_models_dir,
-        typescript::create_typescript_models_dir,
-    },
-    infrastructure::PANDA_NETWORK,
+    framework::{languages::create_models_dir, typescript::create_typescript_models_dir},
     project::Project,
+    utilities::constants::PANDA_NETWORK,
     utilities::docker,
 };
 
@@ -29,19 +25,11 @@ impl InitializeProject {
 }
 impl Routine for InitializeProject {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let run_mode = self.run_mode.clone();
-        CreateIglooTempDirectoryTree::new(run_mode.clone(), self.project.clone())
-            .run(run_mode.clone())?;
-        let igloo_dir = get_igloo_directory(self.project.clone()).map_err(|err| {
-            RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to create .igloo directory. Check permissions or contact us`".to_string(),
-                ),
-                err,
-            )
-        })?;
-        create_app_directories(self.project.clone()).map_err(|err| {
+        let run_mode: RunMode = self.run_mode;
+
+        CreateIglooTempDirectoryTree::new(run_mode, self.project.clone()).run(run_mode)?;
+
+        self.project.setup_app_dir().map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),
@@ -50,9 +38,9 @@ impl Routine for InitializeProject {
                 err,
             )
         })?;
-        CreateModelsVolume::new(self.project.clone()).run(run_mode.clone())?;
-        CreateDockerNetwork::new(PANDA_NETWORK).run(run_mode.clone())?;
-        CreateVolumes::new(igloo_dir, run_mode.clone()).run(run_mode.clone())?;
+
+        CreateModelsVolume::new(self.project.clone()).run(run_mode)?;
+        CreateDockerNetwork::new(PANDA_NETWORK).run(run_mode)?;
 
         Ok(RoutineSuccess::success(Message::new(
             "Created".to_string(),
@@ -78,9 +66,9 @@ impl CreateVolumes {
 impl Routine for CreateVolumes {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let igloo_dir = self.igloo_dir.clone();
-        let run_mode = self.run_mode.clone();
-        CreateRedPandaMountVolume::new(igloo_dir.clone()).run(run_mode.clone())?;
-        CreateClickhouseMountVolume::new(igloo_dir.clone()).run(run_mode.clone())?;
+        let run_mode = self.run_mode;
+        CreateRedPandaMountVolume::new(igloo_dir.clone()).run(run_mode)?;
+        CreateClickhouseMountVolume::new(igloo_dir.clone()).run(run_mode)?;
 
         Ok(RoutineSuccess::success(Message::new(
             "Created".to_string(),
@@ -128,7 +116,7 @@ impl CreateIglooTempDirectoryTree {
 }
 impl Routine for CreateIglooTempDirectoryTree {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = create_igloo_directory(self.project.clone()).map_err(|err| {
+        let internal_dir = self.project.internal_dir().map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),
@@ -137,10 +125,10 @@ impl Routine for CreateIglooTempDirectoryTree {
                 err,
             )
         })?;
-        let run_mode = self.run_mode.clone();
+        let run_mode = self.run_mode;
 
-        CreateTempDataVolumes::new(run_mode.clone(), self.project.clone()).run(run_mode.clone())?;
-        ValidateMountVolumes::new(igloo_dir).run(run_mode.clone())?;
+        CreateTempDataVolumes::new(run_mode, self.project.clone()).run(run_mode)?;
+        ValidateMountVolumes::new(internal_dir).run(run_mode)?;
 
         Ok(RoutineSuccess::success(Message::new(
             "Created".to_string(),
@@ -161,30 +149,22 @@ impl CreateTempDataVolumes {
 }
 impl Routine for CreateTempDataVolumes {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        if let Ok(igloo_dir) = get_igloo_directory(self.project.clone()) {
-            let run_mode = self.run_mode.clone();
-            CreateVolumes::new(igloo_dir, run_mode.clone()).run(run_mode.clone())?;
-            Ok(RoutineSuccess::success(Message::new(
-                "Created".to_string(),
-                "Red Panda and Clickhouse mount volumes".to_string(),
-            )))
-        } else {
-            let igloo_dir = create_igloo_directory(self.project.clone()).map_err(|err| {
-                RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        "to create .igloo directory. Check permissions or contact us`".to_string(),
-                    ),
-                    err,
-                )
-            })?;
-            let run_mode = self.run_mode.clone();
-            CreateVolumes::new(igloo_dir, run_mode.clone()).run(run_mode.clone())?;
-            Ok(RoutineSuccess::success(Message::new(
-                "Created".to_string(),
-                "Red Panda and Clickhouse mount volumes".to_string(),
-            )))
-        }
+        let igloo_dir = self.project.internal_dir().map_err(|err| {
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to create .igloo directory. Check permissions or contact us`".to_string(),
+                ),
+                err,
+            )
+        })?;
+
+        let run_mode = self.run_mode;
+        CreateVolumes::new(igloo_dir, run_mode).run(run_mode)?;
+        Ok(RoutineSuccess::success(Message::new(
+            "Created".to_string(),
+            "Red Panda and Clickhouse mount volumes".to_string(),
+        )))
     }
 }
 
@@ -337,13 +317,19 @@ impl Routine for CreateDockerNetwork {
                 "Created".to_string(),
                 format!("docker network {}", &self.network_name),
             ))),
-            Err(err) => Err(RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    format!("to create docker network {}", &self.network_name),
-                ),
-                err,
-            )),
+            Err(err) => match err.kind() {
+                ErrorKind::AlreadyExists => Ok(RoutineSuccess::info(Message::new(
+                    "Exists".to_string(),
+                    format!("docker network {}", &self.network_name),
+                ))),
+                _ => Err(RoutineFailure::new(
+                    Message::new(
+                        "Failed".to_string(),
+                        format!("to create docker network {}", &self.network_name),
+                    ),
+                    err,
+                )),
+            },
         }
     }
 }

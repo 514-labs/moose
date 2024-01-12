@@ -1,4 +1,7 @@
-use std::{fmt, path::PathBuf};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+};
 
 use diagnostics::Diagnostics;
 
@@ -24,11 +27,12 @@ type MapperFunc<I, O> = fn(i: I) -> O;
 
 // TODO: Make the parse schema file a variable and pass it into the function
 pub fn parse_schema_file<O>(
-    path: PathBuf,
+    path: &Path,
     mapper: MapperFunc<Table, O>,
 ) -> Result<Vec<O>, ParsingError> {
-    let schema_file = std::fs::read_to_string(path.clone())
-        .map_err(|_| ParsingError::FileNotFound { path: path.clone() })?;
+    let schema_file = std::fs::read_to_string(path).map_err(|_| ParsingError::FileNotFound {
+        path: path.to_path_buf(),
+    })?;
 
     let mut diagnostics = Diagnostics::default();
 
@@ -128,6 +132,7 @@ pub struct FieldAttributes {
 }
 
 impl FieldAttributes {
+    #[allow(clippy::never_loop, clippy::match_single_binding)]
     fn new(attributes: Vec<Attribute>) -> Result<FieldAttributes, ParsingError> {
         let unique: bool = false;
         let primary_key: bool = false;
@@ -143,7 +148,7 @@ impl FieldAttributes {
                             "we currently don't support attribute {}",
                             attribute.name()
                         ),
-                    })
+                    });
                 }
             }
         }

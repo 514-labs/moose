@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
 
@@ -47,7 +47,7 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -78,7 +78,7 @@ jobs:
       fail-fast: false
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -123,7 +123,6 @@ jobs:
 
       - name: Run cargo clippy
         uses: actions-rs/cargo@v1
-        continue-on-error: true # Keeping this as long as not all errors are fixed
         with:
           command: clippy
           args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml -- -D warnings

@@ -27,7 +27,7 @@ ENGINE = Kafka('{cluster_network}:{kafka_port}', '{topic}', 'clickhouse-group', 
 pub struct CreateTableQuery;
 
 impl CreateTableQuery {
-    pub fn new(
+    pub fn build(
         table: ClickhouseTable,
         cluster_network: String,
         kafka_port: u16,
@@ -107,7 +107,7 @@ DROP TABLE IF EXISTS {db_name}.{table_name};
 pub struct DropTableQuery;
 
 impl DropTableQuery {
-    pub fn new(table: ClickhouseTable) -> Result<String, UnsupportedDataTypeError> {
+    pub fn build(table: ClickhouseTable) -> Result<String, UnsupportedDataTypeError> {
         let mut tt = TinyTemplate::new();
         tt.add_template("drop_table", DROP_TABLE_TEMPLATE).unwrap();
         let context = DropTableContext::new(table)?;
@@ -143,7 +143,7 @@ stream_like_engine_allow_direct_select = 1;
 pub struct CreateMaterializedViewQuery;
 
 impl CreateMaterializedViewQuery {
-    pub fn new(view: ClickhouseView) -> Result<String, UnsupportedDataTypeError> {
+    pub fn build(view: ClickhouseView) -> Result<String, UnsupportedDataTypeError> {
         let mut tt = TinyTemplate::new();
         tt.add_template(
             "create_materialized_view",
@@ -163,7 +163,7 @@ DROP TABLE IF EXISTS {db_name}.{view_name};
 pub struct DropMaterializedViewQuery;
 
 impl DropMaterializedViewQuery {
-    pub fn new(table: ClickhouseView) -> Result<String, UnsupportedDataTypeError> {
+    pub fn build(table: ClickhouseView) -> Result<String, UnsupportedDataTypeError> {
         let mut tt = TinyTemplate::new();
         tt.add_template("drop_materialized_view", DROP_MATERIALIZED_VIEW_TEMPLATE)
             .unwrap();

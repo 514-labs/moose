@@ -1,12 +1,11 @@
 use clap::Subcommand;
 
 pub mod client_app;
-pub mod directories;
+pub mod controller;
 pub mod languages;
 pub mod schema;
 pub mod sdks;
 pub mod typescript;
-
 pub enum Insights {
     Metric,
     Dashboard,
@@ -16,7 +15,7 @@ pub enum Insights {
 pub enum TopLevelObjects {
     Ingestion,
     Flow,
-    Dataframe,
+    DataModel,
     Insights(Insights),
 }
 
@@ -24,7 +23,7 @@ pub enum TopLevelObjects {
 pub enum AddableObjects {
     IngestPoint,
     Flow,
-    Dataframe,
+    DataModel,
     Metric,
     Dashboard,
     Model,

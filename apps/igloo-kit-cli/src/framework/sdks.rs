@@ -10,7 +10,6 @@ use crate::{
 use self::templates::{PackageJsonTemplate, TsConfigTemplate};
 
 use super::{
-    directories::get_igloo_directory,
     languages::{self, CodeGenerator},
     typescript::{templates::IndexTemplate, SendFunction, TypescriptInterface},
 };
@@ -68,12 +67,12 @@ pub fn generate_ts_sdk(
     //! # Returns
     //! - `Result<PathBuf, std::io::Error>` - A result containing the path where the SDK was generated.
     //!
-    let igloo_dir = get_igloo_directory(project.clone())?;
+    let igloo_dir = project.internal_dir()?;
 
     let package = TypescriptPackage::from_project(project);
-    let package_json_code = PackageJsonTemplate::new(&package);
-    let ts_config_code = TsConfigTemplate::new();
-    let index_code = IndexTemplate::new(&ts_objects);
+    let package_json_code = PackageJsonTemplate::build(&package);
+    let ts_config_code = TsConfigTemplate::build();
+    let index_code = IndexTemplate::build(&ts_objects);
 
     // This needs to write to the root of the NPM folder... creating in the current project location for now
     let sdk_dir = igloo_dir.join(package.name);
@@ -129,7 +128,7 @@ pub fn move_to_npm_global_dir(sdk_location: &PathBuf) -> Result<PathBuf, std::io
     //!
     let global_node_modules = package_managers::get_or_create_global_folder()?;
 
-    system::copy_directory(&sdk_location, &global_node_modules)?;
+    system::copy_directory(sdk_location, &global_node_modules)?;
 
     Ok(global_node_modules)
 }

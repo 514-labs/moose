@@ -1,9 +1,7 @@
-use std::{
-    fs,
-    io::{Error, ErrorKind},
-    path::PathBuf,
-};
+use std::io::ErrorKind;
+use std::{fs, path::PathBuf};
 
+use crate::cli::routines::util::ensure_docker_running;
 use crate::{
     cli::display::Message,
     framework::{languages::create_models_dir, typescript::create_typescript_models_dir},
@@ -38,6 +36,8 @@ impl Routine for InitializeProject {
                 err,
             )
         })?;
+
+        ensure_docker_running()?;
 
         CreateModelsVolume::new(self.project.clone()).run(run_mode)?;
         CreateDockerNetwork::new(PANDA_NETWORK).run(run_mode)?;
@@ -97,10 +97,10 @@ impl Routine for ValidateMountVolumes {
             )))
         } else {
             let message = format!("redpanda: {panda_house}, clickhouse: {clickhouse}");
-            Err(RoutineFailure::new(
-                Message::new("Mount volume status".to_string(), message.clone()),
-                Error::new(ErrorKind::NotFound, message),
-            ))
+            Err(RoutineFailure::error(Message::new(
+                "Mount volume status".to_string(),
+                message.clone(),
+            )))
         }
     }
 }

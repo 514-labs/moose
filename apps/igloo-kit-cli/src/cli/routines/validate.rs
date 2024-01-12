@@ -1,6 +1,5 @@
 use super::{Routine, RoutineFailure, RoutineSuccess};
 use crate::{cli::display::Message, utilities::constants::PANDA_NETWORK, utilities::docker};
-use std::io::{Error, ErrorKind};
 
 pub struct ValidateClickhouseRun;
 impl ValidateClickhouseRun {
@@ -22,16 +21,10 @@ impl Routine for ValidateClickhouseRun {
             .iter()
             .find(|container| container.names.contains("clickhousedb-1"))
             .ok_or_else(|| {
-                RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        "to find clickhouse docker container".to_string(),
-                    ),
-                    Error::new(
-                        ErrorKind::Other,
-                        "Failed to validate clickhouse container exists",
-                    ),
-                )
+                RoutineFailure::error(Message::new(
+                    "Failed".to_string(),
+                    "to find clickhouse docker container".to_string(),
+                ))
             })?;
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
@@ -61,16 +54,10 @@ impl Routine for ValidateRedPandaRun {
             .iter()
             .find(|container| container.names.contains("redpanda-1"))
             .ok_or_else(|| {
-                RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        "to find redpanda docker container".to_string(),
-                    ),
-                    Error::new(
-                        ErrorKind::Other,
-                        "Failed to validate redpanda container exists",
-                    ),
-                )
+                RoutineFailure::error(Message::new(
+                    "Failed".to_string(),
+                    "to find redpanda docker container".to_string(),
+                ))
             })?;
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
@@ -101,16 +88,10 @@ impl Routine for ValidatePandaHouseNetwork {
             .iter()
             .find(|network| network.name == PANDA_NETWORK)
             .ok_or_else(|| {
-                RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        "to find panda house docker network".to_string(),
-                    ),
-                    Error::new(
-                        ErrorKind::Other,
-                        "Failed to validate panda house docker network",
-                    ),
-                )
+                RoutineFailure::error(Message::new(
+                    "Failed".to_string(),
+                    "to find panda house docker network".to_string(),
+                ))
             })?;
 
         Ok(RoutineSuccess::success(Message::new(
@@ -144,13 +125,10 @@ impl Routine for ValidateRedPandaCluster {
                 "validated red panda cluster".to_string(),
             )))
         } else {
-            Err(RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to validate red panda cluster".to_string(),
-                ),
-                Error::new(ErrorKind::Other, "Failed to validate red panda cluster"),
-            ))
+            Err(RoutineFailure::error(Message::new(
+                "Failed".to_string(),
+                "to validate red panda cluster".to_string(),
+            )))
         }
     }
 }

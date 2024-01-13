@@ -1,11 +1,12 @@
 import { Metadata } from "next";
 import { gsap } from "gsap";
+import { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "Igloo | Build for the modern data stack",
   openGraph: {
-    images: "/open-graph/og_igloo_4x.webp"
-  }
+    images: "/open-graph/og_igloo_4x.webp",
+  },
 };
 
 interface Route {
@@ -42,19 +43,21 @@ interface TopicsListProps {
 }
 
 async function getData(): Promise<ConsoleResponse> {
-  const res = await fetch('http://localhost:4000/console', {cache: 'no-store'})
+  const res = await fetch("http://localhost:4000/console", {
+    cache: "no-store",
+  });
   // The return value is *not* serialized
   // You can return Date, Map, Set, etc.
- 
+
   if (!res.ok) {
     // This will activate the closest `error.js` Error Boundary
-    throw new Error('Failed to fetch data')
+    throw new Error("Failed to fetch data");
   }
- 
-  return res.json()
+
+  return res.json();
 }
 
-export const RoutesList = ({ routes }: RoutesListProps) => (
+const RoutesList = ({ routes }: RoutesListProps) => (
   <ul>
     {routes.map((route, index) => (
       <li key={index}>{route.route_path}</li>
@@ -62,7 +65,7 @@ export const RoutesList = ({ routes }: RoutesListProps) => (
   </ul>
 );
 
-export const TablesList = ({ tables }) => (
+const TablesList = ({ tables }) => (
   <ul>
     {tables.map((table, index) => (
       <li key={index}>
@@ -72,12 +75,12 @@ export const TablesList = ({ tables }) => (
         ) : (
           table.name
         )}
-        </li>
+      </li>
     ))}
   </ul>
 );
 
-export const TopicsList = ({ topics }) => (
+const TopicsList = ({ topics }) => (
   <ul>
     {topics.map((topic, index) => (
       <li key={index}>{topic}</li>
@@ -85,21 +88,19 @@ export const TopicsList = ({ topics }) => (
   </ul>
 );
 
-
-export default async function Home() {
-  const data = await getData()
+export default async function Home(): Promise<ReactNode> {
+  const data = await getData();
 
   return (
-    <div >
+    <div>
       <h1 className="text-3xl font-bold">Routes</h1>
-      <RoutesList routes={data.routes}/>
+      <RoutesList routes={data.routes} />
 
       <h1 className="text-3xl font-bold">Tables</h1>
-      <TablesList tables={data.tables}/>
+      <TablesList tables={data.tables} />
 
       <h1 className="text-3xl font-bold">Topics</h1>
-      <TopicsList topics={data.topics}/>
+      <TopicsList topics={data.topics} />
     </div>
-    
   );
 }

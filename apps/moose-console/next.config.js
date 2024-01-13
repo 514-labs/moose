@@ -1,7 +1,7 @@
 module.exports = {
+  output: "standalone",
   reactStrictMode: true,
 };
-
 
 // Injected content via Sentry wizard below
 

@@ -89,11 +89,6 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>) {
 
                 controller.run_routines(run_mode);
 
-                // sleep to allow infra to be spun up and realease resources.
-                //
-                // TODO: This is a hack and should be replaced with a better solution
-                // 500 ms seems to be enough time to allow the infra to spin up completely and release resources
-                tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
                 routines::start_development_mode(&project).await.unwrap();
             }
             Some(Commands::Update {}) => {

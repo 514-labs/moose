@@ -219,12 +219,41 @@ pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredDBClient 
 
 // Run an arbitrary clickhouse query
 pub async fn run_query(
-    query: QueryString,
+    query: &QueryString,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), clickhouse::error::Error> {
     debug!("Running query: {:?}", query);
     let client = &configured_client.client;
     client.query(query.as_str()).execute().await
+}
+
+pub async fn check_ready(
+    configured_client: &ConfiguredDBClient,
+) -> Result<(), clickhouse::error::Error> {
+    let dummy_query = "SELECT version()".to_owned();
+    crate::utilities::retry::retry(
+        || run_query(&dummy_query, configured_client),
+        |i, e| {
+            i < 5
+                && match e {
+                    clickhouse::error::Error::Network(v) => {
+                        let err_string = v.to_string();
+                        debug!("Network error is {}", err_string);
+                        err_string.contains("connection closed before message completed")
+                            || err_string.contains("connection error: Connection reset by peer")
+                            || err_string
+                                .contains("operation was canceled: connection was not ready")
+                            || err_string.contains("channel closed")
+                    }
+                    _ => {
+                        debug!("Error is {} instead of network error. Will not retry.", e);
+                        false
+                    }
+                }
+        },
+        tokio::time::Duration::from_millis(200),
+    )
+    .await
 }
 
 pub async fn fetch_all_tables(

@@ -1,6 +1,7 @@
 .git
 **/.next
 **/.turbo
+.turbo
 .vscode
 **/target
 **/node_modules

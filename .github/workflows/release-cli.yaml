@@ -227,4 +227,6 @@ jobs:
           tags: 514labs/moose-console:latest, 514labs/moose-console:${{ needs.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
-          secret-envs: TURBO_TOKEN=${{ secrets.TURBO_TOKEN }},TURBO_TEAM=${{ vars.TURBO_TEAM }}
+          build-args: |
+            TURBO_TOKEN=${{ secrets.TURBO_TOKEN }}
+            TURBO_TEAM=${{ vars.TURBO_TEAM }}

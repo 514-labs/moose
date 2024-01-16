@@ -51,7 +51,7 @@ export default async function Page({
   params,
 }: {
   params: { tableName: string };
-}): Promise<ReactNode> {
+}): Promise<JSX.Element> {
   const tableData = await getTable(params.tableName);
 
   return (

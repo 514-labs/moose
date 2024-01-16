@@ -208,17 +208,6 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install node
-        uses: actions/setup-node@v3
-        with:
-          node-version: "20"
-          registry-url: "https://registry.npmjs.org"
-          cache: "pnpm"
-
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
@@ -229,23 +218,12 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Pnpm Install
-        run: pnpm install --frozen-lockfile
-
-      - name: Build Console Dependencies
-        run: pnpm run build --filter=...^moose-console
-
-      - name: Bundle all files in self container folder
-        run: pnpm --filter=moose-console deploy ./moose-console-dist
-
-      - name: Build next app
-        run: cd ./moose-console-dist && pnpm run build
-
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: ./moose-console-dist
+          context: .
+          file: ./apps/moose-console/Dockerfile
           push: true
-          tags: 514labs/moose-console:latest
+          tags: 514labs/moose-console:latest, 514labs/moose-console:${{ needs.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max

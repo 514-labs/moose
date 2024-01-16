@@ -1,6 +1,5 @@
 import { Metadata } from "next";
 import { gsap } from "gsap";
-import { ReactNode } from "react";
 
 export const metadata: Metadata = {
   title: "Igloo | Build for the modern data stack",
@@ -88,11 +87,11 @@ const TopicsList = ({ topics }) => (
   </ul>
 );
 
-export default async function Home(): Promise<ReactNode> {
+export default async function Home(): Promise<JSX.Element> {
   const data = await getData();
 
   return (
-    <div>
+    <>
       <h1 className="text-3xl font-bold">Routes</h1>
       <RoutesList routes={data.routes} />
 
@@ -101,6 +100,6 @@ export default async function Home(): Promise<ReactNode> {
 
       <h1 className="text-3xl font-bold">Topics</h1>
       <TopicsList topics={data.topics} />
-    </div>
+    </>
   );
 }

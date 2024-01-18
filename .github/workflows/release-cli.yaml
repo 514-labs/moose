@@ -224,7 +224,7 @@ jobs:
           context: .
           file: ./apps/moose-console/Dockerfile
           push: ${{ !inputs.dry-run }}
-          tags: 514labs/moose-console:latest, 514labs/moose-console:${{ needs.version.outputs.version }}
+          tags: 514labs/moose-console:latest, 514labs/moose-console:0.0.0, 514labs/moose-console:${{ needs.version.outputs.version }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |

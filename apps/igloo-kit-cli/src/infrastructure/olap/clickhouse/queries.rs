@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS {db_name}.{table_name}
 PRIMARY KEY ({primary_key_string})
 {{endif}}
 )
-ENGINE = Kafka('{cluster_network}:{kafka_port}', '{topic}', 'clickhouse-group', 'JSONEachRow');
+ENGINE = Kafka('{kafka_host}:{kafka_port}', '{topic}', 'clickhouse-group', 'JSONEachRow');
 "#;
 
 pub struct CreateTableQuery;
@@ -29,14 +29,14 @@ pub struct CreateTableQuery;
 impl CreateTableQuery {
     pub fn build(
         table: ClickhouseTable,
-        cluster_network: String,
+        kafka_host: String,
         kafka_port: u16,
         topic: String,
     ) -> Result<String, UnsupportedDataTypeError> {
         let mut tt = TinyTemplate::new();
         tt.add_template("create_table", CREATE_TABLE_TEMPLATE)
             .unwrap();
-        let context = CreateTableContext::new(table, cluster_network, kafka_port, topic)?;
+        let context = CreateTableContext::new(table, kafka_host, kafka_port, topic)?;
         let rendered = tt.render("create_table", &context).unwrap();
         Ok(rendered)
     }
@@ -48,7 +48,7 @@ struct CreateTableContext {
     table_name: String,
     fields: Vec<CreateTableFieldContext>,
     primary_key_string: Option<String>,
-    cluster_network: String,
+    kafka_host: String,
     kafka_port: u16,
     topic: String,
 }
@@ -56,7 +56,7 @@ struct CreateTableContext {
 impl CreateTableContext {
     fn new(
         table: ClickhouseTable,
-        cluster_network: String,
+        kafka_host: String,
         kafka_port: u16,
         topic: String,
     ) -> Result<CreateTableContext, UnsupportedDataTypeError> {
@@ -80,7 +80,7 @@ impl CreateTableContext {
             } else {
                 None
             },
-            cluster_network,
+            kafka_host,
             kafka_port,
             topic,
         })

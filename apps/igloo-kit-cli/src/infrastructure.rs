@@ -14,6 +14,7 @@
 //! infrastructure.
 //!
 
+pub mod console;
 pub mod ingest;
 pub mod olap;
 pub mod stream;

@@ -15,8 +15,10 @@ use std::path::PathBuf;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
+use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
+
 use crate::utilities::constants::{
     APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, PROJECT_CONFIG_FILE, SCHEMAS_DIR,
 };
@@ -42,6 +44,8 @@ pub struct Project {
     pub clickhouse_config: ClickhouseConfig,
     #[serde(default)]
     pub local_webserver_config: LocalWebserverConfig,
+    #[serde(default)]
+    pub console_config: ConsoleConfig,
 }
 
 impl Project {
@@ -53,6 +57,7 @@ impl Project {
             redpanda_config: RedpandaConfig::default(),
             clickhouse_config: ClickhouseConfig::default(),
             local_webserver_config: LocalWebserverConfig::default(),
+            console_config: ConsoleConfig::default(),
         }
     }
 
@@ -75,6 +80,7 @@ impl Project {
             redpanda_config: RedpandaConfig::default(), // TODO: Add the ability for the developer to configure this
             clickhouse_config: ClickhouseConfig::default(), // TODO: Add the ability for the developer to configure this
             local_webserver_config: LocalWebserverConfig::default(), // TODO: Add the ability for the developer to configure this
+            console_config: ConsoleConfig::default(), // TODO: Add the ability for the developer to configure this
         }
     }
 
@@ -142,7 +148,10 @@ impl Project {
                 debug!("Internal dir exists as a file: {:?}", internal_dir);
                 std::io::Error::new(
                     std::io::ErrorKind::Other,
-                    "The .igloo file exists but is not a directory",
+                    format!(
+                        "The {} file exists but is not a directory",
+                        CLI_PROJECT_INTERNAL_DIR
+                    ),
                 );
             } else {
                 debug!("Creating internal dir: {:?}", internal_dir);

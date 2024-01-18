@@ -1,4 +1,5 @@
 use console::style;
+use lazy_static::lazy_static;
 use std::sync::{Arc, RwLock};
 
 /// # Display Module
@@ -92,8 +93,6 @@ impl Message {
         Message { action, details }
     }
 }
-
-use lazy_static::lazy_static;
 
 lazy_static! {
     pub static ref TERM: Arc<RwLock<CommandTerminal>> =

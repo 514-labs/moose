@@ -3,8 +3,12 @@ use std::{
     process::{Command, Stdio},
 };
 
+use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
-use crate::utilities::constants::PANDA_NETWORK;
+use crate::utilities::constants::{
+    CLICKHOUSE_CONTAINER_NAME, CLI_VERSION, CONSOLE_CONTAINER_NAME, PANDA_NETWORK,
+    REDPANDA_CONTAINER_NAME,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_slice, from_str};
 
@@ -158,7 +162,7 @@ pub fn stop_container(name: &str) -> std::io::Result<String> {
 pub fn run_rpk_cluster_info() -> std::io::Result<String> {
     let child = Command::new("docker")
         .arg("exec")
-        .arg("redpanda-1")
+        .arg(REDPANDA_CONTAINER_NAME)
         .arg("rpk")
         .arg("cluster")
         .arg("info")
@@ -174,7 +178,7 @@ pub fn run_rpk_cluster_info() -> std::io::Result<String> {
 pub fn run_rpk_command(args: Vec<String>) -> std::io::Result<String> {
     let child = Command::new("docker")
         .arg("exec")
-        .arg("redpanda-1")
+        .arg(REDPANDA_CONTAINER_NAME)
         .arg("rpk")
         .args(args)
         .stdout(Stdio::piped())
@@ -233,7 +237,7 @@ fn run_red_panda(igloo_dir: PathBuf) -> std::io::Result<String> {
         .arg("run")
         .arg("-d")
         .arg("--pull=always")
-        .arg("--name=redpanda-1")
+        .arg(format!("--name={REDPANDA_CONTAINER_NAME}"))
         // .arg("--rm")
         .arg(format!("--network={PANDA_NETWORK}"))
         .arg("--volume=".to_owned() + mount_dir.to_str().unwrap() + ":/tmp/panda_house")
@@ -246,12 +250,12 @@ fn run_red_panda(igloo_dir: PathBuf) -> std::io::Result<String> {
         .arg("--kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092")
         .arg(format!(
             "--advertise-kafka-addr=internal://{}:9092,external://localhost:19092",
-            "redpanda-1"
+            REDPANDA_CONTAINER_NAME
         ))
         .arg("--pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082")
         .arg(format!(
             "--advertise-pandaproxy-addr=internal://{}:8082,external://localhost:18082",
-            "redpanda-1"
+            REDPANDA_CONTAINER_NAME
         ))
         .arg("--overprovisioned")
         .arg("--smp=1")
@@ -299,7 +303,7 @@ fn run_clickhouse(igloo_dir: PathBuf, config: ClickhouseConfig) -> std::io::Resu
         .arg("run")
         .arg("-d")
         .arg("--pull=always")
-        .arg("--name=clickhousedb-1")
+        .arg(format!("--name={CLICKHOUSE_CONTAINER_NAME}"))
         // .arg("--rm")
         .arg(
             "--volume=".to_owned()
@@ -336,12 +340,58 @@ fn run_clickhouse(igloo_dir: PathBuf, config: ClickhouseConfig) -> std::io::Resu
     output_to_result(output)
 }
 
+pub fn safe_start_console_container(
+    console_config: &ConsoleConfig,
+    clickhouse_config: &ClickhouseConfig,
+) -> std::io::Result<String> {
+    //! Starts a console container if it is not already running. If the doesn't exist, it will be created.
+
+    match start_console_container() {
+        Ok(output) => Ok(output),
+        Err(_) => run_console(console_config, clickhouse_config),
+    }
+}
+
+fn run_console(
+    console_config: &ConsoleConfig,
+    clickhouse_config: &ClickhouseConfig,
+) -> std::io::Result<String> {
+    let child = Command::new("docker")
+        .arg("run")
+        .arg("-d")
+        .arg(format!("--name={CONSOLE_CONTAINER_NAME}"))
+        .arg(format!("--env=CLICKHOUSE_DB={}", clickhouse_config.db_name))
+        .arg(format!("--env=CLICKHOUSE_USER={}", clickhouse_config.user))
+        .arg(format!("--env=CLICKHOUSE_HOST={CLICKHOUSE_CONTAINER_NAME}"))
+        .arg(
+            "--env=CLICKHOUSE_PORT=8123", // TODO figure out the configuration between inside and outside of the container
+        )
+        .arg(format!(
+            "--env=CLICKHOUSE_PASSWORD={}",
+            clickhouse_config.password
+        ))
+        .arg(format!("--network={PANDA_NETWORK}"))
+        .arg(format!("--publish={}:3000", console_config.host_port))
+        .arg(format!("docker.io/514labs/moose-console:{CLI_VERSION}"))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    output_to_result(output)
+}
+
 fn start_redpanda_container() -> std::io::Result<String> {
-    start_container("redpanda-1")
+    start_container(REDPANDA_CONTAINER_NAME)
 }
 
 fn start_clickhouse_container() -> std::io::Result<String> {
-    start_container("clickhousedb-1")
+    start_container(CLICKHOUSE_CONTAINER_NAME)
+}
+
+fn start_console_container() -> std::io::Result<String> {
+    start_container(CONSOLE_CONTAINER_NAME)
 }
 
 fn start_container(name: &str) -> std::io::Result<String> {

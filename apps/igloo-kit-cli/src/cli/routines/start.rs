@@ -2,16 +2,20 @@ use log::debug;
 
 use super::{
     initialize::ValidateMountVolumes,
-    validate::{ValidateClickhouseRun, ValidatePandaHouseNetwork, ValidateRedPandaRun},
+    validate::{
+        ValidateClickhouseRun, ValidateConsoleRun, ValidatePandaHouseNetwork, ValidateRedPandaRun,
+    },
     Routine, RoutineFailure, RoutineSuccess, RunMode,
 };
 use crate::cli::routines::initialize::CreateIglooTempDirectoryTree;
 use crate::cli::routines::util::ensure_docker_running;
+use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
 use crate::{
     cli::display::Message,
     project::Project,
     utilities::docker::{self},
 };
+use lazy_static::lazy_static;
 
 pub struct RunLocalInfrastructure {
     project: Project,
@@ -22,18 +26,23 @@ impl RunLocalInfrastructure {
     }
 }
 
+lazy_static! {
+    static ref FAILED_TO_CREATE_INTERNAL_DIR: Message = Message::new(
+        "Failed".to_string(),
+        format!(
+            "to create {} directory. Check permissions or contact us`",
+            CLI_PROJECT_INTERNAL_DIR
+        ),
+    );
+}
+
 impl Routine for RunLocalInfrastructure {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         ensure_docker_running()?;
-        let igloo_dir = self.project.internal_dir().map_err(|err| {
-            RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to create .igloo directory. Check permissions or contact us`".to_string(),
-                ),
-                err,
-            )
-        })?;
+        let igloo_dir = self
+            .project
+            .internal_dir()
+            .map_err(|err| RoutineFailure::new(FAILED_TO_CREATE_INTERNAL_DIR.clone(), err))?;
         // Model this after the `spin_up` function in `apps/igloo-kit-cli/src/cli/routines/start.rs` but use routines instead
         CreateIglooTempDirectoryTree::new(RunMode::Explicit {}, self.project.clone())
             .run_explicit()?;
@@ -43,6 +52,8 @@ impl Routine for RunLocalInfrastructure {
         ValidateRedPandaRun::new().run_explicit()?;
         RunClickhouseContainer::new(self.project.clone()).run_explicit()?;
         ValidateClickhouseRun::new().run_explicit()?;
+        RunConsoleContainer::new(self.project.clone()).run_explicit()?;
+        ValidateConsoleRun::new().run_explicit()?;
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
             "ran local infrastructure".to_string(),
@@ -61,15 +72,10 @@ impl RunRedPandaContainer {
 
 impl Routine for RunRedPandaContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = self.project.internal_dir().map_err(|err| {
-            RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to create .igloo directory. Check permissions or contact us`".to_string(),
-                ),
-                err,
-            )
-        })?;
+        let igloo_dir = self
+            .project
+            .internal_dir()
+            .map_err(|err| RoutineFailure::new(FAILED_TO_CREATE_INTERNAL_DIR.clone(), err))?;
 
         let output = docker::safe_start_redpanda_container(igloo_dir).map_err(|err| {
             RoutineFailure::new(
@@ -104,15 +110,10 @@ impl RunClickhouseContainer {
 
 impl Routine for RunClickhouseContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = self.project.internal_dir().map_err(|err| {
-            RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to create .igloo directory. Check permissions or contact us`".to_string(),
-                ),
-                err,
-            )
-        })?;
+        let igloo_dir = self
+            .project
+            .internal_dir()
+            .map_err(|err| RoutineFailure::new(FAILED_TO_CREATE_INTERNAL_DIR.clone(), err))?;
 
         let output = docker::safe_start_clickhouse_container(
             igloo_dir,
@@ -133,6 +134,37 @@ impl Routine for RunClickhouseContainer {
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
             "ran clickhouse container".to_string(),
+        )))
+    }
+}
+
+pub struct RunConsoleContainer {
+    project: Project,
+}
+impl RunConsoleContainer {
+    pub fn new(project: Project) -> Self {
+        Self { project }
+    }
+}
+
+impl Routine for RunConsoleContainer {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let output = docker::safe_start_console_container(
+            &self.project.console_config,
+            &self.project.clickhouse_config,
+        )
+        .map_err(|err| {
+            RoutineFailure::new(
+                Message::new("Failed".to_string(), "to run console container".to_string()),
+                err,
+            )
+        })?;
+
+        debug!("Console container output: {:?}", output);
+
+        Ok(RoutineSuccess::success(Message::new(
+            "Successfully".to_string(),
+            "ran console container".to_string(),
         )))
     }
 }

@@ -1,4 +1,7 @@
 use super::{Routine, RoutineFailure, RoutineSuccess};
+use crate::utilities::constants::{
+    CLICKHOUSE_CONTAINER_NAME, CONSOLE_CONTAINER_NAME, REDPANDA_CONTAINER_NAME,
+};
 use crate::{cli::display::Message, utilities::constants::PANDA_NETWORK, utilities::docker};
 
 pub struct ValidateClickhouseRun;
@@ -19,7 +22,7 @@ impl Routine for ValidateClickhouseRun {
         // check that the clickhouse container exists
         containers
             .iter()
-            .find(|container| container.names.contains("clickhousedb-1"))
+            .find(|container| container.names.contains(CLICKHOUSE_CONTAINER_NAME))
             .ok_or_else(|| {
                 RoutineFailure::error(Message::new(
                     "Failed".to_string(),
@@ -52,7 +55,7 @@ impl Routine for ValidateRedPandaRun {
         // check that the clickhouse container exists
         containers
             .iter()
-            .find(|container| container.names.contains("redpanda-1"))
+            .find(|container| container.names.contains(REDPANDA_CONTAINER_NAME))
             .ok_or_else(|| {
                 RoutineFailure::error(Message::new(
                     "Failed".to_string(),
@@ -119,7 +122,7 @@ impl Routine for ValidateRedPandaCluster {
             )
         })?;
 
-        if output.contains("redpanda-1") {
+        if output.contains(REDPANDA_CONTAINER_NAME) {
             Ok(RoutineSuccess::success(Message::new(
                 "Successfully".to_string(),
                 "validated red panda cluster".to_string(),
@@ -130,5 +133,37 @@ impl Routine for ValidateRedPandaCluster {
                 "to validate red panda cluster".to_string(),
             )))
         }
+    }
+}
+
+pub struct ValidateConsoleRun;
+impl ValidateConsoleRun {
+    pub fn new() -> Self {
+        Self
+    }
+}
+impl Routine for ValidateConsoleRun {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let containers = docker::list_containers().map_err(|err| {
+            RoutineFailure::new(
+                Message::new("Failed".to_string(), "to get the containers".to_string()),
+                err,
+            )
+        })?;
+
+        // check that the clickhouse container exists
+        containers
+            .iter()
+            .find(|container| container.names.contains(CONSOLE_CONTAINER_NAME))
+            .ok_or_else(|| {
+                RoutineFailure::error(Message::new(
+                    "Failed".to_string(),
+                    "to find console docker container".to_string(),
+                ))
+            })?;
+        Ok(RoutineSuccess::success(Message::new(
+            "Successfully".to_string(),
+            "validated console docker container".to_string(),
+        )))
     }
 }

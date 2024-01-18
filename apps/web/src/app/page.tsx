@@ -9,9 +9,9 @@ import { Button } from "./components/Button";
 import { AnimatedDescription } from "./components/AnimatedDescription";
 
 
-import heroImg from "../../public/bg-image-man/bg-image-hero_3x.webp";
-import middleImg from '../../public/bg-image-computer/bg-image-computer_4x.webp'
-import footerImg from "../../public/bg-image-moose/bg-image-moose_4x.webp";
+import heroImg from "../../public/bg-image-man/bg-image-hero_2x.webp";
+import middleImg from '../../public/bg-image-computer/bg-image-computer_2x.webp'
+import footerImg from "../../public/bg-image-moose/bg-image-moose_2x.webp";
 import { FooterSection } from "./sections//home/FooterSection";
 import { AnimatedComponent } from "./components/AnimatedComponent";
 import { CodeBlockCTA } from "./components/CodeBlockCTA";
@@ -82,7 +82,7 @@ export default function Home() {
 
   return (
     <div className="h-full relative">
-      <SectionGrid className="py-36 pb-0 2xl:pt-24" gapStyle="gap-y-36">
+      <SectionGrid className="py-36 pb-0 2xl:pt-20" gapStyle="gap-y-36">
           <div className="flex flex-col px-10 w-full space-y-5 col-span-3 sm:col-span-12 2xl:col-span-6">
             <AnimatedHeading position={0} className="2xl:text-8xl" content={fiveonefourSection.heading} size="display" />
             <AnimatedDescription position={0.75} className="" content={fiveonefourSection.description} />

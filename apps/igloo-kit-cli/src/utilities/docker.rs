@@ -363,9 +363,9 @@ fn run_console(
         .arg(format!("--env=CLICKHOUSE_DB={}", clickhouse_config.db_name))
         .arg(format!("--env=CLICKHOUSE_USER={}", clickhouse_config.user))
         .arg(format!("--env=CLICKHOUSE_HOST={CLICKHOUSE_CONTAINER_NAME}"))
-        .arg(format!(
+        .arg(
             "--env=CLICKHOUSE_PORT=8123", // TODO figure out the configuration between inside and outside of the container
-        ))
+        )
         .arg(format!(
             "--env=CLICKHOUSE_PASSWORD={}",
             clickhouse_config.password

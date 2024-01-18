@@ -61,6 +61,8 @@ export default async function Page({
 }: {
   params: { tableName: string };
 }): Promise<JSX.Element> {
+  // This is to make sure the environment variables are read at runtime
+  // and not during build time
   noStore();
 
   const tableData = await getTable(params.tableName);

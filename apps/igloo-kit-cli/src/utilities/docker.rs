@@ -364,8 +364,7 @@ fn run_console(
         .arg(format!("--env=CLICKHOUSE_USER={}", clickhouse_config.user))
         .arg(format!("--env=CLICKHOUSE_HOST={CLICKHOUSE_CONTAINER_NAME}"))
         .arg(format!(
-            "--env=CLICKHOUSE_PORT={}",
-            clickhouse_config.host_port
+            "--env=CLICKHOUSE_PORT=8123", // TODO figure out the configuration between inside and outside of the container
         ))
         .arg(format!(
             "--env=CLICKHOUSE_PASSWORD={}",
@@ -373,7 +372,7 @@ fn run_console(
         ))
         .arg(format!("--network={PANDA_NETWORK}"))
         .arg(format!("--publish={}:3000", console_config.host_port))
-        .arg(format!("docker.io/514labs/console:{CLI_VERSION}"))
+        .arg(format!("docker.io/514labs/moose-console:{CLI_VERSION}"))
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;

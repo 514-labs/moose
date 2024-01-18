@@ -1,13 +1,16 @@
-import { BaseResultSet, Row, createClient } from "@clickhouse/client-web";
+/* eslint-disable turbo/no-undeclared-env-vars */
 
-const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || "localhost";
-// Environment variables are always strings
-const CLICKHOUSE_PORT = process.env.CLICKHOUSE_PORT || "18123";
-const CLICKHOUSE_USERNAME = process.env.CLICKHOUSE_USERNAME || "panda";
-const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_USERNAME || "pandapass";
-const CLICKHOUSE_DB = process.env.CLICKHOUSE_USERNAME || "local";
+import { BaseResultSet, Row, createClient } from "@clickhouse/client-web";
+import { unstable_noStore as noStore } from "next/cache";
 
 async function getTable(tableName: string): Promise<any> {
+  const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || "localhost";
+  // Environment variables are always strings
+  const CLICKHOUSE_PORT = process.env.CLICKHOUSE_PORT || "18123";
+  const CLICKHOUSE_USERNAME = process.env.CLICKHOUSE_USERNAME || "panda";
+  const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || "pandapass";
+  const CLICKHOUSE_DB = process.env.CLICKHOUSE_DB || "local";
+
   const client = createClient({
     host: `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
     username: CLICKHOUSE_USERNAME,
@@ -58,6 +61,8 @@ export default async function Page({
 }: {
   params: { tableName: string };
 }): Promise<JSX.Element> {
+  noStore();
+
   const tableData = await getTable(params.tableName);
 
   return (

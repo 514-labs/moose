@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS {db_name}.{table_name}
 PRIMARY KEY ({primary_key_string})
 {{endif}}
 )
-ENGINE = Kafka('{cluster_network}:{kafka_port}', '{topic}', 'clickhouse-group', 'JSONEachRow');
+ENGINE = Kafka('{kafka_host}:{kafka_port}', '{topic}', 'clickhouse-group', 'JSONEachRow');
 "#;
 
 pub struct CreateTableQuery;

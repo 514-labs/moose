@@ -1,12 +1,18 @@
 import { BaseResultSet, Row, createClient } from "@clickhouse/client-web";
-import { ReactNode } from "react";
+
+const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || "localhost";
+// Environment variables are always strings
+const CLICKHOUSE_PORT = process.env.CLICKHOUSE_PORT || "18123";
+const CLICKHOUSE_USERNAME = process.env.CLICKHOUSE_USERNAME || "panda";
+const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_USERNAME || "pandapass";
+const CLICKHOUSE_DB = process.env.CLICKHOUSE_USERNAME || "local";
 
 async function getTable(tableName: string): Promise<any> {
   const client = createClient({
-    host: "http://localhost:18123",
-    username: "panda",
-    password: "pandapass",
-    database: "local",
+    host: `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
+    username: CLICKHOUSE_USERNAME,
+    password: CLICKHOUSE_PASSWORD,
+    database: CLICKHOUSE_DB,
   });
 
   const resultSet = await client.query({

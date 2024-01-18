@@ -1,5 +1,6 @@
 use super::{Routine, RoutineFailure, RoutineSuccess, RunMode};
 use crate::cli::routines::util::ensure_docker_running;
+use crate::utilities::constants::{CLICKHOUSE_CONTAINER_NAME, REDPANDA_CONTAINER_NAME};
 use crate::{cli::display::Message, utilities::docker};
 
 pub struct StopLocalInfrastructure {
@@ -31,7 +32,7 @@ impl StopRedPandaContainer {
 }
 impl Routine for StopRedPandaContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        docker::stop_container("redpanda-1").map_err(|err| {
+        docker::stop_container(REDPANDA_CONTAINER_NAME).map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),
@@ -56,7 +57,7 @@ impl StopClickhouseContainer {
 }
 impl Routine for StopClickhouseContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        docker::stop_container("clickhousedb-1").map_err(|err| {
+        docker::stop_container(CLICKHOUSE_CONTAINER_NAME).map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),

@@ -162,7 +162,7 @@ pub fn stop_container(name: &str) -> std::io::Result<String> {
 pub fn run_rpk_cluster_info() -> std::io::Result<String> {
     let child = Command::new("docker")
         .arg("exec")
-        .arg("redpanda-1")
+        .arg(REDPANDA_CONTAINER_NAME)
         .arg("rpk")
         .arg("cluster")
         .arg("info")
@@ -178,7 +178,7 @@ pub fn run_rpk_cluster_info() -> std::io::Result<String> {
 pub fn run_rpk_command(args: Vec<String>) -> std::io::Result<String> {
     let child = Command::new("docker")
         .arg("exec")
-        .arg("redpanda-1")
+        .arg(REDPANDA_CONTAINER_NAME)
         .arg("rpk")
         .args(args)
         .stdout(Stdio::piped())
@@ -250,12 +250,12 @@ fn run_red_panda(igloo_dir: PathBuf) -> std::io::Result<String> {
         .arg("--kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092")
         .arg(format!(
             "--advertise-kafka-addr=internal://{}:9092,external://localhost:19092",
-            "redpanda-1"
+            REDPANDA_CONTAINER_NAME
         ))
         .arg("--pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082")
         .arg(format!(
             "--advertise-pandaproxy-addr=internal://{}:8082,external://localhost:18082",
-            "redpanda-1"
+            REDPANDA_CONTAINER_NAME
         ))
         .arg("--overprovisioned")
         .arg("--smp=1")
@@ -362,6 +362,11 @@ fn run_console(
         .arg(format!("--name={CONSOLE_CONTAINER_NAME}"))
         .arg(format!("--env=CLICKHOUSE_DB={}", clickhouse_config.db_name))
         .arg(format!("--env=CLICKHOUSE_USER={}", clickhouse_config.user))
+        .arg(format!("--env=CLICKHOUSE_HOST={CLICKHOUSE_CONTAINER_NAME}"))
+        .arg(format!(
+            "--env=CLICKHOUSE_PORT={}",
+            clickhouse_config.host_port
+        ))
         .arg(format!(
             "--env=CLICKHOUSE_PASSWORD={}",
             clickhouse_config.password
@@ -379,15 +384,15 @@ fn run_console(
 }
 
 fn start_redpanda_container() -> std::io::Result<String> {
-    start_container("redpanda-1")
+    start_container(REDPANDA_CONTAINER_NAME)
 }
 
 fn start_clickhouse_container() -> std::io::Result<String> {
-    start_container("clickhousedb-1")
+    start_container(CLICKHOUSE_CONTAINER_NAME)
 }
 
 fn start_console_container() -> std::io::Result<String> {
-    start_container("console-1")
+    start_container(CONSOLE_CONTAINER_NAME)
 }
 
 fn start_container(name: &str) -> std::io::Result<String> {

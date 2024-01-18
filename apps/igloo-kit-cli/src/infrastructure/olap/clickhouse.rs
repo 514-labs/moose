@@ -9,7 +9,10 @@ use log::debug;
 use schema_ast::ast::FieldArity;
 use serde::{Deserialize, Serialize};
 
-use crate::framework::schema::{MatViewOps, TableOps, UnsupportedDataTypeError};
+use crate::{
+    framework::schema::{MatViewOps, TableOps, UnsupportedDataTypeError},
+    utilities::constants::REDPANDA_CONTAINER_NAME,
+};
 
 use self::{
     config::ClickhouseConfig,
@@ -159,7 +162,7 @@ impl TableOps for ClickhouseTable {
     fn create_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
         CreateTableQuery::build(
             self.clone(),
-            "redpanda-1".to_string(),
+            REDPANDA_CONTAINER_NAME.to_string(),
             9092,
             self.name.clone(),
         )

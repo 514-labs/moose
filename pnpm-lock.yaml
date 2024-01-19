@@ -274,6 +274,9 @@ importers:
       gsap:
         specifier: file:gsap-bonus.tgz
         version: file:apps/moose-console/gsap-bonus.tgz
+      lowdb:
+        specifier: ^7.0.1
+        version: 7.0.1
       lucide-react:
         specifier: ^0.312.0
         version: 0.312.0(react@18.2.0)
@@ -7103,6 +7106,13 @@ packages:
     dependencies:
       js-tokens: 4.0.0
 
+  /lowdb@7.0.1:
+    resolution: {integrity: sha512-neJAj8GwF0e8EpycYIDFqEPcx9Qz4GUho20jWFR7YiFeXzF1YMLdxB36PypcTSPMA+4+LvgyMacYhlr18Zlymw==}
+    engines: {node: '>=18'}
+    dependencies:
+      steno: 4.0.2
+    dev: false
+
   /lru-cache@10.1.0:
     resolution: {integrity: sha512-/1clY/ui8CzjKFyjdvwPWJUYKiFVXG2I2cY0ssG7h4+hwk+XOIX7ZSG9Q7TW8TW3Kp3BUSqgFWBLgL4PJ+Blag==}
     engines: {node: 14 || >=16.14}
@@ -9230,6 +9240,11 @@ packages:
     engines: {node: '>=6'}
     dependencies:
       type-fest: 0.7.1
+    dev: false
+
+  /steno@4.0.2:
+    resolution: {integrity: sha512-yhPIQXjrlt1xv7dyPQg2P17URmXbuM5pdGkpiMB3RenprfiBlvK415Lctfe0eshk90oA7/tNq7WEiMK8RSP39A==}
+    engines: {node: '>=18'}
     dev: false
 
   /stop-iteration-iterator@1.0.0:

@@ -34,7 +34,7 @@ importers:
     dependencies:
       '@514labs/igloo-cli':
         specifier: latest
-        version: 0.3.53
+        version: 0.3.54
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -59,7 +59,7 @@ importers:
     dependencies:
       '@514labs/moose-cli':
         specifier: latest
-        version: 0.3.53
+        version: 0.3.54
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -154,16 +154,16 @@ importers:
     optionalDependencies:
       '@514labs/igloo-cli-darwin-arm64':
         specifier: latest
-        version: 0.3.53
+        version: 0.3.54
       '@514labs/igloo-cli-darwin-x64':
         specifier: latest
-        version: 0.3.53
+        version: 0.3.54
       '@514labs/igloo-cli-linux-arm64':
         specifier: latest
-        version: 0.3.53
+        version: 0.3.54
       '@514labs/igloo-cli-linux-x64':
         specifier: latest
-        version: 0.3.53
+        version: 0.3.54
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -188,16 +188,16 @@ importers:
     optionalDependencies:
       '@514labs/moose-cli-darwin-arm64':
         specifier: latest
-        version: 0.3.53
+        version: 0.3.54
       '@514labs/moose-cli-darwin-x64':
         specifier: latest
-        version: 0.3.53
+        version: 0.3.54
       '@514labs/moose-cli-linux-arm64':
         specifier: latest
-        version: 0.3.53
+        version: 0.3.54
       '@514labs/moose-cli-linux-x64':
         specifier: latest
-        version: 0.3.53
+        version: 0.3.54
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -274,6 +274,9 @@ importers:
       gsap:
         specifier: file:gsap-bonus.tgz
         version: file:apps/moose-console/gsap-bonus.tgz
+      lowdb:
+        specifier: ^7.0.1
+        version: 7.0.1
       lucide-react:
         specifier: ^0.312.0
         version: 0.312.0(react@18.2.0)
@@ -464,88 +467,88 @@ importers:
 
 packages:
 
-  /@514labs/igloo-cli-darwin-arm64@0.3.53:
-    resolution: {integrity: sha512-JMHyW0LzuG9oJoYXro83lBGjGyeSnGDXirKthK3hRDST51cdkacUqZJ33F9rupMbt7tFssLQOnsLvVUW2v1t9w==}
+  /@514labs/igloo-cli-darwin-arm64@0.3.54:
+    resolution: {integrity: sha512-l5E1RDIDol5FG7zMhfoXXpcrX6DNp/zDw8INdndmHoU4j+me9COgaO3nwJpjUH3LLWgCS8BWEIGoEKMM9C46LQ==}
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-darwin-x64@0.3.53:
-    resolution: {integrity: sha512-HJp4GJjP+fSOQdzfreHnCLqN2F/6mjR9nrqI+RsKRZfMljXCfwJhpkFkGjEQt69S/45b8tYHoENipP9Kd8rp3w==}
+  /@514labs/igloo-cli-darwin-x64@0.3.54:
+    resolution: {integrity: sha512-0S14X54VG5cL2PM5IkHkLXlJC5jHKc6mceH9v8srzoAhb8lzwcTJpffBKTmy041UYb83lNZwCSeujhFBYjPI+Q==}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-linux-arm64@0.3.53:
-    resolution: {integrity: sha512-1FaFW3MQFatIo05Zb9LoyQ/PNQlagqrXHo8Ug7GH/UDvGNS3lkwmm9gp/MfK3UhdP2rSoa8pVRSCGVIKjLrOkA==}
+  /@514labs/igloo-cli-linux-arm64@0.3.54:
+    resolution: {integrity: sha512-Zh+II8hOf+Y4pnA91NOwRRqlKEosKqC8itRGETjOQGvuz/HfqkIW0AaWmtorUlb/ZZRMIwS+562twVlo2kmF9w==}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli-linux-x64@0.3.53:
-    resolution: {integrity: sha512-eVrhyYIbAgJkEdAeKDk3P1b6/zHoQqWwMb05b2pKip4/V8ZdA4usAXEhUvZvM7BA+qHl+BMwpFz0A0WXXncT9Q==}
+  /@514labs/igloo-cli-linux-x64@0.3.54:
+    resolution: {integrity: sha512-yZCTmYKrAUUNjFXxKAf0ofW5aeM7A13vmy4JW6PEiQqK4ztOTKYxOhq5Py9I3LWIFDMIwEfHuw37CbS5X75V5A==}
     cpu: [x64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/igloo-cli@0.3.53:
-    resolution: {integrity: sha512-8JlXnjoWr99WvYfRD9m+gc3Et2KH+755P8lU4ZPrkgFDNiBbRceNKL53hN+g3QbNIRwPOgl7ZtksHfWsA8MckA==}
+  /@514labs/igloo-cli@0.3.54:
+    resolution: {integrity: sha512-mKCDBm3hPp4qI/VFfvGBVPTVMRylMUdyH3uUi/mYwRK3bu7de7QfueD0eTqcjALET7Bx6MWEokIHCDSNNasmDQ==}
     hasBin: true
     optionalDependencies:
-      '@514labs/igloo-cli-darwin-arm64': 0.3.53
-      '@514labs/igloo-cli-darwin-x64': 0.3.53
-      '@514labs/igloo-cli-linux-arm64': 0.3.53
-      '@514labs/igloo-cli-linux-x64': 0.3.53
+      '@514labs/igloo-cli-darwin-arm64': 0.3.54
+      '@514labs/igloo-cli-darwin-x64': 0.3.54
+      '@514labs/igloo-cli-linux-arm64': 0.3.54
+      '@514labs/igloo-cli-linux-x64': 0.3.54
     dev: false
 
-  /@514labs/moose-cli-darwin-arm64@0.3.53:
-    resolution: {integrity: sha512-N6ST6ie4QJ6iirvS1j3QDGYIYJTBq8/gMB2Vcrxf+SBvzlba6j7BecB70NY8FLi01rO5mrYqDv6WRlk1NQFjOg==}
+  /@514labs/moose-cli-darwin-arm64@0.3.54:
+    resolution: {integrity: sha512-iyaUSOGOXqogJgC+PcNlENYSY2wFI59G+wC0mV79mlFTWnFND2JH7sIyeHahvR+fDG1CSD9gzap7k9e6rD8l1w==}
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-x64@0.3.53:
-    resolution: {integrity: sha512-KkJE+o5JNQB4rKOucUPssUzjlj3xQPWEAwvzpsMgCjOgHKjbZ5RfNfz1+nxxZKoFB+x/xYgaCqf25nQ5YE/xFA==}
+  /@514labs/moose-cli-darwin-x64@0.3.54:
+    resolution: {integrity: sha512-IDWWjddsG/k2GdChSoNTxZSJuaxJvIdhumffhSxBi/h5LHWHt9V/XAKDQsrD/E6X+N2cfL4p6Y/NqOvI/OwWDg==}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-arm64@0.3.53:
-    resolution: {integrity: sha512-HMH+iRghw+w/Al9ivc+nRXq8X2fZ4M5XmTGrb6Ng10Q4Iz3bYDNMiIvm8l4b9kmj2Sitz8izkpBN0KbRf68bmQ==}
+  /@514labs/moose-cli-linux-arm64@0.3.54:
+    resolution: {integrity: sha512-MeCWx7j4Z5YahWee7ms1rZJiE3CSq0IeRXdHZtCs3qdO9MPruX0/eJrkIen1ngzgcc0RvbyPHpAJ6+XocxOWfQ==}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-x64@0.3.53:
-    resolution: {integrity: sha512-kKyXwCOBzFy8yRnnaQxJvui6vg6hrSD6njydJ16tOUjGsX54IHdn2MeWpK6s2oZnQjvBCN/2yReTmcXK4Wptqg==}
+  /@514labs/moose-cli-linux-x64@0.3.54:
+    resolution: {integrity: sha512-PZYTo4Pz8po6LSIuwRyC05yroSAAetvBAYhkjeIhrxGA8Rl+qIuMdvz9qEALSKDqEhv56XP86P8BBvkfcfLljw==}
     cpu: [x64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli@0.3.53:
-    resolution: {integrity: sha512-MNxdeJExqAlCg02B1KUQK9EP4jYWZ44+emTsxijK5e1aKEvfs75pdkPJXrdil7eCMBACktY3no9hOK4a4YLKYQ==}
+  /@514labs/moose-cli@0.3.54:
+    resolution: {integrity: sha512-a61+SJDhGuHahQPt4wH7iVsb/htK+cQdcOaF3UQBK2fG9ssA+p6G2hlOcvbJTC0JG2D2sUzaxbnyXC2QnULQuQ==}
     hasBin: true
     optionalDependencies:
-      '@514labs/moose-cli-darwin-arm64': 0.3.53
-      '@514labs/moose-cli-darwin-x64': 0.3.53
-      '@514labs/moose-cli-linux-arm64': 0.3.53
-      '@514labs/moose-cli-linux-x64': 0.3.53
+      '@514labs/moose-cli-darwin-arm64': 0.3.54
+      '@514labs/moose-cli-darwin-x64': 0.3.54
+      '@514labs/moose-cli-linux-arm64': 0.3.54
+      '@514labs/moose-cli-linux-x64': 0.3.54
     dev: false
 
   /@aashutoshrathi/word-wrap@1.2.6:
@@ -7103,6 +7106,13 @@ packages:
     dependencies:
       js-tokens: 4.0.0
 
+  /lowdb@7.0.1:
+    resolution: {integrity: sha512-neJAj8GwF0e8EpycYIDFqEPcx9Qz4GUho20jWFR7YiFeXzF1YMLdxB36PypcTSPMA+4+LvgyMacYhlr18Zlymw==}
+    engines: {node: '>=18'}
+    dependencies:
+      steno: 4.0.2
+    dev: false
+
   /lru-cache@10.1.0:
     resolution: {integrity: sha512-/1clY/ui8CzjKFyjdvwPWJUYKiFVXG2I2cY0ssG7h4+hwk+XOIX7ZSG9Q7TW8TW3Kp3BUSqgFWBLgL4PJ+Blag==}
     engines: {node: 14 || >=16.14}
@@ -9230,6 +9240,11 @@ packages:
     engines: {node: '>=6'}
     dependencies:
       type-fest: 0.7.1
+    dev: false
+
+  /steno@4.0.2:
+    resolution: {integrity: sha512-yhPIQXjrlt1xv7dyPQg2P17URmXbuM5pdGkpiMB3RenprfiBlvK415Lctfe0eshk90oA7/tNq7WEiMK8RSP39A==}
+    engines: {node: '>=18'}
     dev: false
 
   /stop-iteration-iterator@1.0.0:

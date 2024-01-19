@@ -52,3 +52,5 @@ Cargo.lock
 *.pdb
 
 .igloo/
+
+console.db

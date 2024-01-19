@@ -1,4 +1,7 @@
 import Metadata from "next";
+import { gsap } from "gsap";
+import { unstable_noStore as noStore } from "next/cache";
+import { getCliData, Route, Table } from "./db";
 
 export const metadata: Metadata = {
   title: "MooseJS | Build for the modern data stack",
@@ -6,27 +9,6 @@ export const metadata: Metadata = {
     images: "/open-graph/og_igloo_4x.webp",
   },
 };
-
-interface Route {
-  file_path: string;
-  route_path: string;
-  table_name: string;
-  view_name: string;
-}
-
-interface Table {
-  database: string;
-  dependencies_table: string[];
-  engine: string;
-  name: string;
-  uuid: string;
-}
-
-interface ConsoleResponse {
-  routes: Route[];
-  tables: Table[];
-  topics: string[];
-}
 
 interface RoutesListProps {
   routes: Route[];
@@ -38,21 +20,6 @@ interface TablesListProps {
 
 interface TopicsListProps {
   topics: string[];
-}
-
-async function getData(): Promise<ConsoleResponse> {
-  const res = await fetch("http://localhost:4000/console", {
-    cache: "no-store",
-  });
-  // The return value is *not* serialized
-  // You can return Date, Map, Set, etc.
-
-  if (!res.ok) {
-    // This will activate the closest `error.js` Error Boundary
-    throw new Error("Failed to fetch data");
-  }
-
-  return res.json();
 }
 
 const RoutesList = ({ routes }: RoutesListProps) => (
@@ -87,7 +54,10 @@ const TopicsList = ({ topics }) => (
 );
 
 export default async function Home(): Promise<JSX.Element> {
-  const data = await getData();
+  // This is to make sure the environment variables are read at runtime
+  // and not during build time
+  noStore();
+  const data = await getCliData();
 
   return (
     <>

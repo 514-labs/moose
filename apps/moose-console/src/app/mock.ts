@@ -1,4 +1,5 @@
 import { faker } from "@faker-js/faker";
+import { InfrastuctureMock, infrastructureMock } from "./infrastructure/mock";
 
 export interface Tag {
     name: string;
@@ -100,11 +101,11 @@ export interface Snippet {
 
 export interface Primitive {
     name: string;
-    primitive_type: PrimitiveType;
+    primitiveType: PrimitiveType;
     description: string;
-    doc_link: string;
+    docLink: string;
     version: string;
-    console_path: string;
+    consolePath: string;
     count: number;
 };
 
@@ -115,20 +116,22 @@ const generatePrimitives = (): Primitive[] => {
     return primitiveTypes.map((primitiveType) => {
         return {
             name: primitiveType,
-            primitive_type: primitiveType,
+            primitiveType: primitiveType,
             description: faker.lorem.paragraph(),
-            doc_link: faker.internet.url(),
+            docLink: faker.internet.url(),
             version: faker.system.semver(),
-            console_path: faker.internet.url(),
+            consolePath: faker.internet.url(),
             count: faker.number.int(),
         }
     })
 }
 
 export interface HomeMock {
-    primitives: Primitive[];   
+    primitives: Primitive[]; 
+    infrastructure: InfrastuctureMock  
 };
 
 export const homeMock: HomeMock = {
     primitives: generatePrimitives(),
+    infrastructure: infrastructureMock,
 }

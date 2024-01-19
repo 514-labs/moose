@@ -40,16 +40,19 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <header className="flex text-lg px-3">
-            <span className="py-4">moosejs</span>
-            <span className="flex-grow" />
-            <span className="py-3">
-              <ThemeToggle />
-            </span>
-          </header>
-          <div className="flex">
-            <nav>
-              <LeftNav />
+          <div className="flex h-screen">
+            <nav className="flex flex-col px-4">
+              <div className="flex-grow overflow-y-auto">
+                <header className="flex text-lg">
+                  <span className="py-4">moosejs <span className="text-muted-foreground">console</span></span>
+                  <span className="flex-grow" />
+                </header>
+                <LeftNav />
+              </div>
+              <div className="py-3 flex flex-row align-middle justify-center ">
+                <ThemeToggle /> <span className="flex-grow" /> 
+              </div>
+              
             </nav>
             <section>{children}</section>
           </div>

@@ -1,9 +1,62 @@
 import { faker } from "@faker-js/faker";
-import { Field, Language, Snippet, generateField } from "app/mock";
+import {  Field, Snippet,  } from "app/mock";
 
-interface InfrastuctureMock {
-    tables: Table[];
-    views: View[];
+enum ContraintType {
+    Unique = 'Unique',
+    Required = 'Required',
+    Nullable = 'Nullable',
+}
+
+enum Language {
+    Typescript = 'Typescript',
+    Javascript = 'Javascript',
+    Python = 'Python',
+    Rust = 'Rust',
+    Go = 'Go',
+    Java = 'Java',
+    CPP = 'C++',
+    CSharp = 'C#',
+    Swift = 'Swift',
+    Kotlin = 'Kotlin',
+    Fortran = 'Fortran',
+    Cobol = 'Cobol',
+    Curl = 'curl',
+    Bash = 'bash',
+    Scala = 'scala',
+    Prisma = 'prisma',
+}
+
+const generateField = (): Field => ({
+    name: faker.database.column(),
+    type: faker.database.type(),
+    description: faker.lorem.sentence(),
+    constraints: [ContraintType.Unique, ContraintType.Required],
+    doc_link: faker.internet.url(),
+    consolePath: faker.system.directoryPath(),
+    rowCount: faker.number.int(),
+    messageCount: faker.number.int(),
+    lastContribution: {
+        commitHash: faker.git.commitSha(),
+        author: {
+            userName: faker.internet.userName(),
+            firstName: faker.name.firstName(),
+            lastName: faker.name.lastName(),
+            email: faker.internet.email(),
+            avatar: faker.internet.avatar(),
+            profileLink: faker.internet.url(),
+        },
+        dateTime: faker.date.recent().toISOString(),
+    },
+    tags: Array.from({ length: 5 }, () => ({
+        name: faker.lorem.word(),
+        description: faker.lorem.sentence(),
+    })),
+    deployedVersions: Array.from({ length: 5 }, () => faker.git.commitSha()),
+});
+
+
+export interface InfrastuctureMock {
+    databases: Database[];
     queues: Queue[];
     ingestionPoints: IngestionPoint[];
 }
@@ -15,7 +68,7 @@ enum QueueStatus {
     Error = 'Error',
 }
 
-interface Queue {
+export interface Queue {
     id: string;
     name: string;
     clusterId: string;
@@ -32,10 +85,10 @@ interface Queue {
 }
 
 const generateQueue = (): Queue => ({
-    id: faker.datatype.uuid(),
+    id: faker.string.uuid(),
     name: faker.commerce.productName(),
-    clusterId: faker.datatype.uuid(),
-    modelId: faker.datatype.uuid(),
+    clusterId: faker.string.uuid(),
+    modelId: faker.string.uuid(),
     description: faker.commerce.productDescription(),
     status: faker.helpers.arrayElement(Object.values(QueueStatus)),
     connectionUrl: faker.internet.url(),
@@ -58,7 +111,7 @@ enum IngestionPointStatus {
 interface SdkInfo {
 }
 
-interface IngestionPoint {
+export interface IngestionPoint {
     id: string;
     name: string;
     description: string;
@@ -107,7 +160,7 @@ enum DatabaseStatus {
     Error = 'Error',
 }
 
-interface Database {
+export interface Database {
     id: string;
     name: string;
     description: string;
@@ -149,11 +202,11 @@ const generateDatabase = (): Database => {
         tables: tables,
         views: views,
         consolePath: faker.system.directoryPath(),
-        tableCount: faker.datatype.number(),
-        viewCount: faker.datatype.number(),
+        tableCount: faker.number.int(),
+        viewCount: faker.number.int(),
         lastUpdated: faker.date.recent().toISOString(),
         lastUpdatedBy: faker.internet.userName(),
-        modelIds: Array.from({ length: 5 }, () => faker.datatype.uuid()),
+        modelIds: Array.from({ length: 5 }, () => faker.string.uuid()),
         errors: [],
     }
     
@@ -201,8 +254,8 @@ const generateTable = (): Table => ({
     version: faker.system.semver(),
     consolePath: faker.system.directoryPath(),
     fields: Array.from({ length: 5 }, generateField),
-    fieldCount: faker.datatype.number(),
-    rowCount: faker.datatype.number(),
+    fieldCount: faker.number.int(),
+    rowCount: faker.number.int(),
     lastUpdated: faker.date.recent().toISOString(),
     lastUpdatedBy: faker.internet.userName(),
     samples: Array.from({ length: 5 }, () => ({
@@ -211,7 +264,7 @@ const generateTable = (): Table => ({
             value: faker.lorem.sentence(),
         })),
     })),
-    modelId: faker.datatype.uuid(),
+    modelId: faker.string.uuid(),
     errors: [],
 });
 
@@ -240,12 +293,10 @@ interface View {
     errors: string[];
 }
 
-const database = generateDatabase();
 
 
 export const infrastructureMock: InfrastuctureMock = {
-    tables: database.tables, 
-    views: database.views,
+    databases: Array.from({ length: 10 }, generateDatabase),
     queues: Array.from({ length: 10 }, generateQueue),
     ingestionPoints: Array.from({ length: 10 }, generateIngestionPoint),
 };

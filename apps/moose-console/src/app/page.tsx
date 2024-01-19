@@ -1,74 +1,33 @@
-import { Metadata } from "next";
-import { gsap } from "gsap";
-import { unstable_noStore as noStore } from "next/cache";
-import { getCliData, Route, Table } from "./db";
+import { PrimitiveCard } from "components/primitive-card";
+import { homeMock } from "./mock";
+import { DatabasesCard } from "components/databases-card";
+import { QueuesCard } from "components/queues-card";
+import { IngestionPointsCard } from "components/ingestion-points";
+  
 
-export const metadata: Metadata = {
-  title: "MooseJS | Build for the modern data stack",
-  openGraph: {
-    images: "/open-graph/og_igloo_4x.webp",
-  },
-};
 
-interface RoutesListProps {
-  routes: Route[];
-}
-
-interface TablesListProps {
-  tables: Table[];
-}
-
-interface TopicsListProps {
-  topics: string[];
-}
-
-const RoutesList = ({ routes }: RoutesListProps) => (
-  <ul>
-    {routes.map((route, index) => (
-      <li key={index}>{route.route_path}</li>
-    ))}
-  </ul>
-);
-
-const TablesList = ({ tables }) => (
-  <ul>
-    {tables.map((table, index) => (
-      <li key={index}>
-        {/* Add a link to the table if it's a view */}
-        {table.name.includes("_view") ? (
-          <a href={`/tables/${table.name}`}>{table.name}</a>
-        ) : (
-          table.name
-        )}
-      </li>
-    ))}
-  </ul>
-);
-
-const TopicsList = ({ topics }) => (
-  <ul>
-    {topics.map((topic, index) => (
-      <li key={index}>{topic}</li>
-    ))}
-  </ul>
-);
-
-export default async function Home(): Promise<JSX.Element> {
+export default async function Primitives(): Promise<JSX.Element> {
   // This is to make sure the environment variables are read at runtime
   // and not during build time
-  noStore();
-  const data = await getCliData();
+  // noStore();
+  // const data = await getCliData();
+  const data = homeMock;
 
   return (
-    <>
-      {/* <h1 className="text-3xl font-bold">Routes</h1>
-      <RoutesList routes={data.routes} />
-
-      <h1 className="text-3xl font-bold">Tables</h1>
-      <TablesList tables={data.tables} />
-
-      <h1 className="text-3xl font-bold">Topics</h1>
-      <TopicsList topics={data.topics} /> */}
-    </>
+    <section className="p-4 max-h-screen overflow-y-auto">
+      <div className="text-9xl py-20">Overview</div>
+      <div className="text-6xl py-10">Primitives</div>
+      <div className="flex flex-row space-x-3">
+        {data.primitives.map((primitive, index) => (
+          <PrimitiveCard key={index} primitive={primitive}/>
+        ))}
+      </div>
+      <div className="text-6xl py-10">Infrastructure</div>
+      <div className="flex flex-row space-x-3">
+        <IngestionPointsCard ingestionPoints={data.infrastructure.ingestionPoints}/>
+        <QueuesCard queues={data.infrastructure.queues}/>
+        <DatabasesCard databases={data.infrastructure.databases}/>
+      </div>
+    </section>    
   );
 }

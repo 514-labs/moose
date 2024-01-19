@@ -7,6 +7,7 @@ enum ContraintType {
     Nullable = 'Nullable',
 }
 
+
 interface Model {
     name: string;
     description: string;

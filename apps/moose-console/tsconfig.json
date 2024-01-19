@@ -2,7 +2,8 @@
   "extends": "tsconfig/nextjs.json",
   "compilerOptions": {
     "baseUrl": "src/",
-    "plugins": [{ "name": "next" }]
+    "plugins": [{ "name": "next" }],
+    "allowSyntheticDefaultImports": true
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

@@ -1,8 +1,7 @@
-import { Metadata } from "next";
-import { gsap } from "gsap";
+import Metadata from "next";
 
 export const metadata: Metadata = {
-  title: "Igloo | Build for the modern data stack",
+  title: "MooseJS | Build for the modern data stack",
   openGraph: {
     images: "/open-graph/og_igloo_4x.webp",
   },
@@ -92,14 +91,14 @@ export default async function Home(): Promise<JSX.Element> {
 
   return (
     <>
-      <h1 className="text-3xl font-bold">Routes</h1>
+      {/* <h1 className="text-3xl font-bold">Routes</h1>
       <RoutesList routes={data.routes} />
 
       <h1 className="text-3xl font-bold">Tables</h1>
       <TablesList tables={data.tables} />
 
       <h1 className="text-3xl font-bold">Topics</h1>
-      <TopicsList topics={data.topics} />
+      <TopicsList topics={data.topics} /> */}
     </>
   );
 }

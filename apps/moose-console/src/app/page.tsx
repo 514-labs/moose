@@ -1,4 +1,4 @@
-import Metadata from "next";
+import { Metadata } from "next";
 import { gsap } from "gsap";
 import { unstable_noStore as noStore } from "next/cache";
 import { getCliData, Route, Table } from "./db";

@@ -5,9 +5,7 @@ use crate::cli::routines::stop::StopLocalInfrastructure;
 use crate::cli::routines::Routine;
 use crate::cli::routines::RunMode;
 use crate::framework::controller::RouteMeta;
-use crate::infrastructure::olap;
 
-use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 
@@ -28,7 +26,6 @@ use rdkafka::producer::FutureRecord;
 use rdkafka::util::Timeout;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::json;
 use std::collections::HashMap;
 use std::future::Future;
 use std::net::SocketAddr;
@@ -64,34 +61,9 @@ impl Default for LocalWebserverConfig {
     }
 }
 
-#[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct RouteInfo {
-    pub route_path: String,
-    pub file_path: String,
-    pub table_name: String,
-    pub view_name: Option<String>,
-}
-
-impl RouteInfo {
-    pub fn new(
-        route_path: String,
-        file_path: String,
-        table_name: String,
-        view_name: Option<String>,
-    ) -> Self {
-        Self {
-            route_path,
-            file_path,
-            table_name,
-            view_name,
-        }
-    }
-}
-
 struct RouteService {
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_producer: Arc<Mutex<ConfiguredProducer>>,
-    configured_db_client: Arc<Mutex<ConfiguredDBClient>>,
 }
 
 impl Service<Request<Incoming>> for RouteService {
@@ -104,7 +76,6 @@ impl Service<Request<Incoming>> for RouteService {
             req,
             self.route_table.clone(),
             self.configured_producer.clone(),
-            self.configured_db_client.clone(),
         ))
     }
 }
@@ -137,6 +108,7 @@ async fn ingest_route(
             details: route.to_str().unwrap().to_string().to_string(),
         }
     );
+
     if route_table.lock().await.contains_key(&route) {
         let body = req.collect().await.unwrap().to_bytes().to_vec();
 
@@ -180,64 +152,10 @@ async fn ingest_route(
     }
 }
 
-async fn console_route(
-    configured_db_client: Arc<Mutex<ConfiguredDBClient>>,
-    configured_producer: Arc<Mutex<ConfiguredProducer>>,
-    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
-) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
-    show_message!(
-        MessageType::Info,
-        Message {
-            action: "GET".to_string(),
-            details: "Console API".to_string(),
-        }
-    );
-
-    let db_guard = configured_db_client.lock().await;
-    let producer_guard = configured_producer.lock().await;
-    let route_table_guard = route_table.lock().await;
-
-    let tables = olap::clickhouse::fetch_all_tables(&db_guard).await.unwrap();
-    let topics = redpanda::fetch_topics(&producer_guard.config)
-        .await
-        .unwrap();
-    let routes_table: Vec<RouteInfo> = route_table_guard
-        .clone()
-        .iter()
-        .map(|(k, v)| {
-            RouteInfo::new(
-                k.to_str().unwrap().to_string(),
-                v.original_file_path.to_str().unwrap().to_string(),
-                v.table_name.clone(),
-                v.view_name.clone(),
-            )
-        })
-        .collect();
-
-    let response = Response::builder()
-        .status(StatusCode::OK)
-        .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Methods", "GET")
-        .header(
-            "Access-Control-Allow-Headers",
-            "Content-Type, Baggage, Sentry-Trace",
-        )
-        .body(Full::new(Bytes::from(
-            json!({
-                "tables": tables,
-                "topics": topics,
-                "routes": routes_table
-            })
-            .to_string(),
-        )))?;
-    Ok(response)
-}
-
 async fn router(
     req: Request<hyper::body::Incoming>,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_producer: Arc<Mutex<ConfiguredProducer>>,
-    configured_db_client: Arc<Mutex<ConfiguredDBClient>>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     debug!(
         "HTTP Request Received: {:?}, with Route Table {:?}",
@@ -261,23 +179,6 @@ async fn router(
     match (req.method(), &route_split[..]) {
         (&hyper::Method::POST, ["ingest", _]) => {
             ingest_route(req, route, configured_producer, route_table).await
-        }
-
-        (&hyper::Method::GET, ["console"]) => {
-            console_route(configured_db_client, configured_producer, route_table).await
-        }
-        (&hyper::Method::GET, ["console", "routes"]) => {
-            todo!("get all routes");
-        }
-        (&hyper::Method::GET, ["console", "routes", _route_id]) => {
-            todo!("get specific route");
-        }
-
-        (&hyper::Method::GET, ["console", "tables"]) => {
-            todo!("get all tables");
-        }
-        (&hyper::Method::GET, ["console", "tables", _table_name]) => {
-            todo!("get specific table");
         }
 
         (&hyper::Method::OPTIONS, _) => options_route(),
@@ -320,9 +221,6 @@ impl Webserver {
         let producer = Arc::new(Mutex::new(redpanda::create_producer(
             project.redpanda_config.clone(),
         )));
-        let db_client = Arc::new(Mutex::new(olap::clickhouse::create_client(
-            project.clickhouse_config.clone(),
-        )));
 
         show_message!(
             MessageType::Info,
@@ -357,7 +255,6 @@ impl Webserver {
 
                     let route_table = route_table.clone();
                     let producer = producer.clone();
-                    let db_client = db_client.clone();
 
                     // Spawn a tokio task to serve multiple connections concurrently
                     tokio::task::spawn(async move {
@@ -366,8 +263,7 @@ impl Webserver {
                                 io,
                                 RouteService {
                                     route_table,
-                                    configured_producer: producer,
-                                    configured_db_client: db_client,
+                                    configured_producer: producer
                                 },
                             ).await {
                                 error!("server error: {}", e);

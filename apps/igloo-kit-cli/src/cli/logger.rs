@@ -97,10 +97,11 @@ pub fn setup_logging(settings: LoggerSettings) -> Result<(), fern::InitError> {
     let file_config = fern::Dispatch::new()
         .format(move |out, message, record| {
             out.finish(format_args!(
-                "[{} {} {}] {}",
+                "[{} {} {} - {}] {}",
                 humantime::format_rfc3339_seconds(SystemTime::now()),
                 record.level(),
                 &session_id,
+                record.target(),
                 message
             ))
         })

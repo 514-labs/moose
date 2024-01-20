@@ -93,8 +93,10 @@ use super::{Message, MessageType};
 use crate::cli::watcher::process_schema_file;
 
 use crate::framework::controller::RouteMeta;
+use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
+use crate::infrastructure::stream::redpanda;
 use crate::project::Project;
 use log::info;
 
@@ -257,10 +259,19 @@ async fn initialize_project_state(
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
 ) -> Result<(), Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
+    let producer = redpanda::create_producer(project.redpanda_config.clone());
 
     info!("Starting schema directory crawl...");
-    let crawl_result =
-        crawl_schema_project_dir(&schema_dir, project, &configured_client, route_table).await;
+    let crawl_result = crawl_schema_project_dir(
+        &schema_dir,
+        project,
+        &configured_client,
+        route_table.clone(),
+    )
+    .await;
+
+    let route_table_clone = route_table.clone();
+    let _ = post_current_state_to_console(&configured_client, &producer, route_table_clone).await;
 
     match crawl_result {
         Ok(_) => {

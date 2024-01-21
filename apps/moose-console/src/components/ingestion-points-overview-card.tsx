@@ -1,5 +1,5 @@
 
-import { Queue } from "app/infrastructure/mock"
+import { IngestionPoint } from "app/infrastructure/mock"
 import {
     Card,
     CardContent,
@@ -8,29 +8,29 @@ import {
     CardHeader,
     CardTitle,
   } from "components/ui/card"
-import { Button, buttonVariants } from "./ui/button"
 import { Separator } from "./ui/separator"
+import { Button, buttonVariants } from "./ui/button"
   
 
-interface QueuesCardProps {
-    queues: Queue[]
+interface IngestionPointsCardProps {
+    ingestionPoints: IngestionPoint[]
 }
 
-export function QueuesCard({ queues }: QueuesCardProps) {
+export function IngestionPointsCard({ ingestionPoints }: IngestionPointsCardProps) {
     return (
         <Card className="grow basis-0">
             <CardHeader>
-                <CardTitle>Queues</CardTitle>
-                <CardDescription>Queues ensure that your data can reliably get to your databases under any load</CardDescription>
+                <CardTitle>Ingestion Points</CardTitle>
+                <CardDescription>These are your data capture ingestion points where you can send data</CardDescription>
             </CardHeader>
             <CardContent>
                 <ul className="">
-                    {queues.map((queue, index) => (
+                    {ingestionPoints.map((ingestionPoint, index) => (
                         <li key={index}>
                             <div className="py-2 flex flex-row">
                                 <div>
-                                    <div>{queue.name}</div>
-                                    <div>{queue.connectionUrl}</div>
+                                    <div>{ingestionPoint.name}</div>
+                                    <div className="text-muted-foreground">{ingestionPoint.connectionURL}</div>
                                 </div>
                                 <span className="flex-grow"/>
                                 <div>
@@ -40,7 +40,7 @@ export function QueuesCard({ queues }: QueuesCardProps) {
                             <Separator/>
                         </li>
                     ))}
-                </ul>    
+                </ul>                
             </CardContent>
             <CardFooter>
                 

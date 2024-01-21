@@ -1,9 +1,10 @@
 import { PrimitiveCard } from "components/primitive-card";
 import { homeMock } from "./mock";
-import { DatabasesCard } from "components/databases-card";
-import { QueuesCard } from "components/queues-card";
-import { IngestionPointsCard } from "components/ingestion-points";
-  
+import { DatabasesCard } from "components/databases-overview-card";
+import { QueuesCard } from "components/queues-overview-card";
+import { IngestionPointsCard } from "components/ingestion-points-overview-card";
+
+
 
 
 export default async function Primitives(): Promise<JSX.Element> {

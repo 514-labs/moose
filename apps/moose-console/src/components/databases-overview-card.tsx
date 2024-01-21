@@ -1,5 +1,4 @@
-
-import { IngestionPoint } from "app/infrastructure/mock"
+import { Database } from "app/infrastructure/mock"
 import {
     Card,
     CardContent,
@@ -8,29 +7,29 @@ import {
     CardHeader,
     CardTitle,
   } from "components/ui/card"
-import { Separator } from "./ui/separator"
 import { Button, buttonVariants } from "./ui/button"
+import { Separator } from "./ui/separator"
   
 
-interface IngestionPointsCardProps {
-    ingestionPoints: IngestionPoint[]
+interface DatabaseCardProps {
+    databases: Database[]
 }
 
-export function IngestionPointsCard({ ingestionPoints }: IngestionPointsCardProps) {
+export function DatabasesCard({ databases }: DatabaseCardProps) {
     return (
         <Card className="grow basis-0">
             <CardHeader>
-                <CardTitle>Ingestion Points</CardTitle>
-                <CardDescription>These are your data capture ingestion points where you can send data</CardDescription>
+                <CardTitle>Databases</CardTitle>
+                <CardDescription>These are the analytical databases that you use to store your data</CardDescription>
             </CardHeader>
             <CardContent>
                 <ul className="">
-                    {ingestionPoints.map((ingestionPoint, index) => (
+                    {databases.map((database, index) => (
                         <li key={index}>
                             <div className="py-2 flex flex-row">
                                 <div>
-                                    <div>{ingestionPoint.name}</div>
-                                    <div>{ingestionPoint.connectionURL}</div>
+                                    <div>{database.name}</div>
+                                    <div className="text-muted-foreground">{database.connectionURL}</div>
                                 </div>
                                 <span className="flex-grow"/>
                                 <div>
@@ -40,7 +39,8 @@ export function IngestionPointsCard({ ingestionPoints }: IngestionPointsCardProp
                             <Separator/>
                         </li>
                     ))}
-                </ul>                
+                </ul>   
+                
             </CardContent>
             <CardFooter>
                 

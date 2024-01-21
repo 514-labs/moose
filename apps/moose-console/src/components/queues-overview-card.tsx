@@ -1,4 +1,5 @@
-import { Database } from "app/infrastructure/mock"
+
+import { Queue } from "app/infrastructure/mock"
 import {
     Card,
     CardContent,
@@ -11,25 +12,25 @@ import { Button, buttonVariants } from "./ui/button"
 import { Separator } from "./ui/separator"
   
 
-interface DatabaseCardProps {
-    databases: Database[]
+interface QueuesCardProps {
+    queues: Queue[]
 }
 
-export function DatabasesCard({ databases }: DatabaseCardProps) {
+export function QueuesCard({ queues }: QueuesCardProps) {
     return (
         <Card className="grow basis-0">
             <CardHeader>
-                <CardTitle>Databases</CardTitle>
-                <CardDescription>These are the analytical databases that you use to store your data</CardDescription>
+                <CardTitle>Queues</CardTitle>
+                <CardDescription>Queues ensure that your data can reliably get to your databases under any load</CardDescription>
             </CardHeader>
             <CardContent>
                 <ul className="">
-                    {databases.map((database, index) => (
+                    {queues.map((queue, index) => (
                         <li key={index}>
                             <div className="py-2 flex flex-row">
                                 <div>
-                                    <div>{database.name}</div>
-                                    <div>{database.connectionURL}</div>
+                                    <div>{queue.name}</div>
+                                    <div className="text-muted-foreground">{queue.connectionUrl}</div>
                                 </div>
                                 <span className="flex-grow"/>
                                 <div>
@@ -39,8 +40,7 @@ export function DatabasesCard({ databases }: DatabaseCardProps) {
                             <Separator/>
                         </li>
                     ))}
-                </ul>   
-                
+                </ul>    
             </CardContent>
             <CardFooter>
                 

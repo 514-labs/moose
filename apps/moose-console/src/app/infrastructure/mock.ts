@@ -227,7 +227,7 @@ interface Row {
     values: Value[];
 }
 
-interface Table {
+export interface Table {
     id: string;
     name: string;
     description: string;
@@ -274,7 +274,7 @@ enum ViewStatus {
     Deprecated = 'Deprecated',
 }
 
-interface View {
+export interface View {
     id: string;
     name: string;
     parentTable: string;

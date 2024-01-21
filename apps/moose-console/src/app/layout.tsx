@@ -54,7 +54,9 @@ export default function RootLayout({
               </div>
               
             </nav>
-            <section>{children}</section>
+            <section className="flex-grow">
+              {children}
+            </section>
           </div>
         </ThemeProvider>
         <Analytics />

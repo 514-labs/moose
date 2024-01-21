@@ -8,7 +8,7 @@ enum ContraintType {
 }
 
 
-interface Model {
+export interface Model {
     name: string;
     description: string;
     docLink: string;

@@ -19,6 +19,7 @@ use self::{
         RunMode,
     },
 };
+use crate::cli::settings::init_config_file;
 use crate::project::Project;
 use clap::Parser;
 use commands::Commands;
@@ -28,6 +29,7 @@ use std::path::Path;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
+#[command(arg_required_else_help(true))]
 struct Cli {
     /// Optional name to operate on
     name: Option<String>,
@@ -42,17 +44,17 @@ struct Cli {
     debug: bool,
 
     #[command(subcommand)]
-    command: Option<Commands>,
+    command: Commands,
 }
 
-async fn top_command_handler(settings: Settings, commands: &Option<Commands>) {
+async fn top_command_handler(settings: Settings, commands: &Commands) {
     if !settings.features.coming_soon_wall {
         match commands {
-            Some(Commands::Init {
+            Commands::Init {
                 name,
                 language,
                 location,
-            }) => {
+            } => {
                 info!(
                     "Running init command with name: {}, language: {}, location: {}",
                     name, language, location
@@ -74,7 +76,7 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>) {
                     .write_to_file()
                     .expect("Failed to write project to file");
             }
-            Some(Commands::Dev {}) => {
+            Commands::Dev {} => {
                 info!("Running dev command");
 
                 let project = Project::load_from_current_dir()
@@ -91,17 +93,17 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>) {
 
                 routines::start_development_mode(&project).await.unwrap();
             }
-            Some(Commands::Update {}) => {
+            Commands::Update {} => {
                 // This command may not be needed if we have incredible automation
                 todo!("Will update the project's underlying infrastructure based on any added objects")
             }
-            Some(Commands::Stop {}) => {
+            Commands::Stop {} => {
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
                 controller.add_routine(Box::new(StopLocalInfrastructure::new(run_mode)));
                 controller.run_routines(run_mode);
             }
-            Some(Commands::Clean {}) => {
+            Commands::Clean {} => {
                 let run_mode = RunMode::Explicit {};
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `igloo init` to create a project");
@@ -110,7 +112,6 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>) {
                 controller.add_routine(Box::new(CleanProject::new(project, run_mode)));
                 controller.run_routines(run_mode);
             }
-            None => {}
         }
     } else {
         show_message!(MessageType::Banner, Message {
@@ -122,6 +123,7 @@ async fn top_command_handler(settings: Settings, commands: &Option<Commands>) {
 
 pub async fn cli_run() {
     setup_user_directory().expect("Failed to setup igloo user directory");
+    init_config_file().unwrap();
 
     let config = read_settings().unwrap();
     setup_logging(config.logger.clone()).expect("Failed to setup logging");

@@ -7,6 +7,12 @@ pub struct ConsoleConfig {
 
 impl Default for ConsoleConfig {
     fn default() -> Self {
-        Self { host_port: 3001 }
+        Self {
+            host_port: ConsoleConfig::PORT,
+        }
     }
+}
+
+impl ConsoleConfig {
+    pub const PORT: i32 = 3001;
 }

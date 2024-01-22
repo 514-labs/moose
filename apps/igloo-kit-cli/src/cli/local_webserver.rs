@@ -11,6 +11,7 @@ use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 
+use crate::infrastructure::console::ConsoleConfig;
 use crate::project::Project;
 use http_body_util::BodyExt;
 use http_body_util::Full;
@@ -138,6 +139,15 @@ async fn ingest_route(
         }
     );
     if route_table.lock().await.contains_key(&route) {
+        let is_curl = req.headers().get("User-Agent").map_or_else(
+            || false,
+            |user_agent| {
+                user_agent
+                    .to_str()
+                    .map_or_else(|_| false, |s| s.starts_with("curl"))
+            },
+        );
+
         let body = req.collect().await.unwrap().to_bytes().to_vec();
 
         let guard = route_table.lock().await;
@@ -164,7 +174,12 @@ async fn ingest_route(
                         details: route.to_str().unwrap().to_string(),
                     }
                 );
-                Ok(Response::new(Full::new(Bytes::from("SUCCESS"))))
+                let response_bytes = if is_curl {
+                    Bytes::from(format!("Success! Go to http://localhost:{}/infrastructure/views to view your data!", ConsoleConfig::PORT))
+                } else {
+                    Bytes::from("SUCCESS")
+                };
+                Ok(Response::new(Full::new(response_bytes)))
             }
             Err(e) => {
                 println!("Error: {:?}", e);

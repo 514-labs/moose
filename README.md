@@ -26,7 +26,7 @@ $ npm install -g @514labs/moose-cli
 
 ## Config file
 
-The config file is located in `~/.igloo-config.toml`
+The config file is located in `~/.igloo/config.toml`
 
 You can create one with the following content
 
@@ -36,7 +36,7 @@ You can create one with the following content
 
 # Coming soon wall on all the CLI commands as we build the MVP.
 # if you want to try features as they are built, set this to false
-coming_soon_wall=true
+coming_soon_wall=false
 ```
 
 ## Versioning

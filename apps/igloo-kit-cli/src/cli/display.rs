@@ -1,5 +1,6 @@
 use console::style;
 use lazy_static::lazy_static;
+use spinners::{Spinner, Spinners};
 use std::sync::{Arc, RwLock};
 
 /// # Display Module
@@ -14,7 +15,7 @@ use std::sync::{Arc, RwLock};
 ///     MessageType::Info,
 ///     Message {
 ///         action: "Loading Config".to_string(),
-///         details: "Reading configuration from ~/.igloo-config.toml".to_string(),
+///         details: "Reading configuration from ~/.igloo/config.toml".to_string(),
 ///     });
 /// ```
 ///
@@ -31,7 +32,7 @@ use std::sync::{Arc, RwLock};
 /// ```
 /// Message {
 ///    action: "Loading Config".to_string(),
-///    details: "Reading configuration from ~/.igloo-config.toml".to_string(),
+///    details: "Reading configuration from ~/.igloo/config.toml".to_string(),
 /// }
 /// ```
 ///
@@ -175,4 +176,14 @@ macro_rules! show_message {
             }
         };
     };
+}
+
+pub fn with_spinner<F, R>(message: &str, f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    let mut sp = Spinner::new(Spinners::Dots9, message.into());
+    let res = f();
+    sp.stop_with_newline();
+    res
 }

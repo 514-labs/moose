@@ -30,7 +30,7 @@ interface TablesListCardProps {
     tables: Table[]
 }
 
-export function TablesListCard({ tables }: TablesListCardProps) {
+function TablesListCard({ tables }: TablesListCardProps) {
     return (
         <Card className="w-full">
             <CardContent className="p-0">
@@ -68,7 +68,7 @@ interface ViewsListCardProps {
     views: View[]
 }
 
-export function ViewsListCard({ views }: ViewsListCardProps) {
+function ViewsListCard({ views }: ViewsListCardProps) {
     return (
         <Card className="w-full">
             <CardContent className="p-0">

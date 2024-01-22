@@ -72,6 +72,7 @@ export interface Queue {
     id: string;
     name: string;
     clusterId: string;
+    messageCount: number;
     modelId: string;
     description: string;
     status: QueueStatus;
@@ -82,12 +83,14 @@ export interface Queue {
     lastUpdated: string;
     lastUpdatedBy: string; // As defined by the infra itself and its auth system
     errors: string[];
+    environment: string;
 }
 
 const generateQueue = (): Queue => ({
     id: faker.string.uuid(),
     name: faker.commerce.productName(),
     clusterId: faker.string.uuid(),
+    messageCount: faker.number.int(),
     modelId: faker.string.uuid(),
     description: faker.commerce.productDescription(),
     status: faker.helpers.arrayElement(Object.values(QueueStatus)),
@@ -98,6 +101,7 @@ const generateQueue = (): Queue => ({
     lastUpdated: faker.date.recent().toISOString(),
     lastUpdatedBy: faker.internet.userName(),
     errors: [],
+    environment: faker.helpers.arrayElement(Object.values(Environment)),
 });
 
 
@@ -127,6 +131,8 @@ export interface IngestionPoint {
     serverId: string;
     modelId: string;
     errors: string[];
+    environment: string;
+    
 }
 
 const generateIngestionPoint = (): IngestionPoint => ({
@@ -151,6 +157,7 @@ const generateIngestionPoint = (): IngestionPoint => ({
     serverId: faker.datatype.uuid(),
     modelId: faker.datatype.uuid(),
     errors: [],
+    environment: faker.helpers.arrayElement(Object.values(Environment)),
 });
 
 enum DatabaseStatus {
@@ -177,6 +184,7 @@ export interface Database {
     lastUpdatedBy: string;
     modelIds: string[];
     errors: string[];
+    environment: string;
 }
 
 const generateDatabase = (): Database => {
@@ -208,6 +216,7 @@ const generateDatabase = (): Database => {
         lastUpdatedBy: faker.internet.userName(),
         modelIds: Array.from({ length: 5 }, () => faker.string.uuid()),
         errors: [],
+        environment: faker.helpers.arrayElement(Object.values(Environment)),
     }
     
 };
@@ -243,6 +252,14 @@ export interface Table {
     samples: Row[];
     modelId: string;
     errors: string[];
+    environment: string;
+}
+
+enum Environment {
+    Production = 'Production',
+    Staging = 'Staging',
+    Development = 'Development',
+    Test = 'Test',
 }
 
 const generateTable = (): Table => ({
@@ -266,6 +283,7 @@ const generateTable = (): Table => ({
     })),
     modelId: faker.string.uuid(),
     errors: [],
+    environment: faker.helpers.arrayElement(Object.values(Environment)),
 });
 
 enum ViewStatus {
@@ -291,6 +309,7 @@ export interface View {
     samples: Row[];
     modelId: string;
     errors: string[];
+    environment: string;
 }
 
 

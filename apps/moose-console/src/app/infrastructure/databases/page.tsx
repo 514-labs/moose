@@ -50,7 +50,7 @@ export function TablesListCard({ tables }: TablesListCardProps) {
                                 <span className="flex-grow"/>
                                 <div>
                                     <Badge className={badgeVariants({ variant: "secondary" })} key={index}>{table.rowCount.toLocaleString("en-us")} rows</Badge>
-                                    <span className="px-2 mt-0.5"><Badge>Table</Badge></span>
+                                    <span className="px-2 mt-0.5"><Badge>Clickhouse Table</Badge></span>
                                     <Button className={buttonVariants({ variant: "outline" })}>more</Button>
                                 </div>
                             </div>
@@ -88,7 +88,7 @@ export function ViewsListCard({ views }: ViewsListCardProps) {
                                 <span className="flex-grow"/>
                                 <div>
                                     <Badge className={badgeVariants({ variant: "secondary" })} key={index}>{view.rowCount.toLocaleString("en-us")} rows</Badge>
-                                    <span className="px-2 mt-0.5"><Badge>View</Badge></span>
+                                    <span className="px-2 mt-0.5"><Badge>Clickhouse View</Badge></span>
                                     <Button className={buttonVariants({ variant: "outline" })}>more</Button>
                                 </div>
                             </div>

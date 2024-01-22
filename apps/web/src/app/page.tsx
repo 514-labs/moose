@@ -82,11 +82,7 @@ export default function Home() {
 
   return (
     <div className="h-full relative">
-<<<<<<< Updated upstream
       <SectionGrid className="py-36 pb-0 sm:pt-24 2xl:pt-20" gapStyle="gap-y-36">
-=======
-      <SectionGrid className="py-16 pb-0 2xl:pt-20" gapStyle="gap-y-36">
->>>>>>> Stashed changes
           <div className="flex flex-col px-10 w-full space-y-5 col-span-3 sm:col-span-12 2xl:col-span-6">
             <AnimatedHeading position={0} className="2xl:text-8xl" content={fiveonefourSection.heading} size="display" />
             <AnimatedDescription position={0.75} className="" content={fiveonefourSection.description} />

@@ -28,8 +28,7 @@ use settings::{read_settings, Settings};
 use std::path::Path;
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None)]
-#[command(arg_required_else_help(true))]
+#[command(author, version, about, long_about = None, arg_required_else_help(true))]
 struct Cli {
     /// Optional name to operate on
     name: Option<String>,

@@ -251,7 +251,7 @@ impl Webserver {
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()).unwrap();
 
         let route_service = RouteService {
-            route_table: &route_table,
+            route_table,
             configured_producer: producer,
             console_config: project.console_config.clone(),
         };

@@ -63,7 +63,7 @@ async fn process_event(
             create_framework_objects_from_schema_file_path(
                 &project,
                 &route,
-                &mut *route_table,
+                &mut route_table,
                 configured_client,
             )
             .await
@@ -76,14 +76,14 @@ async fn process_event(
                         create_framework_objects_from_schema_file_path(
                             &project,
                             &route,
-                            &mut *route_table,
+                            &mut route_table,
                             configured_client,
                         )
                         .await
                     } else {
                         remove_table_and_topics_from_schema_file_path(
                             &route,
-                            &mut *route_table,
+                            &mut route_table,
                             configured_client,
                         )
                         .await
@@ -95,7 +95,7 @@ async fn process_event(
                         create_framework_objects_from_schema_file_path(
                             &project,
                             &route,
-                            &mut *route_table,
+                            &mut route_table,
                             configured_client,
                         )
                         .await?

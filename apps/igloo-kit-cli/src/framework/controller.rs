@@ -246,7 +246,7 @@ pub async fn remove_table_and_topics_from_schema_file_path(
                     })?;
             }
 
-            (&mut *route_table).remove(&k);
+            (*route_table).remove(&k);
         }
     }
     Ok(())

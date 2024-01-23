@@ -215,7 +215,7 @@ pub(crate) fn create_language_objects(
 }
 
 pub async fn remove_table_and_topics_from_schema_file_path(
-    shcema_file_path: &Path,
+    schema_file_path: &Path,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
@@ -223,7 +223,7 @@ pub async fn remove_table_and_topics_from_schema_file_path(
     // This doesn't have to be as fast as the scanning for routes in the web server so we're ok with the scan here.
 
     for (k, meta) in route_table.clone().into_iter() {
-        if meta.original_file_path == shcema_file_path {
+        if meta.original_file_path == schema_file_path {
             stream::redpanda::delete_topic(meta.table_name.clone())?;
 
             olap::clickhouse::delete_table_or_view(meta.table_name, configured_client)

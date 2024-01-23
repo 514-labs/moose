@@ -359,6 +359,8 @@ fn run_console(
     let child = Command::new("docker")
         .arg("run")
         .arg("-d")
+        .arg("--platform")
+        .arg("linux/amd64")
         .arg(format!("--name={CONSOLE_CONTAINER_NAME}"))
         .arg(format!("--env=CLICKHOUSE_DB={}", clickhouse_config.db_name))
         .arg(format!("--env=CLICKHOUSE_USER={}", clickhouse_config.user))

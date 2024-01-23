@@ -271,7 +271,13 @@ async fn initialize_project_state(
     .await;
 
     let route_table_clone = route_table.clone();
-    let _ = post_current_state_to_console(&configured_client, &producer, route_table_clone).await;
+    let _ = post_current_state_to_console(
+        &configured_client,
+        &producer,
+        route_table_clone,
+        project.console_config.clone(),
+    )
+    .await;
 
     match crawl_result {
         Ok(_) => {

@@ -233,6 +233,7 @@ async fn watch(
                     &configured_client,
                     &configured_producer,
                     route_table.clone(),
+                    project.console_config.clone(),
                 )
                 .await;
             }

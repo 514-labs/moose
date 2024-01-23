@@ -1,4 +1,5 @@
 use super::{Routine, RoutineFailure, RoutineSuccess, RunMode};
+use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
 use crate::utilities::constants::{
     CLICKHOUSE_CONTAINER_NAME, CONSOLE_CONTAINER_NAME, REDPANDA_CONTAINER_NAME,
@@ -37,7 +38,10 @@ impl StopRedPandaContainer {
 }
 impl Routine for StopRedPandaContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        docker::stop_container(REDPANDA_CONTAINER_NAME).map_err(|err| {
+        with_spinner("Stopping redpanda container", || {
+            docker::stop_container(REDPANDA_CONTAINER_NAME)
+        })
+        .map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),
@@ -62,7 +66,10 @@ impl StopClickhouseContainer {
 }
 impl Routine for StopClickhouseContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        docker::stop_container(CLICKHOUSE_CONTAINER_NAME).map_err(|err| {
+        with_spinner("Stopping clickhouse container", || {
+            docker::stop_container(CLICKHOUSE_CONTAINER_NAME)
+        })
+        .map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),
@@ -87,7 +94,10 @@ impl StopConsoleContainer {
 }
 impl Routine for StopConsoleContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        docker::stop_container(CONSOLE_CONTAINER_NAME).map_err(|err| {
+        with_spinner("Stopping console container", || {
+            docker::stop_container(CONSOLE_CONTAINER_NAME)
+        })
+        .map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),

@@ -8,6 +8,9 @@ use std::{
 use notify::{event::ModifyKind, Config, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::Mutex;
 
+use super::display::{Message, MessageType};
+use crate::infrastructure::console::post_current_state_to_console;
+use crate::infrastructure::stream::redpanda;
 use crate::{
     framework::{
         controller::{
@@ -25,8 +28,6 @@ use crate::{
     utilities::constants::SCHEMAS_DIR,
     utilities::package_managers,
 };
-
-use super::display::{Message, MessageType};
 use log::{debug, info};
 
 fn schema_file_path_to_ingest_route(app_dir: PathBuf, path: &Path, table_name: String) -> PathBuf {
@@ -199,6 +200,7 @@ async fn watch(
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
 ) -> Result<(), Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
+    let configured_producer = redpanda::create_producer(project.redpanda_config.clone());
 
     let (tx, rx) = std::sync::mpsc::channel();
 
@@ -226,6 +228,14 @@ async fn watch(
                 .map_err(|e| {
                     Error::new(ErrorKind::Other, format!("Processing error occured: {}", e))
                 })?;
+
+                let _ = post_current_state_to_console(
+                    &configured_client,
+                    &configured_producer,
+                    route_table.clone(),
+                    project.console_config.clone(),
+                )
+                .await;
             }
             Err(error) => {
                 return Err(Error::new(

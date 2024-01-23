@@ -14,9 +14,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::sync::Arc;
 use tokio::net::TcpStream;
-use tokio::sync::Mutex;
 
 use std::str;
 
@@ -34,7 +32,7 @@ impl Default for ConsoleConfig {
 pub async fn post_current_state_to_console(
     configured_db_client: &ConfiguredDBClient,
     configured_producer: &ConfiguredProducer,
-    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+    route_table: HashMap<PathBuf, RouteMeta>,
     console_config: ConsoleConfig,
 ) -> Result<(), anyhow::Error> {
     let tables = olap::clickhouse::fetch_all_tables(configured_db_client)
@@ -45,9 +43,6 @@ pub async fn post_current_state_to_console(
         .unwrap();
 
     let routes_table: Vec<RouteInfo> = route_table
-        .lock()
-        .await
-        .clone()
         .iter()
         .map(|(k, v)| {
             RouteInfo::new(

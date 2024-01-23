@@ -2,11 +2,10 @@ use std::{
     collections::HashMap,
     io::{Error, ErrorKind},
     path::{Path, PathBuf},
-    sync::Arc,
 };
 
 use notify::{event::ModifyKind, Config, RecommendedWatcher, RecursiveMode, Watcher};
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 
 use super::display::{Message, MessageType};
 use crate::infrastructure::console::post_current_state_to_console;
@@ -46,9 +45,11 @@ fn schema_file_path_to_ingest_route(app_dir: PathBuf, path: &Path, table_name: S
 async fn process_event(
     project: Project,
     event: notify::Event,
-    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+    route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
+    let mut route_table = route_table.write().await;
+
     debug!(
         "File Watcher Event Received: {:?}, with Route Table {:?}",
         event, route_table
@@ -62,7 +63,7 @@ async fn process_event(
             create_framework_objects_from_schema_file_path(
                 &project,
                 &route,
-                route_table,
+                &mut *route_table,
                 configured_client,
             )
             .await
@@ -75,14 +76,14 @@ async fn process_event(
                         create_framework_objects_from_schema_file_path(
                             &project,
                             &route,
-                            route_table,
+                            &mut *route_table,
                             configured_client,
                         )
                         .await
                     } else {
                         remove_table_and_topics_from_schema_file_path(
                             &route,
-                            route_table,
+                            &mut *route_table,
                             configured_client,
                         )
                         .await
@@ -94,7 +95,7 @@ async fn process_event(
                         create_framework_objects_from_schema_file_path(
                             &project,
                             &route,
-                            route_table,
+                            &mut *route_table,
                             configured_client,
                         )
                         .await?
@@ -112,7 +113,7 @@ async fn process_event(
 async fn create_framework_objects_from_schema_file_path(
     project: &Project,
     schema_file_path: &Path,
-    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+    route_table: &mut HashMap<PathBuf, RouteMeta>,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
     //! Creates the route, topics and tables from a path to the schema file
@@ -131,7 +132,7 @@ pub async fn process_schema_file(
     schema_file_path: &Path,
     project: &Project,
     configured_client: &ConfiguredDBClient,
-    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+    route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> Result<(), Error> {
     let framework_objects = get_framework_objects(schema_file_path)?;
     let mut compilable_objects: Vec<TypescriptObjects> = Vec::new();
@@ -159,10 +160,8 @@ async fn process_objects(
     schema_file_path: &Path,
     configured_client: &ConfiguredDBClient,
     compilable_objects: &mut Vec<TypescriptObjects>, // Objects that require compilation after processing
-    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+    route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> Result<(), Error> {
-    let mut route_table = route_table.lock().await;
-
     for fo in framework_objects {
         let ingest_route = schema_file_path_to_ingest_route(
             project.app_dir().clone(),
@@ -197,7 +196,7 @@ async fn process_objects(
 
 async fn watch(
     project: &Project,
-    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+    route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
 ) -> Result<(), Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let configured_producer = redpanda::create_producer(project.redpanda_config.clone());
@@ -221,7 +220,7 @@ async fn watch(
                 process_event(
                     project.clone(),
                     event.clone(),
-                    Arc::clone(&route_table),
+                    route_table,
                     &configured_client,
                 )
                 .await
@@ -229,10 +228,15 @@ async fn watch(
                     Error::new(ErrorKind::Other, format!("Processing error occured: {}", e))
                 })?;
 
+                let route_table_snapshot = {
+                    let read_lock = route_table.read().await;
+                    (*read_lock).clone()
+                };
+
                 let _ = post_current_state_to_console(
                     &configured_client,
                     &configured_producer,
-                    route_table.clone(),
+                    route_table_snapshot,
                     project.console_config.clone(),
                 )
                 .await;
@@ -259,7 +263,7 @@ impl FileWatcher {
     pub fn start(
         &self,
         project: &Project,
-        route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+        route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
     ) -> Result<(), Error> {
         show_message!(MessageType::Info, {
             Message {
@@ -270,7 +274,7 @@ impl FileWatcher {
         let project = project.clone();
 
         tokio::spawn(async move {
-            if let Err(error) = watch(&project, Arc::clone(&route_table)).await {
+            if let Err(error) = watch(&project, route_table).await {
                 println!("Error: {error:?}");
             }
         });

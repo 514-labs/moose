@@ -9,6 +9,7 @@ use crate::framework::controller::RouteMeta;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 
+use crate::infrastructure::console::ConsoleConfig;
 use crate::project::Project;
 use http_body_util::BodyExt;
 use http_body_util::Full;
@@ -64,6 +65,7 @@ impl Default for LocalWebserverConfig {
 struct RouteService {
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_producer: Arc<Mutex<ConfiguredProducer>>,
+    console_config: ConsoleConfig,
 }
 
 impl Service<Request<Incoming>> for RouteService {
@@ -76,6 +78,7 @@ impl Service<Request<Incoming>> for RouteService {
             req,
             self.route_table.clone(),
             self.configured_producer.clone(),
+            self.console_config.clone(),
         ))
     }
 }
@@ -100,6 +103,7 @@ async fn ingest_route(
     route: PathBuf,
     configured_producer: Arc<Mutex<ConfiguredProducer>>,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+    console_config: ConsoleConfig,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     show_message!(
         MessageType::Info,
@@ -110,6 +114,15 @@ async fn ingest_route(
     );
 
     if route_table.lock().await.contains_key(&route) {
+        let is_curl = req.headers().get("User-Agent").map_or_else(
+            || false,
+            |user_agent| {
+                user_agent
+                    .to_str()
+                    .map_or_else(|_| false, |s| s.starts_with("curl"))
+            },
+        );
+
         let body = req.collect().await.unwrap().to_bytes().to_vec();
 
         let guard = route_table.lock().await;
@@ -136,7 +149,12 @@ async fn ingest_route(
                         details: route.to_str().unwrap().to_string(),
                     }
                 );
-                Ok(Response::new(Full::new(Bytes::from("SUCCESS"))))
+                let response_bytes = if is_curl {
+                    Bytes::from(format!("Success! Go to http://localhost:{}/infrastructure/views to view your data!", console_config.host_port))
+                } else {
+                    Bytes::from("SUCCESS")
+                };
+                Ok(Response::new(Full::new(response_bytes)))
             }
             Err(e) => {
                 println!("Error: {:?}", e);
@@ -156,6 +174,7 @@ async fn router(
     req: Request<hyper::body::Incoming>,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
     configured_producer: Arc<Mutex<ConfiguredProducer>>,
+    console_config: ConsoleConfig,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     debug!(
         "HTTP Request Received: {:?}, with Route Table {:?}",
@@ -178,7 +197,7 @@ async fn router(
 
     match (req.method(), &route_split[..]) {
         (&hyper::Method::POST, ["ingest", _]) => {
-            ingest_route(req, route, configured_producer, route_table).await
+            ingest_route(req, route, configured_producer, route_table, console_config).await
         }
 
         (&hyper::Method::OPTIONS, _) => options_route(),
@@ -255,6 +274,7 @@ impl Webserver {
 
                     let route_table = route_table.clone();
                     let producer = producer.clone();
+                    let console_config = project.console_config.clone();
 
                     // Spawn a tokio task to serve multiple connections concurrently
                     tokio::task::spawn(async move {
@@ -263,7 +283,8 @@ impl Webserver {
                                 io,
                                 RouteService {
                                     route_table,
-                                    configured_producer: producer
+                                    configured_producer: producer,
+                                    console_config,
                                 },
                             ).await {
                                 error!("server error: {}", e);

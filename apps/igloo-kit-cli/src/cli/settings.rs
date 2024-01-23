@@ -40,15 +40,15 @@ pub struct Settings {
 }
 
 fn config_path() -> PathBuf {
-    let mut path: PathBuf = home_dir().unwrap();
+    let mut path: PathBuf = user_directory();
     path.push(CLI_CONFIG_FILE);
-    path.to_owned()
+    path
 }
 
 pub fn user_directory() -> PathBuf {
     let mut path: PathBuf = home_dir().unwrap();
     path.push(CLI_USER_DIRECTORY);
-    path.to_owned()
+    path
 }
 
 pub fn setup_user_directory() -> Result<(), std::io::Error> {
@@ -83,4 +83,19 @@ pub fn read_settings() -> Result<Settings, ConfigError> {
         .build()?;
 
     s.try_deserialize()
+}
+
+pub fn init_config_file() -> Result<(), std::io::Error> {
+    let path = config_path();
+    if !path.exists() {
+        let contents_toml = r#"# Feature flags to hide ongoing feature work on the CLI
+[features]
+
+# Coming soon wall on all the CLI commands as we build the MVP.
+# if you want to try features as they are built, set this to false
+coming_soon_wall=true
+"#;
+        std::fs::write(path, contents_toml)?;
+    }
+    Ok(())
 }

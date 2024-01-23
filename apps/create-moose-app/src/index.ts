@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "child_process";
+import { mkdirSync } from "fs";
 
 /**
  * Returns the executable path which is located inside `node_modules`
@@ -36,8 +37,13 @@ function getExePath() {
  */
 function run() {
   const args = process.argv.slice(2);
+  const name = args[0];
+  if (name !== undefined) {
+    mkdirSync(name);
+  }
   const processResult = spawnSync(getExePath(), ["init"].concat(args), {
     stdio: "inherit",
+    cwd: name,
   });
   process.exit(processResult.status ?? 0);
 }

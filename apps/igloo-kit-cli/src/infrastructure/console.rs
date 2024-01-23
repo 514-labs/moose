@@ -22,7 +22,7 @@ use std::str;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ConsoleConfig {
-    pub host_port: i32, // ex. 18123
+    pub host_port: u16, // ex. 18123
 }
 
 impl Default for ConsoleConfig {
@@ -35,6 +35,7 @@ pub async fn post_current_state_to_console(
     configured_db_client: &ConfiguredDBClient,
     configured_producer: &ConfiguredProducer,
     route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+    console_config: ConsoleConfig,
 ) -> Result<(), anyhow::Error> {
     let tables = olap::clickhouse::fetch_all_tables(configured_db_client)
         .await
@@ -59,9 +60,10 @@ pub async fn post_current_state_to_console(
         .collect();
 
     // TODO this should be configurable
-    let url = "http://localhost:3001/api/console".parse::<hyper::Uri>()?;
+    let url = format!("http://localhost:{}/api/console", console_config.host_port)
+        .parse::<hyper::Uri>()?;
     let host = url.host().expect("uri has no host");
-    let port = url.port_u16().unwrap_or(3001);
+    let port = url.port_u16().unwrap();
     let address = format!("{}:{}", host, port);
 
     debug!("Connecting to moose console at: {}", address);

@@ -7,6 +7,7 @@ use super::{
     },
     Routine, RoutineFailure, RoutineSuccess, RunMode,
 };
+use crate::cli::display::with_spinner;
 use crate::cli::routines::initialize::CreateIglooTempDirectoryTree;
 use crate::cli::routines::util::ensure_docker_running;
 use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
@@ -77,7 +78,10 @@ impl Routine for RunRedPandaContainer {
             .internal_dir()
             .map_err(|err| RoutineFailure::new(FAILED_TO_CREATE_INTERNAL_DIR.clone(), err))?;
 
-        let output = docker::safe_start_redpanda_container(igloo_dir).map_err(|err| {
+        let output = with_spinner("Starting redpanda container", || {
+            docker::safe_start_redpanda_container(igloo_dir)
+        })
+        .map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),
@@ -115,10 +119,12 @@ impl Routine for RunClickhouseContainer {
             .internal_dir()
             .map_err(|err| RoutineFailure::new(FAILED_TO_CREATE_INTERNAL_DIR.clone(), err))?;
 
-        let output = docker::safe_start_clickhouse_container(
-            igloo_dir,
-            self.project.clickhouse_config.clone(),
-        )
+        let output = with_spinner("Starting clickhouse container", || {
+            docker::safe_start_clickhouse_container(
+                igloo_dir,
+                self.project.clickhouse_config.clone(),
+            )
+        })
         .map_err(|err| {
             RoutineFailure::new(
                 Message::new(
@@ -149,10 +155,12 @@ impl RunConsoleContainer {
 
 impl Routine for RunConsoleContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let output = docker::safe_start_console_container(
-            &self.project.console_config,
-            &self.project.clickhouse_config,
-        )
+        let output = with_spinner("Starting console container", || {
+            docker::safe_start_console_container(
+                &self.project.console_config,
+                &self.project.clickhouse_config,
+            )
+        })
         .map_err(|err| {
             RoutineFailure::new(
                 Message::new("Failed".to_string(), "to run console container".to_string()),

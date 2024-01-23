@@ -1,5 +1,7 @@
 #/usr/bin/env bash
 
+set -eo pipefail
+
 version=$1
 
 cd apps/create-moose-app

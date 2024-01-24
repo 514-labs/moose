@@ -81,11 +81,10 @@
 
 use std::collections::HashMap;
 use std::path::Path;
-use std::sync::Arc;
 use std::{io::Error, path::PathBuf};
 
 use log::debug;
-use tokio::sync::Mutex;
+use tokio::sync::RwLock;
 
 use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
@@ -233,10 +232,12 @@ pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
     );
 
     // TODO: Explore using a RWLock instead of a Mutex to ensure concurrent reads without locks
-    let route_table = Arc::new(Mutex::new(HashMap::<PathBuf, RouteMeta>::new()));
+    let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("Initializing project state");
-    initialize_project_state(project.schemas_dir(), project, Arc::clone(&route_table)).await?;
+    initialize_project_state(project.schemas_dir(), project, &mut route_table).await?;
+    let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
+        Box::leak(Box::new(RwLock::new(route_table)));
 
     let web_server = Webserver::new(
         project.local_webserver_config.host.clone(),
@@ -244,11 +245,11 @@ pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
     );
     let file_watcher = FileWatcher::new();
 
-    file_watcher.start(project, Arc::clone(&route_table))?;
+    file_watcher.start(project, route_table)?;
 
     info!("Starting web server...");
 
-    web_server.start(Arc::clone(&route_table), project).await;
+    web_server.start(route_table, project).await;
 
     Ok(())
 }
@@ -256,25 +257,19 @@ pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
 async fn initialize_project_state(
     schema_dir: PathBuf,
     project: &Project,
-    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+    route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> Result<(), Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let producer = redpanda::create_producer(project.redpanda_config.clone());
 
     info!("Starting schema directory crawl...");
-    let crawl_result = crawl_schema_project_dir(
-        &schema_dir,
-        project,
-        &configured_client,
-        route_table.clone(),
-    )
-    .await;
+    let crawl_result =
+        crawl_schema_project_dir(&schema_dir, project, &configured_client, route_table).await;
 
-    let route_table_clone = route_table.clone();
     let _ = post_current_state_to_console(
         &configured_client,
         &producer,
-        route_table_clone,
+        route_table.clone(),
         project.console_config.clone(),
     )
     .await;
@@ -297,7 +292,7 @@ async fn crawl_schema_project_dir(
     schema_dir: &Path,
     project: &Project,
     configured_client: &ConfiguredDBClient,
-    route_table: Arc<Mutex<HashMap<PathBuf, RouteMeta>>>,
+    route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> Result<(), Error> {
     if schema_dir.is_dir() {
         for entry in std::fs::read_dir(schema_dir)? {
@@ -305,11 +300,10 @@ async fn crawl_schema_project_dir(
             let path = entry.path();
             if path.is_dir() {
                 debug!("Processing directory: {:?}", path);
-                crawl_schema_project_dir(&path, project, configured_client, route_table.clone())
-                    .await?;
+                crawl_schema_project_dir(&path, project, configured_client, route_table).await?;
             } else {
                 debug!("Processing file: {:?}", path);
-                process_schema_file(&path, project, configured_client, route_table.clone()).await?
+                process_schema_file(&path, project, configured_client, route_table).await?
             }
         }
     }

@@ -1,6 +1,8 @@
 import { faker } from "@faker-js/faker";
 import { InfrastuctureMock, infrastructureMock } from "./infrastructure/mock";
 
+faker.seed(0);
+
 export interface Tag {
     name: string;
     description: string;

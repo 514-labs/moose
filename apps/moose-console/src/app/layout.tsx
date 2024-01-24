@@ -40,7 +40,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className="flex h-screen">
+          <div className="flex h-screen w-full">
             <nav className="flex flex-col px-4">
               <div className="flex-grow overflow-y-auto">
                 <header className="flex text-lg">
@@ -54,7 +54,7 @@ export default function RootLayout({
               </div>
               
             </nav>
-            <section className="flex-grow">
+            <section className="flex-grow overflow-hidden">
               {children}
             </section>
           </div>

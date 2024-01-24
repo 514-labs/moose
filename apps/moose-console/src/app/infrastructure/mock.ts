@@ -39,8 +39,8 @@ const generateField = (): Field => ({
         commitHash: faker.git.commitSha(),
         author: {
             userName: faker.internet.userName(),
-            firstName: faker.name.firstName(),
-            lastName: faker.name.lastName(),
+            firstName: faker.person.firstName(),
+            lastName: faker.person.lastName(),
             email: faker.internet.email(),
             avatar: faker.internet.avatar(),
             profileLink: faker.internet.url(),
@@ -136,7 +136,7 @@ export interface IngestionPoint {
 }
 
 const generateIngestionPoint = (): IngestionPoint => ({
-    id: faker.datatype.uuid(),
+    id: faker.string.uuid(),
     name: faker.commerce.productName(),
     description: faker.commerce.productDescription(),
     status: faker.helpers.arrayElement(Object.values(IngestionPointStatus)),
@@ -154,8 +154,8 @@ const generateIngestionPoint = (): IngestionPoint => ({
         language: faker.helpers.arrayElement(Object.values(Language)),
         version: faker.system.semver(),
     })),
-    serverId: faker.datatype.uuid(),
-    modelId: faker.datatype.uuid(),
+    serverId: faker.string.uuid(),
+    modelId: faker.string.uuid(),
     errors: [],
     environment: faker.helpers.arrayElement(Object.values(Environment)),
 });
@@ -227,17 +227,18 @@ enum TableStatus {
     Deprecated = 'Deprecated',
 }
 
-interface Value {
+export interface Value {
     field: Field;
     value: string;
 }
 
-interface Row {
+export interface Row {
     values: Value[];
 }
 
 export interface Table {
     id: string;
+    databaseId?: string;
     name: string;
     description: string;
     status: TableStatus;
@@ -295,6 +296,7 @@ enum ViewStatus {
 export interface View {
     id: string;
     name: string;
+    databaseId?: string;
     parentTable: string;
     description: string;
     status: ViewStatus;

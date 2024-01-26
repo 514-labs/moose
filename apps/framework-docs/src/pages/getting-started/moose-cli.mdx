@@ -1,0 +1,37 @@
+# Moose CLI
+
+MooseJS comes with a handy CLI for managing your MooseJS application. Navigate to your project's directory to run commands. There are two ways to run the CLI:
+
+Without installing Moose, you can run CLI commands via NPX: `npx @514labs/moose-cli [command]`
+
+If you've installed Moose, you can run CLI commands directly: `moose [command]`
+
+## Moose CLI commands
+
+### Init
+
+Instead of using `create-moose-app`, you can inialize your project manually with the CLI, if you'd like more flexibility and control. Either option will initialize a new MooseJS project for you, with all the necessary directories including temporary ones for data storage.
+
+```txt filename="Terminal" copy
+moose init <name> --language <language> --location <location>
+```
+
+- `<name>`: Name of your app or service.
+- `--language <language>`: Language of your app or service. We currently only support `Typescript`.
+- `--location <location>`: Location of your app or service. Default is the current directory (`.`).
+
+### Dev
+
+Starts a development environment running the full stack of your MooseJS application locally (just as it would run in production). As you develop your MooseJS application locally, changes you make to your code base will be automatically reflected here in real time (when you save changes).
+
+```txt filename="Terminal" copy
+moose dev
+```
+
+### Clean
+
+Clears all temporary data and stops development infrastructure.
+
+```txt filename="Terminal" copy
+moose clean
+```

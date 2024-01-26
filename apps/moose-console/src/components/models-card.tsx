@@ -4,8 +4,8 @@ import {
     CardContent,
   } from "components/ui/card"
 import { Separator } from "./ui/separator"
-import { Button, buttonVariants } from "./ui/button"
 import { Model } from "app/primitives/models/mock"
+import { ChevronRightButton } from "./chevron-right-button"
   
 
 interface ModelsCardProps {
@@ -26,7 +26,7 @@ export function ModelsCard({ models }: ModelsCardProps) {
                                 </div>
                                 <span className="flex-grow"/>
                                 <div>
-                                    <Button className={buttonVariants({ variant: "outline" })}>more</Button>
+                                    <ChevronRightButton href={`/primitives/models/${model.id}`}/>
                                 </div>
                             </div>
                             {index < models.length - 1 && <Separator/>}

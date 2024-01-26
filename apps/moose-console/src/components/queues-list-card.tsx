@@ -3,6 +3,9 @@ import { Card, CardContent } from "./ui/card"
 import { Badge, badgeVariants } from "./ui/badge"
 import { Button, buttonVariants } from "./ui/button"
 import { Separator } from "./ui/separator"
+import Link from "next/link"
+import { ChevronRight } from "lucide-react"
+import { ChevronRightButton } from "./chevron-right-button"
 
 interface QueuesListCardProps {
     queues: Queue[]
@@ -24,7 +27,9 @@ export function QueuesListCard({ queues }: QueuesListCardProps) {
                                 <div>
                                     <Badge className={badgeVariants({ variant: "secondary" })} key={index}>{queue.messageCount.toLocaleString("en-us")} messages</Badge>
                                     <span className="px-2 mt-0.5"><Badge>Redpanda Topic</Badge></span>
-                                    <Button className={buttonVariants({ variant: "outline" })}>more</Button>
+
+                                    <ChevronRightButton href={`/infrastructure/queues/${queue.id}`}/>
+
                                 </div>
                             </div>
                             {index < queues.length - 1 && <Separator/>}

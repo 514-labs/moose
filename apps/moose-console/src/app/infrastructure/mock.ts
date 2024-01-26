@@ -1,6 +1,8 @@
 import { faker } from "@faker-js/faker";
 import {  Field, Snippet,  } from "app/mock";
 
+faker.seed(0);
+
 enum ContraintType {
     Unique = 'Unique',
     Required = 'Required',

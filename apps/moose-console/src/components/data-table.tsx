@@ -32,7 +32,6 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "components/ui/dropdown-menu"
-import { ScrollArea, ScrollBar } from "./ui/scroll-area"
 
 
 interface DataTableProps<TData, TValue> {

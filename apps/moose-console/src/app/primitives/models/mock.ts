@@ -1,14 +1,11 @@
 import { faker } from '@faker-js/faker';
 import { Contribution, Field, Language, Snippet, Tag, generateField } from "app/mock";
 
-enum ContraintType {
-    Unique = 'Unique',
-    Required = 'Required',
-    Nullable = 'Nullable',
-}
+faker.seed(0);
 
 
 export interface Model {
+    id: string;
     name: string;
     description: string;
     docLink: string;
@@ -45,6 +42,7 @@ export const modelMock: ModelMock = {
         const fields = Array.from({ length: 10 }, generateField);
         
         return {
+            id: faker.string.uuid(),
             name,
             description: faker.commerce.productDescription(),
             docLink: faker.internet.url(),

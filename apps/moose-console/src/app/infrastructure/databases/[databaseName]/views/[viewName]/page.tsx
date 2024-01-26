@@ -103,7 +103,8 @@ function FieldsListCard({ fields }: FieldsListCardProps) {
                               </div>
                               <span className="flex-grow"/>
                               <div>
-                                  {field.rowCount.toLocaleString("en-us")} rows
+                                  <Badge className={cn(badgeVariants({ variant: "secondary" }), "mx-4")} key={index}>{field.rowCount.toLocaleString("en-us")} rows</Badge>
+                                  <Button className={buttonVariants({ variant: "outline" })}>more</Button>
                               </div>
                           </div>
                           {index < fields.length - 1 && <Separator/>}
@@ -126,13 +127,13 @@ export default async function Page({
   // and not during build time
   noStore();
 
-  const table = await getTable(params.databaseName, params.tableName);
+  const view = await getTable(params.databaseName, params.tableName);
 
   return (
     <section className="p-4 max-h-screen overflow-y-auto">
         <div className="py-10">
-          <div className="text-6xl">{table.name}</div>
-          <div className="text-muted-foreground">{table.description}</div>
+          <div className="text-6xl">{view.name}</div>
+          <div className="text-muted-foreground">{view.description}</div>
         </div>
         <div className="flex flex-row space-x-3 ">
             <Tabs defaultValue="fields" className="flex-grow">
@@ -142,12 +143,12 @@ export default async function Page({
                   <TabsTrigger value="query">Query</TabsTrigger>
               </TabsList>
               <TabsContent value="fields">
-                  <FieldsListCard fields={table.fields} />
+                  <FieldsListCard fields={view.fields} />
               </TabsContent>
               <TabsContent value="preview">
                 <Card>
                   <CardContent className="px-0">
-                    <PreviewTable rows={table.samples} />
+                    <PreviewTable rows={view.samples} />
                   </CardContent>
                 </Card>
                 {/* add preview here */}

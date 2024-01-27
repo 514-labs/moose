@@ -5,7 +5,7 @@ ARG DEBIAN_FRONTEND=noninteractive
 
 # ARG for quick switch to a given ubuntu mirror
 ARG apt_archive="http://archive.ubuntu.com"
-RUN sed -i "s|http://archive.ubuntu.com|${apt_archive}|g" /etc/apt/sources.list 
+RUN sed -i "s|http://archive.ubuntu.com|${apt_archive}|g" /etc/apt/sources.list
 
 # USERS Setup
 
@@ -49,7 +49,7 @@ RUN curl -1sLf 'https://dl.redpanda.com/nzc4ZYQK3WRGd9sy/redpanda/cfg/setup/bash
 
 RUN curl -1sLf 'https://dl.redpanda.com/nzc4ZYQK3WRGd9sy/redpanda/cfg/setup/bash.deb.sh' | bash && apt install redpanda-console -y
 
-RUN rpk redpanda mode production && \ 
+RUN rpk redpanda mode production && \
     rpk redpanda config bootstrap --self 127.0.0.1 --ips 127.0.0.1 && \
     rpk redpanda config set redpanda.empty_seed_starts_cluster false
 
@@ -101,14 +101,19 @@ ENV TZ UTC
 
 RUN mkdir /docker-entrypoint-initdb.d
 
-COPY clickhouse-config.xml /etc/clickhouse-server/config.d/
-COPY run-clickhouse.sh /run-clickhouse.sh
+COPY ./clickhouse/clickhouse-config.xml /etc/clickhouse-server/config.d/
+COPY ./clickhouse/run-clickhouse.sh /run-clickhouse.sh
 RUN chmod +x /run-clickhouse.sh
 
 VOLUME /var/lib/clickhouse
 
 # Install Moose
 
+ARG FRAMEWORK_VERSION="0.0.0"
+
+# TODO when we rename to igloo to moose, we will need to update this download link as well
+RUN curl -Lo /usr/local/bin/moose https://github.com/514-labs/moose/releases/download/v${FRAMEWORK_VERSION}/igloo-cli-x86_64-unknown-linux-gnu
+RUN chmod +x /usr/local/bin/moose
 
 # Run it all
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf

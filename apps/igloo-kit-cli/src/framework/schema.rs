@@ -6,7 +6,7 @@ use std::{
 use diagnostics::Diagnostics;
 
 use schema_ast::{
-    ast::{Attribute, Field, FieldArity, SchemaAst, Top, WithName},
+    ast::{Attribute, Field, FieldArity, SchemaAst, Top, WithAttributes, WithName},
     parse_schema,
 };
 
@@ -38,9 +38,43 @@ pub fn parse_schema_file<O>(
 
     let ast = parse_schema(&schema_file, &mut diagnostics);
 
-    let mapped_tables = ast_mapper(ast)?.into_iter().map(mapper).collect();
+    Ok(ast_mapper(ast)?.into_iter().map(mapper).collect())
+}
 
-    Ok(mapped_tables)
+pub struct Schema {
+    pub db_name: String,
+    pub columns: Vec<Column>,
+    pub name: String,
+    pub version: i8,
+}
+
+impl Schema {
+    pub fn new(db_name: String, columns: Vec<Column>, name: String, version: i8) -> Schema {
+        Schema {
+            db_name,
+            columns,
+            name,
+            version,
+        }
+    }
+
+    pub fn to_table(&self) -> Table {
+        Table {
+            db_name: self.db_name.clone(),
+            table_type: TableType::Table,
+            name: self.name.clone(),
+            columns: self.columns.clone(),
+        }
+    }
+
+    pub fn to_view(&self) -> Table {
+        Table {
+            db_name: self.db_name.clone(),
+            table_type: TableType::View,
+            name: format!("{}_view", self.name),
+            columns: self.columns.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -181,19 +215,41 @@ fn field_to_column(f: &Field) -> Result<Column, ParsingError> {
     }
 }
 
-fn top_to_table(t: &Top) -> Result<Table, ParsingError> {
+fn top_to_schema(t: &Top) -> Result<Schema, ParsingError> {
     match t {
         Top::Model(m) => {
-            let table_name = m.name().to_string();
+            let schema_name = m.name().to_string();
+            let default_version = 1;
+
+            let attributes = m.attributes();
+
+            println!("{:?}", attributes);
+
+            // Get the value of the version attribute in the ugliest way possible
+            let version = attributes
+                .iter()
+                .find(|a| a.name() == "version")
+                .unwrap()
+                .arguments
+                .arguments // Why prisma team, why?
+                .first()
+                .map(|arg| {
+                    arg.value
+                        .as_numeric_value()
+                        .unwrap()
+                        .0
+                        .parse::<i8>()
+                        .unwrap()
+                });
 
             let columns: Result<Vec<Column>, ParsingError> =
                 m.iter_fields().map(|(_id, f)| field_to_column(f)).collect();
 
-            Ok(Table {
+            Ok(Schema {
                 db_name: "local".to_string(),
-                table_type: TableType::Table,
-                name: table_name,
                 columns: columns?,
+                name: schema_name,
+                version: version.unwrap_or(default_version),
             })
         }
         _ => Err(ParsingError::UnsupportedDataTypeError {
@@ -202,10 +258,10 @@ fn top_to_table(t: &Top) -> Result<Table, ParsingError> {
     }
 }
 
-pub fn ast_mapper(ast: SchemaAst) -> Result<Vec<Table>, ParsingError> {
+pub fn ast_mapper(ast: SchemaAst) -> Result<Vec<Schema>, ParsingError> {
     ast.iter_tops()
-        .map(|(_id, t)| top_to_table(t))
-        .collect::<Result<Vec<Table>, ParsingError>>()
+        .map(|(_id, t)| top_to_schema(t))
+        .collect::<Result<Vec<Schema>, ParsingError>>()
 }
 
 pub fn fetch_all_models() {

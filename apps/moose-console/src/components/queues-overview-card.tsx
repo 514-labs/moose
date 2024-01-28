@@ -21,7 +21,6 @@ export function QueuesCard({ queues }: QueuesCardProps) {
         <Card className="grow basis-0">
             <CardHeader>
                 <CardTitle>Queues</CardTitle>
-                <CardDescription>Queues ensure that your data can reliably get to your databases under any load</CardDescription>
             </CardHeader>
             <CardContent>
                 <ul className="">

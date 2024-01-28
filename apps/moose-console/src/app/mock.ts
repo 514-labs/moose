@@ -1,5 +1,6 @@
 import { faker } from "@faker-js/faker";
 import { InfrastuctureMock, infrastructureMock } from "./infrastructure/mock";
+import { ModelMock, modelMock } from "./primitives/models/mock";
 
 faker.seed(0);
 
@@ -129,11 +130,11 @@ const generatePrimitives = (): Primitive[] => {
 }
 
 export interface HomeMock {
-    primitives: Primitive[]; 
+    modelMock: ModelMock;
     infrastructure: InfrastuctureMock  
 };
 
 export const homeMock: HomeMock = {
-    primitives: generatePrimitives(),
+    modelMock: modelMock,
     infrastructure: infrastructureMock,
 }

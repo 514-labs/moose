@@ -19,7 +19,6 @@ export function PrimitiveCard({ primitive }: PrimitiveCardProps) {
         <Card className="grow basis-0">
             <CardHeader>
                 <CardTitle>{primitive.name}</CardTitle>
-                <CardDescription>{primitive.description}</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="flex flex-row">

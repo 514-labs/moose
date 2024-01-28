@@ -40,7 +40,7 @@ interface LeftNavProps {
 // Tables
 // Views
 
-let sections: Section[] = [
+const sections: Section[] = [
     {
         name: "Overview",
         href: "/",

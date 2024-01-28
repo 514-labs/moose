@@ -21,9 +21,11 @@ export default async function ModelsPage(): Promise<JSX.Element> {
             </div>
             <Separator />
             {data.models.map((model) => (
-              <Link href={`/primitives/models/${model.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
-                <div className="py-4 text-muted-foreground">{model.name}</div>
-                <Separator />
+              <Link href={`/primitives/models/${model.id}`} >
+                <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
+                  <div className="py-4 text-muted-foreground">{model.name}</div>
+                  <Separator />
+                </div>
               </Link>
             ))}
         </div>

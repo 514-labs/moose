@@ -66,32 +66,40 @@ export default async function Page({
             <TabsContent value="ingestionPoints">
               {infra.ingestionPoints.map((ingestionPoint) => (
                 <Link href={`/infrastructure/ingestion-points/${ingestionPoint.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
-                  <div className="py-4 text-muted-foreground">{ingestionPoint.name}</div>
-                  <Separator />
+                  <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
+                    <div className="py-4 text-muted-foreground">{ingestionPoint.name}</div>
+                    <Separator />
+                  </div>
                 </Link>
               ))}
             </TabsContent>
             <TabsContent value="queues">
               {infra.ingestionPoints.map((queue) => (
                 <Link href={`/infrastructure/queues/${queue.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
-                  <div className="py-4 text-muted-foreground">{queue.name}</div>
-                  <Separator />
+                  <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
+                    <div className="py-4 text-muted-foreground">{queue.name}</div>
+                    <Separator />
+                  </div>
                 </Link>
               ))}
             </TabsContent>
             <TabsContent value="tables">
               {infra.databases.flatMap(x => x.tables.map((t) => ({ databaseId: x.id, ...t }))).map((table) => (
                 <Link href={`/infrastructure/databases/${table.databaseId}/tables/${table.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
-                  <div className="py-4 text-muted-foreground">{table.name}</div>
-                  <Separator />
+                  <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
+                    <div className="py-4 text-muted-foreground">{table.name}</div>
+                    <Separator />
+                  </div>
                 </Link>
               ))}
             </TabsContent>
             <TabsContent value="views">
               {infra.databases.flatMap(x => x.views.map((t) => ({ databaseId: x.id, ...t }))).map((view) => (
                 <Link href={`/infrastructure/databases/${view.databaseId}/views/${view.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
-                  <div className="py-4 text-muted-foreground">{view.name}</div>
-                  <Separator />
+                  <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
+                    <div className="py-4 text-muted-foreground">{view.name}</div>
+                    <Separator />
+                  </div>
                 </Link>
               ))}
 

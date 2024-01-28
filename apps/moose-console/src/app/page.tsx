@@ -1,10 +1,6 @@
-import { PrimitiveCard } from "components/primitive-card";
 import { homeMock } from "./mock";
-import { DatabasesCard } from "components/databases-overview-card";
-import { QueuesCard } from "components/queues-overview-card";
-import { IngestionPointsCard } from "components/ingestion-points-overview-card";
 import { Separator } from "components/ui/separator";
-import { Button, buttonVariants } from "components/ui/button";
+import { Button } from "components/ui/button";
 import Link from "next/link";
 
 

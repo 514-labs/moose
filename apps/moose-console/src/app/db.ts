@@ -13,6 +13,7 @@ const defaultData: {
   [CLI_DATA_ID]: CliData;
 } = {
   [CLI_DATA_ID]: {
+    models: [],
     routes: [],
     tables: [],
     topics: [],

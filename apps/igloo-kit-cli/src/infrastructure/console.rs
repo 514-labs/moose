@@ -35,6 +35,8 @@ pub async fn post_current_state_to_console(
     route_table: HashMap<PathBuf, RouteMeta>,
     console_config: ConsoleConfig,
 ) -> Result<(), anyhow::Error> {
+    let models = todo!("fetch all models file system");
+
     let tables = olap::clickhouse::fetch_all_tables(configured_db_client)
         .await
         .unwrap();

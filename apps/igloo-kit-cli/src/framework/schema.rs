@@ -207,3 +207,7 @@ pub fn ast_mapper(ast: SchemaAst) -> Result<Vec<Table>, ParsingError> {
         .map(|(_id, t)| top_to_table(t))
         .collect::<Result<Vec<Table>, ParsingError>>()
 }
+
+pub fn fetch_all_models() {
+    todo!("Implement me")
+}

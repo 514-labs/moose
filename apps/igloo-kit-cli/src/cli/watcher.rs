@@ -248,7 +248,6 @@ async fn watch(
                 ))
             }
         }
-        println!("{:?}", route_table)
     }
     Ok(())
 }

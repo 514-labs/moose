@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { spawnSync } from "child_process";
-import { mkdirSync } from "fs";
+import { mkdirSync, existsSync } from "fs";
 
 /**
  * Returns the executable path which is located inside `node_modules`
@@ -39,6 +39,12 @@ function run() {
   const args = process.argv.slice(2);
   const name = args[0];
   if (name !== undefined) {
+    if (existsSync(name)) {
+      console.log(
+        `${name} already exists. Either try using a new name, or remove the directory.`
+      );
+      process.exit(1);
+    }
     mkdirSync(name);
   }
   const processResult = spawnSync(getExePath(), ["init"].concat(args), {

@@ -38,6 +38,7 @@ http-body-util = "0.1"
 lazy_static = "1.4.0"
 anyhow = "1.0"
 spinners = "4.1.1"
+git2 = "0.18.1"
 
 [dev-dependencies]
 clickhouse = { version = "0.11.5", features = ["uuid", "test-util"] }

@@ -8,9 +8,9 @@ use super::{
     Routine, RoutineFailure, RoutineSuccess, RunMode,
 };
 use crate::cli::display::with_spinner;
-use crate::cli::routines::initialize::CreateIglooTempDirectoryTree;
+use crate::cli::routines::initialize::{CreateDockerNetwork, CreateIglooTempDirectoryTree};
 use crate::cli::routines::util::ensure_docker_running;
-use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
+use crate::utilities::constants::{CLI_PROJECT_INTERNAL_DIR, PANDA_NETWORK};
 use crate::{
     cli::display::Message,
     project::Project,
@@ -48,6 +48,7 @@ impl Routine for RunLocalInfrastructure {
         CreateIglooTempDirectoryTree::new(RunMode::Explicit {}, self.project.clone())
             .run_explicit()?;
         ValidateMountVolumes::new(igloo_dir).run_explicit()?;
+        CreateDockerNetwork::new(PANDA_NETWORK).run_explicit()?;
         ValidatePandaHouseNetwork::new().run_explicit()?;
         RunRedPandaContainer::new(self.project.clone()).run_explicit()?;
         ValidateRedPandaRun::new().run_explicit()?;

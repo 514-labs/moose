@@ -65,9 +65,6 @@ const PreviewTable = ({ rows }: TableProps) => {
   // Get column headers (keys from the first object in the data array)
   const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
 
-
-  console.log(rows);
-
   return (
     <Table>
       <TableCaption>A preview of the data in your table.</TableCaption>
@@ -140,11 +137,8 @@ export default async function Page({
   const table = data.tables.find((table) => table.uuid === params.tableId);
 
   const tableMeta = await describeTable(params.databaseName, table.name);
-  console.log(tableMeta);
   const tableName = data.tables.find((table) => table.uuid === params.tableId).name;
   const tableData = await getTable(params.databaseName, tableName);
-  // console.log(tableData);
-  // const headers =  tableData[0].values.map((value: Value) => value.field);
 
   return (
     <section className="p-4 max-h-screen overflow-y-auto">

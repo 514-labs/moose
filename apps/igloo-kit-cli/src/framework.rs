@@ -1,6 +1,5 @@
 use clap::Subcommand;
 
-pub mod client_app;
 pub mod controller;
 pub mod languages;
 pub mod schema;

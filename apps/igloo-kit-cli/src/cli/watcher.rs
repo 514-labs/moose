@@ -8,39 +8,17 @@ use notify::{event::ModifyKind, Config, RecommendedWatcher, RecursiveMode, Watch
 use tokio::sync::RwLock;
 
 use super::display::{Message, MessageType};
-use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::stream::redpanda;
 use crate::{
-    framework::{
-        controller::{
-            create_language_objects, create_or_replace_table, create_or_replace_view,
-            get_framework_objects, remove_table_and_topics_from_schema_file_path, FrameworkObject,
-            RouteMeta,
-        },
-        sdks::{generate_ts_sdk, TypescriptObjects},
-    },
-    infrastructure::{
-        olap::{self, clickhouse::ConfiguredDBClient},
-        stream,
-    },
+    framework::controller::{remove_table_and_topics_from_schema_file_path, RouteMeta},
+    infrastructure::olap::{self, clickhouse::ConfiguredDBClient},
     project::Project,
     utilities::constants::SCHEMAS_DIR,
-    utilities::package_managers,
+};
+use crate::{
+    framework::schema::process_schema_file, infrastructure::console::post_current_state_to_console,
 };
 use log::{debug, info};
-
-fn schema_file_path_to_ingest_route(app_dir: PathBuf, path: &Path, table_name: String) -> PathBuf {
-    let data_model_path = app_dir.join(SCHEMAS_DIR);
-    debug!("got data model path: {:?}", data_model_path);
-    debug!("processing schema file into route: {:?}", path);
-    let mut route = path.strip_prefix(data_model_path).unwrap().to_path_buf();
-
-    route.set_file_name(table_name);
-
-    debug!("route: {:?}", route);
-
-    PathBuf::from("ingest").join(route)
-}
 
 async fn process_event(
     project: Project,
@@ -128,72 +106,6 @@ async fn create_framework_objects_from_schema_file_path(
     Ok(())
 }
 
-pub async fn process_schema_file(
-    schema_file_path: &Path,
-    project: &Project,
-    configured_client: &ConfiguredDBClient,
-    route_table: &mut HashMap<PathBuf, RouteMeta>,
-) -> Result<(), Error> {
-    let framework_objects = get_framework_objects(schema_file_path)?;
-    let mut compilable_objects: Vec<TypescriptObjects> = Vec::new();
-    process_objects(
-        framework_objects,
-        project,
-        schema_file_path,
-        configured_client,
-        &mut compilable_objects,
-        route_table,
-    )
-    .await?;
-    debug!("All objects created, generating sdk...");
-    let sdk_location = generate_ts_sdk(project, compilable_objects)?;
-    let package_manager = package_managers::PackageManager::Npm;
-    package_managers::install_packages(&sdk_location, &package_manager)?;
-    package_managers::run_build(&sdk_location, &package_manager)?;
-    package_managers::link_sdk(&sdk_location, None, &package_manager)?;
-    Ok(())
-}
-
-async fn process_objects(
-    framework_objects: Vec<FrameworkObject>,
-    project: &Project,
-    schema_file_path: &Path,
-    configured_client: &ConfiguredDBClient,
-    compilable_objects: &mut Vec<TypescriptObjects>, // Objects that require compilation after processing
-    route_table: &mut HashMap<PathBuf, RouteMeta>,
-) -> Result<(), Error> {
-    for fo in framework_objects {
-        let ingest_route = schema_file_path_to_ingest_route(
-            project.app_dir().clone(),
-            schema_file_path,
-            fo.table.name.clone(),
-        );
-        stream::redpanda::create_topic_from_name(fo.topic.clone())?;
-
-        debug!("Creating table & view: {:?}", fo.table.name);
-
-        let view_name = format!("{}_view", fo.table.name);
-
-        create_or_replace_table(&fo, configured_client).await?;
-        create_or_replace_view(&fo, view_name.clone(), configured_client).await?;
-
-        debug!("Table created: {:?}", fo.table.name);
-
-        let typescript_objects = create_language_objects(&fo, &ingest_route, project)?;
-        compilable_objects.push(typescript_objects);
-
-        route_table.insert(
-            ingest_route,
-            RouteMeta {
-                original_file_path: schema_file_path.to_path_buf(),
-                table_name: fo.table.name.clone(),
-                view_name: Some(view_name),
-            },
-        );
-    }
-    Ok(())
-}
-
 async fn watch(
     project: &Project,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
@@ -234,6 +146,7 @@ async fn watch(
                 };
 
                 let _ = post_current_state_to_console(
+                    project,
                     &configured_client,
                     &configured_producer,
                     route_table_snapshot,
@@ -248,7 +161,6 @@ async fn watch(
                 ))
             }
         }
-        println!("{:?}", route_table)
     }
     Ok(())
 }

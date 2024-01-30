@@ -1,5 +1,5 @@
 use crate::{
-    framework::schema::{ColumnType, Table, TableType},
+    framework::schema::{ColumnType, FieldArity, Table, TableType},
     infrastructure::olap::clickhouse::{
         ClickhouseColumn, ClickhouseColumnType, ClickhouseFloat, ClickhouseInt, ClickhouseTable,
         ClickhouseTableType,
@@ -23,6 +23,14 @@ pub fn std_field_type_to_clickhouse_type_mapper(field_type: ColumnType) -> Click
         ColumnType::DateTime => ClickhouseColumnType::DateTime,
         ColumnType::Unsupported => ClickhouseColumnType::Unsupported,
         _ => ClickhouseColumnType::Unsupported,
+    }
+}
+
+pub fn arity_mapper(arity: schema_ast::ast::FieldArity) -> FieldArity {
+    match arity {
+        schema_ast::ast::FieldArity::Required => FieldArity::Required,
+        schema_ast::ast::FieldArity::Optional => FieldArity::Optional,
+        schema_ast::ast::FieldArity::List => FieldArity::List,
     }
 }
 

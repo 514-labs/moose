@@ -89,9 +89,9 @@ use tokio::sync::RwLock;
 use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
-use crate::cli::watcher::process_schema_file;
 
 use crate::framework::controller::RouteMeta;
+use crate::framework::schema::process_schema_file;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
@@ -264,9 +264,10 @@ async fn initialize_project_state(
 
     info!("Starting schema directory crawl...");
     let crawl_result =
-        crawl_schema_project_dir(&schema_dir, project, &configured_client, route_table).await;
+        process_schemas_in_dir(&schema_dir, project, &configured_client, route_table).await;
 
     let _ = post_current_state_to_console(
+        project,
         &configured_client,
         &producer,
         route_table.clone(),
@@ -288,7 +289,7 @@ async fn initialize_project_state(
 }
 
 #[async_recursion]
-async fn crawl_schema_project_dir(
+async fn process_schemas_in_dir(
     schema_dir: &Path,
     project: &Project,
     configured_client: &ConfiguredDBClient,
@@ -300,7 +301,7 @@ async fn crawl_schema_project_dir(
             let path = entry.path();
             if path.is_dir() {
                 debug!("Processing directory: {:?}", path);
-                crawl_schema_project_dir(&path, project, configured_client, route_table).await?;
+                process_schemas_in_dir(&path, project, configured_client, route_table).await?;
             } else {
                 debug!("Processing file: {:?}", path);
                 process_schema_file(&path, project, configured_client, route_table).await?

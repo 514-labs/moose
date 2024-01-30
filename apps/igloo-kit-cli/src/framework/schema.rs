@@ -1,14 +1,30 @@
 use std::{
+    collections::HashMap,
     fmt,
+    io::Error,
     path::{Path, PathBuf},
 };
 
 use diagnostics::Diagnostics;
 
+use log::debug;
 use schema_ast::{
-    ast::{Attribute, Field, FieldArity, SchemaAst, Top, WithName},
+    ast::{Attribute, Field, SchemaAst, Top, WithAttributes, WithName},
     parse_schema,
 };
+use serde::Serialize;
+
+use crate::{
+    framework::{
+        controller::{get_framework_objects_from_schema_file, process_objects},
+        sdks::{generate_ts_sdk, TypescriptObjects},
+    },
+    infrastructure::olap::clickhouse::{mapper::arity_mapper, ConfiguredDBClient},
+    project::Project,
+    utilities::package_managers,
+};
+
+use super::controller::RouteMeta;
 
 #[derive(Debug, Clone)]
 pub enum ParsingError {
@@ -28,7 +44,7 @@ type MapperFunc<I, O> = fn(i: I) -> O;
 // TODO: Make the parse schema file a variable and pass it into the function
 pub fn parse_schema_file<O>(
     path: &Path,
-    mapper: MapperFunc<Table, O>,
+    mapper: MapperFunc<DataModel, O>,
 ) -> Result<Vec<O>, ParsingError> {
     let schema_file = std::fs::read_to_string(path).map_err(|_| ParsingError::FileNotFound {
         path: path.to_path_buf(),
@@ -38,9 +54,44 @@ pub fn parse_schema_file<O>(
 
     let ast = parse_schema(&schema_file, &mut diagnostics);
 
-    let mapped_tables = ast_mapper(ast)?.into_iter().map(mapper).collect();
+    Ok(ast_mapper(ast)?.into_iter().map(mapper).collect())
+}
 
-    Ok(mapped_tables)
+#[derive(Debug, Clone, Serialize)]
+pub struct DataModel {
+    pub db_name: String,
+    pub columns: Vec<Column>,
+    pub name: String,
+    pub version: i8,
+}
+
+impl DataModel {
+    pub fn new(db_name: String, columns: Vec<Column>, name: String, version: i8) -> DataModel {
+        DataModel {
+            db_name,
+            columns,
+            name,
+            version,
+        }
+    }
+
+    pub fn to_table(&self) -> Table {
+        Table {
+            db_name: self.db_name.clone(),
+            table_type: TableType::Table,
+            name: self.name.clone(),
+            columns: self.columns.clone(),
+        }
+    }
+
+    pub fn to_view(&self) -> Table {
+        Table {
+            db_name: self.db_name.clone(),
+            table_type: TableType::View,
+            name: format!("{}_view", self.name),
+            columns: self.columns.clone(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -68,7 +119,28 @@ pub trait MatViewOps {
     fn drop_materialized_view_query(&self) -> Result<String, UnsupportedDataTypeError>;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Copy, Debug, Clone, PartialEq, Eq, Hash, Serialize)]
+pub enum FieldArity {
+    Required,
+    Optional,
+    List,
+}
+
+impl FieldArity {
+    pub fn is_list(&self) -> bool {
+        matches!(self, &FieldArity::List)
+    }
+
+    pub fn is_optional(&self) -> bool {
+        matches!(self, &FieldArity::Optional)
+    }
+
+    pub fn is_required(&self) -> bool {
+        matches!(self, &FieldArity::Required)
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct Column {
     pub name: String,
     pub data_type: ColumnType,
@@ -78,7 +150,7 @@ pub struct Column {
     pub default: Option<ColumnDefaults>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ColumnDefaults {
     AutoIncrement,
     CUID,
@@ -92,7 +164,7 @@ impl fmt::Display for ParsingError {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub enum ColumnType {
     String,
     Boolean,
@@ -168,7 +240,7 @@ fn field_to_column(f: &Field) -> Result<Column, ParsingError> {
         schema_ast::ast::FieldType::Supported(ft) => Ok(Column {
             name: f.name().to_string(),
             data_type: map_column_string_type_to_column_type(ft.name.as_str()),
-            arity: f.arity,
+            arity: arity_mapper(f.arity),
             unique: attributes.unique,
             primary_key: attributes.primary_key,
             default: attributes.default,
@@ -181,19 +253,43 @@ fn field_to_column(f: &Field) -> Result<Column, ParsingError> {
     }
 }
 
-fn top_to_table(t: &Top) -> Result<Table, ParsingError> {
+fn top_to_schema(t: &Top) -> Result<DataModel, ParsingError> {
     match t {
         Top::Model(m) => {
-            let table_name = m.name().to_string();
+            let schema_name = m.name().to_string();
+            let mut version = 1;
+
+            let attributes = m.attributes();
+
+            println!("{:?}", attributes);
+
+            // Get the value of the version attribute in the ugliest way possible
+            let version_attribute = attributes.iter().find(|a| a.name() == "version");
+
+            if let Some(attribute) = version_attribute {
+                version = attribute
+                    .arguments
+                    .arguments
+                    .first()
+                    .map(|arg| {
+                        arg.value
+                            .as_numeric_value()
+                            .unwrap()
+                            .0
+                            .parse::<i8>()
+                            .unwrap()
+                    })
+                    .unwrap_or(version);
+            }
 
             let columns: Result<Vec<Column>, ParsingError> =
                 m.iter_fields().map(|(_id, f)| field_to_column(f)).collect();
 
-            Ok(Table {
+            Ok(DataModel {
                 db_name: "local".to_string(),
-                table_type: TableType::Table,
-                name: table_name,
                 columns: columns?,
+                name: schema_name,
+                version,
             })
         }
         _ => Err(ParsingError::UnsupportedDataTypeError {
@@ -202,8 +298,34 @@ fn top_to_table(t: &Top) -> Result<Table, ParsingError> {
     }
 }
 
-pub fn ast_mapper(ast: SchemaAst) -> Result<Vec<Table>, ParsingError> {
+pub fn ast_mapper(ast: SchemaAst) -> Result<Vec<DataModel>, ParsingError> {
     ast.iter_tops()
-        .map(|(_id, t)| top_to_table(t))
-        .collect::<Result<Vec<Table>, ParsingError>>()
+        .map(|(_id, t)| top_to_schema(t))
+        .collect::<Result<Vec<DataModel>, ParsingError>>()
+}
+
+pub async fn process_schema_file(
+    schema_file_path: &Path,
+    project: &Project,
+    configured_client: &ConfiguredDBClient,
+    route_table: &mut HashMap<PathBuf, RouteMeta>,
+) -> Result<(), Error> {
+    let framework_objects = get_framework_objects_from_schema_file(schema_file_path)?;
+    let mut compilable_objects: Vec<TypescriptObjects> = Vec::new();
+    process_objects(
+        framework_objects,
+        project,
+        schema_file_path,
+        configured_client,
+        &mut compilable_objects,
+        route_table,
+    )
+    .await?;
+    debug!("All objects created, generating sdk...");
+    let sdk_location = generate_ts_sdk(project, compilable_objects)?;
+    let package_manager = package_managers::PackageManager::Npm;
+    package_managers::install_packages(&sdk_location, &package_manager)?;
+    package_managers::run_build(&sdk_location, &package_manager)?;
+    package_managers::link_sdk(&sdk_location, None, &package_manager)?;
+    Ok(())
 }

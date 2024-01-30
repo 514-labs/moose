@@ -1,4 +1,8 @@
 import { faker } from "@faker-js/faker";
+import { InfrastuctureMock, infrastructureMock } from "./infrastructure/mock";
+import { ModelMock, modelMock } from "./primitives/models/mock";
+
+faker.seed(0);
 
 export interface Tag {
     name: string;
@@ -53,8 +57,8 @@ export const generateField = (): Field => ({
         commitHash: faker.git.commitSha(),
         author: {
             userName: faker.internet.userName(),
-            firstName: faker.name.firstName(),
-            lastName: faker.name.lastName(),
+            firstName: faker.person.firstName(),
+            lastName: faker.person.lastName(),
             email: faker.internet.email(),
             avatar: faker.internet.avatar(),
             profileLink: faker.internet.url(),
@@ -100,11 +104,11 @@ export interface Snippet {
 
 export interface Primitive {
     name: string;
-    primitive_type: PrimitiveType;
+    primitiveType: PrimitiveType;
     description: string;
-    doc_link: string;
+    docLink: string;
     version: string;
-    console_path: string;
+    consolePath: string;
     count: number;
 };
 
@@ -115,20 +119,22 @@ const generatePrimitives = (): Primitive[] => {
     return primitiveTypes.map((primitiveType) => {
         return {
             name: primitiveType,
-            primitive_type: primitiveType,
+            primitiveType: primitiveType,
             description: faker.lorem.paragraph(),
-            doc_link: faker.internet.url(),
+            docLink: faker.internet.url(),
             version: faker.system.semver(),
-            console_path: faker.internet.url(),
+            consolePath: faker.internet.url(),
             count: faker.number.int(),
         }
     })
 }
 
 export interface HomeMock {
-    primitives: Primitive[];   
+    modelMock: ModelMock;
+    infrastructure: InfrastuctureMock  
 };
 
 export const homeMock: HomeMock = {
-    primitives: generatePrimitives(),
+    modelMock: modelMock,
+    infrastructure: infrastructureMock,
 }

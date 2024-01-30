@@ -1,8 +1,12 @@
+use crate::framework::controller::get_all_framework_objects;
+use crate::framework::controller::FrameworkObject;
 use crate::framework::controller::RouteMeta;
+use crate::framework::schema::DataModel;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
+use crate::project::Project;
 use http_body_util::BodyExt;
 use http_body_util::Full;
 use hyper::body::Bytes;
@@ -30,11 +34,21 @@ impl Default for ConsoleConfig {
 }
 
 pub async fn post_current_state_to_console(
+    project: &Project,
     configured_db_client: &ConfiguredDBClient,
     configured_producer: &ConfiguredProducer,
     route_table: HashMap<PathBuf, RouteMeta>,
     console_config: ConsoleConfig,
 ) -> Result<(), anyhow::Error> {
+    let schema_dir = project.schemas_dir();
+    let mut framework_objects: Vec<FrameworkObject> = Vec::new();
+    get_all_framework_objects(&mut framework_objects, &schema_dir)?;
+
+    let models: Vec<DataModel> = framework_objects
+        .iter()
+        .map(|fo| fo.data_model.clone())
+        .collect();
+
     let tables = olap::clickhouse::fetch_all_tables(configured_db_client)
         .await
         .unwrap();
@@ -75,9 +89,10 @@ pub async fn post_current_state_to_console(
 
     let body = Bytes::from(
         json!({
+            "models": models,
             "tables": tables,
-            "topics": topics,
-            "routes": routes_table
+            "queues": topics,
+            "ingestionPoints": routes_table
         })
         .to_string(),
     );

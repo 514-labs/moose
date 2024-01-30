@@ -1,4 +1,4 @@
-use crate::framework::schema::{Column, ColumnType, Table};
+use crate::framework::schema::{Column, ColumnType, FieldArity, Table};
 
 use super::{InterfaceField, InterfaceFieldType, TypescriptInterface};
 
@@ -21,9 +21,9 @@ pub fn std_table_to_typescript_interface(table: Table) -> TypescriptInterface {
         .into_iter()
         .map(|column: Column| {
             let is_optional = match column.arity {
-                schema_ast::ast::FieldArity::Required => false,
-                schema_ast::ast::FieldArity::Optional => true,
-                schema_ast::ast::FieldArity::List => false,
+                FieldArity::Required => false,
+                FieldArity::Optional => true,
+                FieldArity::List => false,
             };
 
             InterfaceField {

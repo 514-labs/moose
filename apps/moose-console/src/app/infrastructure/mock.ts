@@ -1,9 +1,64 @@
 import { faker } from "@faker-js/faker";
-import { Field, Language, Snippet, generateField } from "app/mock";
+import {  Field, Snippet,  } from "app/mock";
 
-interface InfrastuctureMock {
-    tables: Table[];
-    views: View[];
+faker.seed(0);
+
+enum ContraintType {
+    Unique = 'Unique',
+    Required = 'Required',
+    Nullable = 'Nullable',
+}
+
+enum Language {
+    Typescript = 'Typescript',
+    Javascript = 'Javascript',
+    Python = 'Python',
+    Rust = 'Rust',
+    Go = 'Go',
+    Java = 'Java',
+    CPP = 'C++',
+    CSharp = 'C#',
+    Swift = 'Swift',
+    Kotlin = 'Kotlin',
+    Fortran = 'Fortran',
+    Cobol = 'Cobol',
+    Curl = 'curl',
+    Bash = 'bash',
+    Scala = 'scala',
+    Prisma = 'prisma',
+}
+
+const generateField = (): Field => ({
+    name: faker.database.column(),
+    type: faker.database.type(),
+    description: faker.lorem.sentence(),
+    constraints: [ContraintType.Unique, ContraintType.Required],
+    doc_link: faker.internet.url(),
+    consolePath: faker.system.directoryPath(),
+    rowCount: faker.number.int(),
+    messageCount: faker.number.int(),
+    lastContribution: {
+        commitHash: faker.git.commitSha(),
+        author: {
+            userName: faker.internet.userName(),
+            firstName: faker.person.firstName(),
+            lastName: faker.person.lastName(),
+            email: faker.internet.email(),
+            avatar: faker.internet.avatar(),
+            profileLink: faker.internet.url(),
+        },
+        dateTime: faker.date.recent().toISOString(),
+    },
+    tags: Array.from({ length: 5 }, () => ({
+        name: faker.lorem.word(),
+        description: faker.lorem.sentence(),
+    })),
+    deployedVersions: Array.from({ length: 5 }, () => faker.git.commitSha()),
+});
+
+
+export interface InfrastuctureMock {
+    databases: Database[];
     queues: Queue[];
     ingestionPoints: IngestionPoint[];
 }
@@ -15,10 +70,11 @@ enum QueueStatus {
     Error = 'Error',
 }
 
-interface Queue {
+export interface Queue {
     id: string;
     name: string;
     clusterId: string;
+    messageCount: number;
     modelId: string;
     description: string;
     status: QueueStatus;
@@ -29,13 +85,15 @@ interface Queue {
     lastUpdated: string;
     lastUpdatedBy: string; // As defined by the infra itself and its auth system
     errors: string[];
+    environment: string;
 }
 
 const generateQueue = (): Queue => ({
-    id: faker.datatype.uuid(),
+    id: faker.string.uuid(),
     name: faker.commerce.productName(),
-    clusterId: faker.datatype.uuid(),
-    modelId: faker.datatype.uuid(),
+    clusterId: faker.string.uuid(),
+    messageCount: faker.number.int(),
+    modelId: faker.string.uuid(),
     description: faker.commerce.productDescription(),
     status: faker.helpers.arrayElement(Object.values(QueueStatus)),
     connectionUrl: faker.internet.url(),
@@ -45,6 +103,7 @@ const generateQueue = (): Queue => ({
     lastUpdated: faker.date.recent().toISOString(),
     lastUpdatedBy: faker.internet.userName(),
     errors: [],
+    environment: faker.helpers.arrayElement(Object.values(Environment)),
 });
 
 
@@ -58,7 +117,7 @@ enum IngestionPointStatus {
 interface SdkInfo {
 }
 
-interface IngestionPoint {
+export interface IngestionPoint {
     id: string;
     name: string;
     description: string;
@@ -74,10 +133,12 @@ interface IngestionPoint {
     serverId: string;
     modelId: string;
     errors: string[];
+    environment: string;
+    
 }
 
 const generateIngestionPoint = (): IngestionPoint => ({
-    id: faker.datatype.uuid(),
+    id: faker.string.uuid(),
     name: faker.commerce.productName(),
     description: faker.commerce.productDescription(),
     status: faker.helpers.arrayElement(Object.values(IngestionPointStatus)),
@@ -95,9 +156,10 @@ const generateIngestionPoint = (): IngestionPoint => ({
         language: faker.helpers.arrayElement(Object.values(Language)),
         version: faker.system.semver(),
     })),
-    serverId: faker.datatype.uuid(),
-    modelId: faker.datatype.uuid(),
+    serverId: faker.string.uuid(),
+    modelId: faker.string.uuid(),
     errors: [],
+    environment: faker.helpers.arrayElement(Object.values(Environment)),
 });
 
 enum DatabaseStatus {
@@ -107,7 +169,7 @@ enum DatabaseStatus {
     Error = 'Error',
 }
 
-interface Database {
+export interface Database {
     id: string;
     name: string;
     description: string;
@@ -124,6 +186,7 @@ interface Database {
     lastUpdatedBy: string;
     modelIds: string[];
     errors: string[];
+    environment: string;
 }
 
 const generateDatabase = (): Database => {
@@ -149,12 +212,13 @@ const generateDatabase = (): Database => {
         tables: tables,
         views: views,
         consolePath: faker.system.directoryPath(),
-        tableCount: faker.datatype.number(),
-        viewCount: faker.datatype.number(),
+        tableCount: faker.number.int(),
+        viewCount: faker.number.int(),
         lastUpdated: faker.date.recent().toISOString(),
         lastUpdatedBy: faker.internet.userName(),
-        modelIds: Array.from({ length: 5 }, () => faker.datatype.uuid()),
+        modelIds: Array.from({ length: 5 }, () => faker.string.uuid()),
         errors: [],
+        environment: faker.helpers.arrayElement(Object.values(Environment)),
     }
     
 };
@@ -165,17 +229,18 @@ enum TableStatus {
     Deprecated = 'Deprecated',
 }
 
-interface Value {
+export interface Value {
     field: Field;
     value: string;
 }
 
-interface Row {
+export interface Row {
     values: Value[];
 }
 
-interface Table {
+export interface Table {
     id: string;
+    databaseId?: string;
     name: string;
     description: string;
     status: TableStatus;
@@ -190,6 +255,14 @@ interface Table {
     samples: Row[];
     modelId: string;
     errors: string[];
+    environment: string;
+}
+
+enum Environment {
+    Production = 'Production',
+    Staging = 'Staging',
+    Development = 'Development',
+    Test = 'Test',
 }
 
 const generateTable = (): Table => ({
@@ -201,8 +274,8 @@ const generateTable = (): Table => ({
     version: faker.system.semver(),
     consolePath: faker.system.directoryPath(),
     fields: Array.from({ length: 5 }, generateField),
-    fieldCount: faker.datatype.number(),
-    rowCount: faker.datatype.number(),
+    fieldCount: faker.number.int(),
+    rowCount: faker.number.int(),
     lastUpdated: faker.date.recent().toISOString(),
     lastUpdatedBy: faker.internet.userName(),
     samples: Array.from({ length: 5 }, () => ({
@@ -211,8 +284,9 @@ const generateTable = (): Table => ({
             value: faker.lorem.sentence(),
         })),
     })),
-    modelId: faker.datatype.uuid(),
+    modelId: faker.string.uuid(),
     errors: [],
+    environment: faker.helpers.arrayElement(Object.values(Environment)),
 });
 
 enum ViewStatus {
@@ -221,9 +295,10 @@ enum ViewStatus {
     Deprecated = 'Deprecated',
 }
 
-interface View {
+export interface View {
     id: string;
     name: string;
+    databaseId?: string;
     parentTable: string;
     description: string;
     status: ViewStatus;
@@ -238,14 +313,13 @@ interface View {
     samples: Row[];
     modelId: string;
     errors: string[];
+    environment: string;
 }
 
-const database = generateDatabase();
 
 
 export const infrastructureMock: InfrastuctureMock = {
-    tables: database.tables, 
-    views: database.views,
+    databases: Array.from({ length: 10 }, generateDatabase),
     queues: Array.from({ length: 10 }, generateQueue),
     ingestionPoints: Array.from({ length: 10 }, generateIngestionPoint),
 };

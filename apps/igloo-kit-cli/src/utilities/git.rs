@@ -32,7 +32,7 @@ pub fn create_init_commit(project: &Project, dir_path: &Path) {
     // Now let's create an empty tree for this commit
     let mut index = repo.index().expect("Failed to get repo index");
     index
-        .add_all(&["."], git2::IndexAddOption::DEFAULT, None)
+        .add_all(["."], git2::IndexAddOption::DEFAULT, None)
         .expect("Failed to add path to index");
     index.write().expect("Failed to write index");
     let tree_id = index.write_tree().expect("Failed to write tree");

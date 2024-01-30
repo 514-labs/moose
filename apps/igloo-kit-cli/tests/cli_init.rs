@@ -36,7 +36,7 @@ fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
     // TODO add more specific tests when the layout of the
     // app is more stable
     temp.child(".igloo").assert(predicate::path::exists());
-    temp.child("project.toml").assert(predicate::path::exists());
+    temp.child("package.json").assert(predicate::path::exists());
     temp.child("app").assert(predicate::path::exists());
 
     Ok(())

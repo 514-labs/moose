@@ -53,8 +53,8 @@ impl Routine for RunLocalInfrastructure {
         ValidateRedPandaRun::new().run_explicit()?;
         RunClickhouseContainer::new(self.project.clone()).run_explicit()?;
         ValidateClickhouseRun::new().run_explicit()?;
-        // RunConsoleContainer::new(self.project.clone()).run_explicit()?;
-        // ValidateConsoleRun::new().run_explicit()?;
+        RunConsoleContainer::new(self.project.clone()).run_explicit()?;
+        ValidateConsoleRun::new().run_explicit()?;
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
             "ran local infrastructure".to_string(),

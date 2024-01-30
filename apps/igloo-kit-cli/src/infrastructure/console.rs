@@ -7,7 +7,6 @@ use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 use crate::project::Project;
-use crate::utilities::constants::SCHEMAS_DIR;
 use http_body_util::BodyExt;
 use http_body_util::Full;
 use hyper::body::Bytes;

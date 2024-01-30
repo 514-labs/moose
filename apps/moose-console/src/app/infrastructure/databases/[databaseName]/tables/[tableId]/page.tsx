@@ -1,6 +1,7 @@
 /* eslint-disable turbo/no-undeclared-env-vars */
 
 import { BaseResultSet, createClient } from "@clickhouse/client-web";
+import { getCliData } from "app/db";
 import { Row, Value, infrastructureMock } from "app/infrastructure/mock";
 import { Field } from "app/mock";
 import { Card, CardContent } from "components/ui/card";
@@ -12,35 +13,47 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
 
 import { unstable_noStore as noStore } from "next/cache";
 
+function getClient() {
+  const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || "localhost";
+  // Environment variables are always strings
+  const CLICKHOUSE_PORT = process.env.CLICKHOUSE_PORT || "18123";
+  const CLICKHOUSE_USERNAME = process.env.CLICKHOUSE_USERNAME || "panda";
+  const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || "pandapass";
+  const CLICKHOUSE_DB = "default";
 
-async function getTable(databaseId: string, tableId): Promise<any> {
-// async function getTable(tableName: string): Promise<any> {
-  // const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || "localhost";
-  // // Environment variables are always strings
-  // const CLICKHOUSE_PORT = process.env.CLICKHOUSE_PORT || "18123";
-  // const CLICKHOUSE_USERNAME = process.env.CLICKHOUSE_USERNAME || "panda";
-  // const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || "pandapass";
-  // const CLICKHOUSE_DB = process.env.CLICKHOUSE_DB || "local";
+  const client = createClient({
+    host: `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
+    username: CLICKHOUSE_USERNAME,
+    password: CLICKHOUSE_PASSWORD,
+    database: CLICKHOUSE_DB,
+  });
 
-  // const client = createClient({
-  //   host: `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-  //   username: CLICKHOUSE_USERNAME,
-  //   password: CLICKHOUSE_PASSWORD,
-  //   database: CLICKHOUSE_DB,
-  // });
+  return client;
+}
 
-  // const resultSet = await client.query({
-  //   query: `SELECT * FROM ${tableName} LIMIT 10`,
-  //   format: "JSONEachRow",
-  // });
 
-  // return resultSet.json();
+async function describeTable(databaseName: string, tableName: string): Promise<any> {
+  const client = getClient();
 
-  try {
-    return infrastructureMock.databases.find((db) => db.id === databaseId).tables.find((table) => table.id === tableId);  
-  } catch (error) {
-    return []
-  }
+  const resultSet = await client.query({
+    query: `DESCRIBE TABLE ${databaseName}.${tableName}`,
+    format: "JSONEachRow",
+  });
+
+  return resultSet.json();
+
+}
+
+
+async function getTable(databaseName: string, tableName: string): Promise<any> {
+  const client = getClient();
+
+  const resultSet = await client.query({
+    query: `SELECT * FROM ${databaseName}.${tableName} LIMIT 50`,
+    format: "JSONEachRow",
+  });
+
+  return resultSet.json();
   
 }
 
@@ -50,11 +63,10 @@ interface TableProps {
 
 const PreviewTable = ({ rows }: TableProps) => {
   // Get column headers (keys from the first object in the data array)
-  // const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+  const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
 
-  const headers =  rows[0].values.map((value: Value) => value.field);
 
-  console.log(headers);
+  console.log(rows);
 
   return (
     <Table>
@@ -63,7 +75,7 @@ const PreviewTable = ({ rows }: TableProps) => {
         <TableRow>
           {headers.map((header, index) => (
             <TableHead key={index} className="font-medium">
-              {header.name}
+              {header}
             </TableHead>
           ))} 
         </TableRow>
@@ -71,8 +83,8 @@ const PreviewTable = ({ rows }: TableProps) => {
       <TableBody>
         {rows.map((row, index) => (
           <TableRow key={index}>
-            {row.values.map((value, index) => (
-              <TableCell key={index}>{value.value}</TableCell>
+            {headers.map((value, index) => (
+              <TableCell key={index}>{row[value]}</TableCell>
             ))}
           </TableRow>
         ))}
@@ -97,12 +109,12 @@ function FieldsListCard({ fields }: FieldsListCardProps) {
                           <div className="py-2 flex flex-row p-4">
                               <div>
                                   <div className="text-xl">{field.name}</div>
-                                  <div className="text-muted-foreground">{field.description}</div>
+                                  <div className="text-muted-foreground">{field.type}</div>
                               </div>
                               <span className="flex-grow"/>
-                              <div>
+                              {/* <div>
                                   {field.rowCount.toLocaleString("en-us")} rows
-                              </div>
+                              </div> */}
                           </div>
                           {index < fields.length - 1 && <Separator/>}
                       </li>
@@ -118,19 +130,27 @@ function FieldsListCard({ fields }: FieldsListCardProps) {
 export default async function Page({
   params,
 }: {
-  params: {databaseName: string,  tableName: string };
+  params: {databaseName: string,  tableId: string };
 }): Promise<JSX.Element> {
   // This is to make sure the environment variables are read at runtime
   // and not during build time
   noStore();
 
-  const table = await getTable(params.databaseName, params.tableName);
+  const data = await getCliData();
+  const table = data.tables.find((table) => table.uuid === params.tableId);
+
+  const tableMeta = await describeTable(params.databaseName, table.name);
+  console.log(tableMeta);
+  const tableName = data.tables.find((table) => table.uuid === params.tableId).name;
+  const tableData = await getTable(params.databaseName, tableName);
+  // console.log(tableData);
+  // const headers =  tableData[0].values.map((value: Value) => value.field);
 
   return (
     <section className="p-4 max-h-screen overflow-y-auto">
         <div className="py-10">
           <div className="text-6xl">{table.name}</div>
-          <div className="text-muted-foreground">{table.description}</div>
+          <div className="text-muted-foreground">{table.engine}</div>
         </div>
         <div className="flex flex-row space-x-3 ">
             <Tabs defaultValue="fields" className="flex-grow">
@@ -140,12 +160,12 @@ export default async function Page({
                   <TabsTrigger value="query">Query</TabsTrigger>
               </TabsList>
               <TabsContent value="fields">
-                  <FieldsListCard fields={table.fields} />
+                  <FieldsListCard fields={tableMeta} />
               </TabsContent>
               <TabsContent value="preview">
                 <Card>
                   <CardContent className="px-0">
-                    <PreviewTable rows={table.samples} />
+                    <PreviewTable rows={tableData} />
                   </CardContent>
                 </Card>
                 {/* add preview here */}

@@ -23,7 +23,7 @@ export default async function Primitives(): Promise<JSX.Element> {
           <div className="flex-1">
             <div className="text-4xl py-4">{data.models.length} Models</div>
             <Separator />
-            {data.models.slice(0,5).map((model) => (
+            {data.models.slice(0,10).map((model) => (
               <div >
                 <div className="py-4 text-muted-foreground">{model.name}</div>
                 <Separator />
@@ -54,7 +54,7 @@ export default async function Primitives(): Promise<JSX.Element> {
           <div className="flex-1">
             <div className="text-4xl py-4">{data.ingestionPoints.length} Ingestion Points</div>
             <Separator />
-            {data.ingestionPoints.slice(0,5).map((ingestionPoint) => (
+            {data.ingestionPoints.slice(0,10).map((ingestionPoint) => (
               <div >
                 <div className="py-4 text-muted-foreground">{ingestionPoint.route_path}</div>
                 <Separator />
@@ -69,7 +69,7 @@ export default async function Primitives(): Promise<JSX.Element> {
           <div className="flex-1">
             <div className="text-4xl py-4">{data.queues.length} Queues</div>
             <Separator />
-            {data.queues.slice(0,5).map((queue) => (
+            {data.queues.slice(0,10).map((queue) => (
               <div >
                 <div className="py-4 text-muted-foreground">{queue}</div>
                 <Separator />
@@ -86,8 +86,8 @@ export default async function Primitives(): Promise<JSX.Element> {
               new Set(data.tables.map((table) => table.database)).size
               } Tables & Views </div>
             <Separator />
-            {data.tables.slice(0,5).map((table) => (
-              <Link href={`/infrastructure/database/${table.database}/table/${table.uuid}`}>
+            {data.tables.slice(0,10).map((table) => (
+              <Link href={`/infrastructure/databases/${table.database}/tables/${table.uuid}`}>
                 <div >
                   <div className="py-4 text-muted-foreground">{table.name}</div>
                   <Separator />

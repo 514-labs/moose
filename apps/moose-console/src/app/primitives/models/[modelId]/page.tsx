@@ -5,11 +5,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
 import { unstable_noStore as noStore } from "next/cache";
 import { Model, modelMock } from "../mock";
 import { infrastructureMock } from "app/infrastructure/mock";
-import { TablesListCard } from "components/table-list-card";
-import { ViewsListCard } from "components/view-list-card";
-import { QueuesListCard } from "components/queues-list-card";
-import { IngestionPointsCard } from "components/ingestion-points-overview-card";
-import { IngestionPointsListCard } from "components/ingestion-points-list-card";
 import Link from "next/link";
 import { Separator } from "components/ui/separator";
 import { cn } from "lib/utils";
@@ -64,8 +59,8 @@ export default async function Page({
             </TabsList>
             <Separator />
             <TabsContent value="ingestionPoints">
-              {infra.ingestionPoints.map((ingestionPoint) => (
-                <Link href={`/infrastructure/ingestion-points/${ingestionPoint.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
+              {infra.ingestionPoints.map((ingestionPoint, index) => (
+                <Link key={index} href={`/infrastructure/ingestion-points/${ingestionPoint.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                   <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                     <div className="py-4 text-muted-foreground">{ingestionPoint.name}</div>
                     <Separator />
@@ -74,8 +69,8 @@ export default async function Page({
               ))}
             </TabsContent>
             <TabsContent value="queues">
-              {infra.ingestionPoints.map((queue) => (
-                <Link href={`/infrastructure/queues/${queue.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
+              {infra.ingestionPoints.map((queue, index) => (
+                <Link key={index} href={`/infrastructure/queues/${queue.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                   <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                     <div className="py-4 text-muted-foreground">{queue.name}</div>
                     <Separator />
@@ -84,8 +79,8 @@ export default async function Page({
               ))}
             </TabsContent>
             <TabsContent value="tables">
-              {infra.databases.flatMap(x => x.tables.map((t) => ({ databaseId: x.id, ...t }))).map((table) => (
-                <Link href={`/infrastructure/databases/${table.databaseId}/tables/${table.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
+              {infra.databases.flatMap(x => x.tables.map((t) => ({ databaseId: x.id, ...t }))).map((table, index) => (
+                <Link key={index} href={`/infrastructure/databases/${table.databaseId}/tables/${table.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                   <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                     <div className="py-4 text-muted-foreground">{table.name}</div>
                     <Separator />
@@ -94,8 +89,8 @@ export default async function Page({
               ))}
             </TabsContent>
             <TabsContent value="views">
-              {infra.databases.flatMap(x => x.views.map((t) => ({ databaseId: x.id, ...t }))).map((view) => (
-                <Link href={`/infrastructure/databases/${view.databaseId}/views/${view.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
+              {infra.databases.flatMap(x => x.views.map((t) => ({ databaseId: x.id, ...t }))).map((view, index) => (
+                <Link key={index} href={`/infrastructure/databases/${view.databaseId}/views/${view.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                   <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                     <div className="py-4 text-muted-foreground">{view.name}</div>
                     <Separator />
@@ -105,7 +100,7 @@ export default async function Page({
 
             </TabsContent>
             <TabsContent value="snippets">
-              <code className="font-mono">// Some code</code>
+              <code className="font-mono">Some code</code>
             </TabsContent>
           </Tabs>
 

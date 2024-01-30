@@ -57,8 +57,8 @@ export const generateField = (): Field => ({
         commitHash: faker.git.commitSha(),
         author: {
             userName: faker.internet.userName(),
-            firstName: faker.name.firstName(),
-            lastName: faker.name.lastName(),
+            firstName: faker.person.firstName(),
+            lastName: faker.person.lastName(),
             email: faker.internet.email(),
             avatar: faker.internet.avatar(),
             profileLink: faker.internet.url(),

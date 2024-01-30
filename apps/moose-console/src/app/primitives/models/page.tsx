@@ -20,8 +20,8 @@ export default async function ModelsPage(): Promise<JSX.Element> {
               If you want to learn more about them, head to the <a className="underline" href="">documentation</a>
             </div>
             <Separator />
-            {data.models.map((model) => (
-              <Link href={`/primitives/models/${model.id}`} >
+            {data.models.map((model, index) => (
+              <Link key={index} href={`/primitives/models/${model.id}`} >
                 <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                   <div className="py-4 text-muted-foreground">{model.name}</div>
                   <Separator />

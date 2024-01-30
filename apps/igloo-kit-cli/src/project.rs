@@ -106,6 +106,8 @@ impl Project {
 
         let s = Config::builder()
             .add_source(File::from(project_file).required(true))
+            // TODO: infer language from the project file
+            .set_default("language", "Typescript")?
             .set_override("project_file_location", project_file_location)?
             .build()?;
 
@@ -173,6 +175,8 @@ impl Project {
         let config_file = PackageJsonFile {
             name: self.name.clone(),
             version: "0.0".to_string(),
+            // For local development of the CLI
+            // change `igloo-cli` to `<REPO_PATH>/apps/igloo-kit-cli/target/debug/igloo-cli`
             scripts: HashMap::from([("dev".to_string(), "igloo-cli dev".to_string())]),
             dependencies: HashMap::new(),
             dev_dependencies: HashMap::from([(

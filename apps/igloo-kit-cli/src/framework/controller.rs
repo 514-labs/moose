@@ -1,6 +1,7 @@
 use crate::framework::languages::CodeGenerator;
 use crate::infrastructure::olap::clickhouse::ClickhouseTable;
 use crate::infrastructure::stream;
+use crate::utilities::constants::SCHEMAS_DIR;
 
 use std::collections::HashMap;
 use std::path::Path;
@@ -33,20 +34,23 @@ use std::io::Error;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 
 use super::schema::parse_schema_file;
+use super::schema::DataModel;
 use super::schema::MatViewOps;
-use super::schema::Schema;
 use super::schema::TableOps;
 use super::typescript::TypescriptInterface;
 
+#[derive(Debug, Clone)]
 pub struct FrameworkObject {
+    pub data_model: DataModel,
     pub table: ClickhouseTable,
     pub topic: String,
     pub ts_interface: TypescriptInterface,
 }
 
-pub fn framework_object_mapper(s: Schema) -> FrameworkObject {
+pub fn framework_object_mapper(s: DataModel) -> FrameworkObject {
     let clickhouse_table = olap::clickhouse::mapper::std_table_to_clickhouse_table(s.to_table());
     FrameworkObject {
+        data_model: s.clone(),
         table: clickhouse_table.clone(),
         topic: s.name.clone(),
         ts_interface: framework::typescript::mapper::std_table_to_typescript_interface(
@@ -62,8 +66,29 @@ pub struct RouteMeta {
     pub view_name: Option<String>,
 }
 
-pub fn get_framework_objects(route: &Path) -> Result<Vec<FrameworkObject>, Error> {
-    let framework_objects = parse_schema_file::<FrameworkObject>(route, framework_object_mapper)
+pub fn get_all_framework_objects(
+    framework_objects: &mut Vec<FrameworkObject>,
+    schema_dir: &Path,
+) -> Result<Vec<FrameworkObject>, Error> {
+    if schema_dir.is_dir() {
+        for entry in std::fs::read_dir(schema_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_dir() {
+                debug!("Processing directory: {:?}", path);
+                get_all_framework_objects(framework_objects, &path)?;
+            } else {
+                debug!("Processing file: {:?}", path);
+                let mut objects = get_framework_objects_from_schema_file(&path)?;
+                framework_objects.append(&mut objects)
+            }
+        }
+    }
+    Ok(framework_objects.to_vec())
+}
+
+pub fn get_framework_objects_from_schema_file(path: &Path) -> Result<Vec<FrameworkObject>, Error> {
+    let framework_objects = parse_schema_file::<FrameworkObject>(path, framework_object_mapper)
         .map_err(|e| {
             Error::new(
                 ErrorKind::Other,
@@ -252,4 +277,74 @@ pub async fn remove_table_and_topics_from_schema_file_path(
         }
     }
     Ok(())
+}
+
+fn schema_file_path_to_ingest_route(app_dir: PathBuf, path: &Path, table_name: String) -> PathBuf {
+    let data_model_path = app_dir.join(SCHEMAS_DIR);
+    debug!("got data model path: {:?}", data_model_path);
+    debug!("processing schema file into route: {:?}", path);
+    let mut route = path.strip_prefix(data_model_path).unwrap().to_path_buf();
+
+    route.set_file_name(table_name);
+
+    debug!("route: {:?}", route);
+
+    PathBuf::from("ingest").join(route)
+}
+
+pub async fn process_objects(
+    framework_objects: Vec<FrameworkObject>,
+    project: &Project,
+    schema_file_path: &Path,
+    configured_client: &ConfiguredDBClient,
+    compilable_objects: &mut Vec<TypescriptObjects>, // Objects that require compilation after processing
+    route_table: &mut HashMap<PathBuf, RouteMeta>,
+) -> Result<(), Error> {
+    for fo in framework_objects {
+        let ingest_route = schema_file_path_to_ingest_route(
+            project.app_dir().clone(),
+            schema_file_path,
+            fo.table.name.clone(),
+        );
+        stream::redpanda::create_topic_from_name(fo.topic.clone())?;
+
+        debug!("Creating table & view: {:?}", fo.table.name);
+
+        let view_name = format!("{}_view", fo.table.name);
+
+        create_or_replace_table(&fo, configured_client).await?;
+        create_or_replace_view(&fo, view_name.clone(), configured_client).await?;
+
+        debug!("Table created: {:?}", fo.table.name);
+
+        let typescript_objects = create_language_objects(&fo, &ingest_route, project)?;
+        compilable_objects.push(typescript_objects);
+
+        route_table.insert(
+            ingest_route,
+            RouteMeta {
+                original_file_path: schema_file_path.to_path_buf(),
+                table_name: fo.table.name.clone(),
+                view_name: Some(view_name),
+            },
+        );
+    }
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_get_all_framework_objects() {
+        use super::*;
+        let manifest_location = env!("CARGO_MANIFEST_DIR");
+        let schema_dir = PathBuf::from(manifest_location)
+            .join("tests/test_project")
+            .join(SCHEMAS_DIR);
+        println!("schema_dir: {:?}", schema_dir);
+        let mut framework_objects = vec![];
+        let result = get_all_framework_objects(&mut framework_objects, &schema_dir);
+        assert!(result.is_ok());
+        assert!(framework_objects.len() == 2);
+    }
 }

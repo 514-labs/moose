@@ -14,9 +14,9 @@ const defaultData: {
 } = {
   [CLI_DATA_ID]: {
     models: [],
-    routes: [],
+    ingestionPoints: [],
     tables: [],
-    topics: [],
+    queues: [],
   },
 };
 
@@ -29,6 +29,49 @@ export interface Route {
   view_name: string;
 }
 
+// From the cli's schema.rs
+//
+// pub struct DataModel {
+//   pub db_name: String,
+//   pub columns: Vec<Column>,
+//   pub name: String,
+//   pub version: i8,
+// }
+//
+// pub struct Column {
+//   pub name: String,
+//   pub data_type: ColumnType,
+//   pub arity: FieldArity,
+//   pub unique: bool,
+//   pub primary_key: bool,
+//   pub default: Option<ColumnDefaults>,
+// }
+//
+//
+// pub enum ColumnDefaults {
+//   AutoIncrement,
+//   CUID,
+//   UUID,
+//   Now,
+// }
+
+export interface DataModel {
+  db_name: string;
+  columns: Column[];
+  name: string;
+  version: number;
+}
+
+export interface Column {
+  name: string;
+  data_type: string;
+  arity: string;
+  unique: boolean;
+  primary_key: boolean;
+  default: string;
+}
+
+
 export interface Table {
   database: string;
   dependencies_table: string[];
@@ -37,10 +80,12 @@ export interface Table {
   uuid: string;
 }
 
+
 export interface CliData {
-  routes: Route[];
+  models: DataModel[];
+  ingestionPoints: Route[];
   tables: Table[];
-  topics: string[];
+  queues: string[];
 }
 
 export async function putCliData(data: CliData): Promise<void> {

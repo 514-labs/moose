@@ -3,14 +3,12 @@
 import { BaseResultSet, createClient } from "@clickhouse/client-web";
 import { Row, Value, infrastructureMock } from "app/infrastructure/mock";
 import { Field } from "app/mock";
-import { Badge, badgeVariants } from "components/ui/badge";
-import { Button, buttonVariants } from "components/ui/button";
 import { Card, CardContent } from "components/ui/card";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "components/ui/resizable";
 import { Separator } from "components/ui/separator";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
-import { cn } from "lib/utils";
+
 
 import { unstable_noStore as noStore } from "next/cache";
 

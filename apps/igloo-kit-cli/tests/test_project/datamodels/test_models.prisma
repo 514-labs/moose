@@ -1,0 +1,11 @@
+model Awesome {
+    id Int
+    name String
+    description String
+}
+
+model User {
+  id      Int     
+  email   String   
+  name    String?
+}

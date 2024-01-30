@@ -1,7 +1,9 @@
-import { homeMock } from "./mock";
+
 import { Separator } from "components/ui/separator";
 import { Button } from "components/ui/button";
 import Link from "next/link";
+import { getCliData } from "./db";
+import { unstable_noStore as noStore } from 'next/cache';
 
 
 
@@ -9,9 +11,8 @@ import Link from "next/link";
 export default async function Primitives(): Promise<JSX.Element> {
   // This is to make sure the environment variables are read at runtime
   // and not during build time
-  // noStore();
-  // const data = await getCliData();
-  const data = homeMock;
+  noStore();
+  const data = await getCliData();
 
   return (
     <section className="p-4">
@@ -20,9 +21,9 @@ export default async function Primitives(): Promise<JSX.Element> {
         <div className="text-3xl py-6 text-muted-foreground">Primitives | Docs</div>
         <div className="flex flex-row space-x-5">
           <div className="flex-1">
-            <div className="text-4xl py-4">{data.modelMock.models.length} Models</div>
+            <div className="text-4xl py-4">{data.models.length} Models</div>
             <Separator />
-            {data.modelMock.models.slice(0,4).map((model) => (
+            {data.models.slice(0,5).map((model) => (
               <div >
                 <div className="py-4 text-muted-foreground">{model.name}</div>
                 <Separator />
@@ -51,11 +52,11 @@ export default async function Primitives(): Promise<JSX.Element> {
         <div className="text-3xl py-6 text-muted-foreground">Infrastructure | Docs</div>
         <div className="flex flex-row space-x-5">
           <div className="flex-1">
-            <div className="text-4xl py-4">{data.infrastructure.ingestionPoints.length} Ingestion Points</div>
+            <div className="text-4xl py-4">{data.ingestionPoints.length} Ingestion Points</div>
             <Separator />
-            {data.infrastructure.ingestionPoints.slice(0,4).map((ingestionPoint) => (
+            {data.ingestionPoints.slice(0,5).map((ingestionPoint) => (
               <div >
-                <div className="py-4 text-muted-foreground">{ingestionPoint.name}</div>
+                <div className="py-4 text-muted-foreground">{ingestionPoint.route_path}</div>
                 <Separator />
               </div>
             ))}
@@ -66,11 +67,11 @@ export default async function Primitives(): Promise<JSX.Element> {
             </div>
           </div>
           <div className="flex-1">
-            <div className="text-4xl py-4">{data.infrastructure.queues.length} Queues</div>
+            <div className="text-4xl py-4">{data.queues.length} Queues</div>
             <Separator />
-            {data.infrastructure.queues.slice(0,4).map((queue) => (
+            {data.queues.slice(0,5).map((queue) => (
               <div >
-                <div className="py-4 text-muted-foreground">{queue.name}</div>
+                <div className="py-4 text-muted-foreground">{queue}</div>
                 <Separator />
               </div>
             ))}
@@ -80,12 +81,15 @@ export default async function Primitives(): Promise<JSX.Element> {
 
           </div>
           <div className="flex-1">
-            <div className="text-4xl py-4">{data.infrastructure.databases.length} Databases</div>
+            <div className="text-4xl py-4">{
+              // Get the number of databases from the uniques in the tables
+              new Set(data.tables.map((table) => table.database)).size
+              } Tables & Views </div>
             <Separator />
-            {data.infrastructure.databases.slice(0,4).map((database) => (
-              <Link href={`/infrastructure/databases/${database.id}`}>
+            {data.tables.slice(0,5).map((table) => (
+              <Link href={`/infrastructure/database/${table.database}/table/${table.uuid}`}>
                 <div >
-                  <div className="py-4 text-muted-foreground">{database.name}</div>
+                  <div className="py-4 text-muted-foreground">{table.name}</div>
                   <Separator />
                 </div>
               </Link>

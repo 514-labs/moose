@@ -1,9 +1,8 @@
-use schema_ast::ast::FieldArity;
 use serde::Serialize;
 use tinytemplate::TinyTemplate;
 
 use crate::{
-    framework::schema::UnsupportedDataTypeError,
+    framework::schema::{FieldArity, UnsupportedDataTypeError},
     infrastructure::olap::clickhouse::{
         ClickhouseColumn, ClickhouseColumnType, ClickhouseFloat, ClickhouseInt, ClickhouseTable,
     },

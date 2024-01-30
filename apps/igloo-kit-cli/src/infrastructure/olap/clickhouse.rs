@@ -6,11 +6,11 @@ use std::fmt::{self};
 
 use clickhouse::Client;
 use log::debug;
-use schema_ast::ast::FieldArity;
+
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    framework::schema::{MatViewOps, TableOps, UnsupportedDataTypeError},
+    framework::schema::{FieldArity, MatViewOps, TableOps, UnsupportedDataTypeError},
     utilities::constants::REDPANDA_CONTAINER_NAME,
 };
 
@@ -266,7 +266,7 @@ pub async fn fetch_all_tables(
     let db_name = &configured_client.config.db_name;
 
     // NOTE: The order of the columns in the query is important and must match the order of your struct fields.
-    let query = "SELECT * FROM system.tables WHERE database != 'information_schema' AND database != 'INFORMATION_SCHEMA' AND database != 'system';";
+    let query = "SELECT uuid, database, name, dependencies_table, engine FROM system.tables WHERE (database != 'information_schema') AND (database != 'INFORMATION_SCHEMA') AND (database != 'system')";
 
     debug!("Fetching tables from: {:?}", db_name);
 

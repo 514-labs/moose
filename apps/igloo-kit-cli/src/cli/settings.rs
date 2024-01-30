@@ -93,7 +93,7 @@ pub fn init_config_file() -> Result<(), std::io::Error> {
 
 # Coming soon wall on all the CLI commands as we build the MVP.
 # if you want to try features as they are built, set this to false
-coming_soon_wall=true
+coming_soon_wall=false
 "#;
         std::fs::write(path, contents_toml)?;
     }

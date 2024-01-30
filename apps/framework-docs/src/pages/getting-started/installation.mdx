@@ -7,17 +7,28 @@ You will need the following dependencies installed on your machine before you ca
 ---
 ## Quick Start
 
-The easiest way to install MooseJS is to use the NPX command. This will download the latest version of MooseJS and run the initialization command for your project.
+#### Start a new MooseJS project
+
+The easiest way to get started with a new MooseJS application is to use `create-moose-app`. This will automatically create a project folder for you, and initialize a skeleton MooseJS app with the entire project structure you need to get started.
 ```txt filename="Terminal" copy
 npx create-moose-app my-app
 ```
 
+#### Run your new MooseJS app in Dev Mode
+
+MooseJS comes with a handy CLI for managing your MooseJS application. You can run the CLI via NPX, or see below for how to install the CLI. Use the CLI now to start your new application in Development mode -- navigate to your project folder and run:
+```txt filename="Terminal" copy
+npx @514labs/moose-cli dev
+```
+
+Now you can visit [http://localhost:3000](http://localhost:3000) to view your new MooseJS application. As you develop your MooseJS application, changes you make to your code base will be automatically reflected here in real time. Now try [creating your first data model](/building/model-data)!
+
 ---
-## Manual Installation
+## Install the Moose CLI
 
-If you'd like more flexibility, you can also also install MooseJS globally using NPM. This will allow you to run the MooseJS CLI from anywhere on your machine and initialize new projects.
-
+Instead of running the MooseJS CLI via NPX, you can also also install globally using NPM. This will get you a cleaner command interface, and better performance on the CLI.
 ```txt filename="Terminal" copy
 npm install -g @514labs/moose-cli
 ```
 
+Now instead of `npx @514labs/moose-cli [command]`, you can just use `moose [command]`.

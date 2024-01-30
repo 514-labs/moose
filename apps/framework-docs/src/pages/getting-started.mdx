@@ -1,9 +1,41 @@
-# Getting Started
-MooseJS is still in active development. We're working on stabilizing our APIs and adding more features. If you'd like to take it for a spin, we'd love to hear your feedback.
+# Introduction
+Welcome to the MooseJS documentation! MooseJS is still in early development, and we're talking to users and potential users all the time to make sure we're creating something valuable. If you're at all interested in what we're building here, then we'd love to talk to you! Please join our [Slack community](https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg) and reach out. We can't wait to hear from you!
 
-## Installation
-MooseJS is available on [npm](https://www.npmjs.com/package/moosejs). You can install it with the following command:
+---
 
-```txt filename="Terminal" copy
-npx create-moose-app my-app
-```
+## What is MooseJS?
+MooseJS is a JavaScript/Typescript framework for building data-intensive applications and services. Just like you use frontend application frameworks like NextJS to build your frontend applications, you can use MooseJS to build your data/analytics stack. MooseJS designed to be intuitive and scalable for software engineers who do not have a background in data engineering. You can combine MooseJS and your favorite frontend framework to build feature-rich, interactive data applications for your users and stakeholders.
+
+MooseJS is designed to be a batteries-included framework that helps you build your application without having to worry about the underlying data infrastructure. Under the hood, it's built with a Rust based core that helps you package, build and deploy your application to reliably take your apps from your local machine to production.
+
+## What types of applications can be built with MooseJS?
+MooseJS is great for any application that is based around a modern data/analytics stack. Any application where collecting data and extracting insights from that data is at the heart of the application. Common examples include:
+
+1. A data lake or data warehouse 
+2. An LLM-powered application
+3. An AI/ML model platform 
+4. A customer data analytics platform
+5. A monitoring / observability application 
+
+## What's the key functionality?
+
+### Intuitive primatives 
+The MooseJS framework offers three simple code-based primitives through which you can architect your entire application:
+- Data models, which define the structure of your data
+- Flows (coming soon), which move and transform your data
+- Insights (coming soon), which surface data to your users and downstream applications
+
+### Automated infrastructure
+Based on these primatives, MooseJS will automatically build and manage your underlying data infrastructure. The default infrastructure of a MooseJS application includes:
+- An ingestion API to capture data from other applications or services
+- A storage layer that queues up data on ingestion and stores it for later processing - based on open source (RedPanda) [https://redpanda.com/] and (Clickhouse) [https://clickhouse.com/]
+- An orchestration layer for managing data movement and transformations
+
+### Data engineering best practices built in
+MooseJS is a typed framework, so your entire infrastructure automatically has type checking built in on build + run. MooseJS also offers intuitive migration and change management workflows, for when your data structure inevitably grows and evolves.
+
+### Developer-first
+MooseJS is designed by software developers, for software developers. It's built from the ground up to enable software developement best practices, that are often hard to implement in the data engineering world.
+- Run your entire application locally in Dev mode, allowing you to develop and preview changes you make in real time
+- Utilize git-based version control and CI/CD friendly workflows
+- Built-in testing framework to ensure tests are run before deployment (coming soon)

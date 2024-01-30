@@ -44,7 +44,7 @@ type MapperFunc<I, O> = fn(i: I) -> O;
 // TODO: Make the parse schema file a variable and pass it into the function
 pub fn parse_schema_file<O>(
     path: &Path,
-    mapper: MapperFunc<Table, O>,
+    mapper: MapperFunc<DataModel, O>,
 ) -> Result<Vec<O>, ParsingError> {
     let schema_file = std::fs::read_to_string(path).map_err(|_| ParsingError::FileNotFound {
         path: path.to_path_buf(),

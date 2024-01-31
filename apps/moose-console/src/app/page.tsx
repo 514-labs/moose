@@ -24,10 +24,12 @@ export default async function Primitives(): Promise<JSX.Element> {
             <div className="text-4xl py-4">{data.models.length} Models</div>
             <Separator />
             {data.models.slice(0,10).map((model, index) => (
-              <div key={index}>
-                <div className="py-4 text-muted-foreground">{model.name}</div>
-                <Separator />
-              </div>
+              <Link href={`/primitives/models/${model.name}`} key={index}>
+                <div key={index} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
+                  <div className="py-4 text-muted-foreground">{model.name}</div>
+                  <Separator />
+                </div>
+              </Link>
             ))}
             <div className="py-5">
               <Link href="/primitives/models">
@@ -50,12 +52,12 @@ export default async function Primitives(): Promise<JSX.Element> {
       
       <div>
         <div className="text-3xl py-6 text-muted-foreground">Infrastructure | Docs</div>
-        <div className="flex flex-row space-x-5">
-          <div className="flex-1">
+        <div className="grid grid-cols-4 gap-4">
+          <div className="col-span-2 md:col-span-1">
             <div className="text-4xl py-4">{data.ingestionPoints.length} Ingestion Points</div>
             <Separator />
             {data.ingestionPoints.slice(0,10).map((ingestionPoint, index) => (
-              <div key={index}>
+              <div key={index} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                 <div className="py-4 text-muted-foreground">{ingestionPoint.route_path}</div>
                 <Separator />
               </div>
@@ -66,11 +68,11 @@ export default async function Primitives(): Promise<JSX.Element> {
               </Link>
             </div>
           </div>
-          <div className="flex-1">
+          <div className="col-span-2 md:col-span-1">
             <div className="text-4xl py-4">{data.queues.length} Queues</div>
             <Separator />
             {data.queues.slice(0,10).map((queue, index) => (
-              <div key={index}>
+              <div key={index} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer" >
                 <div className="py-4 text-muted-foreground">{queue}</div>
                 <Separator />
               </div>
@@ -78,17 +80,16 @@ export default async function Primitives(): Promise<JSX.Element> {
             <div className="py-5">
               <Button className="border-primary"  variant="outline">More</Button>
             </div>
-
           </div>
-          <div className="flex-1">
+          <div className="col-span-2 md:col-span-1">
             <div className="text-4xl py-4">{
               // Get the number of databases from the uniques in the tables
               new Set(data.tables.map((table) => table.database)).size
-              } Tables & Views </div>
+              } Tables  </div>
             <Separator />
-            {data.tables.slice(0,10).map((table, index) => (
+            {data.tables.filter(t => t.engine !== "MaterializedView" && !t.name.includes(".inner")).slice(0,10).map((table, index) => (
               <Link href={`/infrastructure/databases/${table.database}/tables/${table.uuid}`} key={index}>
-                <div >
+                <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer" >
                   <div className="py-4 text-muted-foreground">{table.name}</div>
                   <Separator />
                 </div>
@@ -99,7 +100,27 @@ export default async function Primitives(): Promise<JSX.Element> {
                 <Button className="border-primary" variant="outline">More</Button>
               </Link>
             </div>
+          </div>
 
+          <div className="col-span-2 md:col-span-1">
+            <div className="text-4xl py-4">{
+              // Get the number of databases from the uniques in the tables
+              new Set(data.tables.map((table) => table.database)).size
+              } Views </div>
+            <Separator />
+            {data.tables.filter(t => t.engine === "MaterializedView").slice(0,10).map((table, index) => (
+              <Link href={`/infrastructure/databases/${table.database}/tables/${table.uuid}`} key={index} >
+                <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
+                  <div className="py-4 text-muted-foreground">{table.name}</div>
+                  <Separator />
+                </div>
+              </Link>
+            ))}
+            <div className="py-5">
+              <Link href="/infrastructure/databases">
+                <Button className="border-primary" variant="outline">More</Button>
+              </Link>
+            </div>
           </div>
         </div>
       </div>

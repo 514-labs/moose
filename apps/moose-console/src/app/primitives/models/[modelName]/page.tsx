@@ -3,17 +3,17 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
 
 import { unstable_noStore as noStore } from "next/cache";
-import { Model, modelMock } from "../mock";
-import { infrastructureMock } from "app/infrastructure/mock";
 import Link from "next/link";
 import { Separator } from "components/ui/separator";
 import { cn } from "lib/utils";
 import { tabListStyle, tabTriggerStyle } from "components/style-utils";
+import { DataModel, getCliData } from "app/db";
 
 
-async function getModel(modelId: string): Promise<Model> {
+async function getModel(name: string): Promise<DataModel> {
   try {
-    return modelMock.models.find((q) => q.id === modelId);
+    const data = await getCliData();
+    return data.models.find(x => x.name === name);
   } catch (error) {
     return null
   }
@@ -24,15 +24,13 @@ async function getModel(modelId: string): Promise<Model> {
 export default async function Page({
   params,
 }: {
-  params: { modelId: string };
+  params: { modelName: string };
 }): Promise<JSX.Element> {
   // This is to make sure the environment variables are read at runtime
   // and not during build time
   noStore();
 
-  const model = await getModel(params.modelId);
-
-  const infra = infrastructureMock;
+  const model = await getModel(params.modelName);
 
   return (
     <section className="p-4 max-h-screen overflow-y-auto">
@@ -58,45 +56,44 @@ export default async function Page({
             </TabsList>
             <Separator />
             <TabsContent value="ingestionPoints">
-              {infra.ingestionPoints.map((ingestionPoint, index) => (
+              {/* {infra.ingestionPoints.map((ingestionPoint, index) => (
                 <Link key={index} href={`/infrastructure/ingestion-points/${ingestionPoint.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                   <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                     <div className="py-4 text-muted-foreground">{ingestionPoint.name}</div>
                     <Separator />
                   </div>
                 </Link>
-              ))}
+              ))} */}
             </TabsContent>
             <TabsContent value="queues">
-              {infra.ingestionPoints.map((queue, index) => (
+              {/* {infra.ingestionPoints.map((queue, index) => (
                 <Link key={index} href={`/infrastructure/queues/${queue.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                   <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                     <div className="py-4 text-muted-foreground">{queue.name}</div>
                     <Separator />
                   </div>
                 </Link>
-              ))}
+              ))} */}
             </TabsContent>
             <TabsContent value="tables">
-              {infra.databases.flatMap(x => x.tables.map((t) => ({ databaseId: x.id, ...t }))).map((table, index) => (
+              {/* {infra.databases.flatMap(x => x.tables.map((t) => ({ databaseId: x.id, ...t }))).map((table, index) => (
                 <Link key={index} href={`/infrastructure/databases/${table.databaseId}/tables/${table.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                   <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                     <div className="py-4 text-muted-foreground">{table.name}</div>
                     <Separator />
                   </div>
                 </Link>
-              ))}
+              ))} */}
             </TabsContent>
             <TabsContent value="views">
-              {infra.databases.flatMap(x => x.views.map((t) => ({ databaseId: x.id, ...t }))).map((view, index) => (
+              {/* {infra.databases.flatMap(x => x.views.map((t) => ({ databaseId: x.id, ...t }))).map((view, index) => (
                 <Link key={index} href={`/infrastructure/databases/${view.databaseId}/views/${view.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                   <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                     <div className="py-4 text-muted-foreground">{view.name}</div>
                     <Separator />
                   </div>
                 </Link>
-              ))}
-
+              ))} */}
             </TabsContent>
             <TabsContent value="snippets">
               <code className="font-mono">Some code</code>

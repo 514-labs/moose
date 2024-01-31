@@ -4,11 +4,13 @@ import { BaseResultSet, createClient } from "@clickhouse/client-web";
 import { getCliData } from "app/db";
 import { Row, Value, infrastructureMock } from "app/infrastructure/mock";
 import { Field } from "app/mock";
+import { tabListStyle, tabTriggerStyle } from "components/style-utils";
 import { Card, CardContent } from "components/ui/card";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "components/ui/resizable";
 import { Separator } from "components/ui/separator";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
+import { cn } from "lib/utils";
 
 
 import { unstable_noStore as noStore } from "next/cache";
@@ -96,29 +98,22 @@ interface FieldsListCardProps {
 }
 
 
-function FieldsListCard({ fields }: FieldsListCardProps) {
+function FieldsList({ fields }: FieldsListCardProps) {
   return (
-      <Card className="w-full">
-          <CardContent className="p-0">
-              <ul className="">
-                  {fields.map((field, index) => (
-                      <li key={index}>
-                          <div className="py-2 flex flex-row p-4">
-                              <div>
-                                  <div className="text-xl">{field.name}</div>
-                                  <div className="text-muted-foreground">{field.type}</div>
-                              </div>
-                              <span className="flex-grow"/>
-                              {/* <div>
-                                  {field.rowCount.toLocaleString("en-us")} rows
-                              </div> */}
-                          </div>
-                          {index < fields.length - 1 && <Separator/>}
-                      </li>
-                  ))}
-              </ul>                
-          </CardContent>
-      </Card>
+      <div>
+          {fields.map((field, index) => (
+              <div key={index} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
+                  <div className="py-4 flex flex-row ">
+                      <div>
+                          <div className="text-xl">{field.name}</div>
+                          <div className="text-muted-foreground">{field.type}</div>
+                      </div>
+                      <span className="flex-grow"/>
+                  </div>
+                  <Separator/>
+              </div>
+          ))}
+      </div>                
   )
 }
 
@@ -148,13 +143,14 @@ export default async function Page({
         </div>
         <div className="flex flex-row space-x-3 ">
             <Tabs defaultValue="fields" className="flex-grow">
-              <TabsList>
-                  <TabsTrigger value="fields">Fields</TabsTrigger>
-                  <TabsTrigger value="preview">Preview</TabsTrigger>
-                  <TabsTrigger value="query">Query</TabsTrigger>
+              <TabsList className={cn(tabListStyle)}>
+                  <TabsTrigger className={cn(tabTriggerStyle)} value="fields">Fields</TabsTrigger>
+                  <TabsTrigger className={cn(tabTriggerStyle)} value="preview">Preview</TabsTrigger>
+                  <TabsTrigger className={cn(tabTriggerStyle)} value="query">Query</TabsTrigger>
               </TabsList>
+              <Separator />
               <TabsContent value="fields">
-                  <FieldsListCard fields={tableMeta} />
+                  <FieldsList fields={tableMeta} />
               </TabsContent>
               <TabsContent value="preview">
                 <Card>

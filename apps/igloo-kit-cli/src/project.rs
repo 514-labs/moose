@@ -11,6 +11,7 @@
 //! - `project_file_location` - The location of the project file on disk
 //! ```
 
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
@@ -20,7 +21,7 @@ use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
 use crate::utilities::constants::{
-    APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, PROJECT_CONFIG_FILE, SCHEMAS_DIR,
+    APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, PROJECT_CONFIG_FILE_TS, SCHEMAS_DIR,
 };
 use config::{Config, ConfigError, File};
 use log::debug;
@@ -28,9 +29,13 @@ use serde::{Deserialize, Serialize};
 use std::path::Path;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-struct ProjectConfigFile {
+#[serde(rename_all = "camelCase")]
+struct PackageJsonFile {
     pub name: String,
-    pub language: SupportedLanguages,
+    pub version: String,
+    pub scripts: HashMap<String, String>,
+    pub dependencies: HashMap<String, String>,
+    pub dev_dependencies: HashMap<String, String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -69,7 +74,7 @@ impl Project {
         location = location
             .canonicalize()
             .expect("The directory provided does not exist");
-        location.push(PROJECT_CONFIG_FILE);
+        location.push(PROJECT_CONFIG_FILE_TS);
 
         debug!("Project file location: {:?}", location);
 
@@ -91,7 +96,7 @@ impl Project {
 
     pub fn load(directory: PathBuf) -> Result<Self, ConfigError> {
         let mut project_file = directory.clone();
-        project_file.push(PROJECT_CONFIG_FILE);
+        project_file.push(PROJECT_CONFIG_FILE_TS);
 
         let project_file_location = project_file
             .clone()
@@ -101,6 +106,8 @@ impl Project {
 
         let s = Config::builder()
             .add_source(File::from(project_file).required(true))
+            // TODO: infer language from the project file
+            .set_default("language", "Typescript")?
             .set_override("project_file_location", project_file_location)?
             .build()?;
 
@@ -137,7 +144,7 @@ impl Project {
     }
 
     // This is a Result of io::Error because the caller
-    // can be retruning a Result of io::Error or a  Routine Failure
+    // can be returning a Result of io::Error or a Routine Failure
     pub fn internal_dir(&self) -> std::io::Result<PathBuf> {
         let mut internal_dir = self.project_file_location.clone();
         internal_dir.pop();
@@ -146,13 +153,13 @@ impl Project {
         if !internal_dir.is_dir() {
             if internal_dir.exists() {
                 debug!("Internal dir exists as a file: {:?}", internal_dir);
-                std::io::Error::new(
+                return Err(std::io::Error::new(
                     std::io::ErrorKind::Other,
                     format!(
                         "The {} file exists but is not a directory",
                         CLI_PROJECT_INTERNAL_DIR
                     ),
-                );
+                ));
             } else {
                 debug!("Creating internal dir: {:?}", internal_dir);
                 std::fs::create_dir_all(&internal_dir)?;
@@ -165,14 +172,20 @@ impl Project {
     }
 
     pub fn write_to_file(&self) -> Result<(), std::io::Error> {
-        let config_file = ProjectConfigFile {
+        let config_file = PackageJsonFile {
             name: self.name.clone(),
-            language: self.language,
+            version: "0.0".to_string(),
+            // For local development of the CLI
+            // change `igloo-cli` to `<REPO_PATH>/apps/igloo-kit-cli/target/debug/igloo-cli`
+            scripts: HashMap::from([("dev".to_string(), "igloo-cli dev".to_string())]),
+            dependencies: HashMap::new(),
+            dev_dependencies: HashMap::from([(
+                "@514labs/moose-cli".to_string(),
+                "latest".to_string(),
+            )]),
         };
 
-        let toml_project = toml::to_string(&config_file);
-
-        match toml_project {
+        match serde_json::to_string_pretty(&config_file) {
             Ok(project) => {
                 std::fs::write(&self.project_file_location, project)?;
                 Ok(())

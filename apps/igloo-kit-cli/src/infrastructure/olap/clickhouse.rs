@@ -237,7 +237,7 @@ pub async fn check_ready(
     crate::utilities::retry::retry(
         || run_query(&dummy_query, configured_client),
         |i, e| {
-            i < 5
+            i < 10
                 && match e {
                     clickhouse::error::Error::Network(v) => {
                         let err_string = v.to_string();

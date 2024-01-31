@@ -21,11 +21,14 @@ use self::{
 };
 use crate::cli::settings::init_config_file;
 use crate::project::Project;
+use crate::utilities::git::is_git_repo;
 use clap::Parser;
 use commands::Commands;
+use home::home_dir;
 use logger::setup_logging;
 use settings::{read_settings, Settings};
 use std::path::Path;
+use std::process::exit;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true))]
@@ -60,6 +63,19 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 );
 
                 let dir_path = Path::new(location);
+
+                if dir_path.canonicalize().unwrap() == home_dir().unwrap().canonicalize().unwrap() {
+                    show_message!(
+                        MessageType::Error,
+                        Message {
+                            action: "Init".to_string(),
+                            details: "You cannot create a project in your home directory"
+                                .to_string(),
+                        }
+                    );
+                    exit(1);
+                }
+
                 let project = Project::from_dir(dir_path, name.clone(), *language);
 
                 debug!("Project: {:?}", project);
@@ -74,6 +90,16 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 project
                     .write_to_file()
                     .expect("Failed to write project to file");
+
+                let is_git_repo =
+                    is_git_repo(dir_path).expect("Failed to check if directory is a git repo");
+                if !is_git_repo {
+                    crate::utilities::git::create_init_commit(&project, dir_path);
+                    show_message!(
+                        MessageType::Success,
+                        Message::new("Created".to_string(), "Git Repository".to_string())
+                    );
+                }
             }
             Commands::Dev {} => {
                 info!("Running dev command");

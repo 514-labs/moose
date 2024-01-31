@@ -303,7 +303,7 @@ pub struct CreateDockerNetwork {
 }
 
 impl CreateDockerNetwork {
-    fn new(network_name: &'static str) -> Self {
+    pub fn new(network_name: &'static str) -> Self {
         Self { network_name }
     }
 }

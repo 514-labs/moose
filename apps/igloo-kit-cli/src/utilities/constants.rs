@@ -1,6 +1,6 @@
 pub const CLI_VERSION: &str = env!("CARGO_PKG_VERSION");
 
-pub const PROJECT_CONFIG_FILE: &str = "project.toml";
+pub const PROJECT_CONFIG_FILE_TS: &str = "package.json";
 
 pub const CLI_CONFIG_FILE: &str = "config.toml";
 pub const CLI_USER_DIRECTORY: &str = ".igloo";

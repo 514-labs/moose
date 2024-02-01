@@ -40,7 +40,7 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <div className=" h-screen w-full">
+          <div className=" h-screen w-full flex flex-col">
             <nav className="flex flex-row w-screen px-4">
                 <header className="flex text-lg">
                   <span className="py-4">moosejs <span className="text-muted-foreground">console</span></span>
@@ -69,7 +69,7 @@ export default function RootLayout({
               </div>
               
             </nav> */}
-            <section className="flex-grow overflow-hidden">
+            <section className="flex flex-grow overflow-hidden">
               {children}
             </section>
           </div>

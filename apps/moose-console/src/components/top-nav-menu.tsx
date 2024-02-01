@@ -47,7 +47,7 @@ const sections: Section[] = [
       ]
   },
   {
-      name: "Infrastructure",
+      name: "Infra",
       href: "/infrastructure",
       links: [
           {
@@ -109,7 +109,7 @@ export const TopNavMenu = () => {
         ))}
         <NavigationMenuItem>
           <NavigationMenuLink href="/docs" className={cn(navigationMenuTriggerStyle(), "text-lg font-normal")}>
-                Documentation
+                Docs
           </NavigationMenuLink>
         </NavigationMenuItem>
       </NavigationMenuList>

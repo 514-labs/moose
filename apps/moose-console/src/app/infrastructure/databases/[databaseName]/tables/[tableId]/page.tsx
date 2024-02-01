@@ -2,14 +2,16 @@
 
 import { BaseResultSet, createClient } from "@clickhouse/client-web";
 import { getCliData } from "app/db";
-import { Row, Value, infrastructureMock } from "app/infrastructure/mock";
 import { Field } from "app/mock";
+import { PreviewTable } from "components/preview-table";
+import QueryInterface from "components/query-interface";
 import { tabListStyle, tabTriggerStyle } from "components/style-utils";
 import { Card, CardContent } from "components/ui/card";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "components/ui/resizable";
 import { Separator } from "components/ui/separator";
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
+import { Textarea } from "components/ui/textarea";
 import { cn } from "lib/utils";
 
 
@@ -56,41 +58,11 @@ async function getTable(databaseName: string, tableName: string): Promise<any> {
   });
 
   return resultSet.json();
-  
 }
 
-interface TableProps {
-  rows: Row[];
-}
 
-const PreviewTable = ({ rows }: TableProps) => {
-  // Get column headers (keys from the first object in the data array)
-  const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
 
-  return (
-    <Table>
-      <TableCaption>A preview of the data in your table.</TableCaption>
-      <TableHeader>
-        <TableRow>
-          {headers.map((header, index) => (
-            <TableHead key={index} className="font-medium">
-              {header}
-            </TableHead>
-          ))} 
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((row, index) => (
-          <TableRow key={index}>
-            {headers.map((value, index) => (
-              <TableCell key={index}>{row[value]}</TableCell>
-            ))}
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
-  );
-};
+
 
 
 interface FieldsListCardProps {
@@ -136,14 +108,14 @@ export default async function Page({
   const tableData = await getTable(params.databaseName, tableName);
 
   return (
-    <section className="p-4 max-h-screen overflow-y-auto">
+    <section className="p-4 max-h-screen flex-grow overflow-y-auto flex flex-col">
         <div className="py-10">
           <div className="text-6xl">{table.name}</div>
           <div className="text-muted-foreground">{table.engine}</div>
         </div>
-        <div className="flex flex-row space-x-3 ">
-            <Tabs defaultValue="fields" className="flex-grow">
-              <TabsList className={cn(tabListStyle)}>
+        <div className="space-x-3 flex-grow">
+            <Tabs defaultValue="fields" className="h-full flex flex-col">
+              <TabsList className={cn(tabListStyle, "justify-start")}>
                   <TabsTrigger className={cn(tabTriggerStyle)} value="fields">Fields</TabsTrigger>
                   <TabsTrigger className={cn(tabTriggerStyle)} value="preview">Preview</TabsTrigger>
                   <TabsTrigger className={cn(tabTriggerStyle)} value="query">Query</TabsTrigger>
@@ -160,39 +132,12 @@ export default async function Page({
                 </Card>
                 {/* add preview here */}
               </TabsContent>
-              <TabsContent value="query">
+              <TabsContent className="flex-grow" value="query">
                 {/* add query here */}
-                <Card>
-                  <CardContent className="p-0 h-80">
-                    <ResizablePanelGroup
-                      direction="vertical"
-                    >
-                      <ResizablePanel defaultSize={80}>
-                        <ResizablePanelGroup direction="horizontal">
-                          <ResizablePanel defaultSize={75}>
-                            <div className="flex h-full items-center justify-center p-6">
-                              <span className="font-semibold">Query section</span>
-                            </div>
-                          </ResizablePanel>
-                          <ResizableHandle withHandle />
-                          <ResizablePanel defaultSize={25}>
-                            <div className="flex h-full items-center justify-center p-6">
-                              <span className="font-semibold">Autocomplete objects like fields</span>
-                            </div>
-                          </ResizablePanel>
-                        </ResizablePanelGroup>
-                      </ResizablePanel>
-                      <ResizableHandle withHandle />
-                      <ResizablePanel defaultSize={20}>
-                        <div className="flex h-fulltems-center p-6">
-                          <span className="font-semibold">Result set</span>
-                        </div>
-                      </ResizablePanel>
-                    </ResizablePanelGroup>
-                  </CardContent>
-                </Card>
+                  <div className="p-0 h-full">
+                    <QueryInterface table={table} />
+                  </div>
               </TabsContent>
-              
           </Tabs>
          
         </div>

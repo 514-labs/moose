@@ -5,9 +5,11 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "./ui/resiz
 import { Textarea } from "./ui/textarea"
 import { Table } from "app/db"
 import { Button } from "./ui/button"
-import { useState } from "react"
+import { Dispatch, MutableRefObject, SetStateAction, useRef, useState } from "react"
 import { createClient } from "@clickhouse/client-web"
 import { PreviewTable } from "./preview-table"
+import { Badge } from "./ui/badge"
+import { Card, CardContent } from "./ui/card"
 
 function getClient() {
     const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || "localhost";
@@ -27,6 +29,116 @@ function getClient() {
     return client;
 }
 
+const sqlKeyWords = [
+    "SELECT",
+    "FROM",
+    "WHERE",
+    "GROUP BY",
+    "ORDER BY",
+    "LIMIT",
+    "AND",
+    "OR",
+    "AS",
+    "JOIN",
+    "LEFT JOIN",
+    "RIGHT JOIN",
+    "INNER JOIN",
+    "OUTER JOIN",
+    "ON",
+    "IS",
+    "NOT",
+    "NULL",
+    "LIKE",
+    "IN",
+    "BETWEEN",
+    "EXISTS",
+    "UNION",
+    "ALL",
+    "ANY",
+    "CASE",
+    "WHEN",
+    "THEN",
+    "ELSE",
+    "END",
+    "CREATE",
+    "TABLE",
+    "DROP",
+    "ALTER",
+    "INDEX",
+    "VIEW",
+    "SEQUENCE",
+    "TRIGGER",
+    "PROCEDURE",
+    "FUNCTION",
+    "PACKAGE",
+    "LOCK",
+    "EXPLAIN",
+    "DESCRIBE",
+    "ANALYZE",
+    "GRANT",
+    "REVOKE",
+    "PRIVILEGES",
+    "COMMIT",
+    "ROLLBACK",
+    "SAVEPOINT",
+    "SET",
+    "SESSION",
+    "SYSTEM",
+    "USER",
+    "DATABASE",
+    "SCHEMA",
+    "DOMAIN",
+    "TYPE",
+    "CHARACTER",
+    "COLLATION",
+    "TRANSLATION",
+    "SERVER",
+    "CONNECTION",
+    "STATEMENT",
+    "PREPARE",
+    "EXECUTE",
+    "DEALLOCATE",
+    "WORK",
+    "ISOLATION",
+    "LEVEL",
+    "READ",
+    "WRITE",
+    "ONLY",
+    "CALL",
+    "RETURN",
+    "HANDLER",
+    "CONDITION",
+    "SIGNAL",
+    "RESIGNAL",
+    "ITERATE",
+    "LEAVE",
+    "LOOP",
+    "REPEAT",
+    "UNTIL",
+    "OPEN",
+    "CLOSE",
+    "FETCH",
+    "DECLARE",
+    "CURSOR",
+    "CONTINUE",
+    "EXIT",
+    "GET",
+    "DIAGNOSTICS",
+    "STACKED",
+    "DYNAMIC",
+    "STATIC",
+    "SENSITIVE",
+    "PRIOR",
+    "SQLSTATE",
+    "SQLCODE",
+    "SQLERROR",
+    "SQLWARNING",
+    "SQLNOTFOUND",
+    "SQLROWCOUNT",
+    "SQLFOUND",
+    "SQL",
+]
+
 async function runQuery(queryString: string): Promise<any> {
     const client = getClient();
   
@@ -40,12 +152,32 @@ async function runQuery(queryString: string): Promise<any> {
 
 
 interface QueryInterfaceProps {
-    table: Table
+    table: Table,
+    related: Table[]
 }
 
-export default function QueryInterface({ table }: QueryInterfaceProps) {
+const insertSomeText = (insert: string, originalValue: string, ref: MutableRefObject<HTMLTextAreaElement>, setter: Dispatch<SetStateAction<string>>) => {
+    const selectionStart = ref.current.selectionStart;
+    const selectionEnd = ref.current.selectionEnd;
+ 
+    let newValue =
+      originalValue.substring(0, selectionStart) +
+      insert +
+      originalValue.substring(selectionEnd, originalValue.length);
+    setter(newValue);
+ };
+ 
+
+export default function QueryInterface({ table, related }: QueryInterfaceProps) {
+    // Create a ref to the textarea
+    const textareaRef = useRef<HTMLTextAreaElement>(null);
+    const tables = related.filter(t => !t.name.includes(".inner")).map(t => `${t.database}.${t.name}`)
+
     const[value, setValue] = useState(`SELECT * FROM ${table.database}.${table.name};`)
     const [results, setResults] = useState<any[]>([])
+    const [sqlKeyWordCount, setSqlKeyWordCount] = useState(12)
+    const [tableCount, setTableCount] = useState(12)
+    
 
     return (
         <ResizablePanelGroup
@@ -56,13 +188,47 @@ export default function QueryInterface({ table }: QueryInterfaceProps) {
             <ResizablePanelGroup direction="horizontal">
                 <ResizablePanel defaultSize={75}>
                 <div className="flex h-full">
-                    <Textarea className="border-0 h-full font-mono" placeholder="type your query here" value={value} onChange={(e) => setValue(e.target.value)}/>
+                    <Textarea ref={textareaRef} className="border-0 h-full font-mono" placeholder="type your query here" value={value} onChange={(e) => setValue(e.target.value)}/>
                 </div>
                 </ResizablePanel>
                 <ResizableHandle withHandle />
                 <ResizablePanel defaultSize={25}>
-                <div className="flex h-full  p-6">
-                    <span className="font-semibold">Autocomplete objects like fields</span>
+                <div className="flex h-full px-4 w-full overflow-y-auto">
+                    <div className="grow">
+                        <div className="text-xs font-mono flex flex-row items-center">
+                            <span>SQL</span> <span className="flex-grow"/> 
+                            {
+                                sqlKeyWordCount < sqlKeyWords.length ? 
+                                <Button variant="ghost" onClick={() => setSqlKeyWordCount(sqlKeyWords.length)}>more</Button> : 
+                                <Button variant="ghost" onClick={() => setSqlKeyWordCount(5)}>less</Button>
+                            }
+                        </div>
+                        <div className="flex flex-row space-x-1 py-2 flex-wrap">
+                            {sqlKeyWords.slice(0, sqlKeyWordCount).map((word, index) => (
+                                <Badge onClick={(e: any ) => {
+                                    insertSomeText(word, value, textareaRef, setValue)
+                                }} className="text-nowrap my-1" variant="outline" key={index}>{word}</Badge>
+                            ))}
+                        </div>
+                        <div className="text-xs font-mono flex flex-row items-center">
+                            <span className="py-2">Tables</span> <span className="flex-grow"/> 
+                            {
+                                tableCount < tables.length ? 
+                                <Button variant="ghost" onClick={() => setTableCount(tables.length)}>more</Button> : 
+                                tables.length < tableCount ?
+                                "" :
+                                <Button variant="ghost" onClick={() => setTableCount(5)}>less</Button>
+                            }
+                        </div>
+                        <div className="flex flex-row space-x-1 py-2 flex-wrap">
+                            {tables.slice(0, tableCount).map((word, index) => (
+                                <Badge onClick={(e:any) => {
+                                    insertSomeText(word, value, textareaRef, setValue)
+                                }} className="text-nowrap my-1" variant="outline" key={index}>{word}</Badge>
+                            ))}
+                        </div>
+                    </div>
+                    
                 </div>
                 </ResizablePanel>
             </ResizablePanelGroup>
@@ -82,9 +248,11 @@ export default function QueryInterface({ table }: QueryInterfaceProps) {
                     
                     }>Run</Button>
                 </div>
-                <div>
+                <Card className="mt-4 px-0">
+                    <CardContent className="px-0">
                     {results ? <PreviewTable rows={results} /> : ""}
-                </div>
+                    </CardContent>
+                </Card>
             </div>
             </ResizablePanel>
         </ResizablePanelGroup>

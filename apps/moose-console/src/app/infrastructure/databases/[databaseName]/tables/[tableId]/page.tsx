@@ -125,7 +125,7 @@ export default async function Page({
                   <FieldsList fields={tableMeta} />
               </TabsContent>
               <TabsContent value="preview">
-                <Card>
+                <Card className="mt-4">
                   <CardContent className="px-0">
                     <PreviewTable rows={tableData} />
                   </CardContent>
@@ -135,7 +135,7 @@ export default async function Page({
               <TabsContent className="flex-grow" value="query">
                 {/* add query here */}
                   <div className="p-0 h-full">
-                    <QueryInterface table={table} />
+                    <QueryInterface table={table} related={data.tables}/>
                   </div>
               </TabsContent>
           </Tabs>

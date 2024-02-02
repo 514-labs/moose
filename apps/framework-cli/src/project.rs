@@ -190,7 +190,7 @@ impl Project {
                 std::fs::write(&self.project_file_location, project)?;
                 Ok(())
             }
-            Err(err) => Err(std::io::Error::new(
+            Err(_err) => Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 "Failed to serialize project",
             )),

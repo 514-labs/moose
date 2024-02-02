@@ -68,7 +68,7 @@ export default async function Primitives(): Promise<JSX.Element> {
             <OverviewCardHeader title="Insights" numItems={0} href="docs" />
             <Separator />
             <div className="py-4 grow flex flex-col justify-center">
-              <div className="text-muted-foreground">Insights are coming soon. We're currently gathering feedback from our community.</div>
+              <div className="text-muted-foreground">Insights are coming soon. We&apos;re currently gathering feedback from our community.</div>
               <div className="flex space-x-4">
                 <Button variant="outline" className="mt-4">Provide your input</Button>
               </div>

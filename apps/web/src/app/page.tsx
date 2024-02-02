@@ -21,7 +21,7 @@ export const metadata: Metadata = {
   },
 };
 
-const iglooSection = {
+const frameworkSection = {
   heading: "start building today",
   description:
     "Start building your data-intensive application today. Moose.js is free to use and open source. If you'd like to contribute, check out our github or join our Slack.",
@@ -52,17 +52,17 @@ const practices = [
   {
     heading: "Test Efficiently",
     description:
-      "Write tests for your application using the languages you love. Igloo supports your favorite frameworks in Typescript and Python.",
+      "Write tests for your application using the languages you love. Moose supports your favorite frameworks in Typescript and Python.",
   },
   {
     heading: "Effortless Setup",
     description:
-      "Get up and running with your application in minutes. Igloo comes with a powerful CLI to help you automate development tasks.",
+      "Get up and running with your application in minutes. Moose comes with a powerful CLI to help you automate development tasks.",
   },
   {
     heading: "Simplified Abstractions",
     description:
-      "Igloos abstractions help you focus on building your end-to-end application without worrying about the underlying infrastructure.",
+      "Moose abstractions help you focus on building your end-to-end application without worrying about the underlying infrastructure.",
   },
 ];
 
@@ -72,7 +72,7 @@ const features = [
   {
     heading: "full data stack",
     description:
-      "We've composed igloo from best-in-class data infrastructure to enable you to run your entire modern data stack on your local machine. No more configuring connections to start building. ",
+      "We've composed moose from best-in-class data infrastructure to enable you to run your entire modern data stack on your local machine. No more configuring connections to start building. ",
   },
   {
     heading: "data modeling",
@@ -233,14 +233,14 @@ export default function Home() {
           <AnimatedHeading
             className="text-black 2xl:text-8xl"
             position={0.75}
-            content={iglooSection.heading}
+            content={frameworkSection.heading}
             onScroll
             size="display"
           />
           <AnimatedDescription
             position={1}
             className=""
-            content={iglooSection.description}
+            content={frameworkSection.description}
             onScroll
           />
           <div>

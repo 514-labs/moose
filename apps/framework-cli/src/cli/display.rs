@@ -15,7 +15,7 @@ use std::sync::{Arc, RwLock};
 ///     MessageType::Info,
 ///     Message {
 ///         action: "Loading Config".to_string(),
-///         details: "Reading configuration from ~/.igloo/config.toml".to_string(),
+///         details: "Reading configuration from ~/.moose/config.toml".to_string(),
 ///     });
 /// ```
 ///
@@ -32,7 +32,7 @@ use std::sync::{Arc, RwLock};
 /// ```
 /// Message {
 ///    action: "Loading Config".to_string(),
-///    details: "Reading configuration from ~/.igloo/config.toml".to_string(),
+///    details: "Reading configuration from ~/.moose/config.toml".to_string(),
 /// }
 /// ```
 ///
@@ -74,12 +74,12 @@ pub fn styled_banner() -> String {
 We're simplifying how engineers build, deploy and maintain data-intensive applications 
 with the first full-stack data-intensive framework.  
 
-Join our community to keep up with our progress, contribute to igloo or join our team:
+Join our community to keep up with our progress, contribute to moose or join our team:
 {}
 ---------------------------------------------------------------------------------------
 
 "#,
-        style("# Igloo is coming soon").bold(),
+        style("# Moose is coming soon").bold(),
         style("https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg").color256(118).bold()
     )
 }

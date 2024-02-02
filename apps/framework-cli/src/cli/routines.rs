@@ -5,8 +5,8 @@
 //!
 //! ## Example
 //! ```
-//! use igloo::cli::routines::{Routine, RoutineSuccess, RoutineFailure, RunMode};
-//! use igloo::cli::display::{Message, MessageType};
+//! use crate::cli::routines::{Routine, RoutineSuccess, RoutineFailure, RunMode};
+//! use crate::cli::display::{Message, MessageType};
 //!
 //! struct HelloWorldRoutine {}
 //! impl HelloWorldRoutine {

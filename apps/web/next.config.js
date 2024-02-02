@@ -2,7 +2,6 @@ module.exports = {
   reactStrictMode: true,
 };
 
-
 // Injected content via Sentry wizard below
 
 const { withSentryConfig } = require("@sentry/nextjs");

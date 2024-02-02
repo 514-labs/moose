@@ -105,7 +105,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 info!("Running dev command");
 
                 let project = Project::load_from_current_dir()
-                    .expect("No project found, please run `igloo init` to create a project");
+                    .expect("No project found, please run `moose init` to create a project");
 
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
@@ -131,7 +131,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
             Commands::Clean {} => {
                 let run_mode = RunMode::Explicit {};
                 let project = Project::load_from_current_dir()
-                    .expect("No project found, please run `igloo init` to create a project");
+                    .expect("No project found, please run `moose init` to create a project");
 
                 let mut controller = RoutineController::new();
                 controller.add_routine(Box::new(CleanProject::new(project, run_mode)));
@@ -147,7 +147,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 }
 
 pub async fn cli_run() {
-    setup_user_directory().expect("Failed to setup igloo user directory");
+    setup_user_directory().expect("Failed to setup moose user directory");
     init_config_file().unwrap();
 
     let config = read_settings().unwrap();

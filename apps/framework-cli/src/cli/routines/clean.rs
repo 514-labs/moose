@@ -73,17 +73,17 @@ impl Routine for RemoveDockerNetwork {
 }
 
 struct DeleteRedpandaMountVolume {
-    igloo_dir: PathBuf,
+    internal_dir: PathBuf,
 }
 impl DeleteRedpandaMountVolume {
-    fn new(igloo_dir: PathBuf) -> Self {
-        Self { igloo_dir }
+    fn new(internal_dir: PathBuf) -> Self {
+        Self { internal_dir }
     }
 }
 
 impl Routine for DeleteRedpandaMountVolume {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let mount_dir = self.igloo_dir.join(".panda_house");
+        let mount_dir = self.internal_dir.join(".panda_house");
         fs::remove_dir_all(&mount_dir).map_err(|err| {
             RoutineFailure::new(
                 Message::new(
@@ -105,16 +105,16 @@ impl Routine for DeleteRedpandaMountVolume {
 }
 
 struct DeleteClickhouseMountVolume {
-    igloo_dir: PathBuf,
+    internal_dir: PathBuf,
 }
 impl DeleteClickhouseMountVolume {
-    fn new(igloo_dir: PathBuf) -> Self {
-        Self { igloo_dir }
+    fn new(internal_dir: PathBuf) -> Self {
+        Self { internal_dir }
     }
 }
 impl Routine for DeleteClickhouseMountVolume {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let mount_dir = self.igloo_dir.join(".clickhouse");
+        let mount_dir = self.internal_dir.join(".clickhouse");
         fs::remove_dir_all(&mount_dir).map_err(|err| {
             RoutineFailure::new(
                 Message::new(
@@ -136,18 +136,18 @@ impl Routine for DeleteClickhouseMountVolume {
 }
 
 struct DeleteModelVolume {
-    igloo_dir: PathBuf,
+    internal_dir: PathBuf,
 }
 
 impl DeleteModelVolume {
-    fn new(igloo_dir: PathBuf) -> Self {
-        Self { igloo_dir }
+    fn new(internal_dir: PathBuf) -> Self {
+        Self { internal_dir }
     }
 }
 
 impl Routine for DeleteModelVolume {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let mount_dir = self.igloo_dir.join("models");
+        let mount_dir = self.internal_dir.join("models");
         fs::remove_dir_all(&mount_dir).map_err(|err| {
             RoutineFailure::new(
                 Message::new(

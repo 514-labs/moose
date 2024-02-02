@@ -8,7 +8,7 @@ use super::{
     Routine, RoutineFailure, RoutineSuccess, RunMode,
 };
 use crate::cli::display::with_spinner;
-use crate::cli::routines::initialize::{CreateDockerNetwork, CreateIglooTempDirectoryTree};
+use crate::cli::routines::initialize::{CreateDockerNetwork, CreateInternalTempDirectoryTree};
 use crate::cli::routines::util::ensure_docker_running;
 use crate::utilities::constants::{CLI_PROJECT_INTERNAL_DIR, PANDA_NETWORK};
 use crate::{
@@ -40,14 +40,14 @@ lazy_static! {
 impl Routine for RunLocalInfrastructure {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         ensure_docker_running()?;
-        let igloo_dir = self
+        let internal_dir = self
             .project
             .internal_dir()
             .map_err(|err| RoutineFailure::new(FAILED_TO_CREATE_INTERNAL_DIR.clone(), err))?;
-        // Model this after the `spin_up` function in `apps/igloo-kit-cli/src/cli/routines/start.rs` but use routines instead
-        CreateIglooTempDirectoryTree::new(RunMode::Explicit {}, self.project.clone())
+        // Model this after the `spin_up` function in `apps/framework-cli/src/cli/routines/start.rs` but use routines instead
+        CreateInternalTempDirectoryTree::new(RunMode::Explicit {}, self.project.clone())
             .run_explicit()?;
-        ValidateMountVolumes::new(igloo_dir).run_explicit()?;
+        ValidateMountVolumes::new(internal_dir).run_explicit()?;
         CreateDockerNetwork::new(PANDA_NETWORK).run_explicit()?;
         ValidatePandaHouseNetwork::new().run_explicit()?;
         RunRedPandaContainer::new(self.project.clone()).run_explicit()?;
@@ -74,13 +74,13 @@ impl RunRedPandaContainer {
 
 impl Routine for RunRedPandaContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = self
+        let internal_dir = self
             .project
             .internal_dir()
             .map_err(|err| RoutineFailure::new(FAILED_TO_CREATE_INTERNAL_DIR.clone(), err))?;
 
         let output = with_spinner("Starting redpanda container", || {
-            docker::safe_start_redpanda_container(igloo_dir)
+            docker::safe_start_redpanda_container(internal_dir)
         })
         .map_err(|err| {
             RoutineFailure::new(
@@ -115,14 +115,14 @@ impl RunClickhouseContainer {
 
 impl Routine for RunClickhouseContainer {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let igloo_dir = self
+        let internal_dir = self
             .project
             .internal_dir()
             .map_err(|err| RoutineFailure::new(FAILED_TO_CREATE_INTERNAL_DIR.clone(), err))?;
 
         let output = with_spinner("Starting clickhouse container", || {
             docker::safe_start_clickhouse_container(
-                igloo_dir,
+                internal_dir,
                 self.project.clickhouse_config.clone(),
             )
         })

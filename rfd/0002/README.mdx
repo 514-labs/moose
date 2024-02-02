@@ -21,22 +21,22 @@ We are building an opinionated framework to enabled engineers that are building 
 
 ### Overview
 
-- Data Ingest SDK: The data ingest SDK is a simple library that can be embedded in the user's application to send data to an igloo deployment. It is typed with the User's Business Objects to ensure that the data sent to igloo is valid.
-- Igloo Server: This is a component that abstracts away several parts of the architecture. It contains a web server that will ingest the data, a streaming engine that will store the data in streams and an OLAP Database that will store the data in a columnar format. The OLAP system will need the ability to run on different storage Tiers to make economical sense. It also runs all the code that is supplied by the user to transform the data.
-- Igloo CLI: This is a command line interface that will allow the user to interact with the igloo server. It will allow the user to create a new project, run the project locally and deploy the project to a cloud provider.
-- Data Consumption SDK: This SDK is typed with the user's data and allows the user to query the data from the Igloo Server. It will also allow the user to subscribe to data changes and receive updates in real time.
+- Data Ingest SDK: The data ingest SDK is a simple library that can be embedded in the user's application to send data to an moose deployment. It is typed with the User's Business Objects to ensure that the data sent to moose is valid.
+- Moose Server: This is a component that abstracts away several parts of the architecture. It contains a web server that will ingest the data, a streaming engine that will store the data in streams and an OLAP Database that will store the data in a columnar format. The OLAP system will need the ability to run on different storage Tiers to make economical sense. It also runs all the code that is supplied by the user to transform the data.
+- Moose CLI: This is a command line interface that will allow the user to interact with the moose server. It will allow the user to create a new project, run the project locally and deploy the project to a cloud provider.
+- Data Consumption SDK: This SDK is typed with the user's data and allows the user to query the data from the moose Server. It will also allow the user to subscribe to data changes and receive updates in real time.
 - Data Visualization SDK: This SDK plays well with the data Consumption SDK and contains web components of common data visualizations that can be used to build a dashboard. The sdk would be used in a web application that wraps the dashbaord with business logic.
 
 The 3 sdks would be independent dependencies that can be used in isolation or together.
 
-They will be calling HTTP APIs on the igloo server that could be called by any other client, provided that the client implements the same protocol.
+They will be calling HTTP APIs on the moose server that could be called by any other client, provided that the client implements the same protocol.
 
 ```mermaid
 ---
 title: Overall Architecture Diagram
 ---
 flowchart LR
-  subgraph Igloo Server
+  subgraph Moose Server
     HTTP[HTTP Server] --Pushes--> Stream[(Streaming Engine)]
     LambdaI[Lambda Ingestion Function] <-- Pulls --> Stream
     LambdaI --Pushes--> Stream
@@ -81,7 +81,7 @@ We could be using [vector.dev](https://vector.dev/) for this
 
 ### CLI
 
-The igloo CLI is a tool to help the user get setup really quickly. It helps with
+The moose CLI is a tool to help the user get setup really quickly. It helps with
 
 - Initial project setup
 - Runs and configures locally the OLAP DB and the streaming engine
@@ -92,7 +92,7 @@ The igloo CLI is a tool to help the user get setup really quickly. It helps with
 
 ## Ingest MVP Definition
 
-We are currently on getting an MVP of the Ingest flow in order to start dog fooding the project. Ie we want to start instrumenting igloo with igloo for usage metrics.
+We are currently on getting an MVP of the Ingest flow in order to start dog fooding the project. Ie we want to start instrumenting moose with moose for usage metrics.
 
 All the boxes in yellow below are part of the Ingest MVP
 
@@ -116,7 +116,7 @@ A User needs to be able to:
 title: Overall Architecture Diagram
 ---
 flowchart LR
-  subgraph Igloo Server
+  subgraph Moose Server
     HTTP[HTTP Server] --Pushes--> Stream[(Streaming Engine)]
     LambdaI[Lambda Ingestion Function] <-- Pulls --> Stream
     LambdaI --Pushes--> Stream

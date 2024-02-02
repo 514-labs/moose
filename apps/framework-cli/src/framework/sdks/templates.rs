@@ -15,7 +15,7 @@ pub static PACKAGE_JSON_TEMPLATE: &str = r#"
         "clean": "tsc --build --clean"
       },
     "keywords": [],
-    "author": "igloo-cli",
+    "author": "moose-cli",
     "license": "ISC",
     "devDependencies": \{
         "@types/node": "^18.*.*",

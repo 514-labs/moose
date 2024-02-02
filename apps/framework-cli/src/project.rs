@@ -2,8 +2,8 @@
 //!
 //! This module contains the `Project` struct, which represents a users project.
 //! These projects are data-intensive applications or services.
-//! A project is initialized using the `igloo init` command and is stored
-//!  in the `$PROJECT_PATH/.igloo` directory.
+//! A project is initialized using the `moose init` command and is stored
+//!  in the `$PROJECT_PATH/.moose` directory.
 //!
 //! The `Project` struct contains the following fields:
 //! - `name` - The name of the project
@@ -176,8 +176,8 @@ impl Project {
             name: self.name.clone(),
             version: "0.0".to_string(),
             // For local development of the CLI
-            // change `igloo-cli` to `<REPO_PATH>/apps/igloo-kit-cli/target/debug/igloo-cli`
-            scripts: HashMap::from([("dev".to_string(), "igloo-cli dev".to_string())]),
+            // change `moose-cli` to `<REPO_PATH>/apps/moose-kit-cli/target/debug/moose-cli`
+            scripts: HashMap::from([("dev".to_string(), "moose-cli dev".to_string())]),
             dependencies: HashMap::new(),
             dev_dependencies: HashMap::from([(
                 "@514labs/moose-cli".to_string(),

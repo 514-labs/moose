@@ -67,7 +67,7 @@ pub fn generate_ts_sdk(
     //! # Returns
     //! - `Result<PathBuf, std::io::Error>` - A result containing the path where the SDK was generated.
     //!
-    let igloo_dir = project.internal_dir()?;
+    let internal_dir = project.internal_dir()?;
 
     let package = TypescriptPackage::from_project(project);
     let package_json_code = PackageJsonTemplate::build(&package);
@@ -75,7 +75,7 @@ pub fn generate_ts_sdk(
     let index_code = IndexTemplate::build(&ts_objects);
 
     // This needs to write to the root of the NPM folder... creating in the current project location for now
-    let sdk_dir = igloo_dir.join(package.name);
+    let sdk_dir = internal_dir.join(package.name);
     std::fs::create_dir_all(sdk_dir.clone())?;
 
     write_config_to_file(sdk_dir.join("package.json"), package_json_code)?;

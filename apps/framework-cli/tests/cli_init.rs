@@ -25,7 +25,7 @@ fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut cmd = Command::cargo_bin("moose-cli")?;
 
-    cmd.env("IGLOO-FEATURES-COMING_SOON_WALL", "false")
+    cmd.env("MOOSE-FEATURES-COMING_SOON_WALL", "false")
         .arg("init")
         .arg("test-app")
         .arg("ts")
@@ -52,7 +52,7 @@ fn should_not_run_if_coming_soon_wall_is_blocking() -> Result<(), Box<dyn std::e
 
     let mut cmd = Command::cargo_bin("moose-cli")?;
 
-    cmd.env("IGLOO-FEATURES-COMING_SOON_WALL", "true")
+    cmd.env("MOOSE-FEATURES-COMING_SOON_WALL", "true")
         .arg("init")
         .arg("test-app")
         .arg("ts")

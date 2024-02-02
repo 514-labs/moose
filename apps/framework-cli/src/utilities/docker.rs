@@ -217,21 +217,21 @@ pub fn run_rpk_command(args: Vec<String>) -> std::io::Result<String> {
     }
 }
 
-pub fn safe_start_redpanda_container(igloo_dir: PathBuf) -> std::io::Result<String> {
+pub fn safe_start_redpanda_container(internal_dir: PathBuf) -> std::io::Result<String> {
     //! Starts a redpanda container if it is not already running. If the doesn't exist, it will be created.
     //!
     //! # Arguments
     //!
-    //! * `igloo_dir` - The path to the igloo directory
+    //! * `internal_dir` - The path to the moose directory
 
     match start_redpanda_container() {
         Ok(output) => Ok(output),
-        Err(_) => run_red_panda(igloo_dir),
+        Err(_) => run_red_panda(internal_dir),
     }
 }
 
-fn run_red_panda(igloo_dir: PathBuf) -> std::io::Result<String> {
-    let mount_dir = igloo_dir.join(".panda_house");
+fn run_red_panda(internal_dir: PathBuf) -> std::io::Result<String> {
+    let mount_dir = internal_dir.join(".panda_house");
 
     let child = Command::new("docker")
         .arg("run")
@@ -273,28 +273,28 @@ fn run_red_panda(igloo_dir: PathBuf) -> std::io::Result<String> {
 }
 
 pub fn safe_start_clickhouse_container(
-    igloo_dir: PathBuf,
+    internal_dir: PathBuf,
     config: ClickhouseConfig,
 ) -> std::io::Result<String> {
     //! Starts a clickhouse container if it is not already running. If the doesn't exist, it will be created.
     //!
     //! # Arguments
     //!
-    //! * `igloo_dir` - The path to the igloo directory
+    //! * `internal_dir` - The path to the moose directory
     //! * `config` - The clickhouse configuration
 
     match start_clickhouse_container() {
         Ok(output) => Ok(output),
-        Err(_) => run_clickhouse(igloo_dir, config),
+        Err(_) => run_clickhouse(internal_dir, config),
     }
 }
 
-fn run_clickhouse(igloo_dir: PathBuf, config: ClickhouseConfig) -> std::io::Result<String> {
-    let data_mount_dir = igloo_dir.join(".clickhouse/data");
-    let logs_mount_dir = igloo_dir.join(".clickhouse/logs");
-    // let server_config_mount_dir = igloo_dir.join(".clickhouse/configs/server");
-    let user_config_mount_dir = igloo_dir.join(".clickhouse/configs/users");
-    let scripts_config_mount_dir = igloo_dir.join(".clickhouse/configs/scripts");
+fn run_clickhouse(internal_dir: PathBuf, config: ClickhouseConfig) -> std::io::Result<String> {
+    let data_mount_dir = internal_dir.join(".clickhouse/data");
+    let logs_mount_dir = internal_dir.join(".clickhouse/logs");
+    // let server_config_mount_dir = internal_dir.join(".clickhouse/configs/server");
+    let user_config_mount_dir = internal_dir.join(".clickhouse/configs/users");
+    let scripts_config_mount_dir = internal_dir.join(".clickhouse/configs/scripts");
 
     // TODO: Make this configurable by the user
     // Specifying the user and password in plain text here. This should be a user input

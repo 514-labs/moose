@@ -26,7 +26,7 @@ $ npm install -g @514labs/moose-cli
 
 ## Config file
 
-The config file is located in `~/.igloo/config.toml`
+The config file is located in `~/.moose/config.toml`
 
 You can create one with the following content
 

@@ -111,8 +111,7 @@ VOLUME /var/lib/clickhouse
 
 ARG FRAMEWORK_VERSION="0.0.0"
 
-# TODO when we rename to igloo to moose, we will need to update this download link as well
-RUN curl -Lo /usr/local/bin/moose https://github.com/514-labs/moose/releases/download/v${FRAMEWORK_VERSION}/igloo-cli-x86_64-unknown-linux-gnu
+RUN curl -Lo /usr/local/bin/moose https://github.com/514-labs/moose/releases/download/v${FRAMEWORK_VERSION}/moose-cli-x86_64-unknown-linux-gnu
 RUN chmod +x /usr/local/bin/moose
 
 # Run it all

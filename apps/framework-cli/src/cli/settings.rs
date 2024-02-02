@@ -16,7 +16,7 @@ use crate::utilities::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
 /// - add a config file validation and error handling
 ///
 
-const ENVIRONMENT_VARIABLE_PREFIX: &str = "IGLOO";
+const ENVIRONMENT_VARIABLE_PREFIX: &str = "MOOSE";
 
 #[derive(Deserialize, Debug)]
 pub struct Features {
@@ -74,7 +74,7 @@ pub fn read_settings() -> Result<Settings, ConfigError> {
         // Add the local configuration
         .add_source(File::from(config_file_location).required(false))
         // Add in settings from the environment (with a prefix of APP)
-        // Eg.. `IGLOO_DEBUG=1 ./target/app` would set the `debug` key
+        // Eg.. `MOOSE_DEBUG=1 ./target/app` would set the `debug` key
         .add_source(
             Environment::with_prefix(ENVIRONMENT_VARIABLE_PREFIX)
                 .try_parsing(true)

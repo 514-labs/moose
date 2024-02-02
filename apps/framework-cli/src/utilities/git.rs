@@ -17,7 +17,7 @@ pub fn create_init_commit(project: &Project, dir_path: &Path) {
     let mut git_ignore_file = project.project_file_location.clone();
     git_ignore_file.pop();
     git_ignore_file.push(".gitignore");
-    let mut git_ignore_entries = vec![".igloo"];
+    let mut git_ignore_entries = vec![".moose"];
     git_ignore_entries.append(&mut match project.language {
         SupportedLanguages::Typescript => vec!["node_modules", "dist", "coverage"],
     });

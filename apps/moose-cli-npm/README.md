@@ -24,7 +24,7 @@ The Moose CLI is a command-line tool that allows you to create, manage, and depl
 To create a new application, run the following command:
 
 ```bash
-igloo init
+moose init
 ```
 
 This will prompt you to enter a name for your application. Once you have entered a name, the CLI will create a new directory with the name you provided and scaffold out a new Moose application.
@@ -34,7 +34,7 @@ This will prompt you to enter a name for your application. Once you have entered
 The CLI will create the following files and directories:
 
 ```
-├── .igloo
+├── .moose
 │   ├── .clickhouse
 │   ├── .redpanda
 │   └── ...
@@ -61,16 +61,16 @@ The CLI will create the following files and directories:
 
 The `app` directory contains all of the code for your application. This includes all of the dataframes, flows, ingests, and insights that make up your application. This directory is where you will spend most of your time developing your application.
 
-##### `.igloo` for contributors only
+##### `.moose` for contributors only
 
-The `.igloo` directory contains all of the configuration files for an application. This includes configuration for the local state of the application as well as any required local infrastructure. This directory is only used by contributors to the application and should not be committed to source control. Modifying files in this directory may cause unexpected behavior.
+The `.moose` directory contains all of the configuration files for an application. This includes configuration for the local state of the application as well as any required local infrastructure. This directory is only used by contributors to the application and should not be committed to source control. Modifying files in this directory may cause unexpected behavior.
 
 ### Running your application in development mode
 
 To run your application, run the following command:
 
 ```bash
-igloo dev
+moose dev
 ```
 
 This will start all of the required infrastructure and run your application in development mode. You can now make changes to your application and see them reflected in real-time.

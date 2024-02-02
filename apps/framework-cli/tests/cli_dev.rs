@@ -27,7 +27,7 @@ fn setup_dev() -> Result<CargoDev, anyhow::Error> {
     let mut init_cmd = Command::cargo_bin("moose-cli")?;
 
     init_cmd
-        .env("IGLOO-FEATURES-COMING_SOON_WALL", "false")
+        .env("MOOSE-FEATURES-COMING_SOON_WALL", "false")
         .arg("init")
         .arg("test-app")
         .arg("ts")
@@ -38,7 +38,7 @@ fn setup_dev() -> Result<CargoDev, anyhow::Error> {
     let mut cmd = Command::cargo_bin("moose-cli")?;
 
     let dev_process = cmd
-        .env("IGLOO-FEATURES-COMING_SOON_WALL", "false")
+        .env("MOOSE-FEATURES-COMING_SOON_WALL", "false")
         .arg("dev")
         .stdout(Stdio::piped())
         .current_dir(&temp)
@@ -73,7 +73,7 @@ fn should_not_run_if_coming_soon_wall_is_blocking() -> Result<(), anyhow::Error>
 
     let mut cmd = Command::cargo_bin("moose-cli")?;
 
-    cmd.env("IGLOO-FEATURES-COMING_SOON_WALL", "true")
+    cmd.env("MOOSE-FEATURES-COMING_SOON_WALL", "true")
         .arg("dev")
         .current_dir(temp.path());
 

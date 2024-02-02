@@ -28,7 +28,7 @@ function getExePath() {
   try {
     // Since the binary will be located inside `node_modules`, we can simply call `require.resolve`
     return require.resolve(
-      `@514labs/moose-cli-${os}-${arch}/bin/igloo-cli${extension}`
+      `@514labs/moose-cli-${os}-${arch}/bin/moose-cli${extension}`
     );
   } catch (e) {
     throw new Error(

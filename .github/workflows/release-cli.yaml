@@ -6,10 +6,8 @@ on:
       - main
     paths:
       - ".github/workflows/release-cli.yaml"
-      - "apps/igloo-cli-npm/**"
       - "apps/moose-cli-npm/**"
-      - "apps/igloo-kit-cli/**"
-      - "apps/create-igloo-app/**"
+      - "apps/framework-cli/**"
       - "apps/create-moose-app/**"
       - "apps/moose-console/**"
       - "packages/**"
@@ -101,14 +99,14 @@ jobs:
         run: |
           cargo install cargo-edit
           cargo set-version ${{ needs.version.outputs.version }}
-        working-directory: ./apps/igloo-kit-cli
+        working-directory: ./apps/framework-cli
 
       - name: Build
         uses: actions-rs/cargo@v1
         with:
           command: build
           # --features rdkafka/cmake-build is necessary for cross compilation builds
-          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml --features rdkafka/cmake-build --release --locked --target ${{ matrix.build.TARGET }}
+          args: --manifest-path ./apps/framework-cli/Cargo.toml --features rdkafka/cmake-build --release --locked --target ${{ matrix.build.TARGET }}
           use-cross: ${{ matrix.build.OS == 'ubuntu-20.04' }} # use `cross` for Linux builds
 
       - name: Install node
@@ -116,15 +114,6 @@ jobs:
         with:
           node-version: "18"
           registry-url: "https://registry.npmjs.org"
-
-      # TO Be DELETED when migration to new name is over
-      - name: Publish to NPM Igloo
-        if: ${{ !inputs.dry-run }}
-        shell: bash
-        working-directory: ./apps/igloo-cli-npm
-        run: ./scripts/release-bin.sh ${{ needs.version.outputs.version }} ${{ matrix.build.TARGET }} ${{ matrix.build.OS }} ${{ matrix.build.NAME }}
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
       - name: Publish to NPM Moose
         if: ${{ !inputs.dry-run }}
@@ -142,7 +131,7 @@ jobs:
           allowUpdates: "true"
           replacesArtifacts: "false"
           artifacts: |
-            ./apps/igloo-kit-cli/target/${{ matrix.build.TARGET }}/release/igloo-cli-${{ matrix.build.TARGET }}
+            ./apps/framework-cli/target/${{ matrix.build.TARGET }}/release/moose-cli-${{ matrix.build.TARGET }}
 
   publish-npm-base:
     name: Publish the base NPM package
@@ -171,16 +160,6 @@ jobs:
         with:
           node-version: "18"
           cache: "pnpm"
-
-      # TO Be DELETED when migration to new name is over
-      - name: Publish the NPM Igloo CLI package
-        shell: bash
-        run: ./apps/igloo-cli-npm/scripts/release-cli.sh ${{ needs.version.outputs.version }}
-
-      # TO Be DELETED when migration to new name is over
-      - name: Publish the NPM Igloo create app package
-        shell: bash
-        run: ./apps/create-igloo-app/scripts/release.sh ${{ needs.version.outputs.version }}
 
       - name: Publish the NPM Moose CLI package
         shell: bash
@@ -252,8 +231,8 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: ./apps/igloo-kit-cli/deploy
-          file: ./apps/igloo-kit-cli/deploy/Dockerfile.fullstack
+          context: ./apps/framework-cli/deploy
+          file: ./apps/framework-cli/deploy/Dockerfile.fullstack
           push: ${{ !inputs.dry-run }}
           tags: 514labs/moose-fullstack:latest, 514labs/moose-fullstack:0.0.0, 514labs/moose-fullstack:${{ needs.version.outputs.version }}
           cache-from: type=gha

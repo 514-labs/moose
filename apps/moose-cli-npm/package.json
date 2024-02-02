@@ -2,8 +2,8 @@
   "name": "@514labs/moose-cli",
   "version": "0.0.0",
   "bin": {
-    "igloo": "dist/index.js",
-    "igloo-cli": "dist/index.js"
+    "moose": "dist/index.js",
+    "moose-cli": "dist/index.js"
   },
   "files": [
     "dist"

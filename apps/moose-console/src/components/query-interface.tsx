@@ -5,7 +5,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "./ui/resiz
 import { Textarea } from "./ui/textarea"
 import { Table } from "app/db"
 import { Button } from "./ui/button"
-import { Dispatch, MutableRefObject, SetStateAction, useRef, useState } from "react"
+import { Dispatch, MutableRefObject, SetStateAction, useEffect, useRef, useState } from "react"
 import { createClient } from "@clickhouse/client-web"
 import { PreviewTable } from "./preview-table"
 import { Badge } from "./ui/badge"
@@ -173,10 +173,34 @@ export default function QueryInterface({ table, related }: QueryInterfaceProps) 
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const tables = related.filter(t => !t.name.includes(".inner")).map(t => `${t.database}.${t.name}`)
 
-    const[value, setValue] = useState(`SELECT * FROM ${table.database}.${table.name};`)
-    const [results, setResults] = useState<any[]>([])
+    const[value, setValue] = useState(`SELECT * FROM ${table.database}.${table.name} LIMIT 50;`)
+    const [results, setResults] = useState<any[]>()
     const [sqlKeyWordCount, setSqlKeyWordCount] = useState(12)
     const [tableCount, setTableCount] = useState(12)
+
+    useEffect(() => {
+        (
+            async () => {
+                const data = await runQuery(value)
+                setResults(data)
+            }
+        )()
+        
+        const handleKeyDown = (e: KeyboardEvent) => {
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+                runQuery(value).then((results) => {
+                    e.preventDefault()
+                    setResults(results)
+                })
+            }
+        }
+
+        document.addEventListener("keydown", handleKeyDown)
+
+        return () => {
+            document.removeEventListener("keydown", handleKeyDown)
+        }
+    }, [])
     
 
     return (
@@ -234,26 +258,26 @@ export default function QueryInterface({ table, related }: QueryInterfaceProps) 
             </ResizablePanelGroup>
             </ResizablePanel>
             <ResizableHandle withHandle />
-            <ResizablePanel defaultSize={80}>
-            <div className="flex h-full flex-col py-4">
-                <div className="flex flex-row items-center">
-                    <span className="">Results</span>
-                    <span className="flex-grow"/>
-                    <span className="px-2">ctrl/cmd + enter</span>                
-                    <Button variant="default" onClick={
-                        async () => {
-                            const results = await runQuery(value)
-                            setResults(results)
-                        }
-                    
-                    }>Run</Button>
+            <ResizablePanel defaultSize={80} className=" overflow-y-auto">
+                <div className="flex h-full flex-col py-4">
+                    <div className="flex flex-row items-center">
+                        <span className="">Results</span>
+                        <span className="flex-grow"/>
+                        <span className="px-2">ctrl/cmd + enter</span>                
+                        <Button variant="default" onClick={
+                            async () => {
+                                const results = await runQuery(value)
+                                setResults(results)
+                            }
+                        
+                        }>Run</Button>
+                    </div>
+                    <Card className="mt-4 px-0 h-full overflow-y-auto">
+                        <CardContent className="px-0">
+                        {results ? <PreviewTable rows={results} caption="query results"/> : "query results will appear here"}
+                        </CardContent>
+                    </Card>
                 </div>
-                <Card className="mt-4 px-0">
-                    <CardContent className="px-0">
-                    {results ? <PreviewTable rows={results} /> : ""}
-                    </CardContent>
-                </Card>
-            </div>
             </ResizablePanel>
         </ResizablePanelGroup>
     )

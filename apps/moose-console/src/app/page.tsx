@@ -94,7 +94,7 @@ export default async function Primitives(): Promise<JSX.Element> {
             ))}
           </div>
           <div className="col-span-3 xl:col-span-1">
-            <OverviewCardHeader title="Tables" numItems={data.tables.filter(t => t.engine !== "MaterializedView" && !t.name.includes(".inner")).length} href="infrastructure/databases/tables" />
+            <OverviewCardHeader title="Tables" numItems={data.tables.filter(t => t.engine !== "MaterializedView" && !t.name.includes(".inner")).length} href="infrastructure/databases/tables?type=table" />
             <Separator />
             {data.tables.filter(t => t.engine !== "MaterializedView" && !t.name.includes(".inner")).slice(0, 10).map((table, index) => (
               <Link href={`/infrastructure/databases/${table.database}/tables/${table.uuid}`} key={index}>
@@ -106,7 +106,7 @@ export default async function Primitives(): Promise<JSX.Element> {
             ))}
           </div>
           <div className="col-span-3 xl:col-span-1">
-            <OverviewCardHeader title="Views" numItems={data.tables.filter(t => t.engine === "MaterializedView" && !t.name.includes(".inner")).length} href="infrastructure/databases/tables" />
+            <OverviewCardHeader title="Views" numItems={data.tables.filter(t => t.engine === "MaterializedView" && !t.name.includes(".inner")).length} href="infrastructure/databases/tables?type=view" />
             <Separator />
             {data.tables.filter(t => t.engine === "MaterializedView").slice(0, 10).map((table, index) => (
               <Link href={`/infrastructure/databases/${table.database}/tables/${table.uuid}`} key={index} >

@@ -1,21 +1,20 @@
 /* eslint-disable turbo/no-undeclared-env-vars */
 
-import { BaseResultSet, createClient } from "@clickhouse/client-web";
-import { getCliData } from "app/db";
+import {  createClient } from "@clickhouse/client-web";
 import { Field } from "app/mock";
 import { PreviewTable } from "components/preview-table";
 import QueryInterface from "components/query-interface";
 import { tabListStyle, tabTriggerStyle } from "components/style-utils";
 import { Card, CardContent } from "components/ui/card";
-import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "components/ui/resizable";
 import { Separator } from "components/ui/separator";
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
-import { Textarea } from "components/ui/textarea";
 import { cn } from "lib/utils";
+import Link from "next/link";
 
-
+import { Table, getCliData } from "app/db";
 import { unstable_noStore as noStore } from "next/cache";
+import { Button } from "components/ui/button";
+
 
 function getClient() {
   const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || "localhost";
@@ -52,17 +51,17 @@ async function describeTable(databaseName: string, tableName: string): Promise<a
 async function getTable(databaseName: string, tableName: string): Promise<any> {
   const client = getClient();
 
-  const resultSet = await client.query({
-    query: `SELECT * FROM ${databaseName}.${tableName} LIMIT 50`,
-    format: "JSONEachRow",
-  });
+  try {
+    const resultSet = await client.query({
+      query: `SELECT * FROM ${databaseName}.${tableName} LIMIT 50`,
+      format: "JSONEachRow",
+    });
 
-  return resultSet.json();
+    return resultSet.json();
+  } catch (error) {
+    return error
+  }
 }
-
-
-
-
 
 
 interface FieldsListCardProps {
@@ -89,7 +88,23 @@ function FieldsList({ fields }: FieldsListCardProps) {
   )
 }
 
+function ClickhouseTableRestriction({viewId, databaseName}) {
 
+  return (
+    <div className="py-4">
+      <div className="text-muted-foreground max-w-xl">
+        This table is an ingestion Clickhouse table. You unfortunately query it directly. To get a preview of the data, head to its associated view 
+      </div>
+      <Link className=" underline" href={`/infrastructure/databases/${databaseName}/tables/${viewId}`}>
+        <Button variant="default" className="mt-4">
+          go to view
+        </Button>
+      </Link>
+    </div>
+  )
+}
+
+const isView = (table: Table) => table.engine === "MaterializedView";
 
 export default async function Page({
   params,
@@ -99,9 +114,11 @@ export default async function Page({
   // This is to make sure the environment variables are read at runtime
   // and not during build time
   noStore();
-
   const data = await getCliData();
+
   const table = data.tables.find((table) => table.uuid === params.tableId);
+
+  const associated_view = data.tables.find((view) => view.name === table.dependencies_table[0]);
 
   const tableMeta = await describeTable(params.databaseName, table.name);
   const tableName = data.tables.find((table) => table.uuid === params.tableId).name;
@@ -110,7 +127,12 @@ export default async function Page({
   return (
     <section className="p-4 max-h-screen flex-grow overflow-y-auto flex flex-col">
         <div className="py-10">
-          <div className="text-6xl">{table.name}</div>
+          <div className="text-6xl">
+            <Link className="text-muted-foreground" href={"/"}>../</Link>
+            <Link className="text-muted-foreground" href={`/infrastructure/databases/tables?type=${isView(table) ? "view" : "table"}`}>{isView(table) ? "views" : "tables"}/</Link>
+            {table.name}
+          </div>
+
           <div className="text-muted-foreground">{table.engine}</div>
         </div>
         <div className="space-x-3 flex-grow">
@@ -125,12 +147,7 @@ export default async function Page({
                   <FieldsList fields={tableMeta} />
               </TabsContent>
               <TabsContent value="preview">
-                <Card className="mt-4">
-                  <CardContent className="px-0">
-                    <PreviewTable rows={tableData} />
-                  </CardContent>
-                </Card>
-                {/* add preview here */}
+                  {tableData.length > 0 ? <PreviewTable rows={tableData} /> : <ClickhouseTableRestriction viewId={associated_view.uuid} databaseName={params.databaseName} /> }
               </TabsContent>
               <TabsContent className="flex-grow" value="query">
                 {/* add query here */}

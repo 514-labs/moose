@@ -33,11 +33,11 @@ export default async function Page({
   const model = await getModel(params.modelName);
 
   return (
-    <section className="p-4 max-h-screen overflow-y-auto">
+    <section className="p-4 max-h-screen overflow-y-auto grow">
       <div className="py-10">
         <div className="text-6xl">
-          <Link className="text-muted-foreground" href="/primitives"> ... / </Link>
-          <Link className="text-muted-foreground" href="/primitives/models"> Models </Link>
+          <Link className="text-muted-foreground" href="/"> .. / </Link>
+          <Link className="text-muted-foreground" href="/primitives/models"> models </Link>
           <Link href="/primitives/models">/ {model.name} </Link>
         </div>
         <div className="text-muted-foreground py-5 max-w-screen-md">

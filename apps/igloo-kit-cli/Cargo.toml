@@ -23,6 +23,7 @@ sentry = "0.31.7"
 clickhouse = { version = "0.11.5", features = ["uuid"] }
 schema-ast = { git = "https://github.com/prisma/prisma-engines.git"}
 diagnostics = { git = "https://github.com/prisma/prisma-engines.git"}
+datamodel-renderer = { git = "https://github.com/prisma/prisma-engines.git"}
 tinytemplate = "1.1"
 rdkafka = { version = "0.34" }
 bimap = "0.6.3"

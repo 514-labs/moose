@@ -3,15 +3,16 @@ import { Table, TableCaption, TableHeader, TableRow, TableHead, TableBody, Table
 
 interface TableProps {
     rows: any[];
+    caption?: string;
   }
 
-export function PreviewTable({ rows }: TableProps) {
+export function PreviewTable({ rows, caption }: TableProps) {
     // Get column headers (keys from the first object in the data array)
     const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
   
     return (
       <Table>
-        <TableCaption>A preview of the data in your table.</TableCaption>
+        { caption && <TableCaption>{caption}</TableCaption> }
         <TableHeader>
           <TableRow>
             {headers.map((header, index) => (

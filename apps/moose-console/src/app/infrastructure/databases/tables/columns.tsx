@@ -1,7 +1,7 @@
 "use client"
 
 import { Button } from "components/ui/button";
-import { Table, View } from "../mock";
+import { Table, View } from "../../mock";
 import { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown, ChevronRight } from "lucide-react"
 import {

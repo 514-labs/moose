@@ -24,7 +24,7 @@ fn setup_dev() -> Result<CargoDev, anyhow::Error> {
     let dir = temp.path().to_str().unwrap();
 
     // Setup the project with the cli
-    let mut init_cmd = Command::cargo_bin("igloo-cli")?;
+    let mut init_cmd = Command::cargo_bin("moose-cli")?;
 
     init_cmd
         .env("IGLOO-FEATURES-COMING_SOON_WALL", "false")
@@ -35,7 +35,7 @@ fn setup_dev() -> Result<CargoDev, anyhow::Error> {
 
     init_cmd.assert().success();
 
-    let mut cmd = Command::cargo_bin("igloo-cli")?;
+    let mut cmd = Command::cargo_bin("moose-cli")?;
 
     let dev_process = cmd
         .env("IGLOO-FEATURES-COMING_SOON_WALL", "false")
@@ -71,7 +71,7 @@ fn teardown_dev(mut dev_state: CargoDev) {
 fn should_not_run_if_coming_soon_wall_is_blocking() -> Result<(), anyhow::Error> {
     let temp = assert_fs::TempDir::new().unwrap();
 
-    let mut cmd = Command::cargo_bin("igloo-cli")?;
+    let mut cmd = Command::cargo_bin("moose-cli")?;
 
     cmd.env("IGLOO-FEATURES-COMING_SOON_WALL", "true")
         .arg("dev")

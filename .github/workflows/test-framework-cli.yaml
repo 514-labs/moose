@@ -36,6 +36,12 @@ jobs:
           command: check
           args: --manifest-path ./apps/framework-cli/Cargo.toml
 
+      - name: Run cargo Build in release mode
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+          args: --manifest-path ./apps/framework-cli/Cargo.toml --release --locked
+
   test-macos:
     name: Test Suite (MacOS)
     env:

@@ -5,7 +5,7 @@ use std::process::Command;
 
 #[test]
 fn cannot_run_cli_init_without_args() -> Result<(), Box<dyn std::error::Error>> {
-    let mut cmd = Command::cargo_bin("igloo-cli")?;
+    let mut cmd = Command::cargo_bin("moose-cli")?;
 
     cmd.arg("init");
     cmd.assert().failure().stderr(predicate::str::contains(
@@ -21,9 +21,9 @@ fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
     let dir: &str = temp.path().to_str().unwrap();
 
     // List the content of dir
-    temp.child(".igloo").assert(predicate::path::missing());
+    temp.child(".moose").assert(predicate::path::missing());
 
-    let mut cmd = Command::cargo_bin("igloo-cli")?;
+    let mut cmd = Command::cargo_bin("moose-cli")?;
 
     cmd.env("IGLOO-FEATURES-COMING_SOON_WALL", "false")
         .arg("init")
@@ -35,7 +35,7 @@ fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
 
     // TODO add more specific tests when the layout of the
     // app is more stable
-    temp.child(".igloo").assert(predicate::path::exists());
+    temp.child(".moose").assert(predicate::path::exists());
     temp.child("package.json").assert(predicate::path::exists());
     temp.child("app").assert(predicate::path::exists());
 
@@ -48,9 +48,9 @@ fn should_not_run_if_coming_soon_wall_is_blocking() -> Result<(), Box<dyn std::e
     let dir: &str = temp.path().to_str().unwrap();
 
     // List the content of dir
-    temp.child(".igloo").assert(predicate::path::missing());
+    temp.child(".moose").assert(predicate::path::missing());
 
-    let mut cmd = Command::cargo_bin("igloo-cli")?;
+    let mut cmd = Command::cargo_bin("moose-cli")?;
 
     cmd.env("IGLOO-FEATURES-COMING_SOON_WALL", "true")
         .arg("init")
@@ -60,7 +60,7 @@ fn should_not_run_if_coming_soon_wall_is_blocking() -> Result<(), Box<dyn std::e
 
     cmd.assert().success();
 
-    temp.child(".igloo").assert(predicate::path::missing());
+    temp.child(".moose").assert(predicate::path::missing());
     temp.child("package.json")
         .assert(predicate::path::missing());
     temp.child("app").assert(predicate::path::missing());

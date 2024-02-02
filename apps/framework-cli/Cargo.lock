@@ -1321,6 +1321,7 @@ dependencies = [
  "diagnostics",
  "dialoguer",
  "fern",
+ "git2",
  "home",
  "http-body-util",
  "humantime",

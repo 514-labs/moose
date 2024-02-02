@@ -220,28 +220,13 @@ export default function QueryInterface({ table, related }: QueryInterfaceProps) 
                 <div className="flex h-full px-4 w-full overflow-y-auto">
                     <div className="grow">
                         <div className="text-xs font-mono flex flex-row items-center">
-                            <span>SQL</span> <span className="flex-grow"/> 
-                            {
-                                sqlKeyWordCount < sqlKeyWords.length ? 
-                                <Button variant="ghost" onClick={() => setSqlKeyWordCount(sqlKeyWords.length)}>more</Button> : 
-                                <Button variant="ghost" onClick={() => setSqlKeyWordCount(5)}>less</Button>
-                            }
-                        </div>
-                        <div className="flex flex-row space-x-1 py-2 flex-wrap">
-                            {sqlKeyWords.slice(0, sqlKeyWordCount).map((word, index) => (
-                                <Badge onClick={(e: any ) => {
-                                    insertSomeText(word, value, textareaRef, setValue)
-                                }} className="text-nowrap my-1" variant="outline" key={index}>{word}</Badge>
-                            ))}
-                        </div>
-                        <div className="text-xs font-mono flex flex-row items-center">
                             <span className="py-2">Tables</span> <span className="flex-grow"/> 
                             {
                                 tableCount < tables.length ? 
                                 <Button variant="ghost" onClick={() => setTableCount(tables.length)}>more</Button> : 
                                 tables.length < tableCount ?
                                 "" :
-                                <Button variant="ghost" onClick={() => setTableCount(5)}>less</Button>
+                                <Button variant="ghost" onClick={() => setTableCount(12)}>less</Button>
                             }
                         </div>
                         <div className="flex flex-row space-x-1 py-2 flex-wrap">
@@ -251,6 +236,22 @@ export default function QueryInterface({ table, related }: QueryInterfaceProps) 
                                 }} className="text-nowrap my-1" variant="outline" key={index}>{word}</Badge>
                             ))}
                         </div>
+                        <div className="text-xs font-mono flex flex-row items-center">
+                            <span>SQL</span> <span className="flex-grow"/> 
+                            {
+                                sqlKeyWordCount < sqlKeyWords.length ? 
+                                <Button variant="ghost" onClick={() => setSqlKeyWordCount(sqlKeyWords.length)}>more</Button> : 
+                                <Button variant="ghost" onClick={() => setSqlKeyWordCount(12)}>less</Button>
+                            }
+                        </div>
+                        <div className="flex flex-row space-x-1 py-2 flex-wrap">
+                            {sqlKeyWords.slice(0, sqlKeyWordCount).map((word, index) => (
+                                <Badge onClick={(e: any ) => {
+                                    insertSomeText(word, value, textareaRef, setValue)
+                                }} className="text-nowrap my-1" variant="outline" key={index}>{word}</Badge>
+                            ))}
+                        </div>
+                        
                     </div>
                     
                 </div>

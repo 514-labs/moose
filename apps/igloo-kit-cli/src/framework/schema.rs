@@ -261,7 +261,7 @@ fn top_to_schema(t: &Top) -> Result<DataModel, ParsingError> {
 
             let attributes = m.attributes();
 
-            println!("{:?}", attributes);
+            debug!("Attribute for model {}: {:?}", m.name(), attributes);
 
             // Get the value of the version attribute in the ugliest way possible
             let version_attribute = attributes.iter().find(|a| a.name() == "version");

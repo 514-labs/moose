@@ -1,4 +1,4 @@
-name: Test Igloo CLI
+name: Test Framework CLI
 
 on:
   push:
@@ -6,13 +6,13 @@ on:
       - "**"
       - "!main"
     paths:
-      - ".github/workflows/test-igloo-cli.yaml"
-      - "apps/igloo-kit-cli/**"
+      - ".github/workflows/test-framework-cli.yaml"
+      - "apps/framework-cli/**"
       - "packages/**"
 
 defaults:
   run:
-    working-directory: ./apps/igloo-kit-cli
+    working-directory: ./apps/framework-cli
 
 jobs:
   check:
@@ -34,7 +34,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
-          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml
+          args: --manifest-path ./apps/framework-cli/Cargo.toml
 
   test-macos:
     name: Test Suite (MacOS)
@@ -60,12 +60,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml
+          args: --manifest-path ./apps/framework-cli/Cargo.toml
 
       - name: Inspect Logs
         if: always()
         run: |
-          cat ~/.igloo/cli.log
+          cat ~/.moose/cli.log
 
   test-ubuntu:
     name: Test Suite (Ubuntu)
@@ -91,12 +91,12 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml
+          args: --manifest-path ./apps/framework-cli/Cargo.toml
 
       - name: Inspect Logs
         if: always()
         run: |
-          cat ~/.igloo/cli.log
+          cat ~/.moose/cli.log
 
   lints:
     name: Lints
@@ -119,10 +119,10 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: fmt
-          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml --all -- --check
+          args: --manifest-path ./apps/framework-cli/Cargo.toml --all -- --check
 
       - name: Run cargo clippy
         uses: actions-rs/cargo@v1
         with:
           command: clippy
-          args: --manifest-path ./apps/igloo-kit-cli/Cargo.toml -- -D warnings
+          args: --manifest-path ./apps/framework-cli/Cargo.toml -- -D warnings

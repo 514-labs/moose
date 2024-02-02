@@ -1,20 +1,16 @@
-import { IngestionPoint, Queue, infrastructureMock } from "app/infrastructure/mock";
-import { Field } from "app/mock";
-import { Badge, badgeVariants } from "components/ui/badge";
-import { Button, buttonVariants } from "components/ui/button";
-import { Card, CardContent } from "components/ui/card";
-import { Separator } from "components/ui/separator";
+import { Route, getCliData } from "app/db";
+import { tabListStyle, tabTriggerStyle } from "components/style-utils";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
 import { cn } from "lib/utils";
 
 import { unstable_noStore as noStore } from "next/cache";
+import Link from "next/link";
 
 
-async function getIngestionPoint(ingestionPointId: string): Promise<IngestionPoint> {
-
-
+async function getIngestionPoint(ingestionPointId: string): Promise<Route> {
   try {
-    return infrastructureMock.ingestionPoints.find((ip) => ip.id === ingestionPointId);  
+    const data = await getCliData();
+    return data.ingestionPoints.find((ingestionPoint) => ingestionPoint.route_path.split("/").at(-1) === ingestionPointId);
   } catch (error) {
     return null
   }
@@ -33,19 +29,23 @@ export default async function Page({
   // and not during build time
   noStore();
 
-  const queue = await getIngestionPoint(params.ingestionPointId);
+  const ingestionPoint = await getIngestionPoint(params.ingestionPointId);
 
   return (
     <section className="p-4 max-h-screen overflow-y-auto">
         <div className="py-10">
-          <div className="text-6xl">{queue.name}</div>
-          <div className="text-muted-foreground">{queue.description}</div>
+          <div className="text-6xl">
+            <Link className="text-muted-foreground" href={"/"}>../</Link>
+            <Link className="text-muted-foreground" href={"/infrastructure/ingestion-points"}>ingestion-points/</Link>
+            {ingestionPoint.table_name}
+          </div>
+          <div className="text-muted-foreground py-4">{ingestionPoint.route_path}</div>
         </div>
         <div className="flex flex-row space-x-3 ">
             <Tabs defaultValue="snippets" className="flex-grow">
-              <TabsList>
-                  <TabsTrigger value="snippets">Snippets</TabsTrigger>
-                  <TabsTrigger value="logs">Logs</TabsTrigger>
+              <TabsList className={cn(tabListStyle)}>
+                  <TabsTrigger className={cn(tabTriggerStyle)} value="snippets">Snippets</TabsTrigger>
+                  <TabsTrigger className={cn(tabTriggerStyle)} value="logs">Logs</TabsTrigger>
               </TabsList>
               <TabsContent value="snippets">
                
@@ -53,8 +53,6 @@ export default async function Page({
               <TabsContent value="logs">
                   
               </TabsContent>
-              
-              
           </Tabs>
          
         </div>

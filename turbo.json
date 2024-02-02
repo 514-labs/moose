@@ -4,7 +4,14 @@
   "pipeline": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "target/**"]
+      "outputs": ["dist/**", ".next/**", "!.next/cache/**", "target/**"],
+      "env": [
+        "CLICKHOUSE_HOST",
+        "CLICKHOUSE_PORT",
+        "CLICKHOUSE_USERNAME",
+        "CLICKHOUSE_PASSWORD",
+        "CLICKHOUSE_DB"
+      ]
     },
     "lint": {},
     "check-types": {},

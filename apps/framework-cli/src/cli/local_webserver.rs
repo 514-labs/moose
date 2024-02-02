@@ -232,18 +232,30 @@ impl Webserver {
         //! Starts the local webserver
         let socket = self.socket().await;
 
-        // We create a TcpListener and bind it to 127.0.0.1:3000
+        // We create a TcpListener and bind it to 127.0.0.1:4000
         let listener = TcpListener::bind(socket).await.unwrap();
 
         let producer = redpanda::create_producer(project.redpanda_config.clone());
 
-        show_message!(
+        {
+            show_message!(
             MessageType::Info,
             Message {
                 action: "Started".to_string(),
-                details: format!(" server on port {}", socket.port()),
+                details: format!(" web server on port http://localhost:{}. You'll use this to host and port to send data to your MooseJS app", socket.port()),
             }
         );
+        }
+
+        {
+            show_message!(
+            MessageType::Info,
+            Message {
+                action: "Started".to_string(),
+                details: format!(" console on port http://localhost:{}. Check it out to get a bird's eye view of your application and infrastructure", project.console_config.host_port),
+            }
+        );
+        }
 
         let mut sigterm =
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate()).unwrap();

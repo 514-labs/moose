@@ -2,7 +2,8 @@
 
 import { cn } from "lib/utils";
 import { infrastructureMock } from "../mock";
-import Link from "next/link";
+import { getCliData } from "app/db";
+import { unstable_noStore as noStore } from "next/cache";
 
 import {
     Accordion,

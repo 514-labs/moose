@@ -3,44 +3,41 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
 
 import { unstable_noStore as noStore } from "next/cache";
-import { Model, modelMock } from "../mock";
-import { infrastructureMock } from "app/infrastructure/mock";
 import Link from "next/link";
 import { Separator } from "components/ui/separator";
 import { cn } from "lib/utils";
+import { tabListStyle, tabTriggerStyle } from "components/style-utils";
+import { DataModel, getCliData } from "app/db";
 
 
-async function getModel(modelId: string): Promise<Model> {
+async function getModel(name: string): Promise<DataModel> {
   try {
-    return modelMock.models.find((q) => q.id === modelId);
+    const data = await getCliData();
+    return data.models.find(x => x.name === name);
   } catch (error) {
     return null
   }
 }
-
-const triggerStyle = "rounded-none px-3 py-1.5 text-md font-normal ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 data-[state=active]:border-b-2 data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-white"
 
 
 
 export default async function Page({
   params,
 }: {
-  params: { modelId: string };
+  params: { modelName: string };
 }): Promise<JSX.Element> {
   // This is to make sure the environment variables are read at runtime
   // and not during build time
   noStore();
 
-  const model = await getModel(params.modelId);
-
-  const infra = infrastructureMock;
+  const model = await getModel(params.modelName);
 
   return (
-    <section className="p-4 max-h-screen overflow-y-auto">
+    <section className="p-4 max-h-screen overflow-y-auto grow">
       <div className="py-10">
         <div className="text-6xl">
-          <Link className="text-muted-foreground" href="/primitives"> ... / </Link>
-          <Link className="text-muted-foreground" href="/primitives/models"> Models </Link>
+          <Link className="text-muted-foreground" href="/"> .. / </Link>
+          <Link className="text-muted-foreground" href="/primitives/models"> models </Link>
           <Link href="/primitives/models">/ {model.name} </Link>
         </div>
         <div className="text-muted-foreground py-5 max-w-screen-md">
@@ -50,60 +47,58 @@ export default async function Page({
 
         <div className="flex flex-row space-x-3 ">
           <Tabs defaultValue="ingestionPoints" className="flex-grow">
-            <TabsList className="inline-flex h-10 items-center justify-center rounded-none bg-transparent p-0 text-muted-foreground -mb-0.5">
-              <TabsTrigger className={cn(triggerStyle)} value="ingestionPoints">Ingestion Points</TabsTrigger>
-              <TabsTrigger className={cn(triggerStyle)} value="queues">Queues</TabsTrigger>
-              <TabsTrigger className={cn(triggerStyle)} value="tables">Tables</TabsTrigger>
-              <TabsTrigger className={cn(triggerStyle)} value="views">Views</TabsTrigger>
-              <TabsTrigger className={cn(triggerStyle)} value="snippets">Snippets</TabsTrigger>
+            <TabsList className={cn(tabListStyle)}>
+              <TabsTrigger className={cn(tabTriggerStyle)} value="ingestionPoints">Ingestion Points</TabsTrigger>
+              <TabsTrigger className={cn(tabTriggerStyle)} value="queues">Queues</TabsTrigger>
+              <TabsTrigger className={cn(tabTriggerStyle)} value="tables">Tables</TabsTrigger>
+              <TabsTrigger className={cn(tabTriggerStyle)} value="views">Views</TabsTrigger>
+              <TabsTrigger className={cn(tabTriggerStyle)} value="snippets">Snippets</TabsTrigger>
             </TabsList>
             <Separator />
             <TabsContent value="ingestionPoints">
-              {infra.ingestionPoints.map((ingestionPoint, index) => (
+              {/* {infra.ingestionPoints.map((ingestionPoint, index) => (
                 <Link key={index} href={`/infrastructure/ingestion-points/${ingestionPoint.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                   <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                     <div className="py-4 text-muted-foreground">{ingestionPoint.name}</div>
                     <Separator />
                   </div>
                 </Link>
-              ))}
+              ))} */}
             </TabsContent>
             <TabsContent value="queues">
-              {infra.ingestionPoints.map((queue, index) => (
+              {/* {infra.ingestionPoints.map((queue, index) => (
                 <Link key={index} href={`/infrastructure/queues/${queue.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                   <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                     <div className="py-4 text-muted-foreground">{queue.name}</div>
                     <Separator />
                   </div>
                 </Link>
-              ))}
+              ))} */}
             </TabsContent>
             <TabsContent value="tables">
-              {infra.databases.flatMap(x => x.tables.map((t) => ({ databaseId: x.id, ...t }))).map((table, index) => (
+              {/* {infra.databases.flatMap(x => x.tables.map((t) => ({ databaseId: x.id, ...t }))).map((table, index) => (
                 <Link key={index} href={`/infrastructure/databases/${table.databaseId}/tables/${table.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                   <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                     <div className="py-4 text-muted-foreground">{table.name}</div>
                     <Separator />
                   </div>
                 </Link>
-              ))}
+              ))} */}
             </TabsContent>
             <TabsContent value="views">
-              {infra.databases.flatMap(x => x.views.map((t) => ({ databaseId: x.id, ...t }))).map((view, index) => (
+              {/* {infra.databases.flatMap(x => x.views.map((t) => ({ databaseId: x.id, ...t }))).map((view, index) => (
                 <Link key={index} href={`/infrastructure/databases/${view.databaseId}/views/${view.id}`} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                   <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
                     <div className="py-4 text-muted-foreground">{view.name}</div>
                     <Separator />
                   </div>
                 </Link>
-              ))}
-
+              ))} */}
             </TabsContent>
             <TabsContent value="snippets">
               <code className="font-mono">Some code</code>
             </TabsContent>
           </Tabs>
-
         </div>
       </div>
     </section>

@@ -341,7 +341,6 @@ mod tests {
         let schema_dir = PathBuf::from(manifest_location)
             .join("tests/test_project")
             .join(SCHEMAS_DIR);
-        println!("schema_dir: {:?}", schema_dir);
         let mut framework_objects = vec![];
         let result = get_all_framework_objects(&mut framework_objects, &schema_dir);
         assert!(result.is_ok());

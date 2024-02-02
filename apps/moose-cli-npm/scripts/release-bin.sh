@@ -40,4 +40,4 @@ cp "../framework-cli/target/${build_target}/release/${current_bin}" "../framewor
 cp "../framework-cli/target/${build_target}/release/${current_bin}" "${node_pkg}/bin"
 # publish the package
 cd "${node_pkg}"
-# npm publish --access public
+npm publish --access public

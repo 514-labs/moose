@@ -1,5 +1,4 @@
 {
-    "installation": "Installation",
-    "project-structure": "Project Structure",
-    "moose-cli": "Moose CLI"
+    "new-project": "Create a Project",
+    "dev-mode": "Start `Dev` mode"
 }

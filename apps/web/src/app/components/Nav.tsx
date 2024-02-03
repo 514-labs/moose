@@ -15,7 +15,7 @@ gsap.registerPlugin(SplitText);
 const navigation = [
   // { name: "Docs", href: "#" },
   //{ name: "about", href: "/about" },
-  { name: "docs", href: "https://framework-docs-lemon.vercel.app/", target:"_blank"},
+  { name: "docs", href: "https://docs.moosejs.com", target:"_blank"},
   { name: "slack", href: "https://join.slack.com/t/igloocommunity/shared_invite/zt-26oekgzol-99e8I2lQvHHKk1aa1Fnwpg", target:"_blank"},
   { name: "github", href: "https://github.com/514-labs/", target:"_blank"},
 ]

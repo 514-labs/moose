@@ -9,10 +9,9 @@ MooseJS's data modeling is built on top of Prisma's intuitive schema modeling la
 
 ## Creating a Model
 ```prisma filename="data-models/user.prisma" copy
-model UserActivity {
-    userId      Int
-    activity    String
-    timestamp   DateTime
+model User {
+    name        String
+    description String
 }
 ```
 

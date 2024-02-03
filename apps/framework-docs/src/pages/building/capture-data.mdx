@@ -24,20 +24,20 @@ As you define data models in your service, MooseJS will automatically generate i
   ``` bash
   curl -X POST \
     -H "Content-Type: application/json" \
-    -d '{"name": "MooseJS", "description": "MooseJS is a data service framework"}' \
-    https://localhost:4000/ingest/< model-name >
+    -d '{"name": "Test Name", "description": "This is a test description"}' \
+    http://localhost:4000/ingest/user
   ```
   </Tabs.Tab>
   <Tabs.Tab>
   ```javascript
-  fetch('https://localhost:4000/ingest/< model-name >', {
+  fetch('http://localhost:4000/ingest/user', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      name: 'MooseJS',
-      description: 'MooseJS is a data service framework'
+      name: 'Test Name',
+      description: 'This is a test description'
     })
   })
   ```
@@ -46,9 +46,9 @@ As you define data models in your service, MooseJS will automatically generate i
   ```python
     import requests
 
-    requests.post('https://localhost:4000/ingest/< model-name >', json={
-      'name': 'MooseJS',
-      'description': 'MooseJS is a data service framework'
+    requests.post('http://localhost:4000/ingest/user', json={
+      'name': 'Test Name',
+      'description': 'This is a test description'
     })
     ```
   </Tabs.Tab>

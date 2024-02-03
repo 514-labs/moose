@@ -1,0 +1,31 @@
+import { Callout } from 'nextra/components'
+
+# What is Developer Mode
+One of Moose's most powerful features is "Dev" mode. When you run your Moose application in developer mode, the Moose CLI will spin up a local version of your entire Moose app. It will then watch your project folder for any code changes, and automatically update your locally running app as you save changes. This let's you validate the impact of your code changes in real time as you develop
+
+# Using the Moose CLI 
+
+<Callout type="warning" emoji="ℹ️">
+  Note you must have Docker installed and RUNNING locally in order to run Dev mode. Please make sure you start Docker first.
+</Callout>
+
+There are a couple different ways you can utilize the Moose CLI. First go to your project directory `cd my-app`.
+
+1. The simplest method to run the CLI is via NPX. No extra installation is necessary for this method.
+```txt filename="Terminal" copy
+npx @514labs/moose-cli dev
+```
+
+2. Alternatively, the Moose CLI comes packaged with your Moose application. You can install the dependency locally and then run the Moose CLI within your project with:
+```txt filename="Terminal" copy
+npm install
+npm run dev
+```
+
+3. Finally, you can install the Moose CLI globally using NPM. This will get you a cleaner command interface, and better performance on the CLI. You can then run the Moose CLI anywhere.  
+```txt filename="Terminal" copy
+npm install -g @514labs/moose-cli
+moose dev
+```
+
+Now that you're up and running in Dev mode, you can visit [http://localhost:3001](http://localhost:3001) to view your new MooseJS application console. As you develop your MooseJS application, changes you make to your code base will be automatically reflected here in real time.

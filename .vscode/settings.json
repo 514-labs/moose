@@ -1,8 +1,8 @@
 {"rust-analyzer.linkedProjects": [
-    "apps/igloo-kit-cli/Cargo.toml",
-    "./apps/igloo-kit-cli/Cargo.toml",
-    "./apps/igloo-kit-cli/Cargo.toml",
-    "./apps/igloo-kit-cli/Cargo.toml"
+    "apps/moose-cli/Cargo.toml",
+    "./apps/moose-cli/Cargo.toml",
+    "./apps/moose-cli/Cargo.toml",
+    "./apps/moose-cli/Cargo.toml"
   ],
   "rust-analyzer.showUnlinkedFileNotification": false
 }

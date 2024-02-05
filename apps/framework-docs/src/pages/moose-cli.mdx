@@ -1,23 +1,30 @@
+import { Steps } from 'nextra/components'
+
 # Installation
 
 MooseJS comes with a handy CLI for managing your MooseJS application. Navigate to your project's directory to run commands. There are few ways to run the CLI:
 
-1. The simplest method to run the CLI is via NPX. No extra installation is necessary for this method.
+<Steps>
+### NPX
+The simplest method to run the CLI is via NPX. No extra installation is necessary for this method.
 ```txt filename="Terminal" copy
 npx @514labs/moose-cli <command>
 ```
 
-2. Alternatively, the Moose CLI comes packaged with your Moose application. You can install the dependency locally and then run the Moose CLI within your project with:
+### Dependency install
+Alternatively, the Moose CLI comes packaged with your Moose application. You can install the dependency locally and then run the Moose CLI within your project with:
 ```txt filename="Terminal" copy
 npm install
 npm run <command>
 ```
 
-3. Finally, you can install the Moose CLI globally using NPM. This will get you a cleaner command interface, and better performance on the CLI. You can then run the Moose CLI anywhere.  
+### Global install
+Finally, you can install the Moose CLI globally using NPM. This will get you a cleaner command interface, and better performance on the CLI. You can then run the Moose CLI anywhere.  
 ```txt filename="Terminal" copy
 npm install -g @514labs/moose-cli
 moose <command>
 ```
+</Steps>
 
 # Moose CLI commands
 

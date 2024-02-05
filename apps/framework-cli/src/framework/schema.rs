@@ -1,7 +1,7 @@
+use std::fmt::{Display, Formatter};
 use std::{
     collections::HashMap,
     fmt,
-    io::Error,
     path::{Path, PathBuf},
 };
 
@@ -37,6 +37,14 @@ pub enum ParsingError {
 pub struct UnsupportedDataTypeError {
     pub type_name: String,
 }
+
+impl Display for UnsupportedDataTypeError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "UnsupportedDataTypeError: {}", self.type_name)
+    }
+}
+
+impl std::error::Error for UnsupportedDataTypeError {}
 
 /// A function that maps an input type to an output type
 type MapperFunc<I, O> = fn(i: I) -> O;
@@ -307,7 +315,7 @@ pub async fn process_schema_file(
     project: &Project,
     configured_client: &ConfiguredDBClient,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
-) -> Result<(), Error> {
+) -> anyhow::Result<()> {
     let framework_objects = get_framework_objects_from_schema_file(schema_file_path)?;
     let mut compilable_objects: Vec<TypescriptObjects> = Vec::new();
     process_objects(

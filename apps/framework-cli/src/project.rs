@@ -175,8 +175,8 @@ impl Project {
         let config_file = PackageJsonFile {
             name: self.name.clone(),
             version: "0.0".to_string(),
-            // For local development of the CLI
-            // change `moose-cli` to `<REPO_PATH>/apps/moose-kit-cli/target/debug/moose-cli`
+            // For local development of the CLI,
+            // change `moose-cli` to `<REPO_PATH>/apps/framework-cli/target/debug/moose-cli`
             scripts: HashMap::from([("dev".to_string(), "moose-cli dev".to_string())]),
             dependencies: HashMap::new(),
             dev_dependencies: HashMap::from([(

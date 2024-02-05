@@ -29,31 +29,41 @@ export interface Route {
   view_name: string;
 }
 
-// From the cli's schema.rs
-//
-// pub struct DataModel {
-//   pub db_name: String,
-//   pub columns: Vec<Column>,
-//   pub name: String,
-//   pub version: i8,
-// }
-//
-// pub struct Column {
-//   pub name: String,
-//   pub data_type: ColumnType,
-//   pub arity: FieldArity,
-//   pub unique: bool,
-//   pub primary_key: bool,
-//   pub default: Option<ColumnDefaults>,
-// }
-//
-//
-// pub enum ColumnDefaults {
-//   AutoIncrement,
-//   CUID,
-//   UUID,
-//   Now,
-// }
+export interface Project {
+  name: string;
+  language: string;
+  project_file_location: string;
+  redpanda_config: RedpandaConfig;
+  clickhouse_config: ClickhouseConfig;
+  local_webserver_config: LocalWebserverConfig;
+  console_config: ConsoleConfig;
+}
+
+export interface RedpandaConfig {
+  broker: string;
+  message_timeout_ms: number;
+}
+
+export interface ClickhouseConfig {
+  db_name: string;
+  user: string;
+  password: string;
+  host: string;
+  host_port: number;
+  postgres_port: number;
+  kafka_port: number;
+  cluster_network: string;
+}
+
+export interface LocalWebserverConfig {
+  host: string;
+  port: number;
+}
+
+export interface ConsoleConfig {
+  host_port: number;
+}
+
 
 export interface DataModel {
   db_name: string;
@@ -80,12 +90,30 @@ export interface Table {
   uuid: string;
 }
 
-
 export interface CliData {
+  project?: Project;
   models: DataModel[];
   ingestionPoints: Route[];
   tables: Table[];
   queues: string[];
+}
+
+export function column_type_mapper(source_type: string): string {
+  if (source_type === "String") {
+    return "string";
+  } else if (source_type === "Number") {
+    return "number";
+  } else if (source_type === "Boolean") {
+    return "boolean";
+  } else if (source_type === "Date") {
+    return "Date";
+  } else if (source_type === "Array") {
+    return "array";
+  } else if (source_type === "Object") {
+    return "object";
+  } else {
+    return "unknown";
+  }
 }
 
 export async function putCliData(data: CliData): Promise<void> {

@@ -200,7 +200,7 @@ export default function QueryInterface({ table, related }: QueryInterfaceProps) 
         return () => {
             document.removeEventListener("keydown", handleKeyDown)
         }
-    }, [])
+    }, [value])
     
 
     return (
@@ -211,74 +211,89 @@ export default function QueryInterface({ table, related }: QueryInterfaceProps) 
             <ResizablePanel defaultSize={20}>
             <ResizablePanelGroup direction="horizontal">
                 <ResizablePanel defaultSize={75}>
-                <div className="flex h-full">
-                    <Textarea ref={textareaRef} className="border-0 h-full font-mono" placeholder="type your query here" value={value} onChange={(e) => setValue(e.target.value)}/>
-                </div>
-                </ResizablePanel>
-                <ResizableHandle withHandle />
-                <ResizablePanel defaultSize={25}>
-                <div className="flex h-full px-4 w-full overflow-y-auto">
-                    <div className="grow">
-                        <div className="text-xs font-mono flex flex-row items-center">
-                            <span className="py-2">Tables</span> <span className="flex-grow"/> 
-                            {
-                                tableCount < tables.length ? 
-                                <Button variant="ghost" onClick={() => setTableCount(tables.length)}>more</Button> : 
-                                tables.length < tableCount ?
-                                "" :
-                                <Button variant="ghost" onClick={() => setTableCount(12)}>less</Button>
-                            }
-                        </div>
-                        <div className="flex flex-row space-x-1 py-2 flex-wrap">
-                            {tables.slice(0, tableCount).map((word, index) => (
-                                <Badge onClick={(e:any) => {
-                                    insertSomeText(word, value, textareaRef, setValue)
-                                }} className="text-nowrap my-1" variant="outline" key={index}>{word}</Badge>
-                            ))}
-                        </div>
-                        <div className="text-xs font-mono flex flex-row items-center">
-                            <span>SQL</span> <span className="flex-grow"/> 
-                            {
-                                sqlKeyWordCount < sqlKeyWords.length ? 
-                                <Button variant="ghost" onClick={() => setSqlKeyWordCount(sqlKeyWords.length)}>more</Button> : 
-                                <Button variant="ghost" onClick={() => setSqlKeyWordCount(12)}>less</Button>
-                            }
-                        </div>
-                        <div className="flex flex-row space-x-1 py-2 flex-wrap">
-                            {sqlKeyWords.slice(0, sqlKeyWordCount).map((word, index) => (
-                                <Badge onClick={(e: any ) => {
-                                    insertSomeText(word, value, textareaRef, setValue)
-                                }} className="text-nowrap my-1" variant="outline" key={index}>{word}</Badge>
-                            ))}
-                        </div>
-                        
+                    <div className="p-4 pt-0 pl-0 h-full">
+                        <Card className="h-full p-0 rounded-3xl">
+                            <CardContent className="h-full p-1 rounded-3xl ">
+                                <div className="h-full rounded-3xl ">
+                                    <Textarea ref={textareaRef} className="border-0 h-full rounded-3xl font-mono resize-none p-4" placeholder="type your query here" value={value} onChange={(e) => setValue(e.target.value)}/>
+                                </div>
+                            </CardContent>
+                        </Card>
                     </div>
-                    
-                </div>
+                </ResizablePanel>
+                <ResizableHandle withHandle className="bg-border-0" />
+                <ResizablePanel defaultSize={25}>
+                    <div className="p-4 pt-0 pr-0 h-full ">
+                        <Card className="h-full overflow-y-auto rounded-3xl ">
+                            <CardContent className="py-4">
+                                <div className="flex h-full w-full overflow-y-auto">
+                                    <div className="grow">
+                                        <div className="text-xs font-mono flex flex-row items-center">
+                                            <span className="py-2">Tables</span> <span className="flex-grow"/> 
+                                            {
+                                                tableCount < tables.length ? 
+                                                <Button variant="ghost" onClick={() => setTableCount(tables.length)}>more</Button> : 
+                                                tables.length < tableCount ?
+                                                "" :
+                                                <Button variant="ghost" onClick={() => setTableCount(12)}>less</Button>
+                                            }
+                                        </div>
+                                        <div className="flex flex-row space-x-1 py-2 flex-wrap">
+                                            {tables.slice(0, tableCount).map((word, index) => (
+                                                <Badge onClick={(e:any) => {
+                                                    insertSomeText(word, value, textareaRef, setValue)
+                                                }} className="text-nowrap my-1" variant="outline" key={index}>{word}</Badge>
+                                            ))}
+                                        </div>
+                                        <div className="text-xs font-mono flex flex-row items-center">
+                                            <span>SQL</span> <span className="flex-grow"/> 
+                                            {
+                                                sqlKeyWordCount < sqlKeyWords.length ? 
+                                                <Button variant="ghost" onClick={() => setSqlKeyWordCount(sqlKeyWords.length)}>more</Button> : 
+                                                <Button variant="ghost" onClick={() => setSqlKeyWordCount(12)}>less</Button>
+                                            }
+                                        </div>
+                                        <div className="flex flex-row space-x-1 py-2 flex-wrap">
+                                            {sqlKeyWords.slice(0, sqlKeyWordCount).map((word, index) => (
+                                                <Badge onClick={(e: any ) => {
+                                                    insertSomeText(word, value, textareaRef, setValue)
+                                                }} className="text-nowrap my-1" variant="outline" key={index}>{word}</Badge>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </div>
                 </ResizablePanel>
             </ResizablePanelGroup>
             </ResizablePanel>
-            <ResizableHandle withHandle />
+            <ResizableHandle withHandle className="bg-border-0"/>
             <ResizablePanel defaultSize={80} className=" overflow-y-auto">
-                <div className="flex h-full flex-col py-4">
-                    <div className="flex flex-row items-center">
-                        <span className="">Results</span>
-                        <span className="flex-grow"/>
-                        <span className="px-2">ctrl/cmd + enter</span>                
-                        <Button variant="default" onClick={
-                            async () => {
-                                const results = await runQuery(value)
-                                setResults(results)
-                            }
-                        
-                        }>Run</Button>
-                    </div>
-                    <Card className="mt-4 px-0 h-full overflow-y-auto">
-                        <CardContent className="px-0">
-                        {results ? <PreviewTable rows={results} caption="query results"/> : "query results will appear here"}
+                <div className="pt-4">
+                    <Card className="rounded-3xl ">
+                        <CardContent>
+                        <div className="flex h-full flex-col py-4">
+                            <div className="flex flex-row items-center">
+                                <span className="">Results</span>
+                                <span className="flex-grow"/>
+                                <span className="px-2">ctrl/cmd + enter</span>                
+                                <Button variant="default" onClick={
+                                    async () => {
+                                        const results = await runQuery(value)
+                                        setResults(results)
+                                    }
+                                
+                                }>Run</Button>
+                            </div>
+                            {results ? <PreviewTable rows={results} caption="query results"/> : "query results will appear here"}
+
+                        </div>
                         </CardContent>
                     </Card>
                 </div>
+                
+                
             </ResizablePanel>
         </ResizablePanelGroup>
     )

@@ -154,8 +154,7 @@ impl CreateKafkaTriggerViewQuery {
         tt.add_template("create_materialized_view", CREATE_KAFKA_TRIGGER_TEMPLATE)
             .unwrap();
         let context = CreateKafkaTriggerContext::new(view);
-        let rendered = tt.render("create_materialized_view", &context).unwrap();
-        rendered
+        tt.render("create_materialized_view", &context).unwrap()
     }
 }
 

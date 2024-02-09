@@ -155,7 +155,7 @@ async fn ingest_route(
                     Ok(Response::new(Full::new(response_bytes)))
                 }
                 Err(e) => {
-                    println!("Error: {:?}", e);
+                    debug!("Error: {:?}", e);
                     Ok(Response::new(Full::new(Bytes::from("Error"))))
                 }
             }

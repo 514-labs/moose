@@ -187,3 +187,31 @@ where
     sp.stop_with_newline();
     res
 }
+
+#[cfg(test)]
+mod tests {
+
+    #[test]
+    fn test_with_spinner() {
+        //! Test to demonstrate a spinner
+        use super::*;
+        use crate::cli::routines::RoutineFailure;
+        use std::time::Duration;
+        use std::thread;
+
+        let _ = with_spinner("Test delay for one second", || {
+            thread::sleep(Duration::from_secs(1));
+            Ok(())
+        })
+        .map_err(|err| {
+            RoutineFailure::new(
+                Message::new("Failed".to_string(), "to execute a delay".to_string()),
+                err,
+            )
+        });
+        show_message!(MessageType::Info, Message {
+            action: "SUCCESS".to_string(),
+            details: "Successfully executed a one second delay".to_string(),
+        });
+    }
+}

@@ -7,7 +7,7 @@ use std::{
 use notify::{event::ModifyKind, Config, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::RwLock;
 
-use super::display::{Message, MessageType};
+use super::display::{Message, MessageType, with_spinner};
 use crate::infrastructure::stream::redpanda;
 use crate::{
     framework::controller::{remove_table_and_topics_from_schema_file_path, RouteMeta},
@@ -98,7 +98,27 @@ async fn create_framework_objects_from_schema_file_path(
 
     if let Some(ext) = schema_file_path.extension() {
         if ext == "prisma" && schema_file_path.to_str().unwrap().contains(SCHEMAS_DIR) {
-            process_schema_file(schema_file_path, project, configured_client, route_table).await?;
+            let _ = with_spinner("Processing schema file", || async {
+                let result = process_schema_file(schema_file_path, project, configured_client, route_table).await;
+                match result {
+                    Ok(_) => {
+                        show_message!(MessageType::Info, {
+                            Message {
+                                action: "Schema".to_string(),
+                                details: "file processed".to_string(),
+                            }
+                        });
+                    }
+                    Err(e) => {
+                        show_message!(MessageType::Error, {
+                            Message {
+                                action: "Schema".to_string(),
+                                details: format!("file failed to process: {}", e),
+                            }
+                        });
+                    }
+                }
+            });
         }
     } else {
         info!("No primsa extension found. Likely created unsupported file type")
@@ -187,7 +207,7 @@ impl FileWatcher {
 
         tokio::spawn(async move {
             if let Err(error) = watch(&project, route_table).await {
-                println!("Error: {error:?}");
+                debug!("Error: {error:?}");
             }
         });
 

@@ -3,7 +3,7 @@
 use std::{fmt, path::PathBuf, process::Command};
 
 use home::home_dir;
-use log::debug;
+use log::{debug, error};
 
 pub fn get_root() -> Result<PathBuf, std::io::Error> {
     let result = Command::new("npm").arg("root").arg("-g").output()?;
@@ -61,7 +61,14 @@ pub fn install_packages(
     command.arg("install");
 
     let output = command.output()?; // We should explore not using output here and instead using spawn.
-    println!("{}", String::from_utf8(output.stdout).unwrap());
+    match String::from_utf8(output.stdout) {
+        Ok(val) => {
+            debug!("{}", val);
+        }
+        Err(e) => {
+            error!("Error: {:?}", e);
+        }
+    }
 
     Ok(())
 }
@@ -76,7 +83,14 @@ pub fn run_build(
     command.arg("build");
 
     let output = command.output()?; // We should explore not using output here and instead using spawn.
-    println!("{}", String::from_utf8(output.stdout).unwrap());
+    match String::from_utf8(output.stdout) {
+        Ok(val) => {
+            debug!("{}", val);
+        }
+        Err(e) => {
+            error!("Error: {:?}", e);
+        }
+    }
 
     Ok(())
 }
@@ -98,7 +112,39 @@ pub fn link_sdk(
     }
 
     let output = command.output()?; // We should explore not using output here and instead using spawn.
-    println!("{}", String::from_utf8(output.stdout).unwrap());
+    match String::from_utf8(output.stdout) {
+        Ok(val) => {
+            debug!("{}", val);
+        }
+        Err(e) => {
+            error!("Error: {:?}", e);
+        }
+    }
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_output_of_command() -> Result<(), std::io::Error> {
+        //! Test to demonstrate the use of command and output handling
+        //! Note: this test will fail if npm isn't installed.
+        use super::*;
+        let mut command = Command::new("npm");
+        command.arg("version");
+        let output = command.output()?;
+
+        assert!(output.status.success());
+        match String::from_utf8(output.stdout) {
+            Ok(val) => {
+                assert!(val.len() > 0);
+            }
+            Err(_e) => {
+                assert!(false)
+            }
+        }
+
+        Ok(())
+    }
 }

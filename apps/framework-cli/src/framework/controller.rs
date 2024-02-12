@@ -27,7 +27,7 @@ use crate::infrastructure::olap;
 
 use std::io::ErrorKind;
 
-use crate::infrastructure::olap::clickhouse::ClickhouseView;
+use crate::infrastructure::olap::clickhouse::ClickhouseKafkaTrigger;
 
 use std::io::Error;
 
@@ -35,8 +35,6 @@ use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 
 use super::schema::parse_schema_file;
 use super::schema::DataModel;
-use super::schema::MatViewOps;
-use super::schema::TableOps;
 use super::typescript::TypescriptInterface;
 
 #[derive(Debug, Clone)]
@@ -51,7 +49,7 @@ pub fn framework_object_mapper(s: DataModel) -> FrameworkObject {
     let clickhouse_table = olap::clickhouse::mapper::std_table_to_clickhouse_table(s.to_table());
     FrameworkObject {
         data_model: s.clone(),
-        table: clickhouse_table.clone(),
+        table: clickhouse_table,
         topic: s.name.clone(),
         ts_interface: framework::typescript::mapper::std_table_to_typescript_interface(
             s.to_table(),
@@ -98,12 +96,17 @@ pub fn get_framework_objects_from_schema_file(path: &Path) -> Result<Vec<Framewo
     Ok(framework_objects)
 }
 
-pub(crate) async fn create_or_replace_view(
+pub(crate) async fn create_or_replace_kafka_trigger(
     fo: &FrameworkObject,
     view_name: String,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), Error> {
-    let view = ClickhouseView::new(fo.table.db_name.clone(), view_name, fo.table.clone());
+    let view = ClickhouseKafkaTrigger::new(
+        fo.table.db_name.clone(),
+        view_name,
+        fo.table.kafka_table_name(),
+        fo.table.name.clone(),
+    );
     let create_view_query = view.create_materialized_view_query().map_err(|e| {
         Error::new(
             ErrorKind::Other,
@@ -137,23 +140,17 @@ pub(crate) async fn create_or_replace_view(
     Ok(())
 }
 
-pub(crate) async fn create_or_replace_table(
+pub(crate) async fn create_or_replace_tables(
     fo: &FrameworkObject,
     configured_client: &ConfiguredDBClient,
-) -> Result<(), Error> {
+) -> anyhow::Result<()> {
     info!("Creating table: {:?}", fo.table.name);
-    let create_table_query = fo.table.create_table_query().map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to get clickhouse query: {:?}", e),
-        )
-    })?;
-    let drop_table_query = fo.table.drop_table_query().map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to get clickhouse query: {:?}", e),
-        )
-    })?;
+
+    let drop_data_table_query = fo.table.drop_kafka_table_query()?;
+    let drop_kafka_table_query = fo.table.drop_data_table_query()?;
+
+    let create_data_table_query = fo.table.create_data_table_query()?;
+    let create_kafka_table_query = fo.table.create_kafka_table_query()?;
 
     olap::clickhouse::check_ready(configured_client)
         .await
@@ -165,22 +162,10 @@ pub(crate) async fn create_or_replace_table(
         })?;
 
     // Clickhouse doesn't support dropping a view if it doesn't exist so we need to drop it first in case the schema has changed
-    olap::clickhouse::run_query(&drop_table_query, configured_client)
-        .await
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Failed to drop table in clickhouse: {}", e),
-            )
-        })?;
-    olap::clickhouse::run_query(&create_table_query, configured_client)
-        .await
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Failed to create table in clickhouse: {}", e),
-            )
-        })?;
+    olap::clickhouse::run_query(&drop_data_table_query, configured_client).await?;
+    olap::clickhouse::run_query(&drop_kafka_table_query, configured_client).await?;
+    olap::clickhouse::run_query(&create_data_table_query, configured_client).await?;
+    olap::clickhouse::run_query(&create_kafka_table_query, configured_client).await?;
     Ok(())
 }
 
@@ -245,7 +230,7 @@ pub async fn remove_table_and_topics_from_schema_file_path(
     schema_file_path: &Path,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     configured_client: &ConfiguredDBClient,
-) -> Result<(), Error> {
+) -> anyhow::Result<()> {
     //need to get the path of the file, scan the route table and remove all the files that need to be deleted.
     // This doesn't have to be as fast as the scanning for routes in the web server so we're ok with the scan here.
 
@@ -299,7 +284,7 @@ pub async fn process_objects(
     configured_client: &ConfiguredDBClient,
     compilable_objects: &mut Vec<TypescriptObjects>, // Objects that require compilation after processing
     route_table: &mut HashMap<PathBuf, RouteMeta>,
-) -> Result<(), Error> {
+) -> anyhow::Result<()> {
     for fo in framework_objects {
         let ingest_route = schema_file_path_to_ingest_route(
             project.app_dir().clone(),
@@ -310,10 +295,10 @@ pub async fn process_objects(
 
         debug!("Creating table & view: {:?}", fo.table.name);
 
-        let view_name = format!("{}_view", fo.table.name);
+        let view_name = format!("{}_trigger", fo.table.name);
 
-        create_or_replace_table(&fo, configured_client).await?;
-        create_or_replace_view(&fo, view_name.clone(), configured_client).await?;
+        create_or_replace_tables(&fo, configured_client).await?;
+        create_or_replace_kafka_trigger(&fo, view_name.clone(), configured_client).await?;
 
         debug!("Table created: {:?}", fo.table.name);
 

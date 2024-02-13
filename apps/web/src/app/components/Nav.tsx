@@ -5,9 +5,8 @@ import { SplitText } from "gsap/SplitText";
 import React from "react";
 import { Disclosure } from '@headlessui/react'
 import { Bars3Icon,  XMarkIcon } from '@heroicons/react/24/outline'
-import { useRouter, usePathname } from 'next/navigation'
+import { usePathname } from 'next/navigation'
 import { AnimatedDescription } from "./AnimatedDescription";
-import { AnimatedComponent } from "./AnimatedComponent";
 
 
 gsap.registerPlugin(SplitText);
@@ -21,7 +20,7 @@ const navigation = [
 ]
 
 export const Nav = () => {
-  const titleRef = React.useRef(null);
+  // const titleRef = React.useRef(null);
 
   useLayoutEffect(() => {
     // let ctx = gsap.context(() => {

@@ -41,22 +41,21 @@ export const AnimatedImage = ({
   delay,
   position,
   quality, // Include the quality prop
-  sizes, // Include the sizes prop
   coverPlacement,
 }: AnimateImageProps) => {
   const imageRef = React.useRef(null);
   const computedTriggerRef = triggerRef || imageRef;
-  var computedPosition = position || 0;
+  let _computedPosition = position || 0;
 
   useLayoutEffect(() => {
-    let ctx = gsap.context(() => {
+    const ctx = gsap.context(() => {
       const tl = onScroll ? gsap.timeline({
         scrollTrigger: {
           trigger: computedTriggerRef.current,
           onEnter: (self) => {
             gsap.set(imageRef.current, { visibility: "visible" });
             if (self.getVelocity() > 0) {
-              computedPosition = 0;
+              _computedPosition = 0;
             }
           },
         },

@@ -2,15 +2,13 @@
 
 import { CliData, Route, Table } from "app/db"
 import CodeCard from "components/code-card"
-import QueryInterface from "components/query-interface"
 import SnippetCard from "components/snippet-card"
 import { tabListStyle, tabTriggerStyle } from "components/style-utils"
 import { Button } from "components/ui/button"
 import { CardHeader, CardContent, Card, CardTitle, CardDescription } from "components/ui/card"
 import { Separator } from "components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs"
-import { jsSnippet, pythonSnippet, clickhouseJSSnippet, clickhousePythonSnippet } from "lib/snippets"
-import { cn, getModelFromRoute, getModelFromTable, getRelatedInfra, tableIsView } from "lib/utils"
+import { cn, getModelFromRoute, getRelatedInfra } from "lib/utils"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { useCallback, useState } from "react"
@@ -24,7 +22,7 @@ interface IngestionPointTabsProps {
     clickhousePythonSnippet: string;
 }
 
-function ClickhouseTableRestriction(view: Table) {
+function _ClickhouseTableRestriction(view: Table) {
   return (
     <div className="py-4">
       <div className="text-muted-foreground max-w-xl">

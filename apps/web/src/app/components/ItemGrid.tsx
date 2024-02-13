@@ -82,7 +82,7 @@ const grid_rows = {
     },
 }
 
-const getSmallStyles = (cols: number, rows: number) => {
+const getSmallStyles = (_cols: number, _rows: number) => {
     return ""
 }
 
@@ -101,7 +101,7 @@ const getXLargeStyles = (cols: number, rows: number) => {
 
 const composeSizes = (cols: number, rows: number) => {
     const combo = cols * rows;
-    var sizeStyles = getSmallStyles(1, combo) + " " + getMediumStyles(1, combo) + " " + getLargeStyles(cols, rows) + " " + getXLargeStyles(cols, rows);
+    let sizeStyles = getSmallStyles(1, combo) + " " + getMediumStyles(1, combo) + " " + getLargeStyles(cols, rows) + " " + getXLargeStyles(cols, rows);
     if (cols === 1) {
         sizeStyles += "space-y-10 lg:space-y-24";
     }

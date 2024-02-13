@@ -17,7 +17,7 @@ export const HeroSection = () => {
   const descriptionRef = React.useRef(null);
 
   useLayoutEffect(() => {
-    let ctx = gsap.context(() => {
+    const ctx = gsap.context(() => {
       const tl = gsap.timeline();
       const splitText = new SplitText(headingRef.current, {
         type: "words, chars",

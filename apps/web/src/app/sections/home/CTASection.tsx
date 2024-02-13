@@ -24,7 +24,7 @@ export const CTASection = () => {
   const featureDescriptionRef = React.useRef(null);
 
   useLayoutEffect(() => {
-    let ctx = gsap.context(() => {
+    const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: featureDescriptionRef.current,

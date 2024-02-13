@@ -1,23 +1,25 @@
-import { DataTable } from 'components/data-table';
 import React from 'react';
 import { Table, getCliData } from "app/db";
 import { unstable_noStore as noStore } from "next/cache";
 import Link from 'next/link';
 import { Separator } from 'components/ui/separator';
 
-async function TablesPage({searchParams}) {
+type View = 'view' | 'table';
+
+function getTablesForView(tables: Table[], view: View) {
+    const cleanedTables = tables.filter(t => !t.name.includes('.inner'));
+
+    switch (view) {
+        case 'view': return cleanedTables.filter(t => t.engine === "MaterializedView");
+        case 'table': return cleanedTables.filter(t => t.engine !== "MaterializedView");
+        default: return cleanedTables;
+    }
+}
+async function TablesPage({ searchParams }) {
     noStore();
     const data = await getCliData();
 
-    let tables: Table[] = data.tables.filter(t => !t.name.includes('.inner'));
-
-    if (searchParams.type === 'view') {
-        tables = (tables.filter( t => t.engine === "MaterializedView"))
-    } else if (searchParams.type === 'table') {
-        tables = tables.filter( t => t.engine !== "MaterializedView")
-    } else {
-        tables = tables;
-    }
+    const tables = getTablesForView(data.tables, searchParams);
 
     return (
         <section className="p-4 max-h-screen overflow-y-auto grow">
@@ -28,22 +30,22 @@ async function TablesPage({searchParams}) {
                 </div>
             </div>
             <div className="">
-            <Separator />
-            {tables.map((table, index) => (
-                <Link key={index} href={`/infrastructure/databases/${table.database}/tables/${table.uuid}`} >
-                <div key={index} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer"> 
-                    <div className="py-2 flex flex-row">
-                        <div>
-                            <div>{table.name}</div>
-                            <div className="text-muted-foreground">{table.database}</div>
+                <Separator />
+                {tables.map((table, index) => (
+                    <Link key={index} href={`/infrastructure/databases/${table.database}/tables/${table.uuid}`} >
+                        <div key={index} className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
+                            <div className="py-2 flex flex-row">
+                                <div>
+                                    <div>{table.name}</div>
+                                    <div className="text-muted-foreground">{table.database}</div>
+                                </div>
+                                <span className="flex-grow" />
+                            </div>
+                            <Separator />
                         </div>
-                        <span className="flex-grow"/>
-                    </div>
-                    <Separator/>
-                </div>
-                </Link>
-            ))}
-        </div>      
+                    </Link>
+                ))}
+            </div>
         </section>
     );
 }

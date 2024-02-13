@@ -1,7 +1,5 @@
 import { Route, getCliData } from "app/db";
-import { tabListStyle, tabTriggerStyle } from "components/style-utils";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
-import { cn, getModelFromRoute } from "lib/utils";
+import { getModelFromRoute } from "lib/utils";
 
 import { unstable_noStore as noStore } from "next/cache";
 import Link from "next/link";
@@ -18,9 +16,6 @@ async function getIngestionPoint(ingestionPointId: string): Promise<Route> {
   }
   
 }
-
-
-
 
 export default async function Page({
   params,

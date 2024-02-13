@@ -33,4 +33,4 @@ export function PreviewTable({ rows, caption }: TableProps) {
         </TableBody>
       </Table>
     );
-  };
+  }

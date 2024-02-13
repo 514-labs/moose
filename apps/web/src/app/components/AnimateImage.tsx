@@ -14,7 +14,7 @@ export const AnimateImage = ({src, alt, priority}: AnimateImageProps) => {
   const imageRef = React.useRef(null);
 
   useLayoutEffect(() => {
-    let ctx = gsap.context(() => {
+    const ctx = gsap.context(() => {
       
       gsap.from(imageRef.current,{
         scrollTrigger: {

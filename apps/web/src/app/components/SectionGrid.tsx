@@ -27,7 +27,7 @@ const getLargeStyles =  "lg:grid-cols-12";
 const getXLargeStyles =  "xl:grid-cols-12";
 
 const composeSizes = () => {
-    var sizeStyles = getSmallStyles + " " + getMediumStyles + " " + getLargeStyles + " " + getXLargeStyles;
+    const sizeStyles = getSmallStyles + " " + getMediumStyles + " " + getLargeStyles + " " + getXLargeStyles;
 
     return sizeStyles;
 }

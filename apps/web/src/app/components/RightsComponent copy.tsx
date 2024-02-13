@@ -1,7 +1,6 @@
 'use client'
-import React, { useLayoutEffect } from "react";
+import React from "react";
 import { AnimatedDescription } from "./AnimatedDescription";
-import { gsap } from "gsap";
 
 export const RightsComponent = () => {
   const titleRef = React.useRef(null);

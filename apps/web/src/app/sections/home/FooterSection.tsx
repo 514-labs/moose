@@ -1,7 +1,6 @@
 import React from "react";
 import { RightsComponent } from "../../components/RightsComponent";
 import { LogoComponent } from "../../components/LogoComponent";
-import { AnimatedDescription } from "../../components/AnimatedDescription";
 
 export const FooterSection = () => {
   return (

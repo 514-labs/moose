@@ -110,10 +110,10 @@ export interface Primitive {
     version: string;
     consolePath: string;
     count: number;
-};
+}
 
 // Generate a primitive for each primitive type
-const generatePrimitives = (): Primitive[] => {
+const _generatePrimitives = (): Primitive[] => {
     const primitiveTypes = Object.values(PrimitiveType);
 
     return primitiveTypes.map((primitiveType) => {
@@ -132,7 +132,7 @@ const generatePrimitives = (): Primitive[] => {
 export interface HomeMock {
     modelMock: ModelMock;
     infrastructure: InfrastuctureMock  
-};
+}
 
 export const homeMock: HomeMock = {
     modelMock: modelMock,

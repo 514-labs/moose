@@ -1,10 +1,7 @@
 import { Queue } from "app/infrastructure/mock"
 import { Card, CardContent } from "./ui/card"
 import { Badge, badgeVariants } from "./ui/badge"
-import { Button, buttonVariants } from "./ui/button"
 import { Separator } from "./ui/separator"
-import Link from "next/link"
-import { ChevronRight } from "lucide-react"
 import { ChevronRightButton } from "./chevron-right-button"
 
 interface QueuesListCardProps {

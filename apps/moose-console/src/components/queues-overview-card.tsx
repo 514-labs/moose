@@ -3,7 +3,6 @@ import { Queue } from "app/infrastructure/mock"
 import {
     Card,
     CardContent,
-    CardDescription,
     CardFooter,
     CardHeader,
     CardTitle,

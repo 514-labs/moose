@@ -39,7 +39,7 @@ export const viewColumns: ColumnDef<View>[] = [
     {
         id: "actions",
         cell: ({ row }) => {
-          const view = row.original
+          const _view = row.original
      
           return (
             <Link href={""}>

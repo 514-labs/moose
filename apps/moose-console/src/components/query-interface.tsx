@@ -1,6 +1,5 @@
 'use client'
 
-import { table } from "console"
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "./ui/resizable"
 import { Textarea } from "./ui/textarea"
 import { Table } from "app/db"
@@ -160,7 +159,7 @@ const insertSomeText = (insert: string, originalValue: string, ref: MutableRefOb
     const selectionStart = ref.current.selectionStart;
     const selectionEnd = ref.current.selectionEnd;
  
-    let newValue =
+    const newValue =
       originalValue.substring(0, selectionStart) +
       insert +
       originalValue.substring(selectionEnd, originalValue.length);
@@ -240,7 +239,7 @@ export default function QueryInterface({ table, related }: QueryInterfaceProps) 
                                         </div>
                                         <div className="flex flex-row space-x-1 py-2 flex-wrap">
                                             {tables.slice(0, tableCount).map((word, index) => (
-                                                <Badge onClick={(e:any) => {
+                                                <Badge onClick={(_e:any) => {
                                                     insertSomeText(word, value, textareaRef, setValue)
                                                 }} className="text-nowrap my-1" variant="outline" key={index}>{word}</Badge>
                                             ))}
@@ -255,7 +254,7 @@ export default function QueryInterface({ table, related }: QueryInterfaceProps) 
                                         </div>
                                         <div className="flex flex-row space-x-1 py-2 flex-wrap">
                                             {sqlKeyWords.slice(0, sqlKeyWordCount).map((word, index) => (
-                                                <Badge onClick={(e: any ) => {
+                                                <Badge onClick={(_e: any ) => {
                                                     insertSomeText(word, value, textareaRef, setValue)
                                                 }} className="text-nowrap my-1" variant="outline" key={index}>{word}</Badge>
                                             ))}

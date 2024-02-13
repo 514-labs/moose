@@ -9,7 +9,6 @@ import { Button } from "components/ui/button"
 import { CardHeader, CardContent, Card, CardTitle, CardDescription } from "components/ui/card"
 import { Separator } from "components/ui/separator"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs"
-import { jsSnippet, pythonSnippet, clickhouseJSSnippet, clickhousePythonSnippet } from "lib/snippets"
 import { cn, getModelFromTable, getRelatedInfra, tableIsView } from "lib/utils"
 import Link from "next/link"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -46,7 +45,7 @@ export default function TableTabs({table, cliData, jsSnippet, pythonSnippet, cli
     const router = useRouter();
     const pathName = usePathname();
 
-    const [selectedTab, setSelectedTab] = useState<string>(tab ? tab : "overview")
+    const [_selectedTab, setSelectedTab] = useState<string>(tab ? tab : "overview")
     const model = getModelFromTable(table, cliData);
     const infra = getRelatedInfra(model, cliData, table)
     const associated_view = cliData.tables.find((view) => view.name === table.dependencies_table[0]);

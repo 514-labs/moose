@@ -39,7 +39,7 @@ export const AnimatedComponent = ({children, onScroll, triggerRef, className, po
     const computedTriggerRef = triggerRef || wrapperRef;
 
     useLayoutEffect(() => {
-        let ctx = gsap.context(() => {
+        const ctx = gsap.context(() => {
 
             const tl = onScroll ? gsap.timeline({
                 scrollTrigger: {

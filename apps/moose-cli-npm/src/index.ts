@@ -27,6 +27,7 @@ function getExePath() {
 
   try {
     // Since the binary will be located inside `node_modules`, we can simply call `require.resolve`
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require.resolve(
       `@514labs/moose-cli-${os}-${arch}/bin/moose-cli${extension}`
     );

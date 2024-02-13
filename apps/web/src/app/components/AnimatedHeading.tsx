@@ -50,10 +50,10 @@ export const AnimatedHeading = ({content, size, onScroll, triggerRef, className,
 
     const headingRef = React.useRef(null);
     const computedTriggerRef = triggerRef || headingRef;
-    var computedPosition = position || 0;
+    let computedPosition = position || 0;
 
     useLayoutEffect(() => {
-        let ctx = gsap.context(() => {
+        const ctx = gsap.context(() => {
             const tl = onScroll ? gsap.timeline({
                 scrollTrigger: {
                     trigger: computedTriggerRef.current,

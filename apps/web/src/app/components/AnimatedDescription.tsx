@@ -31,7 +31,7 @@ export const AnimatedDescription = ({content, onScroll, triggerRef, className, p
 
     const descriptionRef = React.useRef(null);
     const computedTriggerRef = triggerRef || descriptionRef;
-    var computedPosition = position || 0;
+    let _computedPosition = position || 0;
 
     useLayoutEffect(() => {
         const splitText = new SplitText(descriptionRef.current, { type: "lines, words" });
@@ -43,7 +43,7 @@ export const AnimatedDescription = ({content, onScroll, triggerRef, className, p
 
         window.addEventListener("resize", resetSplitText);
 
-        let ctx = gsap.context(() => {
+        const ctx = gsap.context(() => {
 
             const tl = onScroll ? gsap.timeline({
                 scrollTrigger: {
@@ -51,7 +51,7 @@ export const AnimatedDescription = ({content, onScroll, triggerRef, className, p
                     onEnter: (self) => {
                         gsap.set(descriptionRef.current, { visibility: "visible" });
                         if (self.getVelocity() > 0) {
-                            computedPosition = 0;
+                            _computedPosition = 0;
                         }
                     }
                 },

@@ -1,4 +1,4 @@
-import { CliData, DataModel, Route, Table, column_type_mapper } from "app/db";
+import { CliData, DataModel, column_type_mapper } from "app/db";
 import { getIngestionPointFromModel } from "./utils";
 
 export const jsSnippet = (data: CliData, model: DataModel) => {

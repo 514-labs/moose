@@ -3,7 +3,6 @@ import { Button } from "ui";
 import { gsap } from "gsap";
 import React, { useLayoutEffect } from "react";
 import { SplitText } from "gsap/SplitText";
-import { AnimatedComponent } from "../components/AnimatedComponent";
 
 export const CodeBlockCTA = () => {
   const inboundRef = React.useRef(null);
@@ -11,7 +10,7 @@ export const CodeBlockCTA = () => {
   const wrapperRef = React.useRef(null);
 
   useLayoutEffect(() => {
-    let ctx = gsap.context(() => {
+    const ctx = gsap.context(() => {
 
       const tl = gsap.timeline();
       const splitTextOutbound = new SplitText(outboundRef.current, { type: "words, chars, lines" });

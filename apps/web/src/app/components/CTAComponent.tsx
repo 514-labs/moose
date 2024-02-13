@@ -7,7 +7,7 @@ export const CTAComponent = () => {
   const buttonRef = React.useRef(null);
 
   useLayoutEffect(() => {
-    let ctx = gsap.context(() => {
+    const ctx = gsap.context(() => {
 
       const tl = gsap.timeline();
 

@@ -24,10 +24,6 @@ interface Section {
     links?: NavLinks[];
 }
 
-interface LeftNavProps {
-    sections: Section[];
-}
-
 
 // There are two sections, a "Primitives" section and a "Infrastructure" Section. 
 // 
@@ -129,7 +125,6 @@ export const Item = ({ name, href }: NavLinks) => {
 
 
 export const LeftNav = () => {
-    const pathname = usePathname()
 
     return (
         <div className="flex flex-col w-64 py-8">

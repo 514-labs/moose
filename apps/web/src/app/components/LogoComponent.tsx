@@ -1,8 +1,7 @@
 'use client'
-import React, { useLayoutEffect } from "react";
+import React from "react";
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
-import { AnimatedImage } from "./AnimatedImage";
 import { AnimatedComponent } from "./AnimatedComponent";
 import Image from 'next/image';
 

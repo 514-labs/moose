@@ -4,14 +4,6 @@ import { Button } from "components/ui/button";
 import { Table, View } from "../../mock";
 import { ColumnDef } from "@tanstack/react-table"
 import { ArrowUpDown, ChevronRight } from "lucide-react"
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuLabel,
-    DropdownMenuSeparator,
-    DropdownMenuTrigger,
-  } from "components/ui/dropdown-menu"
 import Link from "next/link";
 
 

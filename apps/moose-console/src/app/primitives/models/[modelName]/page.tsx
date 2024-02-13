@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Separator } from "components/ui/separator";
 import { cn, getRelatedInfra } from "lib/utils";
 import { tabListStyle, tabTriggerStyle } from "components/style-utils";
-import { CliData, DataModel, Route, Table, column_type_mapper, getCliData } from "app/db";
+import { CliData, DataModel, getCliData } from "app/db";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "components/ui/card";
 import { Button } from "components/ui/button";
 import CodeCard from "components/code-card";

@@ -1,13 +1,12 @@
 /* eslint-disable turbo/no-undeclared-env-vars */
 
 import {  createClient } from "@clickhouse/client-web";
-import { Field } from "app/mock";
 import Link from "next/link";
 import { Table, getCliData } from "app/db";
 import { unstable_noStore as noStore } from "next/cache";
 import TableTabs from "./table-tabs";
 import { clickhouseJSSnippet, clickhousePythonSnippet, jsSnippet, pythonSnippet } from "lib/snippets";
-import { getModelFromTable, getRelatedInfra } from "lib/utils";
+import { getModelFromTable } from "lib/utils";
 
 
 function getClient() {
@@ -29,7 +28,7 @@ function getClient() {
 }
 
 
-async function describeTable(databaseName: string, tableName: string): Promise<any> {
+async function _describeTable(databaseName: string, tableName: string): Promise<any> {
   const client = getClient();
 
   const resultSet = await client.query({
@@ -40,12 +39,6 @@ async function describeTable(databaseName: string, tableName: string): Promise<a
   return resultSet.json();
 
 }
-
-interface FieldsListCardProps {
-  fields: Field[]
-}
-
-
 
 const isView = (table: Table) => table.engine === "MaterializedView";
 
@@ -61,9 +54,7 @@ export default async function Page({
   const data = await getCliData();
 
   const table = data.tables.find((table) => table.uuid === params.tableId);
-  const tableMeta = await describeTable(params.databaseName, table.name);
   const model = getModelFromTable(table, data);
-  const infra = getRelatedInfra(model, data, table)
 
   return (
     <section className="p-4 max-h-screen flex-grow overflow-y-auto flex flex-col">

@@ -10,7 +10,7 @@ export const HeroTextMainComponent = () => {
   const titleRef = React.useRef(null);
 
   useLayoutEffect(() => {
-    let ctx = gsap.context(() => {
+    const ctx = gsap.context(() => {
 
       const tl = gsap.timeline();
       const splitText = new SplitText(titleRef.current, { type: "words, chars" });

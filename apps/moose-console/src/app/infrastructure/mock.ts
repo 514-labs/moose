@@ -193,7 +193,7 @@ const generateDatabase = (): Database => {
     const tables = Array.from({ length: 5 }, generateTable);
     // generate a view that references a table
     const views = tables.map(table => {
-        const { status, ...sharedFields } = table;
+        const { status: _, ...sharedFields } = table;
 
         return {
             parentTable: table.id,

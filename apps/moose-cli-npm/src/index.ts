@@ -43,6 +43,10 @@ function getExePath() {
  */
 function run() {
   const args = process.argv.slice(2);
+  // ignore sigint in the node parent process
+  // so that we can wait until we have processResult when the rust process returns
+  // instead of prematurely exiting
+  process.on('SIGINT', () => {})
   const processResult = spawnSync(getExePath(), args, { stdio: "inherit" });
   process.exit(processResult.status ?? 0);
 }

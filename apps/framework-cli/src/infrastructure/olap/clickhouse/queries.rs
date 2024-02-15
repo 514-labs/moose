@@ -33,6 +33,9 @@ stream_like_engine_allow_direct_select = 1;
 
 pub struct CreateTableQuery;
 
+static KAFKA_SETTINGS: &str =
+    "kafka_skip_broken_messages = 1, date_time_input_format = 'best_effort'";
+
 impl CreateTableQuery {
     pub fn kafka(
         table: ClickhouseTable,
@@ -43,8 +46,8 @@ impl CreateTableQuery {
         CreateTableQuery::build(
             table,
             format!(
-                "Kafka('{}:{}', '{}', 'clickhouse-group', 'JSONEachRow') SETTINGS kafka_skip_broken_messages = 1",
-                kafka_host, kafka_port, topic,
+                "Kafka('{}:{}', '{}', 'clickhouse-group', 'JSONEachRow') SETTINGS {}",
+                kafka_host, kafka_port, topic, KAFKA_SETTINGS,
             ),
         )
     }

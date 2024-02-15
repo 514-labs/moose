@@ -43,7 +43,7 @@ impl CreateTableQuery {
         CreateTableQuery::build(
             table,
             format!(
-                "Kafka('{}:{}', '{}', 'clickhouse-group', 'JSONEachRow')",
+                "Kafka('{}:{}', '{}', 'clickhouse-group', 'JSONEachRow') SETTINGS kafka_skip_broken_messages = 1",
                 kafka_host, kafka_port, topic,
             ),
         )

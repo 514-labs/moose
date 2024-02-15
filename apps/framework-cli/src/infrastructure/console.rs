@@ -49,6 +49,9 @@ pub async fn post_current_state_to_console(
         .map(|fo| fo.data_model.clone())
         .collect();
 
+    olap::clickhouse::check_ready(configured_db_client)
+        .await
+        .unwrap();
     let tables = olap::clickhouse::fetch_all_tables(configured_db_client)
         .await
         .unwrap();

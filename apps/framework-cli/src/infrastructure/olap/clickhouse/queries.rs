@@ -187,7 +187,7 @@ impl DropMaterializedViewContext {
     ) -> Result<DropMaterializedViewContext, UnsupportedDataTypeError> {
         Ok(DropMaterializedViewContext {
             db_name: view.db_name,
-            view_name: format!("{}_view", view.name),
+            view_name: view.name,
         })
     }
 }

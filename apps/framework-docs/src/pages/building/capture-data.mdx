@@ -21,23 +21,24 @@ As you define data models in your service, MooseJS will automatically generate i
 
 <Tabs items={['curl', 'javascript', 'python']}>
   <Tabs.Tab>
-  ``` bash
+    ``` bash
   curl -X POST \
     -H "Content-Type: application/json" \
-    -d '{"name": "Test Name", "description": "This is a test description"}' \
-    http://localhost:4000/ingest/user
+    -d '{"timestamp": "2019-01-01 00:00:01", "userId": "123456", "activityType": "click"}' \
+    http://localhost:4000/ingest/UserActivity
   ```
   </Tabs.Tab>
   <Tabs.Tab>
   ```javascript
-  fetch('http://localhost:4000/ingest/user', {
+  fetch('http://localhost:4000/ingest/UserActivity', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
-      name: 'Test Name',
-      description: 'This is a test description'
+      timestamp: '2019-01-01 00:00:01',
+      userId: '123456',
+      activityType: 'click'
     })
   })
   ```
@@ -46,9 +47,10 @@ As you define data models in your service, MooseJS will automatically generate i
   ```python
     import requests
 
-    requests.post('http://localhost:4000/ingest/user', json={
-      'name': 'Test Name',
-      'description': 'This is a test description'
+    requests.post('http://localhost:4000/ingest/UserActivity', json={
+      'timestamp': '2019-01-01 00:00:01', 
+      'userId': '123456', 
+      'activityType': 'click'
     })
     ```
   </Tabs.Tab>

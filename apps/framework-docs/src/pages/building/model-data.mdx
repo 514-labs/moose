@@ -1,4 +1,4 @@
-import { Cards, Card } from 'nextra/components'
+import { Cards, Card, Tabs } from 'nextra/components'
 
 # Model Data
 MooseJS's data modeling is built on top of Prisma's intuitive schema modeling language. You can read more about Prisma's schema modeling language [here](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-schema). To get started you simply need to create a `.prisma` file in your project's data model directory. If you're in development mode, MooseJS will automatically detect this file and use it to generate:
@@ -8,19 +8,44 @@ MooseJS's data modeling is built on top of Prisma's intuitive schema modeling la
 - A ingestion table and an analtics view to store and query your data
 
 ## Creating a Model
-```prisma filename="data-models/user.prisma" copy
-model User {
-    name        String
-    description String
+```prisma filename="datamodels/models.prisma" copy
+model UserActivity {
+    timestamp   DateTime @id
+    userId      String
+    activityType String
 }
 ```
 
 As you can see, the model is very simple. It's just a list of fields and their types. MooseJS will automatically generate a table for you in your database and a view to query your data. We don't currently support all of Prisma's schema modeling features, but we're working on it. If you'd like to see a feature added, please join our [Slack community](https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg) and let us know.
 
-## Next steps
-Now that you've created a model, you can start instrumenting your application. To do that, you'll need to link the MooseJS SDK to your project we cover the process in the [next section](/building/capture-data). If you're interested in knowing what happens when you change your data model, simply head to the make changes section of the docs.
+## Inspecting Your Model
+Once you've created your model, you can inspect it along with the infrastructure that MooseJS automatically generated for you by navigating to the console at http://localhost:3001.
 
-<Cards>
-  <Card title="Capture Data" href="/building/capture-data" />
-  <Card title="Make Changes" href="/building/make-changes" />
-</Cards>
+## Test Your Model
+When you create a model, MooseJS automatically creates an ingestion point to facilitate immediate data testing. Send a sample payload to this endpoint using:
+
+<Tabs items={['Single Data Sample', 'Batch Sample']}>
+  <Tabs.Tab>
+  ``` bash
+  curl -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"timestamp": "2019-01-01 00:00:01", "userId": "123456", "activityType":"click"}' \
+    http://localhost:4000/ingest/UserActivity
+  ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+  ``` bash
+  for i in {1..10}
+  do
+    curl -X POST \
+      -H "Content-Type: application/json" \
+      -d '{"timestamp": "2024-01-01 00:00:00", "userId": "$i", "activityType":"click"}' \
+      http://localhost:4000/ingest/UserActivity
+  done
+  ```
+  </Tabs.Tab>
+</Tabs>
+
+## Next steps
+You're set to start sending data into your Moose application from upstream sources. Detailed integration steps are available in the [next section](/building/capture-data).
+To understand the impact of changes to your data model, refer to the [Make Changes](/building/make-changes) section of the docs.

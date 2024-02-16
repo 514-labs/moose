@@ -12,9 +12,8 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: "18"
-          cache: "pnpm"
       - name: Prettier
-        run: prettier --write './apps/**/*.{ts,tsx}'
+        run: npx prettier --write './apps/**/*.{ts,tsx}'
       
       - name: Commit changes
         uses: stefanzweifel/git-auto-commit-action@v5

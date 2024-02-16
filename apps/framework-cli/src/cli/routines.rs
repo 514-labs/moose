@@ -264,7 +264,7 @@ async fn initialize_project_state(
 
     info!("Starting schema directory crawl...");
 
-    let _ = with_spinner_async("Processing schema file", async {
+    with_spinner_async("Processing schema file", async {
         let crawl_result =
             process_schemas_in_dir(&schema_dir, project, &configured_client, route_table).await;
 
@@ -289,8 +289,7 @@ async fn initialize_project_state(
             }
         }
     })
-    .await;
-
+    .await?;
     Ok(())
 }
 

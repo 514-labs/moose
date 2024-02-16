@@ -194,7 +194,6 @@ where
     F: Future<Output = R>,
 {
     let mut sp = Spinner::new(Spinners::Dots9, message.into());
-
     let res = f.await;
     sp.stop_with_newline();
     res
@@ -235,7 +234,7 @@ mod tests {
         use crate::cli::routines::RoutineFailure;
         use tokio::time::{sleep, Duration};
 
-        let _ = with_spinner_async("Test delay", async {
+        let result = with_spinner_async("Test delay", async {
             sleep(Duration::from_secs(15)).await;
             Ok(())
         })
@@ -253,6 +252,7 @@ mod tests {
                 details: "Successfully executed a delay".to_string(),
             }
         );
+        result
     }
 
     #[tokio::test]
@@ -262,7 +262,7 @@ mod tests {
         use std::process::Stdio;
         use tokio::process::Command;
 
-        let _ = with_spinner_async("Run docker ps command", async {
+        let result = with_spinner_async("Run docker ps command", async {
             let child = Command::new("docker")
                 .arg("ps")
                 .arg("-a")
@@ -302,5 +302,6 @@ mod tests {
                 details: "Successfully executed docker ps command".to_string(),
             }
         );
+        result
     }
 }

@@ -98,7 +98,7 @@ async fn create_framework_objects_from_schema_file_path(
 
     if let Some(ext) = schema_file_path.extension() {
         if ext == "prisma" && schema_file_path.to_str().unwrap().contains(SCHEMAS_DIR) {
-            let _ = with_spinner_async("Processing schema file", async {
+            let result = with_spinner_async("Processing schema file", async {
                 let result =
                     process_schema_file(schema_file_path, project, configured_client, route_table)
                         .await;
@@ -122,6 +122,7 @@ async fn create_framework_objects_from_schema_file_path(
                 }
             })
             .await;
+            result
         }
     } else {
         info!("No primsa extension found. Likely created unsupported file type")

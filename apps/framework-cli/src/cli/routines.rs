@@ -89,7 +89,7 @@ use tokio::sync::RwLock;
 use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
-use super::display::with_spinner;
+use super::display::with_spinner_async;
 use crate::framework::controller::RouteMeta;
 use crate::framework::schema::process_schema_file;
 use crate::infrastructure::console::post_current_state_to_console;
@@ -264,7 +264,7 @@ async fn initialize_project_state(
 
     info!("Starting schema directory crawl...");
 
-    let _ = with_spinner("Processing schema file", || async {
+    let _ = with_spinner_async("Processing schema file", async {
         let crawl_result =
             process_schemas_in_dir(&schema_dir, project, &configured_client, route_table).await;
 
@@ -288,7 +288,7 @@ async fn initialize_project_state(
                 Err(e)
             }
         }   
-    });
+    }).await;
     
     Ok(())
 }

@@ -2,6 +2,7 @@ use console::style;
 use lazy_static::lazy_static;
 use spinners::{Spinner, Spinners};
 use std::sync::{Arc, RwLock};
+use tokio::macros::support::Future;
 
 /// # Display Module
 /// Standardizes the way we display messages to the user in the CLI. This module
@@ -188,12 +189,22 @@ where
     res
 }
 
+pub async fn with_spinner_async<F, R>(message: &str, f: F) -> R
+where
+F: Future<Output = R>,
+{
+    let mut sp = Spinner::new(Spinners::Dots9, message.into());
+
+    let res = f.await;
+    sp.stop_with_newline();
+    res
+}
+
 #[cfg(test)]
 mod tests {
-
+    
     #[test]
     fn test_with_spinner() {
-        //! Test to demonstrate a spinner
         use super::*;
         use crate::cli::routines::RoutineFailure;
         use std::time::Duration;
@@ -212,6 +223,70 @@ mod tests {
         show_message!(MessageType::Info, Message {
             action: "SUCCESS".to_string(),
             details: "Successfully executed a one second delay".to_string(),
+        });
+    }
+
+    #[tokio::test]
+    async fn simple_test_with_spinner_async() {
+        use super::*;
+        use crate::cli::routines::RoutineFailure;
+        use tokio::time::{sleep, Duration};
+
+        let _ = with_spinner_async("Test delay", async {
+            sleep(Duration::from_secs(15)).await;
+            Ok(())
+        }).await
+        .map_err(|err| {
+            RoutineFailure::new(
+                Message::new("Failed".to_string(), "to execute a delay".to_string()),
+                err,
+            )
+        });
+        show_message!(MessageType::Info, Message {
+            action: "SUCCESS".to_string(),
+            details: "Successfully executed a delay".to_string(),
+        });
+    }
+
+    #[tokio::test]
+    async fn command_test_with_spinner_async() {
+        use super::*;
+        use crate::cli::routines::RoutineFailure;
+        use tokio::process::Command;
+        use std::process::Stdio;
+
+        let _ = with_spinner_async("Run docker ps command", async {
+            let child = Command::new("docker")
+                .arg("ps")
+                .arg("-a")
+                .arg("--no-trunc")
+                .arg("--format")
+                .arg("json")
+                .stdout(Stdio::piped())
+                .stderr(Stdio::piped())
+                .spawn()?;
+    
+            let output = child.wait_with_output().await?;
+
+            if !output.status.success() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "Failed to list Docker containers",
+                ));
+            }
+            let output_str = String::from_utf8_lossy(&output.stdout);
+            print!("{}", output_str);
+            Ok(())
+        }).await
+        .map_err(|err| {
+            RoutineFailure::new(
+                Message::new("Failed".to_string(), "to execute docker ps command".to_string()),
+                err,
+            )
+        });
+        show_message!(MessageType::Info, Message {
+            action: "SUCCESS".to_string(),
+            details: "Successfully executed docker ps command".to_string(),
         });
     }
 }

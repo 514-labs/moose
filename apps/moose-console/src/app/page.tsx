@@ -17,17 +17,9 @@ function OverviewCardHeader({
   href,
 }: OverviewCardHeaderProps) {
   return (
-    <Link
-      href={
-        numItems !== 0
-          ? href
-          : "https://docs.moosejs.com/getting-started/new-project"
-      }
-    >
-      <div className="text-4xl py-4 flex flex-row">
-        <div className="grow text-ellipsis text-nowrap">
-          {numItems ? `${numItems} ${title}` : title}
-        </div>
+    <Link href={numItems !== 0 ? href : "https://docs.moosejs.com/getting-started/new-project"}>
+      <div className="text-4xl py-4 flex flex-row hover:bg-muted">
+        <div className="grow text-ellipsis text-nowrap">{numItems ? `${numItems} ${title}` : title}</div>
         <div className="flex-shrink-0">
           <Button className="border-primary" variant="link">
             <ChevronRight className="h-4 w-4" />
@@ -41,9 +33,7 @@ function OverviewCardHeader({
 function EmptyListItem({ itemName }) {
   return (
     <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
-      <div className="py-4 text-muted-foreground">
-        No {itemName} to show yet
-      </div>
+      <div className="py-4 text-muted-foreground">{itemName} coming soon</div>
       <Separator />
     </div>
   );

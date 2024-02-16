@@ -52,7 +52,7 @@ export default async function Page({
 
   return (
     <section className="p-4 max-h-screen overflow-y-auto grow">
-      <div className="py-10">
+        <div className="py-10">
         <div className="text-6xl">
           <Link className="text-muted-foreground" href="/">
             {" "}
@@ -64,12 +64,6 @@ export default async function Page({
           </Link>
           <Link href="/primitives/models">/ {model.name} </Link>
         </div>
-        <div className="text-muted-foreground py-5 max-w-screen-md">
-          Models define the shape of the data that your MooseJS app expects. If
-          you want to learn more about them, head to the{" "}
-          <a className="underline" href="">
-            documentation
-          </a>
         </div>
 
         <div className="flex flex-row space-x-3 ">
@@ -89,17 +83,18 @@ export default async function Page({
               <div className=" grid grid-cols-12 gap-4">
                 <div className="col-span-12 xl:col-span-6">
                   <Card className="rounded-3xl">
-                    <CardHeader className="text-xl text-muted-foreground">
-                      Fields
-                    </CardHeader>
-                    <CardContent>
+                    <CardHeader className="text-xl text-muted-foreground">Fields</CardHeader>
+                    <CardContent >
                       <div>
-                        <div className="flex py-4">
-                          <div className="grow basis-1">Field Name</div>
-                          <div className="grow basis-1"> Type</div>
-                          <div className="grow basis-1"> Required?</div>
-                          <div className="grow basis-1"> Unique?</div>
-                          <div className="grow basis-1"> Primary Key?</div>
+                        <div >
+                          <div className="flex py-4">
+                            <div className="grow basis-1">Field Name</div>
+                            <div className="grow basis-1"> Type</div>
+                            <div className="grow basis-1"> Required</div>
+                            <div className="grow basis-1"> Unique</div>
+                            <div className="grow basis-1"> Primary Key</div>
+                          </div>
+                          <Separator />
                         </div>
                         <Separator />
                       </div>
@@ -273,29 +268,20 @@ export default async function Page({
                 </div>
                 <div className="col-span-12 xl:col-span-6">
                   <Card className="rounded-3xl">
-                    <CardHeader className="text-xl  text-muted-foreground">
-                      <CardTitle className=" font-normal">Data Out</CardTitle>
-                      <CardDescription>
-                        When you create a data model, moose automatically spins
-                        up infrastructure to ingest data. You can easily extract
-                        data from the infrastructure in the following ways:
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div>
-                        <h1 className="text-lg">Exploratory queries</h1>
-                        <h2 className="py-2 flex flex-row items-center">
-                          <div className="flex flex-col">
-                            <span>Query the view directly</span>
-                            <span className="text-sm text-muted-foreground">
-                              You can run explore your data with sql by querying
-                              the view directly
-                            </span>
-                          </div>
-                          <span className="grow" />
-                          <Link
-                            href={`/infrastructure/databases/${view.database}/tables/${view.uuid}?tab=query`}
-                          >
+                      <CardHeader className="text-xl  text-muted-foreground">
+                        <CardTitle className=" font-normal">Data Out</CardTitle>
+                        <CardDescription>When you create a data model, moose automatically provisions your database with a ingestion table and view. You can easily extract data from the view in the following ways:</CardDescription>
+                      </CardHeader>
+                      <CardContent >
+                        <div>
+                          <h1 className="text-lg">Exploratory queries</h1>
+                          <h2 className="py-2 flex flex-row items-center">
+                            <div className="flex flex-col">
+                              <span>Query the view directly</span>
+                              <span className="text-sm text-muted-foreground">You can run explore your data with sql by querying the view directly</span>
+                            </div>
+                            <span className="grow" />
+                            <Link href={`/infrastructure/databases/${view.database}/tables/${view.uuid}?tab=query`}>
                             <Button variant="outline">go to view</Button>
                           </Link>
                         </h2>
@@ -330,7 +316,6 @@ export default async function Page({
             </TabsContent>
           </Tabs>
         </div>
-      </div>
     </section>
   );
 }

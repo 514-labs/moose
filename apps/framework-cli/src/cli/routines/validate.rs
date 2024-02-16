@@ -104,23 +104,27 @@ impl Routine for ValidatePandaHouseNetwork {
     }
 }
 
-pub struct ValidateRedPandaCluster;
+pub struct ValidateRedPandaCluster {
+    project_name: String,
+}
 impl ValidateRedPandaCluster {
-    pub fn new() -> Self {
-        Self
+    pub fn new(project_name: String) -> ValidateRedPandaCluster {
+        ValidateRedPandaCluster { project_name }
     }
 }
 impl Routine for ValidateRedPandaCluster {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let output = docker::run_rpk_cluster_info().map_err(|err| {
+        let output = docker::run_rpk_cluster_info(&self.project_name).map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),
-                    "to validate red panda cluster".to_string(),
+                    format!("to validate red panda cluster, {}", err),
                 ),
                 err,
             )
         })?;
+
+        println!("output: {:?}", output);
 
         if output.contains(REDPANDA_CONTAINER_NAME) {
             Ok(RoutineSuccess::success(Message::new(

@@ -170,10 +170,13 @@ impl ClickhouseTable {
         }
     }
 
-    pub fn create_kafka_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
+    pub fn create_kafka_table_query(
+        &self,
+        project_name: &str,
+    ) -> Result<String, UnsupportedDataTypeError> {
         CreateTableQuery::kafka(
             self.kafka_table(),
-            REDPANDA_CONTAINER_NAME.to_string(),
+            format!("{}-{}", project_name, REDPANDA_CONTAINER_NAME),
             9092,
             self.name.clone(),
         )
@@ -262,7 +265,7 @@ pub async fn check_ready(
     crate::utilities::retry::retry(
         || run_query(&dummy_query, configured_client),
         |i, e| {
-            i < 10
+            i < 20
                 && match e {
                     clickhouse::error::Error::Network(v) => {
                         let err_string = v.to_string();

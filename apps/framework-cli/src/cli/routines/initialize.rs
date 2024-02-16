@@ -1,4 +1,3 @@
-use std::io::ErrorKind;
 use std::{fs, path::PathBuf};
 
 use crate::cli::routines::util::ensure_docker_running;
@@ -6,7 +5,6 @@ use crate::{
     cli::display::Message,
     framework::{languages::create_models_dir, typescript::create_typescript_models_dir},
     project::Project,
-    utilities::constants::PANDA_NETWORK,
     utilities::docker,
 };
 
@@ -40,7 +38,7 @@ impl Routine for InitializeProject {
         ensure_docker_running()?;
 
         CreateModelsVolume::new(self.project.clone()).run(run_mode)?;
-        CreateDockerNetwork::new(PANDA_NETWORK).run(run_mode)?;
+        CreateDockerComposeFile::new(self.project.clone()).run(run_mode)?;
 
         Ok(RoutineSuccess::success(Message::new(
             "Created".to_string(),
@@ -298,38 +296,32 @@ impl Routine for CreateModelsVolume {
     }
 }
 
-pub struct CreateDockerNetwork {
-    network_name: &'static str,
+pub struct CreateDockerComposeFile {
+    project: Project,
 }
 
-impl CreateDockerNetwork {
-    pub fn new(network_name: &'static str) -> Self {
-        Self { network_name }
+impl CreateDockerComposeFile {
+    pub fn new(project: Project) -> Self {
+        Self { project }
     }
 }
 
-impl Routine for CreateDockerNetwork {
+impl Routine for CreateDockerComposeFile {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let output = docker::create_network(self.network_name);
+        let output = docker::create_compose_file(&self.project);
 
         match output {
             Ok(_) => Ok(RoutineSuccess::success(Message::new(
                 "Created".to_string(),
-                format!("docker network {}", &self.network_name),
+                "docker compose file".to_string(),
             ))),
-            Err(err) => match err.kind() {
-                ErrorKind::AlreadyExists => Ok(RoutineSuccess::info(Message::new(
-                    "Exists".to_string(),
-                    format!("docker network {}", &self.network_name),
-                ))),
-                _ => Err(RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        format!("to create docker network {}", &self.network_name),
-                    ),
-                    err,
-                )),
-            },
+            Err(err) => Err(RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to create docker compose file".to_string(),
+                ),
+                err,
+            )),
         }
     }
 }

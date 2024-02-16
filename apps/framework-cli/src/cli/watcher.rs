@@ -60,6 +60,7 @@ async fn process_event(
                         .await
                     } else {
                         remove_table_and_topics_from_schema_file_path(
+                            &project.name,
                             &route,
                             &mut route_table,
                             configured_client,

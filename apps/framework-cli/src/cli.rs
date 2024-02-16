@@ -112,7 +112,8 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 controller.add_routine(Box::new(RunLocalInfrastructure::new(project.clone())));
 
-                controller.add_routine(Box::new(ValidateRedPandaCluster::new()));
+                controller
+                    .add_routine(Box::new(ValidateRedPandaCluster::new(project.name.clone())));
 
                 controller.run_routines(run_mode);
 

@@ -16,11 +16,9 @@ pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";
 
 pub const APP_DIR: &str = "app";
 pub const APP_DIR_LAYOUT: [&str; 7] = [
-    "ingestion_points",
     SCHEMAS_DIR,
     "flows",
     "insights",
-    "insights/dashboards",
-    "insights/models",
+    "insights/charts",
     "insights/metrics",
 ];

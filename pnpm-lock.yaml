@@ -21,11 +21,11 @@ importers:
         specifier: ^15.2.0
         version: 15.2.0
       prettier:
-        specifier: ^2.8.8
-        version: 2.8.8
+        specifier: ^3.2.5
+        version: 3.2.5
       prettier-plugin-tailwindcss:
         specifier: ^0.1.13
-        version: 0.1.13(prettier@2.8.8)
+        version: 0.1.13(prettier@3.2.5)
       turbo:
         specifier: latest
         version: 1.11.3
@@ -34,7 +34,7 @@ importers:
     dependencies:
       '@514labs/moose-cli':
         specifier: latest
-        version: 0.3.77
+        version: 0.3.79
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -129,16 +129,16 @@ importers:
     optionalDependencies:
       '@514labs/moose-cli-darwin-arm64':
         specifier: latest
-        version: 0.3.77
+        version: 0.3.79
       '@514labs/moose-cli-darwin-x64':
         specifier: latest
-        version: 0.3.77
+        version: 0.3.79
       '@514labs/moose-cli-linux-arm64':
         specifier: latest
-        version: 0.3.77
+        version: 0.3.79
       '@514labs/moose-cli-linux-x64':
         specifier: latest
-        version: 0.3.77
+        version: 0.3.79
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -438,46 +438,46 @@ importers:
 
 packages:
 
-  /@514labs/moose-cli-darwin-arm64@0.3.77:
-    resolution: {integrity: sha512-rd3ljqav2ojY1mdQG9SXEykRbS0wSXI2SB6kAGDXn/daNAPGY4cevkRG4x1cQdq5oSCMEZc+6SRW1kHYO1/cMg==}
+  /@514labs/moose-cli-darwin-arm64@0.3.79:
+    resolution: {integrity: sha512-AJwK9SgzVlIRm2OmJrHqQw2g9Lxx+nSfheD4CvYEqpt6rFRMWbiYOqhY7P6kN4B3uhtb+eIGaCpzKLwVI2goWQ==}
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-x64@0.3.77:
-    resolution: {integrity: sha512-PU3rMD3HTNYV2kEScJLvLCVphs9QcS56CgFSm4G7BrXXyto1s17xShwCsD+mxx+pCnS5SM2S5rz4FaQlJ12lfw==}
+  /@514labs/moose-cli-darwin-x64@0.3.79:
+    resolution: {integrity: sha512-dWFj47J9HXUUPuRGRQPLczjmRYAtcoMnUlNPPXBCsuOCXAMQLxDsrVNsDsjMpCSgXxg/rVTgJ8DP1E5TBb9sRQ==}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-arm64@0.3.77:
-    resolution: {integrity: sha512-R0hL5LCaRfNPB7qFwz/OZg/1RFOY8c4yxOuViygNVlnXVEqC5BXOTKzIYA2+4Mwqwn/DRvUY3pba0JAMwDW6DA==}
+  /@514labs/moose-cli-linux-arm64@0.3.79:
+    resolution: {integrity: sha512-pW5nV4uUCgRx8MjVLRh5BhfmhuN8BpGfvCZEwaYp3Q8RTADgqRxQ5zNFbb2CdmrasyE3TnSWqTB74gieK8F9iw==}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-x64@0.3.77:
-    resolution: {integrity: sha512-aLTLLcd8+pDJuX83BlGYNExg5FZwENGbQ/xcCjYnPacnsQUmUtj1dVw4U9J1U/aeTTUI/qOpBsiaAW/47g7k2A==}
+  /@514labs/moose-cli-linux-x64@0.3.79:
+    resolution: {integrity: sha512-Ek8/yFMmd6eNPaE1TNq+s3DQvlhNX8uTkJSBpioNfL7j1AgYoW9V4pL8pEzOAvQOfwmh67cA1GwddKywX/vnEw==}
     cpu: [x64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli@0.3.77:
-    resolution: {integrity: sha512-QUISD2RBXwrWUotsxO0Mg19haTEqWhPCjjgN4nf7YVvSJ0kcV7etEV485s43c+MK9YKpi6ZfmW3t+7WLXb7iDA==}
+  /@514labs/moose-cli@0.3.79:
+    resolution: {integrity: sha512-dyApWLAuIsFsyl22E5oIAy5VkInssFPMlCmI3tTYau6VEzFXD+OKX7S91S0uFDRKqarv8eRj/vYse0UYjEwpxQ==}
     hasBin: true
     optionalDependencies:
-      '@514labs/moose-cli-darwin-arm64': 0.3.77
-      '@514labs/moose-cli-darwin-x64': 0.3.77
-      '@514labs/moose-cli-linux-arm64': 0.3.77
-      '@514labs/moose-cli-linux-x64': 0.3.77
+      '@514labs/moose-cli-darwin-arm64': 0.3.79
+      '@514labs/moose-cli-darwin-x64': 0.3.79
+      '@514labs/moose-cli-linux-arm64': 0.3.79
+      '@514labs/moose-cli-linux-x64': 0.3.79
     dev: false
 
   /@aashutoshrathi/word-wrap@1.2.6:
@@ -8815,18 +8815,18 @@ packages:
     resolution: {integrity: sha512-vkcDPrRZo1QZLbn5RLGPpg/WmIQ65qoWWhcGKf/b5eplkkarX0m9z8ppCat4mlOqUsWpyNuYgO3VRyrYHSzX5g==}
     engines: {node: '>= 0.8.0'}
 
-  /prettier-plugin-tailwindcss@0.1.13(prettier@2.8.8):
+  /prettier-plugin-tailwindcss@0.1.13(prettier@3.2.5):
     resolution: {integrity: sha512-/EKQURUrxLu66CMUg4+1LwGdxnz8of7IDvrSLqEtDqhLH61SAlNNUSr90UTvZaemujgl3OH/VHg+fyGltrNixw==}
     engines: {node: '>=12.17.0'}
     peerDependencies:
       prettier: '>=2.2.0'
     dependencies:
-      prettier: 2.8.8
+      prettier: 3.2.5
     dev: true
 
-  /prettier@2.8.8:
-    resolution: {integrity: sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==}
-    engines: {node: '>=10.13.0'}
+  /prettier@3.2.5:
+    resolution: {integrity: sha512-3/GWa9aOC0YeD7LUfvOG2NiDyhOWRvt1k+rcKhOuYnMY24iiCphgneUfJDyFXd6rZCAnuLBv6UeAULtrhT/F4A==}
+    engines: {node: '>=14'}
     hasBin: true
     dev: true
 

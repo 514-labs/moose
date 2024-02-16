@@ -42,19 +42,21 @@ export default function RootLayout({
         >
           <div className=" h-screen w-full flex flex-col">
             <nav className="flex flex-row w-screen px-4">
-                <header className="flex text-lg">
-                  <span className="py-4">moosejs <span className="text-muted-foreground">console</span></span>
-                  <span className="flex-grow" />
-                </header>
-                <span className="flex-grow"/>
-                <div className="py-3">
-                  <TopNavMenu />
+              <header className="flex text-lg">
+                <span className="py-4">
+                  moosejs <span className="text-muted-foreground">console</span>
+                </span>
+                <span className="flex-grow" />
+              </header>
+              <span className="flex-grow" />
+              <div className="py-3">
+                <TopNavMenu />
+              </div>
+              <div className="ml-3">
+                <div className="py-3 flex flex-row align-middle justify-center ">
+                  <ThemeToggle /> <span className="flex-grow" />
                 </div>
-                <div className="ml-3">
-                    <div className="py-3 flex flex-row align-middle justify-center ">
-                    <ThemeToggle /> <span className="flex-grow" /> 
-                  </div>
-                </div>
+              </div>
             </nav>
             {/* <nav className="flex flex-col px-4">
               <div className="flex-grow overflow-y-auto">

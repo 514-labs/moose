@@ -13,11 +13,4 @@ jobs:
         with:
           node-version: "18"
       - name: Prettier
-        run: npx prettier --write './apps/**/*.{ts,tsx}'
-      
-      - name: Commit changes
-        uses: stefanzweifel/git-auto-commit-action@v5
-        with:
-          commit_message: Apply formatting changes
-          branch: ${{ github.head_ref}}
-      
+        run: npx prettier --check './apps/**/*.{ts,tsx}'

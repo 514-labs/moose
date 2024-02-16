@@ -12,6 +12,6 @@ jobs:
       - uses: actions/setup-node@v3
         with:
           node-version: "18"
-      - name: Prettier
+      - name: Check prettier compliance
         run: npx prettier --check './apps/**/*.{ts,tsx}'
      

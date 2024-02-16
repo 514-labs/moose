@@ -5,7 +5,8 @@
     "dev": "turbo dev",
     "lint": "turbo lint",
     "clean": "turbo clean",
-    "prepare": "husky install"
+    "prepare": "husky install",
+    "format": "prettier --write './apps/**/*.{ts,tsx}'"
   },
   "devDependencies": {
     "eslint": "^7.32.0",

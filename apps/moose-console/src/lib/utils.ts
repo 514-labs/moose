@@ -1,13 +1,18 @@
 import { CliData, DataModel, Route, Table } from "app/db";
-import { type ClassValue, clsx } from "clsx"
-import { twMerge } from "tailwind-merge"
+import { type ClassValue, clsx } from "clsx";
+import { twMerge } from "tailwind-merge";
 
 export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs))
+  return twMerge(clsx(inputs));
 }
 
-export function getIngestionPointFromModel(model: DataModel, cliData: CliData): Route {
-  return cliData.ingestionPoints.find((ingestionPoint) => ingestionPoint.route_path.includes(model.name));
+export function getIngestionPointFromModel(
+  model: DataModel,
+  cliData: CliData
+): Route {
+  return cliData.ingestionPoints.find((ingestionPoint) =>
+    ingestionPoint.route_path.includes(model.name)
+  );
 }
 
 export function getModelFromRoute(route: Route, cliData: CliData): DataModel {
@@ -37,10 +42,19 @@ export function getModelFromTable(table: Table, cliData: CliData): DataModel {
   return cliData.models.find((model) => model.name === table.name);
 }
 
-export function getRelatedInfra(model: DataModel, data: CliData, currectObject: any): {tables: Table[], ingestionPoints: Route[]} {
+export function getRelatedInfra(
+  model: DataModel,
+  data: CliData,
+  currectObject: any
+): { tables: Table[]; ingestionPoints: Route[] } {
+  const tables = data.tables.filter(
+    (t) => t.name.includes(model.name) && t.uuid !== currectObject.uuid
+  );
+  const ingestionPoints = data.ingestionPoints.filter(
+    (ip) =>
+      ip.route_path.includes(model.name) &&
+      ip.route_path !== currectObject.route_path
+  );
 
-  const tables = data.tables.filter(t => t.name.includes(model.name) && t.uuid !== currectObject.uuid);
-  const ingestionPoints = data.ingestionPoints.filter(ip => ip.route_path.includes(model.name) && ip.route_path !== currectObject.route_path);
-
-  return {tables, ingestionPoints};
+  return { tables, ingestionPoints };
 }

@@ -11,7 +11,7 @@ import {
   NavigationMenuList,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
-} from "components/ui/navigation-menu"
+} from "components/ui/navigation-menu";
 import { usePathname } from "next/navigation";
 
 interface Section {
@@ -78,8 +78,17 @@ const sections: Section[] = [
 const NavItem = (section: Section, path: string, key: number) => {
   return (
     <NavigationMenuItem key={key}>
-      <NavigationMenuTrigger className={cn("text-lg font-normal rounded-none", section.href.split("/").at(1) === path.split("/").at(1) ? "text-foreground border-b-2 border-b-foreground" : "text-muted-foreground")}>
-        <NavigationMenuLink href={section.href} >{section.name}</NavigationMenuLink>
+      <NavigationMenuTrigger
+        className={cn(
+          "text-lg font-normal rounded-none",
+          section.href.split("/").at(1) === path.split("/").at(1)
+            ? "text-foreground border-b-2 border-b-foreground"
+            : "text-muted-foreground",
+        )}
+      >
+        <NavigationMenuLink href={section.href}>
+          {section.name}
+        </NavigationMenuLink>
       </NavigationMenuTrigger>
       <NavigationMenuContent>
         {section.links?.map((link, index) => (
@@ -98,18 +107,28 @@ export const TopNavMenu = () => {
   const path = usePathname();
   return (
     <NavigationMenu>
-      <NavigationMenuList >
-        <NavigationMenuItem className={cn(navigationMenuTriggerStyle(), "text-lg font-normal rounded-none", path === "/" ? "text-foreground border-b-2 border-b-foreground" : "text-muted-foreground")}>
-          <NavigationMenuLink href="/" >
-                Overview
-          </NavigationMenuLink>
+      <NavigationMenuList>
+        <NavigationMenuItem
+          className={cn(
+            navigationMenuTriggerStyle(),
+            "text-lg font-normal rounded-none",
+            path === "/"
+              ? "text-foreground border-b-2 border-b-foreground"
+              : "text-muted-foreground",
+          )}
+        >
+          <NavigationMenuLink href="/">Overview</NavigationMenuLink>
         </NavigationMenuItem>
-        {sections.map((section, index) => (
-          NavItem (section, path, index)
-        ))}
+        {sections.map((section, index) => NavItem(section, path, index))}
         <NavigationMenuItem>
-          <NavigationMenuLink href="https://docs.moosejs.com" className={cn(navigationMenuTriggerStyle(), "text-lg text-muted-foreground font-normal rounded-none")}>
-                Docs
+          <NavigationMenuLink
+            href="https://docs.moosejs.com"
+            className={cn(
+              navigationMenuTriggerStyle(),
+              "text-lg text-muted-foreground font-normal rounded-none",
+            )}
+          >
+            Docs
           </NavigationMenuLink>
         </NavigationMenuItem>
       </NavigationMenuList>

@@ -17,9 +17,17 @@ function OverviewCardHeader({
   href,
 }: OverviewCardHeaderProps) {
   return (
-    <Link href={numItems !== 0 ? href : "https://docs.moosejs.com/getting-started/new-project"}>
+    <Link
+      href={
+        numItems !== 0
+          ? href
+          : "https://docs.moosejs.com/getting-started/new-project"
+      }
+    >
       <div className="text-4xl py-4 flex flex-row hover:bg-muted">
-        <div className="grow text-ellipsis text-nowrap">{numItems ? `${numItems} ${title}` : title}</div>
+        <div className="grow text-ellipsis text-nowrap">
+          {numItems ? `${numItems} ${title}` : title}
+        </div>
         <div className="flex-shrink-0">
           <Button className="border-primary" variant="link">
             <ChevronRight className="h-4 w-4" />

@@ -191,7 +191,7 @@ where
 
 pub async fn with_spinner_async<F, R>(message: &str, f: F) -> R
 where
-F: Future<Output = R>,
+    F: Future<Output = R>,
 {
     let mut sp = Spinner::new(Spinners::Dots9, message.into());
 
@@ -202,13 +202,13 @@ F: Future<Output = R>,
 
 #[cfg(test)]
 mod tests {
-    
+
     #[test]
     fn test_with_spinner() {
         use super::*;
         use crate::cli::routines::RoutineFailure;
-        use std::time::Duration;
         use std::thread;
+        use std::time::Duration;
 
         let _ = with_spinner("Test delay for one second", || {
             thread::sleep(Duration::from_secs(1));
@@ -220,10 +220,13 @@ mod tests {
                 err,
             )
         });
-        show_message!(MessageType::Info, Message {
-            action: "SUCCESS".to_string(),
-            details: "Successfully executed a one second delay".to_string(),
-        });
+        show_message!(
+            MessageType::Info,
+            Message {
+                action: "SUCCESS".to_string(),
+                details: "Successfully executed a one second delay".to_string(),
+            }
+        );
     }
 
     #[tokio::test]
@@ -235,25 +238,29 @@ mod tests {
         let _ = with_spinner_async("Test delay", async {
             sleep(Duration::from_secs(15)).await;
             Ok(())
-        }).await
+        })
+        .await
         .map_err(|err| {
             RoutineFailure::new(
                 Message::new("Failed".to_string(), "to execute a delay".to_string()),
                 err,
             )
         });
-        show_message!(MessageType::Info, Message {
-            action: "SUCCESS".to_string(),
-            details: "Successfully executed a delay".to_string(),
-        });
+        show_message!(
+            MessageType::Info,
+            Message {
+                action: "SUCCESS".to_string(),
+                details: "Successfully executed a delay".to_string(),
+            }
+        );
     }
 
     #[tokio::test]
     async fn command_test_with_spinner_async() {
         use super::*;
         use crate::cli::routines::RoutineFailure;
-        use tokio::process::Command;
         use std::process::Stdio;
+        use tokio::process::Command;
 
         let _ = with_spinner_async("Run docker ps command", async {
             let child = Command::new("docker")
@@ -265,7 +272,7 @@ mod tests {
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped())
                 .spawn()?;
-    
+
             let output = child.wait_with_output().await?;
 
             if !output.status.success() {
@@ -277,16 +284,23 @@ mod tests {
             let output_str = String::from_utf8_lossy(&output.stdout);
             print!("{}", output_str);
             Ok(())
-        }).await
+        })
+        .await
         .map_err(|err| {
             RoutineFailure::new(
-                Message::new("Failed".to_string(), "to execute docker ps command".to_string()),
+                Message::new(
+                    "Failed".to_string(),
+                    "to execute docker ps command".to_string(),
+                ),
                 err,
             )
         });
-        show_message!(MessageType::Info, Message {
-            action: "SUCCESS".to_string(),
-            details: "Successfully executed docker ps command".to_string(),
-        });
+        show_message!(
+            MessageType::Info,
+            Message {
+                action: "SUCCESS".to_string(),
+                details: "Successfully executed docker ps command".to_string(),
+            }
+        );
     }
 }

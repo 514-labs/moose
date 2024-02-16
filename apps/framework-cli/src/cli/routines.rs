@@ -86,10 +86,10 @@ use std::{io::Error, path::PathBuf};
 use log::debug;
 use tokio::sync::RwLock;
 
+use super::display::with_spinner_async;
 use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
-use super::display::with_spinner_async;
 use crate::framework::controller::RouteMeta;
 use crate::framework::schema::process_schema_file;
 use crate::infrastructure::console::post_current_state_to_console;
@@ -287,9 +287,10 @@ async fn initialize_project_state(
                 debug!("Error: {:?}", e);
                 Err(e)
             }
-        }   
-    }).await;
-    
+        }
+    })
+    .await;
+
     Ok(())
 }
 

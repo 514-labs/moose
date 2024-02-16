@@ -149,7 +149,7 @@ export default async function OverviewPage(): Promise<JSX.Element> {
                 data.tables.filter(
                   (t) =>
                     t.engine !== "MaterializedView" &&
-                    !t.name.includes(".inner")
+                    !t.name.includes(".inner"),
                 ).length
               }
               href="infrastructure/databases/tables?type=table"
@@ -161,7 +161,7 @@ export default async function OverviewPage(): Promise<JSX.Element> {
                 .filter(
                   (t) =>
                     t.engine !== "MaterializedView" &&
-                    !t.name.includes(".inner")
+                    !t.name.includes(".inner"),
                 )
                 .slice(0, 10)
                 .map((table, index) => (
@@ -188,7 +188,7 @@ export default async function OverviewPage(): Promise<JSX.Element> {
                 data.tables.filter(
                   (t) =>
                     t.engine === "MaterializedView" &&
-                    !t.name.includes(".inner")
+                    !t.name.includes(".inner"),
                 ).length
               }
               href="infrastructure/databases/tables?type=view"

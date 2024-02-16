@@ -70,7 +70,7 @@ export default function IngestionPointTabs({
       params.set("tab", tab);
       return params.toString();
     },
-    [searchParams]
+    [searchParams],
   );
 
   return (
@@ -301,7 +301,7 @@ export default function IngestionPointTabs({
                       variant="outline"
                       onClick={() => {
                         router.push(
-                          `${pathName}?${createTabQueryString("query")}`
+                          `${pathName}?${createTabQueryString("query")}`,
                         );
                         setSelectedTab("query");
                       }}

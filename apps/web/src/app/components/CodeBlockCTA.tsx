@@ -38,7 +38,7 @@ export const CodeBlockCTA = () => {
           {
             opacity: 1,
             stagger: { each: 0.03 },
-          }
+          },
         );
 
         gsap.delayedCall(1, () => {
@@ -56,7 +56,7 @@ export const CodeBlockCTA = () => {
             {
               opacity: 1,
               stagger: { each: 0.03 },
-            }
+            },
           );
         });
       });

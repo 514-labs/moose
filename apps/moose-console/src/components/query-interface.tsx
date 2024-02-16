@@ -169,7 +169,7 @@ const insertSomeText = (
   insert: string,
   originalValue: string,
   ref: MutableRefObject<HTMLTextAreaElement>,
-  setter: Dispatch<SetStateAction<string>>
+  setter: Dispatch<SetStateAction<string>>,
 ) => {
   const selectionStart = ref.current.selectionStart;
   const selectionEnd = ref.current.selectionEnd;
@@ -192,7 +192,7 @@ export default function QueryInterface({
     .map((t) => `${t.database}.${t.name}`);
 
   const [value, setValue] = useState(
-    `SELECT * FROM ${table.database}.${table.name} LIMIT 50;`
+    `SELECT * FROM ${table.database}.${table.name} LIMIT 50;`,
   );
   const [results, setResults] = useState<any[]>();
   const [sqlKeyWordCount, setSqlKeyWordCount] = useState(12);
@@ -277,7 +277,7 @@ export default function QueryInterface({
                                 word,
                                 value,
                                 textareaRef,
-                                setValue
+                                setValue,
                               );
                             }}
                             className="text-nowrap my-1"
@@ -318,7 +318,7 @@ export default function QueryInterface({
                                   word,
                                   value,
                                   textareaRef,
-                                  setValue
+                                  setValue,
                                 );
                               }}
                               className="text-nowrap my-1"

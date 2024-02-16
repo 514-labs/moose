@@ -73,7 +73,7 @@ response = requests.post(url, json=data)
 
 export const clickhousePythonSnippet = (data: CliData, model: DataModel) => {
   const view = data.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MaterializedView"
+    (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
   );
 
   return `
@@ -94,7 +94,7 @@ print(result.result_rows)
 
 export const clickhouseJSSnippet = (data: CliData, model: DataModel) => {
   const view = data.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MaterializedView"
+    (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
   );
 
   return `

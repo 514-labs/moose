@@ -33,7 +33,7 @@ function getClient() {
 
 async function _describeTable(
   databaseName: string,
-  tableName: string
+  tableName: string,
 ): Promise<any> {
   const client = getClient();
 

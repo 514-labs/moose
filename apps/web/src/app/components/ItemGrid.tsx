@@ -123,7 +123,7 @@ const getDefaultStyle = (
   className: string,
   cols: number,
   rows: number,
-  itemPosition: ItemPosition
+  itemPosition: ItemPosition,
 ) => {
   if (className) {
     return (

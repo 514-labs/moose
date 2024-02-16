@@ -47,7 +47,7 @@ export default async function Page({
   const infra = getRelatedInfra(model, data, model);
 
   const view = infra.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MaterializedView"
+    (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
   );
 
   return (

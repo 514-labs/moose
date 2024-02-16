@@ -65,7 +65,7 @@ export const CTASection = () => {
           ease: "quint",
           stagger: { each: 0.03 },
         },
-        1
+        1,
       );
 
       // For some reason this section bounces if we revert the split text-line

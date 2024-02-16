@@ -42,7 +42,7 @@ const composeSizes = () => {
 const getDefaultStyle = (
   className: string,
   itemPosition: ItemPosition,
-  gapStyle
+  gapStyle,
 ) => {
   if (className) {
     return (

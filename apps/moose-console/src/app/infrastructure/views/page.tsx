@@ -13,7 +13,7 @@ const Placeholder: React.FC = () => {
         <DataTable
           columns={viewColumns}
           data={data.databases.flatMap((x) =>
-            x.views.map((t) => ({ databaseId: x.id, ...t }))
+            x.views.map((t) => ({ databaseId: x.id, ...t })),
           )}
         />
       </div>

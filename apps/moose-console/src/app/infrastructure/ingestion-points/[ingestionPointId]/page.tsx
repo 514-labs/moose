@@ -16,7 +16,7 @@ async function getIngestionPoint(ingestionPointId: string): Promise<Route> {
     const data = await getCliData();
     return data.ingestionPoints.find(
       (ingestionPoint) =>
-        ingestionPoint.route_path.split("/").at(-1) === ingestionPointId
+        ingestionPoint.route_path.split("/").at(-1) === ingestionPointId,
     );
   } catch (error) {
     return null;

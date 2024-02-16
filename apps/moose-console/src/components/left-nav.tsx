@@ -97,7 +97,7 @@ export const ExpandableItem = ({ name, href, subLinks }: NavLinks) => {
         <AccordionTrigger
           className={cn(
             "py-0 font-normal flex-grow-0 space-x-4",
-            pathname == href ? "text-forefround" : "text-muted-foreground"
+            pathname == href ? "text-forefround" : "text-muted-foreground",
           )}
         >
           <li className="py-2">
@@ -122,7 +122,7 @@ export const Item = ({ name, href }: NavLinks) => {
       key={name}
       className={cn(
         "py-2 text-muted-foreground",
-        pathname == href ? "text-forefround" : ""
+        pathname == href ? "text-forefround" : "",
       )}
     >
       <Link href={href} className=" hover:text-foreground block">
@@ -143,7 +143,7 @@ export const LeftNav = () => {
           <ul className="mt-3">
             {section.links &&
               section.links.map((link) =>
-                link.subLinks ? ExpandableItem(link) : Item(link)
+                link.subLinks ? ExpandableItem(link) : Item(link),
               )}
           </ul>
         </div>

@@ -1,0 +1,17 @@
+name: Format
+on:
+  push:
+    branches:
+      - "**"
+      - "!main"
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+      - name: Prettier
+        run: npx prettier --check './apps/**/*.{ts,tsx}'
+     

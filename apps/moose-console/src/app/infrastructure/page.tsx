@@ -7,11 +7,6 @@ export const metadata: Metadata = {
   },
 };
 
-
-
 export default async function Infrastructure(): Promise<JSX.Element> {
-
-  return (
-    <div>hello</div>
-  );
+  return <div>hello</div>;
 }

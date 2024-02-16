@@ -2,28 +2,27 @@ import { CliData, DataModel, column_type_mapper } from "app/db";
 import { getIngestionPointFromModel } from "./utils";
 
 export const jsSnippet = (data: CliData, model: DataModel) => {
-    const ingestionPoint = getIngestionPointFromModel(model, data);
+  const ingestionPoint = getIngestionPointFromModel(model, data);
 
+  const columns = model.columns.map((field, index) => {
+    const data_type = column_type_mapper(field.data_type);
 
-    const columns = model.columns.map((field, index) => {
-        const data_type = column_type_mapper(field.data_type);
+    if (data_type === "string") {
+      return `${field.name}: "test-value${index}"`;
+    } else if (data_type === "number") {
+      return `${field.name}: ${index}`;
+    } else if (data_type === "boolean") {
+      return `${field.name}: ${index % 2 === 0}`;
+    } else if (data_type === "date") {
+      return `${field.name}: "2022-01-01"`;
+    } else if (data_type === "array") {
+      return `${field.name}: ["test-value${index}"]`;
+    } else if (data_type === "object") {
+      return `${field.name}: { key: "test-value${index}" }`;
+    }
+  });
 
-        if (data_type === "string") {
-            return `${field.name}: "test-value${index}"`
-            } else if (data_type === "number") {
-            return `${field.name}: ${index}`
-            } else if (data_type === "boolean") {
-            return `${field.name}: ${index % 2 === 0}`
-            } else if (data_type === "date") {
-            return `${field.name}: "2022-01-01"`
-            } else if (data_type === "array") {
-            return `${field.name}: ["test-value${index}"]`
-            } else if (data_type === "object") {
-            return `${field.name}: { key: "test-value${index}" }`
-            }
-    });
-
-    return `
+  return `
 fetch('http://${data.project && data.project.local_webserver_config.host}:${data.project.local_webserver_config.port}/${ingestionPoint.route_path}', {
 method: 'POST',
 headers: {
@@ -33,28 +32,29 @@ body: JSON.stringify(
     {${columns.join(",")}}
 )
 })
-`}
+`;
+};
 
-export  const pythonSnippet = (data: CliData, model: DataModel) => {
-    const ingestionPoint = getIngestionPointFromModel(model, data);
+export const pythonSnippet = (data: CliData, model: DataModel) => {
+  const ingestionPoint = getIngestionPointFromModel(model, data);
 
-    const columns = model.columns.map((field, index) => {
-        const data_type = column_type_mapper(field.data_type);
+  const columns = model.columns.map((field, index) => {
+    const data_type = column_type_mapper(field.data_type);
 
-        if (data_type === "string") {
-        return `{${field.name}: "test-value${index}"}`
-        } else if (data_type === "number") {
-        return `{${field.name}: ${index}}`
-        } else if (data_type === "boolean") {
-        return `{${field.name}: ${index % 2 === 0}}`
-        } else if (data_type === "date") {
-        return `{${field.name}: "2022-01-01"}`
-        } else if (data_type === "array") {
-        return `{${field.name}: ["test-value${index}"]}`
-        } else if (data_type === "object") {
-        return `{${field.name}: { key: "test-value${index}" }}`
-        }
-    });
+    if (data_type === "string") {
+      return `{${field.name}: "test-value${index}"}`;
+    } else if (data_type === "number") {
+      return `{${field.name}: ${index}}`;
+    } else if (data_type === "boolean") {
+      return `{${field.name}: ${index % 2 === 0}}`;
+    } else if (data_type === "date") {
+      return `{${field.name}: "2022-01-01"}`;
+    } else if (data_type === "array") {
+      return `{${field.name}: ["test-value${index}"]}`;
+    } else if (data_type === "object") {
+      return `{${field.name}: { key: "test-value${index}" }}`;
+    }
+  });
 
   return `
 import requests
@@ -64,11 +64,13 @@ data = [
 ${columns.join(",")}
 ]
 response = requests.post(url, json=data)
-`}
+`;
+};
 
 export const clickhousePythonSnippet = (data: CliData, model: DataModel) => {
-
-    const view = data.tables.find(t => t.name.includes(model.name) && t.engine === "MaterializedView");
+  const view = data.tables.find(
+    (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
+  );
 
   return `
 import clickhouse_connect
@@ -83,13 +85,15 @@ password=${data.project && data.project.clickhouse_config.password}
 query_str = "SELECT * FROM ${view.name} LIMIT 10"
 result = client.query(query_str)
 print(result.result_rows)
-`}
+`;
+};
 
 export const clickhouseJSSnippet = (data: CliData, model: DataModel) => {
+  const view = data.tables.find(
+    (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
+  );
 
-    const view = data.tables.find(t => t.name.includes(model.name) && t.engine === "MaterializedView");
-
-    return `
+  return `
 import { createClient } from "@clickhouse/client-web"
 
 const client = createClient({
@@ -105,5 +109,5 @@ format: "JSONEachRow",
 });
 
 console.log(resultSet.json());
-`
-}
+`;
+};

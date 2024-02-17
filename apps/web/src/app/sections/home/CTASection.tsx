@@ -24,7 +24,7 @@ export const CTASection = () => {
   const featureDescriptionRef = React.useRef(null);
 
   useLayoutEffect(() => {
-    let ctx = gsap.context(() => {
+    const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: featureDescriptionRef.current,
@@ -65,7 +65,7 @@ export const CTASection = () => {
           ease: "quint",
           stagger: { each: 0.03 },
         },
-        1
+        1,
       );
 
       // For some reason this section bounces if we revert the split text-line

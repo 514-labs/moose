@@ -25,7 +25,7 @@ async fn process_event(
     event: notify::Event,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     configured_client: &ConfiguredDBClient,
-) -> Result<(), Error> {
+) -> anyhow::Result<()> {
     let mut route_table = route_table.write().await;
 
     debug!(
@@ -93,7 +93,7 @@ async fn create_framework_objects_from_schema_file_path(
     schema_file_path: &Path,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     configured_client: &ConfiguredDBClient,
-) -> Result<(), Error> {
+) -> anyhow::Result<()> {
     //! Creates the route, topics and tables from a path to the schema file
 
     if let Some(ext) = schema_file_path.extension() {

@@ -126,6 +126,22 @@ async fn ingest_route(
 
             let body = req.collect().await.unwrap().to_bytes().to_vec();
 
+            match serde_json::from_slice::<serde::de::IgnoredAny>(&body) {
+                Ok(_) => {}
+                Err(e) => {
+                    show_message!(
+                        MessageType::Error,
+                        Message {
+                            action: "ERROR".to_string(),
+                            details: format!("Invalid JSON: {:?}", e),
+                        }
+                    );
+                    return Response::builder()
+                        .status(StatusCode::BAD_REQUEST)
+                        .body(Full::new(Bytes::from("Invalid JSON")));
+                }
+            }
+
             let topic_name = &route_meta.table_name;
 
             let res = configured_producer
@@ -156,7 +172,9 @@ async fn ingest_route(
                 }
                 Err(e) => {
                     debug!("Error: {:?}", e);
-                    Ok(Response::new(Full::new(Bytes::from("Error"))))
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Full::new(Bytes::from("Error")))
                 }
             }
         }

@@ -17,7 +17,7 @@ export const HeroSection = () => {
   const descriptionRef = React.useRef(null);
 
   useLayoutEffect(() => {
-    let ctx = gsap.context(() => {
+    const ctx = gsap.context(() => {
       const tl = gsap.timeline();
       const splitText = new SplitText(headingRef.current, {
         type: "words, chars",
@@ -40,7 +40,7 @@ export const HeroSection = () => {
           ease: "quint",
           stagger: { each: 0.03 },
         },
-        0
+        0,
       );
 
       tl.from(
@@ -51,7 +51,7 @@ export const HeroSection = () => {
           ease: "quint",
           stagger: { each: 0.03 },
         },
-        1
+        1,
       );
 
       tl.then(() => {

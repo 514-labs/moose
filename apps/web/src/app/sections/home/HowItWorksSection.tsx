@@ -44,7 +44,7 @@ export const HowItWorksSection = () => {
   const featureDescriptionRef = React.useRef([]);
 
   useLayoutEffect(() => {
-    let ctx = gsap.context(() => {
+    const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: featureHeadingRef.current,
@@ -91,7 +91,7 @@ export const HowItWorksSection = () => {
           ease: "quint",
           stagger: { each: 0.03 },
         },
-        0
+        0,
       );
 
       tl.from(
@@ -102,7 +102,7 @@ export const HowItWorksSection = () => {
           ease: "quint",
           stagger: { each: 0.03 },
         },
-        1
+        1,
       );
 
       tl.then(() => {

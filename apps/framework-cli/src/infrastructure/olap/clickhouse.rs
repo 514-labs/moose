@@ -10,14 +10,14 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    framework::schema::{FieldArity, MatViewOps, TableOps, UnsupportedDataTypeError},
+    framework::schema::{FieldArity, UnsupportedDataTypeError},
     utilities::constants::REDPANDA_CONTAINER_NAME,
 };
 
 use self::{
     config::ClickhouseConfig,
     queries::{
-        CreateMaterializedViewQuery, CreateTableQuery, DropMaterializedViewQuery, DropTableQuery,
+        CreateKafkaTriggerViewQuery, CreateTableQuery, DropMaterializedViewQuery, DropTableQuery,
     },
 };
 
@@ -158,45 +158,70 @@ impl ClickhouseTable {
     }
 }
 
-impl TableOps for ClickhouseTable {
-    fn create_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
-        CreateTableQuery::build(
-            self.clone(),
+impl ClickhouseTable {
+    pub fn kafka_table_name(&self) -> String {
+        format!("{}_kafka", self.name)
+    }
+
+    fn kafka_table(&self) -> ClickhouseTable {
+        ClickhouseTable {
+            name: self.kafka_table_name(),
+            ..self.clone()
+        }
+    }
+
+    pub fn create_kafka_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
+        CreateTableQuery::kafka(
+            self.kafka_table(),
             REDPANDA_CONTAINER_NAME.to_string(),
             9092,
             self.name.clone(),
         )
     }
+    pub fn create_data_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
+        CreateTableQuery::build(self.clone(), "Memory".to_string())
+    }
 
-    fn drop_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
+    pub fn drop_kafka_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
+        DropTableQuery::build(self.kafka_table())
+    }
+
+    pub fn drop_data_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
         DropTableQuery::build(self.clone())
     }
 }
 
 #[derive(Debug, Clone)]
-pub struct ClickhouseView {
+pub struct ClickhouseKafkaTrigger {
     pub db_name: String,
     pub name: String,
-    pub source_table: ClickhouseTable,
+    pub source_table_name: String,
+    pub dest_table_name: String,
 }
 
-impl ClickhouseView {
-    pub fn new(db_name: String, name: String, source_table: ClickhouseTable) -> ClickhouseView {
-        ClickhouseView {
+impl ClickhouseKafkaTrigger {
+    pub fn new(
+        db_name: String,
+        name: String,
+        source_table_name: String,
+        dest_table_name: String,
+    ) -> ClickhouseKafkaTrigger {
+        ClickhouseKafkaTrigger {
             db_name,
             name,
-            source_table,
+            source_table_name,
+            dest_table_name,
         }
     }
 }
 
 pub type QueryString = String;
 
-impl MatViewOps for ClickhouseView {
-    fn create_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
-        CreateMaterializedViewQuery::build(self.clone())
+impl ClickhouseKafkaTrigger {
+    pub fn create_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
+        Ok(CreateKafkaTriggerViewQuery::build(self.clone()))
     }
-    fn drop_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
+    pub fn drop_materialized_view_query(&self) -> Result<QueryString, UnsupportedDataTypeError> {
         DropMaterializedViewQuery::build(self.clone())
     }
 }

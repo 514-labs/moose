@@ -64,7 +64,6 @@ export interface ConsoleConfig {
   host_port: number;
 }
 
-
 export interface DataModel {
   db_name: string;
   columns: Column[];
@@ -80,7 +79,6 @@ export interface Column {
   primary_key: boolean;
   default: string;
 }
-
 
 export interface Table {
   database: string;

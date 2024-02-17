@@ -1,5 +1,5 @@
 use serde::Serialize;
-use tinytemplate::TinyTemplate;
+use tinytemplate::{format_unescaped, TinyTemplate};
 
 use crate::{
     framework::schema::{FieldArity, UnsupportedDataTypeError},
@@ -8,10 +8,10 @@ use crate::{
     },
 };
 
-use super::ClickhouseView;
+use super::ClickhouseKafkaTrigger;
 
-// TODO: Add column comment capability to the schemna and template
-pub static CREATE_TABLE_TEMPLATE: &str = r#"
+// TODO: Add column comment capability to the schema and template
+static CREATE_TABLE_TEMPLATE: &str = r#"
 CREATE TABLE IF NOT EXISTS {db_name}.{table_name} 
 (
 {{for field in fields}}{field.field_name} {field.field_type} {field.field_arity},
@@ -20,22 +20,47 @@ CREATE TABLE IF NOT EXISTS {db_name}.{table_name}
 PRIMARY KEY ({primary_key_string})
 {{endif}}
 )
-ENGINE = Kafka('{kafka_host}:{kafka_port}', '{topic}', 'clickhouse-group', 'JSONEachRow');
+ENGINE = {engine};
+"#;
+
+static CREATE_KAFKA_TRIGGER_TEMPLATE: &str = r#"
+CREATE MATERIALIZED VIEW IF NOT EXISTS {db_name}.{view_name} TO {db_name}.{dest_table_name}
+AS
+SELECT * FROM {db_name}.{source_table_name}
+SETTINGS
+stream_like_engine_allow_direct_select = 1;
 "#;
 
 pub struct CreateTableQuery;
 
+static KAFKA_SETTINGS: &str =
+    "kafka_skip_broken_messages = 1, date_time_input_format = 'best_effort'";
+
 impl CreateTableQuery {
-    pub fn build(
+    pub fn kafka(
         table: ClickhouseTable,
         kafka_host: String,
         kafka_port: u16,
         topic: String,
     ) -> Result<String, UnsupportedDataTypeError> {
+        CreateTableQuery::build(
+            table,
+            format!(
+                "Kafka('{}:{}', '{}', 'clickhouse-group', 'JSONEachRow') SETTINGS {}",
+                kafka_host, kafka_port, topic, KAFKA_SETTINGS,
+            ),
+        )
+    }
+
+    pub fn build(
+        table: ClickhouseTable,
+        engine: String,
+    ) -> Result<String, UnsupportedDataTypeError> {
         let mut tt = TinyTemplate::new();
+        tt.set_default_formatter(&format_unescaped); // by default it formats HTML-escaped and messes up single quotes
         tt.add_template("create_table", CREATE_TABLE_TEMPLATE)
             .unwrap();
-        let context = CreateTableContext::new(table, kafka_host, kafka_port, topic)?;
+        let context = CreateTableContext::new(table, engine)?;
         let rendered = tt.render("create_table", &context).unwrap();
         Ok(rendered)
     }
@@ -47,17 +72,13 @@ struct CreateTableContext {
     table_name: String,
     fields: Vec<CreateTableFieldContext>,
     primary_key_string: Option<String>,
-    kafka_host: String,
-    kafka_port: u16,
-    topic: String,
+    engine: String,
 }
 
 impl CreateTableContext {
     fn new(
         table: ClickhouseTable,
-        kafka_host: String,
-        kafka_port: u16,
-        topic: String,
+        engine: String,
     ) -> Result<CreateTableContext, UnsupportedDataTypeError> {
         let primary_key = table
             .columns
@@ -79,9 +100,7 @@ impl CreateTableContext {
             } else {
                 None
             },
-            kafka_host,
-            kafka_port,
-            topic,
+            engine,
         })
     }
 }
@@ -130,41 +149,28 @@ impl DropTableContext {
     }
 }
 
-pub static CREATE_MATERIALIZED_VIEW_TEMPLATE: &str = r#"
-CREATE MATERIALIZED VIEW IF NOT EXISTS {db_name}.{view_name} 
-ENGINE = Memory
-AS
-SELECT * FROM {db_name}.{source_table_name}
-SETTINGS
-stream_like_engine_allow_direct_select = 1;
-"#;
+pub struct CreateKafkaTriggerViewQuery;
 
-pub struct CreateMaterializedViewQuery;
-
-impl CreateMaterializedViewQuery {
-    pub fn build(view: ClickhouseView) -> Result<String, UnsupportedDataTypeError> {
+impl CreateKafkaTriggerViewQuery {
+    pub fn build(view: ClickhouseKafkaTrigger) -> String {
         let mut tt = TinyTemplate::new();
-        tt.add_template(
-            "create_materialized_view",
-            CREATE_MATERIALIZED_VIEW_TEMPLATE,
-        )
-        .unwrap();
-        let context = CreateMaterializedViewContext::new(view)?;
-        let rendered = tt.render("create_materialized_view", &context).unwrap();
-        Ok(rendered)
+        tt.add_template("create_materialized_view", CREATE_KAFKA_TRIGGER_TEMPLATE)
+            .unwrap();
+        let context = CreateKafkaTriggerContext::new(view);
+        tt.render("create_materialized_view", &context).unwrap()
     }
 }
 
-pub static DROP_MATERIALIZED_VIEW_TEMPLATE: &str = r#"
-DROP TABLE IF EXISTS {db_name}.{view_name};
+pub static DROP_VIEW_TEMPLATE: &str = r#"
+DROP VIEW IF EXISTS {db_name}.{view_name};
 "#;
 
 pub struct DropMaterializedViewQuery;
 
 impl DropMaterializedViewQuery {
-    pub fn build(table: ClickhouseView) -> Result<String, UnsupportedDataTypeError> {
+    pub fn build(table: ClickhouseKafkaTrigger) -> Result<String, UnsupportedDataTypeError> {
         let mut tt = TinyTemplate::new();
-        tt.add_template("drop_materialized_view", DROP_MATERIALIZED_VIEW_TEMPLATE)
+        tt.add_template("drop_materialized_view", DROP_VIEW_TEMPLATE)
             .unwrap();
         let context = DropMaterializedViewContext::new(table)?;
         let rendered = tt.render("drop_materialized_view", &context).unwrap();
@@ -179,30 +185,32 @@ struct DropMaterializedViewContext {
 }
 
 impl DropMaterializedViewContext {
-    fn new(view: ClickhouseView) -> Result<DropMaterializedViewContext, UnsupportedDataTypeError> {
+    fn new(
+        view: ClickhouseKafkaTrigger,
+    ) -> Result<DropMaterializedViewContext, UnsupportedDataTypeError> {
         Ok(DropMaterializedViewContext {
             db_name: view.db_name,
-            view_name: format!("{}_view", view.name),
+            view_name: view.name,
         })
     }
 }
 
 #[derive(Serialize)]
-struct CreateMaterializedViewContext {
+struct CreateKafkaTriggerContext {
     db_name: String,
     view_name: String,
     source_table_name: String,
+    dest_table_name: String,
 }
 
-impl CreateMaterializedViewContext {
-    fn new(
-        view: ClickhouseView,
-    ) -> Result<CreateMaterializedViewContext, UnsupportedDataTypeError> {
-        Ok(CreateMaterializedViewContext {
+impl CreateKafkaTriggerContext {
+    fn new(view: ClickhouseKafkaTrigger) -> CreateKafkaTriggerContext {
+        CreateKafkaTriggerContext {
             db_name: view.db_name,
             view_name: view.name,
-            source_table_name: view.source_table.name,
-        })
+            source_table_name: view.source_table_name,
+            dest_table_name: view.dest_table_name,
+        }
     }
 }
 

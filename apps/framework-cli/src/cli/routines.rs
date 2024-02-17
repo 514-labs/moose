@@ -222,7 +222,7 @@ impl RoutineController {
 }
 
 // Starts the file watcher and the webserver
-pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
+pub async fn start_development_mode(project: &Project) -> anyhow::Result<()> {
     show_message!(
         MessageType::Success,
         Message {
@@ -231,11 +231,11 @@ pub async fn start_development_mode(project: &Project) -> Result<(), Error> {
         }
     );
 
-    // TODO: Explore using a RWLock instead of a Mutex to ensure concurrent reads without locks
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("Initializing project state");
     initialize_project_state(project.schemas_dir(), project, &mut route_table).await?;
+
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
@@ -258,7 +258,7 @@ async fn initialize_project_state(
     schema_dir: PathBuf,
     project: &Project,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
-) -> Result<(), Error> {
+) -> anyhow::Result<()> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let producer = redpanda::create_producer(project.redpanda_config.clone());
 
@@ -299,7 +299,7 @@ async fn process_schemas_in_dir(
     project: &Project,
     configured_client: &ConfiguredDBClient,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
-) -> Result<(), Error> {
+) -> anyhow::Result<()> {
     if schema_dir.is_dir() {
         for entry in std::fs::read_dir(schema_dir)? {
             let entry = entry?;

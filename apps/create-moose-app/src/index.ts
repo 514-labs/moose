@@ -23,11 +23,11 @@ function getExePath() {
   try {
     // Since the binary will be located inside `node_modules`, we can simply call `require.resolve`
     return require.resolve(
-      `@514labs/moose-cli-${os}-${arch}/bin/moose-cli${extension}`
+      `@514labs/moose-cli-${os}-${arch}/bin/moose-cli${extension}`,
     );
   } catch (e) {
     throw new Error(
-      `Couldn't find application binary inside node_modules for ${os}-${arch}`
+      `Couldn't find application binary inside node_modules for ${os}-${arch}`,
     );
   }
 }
@@ -41,7 +41,7 @@ function run() {
   if (name !== undefined) {
     if (existsSync(name)) {
       console.log(
-        `${name} already exists. Either try using a new name, or remove the directory.`
+        `${name} already exists. Either try using a new name, or remove the directory.`,
       );
       process.exit(1);
     }

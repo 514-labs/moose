@@ -1,17 +1,14 @@
 import { Metadata } from "next";
 import { AnimatedHeading } from "./components/AnimatedHeading";
 import { SectionGrid } from "./components/SectionGrid";
-import { gsap } from "gsap";
 
 import { AnimatedImage } from "./components/AnimatedImage";
-import { Button } from "./components/Button";
 import { AnimatedDescription } from "./components/AnimatedDescription";
 
 import heroImg from "../../public/bg-image-man/bg-image-hero_2x.webp";
 import middleImg from "../../public/bg-image-computer/bg-image-computer_2x.webp";
 import footerImg from "../../public/bg-image-moose/bg-image-moose_2x.webp";
 import { FooterSection } from "./sections//home/FooterSection";
-import { AnimatedComponent } from "./components/AnimatedComponent";
 import { CodeBlockCTA } from "./components/CodeBlockCTA";
 
 export const metadata: Metadata = {

@@ -1,14 +1,17 @@
 /* eslint-disable turbo/no-undeclared-env-vars */
 
-import {  createClient } from "@clickhouse/client-web";
-import { Field } from "app/mock";
+import { createClient } from "@clickhouse/client-web";
 import Link from "next/link";
 import { Table, getCliData } from "app/db";
 import { unstable_noStore as noStore } from "next/cache";
 import TableTabs from "./table-tabs";
-import { clickhouseJSSnippet, clickhousePythonSnippet, jsSnippet, pythonSnippet } from "lib/snippets";
-import { getModelFromTable, getRelatedInfra } from "lib/utils";
-
+import {
+  clickhouseJSSnippet,
+  clickhousePythonSnippet,
+  jsSnippet,
+  pythonSnippet,
+} from "lib/snippets";
+import { getModelFromTable } from "lib/utils";
 
 function getClient() {
   const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || "localhost";
@@ -28,8 +31,10 @@ function getClient() {
   return client;
 }
 
-
-async function describeTable(databaseName: string, tableName: string): Promise<any> {
+async function _describeTable(
+  databaseName: string,
+  tableName: string,
+): Promise<any> {
   const client = getClient();
 
   const resultSet = await client.query({
@@ -38,22 +43,15 @@ async function describeTable(databaseName: string, tableName: string): Promise<a
   });
 
   return resultSet.json();
-
 }
-
-interface FieldsListCardProps {
-  fields: Field[]
-}
-
-
 
 const isView = (table: Table) => table.engine === "MaterializedView";
 
 export default async function Page({
   params,
 }: {
-  params: {databaseName: string,  tableId: string };
-  searchParams: { tab: string};
+  params: { databaseName: string; tableId: string };
+  searchParams: { tab: string };
 }): Promise<JSX.Element> {
   // This is to make sure the environment variables are read at runtime
   // and not during build time
@@ -61,23 +59,35 @@ export default async function Page({
   const data = await getCliData();
 
   const table = data.tables.find((table) => table.uuid === params.tableId);
-  const tableMeta = await describeTable(params.databaseName, table.name);
   const model = getModelFromTable(table, data);
-  const infra = getRelatedInfra(model, data, table)
 
   return (
     <section className="p-4 max-h-screen flex-grow overflow-y-auto flex flex-col">
-        <div className="py-10">
-          <div className="text-6xl">
-            <Link className="text-muted-foreground" href={"/"}>../</Link>
-            <Link className="text-muted-foreground" href={`/infrastructure/databases/tables?type=${isView(table) ? "view" : "table"}`}>{isView(table) ? "views" : "tables"}/</Link>
-            {table.name}
-          </div>
-          <div className="text-muted-foreground">{table.engine}</div>
+      <div className="py-10">
+        <div className="text-6xl">
+          <Link className="text-muted-foreground" href={"/"}>
+            ../
+          </Link>
+          <Link
+            className="text-muted-foreground"
+            href={`/infrastructure/databases/tables?type=${isView(table) ? "view" : "table"}`}
+          >
+            {isView(table) ? "views" : "tables"}/
+          </Link>
+          {table.name}
         </div>
-        <div className="space-x-3 flex-grow">
-          <TableTabs table={table} cliData={data} jsSnippet={jsSnippet(data, model)} pythonSnippet={pythonSnippet(data, model)} clickhouseJSSnippet={clickhouseJSSnippet(data, model)} clickhousePythonSnippet={clickhousePythonSnippet(data, model)}/>
-        </div>
-      </section>  
+        <div className="text-muted-foreground">{table.engine}</div>
+      </div>
+      <div className="space-x-3 flex-grow">
+        <TableTabs
+          table={table}
+          cliData={data}
+          jsSnippet={jsSnippet(data, model)}
+          pythonSnippet={pythonSnippet(data, model)}
+          clickhouseJSSnippet={clickhouseJSSnippet(data, model)}
+          clickhousePythonSnippet={clickhousePythonSnippet(data, model)}
+        />
+      </div>
+    </section>
   );
 }

@@ -1,10 +1,9 @@
-'use client'
-import React, { useLayoutEffect } from "react";
+"use client";
+import React from "react";
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
-import { AnimatedImage } from "./AnimatedImage";
 import { AnimatedComponent } from "./AnimatedComponent";
-import Image from 'next/image';
+import Image from "next/image";
 
 gsap.registerPlugin(SplitText);
 
@@ -28,7 +27,7 @@ export const LogoComponent = () => {
   //       rotationX: 180,
   //       transformOrigin: "0% 50% 50",
   //       ease: "expo.out",
-  //       });    
+  //       });
   //   });
   //   return () => {
   //     ctx.revert();
@@ -36,17 +35,18 @@ export const LogoComponent = () => {
   // }, []);
 
   return (
-    <div  className="flex grow flex-row sm:justify-end sm:content-center sm:-order-none order-3">
+    <div className="flex grow flex-row sm:justify-end sm:content-center sm:-order-none order-3">
       <div>
-      <AnimatedComponent position={1.5} >
-          <Image 
+        <AnimatedComponent position={1.5}>
+          <Image
             // className="invisible"
             ref={imgageRef}
             src="/logo-moose-icon-black.svg"
             width={36}
             height={36}
-            alt="Logo of the product" />      
-         </AnimatedComponent>
+            alt="Logo of the product"
+          />
+        </AnimatedComponent>
       </div>
     </div>
   );

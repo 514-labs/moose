@@ -12,6 +12,7 @@ import {
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "components/ui/navigation-menu";
+import { usePathname } from "next/navigation";
 
 interface Section {
   name: string;
@@ -74,11 +75,18 @@ const sections: Section[] = [
   },
 ];
 
-const NavItem = (section: Section) => {
+const NavItem = (section: Section, path: string, key: number) => {
   return (
-    <NavigationMenuItem>
-      <NavigationMenuTrigger>
-        <NavigationMenuLink href={section.href} className="text-lg font-normal">
+    <NavigationMenuItem key={key}>
+      <NavigationMenuTrigger
+        className={cn(
+          "text-lg font-normal rounded-none",
+          section.href.split("/").at(1) === path.split("/").at(1)
+            ? "text-foreground border-b-2 border-b-foreground"
+            : "text-muted-foreground",
+        )}
+      >
+        <NavigationMenuLink href={section.href}>
           {section.name}
         </NavigationMenuLink>
       </NavigationMenuTrigger>
@@ -96,24 +104,29 @@ const NavItem = (section: Section) => {
 };
 
 export const TopNavMenu = () => {
+  const path = usePathname();
   return (
     <NavigationMenu>
       <NavigationMenuList>
-        <NavigationMenuItem>
-          <NavigationMenuLink
-            href="/"
-            className={cn(navigationMenuTriggerStyle(), "text-lg font-normal")}
-          >
-            Overview
-          </NavigationMenuLink>
+        <NavigationMenuItem
+          className={cn(
+            navigationMenuTriggerStyle(),
+            "text-lg font-normal rounded-none",
+            path === "/"
+              ? "text-foreground border-b-2 border-b-foreground"
+              : "text-muted-foreground",
+          )}
+        >
+          <NavigationMenuLink href="/">Overview</NavigationMenuLink>
         </NavigationMenuItem>
-        {sections.map((section, index) => (
-          <NavItem {...section} key={index} />
-        ))}
+        {sections.map((section, index) => NavItem(section, path, index))}
         <NavigationMenuItem>
           <NavigationMenuLink
-            href="/docs"
-            className={cn(navigationMenuTriggerStyle(), "text-lg font-normal")}
+            href="https://docs.moosejs.com"
+            className={cn(
+              navigationMenuTriggerStyle(),
+              "text-lg text-muted-foreground font-normal rounded-none",
+            )}
           >
             Docs
           </NavigationMenuLink>

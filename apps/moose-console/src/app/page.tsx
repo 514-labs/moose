@@ -24,7 +24,7 @@ function OverviewCardHeader({
           : "https://docs.moosejs.com/getting-started/new-project"
       }
     >
-      <div className="text-4xl py-4 flex flex-row">
+      <div className="text-4xl py-4 flex flex-row hover:bg-muted">
         <div className="grow text-ellipsis text-nowrap">
           {numItems ? `${numItems} ${title}` : title}
         </div>
@@ -41,9 +41,7 @@ function OverviewCardHeader({
 function EmptyListItem({ itemName }) {
   return (
     <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
-      <div className="py-4 text-muted-foreground">
-        No {itemName} to show yet
-      </div>
+      <div className="py-4 text-muted-foreground">{itemName} coming soon</div>
       <Separator />
     </div>
   );

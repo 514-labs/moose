@@ -25,12 +25,12 @@ export const jsSnippet = (data: CliData, model: DataModel) => {
   return `
 fetch('http://${data.project && data.project.local_webserver_config.host}:${data.project.local_webserver_config.port}/${ingestionPoint.route_path}', {
 method: 'POST',
-headers: {
-    'Content-Type': 'application/json'
-},
-body: JSON.stringify(
-    {${columns.join(",")}}
-)
+    headers: {
+        'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(
+        ${columns.join(",")}
+    )
 })
 `;
 };
@@ -61,7 +61,7 @@ import requests
 
 url = 'http://${data.project && data.project.local_webserver_config.host}:${data.project.local_webserver_config.port}/${ingestionPoint.route_path}'
 data = [
-${columns.join(",")}
+    ${columns.join(",")}
 ]
 response = requests.post(url, json=data)
 `;
@@ -76,10 +76,10 @@ export const clickhousePythonSnippet = (data: CliData, model: DataModel) => {
 import clickhouse_connect
 
 client = clickhouse_connect.get_client(
-host=${data.project && data.project.clickhouse_config.host}
-port=${data.project && data.project.clickhouse_config.host_port}
-user=${data.project && data.project.clickhouse_config.user}
-password=${data.project && data.project.clickhouse_config.password}
+    host=${data.project && data.project.clickhouse_config.host}
+    port=${data.project && data.project.clickhouse_config.host_port}
+    user=${data.project && data.project.clickhouse_config.user}
+    password=${data.project && data.project.clickhouse_config.password}
 )
 
 query_str = "SELECT * FROM ${view.name} LIMIT 10"
@@ -97,15 +97,15 @@ export const clickhouseJSSnippet = (data: CliData, model: DataModel) => {
 import { createClient } from "@clickhouse/client-web"
 
 const client = createClient({
-host: "http://${data.project && data.project.clickhouse_config.host}:${data.project && data.project.clickhouse_config.host_port}",
-username: ${data.project && data.project.clickhouse_config.user},
-password: ${data.project && data.project.clickhouse_config.password},
-database: ${view.database},
+    host: "http://${data.project && data.project.clickhouse_config.host}:${data.project && data.project.clickhouse_config.host_port}",
+    username: ${data.project && data.project.clickhouse_config.user},
+    password: ${data.project && data.project.clickhouse_config.password},
+    database: ${view.database},
 });
 
 const resultSet = await client.query({
-query: "SELECT * FROM ${view.name} LIMIT 10",
-format: "JSONEachRow",
+    query: "SELECT * FROM ${view.name} LIMIT 10",
+    format: "JSONEachRow",
 });
 
 console.log(resultSet.json());

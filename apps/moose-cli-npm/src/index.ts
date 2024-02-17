@@ -21,7 +21,7 @@ function getExePath() {
 
   if (os.startsWith("windows")) {
     throw new Error(
-      "Windows is not supported yet. If you are a windows user, interested in windows support, please give us a shout at https://discord.gg/WX3V3K4QCc"
+      "Windows is not supported yet. If you are a windows user, interested in windows support, please give us a shout at https://discord.gg/WX3V3K4QCc",
     );
   }
 
@@ -29,11 +29,11 @@ function getExePath() {
     // Since the binary will be located inside `node_modules`, we can simply call `require.resolve`
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     return require.resolve(
-      `@514labs/moose-cli-${os}-${arch}/bin/moose-cli${extension}`
+      `@514labs/moose-cli-${os}-${arch}/bin/moose-cli${extension}`,
     );
   } catch (e) {
     throw new Error(
-      `Couldn't find application binary inside node_modules for ${os}-${arch}`
+      `Couldn't find application binary inside node_modules for ${os}-${arch}`,
     );
   }
 }
@@ -46,7 +46,7 @@ function run() {
   // ignore sigint in the node parent process
   // so that we can wait until we have processResult when the rust process returns
   // instead of prematurely exiting
-  process.on('SIGINT', () => {})
+  process.on("SIGINT", () => {});
   const processResult = spawnSync(getExePath(), args, { stdio: "inherit" });
   process.exit(processResult.status ?? 0);
 }

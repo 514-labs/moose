@@ -12,15 +12,15 @@ The following is the basic structure of a MooseJS project:
     <FileTree.Folder name="datamodels" defaultOpen>
         <FileTree.File name="models.prisma" />
     </FileTree.Folder>
-    <FileTree.Folder name="flows (coming soon)" defaultOpen>
-        <FileTree.Folder name="transformations">
-            <FileTree.File name="augment.ts" />
-        </FileTree.Folder>
-        <FileTree.File name="stage1.ts" />
+    <FileTree.Folder name="flows" defaultOpen>
+        <FileTree.File name="flows.ts" />
     </FileTree.Folder>
-    <FileTree.Folder name="insights (coming soon)" />
+    <FileTree.Folder name="insights" defaultOpen>
+      <FileTree.Folder name="metrics" />
+      <FileTree.Folder name="charts" />
+    </FileTree.Folder>
   </FileTree.Folder>
-  <FileTree.File name="project.toml" />
+  <FileTree.File name="package.json" />
 </FileTree>
 
 ## Top-level Folders
@@ -33,11 +33,12 @@ The following is the basic structure of a MooseJS project:
 ## Top-level Files
 |  |  |
 | ------ | ----------- |
-| project.toml | The main configuration file for your application. |
+| package.json | The main configuration file for your application. |
 
 ## App folders
 |  |  |
 | ------ | ----------- |
 | datamodels | The folder where you define your data models. |
-| flows (coming soon) | The folder where you define your data flows. |
-| insights (coming soon) | The folder where you define your data insights. |
+| flows | The folder where you define your data flows. |
+| insights | The folder where you define your data insights. |
+

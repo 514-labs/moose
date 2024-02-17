@@ -201,11 +201,11 @@ where
 
 #[cfg(test)]
 mod tests {
+    use crate::cli::routines::RoutineFailure;
 
     #[test]
     fn test_with_spinner() {
         use super::*;
-        use crate::cli::routines::RoutineFailure;
         use std::thread;
         use std::time::Duration;
 
@@ -229,7 +229,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn simple_test_with_spinner_async() {
+    async fn simple_test_with_spinner_async() -> Result<(), RoutineFailure> {
         use super::*;
         use crate::cli::routines::RoutineFailure;
         use tokio::time::{sleep, Duration};
@@ -256,7 +256,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn command_test_with_spinner_async() {
+    async fn command_test_with_spinner_async() -> Result<(), RoutineFailure> {
         use super::*;
         use crate::cli::routines::RoutineFailure;
         use std::process::Stdio;

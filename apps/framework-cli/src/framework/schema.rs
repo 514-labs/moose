@@ -233,13 +233,13 @@ impl FieldAttributes {
     #[allow(clippy::never_loop, clippy::match_single_binding)]
     fn new(attributes: Vec<Attribute>) -> Result<FieldAttributes, ParsingError> {
         let unique: bool = false;
-        let primary_key: bool = false;
+        let mut primary_key: bool = false;
         let default: Option<ColumnDefaults> = None;
 
         // TODO: Implement default values and primary keys once we have the ingestion table architecture setup
         for attribute in attributes {
             match attribute.name() {
-                // "id" => {primary_key = true},
+                "id" => primary_key = true,
                 _ => {
                     return Err(ParsingError::UnsupportedDataTypeError {
                         type_name: format!(

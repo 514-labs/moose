@@ -39,6 +39,7 @@ impl Routine for InitializeProject {
 
         CreateModelsVolume::new(self.project.clone()).run(run_mode)?;
         CreateDockerComposeFile::new(self.project.clone()).run(run_mode)?;
+        CreateBaseAppFiles::new(self.project.clone()).run(run_mode)?;
 
         Ok(RoutineSuccess::success(Message::new(
             "Created".to_string(),
@@ -323,5 +324,28 @@ impl Routine for CreateDockerComposeFile {
                 err,
             )),
         }
+    }
+}
+
+pub struct CreateBaseAppFiles {
+    project: Project,
+}
+
+impl CreateBaseAppFiles {
+    pub fn new(project: Project) -> Self {
+        Self { project }
+    }
+}
+
+impl Routine for CreateBaseAppFiles {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        self.project.create_base_app_files().map_err(|err| {
+            RoutineFailure::new(Message::new("Failed".to_string(), "".to_string()), err)
+        })?;
+
+        Ok(RoutineSuccess::success(Message::new(
+            "Created".to_string(),
+            "base app files".to_string(),
+        )))
     }
 }

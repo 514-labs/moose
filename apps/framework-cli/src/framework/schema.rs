@@ -1,3 +1,21 @@
+//! # Schema
+//! Schemas are the internal representation for data models in the framework.
+//!
+//! The schema module is responsible for parsing the schema file and converting it into a format that can be used by the framework.
+//!
+//! We currently support the following data types:
+//! - String
+//! - Boolean
+//! - Int
+//! - BigInt
+//! - Float
+//! - Decimal
+//! - DateTime
+//!
+//! We only implemented part of the prisma schema parsing. We only support models and fields. We don't support enums, relations, or anything else for the moment
+
+pub mod templates;
+
 use std::fmt::{Display, Formatter};
 use std::{
     collections::HashMap,

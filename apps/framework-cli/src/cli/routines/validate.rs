@@ -2,7 +2,7 @@ use super::{Routine, RoutineFailure, RoutineSuccess};
 use crate::utilities::constants::{
     CLICKHOUSE_CONTAINER_NAME, CONSOLE_CONTAINER_NAME, REDPANDA_CONTAINER_NAME,
 };
-use crate::{cli::display::Message, utilities::constants::PANDA_NETWORK, utilities::docker};
+use crate::{cli::display::Message, utilities::docker};
 
 pub struct ValidateClickhouseRun;
 impl ValidateClickhouseRun {
@@ -65,41 +65,6 @@ impl Routine for ValidateRedPandaRun {
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
             "validated redpanda docker container".to_string(),
-        )))
-    }
-}
-
-pub struct ValidatePandaHouseNetwork;
-impl ValidatePandaHouseNetwork {
-    pub fn new() -> Self {
-        Self
-    }
-}
-impl Routine for ValidatePandaHouseNetwork {
-    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let docker_networks = docker::network_list().map_err(|err| {
-            RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to get list of docker networks".to_string(),
-                ),
-                err,
-            )
-        })?;
-
-        docker_networks
-            .iter()
-            .find(|network| network.name == PANDA_NETWORK)
-            .ok_or_else(|| {
-                RoutineFailure::error(Message::new(
-                    "Failed".to_string(),
-                    "to find panda house docker network".to_string(),
-                ))
-            })?;
-
-        Ok(RoutineSuccess::success(Message::new(
-            "Successfully".to_string(),
-            "validated panda house docker network".to_string(),
         )))
     }
 }

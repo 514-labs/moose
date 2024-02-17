@@ -1,7 +1,5 @@
 use std::process::{Command, Stdio};
 
-use crate::infrastructure::console::ConsoleConfig;
-use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_slice, from_str};
 
@@ -54,9 +52,9 @@ services:
     image: docker.io/514labs/moose-console:${CONSOLE_VERSION:-latest}
     platform: linux/amd64
     environment:
-      - CLICKHOUSE_DB=${DB_NAME}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD}
+      - CLICKHOUSE_DB=${DB_NAME:-local}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-panda}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-pandapass}
       - CLICKHOUSE_HOST=clickhousedb
       - CLICKHOUSE_PORT=8123
     ports:
@@ -194,9 +192,8 @@ pub fn remove_network(network_name: &str) -> std::io::Result<String> {
     network_command("rm", network_name)
 }
 
-pub fn stop_containers() -> std::io::Result<String> {
-    let child = Command::new("docker")
-        .arg("compose")
+pub fn stop_containers(project: &Project) -> std::io::Result<String> {
+    let child = compose_command(project)
         .arg("down")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -206,6 +203,18 @@ pub fn stop_containers() -> std::io::Result<String> {
     output_to_result(output)
 }
 
+fn compose_command(project: &Project) -> Command {
+    let mut command = Command::new("docker");
+
+    command
+        .arg("compose")
+        .arg("-f")
+        .arg(project.internal_dir().unwrap().join("docker-compose.yml"))
+        .arg("-p")
+        .arg(project.name.to_string());
+    command
+}
+
 pub fn start_containers(project: &Project) -> std::io::Result<String> {
     let console_version = if cfg!(debug_assertions) {
         "latest"
@@ -213,10 +222,7 @@ pub fn start_containers(project: &Project) -> std::io::Result<String> {
         CLI_VERSION
     };
 
-    let child = Command::new("docker")
-        .arg("compose")
-        .arg("-p")
-        .arg(project.name.to_string())
+    let child = compose_command(project)
         .arg("up")
         .arg("-d")
         .env("DB_NAME", project.clickhouse_config.db_name.to_string())
@@ -251,9 +257,7 @@ pub fn start_containers(project: &Project) -> std::io::Result<String> {
 }
 
 pub fn create_compose_file(project: &Project) -> std::io::Result<()> {
-    let mut compose_file = project.project_file_location.clone();
-    compose_file.pop();
-    compose_file.push("docker-compose.yml");
+    let compose_file = project.internal_dir()?.join("docker-compose.yml");
 
     std::fs::write(compose_file, COMPOSE_FILE)
 }

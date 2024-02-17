@@ -8,8 +8,6 @@ pub const CLI_PROJECT_INTERNAL_DIR: &str = ".moose";
 
 pub const SCHEMAS_DIR: &str = "datamodels";
 
-pub const PANDA_NETWORK: &str = "panda-house";
-
 pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb-1";
 pub const CONSOLE_CONTAINER_NAME: &str = "console-1";
 pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";

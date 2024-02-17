@@ -1,9 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use crate::cli::routines::util::ensure_docker_running;
-use crate::{
-    cli::display::Message, project::Project, utilities::constants::PANDA_NETWORK, utilities::docker,
-};
+use crate::{cli::display::Message, project::Project};
 
 use super::{stop::StopLocalInfrastructure, Routine, RoutineFailure, RoutineSuccess, RunMode};
 
@@ -32,8 +30,7 @@ impl Routine for CleanProject {
         })?;
 
         ensure_docker_running()?;
-        StopLocalInfrastructure::new(run_mode).run(run_mode)?;
-        RemoveDockerNetwork::new(PANDA_NETWORK).run(run_mode)?;
+        StopLocalInfrastructure::new(self.project.clone()).run(run_mode)?;
         DeleteRedpandaMountVolume::new(internal_dir.clone()).run(run_mode)?;
         DeleteClickhouseMountVolume::new(internal_dir.clone()).run(run_mode)?;
         DeleteModelVolume::new(internal_dir.clone()).run(run_mode)?;
@@ -41,33 +38,6 @@ impl Routine for CleanProject {
         Ok(RoutineSuccess::success(Message::new(
             "Cleaned".to_string(),
             "project".to_string(),
-        )))
-    }
-}
-
-struct RemoveDockerNetwork {
-    network_name: String,
-}
-impl RemoveDockerNetwork {
-    fn new(network_name: &str) -> Self {
-        Self {
-            network_name: network_name.to_string(),
-        }
-    }
-}
-
-impl Routine for RemoveDockerNetwork {
-    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        docker::remove_network(&self.network_name).map_err(|err| {
-            RoutineFailure::new(
-                Message::new("Failed".to_string(), "to remove docker network".to_string()),
-                err,
-            )
-        })?;
-
-        Ok(RoutineSuccess::success(Message::new(
-            "Successfully".to_string(),
-            "removed docker network".to_string(),
         )))
     }
 }

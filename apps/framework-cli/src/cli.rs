@@ -126,7 +126,9 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
             Commands::Stop {} => {
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
-                controller.add_routine(Box::new(StopLocalInfrastructure::new(run_mode)));
+                let project = Project::load_from_current_dir()
+                    .expect("No project found, please run `moose init` to create a project");
+                controller.add_routine(Box::new(StopLocalInfrastructure::new(project)));
                 controller.run_routines(run_mode);
             }
             Commands::Clean {} => {

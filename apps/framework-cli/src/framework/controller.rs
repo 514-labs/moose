@@ -141,6 +141,7 @@ pub(crate) async fn create_or_replace_kafka_trigger(
 }
 
 pub(crate) async fn create_or_replace_tables(
+    project_name: &str,
     fo: &FrameworkObject,
     configured_client: &ConfiguredDBClient,
 ) -> anyhow::Result<()> {
@@ -150,7 +151,7 @@ pub(crate) async fn create_or_replace_tables(
     let drop_kafka_table_query = fo.table.drop_data_table_query()?;
 
     let create_data_table_query = fo.table.create_data_table_query()?;
-    let create_kafka_table_query = fo.table.create_kafka_table_query()?;
+    let create_kafka_table_query = fo.table.create_kafka_table_query(project_name)?;
 
     olap::clickhouse::check_ready(configured_client)
         .await
@@ -227,6 +228,7 @@ pub(crate) fn create_language_objects(
 }
 
 pub async fn remove_table_and_topics_from_schema_file_path(
+    project_name: &str,
     schema_file_path: &Path,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     configured_client: &ConfiguredDBClient,
@@ -236,7 +238,7 @@ pub async fn remove_table_and_topics_from_schema_file_path(
 
     for (k, meta) in route_table.clone().into_iter() {
         if meta.original_file_path == schema_file_path {
-            stream::redpanda::delete_topic(meta.table_name.clone())?;
+            stream::redpanda::delete_topic(project_name, meta.table_name.clone())?;
 
             olap::clickhouse::delete_table_or_view(meta.table_name, configured_client)
                 .await
@@ -291,13 +293,13 @@ pub async fn process_objects(
             schema_file_path,
             fo.table.name.clone(),
         );
-        stream::redpanda::create_topic_from_name(fo.topic.clone())?;
+        stream::redpanda::create_topic_from_name(&project.name, fo.topic.clone())?;
 
         debug!("Creating table & view: {:?}", fo.table.name);
 
         let view_name = format!("{}_trigger", fo.table.name);
 
-        create_or_replace_tables(&fo, configured_client).await?;
+        create_or_replace_tables(&project.name, &fo, configured_client).await?;
         create_or_replace_kafka_trigger(&fo, view_name.clone(), configured_client).await?;
 
         debug!("Table created: {:?}", fo.table.name);

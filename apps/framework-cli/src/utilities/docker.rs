@@ -1,16 +1,65 @@
-use std::{
-    path::PathBuf,
-    process::{Command, Stdio},
-};
+use std::process::{Command, Stdio};
 
-use crate::infrastructure::console::ConsoleConfig;
-use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
-use crate::utilities::constants::{
-    CLICKHOUSE_CONTAINER_NAME, CLI_VERSION, CONSOLE_CONTAINER_NAME, PANDA_NETWORK,
-    REDPANDA_CONTAINER_NAME,
-};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_slice, from_str};
+
+use crate::project::Project;
+use crate::utilities::constants::{CLI_VERSION, REDPANDA_CONTAINER_NAME};
+
+static COMPOSE_FILE: &str = r#"
+services:
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    ports:
+      - "9092:9092"
+      - "19092:19092"
+      - "9644:9644"
+    volumes:
+      - .moose/.panda_house:/tmp/panda_house
+    command:
+      - redpanda
+      - start
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr=internal://redpanda:8082,external://localhost:18082
+      - --overprovisioned
+      - --smp=1
+      - --memory=2G
+      - --reserve-memory=200M
+      - --node-id=0
+      - --check=false
+  clickhousedb:
+    image: docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-latest}
+    volumes:
+      - .moose/.clickhouse/configs/scripts:/docker-entrypoint-initdb.d
+      - .moose/.clickhouse/data:/var/lib/clickhouse/
+      - .moose/.clickhouse/logs:/var/log/clickhouse-server/
+      - .moose/.clickhouse/configs/users:/etc/clickhouse-server/users.d
+    environment:
+      - CLICKHOUSE_DB=${DB_NAME:-local}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-panda}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-pandapass}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    ports:
+      - "${CLICKHOUSE_HOST_PORT:-18123}:8123"
+      - "${CLICKHOUSE_POSTGRES_PORT:-9005}:9005"
+    ulimits:
+      nofile:
+        soft: 20000
+        hard: 40000
+  console:
+    image: docker.io/514labs/moose-console:${CONSOLE_VERSION:-latest}
+    platform: linux/amd64
+    environment:
+      - CLICKHOUSE_DB=${DB_NAME:-local}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-panda}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-pandapass}
+      - CLICKHOUSE_HOST=clickhousedb
+      - CLICKHOUSE_PORT=8123
+    ports:
+      - "${CONSOLE_HOST_PORT:-3001}:3000"
+"#;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
@@ -77,80 +126,9 @@ pub fn list_containers() -> std::io::Result<Vec<ContainerRow>> {
     Ok(containers)
 }
 
-fn network_command(command: &str, network_name: &str) -> std::io::Result<String> {
-    let child = Command::new("docker")
-        .arg("network")
-        .arg(command)
-        .arg(network_name)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let output = child.wait_with_output()?;
-
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    } else {
-        // match std error with a regex and a match statement if it contains network and already exists
-        let owned = String::from_utf8_lossy(&output.stderr).into_owned();
-        let std_error_str = owned.as_str();
-
-        match std_error_str {
-            _ if std_error_str.contains("network") && std_error_str.contains("already exists") => {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::AlreadyExists,
-                    String::from_utf8_lossy(&output.stderr),
-                ))
-            }
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                String::from_utf8_lossy(&output.stderr),
-            )),
-        }
-    }
-}
-
-pub fn network_list() -> std::io::Result<Vec<NetworkRow>> {
-    let child = Command::new("docker")
-        .arg("network")
-        .arg("ls")
-        .arg("--format")
-        .arg("json")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let output = child.wait_with_output()?;
-
-    if !output.status.success() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            String::from_utf8_lossy(&output.stderr),
-        ));
-    }
-
-    let output_str = String::from_utf8_lossy(&output.stdout);
-    let networks: Vec<NetworkRow> = output_str
-        .split('\n')
-        .filter(|line| !line.is_empty())
-        .map(|line| from_str(line).expect("Failed to parse network row"))
-        .collect();
-
-    Ok(networks)
-}
-
-pub fn remove_network(network_name: &str) -> std::io::Result<String> {
-    network_command("rm", network_name)
-}
-
-pub fn create_network(network_name: &str) -> std::io::Result<String> {
-    network_command("create", network_name)
-}
-
-pub fn stop_container(name: &str) -> std::io::Result<String> {
-    let child = Command::new("docker")
-        .arg("stop")
-        .arg(name)
+pub fn stop_containers(project: &Project) -> std::io::Result<String> {
+    let child = compose_command(project)
+        .arg("down")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
@@ -159,10 +137,63 @@ pub fn stop_container(name: &str) -> std::io::Result<String> {
     output_to_result(output)
 }
 
-pub fn run_rpk_cluster_info() -> std::io::Result<String> {
+fn compose_command(project: &Project) -> Command {
+    let mut command = Command::new("docker");
+
+    command
+        .arg("compose")
+        .arg("-f")
+        .arg(project.internal_dir().unwrap().join("docker-compose.yml"))
+        .arg("-p")
+        .arg(&project.name);
+    command
+}
+
+pub fn start_containers(project: &Project) -> std::io::Result<String> {
+    let console_version = if cfg!(debug_assertions) {
+        "latest"
+    } else {
+        CLI_VERSION
+    };
+
+    let child = compose_command(project)
+        .arg("up")
+        .arg("-d")
+        .env("DB_NAME", &project.clickhouse_config.db_name)
+        .env("CLICKHOUSE_USER", &project.clickhouse_config.user)
+        .env("CLICKHOUSE_PASSWORD", &project.clickhouse_config.password)
+        .env(
+            "CONSOLE_HOST_PORT",
+            project.console_config.host_port.to_string(),
+        )
+        .env(
+            "CLICKHOUSE_HOST_PORT",
+            project.clickhouse_config.host_port.to_string(),
+        )
+        .env(
+            "CLICKHOUSE_POSTGRES_PORT",
+            project.clickhouse_config.postgres_port.to_string(),
+        )
+        .env("CLICKHOUSE_VERSION", "24.1.3") // https://github.com/ClickHouse/ClickHouse/issues/60020
+        .env("CONSOLE_VERSION", console_version)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+    let output = child.wait_with_output()?;
+
+    output_to_result(output)
+}
+
+pub fn create_compose_file(project: &Project) -> std::io::Result<()> {
+    let compose_file = project.internal_dir()?.join("docker-compose.yml");
+
+    std::fs::write(compose_file, COMPOSE_FILE)
+}
+
+pub fn run_rpk_cluster_info(project_name: &str) -> std::io::Result<String> {
     let child = Command::new("docker")
         .arg("exec")
-        .arg(REDPANDA_CONTAINER_NAME)
+        .arg(format!("{}-{}", project_name, REDPANDA_CONTAINER_NAME))
         .arg("rpk")
         .arg("cluster")
         .arg("info")
@@ -175,10 +206,10 @@ pub fn run_rpk_cluster_info() -> std::io::Result<String> {
     output_to_result(output)
 }
 
-pub fn run_rpk_command(args: Vec<String>) -> std::io::Result<String> {
+pub fn run_rpk_command(project_name: &str, args: Vec<String>) -> std::io::Result<String> {
     let child = Command::new("docker")
         .arg("exec")
-        .arg(REDPANDA_CONTAINER_NAME)
+        .arg(format!("{}-{}", project_name, REDPANDA_CONTAINER_NAME))
         .arg("rpk")
         .args(args)
         .stdout(Stdio::piped())
@@ -215,198 +246,6 @@ pub fn run_rpk_command(args: Vec<String>) -> std::io::Result<String> {
             ),
         ))
     }
-}
-
-pub fn safe_start_redpanda_container(internal_dir: PathBuf) -> std::io::Result<String> {
-    //! Starts a redpanda container if it is not already running. If the doesn't exist, it will be created.
-    //!
-    //! # Arguments
-    //!
-    //! * `internal_dir` - The path to the moose directory
-
-    match start_redpanda_container() {
-        Ok(output) => Ok(output),
-        Err(_) => run_red_panda(internal_dir),
-    }
-}
-
-fn run_red_panda(internal_dir: PathBuf) -> std::io::Result<String> {
-    let mount_dir = internal_dir.join(".panda_house");
-
-    let child = Command::new("docker")
-        .arg("run")
-        .arg("-d")
-        .arg("--pull=always")
-        .arg(format!("--name={REDPANDA_CONTAINER_NAME}"))
-        // .arg("--rm")
-        .arg(format!("--network={PANDA_NETWORK}"))
-        .arg("--volume=".to_owned() + mount_dir.to_str().unwrap() + ":/tmp/panda_house")
-        .arg("--publish=9092:9092")
-        .arg("--publish=19092:19092")
-        .arg("--publish=9644:9644")
-        .arg("docker.redpanda.com/redpandadata/redpanda:latest")
-        .arg("redpanda")
-        .arg("start")
-        .arg("--kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092")
-        .arg(format!(
-            "--advertise-kafka-addr=internal://{}:9092,external://localhost:19092",
-            REDPANDA_CONTAINER_NAME
-        ))
-        .arg("--pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082")
-        .arg(format!(
-            "--advertise-pandaproxy-addr=internal://{}:8082,external://localhost:18082",
-            REDPANDA_CONTAINER_NAME
-        ))
-        .arg("--overprovisioned")
-        .arg("--smp=1")
-        .arg("--memory=2G")
-        .arg("--reserve-memory=200M")
-        .arg("--node-id=0")
-        .arg("--check=false")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let output = child.wait_with_output()?;
-
-    output_to_result(output)
-}
-
-pub fn safe_start_clickhouse_container(
-    internal_dir: PathBuf,
-    config: ClickhouseConfig,
-) -> std::io::Result<String> {
-    //! Starts a clickhouse container if it is not already running. If the doesn't exist, it will be created.
-    //!
-    //! # Arguments
-    //!
-    //! * `internal_dir` - The path to the moose directory
-    //! * `config` - The clickhouse configuration
-
-    match start_clickhouse_container() {
-        Ok(output) => Ok(output),
-        Err(_) => run_clickhouse(internal_dir, config),
-    }
-}
-
-fn run_clickhouse(internal_dir: PathBuf, config: ClickhouseConfig) -> std::io::Result<String> {
-    let data_mount_dir = internal_dir.join(".clickhouse/data");
-    let logs_mount_dir = internal_dir.join(".clickhouse/logs");
-    // let server_config_mount_dir = internal_dir.join(".clickhouse/configs/server");
-    let user_config_mount_dir = internal_dir.join(".clickhouse/configs/users");
-    let scripts_config_mount_dir = internal_dir.join(".clickhouse/configs/scripts");
-
-    // TODO: Make this configurable by the user
-    // Specifying the user and password in plain text here. This should be a user input
-    // Double check the access management flag and why it needs to be set to 1
-    let child = Command::new("docker")
-        .arg("run")
-        .arg("-d")
-        .arg("--pull=always")
-        .arg(format!("--name={CLICKHOUSE_CONTAINER_NAME}"))
-        // .arg("--rm")
-        .arg(
-            "--volume=".to_owned()
-                + scripts_config_mount_dir.to_str().unwrap()
-                + ":/docker-entrypoint-initdb.d",
-        )
-        .arg("--volume=".to_owned() + data_mount_dir.to_str().unwrap() + ":/var/lib/clickhouse/")
-        .arg(
-            "--volume=".to_owned()
-                + logs_mount_dir.to_str().unwrap()
-                + ":/var/log/clickhouse-server/",
-        )
-        // .arg("--volume=".to_owned() + server_config_mount_dir.to_str().unwrap() + ":/etc/clickhouse-server/config.d")
-        .arg(
-            "--volume=".to_owned()
-                + user_config_mount_dir.to_str().unwrap()
-                + ":/etc/clickhouse-server/users.d",
-        )
-        .arg(format!("--env=CLICKHOUSE_DB={}", config.db_name))
-        .arg(format!("--env=CLICKHOUSE_USER={}", config.user))
-        .arg("--env=CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1") // Might be unsafe
-        .arg(format!("--env=CLICKHOUSE_PASSWORD={}", config.password))
-        .arg(format!("--network={PANDA_NETWORK}"))
-        .arg(format!("--publish={}:8123", config.host_port))
-        .arg(format!("--publish={}:9005", config.postgres_port))
-        .arg("--ulimit=nofile=262144:262144")
-        .arg("docker.io/clickhouse/clickhouse-server")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let output = child.wait_with_output()?;
-
-    output_to_result(output)
-}
-
-pub fn safe_start_console_container(
-    console_config: &ConsoleConfig,
-    clickhouse_config: &ClickhouseConfig,
-) -> std::io::Result<String> {
-    //! Starts a console container if it is not already running. If the doesn't exist, it will be created.
-
-    match start_console_container() {
-        Ok(output) => Ok(output),
-        Err(_) => run_console(console_config, clickhouse_config),
-    }
-}
-
-fn run_console(
-    console_config: &ConsoleConfig,
-    clickhouse_config: &ClickhouseConfig,
-) -> std::io::Result<String> {
-    let child = Command::new("docker")
-        .arg("run")
-        .arg("-d")
-        .arg("--platform")
-        .arg("linux/amd64")
-        .arg(format!("--name={CONSOLE_CONTAINER_NAME}"))
-        .arg(format!("--env=CLICKHOUSE_DB={}", clickhouse_config.db_name))
-        .arg(format!("--env=CLICKHOUSE_USER={}", clickhouse_config.user))
-        .arg(format!("--env=CLICKHOUSE_HOST={CLICKHOUSE_CONTAINER_NAME}"))
-        .arg(
-            "--env=CLICKHOUSE_PORT=8123", // TODO figure out the configuration between inside and outside of the container
-        )
-        .arg(format!(
-            "--env=CLICKHOUSE_PASSWORD={}",
-            clickhouse_config.password
-        ))
-        .arg(format!("--network={PANDA_NETWORK}"))
-        .arg(format!("--publish={}:3000", console_config.host_port))
-        .arg(format!("docker.io/514labs/moose-console:{CLI_VERSION}"))
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let output = child.wait_with_output()?;
-
-    output_to_result(output)
-}
-
-fn start_redpanda_container() -> std::io::Result<String> {
-    start_container(REDPANDA_CONTAINER_NAME)
-}
-
-fn start_clickhouse_container() -> std::io::Result<String> {
-    start_container(CLICKHOUSE_CONTAINER_NAME)
-}
-
-fn start_console_container() -> std::io::Result<String> {
-    start_container(CONSOLE_CONTAINER_NAME)
-}
-
-fn start_container(name: &str) -> std::io::Result<String> {
-    let child = Command::new("docker")
-        .arg("start")
-        .arg(name)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let output = child.wait_with_output()?;
-
-    output_to_result(output)
 }
 
 pub fn check_status() -> std::io::Result<Vec<String>> {

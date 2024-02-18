@@ -2,7 +2,7 @@ use super::{Routine, RoutineFailure, RoutineSuccess};
 use crate::utilities::constants::{
     CLICKHOUSE_CONTAINER_NAME, CONSOLE_CONTAINER_NAME, REDPANDA_CONTAINER_NAME,
 };
-use crate::{cli::display::Message, utilities::constants::PANDA_NETWORK, utilities::docker};
+use crate::{cli::display::Message, utilities::docker};
 
 pub struct ValidateClickhouseRun;
 impl ValidateClickhouseRun {
@@ -69,60 +69,27 @@ impl Routine for ValidateRedPandaRun {
     }
 }
 
-pub struct ValidatePandaHouseNetwork;
-impl ValidatePandaHouseNetwork {
-    pub fn new() -> Self {
-        Self
-    }
+pub struct ValidateRedPandaCluster {
+    project_name: String,
 }
-impl Routine for ValidatePandaHouseNetwork {
-    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let docker_networks = docker::network_list().map_err(|err| {
-            RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    "to get list of docker networks".to_string(),
-                ),
-                err,
-            )
-        })?;
-
-        docker_networks
-            .iter()
-            .find(|network| network.name == PANDA_NETWORK)
-            .ok_or_else(|| {
-                RoutineFailure::error(Message::new(
-                    "Failed".to_string(),
-                    "to find panda house docker network".to_string(),
-                ))
-            })?;
-
-        Ok(RoutineSuccess::success(Message::new(
-            "Successfully".to_string(),
-            "validated panda house docker network".to_string(),
-        )))
-    }
-}
-
-pub struct ValidateRedPandaCluster;
 impl ValidateRedPandaCluster {
-    pub fn new() -> Self {
-        Self
+    pub fn new(project_name: String) -> ValidateRedPandaCluster {
+        ValidateRedPandaCluster { project_name }
     }
 }
 impl Routine for ValidateRedPandaCluster {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let output = docker::run_rpk_cluster_info().map_err(|err| {
+        let output = docker::run_rpk_cluster_info(&self.project_name).map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),
-                    "to validate red panda cluster".to_string(),
+                    format!("to validate red panda cluster, {}", err),
                 ),
                 err,
             )
         })?;
 
-        if output.contains(REDPANDA_CONTAINER_NAME) {
+        if output.contains(REDPANDA_CONTAINER_NAME) || output.contains("localhost") {
             Ok(RoutineSuccess::success(Message::new(
                 "Successfully".to_string(),
                 "validated red panda cluster".to_string(),

@@ -6,6 +6,7 @@ import { Table, getCliData } from "app/db";
 import { unstable_noStore as noStore } from "next/cache";
 import TableTabs from "./table-tabs";
 import {
+  bashSnippet,
   clickhouseJSSnippet,
   clickhousePythonSnippet,
   jsSnippet,
@@ -82,6 +83,7 @@ export default async function Page({
         <TableTabs
           table={table}
           cliData={data}
+          bashSnippet={bashSnippet(data, model)}
           jsSnippet={jsSnippet(data, model)}
           pythonSnippet={pythonSnippet(data, model)}
           clickhouseJSSnippet={clickhouseJSSnippet(data, model)}

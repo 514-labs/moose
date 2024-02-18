@@ -9,6 +9,7 @@ import {
   pythonSnippet,
   clickhouseJSSnippet,
   clickhousePythonSnippet,
+  bashSnippet,
 } from "lib/snippets";
 
 async function getIngestionPoint(ingestionPointId: string): Promise<Route> {
@@ -59,6 +60,7 @@ export default async function Page({
         <IngestionPointTabs
           ingestionPoint={ingestionPoint}
           cliData={cliData}
+          bashSnippet={bashSnippet(cliData, model)}
           jsSnippet={jsSnippet(cliData, model)}
           pythonSnippet={pythonSnippet(cliData, model)}
           clickhouseJSSnippet={clickhouseJSSnippet(cliData, model)}

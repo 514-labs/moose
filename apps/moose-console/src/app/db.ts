@@ -96,21 +96,29 @@ export interface CliData {
   queues: string[];
 }
 
-export function column_type_mapper(source_type: string): string {
-  if (source_type === "String") {
-    return "string";
-  } else if (source_type === "Number") {
-    return "number";
-  } else if (source_type === "Boolean") {
-    return "boolean";
-  } else if (source_type === "Date") {
-    return "Date";
-  } else if (source_type === "Array") {
-    return "array";
-  } else if (source_type === "Object") {
-    return "object";
-  } else {
-    return "unknown";
+export interface Infra {
+  tables: Table[];
+  ingestionPoints: Route[];
+}
+
+export function column_type_mapper(source_type) {
+  switch (source_type) {
+    case "String":
+      return "string";
+    case "Number":
+      return "number";
+    case "Boolean":
+      return "boolean";
+    case "Date":
+      return "Date";
+    case "DateTime":
+      return "DateTime";
+    case "Array":
+      return "array";
+    case "Object":
+      return "object";
+    default:
+      return "unknown";
   }
 }
 

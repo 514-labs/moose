@@ -43,7 +43,6 @@ method: 'POST',
 export const pythonSnippet = (data: CliData, model: DataModel) => {
   const ingestionPoint = getIngestionPointFromModel(model, data);
   const columns = createColumnStubs(model);
-  console.log(columns);
   return `
 import requests
 

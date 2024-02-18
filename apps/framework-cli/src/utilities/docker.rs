@@ -126,72 +126,6 @@ pub fn list_containers() -> std::io::Result<Vec<ContainerRow>> {
     Ok(containers)
 }
 
-fn network_command(command: &str, network_name: &str) -> std::io::Result<String> {
-    let child = Command::new("docker")
-        .arg("network")
-        .arg(command)
-        .arg(network_name)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let output = child.wait_with_output()?;
-
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    } else {
-        // match std error with a regex and a match statement if it contains network and already exists
-        let owned = String::from_utf8_lossy(&output.stderr).into_owned();
-        let std_error_str = owned.as_str();
-
-        match std_error_str {
-            _ if std_error_str.contains("network") && std_error_str.contains("already exists") => {
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::AlreadyExists,
-                    String::from_utf8_lossy(&output.stderr),
-                ))
-            }
-            _ => Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                String::from_utf8_lossy(&output.stderr),
-            )),
-        }
-    }
-}
-
-pub fn network_list() -> std::io::Result<Vec<NetworkRow>> {
-    let child = Command::new("docker")
-        .arg("network")
-        .arg("ls")
-        .arg("--format")
-        .arg("json")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
-
-    let output = child.wait_with_output()?;
-
-    if !output.status.success() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            String::from_utf8_lossy(&output.stderr),
-        ));
-    }
-
-    let output_str = String::from_utf8_lossy(&output.stdout);
-    let networks: Vec<NetworkRow> = output_str
-        .split('\n')
-        .filter(|line| !line.is_empty())
-        .map(|line| from_str(line).expect("Failed to parse network row"))
-        .collect();
-
-    Ok(networks)
-}
-
-pub fn remove_network(network_name: &str) -> std::io::Result<String> {
-    network_command("rm", network_name)
-}
-
 pub fn stop_containers(project: &Project) -> std::io::Result<String> {
     let child = compose_command(project)
         .arg("down")
@@ -211,7 +145,7 @@ fn compose_command(project: &Project) -> Command {
         .arg("-f")
         .arg(project.internal_dir().unwrap().join("docker-compose.yml"))
         .arg("-p")
-        .arg(project.name.to_string());
+        .arg(&project.name);
     command
 }
 
@@ -225,15 +159,9 @@ pub fn start_containers(project: &Project) -> std::io::Result<String> {
     let child = compose_command(project)
         .arg("up")
         .arg("-d")
-        .env("DB_NAME", project.clickhouse_config.db_name.to_string())
-        .env(
-            "CLICKHOUSE_USER",
-            project.clickhouse_config.user.to_string(),
-        )
-        .env(
-            "CLICKHOUSE_PASSWORD",
-            project.clickhouse_config.password.to_string(),
-        )
+        .env("DB_NAME", &project.clickhouse_config.db_name)
+        .env("CLICKHOUSE_USER", &project.clickhouse_config.user)
+        .env("CLICKHOUSE_PASSWORD", &project.clickhouse_config.password)
         .env(
             "CONSOLE_HOST_PORT",
             project.console_config.host_port.to_string(),

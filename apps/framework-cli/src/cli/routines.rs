@@ -116,6 +116,7 @@ pub struct RoutineSuccess {
 
 // Implement success and info contructors and a new constructor that lets the user choose which type of message to display
 impl RoutineSuccess {
+    #[allow(dead_code)]
     pub fn info(message: Message) -> Self {
         Self {
             message,

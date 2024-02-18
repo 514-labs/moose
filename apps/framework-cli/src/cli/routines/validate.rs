@@ -89,9 +89,7 @@ impl Routine for ValidateRedPandaCluster {
             )
         })?;
 
-        println!("output: {:?}", output);
-
-        if output.contains(REDPANDA_CONTAINER_NAME) {
+        if output.contains(REDPANDA_CONTAINER_NAME) || output.contains("localhost") {
             Ok(RoutineSuccess::success(Message::new(
                 "Successfully".to_string(),
                 "validated red panda cluster".to_string(),

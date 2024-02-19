@@ -12,6 +12,8 @@ pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb-1";
 pub const CONSOLE_CONTAINER_NAME: &str = "console-1";
 pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";
 
+pub const REDPANDA_HOSTS: [&str; 2] = ["redpanda", "localhost"];
+
 pub const APP_DIR: &str = "app";
 pub const APP_DIR_LAYOUT: [&str; 5] = [
     SCHEMAS_DIR,

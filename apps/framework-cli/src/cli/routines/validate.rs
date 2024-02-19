@@ -1,8 +1,9 @@
 use super::{Routine, RoutineFailure, RoutineSuccess};
 use crate::utilities::constants::{
-    CLICKHOUSE_CONTAINER_NAME, CONSOLE_CONTAINER_NAME, REDPANDA_CONTAINER_NAME,
+    CLICKHOUSE_CONTAINER_NAME, CONSOLE_CONTAINER_NAME, REDPANDA_CONTAINER_NAME, REDPANDA_HOSTS,
 };
 use crate::{cli::display::Message, utilities::docker};
+use log::debug;
 
 pub struct ValidateClickhouseRun;
 impl ValidateClickhouseRun {
@@ -89,7 +90,9 @@ impl Routine for ValidateRedPandaCluster {
             )
         })?;
 
-        if output.contains(REDPANDA_CONTAINER_NAME) || output.contains("localhost") {
+        debug!("rpk cluster info: {}", output);
+
+        if REDPANDA_HOSTS.iter().any(|host| output.contains(host)) {
             Ok(RoutineSuccess::success(Message::new(
                 "Successfully".to_string(),
                 "validated red panda cluster".to_string(),

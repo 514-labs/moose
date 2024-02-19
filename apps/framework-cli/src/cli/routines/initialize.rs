@@ -1,6 +1,5 @@
 use std::{fs, path::PathBuf};
 
-use crate::cli::routines::util::ensure_docker_running;
 use crate::{
     cli::display::Message,
     framework::{languages::create_models_dir, typescript::create_typescript_models_dir},
@@ -34,8 +33,6 @@ impl Routine for InitializeProject {
                 err,
             )
         })?;
-
-        ensure_docker_running()?;
 
         CreateModelsVolume::new(self.project.clone()).run(run_mode)?;
         CreateDockerComposeFile::new(self.project.clone()).run(run_mode)?;

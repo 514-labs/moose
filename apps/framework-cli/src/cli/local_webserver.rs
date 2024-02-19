@@ -171,7 +171,7 @@ async fn ingest_route(
                     Ok(Response::new(Full::new(response_bytes)))
                 }
                 Err(e) => {
-                    println!("Error: {:?}", e);
+                    debug!("Error: {:?}", e);
                     Response::builder()
                         .status(StatusCode::INTERNAL_SERVER_ERROR)
                         .body(Full::new(Bytes::from("Error")))

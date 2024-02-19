@@ -86,10 +86,10 @@ use std::{io::Error, path::PathBuf};
 use log::debug;
 use tokio::sync::RwLock;
 
+use super::display::with_spinner_async;
 use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
-
 use crate::framework::controller::RouteMeta;
 use crate::framework::schema::process_schema_file;
 use crate::infrastructure::console::post_current_state_to_console;
@@ -265,29 +265,34 @@ async fn initialize_project_state(
     let producer = redpanda::create_producer(project.redpanda_config.clone());
 
     info!("Starting schema directory crawl...");
-    let crawl_result =
-        process_schemas_in_dir(&schema_dir, project, &configured_client, route_table).await;
 
-    let _ = post_current_state_to_console(
-        project,
-        &configured_client,
-        &producer,
-        route_table.clone(),
-        project.console_config.clone(),
-    )
-    .await;
+    with_spinner_async("Processing schema file", async {
+        let crawl_result =
+            process_schemas_in_dir(&schema_dir, project, &configured_client, route_table).await;
 
-    match crawl_result {
-        Ok(_) => {
-            info!("Schema directory crawl completed successfully");
-            Ok(())
+        let _ = post_current_state_to_console(
+            project,
+            &configured_client,
+            &producer,
+            route_table.clone(),
+            project.console_config.clone(),
+        )
+        .await;
+
+        match crawl_result {
+            Ok(_) => {
+                info!("Schema directory crawl completed successfully");
+                Ok(())
+            }
+            Err(e) => {
+                debug!("Schema directory crawl failed");
+                debug!("Error: {:?}", e);
+                Err(e)
+            }
         }
-        Err(e) => {
-            debug!("Schema directory crawl failed");
-            debug!("Error: {:?}", e);
-            Err(e)
-        }
-    }
+    })
+    .await?;
+    Ok(())
 }
 
 #[async_recursion]

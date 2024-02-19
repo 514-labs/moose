@@ -1,4 +1,4 @@
-import { CliData, DataModel, Route, Table } from "app/db";
+import { CliData, DataModel, Infra, Route, Table } from "app/db";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -46,7 +46,7 @@ export function getRelatedInfra(
   model: DataModel,
   data: CliData,
   currectObject: any,
-): { tables: Table[]; ingestionPoints: Route[] } {
+): Infra {
   const tables = data.tables.filter(
     (t) => t.name.includes(model.name) && t.uuid !== currectObject.uuid,
   );

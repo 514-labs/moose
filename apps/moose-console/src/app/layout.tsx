@@ -43,9 +43,12 @@ export default function RootLayout({
           <div className=" h-screen w-full flex flex-col">
             <nav className="flex flex-row w-screen px-4">
               <header className="flex text-lg">
-                <span className="py-4">
-                  moosejs <span className="text-muted-foreground">console</span>
-                </span>
+                <a className="py-4" href={"/"}>
+                  <span className="py-4">
+                    moosejs{" "}
+                    <span className="text-muted-foreground">console</span>
+                  </span>
+                </a>
                 <span className="flex-grow" />
               </header>
               <span className="flex-grow" />

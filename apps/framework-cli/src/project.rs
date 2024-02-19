@@ -12,10 +12,13 @@
 //! ```
 
 use std::collections::HashMap;
+use std::io::Write;
 use std::path::PathBuf;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
+use crate::framework::readme::BASE_README_TEMPLATE;
+use crate::framework::schema::templates::BASE_MODEL_TEMPLATE;
 use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
@@ -28,6 +31,7 @@ use log::debug;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
 
+// TODO: Move package json file to a typescript module
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 struct PackageJsonFile {
@@ -122,6 +126,20 @@ impl Project {
             let to_create = app_dir.join(dir);
             std::fs::create_dir_all(to_create)?;
         }
+
+        Ok(())
+    }
+
+    pub fn create_base_app_files(&self) -> Result<(), std::io::Error> {
+        let app_dir = self.app_dir();
+        let readme_file_path = app_dir.join("README.md");
+        let base_model_file_path = self.schemas_dir().join("models.prisma");
+
+        let mut readme_file = std::fs::File::create(readme_file_path)?;
+        let mut base_model_file = std::fs::File::create(base_model_file_path)?;
+
+        readme_file.write_all(BASE_README_TEMPLATE.as_bytes())?;
+        base_model_file.write_all(BASE_MODEL_TEMPLATE.as_bytes())?;
 
         Ok(())
     }

@@ -1,3 +1,21 @@
+//! # Schema
+//! Schemas are the internal representation for data models in the framework.
+//!
+//! The schema module is responsible for parsing the schema file and converting it into a format that can be used by the framework.
+//!
+//! We currently support the following data types:
+//! - String
+//! - Boolean
+//! - Int
+//! - BigInt
+//! - Float
+//! - Decimal
+//! - DateTime
+//!
+//! We only implemented part of the prisma schema parsing. We only support models and fields. We don't support enums, relations, or anything else for the moment
+
+pub mod templates;
+
 use std::fmt::{Display, Formatter};
 use std::{
     collections::HashMap,
@@ -215,13 +233,13 @@ impl FieldAttributes {
     #[allow(clippy::never_loop, clippy::match_single_binding)]
     fn new(attributes: Vec<Attribute>) -> Result<FieldAttributes, ParsingError> {
         let unique: bool = false;
-        let primary_key: bool = false;
+        let mut primary_key: bool = false;
         let default: Option<ColumnDefaults> = None;
 
         // TODO: Implement default values and primary keys once we have the ingestion table architecture setup
         for attribute in attributes {
             match attribute.name() {
-                // "id" => {primary_key = true},
+                "id" => primary_key = true,
                 _ => {
                     return Err(ParsingError::UnsupportedDataTypeError {
                         type_name: format!(

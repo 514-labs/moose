@@ -49,18 +49,23 @@ impl CreateTableQuery {
                 "Kafka('{}:{}', '{}', 'clickhouse-group', 'JSONEachRow') SETTINGS {}",
                 kafka_host, kafka_port, topic, KAFKA_SETTINGS,
             ),
+            true,
         )
     }
 
     pub fn build(
         table: ClickhouseTable,
         engine: String,
+        ignore_primary_key: bool,
     ) -> Result<String, UnsupportedDataTypeError> {
         let mut tt = TinyTemplate::new();
         tt.set_default_formatter(&format_unescaped); // by default it formats HTML-escaped and messes up single quotes
         tt.add_template("create_table", CREATE_TABLE_TEMPLATE)
             .unwrap();
-        let context = CreateTableContext::new(table, engine)?;
+        let mut context = CreateTableContext::new(table, engine)?;
+        if ignore_primary_key {
+            context.primary_key_string = None;
+        }
         let rendered = tt.render("create_table", &context).unwrap();
         Ok(rendered)
     }

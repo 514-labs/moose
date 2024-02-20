@@ -182,7 +182,7 @@ impl ClickhouseTable {
         )
     }
     pub fn create_data_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
-        CreateTableQuery::build(self.clone(), "Memory".to_string())
+        CreateTableQuery::build(self.clone(), "MergeTree".to_string(), false)
     }
 
     pub fn drop_kafka_table_query(&self) -> Result<String, UnsupportedDataTypeError> {

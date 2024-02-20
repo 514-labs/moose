@@ -18,6 +18,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::sync::Arc;
+
 use tokio::net::TcpStream;
 
 use std::str;
@@ -34,11 +36,10 @@ impl Default for ConsoleConfig {
 }
 
 pub async fn post_current_state_to_console(
-    project: &Project,
+    project: Arc<Project>,
     configured_db_client: &ConfiguredDBClient,
     configured_producer: &ConfiguredProducer,
     route_table: HashMap<PathBuf, RouteMeta>,
-    console_config: ConsoleConfig,
 ) -> Result<(), anyhow::Error> {
     let schema_dir = project.schemas_dir();
     let mut framework_objects: Vec<FrameworkObject> = Vec::new();
@@ -72,8 +73,12 @@ pub async fn post_current_state_to_console(
         .collect();
 
     // TODO this should be configurable
-    let url = format!("http://localhost:{}/api/console", console_config.host_port)
-        .parse::<hyper::Uri>()?;
+    let url = format!(
+        "http://localhost:{}/api/console",
+        project.console_config().host_port
+    )
+    .parse::<hyper::Uri>()?;
+
     let host = url.host().expect("uri has no host");
     let port = url.port_u16().unwrap();
     let address = format!("{}:{}", host, port);
@@ -92,7 +97,7 @@ pub async fn post_current_state_to_console(
 
     let body = Bytes::from(
         json!({
-            "project": project,
+            "project": *project,
             "models": models,
             "tables": tables,
             "queues": topics,

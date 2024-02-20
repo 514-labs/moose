@@ -32,6 +32,7 @@ use std::future::Future;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
@@ -245,7 +246,7 @@ impl Webserver {
     pub async fn start(
         &self,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
-        project: &Project,
+        project: Arc<Project>,
     ) {
         //! Starts the local webserver
         let socket = self.socket().await;
@@ -253,7 +254,7 @@ impl Webserver {
         // We create a TcpListener and bind it to 127.0.0.1:4000
         let listener = TcpListener::bind(socket).await.unwrap();
 
-        let producer = redpanda::create_producer(project.redpanda_config.clone());
+        let producer = redpanda::create_producer(project.redpanda_config().clone());
 
         {
             show_message!(
@@ -270,7 +271,7 @@ impl Webserver {
             MessageType::Info,
             Message {
                 action: "Started".to_string(),
-                details: format!(" console on port http://localhost:{}. Check it out to get a bird's eye view of your application and infrastructure", project.console_config.host_port),
+                details: format!(" console on port http://localhost:{}. Check it out to get a bird's eye view of your application and infrastructure", project.console_config().host_port),
             }
         );
         }
@@ -283,7 +284,7 @@ impl Webserver {
         let route_service = RouteService {
             route_table,
             configured_producer: producer,
-            console_config: project.console_config.clone(),
+            console_config: project.console_config().clone(),
         };
 
         loop {

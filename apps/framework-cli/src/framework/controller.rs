@@ -1,37 +1,26 @@
-use crate::framework::languages::CodeGenerator;
-use crate::infrastructure::olap::clickhouse::ClickhouseTable;
-use crate::infrastructure::stream;
-use crate::utilities::constants::SCHEMAS_DIR;
-
 use std::collections::HashMap;
+use std::io::Error;
+use std::io::ErrorKind;
 use std::path::Path;
-
-use crate::framework::languages::SupportedLanguages;
-
-use crate::framework;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 use log::debug;
 use log::info;
 
-use crate::framework::typescript::get_typescript_models_dir;
-
-use crate::framework::typescript::SendFunction;
-
+use crate::framework;
+use crate::framework::languages::CodeGenerator;
+use crate::framework::languages::SupportedLanguages;
 use crate::framework::sdks::TypescriptObjects;
-
-use crate::project::Project;
-
-use std::path::PathBuf;
-
+use crate::framework::typescript::get_typescript_models_dir;
+use crate::framework::typescript::SendFunction;
 use crate::infrastructure::olap;
-
-use std::io::ErrorKind;
-
 use crate::infrastructure::olap::clickhouse::ClickhouseKafkaTrigger;
-
-use std::io::Error;
-
+use crate::infrastructure::olap::clickhouse::ClickhouseTable;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
+use crate::infrastructure::stream;
+use crate::project::Project;
+use crate::utilities::constants::SCHEMAS_DIR;
 
 use super::schema::parse_schema_file;
 use super::schema::DataModel;
@@ -173,7 +162,7 @@ pub(crate) async fn create_or_replace_tables(
 pub(crate) fn create_language_objects(
     fo: &FrameworkObject,
     ingest_route: &Path,
-    project: &Project,
+    project: Arc<Project>,
 ) -> Result<TypescriptObjects, Error> {
     info!("Creating typescript interface: {:?}", fo.ts_interface);
     let ts_interface_code = fo.ts_interface.create_code().map_err(|e| {
@@ -182,9 +171,10 @@ pub(crate) fn create_language_objects(
             format!("Failed to get typescript interface: {:?}", e),
         )
     })?;
+
     let send_func = SendFunction::new(
         fo.ts_interface.clone(),
-        project.local_webserver_config.url(),
+        project.http_server_config().url(),
         ingest_route.to_str().unwrap().to_string(),
     );
     let send_func_code = send_func.create_code().map_err(|e| {
@@ -193,7 +183,7 @@ pub(crate) fn create_language_objects(
             format!("Failed to generate send function: {:?}", e),
         )
     })?;
-    let typescript_dir = get_typescript_models_dir(project.clone())?;
+    let typescript_dir = get_typescript_models_dir(project)?;
     let interface_file_path = typescript_dir.join(format!("{}.ts", fo.ts_interface.file_name()));
     let send_func_file_path = typescript_dir.join(send_func.interface.send_function_file_name());
 
@@ -281,30 +271,31 @@ fn schema_file_path_to_ingest_route(app_dir: PathBuf, path: &Path, table_name: S
 
 pub async fn process_objects(
     framework_objects: Vec<FrameworkObject>,
-    project: &Project,
+    project: Arc<Project>,
     schema_file_path: &Path,
     configured_client: &ConfiguredDBClient,
     compilable_objects: &mut Vec<TypescriptObjects>, // Objects that require compilation after processing
     route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> anyhow::Result<()> {
+    let app_dir = project.clone().app_dir();
     for fo in framework_objects {
         let ingest_route = schema_file_path_to_ingest_route(
-            project.app_dir().clone(),
+            app_dir.clone(),
             schema_file_path,
             fo.table.name.clone(),
         );
-        stream::redpanda::create_topic_from_name(&project.name, fo.topic.clone())?;
+        stream::redpanda::create_topic_from_name(project.name(), fo.topic.clone())?;
 
         debug!("Creating table & view: {:?}", fo.table.name);
 
         let view_name = format!("{}_trigger", fo.table.name);
 
-        create_or_replace_tables(&project.name, &fo, configured_client).await?;
+        create_or_replace_tables(project.name(), &fo, configured_client).await?;
         create_or_replace_kafka_trigger(&fo, view_name.clone(), configured_client).await?;
 
         debug!("Table created: {:?}", fo.table.name);
 
-        let typescript_objects = create_language_objects(&fo, &ingest_route, project)?;
+        let typescript_objects = create_language_objects(&fo, &ingest_route, project.clone())?;
         compilable_objects.push(typescript_objects);
 
         route_table.insert(

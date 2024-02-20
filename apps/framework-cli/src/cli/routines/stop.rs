@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use crate::cli::display::{with_spinner, Message};
 use crate::cli::routines::util::ensure_docker_running;
 use crate::project::Project;
@@ -6,10 +8,10 @@ use crate::utilities::docker;
 use super::{Routine, RoutineFailure, RoutineSuccess};
 
 pub struct StopLocalInfrastructure {
-    project: Project,
+    project: Arc<Project>,
 }
 impl StopLocalInfrastructure {
-    pub fn new(project: Project) -> Self {
+    pub fn new(project: Arc<Project>) -> Self {
         Self { project }
     }
 }

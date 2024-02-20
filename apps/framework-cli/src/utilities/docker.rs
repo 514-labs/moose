@@ -145,7 +145,7 @@ fn compose_command(project: &Project) -> Command {
         .arg("-f")
         .arg(project.internal_dir().unwrap().join("docker-compose.yml"))
         .arg("-p")
-        .arg(&project.name);
+        .arg(project.name());
     command
 }
 
@@ -159,20 +159,23 @@ pub fn start_containers(project: &Project) -> std::io::Result<String> {
     let child = compose_command(project)
         .arg("up")
         .arg("-d")
-        .env("DB_NAME", &project.clickhouse_config.db_name)
-        .env("CLICKHOUSE_USER", &project.clickhouse_config.user)
-        .env("CLICKHOUSE_PASSWORD", &project.clickhouse_config.password)
+        .env("DB_NAME", project.clickhouse_config().db_name.clone())
+        .env("CLICKHOUSE_USER", project.clickhouse_config().user.clone())
+        .env(
+            "CLICKHOUSE_PASSWORD",
+            project.clickhouse_config().password.clone(),
+        )
         .env(
             "CONSOLE_HOST_PORT",
-            project.console_config.host_port.to_string(),
+            project.console_config().host_port.to_string(),
         )
         .env(
             "CLICKHOUSE_HOST_PORT",
-            project.clickhouse_config.host_port.to_string(),
+            project.clickhouse_config().host_port.to_string(),
         )
         .env(
             "CLICKHOUSE_POSTGRES_PORT",
-            project.clickhouse_config.postgres_port.to_string(),
+            project.clickhouse_config().postgres_port.to_string(),
         )
         .env("CLICKHOUSE_VERSION", "24.1.3") // https://github.com/ClickHouse/ClickHouse/issues/60020
         .env("CONSOLE_VERSION", console_version)

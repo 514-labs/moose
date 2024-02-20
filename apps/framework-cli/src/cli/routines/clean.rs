@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::{fs, path::PathBuf};
 
 use crate::cli::routines::util::ensure_docker_running;
@@ -6,11 +7,11 @@ use crate::{cli::display::Message, project::Project};
 use super::{stop::StopLocalInfrastructure, Routine, RoutineFailure, RoutineSuccess, RunMode};
 
 pub struct CleanProject {
-    project: Project,
+    project: Arc<Project>,
     run_mode: RunMode,
 }
 impl CleanProject {
-    pub fn new(project: Project, run_mode: RunMode) -> Self {
+    pub fn new(project: Arc<Project>, run_mode: RunMode) -> Self {
         Self { project, run_mode }
     }
 }

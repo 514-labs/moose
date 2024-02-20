@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::{
     collections::HashMap,
     io::{Error, ErrorKind},
@@ -21,7 +22,7 @@ use crate::{
 use log::{debug, info};
 
 async fn process_event(
-    project: Project,
+    project: Arc<Project>,
     event: notify::Event,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     configured_client: &ConfiguredDBClient,
@@ -39,7 +40,7 @@ async fn process_event(
         notify::EventKind::Create(_) => {
             // Only create tables and topics from prisma files in the datamodels directory
             create_framework_objects_from_schema_file_path(
-                &project,
+                project,
                 &route,
                 &mut route_table,
                 configured_client,
@@ -52,7 +53,7 @@ async fn process_event(
                     // remove the file from the routes if they don't exist in the file directory
                     if route.exists() {
                         create_framework_objects_from_schema_file_path(
-                            &project,
+                            project,
                             &route,
                             &mut route_table,
                             configured_client,
@@ -60,7 +61,7 @@ async fn process_event(
                         .await
                     } else {
                         remove_table_and_topics_from_schema_file_path(
-                            &project.name,
+                            project.name(),
                             &route,
                             &mut route_table,
                             configured_client,
@@ -72,7 +73,7 @@ async fn process_event(
                 ModifyKind::Data(_) => {
                     if route.exists() {
                         create_framework_objects_from_schema_file_path(
-                            &project,
+                            project,
                             &route,
                             &mut route_table,
                             configured_client,
@@ -90,7 +91,7 @@ async fn process_event(
 }
 
 async fn create_framework_objects_from_schema_file_path(
-    project: &Project,
+    project: Arc<Project>,
     schema_file_path: &Path,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     configured_client: &ConfiguredDBClient,
@@ -131,11 +132,11 @@ async fn create_framework_objects_from_schema_file_path(
 }
 
 async fn watch(
-    project: &Project,
+    project: Arc<Project>,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
 ) -> Result<(), Error> {
-    let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
-    let configured_producer = redpanda::create_producer(project.redpanda_config.clone());
+    let configured_client = olap::clickhouse::create_client(project.clickhouse_config().clone());
+    let configured_producer = redpanda::create_producer(project.redpanda_config().clone());
 
     let (tx, rx) = std::sync::mpsc::channel();
 
@@ -170,11 +171,10 @@ async fn watch(
                 };
 
                 let _ = post_current_state_to_console(
-                    project,
+                    project.clone(),
                     &configured_client,
                     &configured_producer,
                     route_table_snapshot,
-                    project.console_config.clone(),
                 )
                 .await;
             }
@@ -198,7 +198,7 @@ impl FileWatcher {
 
     pub fn start(
         &self,
-        project: &Project,
+        project: Arc<Project>,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
     ) -> Result<(), Error> {
         show_message!(MessageType::Info, {
@@ -207,10 +207,9 @@ impl FileWatcher {
                 details: format!("{:?}", project.app_dir().display()),
             }
         });
-        let project = project.clone();
 
         tokio::spawn(async move {
-            if let Err(error) = watch(&project, route_table).await {
+            if let Err(error) = watch(project, route_table).await {
                 debug!("Error: {error:?}");
             }
         });

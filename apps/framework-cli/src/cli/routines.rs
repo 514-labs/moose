@@ -81,6 +81,7 @@
 
 use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Arc;
 use std::{io::Error, path::PathBuf};
 
 use log::debug;
@@ -224,7 +225,7 @@ impl RoutineController {
 }
 
 // Starts the file watcher and the webserver
-pub async fn start_development_mode(project: &Project) -> anyhow::Result<()> {
+pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()> {
     show_message!(
         MessageType::Success,
         Message {
@@ -236,18 +237,16 @@ pub async fn start_development_mode(project: &Project) -> anyhow::Result<()> {
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("Initializing project state");
-    initialize_project_state(project.schemas_dir(), project, &mut route_table).await?;
-
+    initialize_project_state(project.clone(), &mut route_table).await?;
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
-    let web_server = Webserver::new(
-        project.local_webserver_config.host.clone(),
-        project.local_webserver_config.port,
-    );
+    let server_config = project.http_server_config();
+
+    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     let file_watcher = FileWatcher::new();
 
-    file_watcher.start(project, route_table)?;
+    file_watcher.start(project.clone(), route_table)?;
 
     info!("Starting web server...");
 
@@ -257,25 +256,29 @@ pub async fn start_development_mode(project: &Project) -> anyhow::Result<()> {
 }
 
 async fn initialize_project_state(
-    schema_dir: PathBuf,
-    project: &Project,
+    project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> anyhow::Result<()> {
-    let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
-    let producer = redpanda::create_producer(project.redpanda_config.clone());
+    let configured_client = olap::clickhouse::create_client(project.clickhouse_config().clone());
+    let producer = redpanda::create_producer(project.redpanda_config().clone());
 
+    let schema_dir = project.schemas_dir();
     info!("Starting schema directory crawl...");
 
     with_spinner_async("Processing schema file", async {
-        let crawl_result =
-            process_schemas_in_dir(&schema_dir, project, &configured_client, route_table).await;
+        let crawl_result = process_schemas_in_dir(
+            schema_dir.as_path(),
+            project.clone(),
+            &configured_client,
+            route_table,
+        )
+        .await;
 
         let _ = post_current_state_to_console(
             project,
             &configured_client,
             &producer,
             route_table.clone(),
-            project.console_config.clone(),
         )
         .await;
 
@@ -298,7 +301,7 @@ async fn initialize_project_state(
 #[async_recursion]
 async fn process_schemas_in_dir(
     schema_dir: &Path,
-    project: &Project,
+    project: Arc<Project>,
     configured_client: &ConfiguredDBClient,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> anyhow::Result<()> {
@@ -308,10 +311,11 @@ async fn process_schemas_in_dir(
             let path = entry.path();
             if path.is_dir() {
                 debug!("Processing directory: {:?}", path);
-                process_schemas_in_dir(&path, project, configured_client, route_table).await?;
+                process_schemas_in_dir(&path, project.clone(), configured_client, route_table)
+                    .await?;
             } else {
                 debug!("Processing file: {:?}", path);
-                process_schema_file(&path, project, configured_client, route_table).await?
+                process_schema_file(&path, project.clone(), configured_client, route_table).await?
             }
         }
     }

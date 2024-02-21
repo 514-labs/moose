@@ -212,7 +212,11 @@ export default function TableTabs({
         {/* add query here */}
         <div className="p-0 h-full">
           {tableIsView(table) ? (
-            <QueryInterface table={table} related={cliData.tables} project={cliData.project} />
+            <QueryInterface
+              table={table}
+              related={cliData.tables}
+              project={cliData.project}
+            />
           ) : (
             ClickhouseTableRestriction(associated_view)
           )}

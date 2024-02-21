@@ -23,7 +23,6 @@ function createColumnStubs(model: DataModel) {
   });
 }
 export const jsSnippet = (data: CliData, model: DataModel) => {
-  
   const ingestionPoint = getIngestionPointFromModel(model, data);
   const columns = createColumnStubs(model);
 

@@ -132,7 +132,6 @@ const sqlKeyWords = [
 ];
 
 async function runQuery(client, queryString: string): Promise<any> {
-
   const resultSet = await client.query({
     query: queryString,
     format: "JSONEachRow",
@@ -166,9 +165,8 @@ const insertSomeText = (
 export default function QueryInterface({
   table,
   related,
-  project
+  project,
 }: QueryInterfaceProps) {
-
   const client = getClient(project);
 
   // Create a ref to the textarea

@@ -145,7 +145,7 @@ impl Project {
 
         let toml_project = toml::to_string(&config)?;
 
-        std::fs::write(&project_file, toml_project)?;
+        std::fs::write(project_file, toml_project)?;
 
         // Write language specific files to disk
         match self {

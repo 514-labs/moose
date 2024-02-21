@@ -56,14 +56,14 @@ impl TypescriptProject {
             .build()?
             .try_deserialize()?;
 
-        return Ok(TypescriptProject {
+        Ok(TypescriptProject {
             name: package_json.name,
             project_location: directory,
             redpanda_config: project_config.redpanda,
             clickhouse_config: project_config.clickhouse,
             http_server_config: project_config.http_server,
             console_config: project_config.console,
-        });
+        })
     }
 
     pub fn write_to_disk(&self) -> Result<(), anyhow::Error> {

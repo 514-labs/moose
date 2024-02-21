@@ -23,12 +23,12 @@ function createColumnStubs(model: DataModel) {
   });
 }
 export const jsSnippet = (data: CliData, model: DataModel) => {
+  
   const ingestionPoint = getIngestionPointFromModel(model, data);
-
   const columns = createColumnStubs(model);
 
   return `
-fetch('http://${data.project && data.project.local_webserver_config.host}:${data.project.local_webserver_config.port}/${ingestionPoint.route_path}', {
+fetch('http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}', {
 method: 'POST',
     headers: {
         'Content-Type': 'application/json'
@@ -46,7 +46,7 @@ export const pythonSnippet = (data: CliData, model: DataModel) => {
   return `
 import requests
 
-url = 'http://${data.project && data.project.local_webserver_config.host}:${data.project.local_webserver_config.port}/${ingestionPoint.route_path}'
+url = 'http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}'
 data = [
     ${columns.join(",")}
 ]
@@ -105,7 +105,7 @@ export const curlSnippet = (data: CliData, model: DataModel) => {
 
   return `
   curl -X POST -H "Content-Type: application/json" -d '{${columns.join()}}' \\
-  http://${data.project && data.project.local_webserver_config.host}:${data.project.local_webserver_config.port}/${ingestionPoint.route_path}
+  http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}
 `;
 };
 

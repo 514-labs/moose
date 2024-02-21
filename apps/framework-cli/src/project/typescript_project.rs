@@ -66,7 +66,7 @@ impl TypescriptProject {
         });
     }
 
-    pub fn write_to_disk(&self) -> Result<(), std::io::Error> {
+    pub fn write_to_disk(&self) -> Result<(), anyhow::Error> {
         let package_json = PackageJsonFile {
             name: self.name.clone(),
             version: "0.0".to_string(),
@@ -83,18 +83,9 @@ impl TypescriptProject {
         let mut package_json_location = self.project_location.clone();
         package_json_location.push(PACKAGE_JSON);
 
-        match serde_json::to_string_pretty(&package_json) {
-            Ok(package_json) => {
-                std::fs::write(&package_json_location, package_json)?;
-                Ok(())
-            }
-            Err(err) => {
-                println!("Failed to serialize project: {}", err);
-                Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    "Failed to serialize project",
-                ))
-            }
-        }
+        let json = serde_json::to_string_pretty(&package_json)?;
+        std::fs::write(&package_json_location, json)?;
+
+        Ok(())
     }
 }

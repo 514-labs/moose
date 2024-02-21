@@ -97,7 +97,7 @@ pub async fn post_current_state_to_console(
 
     let body = Bytes::from(
         json!({
-            "project": *project,
+            "project": json!(*project),
             "models": models,
             "tables": tables,
             "queues": topics,

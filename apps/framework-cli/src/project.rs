@@ -21,7 +21,6 @@ use std::path::PathBuf;
 
 use config::{Config, ConfigError, File};
 use log::debug;
-use serde::Deserialize;
 use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
@@ -41,9 +40,20 @@ use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_
 // Dynaimc Dispatch to handle the different types of projects
 // the approach with enums is the one that is the simplest to put into practice and
 // maintain. With Copilot - it also has the advaantage that the boiler plate is really fast to write
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug)]
 pub enum Project {
     Typescript(TypescriptProject),
+}
+
+impl Serialize for Project {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::ser::Serializer,
+    {
+        match self {
+            Project::Typescript(p) => p.serialize(serializer),
+        }
+    }
 }
 
 impl Project {
@@ -121,7 +131,23 @@ impl Project {
         }
     }
 
-    pub fn write_to_disk(&self) -> Result<(), std::io::Error> {
+    pub fn write_to_disk(&self) -> Result<(), anyhow::Error> {
+        // Write to disk what is common to all project types, the project.toml
+        let project_file = self.project_location().join(PROJECT_CONFIG_FILE);
+
+        let config = ProjectConfigFile {
+            language: self.language(),
+            redpanda: self.redpanda_config().clone(),
+            clickhouse: self.clickhouse_config().clone(),
+            http_server: self.http_server_config().clone(),
+            console: self.console_config().clone(),
+        };
+
+        let toml_project = toml::to_string(&config)?;
+
+        std::fs::write(&project_file, toml_project)?;
+
+        // Write language specific files to disk
         match self {
             Project::Typescript(p) => p.write_to_disk(),
         }

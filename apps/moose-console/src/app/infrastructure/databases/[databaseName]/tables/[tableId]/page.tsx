@@ -1,10 +1,10 @@
 /* eslint-disable turbo/no-undeclared-env-vars */
 
-import { createClient } from "@clickhouse/client-web";
 import Link from "next/link";
 import { Table, getCliData } from "app/db";
 import { unstable_noStore as noStore } from "next/cache";
 import TableTabs from "./table-tabs";
+import { getClient } from "lib/clickhouse";
 import {
   bashSnippet,
   clickhouseJSSnippet,
@@ -14,29 +14,11 @@ import {
 } from "lib/snippets";
 import { getModelFromTable } from "lib/utils";
 
-function getClient() {
-  const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || "localhost";
-  // Environment variables are always strings
-  const CLICKHOUSE_PORT = process.env.CLICKHOUSE_PORT || "18123";
-  const CLICKHOUSE_USERNAME = process.env.CLICKHOUSE_USERNAME || "panda";
-  const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || "pandapass";
-  const CLICKHOUSE_DB = "local";
-
-  const client = createClient({
-    host: `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-    username: CLICKHOUSE_USERNAME,
-    password: CLICKHOUSE_PASSWORD,
-    database: CLICKHOUSE_DB,
-  });
-
-  return client;
-}
-
 async function _describeTable(
   databaseName: string,
   tableName: string,
 ): Promise<any> {
-  const client = getClient();
+  const client = await getClient();
 
   const resultSet = await client.query({
     query: `DESCRIBE TABLE ${databaseName}.${tableName}`,

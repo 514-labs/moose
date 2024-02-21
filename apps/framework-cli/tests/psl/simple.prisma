@@ -1,5 +1,5 @@
 model User {
-  id      Int     
-  email   String   
-  name    String?
+  id    Int     @id
+  email String
+  name  String?
 }

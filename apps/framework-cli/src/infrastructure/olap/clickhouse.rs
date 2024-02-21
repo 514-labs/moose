@@ -9,6 +9,7 @@ use log::debug;
 
 use serde::{Deserialize, Serialize};
 
+use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use crate::{
     framework::schema::{FieldArity, UnsupportedDataTypeError},
     utilities::constants::REDPANDA_CONTAINER_NAME,
@@ -182,7 +183,7 @@ impl ClickhouseTable {
         )
     }
     pub fn create_data_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
-        CreateTableQuery::build(self.clone(), "Memory".to_string())
+        CreateTableQuery::build(self.clone(), ClickhouseEngine::MergeTree)
     }
 
     pub fn drop_kafka_table_query(&self) -> Result<String, UnsupportedDataTypeError> {

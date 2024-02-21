@@ -1,7 +1,7 @@
 /* eslint-disable turbo/no-undeclared-env-vars */
 
 import Link from "next/link";
-import { Table, getCliData } from "app/db";
+import { Project, Table, getCliData } from "app/db";
 import { unstable_noStore as noStore } from "next/cache";
 import TableTabs from "./table-tabs";
 import { getClient } from "lib/clickhouse";
@@ -17,8 +17,9 @@ import { getModelFromTable } from "lib/utils";
 async function _describeTable(
   databaseName: string,
   tableName: string,
+  project: Project
 ): Promise<any> {
-  const client = await getClient();
+  const client = getClient(project);
 
   const resultSet = await client.query({
     query: `DESCRIBE TABLE ${databaseName}.${tableName}`,

@@ -53,8 +53,6 @@ export default async function OverviewPage(): Promise<JSX.Element> {
   noStore();
   const data = await getCliData();
 
-  console.log(data);
-
   return (
     <section className="p-4 grow">
       <div className="text-5xl py-10">Overview</div>

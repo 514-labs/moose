@@ -7,8 +7,6 @@ export function getClient(project?: Project) {
   // and not during build time
   noStore();
 
-  console.log(project);
-
   const CLICKHOUSE_HOST =
     process.env.CLICKHOUSE_HOST ||
     project?.clickhouse_config.host ||

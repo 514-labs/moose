@@ -36,6 +36,11 @@ pub struct CreateTableQuery;
 static KAFKA_SETTINGS: &str =
     "kafka_skip_broken_messages = 1, date_time_input_format = 'best_effort'";
 
+pub enum ClickhouseEngine {
+    MergeTree,
+    Kafka(String, u16, String),
+}
+
 impl CreateTableQuery {
     pub fn kafka(
         table: ClickhouseTable,
@@ -45,27 +50,19 @@ impl CreateTableQuery {
     ) -> Result<String, UnsupportedDataTypeError> {
         CreateTableQuery::build(
             table,
-            format!(
-                "Kafka('{}:{}', '{}', 'clickhouse-group', 'JSONEachRow') SETTINGS {}",
-                kafka_host, kafka_port, topic, KAFKA_SETTINGS,
-            ),
-            true,
+            ClickhouseEngine::Kafka(kafka_host, kafka_port, topic),
         )
     }
 
     pub fn build(
         table: ClickhouseTable,
-        engine: String,
-        ignore_primary_key: bool,
+        engine: ClickhouseEngine,
     ) -> Result<String, UnsupportedDataTypeError> {
         let mut tt = TinyTemplate::new();
         tt.set_default_formatter(&format_unescaped); // by default it formats HTML-escaped and messes up single quotes
         tt.add_template("create_table", CREATE_TABLE_TEMPLATE)
             .unwrap();
-        let mut context = CreateTableContext::new(table, engine)?;
-        if ignore_primary_key {
-            context.primary_key_string = None;
-        }
+        let context = CreateTableContext::new(table, engine)?;
         let rendered = tt.render("create_table", &context).unwrap();
         Ok(rendered)
     }
@@ -83,14 +80,29 @@ struct CreateTableContext {
 impl CreateTableContext {
     fn new(
         table: ClickhouseTable,
-        engine: String,
+        engine: ClickhouseEngine,
     ) -> Result<CreateTableContext, UnsupportedDataTypeError> {
-        let primary_key = table
-            .columns
-            .iter()
-            .filter(|column| column.primary_key)
-            .map(|column| column.name.clone())
-            .collect::<Vec<String>>();
+        let (engine, ignore_primary_key) = match engine {
+            ClickhouseEngine::MergeTree => ("MergeTree".to_string(), false),
+            ClickhouseEngine::Kafka(kafka_host, kafka_port, topic) => (
+                format!(
+                    "Kafka('{}:{}', '{}', 'clickhouse-group', 'JSONEachRow') SETTINGS {}",
+                    kafka_host, kafka_port, topic, KAFKA_SETTINGS,
+                ),
+                true,
+            ),
+        };
+
+        let primary_key = if ignore_primary_key {
+            Vec::new()
+        } else {
+            table
+                .columns
+                .iter()
+                .filter(|column| column.primary_key)
+                .map(|column| column.name.clone())
+                .collect::<Vec<String>>()
+        };
 
         Ok(CreateTableContext {
             db_name: table.db_name,

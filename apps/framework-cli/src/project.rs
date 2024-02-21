@@ -37,7 +37,7 @@ use crate::utilities::constants::PROJECT_CONFIG_FILE;
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 
 // We have explored using a Generic associated Types as well as
-// Dynaimc Dispatch to handle the different types of projects
+// Dynamic Dispatch to handle the different types of projects
 // the approach with enums is the one that is the simplest to put into practice and
 // maintain. With Copilot - it also has the advaantage that the boiler plate is really fast to write
 #[derive(Debug)]

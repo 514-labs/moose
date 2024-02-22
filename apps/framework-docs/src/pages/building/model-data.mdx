@@ -10,7 +10,8 @@ MooseJS's data modeling is built on top of Prisma's intuitive schema modeling la
 ## Creating a Model
 ```prisma filename="datamodels/models.prisma" copy
 model UserActivity {
-    timestamp   DateTime @id
+    eventId     String @id
+    timestamp   DateTime
     userId      String
     activityType String
 }
@@ -24,12 +25,14 @@ Once you've created your model, you can inspect it along with the infrastructure
 ## Test Your Model
 When you create a model, MooseJS automatically creates an ingestion point to facilitate immediate data testing. Send a sample payload to this endpoint using:
 
+
+
 <Tabs items={['Single Data Sample', 'Batch Sample']}>
   <Tabs.Tab>
   ``` bash
   curl -X POST \
     -H "Content-Type: application/json" \
-    -d '{"timestamp": "2019-01-01 00:00:01", "userId": "123456", "activityType":"click"}' \
+    -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activityType":"click"}' \
     http://localhost:4000/ingest/UserActivity
   ```
   </Tabs.Tab>
@@ -39,7 +42,7 @@ When you create a model, MooseJS automatically creates an ingestion point to fac
   do
     curl -X POST \
       -H "Content-Type: application/json" \
-      -d '{"timestamp": "2024-01-01 00:00:00", "userId": "$i", "activityType":"click"}' \
+      -d '{"eventId": "$i", "timestamp": "2024-01-01 00:00:00", "userId": "1234", "activityType":"click"}' \
       http://localhost:4000/ingest/UserActivity
   done
   ```

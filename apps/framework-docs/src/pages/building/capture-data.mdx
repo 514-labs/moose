@@ -24,7 +24,7 @@ As you define data models in your service, MooseJS will automatically generate i
     ``` bash
   curl -X POST \
     -H "Content-Type: application/json" \
-    -d '{"timestamp": "2019-01-01 00:00:01", "userId": "123456", "activityType": "click"}' \
+    -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activityType": "click"}' \
     http://localhost:4000/ingest/UserActivity
   ```
   </Tabs.Tab>
@@ -36,6 +36,7 @@ As you define data models in your service, MooseJS will automatically generate i
       'Content-Type': 'application/json'
     },
     body: JSON.stringify({
+      eventId: '1234567890',
       timestamp: '2019-01-01 00:00:01',
       userId: '123456',
       activityType: 'click'
@@ -48,6 +49,7 @@ As you define data models in your service, MooseJS will automatically generate i
     import requests
 
     requests.post('http://localhost:4000/ingest/UserActivity', json={
+      'eventId': '1234567890',
       'timestamp': '2019-01-01 00:00:01', 
       'userId': '123456', 
       'activityType': 'click'

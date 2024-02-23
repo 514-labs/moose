@@ -2,10 +2,10 @@ import { Cards, Card, Tabs } from 'nextra/components'
 
 # Model Data
 MooseJS's data modeling is built on top of Prisma's intuitive schema modeling language. You can read more about Prisma's schema modeling language [here](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-schema). To get started you simply need to create a `.prisma` file in your project's data model directory. If you're in development mode, MooseJS will automatically detect this file and use it to generate:
-- A typed data capture SDK to instument your application
+- A typed data capture SDK to instrument your application
 - A high performance ingestion server to receive data from your application
 - A buffer to store data as it's ingested from the webserver
-- A ingestion table and an analtics view to store and query your data
+- An ingestion table and an analytics view to store and query your data
 
 ## Creating a Model
 ```prisma filename="datamodels/models.prisma" copy

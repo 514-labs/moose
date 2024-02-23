@@ -7,7 +7,6 @@ export default async function OverviewPage(): Promise<JSX.Element> {
   // and not during build time
   noStore();
   const data = await getCliData();
-  console.log(data);
 
   return (
     <section className="p-4 grow overflow-y-scroll">
@@ -52,10 +51,12 @@ export default async function OverviewPage(): Promise<JSX.Element> {
               title="Ingestion Points"
               numItems={data.ingestionPoints.length}
               link="infrastructure/ingestion-points"
-              items={data.ingestionPoints.slice(0, 4).map((ingestionPoint) => ({
-                name: ingestionPoint.route_path,
-                link: `/infrastructure/ingestion-points/${ingestionPoint.route_path.split("/").at(-1)}`,
-              }))}
+              items={data.ingestionPoints
+                .slice(0, 4)
+                .map((ingestionPoint) => ({
+                  name: ingestionPoint.route_path,
+                  link: `/infrastructure/ingestion-points/${ingestionPoint.route_path.split("/").at(-1)}`,
+                }))}
             />
           </div>
           <div className="col-span-3 xl:col-span-1">

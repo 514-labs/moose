@@ -23,8 +23,8 @@ export default function OverviewCard({
   return (
     <Card className="h-full">
       <Link href={link}>
-        <CardHeader>
-          <CardTitle className="flex justify-between">
+        <CardHeader className="">
+          <CardTitle className="flex hover:text-white justify-between">
             <div>
               {numItems} {title}
             </div>{" "}

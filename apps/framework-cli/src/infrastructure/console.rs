@@ -1,12 +1,5 @@
-use crate::framework::controller::get_all_framework_objects;
-use crate::framework::controller::FrameworkObject;
-use crate::framework::controller::RouteMeta;
-use crate::framework::schema::DataModel;
-use crate::infrastructure::olap;
-use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
-use crate::infrastructure::stream::redpanda;
-use crate::infrastructure::stream::redpanda::ConfiguredProducer;
-use crate::project::Project;
+use std::str;
+
 use http_body_util::BodyExt;
 use http_body_util::Full;
 use hyper::body::Bytes;
@@ -16,11 +9,15 @@ use hyper_util::rt::TokioIo;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::collections::HashMap;
-use std::path::PathBuf;
 use tokio::net::TcpStream;
 
-use std::str;
+use crate::framework::controller::FrameworkObjectVersions;
+use crate::framework::schema::DataModel;
+use crate::infrastructure::olap;
+use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
+use crate::infrastructure::stream::redpanda;
+use crate::infrastructure::stream::redpanda::ConfiguredProducer;
+use crate::project::Project;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ConsoleConfig {
@@ -37,16 +34,14 @@ pub async fn post_current_state_to_console(
     project: &Project,
     configured_db_client: &ConfiguredDBClient,
     configured_producer: &ConfiguredProducer,
-    route_table: HashMap<PathBuf, RouteMeta>,
+    framework_object_versions: &FrameworkObjectVersions,
     console_config: ConsoleConfig,
 ) -> Result<(), anyhow::Error> {
-    let schema_dir = project.schemas_dir();
-    let mut framework_objects: Vec<FrameworkObject> = Vec::new();
-    get_all_framework_objects(&mut framework_objects, &schema_dir)?;
-
-    let models: Vec<DataModel> = framework_objects
+    let models: Vec<DataModel> = framework_object_versions
+        .current_models
+        .models
         .iter()
-        .map(|fo| fo.data_model.clone())
+        .map(|(_, fo)| fo.data_model.clone())
         .collect();
 
     olap::clickhouse::check_ready(configured_db_client)
@@ -59,14 +54,16 @@ pub async fn post_current_state_to_console(
         .await
         .unwrap();
 
-    let routes_table: Vec<RouteInfo> = route_table
+    let routes_table: Vec<RouteInfo> = framework_object_versions
+        .current_models
+        .models
         .iter()
         .map(|(k, v)| {
             RouteInfo::new(
-                k.to_str().unwrap().to_string(),
+                k.to_string(),
                 v.original_file_path.to_str().unwrap().to_string(),
-                v.table_name.clone(),
-                v.view_name.clone(),
+                v.table.name.clone(),
+                Some(v.table.view_name()),
             )
         })
         .collect();

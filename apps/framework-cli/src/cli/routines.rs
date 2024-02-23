@@ -80,26 +80,25 @@
 //!
 
 use std::collections::HashMap;
-use std::path::Path;
 use std::{io::Error, path::PathBuf};
 
 use log::debug;
+use log::info;
 use tokio::sync::RwLock;
+
+use crate::framework::controller::{
+    create_or_replace_version_sync, get_all_framework_objects, get_all_version_syncs,
+    process_objects, FrameworkObject, FrameworkObjectVersions, RouteMeta, SchemaVersion,
+};
+use crate::infrastructure::console::post_current_state_to_console;
+use crate::infrastructure::olap;
+use crate::infrastructure::stream::redpanda;
+use crate::project::Project;
 
 use super::display::with_spinner_async;
 use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
-use crate::framework::controller::RouteMeta;
-use crate::framework::schema::process_schema_file;
-use crate::infrastructure::console::post_current_state_to_console;
-use crate::infrastructure::olap;
-use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
-use crate::infrastructure::stream::redpanda;
-use crate::project::Project;
-use log::info;
-
-use async_recursion::async_recursion;
 
 pub mod clean;
 pub mod initialize;
@@ -236,7 +235,8 @@ pub async fn start_development_mode(project: &Project) -> anyhow::Result<()> {
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("Initializing project state");
-    initialize_project_state(project.schemas_dir(), project, &mut route_table).await?;
+    let framework_object_versions =
+        initialize_project_state(project.schemas_dir(), project, &mut route_table).await?;
 
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
@@ -247,7 +247,7 @@ pub async fn start_development_mode(project: &Project) -> anyhow::Result<()> {
     );
     let file_watcher = FileWatcher::new();
 
-    file_watcher.start(project, route_table)?;
+    file_watcher.start(project, framework_object_versions, route_table)?;
 
     info!("Starting web server...");
 
@@ -260,26 +260,89 @@ async fn initialize_project_state(
     schema_dir: PathBuf,
     project: &Project,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<FrameworkObjectVersions> {
+    let mut old_version_dir = project.internal_dir()?;
+    old_version_dir.push("versions");
+
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let producer = redpanda::create_producer(project.redpanda_config.clone());
 
+    info!("Checking for old version directories...");
+
+    let mut framework_object_versions =
+        FrameworkObjectVersions::new(project.version.clone(), schema_dir.clone());
+    match std::fs::read_dir(&old_version_dir) {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            debug!("No old version directories found");
+        }
+        Ok(read_dir) => {
+            for entry in read_dir {
+                let entry = entry?;
+                let path = entry.path();
+                if path.is_dir() {
+                    let version = path.file_name().unwrap().to_str().unwrap().to_string();
+
+                    debug!("Processing old version directory: {:?}", path);
+
+                    let mut framework_objects = HashMap::new();
+                    get_all_framework_objects(&mut framework_objects, &path, &version)?;
+
+                    process_objects(
+                        &framework_objects,
+                        project,
+                        &path,
+                        &configured_client,
+                        &mut Vec::new(),
+                        route_table,
+                        &version,
+                    )
+                    .await?;
+
+                    framework_object_versions.previous_version_models.insert(
+                        version,
+                        SchemaVersion {
+                            base_path: path,
+                            models: framework_objects,
+                        },
+                    );
+                }
+            }
+        }
+        Err(e) => Err(e)?,
+    };
+
     info!("Starting schema directory crawl...");
-
     with_spinner_async("Processing schema file", async {
-        let crawl_result =
-            process_schemas_in_dir(&schema_dir, project, &configured_client, route_table).await;
+        let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
+        get_all_framework_objects(&mut framework_objects, &schema_dir, &project.version)?;
 
+        let result = process_objects(
+            &framework_objects,
+            project,
+            &schema_dir,
+            &configured_client,
+            &mut Vec::new(),
+            route_table,
+            &project.version,
+        )
+        .await;
+
+        framework_object_versions.current_models = SchemaVersion {
+            base_path: schema_dir.clone(),
+            models: framework_objects.clone(),
+        };
+
+        olap::clickhouse::check_ready(&configured_client).await?;
         let _ = post_current_state_to_console(
             project,
             &configured_client,
             &producer,
-            route_table.clone(),
+            &framework_object_versions,
             project.console_config.clone(),
         )
         .await;
 
-        match crawl_result {
+        match result {
             Ok(_) => {
                 info!("Schema directory crawl completed successfully");
                 Ok(())
@@ -292,28 +355,19 @@ async fn initialize_project_state(
         }
     })
     .await?;
-    Ok(())
-}
 
-#[async_recursion]
-async fn process_schemas_in_dir(
-    schema_dir: &Path,
-    project: &Project,
-    configured_client: &ConfiguredDBClient,
-    route_table: &mut HashMap<PathBuf, RouteMeta>,
-) -> anyhow::Result<()> {
-    if schema_dir.is_dir() {
-        for entry in std::fs::read_dir(schema_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_dir() {
-                debug!("Processing directory: {:?}", path);
-                process_schemas_in_dir(&path, project, configured_client, route_table).await?;
-            } else {
-                debug!("Processing file: {:?}", path);
-                process_schema_file(&path, project, configured_client, route_table).await?
+    info!("Crawling version syncs");
+    with_spinner_async::<_, anyhow::Result<()>>("Setting up version syncs", {
+        async {
+            let version_syncs = get_all_version_syncs(&project, &framework_object_versions)?;
+            println!("Version syncs: {:?}", version_syncs);
+            for vs in version_syncs {
+                create_or_replace_version_sync(vs, &configured_client).await?;
             }
+            Ok(())
         }
-    }
-    Ok(())
+    })
+    .await?;
+
+    Ok(framework_object_versions)
 }

@@ -45,6 +45,7 @@ struct PackageJsonFile {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct Project {
     pub name: String,
+    pub version: String,
     pub language: SupportedLanguages,
     pub project_file_location: PathBuf,
     #[serde(default)]
@@ -58,18 +59,6 @@ pub struct Project {
 }
 
 impl Project {
-    pub fn new(name: String, language: SupportedLanguages, location: PathBuf) -> Self {
-        Self {
-            name,
-            language,
-            project_file_location: location,
-            redpanda_config: RedpandaConfig::default(),
-            clickhouse_config: ClickhouseConfig::default(),
-            local_webserver_config: LocalWebserverConfig::default(),
-            console_config: ConsoleConfig::default(),
-        }
-    }
-
     pub fn from_dir(dir_location: &Path, name: String, language: SupportedLanguages) -> Self {
         //! Creates a new `Project` from a directory path.
         //!
@@ -84,6 +73,7 @@ impl Project {
 
         Self {
             name,
+            version: "0.0".to_owned(),
             language,
             project_file_location: location,
             redpanda_config: RedpandaConfig::default(), // TODO: Add the ability for the developer to configure this
@@ -192,7 +182,7 @@ impl Project {
     pub fn write_to_file(&self) -> Result<(), std::io::Error> {
         let config_file = PackageJsonFile {
             name: self.name.clone(),
-            version: "0.0".to_string(),
+            version: self.version.clone(),
             // For local development of the CLI,
             // change `moose-cli` to `<REPO_PATH>/apps/framework-cli/target/debug/moose-cli`
             scripts: HashMap::from([("dev".to_string(), "moose-cli dev".to_string())]),

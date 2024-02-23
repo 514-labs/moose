@@ -40,6 +40,7 @@ lazy_static = "1.4.0"
 anyhow = "1.0"
 spinners = "4.1.1"
 git2 = { version = "0.18.1", features = ["vendored-libgit2"] }
+regex = "1.10.3"
 
 [dev-dependencies]
 clickhouse = { version = "0.11.5", features = ["uuid", "test-util"] }

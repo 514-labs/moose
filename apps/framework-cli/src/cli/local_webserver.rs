@@ -66,6 +66,7 @@ struct RouteService {
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
     configured_producer: ConfiguredProducer,
     console_config: ConsoleConfig,
+    current_version: String,
 }
 
 impl Service<Request<Incoming>> for RouteService {
@@ -76,6 +77,7 @@ impl Service<Request<Incoming>> for RouteService {
     fn call(&self, req: Request<Incoming>) -> Self::Future {
         Box::pin(router(
             req,
+            self.current_version.clone(),
             self.route_table,
             self.configured_producer.clone(),
             self.console_config.clone(),
@@ -143,6 +145,7 @@ async fn ingest_route(
             }
 
             let topic_name = &route_meta.table_name;
+            println!("Topic Name: {:?}", topic_name);
 
             let res = configured_producer
                 .producer
@@ -188,6 +191,7 @@ async fn ingest_route(
 
 async fn router(
     req: Request<hyper::body::Incoming>,
+    current_version: String,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     configured_producer: ConfiguredProducer,
     console_config: ConsoleConfig,
@@ -210,9 +214,19 @@ async fn router(
     );
 
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
-
+    println!("route table: {:?}", route_table.read().await);
     match (req.method(), &route_split[..]) {
         (&hyper::Method::POST, ["ingest", _]) => {
+            ingest_route(
+                req,
+                route.join(current_version),
+                configured_producer,
+                route_table,
+                console_config,
+            )
+            .await
+        }
+        (&hyper::Method::POST, ["ingest", _, _]) => {
             ingest_route(req, route, configured_producer, route_table, console_config).await
         }
 
@@ -282,6 +296,7 @@ impl Webserver {
 
         let route_service = RouteService {
             route_table,
+            current_version: project.version.clone(),
             configured_producer: producer,
             console_config: project.console_config.clone(),
         };

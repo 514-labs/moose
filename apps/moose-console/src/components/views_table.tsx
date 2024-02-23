@@ -16,12 +16,13 @@ export function ViewsTable({
     name: table.name,
     database: table.database,
     model: getModelFromTable(table, data).name,
+    uuid: table.uuid
   }));
   return (
     <PreviewTable
       rows={modelRows}
       onRowClick={(row) =>
-        router.push(`/primitives/models/${row.model}?tab=query`)
+        router.push(`/infrastructure/databases/${row.database}/tables/${row.uuid}`)
       }
     />
   );

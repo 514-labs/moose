@@ -15,11 +15,12 @@ export function IngestionPointsList({
     route: points.route_path,
     table_name: points.table_name,
   }));
+
   return (
     <PreviewTable
       rows={ingestionRows}
       onRowClick={(point) =>
-        router.push(`/primitives/models/${point.table_name}?tab=usage`)
+        router.push(`/infrastructure/ingestion-points/${point.route.split("/").at(-1)}`)
       }
     ></PreviewTable>
   );

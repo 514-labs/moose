@@ -13,7 +13,8 @@ import {
   pythonSnippet,
 } from "lib/snippets";
 import { getModelFromTable } from "lib/utils";
-import ModelView from "app/ModelView";
+import { NavBreadCrumb } from "components/nav-breadcrumb";
+import { Fragment } from "react";
 
 async function _describeTable(
   databaseName: string,
@@ -48,23 +49,31 @@ export default async function Page({
 
   return (
     <section className="p-4 max-h-screen flex-grow overflow-y-auto flex flex-col">
+      <div className="text-base text-muted-foreground flex">
+        <Fragment>
+          <Link
+            className={`capitalize text-white`}
+            href={'/infrastructure'}
+          >
+            Infrastructure
+          </Link>
+          <div className="px-1">/</div>
+          <Link
+            className={`capitalize text-white`}
+            href={'/infrastructure'}
+          >
+            Tables
+          </Link>
+        </Fragment>
+      </div>
       <div className="py-10">
         <div className="text-8xl">
-          <Link className="text-muted-foreground" href={"/"}>
-            ../
-          </Link>
-          <Link
-            className="text-muted-foreground"
-            href={`/infrastructure/databases/tables?type=${isView(table) ? "view" : "table"}`}
-          >
-            {isView(table) ? "views" : "tables"}/
-          </Link>
           {table.name}
         </div>
         <div className="text-muted-foreground">{table.engine}</div>
       </div>
       <div className="space-x-3 flex-grow">
-        <ModelView
+        <TableTabs
           table={table}
           cliData={data}
           bashSnippet={bashSnippet(data, model)}

@@ -29,7 +29,7 @@ export default async function Infrastructure(): Promise<JSX.Element> {
               items={data.ingestionPoints.slice(0, 4).map((ingestionPoint) => {
                 return {
                   name: ingestionPoint.route_path,
-                  link: `/primitives/models/${getModelFromRoute(ingestionPoint, data).name}?tab=usage`,
+                  link: `/infrastructure/ingestion-points/${ingestionPoint.route_path.split("/").at(-1)}`
                 };
               })}
             />
@@ -53,7 +53,7 @@ export default async function Infrastructure(): Promise<JSX.Element> {
                 .map((table) => {
                   return {
                     name: table.name,
-                    link: `/primitives/models/${getModelFromTable(table, data).name}?tab=query`,
+                    link: `/infrastructure/databases/${table.database}/tables/${table.uuid}`
                   };
                 })}
             />
@@ -65,7 +65,7 @@ export default async function Infrastructure(): Promise<JSX.Element> {
                 data.tables.filter(
                   (t) =>
                     t.engine === "MaterializedView" &&
-                    !t.name.includes(".inner"),
+                    !t.name.includes("Kafka"),
                 ).length
               }
               link="infrastructure/databases/tables?type=view"
@@ -75,7 +75,7 @@ export default async function Infrastructure(): Promise<JSX.Element> {
                 .map((table) => {
                   return {
                     name: table.name,
-                    link: `/primitives/models/${getModelFromTable(table, data).name}?tab=query`,
+                    link: `/infrastructure/databases/${table.database}/tables/${table.uuid}`
                   };
                 })}
             />

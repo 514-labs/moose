@@ -32,7 +32,7 @@ export default function OverviewCard({
           </CardTitle>
         </CardHeader>
       </Link>
-      <CardContent className="m-0">
+      <CardContent className="m-0 p-0">
         {items?.length ? (
           items.map((model, index) => (
             <Link href={model.link} key={index}>
@@ -41,12 +41,12 @@ export default function OverviewCard({
                 key={index}
                 className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer"
               >
-                <div className="py-4">{model.name}</div>
+                <div className="py-4 mx-6">{model.name}</div>
               </div>
             </Link>
           ))
         ) : (
-          <div>No data</div>
+          <div className="py-4 mx-6">No data</div>
         )}
       </CardContent>
     </Card>

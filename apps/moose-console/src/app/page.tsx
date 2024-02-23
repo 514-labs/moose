@@ -52,12 +52,7 @@ export default async function OverviewPage(): Promise<JSX.Element> {
               title="Ingestion Points"
               numItems={data.ingestionPoints.length}
               link="infrastructure/ingestion-points"
-              items={data.ingestionPoints.slice(0, 4).map((ingestionPoint) => {
-                return {
-                  name: ingestionPoint.route_path,
-                  link: `/primitives/models/${getModelFromRoute(ingestionPoint, data).name}?tab=usage`,
-                };
-              })}
+              items={data.ingestionPoints.slice(0, 4).map(ingestionPoint => ({ name: ingestionPoint.route_path, link: `/infrastructure/ingestion-points/${ingestionPoint.route_path.split("/").at(-1)}` }))}
             />
           </div>
           <div className="col-span-3 xl:col-span-1">
@@ -70,18 +65,13 @@ export default async function OverviewPage(): Promise<JSX.Element> {
                 ).length
               }
               link="infrastructure/databases/tables?type=table"
-              items={data.tables
-                .filter(
-                  (t) =>
-                    t.engine !== "MaterializedView" && t.engine !== "Kafka",
-                )
+              items={data.tables.filter(
+                (t) =>
+                  t.engine !== "MaterializedView" &&
+                  t.engine !== "Kafka",
+              )
                 .slice(0, 4)
-                .map((table) => {
-                  return {
-                    name: table.name,
-                    link: `/primitives/models/${getModelFromTable(table, data).name}?tab=query`,
-                  };
-                })}
+                .map((table) => ({ name: table.name, link: `/infrastructure/databases/${table.database}/tables/${table.uuid}` }))}
             />
           </div>
           <div className="col-span-3 xl:col-span-1">
@@ -101,7 +91,7 @@ export default async function OverviewPage(): Promise<JSX.Element> {
                 .map((table) => {
                   return {
                     name: table.name,
-                    link: `/primitives/models/${getModelFromTable(table, data).name}?tab=query`,
+                    link: `/infrastructure/databases/${table.database}/tables/${table.uuid}`
                   };
                 })}
             />

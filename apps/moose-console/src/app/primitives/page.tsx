@@ -18,12 +18,10 @@ export default async function PrimitivesPage(): Promise<JSX.Element> {
               title="Models"
               numItems={data.models.length}
               link="/primitives/models"
-              items={data.models
-                .slice(0, 4)
-                .map((model) => ({
-                  name: model.name,
-                  link: `/primitives/models/${model.name}`,
-                }))}
+              items={data.models.slice(0, 4).map((model) => ({
+                name: model.name,
+                link: `/primitives/models/${model.name}`,
+              }))}
             />
           </div>
           <div className="col-span-3 xl:col-span-1 flex flex-col">

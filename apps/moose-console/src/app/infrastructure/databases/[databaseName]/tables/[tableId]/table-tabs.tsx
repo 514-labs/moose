@@ -69,8 +69,8 @@ export default function TableTabs({
   );
   const model = getModelFromTable(table, cliData);
   const infra = getRelatedInfra(model, cliData, table);
-  const associated_view = cliData.tables.find(
-    (view) => view.name === table.dependencies_table[0],
+  const triggerTable = infra.tables.find(
+    (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
   );
 
   const createTabQueryString = useCallback(
@@ -225,7 +225,7 @@ export default function TableTabs({
               project={cliData.project}
             />
           ) : (
-            ClickhouseTableRestriction(associated_view)
+            ClickhouseTableRestriction(triggerTable)
           )}
         </div>
       </TabsContent>

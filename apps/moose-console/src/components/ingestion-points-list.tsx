@@ -20,7 +20,9 @@ export function IngestionPointsList({
     <PreviewTable
       rows={ingestionRows}
       onRowClick={(point) =>
-        router.push(`/infrastructure/ingestion-points/${point.route.split("/").at(-1)}`)
+        router.push(
+          `/infrastructure/ingestion-points/${point.route.split("/").at(-1)}`,
+        )
       }
     ></PreviewTable>
   );

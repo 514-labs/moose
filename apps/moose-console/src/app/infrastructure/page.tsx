@@ -1,6 +1,5 @@
 import { getCliData } from "app/db";
 import OverviewCard from "components/overview-card";
-import { getModelFromRoute, getModelFromTable } from "lib/utils";
 import { Metadata } from "next";
 import { unstable_noStore as noStore } from "next/cache";
 
@@ -29,7 +28,7 @@ export default async function Infrastructure(): Promise<JSX.Element> {
               items={data.ingestionPoints.slice(0, 4).map((ingestionPoint) => {
                 return {
                   name: ingestionPoint.route_path,
-                  link: `/infrastructure/ingestion-points/${ingestionPoint.route_path.split("/").at(-1)}`
+                  link: `/infrastructure/ingestion-points/${ingestionPoint.route_path.split("/").at(-1)}`,
                 };
               })}
             />
@@ -53,7 +52,7 @@ export default async function Infrastructure(): Promise<JSX.Element> {
                 .map((table) => {
                   return {
                     name: table.name,
-                    link: `/infrastructure/databases/${table.database}/tables/${table.uuid}`
+                    link: `/infrastructure/databases/${table.database}/tables/${table.uuid}`,
                   };
                 })}
             />
@@ -75,7 +74,7 @@ export default async function Infrastructure(): Promise<JSX.Element> {
                 .map((table) => {
                   return {
                     name: table.name,
-                    link: `/infrastructure/databases/${table.database}/tables/${table.uuid}`
+                    link: `/infrastructure/databases/${table.database}/tables/${table.uuid}`,
                   };
                 })}
             />

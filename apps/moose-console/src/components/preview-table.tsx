@@ -33,7 +33,11 @@ function PreviewTable<T>({ rows, caption, onRowClick }: TableProps<T>) {
       </TableHeader>
       <TableBody>
         {rows.map((row, index) => (
-          <TableRow className={onRowClick ? 'cursor-pointer' : ''} key={index} onClick={() => onRowClick(row)}>
+          <TableRow
+            className={onRowClick ? "cursor-pointer" : ""}
+            key={index}
+            onClick={() => onRowClick(row)}
+          >
             {headers.map((value, index) => (
               <TableCell key={index}>{row[value]}</TableCell>
             ))}

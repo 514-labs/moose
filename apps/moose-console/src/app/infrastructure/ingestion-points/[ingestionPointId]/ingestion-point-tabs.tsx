@@ -101,9 +101,7 @@ export default function IngestionPointTabs({
           <div className="col-span-12 xl:col-span-6">
             <Card className="rounded-3xl">
               <CardHeader>
-                <CardTitle>
-                  Fields
-                </CardTitle>
+                <CardTitle>Fields</CardTitle>
               </CardHeader>
               <CardContent>
                 <ModelTable datamodel={model} />
@@ -113,9 +111,7 @@ export default function IngestionPointTabs({
           <div className="col-span-12 xl:col-span-6">
             <Card className="rounded-3xl">
               <CardHeader>
-                <CardTitle>
-                  Related Infra
-                </CardTitle>
+                <CardTitle>Related Infra</CardTitle>
               </CardHeader>
               <CardContent>
                 <RelatedInfraTable infra={infra} />
@@ -159,7 +155,6 @@ export default function IngestionPointTabs({
               </CardHeader>
               <CardContent>
                 <div>
-                  <h1 className="text-lg">Exploratory queries</h1>
                   <h2 className="py-2 flex flex-row items-center">
                     <div className="flex flex-col">
                       <span>Query the view directly</span>
@@ -169,7 +164,6 @@ export default function IngestionPointTabs({
                       </span>
                     </div>
                     <span className="grow" />
-
                     <Button
                       variant="outline"
                       onClick={() => {

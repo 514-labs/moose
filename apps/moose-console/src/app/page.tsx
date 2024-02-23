@@ -1,17 +1,7 @@
-import { Separator } from "components/ui/separator";
-import { Button } from "components/ui/button";
-import Link from "next/link";
 import { getCliData } from "./db";
 import { unstable_noStore as noStore } from "next/cache";
-import { ChevronRight } from "lucide-react";
-import { CardHeader, CardTitle } from "components/ui/card";
 import OverviewCard from "components/overview-card";
-
-interface OverviewCardHeaderProps {
-  numItems?: number;
-  title: string;
-  href: string;
-}
+import { getModelFromRoute, getModelFromTable } from "lib/utils";
 
 export default async function OverviewPage(): Promise<JSX.Element> {
   // This is to make sure the environment variables are read at runtime
@@ -30,14 +20,19 @@ export default async function OverviewPage(): Promise<JSX.Element> {
               title="Models"
               numItems={data.models.length}
               link="/primitives/models"
-              items={data.models.slice(0, 4).map((model) => ({ name: model.name, link: `/primitives/models/${model.name}` }))}
+              items={data.models
+                .slice(0, 4)
+                .map((model) => ({
+                  name: model.name,
+                  link: `/primitives/models/${model.name}`,
+                }))}
             />
           </div>
           <div className="col-span-3 xl:col-span-1 flex flex-col">
             <OverviewCard
               title="Flows"
               numItems={0}
-              link="https://docs.moosejs.com"
+              link="/primitives/flows"
               items={[]}
             />
           </div>
@@ -45,23 +40,26 @@ export default async function OverviewPage(): Promise<JSX.Element> {
             <OverviewCard
               title="Insights"
               numItems={0}
-              link="https://docs.moosejs.com"
+              link="/primitives/insights"
               items={[]}
             />
           </div>
         </div>
       </div>
       <div>
-        <div className="text-lg py-6">
-          Infrastructure
-        </div>
+        <div className="text-lg py-6">Infrastructure</div>
         <div className="grid grid-cols-3 gap-4">
           <div className="col-span-3 xl:col-span-1">
             <OverviewCard
               title="Ingestion Points"
               numItems={data.ingestionPoints.length}
               link="infrastructure/ingestion-points"
-              items={data.ingestionPoints.slice(0, 4).map(ingestionPoint => ({ name: ingestionPoint.route_path, link: `/infrastructure/ingestion-points/${ingestionPoint.route_path.split("/").at(-1)}` }))}
+              items={data.ingestionPoints.slice(0, 4).map((ingestionPoint) => {
+                return {
+                  name: ingestionPoint.route_path,
+                  link: `/primitives/models/${getModelFromRoute(ingestionPoint, data).name}?tab=usage`,
+                };
+              })}
             />
           </div>
           <div className="col-span-3 xl:col-span-1">
@@ -70,18 +68,22 @@ export default async function OverviewPage(): Promise<JSX.Element> {
               numItems={
                 data.tables.filter(
                   (t) =>
-                    t.engine !== "MaterializedView" &&
-                    !t.name.includes(".inner"),
+                    t.engine !== "MaterializedView" && t.engine !== "Kafka",
                 ).length
               }
               link="infrastructure/databases/tables?type=table"
-              items={data.tables.filter(
-                (t) =>
-                  t.engine !== "MaterializedView" &&
-                  !t.name.includes(".inner"),
-              )
+              items={data.tables
+                .filter(
+                  (t) =>
+                    t.engine !== "MaterializedView" && t.engine !== "Kafka",
+                )
                 .slice(0, 4)
-                .map((table) => ({ name: table.name, link: `/infrastructure/databases/${table.database}/tables/${table.uuid}` }))}
+                .map((table) => {
+                  return {
+                    name: table.name,
+                    link: `/primitives/models/${getModelFromTable(table, data).name}?tab=query`,
+                  };
+                })}
             />
           </div>
           <div className="col-span-3 xl:col-span-1">
@@ -91,14 +93,19 @@ export default async function OverviewPage(): Promise<JSX.Element> {
                 data.tables.filter(
                   (t) =>
                     t.engine === "MaterializedView" &&
-                    !t.name.includes(".inner"),
+                    !t.name.includes("Kafka"),
                 ).length
               }
               link="infrastructure/databases/tables?type=view"
               items={data.tables
                 .filter((t) => t.engine === "MaterializedView")
                 .slice(0, 4)
-                .map((table) => ({ name: table.name, link: `/infrastructure/databases/${table.database}/tables/${table.uuid}` }))}
+                .map((table) => {
+                  return {
+                    name: table.name,
+                    link: `/primitives/models/${getModelFromTable(table, data).name}?tab=query`,
+                  };
+                })}
             />
           </div>
         </div>

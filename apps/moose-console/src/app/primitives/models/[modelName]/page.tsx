@@ -41,15 +41,13 @@ export default async function Page({
   const pythonCodeSnippet = pythonSnippet(data, model);
   const bashCodeSnippet = bashSnippet(data, model);
   const clickhouseJSCode = clickhouseJSSnippet(data, model);
-  const clickhousePythonCode = clickhousePythonSnippet(data, model)
+  const clickhousePythonCode = clickhousePythonSnippet(data, model);
 
   return (
     <section className="p-4 max-h-screen overflow-y-auto grow">
       <NavBreadCrumb />
       <div className="py-10">
-        <div className="text-8xl">
-          {model.name}
-        </div>
+        <div className="text-8xl">{model.name}</div>
       </div>
       <ModelView
         table={triggerTable}

@@ -3,7 +3,7 @@ import { CliData, Route } from "app/db";
 import CodeCard from "./code-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { cn } from "lib/utils";
-import { segmentedTabListStyle, segmentedTabTriggerStyle, tabListStyle, tabTriggerStyle } from "./style-utils";
+import { segmentedTabListStyle, segmentedTabTriggerStyle } from "./style-utils";
 
 interface IngestionInstructionProps {
   cliData: CliData;
@@ -22,7 +22,10 @@ export default function IngestionInstructions({
   return (
     <Tabs defaultValue="ingestion-point">
       <TabsList className={cn(segmentedTabListStyle, "flex-grow-0")}>
-        <TabsTrigger className={cn(segmentedTabTriggerStyle)} value="ingestion-point">
+        <TabsTrigger
+          className={cn(segmentedTabTriggerStyle)}
+          value="ingestion-point"
+        >
           Ingestion Point
         </TabsTrigger>
         <TabsTrigger className={cn(segmentedTabTriggerStyle)} value="sdk">
@@ -31,7 +34,9 @@ export default function IngestionInstructions({
       </TabsList>
       <TabsContent value="ingestion-point">
         <div className="pb-4">
-          <h1 className="text-lg">Send data over http to the ingestion point</h1>
+          <h1 className="text-lg">
+            Send data over http to the ingestion point
+          </h1>
           <SnippetCard
             title="Ingestion point"
             code={
@@ -81,9 +86,7 @@ export default function IngestionInstructions({
           </div>
           <div className="py-4">
             <SnippetCard
-              title={
-                "Step 3: Import SDK int your code and get started"
-              }
+              title={"Step 3: Import SDK int your code and get started"}
               comment={`// your application's directory where your package.json is`}
               code={`import ${cliData.project && cliData.project.name}-sdk`}
             />

@@ -13,6 +13,7 @@ import {
   pythonSnippet,
 } from "lib/snippets";
 import { getModelFromTable } from "lib/utils";
+import ModelView from "app/ModelView";
 
 async function _describeTable(
   databaseName: string,
@@ -48,7 +49,7 @@ export default async function Page({
   return (
     <section className="p-4 max-h-screen flex-grow overflow-y-auto flex flex-col">
       <div className="py-10">
-        <div className="text-6xl">
+        <div className="text-8xl">
           <Link className="text-muted-foreground" href={"/"}>
             ../
           </Link>
@@ -63,7 +64,7 @@ export default async function Page({
         <div className="text-muted-foreground">{table.engine}</div>
       </div>
       <div className="space-x-3 flex-grow">
-        <TableTabs
+        <ModelView
           table={table}
           cliData={data}
           bashSnippet={bashSnippet(data, model)}

@@ -1,5 +1,3 @@
-import Image from 'next/image'
-
 export default {
     logo: <div>moosejs</div>,
     project: {

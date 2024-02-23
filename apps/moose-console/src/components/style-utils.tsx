@@ -10,5 +10,4 @@ export const segmentedTabListStyle =
 export const segmentedTabTriggerStyle =
   "grow rounded-none xl:grow-0 py-2 px-6 text-md font-normal disabled:pointer-events-none disabled:opacity-50  data-[state=active]:text-foreground data-[state=active]:shadow-none data-[state=active]:border-gray-500 data-[state=active]:border-b-2";
 
-
 export const objectCardStyle = "rounded-3xl bg-background";

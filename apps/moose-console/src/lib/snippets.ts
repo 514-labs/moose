@@ -58,6 +58,7 @@ export const clickhousePythonSnippet = (data: CliData, model: DataModel) => {
   );
 
   return `import clickhouse_connect
+import pandas
 
 client = clickhouse_connect.get_client(
     host=${data.project && JSON.stringify(data.project.clickhouse_config.host)}
@@ -68,8 +69,11 @@ client = clickhouse_connect.get_client(
 )
 
 query_str = "SELECT * FROM ${view.name} LIMIT 10"
-result = client.query(query_str)
-print(result.result_rows)
+
+# query_df returns a dataframe
+result = client.query_df(query_str)
+
+print(result)
 `;
 };
 

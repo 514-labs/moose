@@ -1,7 +1,10 @@
-import Link from "next/link";
 import { Separator } from "components/ui/separator";
 import { getCliData } from "app/db";
 import { unstable_noStore as noStore } from "next/cache";
+import { ModelsTable } from "components/models-table";
+import { Card } from "components/ui/card";
+import { NavBreadCrumb } from "components/nav-breadcrumb";
+
 
 export default async function ModelsPage(): Promise<JSX.Element> {
   noStore();
@@ -9,16 +12,12 @@ export default async function ModelsPage(): Promise<JSX.Element> {
 
   return (
     <section className="p-4 max-h-screen grow overflow-y-auto">
+        <NavBreadCrumb />
       <div className="py-10">
-        <div className="text-6xl">
-          <Link className="text-muted-foreground" href="/">
-            {" "}
-            overview /
-          </Link>
-
-          <Link href="/primitives/models">{data.models.length} Models </Link>
+        <div className="text-8xl">
+          {data.models.length} Models
         </div>
-        <div className="text-muted-foreground py-5 max-w-screen-md">
+        <div className="py-5 max-w-screen-md">
           Models define the shape of the data that your MooseJS app expects. If
           you want to learn more about them, head to the{" "}
           <a className="underline" href="">
@@ -26,14 +25,9 @@ export default async function ModelsPage(): Promise<JSX.Element> {
           </a>
         </div>
         <Separator />
-        {data.models.map((model, index) => (
-          <Link key={index} href={`/primitives/models/${model.name}`}>
-            <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
-              <div className="py-4 text-muted-foreground">{model.name}</div>
-              <Separator />
-            </div>
-          </Link>
-        ))}
+        <Card>
+          <ModelsTable models={data.models} />
+        </Card>
       </div>
     </section>
   );

@@ -1,9 +1,14 @@
 "use client";
 
-import { CliData, Route, Table } from "app/db";
+// We will move this eventually
+// Views, IngestionPoints and Models have the exact same UI
+// the thinking is we will remove the Views and IngestionPoint pages
+
+import { CliData, Table } from "app/db";
 import CodeCard from "components/code-card";
 import IngestionInstructions from "components/ingestion-instructions";
 import ModelTable from "components/model-table";
+import QueryInterface from "components/query-interface";
 import RelatedInfraTable from "components/related-infra-table";
 import { tabListStyle, tabTriggerStyle } from "components/style-utils";
 import { Button } from "components/ui/button";
@@ -15,13 +20,13 @@ import {
   CardDescription,
 } from "components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
-import { cn, getModelFromRoute, getRelatedInfra } from "lib/utils";
+import { cn, getModelFromTable, getRelatedInfra, tableIsView } from "lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 
-interface IngestionPointTabsProps {
-  ingestionPoint: Route;
+interface TableTabsProps {
+  table: Table;
   cliData: CliData;
   jsSnippet: string;
   bashSnippet: string;
@@ -30,7 +35,7 @@ interface IngestionPointTabsProps {
   clickhousePythonSnippet: string;
 }
 
-function _ClickhouseTableRestriction(view: Table) {
+function ClickhouseTableRestriction(view: Table) {
   return (
     <div className="py-4">
       <div className="text-muted-foreground max-w-xl">
@@ -49,23 +54,28 @@ function _ClickhouseTableRestriction(view: Table) {
   );
 }
 
-export default function IngestionPointTabs({
-  ingestionPoint,
+export default function ModelView({
+  table,
   cliData,
   jsSnippet,
-  pythonSnippet,
   bashSnippet,
+  pythonSnippet,
   clickhouseJSSnippet,
   clickhousePythonSnippet,
-}: IngestionPointTabsProps) {
+}: TableTabsProps) {
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab");
   const router = useRouter();
   const pathName = usePathname();
 
-  const [_, setSelectedTab] = useState<string>(tab ? tab : "overview");
-  const model = getModelFromRoute(ingestionPoint, cliData);
-  const infra = getRelatedInfra(model, cliData, ingestionPoint);
+  const [_selectedTab, setSelectedTab] = useState<string>(
+    tab ? tab : "overview",
+  );
+  const model = getModelFromTable(table, cliData);
+  const infra = getRelatedInfra(model, cliData, table);
+  const associated_view = cliData.tables.find(
+    (view) => view.name === table.dependencies_table[0],
+  );
 
   const createTabQueryString = useCallback(
     (tab: string) => {
@@ -75,6 +85,8 @@ export default function IngestionPointTabs({
     },
     [searchParams],
   );
+
+  const ingestionPoint = infra.ingestionPoints[0];
 
   return (
     <Tabs
@@ -94,6 +106,9 @@ export default function IngestionPointTabs({
         </TabsTrigger>
         <TabsTrigger className={cn(tabTriggerStyle)} value="logs">
           Logs
+        </TabsTrigger>
+        <TabsTrigger className={cn(tabTriggerStyle)} value="query">
+          Query
         </TabsTrigger>
       </TabsList>
       <TabsContent value="overview">
@@ -129,7 +144,7 @@ export default function IngestionPointTabs({
           <div className="col-span-12 xl:col-span-6">
             <Card className="rounded-3xl">
               <CardHeader>
-                <CardTitle>Data In</CardTitle>
+                <CardTitle className=" font-normal">Data In</CardTitle>
                 <CardDescription>
                   When you create a data model, moose automatically spins up
                   infrastructure to ingest data. You can easily push data to
@@ -140,9 +155,9 @@ export default function IngestionPointTabs({
                 <IngestionInstructions
                   bashSnippet={bashSnippet}
                   cliData={cliData}
-                  ingestionPoint={ingestionPoint}
                   jsSnippet={jsSnippet}
                   pythonSnippet={pythonSnippet}
+                  ingestionPoint={ingestionPoint}
                 />
               </CardContent>
             </Card>
@@ -153,7 +168,7 @@ export default function IngestionPointTabs({
                 <CardTitle>Data Out</CardTitle>
                 <CardDescription>
                   When you create a data model, moose automatically spins up
-                  infrastructure to ingest data. You can easily extract data
+                  infrastructure to extract data. You can easily extract data
                   from the infrastructure in the following ways:
                 </CardDescription>
               </CardHeader>
@@ -179,7 +194,7 @@ export default function IngestionPointTabs({
                         setSelectedTab("query");
                       }}
                     >
-                      go to view
+                      Query
                     </Button>
                   </h2>
                 </div>
@@ -204,10 +219,21 @@ export default function IngestionPointTabs({
           </div>
         </div>
       </TabsContent>
-      <TabsContent className="h-full" value="logs">
+      <TabsContent value="logs">
+        <Card className="bg-muted rounded-2xl">
+          <CardContent className="font-mono p-4">
+            some log content
+          </CardContent>
+        </Card>
+      </TabsContent>
+      <TabsContent className="h-full" value="query">
         {/* add query here */}
         <div className="p-0 h-full">
-          <code>some logs</code>
+          {tableIsView(table) ? (
+            <QueryInterface table={table} related={cliData.tables} />
+          ) : (
+            ClickhouseTableRestriction(associated_view)
+          )}
         </div>
       </TabsContent>
     </Tabs>

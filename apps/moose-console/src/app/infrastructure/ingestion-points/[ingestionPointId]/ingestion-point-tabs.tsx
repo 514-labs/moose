@@ -89,8 +89,8 @@ export default function IngestionPointTabs({
         <TabsTrigger className={cn(tabTriggerStyle)} value="overview">
           Overview
         </TabsTrigger>
-        <TabsTrigger className={cn(tabTriggerStyle)} value="usage">
-          Usage
+        <TabsTrigger className={cn(tabTriggerStyle)} value="setup">
+          Setup
         </TabsTrigger>
         <TabsTrigger className={cn(tabTriggerStyle)} value="logs">
           Logs
@@ -120,7 +120,7 @@ export default function IngestionPointTabs({
           </div>
         </div>
       </TabsContent>
-      <TabsContent className="h-full" value="usage">
+      <TabsContent className="h-full" value="setup">
         <div className=" grid grid-cols-12 gap-4">
           <div className="col-span-12 xl:col-span-6">
             <Card className="rounded-3xl">

@@ -106,8 +106,8 @@ pub fn get_all_version_syncs(
                 let from_table_name = captures.get(1).unwrap().as_str();
                 let to_table_name = captures.get(4).map_or(from_table_name, |m| m.as_str());
 
-                let from_version = captures.get(2).unwrap().as_str().replace("_", ".");
-                let to_version = captures.get(5).unwrap().as_str().replace("_", ".");
+                let from_version = captures.get(2).unwrap().as_str().replace('_', ".");
+                let to_version = captures.get(5).unwrap().as_str().replace('_', ".");
 
                 println!(
                     "From: {from_table_name:?} {:?}, To: {to_table_name:?} {:?}",
@@ -230,7 +230,7 @@ pub(crate) async fn create_or_replace_kafka_trigger(
     })?;
 
     // Clickhouse doesn't support dropping a view if it doesn't exist, so we need to drop it first in case the schema has changed
-    drop_kafka_trigger(&view, configured_client).await?;
+    drop_kafka_trigger(view, configured_client).await?;
     olap::clickhouse::run_query(&create_view_query, configured_client)
         .await
         .map_err(|e| {
@@ -425,9 +425,9 @@ pub async fn process_objects(
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     version: &str,
 ) -> anyhow::Result<()> {
-    for (_, fo) in framework_objects {
+    for fo in framework_objects.values() {
         let ingest_route = schema_file_path_to_ingest_route(
-            &schema_dir,
+            schema_dir,
             &fo.original_file_path,
             fo.data_model.name.clone(),
             version,
@@ -436,14 +436,14 @@ pub async fn process_objects(
 
         debug!("Creating table & view: {:?}", fo.table.name);
 
-        create_or_replace_tables(&project.name, &fo, configured_client).await?;
+        create_or_replace_tables(&project.name, fo, configured_client).await?;
 
         let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
         create_or_replace_kafka_trigger(&view, configured_client).await?;
 
         debug!("Table created: {:?}", fo.table.name);
 
-        let typescript_objects = create_language_objects(&fo, &ingest_route, project)?;
+        let typescript_objects = create_language_objects(fo, &ingest_route, project)?;
         compilable_objects.push(typescript_objects);
 
         route_table.insert(

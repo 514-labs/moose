@@ -40,8 +40,8 @@ pub async fn post_current_state_to_console(
     let models: Vec<DataModel> = framework_object_versions
         .current_models
         .models
-        .iter()
-        .map(|(_, fo)| fo.data_model.clone())
+        .values()
+        .map(|fo| fo.data_model.clone())
         .collect();
 
     olap::clickhouse::check_ready(configured_db_client)

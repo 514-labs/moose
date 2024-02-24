@@ -13,7 +13,7 @@ use std::sync::Arc;
 
 use tokio::net::TcpStream;
 
-use crate::framework::controller::FrameworkObjectVersions;
+use crate::framework::controller::{schema_file_path_to_ingest_route, FrameworkObjectVersions};
 use crate::framework::schema::DataModel;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
@@ -55,16 +55,26 @@ pub async fn post_current_state_to_console(
         .await
         .unwrap();
 
+    // TODO: old versions of the models are not being sent to the console
     let routes_table: Vec<RouteInfo> = framework_object_versions
         .current_models
         .models
-        .iter()
-        .map(|(k, v)| {
+        .values()
+        .map(|fo| {
+            let route_path = schema_file_path_to_ingest_route(
+                &framework_object_versions.current_models.base_path,
+                &fo.original_file_path,
+                fo.data_model.name.clone(),
+                &framework_object_versions.current_version,
+            )
+            .to_string_lossy()
+            .to_string();
+
             RouteInfo::new(
-                k.to_string(),
-                v.original_file_path.to_str().unwrap().to_string(),
-                v.table.name.clone(),
-                Some(v.table.view_name()),
+                route_path,
+                fo.original_file_path.to_str().unwrap().to_string(),
+                fo.table.name.clone(),
+                Some(fo.table.view_name()),
             )
         })
         .collect();

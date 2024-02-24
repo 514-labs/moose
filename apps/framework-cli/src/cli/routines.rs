@@ -80,6 +80,7 @@
 //!
 
 use std::collections::HashMap;
+use std::sync::Arc;
 use std::{io::Error, path::PathBuf};
 
 use log::debug;
@@ -223,7 +224,7 @@ impl RoutineController {
 }
 
 // Starts the file watcher and the webserver
-pub async fn start_development_mode(project: &Project) -> anyhow::Result<()> {
+pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()> {
     show_message!(
         MessageType::Success,
         Message {
@@ -236,18 +237,16 @@ pub async fn start_development_mode(project: &Project) -> anyhow::Result<()> {
 
     info!("Initializing project state");
     let framework_object_versions =
-        initialize_project_state(project.schemas_dir(), project, &mut route_table).await?;
-
+        initialize_project_state(project.clone(), &mut route_table).await?;
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
-    let web_server = Webserver::new(
-        project.local_webserver_config.host.clone(),
-        project.local_webserver_config.port,
-    );
+    let server_config = project.http_server_config.clone();
+
+    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     let file_watcher = FileWatcher::new();
 
-    file_watcher.start(project, framework_object_versions, route_table)?;
+    file_watcher.start(project.clone(), framework_object_versions, route_table)?;
 
     info!("Starting web server...");
 
@@ -257,8 +256,7 @@ pub async fn start_development_mode(project: &Project) -> anyhow::Result<()> {
 }
 
 async fn initialize_project_state(
-    schema_dir: PathBuf,
-    project: &Project,
+    project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> anyhow::Result<FrameworkObjectVersions> {
     let mut old_version_dir = project.internal_dir()?;
@@ -270,7 +268,7 @@ async fn initialize_project_state(
     info!("Checking for old version directories...");
 
     let mut framework_object_versions =
-        FrameworkObjectVersions::new(project.version.clone(), schema_dir.clone());
+        FrameworkObjectVersions::new(project.version().to_string(), project.schemas_dir().clone());
     match std::fs::read_dir(&old_version_dir) {
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             debug!("No old version directories found");
@@ -289,7 +287,7 @@ async fn initialize_project_state(
 
                     process_objects(
                         &framework_objects,
-                        project,
+                        project.clone(),
                         &path,
                         &configured_client,
                         &mut Vec::new(),
@@ -311,19 +309,20 @@ async fn initialize_project_state(
         Err(e) => Err(e)?,
     };
 
+    let schema_dir = project.schemas_dir();
     info!("Starting schema directory crawl...");
     with_spinner_async("Processing schema file", async {
         let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
-        get_all_framework_objects(&mut framework_objects, &schema_dir, &project.version)?;
+        get_all_framework_objects(&mut framework_objects, &schema_dir, &project.version())?;
 
         let result = process_objects(
             &framework_objects,
-            project,
+            project.clone(),
             &schema_dir,
             &configured_client,
             &mut Vec::new(),
             route_table,
-            &project.version,
+            &project.version(),
         )
         .await;
 
@@ -334,11 +333,10 @@ async fn initialize_project_state(
 
         olap::clickhouse::check_ready(&configured_client).await?;
         let _ = post_current_state_to_console(
-            project,
+            project.clone(),
             &configured_client,
             &producer,
             &framework_object_versions,
-            project.console_config.clone(),
         )
         .await;
 
@@ -359,7 +357,7 @@ async fn initialize_project_state(
     info!("Crawling version syncs");
     with_spinner_async::<_, anyhow::Result<()>>("Setting up version syncs", {
         async {
-            let version_syncs = get_all_version_syncs(project, &framework_object_versions)?;
+            let version_syncs = get_all_version_syncs(&project, &framework_object_versions)?;
             println!("Version syncs: {:?}", version_syncs);
             for vs in version_syncs {
                 create_or_replace_version_sync(vs, &configured_client).await?;

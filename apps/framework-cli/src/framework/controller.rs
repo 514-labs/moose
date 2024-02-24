@@ -3,6 +3,7 @@ use std::io::Error;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use log::debug;
 use log::info;
@@ -304,7 +305,7 @@ pub(crate) async fn create_or_replace_tables(
 pub(crate) fn create_language_objects(
     fo: &FrameworkObject,
     ingest_route: &Path,
-    project: &Project,
+    project: Arc<Project>,
 ) -> Result<TypescriptObjects, Error> {
     info!("Creating typescript interface: {:?}", fo.ts_interface);
     let ts_interface_code = fo.ts_interface.create_code().map_err(|e| {
@@ -313,9 +314,10 @@ pub(crate) fn create_language_objects(
             format!("Failed to get typescript interface: {:?}", e),
         )
     })?;
+
     let send_func = SendFunction::new(
         fo.ts_interface.clone(),
-        project.local_webserver_config.url(),
+        project.http_server_config.url(),
         ingest_route.to_str().unwrap().to_string(),
     );
     let send_func_code = send_func.create_code().map_err(|e| {
@@ -324,7 +326,7 @@ pub(crate) fn create_language_objects(
             format!("Failed to generate send function: {:?}", e),
         )
     })?;
-    let typescript_dir = get_typescript_models_dir(project.clone())?;
+    let typescript_dir = get_typescript_models_dir(project)?;
     let interface_file_path = typescript_dir.join(format!("{}.ts", fo.ts_interface.file_name()));
     let send_func_file_path = typescript_dir.join(send_func.interface.send_function_file_name());
 
@@ -418,7 +420,7 @@ pub fn schema_file_path_to_ingest_route(
 
 pub async fn process_objects(
     framework_objects: &HashMap<String, FrameworkObject>,
-    project: &Project,
+    project: Arc<Project>,
     schema_dir: &Path,
     configured_client: &ConfiguredDBClient,
     compilable_objects: &mut Vec<TypescriptObjects>, // Objects that require compilation after processing
@@ -432,18 +434,18 @@ pub async fn process_objects(
             fo.data_model.name.clone(),
             version,
         );
-        stream::redpanda::create_topic_from_name(&project.name, fo.topic.clone())?;
+        stream::redpanda::create_topic_from_name(&project.name(), fo.topic.clone())?;
 
         debug!("Creating table & view: {:?}", fo.table.name);
 
-        create_or_replace_tables(&project.name, fo, configured_client).await?;
+        create_or_replace_tables(&project.name(), fo, configured_client).await?;
 
         let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
         create_or_replace_kafka_trigger(&view, configured_client).await?;
 
         debug!("Table created: {:?}", fo.table.name);
 
-        let typescript_objects = create_language_objects(fo, &ingest_route, project)?;
+        let typescript_objects = create_language_objects(&fo, &ingest_route, project.clone())?;
         compilable_objects.push(typescript_objects);
 
         route_table.insert(

@@ -32,6 +32,7 @@ use std::future::Future;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::sync::RwLock;
@@ -259,7 +260,7 @@ impl Webserver {
     pub async fn start(
         &self,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
-        project: &Project,
+        project: Arc<Project>,
     ) {
         //! Starts the local webserver
         let socket = self.socket().await;
@@ -296,7 +297,7 @@ impl Webserver {
 
         let route_service = RouteService {
             route_table,
-            current_version: project.version.clone(),
+            current_version: project.version().to_string(),
             configured_producer: producer,
             console_config: project.console_config.clone(),
         };

@@ -1,5 +1,6 @@
 use std::collections::HashSet;
 use std::sync::mpsc::TryRecvError;
+use std::sync::Arc;
 use std::{
     collections::HashMap,
     io::{Error, ErrorKind},
@@ -28,7 +29,7 @@ use crate::{
 use super::display::{with_spinner_async, Message, MessageType};
 
 async fn process_events(
-    project: Project,
+    project: Arc<Project>,
     events: Vec<notify::Event>,
     framework_object_versions: &mut FrameworkObjectVersions,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
@@ -62,7 +63,8 @@ async fn process_events(
             .collect::<HashMap<_, _>>();
 
         if path.exists() {
-            let obj_in_new_file = get_framework_objects_from_schema_file(&path, &project.version)?;
+            let obj_in_new_file =
+                get_framework_objects_from_schema_file(&path, &project.version())?;
             for obj in obj_in_new_file {
                 removed_old_objects_in_file.remove(&obj.data_model.name);
 
@@ -138,7 +140,7 @@ async fn process_events(
             fo.data_model.name.clone(),
             &framework_object_versions.current_version,
         ));
-        redpanda::delete_topic(&project.name, &fo.data_model.name)?;
+        redpanda::delete_topic(&project.name(), &fo.data_model.name)?;
 
         framework_object_versions
             .current_models
@@ -146,7 +148,7 @@ async fn process_events(
             .remove(&fo.data_model.name);
     }
     for (_, fo) in changed_objects.into_iter().chain(new_objects) {
-        create_or_replace_tables(&project.name, &fo, configured_client).await?;
+        create_or_replace_tables(&project.name(), &fo, configured_client).await?;
         let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
         create_or_replace_kafka_trigger(&view, configured_client).await?;
         route_table.insert(
@@ -162,7 +164,7 @@ async fn process_events(
                 view_name: Some(view.name),
             },
         );
-        redpanda::create_topic_from_name(&project.name, fo.topic.clone())?;
+        redpanda::create_topic_from_name(&project.name(), fo.topic.clone())?;
 
         framework_object_versions
             .current_models
@@ -181,7 +183,7 @@ async fn process_events(
 }
 
 async fn watch(
-    project: &Project,
+    project: Arc<Project>,
     framework_object_versions: &mut FrameworkObjectVersions,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
 ) -> Result<(), Error> {
@@ -240,11 +242,10 @@ async fn watch(
                 })?;
 
                 let _ = post_current_state_to_console(
-                    project,
+                    project.clone(),
                     &configured_client,
                     &configured_producer,
                     framework_object_versions,
-                    project.console_config.clone(),
                 )
                 .await;
             }
@@ -267,7 +268,7 @@ impl FileWatcher {
 
     pub fn start(
         &self,
-        project: &Project,
+        project: Arc<Project>,
         framework_object_versions: FrameworkObjectVersions,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
     ) -> Result<(), Error> {
@@ -277,12 +278,11 @@ impl FileWatcher {
                 details: format!("{:?}", project.app_dir().display()),
             }
         });
-        let project = project.clone();
 
         let mut framework_object_versions = framework_object_versions;
 
         tokio::spawn(async move {
-            if let Err(error) = watch(&project, &mut framework_object_versions, route_table).await {
+            if let Err(error) = watch(project, &mut framework_object_versions, route_table).await {
                 panic!("Watcher error: {error:?}");
             }
         });

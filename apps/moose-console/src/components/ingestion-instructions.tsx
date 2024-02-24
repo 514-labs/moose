@@ -25,7 +25,7 @@ export default function IngestionInstructions({
           title="Ingestion point"
           code={
             cliData.project &&
-            `http://${cliData.project.local_webserver_config.host}:${cliData.project.local_webserver_config.port}/${ingestionPoint.route_path}`
+            `http://${cliData.project.http_server_config.host}:${cliData.project.http_server_config.port}/${ingestionPoint.route_path}`
           }
           comment={`// from the sdk package directory ${cliData.project && cliData.project.project_file_location}/.moose/${cliData.project.name}-sdk`}
         />

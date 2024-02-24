@@ -11,9 +11,17 @@
 //! - `project_file_location` - The location of the project file on disk
 //! ```
 
-use std::collections::HashMap;
 use std::io::Write;
+pub mod typescript_project;
+
+use std::fmt::Debug;
+use std::path::Path;
 use std::path::PathBuf;
+
+use config::{Config, ConfigError, File};
+use log::debug;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
@@ -22,90 +30,108 @@ use crate::framework::schema::templates::BASE_MODEL_TEMPLATE;
 use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use crate::project::typescript_project::TypescriptProject;
 
-use crate::utilities::constants::{
-    APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, PROJECT_CONFIG_FILE_TS, SCHEMAS_DIR,
-};
-use config::{Config, ConfigError, File};
-use log::debug;
-use serde::{Deserialize, Serialize};
-use std::path::Path;
+use crate::utilities::constants::PROJECT_CONFIG_FILE;
+use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 
-// TODO: Move package json file to a typescript module
-#[derive(Serialize, Deserialize, Debug, Clone)]
-#[serde(rename_all = "camelCase")]
-struct PackageJsonFile {
-    pub name: String,
-    pub version: String,
-    pub scripts: HashMap<String, String>,
-    pub dependencies: HashMap<String, String>,
-    pub dev_dependencies: HashMap<String, String>,
+// We have explored using a Generic associated Types as well as
+// Dynamic Dispatch to handle the different types of projects
+// the approach with enums is the one that is the simplest to put into practice and
+// maintain. With Copilot - it also has the advaantage that the boiler plate is really fast to write
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Project {
+    pub language: SupportedLanguages,
+    pub redpanda_config: RedpandaConfig,
+    pub clickhouse_config: ClickhouseConfig,
+    pub http_server_config: LocalWebserverConfig,
+    pub console_config: ConsoleConfig,
+
+    #[serde(skip)]
+    pub language_project_config: LanguageProjectConfig,
+    #[serde(skip)]
+    pub project_location: PathBuf,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct Project {
-    pub name: String,
-    pub version: String,
-    pub language: SupportedLanguages,
-    pub project_file_location: PathBuf,
-    #[serde(default)]
-    pub redpanda_config: RedpandaConfig,
-    #[serde(default)]
-    pub clickhouse_config: ClickhouseConfig,
-    #[serde(default)]
-    pub local_webserver_config: LocalWebserverConfig,
-    #[serde(default)]
-    pub console_config: ConsoleConfig,
+#[derive(Debug, Serialize, Deserialize)]
+pub enum LanguageProjectConfig {
+    Typescript(TypescriptProject),
+}
+
+impl Default for LanguageProjectConfig {
+    fn default() -> Self {
+        LanguageProjectConfig::Typescript(TypescriptProject::default())
+    }
 }
 
 impl Project {
-    pub fn from_dir(dir_location: &Path, name: String, language: SupportedLanguages) -> Self {
-        //! Creates a new `Project` from a directory path.
-        //!
-        //! This function cleans up any relative paths and canonicalizes the path.
-        let mut location = dir_location.to_path_buf();
-        location = location
-            .canonicalize()
-            .expect("The directory provided does not exist");
-        location.push(PROJECT_CONFIG_FILE_TS);
-
-        debug!("Project file location: {:?}", location);
-
-        Self {
-            name,
-            version: "0.0".to_owned(),
-            language,
-            project_file_location: location,
-            redpanda_config: RedpandaConfig::default(), // TODO: Add the ability for the developer to configure this
-            clickhouse_config: ClickhouseConfig::default(), // TODO: Add the ability for the developer to configure this
-            local_webserver_config: LocalWebserverConfig::default(), // TODO: Add the ability for the developer to configure this
-            console_config: ConsoleConfig::default(), // TODO: Add the ability for the developer to configure this
+    pub fn name(&self) -> String {
+        match &self.language_project_config {
+            LanguageProjectConfig::Typescript(p) => p.name.clone(),
         }
     }
 
-    pub fn load_from_current_dir() -> Result<Self, ConfigError> {
-        let current_dir = std::env::current_dir().expect("Failed to get the current directory");
-        Self::load(current_dir)
+    pub fn new(dir_location: &Path, name: String, language: SupportedLanguages) -> Project {
+        let mut location = dir_location.to_path_buf();
+
+        location = location
+            .canonicalize()
+            .expect("The directory provided does not exist");
+
+        debug!("Package.json file location: {:?}", location);
+
+        match language {
+            SupportedLanguages::Typescript => Project {
+                language: SupportedLanguages::Typescript,
+                project_location: location.clone(),
+                redpanda_config: RedpandaConfig::default(),
+                clickhouse_config: ClickhouseConfig::default(),
+                http_server_config: LocalWebserverConfig::default(),
+                console_config: ConsoleConfig::default(),
+                language_project_config: LanguageProjectConfig::Typescript(TypescriptProject::new(
+                    name,
+                )),
+            },
+        }
     }
 
-    pub fn load(directory: PathBuf) -> Result<Self, ConfigError> {
+    pub fn load(directory: PathBuf) -> Result<Project, ConfigError> {
         let mut project_file = directory.clone();
-        project_file.push(PROJECT_CONFIG_FILE_TS);
+        project_file.push(PROJECT_CONFIG_FILE);
 
-        let project_file_location = project_file
-            .clone()
-            .into_os_string()
-            .into_string()
-            .expect("Failed to convert project file location to string");
-
-        let s = Config::builder()
+        let mut project_config: Project = Config::builder()
             .add_source(File::from(project_file).required(true))
-            // TODO: infer language from the project file
-            .set_default("language", "Typescript")?
-            .set_override("project_file_location", project_file_location)?
-            .build()?;
+            .build()?
+            .try_deserialize()?;
 
-        s.try_deserialize()
+        project_config.project_location = directory.clone();
+
+        match project_config.language {
+            SupportedLanguages::Typescript => {
+                let ts_config = TypescriptProject::load(directory)?;
+                project_config.language_project_config =
+                    LanguageProjectConfig::Typescript(ts_config);
+                Ok(project_config)
+            }
+        }
+    }
+
+    pub fn load_from_current_dir() -> Result<Project, ConfigError> {
+        let current_dir = std::env::current_dir().expect("Failed to get the current directory");
+        Project::load(current_dir)
+    }
+
+    pub fn write_to_disk(&self) -> Result<(), anyhow::Error> {
+        // Write to disk what is common to all project types, the project.toml
+        let project_file = self.project_location.join(PROJECT_CONFIG_FILE);
+        let toml_project = toml::to_string(&self)?;
+
+        std::fs::write(project_file, toml_project)?;
+
+        // Write language specific files to disk
+        match &self.language_project_config {
+            LanguageProjectConfig::Typescript(p) => p.write_to_disk(self.project_location.clone()),
+        }
     }
 
     pub fn setup_app_dir(&self) -> Result<(), std::io::Error> {
@@ -135,8 +161,7 @@ impl Project {
     }
 
     pub fn app_dir(&self) -> PathBuf {
-        let mut app_dir = self.project_file_location.clone();
-        app_dir.pop();
+        let mut app_dir = self.project_location.clone();
         app_dir.push(APP_DIR);
 
         debug!("App dir: {:?}", app_dir);
@@ -154,8 +179,7 @@ impl Project {
     // This is a Result of io::Error because the caller
     // can be returning a Result of io::Error or a Routine Failure
     pub fn internal_dir(&self) -> std::io::Result<PathBuf> {
-        let mut internal_dir = self.project_file_location.clone();
-        internal_dir.pop();
+        let mut internal_dir = self.project_location.clone();
         internal_dir.push(CLI_PROJECT_INTERNAL_DIR);
 
         if !internal_dir.is_dir() {
@@ -179,29 +203,9 @@ impl Project {
         Ok(internal_dir)
     }
 
-    pub fn write_to_file(&self) -> Result<(), std::io::Error> {
-        let config_file = PackageJsonFile {
-            name: self.name.clone(),
-            version: self.version.clone(),
-            // For local development of the CLI,
-            // change `moose-cli` to `<REPO_PATH>/apps/framework-cli/target/debug/moose-cli`
-            scripts: HashMap::from([("dev".to_string(), "moose-cli dev".to_string())]),
-            dependencies: HashMap::new(),
-            dev_dependencies: HashMap::from([(
-                "@514labs/moose-cli".to_string(),
-                "latest".to_string(),
-            )]),
-        };
-
-        match serde_json::to_string_pretty(&config_file) {
-            Ok(project) => {
-                std::fs::write(&self.project_file_location, project)?;
-                Ok(())
-            }
-            Err(_err) => Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                "Failed to serialize project",
-            )),
+    pub fn version(&self) -> &str {
+        match &self.language_project_config {
+            LanguageProjectConfig::Typescript(package_json) => &package_json.version,
         }
     }
 }

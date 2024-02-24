@@ -9,6 +9,8 @@ use hyper_util::rt::TokioIo;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::sync::Arc;
+
 use tokio::net::TcpStream;
 
 use crate::framework::controller::FrameworkObjectVersions;
@@ -31,11 +33,10 @@ impl Default for ConsoleConfig {
 }
 
 pub async fn post_current_state_to_console(
-    project: &Project,
+    project: Arc<Project>,
     configured_db_client: &ConfiguredDBClient,
     configured_producer: &ConfiguredProducer,
     framework_object_versions: &FrameworkObjectVersions,
-    console_config: ConsoleConfig,
 ) -> Result<(), anyhow::Error> {
     let models: Vec<DataModel> = framework_object_versions
         .current_models
@@ -69,8 +70,12 @@ pub async fn post_current_state_to_console(
         .collect();
 
     // TODO this should be configurable
-    let url = format!("http://localhost:{}/api/console", console_config.host_port)
-        .parse::<hyper::Uri>()?;
+    let url = format!(
+        "http://localhost:{}/api/console",
+        project.console_config.host_port
+    )
+    .parse::<hyper::Uri>()?;
+
     let host = url.host().expect("uri has no host");
     let port = url.port_u16().unwrap();
     let address = format!("{}:{}", host, port);
@@ -89,7 +94,7 @@ pub async fn post_current_state_to_console(
 
     let body = Bytes::from(
         json!({
-            "project": project,
+            "project": json!(*project),
             "models": models,
             "tables": tables,
             "queues": topics,

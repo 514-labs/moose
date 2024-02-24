@@ -35,7 +35,7 @@ export interface Project {
   project_file_location: string;
   redpanda_config: RedpandaConfig;
   clickhouse_config: ClickhouseConfig;
-  local_webserver_config: LocalWebserverConfig;
+  http_server_config: HTTPServerConfig;
   console_config: ConsoleConfig;
 }
 
@@ -52,10 +52,9 @@ export interface ClickhouseConfig {
   host_port: number;
   postgres_port: number;
   kafka_port: number;
-  cluster_network: string;
 }
 
-export interface LocalWebserverConfig {
+export interface HTTPServerConfig {
   host: string;
   port: number;
 }

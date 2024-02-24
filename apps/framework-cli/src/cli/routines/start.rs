@@ -6,6 +6,7 @@ use crate::cli::routines::util::ensure_docker_running;
 use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
 use crate::utilities::docker;
 use crate::{cli::display::Message, project::Project};
+use std::sync::Arc;
 
 use super::{
     initialize::ValidateMountVolumes,
@@ -14,10 +15,10 @@ use super::{
 };
 
 pub struct RunLocalInfrastructure {
-    project: Project,
+    project: Arc<Project>,
 }
 impl RunLocalInfrastructure {
-    pub fn new(project: Project) -> Self {
+    pub fn new(project: Arc<Project>) -> Self {
         Self { project }
     }
 }
@@ -56,11 +57,11 @@ impl Routine for RunLocalInfrastructure {
 }
 
 struct RunContainers {
-    project: Project,
+    project: Arc<Project>,
 }
 
 impl RunContainers {
-    fn new(project: Project) -> Self {
+    fn new(project: Arc<Project>) -> Self {
         Self { project }
     }
 }

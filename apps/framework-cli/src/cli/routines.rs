@@ -313,7 +313,7 @@ async fn initialize_project_state(
     info!("Starting schema directory crawl...");
     with_spinner_async("Processing schema file", async {
         let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
-        get_all_framework_objects(&mut framework_objects, &schema_dir, &project.version())?;
+        get_all_framework_objects(&mut framework_objects, &schema_dir, project.version())?;
 
         let result = process_objects(
             &framework_objects,
@@ -322,7 +322,7 @@ async fn initialize_project_state(
             &configured_client,
             &mut Vec::new(),
             route_table,
-            &project.version(),
+            project.version(),
         )
         .await;
 

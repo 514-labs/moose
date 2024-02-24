@@ -445,7 +445,7 @@ pub async fn process_objects(
 
         debug!("Table created: {:?}", fo.table.name);
 
-        let typescript_objects = create_language_objects(&fo, &ingest_route, project.clone())?;
+        let typescript_objects = create_language_objects(fo, &ingest_route, project.clone())?;
         compilable_objects.push(typescript_objects);
 
         route_table.insert(

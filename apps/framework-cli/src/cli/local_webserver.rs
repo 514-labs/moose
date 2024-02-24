@@ -254,7 +254,7 @@ impl Webserver {
         // We create a TcpListener and bind it to 127.0.0.1:4000
         let listener = TcpListener::bind(socket).await.unwrap();
 
-        let producer = redpanda::create_producer(project.redpanda_config().clone());
+        let producer = redpanda::create_producer(project.redpanda_config.clone());
 
         {
             show_message!(
@@ -271,7 +271,7 @@ impl Webserver {
             MessageType::Info,
             Message {
                 action: "Started".to_string(),
-                details: format!(" console on port http://localhost:{}. Check it out to get a bird's eye view of your application and infrastructure", project.console_config().host_port),
+                details: format!(" console on port http://localhost:{}. Check it out to get a bird's eye view of your application and infrastructure", project.console_config.host_port),
             }
         );
         }
@@ -284,7 +284,7 @@ impl Webserver {
         let route_service = RouteService {
             route_table,
             configured_producer: producer,
-            console_config: project.console_config().clone(),
+            console_config: project.console_config.clone(),
         };
 
         loop {

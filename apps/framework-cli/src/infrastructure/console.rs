@@ -75,7 +75,7 @@ pub async fn post_current_state_to_console(
     // TODO this should be configurable
     let url = format!(
         "http://localhost:{}/api/console",
-        project.console_config().host_port
+        project.console_config.host_port
     )
     .parse::<hyper::Uri>()?;
 

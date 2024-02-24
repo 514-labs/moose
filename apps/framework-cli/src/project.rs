@@ -12,7 +12,6 @@
 //! ```
 
 use std::io::Write;
-pub mod project_config_file;
 pub mod typescript_project;
 
 use std::fmt::Debug;
@@ -21,6 +20,7 @@ use std::path::PathBuf;
 
 use config::{Config, ConfigError, File};
 use log::debug;
+use serde::Deserialize;
 use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
@@ -30,7 +30,6 @@ use crate::framework::schema::templates::BASE_MODEL_TEMPLATE;
 use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
-use crate::project::project_config_file::ProjectConfigFile;
 use crate::project::typescript_project::TypescriptProject;
 
 use crate::utilities::constants::PROJECT_CONFIG_FILE;
@@ -40,23 +39,38 @@ use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_
 // Dynamic Dispatch to handle the different types of projects
 // the approach with enums is the one that is the simplest to put into practice and
 // maintain. With Copilot - it also has the advaantage that the boiler plate is really fast to write
-#[derive(Debug)]
-pub enum Project {
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Project {
+    pub language: SupportedLanguages,
+    pub redpanda_config: RedpandaConfig,
+    pub clickhouse_config: ClickhouseConfig,
+    pub http_server_config: LocalWebserverConfig,
+    pub console_config: ConsoleConfig,
+
+    #[serde(skip)]
+    pub language_project_config: LanguageProjectConfig,
+    #[serde(skip)]
+    pub project_location: PathBuf,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum LanguageProjectConfig {
     Typescript(TypescriptProject),
 }
 
-impl Serialize for Project {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::ser::Serializer,
-    {
-        match self {
-            Project::Typescript(p) => p.serialize(serializer),
-        }
+impl Default for LanguageProjectConfig {
+    fn default() -> Self {
+        LanguageProjectConfig::Typescript(TypescriptProject::default())
     }
 }
 
 impl Project {
+    pub fn name(&self) -> String {
+        match &self.language_project_config {
+            LanguageProjectConfig::Typescript(p) => p.name.clone(),
+        }
+    }
+
     pub fn new(dir_location: &Path, name: String, language: SupportedLanguages) -> Project {
         let mut location = dir_location.to_path_buf();
 
@@ -67,20 +81,38 @@ impl Project {
         debug!("Package.json file location: {:?}", location);
 
         match language {
-            SupportedLanguages::Typescript => {
-                Project::Typescript(TypescriptProject::new(&location, name))
-            }
+            SupportedLanguages::Typescript => Project {
+                language: SupportedLanguages::Typescript,
+                project_location: location.clone(),
+                redpanda_config: RedpandaConfig::default(),
+                clickhouse_config: ClickhouseConfig::default(),
+                http_server_config: LocalWebserverConfig::default(),
+                console_config: ConsoleConfig::default(),
+                language_project_config: LanguageProjectConfig::Typescript(TypescriptProject::new(
+                    name,
+                )),
+            },
         }
     }
 
     pub fn load(directory: PathBuf) -> Result<Project, ConfigError> {
-        let project_config = load_project_file(directory.clone())?;
+        let mut project_file = directory.clone();
+        project_file.push(PROJECT_CONFIG_FILE);
+
+        let mut project_config: Project = Config::builder()
+            .add_source(File::from(project_file).required(true))
+            .build()?
+            .try_deserialize()?;
+
+        project_config.project_location = directory.clone();
 
         match project_config.language {
-            SupportedLanguages::Typescript => Ok(Project::Typescript(TypescriptProject::load(
-                project_config,
-                directory,
-            )?)),
+            SupportedLanguages::Typescript => {
+                let ts_config = TypescriptProject::load(directory)?;
+                project_config.language_project_config =
+                    LanguageProjectConfig::Typescript(ts_config);
+                Ok(project_config)
+            }
         }
     }
 
@@ -89,67 +121,16 @@ impl Project {
         Project::load(current_dir)
     }
 
-    pub fn name(&self) -> &String {
-        match self {
-            Project::Typescript(p) => &p.name,
-        }
-    }
-
-    pub fn language(&self) -> SupportedLanguages {
-        match self {
-            Project::Typescript(_) => SupportedLanguages::Typescript,
-        }
-    }
-
-    pub fn project_location(&self) -> &PathBuf {
-        match self {
-            Project::Typescript(p) => &p.project_location,
-        }
-    }
-
-    pub fn redpanda_config(&self) -> &RedpandaConfig {
-        match self {
-            Project::Typescript(p) => &p.redpanda_config,
-        }
-    }
-
-    pub fn clickhouse_config(&self) -> &ClickhouseConfig {
-        match self {
-            Project::Typescript(p) => &p.clickhouse_config,
-        }
-    }
-
-    pub fn console_config(&self) -> &ConsoleConfig {
-        match self {
-            Project::Typescript(p) => &p.console_config,
-        }
-    }
-
-    pub fn http_server_config(&self) -> &LocalWebserverConfig {
-        match self {
-            Project::Typescript(p) => &p.http_server_config,
-        }
-    }
-
     pub fn write_to_disk(&self) -> Result<(), anyhow::Error> {
         // Write to disk what is common to all project types, the project.toml
-        let project_file = self.project_location().join(PROJECT_CONFIG_FILE);
-
-        let config = ProjectConfigFile {
-            language: self.language(),
-            redpanda: self.redpanda_config().clone(),
-            clickhouse: self.clickhouse_config().clone(),
-            http_server: self.http_server_config().clone(),
-            console: self.console_config().clone(),
-        };
-
-        let toml_project = toml::to_string(&config)?;
+        let project_file = self.project_location.join(PROJECT_CONFIG_FILE);
+        let toml_project = toml::to_string(&self)?;
 
         std::fs::write(project_file, toml_project)?;
 
         // Write language specific files to disk
-        match self {
-            Project::Typescript(p) => p.write_to_disk(),
+        match &self.language_project_config {
+            LanguageProjectConfig::Typescript(p) => p.write_to_disk(self.project_location.clone()),
         }
     }
 
@@ -180,7 +161,7 @@ impl Project {
     }
 
     pub fn app_dir(&self) -> PathBuf {
-        let mut app_dir = self.project_location().clone();
+        let mut app_dir = self.project_location.clone();
         app_dir.push(APP_DIR);
 
         debug!("App dir: {:?}", app_dir);
@@ -198,7 +179,7 @@ impl Project {
     // This is a Result of io::Error because the caller
     // can be returning a Result of io::Error or a Routine Failure
     pub fn internal_dir(&self) -> std::io::Result<PathBuf> {
-        let mut internal_dir = self.project_location().clone();
+        let mut internal_dir = self.project_location.clone();
         internal_dir.push(CLI_PROJECT_INTERNAL_DIR);
 
         if !internal_dir.is_dir() {
@@ -221,15 +202,4 @@ impl Project {
 
         Ok(internal_dir)
     }
-}
-
-fn load_project_file(directory: PathBuf) -> Result<ProjectConfigFile, ConfigError> {
-    let mut project_file = directory.clone();
-    project_file.push(PROJECT_CONFIG_FILE);
-
-    let s = Config::builder()
-        .add_source(File::from(project_file).required(true))
-        .build()?;
-
-    s.try_deserialize()
 }

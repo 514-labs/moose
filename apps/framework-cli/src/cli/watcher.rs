@@ -61,7 +61,7 @@ async fn process_event(
                         .await
                     } else {
                         remove_table_and_topics_from_schema_file_path(
-                            project.name(),
+                            &project.name(),
                             &route,
                             &mut route_table,
                             configured_client,
@@ -135,8 +135,8 @@ async fn watch(
     project: Arc<Project>,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
 ) -> Result<(), Error> {
-    let configured_client = olap::clickhouse::create_client(project.clickhouse_config().clone());
-    let configured_producer = redpanda::create_producer(project.redpanda_config().clone());
+    let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
+    let configured_producer = redpanda::create_producer(project.redpanda_config.clone());
 
     let (tx, rx) = std::sync::mpsc::channel();
 

@@ -17,11 +17,11 @@ pub fn is_git_repo(dir_path: &Path) -> Result<bool, Error> {
 }
 
 pub fn create_init_commit(project: Arc<Project>, dir_path: &Path) {
-    let mut git_ignore_file = project.project_location().clone();
+    let mut git_ignore_file = project.project_location.clone();
     git_ignore_file.push(GITIGNORE);
 
     let mut git_ignore_entries = vec![CLI_USER_DIRECTORY];
-    git_ignore_entries.append(&mut match project.language() {
+    git_ignore_entries.append(&mut match project.language {
         SupportedLanguages::Typescript => vec!["node_modules", "dist", "coverage"],
     });
     let mut git_ignore = git_ignore_entries.join("\n");

@@ -241,7 +241,7 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
-    let server_config = project.http_server_config();
+    let server_config = project.http_server_config.clone();
 
     let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     let file_watcher = FileWatcher::new();
@@ -259,8 +259,8 @@ async fn initialize_project_state(
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> anyhow::Result<()> {
-    let configured_client = olap::clickhouse::create_client(project.clickhouse_config().clone());
-    let producer = redpanda::create_producer(project.redpanda_config().clone());
+    let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
+    let producer = redpanda::create_producer(project.redpanda_config.clone());
 
     let schema_dir = project.schemas_dir();
     info!("Starting schema directory crawl...");

@@ -174,7 +174,7 @@ pub(crate) fn create_language_objects(
 
     let send_func = SendFunction::new(
         fo.ts_interface.clone(),
-        project.http_server_config().url(),
+        project.http_server_config.url(),
         ingest_route.to_str().unwrap().to_string(),
     );
     let send_func_code = send_func.create_code().map_err(|e| {
@@ -284,13 +284,13 @@ pub async fn process_objects(
             schema_file_path,
             fo.table.name.clone(),
         );
-        stream::redpanda::create_topic_from_name(project.name(), fo.topic.clone())?;
+        stream::redpanda::create_topic_from_name(&project.name(), fo.topic.clone())?;
 
         debug!("Creating table & view: {:?}", fo.table.name);
 
         let view_name = format!("{}_trigger", fo.table.name);
 
-        create_or_replace_tables(project.name(), &fo, configured_client).await?;
+        create_or_replace_tables(&project.name(), &fo, configured_client).await?;
         create_or_replace_kafka_trigger(&fo, view_name.clone(), configured_client).await?;
 
         debug!("Table created: {:?}", fo.table.name);

@@ -33,10 +33,10 @@ impl Default for TypescriptProject {
 
 impl TypescriptProject {
     pub fn new(name: String) -> Self {
-        let mut ts_project = TypescriptProject::default();
-        ts_project.name = name;
-
-        ts_project
+        TypescriptProject {
+            name,
+            ..Default::default()
+        }
     }
 
     pub fn load(directory: PathBuf) -> Result<Self, ConfigError> {

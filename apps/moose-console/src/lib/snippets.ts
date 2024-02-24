@@ -62,10 +62,11 @@ export const clickhousePythonSnippet = (data: CliData, model: DataModel) => {
 import clickhouse_connect
 
 client = clickhouse_connect.get_client(
-    host=${data.project && data.project.clickhouse_config.host}
-    port=${data.project && data.project.clickhouse_config.host_port}
-    user=${data.project && data.project.clickhouse_config.user}
-    password=${data.project && data.project.clickhouse_config.password}
+    host=${data.project && JSON.stringify(data.project.clickhouse_config.host)}
+    port=${data.project && JSON.stringify(data.project.clickhouse_config.host_port)}
+    user=${data.project && JSON.stringify(data.project.clickhouse_config.user)}
+    password=${data.project && JSON.stringify(data.project.clickhouse_config.password)}
+    database=${JSON.stringify(view.database)}
 )
 
 query_str = "SELECT * FROM ${view.name} LIMIT 10"
@@ -84,9 +85,9 @@ import { createClient } from "@clickhouse/client-web"
 
 const client = createClient({
     host: "http://${data.project && data.project.clickhouse_config.host}:${data.project && data.project.clickhouse_config.host_port}",
-    username: "${data.project && data.project.clickhouse_config.user}",
-    password: "${data.project && data.project.clickhouse_config.password}",
-    database: "${view.database}",
+    username: ${data.project && JSON.stringify(data.project.clickhouse_config.user)},
+    password: ${data.project && JSON.stringify(data.project.clickhouse_config.password)},
+    database: ${JSON.stringify(view.database)},
 });
 
 const getResults = async () => {

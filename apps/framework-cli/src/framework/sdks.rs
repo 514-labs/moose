@@ -1,4 +1,6 @@
+use std::sync::Arc;
 use std::{fs::File, io::Write, path::PathBuf};
+
 mod mapper;
 mod templates;
 
@@ -41,9 +43,9 @@ impl TypescriptPackage {
         Self { name }
     }
 
-    pub fn from_project(project: &Project) -> Self {
+    pub fn from_project(project: Arc<Project>) -> Self {
         Self {
-            name: format!("{}-sdk", project.name.clone()),
+            name: format!("{}-sdk", project.name().clone()),
         }
     }
 }
@@ -54,7 +56,7 @@ fn write_config_to_file(path: PathBuf, code: String) -> Result<(), std::io::Erro
 }
 
 pub fn generate_ts_sdk(
-    project: &Project,
+    project: Arc<Project>,
     ts_objects: Vec<TypescriptObjects>,
 ) -> Result<PathBuf, std::io::Error> {
     //! Generates a Typescript SDK for the given project and returns the path where the SDK was generated.

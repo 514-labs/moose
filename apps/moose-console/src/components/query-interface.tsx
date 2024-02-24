@@ -6,7 +6,7 @@ import {
   ResizableHandle,
 } from "./ui/resizable";
 import { Textarea } from "./ui/textarea";
-import { Table } from "app/db";
+import { Project, Table } from "app/db";
 import { Button } from "./ui/button";
 import {
   Dispatch,
@@ -16,28 +16,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { createClient } from "@clickhouse/client-web";
+import { getClient } from "../lib/clickhouse";
 import { PreviewTable } from "./preview-table";
 import { Badge } from "./ui/badge";
 import { Card, CardContent } from "./ui/card";
-
-function getClient() {
-  const CLICKHOUSE_HOST = process.env.CLICKHOUSE_HOST || "localhost";
-  // Environment variables are always strings
-  const CLICKHOUSE_PORT = process.env.CLICKHOUSE_PORT || "18123";
-  const CLICKHOUSE_USERNAME = process.env.CLICKHOUSE_USERNAME || "panda";
-  const CLICKHOUSE_PASSWORD = process.env.CLICKHOUSE_PASSWORD || "pandapass";
-  const CLICKHOUSE_DB = "default";
-
-  const client = createClient({
-    host: `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-    username: CLICKHOUSE_USERNAME,
-    password: CLICKHOUSE_PASSWORD,
-    database: CLICKHOUSE_DB,
-  });
-
-  return client;
-}
 
 const sqlKeyWords = [
   "SELECT",
@@ -149,9 +131,7 @@ const sqlKeyWords = [
   "SQL",
 ];
 
-async function runQuery(queryString: string): Promise<any> {
-  const client = getClient();
-
+async function runQuery(client, queryString: string): Promise<any> {
   const resultSet = await client.query({
     query: queryString,
     format: "JSONEachRow",
@@ -163,6 +143,7 @@ async function runQuery(queryString: string): Promise<any> {
 interface QueryInterfaceProps {
   table: Table;
   related: Table[];
+  project: Project;
 }
 
 const insertSomeText = (
@@ -184,7 +165,10 @@ const insertSomeText = (
 export default function QueryInterface({
   table,
   related,
+  project,
 }: QueryInterfaceProps) {
+  const client = getClient(project);
+
   // Create a ref to the textarea
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const tables = related
@@ -200,13 +184,13 @@ export default function QueryInterface({
 
   useEffect(() => {
     (async () => {
-      const data = await runQuery(value);
+      const data = await runQuery(client, value);
       setResults(data);
     })();
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-        runQuery(value).then((results) => {
+        runQuery(client, value).then((results) => {
           e.preventDefault();
           setResults(results);
         });
@@ -350,7 +334,7 @@ export default function QueryInterface({
                   <Button
                     variant="default"
                     onClick={async () => {
-                      const results = await runQuery(value);
+                      const results = await runQuery(client, value);
                       setResults(results);
                     }}
                   >

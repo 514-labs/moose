@@ -8,27 +8,29 @@ mod routines;
 mod settings;
 mod watcher;
 
-use self::settings::setup_user_directory;
-use log::{debug, info};
+use std::path::Path;
+use std::process::exit;
+use std::sync::Arc;
 
-use self::{
-    display::{Message, MessageType},
-    routines::{
-        clean::CleanProject, initialize::InitializeProject, start::RunLocalInfrastructure,
-        stop::StopLocalInfrastructure, validate::ValidateRedPandaCluster, RoutineController,
-        RunMode,
-    },
-};
-use crate::cli::settings::init_config_file;
-use crate::project::Project;
-use crate::utilities::git::is_git_repo;
 use clap::Parser;
 use commands::Commands;
 use home::home_dir;
+use log::{debug, info};
 use logger::setup_logging;
 use settings::{read_settings, Settings};
-use std::path::Path;
-use std::process::exit;
+
+use crate::cli::{
+    display::{Message, MessageType},
+    routines::{
+        initialize::InitializeProject, start::RunLocalInfrastructure,
+        validate::ValidateRedPandaCluster, RoutineController, RunMode,
+    },
+    settings::{init_config_file, setup_user_directory},
+};
+use crate::project::Project;
+use crate::utilities::git::is_git_repo;
+
+use self::routines::{clean::CleanProject, stop::StopLocalInfrastructure};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true))]
@@ -76,25 +78,29 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                     exit(1);
                 }
 
-                let project = Project::from_dir(dir_path, name.clone(), *language);
+                let project = Project::new(dir_path, name.clone(), *language);
+                let project_arc = Arc::new(project);
 
-                debug!("Project: {:?}", project);
+                debug!("Project: {:?}", project_arc);
 
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
 
-                controller.add_routine(Box::new(InitializeProject::new(run_mode, project.clone())));
+                controller.add_routine(Box::new(InitializeProject::new(
+                    run_mode,
+                    project_arc.clone(),
+                )));
 
                 controller.run_routines(run_mode);
 
-                project
-                    .write_to_file()
+                project_arc
+                    .write_to_disk()
                     .expect("Failed to write project to file");
 
                 let is_git_repo =
                     is_git_repo(dir_path).expect("Failed to check if directory is a git repo");
                 if !is_git_repo {
-                    crate::utilities::git::create_init_commit(&project, dir_path);
+                    crate::utilities::git::create_init_commit(project_arc, dir_path);
                     show_message!(
                         MessageType::Success,
                         Message::new("Created".to_string(), "Git Repository".to_string())
@@ -107,17 +113,20 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `moose init` to create a project");
 
+                let project_arc = Arc::new(project);
+
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
 
-                controller.add_routine(Box::new(RunLocalInfrastructure::new(project.clone())));
+                controller.add_routine(Box::new(RunLocalInfrastructure::new(project_arc.clone())));
 
-                controller
-                    .add_routine(Box::new(ValidateRedPandaCluster::new(project.name.clone())));
+                controller.add_routine(Box::new(ValidateRedPandaCluster::new(
+                    project_arc.name().clone(),
+                )));
 
                 controller.run_routines(run_mode);
 
-                routines::start_development_mode(&project).await.unwrap();
+                routines::start_development_mode(project_arc).await.unwrap();
             }
             Commands::Update {} => {
                 // This command may not be needed if we have incredible automation
@@ -128,16 +137,19 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let run_mode = RunMode::Explicit {};
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `moose init` to create a project");
-                controller.add_routine(Box::new(StopLocalInfrastructure::new(project)));
+                let project_arc = Arc::new(project);
+
+                controller.add_routine(Box::new(StopLocalInfrastructure::new(project_arc)));
                 controller.run_routines(run_mode);
             }
             Commands::Clean {} => {
                 let run_mode = RunMode::Explicit {};
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `moose init` to create a project");
+                let project_arc = Arc::new(project);
 
                 let mut controller = RoutineController::new();
-                controller.add_routine(Box::new(CleanProject::new(project, run_mode)));
+                controller.add_routine(Box::new(CleanProject::new(project_arc, run_mode)));
                 controller.run_routines(run_mode);
             }
         }

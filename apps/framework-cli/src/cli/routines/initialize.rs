@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use std::{fs, path::PathBuf};
 
 use crate::{
@@ -11,10 +12,10 @@ use super::{Routine, RoutineFailure, RoutineSuccess, RunMode};
 
 pub struct InitializeProject {
     run_mode: RunMode,
-    project: Project,
+    project: Arc<Project>,
 }
 impl InitializeProject {
-    pub fn new(run_mode: RunMode, project: Project) -> Self {
+    pub fn new(run_mode: RunMode, project: Arc<Project>) -> Self {
         Self { run_mode, project }
     }
 }
@@ -103,10 +104,10 @@ impl Routine for ValidateMountVolumes {
 
 pub struct CreateInternalTempDirectoryTree {
     run_mode: RunMode,
-    project: Project,
+    project: Arc<Project>,
 }
 impl CreateInternalTempDirectoryTree {
-    pub fn new(run_mode: RunMode, project: Project) -> Self {
+    pub fn new(run_mode: RunMode, project: Arc<Project>) -> Self {
         Self { run_mode, project }
     }
 }
@@ -135,11 +136,11 @@ impl Routine for CreateInternalTempDirectoryTree {
 
 pub struct CreateTempDataVolumes {
     run_mode: RunMode,
-    project: Project,
+    project: Arc<Project>,
 }
 
 impl CreateTempDataVolumes {
-    fn new(run_mode: RunMode, project: Project) -> Self {
+    fn new(run_mode: RunMode, project: Arc<Project>) -> Self {
         Self { run_mode, project }
     }
 }
@@ -256,11 +257,11 @@ impl Routine for CreateClickhouseMountVolume {
 }
 
 pub struct CreateModelsVolume {
-    project: Project,
+    project: Arc<Project>,
 }
 
 impl CreateModelsVolume {
-    fn new(project: Project) -> Self {
+    fn new(project: Arc<Project>) -> Self {
         Self { project }
     }
 }
@@ -295,11 +296,11 @@ impl Routine for CreateModelsVolume {
 }
 
 pub struct CreateDockerComposeFile {
-    project: Project,
+    project: Arc<Project>,
 }
 
 impl CreateDockerComposeFile {
-    pub fn new(project: Project) -> Self {
+    pub fn new(project: Arc<Project>) -> Self {
         Self { project }
     }
 }
@@ -325,11 +326,11 @@ impl Routine for CreateDockerComposeFile {
 }
 
 pub struct CreateBaseAppFiles {
-    project: Project,
+    project: Arc<Project>,
 }
 
 impl CreateBaseAppFiles {
-    pub fn new(project: Project) -> Self {
+    pub fn new(project: Arc<Project>) -> Self {
         Self { project }
     }
 }

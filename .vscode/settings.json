@@ -1,8 +1,4 @@
-{"rust-analyzer.linkedProjects": [
-    "apps/moose-cli/Cargo.toml",
-    "./apps/moose-cli/Cargo.toml",
-    "./apps/moose-cli/Cargo.toml",
-    "./apps/moose-cli/Cargo.toml"
-  ],
+{
+  "rust-analyzer.linkedProjects": ["apps/framework-cli/Cargo.toml"],
   "rust-analyzer.showUnlinkedFileNotification": false
 }

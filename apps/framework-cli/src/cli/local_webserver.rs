@@ -146,7 +146,6 @@ async fn ingest_route(
             }
 
             let topic_name = &route_meta.table_name;
-            println!("Topic Name: {:?}", topic_name);
 
             let res = configured_producer
                 .producer
@@ -215,7 +214,6 @@ async fn router(
     );
 
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
-    println!("route table: {:?}", route_table.read().await);
     match (req.method(), &route_split[..]) {
         (&hyper::Method::POST, ["ingest", _]) => {
             ingest_route(

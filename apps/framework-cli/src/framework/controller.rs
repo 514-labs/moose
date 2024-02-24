@@ -103,17 +103,11 @@ pub fn get_all_version_syncs(
             if let Some(captures) =
                 VERSION_SYNC_REGEX.captures(entry.file_name().to_string_lossy().as_ref())
             {
-                println!("Captures: {:?}", captures);
                 let from_table_name = captures.get(1).unwrap().as_str();
                 let to_table_name = captures.get(4).map_or(from_table_name, |m| m.as_str());
 
                 let from_version = captures.get(2).unwrap().as_str().replace('_', ".");
                 let to_version = captures.get(5).unwrap().as_str().replace('_', ".");
-
-                println!(
-                    "From: {from_table_name:?} {:?}, To: {to_table_name:?} {:?}",
-                    from_version, to_version
-                );
 
                 let from_version_models = framework_object_versions
                     .previous_version_models
@@ -125,8 +119,6 @@ pub fn get_all_version_syncs(
                         .previous_version_models
                         .get(&to_version)
                 };
-
-                println!("framework_object_versions: {:?}", framework_object_versions);
 
                 match (from_version_models, to_version_models) {
                     (Some(from_version_models), Some(to_version_models)) => {
@@ -251,8 +243,6 @@ pub async fn create_or_replace_version_sync(
     let drop_trigger_query = version_sync.drop_trigger_query();
     let create_function_query = version_sync.create_function_query();
     let create_trigger_query = version_sync.create_trigger_query();
-
-    println!("create_trigger_query: {:?}", create_trigger_query);
 
     olap::clickhouse::run_query(&drop_function_query, configured_client).await?;
     olap::clickhouse::run_query(&drop_trigger_query, configured_client).await?;

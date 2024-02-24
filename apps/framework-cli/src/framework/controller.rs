@@ -469,8 +469,8 @@ mod tests {
         let schema_dir = PathBuf::from(manifest_location)
             .join("tests/test_project")
             .join(SCHEMAS_DIR);
-        let mut framework_objects = vec![];
-        let result = get_all_framework_objects(&mut framework_objects, &schema_dir);
+        let mut framework_objects = HashMap::new();
+        let result = get_all_framework_objects(&mut framework_objects, &schema_dir, "0.0");
         assert!(result.is_ok());
         assert_eq!(framework_objects.len(), 2);
     }

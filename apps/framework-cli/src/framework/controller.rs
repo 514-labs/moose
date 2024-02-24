@@ -94,7 +94,7 @@ pub fn get_all_version_syncs(
     project: &Project,
     framework_object_versions: &FrameworkObjectVersions,
 ) -> anyhow::Result<Vec<VersionSync>> {
-    let flows_dir = project.app_dir().join("flows");
+    let flows_dir = project.flows_dir();
     let mut version_syncs = vec![];
     for entry in std::fs::read_dir(flows_dir)? {
         let entry = entry?;

@@ -220,6 +220,7 @@ async fn router(
         (&hyper::Method::POST, ["ingest", _]) => {
             ingest_route(
                 req,
+                // without explicit version, go to current project version
                 route.join(current_version),
                 configured_producer,
                 route_table,

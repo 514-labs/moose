@@ -318,30 +318,3 @@ pub fn ast_mapper(ast: SchemaAst) -> Result<Vec<DataModel>, ParsingError> {
         .map(|(_id, t)| top_to_schema(t))
         .collect::<Result<Vec<DataModel>, ParsingError>>()
 }
-//
-// pub async fn process_schema_file(
-//     schema_file_path: &Path,
-//     project: Arc<Project>,
-//     configured_client: &ConfiguredDBClient,
-//     route_table: &mut HashMap<PathBuf, RouteMeta>,
-// ) -> anyhow::Result<()> {
-//     let framework_objects = get_framework_objects_from_schema_file(schema_file_path)?;
-//     let mut compilable_objects: Vec<TypescriptObjects> = Vec::new();
-//     process_objects(
-//         framework_objects,
-//         project.clone(),
-//         schema_file_path,
-//         configured_client,
-//         &mut compilable_objects,
-//         route_table,
-//     )
-//     .await?;
-//     debug!("All objects created, generating sdk...");
-//     let sdk_location = generate_ts_sdk(project, compilable_objects)?;
-//
-//     let package_manager = package_managers::PackageManager::Npm;
-//     package_managers::install_packages(&sdk_location, &package_manager)?;
-//     package_managers::run_build(&sdk_location, &package_manager)?;
-//     package_managers::link_sdk(&sdk_location, None, &package_manager)?;
-//     Ok(())
-// }

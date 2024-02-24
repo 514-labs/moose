@@ -91,10 +91,12 @@ use crate::framework::controller::{
     create_or_replace_version_sync, get_all_framework_objects, get_all_version_syncs,
     process_objects, FrameworkObject, FrameworkObjectVersions, RouteMeta, SchemaVersion,
 };
+use crate::framework::sdks::{generate_ts_sdk, TypescriptObjects};
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::olap;
 use crate::infrastructure::stream::redpanda;
 use crate::project::Project;
+use crate::utilities::package_managers;
 
 use super::display::with_spinner_async;
 use super::local_webserver::Webserver;
@@ -315,16 +317,25 @@ async fn initialize_project_state(
         let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
         get_all_framework_objects(&mut framework_objects, &schema_dir, project.version())?;
 
+        let mut compilable_objects: Vec<TypescriptObjects> = Vec::new();
+
         let result = process_objects(
             &framework_objects,
             project.clone(),
             &schema_dir,
             &configured_client,
-            &mut Vec::new(),
+            &mut compilable_objects,
             route_table,
             project.version(),
         )
         .await;
+
+        // TODO: add old versions to SDK
+        let sdk_location = generate_ts_sdk(project.clone(), compilable_objects)?;
+        let package_manager = package_managers::PackageManager::Npm;
+        package_managers::install_packages(&sdk_location, &package_manager)?;
+        package_managers::run_build(&sdk_location, &package_manager)?;
+        package_managers::link_sdk(&sdk_location, None, &package_manager)?;
 
         framework_object_versions.current_models = SchemaVersion {
             base_path: schema_dir.clone(),

@@ -70,7 +70,9 @@ export default function TableTabs({
   const model = getModelFromTable(table, cliData);
   const infra = getRelatedInfra(model, cliData, table);
   const associated_view = cliData.tables.find(
-    (view) => view.name === table.dependencies_table[0],
+    (view) =>
+      view.name === table.dependencies_table[0] ||
+      view.name === `${table.name}_trigger`,
   );
 
   const createTabQueryString = useCallback(

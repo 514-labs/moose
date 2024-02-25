@@ -11,8 +11,9 @@
 //! - Float
 //! - Decimal
 //! - DateTime
+//! - Enum
 //!
-//! We only implemented part of the prisma schema parsing. We only support models and fields. We don't support enums, relations, or anything else for the moment
+//! We only implemented part of the prisma schema parsing. We only support models, enums and fields. We don't support relations, or anything else for the moment
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -23,10 +24,7 @@ use std::{
 
 use crate::framework::controller::FrameworkObject;
 use diagnostics::Diagnostics;
-use config::Value;
-use diagnostics::Diagnostics;
 
-use log::debug;
 use schema_ast::ast::{Enum, Model};
 use schema_ast::{
     ast::{Attribute, Field, SchemaAst, Top, WithName},
@@ -115,12 +113,9 @@ pub fn parse_schema_file<O>(
 
     let ast = parse_schema(&schema_file, &mut diagnostics);
 
-    let file_objects = ast_mapper(ast)?
-        .into_iter()
-        .map(|data_model| mapper(data_model, path, version))
-        .collect()?;
+    let file_objects = ast_mapper(ast)?;
 
-    Ok(file_objects.models.into_iter().map(mapper).collect())
+    Ok(file_objects.models.into_iter().map(|data_model| mapper(data_model, path, version)).collect())
 }
 
 pub struct FileObjects {
@@ -141,7 +136,7 @@ pub struct DataModel {
     pub name: String,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize,Eq, PartialEq)]
 pub struct ValueEnum {
     pub name: String,
     pub values: Vec<String>,
@@ -327,28 +322,6 @@ fn field_to_column(f: &Field, enums: &Vec<ValueEnum>) -> Result<Column, ParsingE
 
 fn top_to_datamodel(m: &Model, enums: &Vec<ValueEnum>) -> Result<DataModel, ParsingError> {
     let schema_name = m.name().to_string();
-    let mut version = 1;
-
-    let attributes = m.attributes();
-
-    // Get the value of the version attribute in the ugliest way possible
-    let version_attribute = attributes.iter().find(|a| a.name() == "version");
-
-    if let Some(attribute) = version_attribute {
-        version = attribute
-            .arguments
-            .arguments
-            .first()
-            .map(|arg| {
-                arg.value
-                    .as_numeric_value()
-                    .unwrap()
-                    .0
-                    .parse::<i8>()
-                    .unwrap()
-            })
-            .unwrap_or(version);
-    }
 
     let columns: Result<Vec<Column>, ParsingError> = m
         .iter_fields()
@@ -359,7 +332,6 @@ fn top_to_datamodel(m: &Model, enums: &Vec<ValueEnum>) -> Result<DataModel, Pars
         db_name: "local".to_string(),
         columns: columns?,
         name: schema_name,
-        version,
     })
 }
 
@@ -398,46 +370,3 @@ pub fn ast_mapper(ast: SchemaAst) -> Result<FileObjects, ParsingError> {
     Ok(FileObjects::new(parsed_models, enums))
 }
 
-pub async fn process_schema_file(
-    schema_file_path: &Path,
-    project: Arc<Project>,
-    configured_client: &ConfiguredDBClient,
-    route_table: &mut HashMap<PathBuf, RouteMeta>,
-) -> anyhow::Result<()> {
-    let framework_objects = get_framework_objects_from_schema_file(schema_file_path)?;
-    let mut compilable_objects: Vec<TypescriptObjects> = Vec::new();
-    process_objects(
-        framework_objects,
-        project.clone(),
-        schema_file_path,
-        configured_client,
-        &mut compilable_objects,
-        route_table,
-    )
-    .await?;
-    debug!("All objects created, generating sdk...");
-    let sdk_location = generate_ts_sdk(project, compilable_objects)?;
-
-    let package_manager = package_managers::PackageManager::Npm;
-    package_managers::install_packages(&sdk_location, &package_manager)?;
-    package_managers::run_build(&sdk_location, &package_manager)?;
-    package_managers::link_sdk(&sdk_location, None, &package_manager)?;
-    Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-
-    use crate::framework::schema::parse_schema_file;
-
-    #[test]
-    fn test_parse_schema_file() {
-        let current_dir = std::env::current_dir().unwrap();
-
-        let test_file = current_dir.join("tests/psl/simple.prisma");
-
-        let result = parse_schema_file(&test_file, |x| x);
-        println!("{:?}", result);
-        assert!(result.is_ok());
-    }
-}

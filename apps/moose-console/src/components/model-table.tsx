@@ -8,7 +8,7 @@ const processType = (type: string | object) => {
     return type["Enum"]["name"];
   }
   return JSON.stringify(type);
-}
+};
 
 export default function ModelTable({ datamodel }: { datamodel: DataModel }) {
   return (

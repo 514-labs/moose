@@ -295,7 +295,7 @@ impl FieldAttributes {
     }
 }
 
-fn is_enum_type(string_type: &str, enums: &Vec<DataEnum>) -> bool {
+fn is_enum_type(string_type: &str, enums: &[DataEnum]) -> bool {
     enums.iter().any(|e| e.name == string_type)
 }
 
@@ -358,9 +358,7 @@ pub fn ast_mapper(ast: SchemaAst) -> Result<FileObjects, ParsingError> {
             enums.push(top_to_enum(e));
         }
         _ => {
-            ParsingError::UnsupportedDataTypeError {
-                type_name: "we currently only support models and enums".to_string(),
-            };
+            "we currently only support models and enums".to_string();
         }
     });
 

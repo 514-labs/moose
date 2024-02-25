@@ -1,7 +1,7 @@
 import { DataModel } from "app/db";
 import { Separator } from "./ui/separator";
 
-const processType = (type: string | object) =>  {
+const processType = (type: string | object) => {
   if (typeof type === "string") {
     return type;
   } else if (typeof type === "object" && type["Enum"] !== undefined) {

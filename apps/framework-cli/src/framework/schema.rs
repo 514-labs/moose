@@ -120,11 +120,11 @@ pub fn parse_schema_file<O>(
 
 pub struct FileObjects {
     pub models: Vec<DataModel>,
-    pub enums: Vec<ValueEnum>,
+    pub enums: Vec<DataEnum>,
 }
 
 impl FileObjects {
-    pub fn new(models: Vec<DataModel>, enums: Vec<ValueEnum>) -> FileObjects {
+    pub fn new(models: Vec<DataModel>, enums: Vec<DataEnum>) -> FileObjects {
         FileObjects { models, enums }
     }
 }
@@ -137,7 +137,9 @@ pub struct DataModel {
 }
 
 #[derive(Debug, Clone, Serialize,Eq, PartialEq)]
-pub struct ValueEnum {
+/// An internal framework representation for an enum.
+/// Avoiding the use of the `Enum` keyword to avoid conflicts with Prisma's Enum type
+pub struct DataEnum {
     pub name: String,
     pub values: Vec<String>,
 }
@@ -232,7 +234,7 @@ pub enum ColumnType {
     Float,
     Decimal,
     DateTime,
-    Enum(ValueEnum),
+    Enum(DataEnum),
     Json,  // TODO: Eventually support for only views and tables (not topics)
     Bytes, // TODO: Explore if we ever need this type
     Unsupported,
@@ -293,11 +295,11 @@ impl FieldAttributes {
     }
 }
 
-fn is_enum_type(string_type: &str, enums: &Vec<ValueEnum>) -> bool {
+fn is_enum_type(string_type: &str, enums: &Vec<DataEnum>) -> bool {
     enums.iter().any(|e| e.name == string_type)
 }
 
-fn field_to_column(f: &Field, enums: &Vec<ValueEnum>) -> Result<Column, ParsingError> {
+fn field_to_column(f: &Field, enums: &Vec<DataEnum>) -> Result<Column, ParsingError> {
     let attributes = FieldAttributes::new(f.attributes.clone())?;
 
     match &f.field_type {
@@ -320,7 +322,7 @@ fn field_to_column(f: &Field, enums: &Vec<ValueEnum>) -> Result<Column, ParsingE
     }
 }
 
-fn top_to_datamodel(m: &Model, enums: &Vec<ValueEnum>) -> Result<DataModel, ParsingError> {
+fn top_to_datamodel(m: &Model, enums: &Vec<DataEnum>) -> Result<DataModel, ParsingError> {
     let schema_name = m.name().to_string();
 
     let columns: Result<Vec<Column>, ParsingError> = m
@@ -335,13 +337,13 @@ fn top_to_datamodel(m: &Model, enums: &Vec<ValueEnum>) -> Result<DataModel, Pars
     })
 }
 
-fn top_to_enum(e: &Enum) -> ValueEnum {
+fn top_to_enum(e: &Enum) -> DataEnum {
     let name = e.name().to_string();
     let values = e
         .iter_values()
         .map(|(_id, v)| v.name().to_string())
         .collect();
-    ValueEnum { name, values }
+    DataEnum { name, values }
 }
 
 pub fn ast_mapper(ast: SchemaAst) -> Result<FileObjects, ParsingError> {

@@ -62,10 +62,11 @@ export const clickhousePythonSnippet = (data: CliData, model: DataModel) => {
 import clickhouse_connect
 
 client = clickhouse_connect.get_client(
-    host=${data.project && data.project.clickhouse_config.host}
-    port=${data.project && data.project.clickhouse_config.host_port}
-    user=${data.project && data.project.clickhouse_config.user}
-    password=${data.project && data.project.clickhouse_config.password}
+    host=${data.project && JSON.stringify(data.project.clickhouse_config.host)}
+    port=${data.project && JSON.stringify(data.project.clickhouse_config.host_port)}
+    user=${data.project && JSON.stringify(data.project.clickhouse_config.user)}
+    password=${data.project && JSON.stringify(data.project.clickhouse_config.password)}
+    database=${JSON.stringify(view.database)}
 )
 
 query_str = "SELECT * FROM ${view.name} LIMIT 10"
@@ -84,18 +85,19 @@ import { createClient } from "@clickhouse/client-web"
 
 const client = createClient({
     host: "http://${data.project && data.project.clickhouse_config.host}:${data.project && data.project.clickhouse_config.host_port}",
-    username: ${data.project && data.project.clickhouse_config.user},
-    password: ${data.project && data.project.clickhouse_config.password},
-    database: ${view.database},
+    username: ${data.project && JSON.stringify(data.project.clickhouse_config.user)},
+    password: ${data.project && JSON.stringify(data.project.clickhouse_config.password)},
+    database: ${JSON.stringify(view.database)},
 });
 
-const resultSet = await client.query({
-    query: "SELECT * FROM ${view.name} LIMIT 10",
-    format: "JSONEachRow",
-});
+const getResults = async () => {
+    const resultSet = await client.query({
+        query: "SELECT * FROM ${view.name} LIMIT 10",
+        format: "JSONEachRow",
+    });
 
-console.log(resultSet.json());
-`;
+    return resultSet.json();
+};`;
 };
 
 export const curlSnippet = (data: CliData, model: DataModel) => {
@@ -112,10 +114,10 @@ export const bashSnippet = (data: CliData, model: DataModel) => {
   const curlCommand = curlSnippet(data, model);
 
   return `
-  #!/bin/bash
+#!/bin/bash
 
-  for i in {1..10}; do
-    ${curlCommand}
-  done
-  `;
+for i in {1..10}; do
+  ${curlCommand}
+done
+`;
 };

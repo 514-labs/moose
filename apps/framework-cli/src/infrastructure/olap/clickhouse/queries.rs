@@ -321,7 +321,14 @@ fn field_type_to_string(
         },
         ClickhouseColumnType::Decimal => Ok(field_type.to_string()),
         ClickhouseColumnType::DateTime => Ok(field_type.to_string()),
-        ClickhouseColumnType::Enum(x) => Ok(format!("Enum({})", x.values.join(", "))),
+        ClickhouseColumnType::Enum(x) => Ok(format!(
+            "Enum({})",
+            x.values
+                .iter()
+                .map(|x| format!("'{}'", x))
+                .collect::<Vec<_>>()
+                .join(", ")
+        )),
         _ => Err(UnsupportedDataTypeError {
             type_name: field_type.to_string(),
         }),
@@ -351,5 +358,46 @@ fn clickhouse_column_to_create_table_field_context(
                 "NULL".to_string()
             },
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::{
+        framework::schema::parse_schema_file,
+        infrastructure::olap::clickhouse::mapper::std_table_to_clickhouse_table,
+    };
+
+    #[test]
+    fn test_create_query_from_prisma_model() {
+        let current_dir = std::env::current_dir().unwrap();
+
+        let test_file = current_dir.join("tests/psl/simple.prisma");
+
+        let result = parse_schema_file(&test_file, |x| x).unwrap();
+
+        let dm = result[0].to_table().clone();
+
+        let ch_table = std_table_to_clickhouse_table(dm);
+
+        let query = ch_table.create_data_table_query().unwrap();
+
+        let expected = r#"
+CREATE TABLE IF NOT EXISTS local.User 
+(
+id Int64 NOT NULL,
+email String NOT NULL,
+name String NULL,
+role Enum('USER', 'ADMIN') NOT NULL,
+
+
+PRIMARY KEY (id)
+
+)
+ENGINE = MergeTree;
+"#;
+
+        assert_eq!(query, expected);
     }
 }

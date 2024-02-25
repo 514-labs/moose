@@ -1,6 +1,15 @@
 import { DataModel } from "app/db";
 import { Separator } from "./ui/separator";
 
+const processType = (type: string | object) =>  {
+  if (typeof type === "string") {
+    return type;
+  } else if (typeof type === "object" && type["Enum"] !== undefined) {
+    return type["Enum"]["name"];
+  }
+  return JSON.stringify(type);
+}
+
 export default function ModelTable({ datamodel }: { datamodel: DataModel }) {
   return (
     <div>
@@ -22,19 +31,15 @@ export default function ModelTable({ datamodel }: { datamodel: DataModel }) {
                 {field.name}
               </div>
               <div className="grow basis-1 text-muted-foreground">
-                {" "}
-                {field.data_type}
+                {processType(field.data_type)}
               </div>
               <div className="grow basis-1 text-muted-foreground">
-                {" "}
                 {field.arity}
               </div>
               <div className="grow basis-1 text-muted-foreground">
-                {" "}
                 {`${field.unique}`}
               </div>
               <div className="grow basis-1 text-muted-foreground">
-                {" "}
                 {`${field.primary_key}`}
               </div>
             </div>

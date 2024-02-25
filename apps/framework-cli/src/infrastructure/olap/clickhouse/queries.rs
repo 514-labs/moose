@@ -321,6 +321,7 @@ fn field_type_to_string(
         },
         ClickhouseColumnType::Decimal => Ok(field_type.to_string()),
         ClickhouseColumnType::DateTime => Ok(field_type.to_string()),
+        ClickhouseColumnType::Enum(x) => Ok(format!("Enum({})", x.values.join(", "))),
         _ => Err(UnsupportedDataTypeError {
             type_name: field_type.to_string(),
         }),

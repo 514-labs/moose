@@ -2,4 +2,10 @@ model User {
   id    Int     @id
   email String
   name  String?
+  role  Role
+}
+
+enum Role {
+  USER
+  ADMIN
 }

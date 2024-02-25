@@ -23,6 +23,11 @@ use std::{
 
 use crate::framework::controller::FrameworkObject;
 use diagnostics::Diagnostics;
+use config::Value;
+use diagnostics::Diagnostics;
+
+use log::debug;
+use schema_ast::ast::{Enum, Model};
 use schema_ast::{
     ast::{Attribute, Field, SchemaAst, Top, WithName},
     parse_schema,
@@ -110,10 +115,23 @@ pub fn parse_schema_file<O>(
 
     let ast = parse_schema(&schema_file, &mut diagnostics);
 
-    Ok(ast_mapper(ast)?
+    let file_objects = ast_mapper(ast)?
         .into_iter()
         .map(|data_model| mapper(data_model, path, version))
-        .collect())
+        .collect()?;
+
+    Ok(file_objects.models.into_iter().map(mapper).collect())
+}
+
+pub struct FileObjects {
+    pub models: Vec<DataModel>,
+    pub enums: Vec<ValueEnum>,
+}
+
+impl FileObjects {
+    pub fn new(models: Vec<DataModel>, enums: Vec<ValueEnum>) -> FileObjects {
+        FileObjects { models, enums }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Eq, PartialEq)]
@@ -121,6 +139,12 @@ pub struct DataModel {
     pub db_name: String,
     pub columns: Vec<Column>,
     pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct ValueEnum {
+    pub name: String,
+    pub values: Vec<String>,
 }
 
 impl DataModel {
@@ -213,6 +237,7 @@ pub enum ColumnType {
     Float,
     Decimal,
     DateTime,
+    Enum(ValueEnum),
     Json,  // TODO: Eventually support for only views and tables (not topics)
     Bytes, // TODO: Explore if we ever need this type
     Unsupported,
@@ -273,13 +298,20 @@ impl FieldAttributes {
     }
 }
 
-fn field_to_column(f: &Field) -> Result<Column, ParsingError> {
+fn is_enum_type(string_type: &str, enums: &Vec<ValueEnum>) -> bool {
+    enums.iter().any(|e| e.name == string_type)
+}
+
+fn field_to_column(f: &Field, enums: &Vec<ValueEnum>) -> Result<Column, ParsingError> {
     let attributes = FieldAttributes::new(f.attributes.clone())?;
 
     match &f.field_type {
         schema_ast::ast::FieldType::Supported(ft) => Ok(Column {
             name: f.name().to_string(),
-            data_type: map_column_string_type_to_column_type(ft.name.as_str()),
+            data_type: match is_enum_type(&ft.name, enums) {
+                true => ColumnType::Enum(enums.iter().find(|e| e.name == ft.name).unwrap().clone()),
+                false => map_column_string_type_to_column_type(&ft.name),
+            },
             arity: arity_mapper(f.arity),
             unique: attributes.unique,
             primary_key: attributes.primary_key,
@@ -293,28 +325,119 @@ fn field_to_column(f: &Field) -> Result<Column, ParsingError> {
     }
 }
 
-fn top_to_schema(t: &Top) -> Result<DataModel, ParsingError> {
-    match t {
-        Top::Model(m) => {
-            let schema_name = m.name().to_string();
+fn top_to_datamodel(m: &Model, enums: &Vec<ValueEnum>) -> Result<DataModel, ParsingError> {
+    let schema_name = m.name().to_string();
+    let mut version = 1;
 
-            let columns: Result<Vec<Column>, ParsingError> =
-                m.iter_fields().map(|(_id, f)| field_to_column(f)).collect();
+    let attributes = m.attributes();
 
-            Ok(DataModel {
-                db_name: "local".to_string(),
-                columns: columns?,
-                name: schema_name,
+    // Get the value of the version attribute in the ugliest way possible
+    let version_attribute = attributes.iter().find(|a| a.name() == "version");
+
+    if let Some(attribute) = version_attribute {
+        version = attribute
+            .arguments
+            .arguments
+            .first()
+            .map(|arg| {
+                arg.value
+                    .as_numeric_value()
+                    .unwrap()
+                    .0
+                    .parse::<i8>()
+                    .unwrap()
             })
-        }
-        _ => Err(ParsingError::UnsupportedDataTypeError {
-            type_name: "we don't currently support anything other than models".to_string(),
-        }),
+            .unwrap_or(version);
     }
+
+    let columns: Result<Vec<Column>, ParsingError> = m
+        .iter_fields()
+        .map(|(_id, f)| field_to_column(f, enums))
+        .collect();
+
+    Ok(DataModel {
+        db_name: "local".to_string(),
+        columns: columns?,
+        name: schema_name,
+        version,
+    })
 }
 
-pub fn ast_mapper(ast: SchemaAst) -> Result<Vec<DataModel>, ParsingError> {
-    ast.iter_tops()
-        .map(|(_id, t)| top_to_schema(t))
-        .collect::<Result<Vec<DataModel>, ParsingError>>()
+fn top_to_enum(e: &Enum) -> ValueEnum {
+    let name = e.name().to_string();
+    let values = e
+        .iter_values()
+        .map(|(_id, v)| v.name().to_string())
+        .collect();
+    ValueEnum { name, values }
+}
+
+pub fn ast_mapper(ast: SchemaAst) -> Result<FileObjects, ParsingError> {
+    let mut models = Vec::new();
+    let mut enums = Vec::new();
+
+    ast.iter_tops().for_each(|(_id, t)| match t {
+        Top::Model(m) => {
+            models.push(m);
+        }
+        Top::Enum(e) => {
+            enums.push(top_to_enum(e));
+        }
+        _ => {
+            ParsingError::UnsupportedDataTypeError {
+                type_name: "we currently only support models and enums".to_string(),
+            };
+        }
+    });
+
+    let parsed_models = models
+        .into_iter()
+        .map(|m| top_to_datamodel(m, &enums))
+        .collect::<Result<Vec<DataModel>, ParsingError>>()?;
+
+    Ok(FileObjects::new(parsed_models, enums))
+}
+
+pub async fn process_schema_file(
+    schema_file_path: &Path,
+    project: Arc<Project>,
+    configured_client: &ConfiguredDBClient,
+    route_table: &mut HashMap<PathBuf, RouteMeta>,
+) -> anyhow::Result<()> {
+    let framework_objects = get_framework_objects_from_schema_file(schema_file_path)?;
+    let mut compilable_objects: Vec<TypescriptObjects> = Vec::new();
+    process_objects(
+        framework_objects,
+        project.clone(),
+        schema_file_path,
+        configured_client,
+        &mut compilable_objects,
+        route_table,
+    )
+    .await?;
+    debug!("All objects created, generating sdk...");
+    let sdk_location = generate_ts_sdk(project, compilable_objects)?;
+
+    let package_manager = package_managers::PackageManager::Npm;
+    package_managers::install_packages(&sdk_location, &package_manager)?;
+    package_managers::run_build(&sdk_location, &package_manager)?;
+    package_managers::link_sdk(&sdk_location, None, &package_manager)?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::framework::schema::parse_schema_file;
+
+    #[test]
+    fn test_parse_schema_file() {
+        let current_dir = std::env::current_dir().unwrap();
+
+        let test_file = current_dir.join("tests/psl/simple.prisma");
+
+        let result = parse_schema_file(&test_file, |x| x);
+        println!("{:?}", result);
+        assert!(result.is_ok());
+    }
 }

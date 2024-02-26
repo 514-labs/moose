@@ -89,8 +89,8 @@ export default function IngestionPointTabs({
         <TabsTrigger className={cn(tabTriggerStyle)} value="overview">
           Overview
         </TabsTrigger>
-        <TabsTrigger className={cn(tabTriggerStyle)} value="usage">
-          Usage
+        <TabsTrigger className={cn(tabTriggerStyle)} value="setup">
+          Setup
         </TabsTrigger>
         <TabsTrigger className={cn(tabTriggerStyle)} value="logs">
           Logs
@@ -100,8 +100,8 @@ export default function IngestionPointTabs({
         <div className=" grid grid-cols-12 gap-4">
           <div className="col-span-12 xl:col-span-6">
             <Card className="rounded-3xl">
-              <CardHeader className="text-xl text-muted-foreground">
-                Fields
+              <CardHeader>
+                <CardTitle>Fields</CardTitle>
               </CardHeader>
               <CardContent>
                 <ModelTable datamodel={model} />
@@ -110,8 +110,8 @@ export default function IngestionPointTabs({
           </div>
           <div className="col-span-12 xl:col-span-6">
             <Card className="rounded-3xl">
-              <CardHeader className="text-xl text-muted-foreground">
-                Related Infra
+              <CardHeader>
+                <CardTitle>Related Infra</CardTitle>
               </CardHeader>
               <CardContent>
                 <RelatedInfraTable infra={infra} />
@@ -120,12 +120,12 @@ export default function IngestionPointTabs({
           </div>
         </div>
       </TabsContent>
-      <TabsContent className="h-full" value="usage">
+      <TabsContent className="h-full" value="setup">
         <div className=" grid grid-cols-12 gap-4">
           <div className="col-span-12 xl:col-span-6">
             <Card className="rounded-3xl">
-              <CardHeader className="text-xl  text-muted-foreground">
-                <CardTitle className=" font-normal">Data In</CardTitle>
+              <CardHeader>
+                <CardTitle>Data In</CardTitle>
                 <CardDescription>
                   When you create a data model, moose automatically spins up
                   infrastructure to ingest data. You can easily push data to
@@ -145,8 +145,8 @@ export default function IngestionPointTabs({
           </div>
           <div className="col-span-12 xl:col-span-6">
             <Card className="rounded-3xl">
-              <CardHeader className="text-xl  text-muted-foreground">
-                <CardTitle className=" font-normal">Data Out</CardTitle>
+              <CardHeader>
+                <CardTitle>Data Out</CardTitle>
                 <CardDescription>
                   When you create a data model, moose automatically spins up
                   infrastructure to ingest data. You can easily extract data
@@ -155,7 +155,6 @@ export default function IngestionPointTabs({
               </CardHeader>
               <CardContent>
                 <div>
-                  <h1 className="text-lg">Exploratory queries</h1>
                   <h2 className="py-2 flex flex-row items-center">
                     <div className="flex flex-col">
                       <span>Query the view directly</span>
@@ -165,7 +164,6 @@ export default function IngestionPointTabs({
                       </span>
                     </div>
                     <span className="grow" />
-
                     <Button
                       variant="outline"
                       onClick={() => {

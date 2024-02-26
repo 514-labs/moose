@@ -1,5 +1,9 @@
 "use client";
 
+// We will move this eventually
+// Views, IngestionPoints and Models have the exact same UI
+// the thinking is we will remove the Views and IngestionPoint pages
+
 import { CliData, Table } from "app/db";
 import CodeCard from "components/code-card";
 import IngestionInstructions from "components/ingestion-instructions";
@@ -50,7 +54,7 @@ function ClickhouseTableRestriction(view: Table) {
   );
 }
 
-export default function TableTabs({
+export default function ModelView({
   table,
   cliData,
   jsSnippet,
@@ -69,8 +73,8 @@ export default function TableTabs({
   );
   const model = getModelFromTable(table, cliData);
   const infra = getRelatedInfra(model, cliData, table);
-  const triggerTable = infra.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
+  const associated_view = cliData.tables.find(
+    (view) => view.name === table.dependencies_table[0],
   );
 
   const createTabQueryString = useCallback(
@@ -136,7 +140,7 @@ export default function TableTabs({
           <div className="col-span-12 xl:col-span-6">
             <Card className="rounded-3xl">
               <CardHeader>
-                <CardTitle className=" font-normal">Data In</CardTitle>
+                <CardTitle className="font-normal">Data In</CardTitle>
                 <CardDescription>
                   When you create a data model, moose automatically spins up
                   infrastructure to ingest data. You can easily push data to
@@ -220,12 +224,12 @@ export default function TableTabs({
         <div className="p-0 h-full">
           {tableIsView(table) ? (
             <QueryInterface
+              project={cliData.project}
               table={table}
               related={cliData.tables}
-              project={cliData.project}
             />
           ) : (
-            ClickhouseTableRestriction(triggerTable)
+            ClickhouseTableRestriction(associated_view)
           )}
         </div>
       </TabsContent>

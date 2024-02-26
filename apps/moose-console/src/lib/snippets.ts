@@ -14,7 +14,7 @@ function createColumnStubs(model: DataModel) {
       case "Date":
         return `"${field.name}": "2022-01-01"`;
       case "DateTime":
-        return `"${field.name}": "2019-08-20 10:18:56"`;
+        return `"${field.name}": "2024-02-20T23:14:57.788Z"`;
       case "array":
         return `"${field.name}": ["test-value${index}"]`;
       case "object":
@@ -26,7 +26,7 @@ export const jsSnippet = (data: CliData, model: DataModel) => {
   const ingestionPoint = getIngestionPointFromModel(model, data);
   const columns = createColumnStubs(model);
 
-  return `
+  return `\
 fetch('http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}', {
 method: 'POST',
     headers: {
@@ -42,7 +42,7 @@ method: 'POST',
 export const pythonSnippet = (data: CliData, model: DataModel) => {
   const ingestionPoint = getIngestionPointFromModel(model, data);
   const columns = createColumnStubs(model);
-  return `
+  return `\
 import requests
 
 url = 'http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}'
@@ -58,8 +58,9 @@ export const clickhousePythonSnippet = (data: CliData, model: DataModel) => {
     (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
   );
 
-  return `
+  return `\
 import clickhouse_connect
+import pandas
 
 client = clickhouse_connect.get_client(
     host=${data.project && JSON.stringify(data.project.clickhouse_config.host)}
@@ -70,8 +71,11 @@ client = clickhouse_connect.get_client(
 )
 
 query_str = "SELECT * FROM ${view.name} LIMIT 10"
-result = client.query(query_str)
-print(result.result_rows)
+
+# query_df returns a dataframe
+result = client.query_df(query_str)
+
+print(result)
 `;
 };
 
@@ -80,8 +84,7 @@ export const clickhouseJSSnippet = (data: CliData, model: DataModel) => {
     (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
   );
 
-  return `
-import { createClient } from "@clickhouse/client-web"
+  return `import { createClient } from "@clickhouse/client-web"
 
 const client = createClient({
     host: "http://${data.project && data.project.clickhouse_config.host}:${data.project && data.project.clickhouse_config.host_port}",
@@ -104,8 +107,8 @@ export const curlSnippet = (data: CliData, model: DataModel) => {
   const ingestionPoint = getIngestionPointFromModel(model, data);
   const columns = createColumnStubs(model);
 
-  return `
-  curl -X POST -H "Content-Type: application/json" -d '{${columns.join()}}' \\
+  return `\
+curl -X POST -H "Content-Type: application/json" -d '{${columns.join()}}' \\
   http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}
 `;
 };
@@ -113,7 +116,7 @@ export const curlSnippet = (data: CliData, model: DataModel) => {
 export const bashSnippet = (data: CliData, model: DataModel) => {
   const curlCommand = curlSnippet(data, model);
 
-  return `
+  return `\
 #!/bin/bash
 
 for i in {1..10}; do

@@ -223,7 +223,7 @@ export default function ModelView({
         {/* add query here */}
         <div className="p-0 h-full">
           {tableIsView(table) ? (
-            <QueryInterface table={table} related={cliData.tables} />
+            <QueryInterface project={cliData.project} table={table} related={cliData.tables} />
           ) : (
             ClickhouseTableRestriction(associated_view)
           )}

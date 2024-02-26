@@ -26,7 +26,7 @@ export const jsSnippet = (data: CliData, model: DataModel) => {
   const ingestionPoint = getIngestionPointFromModel(model, data);
   const columns = createColumnStubs(model);
 
-  return `
+  return `\
 fetch('http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}', {
 method: 'POST',
     headers: {
@@ -42,7 +42,8 @@ method: 'POST',
 export const pythonSnippet = (data: CliData, model: DataModel) => {
   const ingestionPoint = getIngestionPointFromModel(model, data);
   const columns = createColumnStubs(model);
-  return `import requests
+  return `\
+import requests
 
 url = 'http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}'
 data = [
@@ -57,7 +58,8 @@ export const clickhousePythonSnippet = (data: CliData, model: DataModel) => {
     (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
   );
 
-  return `import clickhouse_connect
+  return `\
+import clickhouse_connect
 import pandas
 
 client = clickhouse_connect.get_client(
@@ -105,8 +107,8 @@ export const curlSnippet = (data: CliData, model: DataModel) => {
   const ingestionPoint = getIngestionPointFromModel(model, data);
   const columns = createColumnStubs(model);
 
-  return `
-  curl -X POST -H "Content-Type: application/json" -d '{${columns.join()}}' \\
+  return `\
+curl -X POST -H "Content-Type: application/json" -d '{${columns.join()}}' \\
   http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}
 `;
 };
@@ -114,7 +116,7 @@ export const curlSnippet = (data: CliData, model: DataModel) => {
 export const bashSnippet = (data: CliData, model: DataModel) => {
   const curlCommand = curlSnippet(data, model);
 
-  return `
+  return `\
 #!/bin/bash
 
 for i in {1..10}; do

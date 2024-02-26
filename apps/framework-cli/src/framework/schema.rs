@@ -355,7 +355,7 @@ pub fn ast_mapper(ast: SchemaAst) -> Result<FileObjects, ParsingError> {
             models.push(m);
         }
         Top::Enum(e) => {
-            enums.push(top_to_enum(e));
+            enums.push(primsa_to_moose_enum(e));
         }
         _ => {
             "we currently only support models and enums".to_string();
@@ -364,7 +364,7 @@ pub fn ast_mapper(ast: SchemaAst) -> Result<FileObjects, ParsingError> {
 
     let parsed_models = models
         .into_iter()
-        .map(|m| top_to_datamodel(m, &enums))
+        .map(|m| prisma_model_to_datamodel(m, &enums))
         .collect::<Result<Vec<DataModel>, ParsingError>>()?;
 
     Ok(FileObjects::new(parsed_models, enums))

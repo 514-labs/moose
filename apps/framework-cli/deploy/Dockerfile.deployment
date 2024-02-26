@@ -1,0 +1,13 @@
+FROM debian:buster-slim
+
+# Set the working directory inside the container
+WORKDIR /app
+
+COPY ./app .
+COPY ./moose-cli .
+
+# Expose the port on which the application will listen
+EXPOSE 8000
+
+# Set the command to run the application
+CMD ["tail -f /dev/null"]

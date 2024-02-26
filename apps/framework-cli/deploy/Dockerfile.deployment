@@ -9,5 +9,12 @@ COPY ./moose-cli .
 # Expose the port on which the application will listen
 EXPOSE 8000
 
+# post install
+#RUN locale-gen en_US.UTF-8
+ENV LANG en_US.UTF-8
+ENV LANGUAGE en_US:en
+ENV LC_ALL en_US.UTF-8
+ENV TZ UTC
+
 # Set the command to run the application
 CMD ["tail -f /dev/null"]

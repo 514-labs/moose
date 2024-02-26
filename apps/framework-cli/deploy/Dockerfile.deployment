@@ -1,20 +1,31 @@
 FROM debian:buster-slim
 
-# Set the working directory inside the container
-WORKDIR /app
+# Update the package lists for upgrades for security purposes
+RUN apt-get update && apt-get upgrade -y
 
-COPY ./app .
+# Install tail and locales package
+RUN apt-get install -y locales coreutils
+
+# Generate locale files
+RUN locale-gen en_US.UTF-8
+
+# Set the working directory inside the container
+WORKDIR /application
+
+COPY ./app ./app
 COPY ./moose-cli .
 
 # Expose the port on which the application will listen
 EXPOSE 8000
 
 # post install
-#RUN locale-gen en_US.UTF-8
+RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
 ENV TZ UTC
 
+#RUN moose-cli init mymooseapp ts .
+
 # Set the command to run the application
-CMD ["tail -f /dev/null"]
+CMD ["tail", "-f", "/dev/null"]

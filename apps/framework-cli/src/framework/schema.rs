@@ -322,7 +322,7 @@ fn field_to_column(f: &Field, enums: &Vec<DataEnum>) -> Result<Column, ParsingEr
     }
 }
 
-fn top_to_datamodel(m: &Model, enums: &Vec<DataEnum>) -> Result<DataModel, ParsingError> {
+fn prisma_model_to_datamodel(m: &Model, enums: &Vec<DataEnum>) -> Result<DataModel, ParsingError> {
     let schema_name = m.name().to_string();
 
     let columns: Result<Vec<Column>, ParsingError> = m
@@ -337,7 +337,7 @@ fn top_to_datamodel(m: &Model, enums: &Vec<DataEnum>) -> Result<DataModel, Parsi
     })
 }
 
-fn top_to_enum(e: &Enum) -> DataEnum {
+fn primsa_to_moose_enum(e: &Enum) -> DataEnum {
     let name = e.name().to_string();
     let values = e
         .iter_values()

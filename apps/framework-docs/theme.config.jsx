@@ -3,6 +3,7 @@ export default {
     project: {
       link: 'https://github.com/514-labs/moose'
     },
+    docsRepositoryBase: 'https://github.com/514-labs/moose/tree/main/apps/framework-docs',
     useNextSeoProps() {
         return {
           titleTemplate: '%s – MooseJS'

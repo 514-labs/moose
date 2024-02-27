@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashMap;
 use tinytemplate::TinyTemplate;
 
 use crate::framework::sdks::TypescriptObjects;
@@ -156,10 +157,10 @@ struct IndexContext {
     ts_objects: Vec<TypescriptObjectsContext>,
 }
 impl IndexContext {
-    fn new(ts_objects: &[TypescriptObjects]) -> IndexContext {
+    fn new(ts_objects: &HashMap<String, TypescriptObjects>) -> IndexContext {
         IndexContext {
             ts_objects: ts_objects
-                .iter()
+                .values()
                 .map(TypescriptObjectsContext::new)
                 .collect::<Vec<TypescriptObjectsContext>>(),
         }
@@ -168,7 +169,7 @@ impl IndexContext {
 pub struct IndexTemplate;
 
 impl IndexTemplate {
-    pub fn build(ts_objects: &[TypescriptObjects]) -> String {
+    pub fn build(ts_objects: &HashMap<String, TypescriptObjects>) -> String {
         let mut tt = TinyTemplate::new();
         tt.add_template("index", INDEX_TEMPLATE).unwrap();
         let context = IndexContext::new(ts_objects);

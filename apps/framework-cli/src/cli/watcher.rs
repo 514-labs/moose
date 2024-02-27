@@ -12,14 +12,16 @@ use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::RwLock;
 
 use crate::framework::controller::{
-    create_or_replace_kafka_trigger, create_or_replace_tables, drop_kafka_trigger, drop_tables,
-    get_framework_objects_from_schema_file, schema_file_path_to_ingest_route,
-    FrameworkObjectVersions,
+    create_language_objects, create_or_replace_kafka_trigger, create_or_replace_tables,
+    drop_kafka_trigger, drop_tables, get_framework_objects_from_schema_file,
+    schema_file_path_to_ingest_route, FrameworkObjectVersions,
 };
 use crate::framework::schema::{is_prisma_file, DuplicateModelError};
+use crate::framework::sdks::generate_ts_sdk;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::olap::clickhouse::ClickhouseKafkaTrigger;
 use crate::infrastructure::stream::redpanda;
+use crate::utilities::package_managers;
 use crate::{
     framework::controller::RouteMeta,
     infrastructure::olap::{self, clickhouse::ConfiguredDBClient},
@@ -145,18 +147,34 @@ async fn process_events(
             .current_models
             .models
             .remove(&fo.data_model.name);
+
+        framework_object_versions
+            .current_models
+            .typescript_objects
+            .remove(&fo.data_model.name);
     }
-    for (_, fo) in changed_objects.into_iter().chain(new_objects) {
-        create_or_replace_tables(&project.name(), &fo, configured_client).await?;
+    for (_, fo) in changed_objects.iter().chain(new_objects.iter()) {
+        create_or_replace_tables(&project.name(), fo, configured_client).await?;
         let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
         create_or_replace_kafka_trigger(&view, configured_client).await?;
-        route_table.insert(
-            schema_file_path_to_ingest_route(
-                &framework_object_versions.current_models.base_path,
-                &fo.original_file_path,
+
+        let ingest_route = schema_file_path_to_ingest_route(
+            &framework_object_versions.current_models.base_path,
+            &fo.original_file_path,
+            fo.data_model.name.clone(),
+            &framework_object_versions.current_version,
+        );
+
+        framework_object_versions
+            .current_models
+            .typescript_objects
+            .insert(
                 fo.data_model.name.clone(),
-                &framework_object_versions.current_version,
-            ),
+                create_language_objects(fo, &ingest_route, project.clone())?,
+            );
+
+        route_table.insert(
+            ingest_route,
             RouteMeta {
                 original_file_path: fo.original_file_path.clone(),
                 table_name: fo.table.name.clone(),
@@ -168,7 +186,7 @@ async fn process_events(
         framework_object_versions
             .current_models
             .models
-            .insert(fo.data_model.name.clone(), fo);
+            .insert(fo.data_model.name.clone(), fo.clone());
     }
 
     for (_, fo) in moved_objects {
@@ -177,6 +195,15 @@ async fn process_events(
             .models
             .insert(fo.data_model.name.clone(), fo);
     }
+
+    let sdk_location = generate_ts_sdk(
+        project.clone(),
+        &framework_object_versions.current_models.typescript_objects,
+    )?;
+    let package_manager = package_managers::PackageManager::Npm;
+    package_managers::install_packages(&sdk_location, &package_manager)?;
+    package_managers::run_build(&sdk_location, &package_manager)?;
+    package_managers::link_sdk(&sdk_location, None, &package_manager)?;
 
     Ok(())
 }

@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::{fs::File, io::Write, path::PathBuf};
 
@@ -57,7 +58,7 @@ fn write_config_to_file(path: PathBuf, code: String) -> Result<(), std::io::Erro
 
 pub fn generate_ts_sdk(
     project: Arc<Project>,
-    ts_objects: Vec<TypescriptObjects>,
+    ts_objects: &HashMap<String, TypescriptObjects>,
 ) -> Result<PathBuf, std::io::Error> {
     //! Generates a Typescript SDK for the given project and returns the path where the SDK was generated.
     //!
@@ -74,10 +75,13 @@ pub fn generate_ts_sdk(
     let package = TypescriptPackage::from_project(project);
     let package_json_code = PackageJsonTemplate::build(&package);
     let ts_config_code = TsConfigTemplate::build();
-    let index_code = IndexTemplate::build(&ts_objects);
+    let index_code = IndexTemplate::build(ts_objects);
 
     // This needs to write to the root of the NPM folder... creating in the current project location for now
     let sdk_dir = internal_dir.join(package.name);
+
+    std::fs::remove_dir_all(sdk_dir.clone())?;
+
     std::fs::create_dir_all(sdk_dir.clone())?;
 
     write_config_to_file(sdk_dir.join("package.json"), package_json_code)?;
@@ -89,7 +93,7 @@ pub fn generate_ts_sdk(
         index_code,
     )?;
 
-    for obj in ts_objects {
+    for obj in ts_objects.values() {
         let interface_code = obj.interface.create_code().map_err(|err| {
             std::io::Error::new(
                 std::io::ErrorKind::Other,

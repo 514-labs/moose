@@ -91,7 +91,7 @@ use crate::framework::controller::{
     create_or_replace_version_sync, get_all_framework_objects, get_all_version_syncs,
     process_objects, FrameworkObject, FrameworkObjectVersions, RouteMeta, SchemaVersion,
 };
-use crate::framework::sdks::{generate_ts_sdk, TypescriptObjects};
+use crate::framework::sdks::generate_ts_sdk;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::olap;
 use crate::infrastructure::stream::redpanda;
@@ -287,12 +287,13 @@ async fn initialize_project_state(
                     let mut framework_objects = HashMap::new();
                     get_all_framework_objects(&mut framework_objects, &path, &version)?;
 
+                    let mut compilable_objects = HashMap::new();
                     process_objects(
                         &framework_objects,
                         project.clone(),
                         &path,
                         &configured_client,
-                        &mut Vec::new(),
+                        &mut compilable_objects,
                         route_table,
                         &version,
                     )
@@ -303,6 +304,7 @@ async fn initialize_project_state(
                         SchemaVersion {
                             base_path: path,
                             models: framework_objects,
+                            typescript_objects: compilable_objects,
                         },
                     );
                 }
@@ -317,7 +319,7 @@ async fn initialize_project_state(
         let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
         get_all_framework_objects(&mut framework_objects, &schema_dir, project.version())?;
 
-        let mut compilable_objects: Vec<TypescriptObjects> = Vec::new();
+        let mut compilable_objects = HashMap::new();
 
         let result = process_objects(
             &framework_objects,
@@ -331,7 +333,7 @@ async fn initialize_project_state(
         .await;
 
         // TODO: add old versions to SDK
-        let sdk_location = generate_ts_sdk(project.clone(), compilable_objects)?;
+        let sdk_location = generate_ts_sdk(project.clone(), &compilable_objects)?;
         let package_manager = package_managers::PackageManager::Npm;
         package_managers::install_packages(&sdk_location, &package_manager)?;
         package_managers::run_build(&sdk_location, &package_manager)?;
@@ -340,6 +342,7 @@ async fn initialize_project_state(
         framework_object_versions.current_models = SchemaVersion {
             base_path: schema_dir.clone(),
             models: framework_objects.clone(),
+            typescript_objects: compilable_objects,
         };
 
         olap::clickhouse::check_ready(&configured_client).await?;

@@ -61,6 +61,7 @@ pub fn framework_object_mapper(
 pub struct SchemaVersion {
     pub base_path: PathBuf,
     pub models: HashMap<String, FrameworkObject>,
+    pub typescript_objects: HashMap<String, TypescriptObjects>,
 }
 
 #[derive(Debug, Clone)]
@@ -77,6 +78,7 @@ impl FrameworkObjectVersions {
             current_models: SchemaVersion {
                 base_path: current_schema_directory,
                 models: HashMap::new(),
+                typescript_objects: HashMap::new(),
             },
             previous_version_models: HashMap::new(),
         }
@@ -413,11 +415,11 @@ pub async fn process_objects(
     project: Arc<Project>,
     schema_dir: &Path,
     configured_client: &ConfiguredDBClient,
-    compilable_objects: &mut Vec<TypescriptObjects>, // Objects that require compilation after processing
+    compilable_objects: &mut HashMap<String, TypescriptObjects>, // Objects that require compilation after processing
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     version: &str,
 ) -> anyhow::Result<()> {
-    for fo in framework_objects.values() {
+    for (name, fo) in framework_objects.iter() {
         let ingest_route = schema_file_path_to_ingest_route(
             schema_dir,
             &fo.original_file_path,
@@ -436,7 +438,7 @@ pub async fn process_objects(
         debug!("Table created: {:?}", fo.table.name);
 
         let typescript_objects = create_language_objects(fo, &ingest_route, project.clone())?;
-        compilable_objects.push(typescript_objects);
+        compilable_objects.insert(name.clone(), typescript_objects);
 
         route_table.insert(
             ingest_route,
@@ -448,8 +450,6 @@ pub async fn process_objects(
         );
     }
     Ok(())
-
-    // TODO: SDK
 }
 
 #[cfg(test)]

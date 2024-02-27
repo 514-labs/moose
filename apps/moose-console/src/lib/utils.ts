@@ -37,10 +37,9 @@ export function getQueueFromRoute(route: Route, cliData: CliData): string {
 }
 
 export function getModelFromTable(table: Table, cliData: CliData): DataModel {
-  const table_name =
-    table.engine === "MaterializedView"
-      ? table.name.split("_").at(0)
-      : table.name.split("_").at(0); // temporary hack to remove the version number
+  // TODO: this breaks if the model name includes underscore(s)
+  // maybe include more data in `CliData` so we don't `find` to lookup by name
+  const table_name = table.name.split("_").at(0)
 
   const result = cliData.models.find((model) => model.name === table_name);
   if (result === undefined) throw new Error(`Model ${table_name} not found`);

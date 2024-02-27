@@ -115,7 +115,11 @@ pub fn parse_schema_file<O>(
 
     let file_objects = ast_mapper(ast)?;
 
-    Ok(file_objects.models.into_iter().map(|data_model| mapper(data_model, path, version)).collect())
+    Ok(file_objects
+        .models
+        .into_iter()
+        .map(|data_model| mapper(data_model, path, version))
+        .collect())
 }
 
 pub struct FileObjects {
@@ -136,7 +140,7 @@ pub struct DataModel {
     pub name: String,
 }
 
-#[derive(Debug, Clone, Serialize,Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Eq, PartialEq)]
 /// An internal framework representation for an enum.
 /// Avoiding the use of the `Enum` keyword to avoid conflicts with Prisma's Enum type
 pub struct DataEnum {
@@ -370,3 +374,18 @@ pub fn ast_mapper(ast: SchemaAst) -> Result<FileObjects, ParsingError> {
     Ok(FileObjects::new(parsed_models, enums))
 }
 
+#[cfg(test)]
+mod tests {
+
+    use crate::framework::{controller::framework_object_mapper, schema::parse_schema_file};
+
+    #[test]
+    fn test_parse_schema_file() {
+        let current_dir = std::env::current_dir().unwrap();
+
+        let test_file = current_dir.join("tests/psl/simple.prisma");
+
+        let result = parse_schema_file(&test_file, "1.0", framework_object_mapper);
+        assert!(result.is_ok());
+    }
+}

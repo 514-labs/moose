@@ -234,7 +234,7 @@ struct CreateVersionSyncTriggerContext {
 
 impl CreateVersionSyncTriggerContext {
     pub fn new(version_sync: VersionSync) -> CreateVersionSyncTriggerContext {
-        let trigger_name = version_sync.migrate_trigger_name();
+        let trigger_name = version_sync.migration_trigger_name();
         let migration_function_name = version_sync.migration_function_name();
         CreateVersionSyncTriggerContext {
             db_name: version_sync.db_name,

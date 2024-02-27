@@ -260,7 +260,7 @@ impl VersionSync {
         )
     }
 
-    fn migrate_trigger_name(&self) -> String {
+    fn migration_trigger_name(&self) -> String {
         format!(
             "{}_trigger__{}__{}",
             self.model_name,
@@ -288,7 +288,7 @@ impl VersionSync {
         format!(
             "DROP VIEW IF EXISTS {}.{}",
             self.db_name,
-            self.migrate_trigger_name()
+            self.migration_trigger_name()
         )
     }
 }

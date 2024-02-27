@@ -34,7 +34,6 @@ pub struct FrameworkObject {
     pub topic: String,
     pub ts_interface: TypescriptInterface,
     pub original_file_path: PathBuf,
-    pub version: String,
 }
 
 pub fn framework_object_mapper(
@@ -53,7 +52,6 @@ pub fn framework_object_mapper(
             s.name.as_str(),
         ),
         original_file_path: original_file_path.to_path_buf(),
-        version: version.to_string(),
     }
 }
 

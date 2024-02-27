@@ -80,7 +80,10 @@ pub fn generate_ts_sdk(
     // This needs to write to the root of the NPM folder... creating in the current project location for now
     let sdk_dir = internal_dir.join(package.name);
 
-    std::fs::remove_dir_all(sdk_dir.clone())?;
+    std::fs::remove_dir_all(sdk_dir.clone()).or_else(|err| match err.kind() {
+        std::io::ErrorKind::NotFound => Ok(()),
+        _ => Err(err),
+    })?;
 
     std::fs::create_dir_all(sdk_dir.clone())?;
 

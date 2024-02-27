@@ -8,7 +8,7 @@ use crate::{
     },
 };
 
-use super::ClickhouseKafkaTrigger;
+use super::{ClickhouseKafkaTrigger, QueryString, VersionSync};
 
 // TODO: Add column comment capability to the schema and template
 static CREATE_TABLE_TEMPLATE: &str = r#"
@@ -29,6 +29,18 @@ AS
 SELECT * FROM {db_name}.{source_table_name}
 SETTINGS
 stream_like_engine_allow_direct_select = 1;
+"#;
+
+static CREATE_VERSION_SYNC_TRIGGER_TEMPLATE: &str = r#"
+CREATE MATERIALIZED VIEW IF NOT EXISTS {db_name}.{view_name} TO {db_name}.{dest_table_name}
+AS
+SELECT
+{{for field in to_fields}} moose_migrate_tuple.({@index} + 1) AS {field}{{- if @last }}{{ else }}, {{ endif }}
+{{endfor}}
+FROM (select {migration_function_name}(
+{{for field in from_fields}}{field}{{- if @last }}{{ else }}, {{ endif }}
+{{endfor}}
+) as moose_migrate_tuple FROM {db_name}.{source_table_name})
 "#;
 
 pub struct CreateTableQuery;
@@ -192,6 +204,57 @@ impl DropMaterializedViewQuery {
         let context = DropMaterializedViewContext::new(table)?;
         let rendered = tt.render("drop_materialized_view", &context).unwrap();
         Ok(rendered)
+    }
+}
+
+pub struct CreateVersionSyncTriggerQuery;
+impl CreateVersionSyncTriggerQuery {
+    pub fn build(view: VersionSync) -> QueryString {
+        let mut tt = TinyTemplate::new();
+        tt.add_template(
+            "create_version_sync_trigger",
+            CREATE_VERSION_SYNC_TRIGGER_TEMPLATE,
+        )
+        .unwrap();
+        let context = CreateVersionSyncTriggerContext::new(view);
+        tt.render("create_version_sync_trigger", &context).unwrap()
+    }
+}
+
+#[derive(Serialize)]
+struct CreateVersionSyncTriggerContext {
+    db_name: String,
+    view_name: String,
+    migration_function_name: String,
+    source_table_name: String,
+    dest_table_name: String,
+    from_fields: Vec<String>,
+    to_fields: Vec<String>,
+}
+
+impl CreateVersionSyncTriggerContext {
+    pub fn new(version_sync: VersionSync) -> CreateVersionSyncTriggerContext {
+        let trigger_name = version_sync.migration_trigger_name();
+        let migration_function_name = version_sync.migration_function_name();
+        CreateVersionSyncTriggerContext {
+            db_name: version_sync.db_name,
+            view_name: trigger_name,
+            migration_function_name,
+            source_table_name: version_sync.source_table.name,
+            dest_table_name: version_sync.dest_table.name,
+            from_fields: version_sync
+                .source_table
+                .columns
+                .into_iter()
+                .map(|column| column.name)
+                .collect(),
+            to_fields: version_sync
+                .dest_table
+                .columns
+                .into_iter()
+                .map(|column| column.name)
+                .collect(),
+        }
     }
 }
 

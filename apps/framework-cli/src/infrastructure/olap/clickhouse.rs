@@ -5,11 +5,14 @@ mod queries;
 use std::fmt::{self};
 
 use clickhouse::Client;
+use lazy_static::lazy_static;
 use log::debug;
-
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
+use crate::infrastructure::olap::clickhouse::queries::CreateVersionSyncTriggerQuery;
+
 use crate::{
     framework::schema::{FieldArity, UnsupportedDataTypeError},
     utilities::constants::REDPANDA_CONTAINER_NAME,
@@ -157,11 +160,12 @@ impl ClickhouseTable {
             table_type,
         }
     }
-}
 
-impl ClickhouseTable {
     pub fn kafka_table_name(&self) -> String {
         format!("{}_kafka", self.name)
+    }
+    pub fn view_name(&self) -> String {
+        format!("{}_trigger", self.name)
     }
 
     fn kafka_table(&self) -> ClickhouseTable {
@@ -216,6 +220,76 @@ impl ClickhouseKafkaTrigger {
             source_table_name,
             dest_table_name,
         }
+    }
+
+    pub fn from_clickhouse_table(table: &ClickhouseTable) -> ClickhouseKafkaTrigger {
+        ClickhouseKafkaTrigger {
+            db_name: table.db_name.clone(),
+            name: table.view_name(),
+            source_table_name: table.kafka_table_name(),
+            dest_table_name: table.name.clone(),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct VersionSync {
+    pub db_name: String,
+    pub model_name: String,
+    pub source_version: String,
+    pub source_table: ClickhouseTable,
+    pub dest_version: String,
+    pub dest_table: ClickhouseTable,
+    pub migration_function: String,
+}
+
+lazy_static! {
+    pub static ref VERSION_SYNC_REGEX: Regex =
+        //            source_model_name         source     target_model_name   dest_version
+        Regex::new(r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-9_]+)__)?([0-9_]+).sql$")
+            .unwrap();
+}
+
+impl VersionSync {
+    fn migration_function_name(&self) -> String {
+        format!(
+            "{}_migrate__{}__{}",
+            self.model_name,
+            self.source_version.replace('.', "_"),
+            self.dest_version.replace('.', "_"),
+        )
+    }
+
+    fn migration_trigger_name(&self) -> String {
+        format!(
+            "{}_trigger__{}__{}",
+            self.model_name,
+            self.source_version.replace('.', "_"),
+            self.dest_version.replace('.', "_"),
+        )
+    }
+
+    pub fn create_function_query(&self) -> String {
+        format!(
+            "CREATE FUNCTION {} AS {}",
+            self.migration_function_name(),
+            self.migration_function
+        )
+    }
+    pub fn drop_function_query(&self) -> String {
+        format!("DROP FUNCTION IF EXISTS {}", self.migration_function_name())
+    }
+
+    pub fn create_trigger_query(self) -> String {
+        CreateVersionSyncTriggerQuery::build(self)
+    }
+
+    pub fn drop_trigger_query(&self) -> String {
+        format!(
+            "DROP VIEW IF EXISTS {}.{}",
+            self.db_name,
+            self.migration_trigger_name()
+        )
     }
 }
 

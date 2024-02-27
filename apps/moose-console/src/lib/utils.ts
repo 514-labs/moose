@@ -16,8 +16,10 @@ export function getIngestionPointFromModel(
 }
 
 export function getModelFromRoute(route: Route, cliData: CliData): DataModel {
-  const routeTail = route.route_path.split("/").at(-1);
-  return cliData.models.find((model) => model.name === routeTail);
+  const routeTail = route.route_path.split("/").at(-2); // -1 is now version number
+  const found = cliData.models.find((model) => model.name === routeTail);
+  if (found === undefined) throw new Error(`Model ${routeTail} not found`);
+  return found;
 }
 
 export function tableIsIngestionTable(table: Table): boolean {
@@ -34,12 +36,13 @@ export function getQueueFromRoute(route: Route, cliData: CliData): string {
 }
 
 export function getModelFromTable(table: Table, cliData: CliData): DataModel {
-  if (table.engine === "MaterializedView") {
-    const parsedViewName = table.name.split("_").at(0);
-    return cliData.models.find((model) => model.name === parsedViewName);
-  }
+  // TODO: this breaks if the model name includes underscore(s)
+  // maybe include more information in `CliData`, so we don't have to lookup by name
+  const table_name = table.name.split("_").at(0);
 
-  return cliData.models.find((model) => model.name === table.name);
+  const result = cliData.models.find((model) => model.name === table_name);
+  if (result === undefined) throw new Error(`Model ${table_name} not found`);
+  return result;
 }
 
 export function getRelatedInfra(

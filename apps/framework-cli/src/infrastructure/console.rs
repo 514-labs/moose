@@ -1,12 +1,5 @@
-use crate::framework::controller::get_all_framework_objects;
-use crate::framework::controller::FrameworkObject;
-use crate::framework::controller::RouteMeta;
-use crate::framework::schema::DataModel;
-use crate::infrastructure::olap;
-use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
-use crate::infrastructure::stream::redpanda;
-use crate::infrastructure::stream::redpanda::ConfiguredProducer;
-use crate::project::Project;
+use std::str;
+
 use http_body_util::BodyExt;
 use http_body_util::Full;
 use hyper::body::Bytes;
@@ -16,13 +9,17 @@ use hyper_util::rt::TokioIo;
 use log::debug;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
-use std::collections::HashMap;
-use std::path::PathBuf;
 use std::sync::Arc;
 
 use tokio::net::TcpStream;
 
-use std::str;
+use crate::framework::controller::{schema_file_path_to_ingest_route, FrameworkObjectVersions};
+use crate::framework::schema::DataModel;
+use crate::infrastructure::olap;
+use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
+use crate::infrastructure::stream::redpanda;
+use crate::infrastructure::stream::redpanda::ConfiguredProducer;
+use crate::project::Project;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ConsoleConfig {
@@ -39,14 +36,12 @@ pub async fn post_current_state_to_console(
     project: Arc<Project>,
     configured_db_client: &ConfiguredDBClient,
     configured_producer: &ConfiguredProducer,
-    route_table: HashMap<PathBuf, RouteMeta>,
+    framework_object_versions: &FrameworkObjectVersions,
 ) -> Result<(), anyhow::Error> {
-    let schema_dir = project.schemas_dir();
-    let mut framework_objects: Vec<FrameworkObject> = Vec::new();
-    get_all_framework_objects(&mut framework_objects, &schema_dir)?;
-
-    let models: Vec<DataModel> = framework_objects
-        .iter()
+    let models: Vec<DataModel> = framework_object_versions
+        .current_models
+        .models
+        .values()
         .map(|fo| fo.data_model.clone())
         .collect();
 
@@ -60,14 +55,26 @@ pub async fn post_current_state_to_console(
         .await
         .unwrap();
 
-    let routes_table: Vec<RouteInfo> = route_table
-        .iter()
-        .map(|(k, v)| {
+    // TODO: old versions of the models are not being sent to the console
+    let routes_table: Vec<RouteInfo> = framework_object_versions
+        .current_models
+        .models
+        .values()
+        .map(|fo| {
+            let route_path = schema_file_path_to_ingest_route(
+                &framework_object_versions.current_models.base_path,
+                &fo.original_file_path,
+                fo.data_model.name.clone(),
+                &framework_object_versions.current_version,
+            )
+            .to_string_lossy()
+            .to_string();
+
             RouteInfo::new(
-                k.to_str().unwrap().to_string(),
-                v.original_file_path.to_str().unwrap().to_string(),
-                v.table_name.clone(),
-                v.view_name.clone(),
+                route_path,
+                fo.original_file_path.to_str().unwrap().to_string(),
+                fo.table.name.clone(),
+                Some(fo.table.view_name()),
             )
         })
         .collect();

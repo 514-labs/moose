@@ -28,7 +28,7 @@ export const jsSnippet = (data: CliData, model: DataModel) => {
 
   return `\
 fetch('http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}', {
-method: 'POST',
+    method: 'POST',
     headers: {
         'Content-Type': 'application/json'
     },

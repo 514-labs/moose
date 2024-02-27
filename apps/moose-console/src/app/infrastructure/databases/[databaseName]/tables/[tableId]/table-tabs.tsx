@@ -70,7 +70,9 @@ export default function TableTabs({
   const model = getModelFromTable(table, cliData);
   const infra = getRelatedInfra(model, cliData, table);
   const triggerTable = infra.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
+    (t) =>
+      t.name === table.name.replace(/(_kafka)?$/, "_trigger") &&
+      t.engine === "MaterializedView",
   );
 
   const createTabQueryString = useCallback(

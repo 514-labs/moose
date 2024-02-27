@@ -15,8 +15,8 @@ WORKDIR /application
 # Copy the application files to the container
 COPY ./app ./app
 
-# Expose the port on which the application will listen
-EXPOSE 8000
+# Expose the ports on which the application will listen
+EXPOSE 4000
 
 # post install
 RUN locale-gen en_US.UTF-8

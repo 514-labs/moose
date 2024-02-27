@@ -303,7 +303,7 @@ fn is_enum_type(string_type: &str, enums: &[DataEnum]) -> bool {
     enums.iter().any(|e| e.name == string_type)
 }
 
-fn field_to_column(f: &Field, enums: &Vec<DataEnum>) -> Result<Column, ParsingError> {
+fn field_to_column(f: &Field, enums: &[DataEnum]) -> Result<Column, ParsingError> {
     let attributes = FieldAttributes::new(f.attributes.clone())?;
 
     match &f.field_type {
@@ -326,7 +326,7 @@ fn field_to_column(f: &Field, enums: &Vec<DataEnum>) -> Result<Column, ParsingEr
     }
 }
 
-fn prisma_model_to_datamodel(m: &Model, enums: &Vec<DataEnum>) -> Result<DataModel, ParsingError> {
+fn prisma_model_to_datamodel(m: &Model, enums: &[DataEnum]) -> Result<DataModel, ParsingError> {
     let schema_name = m.name().to_string();
 
     let columns: Result<Vec<Column>, ParsingError> = m

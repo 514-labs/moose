@@ -1,6 +1,6 @@
 # Moose CLI
 
-The Moose CLI is your entrypoint to a seamless, local development experience for you data-intensive application. It's written in rust and supports building applications in TypeScript and Python.
+The Moose CLI is your entrypoint to a seamless, local development experience for your data-intensive application. It's written in rust and supports building applications in TypeScript and Python.
 
 ## Installation
 

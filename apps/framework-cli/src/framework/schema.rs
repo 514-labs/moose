@@ -354,17 +354,19 @@ pub fn ast_mapper(ast: SchemaAst) -> Result<FileObjects, ParsingError> {
     let mut models = Vec::new();
     let mut enums = Vec::new();
 
-    ast.iter_tops().for_each(|(_id, t)| match t {
+    ast.iter_tops().try_for_each(|(_id, t)| match t {
         Top::Model(m) => {
             models.push(m);
+            Ok(())
         }
         Top::Enum(e) => {
             enums.push(primsa_to_moose_enum(e));
+            Ok(())
         }
-        _ => {
-            "we currently only support models and enums".to_string();
-        }
-    });
+        _ => Err(ParsingError::UnsupportedDataTypeError {
+            type_name: "we currently only support models and enums".to_string(),
+        }),
+    })?;
 
     let parsed_models = models
         .into_iter()

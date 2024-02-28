@@ -61,3 +61,7 @@ export function getRelatedInfra(
 
   return { tables, ingestionPoints };
 }
+
+export function is_enum(type: any) {
+  return typeof type === "object" && type["Enum"] !== undefined;
+}

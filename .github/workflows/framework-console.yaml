@@ -34,10 +34,9 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: .
-          tags: 514labs/moose-console:0.0.0
           platforms: linux/amd64,linux/arm64
           file: ./apps/moose-console/Dockerfile
-          push: true
+          push: false
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |

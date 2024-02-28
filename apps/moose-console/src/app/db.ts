@@ -100,7 +100,7 @@ export interface Infra {
   ingestionPoints: Route[];
 }
 
-export function column_type_mapper(source_type: any) {
+export function column_type_mapper(source_type) {
   switch (source_type) {
     case "String":
       return "string";

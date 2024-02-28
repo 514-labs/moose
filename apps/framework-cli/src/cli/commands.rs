@@ -44,4 +44,8 @@ pub enum Commands {
     Stop {},
     // Clears all temporary data and stops development infrastructure
     Clean {},
+    /// Docker related commands
+    Docker {
+        sub_method: String,
+    },
 }

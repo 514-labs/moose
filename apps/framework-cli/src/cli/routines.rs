@@ -103,6 +103,7 @@ use log::info;
 use async_recursion::async_recursion;
 
 pub mod clean;
+pub mod docker_packager;
 pub mod initialize;
 pub mod start;
 pub mod stop;

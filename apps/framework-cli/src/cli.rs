@@ -30,7 +30,10 @@ use crate::cli::{
 use crate::project::Project;
 use crate::utilities::git::is_git_repo;
 
-use self::routines::{clean::CleanProject, stop::StopLocalInfrastructure};
+use self::routines::{
+    clean::CleanProject, docker_packager::BuildDockerfile, docker_packager::CreateDockerfile,
+    stop::StopLocalInfrastructure,
+};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true))]
@@ -82,7 +85,6 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let project_arc = Arc::new(project);
 
                 debug!("Project: {:?}", project_arc);
-
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
 
@@ -152,6 +154,39 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 controller.add_routine(Box::new(CleanProject::new(project_arc, run_mode)));
                 controller.run_routines(run_mode);
             }
+            Commands::Docker { sub_method } => match sub_method.as_str() {
+                "init" => {
+                    let run_mode = RunMode::Explicit {};
+                    info!("Running docker init command");
+                    let project = Project::load_from_current_dir()
+                        .expect("No project found, please run `moose init` to create a project");
+                    let project_arc = Arc::new(project);
+                    let mut controller = RoutineController::new();
+                    controller.add_routine(Box::new(CreateDockerfile::new(project_arc)));
+                    controller.run_routines(run_mode);
+                }
+                "build" => {
+                    let run_mode = RunMode::Explicit {};
+                    info!("Running docker build command");
+                    let project = Project::load_from_current_dir()
+                        .expect("No project found, please run `moose init` to create a project");
+                    let project_arc = Arc::new(project);
+                    // print!("Project: {:?}", project_arc);
+
+                    let mut controller = RoutineController::new();
+                    controller.add_routine(Box::new(BuildDockerfile::new(project_arc)));
+                    controller.run_routines(run_mode);
+                }
+                _ => {
+                    show_message!(
+                        MessageType::Error,
+                        Message {
+                            action: "Docker".to_string(),
+                            details: "Invalid method, consider init or build".to_string(),
+                        }
+                    );
+                }
+            },
         }
     } else {
         show_message!(MessageType::Banner, Message {

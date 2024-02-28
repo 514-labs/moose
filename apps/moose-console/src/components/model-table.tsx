@@ -6,7 +6,7 @@ const processType = (type: string | MooseEnum) => {
   if (typeof type === "string") {
     return type;
   } else if (is_enum(type)) {
-    return type["Enum"]["name"];
+    return type.Enum.name;
   }
   return JSON.stringify(type);
 };

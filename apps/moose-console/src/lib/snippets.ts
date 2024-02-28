@@ -1,12 +1,10 @@
-import { CliData, DataModel, column_type_mapper, MooseEnum } from "app/db";
+import { CliData, DataModel, column_type_mapper } from "app/db";
 import { getIngestionPointFromModel, is_enum } from "./utils";
 
 function createColumnStubs(model: DataModel) {
   return model.columns.map((field, index) => {
     if (is_enum(field.data_type)) {
-      const value = JSON.stringify(
-        (field.data_type as MooseEnum).Enum.values[0],
-      );
+      const value = JSON.stringify(field.data_type.Enum.values[0]);
       return `"${field.name}": ${value}`;
     }
 

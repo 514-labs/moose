@@ -107,7 +107,7 @@ export interface Infra {
   ingestionPoints: Route[];
 }
 
-export function column_type_mapper(source_type: string | MooseEnum) {
+export function column_type_mapper(source_type: string) {
   switch (source_type) {
     case "String":
       return "string";

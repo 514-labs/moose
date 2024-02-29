@@ -10,6 +10,7 @@ import {
 import Link from "next/link";
 
 export default async function InsightsPage(): Promise<JSX.Element> {
+
   return (
     <section className="p-4 max-h-screen overflow-y-auto">
       <NavBreadCrumb />

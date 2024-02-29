@@ -1,20 +1,21 @@
 "use client"
-
+import { useEffect } from 'react'
 import { TopLevelSpec } from 'vega-lite'
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from './ui/select'
 import { useForm } from 'react-hook-form'
 import { Form, FormControl, FormField, FormItem, FormLabel } from './ui/form'
 import { Button } from './ui/button'
 import { Input } from './ui/input'
+import { Dispatch, SetStateAction } from 'react'
 
 const test_form = {
-    x: { field: 'Horsepower', type: 'quantitative' },
-    y: { field: 'Miles_per_Gallon', type: 'quantitative' },
-    color: { field: 'Origin', type: 'nominal' },
-    tooltip: { field: 'Name', type: 'nominal' },
+    x: { field: 'timestamp', type: 'temporal' },
+    y: { field: 'eventName', type: 'nominal' },
+    color: { field: 'eventType', type: 'nominal' },
+    tooltip: { field: 'sessionId', type: 'nominal' },
 }
 
-const fields = ["Horsepower", "Miles_per_Gallon", "Origin", "Name", "url"]
+const fields = ["eventName", "timestamp", "eventType"]
 
 
 const EncodingForm = ({ formPath, options, name }: { name: string, formPath: string, options: string[] }) => {
@@ -40,10 +41,10 @@ const EncodingForm = ({ formPath, options, name }: { name: string, formPath: str
     )
 }
 
-const MarkForm = ({ formPath, options, name }: { name: string, formPath: string, options: string[] }) => {
+export const MarkForm = ({ formPath, options, name }: { name: string, formPath: string, options: string[] }) => {
     return (
         <FormField name={formPath} render={({ field }) => {
-            return <FormItem className='flex items-center'>
+            return <FormItem className='flex items-center w-20'>
                 <FormLabel >{name}</FormLabel>
                 <FormControl>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
@@ -75,29 +76,24 @@ const InputForm = ({ formPath, name }: { name: string, formPath: string }) => {
     )
 }
 
-function SpecForm({ spec, setSpec }: { spec: TopLevelSpec, setSpec: (spec: TopLevelSpec) => void }) {
-    const methods = useForm({ defaultValues: spec })
-    const { handleSubmit, register } = methods;
-    const onSubmit = (data) => setSpec(data)
-    const keys = Object.keys(test_form)
+function SpecForm({ spec, setSpec, keys }: { spec: TopLevelSpec, keys: string[], setSpec: (spec: TopLevelSpec) => void }) {
 
+    const fake_keys = Object.keys(test_form)
+
+
+
+    const { data, ...otherSpec } = spec
+    console.log(otherSpec)
     return (
-        <Form {...methods}>
-            <form onSubmit={handleSubmit(onSubmit)}>
-                <div className='grid grid-cols-2'>
-                <InputForm formPath='height' name={"height"} />
-                <InputForm formPath='width' name={"width"} />
 
-                <MarkForm options={['line', 'bar', 'circle']} formPath={'mark'} name={"Type"} />
-                {keys.map((key, i) => <EncodingForm key={i} formPath={`encoding.${key}.field`} options={fields} name={key} />)}
+                <div className='grid grid-cols-2'>
+                    {fake_keys.map((key, i) => <EncodingForm key={i} formPath={`encoding.${key}.field`} options={fields} name={key} />)}
                 </div>
-                <Button type="submit" >Submit</Button>
-            </form>
-        </Form>
+    
     )
 }
 
 
-export function ChartEditor({ spec, setSpec }: { spec: TopLevelSpec, setSpec: (spec: TopLevelSpec) => void }) {
-    return <SpecForm setSpec={setSpec} spec={spec} />
+export function ChartEditor({ spec, setSpec, keys }: { spec: TopLevelSpec, keys: string[], setSpec: Dispatch<SetStateAction<TopLevelSpec>> }) {
+    return <SpecForm setSpec={setSpec} spec={spec} keys={keys} />
 }

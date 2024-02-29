@@ -1,33 +1,29 @@
-"use client"
-import { Vega } from 'react-vega';
-import { TopLevelSpec } from 'vega-lite'
-const vl = require("vega-lite-api")
-import { test } from './test'
-import { ChartEditor } from 'components/chart-editor';
-import { deserializeSpec } from 'lib/use-chart-binding';
-import { useState } from 'react';
-const nah: TopLevelSpec = {
-    data: { values: test },
-    mark: "circle",
-    width: 500,
-    height: 500,
-    encoding: {
-        "x": { "field": "Horsepower", "type": "quantitative" },
-        "y": { "field": "Miles_per_Gallon", "type": "quantitative" },
-        "color": { "field": "Origin", "type": "nominal" },
-        "tooltip": { "field": "Name", "type": "nominal" },
-    }
 
-}
+import { getCliData } from 'app/db';
+import ChartExplorer from './chart-explorer';
+import { getClient } from 'lib/clickhouse';
 
-export default function Page() {
-    const [spec, setSpec] = useState(nah)
+
+export default async function Page() {
+    const data = await getCliData();
+    const client = getClient(data.project)
+    const resultSet = await client.query({
+        query: "SELECT * FROM UserEvent_trigger;",
+        format: "JSONEachRow",
+    });
+
+    const rows = await resultSet.json() as object[]
+
 
     //  deserializeSpec(nah)
 
 
 
 
-    return <div className=""><ChartEditor spec={nah} setSpec={setSpec} /><div>
-        <Vega spec={spec} /></div></div>
+    return (
+        <section className="p-4 grow overflow-y-scroll">
+
+            <ChartExplorer data={rows} />
+        </section>
+    )
 }

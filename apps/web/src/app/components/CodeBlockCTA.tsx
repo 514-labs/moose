@@ -99,10 +99,10 @@ export const CodeBlockCTA = () => {
           copied to clipboard
         </span>
       </div>
-      <Button
+      <Button 
         className="py-4 text-center font-medium no-underline bg-action-primary bg-action-white bg-black/100 text-gray-300 hover:bg-gray-900 sm:inline-block sm:grow-0 md:py-6 md:px-10 md:text-lg md:leading-8"
         onClick={() => sendClientEvent("cta-click", {})}
-      >
+        >
         copy
       </Button>
     </div>

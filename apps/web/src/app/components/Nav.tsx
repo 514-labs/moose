@@ -7,7 +7,7 @@ import { Disclosure } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
 import { AnimatedDescription } from "./AnimatedDescription";
-import { sendClientEvent } from "../events/sendEvent";
+import { sendClientEvent } from "../events/sendClientEvent";
 
 gsap.registerPlugin(SplitText);
 

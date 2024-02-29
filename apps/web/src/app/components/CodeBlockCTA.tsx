@@ -3,7 +3,7 @@ import { Button } from "ui";
 import { gsap } from "gsap";
 import React, { useLayoutEffect } from "react";
 import { SplitText } from "gsap/SplitText";
-import { sendClientEvent } from "../events/sendEvent";
+import { sendClientEvent } from "../events/sendClientEvent";
 
 export const CodeBlockCTA = () => {
   const inboundRef = React.useRef(null);

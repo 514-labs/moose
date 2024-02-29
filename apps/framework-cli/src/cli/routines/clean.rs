@@ -1,8 +1,6 @@
 use std::sync::Arc;
 use std::{fs, path::PathBuf};
 
-use log::info;
-
 use crate::cli::routines::util::ensure_docker_running;
 use crate::{cli::display::Message, project::Project};
 
@@ -32,15 +30,10 @@ impl Routine for CleanProject {
             )
         })?;
 
-        info!("Checking docker");
         ensure_docker_running()?;
-        info!("Stopping local infrastructure");
         StopLocalInfrastructure::new(self.project.clone()).run(run_mode)?;
-        info!("Deleting redpanda volume)");
         DeleteRedpandaMountVolume::new(internal_dir.clone()).run(run_mode)?;
-        info!("Deleting clickhouse volume");
         DeleteClickhouseMountVolume::new(internal_dir.clone()).run(run_mode)?;
-        info!("Deleting model volume");
         DeleteModelVolume::new(internal_dir.clone()).run(run_mode)?;
 
         Ok(RoutineSuccess::success(Message::new(

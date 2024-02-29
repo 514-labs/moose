@@ -66,7 +66,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --manifest-path ./apps/framework-cli/Cargo.toml -- --nocapture
+          args: --manifest-path ./apps/framework-cli/Cargo.toml
 
       - name: Inspect Logs
         if: always()
@@ -97,7 +97,7 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
-          args: --manifest-path ./apps/framework-cli/Cargo.toml -- --nocapture
+          args: --manifest-path ./apps/framework-cli/Cargo.toml
 
       - name: Inspect Logs
         if: always()

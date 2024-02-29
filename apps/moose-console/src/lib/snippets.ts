@@ -51,9 +51,9 @@ export const pythonSnippet = (data: CliData, model: DataModel) => {
 import requests
 
 url = 'http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}'
-data = [
+data = {
     ${columns.join(",")}
-]
+}
 response = requests.post(url, json=data)
 `;
 };

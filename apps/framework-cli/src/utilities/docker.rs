@@ -354,7 +354,5 @@ pub fn buildx(
         .filter(|line| !line.is_empty())
         .map(|line| from_str(line).expect("Failed to parse container row"))
         .collect();
-
-    print!("{:?}", containers);
     Ok(containers)
 }

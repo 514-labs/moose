@@ -1,8 +1,8 @@
-use super::{Routine, RoutineFailure, RoutineSuccess, RunMode};
+use super::{Routine, RoutineFailure, RoutineSuccess};
 use crate::cli::display::with_spinner;
 use crate::cli::display::MessageType;
 use crate::cli::routines::util::ensure_docker_running;
-use crate::utilities::{docker, system};
+use crate::utilities::{constants, docker, system};
 use crate::{cli::display::Message, project::Project};
 use log::{error, info};
 use std::fs;
@@ -183,11 +183,18 @@ impl Routine for BuildDockerfile {
             );
         }
 
+        // consts::CLI_VERSION is set from an environment variable during the CI/CD process
+        // however, its set to 0.0.1 in development so we set it to 0.3.93 for the purpose of local dev testing.
+        let mut cli_version = constants::CLI_VERSION;
+        if cli_version == "0.0.1" {
+            cli_version = "0.3.93";
+        }
+
         info!("Creating docker linux/amd64 image");
         let buildx_result = with_spinner("Creating docker linux/amd64 image", || {
             docker::buildx(
                 &internal_dir.join("packager"),
-                "0.3.93",
+                cli_version,
                 "linux/amd64",
                 "x86_64-unknown-linux-gnu",
             )
@@ -209,7 +216,7 @@ impl Routine for BuildDockerfile {
         let buildx_result = with_spinner("Creating docker linux/arm64 image", || {
             docker::buildx(
                 &internal_dir.join("packager"),
-                "0.3.93",
+                cli_version,
                 "linux/arm64",
                 "aarch64-unknown-linux-gnu",
             )

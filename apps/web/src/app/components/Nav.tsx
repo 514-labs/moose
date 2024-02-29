@@ -7,6 +7,7 @@ import { Disclosure } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
 import { AnimatedDescription } from "./AnimatedDescription";
+import { sendClientEvent } from "../events/sendEvent";
 
 gsap.registerPlugin(SplitText);
 
@@ -76,6 +77,9 @@ export const Nav = () => {
                         key={item.name}
                       >
                         <a
+                          onClick={async () => {
+                            await sendClientEvent("nav-click", { href: item.href });
+                          }}
                           href={item.href}
                           className={
                             isActive

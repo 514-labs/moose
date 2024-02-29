@@ -10,6 +10,8 @@ import middleImg from "../../public/bg-image-computer/bg-image-computer_2x.webp"
 import footerImg from "../../public/bg-image-moose/bg-image-moose_2x.webp";
 import { FooterSection } from "./sections//home/FooterSection";
 import { CodeBlockCTA } from "./components/CodeBlockCTA";
+import { sendServerEvent } from "./events/sendServerEvent";
+
 
 export const metadata: Metadata = {
   title: "Moose.js | Build for the modern data stack",
@@ -83,7 +85,9 @@ const features = [
   },
 ];
 
-export default function Home() {
+export default async function Home() {
+  await sendServerEvent("page_view", { page: "home" });
+
   return (
     <div className="h-full relative">
       <SectionGrid
@@ -154,14 +158,6 @@ export default function Home() {
           );
         })}
       </SectionGrid>
-
-      {/* <div className="py-20">
-        <AnimatedHeading position={0.5} className="px-10 w-ful text-black" content="modernized & open for all" size="display" onScroll/>
-      </div>
-
-      <div className="relative h-full w-full min-h-[80vw] sm:min-h-[50vw] w-full space-y-5 mt-12 mb-24 2xl:mt-0">
-          <AnimatedImage src={middleImg} position={0} alt="the crew" priority onScroll/>
-        </div> */}
 
       <SectionGrid className="py-24 pb-0 2xl:pt-20" gapStyle="gap-y-36">
         <div className="flex flex-col px-10 w-full space-y-5 col-span-3 sm:col-span-12 2xl:col-span-6">

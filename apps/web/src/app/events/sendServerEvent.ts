@@ -10,8 +10,6 @@ export const sendServerEvent = async (name: string, event: any) => {
     const scheme = env === 'production' ? 'https' : 'http';
     const url = `${scheme}://${host}/events/api`
 
-    console.log('Sending server event', name, event, host, env, referer);
-
     fetch(url, {
         method: 'POST',
         headers: headersList,

@@ -1,4 +1,5 @@
 import { NextRequest } from "next/server";
+import Mixpanel from 'mixpanel';
 
 // send an event to mixpanel
 export async function POST(request: NextRequest) {
@@ -6,7 +7,6 @@ export async function POST(request: NextRequest) {
     
     const body = await request.json();
 
-    const Mixpanel = require('mixpanel');
     const mixpanel = Mixpanel.init('be8ca317356e20c587297d52f93f3f9e');
 
     const event = {ip, ...body.event};

@@ -6,6 +6,7 @@
       "dependsOn": ["^build"],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**", "target/**"],
       "env": [
+        "NODE_ENV",
         "CLICKHOUSE_HOST",
         "CLICKHOUSE_PORT",
         "CLICKHOUSE_USERNAME",

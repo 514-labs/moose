@@ -77,7 +77,7 @@ export const AnimatedComponent = ({
     return () => {
       ctx.revert();
     };
-  }, []);
+  }, [computedTriggerRef, onScroll, position]);
 
   return (
     <div className={getStyle(className)}>

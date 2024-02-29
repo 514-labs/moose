@@ -1,11 +1,11 @@
 use assert_cmd::prelude::*;
 use assert_fs::{prelude::*, TempDir};
 use predicates::prelude::*;
-use std::process::Command;
+use std::{fs, process::Command};
 
 #[test]
 fn can_run_cli_clean() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = assert_fs::TempDir::new().unwrap();
+    let temp = assert_fs::TempDir::new()?;
     let dir: &str = temp.path().to_str().unwrap();
 
     temp.child(".moose").assert(predicate::path::missing());
@@ -28,7 +28,7 @@ fn can_run_cli_clean() -> Result<(), Box<dyn std::error::Error>> {
     clean_cmd
         .env("MOOSE-FEATURES-COMING_SOON_WALL", "false")
         .arg("clean")
-        .current_dir(temp.path());
+        .current_dir(&temp);
 
     clean_cmd.assert().success();
 
@@ -38,6 +38,12 @@ fn can_run_cli_clean() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn validate_dotmoose_dir(temp: &TempDir, should_exist: bool) {
+    println!("should_exist: {}", should_exist);
+    let paths = fs::read_dir(temp.child(".moose")).unwrap();
+    for path in paths {
+        println!("Name: {}", path.unwrap().path().display())
+    }
+
     let assert_value = if should_exist {
         predicate::path::exists()
     } else {

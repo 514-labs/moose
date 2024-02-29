@@ -143,6 +143,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 controller.run_routines(run_mode);
             }
             Commands::Clean {} => {
+                info!("Running clean command");
                 let run_mode = RunMode::Explicit {};
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `moose init` to create a project");

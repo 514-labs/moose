@@ -183,11 +183,6 @@ export default function QueryInterface({
   const [tableCount, setTableCount] = useState(12);
 
   useEffect(() => {
-    (async () => {
-      const data = await runQuery(client, value);
-      setResults(data);
-    })();
-
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
         runQuery(client, value).then((results) => {
@@ -323,7 +318,7 @@ export default function QueryInterface({
       </ResizablePanel>
       <ResizableHandle withHandle className="bg-border-0" />
       <ResizablePanel defaultSize={80} className=" overflow-y-auto">
-        <div className="pt-4">
+        <div className="pt-4 h-full overflow-y-scroll">
           <Card className="rounded-3xl ">
             <CardContent>
               <div className="flex h-full flex-col py-4">

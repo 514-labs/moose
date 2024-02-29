@@ -130,6 +130,13 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 routines::start_development_mode(project_arc).await.unwrap();
             }
+            Commands::Prod {} => {
+                info!("Running prod command");
+                let project = Project::load_from_current_dir()
+                    .expect("No project found, please run `moose init` to create a project");
+                let project_arc = Arc::new(project);
+                routines::start_production_mode(project_arc).await.unwrap();
+            }
             Commands::Update {} => {
                 // This command may not be needed if we have incredible automation
                 todo!("Will update the project's underlying infrastructure based on any added objects")
@@ -171,7 +178,6 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                     let project = Project::load_from_current_dir()
                         .expect("No project found, please run `moose init` to create a project");
                     let project_arc = Arc::new(project);
-                    //print!("Project: {:?}", project_arc);
                     let mut controller = RoutineController::new();
                     controller.add_routine(Box::new(BuildDockerfile::new(project_arc)));
                     controller.run_routines(run_mode);

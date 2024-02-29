@@ -44,7 +44,7 @@ RUN chmod +x /usr/local/bin/moose
 RUN moose init mymooseapp ts .
 
 # Set the command to run the application
-CMD ["tail", "-f", "/dev/null"]
+CMD ["moose", "prod"]
 "#;
 
 pub struct CreateDockerfile {

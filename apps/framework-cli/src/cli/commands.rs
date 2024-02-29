@@ -38,6 +38,8 @@ pub enum Commands {
     // },
     /// Starts a local development environment to build your data-intensive app or service
     Dev {},
+    /// Start a remote environment for use in cloud deployments
+    Prod {},
     // Updates the redpanda cluster and clickhouse database with the latest objects
     Update {},
     // Stops development infrastructure

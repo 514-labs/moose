@@ -256,12 +256,74 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     Ok(())
 }
 
+// Starts the webserver in production mode
+pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> {
+    show_message!(
+        MessageType::Success,
+        Message {
+            action: "Starting".to_string(),
+            details: "production mode".to_string(),
+        }
+    );
+
+    let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
+
+    info!("Initializing project state");
+    initialize_project_state(project.clone(), &mut route_table).await?;
+    let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
+        Box::leak(Box::new(RwLock::new(route_table)));
+
+    let server_config = project.http_server_config.clone();
+
+    info!("Starting web server...");
+    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
+    web_server.start(route_table, project).await;
+
+    Ok(())
+}
+
 async fn initialize_project_state(
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> anyhow::Result<()> {
-    let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
-    let producer = redpanda::create_producer(project.redpanda_config.clone());
+    let mut clickhouse_config_clone = project.clickhouse_config.clone();
+    let mut redpanda_config_clone = project.redpanda_config.clone();
+
+    let clickhouse_host_env = std::env::var("CH_HOST").unwrap_or_default();
+    if let Ok(host) = clickhouse_host_env.parse::<String>() {
+        if !host.is_empty() {
+            clickhouse_config_clone.db_name = std::env::var("CH_DB_NAME").unwrap_or_default();
+            clickhouse_config_clone.user = std::env::var("CH_USER").unwrap_or_default();
+            clickhouse_config_clone.password = std::env::var("CH_PASS").unwrap_or_default();
+            clickhouse_config_clone.host = host;
+            clickhouse_config_clone.host_port = std::env::var("CH_HOST_PORT")
+                .unwrap_or_default()
+                .parse()
+                .unwrap_or(clickhouse_config_clone.host_port);
+            clickhouse_config_clone.postgres_port = std::env::var("CH_PG_PORT")
+                .unwrap_or_default()
+                .parse()
+                .unwrap_or(clickhouse_config_clone.postgres_port);
+            clickhouse_config_clone.kafka_port = std::env::var("CH_KF_PORT")
+                .unwrap_or_default()
+                .parse()
+                .unwrap_or(clickhouse_config_clone.kafka_port);
+        }
+    }
+
+    let redpanda_broker_env = std::env::var("RP_BROKER").unwrap_or_default();
+    if let Ok(host) = redpanda_broker_env.parse::<String>() {
+        if !host.is_empty() {
+            redpanda_config_clone.broker = host;
+            redpanda_config_clone.message_timeout_ms = std::env::var("RP_MSG_TIMEOUT_MS")
+                .unwrap_or_default()
+                .parse()
+                .unwrap_or(redpanda_config_clone.message_timeout_ms);
+        }
+    }
+
+    let configured_client = olap::clickhouse::create_client(clickhouse_config_clone);
+    let producer = redpanda::create_producer(redpanda_config_clone);
 
     let schema_dir = project.schemas_dir();
     info!("Starting schema directory crawl...");

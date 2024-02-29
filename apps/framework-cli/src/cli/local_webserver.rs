@@ -187,6 +187,19 @@ async fn ingest_route(
     }
 }
 
+async fn hello_route(route: PathBuf) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    show_message!(
+        MessageType::Info,
+        Message {
+            action: "GET".to_string(),
+            details: route.to_str().unwrap().to_string().to_string(),
+        }
+    );
+
+    let response_bytes = Bytes::from("Hello from the moose web server!");
+    Ok(Response::new(Full::new(response_bytes)))
+}
+
 async fn router(
     req: Request<hyper::body::Incoming>,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
@@ -216,6 +229,9 @@ async fn router(
         (&hyper::Method::POST, ["ingest", _]) => {
             ingest_route(req, route, configured_producer, route_table, console_config).await
         }
+
+        // TODO remote this route - only used for initial testing
+        (&hyper::Method::GET, ["hello"]) => hello_route(route).await,
 
         (&hyper::Method::OPTIONS, _) => options_route(),
         _ => Response::builder()

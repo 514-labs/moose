@@ -12,7 +12,9 @@ export const sendServerEvent = async (name: string, event: any) => {
 
   fetch(url, {
     method: "POST",
-    headers: headersList,
+    headers: {
+      "Content-Type": "application/json",
+    },
     body: JSON.stringify({
       name,
       event: { ...event, host, env, referer },

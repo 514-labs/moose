@@ -54,3 +54,5 @@ Cargo.lock
 .moose/
 
 console.db
+
+.vscode/launch.json

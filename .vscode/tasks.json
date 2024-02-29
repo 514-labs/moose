@@ -1,0 +1,11 @@
+{
+    "version": "2.0.0",
+    "tasks": [{
+        "label": "CLI build",
+        "type": "shell",
+        "command": "cargo build",
+        "options": {
+            "cwd": "${workspaceRoot}/apps/framework-cli"
+        }
+    }]
+}

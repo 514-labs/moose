@@ -1,7 +1,7 @@
 use lazy_static::lazy_static;
 
 use crate::cli::display::with_spinner;
-use crate::cli::routines::initialize::CreateInternalTempDirectoryTree;
+use crate::cli::routines::initialize::{CreateInternalTempDirectoryTree, CreateModelsVolume};
 use crate::cli::routines::util::ensure_docker_running;
 use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
 use crate::utilities::docker;
@@ -43,6 +43,7 @@ impl Routine for RunLocalInfrastructure {
         // Model this after the `spin_up` function in `apps/framework-cli/src/cli/routines/start.rs` but use routines instead
         CreateInternalTempDirectoryTree::new(RunMode::Explicit {}, self.project.clone())
             .run_explicit()?;
+        CreateModelsVolume::new(self.project.clone()).run_explicit()?;
         ValidateMountVolumes::new(internal_dir).run_explicit()?;
 
         RunContainers::new(self.project.clone()).run_silent()?;

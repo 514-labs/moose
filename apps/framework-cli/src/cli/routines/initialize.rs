@@ -261,7 +261,7 @@ pub struct CreateModelsVolume {
 }
 
 impl CreateModelsVolume {
-    fn new(project: Arc<Project>) -> Self {
+    pub fn new(project: Arc<Project>) -> Self {
         Self { project }
     }
 }

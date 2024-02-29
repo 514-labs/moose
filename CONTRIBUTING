@@ -32,6 +32,51 @@ $ pnpm install
 turbo build
 ```
 
+### Debug
+
+To debug the CLI, create a `.vscode/launch.json` & change the inputs according to your needs. 
+
+```
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "lldb",
+            "request": "launch",
+            "name": "CLI (OSX)",
+            "preLaunchTask": "CLI build",
+            "program": "${workspaceRoot}/apps/framework-cli/target/debug/moose-cli",
+            "cwd": "${input:enterMooseDir}",
+            "args": [
+                "${input:enterCommand}",
+                // "${input:enterOptions}"
+            ]
+        }
+    ],
+    "inputs": [
+        {
+            "id": "enterMooseDir",
+            "type": "promptString",
+            "description": "Directory of your moose app",
+            "default": "${env:HOME}"
+        },
+        {
+            "id": "enterCommand",
+            "type": "pickString",
+            "description": "CLI command to run",
+            "options": ["init", "dev", "update", "stop", "clean", "help"],
+            "default": "dev"
+        },
+        {
+            "id": "enterOptions",
+            "type": "promptString",
+            "description": "Extra options for the command",
+            "default": ""
+        }
+    ]
+}
+```
+
 ## Versioning Scheme.
 
 We use [semantic versioning](https://semver.org/) to denote versions of the different components of the system.

@@ -70,9 +70,16 @@ export interface DataModel {
   version: number;
 }
 
+export interface MooseEnum {
+  Enum: {
+    name: string;
+    values: string[];
+  };
+}
+
 export interface Column {
   name: string;
-  data_type: string;
+  data_type: string | MooseEnum;
   arity: string;
   unique: boolean;
   primary_key: boolean;
@@ -100,7 +107,7 @@ export interface Infra {
   ingestionPoints: Route[];
 }
 
-export function column_type_mapper(source_type) {
+export function column_type_mapper(source_type: string) {
   switch (source_type) {
     case "String":
       return "string";

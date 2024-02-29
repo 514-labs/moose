@@ -10,6 +10,7 @@ use log::debug;
 use regex::Regex;
 use serde::{Deserialize, Serialize};
 
+use crate::framework::schema::DataEnum;
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use crate::infrastructure::olap::clickhouse::queries::CreateVersionSyncTriggerQuery;
 
@@ -49,6 +50,7 @@ pub enum ClickhouseColumnType {
     DateTime,
     Json,
     Bytes,
+    Enum(DataEnum),
     Unsupported,
 }
 

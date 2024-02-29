@@ -11,8 +11,9 @@
 //! - Float
 //! - Decimal
 //! - DateTime
+//! - Enum
 //!
-//! We only implemented part of the prisma schema parsing. We only support models and fields. We don't support enums, relations, or anything else for the moment
+//! We only implemented part of the prisma schema parsing. We only support models, enums and fields. We don't support relations, or anything else for the moment
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -23,6 +24,8 @@ use std::{
 
 use crate::framework::controller::FrameworkObject;
 use diagnostics::Diagnostics;
+
+use schema_ast::ast::{Enum, Model};
 use schema_ast::{
     ast::{Attribute, Field, SchemaAst, Top, WithName},
     parse_schema,
@@ -110,10 +113,24 @@ pub fn parse_schema_file<O>(
 
     let ast = parse_schema(&schema_file, &mut diagnostics);
 
-    Ok(ast_mapper(ast)?
+    let file_objects = ast_mapper(ast)?;
+
+    Ok(file_objects
+        .models
         .into_iter()
         .map(|data_model| mapper(data_model, path, version))
         .collect())
+}
+
+pub struct FileObjects {
+    pub models: Vec<DataModel>,
+    pub enums: Vec<DataEnum>,
+}
+
+impl FileObjects {
+    pub fn new(models: Vec<DataModel>, enums: Vec<DataEnum>) -> FileObjects {
+        FileObjects { models, enums }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Eq, PartialEq)]
@@ -121,6 +138,14 @@ pub struct DataModel {
     pub db_name: String,
     pub columns: Vec<Column>,
     pub name: String,
+}
+
+#[derive(Debug, Clone, Serialize, Eq, PartialEq)]
+/// An internal framework representation for an enum.
+/// Avoiding the use of the `Enum` keyword to avoid conflicts with Prisma's Enum type
+pub struct DataEnum {
+    pub name: String,
+    pub values: Vec<String>,
 }
 
 impl DataModel {
@@ -213,6 +238,7 @@ pub enum ColumnType {
     Float,
     Decimal,
     DateTime,
+    Enum(DataEnum),
     Json,  // TODO: Eventually support for only views and tables (not topics)
     Bytes, // TODO: Explore if we ever need this type
     Unsupported,
@@ -273,13 +299,20 @@ impl FieldAttributes {
     }
 }
 
-fn field_to_column(f: &Field) -> Result<Column, ParsingError> {
+fn is_enum_type(string_type: &str, enums: &[DataEnum]) -> bool {
+    enums.iter().any(|e| e.name == string_type)
+}
+
+fn field_to_column(f: &Field, enums: &[DataEnum]) -> Result<Column, ParsingError> {
     let attributes = FieldAttributes::new(f.attributes.clone())?;
 
     match &f.field_type {
         schema_ast::ast::FieldType::Supported(ft) => Ok(Column {
             name: f.name().to_string(),
-            data_type: map_column_string_type_to_column_type(ft.name.as_str()),
+            data_type: match is_enum_type(&ft.name, enums) {
+                true => ColumnType::Enum(enums.iter().find(|e| e.name == ft.name).unwrap().clone()),
+                false => map_column_string_type_to_column_type(&ft.name),
+            },
             arity: arity_mapper(f.arity),
             unique: attributes.unique,
             primary_key: attributes.primary_key,
@@ -293,28 +326,68 @@ fn field_to_column(f: &Field) -> Result<Column, ParsingError> {
     }
 }
 
-fn top_to_schema(t: &Top) -> Result<DataModel, ParsingError> {
-    match t {
-        Top::Model(m) => {
-            let schema_name = m.name().to_string();
+fn prisma_model_to_datamodel(m: &Model, enums: &[DataEnum]) -> Result<DataModel, ParsingError> {
+    let schema_name = m.name().to_string();
 
-            let columns: Result<Vec<Column>, ParsingError> =
-                m.iter_fields().map(|(_id, f)| field_to_column(f)).collect();
+    let columns: Result<Vec<Column>, ParsingError> = m
+        .iter_fields()
+        .map(|(_id, f)| field_to_column(f, enums))
+        .collect();
 
-            Ok(DataModel {
-                db_name: "local".to_string(),
-                columns: columns?,
-                name: schema_name,
-            })
-        }
-        _ => Err(ParsingError::UnsupportedDataTypeError {
-            type_name: "we don't currently support anything other than models".to_string(),
-        }),
-    }
+    Ok(DataModel {
+        db_name: "local".to_string(),
+        columns: columns?,
+        name: schema_name,
+    })
 }
 
-pub fn ast_mapper(ast: SchemaAst) -> Result<Vec<DataModel>, ParsingError> {
-    ast.iter_tops()
-        .map(|(_id, t)| top_to_schema(t))
-        .collect::<Result<Vec<DataModel>, ParsingError>>()
+fn primsa_to_moose_enum(e: &Enum) -> DataEnum {
+    let name = e.name().to_string();
+    let values = e
+        .iter_values()
+        .map(|(_id, v)| v.name().to_string())
+        .collect();
+    DataEnum { name, values }
+}
+
+pub fn ast_mapper(ast: SchemaAst) -> Result<FileObjects, ParsingError> {
+    let mut models = Vec::new();
+    let mut enums = Vec::new();
+
+    ast.iter_tops().try_for_each(|(_id, t)| match t {
+        Top::Model(m) => {
+            models.push(m);
+            Ok(())
+        }
+        Top::Enum(e) => {
+            enums.push(primsa_to_moose_enum(e));
+            Ok(())
+        }
+        _ => Err(ParsingError::UnsupportedDataTypeError {
+            type_name: "we currently only support models and enums".to_string(),
+        }),
+    })?;
+
+    let parsed_models = models
+        .into_iter()
+        .map(|m| prisma_model_to_datamodel(m, &enums))
+        .collect::<Result<Vec<DataModel>, ParsingError>>()?;
+
+    Ok(FileObjects::new(parsed_models, enums))
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::framework::{controller::framework_object_mapper, schema::parse_schema_file};
+
+    #[test]
+    fn test_parse_schema_file() {
+        let current_dir = std::env::current_dir().unwrap();
+
+        let test_file = current_dir.join("tests/psl/simple.prisma");
+
+        let result = parse_schema_file(&test_file, "1.0", framework_object_mapper);
+        assert!(result.is_ok());
+    }
 }

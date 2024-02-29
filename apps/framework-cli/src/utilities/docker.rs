@@ -50,7 +50,6 @@ services:
         hard: 40000
   console:
     image: docker.io/514labs/moose-console:${CONSOLE_VERSION:-latest}
-    platform: linux/amd64
     environment:
       - CLICKHOUSE_DB=${DB_NAME:-local}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-panda}

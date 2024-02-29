@@ -12,7 +12,6 @@ import { FooterSection } from "./sections//home/FooterSection";
 import { CodeBlockCTA } from "./components/CodeBlockCTA";
 import { sendServerEvent } from "./events/sendServerEvent";
 
-
 export const metadata: Metadata = {
   title: "Moose.js | Build for the modern data stack",
   openGraph: {

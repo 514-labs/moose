@@ -78,7 +78,9 @@ export const Nav = () => {
                       >
                         <a
                           onClick={async () => {
-                            await sendClientEvent("nav-click", { href: item.href });
+                            await sendClientEvent("nav-click", {
+                              href: item.href,
+                            });
                           }}
                           href={item.href}
                           className={

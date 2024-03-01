@@ -22,7 +22,7 @@ pub fn create_topic_from_name(project_name: &str, topic_name: String) -> std::io
 }
 
 // Deletes a topic from a file name
-pub fn delete_topic(project_name: &str, topic_name: String) -> std::io::Result<String> {
+pub fn delete_topic(project_name: &str, topic_name: &str) -> std::io::Result<String> {
     info!("Deleting topic: {}", topic_name);
     let valid_topic_name = topic_name.to_lowercase();
     docker::run_rpk_command(

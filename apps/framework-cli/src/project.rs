@@ -32,8 +32,8 @@ use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 
-use crate::utilities::constants::PROJECT_CONFIG_FILE;
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
+use crate::utilities::constants::{FLOWS_DIR, PROJECT_CONFIG_FILE};
 
 // We have explored using a Generic associated Types as well as
 // Dynamic Dispatch to handle the different types of projects
@@ -176,6 +176,14 @@ impl Project {
         schemas_dir
     }
 
+    pub fn flows_dir(&self) -> PathBuf {
+        let mut flows_dir = self.app_dir();
+        flows_dir.push(FLOWS_DIR);
+
+        debug!("Flows dir: {:?}", flows_dir);
+        flows_dir
+    }
+
     // This is a Result of io::Error because the caller
     // can be returning a Result of io::Error or a Routine Failure
     pub fn internal_dir(&self) -> std::io::Result<PathBuf> {
@@ -201,5 +209,11 @@ impl Project {
         }
 
         Ok(internal_dir)
+    }
+
+    pub fn version(&self) -> &str {
+        match &self.language_project_config {
+            LanguageProjectConfig::Typescript(package_json) => &package_json.version,
+        }
     }
 }

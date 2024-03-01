@@ -15,7 +15,7 @@ pub fn std_field_type_to_typescript_field_mapper(field_type: ColumnType) -> Inte
     }
 }
 
-pub fn std_table_to_typescript_interface(table: Table) -> TypescriptInterface {
+pub fn std_table_to_typescript_interface(table: Table, model_name: &str) -> TypescriptInterface {
     let fields = table
         .columns
         .into_iter()
@@ -39,7 +39,7 @@ pub fn std_table_to_typescript_interface(table: Table) -> TypescriptInterface {
         .collect::<Vec<InterfaceField>>();
 
     TypescriptInterface {
-        name: table.name,
+        name: model_name.to_string(),
         fields,
     }
 }

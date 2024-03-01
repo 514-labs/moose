@@ -21,6 +21,7 @@ pub fn std_field_type_to_clickhouse_type_mapper(field_type: ColumnType) -> Click
         ColumnType::Float => ClickhouseColumnType::ClickhouseFloat(ClickhouseFloat::Float64),
         ColumnType::Decimal => ClickhouseColumnType::Decimal,
         ColumnType::DateTime => ClickhouseColumnType::DateTime,
+        ColumnType::Enum(x) => ClickhouseColumnType::Enum(x),
         ColumnType::Unsupported => ClickhouseColumnType::Unsupported,
         _ => ClickhouseColumnType::Unsupported,
     }

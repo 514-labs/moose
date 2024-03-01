@@ -8,6 +8,7 @@ pub const CLI_USER_DIRECTORY: &str = ".moose";
 pub const CLI_PROJECT_INTERNAL_DIR: &str = ".moose";
 
 pub const SCHEMAS_DIR: &str = "datamodels";
+pub const FLOWS_DIR: &str = "flows";
 
 pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb-1";
 pub const CONSOLE_CONTAINER_NAME: &str = "console-1";
@@ -18,7 +19,7 @@ pub const REDPANDA_HOSTS: [&str; 2] = ["redpanda", "localhost"];
 pub const APP_DIR: &str = "app";
 pub const APP_DIR_LAYOUT: [&str; 5] = [
     SCHEMAS_DIR,
-    "flows",
+    FLOWS_DIR,
     "insights",
     "insights/charts",
     "insights/metrics",

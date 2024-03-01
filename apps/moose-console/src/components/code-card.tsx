@@ -68,7 +68,6 @@ export default function CodeCard({ title, snippets }: CodeCardProps) {
               const snippet = snippets.find(
                 (snippet) => snippet.language === value,
               );
-              console.log(formatedCodeSnippets);
               if (snippet) {
                 setSelectedSnippet(snippet);
               }
@@ -92,7 +91,7 @@ export default function CodeCard({ title, snippets }: CodeCardProps) {
         </div>
       </div>
       <Card className="rounded-2xl bg-muted ">
-        <CardContent className="">
+        <CardContent className="overflow-x-auto p-0 m-6">
           <code>
             {formatedCodeSnippets[selectedSnippet.language]
               ? parse(formatedCodeSnippets[selectedSnippet.language])

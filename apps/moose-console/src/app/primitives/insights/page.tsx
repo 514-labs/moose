@@ -1,28 +1,59 @@
+import { NavBreadCrumb } from "components/nav-breadcrumb";
 import { Button } from "components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "components/ui/card";
+import Link from "next/link";
 
 export default async function InsightsPage(): Promise<JSX.Element> {
   return (
     <section className="p-4 max-h-screen overflow-y-auto">
-      <div className="py-20">
-        <div className="text-9xl">Insights</div>
-        <div className="text-muted-foreground py-5">
-          Insights help you derive value from your data.
-        </div>
-
-        <ul className="list-disc list-inside text-muted-foreground mt-4">
-          Easily turn your data into:
-          <li>Standardized metric</li>
-          <li>Engaging Dashboards</li>
-          <li>Predictive models</li>
-        </ul>
+      <NavBreadCrumb />
+      <div className="py-10">
+        <div className="text-8xl">Insights</div>
       </div>
-      <div>
-        <div className="text-6xl flex flex-row pb-4">Coming soon </div>
-        <div className="text-muted-foreground">
-          Insights are currently under development. Join our community to share
-          your thoughts or contribute
+      <div className="py-4">Insights help you derive value from your data.</div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="col-span-3 xl:col-span-1">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle>Coming Soon</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div>
+                Insights are currently under development. Join our community to
+                contribute or share your thoughts.
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Link href="https://igloocommunity.slack.com/">
+                <Button variant="outline">Join Community</Button>
+              </Link>
+            </CardFooter>
+          </Card>
         </div>
-        <Button className="mt-4">Join community</Button>
+        <div className="col-span-3 xl:col-span-1">
+          <Card className="h-full">
+            <CardHeader>
+              <CardTitle>Why use insights?</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div>
+                Easily turn your data into standardized metrics, dashboards, or
+                models.
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Link href="https://docs.moosejs.com">
+                <Button variant="outline">Visit Docs</Button>
+              </Link>
+            </CardFooter>
+          </Card>
+        </div>
       </div>
     </section>
   );

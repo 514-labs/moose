@@ -69,8 +69,10 @@ export default function TableTabs({
   );
   const model = getModelFromTable(table, cliData);
   const infra = getRelatedInfra(model, cliData, table);
-  const associated_view = cliData.tables.find(
-    (view) => view.name === table.dependencies_table[0],
+  const triggerTable = infra.tables.find(
+    (t) =>
+      t.name === table.name.replace(/(_kafka)?$/, "_trigger") &&
+      t.engine === "MaterializedView",
   );
 
   const createTabQueryString = useCallback(
@@ -97,8 +99,11 @@ export default function TableTabs({
         <TabsTrigger className={cn(tabTriggerStyle)} value="overview">
           Overview
         </TabsTrigger>
-        <TabsTrigger className={cn(tabTriggerStyle)} value="usage">
-          Usage
+        <TabsTrigger className={cn(tabTriggerStyle)} value="setup">
+          Setup
+        </TabsTrigger>
+        <TabsTrigger className={cn(tabTriggerStyle)} value="logs">
+          Logs
         </TabsTrigger>
         <TabsTrigger className={cn(tabTriggerStyle)} value="query">
           Query
@@ -108,8 +113,8 @@ export default function TableTabs({
         <div className=" grid grid-cols-12 gap-4">
           <div className="col-span-12 xl:col-span-6">
             <Card className="rounded-3xl">
-              <CardHeader className="text-xl text-muted-foreground">
-                Fields
+              <CardHeader>
+                <CardTitle>Fields</CardTitle>
               </CardHeader>
               <CardContent>
                 <ModelTable datamodel={model} />
@@ -118,8 +123,8 @@ export default function TableTabs({
           </div>
           <div className="col-span-12 xl:col-span-6">
             <Card className="rounded-3xl">
-              <CardHeader className="text-xl text-muted-foreground">
-                Related Infra
+              <CardHeader>
+                <CardTitle>Related Infra</CardTitle>
               </CardHeader>
               <CardContent>
                 <RelatedInfraTable infra={infra} />
@@ -128,11 +133,11 @@ export default function TableTabs({
           </div>
         </div>
       </TabsContent>
-      <TabsContent className="h-full" value="usage">
+      <TabsContent className="h-full" value="setup">
         <div className=" grid grid-cols-12 gap-4">
           <div className="col-span-12 xl:col-span-6">
             <Card className="rounded-3xl">
-              <CardHeader className="text-xl  text-muted-foreground">
+              <CardHeader>
                 <CardTitle className=" font-normal">Data In</CardTitle>
                 <CardDescription>
                   When you create a data model, moose automatically spins up
@@ -153,8 +158,8 @@ export default function TableTabs({
           </div>
           <div className="col-span-12 xl:col-span-6">
             <Card className="rounded-3xl">
-              <CardHeader className="text-xl  text-muted-foreground">
-                <CardTitle className=" font-normal">Data Out</CardTitle>
+              <CardHeader>
+                <CardTitle>Data Out</CardTitle>
                 <CardDescription>
                   When you create a data model, moose automatically spins up
                   infrastructure to extract data. You can easily extract data
@@ -163,7 +168,6 @@ export default function TableTabs({
               </CardHeader>
               <CardContent>
                 <div>
-                  <h1 className="text-lg">Exploratory queries</h1>
                   <h2 className="py-2 flex flex-row items-center">
                     <div className="flex flex-col">
                       <span>Query the view directly</span>
@@ -183,7 +187,7 @@ export default function TableTabs({
                         setSelectedTab("query");
                       }}
                     >
-                      go to view
+                      Query
                     </Button>
                   </h2>
                 </div>
@@ -208,6 +212,11 @@ export default function TableTabs({
           </div>
         </div>
       </TabsContent>
+      <TabsContent value="logs">
+        <Card className="bg-muted rounded-2xl">
+          <CardContent className="font-mono p-4">some log content</CardContent>
+        </Card>
+      </TabsContent>
       <TabsContent className="h-full" value="query">
         {/* add query here */}
         <div className="p-0 h-full">
@@ -218,7 +227,7 @@ export default function TableTabs({
               project={cliData.project}
             />
           ) : (
-            ClickhouseTableRestriction(associated_view)
+            ClickhouseTableRestriction(triggerTable)
           )}
         </div>
       </TabsContent>

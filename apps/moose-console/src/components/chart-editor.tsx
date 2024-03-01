@@ -41,28 +41,32 @@ const EncodingForm = ({ formPath, options, name }: { name: string, formPath: str
     )
 }
 
+export const MarkForm = ({ setSpec, options, spec }: { setSpec: any, spec: TopLevelSpec, options: string[] }) => {
+    return (<Select defaultValue='line' onValueChange={(val) => setSpec({ ...spec, mark: val })} >
+        <SelectTrigger className='w-[180px]'>
+            <SelectValue placeholder={"Field"} />
+        </SelectTrigger>
+        <SelectContent>
+            <SelectGroup>
+                {options.map((option, i) => (
+                    <SelectItem key={i} value={option}>{option}</SelectItem>
+                ))}
+            </SelectGroup>
+        </SelectContent>
+    </Select>)
+}
+/*
 export const MarkForm = ({ formPath, options, name }: { name: string, formPath: string, options: string[] }) => {
     return (
         <FormField name={formPath} render={({ field }) => {
             return <FormItem className='flex items-center w-20'>
                 <FormLabel >{name}</FormLabel>
                 <FormControl>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
-                        <SelectTrigger className='w-[180px]'>
-                            <SelectValue placeholder={"Field"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectGroup>
-                                {options.map((option, i) => (
-                                    <SelectItem key={i} value={option}>{option}</SelectItem>
-                                ))}
-                            </SelectGroup>
-                        </SelectContent>
-                    </Select>
                 </FormControl></FormItem>
         }} />
     )
 }
+*/
 
 const InputForm = ({ formPath, name }: { name: string, formPath: string }) => {
     return (
@@ -86,10 +90,10 @@ function SpecForm({ spec, setSpec, keys }: { spec: TopLevelSpec, keys: string[],
     console.log(otherSpec)
     return (
 
-                <div className='grid grid-cols-2'>
-                    {fake_keys.map((key, i) => <EncodingForm key={i} formPath={`encoding.${key}.field`} options={fields} name={key} />)}
-                </div>
-    
+        <div className='grid grid-cols-2'>
+            {fake_keys.map((key, i) => <EncodingForm key={i} formPath={`encoding.${key}.field`} options={fields} name={key} />)}
+        </div>
+
     )
 }
 

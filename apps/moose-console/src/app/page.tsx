@@ -1,13 +1,13 @@
 import { getCliData } from "./db";
 import { unstable_noStore as noStore } from "next/cache";
 import OverviewCard from "components/overview-card";
+import { runFaker } from "./primitives/insights/dashboard/util";
 
 export default async function OverviewPage(): Promise<JSX.Element> {
   // This is to make sure the environment variables are read at runtime
   // and not during build time
   noStore();
   const data = await getCliData();
-
   return (
     <section className="p-4 grow overflow-y-scroll">
       <div className="text-8xl">Overview</div>

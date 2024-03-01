@@ -33,7 +33,7 @@ const generateField = (): Field => ({
     isLoggedIn: faker.datatype.boolean(),
     sessionId: faker.string.uuid(),
     ipAddress: faker.internet.ipv4(),
-    userAgent: faker.internet.userAgent(),
+    userAgent: faker.internet.userAgent().split(' ')[0],
     language: faker.helpers.enumValue(Language),
     timestamp: new Date(faker.date.recent({ days: 6 }).getTime())
 });

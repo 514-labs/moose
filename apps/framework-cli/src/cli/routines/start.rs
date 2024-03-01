@@ -49,7 +49,7 @@ impl Routine for RunLocalInfrastructure {
         RunContainers::new(self.project.clone()).run_silent()?;
         ValidateRedPandaRun::new().run_explicit()?;
         ValidateClickhouseRun::new().run_explicit()?;
-        ValidateConsoleRun::new().run_explicit()?;
+        //  ValidateConsoleRun::new().run_explicit()?;
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
             "ran local infrastructure".to_string(),

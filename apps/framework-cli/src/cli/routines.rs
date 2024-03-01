@@ -289,36 +289,45 @@ async fn initialize_project_state(
     let mut clickhouse_config_clone = project.clickhouse_config.clone();
     let mut redpanda_config_clone = project.redpanda_config.clone();
 
-    let clickhouse_host_env = std::env::var("CH_HOST").unwrap_or_default();
+    // TODO - Carlos / Nick to refactor this to use the Config crate
+    // TODO - The Config crate doesn't appear to work the way we believe it should, but for now the following
+    // TODO - code is a workaround that allows me to submit a considerable amount of work for review.
+    let clickhouse_host_env = std::env::var("MOOSE_CLICKHOUSE_CONFIG__HOST").unwrap_or_default();
     if let Ok(host) = clickhouse_host_env.parse::<String>() {
         if !host.is_empty() {
-            clickhouse_config_clone.db_name = std::env::var("CH_DB_NAME").unwrap_or_default();
-            clickhouse_config_clone.user = std::env::var("CH_USER").unwrap_or_default();
-            clickhouse_config_clone.password = std::env::var("CH_PASS").unwrap_or_default();
+            clickhouse_config_clone.db_name =
+                std::env::var("MOOSE_CLICKHOUSE_CONFIG__DB_NAME").unwrap_or_default();
+            clickhouse_config_clone.user =
+                std::env::var("MOOSE_CLICKHOUSE_CONFIG__USER").unwrap_or_default();
+            clickhouse_config_clone.password =
+                std::env::var("MOOSE_CLICKHOUSE_CONFIG__PASSWORD").unwrap_or_default();
             clickhouse_config_clone.host = host;
-            clickhouse_config_clone.host_port = std::env::var("CH_HOST_PORT")
+            clickhouse_config_clone.host_port = std::env::var("MOOSE_CLICKHOUSE_CONFIG__HOST_PORT")
                 .unwrap_or_default()
                 .parse()
                 .unwrap_or(clickhouse_config_clone.host_port);
-            clickhouse_config_clone.postgres_port = std::env::var("CH_PG_PORT")
-                .unwrap_or_default()
-                .parse()
-                .unwrap_or(clickhouse_config_clone.postgres_port);
-            clickhouse_config_clone.kafka_port = std::env::var("CH_KF_PORT")
-                .unwrap_or_default()
-                .parse()
-                .unwrap_or(clickhouse_config_clone.kafka_port);
+            clickhouse_config_clone.postgres_port =
+                std::env::var("MOOSE_CLICKHOUSE_CONFIG__POSTGRES_PORT")
+                    .unwrap_or_default()
+                    .parse()
+                    .unwrap_or(clickhouse_config_clone.postgres_port);
+            clickhouse_config_clone.kafka_port =
+                std::env::var("MOOSE_CLICKHOUSE_CONFIG__KAFKA_PORT")
+                    .unwrap_or_default()
+                    .parse()
+                    .unwrap_or(clickhouse_config_clone.kafka_port);
         }
     }
 
-    let redpanda_broker_env = std::env::var("RP_BROKER").unwrap_or_default();
+    let redpanda_broker_env = std::env::var("MOOSE_REDPANDA_CONFIG__BROKER").unwrap_or_default();
     if let Ok(host) = redpanda_broker_env.parse::<String>() {
         if !host.is_empty() {
             redpanda_config_clone.broker = host;
-            redpanda_config_clone.message_timeout_ms = std::env::var("RP_MSG_TIMEOUT_MS")
-                .unwrap_or_default()
-                .parse()
-                .unwrap_or(redpanda_config_clone.message_timeout_ms);
+            redpanda_config_clone.message_timeout_ms =
+                std::env::var("MOOSE_REDPANDA_CONFIG__MESSAGE_TIMEOUT_MS")
+                    .unwrap_or_default()
+                    .parse()
+                    .unwrap_or(redpanda_config_clone.message_timeout_ms);
         }
     }
 

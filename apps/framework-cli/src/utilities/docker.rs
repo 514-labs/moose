@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
 use serde::{Deserialize, Serialize};
@@ -117,6 +118,34 @@ pub fn list_containers() -> std::io::Result<Vec<ContainerRow>> {
 
     let output_str = String::from_utf8_lossy(&output.stdout);
     let containers: Vec<ContainerRow> = output_str
+        .split('\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| from_str(line).expect("Failed to parse container row"))
+        .collect();
+
+    Ok(containers)
+}
+
+pub fn list_container_names() -> std::io::Result<Vec<String>> {
+    let child = Command::new("docker")
+        .arg("ps")
+        .arg("--format")
+        .arg("{{json .Names}}")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    if !output.status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Failed to list Docker container names",
+        ));
+    }
+
+    let output_str = String::from_utf8_lossy(&output.stdout);
+    let containers: Vec<String> = output_str
         .split('\n')
         .filter(|line| !line.is_empty())
         .map(|line| from_str(line).expect("Failed to parse container row"))
@@ -281,4 +310,48 @@ fn output_to_result(output: std::process::Output) -> std::io::Result<String> {
             String::from_utf8_lossy(&output.stderr),
         ))
     }
+}
+
+pub fn buildx(
+    directory: &PathBuf,
+    version: &str,
+    architecture: &str,
+    binarylabel: &str,
+) -> std::io::Result<Vec<String>> {
+    let child = Command::new("docker")
+        .current_dir(directory)
+        .arg("buildx")
+        .arg("build")
+        .arg("--build-arg")
+        .arg(format!(
+            "DOWNLOAD_URL=https://github.com/514-labs/moose/releases/download/v{}/moose-cli-{}",
+            version, binarylabel
+        ))
+        .arg("--platform")
+        .arg(architecture)
+        .arg("--no-cache")
+        .arg("--load")
+        .arg("-t")
+        .arg(format!("moose-deployment-{}", binarylabel))
+        .arg(".")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    if !output.status.success() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "Failed to run dockerx build",
+        ));
+    }
+
+    let output_str = String::from_utf8_lossy(&output.stdout);
+    let containers: Vec<String> = output_str
+        .split('\n')
+        .filter(|line| !line.is_empty())
+        .map(|line| from_str(line).expect("Failed to parse container row"))
+        .collect();
+    Ok(containers)
 }

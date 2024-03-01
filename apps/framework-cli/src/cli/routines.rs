@@ -287,7 +287,7 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
 async fn initialize_project_state(
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
-) -> anyhow::Result<()> { 
+) -> anyhow::Result<FrameworkObjectVersions> {
     let mut clickhouse_config_clone = project.clickhouse_config.clone();
     let mut redpanda_config_clone = project.redpanda_config.clone();
 
@@ -335,7 +335,7 @@ async fn initialize_project_state(
 
     let configured_client = olap::clickhouse::create_client(clickhouse_config_clone);
     let producer = redpanda::create_producer(redpanda_config_clone);
-  
+
     let mut old_version_dir = project.internal_dir()?;
     old_version_dir.push("versions");
 

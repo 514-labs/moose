@@ -18,7 +18,7 @@ use std::fmt::Debug;
 use std::path::Path;
 use std::path::PathBuf;
 
-use config::{Config, ConfigError, File};
+use config::{Config, ConfigError, Environment, File};
 use log::debug;
 use serde::Deserialize;
 use serde::Serialize;
@@ -101,6 +101,11 @@ impl Project {
 
         let mut project_config: Project = Config::builder()
             .add_source(File::from(project_file).required(true))
+            .add_source(
+                Environment::with_prefix("MOOSE")
+                    .prefix_separator("_")
+                    .separator("__"),
+            )
             .build()?
             .try_deserialize()?;
 

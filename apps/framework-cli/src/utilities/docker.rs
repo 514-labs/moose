@@ -329,7 +329,6 @@ pub fn buildx(
         ))
         .arg("--platform")
         .arg(architecture)
-        .arg("--no-cache")
         .arg("--load")
         .arg("-t")
         .arg(format!("moose-deployment-{}", binarylabel))

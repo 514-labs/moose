@@ -187,7 +187,7 @@ impl Routine for BuildDockerfile {
         // however, its set to 0.0.1 in development so we set it to 0.3.93 for the purpose of local dev testing.
         let mut cli_version = constants::CLI_VERSION;
         if cli_version == "0.0.1" {
-            cli_version = "0.3.93";
+            cli_version = "0.3.101";
         }
 
         info!("Creating docker linux/amd64 image");

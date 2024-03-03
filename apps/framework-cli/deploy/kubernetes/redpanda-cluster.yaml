@@ -1,0 +1,22 @@
+apiVersion: cluster.redpanda.com/v1alpha1
+kind: Redpanda
+metadata:
+  name: redpanda
+spec:
+  chartRef: {}
+  clusterSpec:
+    external:
+      domain: rp.514.dev
+    auth:
+      sasl:
+        enabled: true
+        users:
+          - name: red514panda
+            passwordFrom:
+              secretKeyRef:
+                name: redpanda-password
+                key: password 
+    storage:
+      persistentVolume:
+        enabled: true
+        #storageClass: csi-driver-lvm-striped-xfs

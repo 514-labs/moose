@@ -1,11 +1,14 @@
 use lazy_static::lazy_static;
+use std::fs;
 
 use crate::cli::display::with_spinner;
 use crate::cli::routines::initialize::{CreateInternalTempDirectoryTree, CreateModelsVolume};
 use crate::cli::routines::util::ensure_docker_running;
 use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
 use crate::utilities::docker;
+use crate::utilities::git::dump_old_version_schema;
 use crate::{cli::display::Message, project::Project};
+use log::debug;
 use std::sync::Arc;
 
 use super::{
@@ -83,5 +86,46 @@ impl Routine for RunContainers {
                 err,
             )),
         }
+    }
+}
+
+pub struct CopyOldSchema {
+    project: Arc<Project>,
+}
+impl CopyOldSchema {
+    pub fn new(project: Arc<Project>) -> Self {
+        Self { project }
+    }
+}
+impl Routine for CopyOldSchema {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        for (version, commit_hash) in self.project.supported_old_versions.iter() {
+            let dest = &self
+                .project
+                .internal_dir()
+                .unwrap()
+                .join("versions")
+                .join(version);
+            fs::create_dir_all(dest).map_err(|err| {
+                RoutineFailure::new(
+                    Message::new("Failed".to_string(), "to create directory".to_string()),
+                    err,
+                )
+            })?;
+            dump_old_version_schema(&self.project, commit_hash.clone(), &dest).map_err(
+                |git_err| {
+                    debug!("Failed to retrieve old schema: {}", git_err);
+                    RoutineFailure::error(Message::new(
+                        "Failed".to_string(),
+                        "to retrieve old schema".to_string(),
+                    ))
+                },
+            )?;
+        }
+
+        Ok(RoutineSuccess::success(Message::new(
+            "Successfully".to_string(),
+            "loaded old schema".to_string(),
+        )))
     }
 }

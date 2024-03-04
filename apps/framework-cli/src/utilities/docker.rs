@@ -16,7 +16,7 @@ services:
       - "19092:19092"
       - "9644:9644"
     volumes:
-      - .moose/.panda_house:/tmp/panda_house
+      - .panda_house:/tmp/panda_house
     command:
       - redpanda
       - start
@@ -33,10 +33,10 @@ services:
   clickhousedb:
     image: docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-latest}
     volumes:
-      - .moose/.clickhouse/configs/scripts:/docker-entrypoint-initdb.d
-      - .moose/.clickhouse/data:/var/lib/clickhouse/
-      - .moose/.clickhouse/logs:/var/log/clickhouse-server/
-      - .moose/.clickhouse/configs/users:/etc/clickhouse-server/users.d
+      - .clickhouse/configs/scripts:/docker-entrypoint-initdb.d
+      - .clickhouse/data:/var/lib/clickhouse/
+      - .clickhouse/logs:/var/log/clickhouse-server/
+      - .clickhouse/configs/users:/etc/clickhouse-server/users.d
     environment:
       - CLICKHOUSE_DB=${DB_NAME:-local}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-panda}

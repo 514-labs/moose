@@ -95,7 +95,7 @@ pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
 pub async fn fetch_topics(
     config: &RedpandaConfig,
 ) -> Result<Vec<String>, rdkafka::error::KafkaError> {
-    let client_config = config_client(&config);
+    let client_config = config_client(config);
     let producer: FutureProducer = client_config.create().expect("Failed to create producer");
     let metadata = producer
         .client()

@@ -66,13 +66,13 @@ pub fn dump_old_version_schema(
         commit_hash
     )))?;
 
-    let tree = commit.tree()?.get_path(&path)?.to_object(&repo)?;
+    let tree = commit.tree()?.get_path(path)?.to_object(&repo)?;
     let tree = tree.as_tree().ok_or(Error::from_str(&format!(
         "Object {} is not a tree",
         tree.id()
     )))?;
 
-    recursive_dump_tree_content(&repo, &tree, dest)?;
+    recursive_dump_tree_content(&repo, tree, dest)?;
     Ok(())
 }
 
@@ -109,6 +109,6 @@ fn file_system_error_to_git_error(err: std::io::Error) -> Error {
     Error::new(
         ErrorCode::GenericError,
         ErrorClass::Filesystem,
-        &err.to_string(),
+        err.to_string(),
     )
 }

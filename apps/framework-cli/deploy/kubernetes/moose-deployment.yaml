@@ -1,66 +1,70 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: webserver-deployment
+  name: moosedeployment
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: mooseweb
+      app: moosedeploy
   template:
     metadata:
       labels:
-        app: mooseweb
+        app: moosedeploy
         ver: v1
     spec:
       containers:
-      - name: web
-        image: 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.110
-        ports:
-        - containerPort: 4000
-        env:
-          - name: MOOSE_REDPANDA_CONFIG__BROKER
-            valueFrom:
-              secretKeyRef:
-                name: sn-moose-redpanda-config--broker
-                key: sk-moose-redpanda-config--broker
-          - name: MOOSE_REDPANDA_CONFIG___MESSAGE_TIMEOUT_MS
-            valueFrom:
-              secretKeyRef:
-                name: sn-moose-redpanda-config--message-timeout-ms
-                key: sk_moose-redpanda-config--message-timeout-ms
-          - name: MOOSE_CLICKHOUSE_CONFIG__DB_NAME
-            valueFrom:
-              secretKeyRef:
-                name: sn-moose-clickhouse-config--db-name
-                key: sk-moose-clickhouse-config--db-name
-          - name: MOOSE_CLICKHOUSE_CONFIG__USER
-            valueFrom:
-              secretKeyRef:
-                name: sn-moose-clickhouse-config--user
-                key: sk-moose-clickhouse-config--user
-          - name: MOOSE_CLICKHOUSE_CONFIG__PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: sn-moose-clickhouse-config--password
-                key: sk-moose-clickhouse-config--password
-          - name: MOOSE_CLICKHOUSE_CONFIG__HOST
-            valueFrom:
-              secretKeyRef:
-                name: sn-moose-clickhouse-config--host
-                key: sk-moose-clickhouse-config--host
-          - name: MOOSE_CLICKHOUSE_CONFIG__HOST_PORT
-            valueFrom:
-              secretKeyRef:
-                name: sn-moose-clickhouse-config--host-port
-                key: sk-moose-clickhouse-config--host-port
-          - name: MOOSE_CLICKHOUSE_CONFIG__POSTGRES_PORT
-            valueFrom:
-              secretKeyRef:
-                name: sn-moose-clickhouse-config--postgres-port
-                key: sk-moose-clickhouse-config--postgres-port
-          - name: MOOSE_CLICKHOUSE_CONFIG__KAFKA_PORT
-            valueFrom:
-              secretKeyRef:
-                name: sn-moose-clickhouse-config--kafka-port
-                key: sk-moose-clickhouse-config--kafka-port
+        - name: moosedeploy
+          image: 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.110
+          ports:
+            - containerPort: 4000
+          env:
+            - name: RUST_BACKTRACE
+              value: "full"
+            - name: MOOSE_REDPANDA_CONFIG__BROKER
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-redpanda-config--broker
+                  key: sk-moose-redpanda-config--broker
+            - name: MOOSE_REDPANDA_CONFIG___MESSAGE_TIMEOUT_MS
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-redpanda-config--message-timeout-ms
+                  key: sk-moose-redpanda-config--message-timeout-ms
+            - name: MOOSE_CLICKHOUSE_CONFIG__DB_NAME
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-clickhouse-config--db-name
+                  key: sk-moose-clickhouse-config--db-name
+            - name: MOOSE_CLICKHOUSE_CONFIG__USER
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-clickhouse-config--user
+                  key: sk-moose-clickhouse-config--user
+            - name: MOOSE_CLICKHOUSE_CONFIG__PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-clickhouse-config--password
+                  key: sk-moose-clickhouse-config--password
+            - name: MOOSE_CLICKHOUSE_CONFIG__HOST
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-clickhouse-config--host
+                  key: sk-moose-clickhouse-config--host
+            - name: MOOSE_CLICKHOUSE_CONFIG__HOST_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-clickhouse-config--host-port
+                  key: sk-moose-clickhouse-config--host-port
+            - name: MOOSE_CLICKHOUSE_CONFIG__POSTGRES_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-clickhouse-config--postgres-port
+                  key: sk-moose-clickhouse-config--postgres-port
+            - name: MOOSE_CLICKHOUSE_CONFIG__KAFKA_PORT
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-clickhouse-config--kafka-port
+                  key: sk-moose-clickhouse-config--kafka-port
+      imagePullSecrets:
+        - name: moose-repo-credentials 

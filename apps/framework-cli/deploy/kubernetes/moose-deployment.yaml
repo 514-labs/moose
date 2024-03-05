@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: web
-        image: pnxtech/moose-deployment-x86_64-unknown-linux-gnu:latest
+        image: 514labs/moose-deployment-x86_64-unknown-linux-gnu:latest
         ports:
         - containerPort: 4000
         env:
@@ -29,6 +29,26 @@ spec:
               secretKeyRef:
                 name: sn-moose-redpanda-config--message_timeout_ms
                 key: sk-moose-redpanda-config--message_timeout_ms
+          - name: MOOSE_REDPANDA_CONFIG__SASL_USERNAME
+            valueFrom:
+              secretKeyRef:
+                name: sn-moose-redpanda-config--sasl_username
+                key: sk-moose-redpanda-config--sasl_username
+          - name: MOOSE_REDPANDA_CONFIG__SASL_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: sn-moose-redpanda-config--sasl_password
+                key: sk-moose-redpanda-config--sasl_password
+          - name: MOOSE_REDPANDA_CONFIG__SASL_MECHANISM
+            valueFrom:
+              secretKeyRef:
+                name: sn-moose-redpanda-config--sasl_mechanism
+                key: sk-moose-redpanda-config--sasl_mechanism 
+          - name: MOOSE_REDPANDA_CONFIG__SECURITY_PROTOCOL
+            valueFrom:
+              secretKeyRef:
+                name: sn-moose-redpanda-config--security_protocol
+                key: sk-moose-redpanda-config--security_protocol
           - name: MOOSE_CLICKHOUSE_CONFIG__DB_NAME
             valueFrom:
               secretKeyRef:

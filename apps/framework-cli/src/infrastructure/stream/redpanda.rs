@@ -37,6 +37,10 @@ pub fn delete_topic(project_name: &str, topic_name: &str) -> std::io::Result<Str
 pub struct RedpandaConfig {
     pub broker: String,
     pub message_timeout_ms: i32,
+    pub sasl_username: Option<String>,
+    pub sasl_password: Option<String>,
+    pub sasl_mechanism: Option<String>,
+    pub security_protocol: Option<String>,
 }
 
 impl Default for RedpandaConfig {
@@ -44,6 +48,10 @@ impl Default for RedpandaConfig {
         Self {
             broker: "localhost:19092".to_string(),
             message_timeout_ms: 1000,
+            sasl_username: None,
+            sasl_password: None,
+            sasl_mechanism: None,
+            security_protocol: None,
         }
     }
 }
@@ -54,28 +62,41 @@ pub struct ConfiguredProducer {
     pub config: RedpandaConfig,
 }
 
-pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
-    let producer = ClientConfig::new()
+fn config_client(config: &RedpandaConfig) -> ClientConfig {
+    let mut client_config = ClientConfig::new();
+    client_config
         .set("bootstrap.servers", config.clone().broker)
         .set(
             "message.timeout.ms",
             config.clone().message_timeout_ms.to_string(),
-        )
-        .create()
-        .expect("Failed to create producer");
+        );
 
+    if let Some(username) = config.clone().sasl_username {
+        client_config.set("sasl.username", &username);
+    }
+    if let Some(password) = config.clone().sasl_password {
+        client_config.set("sasl.password", &password);
+    }
+    if let Some(mechanism) = config.clone().sasl_mechanism {
+        client_config.set("sasl.mechanism", &mechanism);
+    }
+    if let Some(security_protocol) = config.clone().security_protocol {
+        client_config.set("security.protocol", &security_protocol);
+    }
+    client_config
+}
+
+pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
+    let client_config = config_client(&config);
+    let producer = client_config.create().expect("Failed to create producer");
     ConfiguredProducer { producer, config }
 }
 
 pub async fn fetch_topics(
     config: &RedpandaConfig,
 ) -> Result<Vec<String>, rdkafka::error::KafkaError> {
-    let producer: FutureProducer = ClientConfig::new()
-        .set("bootstrap.servers", &config.broker)
-        .set("message.timeout.ms", config.message_timeout_ms.to_string())
-        .create()
-        .expect("Failed to create producer");
-
+    let client_config = config_client(config);
+    let producer: FutureProducer = client_config.create().expect("Failed to create producer");
     let metadata = producer
         .client()
         .fetch_metadata(None, Duration::from_secs(5))?;

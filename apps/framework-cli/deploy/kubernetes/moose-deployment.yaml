@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
       - name: web
-        image: 514labs/moose-deployment-x86_64-unknown-linux-gnu:latest
+        image: 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.110
         ports:
         - containerPort: 4000
         env:
@@ -27,33 +27,13 @@ spec:
           - name: MOOSE_REDPANDA_CONFIG___MESSAGE_TIMEOUT_MS
             valueFrom:
               secretKeyRef:
-                name: sn-moose-redpanda-config--message_timeout_ms
-                key: sk-moose-redpanda-config--message_timeout_ms
-          - name: MOOSE_REDPANDA_CONFIG__SASL_USERNAME
-            valueFrom:
-              secretKeyRef:
-                name: sn-moose-redpanda-config--sasl_username
-                key: sk-moose-redpanda-config--sasl_username
-          - name: MOOSE_REDPANDA_CONFIG__SASL_PASSWORD
-            valueFrom:
-              secretKeyRef:
-                name: sn-moose-redpanda-config--sasl_password
-                key: sk-moose-redpanda-config--sasl_password
-          - name: MOOSE_REDPANDA_CONFIG__SASL_MECHANISM
-            valueFrom:
-              secretKeyRef:
-                name: sn-moose-redpanda-config--sasl_mechanism
-                key: sk-moose-redpanda-config--sasl_mechanism 
-          - name: MOOSE_REDPANDA_CONFIG__SECURITY_PROTOCOL
-            valueFrom:
-              secretKeyRef:
-                name: sn-moose-redpanda-config--security_protocol
-                key: sk-moose-redpanda-config--security_protocol
+                name: sn-moose-redpanda-config--message-timeout-ms
+                key: sk_moose-redpanda-config--message-timeout-ms
           - name: MOOSE_CLICKHOUSE_CONFIG__DB_NAME
             valueFrom:
               secretKeyRef:
                 name: sn-moose-clickhouse-config--db-name
-                key: sk-moose-clickhouse-config--db_name
+                key: sk-moose-clickhouse-config--db-name
           - name: MOOSE_CLICKHOUSE_CONFIG__USER
             valueFrom:
               secretKeyRef:
@@ -73,14 +53,14 @@ spec:
             valueFrom:
               secretKeyRef:
                 name: sn-moose-clickhouse-config--host-port
-                key: sk-moose-clickhouse-config--host_port
+                key: sk-moose-clickhouse-config--host-port
           - name: MOOSE_CLICKHOUSE_CONFIG__POSTGRES_PORT
             valueFrom:
               secretKeyRef:
-                name: sn-moose-clickhouse-config--postgres_port
-                key: sk-moose-clickhouse-config--postgres_port
+                name: sn-moose-clickhouse-config--postgres-port
+                key: sk-moose-clickhouse-config--postgres-port
           - name: MOOSE_CLICKHOUSE_CONFIG__KAFKA_PORT
             valueFrom:
               secretKeyRef:
-                name: sn-moose-clickhouse-config--kafka_port
-                key: sk-moose-clickhouse-config--kafka_port
+                name: sn-moose-clickhouse-config--kafka-port
+                key: sk-moose-clickhouse-config--kafka-port

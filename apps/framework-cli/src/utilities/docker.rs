@@ -331,7 +331,7 @@ pub fn buildx(
         .arg(architecture)
         .arg("--load")
         .arg("-t")
-        .arg("moose-df-deployment")
+        .arg(format!("moose-df-deployment:{}", version))
         .arg(".")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

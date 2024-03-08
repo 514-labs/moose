@@ -66,6 +66,9 @@ export default function IngestionPointTabs({
   const [_, setSelectedTab] = useState<string>(tab ? tab : "overview");
   const model = getModelFromRoute(ingestionPoint, cliData);
   const infra = getRelatedInfra(model, cliData, ingestionPoint);
+  const triggerTable = infra.tables.find(
+    (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
+  );
 
   const createTabQueryString = useCallback(
     (tab: string) => {
@@ -168,9 +171,8 @@ export default function IngestionPointTabs({
                       variant="outline"
                       onClick={() => {
                         router.push(
-                          `${pathName}?${createTabQueryString("query")}`,
+                          `/infrastructure/databases/${triggerTable.database}/tables/${triggerTable.uuid}?tab=query`,
                         );
-                        setSelectedTab("query");
                       }}
                     >
                       go to view

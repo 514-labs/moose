@@ -11,6 +11,7 @@ interface IngestionInstructionProps {
   pythonSnippet: string;
   bashSnippet: string;
   ingestionPoint: Route;
+  rustSnippet: string;
 }
 export default function IngestionInstructions({
   cliData,
@@ -18,6 +19,7 @@ export default function IngestionInstructions({
   pythonSnippet,
   ingestionPoint,
   bashSnippet,
+  rustSnippet,
 }: IngestionInstructionProps) {
   return (
     <Tabs defaultValue="ingestion-point">
@@ -61,6 +63,10 @@ export default function IngestionInstructions({
                   {
                     language: "bash",
                     code: bashSnippet,
+                  },
+                  {
+                    language: "rust",
+                    code: rustSnippet,
                   },
                 ]}
               />

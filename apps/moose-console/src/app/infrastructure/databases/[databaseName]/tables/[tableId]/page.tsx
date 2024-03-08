@@ -11,6 +11,7 @@ import {
   clickhousePythonSnippet,
   jsSnippet,
   pythonSnippet,
+  rustSnippet,
 } from "lib/snippets";
 import { getModelFromTable } from "lib/utils";
 import { Fragment } from "react";
@@ -69,6 +70,7 @@ export default async function Page({
           cliData={data}
           bashSnippet={bashSnippet(data, model)}
           jsSnippet={jsSnippet(data, model)}
+          rustSnippet={rustSnippet(data, model)}
           pythonSnippet={pythonSnippet(data, model)}
           clickhouseJSSnippet={clickhouseJSSnippet(data, model)}
           clickhousePythonSnippet={clickhousePythonSnippet(data, model)}

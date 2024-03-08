@@ -9,6 +9,7 @@ import {
   clickhousePythonSnippet,
   jsSnippet,
   pythonSnippet,
+  rustSnippet,
 } from "lib/snippets";
 import { NavBreadCrumb } from "components/nav-breadcrumb";
 import ModelView from "app/ModelView";
@@ -40,6 +41,7 @@ export default async function Page({
   const jsCodeSnippet = jsSnippet(data, model);
   const pythonCodeSnippet = pythonSnippet(data, model);
   const bashCodeSnippet = bashSnippet(data, model);
+  const rustCodeSnippet = rustSnippet(data, model);
   const clickhouseJSCode = clickhouseJSSnippet(data, model);
   const clickhousePythonCode = clickhousePythonSnippet(data, model);
 
@@ -57,6 +59,7 @@ export default async function Page({
         clickhousePythonSnippet={clickhousePythonCode}
         pythonSnippet={pythonCodeSnippet}
         bashSnippet={bashCodeSnippet}
+        rustSnippet={rustCodeSnippet}
       />
     </section>
   );

@@ -35,6 +35,13 @@ use serde::Serialize;
 
 use crate::infrastructure::olap::clickhouse::mapper::arity_mapper;
 
+use swc_common::{self, sync::Lrc, SourceMap};
+use swc_ecma_ast::{
+    Decl, Expr, Module, ModuleItem, Stmt, TsEnumDecl, TsEnumMember, TsEnumMemberId,
+    TsInterfaceDecl, TsKeywordTypeKind, TsType, TsTypeAnn, TsTypeRef,
+};
+use swc_ecma_parser::{lexer::Lexer, Capturing, Parser, StringInput, Syntax};
+
 pub mod templates;
 
 #[derive(Debug, Clone)]
@@ -378,7 +385,7 @@ pub fn prisma_ast_mapper(ast: SchemaAst) -> Result<FileObjects, ParsingError> {
 }
 
 pub fn ts_ast_mapper(ast: Module) -> Result<FileObjects, ParsingError> {
-    let mut models = Vec::new();
+    let models = Vec::new();
     let mut enums = Vec::new();
 
     let mut ts_declarations = Vec::new();
@@ -493,13 +500,6 @@ fn ts_interface_to_model(
         name: schema_name,
     })
 }
-
-use swc_common::{self, sync::Lrc, SourceMap};
-use swc_ecma_ast::{
-    Decl, Expr, Module, ModuleItem, Stmt, TsEnumDecl, TsEnumMember, TsEnumMemberId,
-    TsInterfaceDecl, TsKeywordType, TsKeywordTypeKind, TsType, TsTypeAnn, TsTypeRef,
-};
-use swc_ecma_parser::{lexer::Lexer, Capturing, Parser, StringInput, Syntax};
 
 pub fn parse_ts_schema_file(path: &Path) -> Module {
     //! Parse a typescript file as a module and return the AST for that module

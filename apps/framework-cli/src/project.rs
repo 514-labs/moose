@@ -11,6 +11,7 @@
 //! - `project_file_location` - The location of the project file on disk
 //! ```
 
+use std::collections::HashMap;
 use std::io::Write;
 pub mod typescript_project;
 
@@ -51,6 +52,9 @@ pub struct Project {
     pub language_project_config: LanguageProjectConfig,
     #[serde(skip)]
     pub project_location: PathBuf,
+
+    #[serde(default = "HashMap::new")]
+    pub supported_old_versions: HashMap<String, String>,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
@@ -91,6 +95,7 @@ impl Project {
                 language_project_config: LanguageProjectConfig::Typescript(TypescriptProject::new(
                     name,
                 )),
+                supported_old_versions: HashMap::new(),
             },
         }
     }

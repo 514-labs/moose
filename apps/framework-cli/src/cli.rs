@@ -19,6 +19,7 @@ use log::{debug, info};
 use logger::setup_logging;
 use settings::{read_settings, Settings};
 
+use crate::cli::routines::start::CopyOldSchema;
 use crate::cli::{
     display::{Message, MessageType},
     routines::{
@@ -125,6 +126,8 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 controller.add_routine(Box::new(ValidateRedPandaCluster::new(
                     project_arc.name().clone(),
                 )));
+
+                controller.add_routine(Box::new(CopyOldSchema::new(project_arc.clone())));
 
                 controller.run_routines(run_mode);
 

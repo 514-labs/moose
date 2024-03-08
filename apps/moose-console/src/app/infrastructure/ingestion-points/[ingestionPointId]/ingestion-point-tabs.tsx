@@ -170,7 +170,9 @@ export default function IngestionPointTabs({
                     <Button
                       variant="outline"
                       onClick={() => {
-                        router.push(`/infrastructure/databases/${triggerTable.database}/tables/${triggerTable.uuid}?tab=query`)
+                        router.push(
+                          `/infrastructure/databases/${triggerTable.database}/tables/${triggerTable.uuid}?tab=query`,
+                        );
                       }}
                     >
                       go to view

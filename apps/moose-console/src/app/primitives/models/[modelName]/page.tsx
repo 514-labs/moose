@@ -12,6 +12,7 @@ import {
 } from "lib/snippets";
 import { NavBreadCrumb } from "components/nav-breadcrumb";
 import ModelView from "app/ModelView";
+import FileUpload from "components/file-upload";
 
 async function getModel(name: string, data: CliData): Promise<DataModel> {
   try {
@@ -49,6 +50,7 @@ export default async function Page({
       <div className="py-10">
         <div className="text-8xl">{model.name}</div>
       </div>
+      <FileUpload />
       <ModelView
         table={triggerTable}
         cliData={data}

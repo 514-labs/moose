@@ -1,8 +1,9 @@
 import { createClient } from "@clickhouse/client-web";
+import { createClient as clientServerClient } from '@clickhouse/client'
 import { Project } from "../app/db";
 import { unstable_noStore as noStore } from "next/cache";
 
-export function getClient(project?: Project) {
+export function getClient(project?: Project, server: boolean = false) {
   // This is to make sure the environment variables are read at runtime
   // and not during build time
   noStore();
@@ -26,7 +27,9 @@ export function getClient(project?: Project) {
     "pandapass";
   const CLICKHOUSE_DB = "local";
 
-  const client = createClient({
+  const clientCreator = server ? clientServerClient : createClient;
+
+  const client = clientCreator({
     host: `http://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
     username: CLICKHOUSE_USERNAME,
     password: CLICKHOUSE_PASSWORD,

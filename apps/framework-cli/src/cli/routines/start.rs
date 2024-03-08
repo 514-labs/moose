@@ -124,8 +124,8 @@ impl Routine for CopyOldSchema {
         }
 
         Ok(RoutineSuccess::success(Message::new(
-            "Successfully".to_string(),
-            "loaded old schema".to_string(),
+            "Loaded".to_string(),
+            "old schemas".to_string(),
         )))
     }
 }

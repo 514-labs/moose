@@ -1,12 +1,13 @@
-import Image from "next/image";
 import { getData } from "./data";
+import { ChartPage } from "./chart-page";
+import { createFunnelQuery } from "@/data/funnel-query";
+import { eventTables } from "@/data/event-tables";
 
 export default async function Home() {
-  const data = await getData();
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-        {JSON.stringify(data)}
+    <main className="flex min-h-screen flex-col items-center justify-between p-4">
+      <ChartPage />
     </main>
   );
 }

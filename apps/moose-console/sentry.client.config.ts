@@ -3,10 +3,13 @@ import * as Sentry from "@sentry/nextjs";
 Sentry.init({
   dsn: "https://420ad9a138f36701dadb42fd8640357f@o4505851966128128.ingest.us.sentry.io/4506458108919808",
   // Replay may only be enabled for the client-side
-  integrations: [Sentry.replayIntegration(), Sentry.feedbackIntegration({
-    // Additional SDK configuration goes in here, for example:
-    colorScheme: "system",
-  }),],
+  integrations: [
+    Sentry.replayIntegration(),
+    Sentry.feedbackIntegration({
+      // Additional SDK configuration goes in here, for example:
+      colorScheme: "system",
+    }),
+  ],
 
   // Set tracesSampleRate to 1.0 to capture 100%
   // of transactions for performance monitoring.

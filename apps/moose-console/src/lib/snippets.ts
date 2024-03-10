@@ -144,4 +144,4 @@ let res = client.post("http://${data.project && data.project.http_server_config.
     .send()
     .await?;
 `;
-}
+};

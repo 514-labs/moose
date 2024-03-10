@@ -15,7 +15,7 @@ pub async fn create_topics(
 ) -> Result<(), Box<dyn std::error::Error>> {
     info!("Creating topics: {:?}", topics);
 
-    let admin_client: AdminClient<_> = config_client(&config)
+    let admin_client: AdminClient<_> = config_client(config)
         .create()
         .expect("Redpanda Admin Client creation failed");
 
@@ -24,7 +24,7 @@ pub async fn create_topics(
 
     for topic_name in &topics {
         // Create a new topic with 1 partition and replication factor 1
-        let topic = NewTopic::new(&topic_name, 1, TopicReplication::Fixed(1));
+        let topic = NewTopic::new(topic_name, 1, TopicReplication::Fixed(1));
 
         // Set some topic configurations
         let topic = topic
@@ -52,7 +52,7 @@ pub async fn delete_topics(
 ) -> Result<(), Box<dyn std::error::Error>> {
     info!("Deleting topics: {:?}", topics);
 
-    let admin_client: AdminClient<_> = config_client(&config)
+    let admin_client: AdminClient<_> = config_client(config)
         .create()
         .expect("Redpanda Admin Client creation failed");
 

@@ -1,22 +1,26 @@
-import { Callout } from 'nextra/components'
-import { Tabs } from 'nextra/components'
+import { Callout } from "nextra/components";
+import { Tabs } from "nextra/components";
 
 # Capture data
-MooseJS makes it easy to capture data from your user facing applications by providing typed SDKs which are automatically generated from your data models. 
+
+MooseJS makes it easy to capture data from your user facing applications by providing typed SDKs which are automatically generated from your data models.
 
 ## From MooseJS SDKs
+
 <Callout type="info" emoji="ℹ️">
-  We currently support Typescript SDKs. Support for other languages is coming soon.
+  We currently support Typescript SDKs. Support for other languages is coming
+  soon.
 </Callout>
 
 You can develop your data service right along side your user facing applications. MooseJS will automatically generate a Typescript SDK as you build your service locally and make them available for you to link to your application. To link a data service's SDK to your application, simply run the following command:
 
 ```txt filename="Terminal"
 // From your application's root directory or wherever you run npm install
-npm link <project-name>-sdk 
+npm link <project-name>-sdk
 ```
 
 ## Through Ingestion Points
+
 As you define data models in your service, MooseJS will automatically generate ingestion points for you to send data to. Ingestion points are HTTP endpoints that you can send data to.
 
 <Tabs items={['curl', 'javascript', 'python']}>
@@ -50,10 +54,11 @@ As you define data models in your service, MooseJS will automatically generate i
 
     requests.post('http://localhost:4000/ingest/UserActivity', json={
       'eventId': '1234567890',
-      'timestamp': '2019-01-01 00:00:01', 
-      'userId': '123456', 
+      'timestamp': '2019-01-01 00:00:01',
+      'userId': '123456',
       'activityType': 'click'
     })
     ```
+
   </Tabs.Tab>
 </Tabs>

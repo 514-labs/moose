@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@sentry/nextjs": "^7.91.0",
+    "@sentry/nextjs": "^7.106.0",
     "next": "^14.0.4",
     "nextra": "^2.13.2",
     "nextra-theme-docs": "^2.13.2",

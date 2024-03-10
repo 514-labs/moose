@@ -8,7 +8,6 @@ use clickhouse::Client;
 use lazy_static::lazy_static;
 use log::debug;
 use regex::Regex;
-use sentry::types::protocol;
 use serde::{Deserialize, Serialize};
 
 use crate::framework::schema::DataEnum;

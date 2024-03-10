@@ -1,17 +1,17 @@
-const remarkMdxDisableExplicitJsx = import('remark-mdx-disable-explicit-jsx') 
+const remarkMdxDisableExplicitJsx = import("remark-mdx-disable-explicit-jsx");
 
-const withNextra = require('nextra')({
-  theme: 'nextra-theme-docs',
-  themeConfig: './theme.config.jsx',
+const withNextra = require("nextra")({
+  theme: "nextra-theme-docs",
+  themeConfig: "./theme.config.jsx",
   mdxOptions: {
     remarkPlugins: [
       [
         remarkMdxDisableExplicitJsx,
-        { whiteList: ['table', 'thead', 'tbody', 'tr', 'th', 'td'] }
-      ]
-    ]
-  }
-})
+        { whiteList: ["table", "thead", "tbody", "tr", "th", "td"] },
+      ],
+    ],
+  },
+});
 
 const { withSentryConfig } = require("@sentry/nextjs");
 
@@ -20,6 +20,7 @@ const nextConfig = {
   reactStrictMode: true,
   // Optional build-time configuration options
   sentry: {
+    hideSourceMaps: true,
     tunnelRoute: "/monitoring-tunnel",
     // See the sections below for information on the following options:
     //   'Configure Source Maps':
@@ -58,7 +59,9 @@ const sentryWebpackPluginOptions = {
 };
 
 // Make sure adding Sentry options is the last code to run before exporting
-module.exports = withNextra(withSentryConfig(nextConfig, sentryWebpackPluginOptions));
+module.exports = withNextra(
+  withSentryConfig(nextConfig, sentryWebpackPluginOptions)
+);
 
 // If you're using a next.config.mjs file:
 // export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);

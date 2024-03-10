@@ -11,6 +11,7 @@ const nextConfig = {
 
   // Optional build-time configuration options
   sentry: {
+    hideSourceMaps: true,
     tunnelRoute: "/monitoring-tunnel",
     // See the sections below for information on the following options:
     //   'Configure Source Maps':
@@ -30,7 +31,6 @@ const nextConfig = {
   },
 };
 
-
 const sentryWebpackPluginOptions = {
   // Additional config options for the Sentry webpack plugin. Keep in mind that
   // the following options are set automatically, and overriding them is not
@@ -48,7 +48,6 @@ const sentryWebpackPluginOptions = {
   // For all available options, see:
   // https://github.com/getsentry/sentry-webpack-plugin#options.
 };
-
 
 // Make sure adding Sentry options is the last code to run before exporting
 module.exports = withSentryConfig(nextConfig, sentryWebpackPluginOptions);

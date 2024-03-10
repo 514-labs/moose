@@ -1,13 +1,13 @@
 export interface Base {
-    id: string;
+  id: string;
 }
 
 type Key = string;
 
 interface User extends Base {
-    name: string; 
-    email: string;
-    id: Key;
+  name: string;
+  email: string;
+  id: Key;
 }
 
-type UserKey = User['id' & 'name'];
+type UserKey = User["id" & "name"];

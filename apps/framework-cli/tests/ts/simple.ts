@@ -1,11 +1,11 @@
 enum MyEnum {
-    A,
-    B,
-    C
+  A,
+  B,
+  C,
 }
 
 interface MyModel {
-    name: string;
-    age: number;
-    abc: MyEnum;
+  name: string;
+  age: number;
+  abc: MyEnum;
 }

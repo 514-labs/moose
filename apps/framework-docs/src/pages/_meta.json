@@ -1,11 +1,11 @@
 {
-    "index": {
-        "title": "Introduction",
-        "theme": {
-            "breadcrumb": false
-        }
-    },
-    "getting-started": "Getting Started",
-    "building": "Building Your App",
-    "moose-cli": "Moose CLI"
+  "index": {
+    "title": "Introduction",
+    "theme": {
+      "breadcrumb": false
+    }
+  },
+  "getting-started": "Getting Started",
+  "building": "Building Your App",
+  "moose-cli": "Moose CLI"
 }

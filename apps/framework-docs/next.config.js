@@ -1,24 +1,21 @@
-const remarkMdxDisableExplicitJsx = import('remark-mdx-disable-explicit-jsx') 
+const remarkMdxDisableExplicitJsx = import("remark-mdx-disable-explicit-jsx");
 
-
-const withNextra = require('nextra')({
-  theme: 'nextra-theme-docs',
-  themeConfig: './theme.config.jsx',
+const withNextra = require("nextra")({
+  theme: "nextra-theme-docs",
+  themeConfig: "./theme.config.jsx",
   mdxOptions: {
     remarkPlugins: [
       [
         remarkMdxDisableExplicitJsx,
-        { whiteList: ['table', 'thead', 'tbody', 'tr', 'th', 'td'] }
-      ]
-    ]
-  }
-  
-})
- 
+        { whiteList: ["table", "thead", "tbody", "tr", "th", "td"] },
+      ],
+    ],
+  },
+});
+
 module.exports = withNextra({
   reactStrictMode: true,
-})
-
+});
 
 // Injected content via Sentry wizard below
 
@@ -59,5 +56,5 @@ module.exports = withSentryConfig(
     // https://docs.sentry.io/product/crons/
     // https://vercel.com/docs/cron-jobs
     automaticVercelMonitors: true,
-  }
+  },
 );

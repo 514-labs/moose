@@ -25,6 +25,7 @@ interface IngestionPointTabsProps {
   cliData: CliData;
   jsSnippet: string;
   bashSnippet: string;
+  rustSnippet: string;
   pythonSnippet: string;
   clickhouseJSSnippet: string;
   clickhousePythonSnippet: string;
@@ -55,6 +56,7 @@ export default function IngestionPointTabs({
   jsSnippet,
   pythonSnippet,
   bashSnippet,
+  rustSnippet,
   clickhouseJSSnippet,
   clickhousePythonSnippet,
 }: IngestionPointTabsProps) {
@@ -142,6 +144,7 @@ export default function IngestionPointTabs({
                   ingestionPoint={ingestionPoint}
                   jsSnippet={jsSnippet}
                   pythonSnippet={pythonSnippet}
+                  rustSnippet={rustSnippet}
                 />
               </CardContent>
             </Card>

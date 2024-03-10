@@ -1,13 +1,14 @@
 export default {
   logo: <div>moosejs</div>,
   project: {
-    link: 'https://github.com/514-labs/moose'
+    link: "https://github.com/514-labs/moose",
   },
-  docsRepositoryBase: 'https://github.com/514-labs/moose/tree/main/apps/framework-docs',
+  docsRepositoryBase:
+    "https://github.com/514-labs/moose/tree/main/apps/framework-docs",
   useNextSeoProps() {
     return {
-      titleTemplate: '%s – MooseJS'
-    }
+      titleTemplate: "%s – MooseJS",
+    };
   },
   head: () => (
     <>
@@ -19,13 +20,12 @@ export default {
   footer: {
     text: (
       <span>
-        MIT | {new Date().getFullYear()} ©{' '}
+        MIT | {new Date().getFullYear()} ©{" "}
         <a href="https://fiveonefour.com" target="_blank">
           Fiveonefour Labs Inc
         </a>
         .
       </span>
-    )
-  }
-}
-
+    ),
+  },
+};

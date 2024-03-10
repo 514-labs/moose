@@ -27,6 +27,7 @@ interface TableTabsProps {
   jsSnippet: string;
   bashSnippet: string;
   pythonSnippet: string;
+  rustSnippet: string;
   clickhouseJSSnippet: string;
   clickhousePythonSnippet: string;
 }
@@ -56,6 +57,7 @@ export default function TableTabs({
   jsSnippet,
   bashSnippet,
   pythonSnippet,
+  rustSnippet,
   clickhouseJSSnippet,
   clickhousePythonSnippet,
 }: TableTabsProps) {
@@ -150,6 +152,7 @@ export default function TableTabs({
                   bashSnippet={bashSnippet}
                   cliData={cliData}
                   jsSnippet={jsSnippet}
+                  rustSnippet={rustSnippet}
                   pythonSnippet={pythonSnippet}
                   ingestionPoint={ingestionPoint}
                 />

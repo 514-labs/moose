@@ -1,8 +1,10 @@
-import '../styles/globals.css'
-import RootLayout from '../components/layouts'
+import "../styles/globals.css";
+import RootLayout from "../components/layouts";
 
-export default function App({ Component, pageProps }) { return (
+export default function App({ Component, pageProps }) {
+  return (
     <RootLayout>
-        <Component {...pageProps} />
+      <Component {...pageProps} />
     </RootLayout>
-    ) }
+  );
+}

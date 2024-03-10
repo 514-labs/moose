@@ -1,31 +1,62 @@
-import { Cards, Card, Tabs } from 'nextra/components'
+import { Cards, Card, Tabs } from "nextra/components";
 
 # Model Data
-MooseJS's data modeling is built on top of Prisma's intuitive schema modeling language. You can read more about Prisma's schema modeling language [here](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-schema). To get started you simply need to create a `.prisma` file in your project's data model directory. If you're in development mode, MooseJS will automatically detect this file and use it to generate:
-- A typed data capture SDK to instrument your application
-- A high performance ingestion server to receive data from your application
-- A buffer to store data as it's ingested from the webserver
-- An ingestion table and an analytics view to store and query your data
+
+Moose JS enables you to model data using typescript interfaces and Prisma's schema modeling languaage. Using typescript interfaces enables you to streamline your development if you use typescript across your whole stack. Prisma's schema language enables you to create typed data models across languages including those that do not support typed data models natively such as Python and Ruby.
+
+<Tabs items={['TS Interface', 'Prisma']}>
+  <Tabs.Tab>
+  MooseJS supports Typescript interfaces for data modeling. To get started create a `.m.ts` in your data model directory. When you start your development server, MooseJS will automatically detect this file and use it to generate:
+  - A typed data capture SDK to instrument your application
+  - A high performance ingestion server to receive data from your application
+  - A buffer to store data as it's ingested from the webserver
+  - An ingestion table and an analytics view to store and query your data
 
 ## Creating a Model
-```prisma filename="datamodels/models.prisma" copy
-model UserActivity {
-    eventId     String @id
-    timestamp   DateTime
-    userId      String
-    activityType String
+
+```typescript filename="datamodels/models.m.ts" copy
+import { Key } from "moose-utils";
+
+export interface UserActivity {
+  eventId: string & Key;
+  timestamp: Date;
+  userId: string;
+  activityType: string;
 }
 ```
 
-As you can see, the model is very simple. It's just a list of fields and their types. MooseJS will automatically generate a table for you in your database and a view to query your data. We don't currently support all of Prisma's schema modeling features, but we're working on it. If you'd like to see a feature added, please join our [Slack community](https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg) and let us know.
+As you can see, this data model is just a standard typescript interface. Typescript intefaces are incredibly expressive and we only support a subset of what you would normally be able to define in your interfaces. For more information on exactly what we support head to the [interface support](/interface-support) section of the docs The `.m` extension is a convention we use to indicate that this file is a MooseJS data model. We leverage this convention to automate infrastructure and due some compile time validation.
+
+  </Tabs.Tab>
+  <Tabs.Tab>
+    MooseJS's data modeling support's Prisma's intuitive schema modeling language. You can read more about Prisma's schema modeling language [here](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-schema). To get started you simply need to create a `.prisma` file in your project's data model directory. If you're in development mode, MooseJS will automatically detect this file and use it to generate:
+    - A typed data capture SDK to instrument your application
+    - A high performance ingestion server to receive data from your application
+    - A buffer to store data as it's ingested from the webserver
+    - An ingestion table and an analytics view to store and query your data
+
+    ## Creating a Model
+    ```prisma filename="datamodels/models.prisma" copy
+    model UserActivity {
+        eventId     String @id
+        timestamp   DateTime
+        userId      String
+        activityType String
+    }
+    ```
+
+    As you can see, the model is very simple. It's just a list of fields and their types. MooseJS will automatically generate a table for you in your database and a view to query your data. We don't currently support all of Prisma's schema modeling features, but we're working on it. If you'd like to see a feature added, please join our [Slack community](https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg) and let us know.
+
+  </Tabs.Tab>
+</Tabs>
 
 ## Inspecting Your Model
+
 Once you've created your model, you can inspect it along with the infrastructure that MooseJS automatically generated for you by navigating to the console at http://localhost:3001.
 
 ## Test Your Model
+
 When you create a model, MooseJS automatically creates an ingestion point to facilitate immediate data testing. Send a sample payload to this endpoint using:
-
-
 
 <Tabs items={['Single Data Sample', 'Batch Sample']}>
   <Tabs.Tab>
@@ -50,5 +81,6 @@ When you create a model, MooseJS automatically creates an ingestion point to fac
 </Tabs>
 
 ## Next steps
+
 You're set to start sending data into your Moose application from upstream sources. Detailed integration steps are available in the [next section](/building/capture-data).
 To understand the impact of changes to your data model, refer to the [Make Changes](/building/make-changes) section of the docs.

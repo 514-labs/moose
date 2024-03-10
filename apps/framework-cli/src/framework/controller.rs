@@ -351,7 +351,7 @@ pub(crate) fn create_language_objects(
 }
 
 pub async fn remove_table_and_topics_from_schema_file_path(
-    project_name: &str,
+    project: &Project,
     schema_file_path: &Path,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     configured_client: &ConfiguredDBClient,
@@ -361,7 +361,11 @@ pub async fn remove_table_and_topics_from_schema_file_path(
 
     for (k, meta) in route_table.clone().into_iter() {
         if meta.original_file_path == schema_file_path {
-            stream::redpanda::delete_topic(project_name, &meta.table_name)?;
+            let topics = vec![meta.table_name.clone()];
+            match stream::redpanda::delete_topics(&project.redpanda_config, topics).await {
+                Ok(_) => println!("Topics deleted successfully"),
+                Err(e) => eprintln!("Failed to delete topics: {}", e),
+            }
 
             olap::clickhouse::delete_table_or_view(meta.table_name, configured_client)
                 .await
@@ -424,7 +428,11 @@ pub async fn process_objects(
             fo.data_model.name.clone(),
             version,
         );
-        stream::redpanda::create_topic_from_name(&project.name(), fo.topic.clone())?;
+        let topics = vec![fo.topic.clone()];
+        match stream::redpanda::create_topics(&project.redpanda_config, topics).await {
+            Ok(_) => println!("Topics created successfully"),
+            Err(e) => eprintln!("Failed to create topics: {}", e),
+        }
 
         debug!("Creating table & view: {:?}", fo.table.name);
 

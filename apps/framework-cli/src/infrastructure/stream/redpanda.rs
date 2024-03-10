@@ -1,36 +1,80 @@
-use log::info;
+use log::{error, info};
 use rdkafka::{
+    admin::{AdminClient, AdminOptions, NewTopic, TopicReplication},
     producer::{FutureProducer, Producer},
     ClientConfig,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-use crate::{infrastructure::stream::rpk, utilities::docker};
-
 // TODO: We need to configure the application based on the current project directory structure to ensure that we catch changes made outside of development mode
 
-// Creates a topic from a file name
-pub fn create_topic_from_name(project_name: &str, topic_name: String) -> std::io::Result<String> {
-    info!("Creating topic: {}", topic_name);
-    docker::run_rpk_command(
-        project_name,
-        rpk::create_rpk_command_args(rpk::RPKCommand::Topic(rpk::TopicCommand::Create {
-            topic_name,
-        })),
-    )
+pub async fn create_topics(
+    config: &RedpandaConfig,
+    topics: Vec<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    info!("Creating topics: {:?}", topics);
+
+    let admin_client: AdminClient<_> = config_client(&config)
+        .create()
+        .expect("Redpanda Admin Client creation failed");
+
+    // Prepare the AdminOptions
+    let options = AdminOptions::new().operation_timeout(Some(std::time::Duration::from_secs(5)));
+
+    for topic_name in &topics {
+        // Create a new topic with 1 partition and replication factor 1
+        let topic = NewTopic::new(&topic_name, 1, TopicReplication::Fixed(1));
+
+        // Set some topic configurations
+        let topic = topic
+            .set("retention.ms", "1000")
+            .set("segment.bytes", "10000");
+
+        let result_list = admin_client.create_topics(&[topic], &options).await?;
+
+        for result in result_list {
+            match result {
+                Ok(topic_name) => info!("Topic {} created successfully", topic_name),
+                Err((topic_name, err)) => {
+                    error!("Failed to create topic {}: {}", topic_name, err)
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
-// Deletes a topic from a file name
-pub fn delete_topic(project_name: &str, topic_name: &str) -> std::io::Result<String> {
-    info!("Deleting topic: {}", topic_name);
-    let valid_topic_name = topic_name.to_lowercase();
-    docker::run_rpk_command(
-        project_name,
-        rpk::create_rpk_command_args(rpk::RPKCommand::Topic(rpk::TopicCommand::Delete {
-            topic_name: valid_topic_name,
-        })),
-    )
+pub async fn delete_topics(
+    config: &RedpandaConfig,
+    topics: Vec<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    info!("Deleting topics: {:?}", topics);
+
+    let admin_client: AdminClient<_> = config_client(&config)
+        .create()
+        .expect("Redpanda Admin Client creation failed");
+
+    // Prepare the AdminOptions
+    let options = AdminOptions::new().operation_timeout(Some(std::time::Duration::from_secs(5)));
+
+    for topic_name in &topics {
+        let result_list = admin_client
+            .delete_topics(&[topic_name.as_str()], &options)
+            .await?;
+
+        for result in result_list {
+            match result {
+                Ok(topic_name) => info!("Topic {} deleted successfully", topic_name),
+                Err((topic_name, err)) => {
+                    error!("Failed to delete topic {}: {}", topic_name, err)
+                }
+            }
+        }
+    }
+
+    Ok(())
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

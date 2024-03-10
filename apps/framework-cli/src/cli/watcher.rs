@@ -141,7 +141,11 @@ async fn process_events(
             fo.data_model.name.clone(),
             &framework_object_versions.current_version,
         ));
-        redpanda::delete_topic(&project.name(), &fo.data_model.name)?;
+        let topics = vec![fo.data_model.name.clone()];
+        match redpanda::delete_topics(&project.redpanda_config.clone(), topics).await {
+            Ok(_) => println!("Topics deleted successfully"),
+            Err(e) => eprintln!("Failed to delete topics: {}", e),
+        }
 
         framework_object_versions
             .current_models
@@ -181,7 +185,11 @@ async fn process_events(
                 view_name: Some(view.name),
             },
         );
-        redpanda::create_topic_from_name(&project.name(), fo.topic.clone())?;
+        let topics = vec![fo.topic.clone()];
+        match redpanda::create_topics(&project.redpanda_config.clone(), topics).await {
+            Ok(_) => println!("Topics created successfully"),
+            Err(e) => eprintln!("Failed to create topics: {}", e),
+        }
 
         framework_object_versions
             .current_models

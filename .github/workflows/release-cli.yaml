@@ -174,7 +174,7 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
-          SENTRY_PROJECT: ${{ secrets.SENTRY_IGLOO_CLI_PROJECT }}
+          SENTRY_PROJECT: "framework-cli"
         with:
           environment: production
           version: ${{ needs.version.outputs.version }}

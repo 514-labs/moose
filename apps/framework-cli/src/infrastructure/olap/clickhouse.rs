@@ -312,12 +312,11 @@ pub struct ConfiguredDBClient {
 }
 
 pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredDBClient {
-    let protocol;
-    if clickhouse_config.use_ssl {
-        protocol = "https";
+    let protocol = if clickhouse_config.use_ssl {
+        "https"
     } else {
-        protocol = "http";
-    }
+        "http"
+    };
     ConfiguredDBClient {
         client: Client::default()
             .with_url(format!(

@@ -14,7 +14,7 @@
 use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::io::Write;
-use std::sync::{Arc, Mutex};
+use std::sync::Mutex;
 pub mod typescript_project;
 
 use std::fmt::Debug;
@@ -39,7 +39,7 @@ use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_
 use crate::utilities::constants::{FLOWS_DIR, PROJECT_CONFIG_FILE};
 
 lazy_static! {
-    pub static ref PROJECT: Arc<Mutex<Project>> = Arc::new(Mutex::new(Project {
+    pub static ref PROJECT: Mutex<Project> = Mutex::new(Project {
         language: SupportedLanguages::Typescript,
         redpanda_config: RedpandaConfig::default(),
         clickhouse_config: ClickhouseConfig::default(),
@@ -48,7 +48,7 @@ lazy_static! {
         language_project_config: LanguageProjectConfig::Typescript(TypescriptProject::default()),
         project_location: PathBuf::new(),
         supported_old_versions: HashMap::new(),
-    }));
+    });
 }
 
 // We have explored using a Generic associated Types as well as

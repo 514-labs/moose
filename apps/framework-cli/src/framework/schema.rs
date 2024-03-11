@@ -33,6 +33,7 @@ use schema_ast::{
 use serde::Serialize;
 
 use crate::infrastructure::olap::clickhouse::mapper::arity_mapper;
+use crate::project::PROJECT;
 
 pub mod templates;
 
@@ -334,8 +335,9 @@ fn prisma_model_to_datamodel(m: &Model, enums: &[DataEnum]) -> Result<DataModel,
         .map(|(_id, f)| field_to_column(f, enums))
         .collect();
 
+    let project = PROJECT.lock().unwrap();
     Ok(DataModel {
-        db_name: "local".to_string(),
+        db_name: project.clickhouse_config.db_name.to_string(),
         columns: columns?,
         name: schema_name,
     })

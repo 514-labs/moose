@@ -56,6 +56,11 @@ spec:
                 secretKeyRef:
                   name: sn-moose-clickhouse-config--host-port
                   key: sk-moose-clickhouse-config--host-port
+            - name: MOOSE_CLICKHOUSE_CONFIG__USE_SSL
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-clickhouse-config--use_ssl
+                  key: sk-moose-clickhouse-config--use_ssl
             - name: MOOSE_CLICKHOUSE_CONFIG__POSTGRES_PORT
               valueFrom:
                 secretKeyRef:

@@ -22,6 +22,7 @@ use crate::infrastructure::stream;
 use crate::project::Project;
 #[cfg(test)]
 use crate::utilities::constants::SCHEMAS_DIR;
+use crate::utilities::isprod::isprod;
 
 use super::schema::{is_prisma_file, DataModel};
 use super::schema::{parse_schema_file, DuplicateModelError};
@@ -438,9 +439,10 @@ pub async fn process_objects(
 
         create_or_replace_tables(&project.name(), fo, configured_client).await?;
 
-        let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
-        create_or_replace_kafka_trigger(&view, configured_client).await?;
-
+        if !isprod() {
+            let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
+            create_or_replace_kafka_trigger(&view, configured_client).await?;
+        }
         debug!("Table created: {:?}", fo.table.name);
 
         let typescript_objects = create_language_objects(fo, &ingest_route, project.clone())?;

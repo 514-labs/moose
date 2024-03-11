@@ -1,3 +1,4 @@
+use utilities::isprod::isprod;
 mod cli;
 pub mod framework;
 pub mod infrastructure;
@@ -8,10 +9,10 @@ pub mod utilities;
 // before Tokio takes over the main thread.
 // REF: https://docs.sentry.io/platforms/rust/#asynchronous
 fn main() {
-    let envionment = if cfg!(debug_assertions) {
-        "development"
-    } else {
+    let envionment = if isprod() {
         "production"
+    } else {
+        "development"
     };
 
     let _guard = sentry::init(

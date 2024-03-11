@@ -34,7 +34,7 @@ export default async function Page({
   const model = await getModel(params.modelName, data);
   const infra = getRelatedInfra(model, data, model);
   const triggerTable = infra.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
+    (t) => t.name.includes(model.name) && t.engine === "MergeTree"
   );
 
   const jsCodeSnippet = jsSnippet(data, model);

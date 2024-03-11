@@ -20,7 +20,12 @@ import {
   CardDescription,
 } from "components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
-import { cn, getModelFromTable, getRelatedInfra, tableIsView } from "lib/utils";
+import {
+  cn,
+  getModelFromTable,
+  getRelatedInfra,
+  tableIsQueryable,
+} from "lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
@@ -69,12 +74,12 @@ export default function ModelView({
   const pathName = usePathname();
 
   const [_selectedTab, setSelectedTab] = useState<string>(
-    tab ? tab : "overview",
+    tab ? tab : "overview"
   );
   const model = getModelFromTable(table, cliData);
   const infra = getRelatedInfra(model, cliData, table);
   const associated_view = cliData.tables.find(
-    (view) => view.name === table.dependencies_table[0],
+    (view) => view.name === table.dependencies_table[0]
   );
 
   const createTabQueryString = useCallback(
@@ -83,7 +88,7 @@ export default function ModelView({
       params.set("tab", tab);
       return params.toString();
     },
-    [searchParams],
+    [searchParams]
   );
 
   const ingestionPoint = infra.ingestionPoints[0];
@@ -184,7 +189,7 @@ export default function ModelView({
                       variant="outline"
                       onClick={() => {
                         router.push(
-                          `${pathName}?${createTabQueryString("query")}`,
+                          `${pathName}?${createTabQueryString("query")}`
                         );
                         setSelectedTab("query");
                       }}
@@ -222,7 +227,7 @@ export default function ModelView({
       <TabsContent className="h-full" value="query">
         {/* add query here */}
         <div className="p-0 h-full">
-          {tableIsView(table) ? (
+          {tableIsQueryable(table) ? (
             <QueryInterface
               project={cliData.project}
               table={table}

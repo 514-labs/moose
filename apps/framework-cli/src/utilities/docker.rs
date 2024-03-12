@@ -64,13 +64,13 @@ services:
     depends_on:
       - redpanda
     volumes:
-      - ../:/home/app
+      - ../:/home
     command:
       - deno
       - run
       - --allow-all
-      - /home/app/.moose/deno/transform.ts
-      - /home/app
+      - /home/.moose/deno/transform.ts
+      - /home
 "#;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

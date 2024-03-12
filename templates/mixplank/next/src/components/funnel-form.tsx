@@ -6,19 +6,17 @@ import { eventNameMap, eventTables } from "@/data/event-tables";
 import { useEffect } from "react";
 import { XIcon } from "lucide-react";
 
-
+export type FunnelFormList = { events: { eventName: string, tableName: string }[] }
 interface FunnelFormProps {
-    setForm: (form: any) => void;
+    setForm: (form: FunnelFormList) => void;
 }
 export default function FunnelForm({ setForm }: FunnelFormProps) {
     const form = useForm({ mode: "onChange" });
     const { handleSubmit, watch } = form;
 
-    const onSubmit = (data) => setForm(data)
-
     useEffect(() => {
         // TypeScript users 
-        const subscription = watch(() => handleSubmit(onSubmit)())
+        const subscription = watch(() => handleSubmit(setForm)())
         return () => subscription.unsubscribe();
     }, [handleSubmit, watch, setForm]);
 
@@ -46,8 +44,8 @@ export default function FunnelForm({ setForm }: FunnelFormProps) {
                                             </SelectTrigger>
                                         </FormControl>
                                         <SelectContent>
-                                            {eventTables.map(event => (
-                                                <SelectItem value={event.eventName}>{event.eventName}</SelectItem>
+                                            {eventTables.map((event, i) => (
+                                                <SelectItem key={i} value={event.eventName}>{event.eventName}</SelectItem>
                                             ))}
                                         </SelectContent>
                                     </Select>
@@ -63,7 +61,7 @@ export default function FunnelForm({ setForm }: FunnelFormProps) {
                     variant="outline"
                     size="sm"
                     className="mt-2"
-                    onClick={() => append({ value: null })}
+                    onClick={() => append({ eventName: null, tableName: null })}
                 >
                     Add Event
                 </Button>

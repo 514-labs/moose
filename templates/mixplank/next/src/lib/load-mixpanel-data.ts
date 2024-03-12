@@ -1,6 +1,6 @@
 import { groupBy } from "lodash";
 import { MixPanelData, mixpanelData } from "./mixpanel-data";
-import { CTAClickEvent, NavClickEvent, PageViewEvent, sendCtaClickEvent, sendNavClickEvent, sendPageViewEvent } from '../../../moose/.moose/moose-sdk'
+import { CTAClickEvent, NavClickEvent, PageViewEvent, sendCtaClickEvent, sendNavClickEvent, sendPageViewEvent } from '../../../moose/.moose/ts-sdk'
 function marshalEvents(event: MixPanelData) {
     return {
         time: new Date(event.properties.time * 1000),

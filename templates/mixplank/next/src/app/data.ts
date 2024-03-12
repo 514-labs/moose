@@ -8,9 +8,9 @@ export const clickhouseClient = createClient({
 });
 
 
-export const getData = async (query: string) => {
+export const getData = async (query: string):Promise<object[]> => {
     if (!query) {
-        return null;
+        return [];
     }
     const resultSet = await clickhouseClient.query({
         query,

@@ -26,8 +26,8 @@ export function tableIsIngestionTable(table: Table): boolean {
   return table.engine === "Kafka";
 }
 
-export function tableIsView(table: Table): boolean {
-  return table.engine === "MaterializedView";
+export function tableIsQueryable(table: Table): boolean {
+  return table.engine === "MergeTree";
 }
 
 export function getQueueFromRoute(route: Route, cliData: CliData): string {

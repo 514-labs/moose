@@ -20,7 +20,12 @@ import {
   CardDescription,
 } from "components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
-import { cn, getModelFromTable, getRelatedInfra, tableIsView } from "lib/utils";
+import {
+  cn,
+  getModelFromTable,
+  getRelatedInfra,
+  tableIsQueryable,
+} from "lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
@@ -222,7 +227,7 @@ export default function ModelView({
       <TabsContent className="h-full" value="query">
         {/* add query here */}
         <div className="p-0 h-full">
-          {tableIsView(table) ? (
+          {tableIsQueryable(table) ? (
             <QueryInterface
               project={cliData.project}
               table={table}

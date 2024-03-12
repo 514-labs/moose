@@ -60,7 +60,7 @@ response = requests.post(url, json=data)
 
 export const clickhousePythonSnippet = (data: CliData, model: DataModel) => {
   const view = data.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
+    (t) => t.name.includes(model.name) && t.engine === "MergeTree",
   );
 
   return `\
@@ -86,7 +86,7 @@ print(result)
 
 export const clickhouseJSSnippet = (data: CliData, model: DataModel) => {
   const view = data.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
+    (t) => t.name.includes(model.name) && t.engine === "MergeTree",
   );
 
   return `import { createClient } from "@clickhouse/client-web"

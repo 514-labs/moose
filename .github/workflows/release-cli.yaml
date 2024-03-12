@@ -211,6 +211,16 @@ jobs:
             TURBO_TEAM=${{ vars.TURBO_TEAM }}
             SENTRY_AUTH_TOKEN=${{ secrets.SENTRY_AUTH_TOKEN }}
 
+      - name: Notify Sentry release
+        uses: getsentry/action-release@v1
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+          SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
+          SENTRY_PROJECT: "framework-console"
+        with:
+          environment: production
+          version: ${{ needs.version.outputs.version }}
+
   build-and-publish-fullstack-image:
     name: Moose Production images
     runs-on: ubuntu-20.04

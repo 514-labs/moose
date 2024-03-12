@@ -78,6 +78,9 @@ export default function RootLayout({
               {children}
             </section>
           </div>
+          <footer className="text-center py-3 text-muted-foreground">
+            {process.env.NEXT_PUBLIC_RELEASE_VERSION || "dev"}
+          </footer>
         </ThemeProvider>
         <Analytics />
       </body>

@@ -11,7 +11,8 @@
         "CLICKHOUSE_PORT",
         "CLICKHOUSE_USERNAME",
         "CLICKHOUSE_PASSWORD",
-        "CLICKHOUSE_DB"
+        "CLICKHOUSE_DB",
+        "NEXT_PUBLIC_RELEASE_VERSION"
       ]
     },
     "lint": {},

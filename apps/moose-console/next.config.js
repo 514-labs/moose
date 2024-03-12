@@ -42,6 +42,7 @@ const sentryWebpackPluginOptions = {
 
   // An auth token is required for uploading source maps.
   authToken: process.env.SENTRY_AUTH_TOKEN,
+  release: `framework-console@${process.env.NEXT_PUBLIC_RELEASE_VERSION || "0.0.0"}`,
 
   silent: true, // Suppresses all logs
 

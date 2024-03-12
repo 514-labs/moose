@@ -13,11 +13,6 @@ CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
 
 const cwd = Deno.args[0] || Deno.cwd();
 
-interface FlowDestination {
-  topic: string;
-  file: string;
-}
-
 const getVersion = (): string => {
   const version = JSON.parse(Deno.readTextFileSync(`${cwd}/package.json`))
     .version as string;
@@ -93,9 +88,9 @@ const handleMessage = async (
       await transaction.commit();
       resolveOffset(message.offset);
       console.log(`Sent transformed data to ${destination}`);
-    } catch (e) {
+    } catch (error) {
       await transaction.abort();
-      console.error(`Failed to send transformed data to ${destination}: `, e);
+      console.error(`Failed to send transformed data to ${destination}: `, error);
     }
   }
 };
@@ -134,10 +129,10 @@ startProducer()
         console.log("Consumer is running...");
       })
       .catch((error) => {
-        console.error("Failed to start kafka consumer", error);
+        console.error("Failed to start kafka consumer: ", error);
       });
   })
   .catch((error) => {
-    console.error("Failed to start kafka producer", error);
+    console.error("Failed to start kafka producer: ", error);
   });
 "#;

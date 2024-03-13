@@ -1,3 +1,4 @@
+pub mod capture;
 pub mod constants;
 pub mod docker;
 pub mod git;

@@ -29,7 +29,7 @@ convert_case = "0.6.0"
 log = "0.4"
 fern = "0.6" 
 humantime = "2.1.0"
-uuid = {version = "1.6", features = ["v4"]}
+uuid = { version = "1.6", features = ["v4"] }
 serde_json = "1.0.108"
 async-recursion = "1.0.5"
 hyper-util = { version = "0.1", features = ["full"] }
@@ -39,6 +39,8 @@ anyhow = "1.0"
 spinners = "4.1.1"
 git2 = { version = "0.18.1", features = ["vendored-libgit2"] }
 regex = "1.10.3"
+reqwest = "0.11"
+chrono = { version = "0.4.35", features = ["serde"] }
 
 [dev-dependencies]
 clickhouse = { version = "0.11.5", features = ["uuid", "test-util"] }

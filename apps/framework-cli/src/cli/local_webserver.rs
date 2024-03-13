@@ -27,6 +27,7 @@ use rdkafka::producer::FutureRecord;
 use rdkafka::util::Timeout;
 use serde::Deserialize;
 use serde::Serialize;
+use serde_json::json;
 use std::collections::HashMap;
 use std::future::Future;
 use std::net::SocketAddr;
@@ -128,6 +129,8 @@ async fn ingest_route(
             );
 
             let body = req.collect().await.unwrap().to_bytes().to_vec();
+
+            debug!("Body: {:?}", String::from_utf8_lossy(&body));
 
             match serde_json::from_slice::<serde::de::IgnoredAny>(&body) {
                 Ok(_) => {}

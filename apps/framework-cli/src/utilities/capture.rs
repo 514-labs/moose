@@ -5,7 +5,7 @@
 use chrono::serde::ts_seconds;
 use lazy_static::lazy_static;
 
-// create a lazy static instance of the client
+// Create a lazy static instance of the client
 lazy_static! {
     pub static ref CLIENT: reqwest::Client = reqwest::Client::new();
 }
@@ -48,23 +48,23 @@ pub struct UserActivity {
 }
 
 macro_rules! capture {
-    ($activity_type:expr, $sequence_id:expr) => {
+    ($activity_type:expr, $sequence_id:expr, $project_name:expr) => {
         use crate::utilities::capture::{ActivityType, UserActivity};
+        use crate::utilities::constants;
         use chrono::Utc;
-        use reqwest::Client;
+        // use reqwest::Client;
         use serde_json::json;
         use uuid::Uuid;
 
-        let event = UserActivity {
+        #[allow(unused)]
+        let event = &json!(UserActivity {
             id: Uuid::new_v4(),
-            project: "loose_moose".to_string(),
+            project: $project_name,
             activity_type: $activity_type,
             sequence_id: $sequence_id,
             timestamp: Utc::now(),
-            cli_version: "0.1.0".to_string(),
-        };
-
-        let client = Client::new();
+            cli_version: constants::CLI_VERSION.to_string(),
+        });
 
         // Get the environment variables
         // let moose_contributor = std::env::var("MOOSE_CONTRIBUTOR").unwrap_or("unknown".to_string());
@@ -74,41 +74,20 @@ macro_rules! capture {
         let path = std::env::var("INGESTION_POINT").unwrap_or("UserActivity".to_string());
 
         // Format a URL with the scheme, host, and port and the path as variables
+        #[allow(unused)]
         let dev_url = format!("{}://{}:{}/ingest/{}", scheme, host, port, path);
         // let prod_url = format!("{}://{}/ingest/{}", scheme, host, path);
 
-        println!("{:?}", dev_url);
+        // let client = Client::new();
+        // let res = client
+        //     .post(&dev_url)
+        //     .json(event)
+        //     .send()
+        //     .await
+        //     .unwrap();
 
-        let res = client
-            .post(dev_url)
-            .json(&json!(event))
-            .send()
-            .await
-            .unwrap();
-
-        println!("{:?}", res);
+        // println!("Sent to {}. Event: {}", dev_url, event);
     };
 }
 
 pub(crate) use capture;
-
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use chrono::Utc;
-//     use uuid::Uuid;
-
-//     #[tokio::test]
-//     async fn test_capture() {
-//         let event = UserActivity {
-//             id: Uuid::new_v4(),
-//             project: "loose_moose".to_string(),
-//             activity_type: ActivityType::DevCommand,
-//             sequence_id: Uuid::new_v4(),
-//             timestamp: Utc::now(),
-//             cli_version: "0.1.0".to_string(),
-//         };
-
-//         send_event("UserActivity", event).await;
-//     }
-// }

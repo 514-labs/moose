@@ -1,4 +1,6 @@
 use log::{error, info};
+use rdkafka::consumer::stream_consumer::StreamConsumer;
+use rdkafka::consumer::Consumer;
 use rdkafka::{
     admin::{AdminClient, AdminOptions, NewTopic, TopicReplication},
     producer::{FutureProducer, Producer},
@@ -150,4 +152,23 @@ pub async fn fetch_topics(
         .map(|t| t.name().to_string())
         .collect();
     Ok(topics)
+}
+
+pub fn create_subscriber(config: &RedpandaConfig, group_id: &str, topic: &str) -> StreamConsumer {
+    let mut client_config = config_client(config);
+
+    client_config
+        .set("session.timeout.ms", "6000")
+        .set("enable.partition.eof", "false")
+        .set("group.id", group_id);
+
+    let consumer: StreamConsumer = client_config.create().expect("Failed to create consumer");
+
+    let topics = [topic];
+
+    consumer
+        .subscribe(&topics)
+        .expect("Can't subscribe to specified topic");
+
+    consumer
 }

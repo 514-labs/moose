@@ -59,6 +59,18 @@ services:
       - CLICKHOUSE_PORT=8123
     ports:
       - "${CONSOLE_HOST_PORT:-3001}:3000"
+  deno:
+    image: denoland/deno:1.41.2
+    depends_on:
+      - redpanda
+    volumes:
+      - ../:/home
+    command:
+      - deno
+      - run
+      - --allow-all
+      - /home/.moose/deno/transform.ts
+      - /home
 "#;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

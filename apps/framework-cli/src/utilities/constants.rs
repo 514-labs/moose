@@ -26,3 +26,6 @@ pub const APP_DIR_LAYOUT: [&str; 5] = [
 ];
 
 pub const GITIGNORE: &str = ".gitignore";
+
+pub const DENO_DIR: &str = "deno";
+pub const DENO_TRANSFORM: &str = "transform.ts";

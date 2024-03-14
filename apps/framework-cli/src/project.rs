@@ -30,12 +30,14 @@ use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::readme::BASE_README_TEMPLATE;
 use crate::framework::schema::templates::BASE_MODEL_TEMPLATE;
+use crate::framework::transform::TRANSFORM_FILE;
 use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
+use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM};
 use crate::utilities::constants::{FLOWS_DIR, PROJECT_CONFIG_FILE};
 
 lazy_static! {
@@ -167,6 +169,17 @@ impl Project {
             let to_create = app_dir.join(dir);
             std::fs::create_dir_all(to_create)?;
         }
+
+        Ok(())
+    }
+
+    pub fn create_deno_files(&self) -> Result<(), std::io::Error> {
+        let deno_dir = self.internal_dir()?.join(DENO_DIR);
+        let transform_file_path = deno_dir.join(DENO_TRANSFORM);
+
+        let mut transform_file = std::fs::File::create(transform_file_path)?;
+
+        transform_file.write_all(TRANSFORM_FILE.as_bytes())?;
 
         Ok(())
     }

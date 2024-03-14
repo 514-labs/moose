@@ -40,7 +40,7 @@ pub struct UserActivity {
     #[serde(rename = "activityType")]
     pub activity_type: ActivityType,
     #[serde(rename = "sequenceId")]
-    pub sequence_id: Uuid,
+    pub sequence_id: String,
     #[serde(with = "ts_seconds")]
     pub timestamp: DateTime<Utc>,
     #[serde(rename = "cliVersion")]

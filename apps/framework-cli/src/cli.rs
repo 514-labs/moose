@@ -29,6 +29,7 @@ use crate::cli::{
     settings::{init_config_file, setup_user_directory},
 };
 use crate::project::Project;
+use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
 use crate::utilities::git::is_git_repo;
 
 use self::routines::{
@@ -112,7 +113,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 crate::utilities::capture::capture!(
                     ActivityType::InitCommand,
-                    Uuid::new_v4(),
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
                     name.clone()
                 );
             }
@@ -139,7 +140,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 crate::utilities::capture::capture!(
                     ActivityType::DevCommand,
-                    Uuid::new_v4(),
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
                     project_arc.name().clone()
                 );
 
@@ -158,7 +159,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 crate::utilities::capture::capture!(
                     ActivityType::ProdCommand,
-                    Uuid::new_v4(),
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
                     project_arc.name().clone()
                 );
             }
@@ -178,7 +179,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 crate::utilities::capture::capture!(
                     ActivityType::StopCommand,
-                    Uuid::new_v4(),
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
                     project_arc.name().clone()
                 );
             }
@@ -194,7 +195,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 crate::utilities::capture::capture!(
                     ActivityType::CleanCommand,
-                    Uuid::new_v4(),
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
                     project_arc.name().clone()
                 );
             }
@@ -211,7 +212,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                     crate::utilities::capture::capture!(
                         ActivityType::DockerInitCommand,
-                        Uuid::new_v4(),
+                        CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
                         project_arc.name().clone()
                     );
                 }
@@ -227,7 +228,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                     crate::utilities::capture::capture!(
                         ActivityType::DockerBuildCommand,
-                        Uuid::new_v4(),
+                        CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
                         project_arc.name().clone()
                     );
                 }

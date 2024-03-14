@@ -72,10 +72,10 @@ services:
     ports:
       - "4001:4001"
     volumes:
-      - .deno:/deno-dir
+      - ./deno:/deno-dir
       - ../app/insights:/scripts
     command:
       - deno
       - run
       - --allow-all
-      - /deno-dir/server.ts
+      - /deno-dir/insights_server.ts

@@ -18,12 +18,15 @@ let i = 0;
 const handler = async (request: Request): Response => {
   const path = new URL(request.url).pathname;
 
-  // different every time so it reloads
+  // TODO: use static imports and have watcher recreate this file
   const userFuncModule = await import(
+    // the path is different every time so it reloads
     `/scripts/${path}?dynamic_import_path_hack=${i++}`
   );
 
-  const result = await userFuncModule.default(request.json(), { clickhouse });
+  const result = await userFuncModule.default(await request.json(), {
+    clickhouse,
+  });
 
   let body: string;
   if (result instanceof ResultSet) {
@@ -34,4 +37,4 @@ const handler = async (request: Request): Response => {
   return new Response(body, { status: 200 });
 };
 
-Deno.serve({ port: 8080 }, handler);
+Deno.serve({ port: 4001 }, handler);

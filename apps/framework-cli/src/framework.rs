@@ -1,7 +1,6 @@
 use clap::Subcommand;
 
 pub mod controller;
-pub mod deno;
 pub mod languages;
 pub mod readme;
 pub mod schema;

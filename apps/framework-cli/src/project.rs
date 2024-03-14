@@ -35,7 +35,9 @@ use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 
-use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
+use crate::utilities::constants::{
+    APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, DENO_INSIGHTS_SERVER, SCHEMAS_DIR,
+};
 use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM};
 use crate::utilities::constants::{FLOWS_DIR, PROJECT_CONFIG_FILE};
 
@@ -183,6 +185,9 @@ impl Project {
 
         let transform_file_content = include_str!("framework/transform.ts");
         transform_file.write_all(transform_file_content.as_bytes())?;
+
+        let mut insight_server_file = std::fs::File::create(deno_dir.join(DENO_INSIGHTS_SERVER))?;
+        insight_server_file.write_all(include_str!("framework/insights_server.ts").as_bytes())?;
 
         Ok(())
     }

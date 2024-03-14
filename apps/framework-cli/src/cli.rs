@@ -67,6 +67,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                     "Running init command with name: {}, language: {}, location: {}",
                     name, language, location
                 );
+                crate::utilities::capture::capture!(ActivityType::InitCommand, Uuid::new_v4());
 
                 let dir_path = Path::new(location);
 
@@ -112,6 +113,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
             }
             Commands::Dev {} => {
                 info!("Running dev command");
+                crate::utilities::capture::capture!(ActivityType::DevCommand, Uuid::new_v4());
 
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `moose init` to create a project");
@@ -135,6 +137,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
             }
             Commands::Prod {} => {
                 info!("Running prod command");
+                crate::utilities::capture::capture!(ActivityType::ProdCommand, Uuid::new_v4());
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `moose init` to create a project");
                 let project_arc = Arc::new(project);
@@ -145,6 +148,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 todo!("Will update the project's underlying infrastructure based on any added objects")
             }
             Commands::Stop {} => {
+                crate::utilities::capture::capture!(ActivityType::StopCommand, Uuid::new_v4());
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
                 let project = Project::load_from_current_dir()
@@ -155,6 +159,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 controller.run_routines(run_mode);
             }
             Commands::Clean {} => {
+                crate::utilities::capture::capture!(ActivityType::CleanCommand, Uuid::new_v4());
                 let run_mode = RunMode::Explicit {};
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `moose init` to create a project");
@@ -166,6 +171,10 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
             }
             Commands::Docker { sub_method } => match sub_method.as_str() {
                 "init" => {
+                    crate::utilities::capture::capture!(
+                        ActivityType::DockerInitCommand,
+                        Uuid::new_v4()
+                    );
                     let run_mode = RunMode::Explicit {};
                     info!("Running docker init command");
                     let project = Project::load_from_current_dir()
@@ -176,6 +185,10 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                     controller.run_routines(run_mode);
                 }
                 "build" => {
+                    crate::utilities::capture::capture!(
+                        ActivityType::DockerBuildCommand,
+                        Uuid::new_v4()
+                    );
                     let run_mode = RunMode::Explicit {};
                     info!("Running docker build command");
                     let project = Project::load_from_current_dir()

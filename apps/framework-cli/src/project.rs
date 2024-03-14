@@ -30,7 +30,6 @@ use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::readme::BASE_README_TEMPLATE;
 use crate::framework::schema::templates::BASE_MODEL_TEMPLATE;
-use crate::framework::transform::TRANSFORM_FILE;
 use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
@@ -182,7 +181,8 @@ impl Project {
 
         let mut transform_file = std::fs::File::create(transform_file_path)?;
 
-        transform_file.write_all(TRANSFORM_FILE.as_bytes())?;
+        let transform_file_content = include_str!("framework/transform.ts");
+        transform_file.write_all(transform_file_content.as_bytes())?;
 
         Ok(())
     }

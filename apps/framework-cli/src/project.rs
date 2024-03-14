@@ -57,7 +57,7 @@ lazy_static! {
 // Dynamic Dispatch to handle the different types of projects
 // the approach with enums is the one that is the simplest to put into practice and
 // maintain. With Copilot - it also has the advaantage that the boiler plate is really fast to write
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
     pub language: SupportedLanguages,
     pub redpanda_config: RedpandaConfig,
@@ -74,7 +74,7 @@ pub struct Project {
     pub supported_old_versions: HashMap<String, String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum LanguageProjectConfig {
     Typescript(TypescriptProject),
 }
@@ -138,9 +138,12 @@ impl Project {
                 let ts_config = TypescriptProject::load(directory)?;
                 project_config.language_project_config =
                     LanguageProjectConfig::Typescript(ts_config);
-                Ok(project_config)
             }
         }
+
+        let mut proj = PROJECT.lock().unwrap();
+        *proj = project_config.clone();
+        Ok(project_config)
     }
 
     pub fn load_from_current_dir() -> Result<Project, ConfigError> {

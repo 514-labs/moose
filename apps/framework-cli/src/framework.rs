@@ -1,11 +1,13 @@
 use clap::Subcommand;
 
 pub mod controller;
+pub mod deno;
 pub mod languages;
 pub mod readme;
 pub mod schema;
 pub mod sdks;
 pub mod typescript;
+
 pub enum Insights {
     Metric,
     Dashboard,

@@ -59,6 +59,24 @@ services:
       - CLICKHOUSE_PORT=8123
     ports:
       - "${CONSOLE_HOST_PORT:-3001}:3000"
+  deno:
+    image: denoland/deno:latest
+    environment:
+      - CLICKHOUSE_DB=${DB_NAME:-local}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-panda}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-pandapass}
+      - CLICKHOUSE_HOST=clickhousedb
+      - CLICKHOUSE_PORT=8123
+    ports:
+      - "4001:4001"
+    volumes:
+      - .deno:/deno-dir
+      - ../app/insights:/scripts
+    command:
+      - deno
+      - run
+      - --allow-all
+      - /deno-dir/server.ts
 "#;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

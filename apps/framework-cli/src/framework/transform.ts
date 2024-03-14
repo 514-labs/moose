@@ -1,4 +1,3 @@
-pub static TRANSFORM_FILE: &str = r#"
 import {
   CompressionCodecs,
   CompressionTypes,
@@ -49,7 +48,7 @@ const getFlows = (): Map<string, Map<string, string>> => {
       if (!destination.isDirectory) continue;
 
       const destinationFiles = Deno.readDirSync(
-        `${cwd}/app/flows/${source.name}/${destination.name}`
+        `${cwd}/app/flows/${source.name}/${destination.name}`,
       );
       for (const destinationFile of destinationFiles) {
         if (
@@ -58,7 +57,7 @@ const getFlows = (): Map<string, Map<string, string>> => {
         ) {
           flows.set(
             destination.name,
-            `${dirPath}/${source.name}/${destination.name}/${destinationFile.name}`
+            `${dirPath}/${source.name}/${destination.name}/${destinationFile.name}`,
           );
         }
       }
@@ -72,14 +71,14 @@ const getFlows = (): Map<string, Map<string, string>> => {
 const handleMessage = async (
   flows: Map<string, string>,
   message: KafkaMessage,
-  resolveOffset: (offset: string) => void
+  resolveOffset: (offset: string) => void,
 ): Promise<void> => {
   for (let [destination, flowFilePath] of flows) {
     const transaction = await producer.transaction();
     try {
       const transform = await import(flowFilePath);
       const output = JSON.stringify(
-        transform.default(JSON.parse(message.value.toString()))
+        transform.default(JSON.parse(message.value.toString())),
       );
       await transaction.send({
         topic: `${destination}_${version}`,
@@ -90,7 +89,10 @@ const handleMessage = async (
       console.log(`Sent transformed data to ${destination}`);
     } catch (error) {
       await transaction.abort();
-      console.error(`Failed to send transformed data to ${destination}: `, error);
+      console.error(
+        `Failed to send transformed data to ${destination}: `,
+        error,
+      );
     }
   }
 };
@@ -98,13 +100,14 @@ const handleMessage = async (
 const startConsumer = async (): Promise<void> => {
   const flows = getFlows();
   const flowTopics = Array.from(flows.keys()).map(
-    (flow) => `${flow}_${version}`
+    (flow) => `${flow}_${version}`,
   );
 
   await consumer.connect();
   await consumer.subscribe({ topics: flowTopics });
 
   await consumer.run({
+    // TODO: disable autoCommit and do transaction.sendOffsets
     eachBatchAutoResolve: false,
     eachBatch: async ({ batch, resolveOffset, isRunning, isStale }) => {
       const topic = scrubVersionFromTopic(batch.topic);
@@ -135,4 +138,3 @@ startProducer()
   .catch((error) => {
     console.error("Failed to start kafka producer: ", error);
   });
-"#;

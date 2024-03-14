@@ -5,7 +5,6 @@ pub mod languages;
 pub mod readme;
 pub mod schema;
 pub mod sdks;
-pub mod transform;
 pub mod typescript;
 pub enum Insights {
     Metric,

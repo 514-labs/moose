@@ -7,71 +7,7 @@ use serde_json::{from_slice, from_str};
 use crate::project::Project;
 use crate::utilities::constants::{CLI_VERSION, REDPANDA_CONTAINER_NAME};
 
-static COMPOSE_FILE: &str = r#"
-services:
-  redpanda:
-    image: docker.redpanda.com/redpandadata/redpanda:latest
-    ports:
-      - "9092:9092"
-      - "19092:19092"
-      - "9644:9644"
-    volumes:
-      - .panda_house:/tmp/panda_house
-    command:
-      - redpanda
-      - start
-      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
-      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
-      - --pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082
-      - --advertise-pandaproxy-addr=internal://redpanda:8082,external://localhost:18082
-      - --overprovisioned
-      - --smp=1
-      - --memory=2G
-      - --reserve-memory=200M
-      - --node-id=0
-      - --check=false
-  clickhousedb:
-    image: docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-latest}
-    volumes:
-      - .clickhouse/configs/scripts:/docker-entrypoint-initdb.d
-      - .clickhouse/data:/var/lib/clickhouse/
-      - .clickhouse/logs:/var/log/clickhouse-server/
-      - .clickhouse/configs/users:/etc/clickhouse-server/users.d
-    environment:
-      - CLICKHOUSE_DB=${DB_NAME:-local}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-panda}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-pandapass}
-      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
-    ports:
-      - "${CLICKHOUSE_HOST_PORT:-18123}:8123"
-      - "${CLICKHOUSE_POSTGRES_PORT:-9005}:9005"
-    ulimits:
-      nofile:
-        soft: 20000
-        hard: 40000
-  console:
-    image: docker.io/514labs/moose-console:${CONSOLE_VERSION:-latest}
-    environment:
-      - CLICKHOUSE_DB=${DB_NAME:-local}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-panda}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-pandapass}
-      - CLICKHOUSE_HOST=clickhousedb
-      - CLICKHOUSE_PORT=8123
-    ports:
-      - "${CONSOLE_HOST_PORT:-3001}:3000"
-  deno:
-    image: denoland/deno:1.41.2
-    depends_on:
-      - redpanda
-    volumes:
-      - ../:/home
-    command:
-      - deno
-      - run
-      - --allow-all
-      - /home/.moose/deno/transform.ts
-      - /home
-"#;
+static COMPOSE_FILE: &str = include_str!("docker-compose.yml");
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]

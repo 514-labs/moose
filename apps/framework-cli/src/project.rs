@@ -37,6 +37,7 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
+use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM};
 use crate::utilities::constants::{FLOWS_DIR, PROJECT_CONFIG_FILE};
 
 lazy_static! {
@@ -173,8 +174,8 @@ impl Project {
     }
 
     pub fn create_deno_files(&self) -> Result<(), std::io::Error> {
-        let deno_dir = self.internal_dir()?.join("deno");
-        let transform_file_path = deno_dir.join("transform.ts");
+        let deno_dir = self.internal_dir()?.join(DENO_DIR);
+        let transform_file_path = deno_dir.join(DENO_TRANSFORM);
 
         let mut transform_file = std::fs::File::create(transform_file_path)?;
 

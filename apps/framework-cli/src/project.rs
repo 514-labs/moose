@@ -36,6 +36,7 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
+use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM};
 use crate::utilities::constants::{FLOWS_DIR, PROJECT_CONFIG_FILE};
 
 lazy_static! {
@@ -55,7 +56,7 @@ lazy_static! {
 // Dynamic Dispatch to handle the different types of projects
 // the approach with enums is the one that is the simplest to put into practice and
 // maintain. With Copilot - it also has the advaantage that the boiler plate is really fast to write
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
     pub language: SupportedLanguages,
     pub redpanda_config: RedpandaConfig,
@@ -72,7 +73,7 @@ pub struct Project {
     pub supported_old_versions: HashMap<String, String>,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum LanguageProjectConfig {
     Typescript(TypescriptProject),
 }
@@ -136,9 +137,12 @@ impl Project {
                 let ts_config = TypescriptProject::load(directory)?;
                 project_config.language_project_config =
                     LanguageProjectConfig::Typescript(ts_config);
-                Ok(project_config)
             }
         }
+
+        let mut proj = PROJECT.lock().unwrap();
+        *proj = project_config.clone();
+        Ok(project_config)
     }
 
     pub fn load_from_current_dir() -> Result<Project, ConfigError> {
@@ -167,6 +171,18 @@ impl Project {
             let to_create = app_dir.join(dir);
             std::fs::create_dir_all(to_create)?;
         }
+
+        Ok(())
+    }
+
+    pub fn create_deno_files(&self) -> Result<(), std::io::Error> {
+        let deno_dir = self.internal_dir()?.join(DENO_DIR);
+        let transform_file_path = deno_dir.join(DENO_TRANSFORM);
+
+        let mut transform_file = std::fs::File::create(transform_file_path)?;
+
+        let transform_file_content = include_str!("framework/transform.ts");
+        transform_file.write_all(transform_file_content.as_bytes())?;
 
         Ok(())
     }

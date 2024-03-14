@@ -1,0 +1,7 @@
+{
+    "recommendations": [
+        "denoland.vscode-deno",
+        "rust-lang.rust-analyzer",
+        "vadimcn.vscode-lldb"
+    ]
+}

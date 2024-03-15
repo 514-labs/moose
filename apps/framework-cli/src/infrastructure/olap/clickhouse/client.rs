@@ -6,11 +6,7 @@ use hyper_tls::HttpsConnector;
 use hyper_util::client::legacy::{connect::HttpConnector, Client};
 
 use super::config::ClickhouseConfig;
-
-struct ClickhouseRecord {
-    columns: Vec<String>,
-    values: Vec<String>,
-}
+use super::model::ClickHouseRecord;
 
 struct ClickhouseClient {
     client: Client<HttpConnector, Full<Bytes>>,
@@ -19,8 +15,9 @@ struct ClickhouseClient {
 }
 
 // TODO - handle different types of values for the insert
-// TODO - add clikhouse container for tests inside github actions
+// TODO - add clickhouse container for tests inside github actions
 // TODO - make sure we are safe with columns / values alignment
+// ---------------------------------------------------------
 // TODO - implement batch inserts
 // TODO - investigate if we need to change basic auth
 impl ClickhouseClient {
@@ -85,7 +82,7 @@ impl ClickhouseClient {
     pub async fn insert(
         &mut self,
         table_name: &str,
-        record: ClickhouseRecord,
+        record: ClickHouseRecord,
     ) -> anyhow::Result<()> {
         let insert_query = format!(
             "INSERT INTO {}.{} ({}) VALUES",
@@ -176,7 +173,7 @@ async fn test_insert() {
     client
         .insert(
             "test_table",
-            ClickhouseRecord {
+            ClickHouseRecord {
                 columns: vec!["name".to_string()],
                 values: vec!["panda".to_string()],
             },

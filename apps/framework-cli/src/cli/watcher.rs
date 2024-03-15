@@ -19,7 +19,7 @@ use crate::framework::controller::{
 use crate::framework::schema::{is_prisma_file, DuplicateModelError};
 use crate::framework::sdks::generate_ts_sdk;
 use crate::infrastructure::console::post_current_state_to_console;
-use crate::infrastructure::olap::clickhouse::ClickhouseKafkaTrigger;
+use crate::infrastructure::olap::clickhouse::model::ClickHouseKafkaTrigger;
 use crate::infrastructure::stream::redpanda;
 use crate::project::PROJECT;
 use crate::utilities::package_managers;
@@ -133,7 +133,7 @@ async fn process_events(
         drop_tables(&fo, configured_client).await?;
         if !PROJECT.lock().unwrap().is_production {
             drop_kafka_trigger(
-                &ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table),
+                &ClickHouseKafkaTrigger::from_clickhouse_table(&fo.table),
                 configured_client,
             )
             .await?;
@@ -162,7 +162,7 @@ async fn process_events(
     }
     for (_, fo) in changed_objects.iter().chain(new_objects.iter()) {
         create_or_replace_tables(&project.name(), fo, configured_client).await?;
-        let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
+        let view = ClickHouseKafkaTrigger::from_clickhouse_table(&fo.table);
 
         if !PROJECT.lock().unwrap().is_production {
             create_or_replace_kafka_trigger(&view, configured_client).await?;

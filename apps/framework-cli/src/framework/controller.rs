@@ -15,9 +15,9 @@ use crate::framework::sdks::TypescriptObjects;
 use crate::framework::typescript::get_typescript_models_dir;
 use crate::framework::typescript::SendFunction;
 use crate::infrastructure::olap;
+use crate::infrastructure::olap::clickhouse::model::{ClickHouseKafkaTrigger, ClickHouseTable};
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
-use crate::infrastructure::olap::clickhouse::{ClickhouseKafkaTrigger, VERSION_SYNC_REGEX};
-use crate::infrastructure::olap::clickhouse::{ClickhouseTable, VersionSync};
+use crate::infrastructure::olap::clickhouse::{VersionSync, VERSION_SYNC_REGEX};
 use crate::infrastructure::stream;
 use crate::project::Project;
 use crate::project::PROJECT;
@@ -32,7 +32,7 @@ use super::typescript::TypescriptInterface;
 #[derive(Debug, Clone)]
 pub struct FrameworkObject {
     pub data_model: DataModel,
-    pub table: ClickhouseTable,
+    pub table: ClickHouseTable,
     pub topic: String,
     pub ts_interface: TypescriptInterface,
     pub original_file_path: PathBuf,
@@ -205,7 +205,7 @@ pub fn get_framework_objects_from_schema_file(
 }
 
 pub async fn drop_kafka_trigger(
-    view: &ClickhouseKafkaTrigger,
+    view: &ClickHouseKafkaTrigger,
     configured_client: &ConfiguredDBClient,
 ) -> anyhow::Result<()> {
     let drop_view_query = view.drop_materialized_view_query()?;
@@ -214,7 +214,7 @@ pub async fn drop_kafka_trigger(
 }
 
 pub(crate) async fn create_or_replace_kafka_trigger(
-    view: &ClickhouseKafkaTrigger,
+    view: &ClickHouseKafkaTrigger,
     configured_client: &ConfiguredDBClient,
 ) -> anyhow::Result<()> {
     let create_view_query = view.create_materialized_view_query().map_err(|e| {
@@ -458,7 +458,7 @@ pub async fn process_objects(
         create_or_replace_tables(&project.name(), fo, configured_client).await?;
 
         if !PROJECT.lock().unwrap().is_production {
-            let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
+            let view = ClickHouseKafkaTrigger::from_clickhouse_table(&fo.table);
             create_or_replace_kafka_trigger(&view, configured_client).await?;
         }
 

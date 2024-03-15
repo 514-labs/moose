@@ -1,15 +1,11 @@
-use std::error::Error as StdError;
+use base64::prelude::*;
+use http_body_util::Full;
+use hyper::body::Bytes;
+use hyper::{Request, Response, Uri};
+use hyper_tls::HttpsConnector;
+use hyper_util::client::legacy::{connect::HttpConnector, Client};
 
 use super::config::ClickhouseConfig;
-use base64::prelude::*;
-use http_body_util::{Empty, Full};
-use hyper::body::{Body, Bytes};
-use hyper::client::conn::http1::SendRequest;
-use hyper::{Request, Uri};
-use hyper_util::rt::TokioIo;
-use log::error;
-use std::sync::Arc;
-use tokio::net::TcpStream;
 
 struct ClickhouseRecord {
     columns: Vec<String>,
@@ -17,55 +13,42 @@ struct ClickhouseRecord {
 }
 
 struct ClickhouseClient {
-    client: SendRequest<Full<Bytes>>,
+    client: Client<HttpConnector, Full<Bytes>>,
+    ssl_client: Client<HttpsConnector<HttpConnector>, Full<Bytes>>,
     config: ClickhouseConfig,
 }
 
-// TODO - Implement SSL
 // TODO - handle different types of values for the insert
+// TODO - add clikhouse container for tests inside github actions
 // TODO - make sure we are safe with columns / values alignment
 // TODO - implement batch inserts
 // TODO - investigate if we need to change basic auth
 impl ClickhouseClient {
     pub async fn new(clickhouse_config: ClickhouseConfig) -> anyhow::Result<Self> {
-        // let url = clickhouse_config. .parse::<hyper::Uri>()?;
+        let client_builder = Client::builder(hyper_util::rt::TokioExecutor::new());
 
-        // let scheme = if clickhouse_config.use_ssl {
-        //     "https"
-        // } else {
-        //     "http"
-        // };
-
-        let authority = if clickhouse_config.host_port == 443 || clickhouse_config.host_port == 80 {
-            clickhouse_config.host.clone()
-        } else {
-            format!("{}:{}", clickhouse_config.host, clickhouse_config.host_port)
-        };
-
-        // Open a TCP connection to the remote host
-        let stream = TcpStream::connect(authority).await?;
-
-        // Use an adapter to access something implementing `tokio::io` traits as if they implement
-        // `hyper::rt` IO traits.
-        let io = TokioIo::new(stream);
-
-        // Create the Hyper client
-        let (sender, conn) = hyper::client::conn::http1::handshake(io).await?;
-
-        // Spawn a task to poll the connection, driving the HTTP state
-        tokio::task::spawn(async move {
-            if let Err(err) = conn.await {
-                error!("Connection failed: {:?}", err);
-            }
-        });
+        let https = HttpsConnector::new();
+        let http = HttpConnector::new();
 
         Ok(Self {
-            client: sender,
+            client: client_builder.build(http),
+            ssl_client: client_builder.build(https),
             config: clickhouse_config,
         })
     }
 
-    async fn ping(&mut self) -> anyhow::Result<()> {
+    async fn request(
+        &self,
+        req: Request<Full<Bytes>>,
+    ) -> Result<Response<hyper::body::Incoming>, hyper_util::client::legacy::Error> {
+        if self.config.use_ssl {
+            self.ssl_client.request(req).await
+        } else {
+            self.client.request(req).await
+        }
+    }
+
+    pub async fn ping(&mut self) -> anyhow::Result<()> {
         let empty_body = Bytes::new();
 
         let req = Request::builder()
@@ -73,7 +56,7 @@ impl ClickhouseClient {
             .uri("/ping")
             .body(Full::new(empty_body))?;
 
-        let res = self.client.send_request(req).await.unwrap();
+        let res: Response<hyper::body::Incoming> = self.request(req).await?;
 
         assert_eq!(res.status(), 200);
         Ok(())
@@ -90,7 +73,20 @@ impl ClickhouseClient {
         format!("{}:{}", self.config.host, self.config.host_port)
     }
 
-    async fn insert(&mut self, table_name: &str, record: ClickhouseRecord) -> anyhow::Result<()> {
+    fn uri(&self, path: String) -> anyhow::Result<Uri> {
+        let scheme = if self.config.use_ssl { "https" } else { "http" };
+
+        let uri = format!("{}://{}{}", scheme, self.host(), path);
+        let parsed = uri.parse()?;
+
+        Ok(parsed)
+    }
+
+    pub async fn insert(
+        &mut self,
+        table_name: &str,
+        record: ClickhouseRecord,
+    ) -> anyhow::Result<()> {
         let insert_query = format!(
             "INSERT INTO {}.{} ({}) VALUES",
             self.config.db_name,
@@ -99,7 +95,7 @@ impl ClickhouseClient {
         );
 
         let query: String = query_param(&insert_query)?;
-        let uri = format!("/?{}", query);
+        let uri = self.uri(format!("/?{}", query))?;
 
         let body = record
             .values
@@ -118,7 +114,7 @@ impl ClickhouseClient {
             .header("Content-Length", bytes.len())
             .body(Full::new(bytes))?;
 
-        let res = self.client.send_request(req).await.unwrap();
+        let res = self.request(req).await?;
 
         assert_eq!(res.status(), 200);
 
@@ -163,6 +159,17 @@ async fn test_insert() {
         host_port: 18123,
         db_name: "local".to_string(),
     };
+
+    // let clickhouse_config = ClickhouseConfig {
+    //     user: "default".to_string(),
+    //     password: "password".to_string(),
+    //     host: "swtrnxdyro.us-central1.gcp.clickhouse.cloud".to_string(),
+    //     use_ssl: true,
+    //     postgres_port: 5432,
+    //     kafka_port: 9092,
+    //     host_port: 8443,
+    //     db_name: "default".to_string(),
+    // };
 
     let mut client = ClickhouseClient::new(clickhouse_config).await.unwrap();
 

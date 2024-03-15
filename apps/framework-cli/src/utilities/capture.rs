@@ -1,98 +1,93 @@
 //! # Capture Utility
 //!
-//! This module leverages moose to intrument moose. It includes a macro to easily capture data anywhere in the codebase.
+//! This module leverages moose to instrument moose. It includes a macro to easily capture data anywhere in the codebase.
 //!
 // use chrono::serde::ts_seconds;
 // use lazy_static::lazy_static;
 
-// create a lazy static instance of the client
-// lazy_static! {
-//     pub static ref CLIENT: reqwest::Client = reqwest::Client::new();
-// }
+// Create a lazy static instance of the client
+lazy_static! {
+    pub static ref CLIENT: reqwest::Client = reqwest::Client::new();
+}
 
-// use chrono::{DateTime, Utc};
-// use reqwest::Client;
-// use serde::Serialize;
-// use serde_json::json;
-// use uuid::Uuid;
+use chrono::{DateTime, Utc};
 
-// #[derive(Debug, Clone, Serialize)]
-// enum ActivityType {
-//     #[serde(rename = "devCommand")]
-//     DevCommand,
-//     #[serde(rename = "initCommand")]
-//     InitCommand,
-//     #[serde(rename = "cleanCommand")]
-//     CleanCommand,
-//     #[serde(rename = "prodCommand")]
-//     ProdCommand,
-//     #[serde(rename = "dockerInitCommand")]
-//     DockerInitCommand,
-//     #[serde(rename = "dockerBuildCommand")]
-//     DockerBuildCommand,
-// }
+use serde::Serialize;
+use uuid::Uuid;
 
-// #[derive(Debug, Clone, Serialize)]
-// struct UserActivity {
-//     id: Uuid,
-//     project: String,
-//     #[serde(rename = "activityType")]
-//     activity_type: ActivityType,
-//     #[serde(rename = "sequenceId")]
-//     sequence_id: Uuid,
-//     #[serde(with = "ts_seconds")]
-//     timestamp: DateTime<Utc>,
-//     #[serde(rename = "cliVersion")]
-//     cli_version: String,
-// }
+#[derive(Debug, Clone, Serialize)]
+pub enum ActivityType {
+    #[serde(rename = "devCommand")]
+    DevCommand,
+    #[serde(rename = "initCommand")]
+    InitCommand,
+    #[serde(rename = "cleanCommand")]
+    CleanCommand,
+    #[serde(rename = "stopCommand")]
+    StopCommand,
+    #[serde(rename = "prodCommand")]
+    ProdCommand,
+    #[serde(rename = "dockerInitCommand")]
+    DockerInitCommand,
+    #[serde(rename = "dockerBuildCommand")]
+    DockerBuildCommand,
+}
 
-// async fn capture(ingest_point: &str, event: UserActivity) {
-//     let client = Client::new();
+#[derive(Debug, Clone, Serialize)]
+pub struct UserActivity {
+    pub id: Uuid,
+    pub project: String,
+    #[serde(rename = "activityType")]
+    pub activity_type: ActivityType,
+    #[serde(rename = "sequenceId")]
+    pub sequence_id: String,
+    #[serde(with = "ts_seconds")]
+    pub timestamp: DateTime<Utc>,
+    #[serde(rename = "cliVersion")]
+    pub cli_version: String,
+}
 
-//     // Get the environment variables
-//     let moose_contributor = std::env::var("MOOSE_CONTRIBUTOR").unwrap_or("unknown".to_string());
-//     let scheme = std::env::var("SCHEME").unwrap_or("http".to_string());
-//     let host = std::env::var("HOST").unwrap_or("localhost".to_string());
-//     let port = std::env::var("PORT").unwrap_or("4000".to_string());
-//     let path = std::env::var("INGESTION_POINT").unwrap_or("UserActivity".to_string());
+macro_rules! capture {
+    ($activity_type:expr, $sequence_id:expr, $project_name:expr) => {
+        use crate::utilities::capture::{ActivityType, UserActivity};
+        use crate::utilities::constants;
+        use chrono::Utc;
+        // use reqwest::Client;
+        use serde_json::json;
+        use uuid::Uuid;
 
-//     // Format a URL with the scheme, host, and port and the path as variables
-//     let dev_url = format!("{}://{}:{}/ingest/{}", scheme, host, port, path);
-//     let prod_url = format!("{}://{}/ingest/{}", scheme, host, path);
+        #[allow(unused)]
+        let event = &json!(UserActivity {
+            id: Uuid::new_v4(),
+            project: $project_name,
+            activity_type: $activity_type,
+            sequence_id: $sequence_id,
+            timestamp: Utc::now(),
+            cli_version: constants::CLI_VERSION.to_string(),
+        });
 
-//     println!("{:?}", dev_url);
+        // Get the environment variables
+        // let moose_contributor = std::env::var("MOOSE_CONTRIBUTOR").unwrap_or("unknown".to_string());
+        let scheme = std::env::var("SCHEME").unwrap_or("http".to_string());
+        let host = std::env::var("HOST").unwrap_or("localhost".to_string());
+        let port = std::env::var("PORT").unwrap_or("4000".to_string());
+        let path = std::env::var("INGESTION_POINT").unwrap_or("UserActivity".to_string());
 
-//     let res = client
-//         .post(dev_url)
-//         .json(&json!(event))
-//         .send()
-//         .await
-//         .unwrap();
+        // Format a URL with the scheme, host, and port and the path as variables
+        #[allow(unused)]
+        let dev_url = format!("{}://{}:{}/ingest/{}", scheme, host, port, path);
+        // let prod_url = format!("{}://{}/ingest/{}", scheme, host, path);
 
-//     println!("{:?}", res);
+        // let client = Client::new();
+        // let res = client
+        //     .post(&dev_url)
+        //     .json(event)
+        //     .send()
+        //     .await
+        //     .unwrap();
 
-//     // if moose_contributor != "unknown" {
-//     //     let res = client.post(dev_url).json(&json!(event)).send().await?;
-//     // }
-// }
+        // println!("Sent to {}. Event: {}", dev_url, event);
+    };
+}
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use chrono::Utc;
-//     use uuid::Uuid;
-
-//     #[tokio::test]
-//     async fn test_capture() {
-//         let event = UserActivity {
-//             id: Uuid::new_v4(),
-//             project: "loose_moose".to_string(),
-//             activity_type: ActivityType::DevCommand,
-//             sequence_id: Uuid::new_v4(),
-//             timestamp: Utc::now(),
-//             cli_version: "0.1.0".to_string(),
-//         };
-
-//         capture("UserActivity", event).await;
-//     }
-// }
+pub(crate) use capture;

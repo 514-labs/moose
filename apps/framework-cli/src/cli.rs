@@ -29,6 +29,7 @@ use crate::cli::{
     settings::{init_config_file, setup_user_directory},
 };
 use crate::project::Project;
+use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
 use crate::utilities::git::is_git_repo;
 
 use self::routines::{
@@ -109,6 +110,12 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                         Message::new("Created".to_string(), "Git Repository".to_string())
                     );
                 }
+
+                crate::utilities::capture::capture!(
+                    ActivityType::InitCommand,
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                    name.clone()
+                );
             }
             Commands::Dev {} => {
                 info!("Running dev command");
@@ -132,7 +139,15 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 controller.run_routines(run_mode);
 
-                routines::start_development_mode(project_arc).await.unwrap();
+                crate::utilities::capture::capture!(
+                    ActivityType::DevCommand,
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                    project_arc.name().clone()
+                );
+
+                routines::start_development_mode(project_arc.clone())
+                    .await
+                    .unwrap();
             }
             Commands::Prod {} => {
                 info!("Running prod command");
@@ -141,7 +156,15 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 let _ = project.set_enviroment(true);
                 let project_arc = Arc::new(project);
-                routines::start_production_mode(project_arc).await.unwrap();
+                routines::start_production_mode(project_arc.clone())
+                    .await
+                    .unwrap();
+
+                crate::utilities::capture::capture!(
+                    ActivityType::ProdCommand,
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                    project_arc.name().clone()
+                );
             }
             Commands::Update {} => {
                 // This command may not be needed if we have incredible automation
@@ -154,8 +177,14 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                     .expect("No project found, please run `moose init` to create a project");
                 let project_arc = Arc::new(project);
 
-                controller.add_routine(Box::new(StopLocalInfrastructure::new(project_arc)));
+                controller.add_routine(Box::new(StopLocalInfrastructure::new(project_arc.clone())));
                 controller.run_routines(run_mode);
+
+                crate::utilities::capture::capture!(
+                    ActivityType::StopCommand,
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                    project_arc.name().clone()
+                );
             }
             Commands::Clean {} => {
                 let run_mode = RunMode::Explicit {};
@@ -164,8 +193,14 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let project_arc = Arc::new(project);
 
                 let mut controller = RoutineController::new();
-                controller.add_routine(Box::new(CleanProject::new(project_arc, run_mode)));
+                controller.add_routine(Box::new(CleanProject::new(project_arc.clone(), run_mode)));
                 controller.run_routines(run_mode);
+
+                crate::utilities::capture::capture!(
+                    ActivityType::CleanCommand,
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                    project_arc.name().clone()
+                );
             }
             Commands::Docker { sub_method } => match sub_method.as_str() {
                 "init" => {
@@ -175,8 +210,14 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                         .expect("No project found, please run `moose init` to create a project");
                     let project_arc = Arc::new(project);
                     let mut controller = RoutineController::new();
-                    controller.add_routine(Box::new(CreateDockerfile::new(project_arc)));
+                    controller.add_routine(Box::new(CreateDockerfile::new(project_arc.clone())));
                     controller.run_routines(run_mode);
+
+                    crate::utilities::capture::capture!(
+                        ActivityType::DockerInitCommand,
+                        CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                        project_arc.name().clone()
+                    );
                 }
                 "build" => {
                     let run_mode = RunMode::Explicit {};
@@ -185,8 +226,14 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                         .expect("No project found, please run `moose init` to create a project");
                     let project_arc = Arc::new(project);
                     let mut controller = RoutineController::new();
-                    controller.add_routine(Box::new(BuildDockerfile::new(project_arc)));
+                    controller.add_routine(Box::new(BuildDockerfile::new(project_arc.clone())));
                     controller.run_routines(run_mode);
+
+                    crate::utilities::capture::capture!(
+                        ActivityType::DockerBuildCommand,
+                        CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                        project_arc.name().clone()
+                    );
                 }
                 _ => {
                     show_message!(

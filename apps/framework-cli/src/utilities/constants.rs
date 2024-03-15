@@ -1,3 +1,7 @@
+use lazy_static::lazy_static;
+use std::collections::HashMap;
+use uuid::Uuid;
+
 pub const CLI_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const PACKAGE_JSON: &str = "package.json";
@@ -29,3 +33,13 @@ pub const GITIGNORE: &str = ".gitignore";
 
 pub const DENO_DIR: &str = "deno";
 pub const DENO_TRANSFORM: &str = "transform.ts";
+
+pub const CTX_SESSION_ID: &str = "session_id";
+
+lazy_static! {
+    pub static ref CONTEXT: HashMap<String, String> = {
+        let mut map = HashMap::new();
+        map.insert(CTX_SESSION_ID.to_string(), Uuid::new_v4().to_string());
+        map
+    };
+}

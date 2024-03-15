@@ -428,7 +428,11 @@ pub async fn process_objects(
             fo.data_model.name.clone(),
             version,
         );
-        let topics = vec![fo.topic.clone()];
+        let topics = vec![format!(
+            "{}_{}",
+            fo.topic.clone(),
+            version.replace('.', "_")
+        )];
         match stream::redpanda::create_topics(&project.redpanda_config, topics).await {
             Ok(_) => println!("Topics created successfully"),
             Err(e) => eprintln!("Failed to create topics: {}", e),

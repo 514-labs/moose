@@ -20,6 +20,8 @@ use crate::infrastructure::olap::clickhouse::{ClickhouseKafkaTrigger, VERSION_SY
 use crate::infrastructure::olap::clickhouse::{ClickhouseTable, VersionSync};
 use crate::infrastructure::stream;
 use crate::project::Project;
+use crate::project::PROJECT;
+
 #[cfg(test)]
 use crate::utilities::constants::SCHEMAS_DIR;
 
@@ -240,14 +242,18 @@ pub async fn create_or_replace_version_sync(
     configured_client: &ConfiguredDBClient,
 ) -> anyhow::Result<()> {
     let drop_function_query = version_sync.drop_function_query();
-    let drop_trigger_query = version_sync.drop_trigger_query();
     let create_function_query = version_sync.create_function_query();
-    let create_trigger_query = version_sync.create_trigger_query();
 
     olap::clickhouse::run_query(&drop_function_query, configured_client).await?;
-    olap::clickhouse::run_query(&drop_trigger_query, configured_client).await?;
     olap::clickhouse::run_query(&create_function_query, configured_client).await?;
-    olap::clickhouse::run_query(&create_trigger_query, configured_client).await?;
+
+    if !PROJECT.lock().unwrap().is_production {
+        let drop_trigger_query = version_sync.drop_trigger_query();
+        let create_trigger_query = version_sync.create_trigger_query();
+        olap::clickhouse::run_query(&drop_trigger_query, configured_client).await?;
+        olap::clickhouse::run_query(&create_trigger_query, configured_client).await?;
+    }
+
     Ok(())
 }
 
@@ -258,10 +264,13 @@ pub(crate) async fn drop_tables(
     info!("Dropping tables for: {:?}", fo.table.name);
 
     let drop_data_table_query = fo.table.drop_kafka_table_query()?;
-    let drop_kafka_table_query = fo.table.drop_data_table_query()?;
 
     olap::clickhouse::run_query(&drop_data_table_query, configured_client).await?;
-    olap::clickhouse::run_query(&drop_kafka_table_query, configured_client).await?;
+
+    if !PROJECT.lock().unwrap().is_production {
+        let drop_kafka_table_query = fo.table.drop_data_table_query()?;
+        olap::clickhouse::run_query(&drop_kafka_table_query, configured_client).await?;
+    }
     Ok(())
 }
 
@@ -273,7 +282,6 @@ pub(crate) async fn create_or_replace_tables(
     info!("Creating table: {:?}", fo.table.name);
 
     let create_data_table_query = fo.table.create_data_table_query()?;
-    let create_kafka_table_query = fo.table.create_kafka_table_query(project_name)?;
 
     olap::clickhouse::check_ready(configured_client)
         .await
@@ -288,7 +296,12 @@ pub(crate) async fn create_or_replace_tables(
     drop_tables(fo, configured_client).await?;
 
     olap::clickhouse::run_query(&create_data_table_query, configured_client).await?;
-    olap::clickhouse::run_query(&create_kafka_table_query, configured_client).await?;
+
+    if !PROJECT.lock().unwrap().is_production {
+        let create_kafka_table_query = fo.table.create_kafka_table_query(project_name)?;
+        olap::clickhouse::run_query(&create_kafka_table_query, configured_client).await?;
+    }
+
     Ok(())
 }
 
@@ -438,8 +451,10 @@ pub async fn process_objects(
 
         create_or_replace_tables(&project.name(), fo, configured_client).await?;
 
-        let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
-        create_or_replace_kafka_trigger(&view, configured_client).await?;
+        if !PROJECT.lock().unwrap().is_production {
+            let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
+            create_or_replace_kafka_trigger(&view, configured_client).await?;
+        }
 
         debug!("Table created: {:?}", fo.table.name);
 

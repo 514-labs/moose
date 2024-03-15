@@ -116,6 +116,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `moose init` to create a project");
 
+                let _ = project.set_enviroment(false);
                 let project_arc = Arc::new(project);
 
                 let mut controller = RoutineController::new();
@@ -137,6 +138,8 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 info!("Running prod command");
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `moose init` to create a project");
+
+                let _ = project.set_enviroment(true);
                 let project_arc = Arc::new(project);
                 routines::start_production_mode(project_arc).await.unwrap();
             }

@@ -42,6 +42,7 @@ use crate::utilities::constants::{FLOWS_DIR, PROJECT_CONFIG_FILE};
 lazy_static! {
     pub static ref PROJECT: Mutex<Project> = Mutex::new(Project {
         language: SupportedLanguages::Typescript,
+        is_production: false,
         redpanda_config: RedpandaConfig::default(),
         clickhouse_config: ClickhouseConfig::default(),
         http_server_config: LocalWebserverConfig::default(),
@@ -59,6 +60,7 @@ lazy_static! {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
     pub language: SupportedLanguages,
+    pub is_production: bool,
     pub redpanda_config: RedpandaConfig,
     pub clickhouse_config: ClickhouseConfig,
     pub http_server_config: LocalWebserverConfig,
@@ -103,6 +105,7 @@ impl Project {
         match language {
             SupportedLanguages::Typescript => Project {
                 language: SupportedLanguages::Typescript,
+                is_production: false,
                 project_location: location.clone(),
                 redpanda_config: RedpandaConfig::default(),
                 clickhouse_config: ClickhouseConfig::default(),
@@ -114,6 +117,12 @@ impl Project {
                 supported_old_versions: HashMap::new(),
             },
         }
+    }
+
+    pub fn set_enviroment(&self, production: bool) -> Result<(), std::io::Error> {
+        let mut proj = PROJECT.lock().unwrap();
+        proj.is_production = production;
+        Ok(())
     }
 
     pub fn load(directory: PathBuf) -> Result<Project, ConfigError> {

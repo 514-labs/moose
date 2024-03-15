@@ -21,6 +21,7 @@ use crate::framework::sdks::generate_ts_sdk;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::olap::clickhouse::ClickhouseKafkaTrigger;
 use crate::infrastructure::stream::redpanda;
+use crate::project::PROJECT;
 use crate::utilities::package_managers;
 use crate::{
     framework::controller::RouteMeta,
@@ -130,11 +131,13 @@ async fn process_events(
     let mut route_table = route_table.write().await;
     for (_, fo) in deleted_objects {
         drop_tables(&fo, configured_client).await?;
-        drop_kafka_trigger(
-            &ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table),
-            configured_client,
-        )
-        .await?;
+        if !PROJECT.lock().unwrap().is_production {
+            drop_kafka_trigger(
+                &ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table),
+                configured_client,
+            )
+            .await?;
+        }
         route_table.remove(&schema_file_path_to_ingest_route(
             &framework_object_versions.current_models.base_path,
             &fo.original_file_path,
@@ -160,7 +163,10 @@ async fn process_events(
     for (_, fo) in changed_objects.iter().chain(new_objects.iter()) {
         create_or_replace_tables(&project.name(), fo, configured_client).await?;
         let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
-        create_or_replace_kafka_trigger(&view, configured_client).await?;
+
+        if !PROJECT.lock().unwrap().is_production {
+            create_or_replace_kafka_trigger(&view, configured_client).await?;
+        }
 
         let ingest_route = schema_file_path_to_ingest_route(
             &framework_object_versions.current_models.base_path,

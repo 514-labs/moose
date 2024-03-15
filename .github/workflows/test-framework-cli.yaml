@@ -44,6 +44,11 @@ jobs:
 
   test-macos:
     name: Test Suite (MacOS)
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.1.6.52
+        ports:
+          - 18123:8123
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
@@ -62,8 +67,6 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 
-      - uses: getsentry/action-clickhouse-in-ci@v1
-
       - name: Test
         uses: actions-rs/cargo@v1
         with:
@@ -77,6 +80,11 @@ jobs:
 
   test-ubuntu:
     name: Test Suite (Ubuntu)
+    services:
+      clickhouse:
+        image: clickhouse/clickhouse-server:24.1.6.52
+        ports:
+          - 18123:8123
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
@@ -94,8 +102,6 @@ jobs:
 
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
-
-      - uses: getsentry/action-clickhouse-in-ci@v1
 
       - name: Test
         uses: actions-rs/cargo@v1

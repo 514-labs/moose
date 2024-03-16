@@ -95,7 +95,7 @@ use crate::framework::sdks::generate_ts_sdk;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::olap;
 use crate::infrastructure::stream::redpanda;
-use crate::project::Project;
+use crate::project::{Project, PROJECT};
 use crate::utilities::package_managers;
 
 use super::display::with_spinner_async;
@@ -360,11 +360,13 @@ async fn initialize_project_state(
         .await;
 
         // TODO: add old versions to SDK
-        let sdk_location = generate_ts_sdk(project.clone(), &compilable_objects)?;
-        let package_manager = package_managers::PackageManager::Npm;
-        package_managers::install_packages(&sdk_location, &package_manager)?;
-        package_managers::run_build(&sdk_location, &package_manager)?;
-        package_managers::link_sdk(&sdk_location, None, &package_manager)?;
+        if !PROJECT.lock().unwrap().is_production {
+            let sdk_location = generate_ts_sdk(project.clone(), &compilable_objects)?;
+            let package_manager = package_managers::PackageManager::Npm;
+            package_managers::install_packages(&sdk_location, &package_manager)?;
+            package_managers::run_build(&sdk_location, &package_manager)?;
+            package_managers::link_sdk(&sdk_location, None, &package_manager)?;
+        }
 
         framework_object_versions.current_models = SchemaVersion {
             base_path: schema_dir.clone(),

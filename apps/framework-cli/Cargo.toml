@@ -46,6 +46,7 @@ git2 = { version = "0.18.1", features = ["vendored-libgit2"] }
 regex = "1.10.3"
 reqwest = "0.11"
 chrono = { version = "0.4.35", features = ["serde"] }
+bytes = "1"
 
 [dev-dependencies]
 clickhouse = { version = "0.11.5", features = ["uuid", "test-util"] }

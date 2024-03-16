@@ -8,6 +8,9 @@ use crate::{
     utilities::constants::REDPANDA_CONTAINER_NAME,
 };
 
+use bytes::{BufMut, Bytes, BytesMut};
+use chrono::{DateTime, Utc};
+use rdkafka::message::ToBytes;
 use serde::{Deserialize, Serialize};
 use std::fmt::{self};
 
@@ -94,9 +97,69 @@ pub struct ClickHouseColumn {
     pub default: Option<ClickHouseColumnDefaults>,
 }
 
+pub struct ClickHouseValue {
+    pub value_type: ClickHouseColumnType,
+    value: String,
+}
+
+// TODO - add support for Decimal, Json, Bytes, Enum
+impl ClickHouseValue {
+    pub fn new_string(value: String) -> ClickHouseValue {
+        ClickHouseValue {
+            value_type: ClickHouseColumnType::String,
+            value: value,
+        }
+    }
+
+    pub fn new_boolean(value: bool) -> ClickHouseValue {
+        ClickHouseValue {
+            value_type: ClickHouseColumnType::Boolean,
+            value: format!("{}", value),
+        }
+    }
+
+    pub fn new_int_64(value: i64) -> ClickHouseValue {
+        ClickHouseValue {
+            value_type: ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int64),
+            value: format!("{}", value),
+        }
+    }
+
+    pub fn new_float_64(value: f64) -> ClickHouseValue {
+        ClickHouseValue {
+            value_type: ClickHouseColumnType::ClickhouseFloat(ClickHouseFloat::Float64),
+            value: format!("{}", value),
+        }
+    }
+
+    pub fn new_date_time(value: DateTime<Utc>) -> ClickHouseValue {
+        ClickHouseValue {
+            value_type: ClickHouseColumnType::DateTime,
+            value: value.to_rfc3339(),
+        }
+    }
+}
+
+impl fmt::Display for ClickHouseValue {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self.value_type {
+            ClickHouseColumnType::String => write!(f, "'{}'", &self.value),
+            ClickHouseColumnType::Boolean => write!(f, "{}", &self.value),
+            ClickHouseColumnType::ClickhouseInt(_) => {
+                write!(f, "{}", &self.value)
+            }
+            ClickHouseColumnType::ClickhouseFloat(_) => {
+                write!(f, "{}", &self.value)
+            }
+            ClickHouseColumnType::DateTime => write!(f, "{}", &self.value),
+            _ => Err(std::fmt::Error),
+        }
+    }
+}
+
 pub struct ClickHouseRecord {
     pub columns: Vec<String>,
-    pub values: Vec<String>,
+    pub values: Vec<ClickHouseValue>,
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, clickhouse::Row)]

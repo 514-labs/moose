@@ -15,22 +15,11 @@ use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
 use crate::infrastructure::olap::clickhouse::model::ClickHouseSystemTableRow;
-use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use crate::infrastructure::olap::clickhouse::queries::CreateVersionSyncTriggerQuery;
 
-use crate::{
-    framework::schema::{FieldArity, UnsupportedDataTypeError},
-    utilities::constants::REDPANDA_CONTAINER_NAME,
-};
-
+use self::config::ClickhouseConfig;
 use self::model::ClickHouseSystemTable;
 use self::model::ClickHouseTable;
-use self::{
-    config::ClickhouseConfig,
-    queries::{
-        CreateKafkaTriggerViewQuery, CreateTableQuery, DropMaterializedViewQuery, DropTableQuery,
-    },
-};
 
 #[derive(Debug, Clone)]
 pub struct VersionSync {

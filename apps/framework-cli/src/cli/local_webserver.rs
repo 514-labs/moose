@@ -11,6 +11,7 @@ use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 
 use crate::infrastructure::console::ConsoleConfig;
 use crate::project::Project;
+use crate::project::PROJECT;
 use http_body_util::BodyExt;
 use http_body_util::Full;
 use hyper::body::Bytes;
@@ -264,7 +265,7 @@ impl Webserver {
         //! Starts the local webserver
         let socket = self.socket().await;
 
-        // We create a TcpListener and bind it to 127.0.0.1:4000
+        // We create a TcpListener and bind it to {project.http_server_config.host} on port {project.http_server_config.port}
         let listener = TcpListener::bind(socket).await.unwrap();
 
         let producer = redpanda::create_producer(project.redpanda_config.clone());
@@ -274,17 +275,17 @@ impl Webserver {
             MessageType::Info,
             Message {
                 action: "Started".to_string(),
-                details: format!(" web server on port http://localhost:{}. You'll use this to host and port to send data to your MooseJS app", socket.port()),
+                details: format!(" web server on port http://{}:{}. You'll use this to host and port to send data to your MooseJS app", project.http_server_config.host.clone(), socket.port()),
             }
         );
         }
 
-        {
+        if !PROJECT.lock().unwrap().is_production {
             show_message!(
             MessageType::Info,
             Message {
                 action: "Started".to_string(),
-                details: format!(" console on port http://localhost:{}. Check it out to get a bird's eye view of your application and infrastructure", project.console_config.host_port),
+                details: format!(" console on port http://{}:{}. Check it out to get a bird's eye view of your application and infrastructure", project.http_server_config.host.clone(), project.console_config.host_port),
             }
         );
         }

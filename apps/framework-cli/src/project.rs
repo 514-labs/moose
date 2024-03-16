@@ -60,16 +60,20 @@ lazy_static! {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
     pub language: SupportedLanguages,
-    pub is_production: bool,
     pub redpanda_config: RedpandaConfig,
     pub clickhouse_config: ClickhouseConfig,
     pub http_server_config: LocalWebserverConfig,
     pub console_config: ConsoleConfig,
 
+    // This part of the configuration for the project is dynamic and not saved
+    // to disk. It is loaded from the language specific configuration file or the currently
+    // running command
     #[serde(skip)]
     pub language_project_config: LanguageProjectConfig,
     #[serde(skip)]
     pub project_location: PathBuf,
+    #[serde(skip, default = "Project::default_production")]
+    pub is_production: bool,
 
     #[serde(default = "HashMap::new")]
     pub supported_old_versions: HashMap<String, String>,
@@ -87,6 +91,10 @@ impl Default for LanguageProjectConfig {
 }
 
 impl Project {
+    pub fn default_production() -> bool {
+        false
+    }
+
     pub fn name(&self) -> String {
         match &self.language_project_config {
             LanguageProjectConfig::Typescript(p) => p.name.clone(),

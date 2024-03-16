@@ -15,12 +15,12 @@ spec:
     spec:
       containers:
         - name: moosedeploy
-          image: 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.110
+          image: cjus514/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.140
           ports:
             - containerPort: 4000
           env:
             - name: RUST_BACKTRACE
-              value: "full"
+              value: "1"
             - name: MOOSE_REDPANDA_CONFIG__BROKER
               valueFrom:
                 secretKeyRef:
@@ -31,6 +31,26 @@ spec:
                 secretKeyRef:
                   name: sn-moose-redpanda-config--message-timeout-ms
                   key: sk-moose-redpanda-config--message-timeout-ms
+            - name: MOOSE_REDPANDA_CONFIG__SASL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-redpanda-config--sasl-username
+                  key: sk-moose-redpanda-config--sasl-username
+            - name: MOOSE_REDPANDA_CONFIG__SASL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-redpanda-config--sasl-password
+                  key: sk-moose-redpanda-config--sasl-password
+            - name: MOOSE_REDPANDA_CONFIG__SASL_MECHANISM
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-redpanda-config--sasl-mechanism
+                  key: sk-moose-redpanda-config--sasl-mechanism
+            - name: MOOSE_REDPANDA_CONFIG__SECURITY_PROTOCOL
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-redpanda-config--security-protocol
+                  key: sk-moose-redpanda-config--security-protocol
             - name: MOOSE_CLICKHOUSE_CONFIG__DB_NAME
               valueFrom:
                 secretKeyRef:
@@ -71,5 +91,15 @@ spec:
                 secretKeyRef:
                   name: sn-moose-clickhouse-config--kafka-port
                   key: sk-moose-clickhouse-config--kafka-port
+            - name: MOOSE_HTTP_SERVER_CONFIG__HOST
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-http-server-config--host
+                  key: sk-moose-http-server-config--host
+            - name: MOOSE_HTTP_SERVER_CONFIG__PORT
+              valueFrom:
+                secretKeyRef:
+                  name: sn-moose-http-server-config--port
+                  key: sk-moose-http-server-config--port
       imagePullSecrets:
-        - name: moose-repo-credentials 
+        - name: moose-repo-credentials

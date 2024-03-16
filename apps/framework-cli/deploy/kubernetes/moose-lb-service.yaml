@@ -4,7 +4,7 @@ metadata:
   name: web-lb
 spec:
   selector:
-    app: mooseweb
+    app: moosedeploy
   ports:
   - protocol: TCP
     port: 4000

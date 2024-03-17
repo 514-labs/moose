@@ -44,7 +44,7 @@ export const HeroSection = ({ identifier }: HeroSectionProps) => {
           ease: "quint",
           stagger: { each: 0.03 },
         },
-        0
+        0,
       );
 
       tl.from(
@@ -55,7 +55,7 @@ export const HeroSection = ({ identifier }: HeroSectionProps) => {
           ease: "quint",
           stagger: { each: 0.03 },
         },
-        1
+        1,
       );
 
       tl.then(() => {

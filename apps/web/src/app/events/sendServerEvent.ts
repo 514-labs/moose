@@ -22,7 +22,7 @@ export const sendServerEvent = async (name: string, event: any) => {
   const scheme = env === "production" ? "https" : "http";
   const url = `${scheme}://${host}/events/api`;
 
-  const res = fetch(url, {
+  fetch(url, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

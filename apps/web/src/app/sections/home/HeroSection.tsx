@@ -12,7 +12,11 @@ export const heroContent = {
     "Moose is a batteries-included framework for building data-intensive applications using Typescript or Python, and SQL. It comes with a powerful CLI to help automate development tasks, an intuitive abstraction to help you build quickly, and a streamlined local development workflow.",
 };
 
-export const HeroSection = () => {
+interface HeroSectionProps {
+  identifier: string;
+}
+
+export const HeroSection = ({ identifier }: HeroSectionProps) => {
   const headingRef = React.useRef(null);
   const descriptionRef = React.useRef(null);
 
@@ -40,7 +44,7 @@ export const HeroSection = () => {
           ease: "quint",
           stagger: { each: 0.03 },
         },
-        0,
+        0
       );
 
       tl.from(
@@ -51,7 +55,7 @@ export const HeroSection = () => {
           ease: "quint",
           stagger: { each: 0.03 },
         },
-        1,
+        1
       );
 
       tl.then(() => {
@@ -78,7 +82,7 @@ export const HeroSection = () => {
             </span>
           </div>
           <div>
-            <CodeBlockCTA />
+            <CodeBlockCTA identifier={identifier} />
           </div>
         </div>
       </div>

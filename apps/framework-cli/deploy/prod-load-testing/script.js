@@ -8,8 +8,8 @@ import { check, sleep } from 'k6';
 //
 export default function() {
   const url = 'http://34.82.14.129:4000/ingest/UserActivity';
-  const eventId = Math.floor(Math.random() * 1e10);
-  const userId = Math.floor(Math.random() * 1e6);
+  const eventId = "loadtest-run-01";
+  const userId = "3434";
   
   const payload = JSON.stringify({
     eventId,

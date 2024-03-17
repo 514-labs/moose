@@ -5,7 +5,11 @@ import React, { useLayoutEffect } from "react";
 import { SplitText } from "gsap/SplitText";
 import { sendClientEvent } from "../events/sendClientEvent";
 
-export const CodeBlockCTA = () => {
+interface CodeBlockCTAProps {
+  identifier: string;
+}
+
+export const CodeBlockCTA = ({ identifier }: CodeBlockCTAProps) => {
   const inboundRef = React.useRef(null);
   const outboundRef = React.useRef(null);
   const wrapperRef = React.useRef(null);
@@ -39,7 +43,7 @@ export const CodeBlockCTA = () => {
           {
             opacity: 1,
             stagger: { each: 0.03 },
-          },
+          }
         );
 
         gsap.delayedCall(1, () => {
@@ -57,7 +61,7 @@ export const CodeBlockCTA = () => {
             {
               opacity: 1,
               stagger: { each: 0.03 },
-            },
+            }
           );
         });
       });
@@ -101,7 +105,7 @@ export const CodeBlockCTA = () => {
       </div>
       <Button
         className="py-4 text-center font-medium no-underline bg-action-primary bg-action-white bg-black/100 text-gray-300 hover:bg-gray-900 sm:inline-block sm:grow-0 md:py-6 md:px-10 md:text-lg md:leading-8"
-        onClick={() => sendClientEvent("cta-click", {})}
+        onClick={() => sendClientEvent("cta-click-create-app", identifier, {})}
       >
         copy
       </Button>

@@ -11,6 +11,7 @@ import footerImg from "../../public/bg-image-moose/bg-image-moose_2x.webp";
 import { FooterSection } from "./sections//home/FooterSection";
 import { CodeBlockCTA } from "./components/CodeBlockCTA";
 import { sendServerEvent } from "./events/sendServerEvent";
+import { useState } from "react";
 
 export const metadata: Metadata = {
   title: "Moose.js | Build for the modern data stack",
@@ -28,7 +29,7 @@ const frameworkSection = {
 const fiveonefourSection = {
   heading: "build for the modern data stack",
   description:
-    "Moose.js is a batteries-included framework for building data-intensive applications using Typescript or Python, and SQL. It comes with a powerful CLI to help automate development tasks, an intuitive abstraction to help you build quickly, and a streamlined local development workflow..",
+    "Moose.js is a batteries-included framework for building data-intensive applications using Typescript or Python, and SQL. It comes with a powerful CLI to help automate development tasks, an intuitive abstraction to help you build quickly, and a streamlined local development workflow.",
 };
 
 const practices = [
@@ -85,7 +86,7 @@ const features = [
 ];
 
 export default async function Home() {
-  await sendServerEvent("page_view", { page: "home" });
+  const ip_obj = await sendServerEvent("page_view", { page: "home" });
 
   return (
     <div className="h-full relative">
@@ -106,7 +107,7 @@ export default async function Home() {
             content={fiveonefourSection.description}
           />
           <div>
-            <CodeBlockCTA />
+            <CodeBlockCTA identifier={ip_obj.ip} />
           </div>
         </div>
         <div className="relative h-full w-full min-h-[80vw] sm:min-h-[50vw] col-span-3 sm:col-span-12 2xl:col-span-6">
@@ -236,7 +237,7 @@ export default async function Home() {
             onScroll
           />
           <div>
-            <CodeBlockCTA />
+            <CodeBlockCTA identifier={ip_obj.ip} />
           </div>
         </div>
       </SectionGrid>

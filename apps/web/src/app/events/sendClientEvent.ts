@@ -1,4 +1,8 @@
-export const sendClientEvent = async (name: string, event: any) => {
+export const sendClientEvent = async (
+  name: string,
+  identifier: string,
+  event: any
+) => {
   await fetch("/events/api", {
     method: "POST",
     headers: {
@@ -6,7 +10,7 @@ export const sendClientEvent = async (name: string, event: any) => {
     },
     body: JSON.stringify({
       name,
-      event,
+      event: { ...event, ip: identifier },
     }),
   });
 };

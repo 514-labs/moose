@@ -23,7 +23,11 @@ const navigation = [
   { name: "github", href: "https://github.com/514-labs/", target: "_blank" },
 ];
 
-export const Nav = () => {
+interface NavProps {
+  identifier: string;
+}
+
+export const Nav = ({ identifier }: NavProps) => {
   // const titleRef = React.useRef(null);
 
   useLayoutEffect(() => {
@@ -78,7 +82,7 @@ export const Nav = () => {
                       >
                         <a
                           onClick={async () => {
-                            await sendClientEvent("nav-click", {
+                            await sendClientEvent("nav-click", identifier, {
                               href: item.href,
                             });
                           }}

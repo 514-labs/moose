@@ -7,6 +7,8 @@ import Script from "next/script";
 
 import { Analytics } from "@vercel/analytics/react";
 import { Nav } from "./components/Nav";
+import { useState } from "react";
+import { sendServerEvent } from "./events/sendServerEvent";
 
 // Font files can be colocated inside of `app`
 const monoFont = localFont({
@@ -21,11 +23,15 @@ const sansFont = localFont({
   variable: "--font-grotesk",
 });
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const ip_obj = await sendServerEvent("layout-render", {
+    layout: "root-layout",
+  });
+
   return (
     <html
       lang="en"
@@ -38,7 +44,7 @@ export default function RootLayout({
          heap.load("1717463140");`}
       </Script>
       <body className="h-full font-sans text-black font-regular text-lg">
-        <Nav />
+        <Nav identifier={ip_obj.ip} />
         {children}
         <Analytics />
       </body>

@@ -18,7 +18,11 @@ export const ctaSection = {
     "Start building your data-intensive application today. Moose is free to use and open source. If you'd like to contribute, check out our github or join our discord.",
 };
 
-export const CTASection = () => {
+interface CTASectionProps {
+  identifier: string;
+}
+
+export const CTASection = ({ identifier }: CTASectionProps) => {
   const headingRef = React.useRef(null);
 
   const featureDescriptionRef = React.useRef(null);
@@ -94,7 +98,7 @@ export const CTASection = () => {
               </span>
             </div>
             <div>
-              <CodeBlockCTA />
+              <CodeBlockCTA identifier={identifier} />
             </div>
           </div>
         </div>

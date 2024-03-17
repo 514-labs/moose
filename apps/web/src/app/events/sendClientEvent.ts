@@ -1,7 +1,7 @@
 export const sendClientEvent = async (
   name: string,
   identifier: string,
-  event: any
+  event: any,
 ) => {
   await fetch("/events/api", {
     method: "POST",

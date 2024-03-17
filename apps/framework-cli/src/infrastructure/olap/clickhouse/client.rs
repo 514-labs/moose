@@ -1,12 +1,15 @@
 use base64::prelude::*;
+use http_body_util::BodyExt;
 use http_body_util::Full;
-use hyper::body::Bytes;
+use hyper::body::{self, Buf, Bytes};
 use hyper::{Request, Response, Uri};
 use hyper_tls::HttpsConnector;
 use hyper_util::client::legacy::{connect::HttpConnector, Client};
 
 use super::config::ClickhouseConfig;
 use super::model::ClickHouseRecord;
+
+use log::error;
 
 struct ClickhouseClient {
     client: Client<HttpConnector, Full<Bytes>>,
@@ -84,6 +87,7 @@ impl ClickhouseClient {
         table_name: &str,
         record: ClickHouseRecord,
     ) -> anyhow::Result<()> {
+        // TODO - this could be optimized with RowBinary instead
         let insert_query = format!(
             "INSERT INTO {}.{} ({}) VALUES",
             self.config.db_name,
@@ -94,12 +98,14 @@ impl ClickhouseClient {
         let query: String = query_param(&insert_query)?;
         let uri = self.uri(format!("/?{}", query))?;
 
-        let body = record
+        let value_list = record
             .values
             .iter()
-            .map(|value| format!("('{}')", value))
+            .map(|value| format!("{}", value))
             .collect::<Vec<String>>()
             .join(",");
+
+        let body = format!("({})", value_list);
 
         let bytes = Bytes::from(body);
 
@@ -113,9 +119,24 @@ impl ClickhouseClient {
 
         let res = self.request(req).await?;
 
-        assert_eq!(res.status(), 200);
+        let status = res.status();
 
-        Ok(())
+        if status != 200 {
+            let body = res.collect().await?.to_bytes().to_vec();
+            let body_str = String::from_utf8(body)?;
+
+            error!(
+                "Failed to insert into clickhouse: Res {} - {}",
+                &status, body_str
+            );
+
+            Err(anyhow::anyhow!(
+                "Failed to insert into clickhouse: {}",
+                body_str
+            ))
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -146,6 +167,8 @@ async fn test_ping() {
 
 #[tokio::test]
 async fn test_insert() {
+    use super::model::ClickHouseValue;
+
     let clickhouse_config = ClickhouseConfig {
         user: "panda".to_string(),
         password: "pandapass".to_string(),
@@ -172,10 +195,20 @@ async fn test_insert() {
 
     client
         .insert(
-            "test_table",
+            "UserActivity_0_0",
             ClickHouseRecord {
-                columns: vec!["name".to_string()],
-                values: vec!["panda".to_string()],
+                columns: vec![
+                    "eventId".to_string(),
+                    "timestamp".to_string(),
+                    "userId".to_string(),
+                    "activity".to_string(),
+                ],
+                values: vec![
+                    ClickHouseValue::new_string("123".to_string()),
+                    ClickHouseValue::new_date_time(chrono::Utc::now()),
+                    ClickHouseValue::new_string("user2".to_string()),
+                    ClickHouseValue::new_string("sgnup".to_string()),
+                ],
             },
         )
         .await

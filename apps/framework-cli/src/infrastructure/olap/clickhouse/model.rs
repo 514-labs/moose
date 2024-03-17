@@ -99,6 +99,10 @@ pub struct ClickHouseColumn {
 
 pub struct ClickHouseValue {
     pub value_type: ClickHouseColumnType,
+
+    // This is a string right now because that's the value we send over the wire with the HTTP protocole
+    // if we used the RowBinary // https://clickhouse.yandex/docs/en/query_language/syntax/#syntax-identifiers
+    // or another format, we could optimize
     value: String,
 }
 
@@ -135,7 +139,7 @@ impl ClickHouseValue {
     pub fn new_date_time(value: DateTime<Utc>) -> ClickHouseValue {
         ClickHouseValue {
             value_type: ClickHouseColumnType::DateTime,
-            value: value.to_rfc3339(),
+            value: format!("{}", value.format("%Y-%m-%d %H:%M:%S")),
         }
     }
 }
@@ -151,7 +155,7 @@ impl fmt::Display for ClickHouseValue {
             ClickHouseColumnType::ClickhouseFloat(_) => {
                 write!(f, "{}", &self.value)
             }
-            ClickHouseColumnType::DateTime => write!(f, "{}", &self.value),
+            ClickHouseColumnType::DateTime => write!(f, "'{}'", &self.value),
             _ => Err(std::fmt::Error),
         }
     }

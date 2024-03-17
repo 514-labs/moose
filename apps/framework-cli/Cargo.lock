@@ -1383,6 +1383,7 @@ dependencies = [
  "convert_case",
  "diagnostics",
  "fern",
+ "futures",
  "git2",
  "home",
  "http-body-util",

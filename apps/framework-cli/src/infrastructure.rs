@@ -16,5 +16,6 @@
 
 pub mod console;
 pub mod ingest;
+pub mod kafka_clickhouse_sync;
 pub mod olap;
 pub mod stream;

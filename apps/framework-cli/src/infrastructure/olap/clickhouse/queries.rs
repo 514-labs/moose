@@ -4,8 +4,7 @@ use tinytemplate::{format_unescaped, TinyTemplate};
 use crate::{
     framework::schema::{FieldArity, UnsupportedDataTypeError},
     infrastructure::olap::clickhouse::model::{
-        ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt,
-        ClickHouseKafkaTrigger, ClickHouseTable,
+        ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
     },
 };
 
@@ -22,14 +21,6 @@ PRIMARY KEY ({primary_key_string})
 {{endif}}
 )
 ENGINE = {engine};
-"#;
-
-static CREATE_KAFKA_TRIGGER_TEMPLATE: &str = r#"
-CREATE MATERIALIZED VIEW IF NOT EXISTS {db_name}.{view_name} TO {db_name}.{dest_table_name}
-AS
-SELECT * FROM {db_name}.{source_table_name}
-SETTINGS
-stream_like_engine_allow_direct_select = 1;
 "#;
 
 static CREATE_VERSION_SYNC_TRIGGER_TEMPLATE: &str = r#"
@@ -179,34 +170,9 @@ impl DropTableContext {
     }
 }
 
-pub struct CreateKafkaTriggerViewQuery;
-
-impl CreateKafkaTriggerViewQuery {
-    pub fn build(view: ClickHouseKafkaTrigger) -> String {
-        let mut tt = TinyTemplate::new();
-        tt.add_template("create_materialized_view", CREATE_KAFKA_TRIGGER_TEMPLATE)
-            .unwrap();
-        let context = CreateKafkaTriggerContext::new(view);
-        tt.render("create_materialized_view", &context).unwrap()
-    }
-}
-
 pub static DROP_VIEW_TEMPLATE: &str = r#"
 DROP VIEW IF EXISTS {db_name}.{view_name};
 "#;
-
-pub struct DropMaterializedViewQuery;
-
-impl DropMaterializedViewQuery {
-    pub fn build(table: ClickHouseKafkaTrigger) -> Result<String, UnsupportedDataTypeError> {
-        let mut tt = TinyTemplate::new();
-        tt.add_template("drop_materialized_view", DROP_VIEW_TEMPLATE)
-            .unwrap();
-        let context = DropMaterializedViewContext::new(table)?;
-        let rendered = tt.render("drop_materialized_view", &context).unwrap();
-        Ok(rendered)
-    }
-}
 
 pub struct CreateVersionSyncTriggerQuery;
 impl CreateVersionSyncTriggerQuery {
@@ -255,42 +221,6 @@ impl CreateVersionSyncTriggerContext {
                 .into_iter()
                 .map(|column| column.name)
                 .collect(),
-        }
-    }
-}
-
-#[derive(Serialize)]
-struct DropMaterializedViewContext {
-    db_name: String,
-    view_name: String,
-}
-
-impl DropMaterializedViewContext {
-    fn new(
-        view: ClickHouseKafkaTrigger,
-    ) -> Result<DropMaterializedViewContext, UnsupportedDataTypeError> {
-        Ok(DropMaterializedViewContext {
-            db_name: view.db_name,
-            view_name: view.name,
-        })
-    }
-}
-
-#[derive(Serialize)]
-struct CreateKafkaTriggerContext {
-    db_name: String,
-    view_name: String,
-    source_table_name: String,
-    dest_table_name: String,
-}
-
-impl CreateKafkaTriggerContext {
-    fn new(view: ClickHouseKafkaTrigger) -> CreateKafkaTriggerContext {
-        CreateKafkaTriggerContext {
-            db_name: view.db_name,
-            view_name: view.name,
-            source_table_name: view.source_table_name,
-            dest_table_name: view.dest_table_name,
         }
     }
 }

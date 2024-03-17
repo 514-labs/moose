@@ -1,23 +1,19 @@
-mod client;
+pub mod client;
 pub mod config;
 pub mod mapper;
 pub mod model;
 mod queries;
 
-use clickhouse::inserter::Inserter;
 use clickhouse::Client;
-use clickhouse::Row;
 
 use lazy_static::lazy_static;
 use log::debug;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
-use std::time::Duration;
 
 use crate::infrastructure::olap::clickhouse::model::ClickHouseSystemTableRow;
 use crate::infrastructure::olap::clickhouse::queries::CreateVersionSyncTriggerQuery;
 
-use self::config::ClickhouseConfig;
+use self::config::ClickHouseConfig;
 use self::model::ClickHouseSystemTable;
 use self::model::ClickHouseTable;
 
@@ -86,10 +82,10 @@ pub type QueryString = String;
 
 pub struct ConfiguredDBClient {
     pub client: Client,
-    pub config: ClickhouseConfig,
+    pub config: ClickHouseConfig,
 }
 
-pub fn create_client(clickhouse_config: ClickhouseConfig) -> ConfiguredDBClient {
+pub fn create_client(clickhouse_config: ClickHouseConfig) -> ConfiguredDBClient {
     let protocol = if clickhouse_config.use_ssl {
         "https"
     } else {
@@ -182,49 +178,4 @@ pub async fn delete_table_or_view(
         .query(format!("DROP TABLE {db_name}.{table_or_view_name}").as_str())
         .execute()
         .await
-}
-
-#[derive(Debug, Row, Serialize, Deserialize)]
-pub struct GenericRow {
-    name: String,
-}
-
-pub fn create_inserter(
-    clickhouse_config: ClickhouseConfig,
-    table_name: &str,
-) -> anyhow::Result<Inserter<GenericRow>> {
-    let configure_client = create_client(clickhouse_config);
-
-    let inserter = configure_client.client.inserter(table_name)?;
-
-    Ok(inserter
-        .with_timeouts(Some(Duration::from_secs(1)), Some(Duration::from_secs(20)))
-        .with_max_entries(750_000)
-        .with_period(Some(Duration::from_secs(15))))
-}
-
-#[tokio::test]
-async fn test_inserter() {
-    let clickhouse_config = ClickhouseConfig {
-        user: "panda".to_string(),
-        password: "pandapass".to_string(),
-        host: "localhost".to_string(),
-        use_ssl: false,
-        postgres_port: 5432,
-        kafka_port: 9092,
-        host_port: 18123,
-        db_name: "local".to_string(),
-    };
-
-    let mut inserter = create_inserter(clickhouse_config, "test_table").unwrap();
-
-    inserter
-        .write(&GenericRow {
-            name: "test".to_string(),
-        })
-        .await
-        .unwrap();
-
-    inserter.commit().await.unwrap();
-    inserter.end().await.unwrap();
 }

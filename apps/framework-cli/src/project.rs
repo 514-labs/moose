@@ -31,7 +31,7 @@ use crate::framework::languages::SupportedLanguages;
 use crate::framework::readme::BASE_README_TEMPLATE;
 use crate::framework::schema::templates::BASE_MODEL_TEMPLATE;
 use crate::infrastructure::console::ConsoleConfig;
-use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
+use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 
@@ -44,7 +44,7 @@ lazy_static! {
         language: SupportedLanguages::Typescript,
         is_production: false,
         redpanda_config: RedpandaConfig::default(),
-        clickhouse_config: ClickhouseConfig::default(),
+        clickhouse_config: ClickHouseConfig::default(),
         http_server_config: LocalWebserverConfig::default(),
         instrumentation_config: RemoteWebserverConfig::default(),
         console_config: ConsoleConfig::default(),
@@ -62,7 +62,7 @@ lazy_static! {
 pub struct Project {
     pub language: SupportedLanguages,
     pub redpanda_config: RedpandaConfig,
-    pub clickhouse_config: ClickhouseConfig,
+    pub clickhouse_config: ClickHouseConfig,
     pub http_server_config: LocalWebserverConfig,
     pub instrumentation_config: RemoteWebserverConfig,
     pub console_config: ConsoleConfig,
@@ -118,7 +118,7 @@ impl Project {
                 is_production: false,
                 project_location: location.clone(),
                 redpanda_config: RedpandaConfig::default(),
-                clickhouse_config: ClickhouseConfig::default(),
+                clickhouse_config: ClickHouseConfig::default(),
                 http_server_config: LocalWebserverConfig::default(),
                 instrumentation_config: RemoteWebserverConfig::default(),
                 console_config: ConsoleConfig::default(),

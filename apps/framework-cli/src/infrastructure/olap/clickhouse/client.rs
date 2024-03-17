@@ -6,25 +6,23 @@ use hyper::{Request, Response, Uri};
 use hyper_tls::HttpsConnector;
 use hyper_util::client::legacy::{connect::HttpConnector, Client};
 
-use super::config::ClickhouseConfig;
+use super::config::ClickHouseConfig;
 use super::model::ClickHouseRecord;
 
 use log::error;
 
-struct ClickhouseClient {
+pub struct ClickHouseClient {
     client: Client<HttpConnector, Full<Bytes>>,
     ssl_client: Client<HttpsConnector<HttpConnector>, Full<Bytes>>,
-    config: ClickhouseConfig,
+    config: ClickHouseConfig,
 }
 
-// TODO - handle different types of values for the insert
-// TODO - add clickhouse container for tests inside github actions
 // TODO - make sure we are safe with columns / values alignment
 // ---------------------------------------------------------
 // TODO - implement batch inserts
 // TODO - investigate if we need to change basic auth
-impl ClickhouseClient {
-    pub async fn new(clickhouse_config: ClickhouseConfig) -> anyhow::Result<Self> {
+impl ClickHouseClient {
+    pub async fn new(clickhouse_config: &ClickHouseConfig) -> anyhow::Result<Self> {
         let client_builder = Client::builder(hyper_util::rt::TokioExecutor::new());
 
         let https = HttpsConnector::new();
@@ -33,7 +31,7 @@ impl ClickhouseClient {
         Ok(Self {
             client: client_builder.build(http),
             ssl_client: client_builder.build(https),
-            config: clickhouse_config,
+            config: clickhouse_config.clone(),
         })
     }
 
@@ -149,7 +147,7 @@ fn query_param(query: &str) -> anyhow::Result<String> {
 
 #[tokio::test]
 async fn test_ping() {
-    let clickhouse_config = ClickhouseConfig {
+    let clickhouse_config = ClickHouseConfig {
         user: "panda".to_string(),
         password: "pandapass".to_string(),
         host: "localhost".to_string(),
@@ -160,7 +158,7 @@ async fn test_ping() {
         db_name: "local".to_string(),
     };
 
-    let mut client = ClickhouseClient::new(clickhouse_config).await.unwrap();
+    let mut client = ClickHouseClient::new(&clickhouse_config).await.unwrap();
 
     client.ping().await.unwrap();
 }
@@ -169,7 +167,7 @@ async fn test_ping() {
 async fn test_insert() {
     use super::model::ClickHouseValue;
 
-    let clickhouse_config = ClickhouseConfig {
+    let clickhouse_config = ClickHouseConfig {
         user: "panda".to_string(),
         password: "pandapass".to_string(),
         host: "localhost".to_string(),
@@ -191,7 +189,7 @@ async fn test_insert() {
     //     db_name: "default".to_string(),
     // };
 
-    let mut client = ClickhouseClient::new(clickhouse_config).await.unwrap();
+    let mut client = ClickHouseClient::new(&clickhouse_config).await.unwrap();
 
     client
         .insert(

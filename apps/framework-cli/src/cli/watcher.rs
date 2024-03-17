@@ -12,14 +12,13 @@ use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::RwLock;
 
 use crate::framework::controller::{
-    create_language_objects, create_or_replace_kafka_trigger, create_or_replace_tables,
-    drop_kafka_trigger, drop_tables, get_framework_objects_from_schema_file,
-    schema_file_path_to_ingest_route, FrameworkObjectVersions,
+    create_language_objects, create_or_replace_tables, drop_tables,
+    get_framework_objects_from_schema_file, schema_file_path_to_ingest_route,
+    FrameworkObjectVersions,
 };
 use crate::framework::schema::{is_prisma_file, DuplicateModelError};
 use crate::framework::sdks::generate_ts_sdk;
 use crate::infrastructure::console::post_current_state_to_console;
-use crate::infrastructure::olap::clickhouse::model::ClickHouseKafkaTrigger;
 use crate::infrastructure::stream::redpanda;
 use crate::project::PROJECT;
 use crate::utilities::package_managers;
@@ -131,13 +130,7 @@ async fn process_events(
     let mut route_table = route_table.write().await;
     for (_, fo) in deleted_objects {
         drop_tables(&fo, configured_client).await?;
-        if !PROJECT.lock().unwrap().is_production {
-            drop_kafka_trigger(
-                &ClickHouseKafkaTrigger::from_clickhouse_table(&fo.table),
-                configured_client,
-            )
-            .await?;
-        }
+
         route_table.remove(&schema_file_path_to_ingest_route(
             &framework_object_versions.current_models.base_path,
             &fo.original_file_path,
@@ -161,12 +154,7 @@ async fn process_events(
             .remove(&fo.data_model.name);
     }
     for (_, fo) in changed_objects.iter().chain(new_objects.iter()) {
-        create_or_replace_tables(&project.name(), fo, configured_client).await?;
-        let view = ClickHouseKafkaTrigger::from_clickhouse_table(&fo.table);
-
-        if !PROJECT.lock().unwrap().is_production {
-            create_or_replace_kafka_trigger(&view, configured_client).await?;
-        }
+        create_or_replace_tables(fo, configured_client).await?;
 
         let ingest_route = schema_file_path_to_ingest_route(
             &framework_object_versions.current_models.base_path,
@@ -188,7 +176,6 @@ async fn process_events(
             RouteMeta {
                 original_file_path: fo.original_file_path.clone(),
                 table_name: fo.table.name.clone(),
-                view_name: Some(view.name),
             },
         );
         let topics = vec![fo.topic.clone()];

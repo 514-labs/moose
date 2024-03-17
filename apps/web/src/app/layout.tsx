@@ -7,7 +7,6 @@ import Script from "next/script";
 
 import { Analytics } from "@vercel/analytics/react";
 import { Nav } from "./components/Nav";
-import { useState } from "react";
 import { sendServerEvent } from "./events/sendServerEvent";
 
 // Font files can be colocated inside of `app`

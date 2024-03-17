@@ -11,7 +11,6 @@ import footerImg from "../../public/bg-image-moose/bg-image-moose_2x.webp";
 import { FooterSection } from "./sections//home/FooterSection";
 import { CodeBlockCTA } from "./components/CodeBlockCTA";
 import { sendServerEvent } from "./events/sendServerEvent";
-import { useState } from "react";
 
 export const metadata: Metadata = {
   title: "Moose.js | Build for the modern data stack",

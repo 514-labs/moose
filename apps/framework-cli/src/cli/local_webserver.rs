@@ -28,7 +28,6 @@ use rdkafka::producer::FutureRecord;
 use rdkafka::util::Timeout;
 use serde::Deserialize;
 use serde::Serialize;
-use serde_json::json;
 use std::collections::HashMap;
 use std::future::Future;
 use std::net::SocketAddr;

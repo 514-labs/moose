@@ -22,7 +22,10 @@ pub enum Commands {
         location: String,
     },
     /// Builds your moose project
-    Build {},
+    Build {
+        #[arg(short, long)]
+        docker: bool,
+    },
     // Link {
     //     /// Name of your client application or service (ex. `my-blog`)
     //     name: String,
@@ -48,8 +51,4 @@ pub enum Commands {
     Stop {},
     // Clears all temporary data and stops development infrastructure
     Clean {},
-    /// Docker related commands
-    Docker {
-        sub_method: String,
-    },
 }

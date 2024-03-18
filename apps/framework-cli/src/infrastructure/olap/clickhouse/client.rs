@@ -1,7 +1,7 @@
 use base64::prelude::*;
 use http_body_util::BodyExt;
 use http_body_util::Full;
-use hyper::body::{self, Buf, Bytes};
+use hyper::body::Bytes;
 use hyper::{Request, Response, Uri};
 use hyper_tls::HttpsConnector;
 use hyper_util::client::legacy::{connect::HttpConnector, Client};
@@ -80,11 +80,7 @@ impl ClickHouseClient {
         Ok(parsed)
     }
 
-    pub async fn insert(
-        &mut self,
-        table_name: &str,
-        record: ClickHouseRecord,
-    ) -> anyhow::Result<()> {
+    pub async fn insert(&self, table_name: &str, record: ClickHouseRecord) -> anyhow::Result<()> {
         // TODO - this could be optimized with RowBinary instead
         let insert_query = format!(
             "INSERT INTO {}.{} ({}) VALUES",
@@ -203,7 +199,7 @@ async fn test_insert() {
                 ],
                 values: vec![
                     ClickHouseValue::new_string("123".to_string()),
-                    ClickHouseValue::new_date_time(chrono::Utc::now()),
+                    ClickHouseValue::new_date_time(chrono::Utc::now().into()),
                     ClickHouseValue::new_string("user2".to_string()),
                     ClickHouseValue::new_string("sgnup".to_string()),
                 ],

@@ -241,6 +241,7 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     info!("Initializing project state");
     let framework_object_versions =
         initialize_project_state(project.clone(), &mut route_table).await?;
+
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 

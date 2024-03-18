@@ -110,12 +110,7 @@ pub struct ConfiguredProducer {
 
 fn config_client(config: &RedpandaConfig) -> ClientConfig {
     let mut client_config = ClientConfig::new();
-    client_config
-        .set("bootstrap.servers", config.clone().broker)
-        .set(
-            "message.timeout.ms",
-            config.clone().message_timeout_ms.to_string(),
-        );
+    client_config.set("bootstrap.servers", config.clone().broker);
 
     if let Some(username) = config.clone().sasl_username {
         client_config.set("sasl.username", &username);
@@ -133,7 +128,12 @@ fn config_client(config: &RedpandaConfig) -> ClientConfig {
 }
 
 pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
-    let client_config = config_client(&config);
+    let mut client_config = config_client(&config);
+
+    client_config.set(
+        "message.timeout.ms",
+        config.clone().message_timeout_ms.to_string(),
+    );
     let producer = client_config.create().expect("Failed to create producer");
     ConfiguredProducer { producer, config }
 }

@@ -3,7 +3,7 @@ use crate::framework::schema::DataEnum;
 use crate::framework::schema::{FieldArity, UnsupportedDataTypeError};
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 
-use chrono::{DateTime, Utc};
+use chrono::{DateTime, FixedOffset, Utc};
 use serde::{Deserialize, Serialize};
 use std::fmt::{self};
 
@@ -99,8 +99,17 @@ pub struct ClickHouseValue {
     value: String,
 }
 
+const NULL: &str = "NULL";
+
 // TODO - add support for Decimal, Json, Bytes, Enum
 impl ClickHouseValue {
+    pub fn new_null() -> ClickHouseValue {
+        ClickHouseValue {
+            value_type: ClickHouseColumnType::String,
+            value: NULL.to_string(),
+        }
+    }
+
     pub fn new_string(value: String) -> ClickHouseValue {
         ClickHouseValue {
             value_type: ClickHouseColumnType::String,
@@ -129,7 +138,7 @@ impl ClickHouseValue {
         }
     }
 
-    pub fn new_date_time(value: DateTime<Utc>) -> ClickHouseValue {
+    pub fn new_date_time(value: DateTime<FixedOffset>) -> ClickHouseValue {
         ClickHouseValue {
             value_type: ClickHouseColumnType::DateTime,
             value: format!("{}", value.format("%Y-%m-%d %H:%M:%S")),
@@ -157,6 +166,20 @@ impl fmt::Display for ClickHouseValue {
 pub struct ClickHouseRecord {
     pub columns: Vec<String>,
     pub values: Vec<ClickHouseValue>,
+}
+
+impl ClickHouseRecord {
+    pub fn new() -> ClickHouseRecord {
+        ClickHouseRecord {
+            columns: Vec::new(),
+            values: Vec::new(),
+        }
+    }
+
+    pub fn insert(&mut self, column: String, value: ClickHouseValue) {
+        self.columns.push(column);
+        self.values.push(value);
+    }
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, clickhouse::Row)]

@@ -49,6 +49,7 @@ pub struct UserActivity {
 
 macro_rules! capture {
     ($activity_type:expr, $sequence_id:expr, $project_name:expr) => {
+        use crate::project::PROJECT;
         use crate::utilities::capture::{ActivityType, UserActivity};
         use crate::utilities::constants;
         use chrono::Utc;
@@ -66,17 +67,12 @@ macro_rules! capture {
             cli_version: constants::CLI_VERSION.to_string(),
         });
 
-        // Get the environment variables
-        // let moose_contributor = std::env::var("MOOSE_CONTRIBUTOR").unwrap_or("unknown".to_string());
-        let scheme = std::env::var("SCHEME").unwrap_or("http".to_string());
-        let host = std::env::var("HOST").unwrap_or("localhost".to_string());
-        let port = std::env::var("PORT").unwrap_or("4000".to_string());
-        let path = std::env::var("INGESTION_POINT").unwrap_or("UserActivity".to_string());
-
-        // Format a URL with the scheme, host, and port and the path as variables
+        let remote_url = {
+            let guard = PROJECT.lock().unwrap();
+            guard.instrumentation_config.url().clone()
+        };
         #[allow(unused)]
-        let dev_url = format!("{}://{}:{}/ingest/{}", scheme, host, port, path);
-        // let prod_url = format!("{}://{}/ingest/{}", scheme, host, path);
+        let prod_url = format!("{}/ingest/UserActivity", remote_url);
 
         // let client = Client::new();
         // let res = client
@@ -86,7 +82,7 @@ macro_rules! capture {
         //     .await
         //     .unwrap();
 
-        // println!("Sent to {}. Event: {}", dev_url, event);
+        // println!("Sent to {}. Event: {}", prod_url, event);
     };
 }
 

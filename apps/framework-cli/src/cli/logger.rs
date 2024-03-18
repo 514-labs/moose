@@ -36,7 +36,8 @@
 
 use serde::Deserialize;
 use std::time::SystemTime;
-use uuid::Uuid;
+
+use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
 
 use super::settings::user_directory;
 
@@ -90,7 +91,7 @@ impl Default for LoggerSettings {
 
 // TODO ensure that the log file rotates after a certain size
 pub fn setup_logging(settings: LoggerSettings) -> Result<(), fern::InitError> {
-    let session_id = Uuid::new_v4().to_string();
+    let session_id = CONTEXT.get(CTX_SESSION_ID).unwrap();
 
     let base_config = fern::Dispatch::new().level(settings.level.to_log_level());
 

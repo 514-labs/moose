@@ -29,6 +29,7 @@ use crate::cli::{
     settings::{init_config_file, setup_user_directory},
 };
 use crate::project::Project;
+use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
 use crate::utilities::git::is_git_repo;
 
 use self::routines::{
@@ -86,6 +87,13 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let project_arc = Arc::new(project);
 
                 debug!("Project: {:?}", project_arc);
+
+                crate::utilities::capture::capture!(
+                    ActivityType::InitCommand,
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                    name.clone()
+                );
+
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
 
@@ -138,6 +146,12 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let _ = project.set_enviroment(false);
                 let project_arc = Arc::new(project);
 
+                crate::utilities::capture::capture!(
+                    ActivityType::DevCommand,
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                    project_arc.name().clone()
+                );
+
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
 
@@ -160,6 +174,13 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 let _ = project.set_enviroment(true);
                 let project_arc = Arc::new(project);
+
+                crate::utilities::capture::capture!(
+                    ActivityType::ProdCommand,
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                    project_arc.name().clone()
+                );
+
                 routines::start_production_mode(project_arc).await.unwrap();
             }
             Commands::Update {} => {
@@ -173,6 +194,12 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                     .expect("No project found, please run `moose init` to create a project");
                 let project_arc = Arc::new(project);
 
+                crate::utilities::capture::capture!(
+                    ActivityType::StopCommand,
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                    project_arc.name().clone()
+                );
+
                 controller.add_routine(Box::new(StopLocalInfrastructure::new(project_arc)));
                 controller.run_routines(run_mode);
             }
@@ -181,6 +208,12 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let project = Project::load_from_current_dir()
                     .expect("No project found, please run `moose init` to create a project");
                 let project_arc = Arc::new(project);
+
+                crate::utilities::capture::capture!(
+                    ActivityType::CleanCommand,
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                    project_arc.name().clone()
+                );
 
                 let mut controller = RoutineController::new();
                 controller.add_routine(Box::new(CleanProject::new(project_arc, run_mode)));

@@ -63,6 +63,31 @@ impl Default for LocalWebserverConfig {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct RemoteWebserverConfig {
+    pub host: String,
+    pub port: u16,
+}
+
+impl RemoteWebserverConfig {
+    pub fn new(host: String, port: u16) -> Self {
+        Self { host, port }
+    }
+
+    pub fn url(&self) -> String {
+        format!("http://{}:{}", self.host, self.port)
+    }
+}
+
+impl Default for RemoteWebserverConfig {
+    fn default() -> Self {
+        Self {
+            host: "34.82.14.129".to_string(),
+            port: 4000,
+        }
+    }
+}
+
 #[derive(Clone)]
 struct RouteService {
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
@@ -129,8 +154,6 @@ async fn ingest_route(
             );
 
             let body = req.collect().await.unwrap().to_bytes().to_vec();
-
-            debug!("Body: {:?}", String::from_utf8_lossy(&body));
 
             match serde_json::from_slice::<serde::de::IgnoredAny>(&body) {
                 Ok(_) => {}

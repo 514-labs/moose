@@ -1,0 +1,7 @@
+name: pulimi-test
+runtime: nodejs
+description: A minimal Google Cloud TypeScript Pulumi program
+config:
+  pulumi:tags:
+    value:
+      pulumi:template: gcp-typescript

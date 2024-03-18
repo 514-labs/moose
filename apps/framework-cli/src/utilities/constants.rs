@@ -29,3 +29,4 @@ pub const GITIGNORE: &str = ".gitignore";
 
 pub const DENO_DIR: &str = "deno";
 pub const DENO_TRANSFORM: &str = "transform.ts";
+pub const DENO_INSIGHTS_SERVER: &str = "insights_server.ts";

@@ -21,6 +21,8 @@ pub enum Commands {
         #[arg(default_value = ".")]
         location: String,
     },
+    /// Builds your moose project
+    Build {},
     // Link {
     //     /// Name of your client application or service (ex. `my-blog`)
     //     name: String,

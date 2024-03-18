@@ -110,6 +110,22 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                     );
                 }
             }
+            Commands::Build {} => {
+                let run_mode = RunMode::Explicit {};
+                info!("Running build command");
+                let project = Project::load_from_current_dir()
+                    .expect("No project found, please run `moose init` to create a project");
+                let project_arc = Arc::new(project);
+
+                let mut controller = RoutineController::new();
+
+                // Copy the old schema
+                controller.add_routine(Box::new(CopyOldSchema::new(project_arc.clone())));
+
+                // Build the dockerfile
+                controller.add_routine(Box::new(CreateDockerfile::new(project_arc.clone())));
+                controller.run_routines(run_mode);
+            }
             Commands::Dev {} => {
                 info!("Running dev command");
 
@@ -168,16 +184,6 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 controller.run_routines(run_mode);
             }
             Commands::Docker { sub_method } => match sub_method.as_str() {
-                "init" => {
-                    let run_mode = RunMode::Explicit {};
-                    info!("Running docker init command");
-                    let project = Project::load_from_current_dir()
-                        .expect("No project found, please run `moose init` to create a project");
-                    let project_arc = Arc::new(project);
-                    let mut controller = RoutineController::new();
-                    controller.add_routine(Box::new(CreateDockerfile::new(project_arc)));
-                    controller.run_routines(run_mode);
-                }
                 "build" => {
                     let run_mode = RunMode::Explicit {};
                     info!("Running docker build command");
@@ -193,7 +199,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                         MessageType::Error,
                         Message {
                             action: "Docker".to_string(),
-                            details: "Invalid method, consider init or build".to_string(),
+                            details: "Invalid method, consider build".to_string(),
                         }
                     );
                 }

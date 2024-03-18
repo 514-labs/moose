@@ -26,6 +26,7 @@ WORKDIR /application
 
 # Copy the application files to the container
 COPY ./app ./app
+COPY ./versions .moose/versions
 
 # Expose the ports on which the application will listen
 EXPOSE 4000
@@ -145,6 +146,31 @@ impl Routine for BuildDockerfile {
             )
         })?;
 
+        // Copy versions folder to packager directory
+        let copy_result = system::copy_directory(
+            &internal_dir.join("versions"),
+            &internal_dir.join("packager"),
+        );
+        match copy_result {
+            Ok(_) => {
+                info!("Copied versions directory to packager directory");
+            }
+            Err(err) => {
+                error!(
+                    "Failed to copy versions directory to packager directory: {}",
+                    err
+                );
+                return Err(RoutineFailure::new(
+                    Message::new(
+                        "Failed".to_string(),
+                        "to copy versions directory to packager directory".to_string(),
+                    ),
+                    err,
+                ));
+            }
+        }
+
+        // Copy app folder to packager directory
         let project_root_path = self.project.project_location.clone();
         let copy_result = system::copy_directory(
             &project_root_path.join("app"),

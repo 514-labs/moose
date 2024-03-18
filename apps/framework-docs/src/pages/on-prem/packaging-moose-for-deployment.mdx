@@ -1,0 +1,75 @@
+# Packaging Moose for deployment
+
+Once you've developed your Moose application locally, you're able to package it and deploy it to your on-prem or cloud infrastructure of choice.
+You'll then be able to push your moose docker images to Docker Hub or other container repository.
+
+The first step is to `cd` into your moose project.
+
+```txt filename="Terminal" copy
+cd my-moose-app3
+```
+
+The moose-cli command you've been using has handy commands that will automate the packaging and building of your project into docker images.
+You'll need to run two moose commands, the first is `docker init` which will create a Dockerfile and prepare your moose project for packaging. The second command `docker build` packages your moose project into docker images.
+
+```txt filename="Terminal" copy
+npx @514labs/moose-cli docker init
+npx @514labs/moose-cli docker build
+```
+
+After the above commmands complete you can view your newly created docker files by running the `docker images` command:
+
+```txt filename="Terminal" copy
+>docker images
+REPOSITORY                                              TAG               IMAGE ID       CREATED              SIZE
+moose-df-deployment-aarch64-unknown-linux-gnu           0.3.136           c50674c7a68a   About a minute ago   155MB
+moose-df-deployment-x86_64-unknown-linux-gnu            0.3.136           e5b449d3dea3   About a minute ago   163MB
+```
+
+> Notice that you get two `moose-df-deployment` containers, one for the `aarch64` (ARM64) architcture and another for the `x86_64` architecture. This is necessary in order to allow you to chose the version that matches your cloud or on-prem machine architecture.
+
+You can then use standard docker commands to push your new project images to your container repository of choice.
+
+First tag your local images:
+
+```txt filename="Terminal" copy
+docker tag moose-df-deployment-aarch64-unknown-linux-gnu:0.3.136 {your-repo-user-name}/moose-df-deployment-aarch64-unknown-linux-gnu:0.3.136
+docker tag moose-df-deployment-x86_64-unknown-linux-gnu:0.3.136 {your-repo-user-name}/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.136
+```
+
+Then `push` your files to your container repository.
+
+```txt filename="Terminal" copy
+docker push {your-repo-user-name}/moose-df-deployment-aarch64-unknown-linux-gnu:0.3.136
+docker push {your-repo-user-name}/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.136
+```
+
+Or, you can use the following handy shell script to automate the two steps above.
+
+```bash
+#!/bin/bash
+
+version=$2
+
+if [ -z "$1" ]
+then
+      echo "You must specify the dockerhub repository as an argument. Example: ./push.sh container-repo-name"
+      echo "Note: you can also provide a second argument to supply a specific version tag - otherwise this script will use the same version as the latest moose-cli on Github."
+      exit 1
+fi
+
+if [ -z "$2" ]
+then
+      output=$(npx @514labs/moose-cli -V)
+      version=$(echo "$output" | sed -n '2p' | awk '{print $2}')
+fi
+
+echo "Using version: $version"
+arch="moose-df-deployment-aarch64-unknown-linux-gnu"
+docker tag $arch:$version $1/$arch:$version
+docker push $1/$arch:$version
+
+arch="moose-df-deployment-x86_64-unknown-linux-gnu"
+docker tag $arch:$version $1/$arch:$version
+docker push $1/$arch:$version
+```

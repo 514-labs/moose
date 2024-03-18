@@ -1,0 +1,18 @@
+# Preparing access to Clickhouse and Redpanda
+
+Your hosted Moose application requires access to hosted Clickhouse and Redpanda service instances. You can standup open source versions of both applications in your own environments or opt to use cloud hosted versions available at:
+
+- [Clickhouse Cloud]()
+- [Redpanda Cloud]()
+
+### Clickhouse
+
+For Clickhouse you'll need to obtain the `database name`, `user name`, `password`, `host` address, and `host port`.
+
+### Redpanda
+
+For Redpanda you need the `broker` address, `user name`, `password`, `SASL_MECHANISM` (such as SCRAM-SHA-256, SCRAM-SHA-512), and the `security protocol` such as `SASL_SSL`
+
+## Use with environment variables
+
+You'll need the items above to use with environment variables when configuring your moose application instance on cloud providers.

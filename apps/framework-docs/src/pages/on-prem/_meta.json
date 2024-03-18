@@ -1,0 +1,6 @@
+{
+    "packaging-moose-for-deployment": "Packaging Moose for deployment",
+    "preparing-clickhouse-redpanda": "Preparing access to Clickhouse and Redpanda",
+    "configuring-moose-for-cloud": "Configuring Moose in the cloud",
+    "deploying-to-kubernetes": "Kubernetes deployments"
+}

@@ -28,6 +28,7 @@ pub const APP_DIR_LAYOUT: [&str; 5] = [
     "insights/charts",
     "insights/metrics",
 ];
+pub const SAMPLE_FLOWS_DIR: &str = "UserActivity/ProcessedActivity";
 
 pub const GITIGNORE: &str = ".gitignore";
 

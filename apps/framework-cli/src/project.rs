@@ -29,7 +29,7 @@ use serde::Serialize;
 use crate::cli::local_webserver::{LocalWebserverConfig, RemoteWebserverConfig};
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::readme::BASE_README_TEMPLATE;
-use crate::framework::schema::templates::BASE_MODEL_TEMPLATE;
+use crate::framework::schema::templates::{BASE_FLOW_TEMPLATE, BASE_MODEL_TEMPLATE};
 use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickhouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
@@ -37,7 +37,7 @@ use crate::project::typescript_project::TypescriptProject;
 
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM};
-use crate::utilities::constants::{FLOWS_DIR, PROJECT_CONFIG_FILE};
+use crate::utilities::constants::{FLOWS_DIR, PROJECT_CONFIG_FILE, SAMPLE_FLOWS_DIR};
 
 lazy_static! {
     pub static ref PROJECT: Mutex<Project> = Mutex::new(Project {
@@ -211,12 +211,20 @@ impl Project {
         let app_dir = self.app_dir();
         let readme_file_path = app_dir.join("README.md");
         let base_model_file_path = self.schemas_dir().join("models.prisma");
+        let flow_file_path = self.flows_dir().join(SAMPLE_FLOWS_DIR).join("flow.ts");
 
         let mut readme_file = std::fs::File::create(readme_file_path)?;
         let mut base_model_file = std::fs::File::create(base_model_file_path)?;
+        let mut flow_file = std::fs::File::create(flow_file_path)?;
 
         readme_file.write_all(BASE_README_TEMPLATE.as_bytes())?;
         base_model_file.write_all(BASE_MODEL_TEMPLATE.as_bytes())?;
+        flow_file.write_all(
+            BASE_FLOW_TEMPLATE
+                .to_string()
+                .replace("{{project_name}}", &self.name())
+                .as_bytes(),
+        )?;
 
         Ok(())
     }

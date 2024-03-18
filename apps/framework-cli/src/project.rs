@@ -37,7 +37,7 @@ use crate::project::typescript_project::TypescriptProject;
 
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM};
-use crate::utilities::constants::{FLOWS_DIR, PROJECT_CONFIG_FILE, SAMPLE_FLOWS_DIR};
+use crate::utilities::constants::{FLOWS_DIR, FLOW_FILE, PROJECT_CONFIG_FILE, SAMPLE_FLOWS_DIR};
 
 lazy_static! {
     pub static ref PROJECT: Mutex<Project> = Mutex::new(Project {
@@ -211,7 +211,7 @@ impl Project {
         let app_dir = self.app_dir();
         let readme_file_path = app_dir.join("README.md");
         let base_model_file_path = self.schemas_dir().join("models.prisma");
-        let flow_file_path = self.flows_dir().join(SAMPLE_FLOWS_DIR).join("flow.ts");
+        let flow_file_path = self.flows_dir().join(SAMPLE_FLOWS_DIR).join(FLOW_FILE);
 
         let mut readme_file = std::fs::File::create(readme_file_path)?;
         let mut base_model_file = std::fs::File::create(base_model_file_path)?;

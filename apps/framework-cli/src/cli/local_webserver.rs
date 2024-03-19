@@ -127,6 +127,14 @@ fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     Ok(response)
 }
 
+fn health_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .body(Full::new(Bytes::from("Success")))
+        .unwrap();
+    Ok(response)
+}
+
 async fn ingest_route(
     req: Request<hyper::body::Incoming>,
     route: PathBuf,
@@ -255,6 +263,7 @@ async fn router(
         (&hyper::Method::POST, ["ingest", _, _]) => {
             ingest_route(req, route, configured_producer, route_table, console_config).await
         }
+        (&hyper::Method::GET, ["health"]) => health_route(),
 
         (&hyper::Method::OPTIONS, _) => options_route(),
         _ => Response::builder()

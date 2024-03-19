@@ -125,6 +125,12 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                     .expect("No project found, please run `moose init` to create a project");
                 let project_arc = Arc::new(project);
 
+                crate::utilities::capture::capture!(
+                    ActivityType::BuildCommand,
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                    project_arc.name().clone()
+                );
+
                 let mut controller = RoutineController::new();
 
                 // Copy the old schema
@@ -132,6 +138,11 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 // docker flag is true then build docker images
                 if *docker {
+                    crate::utilities::capture::capture!(
+                        ActivityType::DockerCommand,
+                        CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                        project_arc.name().clone()
+                    );
                     controller.add_routine(Box::new(CreateDockerfile::new(project_arc.clone())));
                     controller.add_routine(Box::new(BuildDockerfile::new(project_arc.clone())));
                 }

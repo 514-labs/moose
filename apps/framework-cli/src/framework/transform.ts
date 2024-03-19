@@ -5,12 +5,15 @@ import {
   Kafka,
   KafkaMessage,
   Producer,
-} from "npm:kafkajs";
-import SnappyCodec from "npm:kafkajs-snappy";
+} from "npm:kafkajs@2.2.4";
+import SnappyCodec from "npm:kafkajs-snappy@1.1.0";
+import { debounce } from "https://deno.land/std@0.220.0/async/debounce.ts";
 
 CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
 
 const cwd = Deno.args[0] || Deno.cwd();
+const FLOWS_DIR_PATH = `${cwd}/app/flows`;
+const FLOW_FILE = "flow.ts";
 
 const getVersion = (): string => {
   const version = JSON.parse(Deno.readTextFileSync(`${cwd}/package.json`))
@@ -35,29 +38,28 @@ const producer: Producer = kafka.producer({
 });
 
 const getFlows = (): Map<string, Map<string, string>> => {
-  const dirPath = `${cwd}/app/flows`;
-  const flowsDir = Deno.readDirSync(dirPath);
+  const flowsDir = Deno.readDirSync(FLOWS_DIR_PATH);
   const output = new Map<string, Map<string, string>>();
 
   for (const source of flowsDir) {
     if (!source.isDirectory) continue;
 
     const flows = new Map<string, string>();
-    const destinations = Deno.readDirSync(`${cwd}/app/flows/${source.name}`);
+    const destinations = Deno.readDirSync(`${FLOWS_DIR_PATH}/${source.name}`);
     for (const destination of destinations) {
       if (!destination.isDirectory) continue;
 
       const destinationFiles = Deno.readDirSync(
-        `${cwd}/app/flows/${source.name}/${destination.name}`,
+        `${FLOWS_DIR_PATH}/${source.name}/${destination.name}`
       );
       for (const destinationFile of destinationFiles) {
         if (
           destinationFile.isFile &&
-          destinationFile.name.toLowerCase() === "flow.ts"
+          destinationFile.name.toLowerCase() === FLOW_FILE
         ) {
           flows.set(
             destination.name,
-            `${dirPath}/${source.name}/${destination.name}/${destinationFile.name}`,
+            `${FLOWS_DIR_PATH}/${source.name}/${destination.name}/${destinationFile.name}`
           );
         }
       }
@@ -71,14 +73,14 @@ const getFlows = (): Map<string, Map<string, string>> => {
 const handleMessage = async (
   flows: Map<string, string>,
   message: KafkaMessage,
-  resolveOffset: (offset: string) => void,
+  resolveOffset: (offset: string) => void
 ): Promise<void> => {
-  for (let [destination, flowFilePath] of flows) {
+  for (const [destination, flowFilePath] of flows) {
     const transaction = await producer.transaction();
     try {
       const transform = await import(flowFilePath);
       const output = JSON.stringify(
-        transform.default(JSON.parse(message.value.toString())),
+        transform.default(JSON.parse(message.value.toString()))
       );
       await transaction.send({
         topic: `${destination}_${version}`,
@@ -91,7 +93,7 @@ const handleMessage = async (
       await transaction.abort();
       console.error(
         `Failed to send transformed data to ${destination}: `,
-        error,
+        error
       );
     }
   }
@@ -100,7 +102,7 @@ const handleMessage = async (
 const startConsumer = async (): Promise<void> => {
   const flows = getFlows();
   const flowTopics = Array.from(flows.keys()).map(
-    (flow) => `${flow}_${version}`,
+    (flow) => `${flow}_${version}`
   );
 
   await consumer.connect();
@@ -119,22 +121,44 @@ const startConsumer = async (): Promise<void> => {
       }
     },
   });
+  console.log("Consumer is running...");
 };
 
 const startProducer = async (): Promise<void> => {
   await producer.connect();
+  console.log("Producer is running...");
 };
 
-startProducer()
-  .then(() => {
-    startConsumer()
-      .then(() => {
-        console.log("Consumer is running...");
-      })
-      .catch((error) => {
-        console.error("Failed to start kafka consumer: ", error);
-      });
-  })
-  .catch((error) => {
+const startFlowsFilewatcher = async (): Promise<void> => {
+  // https://examples.deno.land/watching-files
+  const updateKafkaGroup = debounce(async (event: Deno.FsEvent) => {
+    console.log("Flows updated, restarting kafka group...");
+    await consumer.disconnect();
+    await producer.disconnect();
+    await startKafkaGroup();
+  }, 200);
+
+  const watcher = Deno.watchFs(`${FLOWS_DIR_PATH}`, { recursive: true });
+  console.log(`Watching for changes to ${FLOWS_DIR_PATH}...`);
+
+  for await (const event of watcher) {
+    updateKafkaGroup(event);
+  }
+};
+
+const startKafkaGroup = async (): Promise<void> => {
+  try {
+    await startProducer();
+
+    try {
+      await startConsumer();
+      await startFlowsFilewatcher();
+    } catch (error) {
+      console.error("Failed to start kafka consumer: ", error);
+    }
+  } catch (error) {
     console.error("Failed to start kafka producer: ", error);
-  });
+  }
+};
+
+startKafkaGroup();

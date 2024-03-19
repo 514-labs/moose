@@ -1,3 +1,7 @@
+use std::collections::HashMap;
+
+use crate::framework::controller::FrameworkObject;
+use crate::framework::controller::FrameworkObjectVersions;
 use crate::infrastructure::olap::clickhouse::client::ClickHouseClient;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
@@ -9,21 +13,105 @@ use rdkafka::Message;
 
 use log::debug;
 use serde_json::Value;
+use tokio::task::JoinHandle;
 
 use super::olap::clickhouse::model::ClickHouseRecord;
 
 const SYNC_GROUP_ID: &str = "clickhouse_sync";
 
-// TODO - add the sync start to dev mode and prod mode
+struct SyncingProcess {
+    process: JoinHandle<anyhow::Result<()>>,
+    topic: String,
+    table: String,
+}
 
-pub async fn sync_kafka_to_clickhouse(
-    kafka_config: &RedpandaConfig,
-    clickhouse_config: &ClickHouseConfig,
-    streaming_topic: &str,
-    clickhouse_table: &str,
+struct SyncingProcessesRegistry {
+    registry: HashMap<String, JoinHandle<anyhow::Result<()>>>,
+    kafka_config: RedpandaConfig,
+    clickhouse_config: ClickHouseConfig,
+}
+
+impl SyncingProcessesRegistry {
+    pub fn new(kafka_config: RedpandaConfig, clickhouse_config: ClickHouseConfig) -> Self {
+        Self {
+            registry: HashMap::new(),
+            kafka_config,
+            clickhouse_config: clickhouse_config,
+        }
+    }
+
+    fn format_key(syncing_process: &SyncingProcess) -> String {
+        format!("{}-{}", syncing_process.topic, syncing_process.table)
+    }
+
+    fn insert(&mut self, syncing_process: SyncingProcess) {
+        let key = Self::format_key(&syncing_process);
+        self.registry.insert(key, syncing_process.process);
+    }
+
+    pub fn start(&mut self, framework_object_versions: FrameworkObjectVersions) {
+        let kafka_config = self.kafka_config.clone();
+        let clickhouse_config = self.clickhouse_config.clone();
+
+        // Spawn sync for the current models
+        let current_object_iterator = framework_object_versions
+            .current_models
+            .models
+            .into_iter()
+            .map(spawn_sync_process(
+                kafka_config.clone(),
+                clickhouse_config.clone(),
+            ));
+
+        let previous_versions_iterator = framework_object_versions
+            .previous_version_models
+            .values()
+            .flat_map(|schema_version| {
+                let schema_version_cloned = schema_version.models.clone();
+
+                schema_version_cloned.into_iter().map(spawn_sync_process(
+                    kafka_config.clone(),
+                    clickhouse_config.clone(),
+                ))
+            });
+
+        for syncing_process in current_object_iterator.chain(previous_versions_iterator) {
+            self.insert(syncing_process);
+        }
+    }
+}
+
+fn spawn_sync_process(
+    kafka_config: RedpandaConfig,
+    clickhouse_config: ClickHouseConfig,
+) -> Box<dyn Fn((String, FrameworkObject)) -> SyncingProcess> {
+    Box::new(move |(_, schema)| {
+        let streaming_topic = schema.topic;
+        let clickhouse_table = schema.table.name;
+
+        let syncing_process = tokio::spawn(sync_kafka_to_clickhouse(
+            kafka_config.clone(),
+            clickhouse_config.clone(),
+            streaming_topic.clone(),
+            clickhouse_table.clone(),
+        ));
+
+        SyncingProcess {
+            process: syncing_process,
+            topic: streaming_topic,
+            table: clickhouse_table,
+        }
+    })
+}
+
+async fn sync_kafka_to_clickhouse(
+    kafka_config: RedpandaConfig,
+    clickhouse_config: ClickHouseConfig,
+    streaming_topic: String,
+    clickhouse_table: String,
 ) -> anyhow::Result<()> {
-    let subscriber = create_subscriber(kafka_config, SYNC_GROUP_ID, streaming_topic);
-    let clickhouse_client = ClickHouseClient::new(clickhouse_config).await?;
+    let subscriber = create_subscriber(&kafka_config, SYNC_GROUP_ID, &streaming_topic);
+    let clickhouse_client = ClickHouseClient::new(&clickhouse_config).await?;
 
     loop {
         match subscriber.recv().await {
@@ -41,7 +129,7 @@ pub async fn sync_kafka_to_clickhouse(
                     let clickhouse_record = mapper_json_to_clickhouse_record(parsed_json)?;
 
                     clickhouse_client
-                        .insert(clickhouse_table, clickhouse_record)
+                        .insert(&clickhouse_table, clickhouse_record)
                         .await?;
 
                     subscriber.commit_message(&message, CommitMode::Sync)?;

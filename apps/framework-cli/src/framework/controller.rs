@@ -64,6 +64,8 @@ pub struct SchemaVersion {
     pub typescript_objects: HashMap<String, TypescriptObjects>,
 }
 
+// TODO abstract this with an iterator and some helper functions to make the internal state hidden.
+// That would enable us to do things like .next() and .peek() on the iterator that are now not possible
 #[derive(Debug, Clone)]
 pub struct FrameworkObjectVersions {
     pub current_version: String,
@@ -113,6 +115,7 @@ pub fn get_all_version_syncs(
                 let from_version_models = framework_object_versions
                     .previous_version_models
                     .get(&from_version);
+
                 let to_version_models = if to_version == framework_object_versions.current_version {
                     Some(&framework_object_versions.current_models)
                 } else {

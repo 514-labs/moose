@@ -116,6 +116,7 @@ async fn process_events(
             .unwrap()
             .original_file_path
             .clone();
+
         return Err(DuplicateModelError {
             model_name,
             file_path: extra.original_file_path,
@@ -137,6 +138,7 @@ async fn process_events(
             fo.data_model.name.clone(),
             &framework_object_versions.current_version,
         ));
+
         let topics = vec![fo.data_model.name.clone()];
         match redpanda::delete_topics(&project.redpanda_config.clone(), topics).await {
             Ok(_) => println!("Topics deleted successfully"),
@@ -153,6 +155,7 @@ async fn process_events(
             .typescript_objects
             .remove(&fo.data_model.name);
     }
+
     for (_, fo) in changed_objects.iter().chain(new_objects.iter()) {
         create_or_replace_tables(fo, configured_client).await?;
 

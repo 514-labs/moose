@@ -1,3 +1,4 @@
+import { watch } from "npm:chokidar@3.6.0";
 import {
   CompressionCodecs,
   CompressionTypes,
@@ -64,7 +65,10 @@ const getFlows = (): Map<string, Map<string, string>> => {
         }
       }
     }
-    output.set(source.name, flows);
+
+    if (flows.size > 0) {
+      output.set(source.name, flows);
+    }
   }
 
   return output;
@@ -129,21 +133,17 @@ const startProducer = async (): Promise<void> => {
   console.log("Producer is running...");
 };
 
-const startFlowsFilewatcher = async (): Promise<void> => {
-  // https://examples.deno.land/watching-files
-  const updateKafkaGroup = debounce(async (event: Deno.FsEvent) => {
-    console.log("Flows updated, restarting kafka group...");
-    await consumer.disconnect();
-    await producer.disconnect();
-    await startKafkaGroup();
-  }, 200);
-
-  const watcher = Deno.watchFs(`${FLOWS_DIR_PATH}`, { recursive: true });
-  console.log(`Watching for changes to ${FLOWS_DIR_PATH}...`);
-
-  for await (const event of watcher) {
-    updateKafkaGroup(event);
-  }
+const startFlowsFilewatcher = (): void => {
+  const pathToWatch = `${FLOWS_DIR_PATH}/**/${FLOW_FILE}`;
+  watch(pathToWatch, { usePolling: true }).on("all", async (event, path) => {
+    if (path.endsWith(FLOW_FILE)) {
+      console.log("Flows updated, restarting kafka group...");
+      await consumer.disconnect();
+      await producer.disconnect();
+      await startKafkaGroup();
+    }
+  });
+  console.log(`Watching for changes to ${pathToWatch}...`);
 };
 
 const startKafkaGroup = async (): Promise<void> => {
@@ -152,7 +152,6 @@ const startKafkaGroup = async (): Promise<void> => {
 
     try {
       await startConsumer();
-      await startFlowsFilewatcher();
     } catch (error) {
       console.error("Failed to start kafka consumer: ", error);
     }
@@ -161,4 +160,4 @@ const startKafkaGroup = async (): Promise<void> => {
   }
 };
 
-startKafkaGroup();
+startKafkaGroup().then(() => startFlowsFilewatcher());

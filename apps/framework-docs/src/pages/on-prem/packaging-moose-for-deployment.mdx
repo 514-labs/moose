@@ -1,7 +1,6 @@
 # Packaging Moose for deployment
 
-Once you've developed your Moose application locally, you're able to package it and deploy it to your on-prem or cloud infrastructure of choice.
-You'll then be able to push your moose docker images to Docker Hub or other container repository.
+Once you've developed your Moose application locally, you're able to package it for deployment to your on-prem or cloud infrastructure of choice.
 
 The first step is to `cd` into your moose project.
 
@@ -9,15 +8,13 @@ The first step is to `cd` into your moose project.
 cd my-moose-app3
 ```
 
-The moose-cli command you've been using has handy commands that will automate the packaging and building of your project into docker images.
-You'll need to run two moose commands, the first is `docker init` which will create a Dockerfile and prepare your moose project for packaging. The second command `docker build` packages your moose project into docker images.
+The moose-cli you've used to build your moose project also has a handy flag that will automate the packaging and building of your project into docker images.
 
 ```txt filename="Terminal" copy
-npx @514labs/moose-cli docker init
-npx @514labs/moose-cli docker build
+npx @514labs/moose-cli build --docker
 ```
 
-After the above commmands complete you can view your newly created docker files by running the `docker images` command:
+After the above commmand completes you can view your newly created docker files by running the `docker images` command:
 
 ```txt filename="Terminal" copy
 >docker images

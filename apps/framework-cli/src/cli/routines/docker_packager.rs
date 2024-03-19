@@ -72,11 +72,10 @@ impl Routine for CreateDockerfile {
 
         ensure_docker_running()?;
 
-        let mut file_path = internal_dir.join("packager/versions/.gitkeep");
-        let mut file_path_display = file_path.clone();
+        let versions_file_path = internal_dir.join("packager/versions/.gitkeep");
 
-        info!("Creating versions at: {:?}", file_path_display);
-        fs::create_dir_all(file_path.parent().unwrap()).map_err(|err| {
+        info!("Creating versions at: {:?}", versions_file_path);
+        fs::create_dir_all(versions_file_path.parent().unwrap()).map_err(|err| {
             error!("Failed to create directory for app versions: {}", err);
             RoutineFailure::new(
                 Message::new(
@@ -87,10 +86,9 @@ impl Routine for CreateDockerfile {
             )
         })?;
 
-        file_path = internal_dir.join("packager/Dockerfile");
-        file_path_display = file_path.clone();
+        let file_path = internal_dir.join("packager/Dockerfile");
 
-        info!("Creating Dockerfile at: {:?}", file_path_display);
+        info!("Creating Dockerfile at: {:?}", file_path);
         fs::create_dir_all(file_path.parent().unwrap()).map_err(|err| {
             error!("Failed to create directory for project packaging: {}", err);
             RoutineFailure::new(
@@ -102,7 +100,7 @@ impl Routine for CreateDockerfile {
             )
         })?;
 
-        fs::write(file_path, DOCKER_FILE).map_err(|err| {
+        fs::write(&file_path, DOCKER_FILE).map_err(|err| {
             error!("Failed to write Docker file for project: {}", err);
             RoutineFailure::new(
                 Message::new(
@@ -113,7 +111,7 @@ impl Routine for CreateDockerfile {
             )
         })?;
 
-        info!("Dockerfile created at: {:?}", file_path_display);
+        info!("Dockerfile created at: {:?}", file_path);
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
             "created dockerfile".to_string(),

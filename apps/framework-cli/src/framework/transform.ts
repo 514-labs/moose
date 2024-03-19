@@ -8,7 +8,6 @@ import {
   Producer,
 } from "npm:kafkajs@2.2.4";
 import SnappyCodec from "npm:kafkajs-snappy@1.1.0";
-import { debounce } from "https://deno.land/std@0.220.0/async/debounce.ts";
 
 CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
 
@@ -51,7 +50,7 @@ const getFlows = (): Map<string, Map<string, string>> => {
       if (!destination.isDirectory) continue;
 
       const destinationFiles = Deno.readDirSync(
-        `${FLOWS_DIR_PATH}/${source.name}/${destination.name}`
+        `${FLOWS_DIR_PATH}/${source.name}/${destination.name}`,
       );
       for (const destinationFile of destinationFiles) {
         if (
@@ -60,7 +59,7 @@ const getFlows = (): Map<string, Map<string, string>> => {
         ) {
           flows.set(
             destination.name,
-            `${FLOWS_DIR_PATH}/${source.name}/${destination.name}/${destinationFile.name}`
+            `${FLOWS_DIR_PATH}/${source.name}/${destination.name}/${destinationFile.name}`,
           );
         }
       }
@@ -77,14 +76,14 @@ const getFlows = (): Map<string, Map<string, string>> => {
 const handleMessage = async (
   flows: Map<string, string>,
   message: KafkaMessage,
-  resolveOffset: (offset: string) => void
+  resolveOffset: (offset: string) => void,
 ): Promise<void> => {
   for (const [destination, flowFilePath] of flows) {
     const transaction = await producer.transaction();
     try {
       const transform = await import(flowFilePath);
       const output = JSON.stringify(
-        transform.default(JSON.parse(message.value.toString()))
+        transform.default(JSON.parse(message.value.toString())),
       );
       await transaction.send({
         topic: `${destination}_${version}`,
@@ -97,7 +96,7 @@ const handleMessage = async (
       await transaction.abort();
       console.error(
         `Failed to send transformed data to ${destination}: `,
-        error
+        error,
       );
     }
   }
@@ -106,7 +105,7 @@ const handleMessage = async (
 const startConsumer = async (): Promise<void> => {
   const flows = getFlows();
   const flowTopics = Array.from(flows.keys()).map(
-    (flow) => `${flow}_${version}`
+    (flow) => `${flow}_${version}`,
   );
 
   await consumer.connect();

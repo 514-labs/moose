@@ -293,7 +293,9 @@ pub(crate) async fn create_or_replace_tables(
         })?;
 
     // Clickhouse doesn't support dropping a view if it doesn't exist, so we need to drop it first in case the schema has changed
-    drop_tables(fo, configured_client).await?;
+    if !PROJECT.lock().unwrap().is_production {
+        drop_tables(fo, configured_client).await?;
+    }
 
     olap::clickhouse::run_query(&create_data_table_query, configured_client).await?;
 

@@ -21,6 +21,11 @@ pub enum Commands {
         #[arg(default_value = ".")]
         location: String,
     },
+    /// Builds your moose project
+    Build {
+        #[arg(short, long)]
+        docker: bool,
+    },
     // Link {
     //     /// Name of your client application or service (ex. `my-blog`)
     //     name: String,
@@ -46,8 +51,4 @@ pub enum Commands {
     Stop {},
     // Clears all temporary data and stops development infrastructure
     Clean {},
-    /// Docker related commands
-    Docker {
-        sub_method: String,
-    },
 }

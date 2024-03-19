@@ -21,16 +21,16 @@ pub enum ActivityType {
     DevCommand,
     #[serde(rename = "initCommand")]
     InitCommand,
+    #[serde(rename = "buildCommand")]
+    BuildCommand,
+    #[serde(rename = "dockerCommand")]
+    DockerCommand,
     #[serde(rename = "cleanCommand")]
     CleanCommand,
     #[serde(rename = "stopCommand")]
     StopCommand,
     #[serde(rename = "prodCommand")]
     ProdCommand,
-    #[serde(rename = "dockerInitCommand")]
-    DockerInitCommand,
-    #[serde(rename = "dockerBuildCommand")]
-    DockerBuildCommand,
 }
 
 #[derive(Debug, Clone, Serialize)]

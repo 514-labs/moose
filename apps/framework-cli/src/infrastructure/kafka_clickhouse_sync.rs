@@ -25,7 +25,7 @@ struct SyncingProcess {
     table: String,
 }
 
-struct SyncingProcessesRegistry {
+pub struct SyncingProcessesRegistry {
     registry: HashMap<String, JoinHandle<anyhow::Result<()>>>,
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
@@ -49,7 +49,7 @@ impl SyncingProcessesRegistry {
         self.registry.insert(key, syncing_process.process);
     }
 
-    pub fn start(&mut self, framework_object_versions: FrameworkObjectVersions) {
+    pub fn start(&mut self, framework_object_versions: &FrameworkObjectVersions) {
         let kafka_config = self.kafka_config.clone();
         let clickhouse_config = self.clickhouse_config.clone();
 
@@ -57,6 +57,7 @@ impl SyncingProcessesRegistry {
         let current_object_iterator = framework_object_versions
             .current_models
             .models
+            .clone()
             .into_iter()
             .map(spawn_sync_process(
                 kafka_config.clone(),

@@ -45,10 +45,13 @@ pub fn framework_object_mapper(
 ) -> FrameworkObject {
     let clickhouse_table =
         olap::clickhouse::mapper::std_table_to_clickhouse_table(s.to_table(version));
+
+    let topic = format!("{}_{}", s.name.clone(), version.replace('.', "_"));
+
     FrameworkObject {
         data_model: s.clone(),
         table: clickhouse_table,
-        topic: s.name.clone(),
+        topic,
         ts_interface: framework::typescript::mapper::std_table_to_typescript_interface(
             s.to_table(version),
             s.name.as_str(),
@@ -390,11 +393,9 @@ pub async fn process_objects(
             fo.data_model.name.clone(),
             version,
         );
-        let topics = vec![format!(
-            "{}_{}",
-            fo.topic.clone(),
-            version.replace('.', "_")
-        )];
+
+        let topics = vec![fo.topic.clone()];
+
         match stream::redpanda::create_topics(&project.redpanda_config, topics).await {
             Ok(_) => println!("Topics created successfully"),
             Err(e) => eprintln!("Failed to create topics: {}", e),

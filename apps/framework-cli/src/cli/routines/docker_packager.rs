@@ -72,10 +72,24 @@ impl Routine for CreateDockerfile {
 
         ensure_docker_running()?;
 
-        let file_path = internal_dir.join("packager/Dockerfile");
+        let file_path = internal_dir.join("packager/versions/.gitkeep");
         let file_path_display = file_path.clone();
 
+        info!("Creating versions at: {:?}", file_path_display);
+        fs::create_dir_all(file_path.parent().unwrap()).map_err(|err| {
+            error!("Failed to create directory for app versions: {}", err);
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to create directory for app versions".to_string(),
+                ),
+                err,
+            )
+        })?;
+
         info!("Creating Dockerfile at: {:?}", file_path_display);
+        let file_path = internal_dir.join("packager/Dockerfile");
+        let file_path_display = file_path.clone();
 
         fs::create_dir_all(file_path.parent().unwrap()).map_err(|err| {
             error!("Failed to create directory for project packaging: {}", err);

@@ -31,6 +31,10 @@ COPY ./versions .moose/versions
 # Expose the ports on which the application will listen
 EXPOSE 4000
 
+# Setup healthcheck
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD curl -f http://localhost:4000/health || exit 1
+
 # post install
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8

@@ -232,38 +232,3 @@ fn mapper_json_to_clickhouse_record(json_value: Value) -> anyhow::Result<ClickHo
         _ => Err(anyhow::anyhow!("Invalid JSON")),
     }
 }
-
-// #[tokio::test]
-// async fn test_sync() {
-//     let kafka_config = RedpandaConfig {
-//         broker: "localhost:19092".to_string(),
-//         sasl_username: None,
-//         sasl_password: None,
-//         sasl_mechanism: None,
-//         security_protocol: None,
-//         message_timeout_ms: 5000,
-//     };
-
-//     let clickhouse_config = ClickHouseConfig {
-//         user: "panda".to_string(),
-//         password: "pandapass".to_string(),
-//         host: "localhost".to_string(),
-//         use_ssl: false,
-//         postgres_port: 5432,
-//         kafka_port: 9092,
-//         host_port: 18123,
-//         db_name: "local".to_string(),
-//     };
-
-//     let streaming_topic = "UserActivity_0_0";
-//     let clickhouse_table = "UserActivity_0_0";
-
-//     sync_kafka_to_clickhouse(
-//         &kafka_config,
-//         &clickhouse_config,
-//         streaming_topic,
-//         clickhouse_table,
-//     )
-//     .await
-//     .unwrap();
-// }

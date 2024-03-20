@@ -42,13 +42,39 @@ jobs:
           command: build
           args: --manifest-path ./apps/framework-cli/Cargo.toml --release --locked
 
+  test-macos:
+    name: Test Suite (MacOS)
+    env:
+      SCCACHE_GHA_ENABLED: "true"
+      RUSTC_WRAPPER: "sccache"
+      RUST_BACKTRACE: full
+    runs-on: macos-latest
+    strategy:
+      fail-fast: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Run sccache-cache
+        uses: mozilla-actions/sccache-action@v0.0.3
+
+      - name: Test
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --manifest-path ./apps/framework-cli/Cargo.toml
+
+      - name: Inspect Logs
+        if: always()
+        run: |
+          cat ~/.moose/cli.log
+
   test-ubuntu:
     name: Test Suite (Ubuntu)
-    services:
-      clickhouse:
-        image: clickhouse/clickhouse-server:24.1.6.52
-        ports:
-          - 18123:8123
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"

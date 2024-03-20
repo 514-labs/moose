@@ -148,7 +148,6 @@
                     {
                         eventId: _uuidv4(),
                         timestamp: new Date(),
-                        version: '1',
                         session_id: _getSessionId(),
                         user_agent: window.navigator.userAgent,
                         locale,

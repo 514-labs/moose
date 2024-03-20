@@ -50,7 +50,7 @@ export default function TimeSeriesChart({ data, toolbar }: Props) {
         },
         color: { legend: true },
         marks: [
-            createChartOption(chartType)(newData, { ...binX({ y: "count" }, { x: "time", ...createDrawOption(chartType, 'pathname'), interval: "minute" }), tip: { fill: "black" } }),
+            createChartOption(chartType)(newData, { ...binX({ y: "count" }, { x: "time", ...createDrawOption(chartType, 'pathname'), interval: "hour" }), tip: { fill: "black" } }),
             ruleY([0]),
         ]
     }

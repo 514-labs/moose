@@ -93,9 +93,7 @@
         _setSessionId();
         let url;
 
-        if (proxy) {
-            url = `${proxy}/api/tracking`;
-        } else if (host) {
+       if (host) {
             host = host.replaceAll(/\/+$/gm, '');
             url = `${host}/ingest/PageViewEvent/0.0`
         }

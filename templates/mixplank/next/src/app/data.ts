@@ -1,6 +1,7 @@
-import { createClient } from "@clickhouse/client-web"
+"use server"
+import { createClient } from "@clickhouse/client"
 
-export const clickhouseClient = createClient({
+const clickhouseClient = createClient({
     host: "http://localhost:18123",
     username: "panda",
     password: "pandapass",

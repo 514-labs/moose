@@ -111,7 +111,6 @@
         request.send(JSON.stringify({
             timestamp: new Date().toISOString(),
             action: name,
-            version: '1',
             session_id: _getSessionId(),
             payload
         }));

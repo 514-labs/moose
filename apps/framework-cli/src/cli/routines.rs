@@ -93,6 +93,7 @@ use crate::framework::controller::{
 };
 use crate::framework::sdks::generate_ts_sdk;
 use crate::infrastructure::console::post_current_state_to_console;
+use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
 use crate::infrastructure::stream::redpanda;
 use crate::project::{Project, PROJECT};
@@ -241,18 +242,28 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     info!("Initializing project state");
     let framework_object_versions =
         initialize_project_state(project.clone(), &mut route_table).await?;
+
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
-    let server_config = project.http_server_config.clone();
+    let mut syncing_processes_registry = SyncingProcessesRegistry::new(
+        project.redpanda_config.clone(),
+        project.clickhouse_config.clone(),
+    );
 
-    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
+    syncing_processes_registry.start_all(&framework_object_versions);
+
     let file_watcher = FileWatcher::new();
-
-    file_watcher.start(project.clone(), framework_object_versions, route_table)?;
+    file_watcher.start(
+        project.clone(),
+        framework_object_versions,
+        route_table,
+        syncing_processes_registry,
+    )?;
 
     info!("Starting web server...");
-
+    let server_config = project.http_server_config.clone();
+    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     web_server.start(route_table, project).await;
 
     Ok(())
@@ -271,13 +282,20 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("Initializing project state");
-    initialize_project_state(project.clone(), &mut route_table).await?;
+    let framework_object_versions =
+        initialize_project_state(project.clone(), &mut route_table).await?;
+
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
-    let server_config = project.http_server_config.clone();
+    let mut syncing_processes_registry = SyncingProcessesRegistry::new(
+        project.redpanda_config.clone(),
+        project.clickhouse_config.clone(),
+    );
+    syncing_processes_registry.start_all(&framework_object_versions);
 
     info!("Starting web server...");
+    let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     web_server.start(route_table, project).await;
 

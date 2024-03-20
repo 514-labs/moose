@@ -8,7 +8,7 @@
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct ClickhouseConfig {
+pub struct ClickHouseConfig {
     pub db_name: String, // ex. local
     pub user: String,
     pub password: String,
@@ -19,7 +19,7 @@ pub struct ClickhouseConfig {
     pub kafka_port: i32,    // ex. 9092
 }
 
-impl Default for ClickhouseConfig {
+impl Default for ClickHouseConfig {
     fn default() -> Self {
         Self {
             db_name: "local".to_string(),

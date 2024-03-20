@@ -3,12 +3,12 @@ use tinytemplate::{format_unescaped, TinyTemplate};
 
 use crate::{
     framework::schema::{FieldArity, UnsupportedDataTypeError},
-    infrastructure::olap::clickhouse::{
-        ClickhouseColumn, ClickhouseColumnType, ClickhouseFloat, ClickhouseInt, ClickhouseTable,
+    infrastructure::olap::clickhouse::model::{
+        ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
     },
 };
 
-use super::{ClickhouseKafkaTrigger, QueryString, VersionSync};
+use super::{QueryString, VersionSync};
 
 // TODO: Add column comment capability to the schema and template
 static CREATE_TABLE_TEMPLATE: &str = r#"
@@ -21,14 +21,6 @@ PRIMARY KEY ({primary_key_string})
 {{endif}}
 )
 ENGINE = {engine};
-"#;
-
-static CREATE_KAFKA_TRIGGER_TEMPLATE: &str = r#"
-CREATE MATERIALIZED VIEW IF NOT EXISTS {db_name}.{view_name} TO {db_name}.{dest_table_name}
-AS
-SELECT * FROM {db_name}.{source_table_name}
-SETTINGS
-stream_like_engine_allow_direct_select = 1;
 "#;
 
 static CREATE_VERSION_SYNC_TRIGGER_TEMPLATE: &str = r#"
@@ -45,29 +37,13 @@ FROM (select {migration_function_name}(
 
 pub struct CreateTableQuery;
 
-static KAFKA_SETTINGS: &str =
-    "kafka_skip_broken_messages = 1, date_time_input_format = 'best_effort'";
-
 pub enum ClickhouseEngine {
     MergeTree,
-    Kafka(String, u16, String),
 }
 
 impl CreateTableQuery {
-    pub fn kafka(
-        table: ClickhouseTable,
-        kafka_host: String,
-        kafka_port: u16,
-        topic: String,
-    ) -> Result<String, UnsupportedDataTypeError> {
-        CreateTableQuery::build(
-            table,
-            ClickhouseEngine::Kafka(kafka_host, kafka_port, topic),
-        )
-    }
-
     pub fn build(
-        table: ClickhouseTable,
+        table: ClickHouseTable,
         engine: ClickhouseEngine,
     ) -> Result<String, UnsupportedDataTypeError> {
         let mut tt = TinyTemplate::new();
@@ -91,18 +67,11 @@ struct CreateTableContext {
 
 impl CreateTableContext {
     fn new(
-        table: ClickhouseTable,
+        table: ClickHouseTable,
         engine: ClickhouseEngine,
     ) -> Result<CreateTableContext, UnsupportedDataTypeError> {
         let (engine, ignore_primary_key) = match engine {
             ClickhouseEngine::MergeTree => ("MergeTree".to_string(), false),
-            ClickhouseEngine::Kafka(kafka_host, kafka_port, topic) => (
-                format!(
-                    "Kafka('{}:{}', '{}', 'clickhouse-group', 'JSONEachRow') SETTINGS {}",
-                    kafka_host, kafka_port, topic, KAFKA_SETTINGS,
-                ),
-                true,
-            ),
         };
 
         let primary_key = if ignore_primary_key {
@@ -142,7 +111,7 @@ struct CreateTableFieldContext {
 }
 
 impl CreateTableFieldContext {
-    fn new(column: ClickhouseColumn) -> Result<CreateTableFieldContext, UnsupportedDataTypeError> {
+    fn new(column: ClickHouseColumn) -> Result<CreateTableFieldContext, UnsupportedDataTypeError> {
         clickhouse_column_to_create_table_field_context(column)
     }
 }
@@ -154,7 +123,7 @@ DROP TABLE IF EXISTS {db_name}.{table_name};
 pub struct DropTableQuery;
 
 impl DropTableQuery {
-    pub fn build(table: ClickhouseTable) -> Result<String, UnsupportedDataTypeError> {
+    pub fn build(table: ClickHouseTable) -> Result<String, UnsupportedDataTypeError> {
         let mut tt = TinyTemplate::new();
         tt.add_template("drop_table", DROP_TABLE_TEMPLATE).unwrap();
         let context = DropTableContext::new(table)?;
@@ -170,40 +139,11 @@ struct DropTableContext {
 }
 
 impl DropTableContext {
-    fn new(table: ClickhouseTable) -> Result<DropTableContext, UnsupportedDataTypeError> {
+    fn new(table: ClickHouseTable) -> Result<DropTableContext, UnsupportedDataTypeError> {
         Ok(DropTableContext {
             db_name: table.db_name,
             table_name: table.name,
         })
-    }
-}
-
-pub struct CreateKafkaTriggerViewQuery;
-
-impl CreateKafkaTriggerViewQuery {
-    pub fn build(view: ClickhouseKafkaTrigger) -> String {
-        let mut tt = TinyTemplate::new();
-        tt.add_template("create_materialized_view", CREATE_KAFKA_TRIGGER_TEMPLATE)
-            .unwrap();
-        let context = CreateKafkaTriggerContext::new(view);
-        tt.render("create_materialized_view", &context).unwrap()
-    }
-}
-
-pub static DROP_VIEW_TEMPLATE: &str = r#"
-DROP VIEW IF EXISTS {db_name}.{view_name};
-"#;
-
-pub struct DropMaterializedViewQuery;
-
-impl DropMaterializedViewQuery {
-    pub fn build(table: ClickhouseKafkaTrigger) -> Result<String, UnsupportedDataTypeError> {
-        let mut tt = TinyTemplate::new();
-        tt.add_template("drop_materialized_view", DROP_VIEW_TEMPLATE)
-            .unwrap();
-        let context = DropMaterializedViewContext::new(table)?;
-        let rendered = tt.render("drop_materialized_view", &context).unwrap();
-        Ok(rendered)
     }
 }
 
@@ -258,70 +198,34 @@ impl CreateVersionSyncTriggerContext {
     }
 }
 
-#[derive(Serialize)]
-struct DropMaterializedViewContext {
-    db_name: String,
-    view_name: String,
-}
-
-impl DropMaterializedViewContext {
-    fn new(
-        view: ClickhouseKafkaTrigger,
-    ) -> Result<DropMaterializedViewContext, UnsupportedDataTypeError> {
-        Ok(DropMaterializedViewContext {
-            db_name: view.db_name,
-            view_name: view.name,
-        })
-    }
-}
-
-#[derive(Serialize)]
-struct CreateKafkaTriggerContext {
-    db_name: String,
-    view_name: String,
-    source_table_name: String,
-    dest_table_name: String,
-}
-
-impl CreateKafkaTriggerContext {
-    fn new(view: ClickhouseKafkaTrigger) -> CreateKafkaTriggerContext {
-        CreateKafkaTriggerContext {
-            db_name: view.db_name,
-            view_name: view.name,
-            source_table_name: view.source_table_name,
-            dest_table_name: view.dest_table_name,
-        }
-    }
-}
-
 fn field_type_to_string(
-    field_type: ClickhouseColumnType,
+    field_type: ClickHouseColumnType,
 ) -> Result<String, UnsupportedDataTypeError> {
     // Blowing out match statements here in case we need to customize the output string for some types.
     match field_type {
-        ClickhouseColumnType::String => Ok(field_type.to_string()),
-        ClickhouseColumnType::Boolean => Ok(field_type.to_string()),
-        ClickhouseColumnType::ClickhouseInt(int) => match int {
-            ClickhouseInt::Int8 => Ok(int.to_string()),
-            ClickhouseInt::Int16 => Ok(int.to_string()),
-            ClickhouseInt::Int32 => Ok(int.to_string()),
-            ClickhouseInt::Int64 => Ok(int.to_string()),
-            ClickhouseInt::Int128 => Ok(int.to_string()),
-            ClickhouseInt::Int256 => Ok(int.to_string()),
-            ClickhouseInt::UInt8 => Ok(int.to_string()),
-            ClickhouseInt::UInt16 => Ok(int.to_string()),
-            ClickhouseInt::UInt32 => Ok(int.to_string()),
-            ClickhouseInt::UInt64 => Ok(int.to_string()),
-            ClickhouseInt::UInt128 => Ok(int.to_string()),
-            ClickhouseInt::UInt256 => Ok(int.to_string()),
+        ClickHouseColumnType::String => Ok(field_type.to_string()),
+        ClickHouseColumnType::Boolean => Ok(field_type.to_string()),
+        ClickHouseColumnType::ClickhouseInt(int) => match int {
+            ClickHouseInt::Int8 => Ok(int.to_string()),
+            ClickHouseInt::Int16 => Ok(int.to_string()),
+            ClickHouseInt::Int32 => Ok(int.to_string()),
+            ClickHouseInt::Int64 => Ok(int.to_string()),
+            ClickHouseInt::Int128 => Ok(int.to_string()),
+            ClickHouseInt::Int256 => Ok(int.to_string()),
+            ClickHouseInt::UInt8 => Ok(int.to_string()),
+            ClickHouseInt::UInt16 => Ok(int.to_string()),
+            ClickHouseInt::UInt32 => Ok(int.to_string()),
+            ClickHouseInt::UInt64 => Ok(int.to_string()),
+            ClickHouseInt::UInt128 => Ok(int.to_string()),
+            ClickHouseInt::UInt256 => Ok(int.to_string()),
         },
-        ClickhouseColumnType::ClickhouseFloat(float) => match float {
-            ClickhouseFloat::Float32 => Ok(float.to_string()),
-            ClickhouseFloat::Float64 => Ok(float.to_string()),
+        ClickHouseColumnType::ClickhouseFloat(float) => match float {
+            ClickHouseFloat::Float32 => Ok(float.to_string()),
+            ClickHouseFloat::Float64 => Ok(float.to_string()),
         },
-        ClickhouseColumnType::Decimal => Ok(field_type.to_string()),
-        ClickhouseColumnType::DateTime => Ok(field_type.to_string()),
-        ClickhouseColumnType::Enum(x) => Ok(format!(
+        ClickHouseColumnType::Decimal => Ok(field_type.to_string()),
+        ClickHouseColumnType::DateTime => Ok(field_type.to_string()),
+        ClickHouseColumnType::Enum(x) => Ok(format!(
             "Enum({})",
             x.values
                 .iter()
@@ -336,7 +240,7 @@ fn field_type_to_string(
 }
 
 fn clickhouse_column_to_create_table_field_context(
-    column: ClickhouseColumn,
+    column: ClickHouseColumn,
 ) -> Result<CreateTableFieldContext, UnsupportedDataTypeError> {
     if column.arity == FieldArity::List {
         Ok(CreateTableFieldContext {

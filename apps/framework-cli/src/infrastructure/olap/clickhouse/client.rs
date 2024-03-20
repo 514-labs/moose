@@ -172,18 +172,7 @@ async fn test_insert() {
         db_name: "local".to_string(),
     };
 
-    // let clickhouse_config = ClickhouseConfig {
-    //     user: "default".to_string(),
-    //     password: "password".to_string(),
-    //     host: "swtrnxdyro.us-central1.gcp.clickhouse.cloud".to_string(),
-    //     use_ssl: true,
-    //     postgres_port: 5432,
-    //     kafka_port: 9092,
-    //     host_port: 8443,
-    //     db_name: "default".to_string(),
-    // };
-
-    let mut client = ClickHouseClient::new(&clickhouse_config).await.unwrap();
+    let client = ClickHouseClient::new(&clickhouse_config).await.unwrap();
 
     client
         .insert(

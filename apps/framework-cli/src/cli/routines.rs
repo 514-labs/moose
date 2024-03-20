@@ -282,13 +282,20 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("Initializing project state");
-    initialize_project_state(project.clone(), &mut route_table).await?;
+    let framework_object_versions =
+        initialize_project_state(project.clone(), &mut route_table).await?;
+
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
-    let server_config = project.http_server_config.clone();
+    let mut syncing_processes_registry = SyncingProcessesRegistry::new(
+        project.redpanda_config.clone(),
+        project.clickhouse_config.clone(),
+    );
+    syncing_processes_registry.start_all(&framework_object_versions);
 
     info!("Starting web server...");
+    let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     web_server.start(route_table, project).await;
 

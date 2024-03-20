@@ -37,7 +37,7 @@ impl SyncingProcessesRegistry {
         Self {
             registry: HashMap::new(),
             kafka_config,
-            clickhouse_config: clickhouse_config,
+            clickhouse_config,
         }
     }
 
@@ -146,8 +146,8 @@ fn spawn_sync_process_core(
 
     SyncingProcess {
         process: syncing_process,
-        topic: topic,
-        table: table,
+        topic,
+        table,
     }
 }
 

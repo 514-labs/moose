@@ -162,7 +162,7 @@ async fn process_events(
     for (_, fo) in changed_objects.iter().chain(new_objects.iter()) {
         create_or_replace_tables(fo, configured_client).await?;
 
-        syncing_process_registry.start(&fo);
+        syncing_process_registry.start(fo);
 
         let ingest_route = schema_file_path_to_ingest_route(
             &framework_object_versions.current_models.base_path,

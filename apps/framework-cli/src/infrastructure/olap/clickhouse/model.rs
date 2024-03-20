@@ -113,7 +113,7 @@ impl ClickHouseValue {
     pub fn new_string(value: String) -> ClickHouseValue {
         ClickHouseValue {
             value_type: ClickHouseColumnType::String,
-            value: value,
+            value,
         }
     }
 
@@ -166,6 +166,12 @@ impl fmt::Display for ClickHouseValue {
 pub struct ClickHouseRecord {
     pub columns: Vec<String>,
     pub values: Vec<ClickHouseValue>,
+}
+
+impl Default for ClickHouseRecord {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ClickHouseRecord {

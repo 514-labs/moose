@@ -3,7 +3,7 @@ use crate::framework::schema::DataEnum;
 use crate::framework::schema::{FieldArity, UnsupportedDataTypeError};
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 
-use chrono::{DateTime, FixedOffset, Utc};
+use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 use std::fmt::{self};
 

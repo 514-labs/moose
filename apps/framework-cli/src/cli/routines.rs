@@ -251,10 +251,15 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
         project.clickhouse_config.clone(),
     );
 
-    syncing_processes_registry.start(&framework_object_versions);
+    syncing_processes_registry.start_all(&framework_object_versions);
 
     let file_watcher = FileWatcher::new();
-    file_watcher.start(project.clone(), framework_object_versions, route_table)?;
+    file_watcher.start(
+        project.clone(),
+        framework_object_versions,
+        route_table,
+        syncing_processes_registry,
+    )?;
 
     info!("Starting web server...");
     let server_config = project.http_server_config.clone();

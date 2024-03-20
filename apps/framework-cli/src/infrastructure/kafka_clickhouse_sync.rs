@@ -41,7 +41,15 @@ impl SyncingProcessesRegistry {
     }
 
     fn format_key(syncing_process: &SyncingProcess) -> String {
-        format!("{}-{}", syncing_process.topic, syncing_process.table)
+        Self::format_key_str(&syncing_process.topic, &syncing_process.table)
+    }
+
+    fn format_key_str(topic: &str, table: &str) -> String {
+        format!("{}-{}", topic, table)
+    }
+
+    fn format_key_framework_obj(framework_object: &FrameworkObject) -> String {
+        Self::format_key_str(&framework_object.topic, &framework_object.table.name)
     }
 
     fn insert(&mut self, syncing_process: SyncingProcess) {
@@ -49,7 +57,7 @@ impl SyncingProcessesRegistry {
         self.registry.insert(key, syncing_process.process);
     }
 
-    pub fn start(&mut self, framework_object_versions: &FrameworkObjectVersions) {
+    pub fn start_all(&mut self, framework_object_versions: &FrameworkObjectVersions) {
         let kafka_config = self.kafka_config.clone();
         let clickhouse_config = self.clickhouse_config.clone();
 
@@ -80,6 +88,30 @@ impl SyncingProcessesRegistry {
             self.insert(syncing_process);
         }
     }
+
+    pub fn start(&mut self, framework_object: &FrameworkObject) {
+        let key = Self::format_key_framework_obj(framework_object);
+
+        if self.registry.contains_key(&key) {
+            return;
+        }
+
+        let syncing_process = spawn_sync_process_core(
+            self.kafka_config.clone(),
+            self.clickhouse_config.clone(),
+            framework_object.topic.to_string(),
+            framework_object.table.name.to_string(),
+        );
+
+        self.insert(syncing_process);
+    }
+
+    pub fn stop(&mut self, framework_object: &FrameworkObject) {
+        let key = Self::format_key_framework_obj(framework_object);
+        if let Some(process) = self.registry.remove(&key) {
+            process.abort();
+        }
+    }
 }
 
 fn spawn_sync_process(
@@ -87,22 +119,35 @@ fn spawn_sync_process(
     clickhouse_config: ClickHouseConfig,
 ) -> Box<dyn Fn((String, FrameworkObject)) -> SyncingProcess> {
     Box::new(move |(_, schema)| {
-        let streaming_topic = schema.topic;
-        let clickhouse_table = schema.table.name;
-
-        let syncing_process = tokio::spawn(sync_kafka_to_clickhouse(
+        let topic = schema.topic;
+        let table = schema.table.name;
+        spawn_sync_process_core(
             kafka_config.clone(),
             clickhouse_config.clone(),
-            streaming_topic.clone(),
-            clickhouse_table.clone(),
-        ));
-
-        SyncingProcess {
-            process: syncing_process,
-            topic: streaming_topic,
-            table: clickhouse_table,
-        }
+            topic,
+            table,
+        )
     })
+}
+
+fn spawn_sync_process_core(
+    kafka_config: RedpandaConfig,
+    clickhouse_config: ClickHouseConfig,
+    topic: String,
+    table: String,
+) -> SyncingProcess {
+    let syncing_process = tokio::spawn(sync_kafka_to_clickhouse(
+        kafka_config,
+        clickhouse_config,
+        topic.clone(),
+        table.clone(),
+    ));
+
+    SyncingProcess {
+        process: syncing_process,
+        topic: topic,
+        table: table,
+    }
 }
 
 async fn sync_kafka_to_clickhouse(

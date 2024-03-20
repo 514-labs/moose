@@ -37,27 +37,11 @@ FROM (select {migration_function_name}(
 
 pub struct CreateTableQuery;
 
-static KAFKA_SETTINGS: &str =
-    "kafka_skip_broken_messages = 1, date_time_input_format = 'best_effort'";
-
 pub enum ClickhouseEngine {
     MergeTree,
-    Kafka(String, u16, String),
 }
 
 impl CreateTableQuery {
-    pub fn kafka(
-        table: ClickHouseTable,
-        kafka_host: String,
-        kafka_port: u16,
-        topic: String,
-    ) -> Result<String, UnsupportedDataTypeError> {
-        CreateTableQuery::build(
-            table,
-            ClickhouseEngine::Kafka(kafka_host, kafka_port, topic),
-        )
-    }
-
     pub fn build(
         table: ClickHouseTable,
         engine: ClickhouseEngine,
@@ -88,13 +72,6 @@ impl CreateTableContext {
     ) -> Result<CreateTableContext, UnsupportedDataTypeError> {
         let (engine, ignore_primary_key) = match engine {
             ClickhouseEngine::MergeTree => ("MergeTree".to_string(), false),
-            ClickhouseEngine::Kafka(kafka_host, kafka_port, topic) => (
-                format!(
-                    "Kafka('{}:{}', '{}', 'clickhouse-group', 'JSONEachRow') SETTINGS {}",
-                    kafka_host, kafka_port, topic, KAFKA_SETTINGS,
-                ),
-                true,
-            ),
         };
 
         let primary_key = if ignore_primary_key {
@@ -169,10 +146,6 @@ impl DropTableContext {
         })
     }
 }
-
-pub static DROP_VIEW_TEMPLATE: &str = r#"
-DROP VIEW IF EXISTS {db_name}.{view_name};
-"#;
 
 pub struct CreateVersionSyncTriggerQuery;
 impl CreateVersionSyncTriggerQuery {

@@ -19,8 +19,8 @@ use crate::framework::controller::{
 use crate::framework::schema::{is_prisma_file, DuplicateModelError};
 use crate::framework::sdks::generate_ts_sdk;
 use crate::infrastructure::console::post_current_state_to_console;
+use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::stream::redpanda;
-use crate::project::PROJECT;
 use crate::utilities::package_managers;
 use crate::{
     framework::controller::RouteMeta,
@@ -36,6 +36,7 @@ async fn process_events(
     framework_object_versions: &mut FrameworkObjectVersions,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     configured_client: &ConfiguredDBClient,
+    syncing_process_registry: &mut SyncingProcessesRegistry,
 ) -> anyhow::Result<()> {
     debug!(
         "File Watcher Event Received: {:?}, with Route Table {:?}",
@@ -132,6 +133,8 @@ async fn process_events(
     for (_, fo) in deleted_objects {
         drop_tables(&fo, configured_client).await?;
 
+        syncing_process_registry.stop(&fo);
+
         route_table.remove(&schema_file_path_to_ingest_route(
             &framework_object_versions.current_models.base_path,
             &fo.original_file_path,
@@ -158,6 +161,8 @@ async fn process_events(
 
     for (_, fo) in changed_objects.iter().chain(new_objects.iter()) {
         create_or_replace_tables(fo, configured_client).await?;
+
+        syncing_process_registry.start(&fo);
 
         let ingest_route = schema_file_path_to_ingest_route(
             &framework_object_versions.current_models.base_path,
@@ -216,6 +221,7 @@ async fn watch(
     project: Arc<Project>,
     framework_object_versions: &mut FrameworkObjectVersions,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
+    syncing_process_registry: &mut SyncingProcessesRegistry,
 ) -> Result<(), Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let configured_producer = redpanda::create_producer(project.redpanda_config.clone());
@@ -261,6 +267,7 @@ async fn watch(
                         framework_object_versions,
                         route_table,
                         &configured_client,
+                        syncing_process_registry,
                     ),
                 )
                 .await
@@ -301,6 +308,7 @@ impl FileWatcher {
         project: Arc<Project>,
         framework_object_versions: FrameworkObjectVersions,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
+        syncing_process_registry: SyncingProcessesRegistry,
     ) -> Result<(), Error> {
         show_message!(MessageType::Info, {
             Message {
@@ -310,9 +318,17 @@ impl FileWatcher {
         });
 
         let mut framework_object_versions = framework_object_versions;
+        let mut syncing_process_registry = syncing_process_registry;
 
         tokio::spawn(async move {
-            if let Err(error) = watch(project, &mut framework_object_versions, route_table).await {
+            if let Err(error) = watch(
+                project,
+                &mut framework_object_versions,
+                route_table,
+                &mut syncing_process_registry,
+            )
+            .await
+            {
                 panic!("Watcher error: {error:?}");
             }
         });

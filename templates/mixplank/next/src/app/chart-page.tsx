@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PlotOptions, ruleY, barY } from "@observablehq/plot";
 import { useEffect, useState } from "react";
 import { getData } from "./data";
-import { createFunnelQuery } from "@/data/funnel-query";
+import { createFunnelQuery } from "@/insights/funnel-query";
 
 
 

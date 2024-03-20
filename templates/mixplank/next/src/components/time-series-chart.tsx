@@ -42,7 +42,7 @@ function createDrawOption(chartType: string, breakdownKey: string) {
 export default function TimeSeriesChart({ data, toolbar }: Props) {
     const [chartType, setChartType] = useState('bar')
 
-    const newData = data.map((d) => ({ ...d, time: new Date(d?.time) }))
+    const newData = data.map((d) => ({ ...d, time: new Date(d?.timestamp) }))
 
     const options: PlotOptions = {
         y: {
@@ -50,7 +50,7 @@ export default function TimeSeriesChart({ data, toolbar }: Props) {
         },
         color: { legend: true },
         marks: [
-            createChartOption(chartType)(newData, { ...binX({ y: "count" }, { x: "time", ...createDrawOption(chartType, 'event_name'), interval: "day" }), tip: { fill: "black" } }),
+            createChartOption(chartType)(newData, { ...binX({ y: "count" }, { x: "time", ...createDrawOption(chartType, 'pathname'), interval: "minute" }), tip: { fill: "black" } }),
             ruleY([0]),
         ]
     }

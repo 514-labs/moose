@@ -11,7 +11,6 @@ const rangeToNum = {
     [DateRange["30D"]]: 30,
 
 }
-export function createDateStub(range: DateRange){
-    return `WHERE time >= toDate(today() - ${rangeToNum[range]})
-    AND time <= toDate(today())`
+export function createDateStub(range: DateRange) {
+    return `WHERE timestamp >= toDate(today() - ${rangeToNum[range]})`
 }

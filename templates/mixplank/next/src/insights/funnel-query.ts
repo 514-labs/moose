@@ -6,7 +6,7 @@ interface FunnelQuery {
 }
 
 export function createCombinedEvents(events: EventTable[], dateRange: DateRange) {
-    return events.map(event => `SELECT distinct_id, time, '${event.eventName}' AS event_name FROM ${event.tableName} ${createDateStub(dateRange)}`)
+    return events.map(event => `SELECT session_id, timestamp, '${event.eventName}' AS event_name FROM ${event.tableName} ${createDateStub(dateRange)}`)
         .join('\nUNION ALL\n')
 }
 
@@ -24,8 +24,8 @@ export const createFunnelQuery = (queryParams: FunnelQuery, dateRange: DateRange
             ${createCombinedEvents(cleanEvents, dateRange)}
         ),
         LevelCounts AS ( 
-            SELECT distinct_id,
-                windowFunnel(60*60*24*30, 'strict_increase')(time,
+            SELECT session_id,
+                windowFunnel(60*60*24*30, 'strict_increase')(timestamp,
                     ${windowFunnelEventsList(cleanEvents)}
                 ) AS level
             FROM CombinedEvents

@@ -6,7 +6,9 @@ export interface EventTable {
 export const eventTables: EventTable[] = [{
     eventName: 'Page View',
     tableName: 'PageViewEvent_0_0_trigger'
-}, {
+}];
+/** 
+, {
     eventName: 'CTA Click',
     tableName: 'CTAClickEvent_0_0_trigger'
 },
@@ -14,6 +16,7 @@ export const eventTables: EventTable[] = [{
     eventName: 'Nav Click',
     tableName: 'NavClickEvent_0_0_trigger'
 }];
+*/
 
 export const eventNameMap = eventTables.reduce((acc, cur) => ({
     ...acc,

@@ -2,15 +2,16 @@
 import { useEffect, useState } from "react";
 import ReportLayout from "../report-layout";
 import { getData } from "../data";
-import { tableQuery } from "@/data/table-query";
+import { tableQuery } from "@/insights/table-query";
 import { DataTable } from "@/components/ui/data-table/data-table";
 import { createColumns } from "@/components/ui/data-table/columns";
-import { eventTables } from "@/data/event-tables";
+import { eventTables } from "@/insights/event-tables";
 import TimeSeriesChart from "@/components/time-series-chart";
 import TimeSelector from "@/components/time-selector";
-import { DateRange } from "@/data/time-query";
+import { DateRange } from "@/insights/time-query";
 import TimeSeriesForm from "@/components/time-series-form";
 import { FunnelFormList } from "@/components/funnel-form";
+import { loadMixPanelData } from "@/lib/load-mixpanel-data";
 
 
 export default function FunnelsPage() {

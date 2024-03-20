@@ -1,5 +1,5 @@
 "use client"
-import { DateRange } from "@/data/time-query";
+import { DateRange } from "@/insights/time-query";
 import { Button } from "./ui/button";
 
 interface Props {

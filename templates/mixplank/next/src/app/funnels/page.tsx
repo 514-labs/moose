@@ -4,10 +4,10 @@ import { createColumns } from "@/components/ui/data-table/columns";
 import { DataTable } from "@/components/ui/data-table/data-table";
 import { useEffect, useState } from "react";
 import { getData } from "../data";
-import { createFunnelQuery } from "@/data/funnel-query";
+import { createFunnelQuery } from "@/insights/funnel-query";
 import ReportLayout from "../report-layout";
 import FunnelChart from "@/components/funnel-chart";
-import { DateRange } from "@/data/time-query";
+import { DateRange } from "@/insights/time-query";
 import TimeSelector from "@/components/time-selector";
 
 

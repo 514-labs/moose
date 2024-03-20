@@ -2,7 +2,7 @@ import { useFieldArray, useForm } from "react-hook-form"
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "./ui/form";
 import { Button } from "./ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select";
-import { eventNameMap, eventTables } from "@/data/event-tables";
+import { eventNameMap, eventTables } from "@/insights/event-tables";
 import { useEffect } from "react";
 import { XIcon } from "lucide-react";
 

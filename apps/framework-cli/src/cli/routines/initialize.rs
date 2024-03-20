@@ -1,6 +1,7 @@
 use std::sync::Arc;
 use std::{fs, path::PathBuf};
 
+use crate::utilities::constants::DENO_DIR;
 use crate::{
     cli::display::Message,
     framework::{languages::create_models_dir, typescript::create_typescript_models_dir},
@@ -372,7 +373,7 @@ impl Routine for CreateDenoDirectory {
             )
         })?;
 
-        let deno_dir = internal_dir.join("deno");
+        let deno_dir = internal_dir.join(DENO_DIR);
         match fs::create_dir_all(deno_dir.clone()) {
             Ok(_) => Ok(RoutineSuccess::success(Message::new(
                 "Created".to_string(),

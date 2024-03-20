@@ -34,7 +34,7 @@ importers:
     dependencies:
       '@514labs/moose-cli':
         specifier: latest
-        version: 0.3.145
+        version: 0.3.157
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -129,16 +129,16 @@ importers:
     optionalDependencies:
       '@514labs/moose-cli-darwin-arm64':
         specifier: latest
-        version: 0.3.145
+        version: 0.3.157
       '@514labs/moose-cli-darwin-x64':
         specifier: latest
-        version: 0.3.145
+        version: 0.3.157
       '@514labs/moose-cli-linux-arm64':
         specifier: latest
-        version: 0.3.145
+        version: 0.3.157
       '@514labs/moose-cli-linux-x64':
         specifier: latest
-        version: 0.3.145
+        version: 0.3.157
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -441,46 +441,46 @@ importers:
 
 packages:
 
-  /@514labs/moose-cli-darwin-arm64@0.3.145:
-    resolution: {integrity: sha512-HWOlRFdQgQaJ2dpG+eA1L/nFhgzMORcygdC6fcirHoAGnrPZp44/g1zBBRokXk2mfCtRAAELW/AVL1gVU7YmFA==}
+  /@514labs/moose-cli-darwin-arm64@0.3.157:
+    resolution: {integrity: sha512-5kFAJJ0wVGbeXEt5hFEc6q9kjkFdQ2njiuQWN5GW7ctUx4iDSVjokNl/YLcdw32cKLlVZMb8uK38q4PzHQUIFA==}
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-x64@0.3.145:
-    resolution: {integrity: sha512-yb7sILrV1j5ivNSgbIdgO2Mc4JVHJGgAYb8WuDs5uFKB0FPqWeCHZpEunQv5KLmwkBIiN93j3EQlAxwCM8fPvA==}
+  /@514labs/moose-cli-darwin-x64@0.3.157:
+    resolution: {integrity: sha512-LxV1zfyFeGGJwKd7mbgUHRbqN+JHM3rfMwI2Jhr9ApReUkFCMugfbbhNHX58TPb6Y1u/O2IWgwPbF4s6ZQCbZQ==}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-arm64@0.3.145:
-    resolution: {integrity: sha512-+aQ7Mb/xHs9EuSKQjSlbgQkS0EeDMxPiZ4UtqtProoKj0JvQ0WF8PH9xOXZNaaEB9Sc2zeUrX5/xD0n46TuOmg==}
+  /@514labs/moose-cli-linux-arm64@0.3.157:
+    resolution: {integrity: sha512-QZ/fyAmc7Z+UpVfOK0zvQxj+twv2Lekw+LhLfzFWQLsP5/0qk37sqfZSMqiSjYWFC/s4TcrdKorwJ6cEYcGEzQ==}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-x64@0.3.145:
-    resolution: {integrity: sha512-QIpTZmDDhTzaf/ojkIfP/ofEiez0CBYEEMmCdxovCusKGNnu3NAXrmGxy2djNEYfqpu6CoMnNZxT/1MuWUWbiQ==}
+  /@514labs/moose-cli-linux-x64@0.3.157:
+    resolution: {integrity: sha512-RctVxiiBnDg4DPmECzI4ypO1u00Dlr1sQfO/Y9cDfvo96WFawOy+oppExxGClLr8T0/2zDoyc2QhUnihbHoiEA==}
     cpu: [x64]
     os: [linux]
     requiresBuild: true
     dev: false
     optional: true
 
-  /@514labs/moose-cli@0.3.145:
-    resolution: {integrity: sha512-LxDdjjEdbH/8WiFD3sx95Xm/jZszcJCf+MrgRCI0nx0IfjmoFlChoHwRHrX37N+H1k4ijOEuIFjSP3GPZOSbwA==}
+  /@514labs/moose-cli@0.3.157:
+    resolution: {integrity: sha512-gGWVBC9/IQpgOHn0sFYrlbXGDSTTpq/KoE91FDUX8iZzeiJ03Uyu2h8J/otKU2rYMDYuCRcV6HphpOayb8+8fg==}
     hasBin: true
     optionalDependencies:
-      '@514labs/moose-cli-darwin-arm64': 0.3.145
-      '@514labs/moose-cli-darwin-x64': 0.3.145
-      '@514labs/moose-cli-linux-arm64': 0.3.145
-      '@514labs/moose-cli-linux-x64': 0.3.145
+      '@514labs/moose-cli-darwin-arm64': 0.3.157
+      '@514labs/moose-cli-darwin-x64': 0.3.157
+      '@514labs/moose-cli-linux-arm64': 0.3.157
+      '@514labs/moose-cli-linux-x64': 0.3.157
     dev: false
 
   /@aashutoshrathi/word-wrap@1.2.6:
@@ -1083,7 +1083,7 @@ packages:
       debug: 4.3.4
       espree: 9.6.1
       globals: 13.24.0
-      ignore: 5.3.0
+      ignore: 5.3.1
       import-fresh: 3.3.0
       js-yaml: 4.1.0
       minimatch: 3.1.2
@@ -6168,7 +6168,7 @@ packages:
       array-union: 2.1.0
       dir-glob: 3.0.1
       fast-glob: 3.3.2
-      ignore: 5.3.0
+      ignore: 5.3.1
       merge2: 1.4.1
       slash: 3.0.0
 
@@ -6492,7 +6492,6 @@ packages:
   /ignore@5.3.1:
     resolution: {integrity: sha512-5Fytz/IraMjqpwfd34ke28PTVMjZjJG2MPn5t7OE4eUCUNf8BAa7b5WUS9/Qvr6mwOQS7Mk6vdsMno5he+T8Xw==}
     engines: {node: '>= 4'}
-    dev: false
 
   /immediate@3.0.6:
     resolution: {integrity: sha512-XXOFtyqDjNDAQxVfYxuF7g9Il/IbWmmlQg2MYKOH8ExIT1qg6xc4zyS3HaEEATgs1btfzxq15ciUiY7gjSXRGQ==}

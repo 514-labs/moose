@@ -1,12 +1,6 @@
-import Image from "next/image";
-import { getData } from "./data";
+import { loadMixPanelData } from "@/lib/load-mixpanel-data";
+import { redirect } from "next/navigation";
 
 export default async function Home() {
-  const data = await getData();
-
-  return (
-    <main className="flex min-h-screen flex-col items-center justify-between p-24">
-        {JSON.stringify(data)}
-    </main>
-  );
+  redirect('/insights')
 }

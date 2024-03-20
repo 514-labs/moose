@@ -7,6 +7,7 @@ use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
 use crate::infrastructure::stream::redpanda::create_subscriber;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use log::error;
 use rdkafka::consumer::CommitMode;
 use rdkafka::consumer::Consumer;
 use rdkafka::Message;
@@ -166,20 +167,23 @@ async fn sync_kafka_to_clickhouse(
             }
 
             Ok(message) => match message.payload() {
-                Some(payload) => {
-                    let payload_str = std::str::from_utf8(payload).unwrap();
+                Some(payload) => match std::str::from_utf8(payload) {
+                    Ok(payload_str) => {
+                        debug!("Received message: {}", payload_str);
 
-                    debug!("Received message: {}", payload_str);
+                        let parsed_json: Value = serde_json::from_str(payload_str)?;
+                        let clickhouse_record = mapper_json_to_clickhouse_record(parsed_json)?;
 
-                    let parsed_json: Value = serde_json::from_str(payload_str)?;
-                    let clickhouse_record = mapper_json_to_clickhouse_record(parsed_json)?;
+                        clickhouse_client
+                            .insert(&clickhouse_table, clickhouse_record)
+                            .await?;
 
-                    clickhouse_client
-                        .insert(&clickhouse_table, clickhouse_record)
-                        .await?;
-
-                    subscriber.commit_message(&message, CommitMode::Sync)?;
-                }
+                        subscriber.commit_message(&message, CommitMode::Sync)?;
+                    }
+                    Err(_) => {
+                        error!("Received message with invalid UTF-8");
+                    }
+                },
                 None => {
                     debug!("Received message with no payload");
                 }

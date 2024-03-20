@@ -17,8 +17,6 @@ pub struct ClickHouseClient {
     config: ClickHouseConfig,
 }
 
-// TODO - make sure we are safe with columns / values alignment
-// ---------------------------------------------------------
 // TODO - implement batch inserts
 // TODO - investigate if we need to change basic auth
 impl ClickHouseClient {

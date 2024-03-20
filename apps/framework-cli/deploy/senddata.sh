@@ -12,6 +12,6 @@ fi
 
 curl -v -X POST \
 -H "Content-Type: application/json" \
--d "{\"eventId\": \"$eventID\", \"timestamp\": \"$currentTimestamp\", \"userId\": \"$userID\", \"activityType\": \"click\"}" \
+-d "{\"eventId\": \"$eventID\", \"timestamp\": \"$currentTimestamp\", \"userId\": \"$userID\", \"activity\": \"click\"}" \
 $endpoint
 

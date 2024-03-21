@@ -45,6 +45,8 @@ pub enum Commands {
     Dev {},
     /// Start a remote environment for use in cloud deployments
     Prod {},
+    /// Generates missing migration files
+    Migrate {},
     // Updates the redpanda cluster and clickhouse database with the latest objects
     Update {},
     // Stops development infrastructure

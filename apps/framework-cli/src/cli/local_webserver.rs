@@ -162,7 +162,6 @@ async fn ingest_route(
             );
 
             let body = req.collect().await.unwrap().to_bytes().to_vec();
-
             match serde_json::from_slice::<serde::de::IgnoredAny>(&body) {
                 Ok(_) => {}
                 Err(e) => {

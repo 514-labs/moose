@@ -1,6 +1,7 @@
 use serde::Serialize;
 use tinytemplate::{format_unescaped, TinyTemplate};
 
+use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
 use crate::{
     framework::schema::{FieldArity, UnsupportedDataTypeError},
     infrastructure::olap::clickhouse::{
@@ -8,7 +9,11 @@ use crate::{
     },
 };
 
-use super::{ClickhouseKafkaTrigger, QueryString, VersionSync};
+use super::{ClickhouseKafkaTrigger, QueryString};
+
+static CREATE_ALIAS_TEMPLATE: &str = r#"
+CREATE VIEW IF NOT EXISTS {db_name}.{alias_name} AS SELECT * FROM {db_name}.{source_table_name};
+"#;
 
 // TODO: Add column comment capability to the schema and template
 static CREATE_TABLE_TEMPLATE: &str = r#"
@@ -42,6 +47,27 @@ FROM (select {migration_function_name}(
 {{endfor}}
 ) as moose_migrate_tuple FROM {db_name}.{source_table_name})
 "#;
+
+pub struct CreateAliasQuery;
+impl CreateAliasQuery {
+    pub fn build(old_table: &ClickhouseTable, new_table: &ClickhouseTable) -> String {
+        let mut tt = TinyTemplate::new();
+        tt.add_template("create_alias", CREATE_ALIAS_TEMPLATE)
+            .unwrap();
+        let context = CreateAliasContext {
+            db_name: old_table.db_name.clone(),
+            alias_name: new_table.name.clone(),
+            source_table_name: old_table.name.clone(),
+        };
+        tt.render("create_alias", &context).unwrap()
+    }
+}
+#[derive(Serialize)]
+struct CreateAliasContext {
+    db_name: String,
+    alias_name: String,
+    source_table_name: String,
+}
 
 pub struct CreateTableQuery;
 

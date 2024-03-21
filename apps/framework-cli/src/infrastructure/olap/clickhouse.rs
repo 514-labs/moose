@@ -1,19 +1,16 @@
 pub mod config;
 pub mod mapper;
-mod queries;
+pub mod queries;
+pub mod version_sync;
 
 use std::fmt::{self};
 
 use clickhouse::Client;
-use lazy_static::lazy_static;
 use log::debug;
-use regex::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::framework::schema::DataEnum;
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
-use crate::infrastructure::olap::clickhouse::queries::CreateVersionSyncTriggerQuery;
-
 use crate::{
     framework::schema::{FieldArity, UnsupportedDataTypeError},
     utilities::constants::REDPANDA_CONTAINER_NAME,
@@ -40,7 +37,7 @@ impl fmt::Display for ClickhouseTableType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClickhouseColumnType {
     String,
     Boolean,
@@ -60,7 +57,7 @@ impl fmt::Display for ClickhouseColumnType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClickhouseInt {
     Int8,
     Int16,
@@ -82,7 +79,7 @@ impl fmt::Display for ClickhouseInt {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClickhouseFloat {
     Float32,
     Float64,
@@ -234,64 +231,66 @@ impl ClickhouseKafkaTrigger {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct VersionSync {
-    pub db_name: String,
-    pub model_name: String,
-    pub source_version: String,
-    pub source_table: ClickhouseTable,
-    pub dest_version: String,
-    pub dest_table: ClickhouseTable,
-    pub migration_function: String,
-}
+#[cfg(test)]
+mod tests {
+    use crate::infrastructure::olap::clickhouse::{
+        ClickhouseColumn, ClickhouseColumnType, ClickhouseInt, VersionSync,
+    };
 
-lazy_static! {
-    pub static ref VERSION_SYNC_REGEX: Regex =
-        //            source_model_name         source     target_model_name   dest_version
-        Regex::new(r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-9_]+)__)?([0-9_]+).sql$")
-            .unwrap();
-}
+    #[test]
+    fn test_version_sync_function_generation() {
+        let columns = vec![
+            ClickhouseColumn {
+                name: "eventId".to_string(),
+                column_type: ClickhouseColumnType::String,
+                arity: crate::framework::schema::FieldArity::Required,
+                unique: false,
+                primary_key: true,
+                default: None,
+            },
+            ClickhouseColumn {
+                name: "timestamp".to_string(),
+                column_type: ClickhouseColumnType::DateTime,
+                arity: crate::framework::schema::FieldArity::Required,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            ClickhouseColumn {
+                name: "userId".to_string(),
+                column_type: ClickhouseColumnType::String,
+                arity: crate::framework::schema::FieldArity::Required,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            ClickhouseColumn {
+                name: "activity".to_string(),
+                column_type: ClickhouseColumnType::String,
+                arity: crate::framework::schema::FieldArity::Required,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+        ];
+        assert_eq!(
+            VersionSync::migration_function(&columns[0..3], &columns),
+            "(eventId, timestamp, userId) -> (eventId, timestamp, userId, 'activity')"
+        );
 
-impl VersionSync {
-    fn migration_function_name(&self) -> String {
-        format!(
-            "{}_migrate__{}__{}",
-            self.model_name,
-            self.source_version.replace('.', "_"),
-            self.dest_version.replace('.', "_"),
-        )
-    }
+        let mut no_timestamp = columns.clone();
+        no_timestamp.remove(1);
+        assert_eq!(
+            VersionSync::migration_function(&no_timestamp, &columns),
+            "(eventId, userId, activity) -> (eventId, '2024-02-20T23:14:57.788Z', userId, activity)"
+        );
 
-    fn migration_trigger_name(&self) -> String {
-        format!(
-            "{}_trigger__{}__{}",
-            self.model_name,
-            self.source_version.replace('.', "_"),
-            self.dest_version.replace('.', "_"),
-        )
-    }
-
-    pub fn create_function_query(&self) -> String {
-        format!(
-            "CREATE FUNCTION {} AS {}",
-            self.migration_function_name(),
-            self.migration_function
-        )
-    }
-    pub fn drop_function_query(&self) -> String {
-        format!("DROP FUNCTION IF EXISTS {}", self.migration_function_name())
-    }
-
-    pub fn create_trigger_query(self) -> String {
-        CreateVersionSyncTriggerQuery::build(self)
-    }
-
-    pub fn drop_trigger_query(&self) -> String {
-        format!(
-            "DROP VIEW IF EXISTS {}.{}",
-            self.db_name,
-            self.migration_trigger_name()
-        )
+        let mut int_user_id = columns.clone();
+        int_user_id[2].column_type = ClickhouseColumnType::ClickhouseInt(ClickhouseInt::Int32);
+        assert_eq!(
+            VersionSync::migration_function(&columns, &int_user_id),
+            "(eventId, timestamp, userId, activity) -> (eventId, timestamp, 0, activity)"
+        );
     }
 }
 

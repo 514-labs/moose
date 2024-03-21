@@ -15,10 +15,12 @@ use crate::framework::sdks::TypescriptObjects;
 use crate::framework::typescript::get_typescript_models_dir;
 use crate::framework::typescript::SendFunction;
 use crate::infrastructure::olap;
+use crate::infrastructure::olap::clickhouse::queries::CreateAliasQuery;
+use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
+use crate::infrastructure::olap::clickhouse::ClickhouseKafkaTrigger;
+use crate::infrastructure::olap::clickhouse::ClickhouseTable;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
-use crate::infrastructure::olap::clickhouse::{ClickhouseKafkaTrigger, VERSION_SYNC_REGEX};
-use crate::infrastructure::olap::clickhouse::{ClickhouseTable, VersionSync};
-use crate::infrastructure::stream;
+use crate::infrastructure::stream::redpanda;
 use crate::project::Project;
 use crate::project::PROJECT;
 
@@ -64,6 +66,7 @@ pub struct SchemaVersion {
     pub typescript_objects: HashMap<String, TypescriptObjects>,
 }
 
+// TODO: save this object somewhere so that we can clean up removed models
 #[derive(Debug, Clone)]
 pub struct FrameworkObjectVersions {
     pub current_version: String,
@@ -90,78 +93,6 @@ pub struct RouteMeta {
     pub original_file_path: PathBuf,
     pub table_name: String,
     pub view_name: Option<String>,
-}
-
-pub fn get_all_version_syncs(
-    project: &Project,
-    framework_object_versions: &FrameworkObjectVersions,
-) -> anyhow::Result<Vec<VersionSync>> {
-    let flows_dir = project.flows_dir();
-    let mut version_syncs = vec![];
-    for entry in std::fs::read_dir(flows_dir)? {
-        let entry = entry?;
-        let path = entry.path();
-        if !path.is_dir() {
-            if let Some(captures) =
-                VERSION_SYNC_REGEX.captures(entry.file_name().to_string_lossy().as_ref())
-            {
-                let from_table_name = captures.get(1).unwrap().as_str();
-                let to_table_name = captures.get(4).map_or(from_table_name, |m| m.as_str());
-
-                let from_version = captures.get(2).unwrap().as_str().replace('_', ".");
-                let to_version = captures.get(5).unwrap().as_str().replace('_', ".");
-
-                let from_version_models = framework_object_versions
-                    .previous_version_models
-                    .get(&from_version);
-                let to_version_models = if to_version == framework_object_versions.current_version {
-                    Some(&framework_object_versions.current_models)
-                } else {
-                    framework_object_versions
-                        .previous_version_models
-                        .get(&to_version)
-                };
-
-                match (from_version_models, to_version_models) {
-                    (Some(from_version_models), Some(to_version_models)) => {
-                        let from_table = from_version_models.models.get(from_table_name);
-                        let to_table = to_version_models.models.get(to_table_name);
-                        match (from_table, to_table) {
-                            (Some(from_table), Some(to_table)) => {
-                                let version_sync = VersionSync {
-                                    db_name: from_table.table.db_name.clone(),
-                                    model_name: from_table.data_model.name.clone(),
-                                    source_version: from_version.clone(),
-                                    source_table: from_table.table.clone(),
-                                    dest_version: to_version.clone(),
-                                    dest_table: to_table.table.clone(),
-                                    migration_function: std::fs::read_to_string(&path)?,
-                                };
-                                version_syncs.push(version_sync);
-                            }
-                            _ => {
-                                return Err(anyhow::anyhow!(
-                                    "Failed to find tables in versions {:?}",
-                                    path.file_name()
-                                ));
-                            }
-                        }
-                    }
-                    _ => {
-                        debug!(
-                            "Version unavailable for version sync {:?}. from: {:?} to: {:?}",
-                            path.file_name(),
-                            from_version_models,
-                            to_version_models,
-                        );
-                    }
-                }
-            };
-
-            debug!("Processing version sync: {:?}.", path);
-        }
-    }
-    Ok(version_syncs)
 }
 
 pub fn get_all_framework_objects(
@@ -274,6 +205,22 @@ pub(crate) async fn drop_tables(
     Ok(())
 }
 
+pub async fn create_or_replace_table_alias(
+    fo: &FrameworkObject,
+    previous_version: &FrameworkObject,
+    configured_client: &ConfiguredDBClient,
+) -> anyhow::Result<()> {
+    drop_tables(fo, configured_client).await?;
+
+    let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
+    drop_kafka_trigger(&view, configured_client).await?;
+
+    let query = CreateAliasQuery::build(&previous_version.table, &fo.table);
+    olap::clickhouse::run_query(&query, configured_client).await?;
+
+    Ok(())
+}
+
 pub(crate) async fn create_or_replace_tables(
     project_name: &str,
     fo: &FrameworkObject,
@@ -375,7 +322,7 @@ pub async fn remove_table_and_topics_from_schema_file_path(
     for (k, meta) in route_table.clone().into_iter() {
         if meta.original_file_path == schema_file_path {
             let topics = vec![meta.table_name.clone()];
-            match stream::redpanda::delete_topics(&project.redpanda_config, topics).await {
+            match redpanda::delete_topics(&project.redpanda_config, topics).await {
                 Ok(_) => println!("Topics deleted successfully"),
                 Err(e) => eprintln!("Failed to delete topics: {}", e),
             }
@@ -425,8 +372,84 @@ pub fn schema_file_path_to_ingest_route(
     PathBuf::from("ingest").join(route).join(version)
 }
 
+pub async fn set_up_topic_and_tables_and_route(
+    project: &Project,
+    fo: &FrameworkObject,
+    previous_version: &Option<(String, HashMap<String, FrameworkObject>)>,
+    configured_client: &ConfiguredDBClient,
+    version: &str,
+    route_table: &mut HashMap<PathBuf, RouteMeta>,
+    ingest_route: PathBuf,
+) -> anyhow::Result<()> {
+    let topic = format!("{}_{}", fo.data_model.name, version.replace('.', "_"));
+
+    let previous_fo = match previous_version {
+        None => None,
+        Some((_, previous_models)) => previous_models.get(&fo.topic),
+    };
+    let same_as_previous = match previous_fo {
+        None => false,
+        Some(previous) => previous.data_model == fo.data_model,
+    };
+
+    if same_as_previous {
+        match redpanda::delete_topics(&project.redpanda_config, vec![topic]).await {
+            Ok(_) => println!("Topics deleted successfully"),
+            Err(e) => eprintln!("Failed to delete topics: {}", e),
+        }
+
+        create_or_replace_table_alias(fo, previous_fo.unwrap(), configured_client).await?;
+    } else {
+        match redpanda::create_topics(&project.redpanda_config, vec![topic]).await {
+            Ok(_) => println!("Topics created successfully"),
+            Err(e) => eprintln!("Failed to create topics: {}", e),
+        }
+
+        debug!("Creating table & view: {:?}", fo.table.name);
+
+        create_or_replace_tables(&project.name(), fo, configured_client).await?;
+        if !PROJECT.lock().unwrap().is_production {
+            let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
+            create_or_replace_kafka_trigger(&view, configured_client).await?;
+        }
+        debug!("Table created: {:?}", fo.table.name);
+    }
+
+    let ingest_topic_name = if same_as_previous {
+        // this is a gross way to find the previous ingest route
+        let old_base_path =
+            project.old_version_location(previous_version.as_ref().unwrap().0.as_str())?;
+        let old_ingest_route = schema_file_path_to_ingest_route(
+            &old_base_path,
+            &previous_fo.unwrap().original_file_path,
+            fo.data_model.name.clone(),
+            previous_version.as_ref().unwrap().0.as_str(),
+        );
+        route_table
+            .get(&old_ingest_route)
+            .unwrap()
+            .table_name
+            .clone()
+    } else {
+        fo.table.name.clone()
+    };
+
+    route_table.insert(
+        ingest_route.clone(),
+        RouteMeta {
+            original_file_path: fo.original_file_path.clone(),
+            table_name: ingest_topic_name,
+            view_name: Some(fo.table.view_name()),
+        },
+    );
+
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
 pub async fn process_objects(
     framework_objects: &HashMap<String, FrameworkObject>,
+    previous_version: &Option<(String, HashMap<String, FrameworkObject>)>,
     project: Arc<Project>,
     schema_dir: &Path,
     configured_client: &ConfiguredDBClient,
@@ -441,38 +464,20 @@ pub async fn process_objects(
             fo.data_model.name.clone(),
             version,
         );
-        let topics = vec![format!(
-            "{}_{}",
-            fo.topic.clone(),
-            version.replace('.', "_")
-        )];
-        match stream::redpanda::create_topics(&project.redpanda_config, topics).await {
-            Ok(_) => println!("Topics created successfully"),
-            Err(e) => eprintln!("Failed to create topics: {}", e),
-        }
 
-        debug!("Creating table & view: {:?}", fo.table.name);
-
-        create_or_replace_tables(&project.name(), fo, configured_client).await?;
-
-        if !PROJECT.lock().unwrap().is_production {
-            let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
-            create_or_replace_kafka_trigger(&view, configured_client).await?;
-        }
-
-        debug!("Table created: {:?}", fo.table.name);
+        set_up_topic_and_tables_and_route(
+            &project,
+            fo,
+            previous_version,
+            configured_client,
+            version,
+            route_table,
+            ingest_route.clone(),
+        )
+        .await?;
 
         let typescript_objects = create_language_objects(fo, &ingest_route, project.clone())?;
         compilable_objects.insert(name.clone(), typescript_objects);
-
-        route_table.insert(
-            ingest_route,
-            RouteMeta {
-                original_file_path: fo.original_file_path.clone(),
-                table_name: fo.table.name.clone(),
-                view_name: Some(fo.table.view_name()),
-            },
-        );
     }
     Ok(())
 }

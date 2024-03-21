@@ -88,12 +88,15 @@ use log::info;
 use tokio::sync::RwLock;
 
 use crate::framework::controller::{
-    create_or_replace_version_sync, get_all_framework_objects, get_all_version_syncs,
-    process_objects, FrameworkObject, FrameworkObjectVersions, RouteMeta, SchemaVersion,
+    create_or_replace_version_sync, get_all_framework_objects, process_objects, FrameworkObject,
+    FrameworkObjectVersions, RouteMeta, SchemaVersion,
 };
 use crate::framework::sdks::generate_ts_sdk;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::olap;
+use crate::infrastructure::olap::clickhouse::version_sync::{
+    get_all_version_syncs, parse_version, version_to_string,
+};
 use crate::infrastructure::stream::redpanda;
 use crate::project::{Project, PROJECT};
 use crate::utilities::package_managers;
@@ -106,6 +109,7 @@ use super::{Message, MessageType};
 pub mod clean;
 pub mod docker_packager;
 pub mod initialize;
+pub mod migrate;
 pub mod start;
 pub mod stop;
 mod util;
@@ -291,54 +295,56 @@ async fn initialize_project_state(
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let producer = redpanda::create_producer(project.redpanda_config.clone());
 
-    let mut old_version_dir = project.internal_dir()?;
-    old_version_dir.push("versions");
-
     info!("Checking for old version directories...");
 
     let mut framework_object_versions =
         FrameworkObjectVersions::new(project.version().to_string(), project.schemas_dir().clone());
-    match std::fs::read_dir(&old_version_dir) {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            debug!("No old version directories found");
-        }
-        Ok(read_dir) => {
-            for entry in read_dir {
-                let entry = entry?;
-                let path = entry.path();
-                if path.is_dir() {
-                    let version = path.file_name().unwrap().to_str().unwrap().to_string();
 
-                    debug!("Processing old version directory: {:?}", path);
+    let mut old_versions = project
+        .supported_old_versions
+        .keys()
+        .map(|v| parse_version(v))
+        .collect::<Vec<Vec<i32>>>();
+    old_versions.sort();
 
-                    let mut framework_objects = HashMap::new();
-                    get_all_framework_objects(&mut framework_objects, &path, &version)?;
+    // TODO: enforce linearity, if 1.1 is linked to 2.0, 1.2 cannot be added
+    let mut previous_version: Option<(String, HashMap<String, FrameworkObject>)> = None;
 
-                    let mut compilable_objects = HashMap::new();
-                    process_objects(
-                        &framework_objects,
-                        project.clone(),
-                        &path,
-                        &configured_client,
-                        &mut compilable_objects,
-                        route_table,
-                        &version,
-                    )
-                    .await?;
+    for version in old_versions.iter() {
+        let version = version_to_string(version);
 
-                    framework_object_versions.previous_version_models.insert(
-                        version,
-                        SchemaVersion {
-                            base_path: path,
-                            models: framework_objects,
-                            typescript_objects: compilable_objects,
-                        },
-                    );
-                }
-            }
-        }
-        Err(e) => Err(e)?,
-    };
+        let path = project.old_version_location(&version)?;
+
+        debug!("Processing old version directory: {:?}", path);
+
+        let mut framework_objects = HashMap::new();
+        get_all_framework_objects(&mut framework_objects, &path, &version)?;
+
+        let mut compilable_objects = HashMap::new();
+        process_objects(
+            &framework_objects,
+            &previous_version,
+            project.clone(),
+            &path,
+            &configured_client,
+            &mut compilable_objects,
+            route_table,
+            &version,
+        )
+        .await?;
+
+        let schema_version = SchemaVersion {
+            base_path: path,
+            models: framework_objects,
+            typescript_objects: compilable_objects,
+        };
+        // we should not need to clone here
+        framework_object_versions
+            .previous_version_models
+            .insert(version.clone(), schema_version.clone());
+
+        previous_version = Some((version.clone(), schema_version.models));
+    }
 
     let schema_dir = project.schemas_dir();
     info!("Starting schema directory crawl...");
@@ -350,6 +356,7 @@ async fn initialize_project_state(
 
         let result = process_objects(
             &framework_objects,
+            &previous_version,
             project.clone(),
             &schema_dir,
             &configured_client,
@@ -402,6 +409,7 @@ async fn initialize_project_state(
         async {
             let version_syncs = get_all_version_syncs(&project, &framework_object_versions)?;
             for vs in version_syncs {
+                debug!("Creating version sync: {:?}", vs);
                 create_or_replace_version_sync(vs, &configured_client).await?;
             }
             Ok(())

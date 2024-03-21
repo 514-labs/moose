@@ -73,9 +73,8 @@ impl Routine for CreateDockerfile {
         ensure_docker_running()?;
 
         let file_path = internal_dir.join("packager/Dockerfile");
-        let file_path_display = file_path.clone();
 
-        info!("Creating Dockerfile at: {:?}", file_path_display);
+        info!("Creating Dockerfile at: {:?}", file_path);
 
         fs::create_dir_all(file_path.parent().unwrap()).map_err(|err| {
             error!("Failed to create directory for project packaging: {}", err);
@@ -88,7 +87,7 @@ impl Routine for CreateDockerfile {
             )
         })?;
 
-        fs::write(file_path, DOCKER_FILE).map_err(|err| {
+        fs::write(&file_path, DOCKER_FILE).map_err(|err| {
             error!("Failed to write Docker file for project: {}", err);
             RoutineFailure::new(
                 Message::new(
@@ -99,7 +98,7 @@ impl Routine for CreateDockerfile {
             )
         })?;
 
-        info!("Dockerfile created at: {:?}", file_path_display);
+        info!("Dockerfile created at: {:?}", file_path);
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
             "created dockerfile".to_string(),

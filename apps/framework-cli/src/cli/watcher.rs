@@ -145,7 +145,7 @@ async fn process_events(
             &framework_object_versions.current_version,
         ));
         let topics = vec![fo.data_model.name.clone()];
-        match redpanda::delete_topics(&project.redpanda_config.clone(), topics).await {
+        match redpanda::delete_topics(&project.redpanda_config, topics).await {
             Ok(_) => println!("Topics deleted successfully"),
             Err(e) => eprintln!("Failed to delete topics: {}", e),
         }
@@ -250,6 +250,7 @@ async fn watch(
                 let mut events = vec![event];
                 loop {
                     match rx.try_recv() {
+                        // pull all events and process them in one go
                         Ok(Ok(event)) => events.push(event),
                         Ok(Err(e)) => {
                             warn!("File watcher event caused a failure: {}", e);

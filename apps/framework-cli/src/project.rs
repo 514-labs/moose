@@ -277,4 +277,12 @@ impl Project {
             LanguageProjectConfig::Typescript(package_json) => &package_json.version,
         }
     }
+
+    pub fn old_version_location(&self, version: &str) -> Result<PathBuf, std::io::Error> {
+        let mut old_base_path = self.internal_dir()?;
+        old_base_path.push("versions");
+        old_base_path.push(version);
+
+        Ok(old_base_path)
+    }
 }

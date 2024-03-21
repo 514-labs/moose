@@ -26,19 +26,13 @@ fn setup_dev() -> Result<CargoDev, anyhow::Error> {
     // Setup the project with the cli
     let mut init_cmd = Command::cargo_bin("moose-cli")?;
 
-    init_cmd
-        .env("MOOSE-FEATURES-COMING_SOON_WALL", "false")
-        .arg("init")
-        .arg("test-app")
-        .arg("ts")
-        .arg(dir);
+    init_cmd.arg("init").arg("test-app").arg("ts").arg(dir);
 
     init_cmd.assert().success();
 
     let mut cmd = Command::cargo_bin("moose-cli")?;
 
     let dev_process = cmd
-        .env("MOOSE-FEATURES-COMING_SOON_WALL", "false")
         .arg("dev")
         .stdout(Stdio::piped())
         .current_dir(&temp)
@@ -65,21 +59,6 @@ fn setup_dev() -> Result<CargoDev, anyhow::Error> {
 
 fn teardown_dev(mut dev_state: CargoDev) {
     dev_state.dev.kill().unwrap();
-}
-
-#[test]
-fn should_not_run_if_coming_soon_wall_is_blocking() -> Result<(), anyhow::Error> {
-    let temp = assert_fs::TempDir::new().unwrap();
-
-    let mut cmd = Command::cargo_bin("moose-cli")?;
-
-    cmd.env("MOOSE-FEATURES-COMING_SOON_WALL", "true")
-        .arg("dev")
-        .current_dir(temp.path());
-
-    cmd.assert().success();
-
-    Ok(())
 }
 
 #[test]

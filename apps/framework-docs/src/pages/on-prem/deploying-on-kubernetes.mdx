@@ -1,0 +1,174 @@
+# Deploying on Kubernetes
+
+Moose can be deployed to Kubernetes clusters, whether it's your own on-prem
+cluster or one provided via Google's Kubernetes Engine (GKE) or Amazon's
+Elastic Kubernetes Service (EKS).
+
+    Essentially you'll need to create a moose-deployment YAML file. Here is an example:
+
+```yaml filename="moose-deployment.yaml" copy
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: moosedeployment
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: moosedeploy
+  template:
+    metadata:
+      labels:
+        app: moosedeploy
+        ver: v1
+    spec:
+      containers:
+        - name: moosedeploy
+          image: 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.140
+          ports:
+            - containerPort: 4000
+```
+
+> Make sure to update the image key above with the location of your repository and image tag.
+
+You may also need to configure a load balancer to route external traffic to you moose ingest points.
+
+```yaml filename="moose-lb-service.yaml" copy
+apiVersion: v1
+kind: Service
+metadata:
+  name: web-lb
+spec:
+  selector:
+    app: moosedeploy
+  ports:
+    - protocol: TCP
+      port: 4000
+      targetPort: 4000
+  type: LoadBalancer
+```
+
+## Configuring container environment variables
+
+    Inside your `moose-deployment.yaml` file you'll need to add an `env` section for environment variables. In the following example snippit we're using Kubernetes secretes which is an industry best practice.
+
+```yaml filename="moose-deployment.yaml" copy
+spec:
+  containers:
+    - name: moosedeploy
+      image: 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.140
+      ports:
+        - containerPort: 4000
+      env:
+        - name: MOOSE_REDPANDA_CONFIG__BROKER
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-redpanda-config--broker
+              key: sk-moose-redpanda-config--broker
+        - name: MOOSE_REDPANDA_CONFIG___MESSAGE_TIMEOUT_MS
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-redpanda-config--message-timeout-ms
+              key: sk-moose-redpanda-config--message-timeout-ms
+        - name: MOOSE_REDPANDA_CONFIG__SASL_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-redpanda-config--sasl-username
+              key: sk-moose-redpanda-config--sasl-username
+        - name: MOOSE_REDPANDA_CONFIG__SASL_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-redpanda-config--sasl-password
+              key: sk-moose-redpanda-config--sasl-password
+        - name: MOOSE_REDPANDA_CONFIG__SASL_MECHANISM
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-redpanda-config--sasl-mechanism
+              key: sk-moose-redpanda-config--sasl-mechanism
+        - name: MOOSE_REDPANDA_CONFIG__SECURITY_PROTOCOL
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-redpanda-config--security-protocol
+              key: sk-moose-redpanda-config--security-protocol
+        - name: MOOSE_CLICKHOUSE_CONFIG__DB_NAME
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-clickhouse-config--db-name
+              key: sk-moose-clickhouse-config--db-name
+        - name: MOOSE_CLICKHOUSE_CONFIG__USER
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-clickhouse-config--user
+              key: sk-moose-clickhouse-config--user
+        - name: MOOSE_CLICKHOUSE_CONFIG__PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-clickhouse-config--password
+              key: sk-moose-clickhouse-config--password
+        - name: MOOSE_CLICKHOUSE_CONFIG__HOST
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-clickhouse-config--host
+              key: sk-moose-clickhouse-config--host
+        - name: MOOSE_CLICKHOUSE_CONFIG__HOST_PORT
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-clickhouse-config--host-port
+              key: sk-moose-clickhouse-config--host-port
+        - name: MOOSE_CLICKHOUSE_CONFIG__USE_SSL
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-clickhouse-config--use-ssl
+              key: sk-moose-clickhouse-config--use-ssl
+        - name: MOOSE_CLICKHOUSE_CONFIG__POSTGRES_PORT
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-clickhouse-config--postgres-port
+              key: sk-moose-clickhouse-config--postgres-port
+        - name: MOOSE_CLICKHOUSE_CONFIG__KAFKA_PORT
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-clickhouse-config--kafka-port
+              key: sk-moose-clickhouse-config--kafka-port
+        - name: MOOSE_HTTP_SERVER_CONFIG__HOST
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-http-server-config--host
+              key: sk-moose-http-server-config--host
+        - name: MOOSE_HTTP_SERVER_CONFIG__PORT
+          valueFrom:
+            secretKeyRef:
+              name: sn-moose-http-server-config--port
+              key: sk-moose-http-server-config--port
+```
+
+We've created a handy shell script which you can use in your cloud shell to create the above secrets.
+
+To use the script you simply pass the environment variable name and the script will take care of create the `secretKeyRef` name and key values for you.
+
+```txt filename="Terminal" copy
+$ ./set-env-secret.sh MOOSE_REDPANDA_CONFIG__SASL_PASSWORD
+```
+
+```bash filename="set-env-secret.sh" copy
+#!/bin/bash
+# Helper script to set a secret in the kubernetes cluster using the environment name and secret value
+# Example: ./set-env-secret.sh MOOSE_CLICKHOUSE_CONFIG__DB_NAME hosteddb
+if [ -z "$1" ]
+then
+      echo "You must specify the environment key name as the first argument. Example: ./set-env-secret.sh MOOSE_CLICKHOUSE_CONFIG__DB_NAME hosteddb"
+      exit 1
+fi
+
+if [ -z "$2" ]
+then
+      echo "You must specify the secret value as the second argument. Example: ./set-env-secret.sh MOOSE_CLICKHOUSE_CONFIG__DB_NAME hosteddb"
+      exit 1
+fi
+
+lc_str=${1,,}
+lc_str=${lc_str//_/-}
+
+kubectl delete secret "sn-${lc_str}"
+kubectl create secret generic "sn-${lc_str}" --from-literal="sk-${lc_str}"=$2
+```

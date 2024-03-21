@@ -9,8 +9,10 @@ use std::fs;
 use std::sync::Arc;
 
 static DOCKER_FILE: &str = r#"
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 # Created from docker_packager routine
+
+ARG DEBIAN_FRONTEND=noninteractive
 
 # Update the package lists for upgrades for security purposes
 RUN apt-get update && apt-get upgrade -y
@@ -30,6 +32,10 @@ COPY ./versions .moose/versions
 
 # Expose the ports on which the application will listen
 EXPOSE 4000
+
+# Setup healthcheck
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD curl -f http://localhost:4000/health || exit 1
 
 # post install
 RUN locale-gen en_US.UTF-8
@@ -72,10 +78,23 @@ impl Routine for CreateDockerfile {
 
         ensure_docker_running()?;
 
+        let versions_file_path = internal_dir.join("packager/versions/.gitkeep");
+
+        info!("Creating versions at: {:?}", versions_file_path);
+        fs::create_dir_all(versions_file_path.parent().unwrap()).map_err(|err| {
+            error!("Failed to create directory for app versions: {}", err);
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to create directory for app versions".to_string(),
+                ),
+                err,
+            )
+        })?;
+
         let file_path = internal_dir.join("packager/Dockerfile");
 
         info!("Creating Dockerfile at: {:?}", file_path);
-
         fs::create_dir_all(file_path.parent().unwrap()).map_err(|err| {
             error!("Failed to create directory for project packaging: {}", err);
             RoutineFailure::new(

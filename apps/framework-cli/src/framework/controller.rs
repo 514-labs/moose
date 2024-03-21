@@ -15,15 +15,13 @@ use crate::framework::sdks::TypescriptObjects;
 use crate::framework::typescript::get_typescript_models_dir;
 use crate::framework::typescript::SendFunction;
 use crate::infrastructure::olap;
+use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
 use crate::infrastructure::olap::clickhouse::queries::CreateAliasQuery;
 use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
-use crate::infrastructure::olap::clickhouse::ClickhouseKafkaTrigger;
-use crate::infrastructure::olap::clickhouse::ClickhouseTable;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
 use crate::project::Project;
 use crate::project::PROJECT;
-
 #[cfg(test)]
 use crate::utilities::constants::SCHEMAS_DIR;
 
@@ -34,7 +32,7 @@ use super::typescript::TypescriptInterface;
 #[derive(Debug, Clone)]
 pub struct FrameworkObject {
     pub data_model: DataModel,
-    pub table: ClickhouseTable,
+    pub table: ClickHouseTable,
     pub topic: String,
     pub ts_interface: TypescriptInterface,
     pub original_file_path: PathBuf,
@@ -47,10 +45,13 @@ pub fn framework_object_mapper(
 ) -> FrameworkObject {
     let clickhouse_table =
         olap::clickhouse::mapper::std_table_to_clickhouse_table(s.to_table(version));
+
+    let topic = format!("{}_{}", s.name.clone(), version.replace('.', "_"));
+
     FrameworkObject {
         data_model: s.clone(),
         table: clickhouse_table,
-        topic: s.name.clone(),
+        topic,
         ts_interface: framework::typescript::mapper::std_table_to_typescript_interface(
             s.to_table(version),
             s.name.as_str(),
@@ -67,6 +68,8 @@ pub struct SchemaVersion {
 }
 
 // TODO: save this object somewhere so that we can clean up removed models
+// TODO abstract this with an iterator and some helper functions to make the internal state hidden.
+// That would enable us to do things like .next() and .peek() on the iterator that are now not possible
 #[derive(Debug, Clone)]
 pub struct FrameworkObjectVersions {
     pub current_version: String,
@@ -92,7 +95,6 @@ impl FrameworkObjectVersions {
 pub struct RouteMeta {
     pub original_file_path: PathBuf,
     pub table_name: String,
-    pub view_name: Option<String>,
 }
 
 pub fn get_all_framework_objects(
@@ -135,39 +137,6 @@ pub fn get_framework_objects_from_schema_file(
     Ok(framework_objects)
 }
 
-pub async fn drop_kafka_trigger(
-    view: &ClickhouseKafkaTrigger,
-    configured_client: &ConfiguredDBClient,
-) -> anyhow::Result<()> {
-    let drop_view_query = view.drop_materialized_view_query()?;
-    olap::clickhouse::run_query(&drop_view_query, configured_client).await?;
-    Ok(())
-}
-
-pub(crate) async fn create_or_replace_kafka_trigger(
-    view: &ClickhouseKafkaTrigger,
-    configured_client: &ConfiguredDBClient,
-) -> anyhow::Result<()> {
-    let create_view_query = view.create_materialized_view_query().map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to get clickhouse query: {:?}", e),
-        )
-    })?;
-
-    // Clickhouse doesn't support dropping a view if it doesn't exist, so we need to drop it first in case the schema has changed
-    drop_kafka_trigger(view, configured_client).await?;
-    olap::clickhouse::run_query(&create_view_query, configured_client)
-        .await
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Failed to create view in clickhouse: {}", e),
-            )
-        })?;
-    Ok(())
-}
-
 pub async fn create_or_replace_version_sync(
     version_sync: VersionSync,
     configured_client: &ConfiguredDBClient,
@@ -194,14 +163,9 @@ pub(crate) async fn drop_tables(
 ) -> anyhow::Result<()> {
     info!("Dropping tables for: {:?}", fo.table.name);
 
-    let drop_data_table_query = fo.table.drop_kafka_table_query()?;
-
+    let drop_data_table_query = fo.table.drop_data_table_query()?;
     olap::clickhouse::run_query(&drop_data_table_query, configured_client).await?;
 
-    if !PROJECT.lock().unwrap().is_production {
-        let drop_kafka_table_query = fo.table.drop_data_table_query()?;
-        olap::clickhouse::run_query(&drop_kafka_table_query, configured_client).await?;
-    }
     Ok(())
 }
 
@@ -212,9 +176,6 @@ pub async fn create_or_replace_table_alias(
 ) -> anyhow::Result<()> {
     drop_tables(fo, configured_client).await?;
 
-    let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
-    drop_kafka_trigger(&view, configured_client).await?;
-
     let query = CreateAliasQuery::build(&previous_version.table, &fo.table);
     olap::clickhouse::run_query(&query, configured_client).await?;
 
@@ -222,7 +183,6 @@ pub async fn create_or_replace_table_alias(
 }
 
 pub(crate) async fn create_or_replace_tables(
-    project_name: &str,
     fo: &FrameworkObject,
     configured_client: &ConfiguredDBClient,
 ) -> anyhow::Result<()> {
@@ -240,14 +200,11 @@ pub(crate) async fn create_or_replace_tables(
         })?;
 
     // Clickhouse doesn't support dropping a view if it doesn't exist, so we need to drop it first in case the schema has changed
-    drop_tables(fo, configured_client).await?;
+    if !PROJECT.lock().unwrap().is_production {
+        drop_tables(fo, configured_client).await?;
+    }
 
     olap::clickhouse::run_query(&create_data_table_query, configured_client).await?;
-
-    if !PROJECT.lock().unwrap().is_production {
-        let create_kafka_table_query = fo.table.create_kafka_table_query(project_name)?;
-        olap::clickhouse::run_query(&create_kafka_table_query, configured_client).await?;
-    }
 
     Ok(())
 }
@@ -336,17 +293,6 @@ pub async fn remove_table_and_topics_from_schema_file_path(
                     )
                 })?;
 
-            if let Some(view_name) = meta.view_name {
-                olap::clickhouse::delete_table_or_view(view_name, configured_client)
-                    .await
-                    .map_err(|e| {
-                        Error::new(
-                            ErrorKind::Other,
-                            format!("Failed to create table in clickhouse: {}", e),
-                        )
-                    })?;
-            }
-
             (*route_table).remove(&k);
         }
     }
@@ -377,11 +323,10 @@ pub async fn set_up_topic_and_tables_and_route(
     fo: &FrameworkObject,
     previous_version: &Option<(String, HashMap<String, FrameworkObject>)>,
     configured_client: &ConfiguredDBClient,
-    version: &str,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     ingest_route: PathBuf,
 ) -> anyhow::Result<()> {
-    let topic = format!("{}_{}", fo.data_model.name, version.replace('.', "_"));
+    let topic = fo.topic.clone();
 
     let previous_fo = match previous_version {
         None => None,
@@ -407,11 +352,8 @@ pub async fn set_up_topic_and_tables_and_route(
 
         debug!("Creating table & view: {:?}", fo.table.name);
 
-        create_or_replace_tables(&project.name(), fo, configured_client).await?;
-        if !PROJECT.lock().unwrap().is_production {
-            let view = ClickhouseKafkaTrigger::from_clickhouse_table(&fo.table);
-            create_or_replace_kafka_trigger(&view, configured_client).await?;
-        }
+        create_or_replace_tables(fo, configured_client).await?;
+
         debug!("Table created: {:?}", fo.table.name);
     }
 
@@ -439,7 +381,6 @@ pub async fn set_up_topic_and_tables_and_route(
         RouteMeta {
             original_file_path: fo.original_file_path.clone(),
             table_name: ingest_topic_name,
-            view_name: Some(fo.table.view_name()),
         },
     );
 
@@ -470,7 +411,6 @@ pub async fn process_objects(
             fo,
             previous_version,
             configured_client,
-            version,
             route_table,
             ingest_route.clone(),
         )

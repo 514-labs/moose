@@ -1,4 +1,6 @@
 use log::{error, info};
+use rdkafka::consumer::stream_consumer::StreamConsumer;
+use rdkafka::consumer::Consumer;
 use rdkafka::{
     admin::{AdminClient, AdminOptions, NewTopic, TopicReplication},
     producer::{FutureProducer, Producer},
@@ -108,12 +110,7 @@ pub struct ConfiguredProducer {
 
 fn config_client(config: &RedpandaConfig) -> ClientConfig {
     let mut client_config = ClientConfig::new();
-    client_config
-        .set("bootstrap.servers", config.clone().broker)
-        .set(
-            "message.timeout.ms",
-            config.clone().message_timeout_ms.to_string(),
-        );
+    client_config.set("bootstrap.servers", config.clone().broker);
 
     if let Some(username) = config.clone().sasl_username {
         client_config.set("sasl.username", &username);
@@ -131,7 +128,12 @@ fn config_client(config: &RedpandaConfig) -> ClientConfig {
 }
 
 pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
-    let client_config = config_client(&config);
+    let mut client_config = config_client(&config);
+
+    client_config.set(
+        "message.timeout.ms",
+        config.clone().message_timeout_ms.to_string(),
+    );
     let producer = client_config.create().expect("Failed to create producer");
     ConfiguredProducer { producer, config }
 }
@@ -150,4 +152,23 @@ pub async fn fetch_topics(
         .map(|t| t.name().to_string())
         .collect();
     Ok(topics)
+}
+
+pub fn create_subscriber(config: &RedpandaConfig, group_id: &str, topic: &str) -> StreamConsumer {
+    let mut client_config = config_client(config);
+
+    client_config
+        .set("session.timeout.ms", "6000")
+        .set("enable.partition.eof", "false")
+        .set("group.id", group_id);
+
+    let consumer: StreamConsumer = client_config.create().expect("Failed to create consumer");
+
+    let topics = [topic];
+
+    consumer
+        .subscribe(&topics)
+        .expect("Can't subscribe to specified topic");
+
+    consumer
 }

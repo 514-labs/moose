@@ -1,3 +1,4 @@
+import { watch } from "npm:chokidar@3.6.0";
 import {
   CompressionCodecs,
   CompressionTypes,
@@ -5,12 +6,14 @@ import {
   Kafka,
   KafkaMessage,
   Producer,
-} from "npm:kafkajs";
-import SnappyCodec from "npm:kafkajs-snappy";
+} from "npm:kafkajs@2.2.4";
+import SnappyCodec from "npm:kafkajs-snappy@1.1.0";
 
 CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
 
 const cwd = Deno.args[0] || Deno.cwd();
+const FLOWS_DIR_PATH = `${cwd}/app/flows`;
+const FLOW_FILE = "flow.ts";
 
 const getVersion = (): string => {
   const version = JSON.parse(Deno.readTextFileSync(`${cwd}/package.json`))
@@ -35,37 +38,50 @@ const producer: Producer = kafka.producer({
 });
 
 const getFlows = (): Map<string, Map<string, string>> => {
-  const dirPath = `${cwd}/app/flows`;
-  const flowsDir = Deno.readDirSync(dirPath);
+  const flowsDir = Deno.readDirSync(FLOWS_DIR_PATH);
   const output = new Map<string, Map<string, string>>();
 
   for (const source of flowsDir) {
     if (!source.isDirectory) continue;
 
     const flows = new Map<string, string>();
-    const destinations = Deno.readDirSync(`${cwd}/app/flows/${source.name}`);
+    const destinations = Deno.readDirSync(`${FLOWS_DIR_PATH}/${source.name}`);
     for (const destination of destinations) {
       if (!destination.isDirectory) continue;
 
       const destinationFiles = Deno.readDirSync(
-        `${cwd}/app/flows/${source.name}/${destination.name}`,
+        `${FLOWS_DIR_PATH}/${source.name}/${destination.name}`,
       );
       for (const destinationFile of destinationFiles) {
         if (
           destinationFile.isFile &&
-          destinationFile.name.toLowerCase() === "flow.ts"
+          destinationFile.name.toLowerCase() === FLOW_FILE
         ) {
           flows.set(
             destination.name,
-            `${dirPath}/${source.name}/${destination.name}/${destinationFile.name}`,
+            `${FLOWS_DIR_PATH}/${source.name}/${destination.name}/${destinationFile.name}`,
           );
         }
       }
     }
-    output.set(source.name, flows);
+
+    if (flows.size > 0) {
+      output.set(source.name, flows);
+    }
   }
 
   return output;
+};
+
+const jsonDateReviver = (key: string, value: unknown): unknown => {
+  const iso8601Format =
+    /^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)?$/;
+
+  if (typeof value === "string" && iso8601Format.test(value)) {
+    return new Date(value);
+  }
+
+  return value;
 };
 
 const handleMessage = async (
@@ -73,12 +89,14 @@ const handleMessage = async (
   message: KafkaMessage,
   resolveOffset: (offset: string) => void,
 ): Promise<void> => {
-  for (let [destination, flowFilePath] of flows) {
+  for (const [destination, flowFilePath] of flows) {
     const transaction = await producer.transaction();
     try {
       const transform = await import(flowFilePath);
       const output = JSON.stringify(
-        transform.default(JSON.parse(message.value.toString())),
+        transform.default(
+          JSON.parse(message.value.toString(), jsonDateReviver),
+        ),
       );
       await transaction.send({
         topic: `${destination}_${version}`,
@@ -119,22 +137,39 @@ const startConsumer = async (): Promise<void> => {
       }
     },
   });
+  console.log("Consumer is running...");
 };
 
 const startProducer = async (): Promise<void> => {
   await producer.connect();
+  console.log("Producer is running...");
 };
 
-startProducer()
-  .then(() => {
-    startConsumer()
-      .then(() => {
-        console.log("Consumer is running...");
-      })
-      .catch((error) => {
-        console.error("Failed to start kafka consumer: ", error);
-      });
-  })
-  .catch((error) => {
-    console.error("Failed to start kafka producer: ", error);
+const startFlowsFilewatcher = (): void => {
+  const pathToWatch = `${FLOWS_DIR_PATH}/**/${FLOW_FILE}`;
+  watch(pathToWatch, { usePolling: true }).on("all", async (event, path) => {
+    if (path.endsWith(FLOW_FILE)) {
+      console.log("Flows updated, restarting kafka group...");
+      await consumer.disconnect();
+      await producer.disconnect();
+      await startKafkaGroup();
+    }
   });
+  console.log(`Watching for changes to ${pathToWatch}...`);
+};
+
+const startKafkaGroup = async (): Promise<void> => {
+  try {
+    await startProducer();
+
+    try {
+      await startConsumer();
+    } catch (error) {
+      console.error("Failed to start kafka consumer: ", error);
+    }
+  } catch (error) {
+    console.error("Failed to start kafka producer: ", error);
+  }
+};
+
+startKafkaGroup().then(() => startFlowsFilewatcher());

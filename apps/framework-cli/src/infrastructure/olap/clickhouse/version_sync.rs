@@ -1,8 +1,8 @@
 use crate::framework::controller::{FrameworkObject, FrameworkObjectVersions};
-use crate::infrastructure::olap::clickhouse::queries::CreateVersionSyncTriggerQuery;
-use crate::infrastructure::olap::clickhouse::{
-    ClickhouseColumn, ClickhouseColumnType, ClickhouseTable,
+use crate::infrastructure::olap::clickhouse::model::{
+    ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
 };
+use crate::infrastructure::olap::clickhouse::queries::CreateVersionSyncTriggerQuery;
 use crate::project::Project;
 use lazy_static::lazy_static;
 use log::debug;
@@ -147,9 +147,9 @@ pub struct VersionSync {
     pub db_name: String,
     pub model_name: String,
     pub source_version: String,
-    pub source_table: ClickhouseTable,
+    pub source_table: ClickHouseTable,
     pub dest_version: String,
-    pub dest_table: ClickhouseTable,
+    pub dest_table: ClickHouseTable,
     pub migration_function: String,
 }
 
@@ -164,8 +164,8 @@ impl VersionSync {
     pub fn write_new_version_sync() {}
 
     pub fn generate_migration_function(
-        old_columns: &[ClickhouseColumn],
-        new_columns: &[ClickhouseColumn],
+        old_columns: &[ClickHouseColumn],
+        new_columns: &[ClickHouseColumn],
     ) -> String {
         let input = old_columns
             .iter()
@@ -186,18 +186,18 @@ impl VersionSync {
                     }
                 }
                 match &c.column_type {
-                    ClickhouseColumnType::String => format!("'{}'", c.name),
-                    ClickhouseColumnType::Boolean => "true".to_string(),
-                    ClickhouseColumnType::ClickhouseInt(_) => "0".to_string(),
-                    ClickhouseColumnType::ClickhouseFloat(_) => "0.0".to_string(),
-                    ClickhouseColumnType::Decimal => "0.0".to_string(),
-                    ClickhouseColumnType::DateTime => "'2024-02-20T23:14:57.788Z'".to_string(),
-                    ClickhouseColumnType::Json => format!("'{{\"{}\": null}}'", c.name),
-                    ClickhouseColumnType::Bytes => "0.0".to_string(),
-                    ClickhouseColumnType::Enum(data_enum) => {
+                    ClickHouseColumnType::String => format!("'{}'", c.name),
+                    ClickHouseColumnType::Boolean => "true".to_string(),
+                    ClickHouseColumnType::ClickhouseInt(_) => "0".to_string(),
+                    ClickHouseColumnType::ClickhouseFloat(_) => "0.0".to_string(),
+                    ClickHouseColumnType::Decimal => "0.0".to_string(),
+                    ClickHouseColumnType::DateTime => "'2024-02-20T23:14:57.788Z'".to_string(),
+                    ClickHouseColumnType::Json => format!("'{{\"{}\": null}}'", c.name),
+                    ClickHouseColumnType::Bytes => "0.0".to_string(),
+                    ClickHouseColumnType::Enum(data_enum) => {
                         format!("'{}'", data_enum.values[0])
                     }
-                    ClickhouseColumnType::Unsupported => "null".to_string(),
+                    ClickHouseColumnType::Unsupported => "null".to_string(),
                 }
             })
             .collect::<Vec<String>>()

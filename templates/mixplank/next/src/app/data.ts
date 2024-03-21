@@ -1,6 +1,7 @@
-import { createClient } from "@clickhouse/client-web"
+"use server"
+import { createClient } from "@clickhouse/client"
 
-const client = createClient({
+const clickhouseClient = createClient({
     host: "http://localhost:18123",
     username: "panda",
     password: "pandapass",
@@ -8,9 +9,12 @@ const client = createClient({
 });
 
 
-export const getData = async () => {
-    const resultSet = await client.query({
-        query: "SELECT * FROM UserActivity_trigger;",
+export const getData = async (query: string):Promise<object[]> => {
+    if (!query) {
+        return [];
+    }
+    const resultSet = await clickhouseClient.query({
+        query,
         format: "JSONEachRow",
     });
 

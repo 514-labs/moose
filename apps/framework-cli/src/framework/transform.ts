@@ -73,6 +73,17 @@ const getFlows = (): Map<string, Map<string, string>> => {
   return output;
 };
 
+const jsonDateReviver = (key: string, value: unknown): unknown => {
+  const iso8601Format =
+    /^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)?$/;
+
+  if (typeof value === "string" && iso8601Format.test(value)) {
+    return new Date(value);
+  }
+
+  return value;
+};
+
 const handleMessage = async (
   flows: Map<string, string>,
   message: KafkaMessage,
@@ -83,7 +94,9 @@ const handleMessage = async (
     try {
       const transform = await import(flowFilePath);
       const output = JSON.stringify(
-        transform.default(JSON.parse(message.value.toString())),
+        transform.default(
+          JSON.parse(message.value.toString(), jsonDateReviver),
+        ),
       );
       await transaction.send({
         topic: `${destination}_${version}`,

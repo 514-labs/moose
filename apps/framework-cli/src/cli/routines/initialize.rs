@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use std::{fs, path::PathBuf};
 
-use crate::utilities::constants::DENO_DIR;
+use crate::utilities::constants::{DENO_DIR, SAMPLE_FLOWS_DIR};
 use crate::{
     cli::display::Message,
     framework::{languages::create_models_dir, typescript::create_typescript_models_dir},
@@ -37,6 +37,7 @@ impl Routine for InitializeProject {
             )
         })?;
 
+        CreateSampleFlowDirectory::new(self.project.clone()).run(run_mode)?;
         CreateModelsVolume::new(self.project.clone()).run(run_mode)?;
         CreateDockerComposeFile::new(self.project.clone()).run(run_mode)?;
         CreateBaseAppFiles::new(self.project.clone()).run(run_mode)?;
@@ -410,5 +411,39 @@ impl Routine for CreateDenoFiles {
             "Created".to_string(),
             "deno files".to_string(),
         )))
+    }
+}
+
+pub struct CreateSampleFlowDirectory {
+    project: Arc<Project>,
+}
+
+impl CreateSampleFlowDirectory {
+    pub fn new(project: Arc<Project>) -> Self {
+        Self { project }
+    }
+}
+
+impl Routine for CreateSampleFlowDirectory {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let flows_dir = self.project.flows_dir();
+        let sample_flows_dirs = flows_dir.join(SAMPLE_FLOWS_DIR);
+
+        match fs::create_dir_all(sample_flows_dirs.clone()) {
+            Ok(_) => Ok(RoutineSuccess::success(Message::new(
+                "Created".to_string(),
+                "sample flow directory".to_string(),
+            ))),
+            Err(err) => Err(RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    format!(
+                        "to create sample flow directory in {}",
+                        sample_flows_dirs.display()
+                    ),
+                ),
+                err,
+            )),
+        }
     }
 }

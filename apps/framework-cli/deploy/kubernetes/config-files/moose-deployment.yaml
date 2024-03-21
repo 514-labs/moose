@@ -21,6 +21,8 @@ spec:
           env:
             - name: RUST_BACKTRACE
               value: "1"
+            - name: MOOSE-LOGGER-STDOUT
+              value: "true"
             - name: MOOSE_REDPANDA_CONFIG__BROKER
               valueFrom:
                 secretKeyRef:

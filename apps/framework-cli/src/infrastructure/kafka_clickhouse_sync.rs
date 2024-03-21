@@ -179,7 +179,7 @@ async fn sync_kafka_to_clickhouse(
                             .insert(&clickhouse_table, clickhouse_record)
                             .await?;
 
-                        subscriber.commit_message(&message, CommitMode::Sync)?;
+                        subscriber.commit_message(&message, CommitMode::Async)?;
                     }
                     Err(_) => {
                         error!("Received message with invalid UTF-8");

@@ -12,12 +12,7 @@ fn can_run_cli_clean() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut init_cmd = Command::cargo_bin("moose-cli")?;
 
-    init_cmd
-        .env("MOOSE-FEATURES-COMING_SOON_WALL", "false")
-        .arg("init")
-        .arg("test-app")
-        .arg("ts")
-        .arg(dir);
+    init_cmd.arg("init").arg("test-app").arg("ts").arg(dir);
 
     init_cmd.assert().success();
 
@@ -25,10 +20,7 @@ fn can_run_cli_clean() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut clean_cmd = Command::cargo_bin("moose-cli")?;
 
-    clean_cmd
-        .env("MOOSE-FEATURES-COMING_SOON_WALL", "false")
-        .arg("clean")
-        .current_dir(&temp);
+    clean_cmd.arg("clean").current_dir(&temp);
 
     clean_cmd.assert().success();
 

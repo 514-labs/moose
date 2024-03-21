@@ -25,11 +25,7 @@ fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut cmd = Command::cargo_bin("moose-cli")?;
 
-    cmd.env("MOOSE-FEATURES-COMING_SOON_WALL", "false")
-        .arg("init")
-        .arg("test-app")
-        .arg("ts")
-        .arg(dir);
+    cmd.arg("init").arg("test-app").arg("ts").arg(dir);
 
     cmd.assert().success();
 
@@ -38,32 +34,6 @@ fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
     temp.child(".moose").assert(predicate::path::exists());
     temp.child("package.json").assert(predicate::path::exists());
     temp.child("app").assert(predicate::path::exists());
-
-    Ok(())
-}
-
-#[test]
-fn should_not_run_if_coming_soon_wall_is_blocking() -> Result<(), Box<dyn std::error::Error>> {
-    let temp = assert_fs::TempDir::new().unwrap();
-    let dir: &str = temp.path().to_str().unwrap();
-
-    // List the content of dir
-    temp.child(".moose").assert(predicate::path::missing());
-
-    let mut cmd = Command::cargo_bin("moose-cli")?;
-
-    cmd.env("MOOSE-FEATURES-COMING_SOON_WALL", "true")
-        .arg("init")
-        .arg("test-app")
-        .arg("ts")
-        .arg(dir);
-
-    cmd.assert().success();
-
-    temp.child(".moose").assert(predicate::path::missing());
-    temp.child("package.json")
-        .assert(predicate::path::missing());
-    temp.child("app").assert(predicate::path::missing());
 
     Ok(())
 }

@@ -78,7 +78,7 @@ pub fn read_settings() -> Result<Settings, ConfigError> {
         .add_source(
             Environment::with_prefix(ENVIRONMENT_VARIABLE_PREFIX)
                 .try_parsing(true)
-                .separator("-"),
+                .separator("_"),
         )
         .build()?;
 

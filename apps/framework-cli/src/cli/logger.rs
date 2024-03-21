@@ -68,6 +68,8 @@ pub struct LoggerSettings {
     pub log_file: String,
     #[serde(default = "default_log_level")]
     pub level: LoggerLevel,
+    #[serde(default = "default_log_stdout")]
+    pub stdout: bool,
 }
 
 fn default_log_file() -> String {
@@ -80,11 +82,16 @@ fn default_log_level() -> LoggerLevel {
     LoggerLevel::Info
 }
 
+fn default_log_stdout() -> bool {
+    false
+}
+
 impl Default for LoggerSettings {
     fn default() -> Self {
         LoggerSettings {
             log_file: default_log_file(),
             level: default_log_level(),
+            stdout: default_log_stdout(),
         }
     }
 }
@@ -95,20 +102,24 @@ pub fn setup_logging(settings: LoggerSettings) -> Result<(), fern::InitError> {
 
     let base_config = fern::Dispatch::new().level(settings.level.to_log_level());
 
-    let file_config = fern::Dispatch::new()
-        .format(move |out, message, record| {
-            out.finish(format_args!(
-                "[{} {} {} - {}] {}",
-                humantime::format_rfc3339_seconds(SystemTime::now()),
-                record.level(),
-                &session_id,
-                record.target(),
-                message
-            ))
-        })
-        .chain(fern::log_file(settings.log_file)?);
+    let format_config = fern::Dispatch::new().format(move |out, message, record| {
+        out.finish(format_args!(
+            "[{} {} {} - {}] {}",
+            humantime::format_rfc3339_seconds(SystemTime::now()),
+            record.level(),
+            &session_id,
+            record.target(),
+            message
+        ))
+    });
 
-    base_config.chain(file_config).apply()?;
+    let output_config = if settings.stdout {
+        format_config.chain(std::io::stdout())
+    } else {
+        format_config.chain(fern::log_file(settings.log_file)?)
+    };
+
+    base_config.chain(output_config).apply()?;
 
     Ok(())
 }

@@ -9,8 +9,10 @@ use std::fs;
 use std::sync::Arc;
 
 static DOCKER_FILE: &str = r#"
-FROM debian:buster-slim
+FROM debian:bookworm-slim
 # Created from docker_packager routine
+
+ARG DEBIAN_FRONTEND=noninteractive
 
 # Update the package lists for upgrades for security purposes
 RUN apt-get update && apt-get upgrade -y

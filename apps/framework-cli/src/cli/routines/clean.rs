@@ -135,3 +135,33 @@ impl Routine for DeleteModelVolume {
         )))
     }
 }
+
+pub struct DeleteVersions {
+    internal_dir: PathBuf,
+}
+
+impl DeleteVersions {
+    pub fn new(internal_dir: PathBuf) -> Self {
+        Self { internal_dir }
+    }
+}
+
+impl Routine for DeleteVersions {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let versions_dir = self.internal_dir.join("versions");
+        fs::remove_dir_all(&versions_dir).map_err(|err| {
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    format!("to remove versions directory at {}", versions_dir.display()),
+                ),
+                err,
+            )
+        })?;
+
+        Ok(RoutineSuccess::success(Message::new(
+            "Successfully".to_string(),
+            "removed versions directory".to_string(),
+        )))
+    }
+}

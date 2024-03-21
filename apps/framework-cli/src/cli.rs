@@ -33,8 +33,8 @@ use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
 use crate::utilities::git::is_git_repo;
 
 use self::routines::{
-    clean::CleanProject, docker_packager::BuildDockerfile, docker_packager::CreateDockerfile,
-    stop::StopLocalInfrastructure,
+    clean::CleanProject, clean::DeleteVersions, docker_packager::BuildDockerfile,
+    docker_packager::CreateDockerfile, stop::StopLocalInfrastructure,
 };
 
 #[derive(Parser)]
@@ -132,6 +132,10 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 );
 
                 let mut controller = RoutineController::new();
+
+                // Remove versions directory so only the relevant versions will be populated
+                let internal_directory = project_arc.internal_dir().unwrap();
+                controller.add_routine(Box::new(DeleteVersions::new(internal_directory)));
 
                 // Copy the old schema
                 controller.add_routine(Box::new(CopyOldSchema::new(project_arc.clone())));

@@ -160,6 +160,7 @@ pub fn create_subscriber(config: &RedpandaConfig, group_id: &str, topic: &str) -
     client_config
         .set("session.timeout.ms", "6000")
         .set("enable.partition.eof", "false")
+        .set("enable.auto.commit", "false")
         .set("group.id", group_id);
 
     let consumer: StreamConsumer = client_config.create().expect("Failed to create consumer");

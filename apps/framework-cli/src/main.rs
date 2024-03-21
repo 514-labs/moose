@@ -23,6 +23,8 @@ fn main() {
         ..Default::default()
       }));
 
+    console_subscriber::init();
+
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()
         .build()

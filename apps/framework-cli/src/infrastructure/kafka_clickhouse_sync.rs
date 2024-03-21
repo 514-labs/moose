@@ -131,6 +131,7 @@ fn spawn_sync_process(
     })
 }
 
+#[tracing::instrument]
 fn spawn_sync_process_core(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,

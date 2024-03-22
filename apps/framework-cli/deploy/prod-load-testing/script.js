@@ -2,7 +2,7 @@ import http from "k6/http";
 import { check, sleep } from "k6";
 
 export default function () {
-  const url = "http://[::1]:4000/ingest/UserActivity/0.0";
+  const url = "http://34.82.14.129:4000/ingest/UserActivity";
   const eventId = Math.floor(new Date().getTime());
   const userId = Math.floor(Math.random() * Number.MAX_SAFE_INTEGER).toString(
     36

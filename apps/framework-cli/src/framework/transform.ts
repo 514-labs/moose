@@ -93,18 +93,22 @@ const handleMessage = async (
     const transaction = await producer.transaction();
     try {
       const transform = await import(flowFilePath);
-      const output = JSON.stringify(
-        transform.default(
-          JSON.parse(message.value.toString(), jsonDateReviver),
-        ),
+      const transformedData = await transform.default(
+        JSON.parse(message.value.toString(), jsonDateReviver),
       );
-      await transaction.send({
-        topic: `${destination}_${version}`,
-        messages: [{ value: output }],
-      });
-      await transaction.commit();
+
+      if (transformedData) {
+        await transaction.send({
+          topic: `${destination}_${version}`,
+          messages: [{ value: JSON.stringify(transformedData) }],
+        });
+        await transaction.commit();
+        console.log(`Sent transformed data to ${destination}`);
+      } else {
+        transaction.abort();
+      }
+
       resolveOffset(message.offset);
-      console.log(`Sent transformed data to ${destination}`);
     } catch (error) {
       await transaction.abort();
       console.error(

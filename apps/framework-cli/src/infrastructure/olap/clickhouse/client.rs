@@ -1,6 +1,7 @@
 use base64::prelude::*;
 use http_body_util::BodyExt;
 use http_body_util::Full;
+
 use hyper::body::Bytes;
 use hyper::{Request, Response, Uri};
 use hyper_tls::HttpsConnector;
@@ -17,10 +18,9 @@ pub struct ClickHouseClient {
     config: ClickHouseConfig,
 }
 
-// TODO - implement batch inserts
 // TODO - investigate if we need to change basic auth
 impl ClickHouseClient {
-    pub async fn new(clickhouse_config: &ClickHouseConfig) -> anyhow::Result<Self> {
+    pub fn new(clickhouse_config: &ClickHouseConfig) -> anyhow::Result<Self> {
         let client_builder = Client::builder(hyper_util::rt::TokioExecutor::new());
 
         let https = HttpsConnector::new();
@@ -31,6 +31,10 @@ impl ClickHouseClient {
             ssl_client: client_builder.build(https),
             config: clickhouse_config.clone(),
         })
+    }
+
+    pub fn config(&self) -> &ClickHouseConfig {
+        &self.config
     }
 
     async fn request(
@@ -78,27 +82,43 @@ impl ClickHouseClient {
         Ok(parsed)
     }
 
-    pub async fn insert(&self, table_name: &str, record: ClickHouseRecord) -> anyhow::Result<()> {
+    fn build_body(columns: &Vec<String>, records: &[ClickHouseRecord]) -> String {
+        let value_list = records
+            .iter()
+            .map(|record| {
+                columns
+                    .iter()
+                    .map(|column| match record.get(column) {
+                        Some(value) => format!("{}", value),
+                        None => return "NULL".to_string(),
+                    })
+                    .collect::<Vec<String>>()
+                    .join(",")
+            })
+            .collect::<Vec<String>>()
+            .join("),(");
+
+        format!("({})", value_list)
+    }
+
+    pub async fn insert(
+        &self,
+        table_name: &str,
+        columns: &Vec<String>,
+        records: &[ClickHouseRecord],
+    ) -> anyhow::Result<()> {
         // TODO - this could be optimized with RowBinary instead
         let insert_query = format!(
             "INSERT INTO {}.{} ({}) VALUES",
             self.config.db_name,
             table_name,
-            record.columns.join(","),
+            columns.join(","),
         );
 
         let query: String = query_param(&insert_query)?;
         let uri = self.uri(format!("/?{}", query))?;
 
-        let value_list = record
-            .values
-            .iter()
-            .map(|value| format!("{}", value))
-            .collect::<Vec<String>>()
-            .join(",");
-
-        let body = format!("({})", value_list);
-
+        let body = Self::build_body(columns, records);
         let bytes = Bytes::from(body);
 
         let req = Request::builder()

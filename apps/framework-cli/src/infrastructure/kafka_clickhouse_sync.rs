@@ -2,14 +2,12 @@ use std::collections::HashMap;
 
 use crate::framework::controller::FrameworkObject;
 use crate::framework::controller::FrameworkObjectVersions;
-use crate::infrastructure::olap::clickhouse::client::ClickHouseClient;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
+use crate::infrastructure::olap::clickhouse::inserter::Inserter;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
 use crate::infrastructure::stream::redpanda::create_subscriber;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use log::error;
-use rdkafka::consumer::CommitMode;
-use rdkafka::consumer::Consumer;
 use rdkafka::Message;
 
 use log::debug;
@@ -100,8 +98,7 @@ impl SyncingProcessesRegistry {
         let syncing_process = spawn_sync_process_core(
             self.kafka_config.clone(),
             self.clickhouse_config.clone(),
-            framework_object.topic.to_string(),
-            framework_object.table.name.to_string(),
+            framework_object.clone(),
         );
 
         self.insert(syncing_process);
@@ -120,13 +117,10 @@ fn spawn_sync_process(
     clickhouse_config: ClickHouseConfig,
 ) -> Box<dyn Fn((String, FrameworkObject)) -> SyncingProcess> {
     Box::new(move |(_, schema)| {
-        let topic = schema.topic;
-        let table = schema.table.name;
         spawn_sync_process_core(
             kafka_config.clone(),
             clickhouse_config.clone(),
-            topic,
-            table,
+            schema.clone(),
         )
     })
 }
@@ -135,31 +129,40 @@ fn spawn_sync_process(
 fn spawn_sync_process_core(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
-    topic: String,
-    table: String,
+    framework_object: FrameworkObject,
 ) -> SyncingProcess {
     let syncing_process = tokio::spawn(sync_kafka_to_clickhouse(
         kafka_config,
         clickhouse_config,
-        topic.clone(),
-        table.clone(),
+        framework_object.clone(),
     ));
 
     SyncingProcess {
         process: syncing_process,
-        topic,
-        table,
+        topic: framework_object.topic.clone(),
+        table: framework_object.table.name.clone(),
     }
 }
 
 async fn sync_kafka_to_clickhouse(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
-    streaming_topic: String,
-    clickhouse_table: String,
+    framework_object: FrameworkObject,
 ) -> anyhow::Result<()> {
-    let subscriber = create_subscriber(&kafka_config, SYNC_GROUP_ID, &streaming_topic);
-    let clickhouse_client = ClickHouseClient::new(&clickhouse_config).await?;
+    let subscriber = create_subscriber(&kafka_config, SYNC_GROUP_ID, &framework_object.topic);
+
+    let clikhouse_columns = framework_object
+        .table
+        .columns
+        .iter()
+        .map(|column| column.name.clone())
+        .collect();
+
+    let inserter = Inserter::new(
+        clickhouse_config,
+        framework_object.table.name.clone(),
+        clikhouse_columns,
+    );
 
     loop {
         match subscriber.recv().await {
@@ -175,11 +178,7 @@ async fn sync_kafka_to_clickhouse(
                         let parsed_json: Value = serde_json::from_str(payload_str)?;
                         let clickhouse_record = mapper_json_to_clickhouse_record(parsed_json)?;
 
-                        clickhouse_client
-                            .insert(&clickhouse_table, clickhouse_record)
-                            .await?;
-
-                        subscriber.commit_message(&message, CommitMode::Async)?;
+                        inserter.insert(clickhouse_record).await?;
                     }
                     Err(_) => {
                         error!("Received message with invalid UTF-8");

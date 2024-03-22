@@ -8,6 +8,7 @@ import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { SmallText } from "./typography/standard";
+import { cn } from "@/lib/utils";
 
 gsap.registerPlugin(SplitText);
 
@@ -20,8 +21,6 @@ const navigation = [
 ];
 
 export const Nav = () => {
-  const titleRef = React.useRef(null);
-
   useLayoutEffect(() => {}, []);
   const pathname = usePathname();
 
@@ -47,20 +46,21 @@ export const Nav = () => {
 
                     return (
                       <div
-                        className={
+                        className={cn(
                           isActive
                             ? "flex-grow flex items-center justify-end text-action-primary "
                             : "flex-grow flex items-center justify-end text-primary "
-                        }
+                        )}
                         key={item.name}
                       >
                         <Link href={item.href}>
                           <SmallText
-                            className={
+                            className={cn(
                               isActive
                                 ? "hover:text-action-primary border-b-2 border-black"
-                                : "hover:text-primary"
-                            }
+                                : "hover:text-primary",
+                              "py-2"
+                            )}
                           >
                             {item.name}
                           </SmallText>

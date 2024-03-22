@@ -84,19 +84,19 @@ export const CodeBlockCTA = ({ identifier }: CodeBlockCTAProps) => {
 
   return (
     <div
-      className="flex flex-col lg:flex-row cursor-pointer invisible"
+      className="flex flex-col lg:flex-row cursor-pointer invisible gap-3"
       ref={wrapperRef}
     >
-      <div className="flex flex-row items-center justify-center sm:justify-start bg-black/10 w-full h-13 ">
+      <div className="flex flex-row items-center justify-center bg-black/10 h-13 rounded-xl ">
         <span
-          className="font-mono px-6 py-4 sm:py-6 text-center text-typography text-black/100"
+          className="px-8 py-4 sm:py-6 w-72 text-center text-typography text-black/100"
           ref={outboundRef}
         >
           {" "}
           npx create-moose-app
         </span>
         <span
-          className="font-mono px-6 py-4 sm:py-6 text-center text-typography hidden"
+          className="px-8 py-4 sm:py-6 w-72 text-center text-typography hidden"
           ref={inboundRef}
         >
           {" "}
@@ -104,7 +104,7 @@ export const CodeBlockCTA = ({ identifier }: CodeBlockCTAProps) => {
         </span>
       </div>
       <Button
-        className="py-4 text-center font-medium no-underline bg-action-primary bg-action-white bg-black/100 text-gray-300 hover:bg-gray-900 sm:inline-block sm:grow-0 md:py-6 md:px-10 md:text-lg md:leading-8"
+        className="py-4 text-center font-medium no-underline bg-action-primary bg-action-white bg-black/100 text-gray-300 hover:bg-gray-900 sm:inline-block sm:grow-0 md:py-6 md:px-10 md:text-lg md:leading-8 rounded-xl"
         onClick={() => sendClientEvent("cta-click-create-app", identifier, {})}
       >
         copy

@@ -27,9 +27,7 @@ interface TemplateAccordionProps {
   templateAccordionItems: TemplateAccordionItem[];
 }
 
-export function TemplateAccordion({
-  templateAccordionItems,
-}: TemplateAccordionProps) {
+function TemplateAccordion({ templateAccordionItems }: TemplateAccordionProps) {
   return (
     <Accordion
       type="single"
@@ -65,11 +63,11 @@ export function TemplateAccordion({
 }
 
 // The layout for specific tempaltes
-export const TemplatePage = ({
+export default function TemplatePage({
   params,
 }: {
   params: { templateId: string };
-}) => {
+}) {
   const content = {
     templateDetails: [
       {
@@ -197,7 +195,7 @@ export const TemplatePage = ({
   };
 
   const template = content.templateDetails.find(
-    (template) => template.slug === params.templateId,
+    (template) => template.slug === params.templateId
   );
 
   return (
@@ -233,6 +231,4 @@ export const TemplatePage = ({
       <div className="col-span-12 bg-slate-300 h-[2000px] md:sticky top-96"></div>
     </Grid>
   );
-};
-
-export default TemplatePage;
+}

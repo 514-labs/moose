@@ -20,7 +20,6 @@ import { sendServerEvent } from "./events/sendServerEvent";
 
 import Image, { StaticImageData } from "next/image";
 import ProductAnalyticsTemplate from "./components/product-analytics-template";
-import { Button } from "./components/Button";
 
 export const metadata: Metadata = {
   title: "Moose.js | Build for the modern data stack",
@@ -91,50 +90,6 @@ const features = [
       "Automatic ingest and consumption API endpoints for your data products, with pre-built SDKs in the language of your choice (javascript, python, java, rust, etc).",
   },
 ];
-
-const templates = [
-  {
-    heading: "Product analytics",
-    description:
-      "Moose.js is the perfect framework for building product analytics. It's built for the modern data stack and is open for all developers.",
-  },
-  {
-    heading: "LLM analytics",
-    description:
-      "Moose.js enables not only enables you to get deep insights into your users but also into your large language models.",
-  },
-  {
-    heading: "Data warehouse",
-    description:
-      "Build your data warehouse with Moose.js. It's built for the modern data stack and is open for all developers.",
-  },
-];
-
-const TemplateContent = (template: {
-  heading: string;
-  description: string;
-}) => {
-  return (
-    <div className="flex flex-col px-10 w-full h-full justify-center space-y-5 col-span-3 sm:col-span-12 xl:col-span-6">
-      <AnimatedHeading
-        className="text-black"
-        position={0.75}
-        content={template.heading}
-        size="display-md"
-        onScroll
-      />
-      <AnimatedDescription
-        position={1}
-        className=""
-        content={template.description}
-        onScroll
-      />
-      <div>
-        <CodeBlockCTA identifier="ip" />
-      </div>
-    </div>
-  );
-};
 
 export default async function Home() {
   const ip_obj = await sendServerEvent("page_view", { page: "home" });
@@ -271,7 +226,14 @@ export default async function Home() {
           gapStyle="px-10 lg:space-y-0 lg:flex-row md:pb-12"
           itemPosition="start"
         >
-          <TemplateContent {...templates[0]} />
+          <div className="col-span-6">
+            <AnimatedHeading
+              position={0.5}
+              content="Product analytics"
+              size="display-md"
+              onScroll
+            />
+          </div>
           <div className="col-span-6">
             <ProductAnalyticsTemplate />
           </div>

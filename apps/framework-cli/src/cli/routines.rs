@@ -126,7 +126,6 @@ pub struct RoutineSuccess {
 // Implement success and info contructors and a new constructor that lets the user choose which type of message to display
 impl RoutineSuccess {
     // E.g. when we try to create a resource that already exists,
-    #[allow(dead_code)] // but now we don't have a use for this function
     pub fn info(message: Message) -> Self {
         Self {
             message,

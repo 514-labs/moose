@@ -30,6 +30,7 @@ pub fn generate_version_syncs(
         .previous_version_models
         .keys()
         .max_by_key(|v| parse_version(v));
+    println!("previous_version: {:?}", previous_version);
     let previous_version = match previous_version {
         None => return vec![],
         Some(v) => v,
@@ -47,10 +48,16 @@ pub fn generate_version_syncs(
             previous_models.remove(&vs.model_name);
         }
     }
+    println!("previous_models: {:?}", previous_models);
 
     let mut res = vec![];
     for fo in framework_object_versions.current_models.models.values() {
+        println!("fo: {:?}", fo);
         if let Some(old_model) = previous_models.get(&fo.data_model.name) {
+            println!(
+                "current_model, {:?}, old_model: {:?}",
+                fo.data_model.columns, old_model.data_model.columns
+            );
             if old_model.data_model.columns != fo.data_model.columns {
                 res.push(VersionSync {
                     db_name: old_model.table.db_name.clone(),

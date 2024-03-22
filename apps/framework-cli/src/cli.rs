@@ -191,6 +191,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
 
+                controller.add_routine(Box::new(CopyOldSchema::new(Arc::new(project.clone()))));
                 controller.add_routine(Box::new(GenerateMigration::new(Arc::new(project))));
                 controller.run_routines(run_mode);
             }

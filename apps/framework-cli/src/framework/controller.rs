@@ -330,7 +330,7 @@ pub async fn set_up_topic_and_tables_and_route(
 
     let previous_fo = match previous_version {
         None => None,
-        Some((_, previous_models)) => previous_models.get(&fo.topic),
+        Some((_, previous_models)) => previous_models.get(&fo.data_model.name),
     };
     let same_as_previous = match previous_fo {
         None => false,

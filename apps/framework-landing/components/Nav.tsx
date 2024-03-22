@@ -49,7 +49,7 @@ export const Nav = () => {
                         className={cn(
                           isActive
                             ? "flex-grow flex items-center justify-end text-action-primary "
-                            : "flex-grow flex items-center justify-end text-primary "
+                            : "flex-grow flex items-center justify-end text-primary ",
                         )}
                         key={item.name}
                       >
@@ -59,7 +59,7 @@ export const Nav = () => {
                               isActive
                                 ? "hover:text-action-primary border-b-2 border-black"
                                 : "hover:text-primary",
-                              "py-2"
+                              "py-2",
                             )}
                           >
                             {item.name}

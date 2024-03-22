@@ -316,21 +316,6 @@ async fn initialize_project_state(
 
     info!("Checking for old version directories...");
 
-    let mut versions: Vec<String> = Vec::new();
-    match read_directory(old_version_dir.clone()) {
-        Ok(v) => {
-            versions.append(&mut v.clone());
-            let current_version = project.version().to_string();
-            if !versions.contains(&current_version) {
-                versions.push(current_version.clone());
-            }
-            versions.sort();
-        }
-        Err(_e) => {
-            info!("No old version directories found");
-        }
-    };
-
     let mut framework_object_versions =
         FrameworkObjectVersions::new(project.version().to_string(), project.schemas_dir().clone());
 

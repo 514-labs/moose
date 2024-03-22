@@ -56,7 +56,7 @@ async fn flush(
 
         // in case the buffer is too big, we slice it and then we flush it
         for chunk in buffer_owned.chunks(MAX_BATCH_SIZE) {
-            match client.insert(&table, &columns, &chunk).await {
+            match client.insert(&table, &columns, chunk).await {
                 Ok(_) => {
                     debug!("Inserted {} records", chunk.len());
                 }

@@ -82,7 +82,7 @@ impl ClickHouseClient {
         Ok(parsed)
     }
 
-    fn build_body(columns: &Vec<String>, records: &[ClickHouseRecord]) -> String {
+    fn build_body(columns: &[String], records: &[ClickHouseRecord]) -> String {
         let value_list = records
             .iter()
             .map(|record| {
@@ -90,7 +90,7 @@ impl ClickHouseClient {
                     .iter()
                     .map(|column| match record.get(column) {
                         Some(value) => format!("{}", value),
-                        None => return "NULL".to_string(),
+                        None => "NULL".to_string(),
                     })
                     .collect::<Vec<String>>()
                     .join(",")
@@ -104,7 +104,7 @@ impl ClickHouseClient {
     pub async fn insert(
         &self,
         table_name: &str,
-        columns: &Vec<String>,
+        columns: &[String],
         records: &[ClickHouseRecord],
     ) -> anyhow::Result<()> {
         // TODO - this could be optimized with RowBinary instead

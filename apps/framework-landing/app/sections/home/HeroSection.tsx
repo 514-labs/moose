@@ -4,7 +4,7 @@ import {
   Section,
   Grid,
 } from "@/components/containers/page-containers";
-import { Display, Text } from "@/components/typography/standard";
+import { CodeSnippet, Display, Text } from "@/components/typography/standard";
 import { CTABar, CTAText, CTAButton, PlaceholderImage } from "../../page";
 
 export const HeroSection = () => {
@@ -30,8 +30,7 @@ export const HeroSection = () => {
               <Text> {content.description} </Text>
             </div>
             <CTABar>
-              <CTAText> {content.cta.text} </CTAText>
-              <CTAButton>{content.cta.label}</CTAButton>
+              <CodeSnippet> {content.cta.text} </CodeSnippet>
             </CTABar>
           </HalfWidthContentContainer>
         </Grid>

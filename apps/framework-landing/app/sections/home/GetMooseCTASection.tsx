@@ -3,7 +3,7 @@ import {
   Section,
   Grid,
 } from "@/components/containers/page-containers";
-import { Display, Text } from "@/components/typography/standard";
+import { CodeSnippet, Display, Text } from "@/components/typography/standard";
 import { PlaceholderImage, CTABar, CTAText, CTAButton } from "../../page";
 
 export const GetMooseCTASection = () => {
@@ -27,8 +27,7 @@ export const GetMooseCTASection = () => {
           <Display> {content.title} </Display>
           <Text> {content.description} </Text>
           <CTABar>
-            <CTAText> {content.cta.text} </CTAText>
-            <CTAButton> {content.cta.label} </CTAButton>
+            <CodeSnippet> {content.cta.text} </CodeSnippet>
           </CTABar>
         </HalfWidthContentContainer>
       </Grid>

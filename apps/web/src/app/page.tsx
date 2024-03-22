@@ -8,9 +8,19 @@ import { AnimatedDescription } from "./components/AnimatedDescription";
 import heroImg from "../../public/bg-image-man/bg-image-hero_2x.webp";
 import middleImg from "../../public/bg-image-computer/bg-image-computer_2x.webp";
 import footerImg from "../../public/bg-image-moose/bg-image-moose_2x.webp";
+
+import img1 from "../../public/carousel/img-1.png";
+import img2 from "../../public/carousel/img-2.png";
+import img3 from "../../public/carousel/img-3.png";
+import img4 from "../../public/carousel/img-4.png";
+
 import { FooterSection } from "./sections//home/FooterSection";
 import { CodeBlockCTA } from "./components/CodeBlockCTA";
 import { sendServerEvent } from "./events/sendServerEvent";
+
+import Image, { StaticImageData } from "next/image";
+import ProductAnalyticsTemplate from "./components/product-analytics-template";
+import { Button } from "./components/Button";
 
 export const metadata: Metadata = {
   title: "Moose.js | Build for the modern data stack",
@@ -19,70 +29,112 @@ export const metadata: Metadata = {
   },
 };
 
+const mooseHeroSection = {
+  label: "For all developers",
+  heading: "Delightful & Insightful",
+  description: "The developer framework for your data & analytics stack",
+};
+
 const frameworkSection = {
   heading: "start building today",
   description:
     "Start building your data-intensive application today. Moose.js is free to use and open source. If you'd like to contribute, check out our github or join our Slack.",
 };
 
-const fiveonefourSection = {
-  heading: "build for the modern data stack",
-  description:
-    "Moose.js is a batteries-included framework for building data-intensive applications using Typescript or Python, and SQL. It comes with a powerful CLI to help automate development tasks, an intuitive abstraction to help you build quickly, and a streamlined local development workflow.",
-};
-
-const practices = [
+const whyMoose = [
   {
-    heading: "Local first",
+    heading: "Your data stack, unified",
     description:
-      "Build your application locally, and deploy to the cloud when you're ready. No need to configure a cloud environment to get started.",
+      "Jobs, pipelines, streams, data models, tables, views, schemas, APIs, and SDKs -- no more coordinating a tangled web of individual components. With a framework-based approach, each component is automatically integrated, so your data stack is easier to manage and more resilient to change.",
   },
   {
-    heading: "Best-in-class Streaming",
+    heading: "Developers, delighted",
     description:
-      "A highly performant and scalable data capture stack that scales with your volumes and is able to run locally, supporting Rust and Red Panda.",
+      "Moose simplifies the way you interact with you data and analytics stack to let you build rich data-intensive experiences using the languages you know,  the application frameworks you love and the tools you leverage in your day-to-day workflow.",
   },
   {
-    heading: "Popular Languages",
+    heading: "Best practices, unlocked",
     description:
-      "Write your application in Typescript or Python, build your data models in Prisma and use SQL to interact with your OLAP database. ",
-  },
-  {
-    heading: "Test Efficiently",
-    description:
-      "Write tests for your application using the languages you love. Moose supports your favorite frameworks in Typescript and Python.",
-  },
-  {
-    heading: "Effortless Setup",
-    description:
-      "Get up and running with your application in minutes. Moose comes with a powerful CLI to help you automate development tasks.",
-  },
-  {
-    heading: "Simplified Abstractions",
-    description:
-      "Moose abstractions help you focus on building your end-to-end application without worrying about the underlying infrastructure.",
+      "Moose’s approach brings the standard software development workflow to your data stack, in your language, enabling best practices like: local development, rapid iteration, CI/CD, automated testing, version control, change management, code collaboration, DevOps, etc.",
   },
 ];
-
-// Some comment
 
 const features = [
   {
-    heading: "full data stack",
+    heading: "Git-based",
     description:
-      "We've composed moose from best-in-class data infrastructure to enable you to run your entire modern data stack on your local machine. No more configuring connections to start building. ",
+      "Git-based workflow enables software development best practices like version control and CI/CD",
   },
   {
-    heading: "data modeling",
+    heading: "Local dev server",
     description:
-      "We love working with Prisma in when building web apps. We've brought their modeling language to the modern data stack to help you create intuitive and readable data models. ",
+      "Run your whole stack locally: see and test the impact of changes in real time as you edit code - just like developing a web app frontend",
   },
   {
-    heading: "fast analytics",
+    heading: "End-to-end typed",
     description:
-      "We use the latest generation of analytics storage to guarantee performance and a great local experience. Native clickhouse support with DuckDB and Delta Lake coming soon. ",
+      "Moose types all your components from ingest through consumption, so you catch issues at build time, instead of in production",
+  },
+  {
+    heading: "Built-in testing",
+    description:
+      "Moose has a built in testing framework. Manage sample data and automatically test data pipelines as you’re developing",
+  },
+  {
+    heading: "Magical change management",
+    description:
+      "Moose automatically manages schema evolution across versions, so you don’t break upstream/downstream dependencies",
+  },
+  {
+    heading: "Data product APIs",
+    description:
+      "Automatic ingest and consumption API endpoints for your data products, with pre-built SDKs in the language of your choice (javascript, python, java, rust, etc).",
   },
 ];
+
+const templates = [
+  {
+    heading: "Product analytics",
+    description:
+      "Moose.js is the perfect framework for building product analytics. It's built for the modern data stack and is open for all developers.",
+  },
+  {
+    heading: "LLM analytics",
+    description:
+      "Moose.js enables not only enables you to get deep insights into your users but also into your large language models.",
+  },
+  {
+    heading: "Data warehouse",
+    description:
+      "Build your data warehouse with Moose.js. It's built for the modern data stack and is open for all developers.",
+  },
+];
+
+const TemplateContent = (template: {
+  heading: string;
+  description: string;
+}) => {
+  return (
+    <div className="flex flex-col px-10 w-full h-full justify-center space-y-5 col-span-3 sm:col-span-12 xl:col-span-6">
+      <AnimatedHeading
+        className="text-black"
+        position={0.75}
+        content={template.heading}
+        size="display-md"
+        onScroll
+      />
+      <AnimatedDescription
+        position={1}
+        className=""
+        content={template.description}
+        onScroll
+      />
+      <div>
+        <CodeBlockCTA identifier="ip" />
+      </div>
+    </div>
+  );
+};
 
 export default async function Home() {
   const ip_obj = await sendServerEvent("page_view", { page: "home" });
@@ -90,73 +142,78 @@ export default async function Home() {
   return (
     <div className="h-full relative">
       <SectionGrid
-        className="py-36 pb-0 sm:pt-24 2xl:pt-20"
+        className="py-36 pb-0 sm:pt-24 2xl:pt-48"
         gapStyle="gap-y-36"
       >
-        <div className="flex flex-col px-10 w-full space-y-5 col-span-3 sm:col-span-12 2xl:col-span-6">
+        <div className="col-span-6" />
+        <div className="flex flex-col px-10 w-full space-y-10 col-span-3 sm:col-span-12 2xl:col-span-6">
           <AnimatedHeading
             position={0}
-            className="2xl:text-8xl"
-            content={fiveonefourSection.heading}
+            className="capitalize font-light"
+            content={mooseHeroSection.label}
+            size="express"
+          />
+          <AnimatedHeading
+            position={0}
+            className="2xl:text-9xl"
+            content={mooseHeroSection.heading}
             size="display"
           />
-          <AnimatedDescription
+          <AnimatedHeading
             position={0.75}
-            className=""
-            content={fiveonefourSection.description}
+            className="capitalize font-light"
+            content={mooseHeroSection.description}
+            size="express"
           />
-          <div>
-            <CodeBlockCTA identifier={ip_obj.ip} />
-          </div>
-        </div>
-        <div className="relative h-full w-full min-h-[80vw] sm:min-h-[50vw] col-span-3 sm:col-span-12 2xl:col-span-6">
-          <AnimatedImage src={heroImg} position={0.5} alt="the crew" />
+
+          <CodeBlockCTA identifier={ip_obj.ip} />
         </div>
       </SectionGrid>
+      <div className="flex flex-row space-x-8 py-20">
+        <Image src={img1} alt="the crew" priority />
+        <Image src={img2} alt="the crew" priority />
+        <Image src={img3} alt="the crew" priority />
+        <Image src={img4} alt="the crew" priority />
+      </div>
 
       <div className="py-24">
         <AnimatedHeading
           className="px-10 w-full 2xl:text-8xl"
-          content="decades of best practices"
+          content="Why moose?"
           size="display"
           position={0.5}
           onScroll
         />
       </div>
 
-      <SectionGrid
-        gapStyle="gap-10"
-        itemPosition="start"
-        className="px-10 lg:space-y-0 lg:flex-row md:pb-12"
-      >
-        {practices.map((feature, index) => {
-          return (
-            <div
-              key={index}
-              className="flex flex-col md:flex-row flex-1 col-span-3 sm:col-span-6 lg:col-span-4"
-            >
-              <div className="flex flex-col md:flex-1">
-                <div className="text-typography-primary">
-                  <AnimatedHeading
-                    className="text-black"
-                    position={0.8}
-                    size="heading"
-                    content={feature.heading}
-                    onScroll
-                  />
-                </div>
-                <div className="text-typography-secondary">
-                  <AnimatedDescription
-                    position={1}
-                    content={feature.description}
-                    onScroll
-                  />
-                </div>
-              </div>
+      {whyMoose.map((why, index) => {
+        return (
+          <SectionGrid
+            key={index}
+            gapStyle="gap-10"
+            itemPosition="start"
+            className="px-10 lg:space-y-0 lg:flex-row md:pb-12"
+          >
+            <div className="text-typography-primary col-span-6">
+              <AnimatedHeading
+                className="text-black"
+                position={0.8}
+                size="display-md"
+                content={why.heading}
+                onScroll
+              />
             </div>
-          );
-        })}
-      </SectionGrid>
+            <div className="text-typography-secondary col-span-6">
+              <AnimatedDescription
+                position={1}
+                content={why.description}
+                onScroll
+                className="text-4xl font-light"
+              />
+            </div>
+          </SectionGrid>
+        );
+      })}
 
       <SectionGrid className="py-24 pb-0 2xl:pt-20" gapStyle="gap-y-36">
         <div className="flex flex-col px-10 w-full space-y-5 col-span-3 sm:col-span-12 2xl:col-span-6">
@@ -178,39 +235,86 @@ export default async function Home() {
         </div>
       </SectionGrid>
 
-      <SectionGrid
-        gapStyle="gap-10"
-        itemPosition="start"
-        className="px-10 p-24 lg:space-y-0 lg:flex-row"
-      >
+      <div className="py-24">
         {features.map((feature, index) => {
           return (
-            <div
+            <SectionGrid
               key={index}
-              className="flex flex-col md:flex-row flex-1 col-span-3 sm:col-span-4 lg:col-span-4"
+              gapStyle="gap-10"
+              itemPosition="start"
+              className="px-10 lg:space-y-0 lg:flex-row md:pb-12"
             >
-              <div className="flex flex-col md:flex-1">
-                <div className="text-typography-primary">
-                  <AnimatedHeading
-                    className="text-black"
-                    position={0.75}
-                    content={feature.heading}
-                    onScroll
-                    size="heading"
-                  />
-                </div>
-                <div className="text-typography-primary">
-                  <AnimatedDescription
-                    position={1}
-                    content={feature.description}
-                    onScroll
-                  />
-                </div>
+              <div className="text-typography-primary col-span-6">
+                <AnimatedHeading
+                  className="text-black"
+                  position={0.8}
+                  size="display-md"
+                  content={feature.heading}
+                  onScroll
+                />
               </div>
-            </div>
+              <div className="text-typography-secondary col-span-6">
+                <AnimatedDescription
+                  position={0.8}
+                  content={feature.description}
+                  onScroll
+                  className="text-4xl font-light"
+                />
+              </div>
+            </SectionGrid>
           );
         })}
-      </SectionGrid>
+      </div>
+
+      <div>
+        <SectionGrid
+          gapStyle="px-10 lg:space-y-0 lg:flex-row md:pb-12"
+          itemPosition="start"
+        >
+          <TemplateContent {...templates[0]} />
+          <div className="col-span-6">
+            <ProductAnalyticsTemplate />
+          </div>
+        </SectionGrid>
+      </div>
+
+      <div>
+        <SectionGrid
+          gapStyle="px-10 lg:space-y-0 lg:flex-row md:pb-12"
+          itemPosition="start"
+        >
+          <div className="col-span-6">
+            <AnimatedHeading
+              position={0.5}
+              content="Product analytics"
+              size="display-md"
+              onScroll
+            />
+          </div>
+          <div className="col-span-6">
+            <ProductAnalyticsTemplate />
+          </div>
+        </SectionGrid>
+      </div>
+
+      <div>
+        <SectionGrid
+          gapStyle="px-10 lg:space-y-0 lg:flex-row md:pb-12"
+          itemPosition="start"
+        >
+          <div className="col-span-6">
+            <AnimatedHeading
+              position={0.5}
+              content="Product analytics"
+              size="display-md"
+              onScroll
+            />
+          </div>
+          <div className="col-span-6">
+            <ProductAnalyticsTemplate />
+          </div>
+        </SectionGrid>
+      </div>
 
       <SectionGrid gapStyle="gap-y-24 pb-0">
         <div className="relative h-full w-full min-h-[80vw] sm:min-h-[50vw] col-span-3 sm:col-span-12 xl:col-span-6">

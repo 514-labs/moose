@@ -14,6 +14,7 @@ CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
 const cwd = Deno.args[0] || Deno.cwd();
 const FLOWS_DIR_PATH = `${cwd}/app/flows`;
 const FLOW_FILE = "flow.ts";
+const CONSUMER_ID = "deno-group";
 
 const getVersion = (): string => {
   const version = JSON.parse(Deno.readTextFileSync(`${cwd}/package.json`))
@@ -30,7 +31,7 @@ const kafka = new Kafka({
   brokers: ["redpanda:9092"],
 });
 
-const consumer: Consumer = kafka.consumer({ groupId: "deno-group" });
+const consumer: Consumer = kafka.consumer({ groupId: CONSUMER_ID });
 const producer: Producer = kafka.producer({
   transactionalId: "deno-producer",
   maxInFlightRequests: 1,
@@ -85,13 +86,17 @@ const jsonDateReviver = (key: string, value: unknown): unknown => {
 };
 
 const handleMessage = async (
+  topic: string,
+  partition: number,
   flows: Map<string, string>,
   message: KafkaMessage,
   resolveOffset: (offset: string) => void,
 ): Promise<void> => {
-  for (const [destination, flowFilePath] of flows) {
-    const transaction = await producer.transaction();
-    try {
+  const transaction = await producer.transaction();
+  let didTransform = false;
+
+  try {
+    for (const [destination, flowFilePath] of flows) {
       const transform = await import(flowFilePath);
       const transformedData = await transform.default(
         JSON.parse(message.value.toString(), jsonDateReviver),
@@ -102,20 +107,27 @@ const handleMessage = async (
           topic: `${destination}_${version}`,
           messages: [{ value: JSON.stringify(transformedData) }],
         });
-        await transaction.commit();
+        didTransform = true;
         console.log(`Sent transformed data to ${destination}`);
-      } else {
-        transaction.abort();
       }
-
-      resolveOffset(message.offset);
-    } catch (error) {
-      await transaction.abort();
-      console.error(
-        `Failed to send transformed data to ${destination}: `,
-        error,
-      );
     }
+
+    if (didTransform) {
+      await transaction.sendOffsets({
+        consumerGroupId: CONSUMER_ID,
+        topics: [
+          { topic, partitions: [{ partition, offset: message.offset }] },
+        ],
+      });
+      await transaction.commit();
+    } else {
+      await transaction.abort();
+    }
+
+    resolveOffset(message.offset);
+  } catch (error) {
+    await transaction.abort();
+    console.error(`Failed to send transformed data`, error);
   }
 };
 
@@ -129,15 +141,21 @@ const startConsumer = async (): Promise<void> => {
   await consumer.subscribe({ topics: flowTopics });
 
   await consumer.run({
-    // TODO: disable autoCommit and do transaction.sendOffsets
     eachBatchAutoResolve: false,
+    autoCommit: false,
     eachBatch: async ({ batch, resolveOffset, isRunning, isStale }) => {
       const topic = scrubVersionFromTopic(batch.topic);
       for (const message of batch.messages) {
         if (!isRunning() || isStale()) break;
         else if (!flows.has(topic)) continue;
 
-        await handleMessage(flows.get(topic)!, message, resolveOffset);
+        await handleMessage(
+          batch.topic,
+          batch.partition,
+          flows.get(topic)!,
+          message,
+          resolveOffset,
+        );
       }
     },
   });
@@ -177,3 +195,4 @@ const startKafkaGroup = async (): Promise<void> => {
 };
 
 startKafkaGroup().then(() => startFlowsFilewatcher());
+

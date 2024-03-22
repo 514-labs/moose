@@ -24,13 +24,14 @@ pub async fn create_topics(
     // Prepare the AdminOptions
     let options = AdminOptions::new().operation_timeout(Some(std::time::Duration::from_secs(5)));
 
+    let retention_ms = config.clone().retention_ms.to_string();
     for topic_name in &topics {
         // Create a new topic with 1 partition and replication factor 1
         let topic = NewTopic::new(topic_name, 1, TopicReplication::Fixed(1));
 
         // Set some topic configurations
         let topic = topic
-            .set("retention.ms", "1000")
+            .set("retention.ms", retention_ms.as_str())
             .set("segment.bytes", "10000");
 
         let result_list = admin_client.create_topics(&[topic], &options).await?;
@@ -83,6 +84,7 @@ pub async fn delete_topics(
 pub struct RedpandaConfig {
     pub broker: String,
     pub message_timeout_ms: i32,
+    pub retention_ms: i32,
     pub sasl_username: Option<String>,
     pub sasl_password: Option<String>,
     pub sasl_mechanism: Option<String>,
@@ -94,6 +96,7 @@ impl Default for RedpandaConfig {
         Self {
             broker: "localhost:19092".to_string(),
             message_timeout_ms: 1000,
+            retention_ms: 30000,
             sasl_username: None,
             sasl_password: None,
             sasl_mechanism: None,

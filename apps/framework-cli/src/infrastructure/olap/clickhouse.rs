@@ -1,5 +1,6 @@
 pub mod client;
 pub mod config;
+pub mod inserter;
 pub mod mapper;
 pub mod model;
 mod queries;

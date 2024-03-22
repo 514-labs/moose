@@ -84,3 +84,5 @@ export const FooterContent = () => {
     </FullWidthContentContainer>
   );
 };
+
+export default FooterSection;

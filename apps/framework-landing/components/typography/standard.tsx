@@ -13,7 +13,7 @@ export const BannerDisplay = ({
     <h1
       className={cn(
         "text-primary text-9xl md:text-[20rem] text-nowrap",
-        className,
+        className
       )}
     >
       {children}
@@ -34,7 +34,7 @@ export const SuperDisplay = ({
     <h1
       className={cn(
         "text-primary text-5xl sm:text-7xl md:text-8xl lg:text-9xl 2xl:text-[12rem]",
-        className,
+        className
       )}
     >
       {children}
@@ -82,9 +82,7 @@ export const SmallText = ({
   children: ReactNode;
 }) => {
   return (
-    <p
-      className={cn("text-primary text-2xl 3xl:text-4xl", textBase, className)}
-    >
+    <p className={cn("text-primary text-2xl 3xl:text-xl", textBase, className)}>
       {children}
     </p>
   );
@@ -99,7 +97,11 @@ export const Text = ({
 }) => {
   return (
     <p
-      className={cn("text-primary text-2xl 2xl:text-4xl", textBase, className)}
+      className={cn(
+        "text-primary text-2xl leading-normal 2xl:text-3xl 2xl:leading-normal",
+        textBase,
+        className
+      )}
     >
       {children}
     </p>
@@ -117,7 +119,7 @@ export const CodeSnippet = ({
     <div
       className={cn(
         "text-primary text-4xl bg-muted rounded-md p-5 flex flex-row gap-5",
-        className,
+        className
       )}
     >
       <div>{children}</div>

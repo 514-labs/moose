@@ -10,7 +10,7 @@ export const BuiltOnSection = () => {
   const content = {
     title: "Manage your entire end to end data stack as a unified app/service",
     description:
-      "Built for real time, built for scale with batteries included infra, or BYO. Built with Rust, Clickhouse and Red Panda.",
+      "Built for real time, built for scale with batteries included infra, or BYO. Built with Rust, ClickHouse and RedPanda.",
   };
   return (
     <Section>

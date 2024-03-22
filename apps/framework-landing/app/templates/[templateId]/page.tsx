@@ -1,4 +1,8 @@
-import { Grid, Section } from "@/components/containers/page-containers";
+import {
+  FullWidthContentContainer,
+  Grid,
+  Section,
+} from "@/components/containers/page-containers";
 import Link from "next/link";
 
 import {
@@ -9,6 +13,8 @@ import {
 } from "@/components/ui/accordion";
 import { CodeSnippet, Display, Text } from "@/components/typography/standard";
 import { CTAButton, PlaceholderImage } from "@/app/page";
+import FooterSection from "@/app/sections/FooterSection";
+import { EmailSection } from "@/app/sections/EmailSection";
 
 interface TemplateAccordionItem {
   title: string;
@@ -228,7 +234,10 @@ export default function TemplatePage({
           </Section>
         </div>
       </div>
-      <div className="col-span-12 bg-slate-300 h-[2000px] md:sticky top-96"></div>
+      <FullWidthContentContainer className="col-span-12 ">
+        <FooterSection />
+        <EmailSection />
+      </FullWidthContentContainer>
     </Grid>
   );
 }

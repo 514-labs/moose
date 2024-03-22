@@ -60,14 +60,17 @@ export const FooterNavContainer = () => {
 };
 
 export const FooterDisclaimerContainer = () => {
+  const disclaimer = {
+    rights: "2024 All rights reserved",
+    by: "Moose.js from the fiveonefour team",
+  };
+
   return (
     <div className="flex flex-row grow min-h-16">
       <div className="bg-primary aspect-square h-full min-h-16"></div>
       <div className="flex flex-col justify-center px-5 no-wrap">
-        <SmallText className="my-0">2024 All rights rserved</SmallText>
-        <SmallText className="my-0">
-          Moose.js is by the folks at fiveonefour
-        </SmallText>
+        <SmallText className="my-0">{disclaimer.rights}</SmallText>
+        <SmallText className="my-0">{disclaimer.by}</SmallText>
       </div>
     </div>
   );

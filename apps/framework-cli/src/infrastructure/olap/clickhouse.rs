@@ -8,6 +8,7 @@ use self::model::ClickHouseSystemTable;
 
 pub mod client;
 pub mod config;
+pub mod inserter;
 pub mod mapper;
 pub mod model;
 pub mod queries;

@@ -4,6 +4,7 @@ import React, { useLayoutEffect } from "react";
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { cn } from "../lib/utils";
 
 gsap.registerPlugin(ScrollTrigger);
 gsap.registerPlugin(SplitText);
@@ -29,19 +30,11 @@ const getDefaultStyle = (size: Size) => {
   }
 
   if (size === "express") {
-    return "text-typography text-center text-3xl lg:text-4xl 2xl:text-6xl 3xl:text-7xl text-black";
+    return "text-typography text-3xl text-black";
   }
 
   if (size === "heading") {
     return "text-3xl text-action";
-  }
-};
-
-const getStyle = (className: string, size: Size) => {
-  if (className) {
-    return className + " " + getDefaultStyle(size);
-  } else {
-    return getDefaultStyle(size);
   }
 };
 
@@ -100,7 +93,7 @@ export const AnimatedHeading = ({
   }, []);
 
   return (
-    <div className={getStyle(className, size)}>
+    <div className={cn(getDefaultStyle(size), className)}>
       <span className="invisible" ref={headingRef}>
         {content}
       </span>

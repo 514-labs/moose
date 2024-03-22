@@ -4,6 +4,7 @@ import React, { useLayoutEffect } from "react";
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
+import { cn } from "../lib/utils";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -16,14 +17,6 @@ interface DescriptionProps {
   className?: string;
   position?: number;
 }
-
-const getStyle = (className: string) => {
-  if (className) {
-    return className + "text-typography my-3 text-black";
-  } else {
-    return "text-typography my-3 text-black";
-  }
-};
 
 export const AnimatedDescription = ({
   content,
@@ -86,7 +79,7 @@ export const AnimatedDescription = ({
   }, [descriptionRef, computedTriggerRef]);
 
   return (
-    <div className={getStyle(className)}>
+    <div className={cn("my-3 font-normal text-black", className)}>
       <div className="invisible" ref={descriptionRef}>
         {content}
       </div>

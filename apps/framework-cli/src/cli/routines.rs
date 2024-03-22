@@ -101,6 +101,7 @@ use crate::infrastructure::olap::clickhouse::version_sync::{
 use crate::infrastructure::stream::redpanda;
 use crate::project::{Project, PROJECT};
 use crate::utilities::package_managers;
+use crate::utilities::system::read_directory;
 
 use super::display::with_spinner_async;
 use super::local_webserver::Webserver;
@@ -314,6 +315,21 @@ async fn initialize_project_state(
     let producer = redpanda::create_producer(project.redpanda_config.clone());
 
     info!("Checking for old version directories...");
+
+    let mut versions: Vec<String> = Vec::new();
+    match read_directory(old_version_dir.clone()) {
+        Ok(v) => {
+            versions.append(&mut v.clone());
+            let current_version = project.version().to_string();
+            if !versions.contains(&current_version) {
+                versions.push(current_version.clone());
+            }
+            versions.sort();
+        }
+        Err(_e) => {
+            info!("No old version directories found");
+        }
+    };
 
     let mut framework_object_versions =
         FrameworkObjectVersions::new(project.version().to_string(), project.schemas_dir().clone());

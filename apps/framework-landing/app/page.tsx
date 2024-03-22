@@ -13,6 +13,7 @@ import { FeaturesSection } from "./sections/home/FeaturesSection";
 import { BuiltOnSection } from "./BuiltOnSection";
 import { SecondaryCTASection } from "./sections/home/SecondaryCTASection";
 import { GetMooseCTASection } from "./sections/home/GetMooseCTASection";
+import { Text } from "@/components/typography/standard";
 
 export const PlaceholderImage = ({ className }: { className?: string }) => {
   return <div className={cn("relative ", className)}> </div>;
@@ -29,7 +30,7 @@ export const CTAText = ({
     <div
       className={cn(
         "text-center md:text-start text-primary text-4xl bg-muted rounded-md py-5 px-10 text-nowrap",
-        className
+        className,
       )}
     >
       {children}
@@ -47,9 +48,15 @@ export const CTAButton = ({ className, children, variant }: CTAButtonProps) => {
     <Button
       size={"lg"}
       variant={variant}
-      className="text-4xl py-5 px-6 h-full font-normal border-primary"
+      className="px-6 h-full font-normal border-primary"
     >
-      {children}
+      <Text
+        className={cn(
+          variant === "outline" ? "text-primary" : "text-primary-foreground",
+        )}
+      >
+        {children}
+      </Text>
     </Button>
   );
 };

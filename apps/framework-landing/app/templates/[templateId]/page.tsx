@@ -201,7 +201,7 @@ export default function TemplatePage({
   };
 
   const template = content.templateDetails.find(
-    (template) => template.slug === params.templateId
+    (template) => template.slug === params.templateId,
   );
 
   return (

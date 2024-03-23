@@ -171,6 +171,7 @@ jobs:
 
       - name: Notify Sentry release
         uses: getsentry/action-release@v1
+        if: ${{ !inputs.dry-run }}
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
@@ -213,6 +214,7 @@ jobs:
 
       - name: Notify Sentry release
         uses: getsentry/action-release@v1
+        if: ${{ !inputs.dry-run }}
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}

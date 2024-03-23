@@ -1,4 +1,3 @@
-
 // Example flow function: Converts local timestamps in UserActivity data to UTC.
 
 // Imports: Source (UserActivity) and Destination (ParsedActivity) data models.
@@ -10,10 +9,9 @@ import { UserActivity } from "../../../../.moose/internal-app-sdk/UserActivity.t
 export default function run(event: UserActivity): ParsedActivity {
   // Convert local timestamp to UTC and return new ParsedActivity object.
   return {
-    eventId: event.eventId,  // Retain original event ID.
-    userId: "puid" + event.userId,  // Example: Prefix user ID.
-    activity: event.activity,  // Copy activity unchanged.
-    timestamp: new Date(event.timestamp.toUTCString())  // Convert timestamp to UTC.
+    eventId: event.eventId, // Retain original event ID.
+    userId: "puid" + event.userId, // Example: Prefix user ID.
+    activity: event.activity, // Copy activity unchanged.
+    timestamp: new Date(event.timestamp.toUTCString()), // Convert timestamp to UTC.
   };
 }
-

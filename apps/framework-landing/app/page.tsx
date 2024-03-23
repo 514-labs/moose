@@ -30,7 +30,7 @@ export const CTAText = ({
     <div
       className={cn(
         "text-center md:text-start text-primary text-4xl bg-muted rounded-md py-5 px-10 text-nowrap",
-        className
+        className,
       )}
     >
       {children}
@@ -53,7 +53,7 @@ export const CTAButton = ({ className, children, variant }: CTAButtonProps) => {
       <Text
         className={cn(
           variant === "outline" ? "text-primary" : "text-primary-foreground",
-          className
+          className,
         )}
       >
         {children}

@@ -38,7 +38,7 @@ export default async function RootLayout({
         className={cn(
           "min-h-screen bg-background font-sans antialiased",
           monoFont.variable,
-          sansFont.variable
+          sansFont.variable,
         )}
         suppressHydrationWarning
       >

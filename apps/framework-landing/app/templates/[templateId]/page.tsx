@@ -12,9 +12,10 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { CodeSnippet, Display, Text } from "@/components/typography/standard";
-import { CTAButton, PlaceholderImage } from "@/app/page";
+import { CTABar, CTAButton, PlaceholderImage } from "@/app/page";
 import FooterSection from "@/app/sections/FooterSection";
 import { EmailSection } from "@/app/sections/EmailSection";
+import { Separator } from "@/components/ui/separator";
 
 interface TemplateAccordionItem {
   title: string;
@@ -81,10 +82,35 @@ export default function TemplatePage({
         title: "Product Analytics",
         cta: {
           action: "cta-product-analytics-install",
+          label: "Copy npx command",
           text: "npx create-moose-app --template product-analytics",
         },
         description:
           "Harness the power of a full-stack, real-time user analytics platform designed for product analytics, powered by MooseJS and NextJS.",
+        features: {
+          title: "Features",
+          items: [
+            {
+              title: "Analytics services",
+              label: "Backend",
+              items: ["MooseJS", "Event Data Models", "Bot Filtering Flow"],
+            },
+            {
+              title: "Analytics dashboard",
+              label: "Frontend",
+              items: ["NextJS", "TailwindCSS", "Observable Plot"],
+            },
+            {
+              title: "Analytics utilities",
+              label: "Intrumentation",
+              items: [
+                "Event Capture SDK",
+                "Page tacking",
+                "Session managemment",
+              ],
+            },
+          ],
+        },
         usage: [
           {
             title: "Setting up locally",
@@ -201,7 +227,7 @@ export default function TemplatePage({
   };
 
   const template = content.templateDetails.find(
-    (template) => template.slug === params.templateId,
+    (template) => template.slug === params.templateId
   );
 
   return (
@@ -221,6 +247,38 @@ export default function TemplatePage({
             </div>
             <Display>{template?.title}</Display>
             <Text>{template?.description}</Text>
+            <CTABar>
+              <CTAButton>{template?.cta?.label}</CTAButton>
+            </CTABar>
+            <Text className="text-muted-foreground">
+              {template?.features?.title}
+            </Text>
+            <div>
+              {template?.features?.items.map((feature, index) => (
+                <Grid>
+                  <div key={index} className="col-span-6">
+                    <Text className="my-0">{feature.title}</Text>
+                    <Text className="my-0 text-muted-foreground">
+                      {feature.label}
+                    </Text>
+                  </div>
+                  <div className="col-span-6">
+                    {feature.items.map((item, index) => (
+                      <>
+                        <Text className="my-0" key={index}>
+                          {item}
+                        </Text>
+                      </>
+                    ))}
+                  </div>
+                  {index < template.features.items.length - 1 && (
+                    <div className="col-span-12">
+                      <Separator className="my-5" />
+                    </div>
+                  )}
+                </Grid>
+              ))}
+            </div>
           </Section>
         </div>
       </div>

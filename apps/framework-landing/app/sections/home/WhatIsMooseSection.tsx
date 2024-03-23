@@ -23,7 +23,7 @@ export const WhatIsMooseSection = () => {
         <HalfWidthContentContainer className="">
           <PlaceholderImage className="aspect-square bg-muted" />
         </HalfWidthContentContainer>
-        <HalfWidthContentContainer className="flex flex-col justify-center">
+        <HalfWidthContentContainer className="flex flex-col md:col-span-12 xl:col-span-6 justify-center">
           <Heading> {content.title} </Heading>
           <Text> {content.description} </Text>
           <CTABar>

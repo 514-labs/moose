@@ -10,7 +10,7 @@ use crate::project::Project;
 use super::constants::{CLI_USER_DIRECTORY, GITIGNORE};
 
 pub fn is_git_repo(dir_path: &Path) -> Result<bool, Error> {
-    match Repository::open(dir_path) {
+    match Repository::discover(dir_path) {
         Ok(_) => Ok(true),
         Err(e) if e.code() == git2::ErrorCode::NotFound => Ok(false),
         Err(e) => Err(e),

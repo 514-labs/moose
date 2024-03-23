@@ -34,7 +34,7 @@ importers:
     dependencies:
       '@514labs/moose-cli':
         specifier: latest
-        version: 0.3.165
+        version: 0.3.168
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -125,6 +125,12 @@ importers:
         specifier: ^4.9.5
         version: 4.9.5
 
+  apps/framework-internal-app:
+    devDependencies:
+      '@514labs/moose-cli':
+        specifier: latest
+        version: 0.3.168
+
   apps/framework-landing:
     dependencies:
       '@radix-ui/react-accordion':
@@ -202,16 +208,16 @@ importers:
     optionalDependencies:
       '@514labs/moose-cli-darwin-arm64':
         specifier: latest
-        version: 0.3.165
+        version: 0.3.168
       '@514labs/moose-cli-darwin-x64':
         specifier: latest
-        version: 0.3.165
+        version: 0.3.168
       '@514labs/moose-cli-linux-arm64':
         specifier: latest
-        version: 0.3.165
+        version: 0.3.168
       '@514labs/moose-cli-linux-x64':
         specifier: latest
-        version: 0.3.165
+        version: 0.3.168
     devDependencies:
       '@types/node':
         specifier: 18.16.19
@@ -529,47 +535,42 @@ importers:
 
 packages:
 
-  /@514labs/moose-cli-darwin-arm64@0.3.165:
-    resolution: {integrity: sha512-rUzsQ1hl+aPnO2o4Aw89D2xdAvBU59wu7KxbaVCzwwnP03YWj8vDOsZeGi2QuCNt3wghP2aJCd+Eoj3g74/8Kw==}
+  /@514labs/moose-cli-darwin-arm64@0.3.168:
+    resolution: {integrity: sha512-/Efopd3SmgXxfdYX0tsd0T3VVXZZBka6q2pUmO8LRSnmPXCMOTOb65VNw5v1Z6LT/LVSPxXHwc+yxjITIIhkDg==}
     cpu: [arm64]
     os: [darwin]
     requiresBuild: true
-    dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-x64@0.3.165:
-    resolution: {integrity: sha512-5jfWzBp6IxZUnqUOuNUbzRFcgl/k68Yf3YMnAOdWKZajDqz009qOK7sbTRMhuvzxtD4xNzG0ztu1eUpErA0sig==}
+  /@514labs/moose-cli-darwin-x64@0.3.168:
+    resolution: {integrity: sha512-+uawgRCp0Io2hrNfob/OaMvTXtio7QeVAIP/1qa/3qFSdjjmrizTl500q4rPhkJjv6S4zR7GHhYXWZqX2BpZPQ==}
     cpu: [x64]
     os: [darwin]
     requiresBuild: true
-    dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-arm64@0.3.165:
-    resolution: {integrity: sha512-slxXr/Xkum2QG79vMVVs0mr/5DItBJJg3AjWLI60hUgaCpniIkdKKaDq7aICDEan7OA/5K8cnDEd4HvBCGV4Bw==}
+  /@514labs/moose-cli-linux-arm64@0.3.168:
+    resolution: {integrity: sha512-+RRoVUln5iSP/kCFNhMG4LDVFbQyEhSnF9Qo5+AjRVudA4Jqs9sSoPSjsDCAFlqsSOe+IxOr0IWlT+ShTRH0CQ==}
     cpu: [arm64]
     os: [linux]
     requiresBuild: true
-    dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-x64@0.3.165:
-    resolution: {integrity: sha512-G/p6ywuzO5S9SS6wG1J2IqNoqjqi1kKmPhpWn467Qrmb+dPfGZNrGhrFYLajl0HSx2w5tb8ustLdmRSAfYQezA==}
+  /@514labs/moose-cli-linux-x64@0.3.168:
+    resolution: {integrity: sha512-kSXJTw4TAGdtCngcDVWx4Wdc6C9IAmtY6NfDdNEouL0sYIjiGJhEa9V7n2uXKz+1yV995/rFFxhhyIXnNUbojg==}
     cpu: [x64]
     os: [linux]
     requiresBuild: true
-    dev: false
     optional: true
 
-  /@514labs/moose-cli@0.3.165:
-    resolution: {integrity: sha512-jh9cC2z6zXhOCwxf2NObzG8TDyCoR6x0MD1GDrkcyv4YpQhYYq9MgzVUX4bznmIpVX4nAQaKt3uwt8sSyl855w==}
+  /@514labs/moose-cli@0.3.168:
+    resolution: {integrity: sha512-60s4yEmsvgN6KsHZZ1BUL4cOznjv5k2AYPrT4j1zEu3EMijGUm0yMu1zmgapmkv2yDvCMcpx41VI6q6diF8vWA==}
     hasBin: true
     optionalDependencies:
-      '@514labs/moose-cli-darwin-arm64': 0.3.165
-      '@514labs/moose-cli-darwin-x64': 0.3.165
-      '@514labs/moose-cli-linux-arm64': 0.3.165
-      '@514labs/moose-cli-linux-x64': 0.3.165
-    dev: false
+      '@514labs/moose-cli-darwin-arm64': 0.3.168
+      '@514labs/moose-cli-darwin-x64': 0.3.168
+      '@514labs/moose-cli-linux-arm64': 0.3.168
+      '@514labs/moose-cli-linux-x64': 0.3.168
 
   /@aashutoshrathi/word-wrap@1.2.6:
     resolution: {integrity: sha512-1Yjs2SvM8TflER/OD3cOjhWWOZb58A2t7wpE2S9XfBYTiIl+XFhQG2bjy4Pu1I+EAlCNUzRDYDdFwFYUKvXcIA==}
@@ -1947,7 +1948,7 @@ packages:
       '@types/react-dom':
         optional: true
     dependencies:
-      '@babel/runtime': 7.23.8
+      '@babel/runtime': 7.24.1
       '@radix-ui/primitive': 1.0.1
       '@radix-ui/react-collapsible': 1.0.3(@types/react-dom@18.2.18)(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)
       '@radix-ui/react-collection': 1.0.3(@types/react-dom@18.2.18)(@types/react@18.2.48)(react-dom@18.2.0)(react@18.2.0)

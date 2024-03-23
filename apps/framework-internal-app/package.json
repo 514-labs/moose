@@ -1,0 +1,11 @@
+{
+  "name": "internal-app",
+  "version": "0.0",
+  "scripts": {
+    "dev": "moose-cli dev"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@514labs/moose-cli": "latest"
+  }
+}

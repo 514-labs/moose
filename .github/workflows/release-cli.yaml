@@ -251,3 +251,21 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             FRAMEWORK_VERSION=${{ needs.version.outputs.version }}
+
+  deploy-internal:
+    runs-on: ubuntu-latest
+    needs:
+      - version
+      - publish-npm-base
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Deploy
+        run: npm run deploy -- --dry-run=${{ github.event.inputs.dry-run }}

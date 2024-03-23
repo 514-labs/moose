@@ -264,8 +264,19 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Install dependencies
-        run: npm install
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
 
-      - name: Deploy
-        run: npm run deploy -- --dry-run=${{ github.event.inputs.dry-run }}
+      - name: Install node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run Build
+        working-directory: ./apps/framework-internal-app
+        run: pnpm run build

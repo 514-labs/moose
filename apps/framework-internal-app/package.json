@@ -2,7 +2,8 @@
   "name": "internal-app",
   "version": "0.0",
   "scripts": {
-    "dev": "moose-cli dev"
+    "dev": "moose-cli dev",
+    "build": "moose-cli build --docker"
   },
   "dependencies": {},
   "devDependencies": {

@@ -195,4 +195,3 @@ const startKafkaGroup = async (): Promise<void> => {
 };
 
 startKafkaGroup().then(() => startFlowsFilewatcher());
-

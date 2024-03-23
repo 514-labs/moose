@@ -250,9 +250,6 @@ export default function TemplatePage({
             <CTABar>
               <CTAButton>{template?.cta?.label}</CTAButton>
             </CTABar>
-            <Text className="text-muted-foreground">
-              {template?.features?.title}
-            </Text>
             <div>
               {template?.features?.items.map((feature, index) => (
                 <Grid>

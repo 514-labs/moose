@@ -55,13 +55,16 @@ export const TemplatesSection = () => {
         </Grid>
       </Section>
       <Section>
-        <Grid className="gap-y-5">
+        <Grid className="gap-y-5 justify-center">
           <ThirdWidthContentContainer className="xl:order-1">
             <PlaceholderImage className=" bg-muted aspect-[4/3]" />
           </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="flex flex-col justify-center xl:order-4">
+          <ThirdWidthContentContainer className="flex flex-col justify-center xl:justify-start xl:order-4">
             <Heading> {content.templates[0].title} </Heading>
-            <Text> {content.templates[0].description} </Text>
+            <Text className="xl:grow">
+              {" "}
+              {content.templates[0].description}{" "}
+            </Text>
             <CTABar>
               <Link
                 className="flex flex-col"
@@ -77,9 +80,12 @@ export const TemplatesSection = () => {
           <ThirdWidthContentContainer className=" xl:m-0 xl:order-1">
             <PlaceholderImage className=" bg-muted aspect-[4/3]" />
           </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="flex flex-col justify-center xl:m-0  xl:order-4">
+          <ThirdWidthContentContainer className="flex flex-col justify-center xl:justify-start xl:m-0  xl:order-4">
             <Heading> {content.templates[1].title} </Heading>
-            <Text> {content.templates[1].description} </Text>
+            <Text className="xl:grow">
+              {" "}
+              {content.templates[1].description}{" "}
+            </Text>
             <CTABar>
               <Link
                 className="flex flex-col"
@@ -93,11 +99,14 @@ export const TemplatesSection = () => {
           </ThirdWidthContentContainer>
 
           <ThirdWidthContentContainer className="xl:order-1">
-            <PlaceholderImage className=" bg-muted aspect-[4/3]" />
+            <PlaceholderImage className="bg-muted aspect-[4/3]" />
           </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="flex flex-col justify-center xl:order-4">
+          <ThirdWidthContentContainer className="flex flex-col justify-center xl:justify-start xl:order-4">
             <Heading> {content.templates[2].title} </Heading>
-            <Text> {content.templates[2].description} </Text>
+            <Text className="xl:grow">
+              {" "}
+              {content.templates[2].description}{" "}
+            </Text>
             <CTABar>
               <Link
                 className="flex flex-col"

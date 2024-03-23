@@ -5,7 +5,8 @@ import {
   Grid,
 } from "@/components/containers/page-containers";
 import { CodeSnippet, Display, Text } from "@/components/typography/standard";
-import { CTABar, CTAText, CTAButton, PlaceholderImage } from "../../page";
+import { CodeSnippet as AnimatedCodeSnipper } from "@/components/typography/animated";
+import { CTABar, PlaceholderImage } from "../../page";
 
 export const HeroSection = () => {
   const content = {
@@ -30,7 +31,7 @@ export const HeroSection = () => {
               <Text> {content.description} </Text>
             </div>
             <CTABar>
-              <CodeSnippet> {content.cta.text} </CodeSnippet>
+              <AnimatedCodeSnipper> {content.cta.text} </AnimatedCodeSnipper>
             </CTABar>
           </HalfWidthContentContainer>
         </Grid>

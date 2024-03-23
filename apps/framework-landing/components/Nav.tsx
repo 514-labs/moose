@@ -7,8 +7,9 @@ import { Disclosure } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
-import { SmallText } from "./typography/standard";
+import { Text } from "./typography/standard";
 import { cn } from "@/lib/utils";
+import { Grid } from "./containers/page-containers";
 
 gsap.registerPlugin(SplitText);
 
@@ -32,15 +33,15 @@ export const Nav = () => {
       {({ open }) => (
         <>
           <div className="z-50 sticky w-full py-2">
-            <div className="flex h-16 justify-between">
-              <div className="flex flex-grow">
-                <div className="flex flex-shrink-0 grow items-center text-primary">
-                  <Link href="/">
-                    <SmallText>MooseJS</SmallText>
+            <div className="flex h-16 justify-between items-center">
+              <Grid className="sm:grow">
+                <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary">
+                  <Link href="/" className="flex h-full items-center">
+                    <Text className="my-0">MooseJS</Text>
                   </Link>
                 </div>
 
-                <div className="hidden md:ml-6 md:flex md:flex-grow">
+                <div className="hidden md:ml-5 col-span-6 md:flex justify-end">
                   {navigation.map((item) => {
                     const isActive = pathname === item.href;
 
@@ -48,29 +49,29 @@ export const Nav = () => {
                       <div
                         className={cn(
                           isActive
-                            ? "flex-grow flex items-center justify-end text-action-primary "
-                            : "flex-grow flex items-center justify-end text-primary ",
+                            ? "items-center text-action-primary px-5"
+                            : "items-center text-primary px-5"
                         )}
                         key={item.name}
                       >
                         <Link href={item.href}>
-                          <SmallText
+                          <Text
                             className={cn(
                               isActive
                                 ? "hover:text-action-primary border-b-2 border-black"
                                 : "hover:text-primary",
-                              "py-2",
+                              "py-2"
                             )}
                           >
                             {item.name}
-                          </SmallText>
+                          </Text>
                         </Link>
                         <a></a>
                       </div>
                     );
                   })}
                 </div>
-              </div>
+              </Grid>
               <div className="-mr-2 flex items-center md:hidden">
                 {/* Mobile menu button */}
                 <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-2 text-primary hover:text-action-primary focus:outline-none focus:ring-2 focus:ring-inset focus:ring-action-primary">

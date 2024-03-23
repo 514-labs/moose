@@ -1,5 +1,7 @@
 import { cn } from "@/lib/utils";
 import { Copy } from "lucide-react";
+import { Ref } from "react";
+import { forwardRef } from "react";
 import { ReactNode } from "react";
 
 export const BannerDisplay = ({
@@ -90,25 +92,28 @@ export const SmallText = ({
   );
 };
 
-export const Text = ({
-  className,
-  children,
-}: {
+interface TextProps extends React.HTMLProps<HTMLParagraphElement> {
   className?: string;
   children: ReactNode;
-}) => {
-  return (
-    <p
-      className={cn(
-        "text-primary text-2xl leading-normal 2xl:text-3xl 2xl:leading-normal",
-        textBase,
-        className
-      )}
-    >
-      {children}
-    </p>
-  );
-};
+}
+
+export const Text = forwardRef<HTMLParagraphElement, TextProps>(
+  ({ className, children, ...props }, ref) => {
+    return (
+      <p
+        ref={ref}
+        className={cn(
+          "text-primary text-2xl leading-normal 2xl:text-3xl 2xl:leading-normal",
+          textBase,
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </p>
+    );
+  }
+);
 
 export const CodeSnippet = ({
   children,

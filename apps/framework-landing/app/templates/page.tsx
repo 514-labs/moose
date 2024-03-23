@@ -11,6 +11,7 @@ import Link from "next/link";
 import { Display, Heading, Text } from "@/components/typography/standard";
 import { CTABar, CTAButton, PlaceholderImage } from "@/app/page";
 import { FooterSection } from "@/app/sections/FooterSection";
+import { TemplatesSection } from "../sections/home/TemplatesSection";
 
 export default function TemplatesPage() {
   const content = {
@@ -71,63 +72,7 @@ export default function TemplatesPage() {
           </HalfWidthContentContainer>
         </Grid>
       </Section>
-      <Section>
-        <Grid className="gap-y-5">
-          <ThirdWidthContentContainer className="xl:order-1">
-            <PlaceholderImage className=" bg-muted aspect-[4/3]" />
-          </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="xl:order-4">
-            <Heading> {content.templates[0].title} </Heading>
-            <Text> {content.templates[0].description} </Text>
-            <CTABar>
-              <Link
-                className="flex flex-col"
-                href={content.templates[0].cta.href}
-              >
-                <CTAButton variant={"outline"}>
-                  {content.templates[0].cta.label}
-                </CTAButton>
-              </Link>
-            </CTABar>
-          </ThirdWidthContentContainer>
-
-          <ThirdWidthContentContainer className=" xl:m-0 xl:order-1">
-            <PlaceholderImage className=" bg-muted aspect-[4/3]" />
-          </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className=" xl:m-0  xl:order-4">
-            <Heading> {content.templates[1].title} </Heading>
-            <Text> {content.templates[1].description} </Text>
-            <CTABar>
-              <Link
-                className="flex flex-col"
-                href={content.templates[1].cta.href}
-              >
-                <CTAButton variant={"outline"}>
-                  {content.templates[1].cta.label}
-                </CTAButton>
-              </Link>
-            </CTABar>
-          </ThirdWidthContentContainer>
-
-          <ThirdWidthContentContainer className="xl:order-1">
-            <PlaceholderImage className=" bg-muted aspect-[4/3]" />
-          </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="xl:order-4">
-            <Heading> {content.templates[2].title} </Heading>
-            <Text> {content.templates[2].description} </Text>
-            <CTABar>
-              <Link
-                className="flex flex-col"
-                href={content.templates[2].cta.href}
-              >
-                <CTAButton variant={"outline"}>
-                  {content.templates[2].cta.label}
-                </CTAButton>
-              </Link>
-            </CTABar>
-          </ThirdWidthContentContainer>
-        </Grid>
-      </Section>
+      <TemplatesSection />
       <FooterSection />
       <EmailSection />
     </>

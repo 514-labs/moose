@@ -1,11 +1,12 @@
 import {
   FullWidthContentContainer,
+  Grid,
   Section,
 } from "@/components/containers/page-containers";
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { SmallText } from "@/components/typography/standard";
+import { SmallText, Text } from "@/components/typography/standard";
 
 export const FooterSection = () => {
   return (
@@ -27,8 +28,14 @@ export const FooterNavItem = ({
   className?: string;
 }) => {
   return (
-    <Link href={item.href} className={cn("text-foreground", className)}>
-      <SmallText> {children} </SmallText>
+    <Link
+      href={item.href}
+      className={cn(
+        "text-foreground flex flex-row justify-end lg:px-5",
+        className
+      )}
+    >
+      <Text> {children} </Text>
     </Link>
   );
 };
@@ -43,10 +50,10 @@ export const FooterNav = () => {
   ];
 
   return (
-    <div className="flex flex-col sm:flex-row sm:justify-between lg:justify-normal">
+    <div className="flex flex-col grow justify-center items-start md:flex-row md:justify-between lg:justify-end col-span-12 lg:col-span-6">
       {navigation.map((item) => {
         return (
-          <FooterNavItem item={item} key={item.name} className="p-5">
+          <FooterNavItem item={item} key={item.name} className="md:p-5">
             {item.name}
           </FooterNavItem>
         );
@@ -66,11 +73,11 @@ export const FooterDisclaimerContainer = () => {
   };
 
   return (
-    <div className="flex flex-row grow min-h-16">
+    <div className="flex flex-row grow min-h-16 col-span-12 lg:col-span-6">
       <div className="bg-primary aspect-square h-full min-h-16"></div>
       <div className="flex flex-col justify-center px-5 no-wrap">
-        <SmallText className="my-0">{disclaimer.rights}</SmallText>
-        <SmallText className="my-0">{disclaimer.by}</SmallText>
+        <Text className="my-0">{disclaimer.rights}</Text>
+        <Text className="my-0">{disclaimer.by}</Text>
       </div>
     </div>
   );
@@ -79,8 +86,10 @@ export const FooterDisclaimerContainer = () => {
 export const FooterContent = () => {
   return (
     <FullWidthContentContainer className="flex flex-col lg:flex-row">
-      <FooterDisclaimerContainer />
-      <FooterNavContainer />
+      <Grid className="grow">
+        <FooterDisclaimerContainer />
+        <FooterNavContainer />
+      </Grid>
     </FullWidthContentContainer>
   );
 };

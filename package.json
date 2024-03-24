@@ -15,7 +15,7 @@
     "lint-staged": "^15.2.0",
     "prettier": "^3.2.5",
     "prettier-plugin-tailwindcss": "^0.1.13",
-    "turbo": "^1.11.3"
+    "turbo": "^1.13.0"
   },
   "packageManager": "pnpm@8.6.12",
   "lint-staged": {

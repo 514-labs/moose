@@ -27,7 +27,7 @@ importers:
         specifier: ^0.1.13
         version: 0.1.13(prettier@3.2.5)
       turbo:
-        specifier: ^1.11.3
+        specifier: ^1.13.0
         version: 1.13.0
 
   apps/create-moose-app:

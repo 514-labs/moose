@@ -1,7 +1,7 @@
-import { cn } from "@/lib/utils";
 import { Copy } from "lucide-react";
 import { forwardRef } from "react";
 import { ReactNode } from "react";
+import { cn } from "../../lib/utils";
 
 export const BannerDisplay = ({
   className,

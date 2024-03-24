@@ -20,7 +20,7 @@
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "eslint": "^8.46.0",
-    "tsconfig": "workspace:0.0.0",
+    "@repo/ts-config": "workspace:*",
     "typescript": "^4.9.5"
   },
   "dependencies": {

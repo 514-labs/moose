@@ -1,21 +1,21 @@
-import {
-  FullWidthContentContainer,
-  Grid,
-  Section,
-} from "@/components/containers/page-containers";
 import Link from "next/link";
 
+import { CTABar, CTAButton, PlaceholderImage } from "../../page";
+import FooterSection from "../../sections/FooterSection";
+import { EmailSection } from "../../sections/EmailSection";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion";
-import { CodeSnippet, Display, Text } from "@/components/typography/standard";
-import { CTABar, CTAButton, PlaceholderImage } from "@/app/page";
-import FooterSection from "@/app/sections/FooterSection";
-import { EmailSection } from "@/app/sections/EmailSection";
-import { Separator } from "@/components/ui/separator";
+  Separator,
+} from "design-system/components";
+import {
+  Grid,
+  Section,
+  FullWidthContentContainer,
+} from "design-system/components/containers";
+import { CodeSnippet, Display, Text } from "design-system/typography";
 
 interface TemplateAccordionItem {
   title: string;
@@ -227,7 +227,7 @@ export default function TemplatePage({
   };
 
   const template = content.templateDetails.find(
-    (template) => template.slug === params.templateId,
+    (template) => template.slug === params.templateId
   );
 
   return (

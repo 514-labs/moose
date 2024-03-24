@@ -1,10 +1,10 @@
 import {
+  Grid,
   HalfWidthContentContainer,
   Section,
-  Grid,
-} from "@/components/containers/page-containers";
-import { Heading, Text } from "@/components/typography/standard";
-import { PlaceholderImage } from "./page";
+} from "design-system/components/containers";
+import { PlaceholderImage } from "../../page";
+import { Heading, Text } from "design-system/typography";
 
 export const BuiltOnSection = () => {
   const content = {

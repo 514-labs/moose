@@ -1,6 +1,6 @@
 // Containers are used to layout content across all 12 columns.
 
-import { cn } from "@/lib/utils";
+import { cn } from "../../lib/utils";
 
 // They are used to contain content and apply padding as the screen resizes
 export const FullWidthContentContainer = ({

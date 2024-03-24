@@ -1,10 +1,10 @@
 import {
-  ThirdWidthContentContainer,
-  FullWidthContentContainer,
   Section,
   Grid,
-} from "@/components/containers/page-containers";
-import { Display, Heading, Text } from "@/components/typography/standard";
+  FullWidthContentContainer,
+  ThirdWidthContentContainer,
+} from "design-system/components/containers";
+import { Display, Heading, Text } from "design-system/typography";
 
 export const WhyMooseSection = () => {
   const content = {
@@ -40,24 +40,36 @@ export const WhyMooseSection = () => {
       <Section>
         <Grid>
           <ThirdWidthContentContainer className="   xl:order-1">
-            <Heading> {content.valueProps[0].title} </Heading>
+            <Heading>
+              {content.valueProps[0] && content.valueProps[0].title}
+            </Heading>
           </ThirdWidthContentContainer>
           <ThirdWidthContentContainer className="   xl:order-4">
-            <Text> {content.valueProps[0].description} </Text>
+            <Text>
+              {content.valueProps[0] && content.valueProps[0].description}
+            </Text>
           </ThirdWidthContentContainer>
 
           <ThirdWidthContentContainer className="  mt-5  md:mt-5 md:mb-5 xl:m-0 xl:order-2">
-            <Heading> {content.valueProps[1].title} </Heading>
+            <Heading>
+              {content.valueProps[1] && content.valueProps[1].title}
+            </Heading>
           </ThirdWidthContentContainer>
           <ThirdWidthContentContainer className="  mb-5  md:mt-5 md:mb-5 xl:m-0 xl:order-5">
-            <Text> {content.valueProps[1].description} </Text>
+            <Text>
+              {content.valueProps[1] && content.valueProps[1].description}
+            </Text>
           </ThirdWidthContentContainer>
 
           <ThirdWidthContentContainer className="   xl:order-3">
-            <Heading> {content.valueProps[2].title} </Heading>
+            <Heading>
+              {content.valueProps[2] && content.valueProps[2].title}
+            </Heading>
           </ThirdWidthContentContainer>
           <ThirdWidthContentContainer className="   xl:order-6">
-            <Text> {content.valueProps[2].description} </Text>
+            <Text>
+              {content.valueProps[2] && content.valueProps[2].description}
+            </Text>
           </ThirdWidthContentContainer>
         </Grid>
       </Section>

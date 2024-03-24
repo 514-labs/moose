@@ -1,10 +1,10 @@
 "use client";
 
-import { Section } from "@/components/containers/page-containers";
+import { horizontalLoop } from "../../../lib/animation-helpers";
+import { Section } from "design-system/components/containers";
+import { BannerDisplay } from "design-system/typography";
 import { useRef } from "react";
 import { useLayoutEffect } from "react";
-import { horizontalLoop } from "@/lib/animation-helpers";
-import { BannerDisplay } from "@/components/typography/standard";
 
 export const LooseMooseSection = () => {
   const bannerItem1 = useRef(null);

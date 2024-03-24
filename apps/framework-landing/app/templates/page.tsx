@@ -1,17 +1,13 @@
+import { EmailSection } from "../sections/EmailSection";
+import { FooterSection } from "../sections/FooterSection";
+import { TemplatesSection } from "../sections/home/TemplatesSection";
 import {
+  Grid,
   Section,
   FullWidthContentContainer,
-  Grid,
   HalfWidthContentContainer,
-  ThirdWidthContentContainer,
-} from "@/components/containers/page-containers";
-
-import { EmailSection } from "@/app/sections/EmailSection";
-import Link from "next/link";
-import { Display, Heading, Text } from "@/components/typography/standard";
-import { CTABar, CTAButton, PlaceholderImage } from "@/app/page";
-import { FooterSection } from "@/app/sections/FooterSection";
-import { TemplatesSection } from "../sections/home/TemplatesSection";
+} from "design-system/components/containers";
+import { Display, Heading, Text } from "design-system/typography";
 
 export default function TemplatesPage() {
   const content = {

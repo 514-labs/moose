@@ -1,12 +1,12 @@
-import {
-  QuarterWidthContentContainer,
-  HalfWidthContentContainer,
-  Section,
-  Grid,
-} from "@/components/containers/page-containers";
-import { CodeSnippet, Display, Text } from "@/components/typography/standard";
-import { CodeSnippet as AnimatedCodeSnipper } from "@/components/typography/animated";
+import { CodeSnippet as AnimatedCodeSnipper } from "design-system/typography/animated";
 import { CTABar, PlaceholderImage } from "../../page";
+import {
+  Section,
+  HalfWidthContentContainer,
+  QuarterWidthContentContainer,
+  Grid,
+} from "design-system/components/containers";
+import { Display, Text } from "design-system/typography";
 
 export const HeroSection = () => {
   const content = {

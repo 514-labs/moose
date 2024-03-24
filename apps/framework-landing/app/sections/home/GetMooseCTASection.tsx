@@ -1,10 +1,11 @@
 import {
-  HalfWidthContentContainer,
   Section,
   Grid,
-} from "@/components/containers/page-containers";
-import { CodeSnippet, Display, Text } from "@/components/typography/standard";
-import { PlaceholderImage, CTABar, CTAText, CTAButton } from "../../page";
+  HalfWidthContentContainer,
+} from "design-system/components/containers";
+import { Display, Text } from "design-system/typography";
+import { CodeSnippet } from "design-system/typography/animated";
+import { PlaceholderImage, CTABar } from "../../page";
 
 export const GetMooseCTASection = () => {
   const content = {

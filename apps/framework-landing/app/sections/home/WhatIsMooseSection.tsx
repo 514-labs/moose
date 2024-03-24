@@ -1,10 +1,11 @@
 import {
-  HalfWidthContentContainer,
   Section,
+  HalfWidthContentContainer,
   Grid,
-} from "@/components/containers/page-containers";
-import { Heading, Text } from "@/components/typography/standard";
+} from "design-system/components/containers";
+
 import { PlaceholderImage, CTABar, CTAButton } from "../../page";
+import { Heading, Text } from "design-system/typography";
 
 export const WhatIsMooseSection = () => {
   const content = {

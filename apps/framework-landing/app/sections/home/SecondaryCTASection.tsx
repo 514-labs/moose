@@ -1,10 +1,10 @@
 import {
+  Grid,
   HalfWidthContentContainer,
   Section,
-  Grid,
-} from "@/components/containers/page-containers";
-import { Heading, Text } from "@/components/typography/standard";
+} from "design-system/components/containers";
 import { CTABar, CTAButton } from "../../page";
+import { Heading, Text } from "design-system/typography";
 
 export const SecondaryCTASection = () => {
   const content = {
@@ -44,19 +44,29 @@ export const SecondaryCTASection = () => {
     <Section>
       <Grid className="gap-y-5">
         <HalfWidthContentContainer>
-          <Heading> {content.sections[0].title} </Heading>
-          <Text> {content.sections[0].description} </Text>
+          <Heading>{content.sections[0] && content.sections[0].title}</Heading>
+          <Text>{content.sections[0] && content.sections[0].description}</Text>
           <CTABar>
-            <CTAButton> {content.sections[0].ctas[0].label} </CTAButton>
+            <CTAButton>
+              {content.sections[0] &&
+                content.sections[0].ctas[0] &&
+                content.sections[0].ctas[0].label}
+            </CTAButton>
           </CTABar>
         </HalfWidthContentContainer>
         <HalfWidthContentContainer>
-          <Heading> {content.sections[1].title} </Heading>
-          <Text> {content.sections[1].description} </Text>
+          <Heading>{content.sections[1] && content.sections[1].title}</Heading>
+          <Text>{content.sections[1] && content.sections[1].description}</Text>
           <CTABar>
-            <CTAButton>{content.sections[1].ctas[0].label} </CTAButton>
+            <CTAButton>
+              {content.sections[1] &&
+                content.sections[1].ctas[0] &&
+                content.sections[1].ctas[0].label}
+            </CTAButton>
             <CTAButton variant={"outline"}>
-              {content.sections[1].ctas[1].label}
+              {content.sections[1] &&
+                content.sections[1].ctas[1] &&
+                content.sections[1].ctas[1].label}
             </CTAButton>
           </CTABar>
         </HalfWidthContentContainer>

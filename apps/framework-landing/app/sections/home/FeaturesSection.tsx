@@ -1,10 +1,10 @@
 import {
-  ThirdWidthContentContainer,
-  FullWidthContentContainer,
   Section,
   Grid,
-} from "@/components/containers/page-containers";
-import { Display, Heading, Text } from "@/components/typography/standard";
+  FullWidthContentContainer,
+  ThirdWidthContentContainer,
+} from "design-system/components/containers";
+import { Display, Heading, Text } from "design-system/typography";
 
 export const FeaturesSection = () => {
   const content = {
@@ -55,45 +55,73 @@ export const FeaturesSection = () => {
       <Section>
         <Grid>
           <ThirdWidthContentContainer className="xl:order-1">
-            <Heading> {content.features[0].title} </Heading>
+            <Heading>
+              {content.features[0] && content.features[0].title}
+            </Heading>
           </ThirdWidthContentContainer>
           <ThirdWidthContentContainer className="xl:mb-5 xl:order-4">
-            <Text> {content.features[0].description} </Text>
+            <Text>
+              {content.features[0] && content.features[0].description}
+            </Text>
           </ThirdWidthContentContainer>
 
           <ThirdWidthContentContainer className="mt-5 md:mt-5 xl:m-0 xl:order-2">
-            <Heading> {content.features[1].title} </Heading>
+            <Heading>
+              {content.features[1] && content.features[1].title}
+            </Heading>
           </ThirdWidthContentContainer>
           <ThirdWidthContentContainer className="md:mt-5 xl:m-0 xl:order-5 xl:mb-5">
-            <Text> {content.features[1].description} </Text>
+            <Text>
+              {content.features[1] && content.features[1].description}
+            </Text>
           </ThirdWidthContentContainer>
 
           <ThirdWidthContentContainer className="md:mt-5 mt-5 xl:m-0 xl:order-3">
-            <Heading> {content.features[2].title} </Heading>
+            <Heading>
+              {content.features[2] && content.features[2].title}
+            </Heading>
           </ThirdWidthContentContainer>
           <ThirdWidthContentContainer className="md:mt-5  xl:m-0 xl:order-6 xl:mb-5">
-            <Text> {content.features[2].description} </Text>
+            <Text>
+              {content.features[2] && content.features[2].description}
+            </Text>
           </ThirdWidthContentContainer>
 
           <ThirdWidthContentContainer className="mt-5 md:mt-5 xl:order-7 xl:m-0">
-            <Heading> {content.features[3].title} </Heading>
+            <Heading>
+              {content.features[3] && content.features[3].title}
+            </Heading>
           </ThirdWidthContentContainer>
           <ThirdWidthContentContainer className="md:mt-5  xl:m-0 xl:order-10">
-            <Text> {content.features[3].description} </Text>
+            <Text>
+              {content.features[3] && content.features[3].description}
+            </Text>
           </ThirdWidthContentContainer>
 
           <ThirdWidthContentContainer className="mt-5 md:mb-5 md:mt-5  xl:m-0 xl:order-8">
-            <Heading> {content.features[4].title} </Heading>
+            <Heading>
+              {" "}
+              {content.features[4] && content.features[4].title}{" "}
+            </Heading>
           </ThirdWidthContentContainer>
           <ThirdWidthContentContainer className="mb-5 md:mb-5 md:mt-5  xl:m-0 xl:order-11">
-            <Text> {content.features[4].description} </Text>
+            <Text>
+              {" "}
+              {content.features[4] && content.features[4].description}{" "}
+            </Text>
           </ThirdWidthContentContainer>
 
           <ThirdWidthContentContainer className="xl:order-9">
-            <Heading> {content.features[5].title} </Heading>
+            <Heading>
+              {" "}
+              {content.features[5] && content.features[5].title}{" "}
+            </Heading>
           </ThirdWidthContentContainer>
           <ThirdWidthContentContainer className="xl:order-12">
-            <Text> {content.features[5].description} </Text>
+            <Text>
+              {" "}
+              {content.features[5] && content.features[5].description}{" "}
+            </Text>
           </ThirdWidthContentContainer>
         </Grid>
       </Section>

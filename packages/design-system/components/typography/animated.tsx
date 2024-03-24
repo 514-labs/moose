@@ -1,9 +1,9 @@
 "use client";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@ui/lib/utils";
 import { Copy } from "lucide-react";
 import { ReactNode } from "react";
-import { Text } from "@/components/typography/standard";
+import { Text } from "@ui/components/typography/standard";
 
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
@@ -14,7 +14,7 @@ import { MutableRefObject } from "react";
 const copyPasteAnimation = (
   inboundRef: MutableRefObject<any>,
   outboundRef: MutableRefObject<any>,
-  wrapperRef: MutableRefObject<any>,
+  wrapperRef: MutableRefObject<any>
 ) => {
   const ctx = gsap.context(() => {
     const tl = gsap.timeline();
@@ -46,7 +46,7 @@ const copyPasteAnimation = (
         {
           opacity: 1,
           stagger: { each: 0.03 },
-        },
+        }
       );
 
       gsap.delayedCall(1, () => {
@@ -64,7 +64,7 @@ const copyPasteAnimation = (
           {
             opacity: 1,
             stagger: { each: 0.03 },
-          },
+          }
         );
       });
     });
@@ -94,8 +94,8 @@ export const CodeSnippet = ({
     <div
       ref={wrapperRef}
       className={cn(
-        "text-primary bg-muted rounded-md py-5 px-6 flex flex-row gap-5 cursor-pointer",
-        className,
+        "text-primary bg-muted rounded-md py-5 px-6 flex flex-row gap-5 cursor-pointer items-center justify-center",
+        className
       )}
     >
       <Text className="grow my-0 relative">
@@ -105,7 +105,7 @@ export const CodeSnippet = ({
         </span>
       </Text>
       <div>
-        <Copy strokeWidth={3} />
+        <Copy strokeWidth={2.5} />
       </div>
     </div>
   );

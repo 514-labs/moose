@@ -9,7 +9,7 @@ import Link from "next/link";
 import { Text } from "./typography/standard";
 import { Grid } from "./containers/page-containers";
 import { usePathname } from "next/navigation";
-import { cn } from "@/lib/utils";
+import { cn } from "../lib/utils";
 
 gsap.registerPlugin(SplitText);
 

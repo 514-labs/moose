@@ -1,19 +1,22 @@
-import { cn } from "@/lib/utils";
 import { ReactNode } from "react";
-import { Button, buttonVariants } from "@/components/ui/button";
+
 import { VariantProps } from "class-variance-authority";
-import { EmailSection } from "@/app/sections/EmailSection";
-import { LooseMooseSection } from "@/app/sections/home/LooseMooseSection";
-import { FooterSection } from "@/app/sections/FooterSection";
+import { EmailSection } from "./sections/EmailSection";
+import { LooseMooseSection } from "./sections/home/LooseMooseSection";
+import { FooterSection } from "./sections/FooterSection";
 import { HeroSection } from "./sections/home/HeroSection";
 import { WhyMooseSection } from "./sections/home/WhyMooseSection";
 import { WhatIsMooseSection } from "./sections/home/WhatIsMooseSection";
 import { TemplatesSection } from "./sections/home/TemplatesSection";
 import { FeaturesSection } from "./sections/home/FeaturesSection";
-import { BuiltOnSection } from "./BuiltOnSection";
+import { BuiltOnSection } from "./sections/home/BuiltOnSection";
 import { SecondaryCTASection } from "./sections/home/SecondaryCTASection";
 import { GetMooseCTASection } from "./sections/home/GetMooseCTASection";
-import { Text } from "@/components/typography/standard";
+import { cn } from "design-system/utils";
+
+import { Button, buttonVariants } from "design-system/components";
+
+import { Text } from "design-system/typography";
 
 export const PlaceholderImage = ({ className }: { className?: string }) => {
   return <div className={cn("relative ", className)}> </div>;
@@ -30,7 +33,7 @@ export const CTAText = ({
     <div
       className={cn(
         "text-center md:text-start text-primary text-4xl bg-muted rounded-md py-5 px-10 text-nowrap",
-        className,
+        className
       )}
     >
       {children}
@@ -53,7 +56,7 @@ export const CTAButton = ({ className, children, variant }: CTAButtonProps) => {
       <Text
         className={cn(
           variant === "outline" ? "text-primary" : "text-primary-foreground",
-          className,
+          className
         )}
       >
         {children}

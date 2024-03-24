@@ -1,5 +1,8 @@
-const path = require("path");
-const { withSentryConfig } = require("@sentry/nextjs");
+import path from "path";
+import { fileURLToPath } from "url";
+import { withSentryConfig } from "@sentry/nextjs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig = {
   output: "standalone",
@@ -51,6 +54,6 @@ const sentryWebpackPluginOptions = {
 };
 
 // Make sure adding Sentry options is the last code to run before exporting
-module.exports = nextConfig;
+// export default nextConfig;
 
-// withSentryConfig(nextConfig, sentryWebpackPluginOptions);
+export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);

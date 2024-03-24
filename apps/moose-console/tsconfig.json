@@ -1,10 +1,22 @@
 {
-  "extends": "tsconfig/nextjs.json",
+  "extends": "@repo/ts-config/nextjs.json",
   "compilerOptions": {
     "baseUrl": "src/",
-    "plugins": [{ "name": "next" }],
-    "allowSyntheticDefaultImports": true
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

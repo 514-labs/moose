@@ -1,10 +1,9 @@
 import type { Metadata } from "next";
-import "./globals.css";
+import "design-system/globals.css";
 import localFont from "next/font/local";
 import Script from "next/script";
-import { sendServerEvent } from "@/lib/events/sendServerEvent";
-import { cn } from "@/lib/utils";
-import { Nav } from "@/components/Nav";
+import { cn } from "design-system/utils";
+import { Nav } from "design-system/components";
 
 const monoFont = localFont({
   src: "./ABCMonumentGroteskMonoVariable.woff2",
@@ -28,9 +27,9 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const ip_obj = await sendServerEvent("layout-render", {
-    layout: "root-layout",
-  });
+  // const ip_obj = await sendServerEvent("layout-render", {
+  //   layout: "root-layout",
+  // });
 
   return (
     <html lang="en" suppressHydrationWarning className="">
@@ -38,7 +37,7 @@ export default async function RootLayout({
         className={cn(
           "min-h-screen bg-background font-sans antialiased",
           monoFont.variable,
-          sansFont.variable,
+          sansFont.variable
         )}
         suppressHydrationWarning
       >

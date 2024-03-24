@@ -1,12 +1,14 @@
+import Link from "next/link";
+
 import {
   FullWidthContentContainer,
   Grid,
   Section,
-} from "@/components/containers/page-containers";
+} from "design-system/components/containers";
 
-import Link from "next/link";
-import { cn } from "@/lib/utils";
-import { SmallText, Text } from "@/components/typography/standard";
+import { Text } from "design-system/typography";
+
+import { cn } from "design-system/utils";
 
 export const FooterSection = () => {
   return (
@@ -32,7 +34,7 @@ export const FooterNavItem = ({
       href={item.href}
       className={cn(
         "text-foreground flex flex-row justify-end lg:px-5",
-        className,
+        className
       )}
     >
       <Text> {children} </Text>

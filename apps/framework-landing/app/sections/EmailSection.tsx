@@ -2,10 +2,10 @@
 
 import {
   FullWidthContentContainer,
-  Section,
   Grid,
-} from "@/components/containers/page-containers";
-import { SuperDisplay } from "@/components/typography/standard";
+  Section,
+} from "design-system/components/containers";
+import { SuperDisplay } from "design-system/typography";
 
 export const EmailSection = () => {
   const content = {

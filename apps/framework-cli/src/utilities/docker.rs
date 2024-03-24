@@ -280,7 +280,9 @@ pub fn buildx(
         .arg("--load")
         .arg("--no-cache")
         .arg("-t")
-        .arg(format!("moose-df-deployment-{}:{}", binarylabel, version))
+        // Using latest for the version tag as the user might want to use its own
+        // version tag, this makes it easy for the automation to re-label the image.
+        .arg(format!("moose-df-deployment-{}:latest", binarylabel))
         .arg(".")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())

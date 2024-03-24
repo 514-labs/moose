@@ -1,6 +1,7 @@
+// Containers are used to layout content across all 12 columns.
+
 import { cn } from "@/lib/utils";
 
-// Containers are used to layout content across all 12 columns.
 // They are used to contain content and apply padding as the screen resizes
 export const FullWidthContentContainer = ({
   children,
@@ -53,7 +54,7 @@ export const ThirdWidthContentContainer = ({
     <div
       className={cn(
         "col-span-12 md:col-span-6 xl:col-span-4 2xl:col-span-4",
-        className,
+        className
       )}
     >
       {children}
@@ -77,7 +78,7 @@ export const Section = ({
       className={cn(
         "my-20 lg:my-20 2xl:my-36",
         gutterless ? "overflow-hidden" : "px-5",
-        className,
+        className
       )}
     >
       {children}

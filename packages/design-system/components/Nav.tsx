@@ -5,11 +5,11 @@ import { SplitText } from "gsap/SplitText";
 import React from "react";
 import { Disclosure } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
-import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { Text } from "./typography/standard";
-import { cn } from "@/lib/utils";
 import { Grid } from "./containers/page-containers";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 gsap.registerPlugin(SplitText);
 
@@ -50,7 +50,7 @@ export const Nav = () => {
                         className={cn(
                           isActive
                             ? "items-center text-action-primary px-5"
-                            : "items-center text-primary px-5",
+                            : "items-center text-primary px-5"
                         )}
                         key={item.name}
                       >
@@ -60,7 +60,7 @@ export const Nav = () => {
                               isActive
                                 ? "hover:text-action-primary border-b-2 border-black"
                                 : "hover:text-primary",
-                              "py-2",
+                              "py-2"
                             )}
                           >
                             {item.name}

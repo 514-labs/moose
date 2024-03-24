@@ -1,6 +1,5 @@
 import { cn } from "@/lib/utils";
 import { Copy } from "lucide-react";
-import { Ref } from "react";
 import { forwardRef } from "react";
 import { ReactNode } from "react";
 
@@ -15,7 +14,7 @@ export const BannerDisplay = ({
     <h1
       className={cn(
         "text-primary text-9xl md:text-[20rem] text-nowrap",
-        className,
+        className
       )}
     >
       {children}
@@ -36,7 +35,7 @@ export const SuperDisplay = ({
     <h1
       className={cn(
         "text-primary text-5xl sm:text-7xl md:text-8xl lg:text-9xl 2xl:text-[12rem]",
-        className,
+        className
       )}
     >
       {children}
@@ -105,14 +104,14 @@ export const Text = forwardRef<HTMLParagraphElement, TextProps>(
         className={cn(
           "text-primary text-2xl leading-normal 2xl:text-3xl 2xl:leading-normal",
           textBase,
-          className,
+          className
         )}
         {...props}
       >
         {children}
       </p>
     );
-  },
+  }
 );
 
 export const CodeSnippet = ({
@@ -126,7 +125,7 @@ export const CodeSnippet = ({
     <div
       className={cn(
         "text-primary bg-muted rounded-md py-5 px-6 flex flex-row gap-5 cursor-pointer",
-        className,
+        className
       )}
     >
       <Text className="grow my-0">{children}</Text>

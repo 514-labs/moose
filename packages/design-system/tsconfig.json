@@ -1,15 +1,32 @@
 {
-    "compilerOptions": {
+  "compilerOptions": {
+    "lib": ["dom", "dom.iterable", "esnext"],
     "allowJs": true,
-      "esModuleInterop": true,
-      "forceConsistentCasingInFileNames": true,
-      "isolatedModules": true,
-      "module": "ESNext",
-      "moduleResolution": "Bundler",
-      "preserveWatchOutput": true,
-      "skipLibCheck": true,
-      "noEmit": true,
-      "strict": true
-    },
-    "exclude": ["node_modules"]
+    "skipLibCheck": true,
+    "strict": true,
+    "noEmit": true,
+    "esModuleInterop": true,
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "jsx": "preserve",
+    "incremental": true,
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "paths": {
+      "@/*": ["./*"]
+    }
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    "lib/animation-helpers.js"
+  ],
+  "exclude": ["node_modules"]
 }

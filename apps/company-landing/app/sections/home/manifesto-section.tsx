@@ -1,0 +1,104 @@
+import {
+  Grid,
+  HalfWidthContentContainer,
+  Section,
+} from "design-system/components/containers";
+import { Text } from "design-system/typography";
+import { PlaceholderImage } from "../../page";
+
+export const ManifestoSection = () => {
+  return (
+    <Section>
+      <Grid>
+        <HalfWidthContentContainer>
+          <PlaceholderImage />
+        </HalfWidthContentContainer>
+        <HalfWidthContentContainer>
+          <Text>
+            <p>
+              Let's be honest. Developing any kind of data-driven or
+              analytics-driven application on a modern data stack is, let's say,
+              a complete disaster “far from an ideal experience.”
+            </p>
+            <p>
+              Let's be honest. Software development in the world of data
+              engineering is far from an ideal experience.
+            </p>
+            <p>
+              To do anything interesting with data, you have to immerse yourself
+              in a whole specialized ecosystem of solutions, from storage (e.g.
+              snowflake, s3), to streaming (e.g. kafka), to processing (eg.
+              spark, python scripts), to ingest (eg. fivetran, airbyte), to
+              modeling (eg. dbt), to consumption (eg. views, data product APIs),
+              to orchestration (eg. airflow). You have to hire as many data
+              scientists, data analysts, and/or data engineers as you can
+              manage—or you and your engineering team have to learn a whole new
+              paradigm yourselves. If you can afford the slew of commercial
+              solutions, great; otherwise, you're piecing together your own open
+              source frankenstein. And then, just to get started, you have to
+              create and configure tables, views, topics, jobs, scripts,
+              connectors, APIs, and SDKs - and string together all these
+              different components in production to all play nicely with each
+              other. And god help you when someone changes something upstream,
+              or you have to coordinate handoffs across specialized teams.
+            </p>
+
+            <p>
+              This isn't how modern software development is supposed to be! By
+              comparison, the alternate worlds of web apps, mobile apps, and
+              backend services make software development look like an absolute
+              joy of rainbows and roses. Software developers don't manage
+              fragmented components in isolation, crossing their fingers and
+              hoping they all play nice. They create holistic applications, with
+              contracts between microservices. They leverage frameworks that
+              abstract away infrastructure and middleware complexity. Software
+              developers don't manually manage components in production and in
+              the cloud, spinning plates to keep everything alive. They write
+              code. And they leverage decades of best practices around code for
+              speed, quality and collaboration - best practices like version
+              control, local development, CI/CD, automated testing, change
+              management, and devops.
+            </p>
+
+            <p>
+              Why should development on an analytics/data stack be any
+              different? It shouldn't!
+            </p>
+
+            <p>
+              Our mission is to bring incredible developer experiences to the
+              data stack. We believe that we'll have accomplished this when data
+              or analytics can be dropped from the title of the people using
+              data platforms. When data engineers are just engineers. When every
+              developer can deliver high-quality data products, derive insights
+              for themselves and their stakeholders, and easily integrate
+              predictive and generative AI. When data quality is proactive and
+              shifted left, not reactive and in production. When data services
+              are just another software service - written in code, powered by
+              microservices and frameworks, and managed with software
+              development best practices. When becoming data-driven is second
+              nature and something you can do without hiring an army of data and
+              analytics engineers. When doing interesting things with data is
+              cost-effective, and ROI is nearly guaranteed.
+            </p>
+
+            <p>
+              Software has long been eating the world. It's high time for
+              software to eat data engineering.
+            </p>
+
+            <p>
+              Introducing MooseJS, an open source developer framework for your
+              data & analytics stack. Moose unifies your data stack, unlocks
+              software development best practices, and hopefully delights you,
+              the developer. Moose is still in alpha with a lot more to come, so
+              please check it out and let us know what you think. If you're
+              interested in enterprise solutions, commercial support, or design
+              partnerships, then we'd love to chat with you.
+            </p>
+          </Text>
+        </HalfWidthContentContainer>
+      </Grid>
+    </Section>
+  );
+};

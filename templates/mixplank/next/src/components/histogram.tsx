@@ -5,8 +5,10 @@ import {
   barY,
   lineY,
   areaY,
-  axisX,
-  axisY,
+  binX,
+  ruleY,
+  groupX,
+  barX,
 } from "@observablehq/plot";
 import React, { useState } from "react";
 import PlotComponent from "./ui/plot-react";
@@ -14,7 +16,6 @@ import PlotComponent from "./ui/plot-react";
 interface Props {
   data: object[];
   toolbar?: React.ReactElement;
-  timeAccessor: (arr: object) => Date;
   yAccessor: string;
   xAccessor?: string;
   fillAccessor?: string;
@@ -27,7 +28,7 @@ function createChartOption(chartType: string) {
     case "area":
       return areaY;
     case "bar":
-      return barY;
+      return barX;
     default:
       return lineY;
   }
@@ -46,32 +47,32 @@ function createDrawOption(chartType: string, breakdownKey: string) {
   }
 }
 
-export default function TimeSeriesChart({
+export default function Histogram({
   data,
-  timeAccessor,
   yAccessor,
   xAccessor = "time",
   fillAccessor,
 }: Props) {
   const [chartType, setChartType] = useState("bar");
-
-  const newData = data.map((d) => ({ ...d, time: timeAccessor(d) }));
-
+  console.log(data);
   const options: PlotOptions = {
     y: {
-      domain: [0, 100],
-      percent: true,
+      grid: true,
     },
-    axis: null,
     marks: [
-      createChartOption(chartType)(newData, {
-        x: xAccessor,
-        y: yAccessor,
-        fill: fillAccessor,
-        tip: { fill: "black" },
-      }),
-      axisY({ label: null }),
-      axisX({ ticks: "day" }),
+      createChartOption(chartType)(
+        data,
+
+        {
+          y: yAccessor,
+
+          x: "hits",
+          ...createDrawOption(chartType, yAccessor),
+
+          tip: { fill: "black" },
+        }
+      ),
+      ruleY([0]),
     ],
   };
 

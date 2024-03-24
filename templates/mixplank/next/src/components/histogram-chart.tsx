@@ -2,12 +2,19 @@
 
 import {
   PlotOptions,
+  ruleY,
   barY,
   lineY,
+  binX,
   areaY,
-  axisX,
-  axisY,
 } from "@observablehq/plot";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import React, { useState } from "react";
 import PlotComponent from "./ui/plot-react";
 
@@ -16,9 +23,10 @@ interface Props {
   toolbar?: React.ReactElement;
   timeAccessor: (arr: object) => Date;
   yAccessor: string;
-  xAccessor?: string;
   fillAccessor?: string;
 }
+
+const chartTypes = ["line", "area", "bar"];
 
 function createChartOption(chartType: string) {
   switch (chartType) {
@@ -46,12 +54,11 @@ function createDrawOption(chartType: string, breakdownKey: string) {
   }
 }
 
-export default function TimeSeriesChart({
+export default function HistogramChart({
   data,
+  toolbar,
   timeAccessor,
   yAccessor,
-  xAccessor = "time",
-  fillAccessor,
 }: Props) {
   const [chartType, setChartType] = useState("bar");
 
@@ -59,25 +66,60 @@ export default function TimeSeriesChart({
 
   const options: PlotOptions = {
     y: {
-      domain: [0, 100],
-      percent: true,
+      grid: true,
     },
-    axis: null,
+    color: { legend: true },
     marks: [
       createChartOption(chartType)(newData, {
-        x: xAccessor,
-        y: yAccessor,
-        fill: fillAccessor,
+        ...binX(
+          { y: "count" },
+          {
+            x: "time",
+            ...createDrawOption(chartType, yAccessor),
+            interval: "hour",
+          }
+        ),
         tip: { fill: "black" },
       }),
-      axisY({ label: null }),
-      axisX({ ticks: "day" }),
+      ruleY([0]),
     ],
   };
 
+  /*
+  const options: PlotOptions = {
+    y: {
+      grid: true,
+    },
+    marks: [
+      createChartOption(chartType)(newData, {
+        x: "time",
+        y: yAccessor,
+        fill: fillAccessor,
+      }),
+    ],
+  };
+  */
+
   return (
     <div className="w-full h-full flex flex-col">
-      <div className="flex-1 overflow-hidden">
+      <div className="h-12 justify-end flex w-full p-2">
+        {toolbar}
+        <div className="w-36">
+          <Select value={chartType} onValueChange={(val) => setChartType(val)}>
+            <SelectTrigger className="rounded-xl capitalize">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {chartTypes.map((type, i) => (
+                <SelectItem key={i} value={type}>
+                  {type}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div className="flex-1 m-4 overflow-hidden">
         {data?.[0] ? (
           <PlotComponent options={options} />
         ) : (

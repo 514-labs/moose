@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import Script from "next/script";
 import { cn } from "design-system/utils";
 import { Nav } from "design-system/components";
+import { ThemeProvider } from "design-system/components";
 
 const monoFont = localFont({
   src: "./ABCMonumentGroteskMonoVariable.woff2",
@@ -41,8 +42,15 @@ export default async function RootLayout({
         )}
         suppressHydrationWarning
       >
-        <Nav />
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="light"
+          enableSystem
+          disableTransitionOnChange
+        >
+          <Nav />
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

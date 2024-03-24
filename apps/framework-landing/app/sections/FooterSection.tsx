@@ -9,6 +9,7 @@ import {
 import { Text } from "design-system/typography";
 
 import { cn } from "design-system/utils";
+import { ThemeToggle } from "design-system/components";
 
 export const FooterSection = () => {
   return (
@@ -52,7 +53,7 @@ export const FooterNav = () => {
   ];
 
   return (
-    <div className="flex flex-col grow justify-center items-start md:flex-row md:justify-between lg:justify-end col-span-12 lg:col-span-6">
+    <div className="flex flex-col grow justify-center items-start sm:items-center md:flex-row md:justify-between lg:justify-end col-span-12 lg:col-span-6">
       {navigation.map((item) => {
         return (
           <FooterNavItem item={item} key={item.name} className="md:p-5">
@@ -60,6 +61,7 @@ export const FooterNav = () => {
           </FooterNavItem>
         );
       })}
+      <ThemeToggle />
     </div>
   );
 };

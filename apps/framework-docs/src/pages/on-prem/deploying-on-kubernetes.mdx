@@ -31,7 +31,7 @@ spec:
 
 > Make sure to update the image key above with the location of your repository and image tag.
 
-You may also need to configure a load balancer to route external traffic to you moose ingest points.
+You may also need to configure a load balancer to route external traffic to your moose ingest points.
 
 ```yaml filename="moose-lb-service.yaml" copy
 apiVersion: v1
@@ -142,9 +142,9 @@ spec:
               key: sk-moose-http-server-config--port
 ```
 
-We've created a handy shell script which you can use in your cloud shell to create the above secrets.
+We've created a handy shell script that you can use in your cloud shell to create the above secrets.
 
-To use the script you simply pass the environment variable name and the script will take care of create the `secretKeyRef` name and key values for you.
+To use the script, you simply pass the environment variable name, and the script will create the `secretKeyRef` name and key values for you.
 
 ```txt filename="Terminal" copy
 $ ./set-env-secret.sh MOOSE_REDPANDA_CONFIG__SASL_PASSWORD

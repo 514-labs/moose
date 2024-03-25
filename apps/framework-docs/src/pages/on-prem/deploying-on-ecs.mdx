@@ -1,27 +1,27 @@
 # Deploying on Amazon ECS
 
-Moose can be deployed to Amazon's Elastic Container Service (ECS). ECS, offers a managed container orchrestrator at a fraction of the complexity of managing a Kubernetes cluster.
-The first step is to decide whether you'll host your moose container on Docker Hub or on Amazon's Elastic Container Registry (ECR).
+Moose can be deployed to Amazon's Elastic Container Service (ECS). ECS offers a managed container orchestrator at a fraction of the complexity of managing a Kubernetes cluster.
+The first step is deciding whether you'll host your moose container on Docker Hub or Amazon's Elastic Container Registry (ECR).
 
-Amazon ECR if strightforward and is designed work out of the box with ECS.
-Using Docker Hub works just fine if your moose container is pubically available, however if your container is private - you'll need to do a bit more work to provide ECS with your docker credentials.
+Amazon ECR is straightforward and is designed to work out of the box with ECS.
+Using Docker Hub works just fine if your moose container is publicly available; however, if your container is private, you'll need to do a bit more work to provide ECS with your Docker credentials.
 
 Here is an overview of the steps required:
 
-- You'll need to first create or use and existing ECS cluster.
-- Next you'll need to create an ECS `Task definition`. This is where you'll specify whether you want to use AWS Fargate or AWS EC2 instances. You'll also have options for specifying your OS and Architecture. Note, make sure to specify `Linux/X86-64` or `Linux/ARM-64`. This is important as you'll also need to specify a matching moose container image such as `moose-df-deployment-x86_64-unknown-linux-gnu:0.3.140` or `moose-df-deployment-aarch64-unknown-linux-gnu:0.3.140`
-- As with all AWS services, you'll need to specify an IAM role with an `AmazonECSTaskExecutionRolePolicy` and `SecretsManagerReadWrite` policy if you're using secrets to store credentials.
-- Under the Container section you can specify the name of your moose deployment and provide the container image name you're using.
-- Next specify the Container Port as 4000.
+- You'll first need to create or use an existing ECS cluster.
+- Next, you'll need to create an ECS `Task definition.` This is where you'll specify whether you want to use AWS Fargate or AWS EC2 instances. You'll also have options for selecting your OS and Architecture. Specify `Linux/X86-64` or `Linux/ARM-64`. This is important as you'll also need to specify a matching moose container image, such as `moose-df-deployment-x86_64-unknown-linux-gnu:0.3.140` or `moose-df-deployment-aarch64-unknown-linux-gnu:0.3.140`
+- As with all AWS services, if you're using secrets to store credentials, you'll need to specify an IAM role with an `AmazonECSTaskExecutionRolePolicy` and `SecretsManagerReadWrite` policy.
+- Under the Container section, specify the name of your moose deployment and provide the container image name you're using.
+- Next, specify the Container Port as 4000.
 
-In the next section below choose `Amazon ECS` to view instructions for configuring your container environment variables.
+In the next section below, choose `Amazon ECS` to view instructions for configuring your container environment variables.
 
 ## Configuring container environment variables
 
-While still in the Amazon ECS Task definition section you'll need to provide the environment variables that your Moose application depends on.
-Scroll down to teh Environment variables section and use fill in each of the following variables.
+While still in the Amazon ECS Task definition section, you'll need to provide the environment variables on which your Moose application depends.
+Scroll down to the Environment variables section and fill in each of the following variables.
 
-> Note that if you prefer you have the option of providing the environment variables below via an env file hosted on S3.
+> Note that if you prefer, you can provide the environment variables below via an env file hosted on S3.
 
 | Moose Server Keys                | Usage                                                              |
 | -------------------------------- | ------------------------------------------------------------------ |
@@ -48,13 +48,13 @@ Scroll down to teh Environment variables section and use fill in each of the fol
 | MOOSE_REDPANDA_CONFIG\_\_SASL_MECHANISM     | SCRAM-SHA-256 or SCRAM-SHA-512                  |
 | MOOSE_REDPANDA_CONFIG\_\_SECURITY_PROTOCOL  | The Redpanda security protocol such as SASL_SSL |
 
-Consider other options on the Task creation page and press the `Create` button when you're ready.
+Consider other options on the Task creation page and press the `Create` button when ready.
 
 ## Building an ECS Service
 
-Once you've completed creating an ECS Task you're now ready to create an ECS Service. An ECS Service is a definition that allows you to specify how your cluster will be managed.
-Navigate to your cluster's Service page and press the `Create` button to begin creating your new moose service.
-The section we're interested in is the `Deployment configuration` section. There you'll specify the Task Definition you created earlier. You can also specify the name of your service. Perhaps something creative like `moose-service` amd number of tasks to launch.
-The remaining sections on the create service page allows you to specify networking considerations and whether you'll use a load balancer.
+Once you've completed creating an ECS Task, you're ready to create an ECS Service. An ECS Service is a definition that allows you to specify how your cluster will be managed.
+Navigate to your cluster's Service page and press the `Create` button to create your new moose service.
+The section we're interested in is the `Deployment configuration` section. There, you'll specify the Task Definition you created earlier. You can also specify the name of your service—perhaps something creative like `moose-service`—and the number of tasks to launch.
+The remaining sections on the create service page allow you to specify networking considerations and whether you'll use a load balancer.
 
 You can press the `Create` button to launch an instance of your new ECS Moose service.

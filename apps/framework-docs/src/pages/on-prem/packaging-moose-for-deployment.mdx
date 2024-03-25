@@ -1,6 +1,6 @@
 # Packaging Moose for deployment
 
-Once you've developed your Moose application locally, you're able to package it for deployment to your on-prem or cloud infrastructure of choice.
+Once you've developed your Moose application locally, you can package it for deployment to your on-prem or cloud infrastructure.
 
 The first step is to `cd` into your moose project.
 
@@ -14,7 +14,7 @@ The moose-cli you've used to build your moose project also has a handy flag that
 npx @514labs/moose-cli build --docker
 ```
 
-After the above commmand completes you can view your newly created docker files by running the `docker images` command:
+After the above command completes you can view your newly created docker files by running the `docker images` command:
 
 ```txt filename="Terminal" copy
 >docker images
@@ -23,7 +23,7 @@ moose-df-deployment-aarch64-unknown-linux-gnu           0.3.136           c50674
 moose-df-deployment-x86_64-unknown-linux-gnu            0.3.136           e5b449d3dea3   About a minute ago   163MB
 ```
 
-> Notice that you get two `moose-df-deployment` containers, one for the `aarch64` (ARM64) architcture and another for the `x86_64` architecture. This is necessary in order to allow you to chose the version that matches your cloud or on-prem machine architecture.
+> Notice that you get two `moose-df-deployment` containers, one for the `aarch64` (ARM64) architecture and another for the `x86_64` architecture. This is necessary to allow you to choose the version that matches your cloud or on-prem machine architecture.
 
 You can then use standard docker commands to push your new project images to your container repository of choice.
 
@@ -41,7 +41,7 @@ docker push {your-repo-user-name}/moose-df-deployment-aarch64-unknown-linux-gnu:
 docker push {your-repo-user-name}/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.136
 ```
 
-Or, you can use the following handy shell script to automate the two steps above.
+You can also use the following handy shell script to automate the two steps above.
 
 ```bash
 #!/bin/bash

@@ -30,7 +30,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 10
+          fetch-depth: 20
 
       - name: Generate Version
         id: version
@@ -317,6 +317,8 @@ jobs:
           password: ${{ steps.op-load-secret.outputs.DOCKER_HUB_ACCESS_KEY }}
 
       - name: Docker Push
+        # TODO uncomment when ready
+        # if: ${{ !inputs.dry-run }}
         run: |
           docker images
           docker tag moose-df-deployment-x86_64-unknown-linux-gnu:latest 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:${{needs.version.outputs.version}}

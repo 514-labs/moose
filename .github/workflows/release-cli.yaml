@@ -275,6 +275,8 @@ jobs:
 
   deploy-internal:
     runs-on: ubuntu-latest
+    permissions:
+      id-token: none
     needs:
       - version
     # - publish-npm-base

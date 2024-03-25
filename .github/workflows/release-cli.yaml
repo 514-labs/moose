@@ -323,3 +323,8 @@ jobs:
           docker images
           docker tag moose-df-deployment-x86_64-unknown-linux-gnu:latest 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:${{needs.version.outputs.version}}
           docker push 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:${{needs.version.outputs.version}}
+
+      - uses: "google-github-actions/auth@v2"
+        with:
+          project_id: "extended-ward-415018"
+          workload_identity_provider: "projects/167275965848/locations/global/workloadIdentityPools/github/providers/github-actions-repos"

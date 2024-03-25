@@ -51,12 +51,12 @@ impl Routine for GenerateMigration {
             })?;
 
         let mut prev_framework_objects = HashMap::new();
-        get_all_framework_objects(&mut prev_framework_objects, &path, &previous_version).map_err(
+        get_all_framework_objects(&mut prev_framework_objects, &path, previous_version).map_err(
             |err| {
-                RoutineFailure::error(Message::new(
-                    "Failed".to_string(),
-                    "to get framework objects".to_string(),
-                ))
+                RoutineFailure::new(
+                    Message::new("Failed".to_string(), "to get framework objects".to_string()),
+                    err,
+                )
             },
         )?;
         println!("prev_framework_objects: {:?}", prev_framework_objects);
@@ -68,10 +68,10 @@ impl Routine for GenerateMigration {
             self.project.version(),
         )
         .map_err(|err| {
-            RoutineFailure::error(Message::new(
-                "Failed".to_string(),
-                "to get framework objects".to_string(),
-            ))
+            RoutineFailure::new(
+                Message::new("Failed".to_string(), "to get framework objects".to_string()),
+                err,
+            )
         })?;
 
         let fo_versions = FrameworkObjectVersions {
@@ -95,10 +95,10 @@ impl Routine for GenerateMigration {
         };
 
         let version_syncs = get_all_version_syncs(&self.project, &fo_versions).map_err(|err| {
-            RoutineFailure::error(Message::new(
-                "Failed".to_string(),
-                "to generate migrations".to_string(),
-            ))
+            RoutineFailure::new(
+                Message::new("Failed".to_string(), "to generate migrations".to_string()),
+                err,
+            )
         })?;
 
         println!("version_syncs: {:?}", version_syncs);

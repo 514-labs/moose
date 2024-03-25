@@ -80,8 +80,8 @@
 //!
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
-use std::{io::Error, path::PathBuf};
 
 use log::debug;
 use log::info;
@@ -101,7 +101,6 @@ use crate::infrastructure::olap::clickhouse::version_sync::{
 use crate::infrastructure::stream::redpanda;
 use crate::project::{Project, PROJECT};
 use crate::utilities::package_managers;
-use crate::utilities::system::read_directory;
 
 use super::display::with_spinner_async;
 use super::local_webserver::Webserver;
@@ -145,18 +144,18 @@ impl RoutineSuccess {
 pub struct RoutineFailure {
     message: Message,
     message_type: MessageType,
-    error: Option<Error>,
+    error: Option<anyhow::Error>,
 }
 impl RoutineFailure {
-    pub fn new(message: Message, error: Error) -> Self {
+    pub fn new<F: Into<anyhow::Error>>(message: Message, error: F) -> Self {
         Self {
             message,
             message_type: MessageType::Error,
-            error: Some(error),
+            error: Some(error.into()),
         }
     }
 
-    /// create a RoutineFailure error without an io error
+    /// create a RoutineFailure error without an error
     pub fn error(message: Message) -> Self {
         Self {
             message,

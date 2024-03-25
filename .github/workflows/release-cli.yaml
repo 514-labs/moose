@@ -336,8 +336,10 @@ jobs:
         uses: "google-github-actions/setup-gcloud@v2"
         with:
           version: ">= 363.0.0"
+          install_components: "gke-gcloud-auth-plugin, kubectl"
 
       - name: "Get credentials for the k8s cluster"
         run: |
           gcloud info
           gcloud container clusters get-credentials moose-dev-cluster-1a --region=us-west1-a
+          kubectl get pods

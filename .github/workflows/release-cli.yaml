@@ -280,7 +280,7 @@ jobs:
       id-token: "write"
     needs:
       - version
-    # - publish-npm-base
+      - publish-npm-base
     steps:
       - name: Checkout
         uses: actions/checkout@v4

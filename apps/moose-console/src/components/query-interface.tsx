@@ -20,7 +20,6 @@ import { getClient } from "../lib/clickhouse";
 import { PreviewTable } from "./preview-table";
 import { Badge } from "./ui/badge";
 import { Card, CardContent } from "./ui/card";
-import { WebClickHouseClient } from "@clickhouse/client-web/dist/client";
 
 const sqlKeyWords = [
   "SELECT",
@@ -132,10 +131,7 @@ const sqlKeyWords = [
   "SQL",
 ];
 
-async function runQuery(
-  client: WebClickHouseClient,
-  queryString: string,
-): Promise<any> {
+async function runQuery(client, queryString: string): Promise<any> {
   const resultSet = await client.query({
     query: queryString,
     format: "JSONEachRow",

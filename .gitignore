@@ -56,3 +56,4 @@ Cargo.lock
 console.db
 
 .vscode/launch.json
+gha-creds-*.json

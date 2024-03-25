@@ -6,3 +6,4 @@
 **/target
 **/node_modules
 node_modules
+gha-creds-*.json

@@ -149,19 +149,26 @@ impl DeleteVersions {
 impl Routine for DeleteVersions {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let versions_dir = self.internal_dir.join("versions");
-        fs::remove_dir_all(&versions_dir).map_err(|err| {
-            RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    format!("to remove versions directory at {}", versions_dir.display()),
-                ),
-                err,
-            )
-        })?;
+        if !versions_dir.exists() {
+            return Ok(RoutineSuccess::success(Message::new(
+                "ok".to_string(),
+                "No versions directory to remove".to_string(),
+            )));
+        } else {
+            fs::remove_dir_all(&versions_dir).map_err(|err| {
+                RoutineFailure::new(
+                    Message::new(
+                        "Failed".to_string(),
+                        format!("to remove versions directory at {}", versions_dir.display()),
+                    ),
+                    err,
+                )
+            })?;
 
-        Ok(RoutineSuccess::success(Message::new(
-            "Successfully".to_string(),
-            "removed versions directory".to_string(),
-        )))
+            Ok(RoutineSuccess::success(Message::new(
+                "Successfully".to_string(),
+                "removed versions directory".to_string(),
+            )))
+        }
     }
 }

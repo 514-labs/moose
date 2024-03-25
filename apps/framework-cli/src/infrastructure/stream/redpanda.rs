@@ -24,7 +24,7 @@ pub async fn create_topics(
     // Prepare the AdminOptions
     let options = AdminOptions::new().operation_timeout(Some(std::time::Duration::from_secs(5)));
 
-    let retention_ms = config.clone().retention_ms.to_string();
+    let retention_ms = config.retention_ms.to_string();
     for topic_name in &topics {
         // Create a new topic with 1 partition and replication factor 1
         let topic = NewTopic::new(topic_name, 1, TopicReplication::Fixed(1));

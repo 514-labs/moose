@@ -90,7 +90,6 @@ const handleMessage = async (
   partition: number,
   flows: Map<string, string>,
   message: KafkaMessage,
-  resolveOffset: (offset: string) => void,
 ): Promise<void> => {
   const transaction = await producer.transaction();
   let didTransform = false;
@@ -124,7 +123,11 @@ const handleMessage = async (
       await transaction.abort();
     }
 
-    resolveOffset(message.offset);
+    // https://github.com/tulios/kafkajs/issues/540#issuecomment-601443828
+    // Without it, the consumer receives last message on restart.
+    await consumer.commitOffsets([
+      { topic, partition, offset: (Number(message.offset) + 1).toString() },
+    ]);
   } catch (error) {
     await transaction.abort();
     console.error(`Failed to send transformed data`, error);
@@ -138,23 +141,18 @@ const startConsumer = async (): Promise<void> => {
   );
 
   await consumer.connect();
-  await consumer.subscribe({ topics: flowTopics });
+  await consumer.subscribe({ topics: flowTopics, fromBeginning: false });
 
   await consumer.run({
-    eachBatchAutoResolve: false,
     autoCommit: false,
-    eachBatch: async ({ batch, resolveOffset, isRunning, isStale }) => {
-      const topic = scrubVersionFromTopic(batch.topic);
-      for (const message of batch.messages) {
-        if (!isRunning() || isStale()) break;
-        else if (!flows.has(topic)) continue;
-
+    eachMessage: async ({ topic, partition, message }) => {
+      const topicNoVersion = scrubVersionFromTopic(topic);
+      if (flows.has(topicNoVersion)) {
         await handleMessage(
-          batch.topic,
-          batch.partition,
-          flows.get(topic)!,
+          topic,
+          partition,
+          flows.get(topicNoVersion)!,
           message,
-          resolveOffset,
         );
       }
     },

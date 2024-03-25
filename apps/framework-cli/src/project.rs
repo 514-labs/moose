@@ -32,6 +32,7 @@ use crate::framework::readme::BASE_README_TEMPLATE;
 use crate::framework::schema::templates::{BASE_FLOW_TEMPLATE, BASE_MODEL_TEMPLATE};
 use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
+use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 
@@ -292,5 +293,19 @@ impl Project {
         old_base_path.push(version);
 
         Ok(old_base_path)
+    }
+
+    pub fn versions_sorted(&self) -> Vec<String> {
+        let mut old_versions = self
+            .supported_old_versions
+            .keys()
+            .map(|v| parse_version(v))
+            .collect::<Vec<Vec<i32>>>();
+        old_versions.sort();
+
+        old_versions
+            .into_iter()
+            .map(|v| version_to_string(&v))
+            .collect::<Vec<String>>()
     }
 }

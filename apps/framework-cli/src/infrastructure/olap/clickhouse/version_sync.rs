@@ -25,17 +25,8 @@ pub fn version_to_string(v: &[i32]) -> String {
 pub fn generate_version_syncs(
     framework_object_versions: &FrameworkObjectVersions,
     version_sync_list: &[VersionSync],
+    previous_version: &str,
 ) -> Vec<VersionSync> {
-    let previous_version = framework_object_versions
-        .previous_version_models
-        .keys()
-        .max_by_key(|v| parse_version(v));
-    println!("previous_version: {:?}", previous_version);
-    let previous_version = match previous_version {
-        None => return vec![],
-        Some(v) => v,
-    };
-
     let mut previous_models: HashMap<String, FrameworkObject> = framework_object_versions
         .previous_version_models
         .get(previous_version)
@@ -44,25 +35,19 @@ pub fn generate_version_syncs(
         .clone();
 
     for vs in version_sync_list {
-        if &vs.dest_version == previous_version {
+        if vs.dest_version == previous_version {
             previous_models.remove(&vs.model_name);
         }
     }
-    println!("previous_models: {:?}", previous_models);
 
     let mut res = vec![];
     for fo in framework_object_versions.current_models.models.values() {
-        println!("fo: {:?}", fo);
         if let Some(old_model) = previous_models.get(&fo.data_model.name) {
-            println!(
-                "current_model, {:?}, old_model: {:?}",
-                fo.data_model.columns, old_model.data_model.columns
-            );
             if old_model.data_model.columns != fo.data_model.columns {
                 res.push(VersionSync {
                     db_name: old_model.table.db_name.clone(),
                     model_name: old_model.data_model.name.clone(),
-                    source_version: previous_version.clone(),
+                    source_version: previous_version.to_string(),
                     source_table: old_model.table.clone(),
                     dest_version: framework_object_versions.current_version.clone(),
                     dest_table: fo.table.clone(),

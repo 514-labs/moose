@@ -1,11 +1,7 @@
-use std::collections::HashMap;
 use std::sync::Arc;
 
 use crate::cli::display::Message;
-use crate::cli::routines::{Routine, RoutineFailure, RoutineSuccess};
-use crate::framework::controller::{
-    get_all_framework_objects, FrameworkObjectVersions, SchemaVersion,
-};
+use crate::cli::routines::{crawl_schema, Routine, RoutineFailure, RoutineSuccess};
 use crate::infrastructure::olap::clickhouse::version_sync::{
     generate_version_syncs, get_all_version_syncs, parse_version,
 };
@@ -37,62 +33,13 @@ impl Routine for GenerateMigration {
             Some(previous_version) => previous_version,
         };
 
-        let path = self
-            .project
-            .old_version_location(previous_version.as_str())
-            .map_err(|err| {
+        let fo_versions =
+            crawl_schema(&self.project, &self.project.versions_sorted()).map_err(|err| {
                 RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        "to get old version location".to_string(),
-                    ),
+                    Message::new("Failed".to_string(), "to crawl schema".to_string()),
                     err,
                 )
             })?;
-
-        let mut prev_framework_objects = HashMap::new();
-        get_all_framework_objects(&mut prev_framework_objects, &path, previous_version).map_err(
-            |err| {
-                RoutineFailure::new(
-                    Message::new("Failed".to_string(), "to get framework objects".to_string()),
-                    err,
-                )
-            },
-        )?;
-        println!("prev_framework_objects: {:?}", prev_framework_objects);
-
-        let mut framework_objects = HashMap::new();
-        get_all_framework_objects(
-            &mut framework_objects,
-            &self.project.schemas_dir(),
-            self.project.version(),
-        )
-        .map_err(|err| {
-            RoutineFailure::new(
-                Message::new("Failed".to_string(), "to get framework objects".to_string()),
-                err,
-            )
-        })?;
-
-        let fo_versions = FrameworkObjectVersions {
-            current_version: self.project.version().to_string(),
-            current_models: SchemaVersion {
-                base_path: self.project.schemas_dir(),
-                models: framework_objects,
-                typescript_objects: HashMap::new(),
-            },
-            previous_version_models: HashMap::from([(
-                previous_version.to_string(),
-                SchemaVersion {
-                    base_path: self
-                        .project
-                        .old_version_location(previous_version.as_str())
-                        .unwrap(),
-                    models: prev_framework_objects,
-                    typescript_objects: HashMap::new(),
-                },
-            )]),
-        };
 
         let version_syncs = get_all_version_syncs(&self.project, &fo_versions).map_err(|err| {
             RoutineFailure::new(
@@ -103,7 +50,7 @@ impl Routine for GenerateMigration {
 
         println!("version_syncs: {:?}", version_syncs);
 
-        let new_vs_list = generate_version_syncs(&fo_versions, &version_syncs);
+        let new_vs_list = generate_version_syncs(&fo_versions, &version_syncs, previous_version);
         print!("{:?}", new_vs_list);
 
         let flow_dir = self.project.flows_dir();

@@ -318,5 +318,6 @@ jobs:
 
       - name: Docker Push
         run: |
+          docker images
           docker tag moose-df-deployment-x86_64-unknown-linux-gnu:latest 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:${{needs.version.outputs.version}}
           docker push 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:${{needs.version.outputs.version}}

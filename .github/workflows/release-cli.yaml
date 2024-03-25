@@ -323,7 +323,6 @@ jobs:
         # TODO uncomment when ready
         # if: ${{ !inputs.dry-run }}
         run: |
-          docker images
           docker tag moose-df-deployment-x86_64-unknown-linux-gnu:latest 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:${{needs.version.outputs.version}}
           docker push 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:${{needs.version.outputs.version}}
 
@@ -340,6 +339,12 @@ jobs:
 
       - name: "Get credentials for the k8s cluster"
         run: |
-          gcloud info
           gcloud container clusters get-credentials moose-dev-cluster-1a --region=us-west1-a
-          kubectl get pods
+
+      - name: "Deploy the new image"
+        run: |
+          kubectl set image deployment/moosedeployment moosedeploy=514labs/moose-df-deployment-x86_64-unknown-linux-gnu:${{needs.version.outputs.version}}
+
+      - name: "Watch for the deployment to finish"
+        run: |
+          kubectl rollout status deployment/moosedeployment

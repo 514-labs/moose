@@ -30,7 +30,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          fetch-depth: 20
+          fetch-depth: 10
 
       - name: Generate Version
         id: version
@@ -320,8 +320,7 @@ jobs:
           password: ${{ steps.op-load-secret.outputs.DOCKER_HUB_ACCESS_KEY }}
 
       - name: Docker Push
-        # TODO uncomment when ready
-        # if: ${{ !inputs.dry-run }}
+        if: ${{ !inputs.dry-run }}
         run: |
           docker tag moose-df-deployment-x86_64-unknown-linux-gnu:latest 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:${{needs.version.outputs.version}}
           docker push 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:${{needs.version.outputs.version}}
@@ -342,9 +341,11 @@ jobs:
           gcloud container clusters get-credentials moose-dev-cluster-1a --region=us-west1-a
 
       - name: "Deploy the new image"
+        if: ${{ !inputs.dry-run }}
         run: |
           kubectl set image deployment/moosedeployment moosedeploy=514labs/moose-df-deployment-x86_64-unknown-linux-gnu:${{needs.version.outputs.version}}
 
       - name: "Watch for the deployment to finish"
+        if: ${{ !inputs.dry-run }}
         run: |
           kubectl rollout status deployment/moosedeployment

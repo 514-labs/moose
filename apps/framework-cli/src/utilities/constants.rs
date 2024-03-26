@@ -18,7 +18,8 @@ pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS: &str = "clickhouse/configs
 
 pub const SCHEMAS_DIR: &str = "datamodels";
 pub const FLOWS_DIR: &str = "flows";
-pub const SAMPLE_FLOWS_DIR: &str = "UserActivity/ParsedActivity";
+pub const SAMPLE_FLOWS_SOURCE: &str = "UserActivity";
+pub const SAMPLE_FLOWS_DEST: &str = "ParsedActivity";
 
 pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb-1";
 pub const CONSOLE_CONTAINER_NAME: &str = "console-1";

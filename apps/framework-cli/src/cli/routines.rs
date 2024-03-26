@@ -107,6 +107,7 @@ use super::{Message, MessageType};
 
 pub mod clean;
 pub mod docker_packager;
+pub mod flow;
 pub mod initialize;
 pub mod migrate;
 pub mod start;

@@ -60,6 +60,31 @@ pub enum Commands {
     Stop {},
     // Clears all temporary data and stops development infrastructure
     Clean {},
+    /// TODO: Add description for flow command
+    Flow(FlowArgs),
+}
+
+#[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
+pub struct FlowArgs {
+    #[command(subcommand)]
+    pub command: Option<FlowCommands>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum FlowCommands {
+    /// TODO: Add description for flow create sub-command
+    #[command(arg_required_else_help = true)]
+    Create(FlowCreateArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct FlowCreateArgs {
+    #[arg(short, long, required = true)]
+    pub source: String,
+
+    #[arg(short, long, required = true)]
+    pub destination: String,
 }
 
 #[derive(Debug, Args)]

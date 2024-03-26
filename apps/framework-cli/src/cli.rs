@@ -14,14 +14,14 @@ use std::process::exit;
 use std::sync::Arc;
 
 use clap::Parser;
-use commands::Commands;
-use commands::GenerateCommand;
+use commands::{Commands, FlowCommands, GenerateCommand};
 use config::ConfigError;
 use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
 use settings::{read_settings, Settings};
 
+use crate::cli::routines::flow::{CreateFlowDirectory, CreateFlowFile};
 use crate::cli::routines::start::CopyOldSchema;
 use crate::cli::routines::version::BumpVersion;
 use crate::cli::{
@@ -353,6 +353,34 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let mut controller = RoutineController::new();
                 controller.add_routine(Box::new(CleanProject::new(project_arc, run_mode)));
                 controller.run_routines(run_mode);
+            }
+            Commands::Flow(flow) => {
+                info!("Running flow command");
+
+                let flow_cmd = flow.command.as_ref().unwrap();
+                match flow_cmd {
+                    FlowCommands::Create(create) => {
+                        let project = Project::load_from_current_dir().expect(
+                            "No project found, please run `moose init` to create a project",
+                        );
+                        let project_arc = Arc::new(project);
+
+                        let mut controller = RoutineController::new();
+                        let run_mode = RunMode::Explicit {};
+
+                        controller.add_routine(Box::new(CreateFlowDirectory::new(
+                            project_arc.clone(),
+                            create.source.clone(),
+                            create.destination.clone(),
+                        )));
+                        controller.add_routine(Box::new(CreateFlowFile::new(
+                            project_arc,
+                            create.source.clone(),
+                            create.destination.clone(),
+                        )));
+                        controller.run_routines(run_mode);
+                    }
+                }
             }
         }
     } else {

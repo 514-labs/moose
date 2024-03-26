@@ -74,12 +74,12 @@ export default function ModelView({
   const pathName = usePathname();
 
   const [_selectedTab, setSelectedTab] = useState<string>(
-    tab ? tab : "overview",
+    tab ? tab : "overview"
   );
   const model = getModelFromTable(table, cliData);
   const infra = getRelatedInfra(model, cliData, table);
-  const associated_view = cliData.tables.find(
-    (view) => view.name === table.dependencies_table[0],
+  const associatedView = cliData.tables.find(
+    (view) => view.name === table.dependencies_table[0]
   );
 
   const createTabQueryString = useCallback(
@@ -88,7 +88,7 @@ export default function ModelView({
       params.set("tab", tab);
       return params.toString();
     },
-    [searchParams],
+    [searchParams]
   );
 
   const ingestionPoint = infra.ingestionPoints[0];
@@ -153,13 +153,15 @@ export default function ModelView({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <IngestionInstructions
-                  bashSnippet={bashSnippet}
-                  cliData={cliData}
-                  jsSnippet={jsSnippet}
-                  pythonSnippet={pythonSnippet}
-                  ingestionPoint={ingestionPoint}
-                />
+                {ingestionPoint && (
+                  <IngestionInstructions
+                    bashSnippet={bashSnippet}
+                    cliData={cliData}
+                    jsSnippet={jsSnippet}
+                    pythonSnippet={pythonSnippet}
+                    ingestionPoint={ingestionPoint}
+                  />
+                )}
               </CardContent>
             </Card>
           </div>
@@ -189,7 +191,7 @@ export default function ModelView({
                       variant="outline"
                       onClick={() => {
                         router.push(
-                          `${pathName}?${createTabQueryString("query")}`,
+                          `${pathName}?${createTabQueryString("query")}`
                         );
                         setSelectedTab("query");
                       }}
@@ -227,14 +229,14 @@ export default function ModelView({
       <TabsContent className="h-full" value="query">
         {/* add query here */}
         <div className="p-0 h-full">
-          {tableIsQueryable(table) ? (
+          {tableIsQueryable(table) && cliData.project ? (
             <QueryInterface
               project={cliData.project}
               table={table}
               related={cliData.tables}
             />
           ) : (
-            ClickhouseTableRestriction(associated_view)
+            associatedView && ClickhouseTableRestriction(associatedView)
           )}
         </div>
       </TabsContent>

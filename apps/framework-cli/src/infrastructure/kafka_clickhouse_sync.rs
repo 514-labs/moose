@@ -91,8 +91,8 @@ impl SyncingProcessesRegistry {
     pub fn start(&mut self, framework_object: &FrameworkObject) {
         let key = Self::format_key_framework_obj(framework_object);
 
-        if self.registry.contains_key(&key) {
-            return;
+        if let Some(process) = self.registry.remove(&key) {
+            process.abort();
         }
 
         let syncing_process = spawn_sync_process_core(

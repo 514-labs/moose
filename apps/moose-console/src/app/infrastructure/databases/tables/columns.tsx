@@ -1,10 +1,12 @@
 "use client";
 
 import { Button } from "components/ui/button";
-import { Table, View } from "../../mock";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, ChevronRight } from "lucide-react";
 import Link from "next/link";
+import { Table } from "app/db";
+
+type View = "view" | "table";
 
 export const tableColumns: ColumnDef<Table>[] = [
   { accessorKey: "id", header: "ID" },
@@ -44,7 +46,7 @@ export const tableColumns: ColumnDef<Table>[] = [
 
       return (
         <Link
-          href={`/infrastructure/databases/${table.databaseId}/tables/${table.id}`}
+          href={`/infrastructure/databases/${table.database}/tables/${table.name}`}
         >
           <Button variant="ghost" className="h-8 w-8 p-0">
             <span className="sr-only">Open menu</span>

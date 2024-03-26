@@ -4,7 +4,7 @@ import {
   Section,
 } from "design-system/components/containers";
 import { Display, Heading, Text } from "design-system/typography";
-import { CTABar, CTAButton } from "../page";
+import { CTABar, CTAButton } from "../../components.tsx/CTAs";
 import FooterSection from "../sections/FooterSection";
 import { EmailSection } from "../sections/EmailSection";
 import Link from "next/link";

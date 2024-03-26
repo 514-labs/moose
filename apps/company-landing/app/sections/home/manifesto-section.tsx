@@ -10,10 +10,10 @@ export const ManifestoSection = () => {
   return (
     <Section>
       <Grid>
-        <HalfWidthContentContainer>
+        <HalfWidthContentContainer className="2xl:col-span-3">
           <PlaceholderImage className="aspect-square bg-muted sticky top-20" />
         </HalfWidthContentContainer>
-        <HalfWidthContentContainer>
+        <HalfWidthContentContainer className="2xl:col-start-7">
           <Text className="mt-0">
             Let's be honest. Developing any kind of data-driven or
             analytics-driven application on a modern data stack is, let's say,{" "}

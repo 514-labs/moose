@@ -23,10 +23,11 @@ const default_navigation = [
 ];
 
 interface NavProps {
+  property: string;
   navigation: { name: string; href: string; emphasized?: boolean }[];
 }
 
-export const Nav = ({ navigation }: NavProps) => {
+export const Nav = ({ property, navigation }: NavProps) => {
   useLayoutEffect(() => {}, []);
   const pathname = usePathname();
 
@@ -42,7 +43,7 @@ export const Nav = ({ navigation }: NavProps) => {
               <Grid className="sm:grow">
                 <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary">
                   <Link href="/" className="flex h-full items-center">
-                    <Text className="my-0">MooseJS</Text>
+                    <Text className="my-0">{property}</Text>
                   </Link>
                 </div>
 

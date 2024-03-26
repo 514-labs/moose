@@ -11,8 +11,11 @@ export interface Post {
 export async function getPosts(): Promise<Post[]> {
   // Retrieve slugs from post routes
   const slugs = (
-    await readdir("./app/blog/(posts)", { withFileTypes: true })
-  ).filter((dirent) => dirent.isDirectory());
+    await readdir("./app/blog/(posts)", {
+      withFileTypes: true,
+      recursive: true,
+    })
+  ).filter((dirent) => dirent.isDirectory() && !dirent.name.includes("@"));
 
   // Retrieve metadata from MDX files
   const posts = await Promise.all(

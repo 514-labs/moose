@@ -3,7 +3,7 @@ import {
   Grid,
   HalfWidthContentContainer,
 } from "design-system/components/containers";
-import { Display, Text } from "design-system/typography";
+import { Heading, Text } from "design-system/typography";
 import { CodeSnippet } from "design-system/typography/animated";
 import { PlaceholderImage, CTABar } from "../../page";
 
@@ -21,11 +21,11 @@ export const GetMooseCTASection = () => {
   return (
     <Section>
       <Grid className="gap-5-y">
-        <HalfWidthContentContainer className="">
+        <HalfWidthContentContainer className="2xl:col-span-3">
           <PlaceholderImage className="aspect-square bg-muted" />
         </HalfWidthContentContainer>
-        <HalfWidthContentContainer className="flex flex-col justify-center">
-          <Display> {content.title} </Display>
+        <HalfWidthContentContainer className="2xl:col-start-7">
+          <Heading> {content.title} </Heading>
           <Text> {content.description} </Text>
           <CTABar>
             <CodeSnippet> {content.cta.text} </CodeSnippet>

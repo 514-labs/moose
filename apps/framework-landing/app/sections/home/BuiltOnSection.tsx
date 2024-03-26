@@ -15,11 +15,11 @@ export const BuiltOnSection = () => {
   return (
     <Section>
       <Grid className="gap-y-5">
-        <HalfWidthContentContainer className="flex flex-col justify-center">
+        <HalfWidthContentContainer>
           <Heading> {content.title} </Heading>
           <Text> {content.description} </Text>
         </HalfWidthContentContainer>
-        <HalfWidthContentContainer>
+        <HalfWidthContentContainer className="2xl:col-start-9 2xl:col-span-3">
           <PlaceholderImage className="aspect-square bg-muted" />
         </HalfWidthContentContainer>
       </Grid>

@@ -56,7 +56,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Nav navigation={default_navigation} />
+          <Nav property="moosejs" navigation={default_navigation} />
           {children}
         </ThemeProvider>
       </body>

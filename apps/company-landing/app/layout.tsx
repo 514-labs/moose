@@ -24,7 +24,7 @@ export const metadata: Metadata = {
 };
 
 const default_navigation = [
-  { name: "blog", href: "/templates" },
+  { name: "blog", href: "/blog" },
   { name: "community", href: "/community" },
   { name: "get in touch", href: "/contact", emphasized: true },
 ];
@@ -54,7 +54,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Nav navigation={default_navigation} />
+          <Nav property="fiveonefour" navigation={default_navigation} />
           {children}
         </ThemeProvider>
       </body>

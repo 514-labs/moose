@@ -21,10 +21,10 @@ export const WhatIsMooseSection = () => {
   return (
     <Section>
       <Grid className="gap-y-5">
-        <HalfWidthContentContainer className="">
+        <HalfWidthContentContainer className="2xl:col-span-3">
           <PlaceholderImage className="aspect-square bg-muted" />
         </HalfWidthContentContainer>
-        <HalfWidthContentContainer className="flex flex-col md:col-span-12 xl:col-span-6 justify-center">
+        <HalfWidthContentContainer className="md:col-span-12 xl:col-span-6 2xl:col-start-7">
           <Heading> {content.title} </Heading>
           <Text> {content.description} </Text>
           <CTABar>

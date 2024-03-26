@@ -56,7 +56,7 @@ export const Nav = ({ property, navigation }: NavProps) => {
                         className={cn(
                           isActive
                             ? "flex items-center text-action-primary px-5"
-                            : "flex items-center text-primary px-5"
+                            : "flex items-center text-primary px-5",
                         )}
                         key={item.name}
                       >
@@ -68,7 +68,7 @@ export const Nav = ({ property, navigation }: NavProps) => {
                                   isActive
                                     ? "hover:text-action-primary-foreground "
                                     : "hover:text-primary-foreground",
-                                  "text-primary-foreground"
+                                  "text-primary-foreground",
                                 )}
                               >
                                 {item.name}
@@ -80,7 +80,7 @@ export const Nav = ({ property, navigation }: NavProps) => {
                                 isActive
                                   ? "hover:text-action-primary border-b-2 border-black"
                                   : "hover:text-primary",
-                                "py-2"
+                                "py-2",
                               )}
                             >
                               {item.name}

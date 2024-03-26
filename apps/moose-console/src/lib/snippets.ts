@@ -31,6 +31,10 @@ export const jsSnippet = (data: CliData, model: DataModel) => {
   const ingestionPoint = getIngestionPointFromModel(model, data);
   const columns = createColumnStubs(model);
 
+  if (!data.project || !ingestionPoint) {
+    return "no project found";
+  }
+
   return `\
 fetch('http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}', {
     method: 'POST',
@@ -47,6 +51,11 @@ fetch('http://${data.project && data.project.http_server_config.host}:${data.pro
 export const pythonSnippet = (data: CliData, model: DataModel) => {
   const ingestionPoint = getIngestionPointFromModel(model, data);
   const columns = createColumnStubs(model);
+
+  if (!data.project || !ingestionPoint) {
+    return "no project found";
+  }
+
   return `\
 import requests
 
@@ -60,8 +69,12 @@ response = requests.post(url, json=data)
 
 export const clickhousePythonSnippet = (data: CliData, model: DataModel) => {
   const view = data.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MergeTree",
+    (t) => t.name.includes(model.name) && t.engine === "MergeTree"
   );
+
+  if (!view) {
+    return "no view found";
+  }
 
   return `\
 import clickhouse_connect
@@ -86,8 +99,12 @@ print(result)
 
 export const clickhouseJSSnippet = (data: CliData, model: DataModel) => {
   const view = data.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MergeTree",
+    (t) => t.name.includes(model.name) && t.engine === "MergeTree"
   );
+
+  if (!view) {
+    return "no view found";
+  }
 
   return `import { createClient } from "@clickhouse/client-web"
 
@@ -111,6 +128,10 @@ const getResults = async () => {
 export const curlSnippet = (data: CliData, model: DataModel) => {
   const ingestionPoint = getIngestionPointFromModel(model, data);
   const columns = createColumnStubs(model);
+
+  if (!data.project || !ingestionPoint) {
+    return "no project found";
+  }
 
   return `\
 curl -X POST -H "Content-Type: application/json" -d '{${columns.join()}}' \\

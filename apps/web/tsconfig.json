@@ -1,6 +1,9 @@
 {
   "extends": "@repo/ts-config/nextjs.json",
   "compilerOptions": {
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+
     "plugins": [
       {
         "name": "next"
@@ -8,13 +11,6 @@
     ],
     "forceConsistentCasingInFileNames": true
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
 }

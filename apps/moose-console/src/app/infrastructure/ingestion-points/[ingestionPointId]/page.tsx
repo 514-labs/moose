@@ -12,16 +12,14 @@ import {
 } from "lib/snippets";
 import { NavBreadCrumb } from "components/nav-breadcrumb";
 
-async function getIngestionPoint(ingestionPointId: string): Promise<Route> {
-  try {
-    const data = await getCliData();
-    return data.ingestionPoints.find(
-      (ingestionPoint) =>
-        ingestionPoint.route_path.split("/").at(-1) === ingestionPointId,
-    );
-  } catch (error) {
-    return null;
-  }
+async function getIngestionPoint(
+  ingestionPointId: string
+): Promise<Route | undefined> {
+  const data = await getCliData();
+  return data.ingestionPoints.find(
+    (ingestionPoint) =>
+      ingestionPoint.route_path.split("/").at(-1) === ingestionPointId
+  );
 }
 
 export default async function Page({
@@ -35,6 +33,11 @@ export default async function Page({
 
   const ingestionPoint = await getIngestionPoint(params.ingestionPointId);
   const cliData = await getCliData();
+
+  if (!ingestionPoint) {
+    return <div>Ingestion Point not found</div>;
+  }
+
   const model = getModelFromRoute(ingestionPoint, cliData);
 
   return (

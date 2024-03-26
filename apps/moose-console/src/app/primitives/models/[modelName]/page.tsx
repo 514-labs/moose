@@ -13,12 +13,11 @@ import {
 import { NavBreadCrumb } from "components/nav-breadcrumb";
 import ModelView from "app/ModelView";
 
-async function getModel(name: string, data: CliData): Promise<DataModel> {
-  try {
-    return data.models.find((x) => x.name === name);
-  } catch (error) {
-    return null;
-  }
+async function getModel(
+  name: string,
+  data: CliData
+): Promise<DataModel | undefined> {
+  return data.models.find((x) => x.name === name);
 }
 
 export default async function Page({
@@ -32,9 +31,14 @@ export default async function Page({
 
   const data = await getCliData();
   const model = await getModel(params.modelName, data);
+
+  if (!model) {
+    return <div>Model not found</div>;
+  }
+
   const infra = getRelatedInfra(model, data, model);
   const triggerTable = infra.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MergeTree",
+    (t) => t.name.includes(model.name) && t.engine === "MergeTree"
   );
 
   const jsCodeSnippet = jsSnippet(data, model);
@@ -42,6 +46,10 @@ export default async function Page({
   const bashCodeSnippet = bashSnippet(data, model);
   const clickhouseJSCode = clickhouseJSSnippet(data, model);
   const clickhousePythonCode = clickhousePythonSnippet(data, model);
+
+  if (!triggerTable) {
+    return <div>Table not found</div>;
+  }
 
   return (
     <section className="p-4 max-h-screen overflow-y-auto grow">

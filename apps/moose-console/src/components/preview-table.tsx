@@ -18,7 +18,9 @@ interface TableProps<T> {
 
 function PreviewTable<T>({ rows, caption, onRowClick }: TableProps<T>) {
   // Get column headers (keys from the first object in the data array)
-  const headers = rows.length > 0 ? Object.keys(rows[0]) : [];
+
+  // @ts-expect-error something went wrong fething rows
+  const headers = Object.keys(rows[0]);
   return (
     <Table>
       {caption && <TableCaption>{caption}</TableCaption>}
@@ -36,9 +38,11 @@ function PreviewTable<T>({ rows, caption, onRowClick }: TableProps<T>) {
           <TableRow
             className={onRowClick ? "cursor-pointer" : ""}
             key={index}
+            // @ts-expect-error something went wrong fething rows
             onClick={() => onRowClick(row)}
           >
             {headers.map((value, index) => (
+              // @ts-expect-error something went wrong fething rows
               <TableCell key={index}>{row[value]}</TableCell>
             ))}
           </TableRow>

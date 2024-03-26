@@ -18,7 +18,7 @@ import { Fragment } from "react";
 async function _describeTable(
   databaseName: string,
   tableName: string,
-  project: Project,
+  project: Project
 ): Promise<any> {
   const client = getClient(project);
 
@@ -44,6 +44,11 @@ export default async function Page({
   const data = await getCliData();
 
   const table = data.tables.find((table) => table.uuid === params.tableId);
+
+  if (!table) {
+    return <div>Table not found</div>;
+  }
+
   const model = getModelFromTable(table, data);
 
   return (

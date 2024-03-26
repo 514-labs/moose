@@ -70,14 +70,14 @@ export default function TableTabs({
   const pathName = usePathname();
 
   const [_selectedTab, setSelectedTab] = useState<string>(
-    tab ? tab : "overview",
+    tab ? tab : "overview"
   );
   const model = getModelFromTable(table, cliData);
   const infra = getRelatedInfra(model, cliData, table);
   const triggerTable = infra.tables.find(
     (t) =>
       t.name === table.name.replace(/(_kafka)?$/, "_trigger") &&
-      t.engine === "MaterializedView",
+      t.engine === "MaterializedView"
   );
 
   const createTabQueryString = useCallback(
@@ -86,10 +86,14 @@ export default function TableTabs({
       params.set("tab", tab);
       return params.toString();
     },
-    [searchParams],
+    [searchParams]
   );
 
   const ingestionPoint = infra.ingestionPoints[0];
+
+  if (!ingestionPoint || !triggerTable || !cliData.project) {
+    return <div>Table not found</div>;
+  }
 
   return (
     <Tabs
@@ -187,7 +191,7 @@ export default function TableTabs({
                       variant="outline"
                       onClick={() => {
                         router.push(
-                          `${pathName}?${createTabQueryString("query")}`,
+                          `${pathName}?${createTabQueryString("query")}`
                         );
                         setSelectedTab("query");
                       }}

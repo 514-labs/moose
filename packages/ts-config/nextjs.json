@@ -4,7 +4,9 @@
   "extends": "./base.json",
   "compilerOptions": {
     "plugins": [{ "name": "next" }],
-    "module": "NodeNext",
+    "module": "ESNext",
+    "resolveJsonModule": true,
+
     "allowJs": true,
     "jsx": "preserve",
     "noEmit": true,

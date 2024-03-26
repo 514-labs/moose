@@ -10,7 +10,7 @@ import { Project, Table } from "app/db";
 import { Button } from "./ui/button";
 import {
   Dispatch,
-  MutableRefObject,
+  RefObject,
   SetStateAction,
   useEffect,
   useRef,
@@ -20,6 +20,7 @@ import { getClient } from "../lib/clickhouse";
 import { PreviewTable } from "./preview-table";
 import { Badge } from "./ui/badge";
 import { Card, CardContent } from "./ui/card";
+import { WebClickHouseClient } from "@clickhouse/client-web/dist/client";
 
 const sqlKeyWords = [
   "SELECT",
@@ -131,7 +132,10 @@ const sqlKeyWords = [
   "SQL",
 ];
 
-async function runQuery(client, queryString: string): Promise<any> {
+async function runQuery(
+  client: WebClickHouseClient,
+  queryString: string
+): Promise<any> {
   const resultSet = await client.query({
     query: queryString,
     format: "JSONEachRow",
@@ -149,17 +153,19 @@ interface QueryInterfaceProps {
 const insertSomeText = (
   insert: string,
   originalValue: string,
-  ref: MutableRefObject<HTMLTextAreaElement>,
-  setter: Dispatch<SetStateAction<string>>,
+  ref: RefObject<HTMLTextAreaElement>,
+  setter: Dispatch<SetStateAction<string>>
 ) => {
-  const selectionStart = ref.current.selectionStart;
-  const selectionEnd = ref.current.selectionEnd;
+  if (ref.current) {
+    const selectionStart = ref.current.selectionStart;
+    const selectionEnd = ref.current.selectionEnd;
 
-  const newValue =
-    originalValue.substring(0, selectionStart) +
-    insert +
-    originalValue.substring(selectionEnd, originalValue.length);
-  setter(newValue);
+    const newValue =
+      originalValue.substring(0, selectionStart) +
+      insert +
+      originalValue.substring(selectionEnd, originalValue.length);
+    setter(newValue);
+  }
 };
 
 export default function QueryInterface({
@@ -176,7 +182,7 @@ export default function QueryInterface({
     .map((t) => `${t.database}.${t.name}`);
 
   const [value, setValue] = useState(
-    `SELECT * FROM ${table.database}.${table.name} LIMIT 50;`,
+    `SELECT * FROM ${table.database}.${table.name} LIMIT 50;`
   );
   const [results, setResults] = useState<any[]>();
   const [sqlKeyWordCount, setSqlKeyWordCount] = useState(12);
@@ -256,7 +262,7 @@ export default function QueryInterface({
                                 word,
                                 value,
                                 textareaRef,
-                                setValue,
+                                setValue
                               );
                             }}
                             className="text-nowrap my-1"
@@ -297,7 +303,7 @@ export default function QueryInterface({
                                   word,
                                   value,
                                   textareaRef,
-                                  setValue,
+                                  setValue
                                 );
                               }}
                               className="text-nowrap my-1"

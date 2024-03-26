@@ -8,10 +8,10 @@ export function cn(...inputs: ClassValue[]) {
 
 export function getIngestionPointFromModel(
   model: DataModel,
-  cliData: CliData,
-): Route {
+  cliData: CliData
+): Route | undefined {
   return cliData.ingestionPoints.find((ingestionPoint) =>
-    ingestionPoint.route_path.includes(model.name),
+    ingestionPoint.route_path.includes(model.name)
   );
 }
 
@@ -30,7 +30,10 @@ export function tableIsQueryable(table: Table): boolean {
   return table.engine === "MergeTree";
 }
 
-export function getQueueFromRoute(route: Route, cliData: CliData): string {
+export function getQueueFromRoute(
+  route: Route,
+  cliData: CliData
+): string | undefined {
   const routeTail = route.route_path.split("/").at(-1);
   return cliData.queues.find((queue) => queue === routeTail);
 }
@@ -48,15 +51,15 @@ export function getModelFromTable(table: Table, cliData: CliData): DataModel {
 export function getRelatedInfra(
   model: DataModel,
   data: CliData,
-  currectObject: any,
+  currectObject: any
 ): Infra {
   const tables = data.tables.filter(
-    (t) => t.name.includes(model.name) && t.uuid !== currectObject.uuid,
+    (t) => t.name.includes(model.name) && t.uuid !== currectObject.uuid
   );
   const ingestionPoints = data.ingestionPoints.filter(
     (ip) =>
       ip.route_path.includes(model.name) &&
-      ip.route_path !== currectObject.route_path,
+      ip.route_path !== currectObject.route_path
   );
 
   return { tables, ingestionPoints };

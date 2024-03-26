@@ -227,7 +227,7 @@ export default function TemplatePage({
   };
 
   const template = content.templateDetails.find(
-    (template) => template.slug === params.templateId,
+    (template) => template.slug === params.templateId
   );
 
   return (
@@ -252,7 +252,7 @@ export default function TemplatePage({
             </CTABar>
             <div className="py-10">
               {template?.features?.items.map((feature, index) => (
-                <Grid>
+                <Grid key={index}>
                   <div key={index} className="col-span-6">
                     <Text className="my-0">{feature.title}</Text>
                     <Text className="my-0 text-muted-foreground">

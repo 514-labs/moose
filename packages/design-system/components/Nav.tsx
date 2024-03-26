@@ -10,10 +10,11 @@ import { Text } from "./typography/standard";
 import { Grid } from "./containers/page-containers";
 import { usePathname } from "next/navigation";
 import { cn } from "../lib/utils";
+import { Button } from "./ui/button";
 
 gsap.registerPlugin(SplitText);
 
-const navigation = [
+const default_navigation = [
   { name: "docs", href: "https://docs.moosejs.com" },
   { name: "templates", href: "/templates" },
   { name: "blog", href: "https://blog.fiveonefour.com/" },
@@ -21,7 +22,11 @@ const navigation = [
   { name: "community", href: "/community" },
 ];
 
-export const Nav = () => {
+interface NavProps {
+  navigation: { name: string; href: string; emphasized?: boolean }[];
+}
+
+export const Nav = ({ navigation }: NavProps) => {
   useLayoutEffect(() => {}, []);
   const pathname = usePathname();
 
@@ -33,7 +38,7 @@ export const Nav = () => {
       {({ open }) => (
         <>
           <div className="z-50 sticky w-full py-2">
-            <div className="flex h-16 justify-between items-center">
+            <div className="flex h-20 justify-between items-center">
               <Grid className="sm:grow">
                 <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary">
                   <Link href="/" className="flex h-full items-center">
@@ -49,22 +54,37 @@ export const Nav = () => {
                       <div
                         className={cn(
                           isActive
-                            ? "items-center text-action-primary px-5"
-                            : "items-center text-primary px-5"
+                            ? "flex items-center text-action-primary px-5"
+                            : "flex items-center text-primary px-5"
                         )}
                         key={item.name}
                       >
                         <Link href={item.href}>
-                          <Text
-                            className={cn(
-                              isActive
-                                ? "hover:text-action-primary border-b-2 border-black"
-                                : "hover:text-primary",
-                              "py-2"
-                            )}
-                          >
-                            {item.name}
-                          </Text>
+                          {item.emphasized ? (
+                            <Button size={"lg"} className="py-8">
+                              <Text
+                                className={cn(
+                                  isActive
+                                    ? "hover:text-action-primary-foreground "
+                                    : "hover:text-primary-foreground",
+                                  "text-primary-foreground"
+                                )}
+                              >
+                                {item.name}
+                              </Text>
+                            </Button>
+                          ) : (
+                            <Text
+                              className={cn(
+                                isActive
+                                  ? "hover:text-action-primary border-b-2 border-black"
+                                  : "hover:text-primary",
+                                "py-2"
+                              )}
+                            >
+                              {item.name}
+                            </Text>
+                          )}
                         </Link>
                         <a></a>
                       </div>

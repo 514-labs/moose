@@ -45,10 +45,7 @@ export const FooterNavItem = ({
 
 export const FooterNav = () => {
   const navigation = [
-    { name: "docs", href: "https://docs.moosejs.dev" },
-    { name: "templates", href: "/templates" },
-    { name: "blog", href: "https://blog.fiveonefour.com/" },
-    { name: "github", href: "https://github.com/514-labs/moose" },
+    { name: "blog", href: "/blog" },
     { name: "community", href: "/community" },
   ];
 

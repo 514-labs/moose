@@ -27,7 +27,6 @@ const default_navigation = [
   { name: "templates", href: "/templates" },
   { name: "blog", href: "https://blog.fiveonefour.com/" },
   { name: "github", href: "https://github.com/514-labs/moose" },
-  { name: "community", href: "/community" },
 ];
 
 export default async function RootLayout({
@@ -45,7 +44,7 @@ export default async function RootLayout({
         className={cn(
           "min-h-screen bg-background font-sans antialiased",
           monoFont.variable,
-          sansFont.variable,
+          sansFont.variable
         )}
         suppressHydrationWarning
       >

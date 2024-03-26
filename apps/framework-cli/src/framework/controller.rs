@@ -328,52 +328,52 @@ pub async fn set_up_topic_and_tables_and_route(
 ) -> anyhow::Result<()> {
     let topic = fo.topic.clone();
 
-    let previous_fo = match previous_version {
+    let previous_fo_opt = match previous_version {
         None => None,
         Some((_, previous_models)) => previous_models.get(&fo.data_model.name),
     };
-    let same_as_previous = match previous_fo {
-        None => false,
-        Some(previous) => previous.data_model == fo.data_model,
-    };
 
-    if same_as_previous {
-        match redpanda::delete_topics(&project.redpanda_config, vec![topic]).await {
-            Ok(_) => println!("Topics deleted successfully"),
-            Err(e) => eprintln!("Failed to delete topics: {}", e),
+    let ingest_topic_name;
+    match previous_fo_opt {
+        Some(previous_fo) if previous_fo.data_model == fo.data_model => {
+            match redpanda::delete_topics(&project.redpanda_config, vec![topic]).await {
+                Ok(_) => println!("Topics deleted successfully"),
+                Err(e) => eprintln!("Failed to delete topics: {}", e),
+            }
+
+            create_or_replace_table_alias(fo, previous_fo, configured_client).await?;
+
+            // this is a gross way to find the previous ingest route
+            let old_base_path =
+                project.old_version_location(previous_version.as_ref().unwrap().0.as_str())?;
+            let old_ingest_route = schema_file_path_to_ingest_route(
+                &old_base_path,
+                &previous_fo.original_file_path,
+                fo.data_model.name.clone(),
+                previous_version.as_ref().unwrap().0.as_str(),
+            );
+            ingest_topic_name = route_table
+                .get(&old_ingest_route)
+                .unwrap()
+                // this might be chained multiple times,
+                // so we cannot just use the previous.table.name
+                .table_name
+                .clone();
         }
+        _ => {
+            match redpanda::create_topics(&project.redpanda_config, vec![topic]).await {
+                Ok(_) => println!("Topics created successfully"),
+                Err(e) => eprintln!("Failed to create topics: {}", e),
+            }
 
-        create_or_replace_table_alias(fo, previous_fo.unwrap(), configured_client).await?;
-    } else {
-        match redpanda::create_topics(&project.redpanda_config, vec![topic]).await {
-            Ok(_) => println!("Topics created successfully"),
-            Err(e) => eprintln!("Failed to create topics: {}", e),
+            debug!("Creating table: {:?}", fo.table.name);
+
+            create_or_replace_tables(fo, configured_client).await?;
+
+            debug!("Table created: {:?}", fo.table.name);
+
+            ingest_topic_name = fo.table.name.clone();
         }
-
-        debug!("Creating table & view: {:?}", fo.table.name);
-
-        create_or_replace_tables(fo, configured_client).await?;
-
-        debug!("Table created: {:?}", fo.table.name);
-    }
-
-    let ingest_topic_name = if same_as_previous {
-        // this is a gross way to find the previous ingest route
-        let old_base_path =
-            project.old_version_location(previous_version.as_ref().unwrap().0.as_str())?;
-        let old_ingest_route = schema_file_path_to_ingest_route(
-            &old_base_path,
-            &previous_fo.unwrap().original_file_path,
-            fo.data_model.name.clone(),
-            previous_version.as_ref().unwrap().0.as_str(),
-        );
-        route_table
-            .get(&old_ingest_route)
-            .unwrap()
-            .table_name
-            .clone()
-    } else {
-        fo.table.name.clone()
     };
 
     route_table.insert(

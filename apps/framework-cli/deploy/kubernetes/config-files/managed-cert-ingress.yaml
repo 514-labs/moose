@@ -1,0 +1,14 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: managed-cert-ingress
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: moosefooddns
+    networking.gke.io/managed-certificates: managed-cert
+    ingressClassName: "gce"
+spec:
+  defaultBackend:
+    service:
+      name: moose-service
+      port:
+        number: 4000

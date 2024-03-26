@@ -19,8 +19,8 @@ After the above command completes you can view your newly created docker files b
 ```txt filename="Terminal" copy
 >docker images
 REPOSITORY                                              TAG               IMAGE ID       CREATED              SIZE
-moose-df-deployment-aarch64-unknown-linux-gnu           0.3.136           c50674c7a68a   About a minute ago   155MB
-moose-df-deployment-x86_64-unknown-linux-gnu            0.3.136           e5b449d3dea3   About a minute ago   163MB
+moose-df-deployment-aarch64-unknown-linux-gnu           0.3.175           c50674c7a68a   About a minute ago   155MB
+moose-df-deployment-x86_64-unknown-linux-gnu            0.3.175           e5b449d3dea3   About a minute ago   163MB
 ```
 
 > Notice that you get two `moose-df-deployment` containers, one for the `aarch64` (ARM64) architecture and another for the `x86_64` architecture. This is necessary to allow you to choose the version that matches your cloud or on-prem machine architecture.
@@ -37,13 +37,13 @@ docker tag moose-df-deployment-x86_64-unknown-linux-gnu:0.3.136 {your-repo-user-
 Then `push` your files to your container repository.
 
 ```txt filename="Terminal" copy
-docker push {your-repo-user-name}/moose-df-deployment-aarch64-unknown-linux-gnu:0.3.136
-docker push {your-repo-user-name}/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.136
+docker push {your-repo-user-name}/moose-df-deployment-aarch64-unknown-linux-gnu:0.3.175
+docker push {your-repo-user-name}/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.175
 ```
 
 You can also use the following handy shell script to automate the two steps above.
 
-```bash
+```bash filename="push.sh" copy
 #!/bin/bash
 
 version=$2

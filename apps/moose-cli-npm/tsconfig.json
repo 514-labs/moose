@@ -1,9 +1,10 @@
 {
-  "extends": "tsconfig/base.json",
   "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist"],
   "compilerOptions": {
+    "moduleResolution": "node",
     "outDir": "dist",
     "rootDir": "./src"
-  }
+  },
+  "extends": "@repo/ts-config/base.json"
 }

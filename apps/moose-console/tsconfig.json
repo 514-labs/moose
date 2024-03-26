@@ -1,5 +1,4 @@
 {
-  "moduleResolution": "Node",
   "extends": "@repo/ts-config/nextjs.json",
   "compilerOptions": {
     "baseUrl": "src/",
@@ -10,15 +9,9 @@
     ],
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
+    "module": "Node16",
     "moduleResolution": "node"
   },
-  "include": [
-    "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
-    ".next/types/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules"
-  ]
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
+  "exclude": ["node_modules"]
 }

@@ -1,5 +1,4 @@
 {
-  "moduleResolution": "NodeNext",
   "extends": "@repo/ts-config/nextjs.json",
   "compilerOptions": {
     "plugins": [
@@ -7,8 +6,17 @@
         "name": "next"
       }
     ],
-    "moduleResolution": "NodeNext"
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "resolveJsonModule": true
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
-  "exclude": ["node_modules"]
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
 }

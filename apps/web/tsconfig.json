@@ -2,7 +2,7 @@
   "extends": "@repo/ts-config/nextjs.json",
   "compilerOptions": {
     "module": "ES2022",
-    "moduleResolution": "Bundler",
+    "moduleResolution": "NodeNext",
 
     "plugins": [
       {

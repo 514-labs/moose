@@ -7,9 +7,9 @@
 [![Docs](https://img.shields.io/badge/quick_start-docs-blue.svg)](https://docs.moosejs.com/)
 [![MIT license](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-# Getting started
 MooseJS is an open source developer framework for building data & analytics applications powered by a modern data stack. Moose takes the decades-old best practices of frontend and backend developer frameworks, and brings them to your data & analytics stack.
 
+# Getting started
 To get started, check out the Moose documentation: [https://docs.moosejs.com/](https://docs.moosejs.com/)
 
 # Community

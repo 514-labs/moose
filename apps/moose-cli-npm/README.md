@@ -1,87 +1,21 @@
-# Moose CLI
+<a href="https://www.moosejs.com/"><img src="logo-m-light.png" alt="moose logo" height="250px"></a>
 
-The Moose CLI is your entrypoint to a seamless, local development experience for your data-intensive application. It's written in rust and supports building applications in TypeScript and Python.
+# MooseJS
 
-## Installation
+[![NPM Version](https://img.shields.io/npm/v/%40514labs%2Fmoose-cli?logo=npm)](https://www.npmjs.com/package/@514labs/moose-cli?activeTab=readme)
+[![Moose Community](https://img.shields.io/badge/slack-moose_community-purple.svg?logo=slack)](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg)
+[![Docs](https://img.shields.io/badge/quick_start-docs-blue.svg)](https://docs.moosejs.com/)
+[![MIT license](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-Before getting started you'll need to install some dependencies on your machine:
+MooseJS is an open source developer framework for building data & analytics applications powered by a modern data stack. Moose takes the decades-old best practices of frontend and backend developer frameworks, and brings them to your data & analytics stack.
 
-1. Node
-2. Docker
+# Getting started
+To get started, check out the Moose documentation: [https://docs.moosejs.com/](https://docs.moosejs.com/)
 
-The Moose CLI is available as an NPM. To install the CLI, run the following command:
+# Community
+You can join the Moose community [on Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg).
 
-```bash
-npm install -g moose
-```
+Here you can get together with other Moose developers, ask questions, give feedback, make feature requests, and interact directly with Moose maintainers. 
 
-## Usage
-
-The Moose CLI is a command-line tool that allows you to create, manage, and deploy your Moose applications.
-
-### Creating a new application
-
-To create a new application, run the following command:
-
-```bash
-moose init
-```
-
-This will prompt you to enter a name for your application. Once you have entered a name, the CLI will create a new directory with the name you provided and scaffold out a new Moose application.
-
-#### Application structure
-
-The CLI will create the following files and directories:
-
-```
-├── .moose
-│   ├── .clickhouse
-│   ├── .redpanda
-│   └── ...
-├── .gitignore
-├── README.md
-├── package.json or requirements.txt
-├── app
-│   ├── index.ts or index.py
-│   ├── dataframes
-│   │   └── ...
-│   ├── flows
-│   │   └── ...
-│   ├── ingests
-│   │   └── ...
-│   ├── insights
-│   │   ├── dashboards
-│   │   ├── metrics
-│   │   ├── models
-│   │   └── ...
-│   └── utils
-```
-
-##### `app` directory
-
-The `app` directory contains all of the code for your application. This includes all of the dataframes, flows, ingests, and insights that make up your application. This directory is where you will spend most of your time developing your application.
-
-##### `.moose` for contributors only
-
-The `.moose` directory contains all of the configuration files for an application. This includes configuration for the local state of the application as well as any required local infrastructure. This directory is only used by contributors to the application and should not be committed to source control. Modifying files in this directory may cause unexpected behavior.
-
-### Running your application in development mode
-
-To run your application, run the following command:
-
-```bash
-moose dev
-```
-
-This will start all of the required infrastructure and run your application in development mode. You can now make changes to your application and see them reflected in real-time.
-
-### Seeing your application in action
-
-Once your application is running, you can see it in action by navigating to the following URLs:
-
-- [http://localhost:4000](http://localhost:4000) - Your application's interface if you've created one
-- [http://localhost:4000/console](http://localhost:4000/console) - A console to see the data flowing through your application and the objects you've created
-
-#### The console
-
-The console is a great way to see the data flowing through your application. It allows you to see the data flowing through your application in real-time and interact with the objects you've created. You can also use the console to run queries against your application's data.
+# Made by 514
+Our mission at [fiveonefour](https://www.fiveonefour.com/) is to bring incredible developer experiences to the data stack. If you’re interested in enterprise solutions, commercial support, or design partnerships, then we’d love to [chat with you](https://xbac8793a37.typeform.com/to/KTf5bBbr?typeform-source=www.fiveonefour.com).

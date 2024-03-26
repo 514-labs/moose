@@ -91,6 +91,7 @@ impl SyncingProcessesRegistry {
     pub fn start(&mut self, framework_object: &FrameworkObject) {
         let key = Self::format_key_framework_obj(framework_object);
 
+        // the schema of the currently running process is outdated
         if let Some(process) = self.registry.remove(&key) {
             process.abort();
         }

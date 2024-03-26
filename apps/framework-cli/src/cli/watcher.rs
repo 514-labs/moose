@@ -7,7 +7,7 @@ use std::{
     path::PathBuf,
 };
 
-use log::{debug, warn};
+use log::{debug, info, warn};
 use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::RwLock;
 
@@ -144,8 +144,8 @@ async fn process_events(
 
         let topics = vec![fo.data_model.name.clone()];
         match redpanda::delete_topics(&project.redpanda_config, topics).await {
-            Ok(_) => println!("Topics deleted successfully"),
-            Err(e) => eprintln!("Failed to delete topics: {}", e),
+            Ok(_) => info!("Topics deleted successfully"),
+            Err(e) => warn!("Failed to delete topics: {}", e),
         }
 
         framework_object_versions
@@ -188,8 +188,8 @@ async fn process_events(
         );
         let topics = vec![fo.topic.clone()];
         match redpanda::create_topics(&project.redpanda_config.clone(), topics).await {
-            Ok(_) => println!("Topics created successfully"),
-            Err(e) => eprintln!("Failed to create topics: {}", e),
+            Ok(_) => info!("Topics created successfully"),
+            Err(e) => warn!("Failed to create topics: {}", e),
         }
 
         framework_object_versions

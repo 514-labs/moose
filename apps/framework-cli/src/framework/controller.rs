@@ -5,8 +5,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use log::debug;
-use log::info;
+use log::{debug, info, warn};
 
 use crate::framework;
 use crate::framework::languages::CodeGenerator;
@@ -280,8 +279,8 @@ pub async fn remove_table_and_topics_from_schema_file_path(
         if meta.original_file_path == schema_file_path {
             let topics = vec![meta.table_name.clone()];
             match redpanda::delete_topics(&project.redpanda_config, topics).await {
-                Ok(_) => println!("Topics deleted successfully"),
-                Err(e) => eprintln!("Failed to delete topics: {}", e),
+                Ok(_) => info!("Topics deleted successfully"),
+                Err(e) => warn!("Failed to delete topics: {}", e),
             }
 
             olap::clickhouse::delete_table_or_view(meta.table_name, configured_client)
@@ -337,8 +336,8 @@ pub async fn set_up_topic_and_tables_and_route(
     match previous_fo_opt {
         Some(previous_fo) if previous_fo.data_model == fo.data_model => {
             match redpanda::delete_topics(&project.redpanda_config, vec![topic]).await {
-                Ok(_) => println!("Topics deleted successfully"),
-                Err(e) => eprintln!("Failed to delete topics: {}", e),
+                Ok(_) => info!("Topics deleted successfully"),
+                Err(e) => warn!("Failed to delete topics: {}", e),
             }
 
             create_or_replace_table_alias(fo, previous_fo, configured_client).await?;
@@ -362,8 +361,8 @@ pub async fn set_up_topic_and_tables_and_route(
         }
         _ => {
             match redpanda::create_topics(&project.redpanda_config, vec![topic]).await {
-                Ok(_) => println!("Topics created successfully"),
-                Err(e) => eprintln!("Failed to create topics: {}", e),
+                Ok(_) => info!("Topics created successfully"),
+                Err(e) => warn!("Failed to create topics: {}", e),
             }
 
             debug!("Creating table: {:?}", fo.table.name);

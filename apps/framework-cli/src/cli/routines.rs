@@ -352,7 +352,7 @@ async fn initialize_project_state(
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> anyhow::Result<FrameworkObjectVersions> {
-    let old_versions = project.versions_sorted();
+    let old_versions = project.old_versions_sorted();
 
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let producer = redpanda::create_producer(project.redpanda_config.clone());

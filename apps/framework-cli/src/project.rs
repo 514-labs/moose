@@ -295,7 +295,7 @@ impl Project {
         Ok(old_base_path)
     }
 
-    pub fn versions_sorted(&self) -> Vec<String> {
+    pub fn old_versions_sorted(&self) -> Vec<String> {
         let mut old_versions = self
             .supported_old_versions
             .keys()

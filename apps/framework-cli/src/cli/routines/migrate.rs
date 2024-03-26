@@ -33,8 +33,8 @@ impl Routine for GenerateMigration {
             Some(previous_version) => previous_version,
         };
 
-        let fo_versions =
-            crawl_schema(&self.project, &self.project.versions_sorted()).map_err(|err| {
+        let fo_versions = crawl_schema(&self.project, &self.project.old_versions_sorted())
+            .map_err(|err| {
                 RoutineFailure::new(
                     Message::new("Failed".to_string(), "to crawl schema".to_string()),
                     err,
@@ -48,10 +48,7 @@ impl Routine for GenerateMigration {
             )
         })?;
 
-        println!("version_syncs: {:?}", version_syncs);
-
         let new_vs_list = generate_version_syncs(&fo_versions, &version_syncs, previous_version);
-        print!("{:?}", new_vs_list);
 
         let flow_dir = self.project.flows_dir();
         for vs in new_vs_list {

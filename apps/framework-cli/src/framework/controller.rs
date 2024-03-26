@@ -344,13 +344,13 @@ pub async fn set_up_topic_and_tables_and_route(
             create_or_replace_table_alias(fo, previous_fo, configured_client).await?;
 
             // this is a gross way to find the previous ingest route
-            let old_base_path =
-                project.old_version_location(previous_version.as_ref().unwrap().0.as_str())?;
+            let previous_version = previous_version.as_ref().unwrap().0.as_str();
+            let old_base_path = project.old_version_location(previous_version)?;
             let old_ingest_route = schema_file_path_to_ingest_route(
                 &old_base_path,
                 &previous_fo.original_file_path,
                 fo.data_model.name.clone(),
-                previous_version.as_ref().unwrap().0.as_str(),
+                previous_version,
             );
             ingest_topic_name = route_table
                 .get(&old_ingest_route)

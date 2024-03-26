@@ -1,14 +1,14 @@
 /** @type {import('tailwindcss').Config} */
-import { fontFamily } from "tailwindcss/defaultTheme"
+import { fontFamily } from "tailwindcss/defaultTheme";
 
-export const darkMode = ["class"]
+export const darkMode = ["class"];
 export const content = [
-  './pages/**/*.{ts,tsx}',
-  './components/**/*.{ts,tsx}',
-  './app/**/*.{ts,tsx}',
-  './src/**/*.{ts,tsx}',
-]
-export const prefix = ""
+  "./pages/**/*.{ts,tsx}",
+  "./components/**/*.{ts,tsx}",
+  "./app/**/*.{ts,tsx}",
+  "./src/**/*.{ts,tsx}",
+];
+export const prefix = "";
 export const theme = {
   container: {
     center: true,
@@ -19,8 +19,8 @@ export const theme = {
   },
   extend: {
     fontFamily: {
-      sans: ['var(--grotesk-sans)', fontFamily.sans],
-      mono: ['var(--grotesk-mono)', fontFamily.mono],
+      sans: ["var(--grotesk-sans)", fontFamily.sans],
+      mono: ["var(--grotesk-mono)", fontFamily.mono],
     },
     colors: {
       border: "hsl(var(--border))",
@@ -77,5 +77,5 @@ export const theme = {
       "accordion-up": "accordion-up 0.2s ease-out",
     },
   },
-}
-export const plugins = [require("tailwindcss-animate")]
+};
+export const plugins = [require("tailwindcss-animate")];

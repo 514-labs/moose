@@ -69,7 +69,7 @@ response = requests.post(url, json=data)
 
 export const clickhousePythonSnippet = (data: CliData, model: DataModel) => {
   const view = data.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MergeTree"
+    (t) => t.name.includes(model.name) && t.engine === "MergeTree",
   );
 
   if (!view) {
@@ -99,7 +99,7 @@ print(result)
 
 export const clickhouseJSSnippet = (data: CliData, model: DataModel) => {
   const view = data.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MergeTree"
+    (t) => t.name.includes(model.name) && t.engine === "MergeTree",
   );
 
   if (!view) {

@@ -74,12 +74,12 @@ export default function ModelView({
   const pathName = usePathname();
 
   const [_selectedTab, setSelectedTab] = useState<string>(
-    tab ? tab : "overview"
+    tab ? tab : "overview",
   );
   const model = getModelFromTable(table, cliData);
   const infra = getRelatedInfra(model, cliData, table);
   const associatedView = cliData.tables.find(
-    (view) => view.name === table.dependencies_table[0]
+    (view) => view.name === table.dependencies_table[0],
   );
 
   const createTabQueryString = useCallback(
@@ -88,7 +88,7 @@ export default function ModelView({
       params.set("tab", tab);
       return params.toString();
     },
-    [searchParams]
+    [searchParams],
   );
 
   const ingestionPoint = infra.ingestionPoints[0];
@@ -191,7 +191,7 @@ export default function ModelView({
                       variant="outline"
                       onClick={() => {
                         router.push(
-                          `${pathName}?${createTabQueryString("query")}`
+                          `${pathName}?${createTabQueryString("query")}`,
                         );
                         setSelectedTab("query");
                       }}

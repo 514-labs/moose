@@ -67,7 +67,7 @@ export default function IngestionPointTabs({
   const model = getModelFromRoute(ingestionPoint, cliData);
   const infra = getRelatedInfra(model, cliData, ingestionPoint);
   const triggerTable = infra.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MaterializedView"
+    (t) => t.name.includes(model.name) && t.engine === "MaterializedView",
   );
 
   const createTabQueryString = useCallback(
@@ -76,7 +76,7 @@ export default function IngestionPointTabs({
       params.set("tab", tab);
       return params.toString();
     },
-    [searchParams]
+    [searchParams],
   );
 
   if (!triggerTable) {
@@ -178,7 +178,7 @@ export default function IngestionPointTabs({
                       variant="outline"
                       onClick={() => {
                         router.push(
-                          `/infrastructure/databases/${triggerTable.database}/tables/${triggerTable.uuid}?tab=query`
+                          `/infrastructure/databases/${triggerTable.database}/tables/${triggerTable.uuid}?tab=query`,
                         );
                       }}
                     >

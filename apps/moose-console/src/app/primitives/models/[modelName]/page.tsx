@@ -15,7 +15,7 @@ import ModelView from "app/ModelView";
 
 async function getModel(
   name: string,
-  data: CliData
+  data: CliData,
 ): Promise<DataModel | undefined> {
   return data.models.find((x) => x.name === name);
 }
@@ -38,7 +38,7 @@ export default async function Page({
 
   const infra = getRelatedInfra(model, data, model);
   const triggerTable = infra.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MergeTree"
+    (t) => t.name.includes(model.name) && t.engine === "MergeTree",
   );
 
   const jsCodeSnippet = jsSnippet(data, model);

@@ -18,7 +18,7 @@ import { Fragment } from "react";
 async function _describeTable(
   databaseName: string,
   tableName: string,
-  project: Project
+  project: Project,
 ): Promise<any> {
   const client = getClient(project);
 

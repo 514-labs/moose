@@ -16,7 +16,7 @@ export function NavBreadCrumb() {
         ],
         path: `${acc.path}/${curr}`,
       }),
-      { breadcrumbs: [], path: "" }
+      { breadcrumbs: [], path: "" },
     );
 
   return (

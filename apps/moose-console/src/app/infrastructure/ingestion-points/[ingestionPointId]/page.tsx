@@ -13,12 +13,12 @@ import {
 import { NavBreadCrumb } from "components/nav-breadcrumb";
 
 async function getIngestionPoint(
-  ingestionPointId: string
+  ingestionPointId: string,
 ): Promise<Route | undefined> {
   const data = await getCliData();
   return data.ingestionPoints.find(
     (ingestionPoint) =>
-      ingestionPoint.route_path.split("/").at(-1) === ingestionPointId
+      ingestionPoint.route_path.split("/").at(-1) === ingestionPointId,
   );
 }
 

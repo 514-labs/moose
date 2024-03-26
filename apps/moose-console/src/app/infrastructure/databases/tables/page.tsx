@@ -25,7 +25,7 @@ async function TablesPage({ searchParams }: any) {
   const data = await getCliData();
 
   const tables = getTablesForView(data.tables, searchParams).filter(
-    (table) => table.engine !== "Kafka"
+    (table) => table.engine !== "Kafka",
   );
 
   return (

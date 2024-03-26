@@ -13,15 +13,15 @@ Earlier, we created two local containers and pushed them to a docker repository.
 ```txt filename="Terminal" copy
 >docker images
 REPOSITORY                                              TAG               IMAGE ID       CREATED              SIZE
-moose-df-deployment-aarch64-unknown-linux-gnu           0.3.136           c50674c7a68a   About a minute ago   155MB
-moose-df-deployment-x86_64-unknown-linux-gnu            0.3.136           e5b449d3dea3   About a minute ago   163MB
+moose-df-deployment-aarch64-unknown-linux-gnu           0.3.175           c50674c7a68a   About a minute ago   155MB
+moose-df-deployment-x86_64-unknown-linux-gnu            0.3.175           e5b449d3dea3   About a minute ago   163MB
 ```
 
 We pushed the containers to the `514labs` Docker Hub account. So, we have these two containers available for use:
 
 ```
-514labs/moose-df-deployment-aarch64-unknown-linux-gnu:0.3.136
-514labs/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.136
+514labs/moose-df-deployment-aarch64-unknown-linux-gnu:0.3.175
+514labs/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.175
 ```
 
 In the following examples, we'll use an AMD64 (x86_64) based machine, so I'll stick to using the following container image: `514labs/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.136`

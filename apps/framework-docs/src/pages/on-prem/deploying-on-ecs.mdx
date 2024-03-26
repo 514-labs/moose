@@ -1,3 +1,5 @@
+import { Callout } from "nextra/components";
+
 # Deploying on Amazon ECS
 
 Moose can be deployed to Amazon's Elastic Container Service (ECS). ECS offers a managed container orchestrator at a fraction of the complexity of managing a Kubernetes cluster.
@@ -9,7 +11,7 @@ Using Docker Hub works just fine if your moose container is publicly available; 
 Here is an overview of the steps required:
 
 - You'll first need to create or use an existing ECS cluster.
-- Next, you'll need to create an ECS `Task definition.` This is where you'll specify whether you want to use AWS Fargate or AWS EC2 instances. You'll also have options for selecting your OS and Architecture. Specify `Linux/X86-64` or `Linux/ARM-64`. This is important as you'll also need to specify a matching moose container image, such as `moose-df-deployment-x86_64-unknown-linux-gnu:0.3.140` or `moose-df-deployment-aarch64-unknown-linux-gnu:0.3.140`
+- Next, you'll need to create an ECS `Task definition.` This is where you'll specify whether you want to use AWS Fargate or AWS EC2 instances. You'll also have options for selecting your OS and Architecture. Specify `Linux/X86-64` or `Linux/ARM-64`. This is important as you'll also need to specify a matching moose container image, such as `moose-df-deployment-x86_64-unknown-linux-gnu:0.3.175` or `moose-df-deployment-aarch64-unknown-linux-gnu:0.3.175`
 - As with all AWS services, if you're using secrets to store credentials, you'll need to specify an IAM role with an `AmazonECSTaskExecutionRolePolicy` and `SecretsManagerReadWrite` policy.
 - Under the Container section, specify the name of your moose deployment and provide the container image name you're using.
 - Next, specify the Container Port as 4000.
@@ -55,6 +57,26 @@ Consider other options on the Task creation page and press the `Create` button w
 Once you've completed creating an ECS Task, you're ready to create an ECS Service. An ECS Service is a definition that allows you to specify how your cluster will be managed.
 Navigate to your cluster's Service page and press the `Create` button to create your new moose service.
 The section we're interested in is the `Deployment configuration` section. There, you'll specify the Task Definition you created earlier. You can also specify the name of your service—perhaps something creative like `moose-service`—and the number of tasks to launch.
+
+<Callout type="warning" emoji="ℹ️">
+  Note at this time, we recommend that you only launch a single instance of
+  moose in your cluster. We're currently developing for multi-instance
+  concurrent usage.
+</Callout>
+
 The remaining sections on the create service page allow you to specify networking considerations and whether you'll use a load balancer.
 
 You can press the `Create` button to launch an instance of your new ECS Moose service.
+
+### Setting up a health check
+
+Your generated moose docker containers feature an internal HEALTHCHECK:
+
+```docker copy
+  # Setup healthcheck
+  HEALTHCHECK --interval=30s --timeout=3s \
+    CMD curl -f http://localhost:4000/health || exit 1
+```
+
+You'll need to use that health check endpoint when setting up your ECS service load balancer.  
+Simply specify the `/health` endpoint.

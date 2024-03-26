@@ -19,7 +19,7 @@ export const BuiltOnSection = () => {
           <Heading> {content.title} </Heading>
           <Text> {content.description} </Text>
         </HalfWidthContentContainer>
-        <HalfWidthContentContainer className="2xl:col-start-9 2xl:col-span-3">
+        <HalfWidthContentContainer className="2xl:col-start-10 2xl:col-span-3">
           <PlaceholderImage className="aspect-square bg-muted" />
         </HalfWidthContentContainer>
       </Grid>

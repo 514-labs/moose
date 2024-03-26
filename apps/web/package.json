@@ -24,19 +24,18 @@
     "react-dom": "^18.2.0",
     "sharp": "^0.32.6",
     "tailwind-merge": "^2.2.1",
-    "tailwindcss-animate": "^1.0.7",
-    "ui": "workspace:*"
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@types/node": "^18.19.21",
     "@types/react": "^18.2.61",
     "@types/react-dom": "^18.2.19",
     "autoprefixer": "^10.4.17",
-    "eslint-config-custom": "workspace:*",
+    "@repo/eslint-config-custom": "workspace:*",
     "postcss": "^8.4.35",
     "tailwind-config": "workspace:*",
     "tailwindcss": "^3.4.1",
-    "tsconfig": "workspace:*",
+    "@repo/ts-config": "workspace:*",
     "typescript": "^4.9.5"
   }
 }

@@ -1,10 +1,11 @@
 import {
-  HalfWidthContentContainer,
   Section,
   Grid,
-} from "@/components/containers/page-containers";
-import { Display, Text } from "@/components/typography/standard";
-import { PlaceholderImage, CTABar, CTAText, CTAButton } from "../../page";
+  HalfWidthContentContainer,
+} from "design-system/components/containers";
+import { Heading, Text } from "design-system/typography";
+import { CodeSnippet } from "design-system/typography/animated";
+import { PlaceholderImage, CTABar } from "../../page";
 
 export const GetMooseCTASection = () => {
   const content = {
@@ -20,15 +21,14 @@ export const GetMooseCTASection = () => {
   return (
     <Section>
       <Grid className="gap-5-y">
-        <HalfWidthContentContainer className="">
+        <HalfWidthContentContainer className="2xl:col-span-3">
           <PlaceholderImage className="aspect-square bg-muted" />
         </HalfWidthContentContainer>
-        <HalfWidthContentContainer className="flex flex-col justify-center">
-          <Display> {content.title} </Display>
+        <HalfWidthContentContainer className="2xl:col-start-7">
+          <Heading> {content.title} </Heading>
           <Text> {content.description} </Text>
           <CTABar>
-            <CTAText> {content.cta.text} </CTAText>
-            <CTAButton> {content.cta.label} </CTAButton>
+            <CodeSnippet> {content.cta.text} </CodeSnippet>
           </CTABar>
         </HalfWidthContentContainer>
       </Grid>

@@ -42,8 +42,7 @@
     "remark-mdx-disable-explicit-jsx": "^0.1.0",
     "sharp": "^0.32.6",
     "tailwind-merge": "^2.2.0",
-    "tailwindcss-animate": "^1.0.7",
-    "ui": "workspace:*"
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@faker-js/faker": "^8.3.1",
@@ -51,13 +50,13 @@
     "@types/react": "^18.2.5",
     "@types/react-dom": "^18.2.18",
     "autoprefixer": "^10.4.17",
-    "eslint-config-custom": "workspace:*",
+    "@repo/eslint-config-custom": "workspace:*",
     "html-react-parser": "^5.1.1",
     "postcss": "^8.4.33",
     "shiki": "1.0.0-beta.5",
     "tailwind-config": "workspace:*",
     "tailwindcss": "^3.4.1",
-    "tsconfig": "workspace:*",
+    "@repo/ts-config": "workspace:*",
     "typescript": "^4.9.5"
   }
 }

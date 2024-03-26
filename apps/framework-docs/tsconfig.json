@@ -1,7 +1,14 @@
 {
-  "extends": "tsconfig/nextjs.json",
+  "extends": "@repo/ts-config/nextjs.json",
   "compilerOptions": {
-    "plugins": [{ "name": "next" }]
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "forceConsistentCasingInFileNames": true,
+    "module": "NodeNext",
+    "resolveJsonModule": true
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

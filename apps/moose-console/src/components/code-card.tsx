@@ -10,7 +10,6 @@ import {
 } from "components/ui/select";
 import { Card, CardContent } from "./ui/card";
 import { useEffect, useState } from "react";
-import parse from "html-react-parser";
 import { Button } from "./ui/button";
 
 interface Snippet {
@@ -18,21 +17,17 @@ interface Snippet {
   code: string;
 }
 
+type NonEmptyArray<T> = [T, ...T[]];
+
 interface CodeCardProps {
   title: string;
-  snippets: Snippet[];
+  snippets: NonEmptyArray<Snippet>;
 }
 
 export default function CodeCard({ title, snippets }: CodeCardProps) {
-  const [selectedSnippet, setSelectedSnippet] = useState<Snippet>(snippets[0]);
-  const [formatedCodeSnippets, setFormatedCodeSnippets] = useState<{
-    language?: string;
-    formatedSnippet?: string;
-  }>({});
-
   useEffect(() => {
     const formatedCode = async () => {
-      const newFormatedCodeSnippets = {};
+      const newFormatedCodeSnippets: { [key: string]: string } = {};
 
       for (const snippet of snippets) {
         const html = await codeToHtml(snippet.code, {
@@ -46,6 +41,11 @@ export default function CodeCard({ title, snippets }: CodeCardProps) {
     };
     formatedCode();
   }, [snippets]);
+
+  const [selectedSnippet, setSelectedSnippet] = useState<Snippet>(snippets[0]);
+  const [formatedCodeSnippets, setFormatedCodeSnippets] = useState<{
+    [key: string]: string;
+  }>({});
 
   return (
     <div>
@@ -93,9 +93,7 @@ export default function CodeCard({ title, snippets }: CodeCardProps) {
       <Card className="rounded-2xl bg-muted ">
         <CardContent className="overflow-x-auto p-0 m-6">
           <code>
-            {formatedCodeSnippets[selectedSnippet.language]
-              ? parse(formatedCodeSnippets[selectedSnippet.language])
-              : "Loading..."}
+            {formatedCodeSnippets[selectedSnippet.language] ?? "loading"}
           </code>
         </CardContent>
       </Card>

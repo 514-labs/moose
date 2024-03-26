@@ -1,14 +1,21 @@
-import { Grid, Section } from "@/components/containers/page-containers";
 import Link from "next/link";
 
+import { CTABar, CTAButton, PlaceholderImage } from "../../page";
+import FooterSection from "../../sections/FooterSection";
+import { EmailSection } from "../../sections/EmailSection";
 import {
   Accordion,
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@/components/ui/accordion";
-import { CodeSnippet, Display, Text } from "@/components/typography/standard";
-import { CTAButton, PlaceholderImage } from "@/app/page";
+  Separator,
+} from "design-system/components";
+import {
+  Grid,
+  Section,
+  FullWidthContentContainer,
+} from "design-system/components/containers";
+import { CodeSnippet, Display, Text } from "design-system/typography";
 
 interface TemplateAccordionItem {
   title: string;
@@ -27,9 +34,7 @@ interface TemplateAccordionProps {
   templateAccordionItems: TemplateAccordionItem[];
 }
 
-export function TemplateAccordion({
-  templateAccordionItems,
-}: TemplateAccordionProps) {
+function TemplateAccordion({ templateAccordionItems }: TemplateAccordionProps) {
   return (
     <Accordion
       type="single"
@@ -65,11 +70,11 @@ export function TemplateAccordion({
 }
 
 // The layout for specific tempaltes
-export const TemplatePage = ({
+export default function TemplatePage({
   params,
 }: {
   params: { templateId: string };
-}) => {
+}) {
   const content = {
     templateDetails: [
       {
@@ -77,10 +82,35 @@ export const TemplatePage = ({
         title: "Product Analytics",
         cta: {
           action: "cta-product-analytics-install",
+          label: "Copy npx command",
           text: "npx create-moose-app --template product-analytics",
         },
         description:
           "Harness the power of a full-stack, real-time user analytics platform designed for product analytics, powered by MooseJS and NextJS.",
+        features: {
+          title: "Features",
+          items: [
+            {
+              title: "Analytics services",
+              label: "Backend",
+              items: ["MooseJS", "Event Data Models", "Bot Filtering Flow"],
+            },
+            {
+              title: "Analytics dashboard",
+              label: "Frontend",
+              items: ["NextJS", "TailwindCSS", "Observable Plot"],
+            },
+            {
+              title: "Analytics utilities",
+              label: "Intrumentation",
+              items: [
+                "Event Capture SDK",
+                "Page tacking",
+                "Session managemment",
+              ],
+            },
+          ],
+        },
         usage: [
           {
             title: "Setting up locally",
@@ -217,6 +247,35 @@ export const TemplatePage = ({
             </div>
             <Display>{template?.title}</Display>
             <Text>{template?.description}</Text>
+            <CTABar>
+              <CTAButton>{template?.cta?.label}</CTAButton>
+            </CTABar>
+            <div className="py-10">
+              {template?.features?.items.map((feature, index) => (
+                <Grid key={index}>
+                  <div key={index} className="col-span-6">
+                    <Text className="my-0">{feature.title}</Text>
+                    <Text className="my-0 text-muted-foreground">
+                      {feature.label}
+                    </Text>
+                  </div>
+                  <div className="col-span-6">
+                    {feature.items.map((item, index) => (
+                      <>
+                        <Text className="my-0" key={index}>
+                          {item}
+                        </Text>
+                      </>
+                    ))}
+                  </div>
+                  {index < template.features.items.length - 1 && (
+                    <div className="col-span-12">
+                      <Separator className="my-5" />
+                    </div>
+                  )}
+                </Grid>
+              ))}
+            </div>
           </Section>
         </div>
       </div>
@@ -230,9 +289,10 @@ export const TemplatePage = ({
           </Section>
         </div>
       </div>
-      <div className="col-span-12 bg-slate-300 h-[2000px] md:sticky top-96"></div>
+      <FullWidthContentContainer className="col-span-12 ">
+        <FooterSection />
+        <EmailSection />
+      </FullWidthContentContainer>
     </Grid>
   );
-};
-
-export default TemplatePage;
+}

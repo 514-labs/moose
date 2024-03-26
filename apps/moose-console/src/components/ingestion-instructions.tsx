@@ -19,6 +19,10 @@ export default function IngestionInstructions({
   ingestionPoint,
   bashSnippet,
 }: IngestionInstructionProps) {
+  if (!cliData.project) {
+    return <div>Project not found</div>;
+  }
+
   return (
     <Tabs defaultValue="ingestion-point">
       <TabsList className={cn(segmentedTabListStyle, "flex-grow-0")}>

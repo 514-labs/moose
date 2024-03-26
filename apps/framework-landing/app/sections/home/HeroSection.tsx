@@ -1,11 +1,12 @@
+import { CodeSnippet as AnimatedCodeSnipper } from "design-system/typography/animated";
+import { CTABar, PlaceholderImage } from "../../page";
 import {
-  QuarterWidthContentContainer,
-  HalfWidthContentContainer,
   Section,
+  HalfWidthContentContainer,
+  QuarterWidthContentContainer,
   Grid,
-} from "@/components/containers/page-containers";
-import { Display, Text } from "@/components/typography/standard";
-import { CTABar, CTAText, CTAButton, PlaceholderImage } from "../../page";
+} from "design-system/components/containers";
+import { Display, Text } from "design-system/typography";
 
 export const HeroSection = () => {
   const content = {
@@ -30,8 +31,7 @@ export const HeroSection = () => {
               <Text> {content.description} </Text>
             </div>
             <CTABar>
-              <CTAText> {content.cta.text} </CTAText>
-              <CTAButton>{content.cta.label}</CTAButton>
+              <AnimatedCodeSnipper> {content.cta.text} </AnimatedCodeSnipper>
             </CTABar>
           </HalfWidthContentContainer>
         </Grid>

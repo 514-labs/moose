@@ -9,7 +9,7 @@ export function cn(...inputs: ClassValue[]) {
 export function getIngestionPointFromModel(
   model: DataModel,
   cliData: CliData,
-): Route {
+): Route | undefined {
   return cliData.ingestionPoints.find((ingestionPoint) =>
     ingestionPoint.route_path.includes(model.name),
   );
@@ -30,7 +30,10 @@ export function tableIsQueryable(table: Table): boolean {
   return table.engine === "MergeTree";
 }
 
-export function getQueueFromRoute(route: Route, cliData: CliData): string {
+export function getQueueFromRoute(
+  route: Route,
+  cliData: CliData,
+): string | undefined {
   const routeTail = route.route_path.split("/").at(-1);
   return cliData.queues.find((queue) => queue === routeTail);
 }

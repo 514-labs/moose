@@ -79,6 +79,13 @@ export default function IngestionPointTabs({
     [searchParams],
   );
 
+  if (!triggerTable) {
+    return (
+      <div>
+        <code>Table not found</code>
+      </div>
+    );
+  }
   return (
     <Tabs
       value={tab ? tab : "overview"}

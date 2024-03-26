@@ -1,7 +1,15 @@
 {
-  "extends": "tsconfig/nextjs.json",
+  "extends": "@repo/ts-config/nextjs.json",
   "compilerOptions": {
-    "plugins": [{ "name": "next" }]
+    "module": "ES2022",
+    "moduleResolution": "NodeNext",
+
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    "forceConsistentCasingInFileNames": true
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],
   "exclude": ["node_modules"]

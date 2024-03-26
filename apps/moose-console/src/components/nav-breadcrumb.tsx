@@ -8,7 +8,7 @@ export function NavBreadCrumb() {
   const { breadcrumbs } = pathName
     .split("/")
     .filter((string) => string != "")
-    .reduce(
+    .reduce<{ breadcrumbs: { name: string; path: string }[]; path: string }>(
       (acc, curr) => ({
         breadcrumbs: [
           ...acc.breadcrumbs,

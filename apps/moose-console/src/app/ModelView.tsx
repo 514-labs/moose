@@ -78,7 +78,7 @@ export default function ModelView({
   );
   const model = getModelFromTable(table, cliData);
   const infra = getRelatedInfra(model, cliData, table);
-  const associated_view = cliData.tables.find(
+  const associatedView = cliData.tables.find(
     (view) => view.name === table.dependencies_table[0],
   );
 
@@ -153,13 +153,15 @@ export default function ModelView({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <IngestionInstructions
-                  bashSnippet={bashSnippet}
-                  cliData={cliData}
-                  jsSnippet={jsSnippet}
-                  pythonSnippet={pythonSnippet}
-                  ingestionPoint={ingestionPoint}
-                />
+                {ingestionPoint && (
+                  <IngestionInstructions
+                    bashSnippet={bashSnippet}
+                    cliData={cliData}
+                    jsSnippet={jsSnippet}
+                    pythonSnippet={pythonSnippet}
+                    ingestionPoint={ingestionPoint}
+                  />
+                )}
               </CardContent>
             </Card>
           </div>
@@ -227,14 +229,14 @@ export default function ModelView({
       <TabsContent className="h-full" value="query">
         {/* add query here */}
         <div className="p-0 h-full">
-          {tableIsQueryable(table) ? (
+          {tableIsQueryable(table) && cliData.project ? (
             <QueryInterface
               project={cliData.project}
               table={table}
               related={cliData.tables}
             />
           ) : (
-            ClickhouseTableRestriction(associated_view)
+            associatedView && ClickhouseTableRestriction(associatedView)
           )}
         </div>
       </TabsContent>

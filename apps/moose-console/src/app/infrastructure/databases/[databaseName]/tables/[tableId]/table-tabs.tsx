@@ -91,6 +91,10 @@ export default function TableTabs({
 
   const ingestionPoint = infra.ingestionPoints[0];
 
+  if (!ingestionPoint || !triggerTable || !cliData.project) {
+    return <div>Table not found</div>;
+  }
+
   return (
     <Tabs
       value={tab ? tab : "overview"}

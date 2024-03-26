@@ -1,9 +1,10 @@
 import React from "react";
-import { Table, getCliData } from "app/db";
+
 import { unstable_noStore as noStore } from "next/cache";
 import { Separator } from "components/ui/separator";
 import { NavBreadCrumb } from "components/nav-breadcrumb";
 import { ViewsTable } from "components/views_table";
+import { Table, getCliData } from "app/db";
 
 type View = "view" | "table";
 
@@ -19,7 +20,7 @@ function getTablesForView(tables: Table[], param: { type: View }) {
       return cleanedTables;
   }
 }
-async function TablesPage({ searchParams }) {
+async function TablesPage({ searchParams }: any) {
   noStore();
   const data = await getCliData();
 

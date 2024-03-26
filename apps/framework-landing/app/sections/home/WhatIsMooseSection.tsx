@@ -1,10 +1,10 @@
 import {
+  Grid,
   HalfWidthContentContainer,
   Section,
-  Grid,
-} from "@/components/containers/page-containers";
-import { Heading, Text } from "@/components/typography/standard";
+} from "design-system/components/containers";
 import { PlaceholderImage, CTABar, CTAButton } from "../../page";
+import { Heading, Text } from "design-system/typography";
 
 export const WhatIsMooseSection = () => {
   const content = {
@@ -20,10 +20,10 @@ export const WhatIsMooseSection = () => {
   return (
     <Section>
       <Grid className="gap-y-5">
-        <HalfWidthContentContainer className="">
+        <HalfWidthContentContainer className="2xl:col-span-3">
           <PlaceholderImage className="aspect-square bg-muted" />
         </HalfWidthContentContainer>
-        <HalfWidthContentContainer className="flex flex-col justify-center">
+        <HalfWidthContentContainer className=" 2xl:col-start-7">
           <Heading> {content.title} </Heading>
           <Text> {content.description} </Text>
           <CTABar>

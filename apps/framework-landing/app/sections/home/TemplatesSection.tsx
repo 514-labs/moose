@@ -1,12 +1,13 @@
-import {
-  ThirdWidthContentContainer,
-  FullWidthContentContainer,
-  Section,
-  Grid,
-} from "@/components/containers/page-containers";
 import Link from "next/link";
-import { Display, Heading, Text } from "@/components/typography/standard";
+
 import { PlaceholderImage, CTABar, CTAButton } from "../../page";
+import {
+  Section,
+  FullWidthContentContainer,
+  ThirdWidthContentContainer,
+  Grid,
+} from "design-system/components/containers";
+import { Display, Heading, Text } from "design-system/typography";
 
 export const TemplatesSection = () => {
   const content = {
@@ -55,20 +56,26 @@ export const TemplatesSection = () => {
         </Grid>
       </Section>
       <Section>
-        <Grid className="gap-y-5">
+        <Grid className="gap-y-5 justify-center">
           <ThirdWidthContentContainer className="xl:order-1">
             <PlaceholderImage className=" bg-muted aspect-[4/3]" />
           </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="flex flex-col justify-center xl:order-4">
-            <Heading> {content.templates[0].title} </Heading>
-            <Text> {content.templates[0].description} </Text>
+          <ThirdWidthContentContainer className="xl:justify-start xl:order-4">
+            <Heading>
+              {" "}
+              {content.templates[0] && content.templates[0].title}{" "}
+            </Heading>
+            <Text className="xl:grow">
+              {" "}
+              {content.templates[0] && content.templates[0].description}{" "}
+            </Text>
             <CTABar>
               <Link
                 className="flex flex-col"
-                href={content.templates[0].cta.href}
+                href={content.templates[0] ? content.templates[0].cta.href : ""}
               >
                 <CTAButton className="grow" variant={"outline"}>
-                  {content.templates[0].cta.label}
+                  {content.templates[0] && content.templates[0].cta.label}
                 </CTAButton>
               </Link>
             </CTABar>
@@ -77,34 +84,46 @@ export const TemplatesSection = () => {
           <ThirdWidthContentContainer className=" xl:m-0 xl:order-1">
             <PlaceholderImage className=" bg-muted aspect-[4/3]" />
           </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="flex flex-col justify-center xl:m-0  xl:order-4">
-            <Heading> {content.templates[1].title} </Heading>
-            <Text> {content.templates[1].description} </Text>
+          <ThirdWidthContentContainer className="xl:justify-start xl:m-0  xl:order-4">
+            <Heading>
+              {" "}
+              {content.templates[1] && content.templates[1].title}{" "}
+            </Heading>
+            <Text className="xl:grow">
+              {" "}
+              {content.templates[1] && content.templates[1].description}{" "}
+            </Text>
             <CTABar>
               <Link
                 className="flex flex-col"
-                href={content.templates[1].cta.href}
+                href={content.templates[1] ? content.templates[1].cta.href : ""}
               >
                 <CTAButton variant={"outline"}>
-                  {content.templates[1].cta.label}
+                  {content.templates[1] && content.templates[1].cta.label}
                 </CTAButton>
               </Link>
             </CTABar>
           </ThirdWidthContentContainer>
 
           <ThirdWidthContentContainer className="xl:order-1">
-            <PlaceholderImage className=" bg-muted aspect-[4/3]" />
+            <PlaceholderImage className="bg-muted aspect-[4/3]" />
           </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="flex flex-col justify-center xl:order-4">
-            <Heading> {content.templates[2].title} </Heading>
-            <Text> {content.templates[2].description} </Text>
+          <ThirdWidthContentContainer className="xl:justify-start xl:order-4">
+            <Heading>
+              {" "}
+              {content.templates[2] && content.templates[2].title}{" "}
+            </Heading>
+            <Text className="xl:grow">
+              {" "}
+              {content.templates[2] && content.templates[2].description}{" "}
+            </Text>
             <CTABar>
               <Link
                 className="flex flex-col"
-                href={content.templates[2].cta.href}
+                href={content.templates[2] ? content.templates[2].cta.href : ""}
               >
                 <CTAButton variant={"outline"}>
-                  {content.templates[2].cta.label}
+                  {content.templates[2] && content.templates[2].cta.label}
                 </CTAButton>
               </Link>
             </CTABar>

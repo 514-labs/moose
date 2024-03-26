@@ -10,10 +10,6 @@ import { Button, buttonVariants } from "design-system/components";
 import { Text } from "design-system/typography";
 import { ManifestoSection } from "./sections/home/manifesto-section";
 
-export const PlaceholderImage = ({ className }: { className?: string }) => {
-  return <div className={cn("relative ", className)}> </div>;
-};
-
 export const CTAText = ({
   className,
   children,
@@ -25,7 +21,7 @@ export const CTAText = ({
     <div
       className={cn(
         "text-center md:text-start text-primary text-4xl bg-muted rounded-md py-5 px-10 text-nowrap",
-        className,
+        className
       )}
     >
       {children}
@@ -48,7 +44,7 @@ export const CTAButton = ({ className, children, variant }: CTAButtonProps) => {
       <Text
         className={cn(
           variant === "outline" ? "text-primary" : "text-primary-foreground",
-          className,
+          className
         )}
       >
         {children}

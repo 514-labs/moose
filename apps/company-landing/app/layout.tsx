@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "design-system/globals.css";
 import localFont from "next/font/local";
-import Script from "next/script";
 import { cn } from "design-system/utils";
 import { Nav } from "design-system/components";
 import { ThemeProvider } from "design-system/components";
@@ -44,7 +43,7 @@ export default async function RootLayout({
         className={cn(
           "min-h-screen bg-background font-sans antialiased",
           monoFont.variable,
-          sansFont.variable,
+          sansFont.variable
         )}
         suppressHydrationWarning
       >

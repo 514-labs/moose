@@ -4,7 +4,7 @@ import {
   Section,
 } from "design-system/components/containers";
 import { Text } from "design-system/typography";
-import { PlaceholderImage } from "../../page";
+import { PlaceholderImage } from "../../../components.tsx/PlaceholderImage";
 
 export const ManifestoSection = () => {
   return (
@@ -15,13 +15,13 @@ export const ManifestoSection = () => {
         </HalfWidthContentContainer>
         <HalfWidthContentContainer className="2xl:col-start-7">
           <Text className="mt-0">
-            Let's be honest. Developing any kind of data-driven or
-            analytics-driven application on a modern data stack is, let's say,{" "}
-            <span className=" line-through">a complete disaster</span> “far from
-            an ideal experience.”
+            Let&apos;s be honest. Developing any kind of data-driven or
+            analytics-driven application on a modern data stack is, let&apos;s
+            say, <span className=" line-through">a complete disaster</span> “far
+            from an ideal experience.”
           </Text>
           <Text>
-            Let's be honest. Software development in the world of data
+            Let&apos;s be honest. Software development in the world of data
             engineering is far from an ideal experience.
           </Text>
           <Text>
@@ -34,8 +34,8 @@ export const ManifestoSection = () => {
             scientists, data analysts, and/or data engineers as you can
             manage—or you and your engineering team have to learn a whole new
             paradigm yourselves. If you can afford the slew of commercial
-            solutions, great; otherwise, you're piecing together your own open
-            source frankenstein. And then, just to get started, you have to
+            solutions, great; otherwise, you&apos;re piecing together your own
+            open source frankenstein. And then, just to get started, you have to
             create and configure tables, views, topics, jobs, scripts,
             connectors, APIs, and SDKs - and string together all these different
             components in production to all play nicely with each other. And god
@@ -44,31 +44,31 @@ export const ManifestoSection = () => {
           </Text>
 
           <Text>
-            This isn't how modern software development is supposed to be! By
-            comparison, the alternate worlds of web apps, mobile apps, and
+            This isn&apos;t how modern software development is supposed to be!
+            By comparison, the alternate worlds of web apps, mobile apps, and
             backend services make software development look like an absolute joy
-            of rainbows and roses. Software developers don't manage fragmented
-            components in isolation, crossing their fingers and hoping they all
-            play nice. They create holistic applications, with contracts between
-            microservices. They leverage frameworks that abstract away
-            infrastructure and middleware complexity. Software developers don't
-            manually manage components in production and in the cloud, spinning
-            plates to keep everything alive. They write code. And they leverage
-            decades of best practices around code for speed, quality and
-            collaboration - best practices like version control, local
-            development, CI/CD, automated testing, change management, and
-            devops.
+            of rainbows and roses. Software developers don&apos;t manage
+            fragmented components in isolation, crossing their fingers and
+            hoping they all play nice. They create holistic applications, with
+            contracts between microservices. They leverage frameworks that
+            abstract away infrastructure and middleware complexity. Software
+            developers don&apos;t manually manage components in production and
+            in the cloud, spinning plates to keep everything alive. They write
+            code. And they leverage decades of best practices around code for
+            speed, quality and collaboration - best practices like version
+            control, local development, CI/CD, automated testing, change
+            management, and devops.
           </Text>
 
           <Text>
             Why should development on an analytics/data stack be any different?
-            It shouldn't!
+            It shouldn&apos;t!
           </Text>
 
           <Text>
             Our mission is to bring incredible developer experiences to the data
-            stack. We believe that we'll have accomplished this when data or
-            analytics can be dropped from the title of the people using data
+            stack. We believe that we&apos;ll have accomplished this when data
+            or analytics can be dropped from the title of the people using data
             platforms. When data engineers are just engineers. When every
             developer can deliver high-quality data products, derive insights
             for themselves and their stakeholders, and easily integrate
@@ -83,8 +83,8 @@ export const ManifestoSection = () => {
           </Text>
 
           <Text>
-            Software has long been eating the world. It's high time for software
-            to eat data engineering.
+            Software has long been eating the world. It&apos;s high time for
+            software to eat data engineering.
           </Text>
 
           <Text>
@@ -92,9 +92,9 @@ export const ManifestoSection = () => {
             data & analytics stack. Moose unifies your data stack, unlocks
             software development best practices, and hopefully delights you, the
             developer. Moose is still in alpha with a lot more to come, so
-            please check it out and let us know what you think. If you're
+            please check it out and let us know what you think. If you&apos;re
             interested in enterprise solutions, commercial support, or design
-            partnerships, then we'd love to chat with you.
+            partnerships, then we&apos;d love to chat with you.
           </Text>
         </HalfWidthContentContainer>
       </Grid>

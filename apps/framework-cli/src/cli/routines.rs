@@ -80,27 +80,27 @@
 //!
 
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
-use std::{io::Error, path::PathBuf};
 
 use log::debug;
 use log::info;
 use tokio::sync::RwLock;
 
 use crate::framework::controller::{
-    create_or_replace_version_sync, get_all_framework_objects, get_all_version_syncs,
-    process_objects, FrameworkObject, FrameworkObjectVersions, RouteMeta, SchemaVersion,
+    create_or_replace_version_sync, get_all_framework_objects, process_objects, FrameworkObject,
+    FrameworkObjectVersions, RouteMeta, SchemaVersion,
 };
 use crate::framework::sdks::generate_ts_sdk;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
+use crate::infrastructure::olap::clickhouse::version_sync::get_all_version_syncs;
 use crate::infrastructure::stream::redpanda;
 use crate::project::{Project, PROJECT};
 use crate::utilities::package_managers;
-use crate::utilities::system::read_directory;
 
-use super::display::with_spinner_async;
+use super::display::{with_spinner, with_spinner_async};
 use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
@@ -108,6 +108,7 @@ use super::{Message, MessageType};
 pub mod clean;
 pub mod docker_packager;
 pub mod initialize;
+pub mod migrate;
 pub mod start;
 pub mod stop;
 mod util;
@@ -122,7 +123,6 @@ pub struct RoutineSuccess {
 // Implement success and info contructors and a new constructor that lets the user choose which type of message to display
 impl RoutineSuccess {
     // E.g. when we try to create a resource that already exists,
-    #[allow(dead_code)] // but now we don't have a use for this function
     pub fn info(message: Message) -> Self {
         Self {
             message,
@@ -142,18 +142,18 @@ impl RoutineSuccess {
 pub struct RoutineFailure {
     message: Message,
     message_type: MessageType,
-    error: Option<Error>,
+    error: Option<anyhow::Error>,
 }
 impl RoutineFailure {
-    pub fn new(message: Message, error: Error) -> Self {
+    pub fn new<F: Into<anyhow::Error>>(message: Message, error: F) -> Self {
         Self {
             message,
             message_type: MessageType::Error,
-            error: Some(error),
+            error: Some(error.into()),
         }
     }
 
-    /// create a RoutineFailure error without an io error
+    /// create a RoutineFailure error without an error
     pub fn error(message: Message) -> Self {
         Self {
             message,
@@ -303,112 +303,109 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     Ok(())
 }
 
+fn crawl_schema(
+    project: &Project,
+    old_versions: &[String],
+) -> anyhow::Result<FrameworkObjectVersions> {
+    info!("Checking for old version directories...");
+
+    let mut framework_object_versions =
+        FrameworkObjectVersions::new(project.version().to_string(), project.schemas_dir().clone());
+
+    for version in old_versions.iter() {
+        let path = project.old_version_location(version)?;
+
+        debug!("Processing old version directory: {:?}", path);
+
+        let mut framework_objects = HashMap::new();
+        get_all_framework_objects(&mut framework_objects, &path, version)?;
+
+        let schema_version = SchemaVersion {
+            base_path: path,
+            models: framework_objects,
+            typescript_objects: HashMap::new(),
+        };
+
+        framework_object_versions
+            .previous_version_models
+            .insert(version.clone(), schema_version);
+    }
+
+    let schema_dir = project.schemas_dir();
+    info!("Starting schema directory crawl...");
+    with_spinner("Processing schema file", || {
+        let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
+        get_all_framework_objects(&mut framework_objects, &schema_dir, project.version())?;
+
+        framework_object_versions.current_models = SchemaVersion {
+            base_path: schema_dir.clone(),
+            models: framework_objects.clone(),
+            typescript_objects: HashMap::new(),
+        };
+        anyhow::Ok(())
+    })?;
+
+    Ok(framework_object_versions)
+}
+
 async fn initialize_project_state(
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> anyhow::Result<FrameworkObjectVersions> {
+    let old_versions = project.old_versions_sorted();
+
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let producer = redpanda::create_producer(project.redpanda_config.clone());
 
-    let mut old_version_dir = project.internal_dir()?;
-    old_version_dir.push("versions");
-
     info!("Checking for old version directories...");
 
-    let mut versions: Vec<String> = Vec::new();
-    match read_directory(old_version_dir.clone()) {
-        Ok(v) => {
-            versions.append(&mut v.clone());
-            let current_version = project.version().to_string();
-            if !versions.contains(&current_version) {
-                versions.push(current_version.clone());
-            }
-            versions.sort();
+    let mut framework_object_versions = crawl_schema(&project, &old_versions)?;
+
+    with_spinner_async("Processing versions", async {
+        // TODO: enforce linearity, if 1.1 is linked to 2.0, 1.2 cannot be added
+        let mut previous_version: Option<(String, HashMap<String, FrameworkObject>)> = None;
+        for version in old_versions {
+            let schema_version: &mut SchemaVersion = framework_object_versions
+                .previous_version_models
+                .get_mut(&version)
+                .unwrap();
+            process_objects(
+                &schema_version.models,
+                &previous_version,
+                project.clone(),
+                &schema_version.base_path,
+                &configured_client,
+                &mut schema_version.typescript_objects,
+                route_table,
+                &version,
+            )
+            .await?;
+            previous_version = Some((version, schema_version.models.clone()));
         }
-        Err(_e) => {
-            info!("No old version directories found");
-        }
-    };
-
-    let mut framework_object_versions =
-        FrameworkObjectVersions::new(project.version().to_string(), project.schemas_dir().clone());
-    match std::fs::read_dir(&old_version_dir) {
-        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            debug!("No old version directories found");
-        }
-        Ok(read_dir) => {
-            for entry in read_dir {
-                let entry = entry?;
-                let path = entry.path();
-                if path.is_dir() {
-                    let version = path.file_name().unwrap().to_str().unwrap().to_string();
-
-                    debug!("Processing old version directory: {:?}", path);
-
-                    let mut framework_objects = HashMap::new();
-                    get_all_framework_objects(&mut framework_objects, &path, &version)?;
-
-                    let mut compilable_objects = HashMap::new();
-                    process_objects(
-                        &framework_objects,
-                        project.clone(),
-                        &path,
-                        &configured_client,
-                        &mut compilable_objects,
-                        route_table,
-                        &version,
-                    )
-                    .await?;
-
-                    framework_object_versions.previous_version_models.insert(
-                        version,
-                        SchemaVersion {
-                            base_path: path,
-                            models: framework_objects,
-                            typescript_objects: compilable_objects,
-                        },
-                    );
-                }
-            }
-        }
-        Err(e) => Err(e)?,
-    };
-
-    let schema_dir = project.schemas_dir();
-    info!("Starting schema directory crawl...");
-    with_spinner_async("Processing schema file", async {
-        let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
-        get_all_framework_objects(&mut framework_objects, &schema_dir, project.version())?;
-
-        let mut compilable_objects = HashMap::new();
 
         let result = process_objects(
-            &framework_objects,
+            &framework_object_versions.current_models.models,
+            &previous_version,
             project.clone(),
-            &schema_dir,
+            &framework_object_versions.current_models.base_path,
             &configured_client,
-            &mut compilable_objects,
+            &mut framework_object_versions.current_models.typescript_objects,
             route_table,
-            project.version(),
+            &framework_object_versions.current_version,
         )
         .await;
 
         // TODO: add old versions to SDK
         if !PROJECT.lock().unwrap().is_production {
-            let sdk_location = generate_ts_sdk(project.clone(), &compilable_objects)?;
+            let sdk_location = generate_ts_sdk(
+                project.clone(),
+                &framework_object_versions.current_models.typescript_objects,
+            )?;
             let package_manager = package_managers::PackageManager::Npm;
             package_managers::install_packages(&sdk_location, &package_manager)?;
             package_managers::run_build(&sdk_location, &package_manager)?;
             package_managers::link_sdk(&sdk_location, None, &package_manager)?;
         }
-
-        framework_object_versions.current_models = SchemaVersion {
-            base_path: schema_dir.clone(),
-            models: framework_objects.clone(),
-            typescript_objects: compilable_objects,
-        };
-
-        olap::clickhouse::check_ready(&configured_client).await?;
         let _ = post_current_state_to_console(
             project.clone(),
             &configured_client,
@@ -436,6 +433,7 @@ async fn initialize_project_state(
         async {
             let version_syncs = get_all_version_syncs(&project, &framework_object_versions)?;
             for vs in version_syncs {
+                debug!("Creating version sync: {:?}", vs);
                 create_or_replace_version_sync(vs, &configured_client).await?;
             }
             Ok(())

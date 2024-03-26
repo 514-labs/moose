@@ -22,7 +22,7 @@ impl fmt::Display for ClickHouseTableType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClickHouseColumnType {
     String,
     Boolean,
@@ -42,7 +42,7 @@ impl fmt::Display for ClickHouseColumnType {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClickHouseInt {
     Int8,
     Int16,
@@ -64,7 +64,7 @@ impl fmt::Display for ClickHouseInt {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClickHouseFloat {
     Float32,
     Float64,

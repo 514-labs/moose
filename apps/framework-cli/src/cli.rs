@@ -19,6 +19,7 @@ use log::{debug, info};
 use logger::setup_logging;
 use settings::{read_settings, Settings};
 
+use crate::cli::routines::migrate::GenerateMigration;
 use crate::cli::routines::start::CopyOldSchema;
 use crate::cli::{
     display::{Message, MessageType},
@@ -181,6 +182,18 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 controller.run_routines(run_mode);
 
                 routines::start_development_mode(project_arc).await.unwrap();
+            }
+            Commands::Migrate {} => {
+                info!("Running migrate command");
+                let project = Project::load_from_current_dir()
+                    .expect("No project found, please run `moose init` to create a project");
+
+                let mut controller = RoutineController::new();
+                let run_mode = RunMode::Explicit {};
+
+                controller.add_routine(Box::new(CopyOldSchema::new(Arc::new(project.clone()))));
+                controller.add_routine(Box::new(GenerateMigration::new(Arc::new(project))));
+                controller.run_routines(run_mode);
             }
             Commands::Prod {} => {
                 info!("Running prod command");

@@ -213,7 +213,7 @@ mod tests {
             thread::sleep(Duration::from_secs(1));
             Ok(())
         })
-        .map_err(|err| {
+        .map_err(|err: std::io::Error| {
             RoutineFailure::new(
                 Message::new("Failed".to_string(), "to execute a delay".to_string()),
                 err,
@@ -239,7 +239,7 @@ mod tests {
             Ok(())
         })
         .await
-        .map_err(|err| {
+        .map_err(|err: std::io::Error| {
             RoutineFailure::new(
                 Message::new("Failed".to_string(), "to execute a delay".to_string()),
                 err,

@@ -1,9 +1,10 @@
 {
-  "extends": "@repo/ts-config/base.json",
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "@repo/ts-config/npm-package.json",
   "include": ["**/*.ts"],
   "exclude": ["node_modules", "dist"],
   "compilerOptions": {
+    "rootDir": "./src",
     "outDir": "dist",
-    "rootDir": "./src"
-  }
+  },
 }

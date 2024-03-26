@@ -2,7 +2,9 @@ use std::path::Path;
 use std::sync::Arc;
 
 use crate::framework::languages::SupportedLanguages;
-use git2::{Error, ErrorClass, ErrorCode, ObjectType, Repository, Signature};
+use git2::{
+    Error, ErrorClass, ErrorCode, ObjectType, Repository, RepositoryInitOptions, Signature,
+};
 use log::warn;
 
 use crate::project::Project;
@@ -29,7 +31,11 @@ pub fn create_init_commit(project: Arc<Project>, dir_path: &Path) {
     git_ignore.push_str("\n\n");
     std::fs::write(git_ignore_file, git_ignore).unwrap();
 
-    let repo = Repository::init(dir_path).expect("Failed to initialize git repo");
+    let mut repo_create_options = RepositoryInitOptions::new();
+    repo_create_options.initial_head("main");
+    let repo = Repository::init_opts(dir_path, &repo_create_options)
+        .expect("Failed to initialize git repo");
+
     let author =
         Signature::now("Moose CLI", "noreply@fiveonefour.com").expect("Failed to create signature");
 

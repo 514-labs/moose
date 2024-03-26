@@ -24,7 +24,7 @@ export const WhatIsMooseSection = () => {
         <HalfWidthContentContainer className="2xl:col-span-3">
           <PlaceholderImage className="aspect-square bg-muted" />
         </HalfWidthContentContainer>
-        <HalfWidthContentContainer className="md:col-span-12 xl:col-span-6 2xl:col-start-7">
+        <HalfWidthContentContainer className=" 2xl:col-start-7">
           <Heading> {content.title} </Heading>
           <Text> {content.description} </Text>
           <CTABar>

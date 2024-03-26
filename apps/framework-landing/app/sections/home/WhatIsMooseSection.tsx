@@ -1,9 +1,8 @@
 import {
-  Section,
-  HalfWidthContentContainer,
   Grid,
+  HalfWidthContentContainer,
+  Section,
 } from "design-system/components/containers";
-
 import { PlaceholderImage, CTABar, CTAButton } from "../../page";
 import { Heading, Text } from "design-system/typography";
 

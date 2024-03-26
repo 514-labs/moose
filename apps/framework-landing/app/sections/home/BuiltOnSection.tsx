@@ -1,10 +1,10 @@
+import { Heading, Text } from "design-system/typography";
+import { PlaceholderImage } from "../../page";
 import {
   Grid,
   HalfWidthContentContainer,
   Section,
 } from "design-system/components/containers";
-import { PlaceholderImage } from "../../page";
-import { Heading, Text } from "design-system/typography";
 
 export const BuiltOnSection = () => {
   const content = {

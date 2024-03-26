@@ -59,7 +59,7 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 USER nextjs
 
-COPY --from=installer /app/apps/moose-console/next.config.js .
+COPY --from=installer /app/apps/moose-console/next.config.mjs .
 COPY --from=installer /app/apps/moose-console/package.json .
 
 # Automatically leverage output traces to reduce image size

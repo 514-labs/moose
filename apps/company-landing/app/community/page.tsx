@@ -69,7 +69,7 @@ export default function Community() {
         {content.reasons.map((reason, i) => (
           <Grid key={i}>
             <HalfWidthContentContainer>
-              <Text>{i + 1}</Text>
+              <Text>0{i + 1}</Text>
             </HalfWidthContentContainer>
             <HalfWidthContentContainer>
               <Heading>{reason.title}</Heading>
@@ -79,11 +79,10 @@ export default function Community() {
         ))}
       </Section>
       <Section>
-        <Display>Pick your community</Display>
+        <Heading>Pick your community</Heading>
       </Section>
       <Section>
-        <Grid>
-          {content.communities.map((community, i) => (
+        {/* {content.communities.map((community, i) => (
             <HalfWidthContentContainer key={i}>
               <Heading>{community.title}</Heading>
               <Text>{community.description}</Text>
@@ -93,8 +92,23 @@ export default function Community() {
                 </Link>
               </CTABar>
             </HalfWidthContentContainer>
-          ))}
-        </Grid>
+          ))} */}
+        {content.communities.map((community, i) => (
+          <Grid key={i}>
+            <HalfWidthContentContainer>
+              <Text>0{i + 1}</Text>
+            </HalfWidthContentContainer>
+            <HalfWidthContentContainer className="py-5">
+              <Heading>{community.title}</Heading>
+              <Text>{community.description}</Text>
+              <CTABar>
+                <Link href={community.href}>
+                  <CTAButton variant={"outline"}>Join</CTAButton>
+                </Link>
+              </CTABar>
+            </HalfWidthContentContainer>
+          </Grid>
+        ))}
       </Section>
       <FooterSection />
       <EmailSection />

@@ -2,7 +2,6 @@
 import { useLayoutEffect } from "react";
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
-import React from "react";
 import { Disclosure } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
@@ -13,14 +12,6 @@ import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 
 gsap.registerPlugin(SplitText);
-
-const default_navigation = [
-  { name: "docs", href: "https://docs.moosejs.com" },
-  { name: "templates", href: "/templates" },
-  { name: "blog", href: "https://blog.fiveonefour.com/" },
-  { name: "github", href: "https://github.com/514-labs/moose" },
-  { name: "community", href: "/community" },
-];
 
 interface NavProps {
   property: string;
@@ -56,7 +47,7 @@ export const Nav = ({ property, navigation }: NavProps) => {
                         className={cn(
                           isActive
                             ? "flex items-center text-action-primary px-5"
-                            : "flex items-center text-primary px-5",
+                            : "flex items-center text-primary px-5"
                         )}
                         key={item.name}
                       >
@@ -68,7 +59,7 @@ export const Nav = ({ property, navigation }: NavProps) => {
                                   isActive
                                     ? "hover:text-action-primary-foreground "
                                     : "hover:text-primary-foreground",
-                                  "text-primary-foreground",
+                                  "text-primary-foreground"
                                 )}
                               >
                                 {item.name}
@@ -80,7 +71,7 @@ export const Nav = ({ property, navigation }: NavProps) => {
                                 isActive
                                   ? "hover:text-action-primary border-b-2 border-black"
                                   : "hover:text-primary",
-                                "py-2",
+                                "py-2"
                               )}
                             >
                               {item.name}

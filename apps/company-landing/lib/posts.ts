@@ -22,7 +22,7 @@ export async function getPosts(): Promise<Post[]> {
     slugs.map(async ({ name }) => {
       const { metadata } = await import(`../app/blog/(posts)/${name}/page.mdx`);
       return { slug: name, ...metadata };
-    })
+    }),
   );
 
   // Sort posts from newest to oldest

@@ -9,7 +9,7 @@
     ],
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "Node16",
+    "module": "ES2022",
     "moduleResolution": "node"
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", ".next/types/**/*.ts"],

@@ -1,0 +1,16 @@
+{
+    "$schema": "https://json.schemastore.org/tsconfig",
+    "display": "NPM Package",
+    "extends": "./base.json",
+    "exclude": ["node_modules", "dist"],
+    "compilerOptions": {
+      "outDir": "dist",
+      "rootDir": "./src",
+      "moduleResolution": "node",
+      "target": "ES6",
+      "moduleDetection": "auto",
+      "lib": [],
+      "module": "commonjs"
+    }
+}
+  

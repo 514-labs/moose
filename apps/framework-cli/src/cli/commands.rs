@@ -1,7 +1,7 @@
 //! # CLI Commands
 //! A module for all the commands that can be run from the CLI
 
-use clap::Subcommand;
+use clap::{Args, Subcommand};
 
 use crate::framework::languages::SupportedLanguages;
 
@@ -46,11 +46,22 @@ pub enum Commands {
     /// Start a remote environment for use in cloud deployments
     Prod {},
     /// Generates missing migration files
-    Migrate {},
+    Generate(GenerateArgs),
     // Updates the redpanda cluster and clickhouse database with the latest objects
     Update {},
     // Stops development infrastructure
     Stop {},
     // Clears all temporary data and stops development infrastructure
     Clean {},
+}
+
+#[derive(Debug, Args)]
+pub struct GenerateArgs {
+    #[command(subcommand)]
+    pub command: Option<GenerateCommand>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum GenerateCommand {
+    Migrations {},
 }

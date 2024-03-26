@@ -14,13 +14,13 @@ use std::sync::Arc;
 
 use clap::Parser;
 use commands::Commands;
+use commands::GenerateCommand;
 use config::ConfigError;
 use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
 use settings::{read_settings, Settings};
 
-use crate::cli::routines::migrate::GenerateMigration;
 use crate::cli::routines::start::CopyOldSchema;
 use crate::cli::{
     display::{Message, MessageType},
@@ -36,7 +36,7 @@ use crate::utilities::git::is_git_repo;
 
 use self::routines::{
     clean::CleanProject, clean::DeleteVersions, docker_packager::BuildDockerfile,
-    docker_packager::CreateDockerfile, stop::StopLocalInfrastructure,
+    docker_packager::CreateDockerfile, migrate::GenerateMigration, stop::StopLocalInfrastructure,
 };
 
 #[derive(Parser)]
@@ -143,6 +143,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 let is_git_repo =
                     is_git_repo(dir_path).expect("Failed to check if directory is a git repo");
+
                 if !is_git_repo {
                     crate::utilities::git::create_init_commit(project_arc, dir_path);
                     show_message!(
@@ -213,17 +214,28 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 routines::start_development_mode(project_arc).await.unwrap();
             }
-            Commands::Migrate {} => {
-                info!("Running migrate command");
-                let project = load_project();
+            Commands::Generate(generate) => match generate.command {
+                Some(GenerateCommand::Migrations {}) => {
+                    info!("Running generate migration command");
+                    let project = load_project();
 
-                let mut controller = RoutineController::new();
-                let run_mode = RunMode::Explicit {};
+                    let mut controller = RoutineController::new();
+                    let run_mode = RunMode::Explicit {};
 
-                controller.add_routine(Box::new(CopyOldSchema::new(Arc::new(project.clone()))));
-                controller.add_routine(Box::new(GenerateMigration::new(Arc::new(project))));
-                controller.run_routines(run_mode);
-            }
+                    controller.add_routine(Box::new(CopyOldSchema::new(Arc::new(project.clone()))));
+                    controller.add_routine(Box::new(GenerateMigration::new(Arc::new(project))));
+                    controller.run_routines(run_mode);
+                }
+                None => {
+                    show_message!(
+                        MessageType::Error,
+                        Message {
+                            action: "Generate".to_string(),
+                            details: "Please provide a subcommand".to_string(),
+                        }
+                    );
+                }
+            },
             Commands::Prod {} => {
                 info!("Running prod command");
                 let project = load_project();

@@ -10,15 +10,17 @@ import { Grid } from "./containers/page-containers";
 import { usePathname } from "next/navigation";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
+import { Logo } from "./logo";
 
 gsap.registerPlugin(SplitText);
 
 interface NavProps {
   property: string;
+  subProperty?: string;
   navigation: { name: string; href: string; emphasized?: boolean }[];
 }
 
-export const Nav = ({ property, navigation }: NavProps) => {
+export const Nav = ({ property, subProperty, navigation }: NavProps) => {
   useLayoutEffect(() => {}, []);
   const pathname = usePathname();
 
@@ -34,7 +36,7 @@ export const Nav = ({ property, navigation }: NavProps) => {
               <Grid className="sm:grow">
                 <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary">
                   <Link href="/" className="flex h-full items-center">
-                    <Text className="my-0">{property}</Text>
+                    <Logo property={property} subProperty={subProperty} />
                   </Link>
                 </div>
 

@@ -74,3 +74,83 @@
     @apply bg-background text-foreground;
   }
 }
+
+
+/* Nextra overrides */
+.nx-max-w-\[90rem\] {
+  max-width: none;
+}
+
+h1, h2, h3 {
+  font-weight: 400 !important;
+}
+
+h2 {
+    margin-bottom: none;
+}
+
+h2.nx-border-b {
+    border-bottom: none;
+}
+
+div.nx-border-b {
+    border-bottom: none;
+}
+
+div.nx-border-t {
+    border-top: none;
+}
+
+:is(html[class~=dark] .dark\:nx-bg-dark) {
+  background-color: black;
+}
+
+:is(html[class~=dark] body) {
+  background-color: black;
+}
+
+:is(html[class~=dark] .dark\:nx-shadow-\[0_-1px_0_rgba\(255\,255\,255\,\.1\)_inset\]) {
+  box-shadow: none;
+}
+
+:is(html[class~=dark] .nextra-nav-container-blur) {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+:is(html[class~=dark] .dark\:nx-shadow-\[0_-12px_16px_\#111\]) {
+  box-shadow: none;
+}
+
+[data-theme="dark"]#logo-path {
+  color: white;
+}
+
+th, td {
+  border: none;
+}
+
+th {
+  text-align: left;
+}
+
+tr:nth-child(2n) {
+  background-color: inherit !important;
+}
+
+table {
+  table-layout: auto;
+  
+}
+
+thead > tr {
+  border-top: none;
+}
+
+table, thead, tbody {
+  display: table;
+  width: 100%;
+}
+
+:is(html[class~=dark] tr) {
+  border-color: rgba(38,38,38,var(--tw-border-opacity));
+}

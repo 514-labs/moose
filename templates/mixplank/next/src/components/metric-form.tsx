@@ -11,7 +11,6 @@ import {
 import { useEffect } from "react";
 import { Plus, XIcon } from "lucide-react";
 import { MetricForm, MetricOptions } from "@/lib/form-types";
-import MetricOptionsForm from "./metric-option-form";
 
 export type MultiSelectList = { label: string; val: string }[];
 
@@ -31,7 +30,9 @@ export default function MetricSelectForm({
   useEffect(() => {
     const subscription = watch(() =>
       handleSubmit((val) => {
-        setForm(val.list);
+        if (val.list) {
+          setForm(val.list);
+        }
       })()
     );
     return () => subscription.unsubscribe();

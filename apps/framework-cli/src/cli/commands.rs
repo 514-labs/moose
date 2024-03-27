@@ -60,7 +60,7 @@ pub enum Commands {
     Stop {},
     // Clears all temporary data and stops development infrastructure
     Clean {},
-    /// TODO: Add description for flow command
+    /// Transforms upstream data into materialized datasets for analysis
     Flow(FlowArgs),
 }
 
@@ -73,16 +73,18 @@ pub struct FlowArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum FlowCommands {
-    /// TODO: Add description for flow create sub-command
+    /// Structures the project's directory & files for a new flow
     #[command(arg_required_else_help = true)]
-    Create(FlowCreateArgs),
+    Init(FlowInitArgs),
 }
 
 #[derive(Debug, Args)]
-pub struct FlowCreateArgs {
+pub struct FlowInitArgs {
+    /// Name of your source data model
     #[arg(short, long, required = true)]
     pub source: String,
 
+    /// Name of your destination data model
     #[arg(short, long, required = true)]
     pub destination: String,
 }

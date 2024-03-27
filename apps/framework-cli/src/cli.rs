@@ -359,7 +359,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 let flow_cmd = flow.command.as_ref().unwrap();
                 match flow_cmd {
-                    FlowCommands::Create(create) => {
+                    FlowCommands::Init(init) => {
                         let project = Project::load_from_current_dir().expect(
                             "No project found, please run `moose init` to create a project",
                         );
@@ -370,13 +370,13 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                         controller.add_routine(Box::new(CreateFlowDirectory::new(
                             project_arc.clone(),
-                            create.source.clone(),
-                            create.destination.clone(),
+                            init.source.clone(),
+                            init.destination.clone(),
                         )));
                         controller.add_routine(Box::new(CreateFlowFile::new(
                             project_arc,
-                            create.source.clone(),
-                            create.destination.clone(),
+                            init.source.clone(),
+                            init.destination.clone(),
                         )));
                         controller.run_routines(run_mode);
                     }

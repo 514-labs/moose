@@ -94,7 +94,7 @@ pub struct ClickHouseColumn {
 pub struct ClickHouseValue {
     pub value_type: ClickHouseColumnType,
 
-    // This is a string right now because that's the value we send over the wire with the HTTP protocole
+    // This is a string right now because that's the value we send over the wire with the HTTP protocol
     // if we used the RowBinary // https://clickhouse.yandex/docs/en/query_language/syntax/#syntax-identifiers
     // or another format, we could optimize
     value: String,

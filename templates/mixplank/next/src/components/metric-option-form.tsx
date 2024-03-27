@@ -129,7 +129,6 @@ function OptionsSelect({
   currVal: string;
   setOpen: (val: boolean) => void;
 }) {
-  console.log("val", val);
   switch (val) {
     case MetricOptions.Total_Events:
       return (

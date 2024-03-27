@@ -1,12 +1,11 @@
 "use server";
 import { createClient } from "@clickhouse/client";
-import { column } from "@observablehq/plot";
 
 const clickhouseClient = createClient({
-  host: "http://localhost:18123",
-  username: "panda",
-  password: "pandapass",
-  database: "local",
+  host: process.env.HOST || "localhost",
+  username: process.env.DB_USER || "panda",
+  password: process.env.DB_PASS || "pandapass",
+  database: process.env.DB || "local",
 });
 
 export const getData = async (query: string): Promise<object[]> => {
@@ -37,7 +36,6 @@ export const getMeta = async (query: string): Promise<object[]> => {
   });
 
   const { meta }: { meta: { name: string }[] } = await resultSet.json();
-  console.log(meta, "meta");
   return meta.map((m) => ({
     column_name: m.name,
   }));

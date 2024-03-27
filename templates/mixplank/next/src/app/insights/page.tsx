@@ -57,7 +57,7 @@ export default function InsightsPage() {
         new Date(obj?.timestamp)
       }
       yAccessor="count"
-      fillAccessor={(d) => {
+      fillAccessor={(d: { [key: string]: any }) => {
         return defaultedBreakdown.map((b) => d[b]).join(", ");
       }}
       interval={interval}

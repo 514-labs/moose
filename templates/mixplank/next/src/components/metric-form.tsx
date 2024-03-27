@@ -31,7 +31,6 @@ export default function MetricSelectForm({
   useEffect(() => {
     const subscription = watch(() =>
       handleSubmit((val) => {
-        console.log(val);
         setForm(val.list);
       })()
     );

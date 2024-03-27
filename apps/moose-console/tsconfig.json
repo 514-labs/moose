@@ -9,7 +9,7 @@
     ],
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
-    "module": "NodeNext",
+    "module": "ESNext",
     "moduleResolution": "node",
     "resolveJsonModule": true
   },

@@ -103,8 +103,8 @@ impl Routine for CreateFlowFile {
             })?;
 
         Ok(RoutineSuccess::success(Message::new(
-            "Successfully".to_string(),
-            format!("created flow {}", flow_file_path.display()),
+            "Created".to_string(),
+            format!("flow {}", flow_file_path.display()),
         )))
     }
 }

@@ -30,7 +30,7 @@ export default async function InsightsPage(): Promise<JSX.Element> {
               </div>
             </CardContent>
             <CardFooter>
-              <Link href="https://igloocommunity.slack.com/">
+              <Link href="https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg">
                 <Button variant="outline">Join Community</Button>
               </Link>
             </CardFooter>

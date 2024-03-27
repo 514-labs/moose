@@ -10,3 +10,15 @@ model PageViewEvent {
     pathname   String
     referrer   String
 }
+
+model AddToCartEvent {
+    eventId    String   @id
+    timestamp  DateTime
+    session_id String
+    user_agent String
+    pathname   String
+    locale     String
+    location   String
+    product String
+    price Float
+}

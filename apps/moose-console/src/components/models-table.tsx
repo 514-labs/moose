@@ -1,9 +1,9 @@
 "use client";
-import { DataModel } from "app/db";
+import { DataModel, ModelMeta } from "app/db";
 import { PreviewTable } from "./preview-table";
 import { useRouter } from "next/navigation";
 
-export function ModelsTable({ models }: { models: DataModel[] }) {
+export function ModelsTable({ models }: { models: ModelMeta[] }) {
   const router = useRouter();
   const modelRows = models.map((model) => ({
     name: model.name,

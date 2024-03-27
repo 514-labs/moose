@@ -13,12 +13,15 @@ const defaultData: {
   [CLI_DATA_ID]: CliData;
 } = {
   [CLI_DATA_ID]: {
-    models: [],
-    ingestionPoints: [],
-    tables: [],
-    queues: [],
+    current: {
+      models: [],
+    },
+    past: {},
   },
 };
+
+export const CURRENT_VERSION = Symbol();
+export type VersionKey = typeof CURRENT_VERSION | keyof VersionMap;
 
 const dbPromise = JSONFilePreset(DB_FILE, defaultData);
 
@@ -63,11 +66,17 @@ export interface ConsoleConfig {
   host_port: number;
 }
 
-export interface DataModel {
-  db_name: string;
+export interface ModelMeta {
   columns: Column[];
   name: string;
-  version: number;
+  db_name: string;
+}
+
+export interface DataModel {
+  queue: string;
+  table: Table;
+  ingestion_point: Route;
+  model: ModelMeta;
 }
 
 export interface MooseEnum {
@@ -94,12 +103,14 @@ export interface Table {
   uuid: string;
 }
 
+export interface VersionMap {
+  [version: string]: { models: DataModel[] };
+}
+
 export interface CliData {
   project?: Project;
-  models: DataModel[];
-  ingestionPoints: Route[];
-  tables: Table[];
-  queues: string[];
+  current: { models: DataModel[] };
+  past: VersionMap;
 }
 
 export interface Infra {
@@ -138,5 +149,6 @@ export async function putCliData(data: CliData): Promise<void> {
 export async function getCliData(): Promise<CliData> {
   const db = await dbPromise;
   await db.read();
+  console.log("db.data", db.data[CLI_DATA_ID]);
   return db.data[CLI_DATA_ID];
 }

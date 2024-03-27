@@ -2,7 +2,7 @@
 
 import { unstable_noStore as noStore } from "next/cache";
 import { getRelatedInfra } from "lib/utils";
-import { CliData, DataModel, getCliData } from "app/db";
+import { CliData, DataModel, ModelMeta, getCliData } from "app/db";
 import {
   bashSnippet,
   clickhouseJSSnippet,
@@ -15,9 +15,9 @@ import ModelView from "app/ModelView";
 
 async function getModel(
   name: string,
-  data: CliData,
-): Promise<DataModel | undefined> {
-  return data.models.find((x) => x.name === name);
+  data: ModelMeta[]
+): Promise<ModelMeta | undefined> {
+  return data.find((model) => model.name === name);
 }
 
 export default async function Page({
@@ -30,6 +30,7 @@ export default async function Page({
   noStore();
 
   const data = await getCliData();
+
   const model = await getModel(params.modelName, data);
 
   if (!model) {
@@ -38,7 +39,7 @@ export default async function Page({
 
   const infra = getRelatedInfra(model, data, model);
   const triggerTable = infra.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MergeTree",
+    (t) => t.name.includes(model.name) && t.engine === "MergeTree"
   );
 
   const jsCodeSnippet = jsSnippet(data, model);

@@ -81,7 +81,7 @@
   max-width: none;
 }
 
-h1, h2, h3 {
+* {
   font-weight: 400 !important;
 }
 
@@ -153,4 +153,18 @@ table, thead, tbody {
 
 :is(html[class~=dark] tr) {
   border-color: rgba(38,38,38,var(--tw-border-opacity));
+}
+
+li.active > a {
+  color: var(--primary-foreground) !important;
+  background-color: transparent !important;
+}
+
+li.active > a > p {
+  color: var(--primary-foreground) !important;
+  background-color: transparent !important;
+}
+
+aside.md\:nx-w-64 {
+  width: 20rem ;
 }

@@ -1,49 +1,18 @@
 "use client";
 
-import {
-  PlotOptions,
-  barY,
-  lineY,
-  areaY,
-  axisX,
-  axisY,
-} from "@observablehq/plot";
-import React, { useState } from "react";
+import { PlotOptions, axisX, axisY, rectY } from "@observablehq/plot";
+import React from "react";
 import PlotComponent from "./ui/plot-react";
 
 interface Props {
-  data: object[];
+  data: object & { timestamp: string }[];
   toolbar?: React.ReactElement;
-  timeAccessor: (arr: object) => Date;
+  timeAccessor: (arr: object & { timestamp: string }) => Date;
   yAccessor: string;
   xAccessor?: string;
   fillAccessor?: string;
-}
-
-function createChartOption(chartType: string) {
-  switch (chartType) {
-    case "line":
-      return lineY;
-    case "area":
-      return areaY;
-    case "bar":
-      return barY;
-    default:
-      return lineY;
-  }
-}
-
-function createDrawOption(chartType: string, breakdownKey: string) {
-  switch (chartType) {
-    case "line":
-      return { stroke: breakdownKey };
-    case "area":
-      return { fill: breakdownKey };
-    case "bar":
-      return { fill: breakdownKey };
-    default:
-      return lineY;
-  }
+  domain?: [number, number];
+  percent?: boolean;
 }
 
 export default function TimeSeriesChart({
@@ -52,21 +21,22 @@ export default function TimeSeriesChart({
   yAccessor,
   xAccessor = "time",
   fillAccessor,
+  domain,
+  percent,
 }: Props) {
-  const [chartType, setChartType] = useState("bar");
-
   const newData = data.map((d) => ({ ...d, time: timeAccessor(d) }));
 
   const options: PlotOptions = {
     y: {
-      domain: [0, 100],
-      percent: true,
+      ...(domain && { domain }),
+      percent: percent,
     },
     axis: null,
     marks: [
-      createChartOption(chartType)(newData, {
+      rectY(newData, {
         x: xAccessor,
         y: yAccessor,
+        interval: "hour",
         fill: fillAccessor,
         tip: { fill: "black" },
       }),

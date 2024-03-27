@@ -1,6 +1,6 @@
 import { analyticsQuery } from "./analytics_mv";
 import { analyticsPages } from "./analytics_pages";
-import { eventTables } from "./event-tables";
+import { eventTables } from "../config";
 import { DateRange, rangeToNum } from "./time-query";
 import { createCTE } from "./util";
 
@@ -9,8 +9,8 @@ const topBrowsers = (range: DateRange, table: string) => {
     select pathname, uniqMerge(visits) as visits, countMerge(hits) as hits
     from ${table}
     where
-date >= timestampAdd(today(), interval -${rangeToNum[range]} day)
-and date <= today()
+timestamp >= timestampAdd(today(), interval -${rangeToNum[range]} day)
+and timestamp <= today()
     group by pathname
     order by visits desc
     limit 50`;
@@ -22,7 +22,7 @@ enum TopBrowserCTE {
 }
 export const topBrowsersQuery = (range: DateRange) => {
   const ctes = {
-    [TopBrowserCTE.analytics]: analyticsQuery(eventTables),
+    [TopBrowserCTE.analytics]: analyticsQuery(eventTables[0].tableName),
     [TopBrowserCTE.pages]: analyticsPages(TopBrowserCTE.analytics),
   };
 

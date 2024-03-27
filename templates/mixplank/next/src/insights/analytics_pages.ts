@@ -1,6 +1,6 @@
 export const analyticsPages = (table: string) => {
   return `SELECT
-    toDate(timestamp) AS date,
+    toDate(timestamp) AS timestamp,
     device,
     browser,
     location,
@@ -8,5 +8,5 @@ export const analyticsPages = (table: string) => {
     uniqState(session_id) AS visits,
     countState() AS hits
 FROM ${table}
-GROUP BY date, device, browser, location, pathname`;
+GROUP BY timestamp, device, browser, location, pathname`;
 };

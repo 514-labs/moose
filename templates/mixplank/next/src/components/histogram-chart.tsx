@@ -1,13 +1,6 @@
 "use client";
 
-import {
-  PlotOptions,
-  ruleY,
-  barY,
-  lineY,
-  binX,
-  areaY,
-} from "@observablehq/plot";
+import { PlotOptions, lineY, areaY, rectY } from "@observablehq/plot";
 import {
   Select,
   SelectContent,
@@ -17,13 +10,15 @@ import {
 } from "@/components/ui/select";
 import React, { useState } from "react";
 import PlotComponent from "./ui/plot-react";
+import { TimeUnit } from "@/lib/time-utils";
 
 interface Props {
-  data: object[];
+  data: object & { timestamp: string }[];
   toolbar?: React.ReactElement;
-  timeAccessor: (arr: object) => Date;
+  timeAccessor: (arr: object & { timestamp: string }) => Date;
   yAccessor: string;
-  fillAccessor?: string;
+  fillAccessor: ((arr: object) => string) | string;
+  interval: TimeUnit;
 }
 
 const chartTypes = ["line", "area", "bar"];
@@ -35,13 +30,16 @@ function createChartOption(chartType: string) {
     case "area":
       return areaY;
     case "bar":
-      return barY;
+      return rectY;
     default:
       return lineY;
   }
 }
 
-function createDrawOption(chartType: string, breakdownKey: string) {
+function createDrawOption(
+  chartType: string,
+  breakdownKey: ((arr: object) => string) | string
+) {
   switch (chartType) {
     case "line":
       return { stroke: breakdownKey };
@@ -53,52 +51,35 @@ function createDrawOption(chartType: string, breakdownKey: string) {
       return lineY;
   }
 }
-
 export default function HistogramChart({
   data,
   toolbar,
   timeAccessor,
   yAccessor,
+  fillAccessor,
+  interval,
 }: Props) {
   const [chartType, setChartType] = useState("bar");
 
   const newData = data.map((d) => ({ ...d, time: timeAccessor(d) }));
 
   const options: PlotOptions = {
-    y: {
-      grid: true,
+    color: {
+      scheme: "Cividis",
     },
-    color: { legend: true },
-    marks: [
-      createChartOption(chartType)(newData, {
-        ...binX(
-          { y: "count" },
-          {
-            x: "time",
-            ...createDrawOption(chartType, yAccessor),
-            interval: "hour",
-          }
-        ),
-        tip: { fill: "black" },
-      }),
-      ruleY([0]),
-    ],
-  };
-
-  /*
-  const options: PlotOptions = {
     y: {
       grid: true,
     },
     marks: [
       createChartOption(chartType)(newData, {
-        x: "time",
         y: yAccessor,
-        fill: fillAccessor,
+        x: "time",
+        interval: interval,
+        tip: { fill: "black" },
+        ...createDrawOption(chartType, fillAccessor),
       }),
     ],
   };
-  */
 
   return (
     <div className="w-full h-full flex flex-col">

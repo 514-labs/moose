@@ -1,6 +1,6 @@
 export const analyticsSessions = (table: string) => {
   return `SELECT
-    toDate(timestamp) AS date,
+    toStartOfHour(timestamp) AS date,
     session_id,
     anySimpleState(device) AS device,
     anySimpleState(browser) AS browser,

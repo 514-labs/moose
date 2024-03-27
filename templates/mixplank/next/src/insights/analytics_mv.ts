@@ -1,6 +1,4 @@
-import { EventTable } from "./event-tables";
-
-export const analyticsQuery = (events: EventTable[]) => {
+export const analyticsQuery = (tableName: string) => {
   return `SELECT
     timestamp,
     session_id,
@@ -30,5 +28,5 @@ export const analyticsQuery = (events: EventTable[]) => {
         then 'safari'
         else 'Unknown'
     END as browser
-    FROM ${events[0].tableName}`;
+    FROM ${tableName}`;
 };

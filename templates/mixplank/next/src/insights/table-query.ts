@@ -1,95 +1,161 @@
-import { EventTable, eventTables } from "./event-tables";
-import { DateRange, createDateStub, rangeToNum } from "./time-query";
+import { TimeUnit } from "@/lib/time-utils";
+import { EventTable } from "../config";
+import { DateRange, createDateStub, timeseries } from "./time-query";
 import { createCTE } from "./util";
+import { getData } from "@/app/data";
+import { sessionData } from "./sessions";
 
-export const timeseries = (dateRange: DateRange) => {
-  const start = `toStartOfDay(timestampAdd(today(), interval -${rangeToNum[dateRange]} day)) as start`;
-  const end = `toStartOfDay(today()) as end`;
-  return `
-    with ${start}, ${end}
-      select
-      arrayJoin(
-          arrayMap(
-              x -> toDateTime(x),
-              range(toUInt32(start), toUInt32(timestampAdd(end, interval 1 day)), 3600) -- 3600 seconds = 1 hour
-          )
-      ) as date
-      where date <= now()`;
+function createColumnSnippet(columnNames: string[]) {
+  if (columnNames.length == 0) {
+    return "";
+  }
+  return ", " + columnNames.map((b) => `${b}`).join(", ");
+}
+export const getUniqueValues = (tableName: string, columnNames: string[]) => {
+  const columnNamesString =
+    columnNames.length != 0 ? "distinct " + columnNames.join(", ") : "*";
+  return `select ${columnNamesString} from ${tableName}`;
 };
 
-export function tableQuery(events: EventTable[], dateRange: DateRange) {
-  const all_tables = events
-    .map(
-      (event) =>
-        `SELECT  '${event.eventName}' AS event_name, timestamp, session_id, location, pathname FROM ${event.tableName} ${createDateStub(dateRange)}`
-    )
-    .join("\nUNION ALL\n");
-  return `WITH CombinedEvents AS (
-            ${all_tables}
-        ) FROM CombinedEvents
-        SELECT session_id, timestamp, event_name, pathname, location
-    ORDER BY timestamp DESC`;
+function allCombinations(
+  tableOne: string,
+  tableTwo: string,
+  columnNames: string[]
+) {
+  return `select timestamp${createColumnSnippet(columnNames)} from ${tableOne}, ${tableTwo}`;
 }
 
-export function data(tableName: string) {
+export function tableQuery(
+  events: EventTable[],
+  dateRange: DateRange,
+  columnNames: string[]
+) {
+  return events
+    .map(
+      (event) =>
+        `SELECT  '${event.eventName}' AS event_name, timestamp, session_id ${createColumnSnippet(columnNames)} FROM ${event.tableName} ${createDateStub(dateRange)}`
+    )
+    .join("\nUNION DISTINCT\n");
+}
+
+export function virtualTableQuery(
+  events: EventTable[],
+  dateRange: DateRange,
+  columnNames: string[]
+) {
+  const cte = {
+    ["virtual_session"]: sessionData(),
+    ["combined_events"]: tableQuery(events, dateRange, columnNames),
+  };
+  return (
+    createCTE(cte) +
+    `SELECT timestamp, event_name, session_id ${createColumnSnippet(columnNames)} from combined_events
+ORDER BY timestamp DESC`
+  );
+}
+
+function timeToClickHouseInterval(timeUnit: TimeUnit) {
+  switch (timeUnit) {
+    case TimeUnit.DAY:
+      return "toStartOfDay";
+    case TimeUnit.HOUR:
+      return "toStartOfHour";
+    case TimeUnit.MINUTE:
+      return "toStartOfMinute";
+  }
+}
+
+export function data(
+  tableName: string,
+  columnNames: string[],
+  interval: TimeUnit
+) {
   return `
-  SELECT
-  hour,
-  arrayJoin(paths) AS pathname,
-  arrayJoin(counts) AS count
-FROM (
-  SELECT
-      toStartOfHour(event_time) AS hour,
-      groupArray(pathname) AS paths,
-      groupArray(count) AS counts
-  FROM (
-      SELECT
-          toStartOfHour(timestamp) AS event_time,
-          pathname,
-          count() AS count
-      FROM
-          ${tableName}
-      GROUP BY
-          event_time,
-          pathname
-      ORDER BY
-          event_time,
-          pathname
-  )
-  GROUP BY
-      hour
-)
-ORDER BY
-  hour,
-  pathname
-  `;
+    SELECT
+        ${timeToClickHouseInterval(interval)}(timestamp) AS timestamp,
+        count() AS count
+        ${createColumnSnippet(columnNames)}
+    FROM
+        ${tableName}
+    GROUP BY
+        timestamp
+        ${createColumnSnippet(columnNames)}
+`;
 }
 
 enum Ctes {
   data = "data",
   timeseries = "timeseries",
+  uniqValues = "uniqValues",
+  allTables = "allTables",
+  combinations = "combinations",
+  analytics = "analytics",
+  sessions = "sessions",
 }
-/*
-export function timeSeriesData(dateRange: DateRange) {
+
+export function chartQuery(
+  events: EventTable[],
+  dateRange: DateRange,
+  interval: TimeUnit,
+  columnNames: string[]
+) {
   const ctes = {
-    [Ctes.timeseries]: timeseries(dateRange),
-    [Ctes.data]: tableQuery(eventTables, dateRange),
+    [Ctes.timeseries]: timeseries(dateRange, interval),
+    [Ctes.allTables]: virtualTableQuery(events, dateRange, columnNames),
+    [Ctes.uniqValues]: getUniqueValues(Ctes.allTables, columnNames),
+    [Ctes.combinations]: allCombinations(
+      Ctes.timeseries,
+      Ctes.uniqValues,
+      columnNames
+    ),
+    ["data"]: data(Ctes.allTables, columnNames, interval),
   };
-  const query =
+
+  const join =
+    columnNames.length != 0
+      ? " AND " +
+        columnNames
+          .map((b) => `${Ctes.combinations}.${b} = data.${b}`)
+          .join(" AND ")
+      : "";
+
+  const combinations =
+    columnNames.length != 0
+      ? ", " + columnNames.map((b) => `${Ctes.combinations}.${b}`).join(", ")
+      : "";
+
+  return (
     createCTE(ctes) +
-    `select a.date, b.event_name, b.session_id, b.pathname, b.timestamp
-  from ${Ctes.timeseries} a
-  left join ${Ctes.data} b ON toStartOfHour(a.date) = toStartOfHour(b.timestamp)`;
-  return query;
+    `SELECT
+    ${Ctes.combinations}.timestamp AS timestamp
+    ${combinations},
+    if(data.count IS NULL, 0, data.count) AS count
+FROM
+    ${Ctes.combinations}
+LEFT JOIN
+    data ON ${Ctes.combinations}.timestamp = data.timestamp ${join}
+ORDER BY
+    timestamp`
+  );
 }
 
-*/
-export function testFunc(dateRange: DateRange) {
-  const ctes = {
-    [Ctes.timeseries]: timeseries(dateRange),
-    ["yo"]: tableQuery(eventTables, dateRange),
-    ["data"]: data("yo"),
-  };
+export function getChartQueryData(
+  events: EventTable[],
+  dateRange: DateRange,
+  interval: TimeUnit,
+  columnNames: string[]
+) {
+  if (events.length == 0) return Promise.resolve([]);
+  return getData(
+    chartQuery(events, dateRange, interval, columnNames)
+  ) as Promise<object & { timestamp: string }[]>;
+}
 
-  return createCTE(ctes) + `select * from data`;
+export function getTableQueryData(
+  events: EventTable[],
+  dateRange: DateRange,
+  columnNames: string[]
+) {
+  if (events.length == 0) return Promise.resolve([]);
+  return getData(virtualTableQuery(events, dateRange, columnNames));
 }

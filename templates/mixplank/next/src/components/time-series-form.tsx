@@ -1,13 +1,37 @@
-import FunnelForm, { FunnelFormList } from "./funnel-form";
+import { eventTables } from "@/config";
+import MultiSelectForm from "./multi-select-form";
+import { ModelMeta } from "@/insights/model-meta";
+import { MetricForm } from "@/lib/form-types";
+import MetricSelectForm from "./metric-form";
 
 interface Props {
-    setForm: (form: FunnelFormList) => void;
-    form: FunnelFormList;
+  setForm: (form: MetricForm[]) => void;
+  setBreakdown: (form: string[]) => void;
+  breakdownOptions: ModelMeta[];
 }
-export default function TimeSeriesForm({ setForm, form }: Props) {
-    const cleanedEvents = form.events.filter((ev) => ev.eventName != null)
-    return (<div>
-        {!cleanedEvents.length && <div>Displaying all events</div>}
-        <FunnelForm setForm={setForm} />
-    </div>)
+export default function TimeSeriesForm({
+  setForm,
+  breakdownOptions,
+  setBreakdown,
+}: Props) {
+  const list = eventTables.map((table) => ({
+    label: table.eventName,
+    val: table.tableName,
+  }));
+
+  const breakdownList = breakdownOptions.map((bd) => ({
+    label: bd.column_name,
+    val: bd.column_name,
+  }));
+
+  return (
+    <div>
+      <MetricSelectForm options={list} setForm={setForm} name="Metrics" />
+      <MultiSelectForm
+        options={breakdownList}
+        setForm={setBreakdown}
+        name="Breakdown"
+      />
+    </div>
+  );
 }

@@ -360,9 +360,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let flow_cmd = flow.command.as_ref().unwrap();
                 match flow_cmd {
                     FlowCommands::Init(init) => {
-                        let project = Project::load_from_current_dir().expect(
-                            "No project found, please run `moose init` to create a project",
-                        );
+                        let project = load_project();
                         let project_arc = Arc::new(project);
 
                         let mut controller = RoutineController::new();

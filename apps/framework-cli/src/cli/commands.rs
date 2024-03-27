@@ -65,6 +65,17 @@ pub enum Commands {
 }
 
 #[derive(Debug, Args)]
+pub struct GenerateArgs {
+    #[command(subcommand)]
+    pub command: Option<GenerateCommand>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum GenerateCommand {
+    Migrations {},
+}
+
+#[derive(Debug, Args)]
 #[command(arg_required_else_help = true)]
 pub struct FlowArgs {
     #[command(subcommand)]
@@ -87,15 +98,4 @@ pub struct FlowInitArgs {
     /// Name of your destination data model
     #[arg(short, long, required = true)]
     pub destination: String,
-}
-
-#[derive(Debug, Args)]
-pub struct GenerateArgs {
-    #[command(subcommand)]
-    pub command: Option<GenerateCommand>,
-}
-
-#[derive(Debug, Subcommand)]
-pub enum GenerateCommand {
-    Migrations {},
 }

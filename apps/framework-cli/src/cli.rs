@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use clap::Parser;
 use commands::Commands;
+use config::ConfigError;
 use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
@@ -55,6 +56,37 @@ struct Cli {
 
     #[command(subcommand)]
     command: Commands,
+}
+
+fn load_project() -> Project {
+    match Project::load_from_current_dir() {
+        Ok(project) => project,
+        Err(e) => {
+            match e {
+                ConfigError::Foreign(_) => {
+                    show_message!(
+                        MessageType::Error,
+                        Message {
+                            action: "Loading".to_string(),
+                            details:
+                                "No project found, please run `moose init` to create a project"
+                                    .to_string(),
+                        }
+                    );
+                }
+                _ => {
+                    show_message!(
+                        MessageType::Error,
+                        Message {
+                            action: "Loading".to_string(),
+                            details: format!("Please validate the project's configs: {:?}", e),
+                        }
+                    );
+                }
+            }
+            exit(1);
+        }
+    }
 }
 
 async fn top_command_handler(settings: Settings, commands: &Commands) {
@@ -122,8 +154,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
             Commands::Build { docker } => {
                 let run_mode = RunMode::Explicit {};
                 info!("Running build command");
-                let project = Project::load_from_current_dir()
-                    .expect("No project found, please run `moose init` to create a project");
+                let project = load_project();
                 let project_arc = Arc::new(project);
 
                 crate::utilities::capture::capture!(
@@ -156,8 +187,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
             Commands::Dev {} => {
                 info!("Running dev command");
 
-                let project = Project::load_from_current_dir()
-                    .expect("No project found, please run `moose init` to create a project");
+                let project = load_project();
 
                 let _ = project.set_enviroment(false);
                 let project_arc = Arc::new(project);
@@ -185,8 +215,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
             }
             Commands::Migrate {} => {
                 info!("Running migrate command");
-                let project = Project::load_from_current_dir()
-                    .expect("No project found, please run `moose init` to create a project");
+                let project = load_project();
 
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
@@ -197,8 +226,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
             }
             Commands::Prod {} => {
                 info!("Running prod command");
-                let project = Project::load_from_current_dir()
-                    .expect("No project found, please run `moose init` to create a project");
+                let project = load_project();
 
                 let _ = project.set_enviroment(true);
                 let project_arc = Arc::new(project);
@@ -218,8 +246,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
             Commands::Stop {} => {
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
-                let project = Project::load_from_current_dir()
-                    .expect("No project found, please run `moose init` to create a project");
+                let project = load_project();
                 let project_arc = Arc::new(project);
 
                 crate::utilities::capture::capture!(
@@ -233,8 +260,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
             }
             Commands::Clean {} => {
                 let run_mode = RunMode::Explicit {};
-                let project = Project::load_from_current_dir()
-                    .expect("No project found, please run `moose init` to create a project");
+                let project = load_project();
                 let project_arc = Arc::new(project);
 
                 crate::utilities::capture::capture!(

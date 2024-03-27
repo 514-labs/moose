@@ -64,49 +64,47 @@ export default function MetricSelectForm({
         <div className="p-2">
           {fields.map((_field, index) => {
             return (
-              <div>
-                <FormField
-                  control={form.control}
-                  key={`${index}_event_name`}
-                  name={`list.${index}.event_name`}
-                  render={({ field }) => (
-                    <FormItem className="my-2">
-                      <div className="flex items-center">
-                        <Select
-                          onValueChange={(val) => field.onChange(val)}
-                          defaultValue={field.value}
-                          value={field.value}
-                        >
-                          <FormControl>
-                            <SelectTrigger
-                              className="rounded-xl"
-                              value={field.value}
-                            >
-                              <SelectValue placeholder="Select Event" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {options.map((l, i) => (
-                              <SelectItem key={i} value={l.val}>
-                                {l.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                          <Button
-                            className="ml-4 p-2 h-fit"
-                            size={"sm"}
-                            variant={"ghost"}
-                            onClick={() => remove(index)}
+              <FormField
+                control={form.control}
+                key={`${index}_event_name`}
+                name={`list.${index}.event_name`}
+                render={({ field }) => (
+                  <FormItem className="my-2">
+                    <div className="flex items-center">
+                      <Select
+                        onValueChange={(val) => field.onChange(val)}
+                        defaultValue={field.value}
+                        value={field.value}
+                      >
+                        <FormControl>
+                          <SelectTrigger
+                            className="rounded-xl"
+                            value={field.value}
                           >
-                            <XIcon className="h-6 w-6" />
-                          </Button>
-                        </Select>
-                      </div>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
+                            <SelectValue placeholder="Select Event" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {options.map((l, i) => (
+                            <SelectItem key={i} value={l.val}>
+                              {l.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                        <Button
+                          className="ml-4 p-2 h-fit"
+                          size={"sm"}
+                          variant={"ghost"}
+                          onClick={() => remove(index)}
+                        >
+                          <XIcon className="h-6 w-6" />
+                        </Button>
+                      </Select>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             );
           })}
         </div>

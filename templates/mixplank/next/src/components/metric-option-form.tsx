@@ -100,7 +100,11 @@ function AggregatedPropertyForm({
               </FormControl>
               <SelectContent>
                 {aggregatedProperty.map((l, i) => (
-                  <SelectItem onClick={() => setOpen(false)} value={l.val}>
+                  <SelectItem
+                    key={i}
+                    onClick={() => setOpen(false)}
+                    value={l.val}
+                  >
                     {l.label}
                   </SelectItem>
                 ))}

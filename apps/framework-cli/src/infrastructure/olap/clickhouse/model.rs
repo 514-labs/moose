@@ -244,10 +244,6 @@ impl ClickHouseTable {
         }
     }
 
-    pub fn view_name(&self) -> String {
-        format!("{}_trigger", self.name)
-    }
-
     pub fn create_data_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
         CreateTableQuery::build(self.clone(), ClickhouseEngine::MergeTree)
     }

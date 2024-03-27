@@ -1,4 +1,4 @@
-import "styles/globals.css";
+import "design-system/globals.css";
 import { ThemeProvider } from "../components/theme-provider";
 import { cn } from "../lib/utils";
 

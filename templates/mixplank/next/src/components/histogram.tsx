@@ -1,47 +1,30 @@
 "use client";
 
-import { PlotOptions, axisX, axisY, rectY } from "@observablehq/plot";
+import { PlotOptions, ruleY, barY, barX } from "@observablehq/plot";
 import React from "react";
 import PlotComponent from "./ui/plot-react";
 
 interface Props {
-  data: object & { timestamp: string }[];
+  data: object[];
   toolbar?: React.ReactElement;
-  timeAccessor: (arr: object & { timestamp: string }) => Date;
   yAccessor: string;
   xAccessor?: string;
   fillAccessor?: string;
-  domain?: [number, number];
-  percent?: boolean;
 }
 
-export default function TimeSeriesChart({
-  data,
-  timeAccessor,
-  yAccessor,
-  xAccessor = "time",
-  fillAccessor,
-  domain,
-  percent,
-}: Props) {
-  const newData = data.map((d) => ({ ...d, time: timeAccessor(d) }));
-
+export default function Histogram({ data, yAccessor }: Props) {
   const options: PlotOptions = {
     y: {
-      ...(domain && { domain }),
-      percent: percent,
+      grid: true,
     },
-    axis: null,
     marks: [
-      rectY(newData, {
-        x: xAccessor,
+      barX(data, {
         y: yAccessor,
-        interval: "hour",
-        fill: fillAccessor,
+        x: "hits",
+        fill: yAccessor,
         tip: { fill: "black" },
       }),
-      axisY({ label: null }),
-      axisX({ ticks: "day" }),
+      ruleY([0]),
     ],
   };
 

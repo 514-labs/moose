@@ -16,7 +16,26 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={inter.className}>{children}</body>
+      <body className={inter.className}>
+        <nav className="flex flex-row w-screen px-4">
+          <header className="flex text-lg">
+            <a className="py-4" href={"/"}>
+              <span className="py-4">moosejs</span>
+            </a>
+            <span className="flex-grow" />
+          </header>
+          <span className="flex-grow" />
+          <div className="py-3">
+            <a className="py-4" href={"/insights"}>
+              <span className="py-4">Insights</span>
+            </a>
+          </div>
+          <div className="ml-3">
+            <div className="py-3 flex flex-row align-middle justify-center "></div>
+          </div>
+        </nav>
+        {children}
+      </body>
     </html>
   );
 }

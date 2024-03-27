@@ -8,5 +8,6 @@
     "getting-started": "Getting Started",
     "building": "Building Your App",
     "moose-cli": "Moose CLI",
-    "on-prem": "Moose in the cloud"
+    "on-prem": "Moose in the cloud",
+    "data-change-management": "Data Change Management"
 }

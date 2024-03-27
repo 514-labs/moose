@@ -81,7 +81,7 @@ Join our community to keep up with our progress, contribute to moose or join our
 
 "#,
         style("# Moose is coming soon").bold(),
-        style("https://join.slack.com/t/igloocommunity/shared_invite/zt-25gsnx2x2-9ttVTt4L9LYFrRcM6jimcg").color256(118).bold()
+        style("https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg").color256(118).bold()
     )
 }
 

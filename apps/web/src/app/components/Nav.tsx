@@ -17,7 +17,7 @@ const navigation = [
   { name: "docs", href: "https://docs.moosejs.com", target: "_blank" },
   {
     name: "slack",
-    href: "https://join.slack.com/t/igloocommunity/shared_invite/zt-26oekgzol-99e8I2lQvHHKk1aa1Fnwpg",
+    href: "https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg",
     target: "_blank",
   },
   { name: "github", href: "https://github.com/514-labs/", target: "_blank" },

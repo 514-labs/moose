@@ -1,5 +1,5 @@
 import { getData } from "@/app/data";
-import { EventTable } from "@/config";
+import { EventTable } from "@/app/events";
 
 // grabs column names and data types from all tables
 // returning only the columns that are common to all tables

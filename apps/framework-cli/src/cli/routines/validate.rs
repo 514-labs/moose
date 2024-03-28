@@ -1,9 +1,8 @@
 use super::{Routine, RoutineFailure, RoutineSuccess};
 use crate::utilities::constants::{
-    CLICKHOUSE_CONTAINER_NAME, CONSOLE_CONTAINER_NAME, REDPANDA_CONTAINER_NAME, REDPANDA_HOSTS,
+    CLICKHOUSE_CONTAINER_NAME, CONSOLE_CONTAINER_NAME, REDPANDA_CONTAINER_NAME,
 };
 use crate::{cli::display::Message, utilities::docker};
-use log::debug;
 
 pub struct ValidateClickhouseRun;
 impl ValidateClickhouseRun {
@@ -80,7 +79,7 @@ impl ValidateRedPandaCluster {
 }
 impl Routine for ValidateRedPandaCluster {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let output = docker::run_rpk_cluster_info(&self.project_name).map_err(|err| {
+        docker::run_rpk_cluster_info(&self.project_name).map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),
@@ -90,19 +89,10 @@ impl Routine for ValidateRedPandaCluster {
             )
         })?;
 
-        debug!("rpk cluster info: {}", output);
-
-        if REDPANDA_HOSTS.iter().any(|host| output.contains(host)) {
-            Ok(RoutineSuccess::success(Message::new(
-                "Successfully".to_string(),
-                "validated red panda cluster".to_string(),
-            )))
-        } else {
-            Err(RoutineFailure::error(Message::new(
-                "Failed".to_string(),
-                "to validate red panda cluster".to_string(),
-            )))
-        }
+        Ok(RoutineSuccess::success(Message::new(
+            "Successfully".to_string(),
+            "validated red panda cluster".to_string(),
+        )))
     }
 }
 

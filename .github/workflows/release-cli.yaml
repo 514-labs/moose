@@ -73,6 +73,13 @@ jobs:
           destination: "templates.514.dev/${{ needs.version.outputs.version }}/"
           parent: false
 
+      - name: Upload Latest templates to GCP
+        uses: "google-github-actions/upload-cloud-storage@v2"
+        with:
+          path: "template-packages"
+          destination: "templates.514.dev/latest/"
+          parent: false
+
   build-and-publish-binaries:
     name: Build CLI Binaries
     runs-on: ${{ matrix.build.os }}

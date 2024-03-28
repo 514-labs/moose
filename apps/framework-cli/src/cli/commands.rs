@@ -20,6 +20,10 @@ pub enum Commands {
         /// Location of your app or service
         #[arg(default_value = ".")]
         location: String,
+
+        /// Template to use for the project
+        #[arg(short, long)]
+        template: Option<String>,
     },
     /// Builds your moose project
     Build {

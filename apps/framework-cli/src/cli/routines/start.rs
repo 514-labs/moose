@@ -2,8 +2,9 @@ use lazy_static::lazy_static;
 use std::fs;
 
 use crate::cli::display::with_spinner;
-use crate::cli::routines::initialize::{CreateInternalTempDirectoryTree, CreateModelsVolume};
 use crate::cli::routines::util::ensure_docker_running;
+use crate::framework::languages::create_models_dir;
+use crate::framework::typescript::create_typescript_models_dir;
 use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
 use crate::utilities::docker;
 use crate::utilities::git::dump_old_version_schema;
@@ -12,9 +13,8 @@ use log::debug;
 use std::sync::Arc;
 
 use super::{
-    initialize::ValidateMountVolumes,
     validate::{ValidateClickhouseRun, ValidateConsoleRun, ValidateRedPandaRun},
-    Routine, RoutineFailure, RoutineSuccess, RunMode,
+    Routine, RoutineFailure, RoutineSuccess,
 };
 
 pub struct RunLocalInfrastructure {
@@ -39,20 +39,17 @@ lazy_static! {
 impl Routine for RunLocalInfrastructure {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         ensure_docker_running()?;
-        let internal_dir = self
-            .project
-            .internal_dir()
-            .map_err(|err| RoutineFailure::new(FAILED_TO_CREATE_INTERNAL_DIR.clone(), err))?;
-        // Model this after the `spin_up` function in `apps/framework-cli/src/cli/routines/start.rs` but use routines instead
-        CreateInternalTempDirectoryTree::new(RunMode::Explicit {}, self.project.clone())
-            .run_explicit()?;
-        CreateModelsVolume::new(self.project.clone()).run_explicit()?;
-        ValidateMountVolumes::new(internal_dir).run_explicit()?;
+
+        CreateDenoFiles::new(self.project.clone()).run_silent()?;
+        CreateModelsVolume::new(self.project.clone()).run_silent()?;
+        CreateDockerComposeFile::new(self.project.clone()).run_silent()?;
 
         RunContainers::new(self.project.clone()).run_silent()?;
+
         ValidateRedPandaRun::new().run_explicit()?;
         ValidateClickhouseRun::new().run_explicit()?;
         ValidateConsoleRun::new().run_explicit()?;
+
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),
             "ran local infrastructure".to_string(),
@@ -127,5 +124,97 @@ impl Routine for CopyOldSchema {
             "Loaded".to_string(),
             "old schemas".to_string(),
         )))
+    }
+}
+
+pub struct CreateDenoFiles {
+    project: Arc<Project>,
+}
+
+impl CreateDenoFiles {
+    pub fn new(project: Arc<Project>) -> Self {
+        Self { project }
+    }
+}
+
+impl Routine for CreateDenoFiles {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        self.project.create_deno_files().map_err(|err| {
+            RoutineFailure::new(Message::new("Failed".to_string(), "".to_string()), err)
+        })?;
+
+        Ok(RoutineSuccess::success(Message::new(
+            "Created".to_string(),
+            "deno files".to_string(),
+        )))
+    }
+}
+
+pub struct CreateModelsVolume {
+    project: Arc<Project>,
+}
+
+impl CreateModelsVolume {
+    pub fn new(project: Arc<Project>) -> Self {
+        Self { project }
+    }
+}
+
+impl Routine for CreateModelsVolume {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        create_models_dir(self.project.clone()).map_err(|err| {
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    format!("to create models volume in {}", err),
+                ),
+                err,
+            )
+        })?;
+
+        create_typescript_models_dir(self.project.clone()).map_err(|err| {
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    format!("to create models volume in {}", err),
+                ),
+                err,
+            )
+        })?;
+
+        Ok(RoutineSuccess::success(Message::new(
+            "Created".to_string(),
+            "Models volume".to_string(),
+        )))
+    }
+}
+
+pub struct CreateDockerComposeFile {
+    project: Arc<Project>,
+}
+
+impl CreateDockerComposeFile {
+    pub fn new(project: Arc<Project>) -> Self {
+        Self { project }
+    }
+}
+
+impl Routine for CreateDockerComposeFile {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let output = docker::create_compose_file(&self.project);
+
+        match output {
+            Ok(_) => Ok(RoutineSuccess::success(Message::new(
+                "Created".to_string(),
+                "docker compose file".to_string(),
+            ))),
+            Err(err) => Err(RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to create docker compose file".to_string(),
+                ),
+                err,
+            )),
+        }
     }
 }

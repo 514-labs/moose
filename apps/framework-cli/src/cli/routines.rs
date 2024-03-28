@@ -370,6 +370,7 @@ async fn initialize_project_state(
                 .previous_version_models
                 .get_mut(&version)
                 .unwrap();
+
             process_objects(
                 &schema_version.models,
                 &previous_version,

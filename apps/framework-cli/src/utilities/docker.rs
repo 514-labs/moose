@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
+use log::error;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_slice, from_str};
 
@@ -103,16 +104,20 @@ pub fn list_container_names() -> std::io::Result<Vec<String>> {
 }
 
 pub fn stop_containers(project: &Project) -> anyhow::Result<()> {
-    let mut child = compose_command(project)
+    let child = compose_command(project)
         .arg("down")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
 
-    let exit_code = child.wait()?;
+    let output = child.wait_with_output()?;
 
-    if !exit_code.success() {
-        return Err(anyhow::anyhow!("Failed to start containers"));
+    if !output.status.success() {
+        error!(
+            "Failed to stop containers: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return Err(anyhow::anyhow!("Failed to strop containers"));
     } else {
         Ok(())
     }
@@ -140,7 +145,7 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
     project.create_internal_redpanda_volume()?;
     project.create_internal_clickhouse_volume()?;
 
-    let mut child = compose_command(project)
+    let child = compose_command(project)
         .arg("up")
         .arg("-d")
         .env("DB_NAME", project.clickhouse_config.db_name.clone())
@@ -167,9 +172,13 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
         .stderr(Stdio::piped())
         .spawn()?;
 
-    let exit_code = child.wait()?;
+    let output = child.wait_with_output()?;
 
-    if !exit_code.success() {
+    if !output.status.success() {
+        error!(
+            "Failed to start containers: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
         return Err(anyhow::anyhow!("Failed to start containers"));
     } else {
         Ok(())
@@ -183,7 +192,7 @@ pub fn create_compose_file(project: &Project) -> std::io::Result<()> {
 }
 
 pub fn run_rpk_cluster_info(project_name: &str) -> anyhow::Result<()> {
-    let mut child = Command::new("docker")
+    let child = Command::new("docker")
         .arg("exec")
         .arg(format!("{}-{}", project_name, REDPANDA_CONTAINER_NAME))
         .arg("rpk")
@@ -193,11 +202,14 @@ pub fn run_rpk_cluster_info(project_name: &str) -> anyhow::Result<()> {
         .stderr(Stdio::piped())
         .spawn()?;
 
-    child.wait()?;
-    let exit_code = child.wait()?;
+    let output = child.wait_with_output()?;
 
-    if !exit_code.success() {
-        return Err(anyhow::anyhow!("Failed to run rpk cluster info"));
+    if !output.status.success() {
+        error!(
+            "Failed to stop containers: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        return Err(anyhow::anyhow!("Failed to strop containers"));
     } else {
         Ok(())
     }

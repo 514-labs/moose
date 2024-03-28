@@ -258,8 +258,11 @@ impl Project {
     }
 
     pub fn flows_dir(&self) -> PathBuf {
-        let mut flows_dir = self.app_dir();
-        flows_dir.push(FLOWS_DIR);
+        let flows_dir = self.app_dir().join(FLOWS_DIR);
+
+        if !flows_dir.exists() {
+            std::fs::create_dir_all(&flows_dir).expect("Failed to create flows directory");
+        }
 
         debug!("Flows dir: {:?}", flows_dir);
         flows_dir

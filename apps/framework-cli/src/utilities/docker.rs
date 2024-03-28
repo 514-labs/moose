@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
+use log::error;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_slice, from_str};
 
@@ -102,15 +103,24 @@ pub fn list_container_names() -> std::io::Result<Vec<String>> {
     Ok(containers)
 }
 
-pub fn stop_containers(project: &Project) -> std::io::Result<String> {
+pub fn stop_containers(project: &Project) -> anyhow::Result<()> {
     let child = compose_command(project)
         .arg("down")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
+
     let output = child.wait_with_output()?;
 
-    output_to_result(output)
+    if !output.status.success() {
+        error!(
+            "Failed to stop containers: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Err(anyhow::anyhow!("Failed to strop containers"))
+    } else {
+        Ok(())
+    }
 }
 
 fn compose_command(project: &Project) -> Command {
@@ -125,12 +135,15 @@ fn compose_command(project: &Project) -> Command {
     command
 }
 
-pub fn start_containers(project: &Project) -> std::io::Result<String> {
+pub fn start_containers(project: &Project) -> anyhow::Result<()> {
     let console_version = if cfg!(debug_assertions) {
         "latest"
     } else {
         CLI_VERSION
     };
+
+    project.create_internal_redpanda_volume()?;
+    project.create_internal_clickhouse_volume()?;
 
     let child = compose_command(project)
         .arg("up")
@@ -158,9 +171,18 @@ pub fn start_containers(project: &Project) -> std::io::Result<String> {
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
+
     let output = child.wait_with_output()?;
 
-    output_to_result(output)
+    if !output.status.success() {
+        error!(
+            "Failed to start containers: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Err(anyhow::anyhow!("Failed to start containers"))
+    } else {
+        Ok(())
+    }
 }
 
 pub fn create_compose_file(project: &Project) -> std::io::Result<()> {
@@ -169,7 +191,7 @@ pub fn create_compose_file(project: &Project) -> std::io::Result<()> {
     std::fs::write(compose_file, COMPOSE_FILE)
 }
 
-pub fn run_rpk_cluster_info(project_name: &str) -> std::io::Result<String> {
+pub fn run_rpk_cluster_info(project_name: &str) -> anyhow::Result<()> {
     let child = Command::new("docker")
         .arg("exec")
         .arg(format!("{}-{}", project_name, REDPANDA_CONTAINER_NAME))
@@ -182,7 +204,15 @@ pub fn run_rpk_cluster_info(project_name: &str) -> std::io::Result<String> {
 
     let output = child.wait_with_output()?;
 
-    output_to_result(output)
+    if !output.status.success() {
+        error!(
+            "Failed to stop containers: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Err(anyhow::anyhow!("Failed to strop containers"))
+    } else {
+        Ok(())
+    }
 }
 
 pub fn run_rpk_command(project_name: &str, args: Vec<String>) -> std::io::Result<String> {
@@ -247,17 +277,6 @@ pub fn check_status() -> std::io::Result<Vec<String>> {
 
     let errors: Option<Vec<String>> = from_slice(&output.stdout)?;
     Ok(errors.unwrap_or_default())
-}
-
-fn output_to_result(output: std::process::Output) -> std::io::Result<String> {
-    if output.status.success() {
-        Ok(String::from_utf8_lossy(&output.stdout).to_string())
-    } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
-            String::from_utf8_lossy(&output.stderr),
-        ))
-    }
 }
 
 pub fn buildx(

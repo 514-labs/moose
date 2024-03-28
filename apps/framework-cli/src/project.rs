@@ -36,6 +36,11 @@ use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, versi
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 
+use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS;
+use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS;
+use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA;
+use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS;
+use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM};
 use crate::utilities::constants::{FLOWS_DIR, FLOW_FILE, PROJECT_CONFIG_FILE, SAMPLE_FLOWS_DIR};
@@ -198,12 +203,18 @@ impl Project {
 
     pub fn create_deno_files(&self) -> Result<(), std::io::Error> {
         let deno_dir = self.internal_dir()?.join(DENO_DIR);
+
+        if !deno_dir.exists() {
+            std::fs::create_dir_all(&deno_dir)?;
+        }
+
         let transform_file_path = deno_dir.join(DENO_TRANSFORM);
 
-        let mut transform_file = std::fs::File::create(transform_file_path)?;
-
-        let transform_file_content = include_str!("framework/transform.ts");
-        transform_file.write_all(transform_file_content.as_bytes())?;
+        if !transform_file_path.exists() {
+            let mut transform_file = std::fs::File::create(transform_file_path)?;
+            let transform_file_content = include_str!("framework/transform.ts");
+            transform_file.write_all(transform_file_content.as_bytes())?;
+        }
 
         Ok(())
     }
@@ -247,8 +258,11 @@ impl Project {
     }
 
     pub fn flows_dir(&self) -> PathBuf {
-        let mut flows_dir = self.app_dir();
-        flows_dir.push(FLOWS_DIR);
+        let flows_dir = self.app_dir().join(FLOWS_DIR);
+
+        if !flows_dir.exists() {
+            std::fs::create_dir_all(&flows_dir).expect("Failed to create flows directory");
+        }
 
         debug!("Flows dir: {:?}", flows_dir);
         flows_dir
@@ -279,6 +293,23 @@ impl Project {
         }
 
         Ok(internal_dir)
+    }
+
+    pub fn create_internal_clickhouse_volume(&self) -> anyhow::Result<()> {
+        let clikhouse_dir = self.internal_dir()?;
+
+        std::fs::create_dir_all(clikhouse_dir.join(CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS))?;
+        std::fs::create_dir_all(clikhouse_dir.join(CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA))?;
+        std::fs::create_dir_all(clikhouse_dir.join(CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS))?;
+        std::fs::create_dir_all(clikhouse_dir.join(CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS))?;
+
+        Ok(())
+    }
+
+    pub fn create_internal_redpanda_volume(&self) -> anyhow::Result<()> {
+        let redpanda_dir = self.internal_dir()?;
+        std::fs::create_dir_all(redpanda_dir.join(CLI_DEV_REDPANDA_VOLUME_DIR))?;
+        Ok(())
     }
 
     pub fn version(&self) -> &str {

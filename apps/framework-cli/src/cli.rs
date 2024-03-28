@@ -5,7 +5,7 @@ mod commands;
 pub mod local_webserver;
 mod logger;
 mod routines;
-mod settings;
+pub mod settings;
 mod watcher;
 
 use std::cmp::Ordering;
@@ -34,8 +34,10 @@ use crate::cli::{
 };
 use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
 use crate::project::Project;
+use crate::utilities::constants::CLI_VERSION;
 use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
 use crate::utilities::git::is_git_repo;
+use crate::utilities::templates;
 
 use self::routines::{
     clean::CleanProject, clean::DeleteVersions, docker_packager::BuildDockerfile,
@@ -99,10 +101,11 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 name,
                 language,
                 location,
+                template,
             } => {
                 info!(
-                    "Running init command with name: {}, language: {}, location: {}",
-                    name, language, location
+                    "Running init command with name: {}, language: {}, location: {}, template: {:?}",
+                    name, language, location, template
                 );
 
                 let dir_path = Path::new(location);
@@ -119,40 +122,67 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                     exit(1);
                 }
 
-                let project = Project::new(dir_path, name.clone(), *language);
-                let project_arc = Arc::new(project);
+                // TODO: refactor this to be extracted in different functions
+                match template {
+                    Some(template) => {
+                        let res =
+                            templates::generate_template(template, CLI_VERSION, dir_path).await;
 
-                debug!("Project: {:?}", project_arc);
+                        match res {
+                            Ok(_) => {
+                                show_message!(
+                                    MessageType::Success,
+                                    Message::new("Created".to_string(), "Template".to_string())
+                                );
+                            }
+                            Err(e) => {
+                                show_message!(
+                                    MessageType::Error,
+                                    Message {
+                                        action: "Init".to_string(),
+                                        details: format!("Failed to create template: {:?}", e),
+                                    }
+                                );
+                            }
+                        }
+                    }
+                    None => {
+                        let project = Project::new(dir_path, name.clone(), *language);
+                        let project_arc = Arc::new(project);
 
-                crate::utilities::capture::capture!(
-                    ActivityType::InitCommand,
-                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
-                    name.clone()
-                );
+                        debug!("Project: {:?}", project_arc);
 
-                let mut controller = RoutineController::new();
-                let run_mode = RunMode::Explicit {};
+                        crate::utilities::capture::capture!(
+                            ActivityType::InitCommand,
+                            CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                            name.clone()
+                        );
 
-                controller.add_routine(Box::new(InitializeProject::new(
-                    run_mode,
-                    project_arc.clone(),
-                )));
+                        let mut controller = RoutineController::new();
+                        let run_mode = RunMode::Explicit {};
 
-                controller.run_routines(run_mode);
+                        controller.add_routine(Box::new(InitializeProject::new(
+                            run_mode,
+                            project_arc.clone(),
+                        )));
 
-                project_arc
-                    .write_to_disk()
-                    .expect("Failed to write project to file");
+                        controller.run_routines(run_mode);
 
-                let is_git_repo =
-                    is_git_repo(dir_path).expect("Failed to check if directory is a git repo");
+                        project_arc
+                            .write_to_disk()
+                            .expect("Failed to write project to file");
 
-                if !is_git_repo {
-                    crate::utilities::git::create_init_commit(project_arc, dir_path);
-                    show_message!(
-                        MessageType::Success,
-                        Message::new("Created".to_string(), "Git Repository".to_string())
-                    );
+                        let is_git_repo = is_git_repo(dir_path)
+                            .expect("Failed to check if directory is a git repo");
+
+                        if !is_git_repo {
+                            crate::utilities::git::create_init_commit(project_arc, dir_path);
+                            show_message!(
+                                MessageType::Success,
+                                Message::new("Created".to_string(), "Git Repository".to_string())
+                            );
+                        }
+                    }
                 }
             }
             Commands::Build { docker } => {

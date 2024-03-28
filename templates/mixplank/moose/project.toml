@@ -3,6 +3,7 @@ language = "Typescript"
 [redpanda_config]
 broker = "localhost:19092"
 message_timeout_ms = 1000
+retention_ms = 30000
 
 [clickhouse_config]
 db_name = "local"
@@ -16,6 +17,10 @@ kafka_port = 9092
 
 [http_server_config]
 host = "localhost"
+port = 4000
+
+[instrumentation_config]
+host = "34.82.14.129"
 port = 4000
 
 [console_config]

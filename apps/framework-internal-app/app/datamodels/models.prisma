@@ -15,3 +15,11 @@ model ParsedActivity {
     activity  String
 }
 
+model MooseEvent {
+    id              String @id
+    project         String
+    activityType    String
+    sequenceId      String
+    timestamp       DateTime
+    cliVersion      String
+}

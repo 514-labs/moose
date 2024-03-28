@@ -17,26 +17,26 @@ use uuid::Uuid;
 
 #[derive(Debug, Clone, Serialize)]
 pub enum ActivityType {
-    #[serde(rename = "devCommand")]
-    DevCommand,
-    #[serde(rename = "initCommand")]
-    InitCommand,
     #[serde(rename = "buildCommand")]
     BuildCommand,
-    #[serde(rename = "dockerCommand")]
-    DockerCommand,
-    #[serde(rename = "cleanCommand")]
-    CleanCommand,
-    #[serde(rename = "stopCommand")]
-    StopCommand,
-    #[serde(rename = "prodCommand")]
-    ProdCommand,
     #[serde(rename = "bumpVersionCommand")]
     BumpVersionCommand,
+    #[serde(rename = "cleanCommand")]
+    CleanCommand,
+    #[serde(rename = "devCommand")]
+    DevCommand,
+    #[serde(rename = "dockerCommand")]
+    DockerCommand,
+    #[serde(rename = "initCommand")]
+    InitCommand,
+    #[serde(rename = "prodCommand")]
+    ProdCommand,
+    #[serde(rename = "stopCommand")]
+    StopCommand,
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct UserActivity {
+pub struct MooseEvent {
     pub id: Uuid,
     pub project: String,
     #[serde(rename = "activityType")]
@@ -52,7 +52,7 @@ pub struct UserActivity {
 macro_rules! capture {
     ($activity_type:expr, $sequence_id:expr, $project_name:expr) => {
         use crate::project::PROJECT;
-        use crate::utilities::capture::{ActivityType, UserActivity};
+        use crate::utilities::capture::{ActivityType, MooseEvent};
         use crate::utilities::constants;
         use chrono::Utc;
         // use reqwest::Client;
@@ -60,7 +60,7 @@ macro_rules! capture {
         use uuid::Uuid;
 
         #[allow(unused)]
-        let event = &json!(UserActivity {
+        let event = json!(MooseEvent {
             id: Uuid::new_v4(),
             project: $project_name,
             activity_type: $activity_type,
@@ -74,7 +74,7 @@ macro_rules! capture {
             guard.instrumentation_config.url().clone()
         };
         #[allow(unused)]
-        let prod_url = format!("{}/ingest/UserActivity", remote_url);
+        let prod_url = format!("{}/ingest/MooseEvent", remote_url);
 
         // let client = Client::new();
         // let res = client

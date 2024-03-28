@@ -67,7 +67,7 @@ export default function CodeCard({ title, snippets }: CodeCardProps) {
             defaultValue={selectedSnippet.language}
             onValueChange={(value) => {
               const snippet = snippets.find(
-                (snippet) => snippet.language === value
+                (snippet) => snippet.language === value,
               );
               if (snippet) {
                 setSelectedSnippet(snippet);

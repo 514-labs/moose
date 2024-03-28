@@ -111,6 +111,14 @@ fn recursive_dump_tree_content(
     Ok(())
 }
 
+pub fn current_commit_hash(project: &Project) -> Result<String, Error> {
+    let repo = Repository::open(project.project_location.clone())?;
+    let head = repo.head()?;
+    let mut hash = head.target().unwrap().to_string();
+    hash.truncate(7);
+    Ok(hash)
+}
+
 fn file_system_error_to_git_error(err: std::io::Error) -> Error {
     Error::new(
         ErrorCode::GenericError,

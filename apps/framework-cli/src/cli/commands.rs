@@ -47,6 +47,9 @@ pub enum Commands {
     Prod {},
     /// Generates missing migration files
     Generate(GenerateArgs),
+    BumpVersion {
+        new_version: Option<String>,
+    },
     // Updates the redpanda cluster and clickhouse database with the latest objects
     Update {},
     // Stops development infrastructure

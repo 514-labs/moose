@@ -31,6 +31,8 @@ pub enum ActivityType {
     StopCommand,
     #[serde(rename = "prodCommand")]
     ProdCommand,
+    #[serde(rename = "bumpVersionCommand")]
+    BumpVersionCommand,
 }
 
 #[derive(Debug, Clone, Serialize)]

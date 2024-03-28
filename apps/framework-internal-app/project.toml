@@ -20,8 +20,7 @@ host = "localhost"
 port = 4000
 
 [instrumentation_config]
-host = "34.82.14.129"
-port = 4000
+host = "moosefood.514.dev"
 
 [console_config]
 host_port = 3001

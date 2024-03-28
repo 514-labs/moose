@@ -66,24 +66,22 @@ impl Default for LocalWebserverConfig {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RemoteWebserverConfig {
     pub host: String,
-    pub port: u16,
 }
 
 impl RemoteWebserverConfig {
-    pub fn new(host: String, port: u16) -> Self {
-        Self { host, port }
+    pub fn new(host: String) -> Self {
+        Self { host }
     }
 
     pub fn url(&self) -> String {
-        format!("http://{}:{}", self.host, self.port)
+        format!("https://{}", self.host)
     }
 }
 
 impl Default for RemoteWebserverConfig {
     fn default() -> Self {
         Self {
-            host: "34.82.14.129".to_string(),
-            port: 4000,
+            host: "moosefood.514.dev".to_string(),
         }
     }
 }

@@ -117,7 +117,7 @@ pub fn stop_containers(project: &Project) -> anyhow::Result<()> {
             "Failed to stop containers: {}",
             String::from_utf8_lossy(&output.stderr)
         );
-        return Err(anyhow::anyhow!("Failed to strop containers"));
+        Err(anyhow::anyhow!("Failed to strop containers"))
     } else {
         Ok(())
     }
@@ -179,7 +179,7 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
             "Failed to start containers: {}",
             String::from_utf8_lossy(&output.stderr)
         );
-        return Err(anyhow::anyhow!("Failed to start containers"));
+        Err(anyhow::anyhow!("Failed to start containers"))
     } else {
         Ok(())
     }
@@ -209,7 +209,7 @@ pub fn run_rpk_cluster_info(project_name: &str) -> anyhow::Result<()> {
             "Failed to stop containers: {}",
             String::from_utf8_lossy(&output.stderr)
         );
-        return Err(anyhow::anyhow!("Failed to strop containers"));
+        Err(anyhow::anyhow!("Failed to strop containers"))
     } else {
         Ok(())
     }

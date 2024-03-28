@@ -126,7 +126,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 match template {
                     Some(template) => {
                         let res =
-                            templates::generate_template(&template, &CLI_VERSION, dir_path).await;
+                            templates::generate_template(template, CLI_VERSION, dir_path).await;
 
                         match res {
                             Ok(_) => {

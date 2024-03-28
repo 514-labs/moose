@@ -77,94 +77,94 @@
 
 
 /* Nextra overrides */
-.nx-max-w-\[90rem\] {
+.docs .nx-max-w-\[90rem\] {
   max-width: none;
 }
 
-* {
+.docs * {
   font-weight: 400 !important;
 }
 
-h2 {
+.docs h2 {
     margin-bottom: none;
 }
 
-h2.nx-border-b {
+.docs h2.nx-border-b {
     border-bottom: none;
 }
 
-div.nx-border-b {
+.docs div.nx-border-b {
     border-bottom: none;
 }
 
-div.nx-border-t {
+.docs div.nx-border-t {
     border-top: none;
 }
 
-:is(html[class~=dark] .dark\:nx-bg-dark) {
-  background-color: black;
+.docs :is(html[class~=dark] .dark\:nx-bg-dark) {
+  background-color: hsl(var(--background)) !important;
 }
 
-:is(html[class~=dark] body) {
-  background-color: black;
+.docs :is(html[class~=dark] body) {
+  background-color: hsl(var(--background)) !important;
 }
 
-:is(html[class~=dark] .dark\:nx-shadow-\[0_-1px_0_rgba\(255\,255\,255\,\.1\)_inset\]) {
+.docs :is(html[class~=dark] .dark\:nx-shadow-\[0_-1px_0_rgba\(255\,255\,255\,\.1\)_inset\]) {
   box-shadow: none;
 }
 
-:is(html[class~=dark] .nextra-nav-container-blur) {
-  background-color: rgba(0, 0, 0, 0.8) !important;
+.docs :is(html[class~=dark] .nextra-nav-container-blur) {
+  background-color: hsl(var(--background) / 0.8) !important;
 }
 
-:is(html[class~=dark] .dark\:nx-shadow-\[0_-12px_16px_\#111\]) {
+.docs :is(html[class~=dark] .dark\:nx-shadow-\[0_-12px_16px_\#111\]) {
   box-shadow: none;
 }
 
-[data-theme="dark"]#logo-path {
+.docs [data-theme="dark"]#logo-path {
   color: white;
 }
 
-th, td {
+.docs th, td {
   border: none;
 }
 
-th {
+.docs th {
   text-align: left;
 }
 
-tr:nth-child(2n) {
+.docs tr:nth-child(2n) {
   background-color: inherit !important;
 }
 
-table {
+.docs table {
   table-layout: auto;
   
 }
 
-thead > tr {
+.docs thead > tr {
   border-top: none;
 }
 
-table, thead, tbody {
+.docs table, thead, tbody {
   display: table;
   width: 100%;
 }
 
-:is(html[class~=dark] tr) {
-  border-color: rgba(38,38,38,var(--tw-border-opacity));
+.docs :is(html[class~=dark] tr) {
+  border-color: hsl(var(--muted-foreground));
 }
 
-li.active > a {
+.docs li.active > a {
   color: var(--primary-foreground) !important;
   background-color: transparent !important;
 }
 
-li.active > a > p {
+.docs li.active > a > p {
   color: var(--primary-foreground) !important;
   background-color: transparent !important;
 }
 
-aside.md\:nx-w-64 {
+.docs aside.md\:nx-w-64 {
   width: 20rem ;
 }

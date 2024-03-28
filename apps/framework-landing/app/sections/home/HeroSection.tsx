@@ -10,7 +10,6 @@ import { Display, Text } from "design-system/typography";
 
 export const HeroSection = () => {
   const content = {
-    label: "For all developers",
     tagLine: "Delightful & Insightful",
     description: "The developer framework for your data & analytics stack",
     cta: {
@@ -26,7 +25,6 @@ export const HeroSection = () => {
         <Grid>
           <HalfWidthContentContainer className="xl:col-start-7 md:col-span-9 xl:col-span-6">
             <div>
-              <Text> {content.label} </Text>
               <Display> {content.tagLine} </Display>
               <Text> {content.description} </Text>
             </div>

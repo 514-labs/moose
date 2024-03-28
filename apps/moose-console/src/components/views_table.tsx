@@ -21,7 +21,7 @@ export function ViewsTable({ models }: { models: DataModel[] }) {
       rows={modelRows}
       onRowClick={(row) =>
         router.push(
-          `/infrastructure/databases/${row.database}/tables/${row.uuid}`
+          `/infrastructure/databases/${row.database}/tables/${row.uuid}`,
         )
       }
     />

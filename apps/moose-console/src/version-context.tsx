@@ -49,7 +49,7 @@ export const VersionProvider = ({
 
   const models = useMemo(
     () => getModelsByVersion(data, version),
-    [version, data]
+    [version, data],
   );
 
   return (

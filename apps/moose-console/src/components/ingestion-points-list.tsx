@@ -25,7 +25,7 @@ export function IngestionPointsList({
       rows={ingestionRows}
       onRowClick={(point) =>
         router.push(
-          `/infrastructure/ingestion-points/${point.route.split("/").at(-2)}`
+          `/infrastructure/ingestion-points/${point.route.split("/").at(-2)}`,
         )
       }
     ></PreviewTable>

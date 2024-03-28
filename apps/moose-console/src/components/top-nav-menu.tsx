@@ -73,7 +73,7 @@ const NavItem = (section: Section, path: string, key: number) => {
           "text-lg font-normal rounded-none",
           section.href.split("/").at(1) === path.split("/").at(1)
             ? "text-foreground border-b-2 border-b-foreground"
-            : "text-muted-foreground"
+            : "text-muted-foreground",
         )}
       >
         <NavigationMenuLink href={section.href}>
@@ -104,7 +104,7 @@ export const TopNavMenu = () => {
             "text-lg font-normal rounded-none",
             path === "/"
               ? "text-foreground border-b-2 border-b-foreground"
-              : "text-muted-foreground"
+              : "text-muted-foreground",
           )}
         >
           <NavigationMenuLink href="/">Overview</NavigationMenuLink>
@@ -115,7 +115,7 @@ export const TopNavMenu = () => {
             href="https://docs.moosejs.com"
             className={cn(
               navigationMenuTriggerStyle(),
-              "text-lg text-muted-foreground font-normal rounded-none"
+              "text-lg text-muted-foreground font-normal rounded-none",
             )}
           >
             Docs

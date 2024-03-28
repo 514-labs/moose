@@ -35,7 +35,7 @@ export function column_type_mapper(source_type: string) {
 
 export function getModelsByVersion(
   cliData: CliData,
-  version: VersionKey = CURRENT_VERSION
+  version: VersionKey = CURRENT_VERSION,
 ) {
   if (version === CURRENT_VERSION) {
     return cliData.current.models;
@@ -55,11 +55,11 @@ export function getModelByTableId(models: DataModel[], tableId: string) {
 
 export function getModelByIngestionPointId(
   models: DataModel[],
-  ingestionPointId: string
+  ingestionPointId: string,
 ) {
   const model = models.find(
     (model) =>
-      model.ingestion_point.route_path.split("/").at(-2) === ingestionPointId
+      model.ingestion_point.route_path.split("/").at(-2) === ingestionPointId,
   );
   if (model === undefined) throw new Error(`Model not found`);
   return model;

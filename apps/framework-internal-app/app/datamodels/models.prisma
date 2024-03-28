@@ -15,7 +15,7 @@ model ParsedActivity {
     activity  String
 }
 
-model MooseEvent {
+model MooseActivity {
     id              String @id
     project         String
     activityType    String

@@ -36,7 +36,7 @@ pub enum ActivityType {
 }
 
 #[derive(Debug, Clone, Serialize)]
-pub struct MooseEvent {
+pub struct MooseActivity {
     pub id: Uuid,
     pub project: String,
     #[serde(rename = "activityType")]
@@ -52,7 +52,7 @@ pub struct MooseEvent {
 macro_rules! capture {
     ($activity_type:expr, $sequence_id:expr, $project_name:expr) => {
         use crate::project::PROJECT;
-        use crate::utilities::capture::{ActivityType, MooseEvent};
+        use crate::utilities::capture::{ActivityType, MooseActivity};
         use crate::utilities::constants;
         use chrono::Utc;
         // use reqwest::Client;
@@ -60,7 +60,7 @@ macro_rules! capture {
         use uuid::Uuid;
 
         #[allow(unused)]
-        let event = json!(MooseEvent {
+        let event = json!(MooseActivity {
             id: Uuid::new_v4(),
             project: $project_name,
             activity_type: $activity_type,
@@ -74,7 +74,7 @@ macro_rules! capture {
             guard.instrumentation_config.url().clone()
         };
         #[allow(unused)]
-        let prod_url = format!("{}/ingest/MooseEvent", remote_url);
+        let prod_url = format!("{}/ingest/MooseActivity", remote_url);
 
         // let client = Client::new();
         // let res = client

@@ -9,7 +9,7 @@ import { PlaceholderImage } from "../../../components.tsx/PlaceholderImage";
 export const ManifestoSection = () => {
   return (
     <Section>
-      <Grid>
+      <Grid className="gap-y-5">
         <HalfWidthContentContainer className="2xl:col-span-3">
           <PlaceholderImage className="aspect-square bg-muted sticky top-20" />
         </HalfWidthContentContainer>

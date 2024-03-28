@@ -21,7 +21,11 @@ fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
     let dir: &str = temp.path().to_str().unwrap();
 
     // List the content of dir
-    temp.child(".moose").assert(predicate::path::missing());
+    temp.child("package.json")
+        .assert(predicate::path::missing());
+    temp.child("app").assert(predicate::path::missing());
+    temp.child("project.toml")
+        .assert(predicate::path::missing());
 
     let mut cmd = Command::cargo_bin("moose-cli")?;
 
@@ -31,9 +35,9 @@ fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
 
     // TODO add more specific tests when the layout of the
     // app is more stable
-    temp.child(".moose").assert(predicate::path::exists());
     temp.child("package.json").assert(predicate::path::exists());
     temp.child("app").assert(predicate::path::exists());
+    temp.child("project.toml").assert(predicate::path::exists());
 
     Ok(())
 }

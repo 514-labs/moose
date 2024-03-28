@@ -33,7 +33,7 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
         <>
           <div className="z-50 sticky w-full py-2">
             <div className="flex h-20 justify-between items-center">
-              <Grid className="sm:grow">
+              <Grid className="grow md:grid md:grid-cols-12 md:gap-x-10">
                 <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary">
                   <Link href="/" className="flex h-full items-center">
                     <Logo property={property} subProperty={subProperty} />

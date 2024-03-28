@@ -32,7 +32,7 @@ export const SuperDisplay = ({
   return (
     <h1
       className={cn(
-        "text-primary text-5xl sm:text-7xl md:text-8xl lg:text-9xl 2xl:text-[12rem] 3xl::text-[13rem]",
+        "text-primary text-4xl xs:text-5xl sm:text-7xl md:text-8xl lg:text-9xl 2xl:text-[12rem] 3xl::text-[13rem]",
         className
       )}
     >

@@ -18,7 +18,7 @@ export default function MdxLayout({
     <Section>
       <Grid>
         <HalfWidthContentContainer>
-          <div className="sticky top-36">{meta}</div>
+          <div className="md:sticky md:top-36">{meta}</div>
         </HalfWidthContentContainer>
         <HalfWidthContentContainer>{children}</HalfWidthContentContainer>
       </Grid>

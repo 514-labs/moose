@@ -45,6 +45,34 @@ jobs:
           generateReleaseNotes: true
           commit: ${{ github.sha }}
 
+  package-and-publish-templates:
+    name: Package and Publish Templates
+    runs-on: ubuntu-20.04
+    needs:
+      - version
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package all templates
+        run: ./scripts/package-templates.js
+
+      - name: Authenticate with GCP
+        uses: "google-github-actions/auth@v2"
+        with:
+          service_account: "github-actions@extended-ward-415018.iam.gserviceaccount.com"
+          workload_identity_provider: "projects/167275965848/locations/global/workloadIdentityPools/github/providers/github-actions-repos"
+
+      - name: Upload templates to GCP
+        uses: "google-github-actions/upload-cloud-storage@v2"
+        with:
+          path: "template-packages"
+          destination: "templates.514.dev/${{ needs.version.outputs.version }}/"
+          parent: false
+
   build-and-publish-binaries:
     name: Build CLI Binaries
     runs-on: ${{ matrix.build.os }}
@@ -52,8 +80,6 @@ jobs:
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
-    outputs:
-      version: ${{ steps.version.outputs.version }}
     strategy:
       fail-fast: false
       matrix:

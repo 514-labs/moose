@@ -10,7 +10,7 @@ import TimeSeriesForm from "@/components/time-series-form";
 import HistogramChart from "@/components/histogram-chart";
 import { ModelMeta, getModelMeta } from "@/insights/model-meta";
 import { TimeUnit } from "@/lib/time-utils";
-import { eventConfigFromNames } from "@/config";
+import { eventConfigFromNames } from "@/app/events";
 import { MetricForm } from "@/lib/form-types";
 
 function defaultBreakdown(breakdown: string[]) {

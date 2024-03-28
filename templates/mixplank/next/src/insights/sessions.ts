@@ -1,4 +1,4 @@
-import { pageViewEvent } from "@/config";
+import { pageViewEvent } from "@/app/events";
 import { createCTE } from "./util";
 
 // These queries create virtual session events

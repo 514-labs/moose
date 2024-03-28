@@ -13,6 +13,7 @@ export default function OverviewPage() {
 
   return (
     <section className="p-4 grow overflow-y-scroll">
+      <div className="text-8xl">Overview</div>
       <PrimitivesOverviewList models={models} />
       <InfrastructureOverviewList models={models} />
     </section>

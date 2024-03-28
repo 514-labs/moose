@@ -1,6 +1,11 @@
 import { TimeUnit } from "@/lib/time-utils";
-import { EventTable } from "../config";
-import { DateRange, createDateStub, timeseries } from "./time-query";
+import { EventTable } from "../app/events";
+import {
+  DateRange,
+  createDateStub,
+  timeToClickHouseInterval,
+  timeseries,
+} from "./time-query";
 import { createCTE } from "./util";
 import { getData } from "@/app/data";
 import { sessionData } from "./sessions";
@@ -52,17 +57,6 @@ export function virtualTableQuery(
     `SELECT timestamp, event_name, session_id ${createColumnSnippet(columnNames)} from combined_events
 ORDER BY timestamp DESC`
   );
-}
-
-function timeToClickHouseInterval(timeUnit: TimeUnit) {
-  switch (timeUnit) {
-    case TimeUnit.DAY:
-      return "toStartOfDay";
-    case TimeUnit.HOUR:
-      return "toStartOfHour";
-    case TimeUnit.MINUTE:
-      return "toStartOfMinute";
-  }
 }
 
 export function data(

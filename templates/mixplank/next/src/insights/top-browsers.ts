@@ -1,6 +1,6 @@
 import { analyticsQuery } from "./analytics_mv";
 import { analyticsPages } from "./analytics_pages";
-import { eventTables } from "../config";
+import { eventTables } from "../app/events";
 import { DateRange, rangeToNum } from "./time-query";
 import { createCTE } from "./util";
 

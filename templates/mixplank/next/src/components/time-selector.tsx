@@ -43,7 +43,7 @@ function IntervalSelector({ interval, setInterval }: IntervalProps) {
       value={interval}
       onValueChange={(val: TimeUnit) => setInterval(val)}
     >
-      <SelectTrigger className="rounded-xl capitalize w-20">
+      <SelectTrigger className="rounded-xl capitalize w-24">
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
@@ -58,6 +58,7 @@ export default function TimeSelector(props: Props) {
   return (
     <div className="flex gap-2 mx-4">
       <div className="">
+        <DateButton {...props} range={DateRange["1H"]} />
         <DateButton {...props} range={DateRange["Today"]} />
         <DateButton {...props} range={DateRange["3D"]} />
         <DateButton {...props} range={DateRange["7D"]} />

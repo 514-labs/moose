@@ -1,4 +1,4 @@
-import { EventTable } from "../config";
+import { EventTable } from "../app/events";
 import { virtualTableQuery } from "./table-query";
 import { DateRange, createDateStub } from "./time-query";
 import { createCTE } from "./util";
@@ -6,7 +6,7 @@ import { createCTE } from "./util";
 type FunnelQuery = EventTable[];
 
 function createColumnSnippet(columnNames: string[]) {
-  if (columnNames.length == 0) {
+  if (!columnNames || columnNames.length == 0) {
     return "";
   }
   return ", " + columnNames.map((b) => `${b}`).join(", ");
@@ -60,15 +60,17 @@ export const createFunnelQuery = (
     return "";
   }
 
+  const columns = columnNames.filter((b) => b != null);
+
   const cte = {
-    ["CombinedEvents"]: virtualTableQuery(cleanEvents, dateRange, columnNames),
-    ["LevelCounts"]: levelCounts("CombinedEvents", cleanEvents, columnNames),
+    ["CombinedEvents"]: virtualTableQuery(cleanEvents, dateRange, columns),
+    ["LevelCounts"]: levelCounts("CombinedEvents", cleanEvents, columns),
   };
   return (
     createCTE(cte) +
-    `SELECT level${createColumnSnippet(columnNames)}, sum(count()) OVER (${createPartitionSnippet(columnNames)} ORDER BY level DESC) AS count
+    `SELECT level${createColumnSnippet(columns)}, sum(count()) OVER (${createPartitionSnippet(columns)} ORDER BY level DESC) AS count
         FROM LevelCounts
-        GROUP BY level${createColumnSnippet(columnNames)}
+        GROUP BY level${createColumnSnippet(columns)}
         ORDER BY level ASC;`
   );
 };

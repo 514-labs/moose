@@ -9,7 +9,7 @@ import FunnelChart from "@/components/funnel-chart";
 import { DateRange } from "@/insights/time-query";
 import TimeSelector from "@/components/time-selector";
 import TimeSeriesForm from "@/components/time-series-form";
-import { eventConfigFromNames } from "@/config";
+import { eventConfigFromNames } from "@/app/events";
 import { ModelMeta, getModelMeta } from "@/insights/model-meta";
 import { MetricForm } from "@/lib/form-types";
 

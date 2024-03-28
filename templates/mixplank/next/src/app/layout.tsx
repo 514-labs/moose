@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import { NavTabs } from "./nav-tabs";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -24,16 +25,9 @@ export default function RootLayout({
             </a>
             <span className="flex-grow" />
           </header>
-          <span className="flex-grow" />
-          <div className="py-3">
-            <a className="py-4" href={"/insights"}>
-              <span className="py-4">Insights</span>
-            </a>
-          </div>
-          <div className="ml-3">
-            <div className="py-3 flex flex-row align-middle justify-center "></div>
-          </div>
         </nav>
+        <div className="text-6xl m-4">Product Analytics</div>
+        <NavTabs />
         {children}
       </body>
     </html>

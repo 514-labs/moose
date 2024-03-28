@@ -1,4 +1,4 @@
-import { eventTables } from "@/config";
+import { eventTables } from "@/app/events";
 import MultiSelectForm from "./multi-select-form";
 import { ModelMeta } from "@/insights/model-meta";
 import { MetricForm } from "@/lib/form-types";

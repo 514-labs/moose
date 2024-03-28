@@ -113,6 +113,7 @@ pub mod start;
 pub mod stop;
 mod util;
 pub mod validate;
+pub mod version;
 
 #[derive(Clone)]
 pub struct RoutineSuccess {

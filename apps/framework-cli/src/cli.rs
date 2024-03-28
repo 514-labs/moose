@@ -8,6 +8,7 @@ mod routines;
 mod settings;
 mod watcher;
 
+use std::cmp::Ordering;
 use std::path::Path;
 use std::process::exit;
 use std::sync::Arc;
@@ -22,6 +23,7 @@ use logger::setup_logging;
 use settings::{read_settings, Settings};
 
 use crate::cli::routines::start::CopyOldSchema;
+use crate::cli::routines::version::BumpVersion;
 use crate::cli::{
     display::{Message, MessageType},
     routines::{
@@ -30,6 +32,7 @@ use crate::cli::{
     },
     settings::{init_config_file, setup_user_directory},
 };
+use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
 use crate::project::Project;
 use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
 use crate::utilities::git::is_git_repo;
@@ -254,6 +257,42 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
             Commands::Update {} => {
                 // This command may not be needed if we have incredible automation
                 todo!("Will update the project's underlying infrastructure based on any added objects")
+            }
+            Commands::BumpVersion { new_version } => {
+                let project = load_project();
+                let project_arc = Arc::new(project);
+
+                crate::utilities::capture::capture!(
+                    ActivityType::BumpVersionCommand,
+                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                    project_arc.name().clone()
+                );
+
+                let mut controller = RoutineController::new();
+                let run_mode = RunMode::Explicit {};
+
+                let new_version = match new_version {
+                    None => {
+                        let current = parse_version(project_arc.version());
+                        let bump_location = if current.len() > 1 { 1 } else { 0 };
+
+                        let new_version = current
+                            .into_iter()
+                            .enumerate()
+                            .map(|(i, v)| match i.cmp(&bump_location) {
+                                Ordering::Less => v,
+                                Ordering::Equal => v + 1,
+                                Ordering::Greater => 0,
+                            })
+                            .collect::<Vec<i32>>();
+                        version_to_string(&new_version)
+                    }
+                    Some(new_version) => new_version.clone(),
+                };
+
+                controller
+                    .add_routine(Box::new(BumpVersion::new(project_arc.clone(), new_version)));
+                controller.run_routines(run_mode);
             }
             Commands::Stop {} => {
                 let mut controller = RoutineController::new();

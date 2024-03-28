@@ -4,4 +4,4 @@ export * from "./ui/separator";
 export * from "./theme-provider";
 export * from "./theme-toggle";
 export * from "./logo";
-export * from "./nav";
+export * from "./base-nav";

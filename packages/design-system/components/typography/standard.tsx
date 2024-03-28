@@ -14,8 +14,8 @@ export const BannerDisplay = ({
   return (
     <h1
       className={cn(
-        "text-primary text-9xl md:text-[20rem] text-nowrap",
-        className,
+        "text-primary text-nowrap text-9xl md:text-[20rem] ",
+        className
       )}
     >
       {children}
@@ -32,8 +32,8 @@ export const SuperDisplay = ({
   return (
     <h1
       className={cn(
-        "text-primary text-5xl sm:text-7xl md:text-8xl lg:text-9xl 2xl:text-[12rem]",
-        className,
+        "text-primary text-4xl xs:text-5xl sm:text-7xl md:text-8xl lg:text-9xl 2xl:text-[12rem] 3xl::text-[13rem]",
+        className
       )}
     >
       {children}
@@ -47,7 +47,11 @@ export const Display = ({
 }: ComponentPropsWithoutRef<"h2">) => {
   return (
     <h2
-      className={cn("text-primary text-7xl sm:text-9xl", textBase, className)}
+      className={cn(
+        "text-primary text-6xl sm:text-8xl 3xl:text-9xl",
+        textBase,
+        className
+      )}
     >
       {children}
     </h2>
@@ -60,7 +64,11 @@ export const Heading = ({
 }: ComponentPropsWithoutRef<"h3">) => {
   return (
     <h3
-      className={cn("text-primary text-5xl sm:text-7xl", textBase, className)}
+      className={cn(
+        "text-primary text-4xl sm:text-6xl 3xl:text-7xl",
+        textBase,
+        className
+      )}
     >
       {children}
     </h3>
@@ -76,17 +84,31 @@ export const SmallText = ({
 }) => {
   return (
     <p
-      className={cn("text-primary text-2xl 2xl:text-3xl ", textBase, className)}
+      className={cn(
+        "text-primary text-1xl 2xl:text-2xl 3xl:text-3xl",
+        textBase,
+        className
+      )}
     >
       {children}
     </p>
   );
 };
 
-interface TextProps extends React.HTMLProps<HTMLParagraphElement> {
-  className?: string;
-  children: ReactNode;
-}
+export const TextEmbed = forwardRef<
+  HTMLSpanElement,
+  ComponentPropsWithoutRef<"span">
+>(({ className, children, ...props }, ref) => {
+  return (
+    <span
+      ref={ref}
+      className={cn("text-primary text-2xl 2xl:text-3xl", textBase, className)}
+      {...props}
+    >
+      {children}
+    </span>
+  );
+});
 
 export const Text = forwardRef<
   HTMLParagraphElement,
@@ -96,9 +118,9 @@ export const Text = forwardRef<
     <p
       ref={ref}
       className={cn(
-        "text-primary text-2xl leading-normal 2xl:text-3xl 2xl:leading-normal",
+        "text-primary leading-normal 2xl:leading-normal text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl",
         textBase,
-        className,
+        className
       )}
       {...props}
     >
@@ -118,7 +140,7 @@ export const CodeSnippet = ({
     <div
       className={cn(
         "text-primary bg-muted rounded-md py-5 px-6 flex flex-row gap-5 cursor-pointer",
-        className,
+        className
       )}
     >
       <Text className="grow my-0">{children}</Text>

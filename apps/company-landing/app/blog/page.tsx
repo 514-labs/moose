@@ -1,9 +1,6 @@
 import { Posts } from "./posts-list";
 import { getPosts } from "../../lib/posts";
-import {
-  HalfWidthContentContainer,
-  Section,
-} from "design-system/components/containers";
+import { Section } from "design-system/components/containers";
 import { Display } from "design-system/typography";
 
 export default async function Blog() {

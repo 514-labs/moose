@@ -1,5 +1,8 @@
+import {Display, Heading, Text, TextEmbed} from "design-system/typography";
+import {Logo} from "design-system/components";``
+
 export default {
-  logo: <div>moosejs</div>,
+  logo: () => <Logo property="moosejs" subProperty="docs" />,
   project: {
     link: 'https://github.com/514-labs/moose'
   },
@@ -14,8 +17,38 @@ export default {
       <link rel="icon" href="/favicon.ico" type="image/x-icon" sizes="16x16" />
     </>
   ),
+
+  components: {
+    h1: ({children}) => <Heading>{children}</Heading>,
+    p: ({children}) => <Text>{children}</Text>,
+    ul: ({children}) => <TextEmbed>{children}</TextEmbed>,
+    ol: ({children}) => <TextEmbed>{children}</TextEmbed>
+  },
   primaryHue: 220,
   primarySaturation: 0,
+  sidebar: {
+    titleComponent({title}) {
+      return (
+        <Text className="my-0 text-muted-foreground">
+          {title}
+        </Text>
+      )
+    }
+  },
+  toc: {
+    title: () => {
+      return (
+        <TextEmbed> On this page </TextEmbed>
+      )
+    },
+    headingComponent({children}) {
+      return (
+        <Text className="my-0 text-muted-foreground">
+          {children}
+        </Text>
+      )
+    }
+  },
   footer: {
     text: (
       <span>

@@ -60,7 +60,7 @@ export const TemplatesSection = () => {
           <ThirdWidthContentContainer className="xl:order-1">
             <PlaceholderImage className=" bg-muted aspect-[4/3]" />
           </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="xl:justify-start xl:order-4">
+          <ThirdWidthContentContainer className="flex flex-col xl:justify-start xl:order-4">
             <Heading>
               {" "}
               {content.templates[0] && content.templates[0].title}{" "}
@@ -84,7 +84,7 @@ export const TemplatesSection = () => {
           <ThirdWidthContentContainer className=" xl:m-0 xl:order-1">
             <PlaceholderImage className=" bg-muted aspect-[4/3]" />
           </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="xl:justify-start xl:m-0  xl:order-4">
+          <ThirdWidthContentContainer className="flex flex-col xl:justify-start xl:m-0  xl:order-4">
             <Heading>
               {" "}
               {content.templates[1] && content.templates[1].title}{" "}
@@ -108,7 +108,7 @@ export const TemplatesSection = () => {
           <ThirdWidthContentContainer className="xl:order-1">
             <PlaceholderImage className="bg-muted aspect-[4/3]" />
           </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="xl:justify-start xl:order-4">
+          <ThirdWidthContentContainer className="flex flex-col  xl:justify-start xl:order-4">
             <Heading>
               {" "}
               {content.templates[2] && content.templates[2].title}{" "}

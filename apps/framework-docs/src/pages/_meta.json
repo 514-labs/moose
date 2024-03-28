@@ -1,12 +1,12 @@
 {
-    "index": {
-        "title": "Introduction",
-        "theme": {
-            "breadcrumb": false
-        }
-    },
-    "getting-started": "Getting Started",
-    "building": "Building Your App",
-    "moose-cli": "Moose CLI",
-    "on-prem": "Moose in the cloud"
+  "index": {
+    "title": "Introduction",
+    "theme": {
+      "breadcrumb": false
+    }
+  },
+  "getting-started": "Getting Started",
+  "building": "Building Your App",
+  "moose-cli": "Moose CLI",
+  "on-prem": "Moose in the cloud"
 }

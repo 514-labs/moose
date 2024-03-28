@@ -56,6 +56,12 @@ jobs:
       - name: Package all templates
         run: ./scripts/package-templates.js
 
+      - name: Authenticate with GCP
+        uses: "google-github-actions/auth@v2"
+        with:
+          service_account: "github-actions@extended-ward-415018.iam.gserviceaccount.com"
+          workload_identity_provider: "projects/167275965848/locations/global/workloadIdentityPools/github/providers/github-actions-repos"
+
   build-and-publish-binaries:
     name: Build CLI Binaries
     runs-on: ${{ matrix.build.os }}

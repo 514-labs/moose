@@ -48,8 +48,6 @@ export default function CodeCard({ title, snippets }: CodeCardProps) {
     [key: string]: string;
   }>({});
 
-  console.log(formatedCodeSnippets, "wtffff");
-
   return (
     <div>
       <div className="flex flex-row items-center py-2">
@@ -69,7 +67,7 @@ export default function CodeCard({ title, snippets }: CodeCardProps) {
             defaultValue={selectedSnippet.language}
             onValueChange={(value) => {
               const snippet = snippets.find(
-                (snippet) => snippet.language === value,
+                (snippet) => snippet.language === value
               );
               if (snippet) {
                 setSelectedSnippet(snippet);

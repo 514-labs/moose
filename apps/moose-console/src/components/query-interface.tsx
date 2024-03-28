@@ -134,7 +134,7 @@ const sqlKeyWords = [
 
 async function runQuery(
   client: WebClickHouseClient,
-  queryString: string,
+  queryString: string
 ): Promise<any> {
   const resultSet = await client.query({
     query: queryString,
@@ -153,7 +153,7 @@ const insertSomeText = (
   insert: string,
   originalValue: string,
   ref: RefObject<HTMLTextAreaElement>,
-  setter: Dispatch<SetStateAction<string>>,
+  setter: Dispatch<SetStateAction<string>>
 ) => {
   if (ref.current) {
     const selectionStart = ref.current.selectionStart;
@@ -175,21 +175,17 @@ export default function QueryInterface({
 
   // Create a ref to the textarea
 
-  console.log(model, "model");
   const { table } = model;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const tables = [`${table.database}.${table.name}`];
 
   const [value, setValue] = useState(
-    `SELECT * FROM ${table.database}.${table.name} LIMIT 50;`,
+    `SELECT * FROM ${table.database}.${table.name} LIMIT 50;`
   );
 
   const [results, setResults] = useState<any[]>([]);
   const [sqlKeyWordCount, setSqlKeyWordCount] = useState(12);
   const [tableCount, setTableCount] = useState(12);
-
-  console.log(sqlKeyWordCount, "value");
-  console.log(tableCount, "table");
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -265,7 +261,7 @@ export default function QueryInterface({
                                 word,
                                 value,
                                 textareaRef,
-                                setValue,
+                                setValue
                               );
                             }}
                             className="text-nowrap my-1"
@@ -306,7 +302,7 @@ export default function QueryInterface({
                                   word,
                                   value,
                                   textareaRef,
-                                  setValue,
+                                  setValue
                                 );
                               }}
                               className="text-nowrap my-1"

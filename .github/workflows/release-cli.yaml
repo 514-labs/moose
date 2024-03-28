@@ -45,6 +45,17 @@ jobs:
           generateReleaseNotes: true
           commit: ${{ github.sha }}
 
+  package-and-publish-templates:
+    name: Package and Publish Templates
+    runs-on: ubuntu-20.04
+    needs: version
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Package all templates
+        run: ./scripts/package-templates.js
+
   build-and-publish-binaries:
     name: Build CLI Binaries
     runs-on: ${{ matrix.build.os }}

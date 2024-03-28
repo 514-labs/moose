@@ -8,7 +8,9 @@ import { Analytics } from "@vercel/analytics/react";
 import { ReactNode } from "react";
 import { ThemeToggle } from "../components/ui/theme-toggle";
 import { TopNavMenu } from "components/top-nav-menu";
-import { VersionContext, VersionProvider } from "version-context";
+import { VersionProvider } from "version-context";
+import { CURRENT_VERSION } from "./types";
+import VersionSelect from "components/version-select";
 
 // Font files can be colocated inside of `app`
 const monoFont = localFont({
@@ -41,11 +43,11 @@ export default function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <VersionProvider version="current">
+          <VersionProvider version={CURRENT_VERSION}>
             <div className=" h-screen w-full flex flex-col">
               <nav className="flex flex-row w-screen px-4">
                 <header className="flex text-lg">
-                  <a className="py-4" href={"/"}>
+                  <a className="py-4 content-center" href={"/"}>
                     <span className="py-4">
                       moosejs{" "}
                       <span className="text-muted-foreground">console</span>
@@ -53,6 +55,7 @@ export default function RootLayout({
                   </a>
                   <span className="flex-grow" />
                 </header>
+                <VersionSelect />
                 <span className="flex-grow" />
                 <div className="py-3">
                   <TopNavMenu />

@@ -1,9 +1,9 @@
 import SnippetCard from "./snippet-card";
-import { CliData, Route } from "app/db";
 import CodeCard from "./code-card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
 import { cn } from "lib/utils";
 import { segmentedTabListStyle, segmentedTabTriggerStyle } from "./style-utils";
+import { CliData, Route } from "app/types";
 
 interface IngestionInstructionProps {
   cliData: CliData;
@@ -47,7 +47,6 @@ export default function IngestionInstructions({
               cliData.project &&
               `http://${cliData.project.http_server_config.host}:${cliData.project.http_server_config.port}/${ingestionPoint.route_path}`
             }
-            comment={`// from the sdk package directory ${cliData.project && cliData.project.project_file_location}/.moose/${cliData.project.name}-sdk`}
           />
           <div className="py-4">
             <div className="py-4">

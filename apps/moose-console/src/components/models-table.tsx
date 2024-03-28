@@ -1,5 +1,5 @@
 "use client";
-import { DataModel, ModelMeta } from "app/db";
+import { ModelMeta } from "app/types";
 import { PreviewTable } from "./preview-table";
 import { useRouter } from "next/navigation";
 
@@ -10,6 +10,11 @@ export function ModelsTable({ models }: { models: ModelMeta[] }) {
     columns: model.columns.length,
     db_name: model.db_name,
   }));
+
+  if (!modelRows.length) {
+    return <div>No models found</div>;
+  }
+
   return (
     <PreviewTable
       rows={modelRows}

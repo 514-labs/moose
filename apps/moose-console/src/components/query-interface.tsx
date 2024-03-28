@@ -6,7 +6,6 @@ import {
   ResizableHandle,
 } from "./ui/resizable";
 import { Textarea } from "./ui/textarea";
-import { Project, Table } from "app/db";
 import { Button } from "./ui/button";
 import {
   Dispatch,
@@ -21,6 +20,7 @@ import { PreviewTable } from "./preview-table";
 import { Badge } from "./ui/badge";
 import { Card, CardContent } from "./ui/card";
 import { WebClickHouseClient } from "@clickhouse/client-web/dist/client";
+import { DataModel, Project } from "app/types";
 
 const sqlKeyWords = [
   "SELECT",
@@ -134,7 +134,7 @@ const sqlKeyWords = [
 
 async function runQuery(
   client: WebClickHouseClient,
-  queryString: string,
+  queryString: string
 ): Promise<any> {
   const resultSet = await client.query({
     query: queryString,
@@ -145,8 +145,7 @@ async function runQuery(
 }
 
 interface QueryInterfaceProps {
-  table: Table;
-  related: Table[];
+  model: DataModel;
   project: Project;
 }
 
@@ -154,7 +153,7 @@ const insertSomeText = (
   insert: string,
   originalValue: string,
   ref: RefObject<HTMLTextAreaElement>,
-  setter: Dispatch<SetStateAction<string>>,
+  setter: Dispatch<SetStateAction<string>>
 ) => {
   if (ref.current) {
     const selectionStart = ref.current.selectionStart;
@@ -169,24 +168,28 @@ const insertSomeText = (
 };
 
 export default function QueryInterface({
-  table,
-  related,
+  model,
   project,
 }: QueryInterfaceProps) {
   const client = getClient(project);
 
   // Create a ref to the textarea
+
+  console.log(model, "model");
+  const { table } = model;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const tables = related
-    .filter((t) => !t.name.includes(".inner"))
-    .map((t) => `${t.database}.${t.name}`);
+  const tables = [`${table.database}.${table.name}`];
 
   const [value, setValue] = useState(
-    `SELECT * FROM ${table.database}.${table.name} LIMIT 50;`,
+    `SELECT * FROM ${table.database}.${table.name} LIMIT 50;`
   );
-  const [results, setResults] = useState<any[]>();
+
+  const [results, setResults] = useState<any[]>([]);
   const [sqlKeyWordCount, setSqlKeyWordCount] = useState(12);
   const [tableCount, setTableCount] = useState(12);
+
+  console.log(sqlKeyWordCount, "value");
+  console.log(tableCount, "table");
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -262,7 +265,7 @@ export default function QueryInterface({
                                 word,
                                 value,
                                 textareaRef,
-                                setValue,
+                                setValue
                               );
                             }}
                             className="text-nowrap my-1"
@@ -303,7 +306,7 @@ export default function QueryInterface({
                                   word,
                                   value,
                                   textareaRef,
-                                  setValue,
+                                  setValue
                                 );
                               }}
                               className="text-nowrap my-1"
@@ -342,7 +345,7 @@ export default function QueryInterface({
                     Run
                   </Button>
                 </div>
-                {results ? (
+                {results.length != 0 ? (
                   <PreviewTable rows={results} caption="query results" />
                 ) : (
                   "query results will appear here"

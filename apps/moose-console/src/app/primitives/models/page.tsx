@@ -1,14 +1,14 @@
+"use client";
 import { Separator } from "components/ui/separator";
-import { getCliData } from "app/db";
-import { unstable_noStore as noStore } from "next/cache";
 import { ModelsTable } from "components/models-table";
 import { Card } from "components/ui/card";
 import { NavBreadCrumb } from "components/nav-breadcrumb";
+import { useContext } from "react";
+import { VersionContext } from "version-context";
 
-export default async function ModelsPage(): Promise<JSX.Element> {
-  noStore();
-  const data = await getCliData();
-  const models = data.current.models.map(({ model }) => model);
+export default function ModelsPage() {
+  const { models } = useContext(VersionContext);
+  const modelMeta = models.map(({ model }) => model);
 
   return (
     <section className="p-4 max-h-screen grow overflow-y-auto">
@@ -24,7 +24,7 @@ export default async function ModelsPage(): Promise<JSX.Element> {
         </div>
         <Separator />
         <Card>
-          <ModelsTable models={models} />
+          <ModelsTable models={modelMeta} />
         </Card>
       </div>
     </section>

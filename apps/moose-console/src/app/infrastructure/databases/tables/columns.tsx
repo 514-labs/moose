@@ -4,7 +4,7 @@ import { Button } from "components/ui/button";
 import { ColumnDef } from "@tanstack/react-table";
 import { ArrowUpDown, ChevronRight } from "lucide-react";
 import Link from "next/link";
-import { Table } from "app/db";
+import { Table } from "app/types";
 
 type View = "view" | "table";
 

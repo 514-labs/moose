@@ -1,8 +1,6 @@
 /* eslint-disable turbo/no-undeclared-env-vars */
-
-import { unstable_noStore as noStore } from "next/cache";
-import { getRelatedInfra } from "lib/utils";
-import { CliData, DataModel, ModelMeta, getCliData } from "app/db";
+"use client";
+import { getModelByName } from "lib/utils";
 import {
   bashSnippet,
   clickhouseJSSnippet,
@@ -12,41 +10,28 @@ import {
 } from "lib/snippets";
 import { NavBreadCrumb } from "components/nav-breadcrumb";
 import ModelView from "app/ModelView";
+import { MooseObject } from "app/types";
+import { useContext } from "react";
+import { VersionContext } from "version-context";
 
-async function getModel(
-  name: string,
-  data: ModelMeta[]
-): Promise<ModelMeta | undefined> {
-  return data.find((model) => model.name === name);
-}
-
-export default async function Page({
-  params,
-}: {
-  params: { modelName: string };
-}): Promise<JSX.Element> {
+export default function Page({ params }: { params: { modelName: string } }) {
   // This is to make sure the environment variables are read at runtime
   // and not during build time
-  noStore();
+  const { models, cliData } = useContext(VersionContext);
 
-  const data = await getCliData();
-
-  const model = await getModel(params.modelName, data);
+  const model = getModelByName(models, params.modelName);
 
   if (!model) {
     return <div>Model not found</div>;
   }
 
-  const infra = getRelatedInfra(model, data, model);
-  const triggerTable = infra.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MergeTree"
-  );
+  const { table: triggerTable } = model;
 
-  const jsCodeSnippet = jsSnippet(data, model);
-  const pythonCodeSnippet = pythonSnippet(data, model);
-  const bashCodeSnippet = bashSnippet(data, model);
-  const clickhouseJSCode = clickhouseJSSnippet(data, model);
-  const clickhousePythonCode = clickhousePythonSnippet(data, model);
+  const jsCodeSnippet = jsSnippet(cliData, model);
+  const pythonCodeSnippet = pythonSnippet(cliData, model);
+  const bashCodeSnippet = bashSnippet(cliData, model);
+  const clickhouseJSCode = clickhouseJSSnippet(cliData, model);
+  const clickhousePythonCode = clickhousePythonSnippet(cliData, model);
 
   if (!triggerTable) {
     return <div>Table not found</div>;
@@ -56,11 +41,12 @@ export default async function Page({
     <section className="p-4 max-h-screen overflow-y-auto grow">
       <NavBreadCrumb />
       <div className="py-10">
-        <div className="text-8xl">{model.name}</div>
+        <div className="text-8xl">{model.model.name}</div>
       </div>
       <ModelView
-        table={triggerTable}
-        cliData={data}
+        mooseObject={MooseObject.Model}
+        model={model}
+        cliData={cliData}
         jsSnippet={jsCodeSnippet}
         clickhouseJSSnippet={clickhouseJSCode}
         clickhousePythonSnippet={clickhousePythonCode}

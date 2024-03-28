@@ -4,7 +4,6 @@
 // Views, IngestionPoints and Models have the exact same UI
 // the thinking is we will remove the Views and IngestionPoint pages
 
-import { CliData, Table } from "app/db";
 import CodeCard from "components/code-card";
 import IngestionInstructions from "components/ingestion-instructions";
 import ModelTable from "components/model-table";
@@ -20,24 +19,21 @@ import {
   CardDescription,
 } from "components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "components/ui/tabs";
-import {
-  cn,
-  getModelFromTable,
-  getRelatedInfra,
-  tableIsQueryable,
-} from "lib/utils";
+import { cn, tableIsQueryable } from "lib/utils";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
+import { CliData, DataModel, MooseObject, Table } from "./types";
 
 interface TableTabsProps {
-  table: Table;
+  model: DataModel;
   cliData: CliData;
   jsSnippet: string;
   bashSnippet: string;
   pythonSnippet: string;
   clickhouseJSSnippet: string;
   clickhousePythonSnippet: string;
+  mooseObject: MooseObject;
 }
 
 function ClickhouseTableRestriction(view: Table) {
@@ -60,13 +56,14 @@ function ClickhouseTableRestriction(view: Table) {
 }
 
 export default function ModelView({
-  table,
+  model,
   cliData,
   jsSnippet,
   bashSnippet,
   pythonSnippet,
   clickhouseJSSnippet,
   clickhousePythonSnippet,
+  mooseObject,
 }: TableTabsProps) {
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab");
@@ -74,13 +71,11 @@ export default function ModelView({
   const pathName = usePathname();
 
   const [_selectedTab, setSelectedTab] = useState<string>(
-    tab ? tab : "overview",
+    tab ? tab : "overview"
   );
-  const model = getModelFromTable(table, cliData);
-  const infra = getRelatedInfra(model, cliData, table);
-  const associatedView = cliData.tables.find(
-    (view) => view.name === table.dependencies_table[0],
-  );
+
+  const { table, ingestion_point } = model;
+  const associatedView = table.dependencies_table[0] ? table : null;
 
   const createTabQueryString = useCallback(
     (tab: string) => {
@@ -88,10 +83,8 @@ export default function ModelView({
       params.set("tab", tab);
       return params.toString();
     },
-    [searchParams],
+    [searchParams]
   );
-
-  const ingestionPoint = infra.ingestionPoints[0];
 
   return (
     <Tabs
@@ -112,9 +105,11 @@ export default function ModelView({
         <TabsTrigger className={cn(tabTriggerStyle)} value="logs">
           Logs
         </TabsTrigger>
-        <TabsTrigger className={cn(tabTriggerStyle)} value="query">
-          Query
-        </TabsTrigger>
+        {tableIsQueryable(table) && (
+          <TabsTrigger className={cn(tabTriggerStyle)} value="query">
+            Query
+          </TabsTrigger>
+        )}
       </TabsList>
       <TabsContent value="overview">
         <div className=" grid grid-cols-12 gap-4">
@@ -134,7 +129,7 @@ export default function ModelView({
                 <CardTitle>Related Infra</CardTitle>
               </CardHeader>
               <CardContent>
-                <RelatedInfraTable infra={infra} />
+                <RelatedInfraTable mooseObject={mooseObject} model={model} />
               </CardContent>
             </Card>
           </div>
@@ -153,13 +148,13 @@ export default function ModelView({
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {ingestionPoint && (
+                {ingestion_point && (
                   <IngestionInstructions
                     bashSnippet={bashSnippet}
                     cliData={cliData}
                     jsSnippet={jsSnippet}
                     pythonSnippet={pythonSnippet}
-                    ingestionPoint={ingestionPoint}
+                    ingestionPoint={ingestion_point}
                   />
                 )}
               </CardContent>
@@ -191,7 +186,7 @@ export default function ModelView({
                       variant="outline"
                       onClick={() => {
                         router.push(
-                          `${pathName}?${createTabQueryString("query")}`,
+                          `${pathName}?${createTabQueryString("query")}`
                         );
                         setSelectedTab("query");
                       }}
@@ -230,11 +225,7 @@ export default function ModelView({
         {/* add query here */}
         <div className="p-0 h-full">
           {tableIsQueryable(table) && cliData.project ? (
-            <QueryInterface
-              project={cliData.project}
-              table={table}
-              related={cliData.tables}
-            />
+            <QueryInterface project={cliData.project} model={model} />
           ) : (
             associatedView && ClickhouseTableRestriction(associatedView)
           )}

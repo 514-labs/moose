@@ -1,15 +1,20 @@
 "use client";
-import { DataModel } from "app/db";
+import { ModelMeta } from "app/types";
 import { PreviewTable } from "./preview-table";
 import { useRouter } from "next/navigation";
 
-export function ModelsTable({ models }: { models: DataModel[] }) {
+export function ModelsTable({ models }: { models: ModelMeta[] }) {
   const router = useRouter();
   const modelRows = models.map((model) => ({
     name: model.name,
     columns: model.columns.length,
     db_name: model.db_name,
   }));
+
+  if (!modelRows.length) {
+    return <div>No models found</div>;
+  }
+
   return (
     <PreviewTable
       rows={modelRows}

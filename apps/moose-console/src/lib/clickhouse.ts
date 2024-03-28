@@ -1,5 +1,5 @@
 import { createClient } from "@clickhouse/client-web";
-import { Project } from "../app/db";
+import { Project } from "app/types";
 import { unstable_noStore as noStore } from "next/cache";
 
 export function getClient(project?: Project) {

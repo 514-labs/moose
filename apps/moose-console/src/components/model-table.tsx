@@ -1,6 +1,6 @@
-import { DataModel, MooseEnum } from "app/db";
 import { Separator } from "./ui/separator";
 import { is_enum } from "../lib/utils";
+import { DataModel, MooseEnum } from "app/types";
 
 const processType = (type: string | MooseEnum) => {
   if (typeof type === "string") {
@@ -25,7 +25,7 @@ export default function ModelTable({ datamodel }: { datamodel: DataModel }) {
         <Separator />
       </div>
       {datamodel &&
-        datamodel.columns.map((field, index) => (
+        datamodel.model.columns.map((field, index) => (
           <div key={index}>
             <div className="flex py-4">
               <div className="grow basis-1 text-muted-foreground">
@@ -44,7 +44,7 @@ export default function ModelTable({ datamodel }: { datamodel: DataModel }) {
                 {`${field.primary_key}`}
               </div>
             </div>
-            {index !== datamodel.columns.length - 1 && <Separator />}
+            {index !== datamodel.model.columns.length - 1 && <Separator />}
           </div>
         ))}
     </div>

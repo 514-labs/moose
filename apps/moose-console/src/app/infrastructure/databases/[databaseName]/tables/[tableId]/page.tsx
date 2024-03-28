@@ -1,10 +1,6 @@
 /* eslint-disable turbo/no-undeclared-env-vars */
-
+"use client";
 import Link from "next/link";
-import { Project, Table, getCliData } from "app/db";
-import { unstable_noStore as noStore } from "next/cache";
-import TableTabs from "./table-tabs";
-import { getClient } from "lib/clickhouse";
 import {
   bashSnippet,
   clickhouseJSSnippet,
@@ -12,47 +8,30 @@ import {
   jsSnippet,
   pythonSnippet,
 } from "lib/snippets";
-import { getModelFromTable } from "lib/utils";
-import { Fragment } from "react";
+import { getModelByTableId, tableIsView } from "lib/utils";
+import { Fragment, useContext } from "react";
+import ModelView from "app/ModelView";
+import { MooseObject } from "app/types";
+import { VersionContext } from "version-context";
 
-async function _describeTable(
-  databaseName: string,
-  tableName: string,
-  project: Project,
-): Promise<any> {
-  const client = getClient(project);
-
-  const resultSet = await client.query({
-    query: `DESCRIBE TABLE ${databaseName}.${tableName}`,
-    format: "JSONEachRow",
-  });
-
-  return resultSet.json();
-}
-
-const _isView = (table: Table) => table.engine === "MaterializedView";
-
-export default async function Page({
+export default function Page({
   params,
 }: {
   params: { databaseName: string; tableId: string };
   searchParams: { tab: string };
-}): Promise<JSX.Element> {
+}) {
   // This is to make sure the environment variables are read at runtime
   // and not during build time
-  noStore();
-  const data = await getCliData();
-
-  const table = data.tables.find((table) => table.uuid === params.tableId);
-
-  if (!table) {
+  const { models, cliData } = useContext(VersionContext);
+  if (models.length === 0) {
     return <div>Table not found</div>;
   }
+  const model = getModelByTableId(models, params.tableId);
 
-  const model = getModelFromTable(table, data);
+  const isView = tableIsView(model.table);
 
   return (
-    <section className="p-4 max-h-screen flex-grow overflow-y-auto flex flex-col">
+    <section className="p-4 max-h-screen flex-grow overflow-y-auto flex flex-col grow">
       <div className="text-base text-muted-foreground flex">
         <Fragment>
           <Link className={`capitalize text-white`} href={"/infrastructure"}>
@@ -65,20 +44,19 @@ export default async function Page({
         </Fragment>
       </div>
       <div className="py-10">
-        <div className="text-8xl">{table.name}</div>
-        <div className="text-muted-foreground">{table.engine}</div>
+        <div className="text-8xl">{model.table.name}</div>
+        <div className="text-muted-foreground">{model.table.engine}</div>
       </div>
-      <div className="space-x-3 flex-grow">
-        <TableTabs
-          table={table}
-          cliData={data}
-          bashSnippet={bashSnippet(data, model)}
-          jsSnippet={jsSnippet(data, model)}
-          pythonSnippet={pythonSnippet(data, model)}
-          clickhouseJSSnippet={clickhouseJSSnippet(data, model)}
-          clickhousePythonSnippet={clickhousePythonSnippet(data, model)}
-        />
-      </div>
+      <ModelView
+        model={model}
+        mooseObject={isView ? MooseObject.View : MooseObject.Table}
+        cliData={cliData}
+        bashSnippet={bashSnippet(cliData, model)}
+        jsSnippet={jsSnippet(cliData, model)}
+        pythonSnippet={pythonSnippet(cliData, model)}
+        clickhouseJSSnippet={clickhouseJSSnippet(cliData, model)}
+        clickhousePythonSnippet={clickhousePythonSnippet(cliData, model)}
+      />
     </section>
   );
 }

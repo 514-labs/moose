@@ -1,3 +1,4 @@
+use std::collections::{HashMap, HashSet};
 use std::str;
 
 use http_body_util::BodyExt;
@@ -6,16 +7,19 @@ use hyper::body::Bytes;
 use hyper::Method;
 use hyper::Request;
 use hyper_util::rt::TokioIo;
-use log::debug;
+use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::sync::Arc;
 
 use tokio::net::TcpStream;
 
-use crate::framework::controller::{schema_file_path_to_ingest_route, FrameworkObjectVersions};
+use crate::framework::controller::{
+    schema_file_path_to_ingest_route, FrameworkObjectVersions, SchemaVersion,
+};
 use crate::framework::schema::DataModel;
 use crate::infrastructure::olap;
+use crate::infrastructure::olap::clickhouse::model::ClickHouseSystemTable;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
@@ -38,46 +42,43 @@ pub async fn post_current_state_to_console(
     configured_producer: &ConfiguredProducer,
     framework_object_versions: &FrameworkObjectVersions,
 ) -> Result<(), anyhow::Error> {
-    let models: Vec<DataModel> = framework_object_versions
-        .current_models
-        .models
-        .values()
-        .map(|fo| fo.data_model.clone())
-        .collect();
-
     olap::clickhouse::check_ready(configured_db_client)
         .await
         .unwrap();
     let tables = olap::clickhouse::fetch_all_tables(configured_db_client)
         .await
-        .unwrap();
-    let topics = redpanda::fetch_topics(&configured_producer.config)
-        .await
-        .unwrap();
+        .unwrap()
+        .into_iter()
+        .map(|table| (table.name.clone(), table))
+        .collect::<HashMap<_, _>>();
+    let topics = HashSet::<String>::from_iter(
+        redpanda::fetch_topics(&configured_producer.config)
+            .await
+            .unwrap()
+            .into_iter(),
+    );
 
-    // TODO: old versions of the models are not being sent to the console
-    let routes_table: Vec<RouteInfo> = framework_object_versions
-        .current_models
-        .models
-        .values()
-        .map(|fo| {
-            let route_path = schema_file_path_to_ingest_route(
-                &framework_object_versions.current_models.base_path,
-                &fo.original_file_path,
-                fo.data_model.name.clone(),
-                &framework_object_versions.current_version,
-            )
-            .to_string_lossy()
-            .to_string();
+    let current_version = Version {
+        models: serialize_version(
+            &framework_object_versions.current_models,
+            &framework_object_versions.current_version,
+            &tables,
+            &topics,
+        ),
+    };
 
-            RouteInfo::new(
-                route_path,
-                fo.original_file_path.to_str().unwrap().to_string(),
-                fo.table.name.clone(),
-                Some(fo.table.view_name()),
+    let past_versions = framework_object_versions
+        .previous_version_models
+        .iter()
+        .map(|(version, schema_version)| {
+            (
+                version.clone(),
+                Version {
+                    models: serialize_version(schema_version, version, &tables, &topics),
+                },
             )
         })
-        .collect();
+        .collect::<HashMap<_, _>>();
 
     // TODO this should be configurable
     let url = format!(
@@ -105,10 +106,8 @@ pub async fn post_current_state_to_console(
     let body = Bytes::from(
         json!({
             "project": json!(*project),
-            "models": models,
-            "tables": tables,
-            "queues": topics,
-            "ingestionPoints": routes_table
+            "current": current_version,
+            "past": past_versions,
         })
         .to_string(),
     );
@@ -139,25 +138,83 @@ pub async fn post_current_state_to_console(
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize)]
-pub struct RouteInfo {
+struct RouteInfo {
     pub route_path: String,
     pub file_path: String,
     pub table_name: String,
-    pub view_name: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+struct ModelInfra {
+    model: DataModel,
+    ingestion_point: RouteInfo,
+    table: ClickHouseSystemTable,
+    // queue is None if it is the same as previous version
+    // then we don't need to spin up a queue and a table
+    queue: Option<String>,
+}
+
+#[derive(Clone, Debug, Serialize)]
+struct Version {
+    models: Vec<ModelInfra>,
 }
 
 impl RouteInfo {
-    pub fn new(
-        route_path: String,
-        file_path: String,
-        table_name: String,
-        view_name: Option<String>,
-    ) -> Self {
+    pub fn new(route_path: String, file_path: String, table_name: String) -> Self {
         Self {
             route_path,
             file_path,
             table_name,
-            view_name,
         }
     }
+}
+
+fn serialize_version(
+    schema_version: &SchemaVersion,
+    version: &str,
+    tables: &HashMap<String, ClickHouseSystemTable>,
+    topics: &HashSet<String>,
+) -> Vec<ModelInfra> {
+    schema_version
+        .models
+        .values()
+        .map(|fo| {
+            let route_path = schema_file_path_to_ingest_route(
+                &schema_version.base_path,
+                &fo.original_file_path,
+                fo.data_model.name.clone(),
+                version,
+            )
+            .to_string_lossy()
+            .to_string();
+
+            let ingestion_point = RouteInfo::new(
+                route_path,
+                fo.original_file_path.to_str().unwrap().to_string(),
+                fo.table.name.clone(),
+            );
+            ModelInfra {
+                model: fo.data_model.clone(),
+                ingestion_point,
+                table: match tables.get(&fo.table.name) {
+                    Some(table) => table.clone(),
+                    None => {
+                        warn!("Table not found: {}", fo.table.name);
+                        ClickHouseSystemTable {
+                            uuid: "".to_string(),
+                            database: "".to_string(),
+                            name: "table_not_found".to_string(),
+                            dependencies_table: vec![],
+                            engine: "".to_string(),
+                        }
+                    }
+                },
+                queue: if topics.contains(&fo.topic) {
+                    Some(fo.topic.clone())
+                } else {
+                    None
+                },
+            }
+        })
+        .collect()
 }

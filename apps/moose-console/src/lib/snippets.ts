@@ -1,7 +1,7 @@
-import { CliData, DataModel, column_type_mapper } from "app/db";
-import { getIngestionPointFromModel, is_enum } from "./utils";
+import { column_type_mapper, is_enum } from "./utils";
+import { CliData, DataModel, ModelMeta } from "app/types";
 
-function createColumnStubs(model: DataModel) {
+function createColumnStubs(model: ModelMeta) {
   return model.columns.map((field, index) => {
     if (is_enum(field.data_type)) {
       const value = JSON.stringify(field.data_type.Enum.values[0]);
@@ -28,15 +28,15 @@ function createColumnStubs(model: DataModel) {
   });
 }
 export const jsSnippet = (data: CliData, model: DataModel) => {
-  const ingestionPoint = getIngestionPointFromModel(model, data);
-  const columns = createColumnStubs(model);
+  const { ingestion_point } = model;
+  const columns = createColumnStubs(model.model);
 
-  if (!data.project || !ingestionPoint) {
+  if (!data.project || !ingestion_point) {
     return "no project found";
   }
 
   return `\
-fetch('http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}', {
+fetch('http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestion_point.route_path}', {
     method: 'POST',
     headers: {
         'Content-Type': 'application/json'
@@ -49,17 +49,17 @@ fetch('http://${data.project && data.project.http_server_config.host}:${data.pro
 };
 
 export const pythonSnippet = (data: CliData, model: DataModel) => {
-  const ingestionPoint = getIngestionPointFromModel(model, data);
-  const columns = createColumnStubs(model);
+  const { ingestion_point } = model;
+  const columns = createColumnStubs(model.model);
 
-  if (!data.project || !ingestionPoint) {
+  if (!data.project || !ingestion_point) {
     return "no project found";
   }
 
   return `\
 import requests
 
-url = 'http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}'
+url = 'http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestion_point.route_path}'
 data = {
     ${columns.join(",")}
 }
@@ -68,11 +68,14 @@ response = requests.post(url, json=data)
 };
 
 export const clickhousePythonSnippet = (data: CliData, model: DataModel) => {
+  /*
   const view = data.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MergeTree",
+    (t) => t.name.includes(model.name) && t.engine === "MergeTree"
   );
+  */
+  const { table } = model;
 
-  if (!view) {
+  if (!table) {
     return "no view found";
   }
 
@@ -85,10 +88,10 @@ client = clickhouse_connect.get_client(
     port=${data.project && JSON.stringify(data.project.clickhouse_config.host_port)}
     user=${data.project && JSON.stringify(data.project.clickhouse_config.user)}
     password=${data.project && JSON.stringify(data.project.clickhouse_config.password)}
-    database=${JSON.stringify(view.database)}
+    database=${JSON.stringify(table.database)}
 )
 
-query_str = "SELECT * FROM ${view.name} LIMIT 10"
+query_str = "SELECT * FROM ${table.name} LIMIT 10"
 
 # query_df returns a dataframe
 result = client.query_df(query_str)
@@ -98,11 +101,15 @@ print(result)
 };
 
 export const clickhouseJSSnippet = (data: CliData, model: DataModel) => {
-  const view = data.tables.find(
-    (t) => t.name.includes(model.name) && t.engine === "MergeTree",
-  );
+  const { table } = model;
 
-  if (!view) {
+  /*
+  const view = data.tables.find(
+    (t) => t.name.includes(model.name) && t.engine === "MergeTree"
+  );
+  */
+
+  if (!table) {
     return "no view found";
   }
 
@@ -112,12 +119,12 @@ const client = createClient({
     host: "http://${data.project && data.project.clickhouse_config.host}:${data.project && data.project.clickhouse_config.host_port}",
     username: ${data.project && JSON.stringify(data.project.clickhouse_config.user)},
     password: ${data.project && JSON.stringify(data.project.clickhouse_config.password)},
-    database: ${JSON.stringify(view.database)},
+    database: ${JSON.stringify(table.database)},
 });
 
 const getResults = async () => {
     const resultSet = await client.query({
-        query: "SELECT * FROM ${view.name} LIMIT 10",
+        query: "SELECT * FROM ${table.name} LIMIT 10",
         format: "JSONEachRow",
     });
 
@@ -126,16 +133,16 @@ const getResults = async () => {
 };
 
 export const curlSnippet = (data: CliData, model: DataModel) => {
-  const ingestionPoint = getIngestionPointFromModel(model, data);
-  const columns = createColumnStubs(model);
+  const { ingestion_point } = model;
+  const columns = createColumnStubs(model.model);
 
-  if (!data.project || !ingestionPoint) {
+  if (!data.project || !ingestion_point) {
     return "no project found";
   }
 
   return `\
 curl -X POST -H "Content-Type: application/json" -d '{${columns.join()}}' \\
-  http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestionPoint.route_path}
+  http://${data.project && data.project.http_server_config.host}:${data.project.http_server_config.port}/${ingestion_point.route_path}
 `;
 };
 

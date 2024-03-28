@@ -1,23 +1,21 @@
 "use client";
-import { CliData, Table } from "app/db";
 import { PreviewTable } from "./preview-table";
 import { useRouter } from "next/navigation";
-import { getModelFromTable } from "lib/utils";
+import { DataModel } from "app/types";
 
-export function ViewsTable({
-  tables,
-  data,
-}: {
-  tables: Table[];
-  data: CliData;
-}) {
+export function ViewsTable({ models }: { models: DataModel[] }) {
   const router = useRouter();
-  const modelRows = tables.map((table) => ({
-    name: table.name,
-    database: table.database,
-    model: getModelFromTable(table, data).name,
-    uuid: table.uuid,
+
+  const modelRows = models.map((model) => ({
+    name: model.table.name,
+    database: model.table.database,
+    model: model.model.name,
+    uuid: model.table.uuid,
   }));
+
+  if (!modelRows.length) {
+    return <div>No views found</div>;
+  }
   return (
     <PreviewTable
       rows={modelRows}

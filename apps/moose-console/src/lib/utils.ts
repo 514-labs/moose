@@ -1,4 +1,10 @@
-import { CliData, DataModel, Infra, Route, Table } from "app/db";
+import {
+  CliData,
+  Table,
+  CURRENT_VERSION,
+  VersionKey,
+  DataModel,
+} from "app/types";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 
@@ -6,20 +12,61 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function getIngestionPointFromModel(
-  model: DataModel,
-  cliData: CliData,
-): Route | undefined {
-  return cliData.ingestionPoints.find((ingestionPoint) =>
-    ingestionPoint.route_path.includes(model.name),
-  );
+export function column_type_mapper(source_type: string) {
+  switch (source_type) {
+    case "String":
+      return "string";
+    case "Number":
+      return "number";
+    case "Boolean":
+      return "boolean";
+    case "Date":
+      return "Date";
+    case "DateTime":
+      return "DateTime";
+    case "Array":
+      return "array";
+    case "Object":
+      return "object";
+    default:
+      return "unknown";
+  }
 }
 
-export function getModelFromRoute(route: Route, cliData: CliData): DataModel {
-  const routeTail = route.route_path.split("/").at(-2); // -1 is now version number
-  const found = cliData.models.find((model) => model.name === routeTail);
-  if (found === undefined) throw new Error(`Model ${routeTail} not found`);
-  return found;
+export function getModelsByVersion(
+  cliData: CliData,
+  version: VersionKey = CURRENT_VERSION,
+) {
+  if (version === CURRENT_VERSION) {
+    return cliData.current.models;
+  }
+  console.log("CLIDATA", cliData);
+  return cliData.past[version]!.models;
+}
+
+export function getModelByName(models: DataModel[], modelName: string) {
+  return models.find((model) => model.model.name === modelName);
+}
+export function getModelByTableId(models: DataModel[], tableId: string) {
+  const model = models.find((model) => model.table.uuid === tableId);
+  if (model === undefined) throw new Error(`Model not found`);
+  return model;
+}
+
+export function getModelByIngestionPointId(
+  models: DataModel[],
+  ingestionPointId: string,
+) {
+  const model = models.find(
+    (model) =>
+      model.ingestion_point.route_path.split("/").at(-2) === ingestionPointId,
+  );
+  if (model === undefined) throw new Error(`Model not found`);
+  return model;
+}
+
+export function tableIsView(table: Table): boolean {
+  return table.engine === "View";
 }
 
 export function tableIsIngestionTable(table: Table): boolean {
@@ -28,41 +75,6 @@ export function tableIsIngestionTable(table: Table): boolean {
 
 export function tableIsQueryable(table: Table): boolean {
   return table.engine === "MergeTree";
-}
-
-export function getQueueFromRoute(
-  route: Route,
-  cliData: CliData,
-): string | undefined {
-  const routeTail = route.route_path.split("/").at(-1);
-  return cliData.queues.find((queue) => queue === routeTail);
-}
-
-export function getModelFromTable(table: Table, cliData: CliData): DataModel {
-  // TODO: this breaks if the model name includes underscore(s)
-  // maybe include more information in `CliData`, so we don't have to lookup by name
-  const table_name = table.name.split("_").at(0);
-
-  const result = cliData.models.find((model) => model.name === table_name);
-  if (result === undefined) throw new Error(`Model ${table_name} not found`);
-  return result;
-}
-
-export function getRelatedInfra(
-  model: DataModel,
-  data: CliData,
-  currectObject: any,
-): Infra {
-  const tables = data.tables.filter(
-    (t) => t.name.includes(model.name) && t.uuid !== currectObject.uuid,
-  );
-  const ingestionPoints = data.ingestionPoints.filter(
-    (ip) =>
-      ip.route_path.includes(model.name) &&
-      ip.route_path !== currectObject.route_path,
-  );
-
-  return { tables, ingestionPoints };
 }
 
 export function is_enum(type: any): type is { Enum: any } {

@@ -54,22 +54,12 @@ const sections: Section[] = [
         href: "/infrastructure/ingestion-points",
       },
       {
-        name: "Queues",
-        href: "/infrastructure/queues",
+        name: "Tables",
+        href: "/infrastructure/databases/tables?type=table",
       },
       {
-        name: "Databases",
-        href: "/infrastructure/databases",
-        subLinks: [
-          {
-            name: "Tables",
-            href: "/infrastructure/tables",
-          },
-          {
-            name: "Views",
-            href: "/infrastructure/views",
-          },
-        ],
+        name: "Views",
+        href: "/infrastructure/databases/tables?type=view",
       },
     ],
   },

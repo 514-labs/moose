@@ -11,6 +11,7 @@ import {
 import { Card, CardContent } from "./ui/card";
 import { useEffect, useState } from "react";
 import { Button } from "./ui/button";
+import parse from "html-react-parser";
 
 interface Snippet {
   language: string;
@@ -93,7 +94,9 @@ export default function CodeCard({ title, snippets }: CodeCardProps) {
       <Card className="rounded-2xl bg-muted ">
         <CardContent className="overflow-x-auto p-0 m-6">
           <code>
-            {formatedCodeSnippets[selectedSnippet.language] ?? "loading"}
+            {formatedCodeSnippets[selectedSnippet.language]
+              ? parse(formatedCodeSnippets[selectedSnippet.language] as string)
+              : "Loading..."}
           </code>
         </CardContent>
       </Card>

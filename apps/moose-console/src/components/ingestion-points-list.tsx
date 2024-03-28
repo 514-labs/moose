@@ -1,7 +1,7 @@
 "use client";
-import { Route } from "app/db";
 import { useRouter } from "next/navigation";
 import { PreviewTable } from "./preview-table";
+import { Route } from "app/types";
 
 interface IngestionPointsListProps {
   ingestionPoints: Route[];
@@ -16,12 +16,16 @@ export function IngestionPointsList({
     table_name: points.table_name,
   }));
 
+  if (!ingestionRows.length) {
+    return <div>No ingestion points found</div>;
+  }
+
   return (
     <PreviewTable
       rows={ingestionRows}
       onRowClick={(point) =>
         router.push(
-          `/infrastructure/ingestion-points/${point.route.split("/").at(-1)}`,
+          `/infrastructure/ingestion-points/${point.route.split("/").at(-2)}`,
         )
       }
     ></PreviewTable>

@@ -60,11 +60,6 @@ jobs:
       - name: Package all templates
         run: ./scripts/package-templates.js
 
-      - name: Package all templates
-        run: |
-          ls -la
-          ls -la template-packages
-
       - name: Authenticate with GCP
         uses: "google-github-actions/auth@v2"
         with:

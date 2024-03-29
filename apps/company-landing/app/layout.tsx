@@ -25,7 +25,11 @@ export const metadata: Metadata = {
 const default_navigation = [
   { name: "blog", href: "/blog" },
   { name: "community", href: "/community" },
-  { name: "get in touch", href: "/contact", emphasized: true },
+  {
+    name: "get in touch",
+    href: "https://fiveonefour.typeform.com/signup",
+    emphasized: true,
+  },
 ];
 
 export default async function RootLayout({
@@ -43,7 +47,7 @@ export default async function RootLayout({
         className={cn(
           "min-h-screen bg-background font-sans antialiased",
           monoFont.variable,
-          sansFont.variable,
+          sansFont.variable
         )}
         suppressHydrationWarning
       >

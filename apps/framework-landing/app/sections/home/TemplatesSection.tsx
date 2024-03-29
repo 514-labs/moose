@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { PlaceholderImage, CTABar, CTAButton } from "../../page";
+import { CTABar, CTAButton } from "../../page";
 import {
   Section,
   FullWidthContentContainer,

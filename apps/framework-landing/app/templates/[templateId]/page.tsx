@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { CTABar, CTAButton, PlaceholderImage } from "../../page";
+import { CTABar, CTAButton } from "../../page";
 import FooterSection from "../../sections/FooterSection";
 import { EmailSection } from "../../sections/EmailSection";
 import {
@@ -16,6 +16,7 @@ import {
   FullWidthContentContainer,
 } from "design-system/components/containers";
 import { CodeSnippet, Display, Text } from "design-system/typography";
+import Image from "next/image";
 
 interface TemplateAccordionItem {
   title: string;
@@ -80,6 +81,7 @@ export default function TemplatePage({
       {
         slug: "product-analytics",
         title: "Product Analytics",
+        img: "/images/templates/mjs-img-product-1.svg",
         cta: {
           action: "cta-product-analytics-install",
           label: "Copy npx command",
@@ -214,12 +216,14 @@ export default function TemplatePage({
       {
         slug: "llm-application",
         title: "Loose Moose",
+        img: "/images/templates/mjs-img-product-1.svg",
         description: "Let the moose loose",
         usage: [],
       },
       {
         slug: "data-warehouse",
         title: "Loose Moose",
+        img: "/images/templates/mjs-img-product-1.svg",
         description: "Let the moose loose",
         usage: [],
       },
@@ -282,7 +286,18 @@ export default function TemplatePage({
       <div className="col-span-12 md:col-span-6  ">
         <div className=" mb-5">
           <Section>
-            <PlaceholderImage className="bg-muted aspect-[4/3]" />
+            <div className="bg-muted aspect-[4/3]"></div>
+            <div className="relative h-3/5">
+              {template && (
+                <Image
+                  priority
+                  src={template.img}
+                  fill
+                  alt="man in jacket"
+                  sizes=" (max-width: 768px) 150vw, 25vw"
+                />
+              )}
+            </div>
             {template && (
               <TemplateAccordion templateAccordionItems={template.usage} />
             )}

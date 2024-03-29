@@ -3,7 +3,7 @@ import {
   HalfWidthContentContainer,
   Section,
 } from "design-system/components/containers";
-import { PlaceholderImage, CTABar, CTAButton } from "../../page";
+import { CTABar, CTAButton } from "../../page";
 import { Heading, Text } from "design-system/typography";
 import Image from "next/image";
 

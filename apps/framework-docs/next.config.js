@@ -61,9 +61,12 @@ const sentryWebpackPluginOptions = {
 };
 
 // Make sure adding Sentry options is the last code to run before exporting
-module.exports = withNextra(
-  withSentryConfig(nextConfig, sentryWebpackPluginOptions)
-);
+module.exports = withNextra(nextConfig);
+
+// Make sure adding Sentry options is the last code to run before exporting
+// module.exports = withNextra(
+//   withSentryConfig(nextConfig, sentryWebpackPluginOptions)
+// );
 
 // If you're using a next.config.mjs file:
 // export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);

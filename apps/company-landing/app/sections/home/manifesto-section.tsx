@@ -67,21 +67,22 @@ export const ManifestoSection = () => {
 
           <Text>
             Our mission at Fiveonefour is to bring incredible developer
-            experiences to the data stack. We believe that we&apos;ll have
-            accomplished this when data or analytics can be dropped from the
-            title of the people using data platforms. When data engineers are
-            just engineers. When data services are just another software service
-            - written by software engineers, powered by microservices and
-            frameworks, and managed with software development best practices.
-            When every developer can deliver high-quality data products, derive
-            insights for themselves and their stakeholders, and easily integrate
-            predictive and generative AI. When becoming data-driven is second
-            nature, and ROI on data investments is nearly guaranteed.
+            experiences to the data & analytics stack. We believe that
+            we&apos;ll have accomplished this when data or analytics can be
+            dropped from the title of the people using data platforms. When data
+            engineers are just engineers. When data services are just another
+            software service - written by software engineers, powered by
+            microservices and frameworks, and managed with software development
+            best practices. When every developer can deliver high-quality data
+            products, derive insights for themselves and their stakeholders, and
+            easily integrate predictive and generative AI. When becoming
+            data-driven is second nature, and ROI on data investments is nearly
+            guaranteed.
           </Text>
 
           <Text>
-            Building software is delightful. It's time to bring some delight to
-            the data & analytics stack.
+            Building software is delightful. It&apos;s time to bring some
+            delight to the data & analytics stack.
           </Text>
 
           <Text>

@@ -18,10 +18,6 @@ import { Button, buttonVariants } from "design-system/components";
 
 import { Text } from "design-system/typography";
 
-export const PlaceholderImage = ({ className }: { className?: string }) => {
-  return <div className={cn("relative ", className)}> </div>;
-};
-
 export const CTAText = ({
   className,
   children,

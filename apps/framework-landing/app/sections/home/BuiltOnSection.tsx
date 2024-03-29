@@ -1,11 +1,9 @@
 import { Heading, Text } from "design-system/typography";
-import { PlaceholderImage } from "../../page";
 import {
   Grid,
   HalfWidthContentContainer,
   Section,
 } from "design-system/components/containers";
-import Image from "next/image";
 
 export const BuiltOnSection = () => {
   const content = {

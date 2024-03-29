@@ -1,5 +1,5 @@
 import { CodeSnippet as AnimatedCodeSnipper } from "design-system/typography/animated";
-import { CTABar, PlaceholderImage } from "../../page";
+import { CTABar } from "../../page";
 import {
   Section,
   HalfWidthContentContainer,

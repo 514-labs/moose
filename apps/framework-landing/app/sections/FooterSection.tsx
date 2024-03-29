@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import {
   FullWidthContentContainer,
-  Grid,
   Section,
 } from "design-system/components/containers";
 

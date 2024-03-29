@@ -14,7 +14,7 @@ Elastic Kubernetes Service (EKS).
 
     Essentially you'll need to create a moose-deployment YAML file. Here is an example:
 
-```yaml filename="moose-deployment.yaml-snippet" copy
+```yaml filename="moose-deployment.yaml-fragment" copy
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -32,7 +32,7 @@ spec:
     spec:
       containers:
         - name: moosedeploy
-          image: 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.175
+          image: 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:latest
           ports:
             - containerPort: 4000
 ```
@@ -98,7 +98,7 @@ This will allow Kubernetes to determine the health of your moose service.
 
 ## Configuring container environment variables
 
-    Inside your `moose-deployment.yaml` file you'll need to add an `env` section for environment variables. In the following example snippit we're using Kubernetes secretes which is an industry best practice.
+    Inside your `moose-deployment.yaml` file you'll need to add an `env` section for environment variables. In the following example we're using Kubernetes secretes which is an industry best practice.
 
 ```yaml filename="moose-deployment.yaml" copy
 apiVersion: apps/v1
@@ -118,7 +118,7 @@ spec:
     spec:
       containers:
         - name: moosedeploy
-          image: 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:0.3.175
+          image: 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:latest
           ports:
             - containerPort: 4000
           readinessProbe:

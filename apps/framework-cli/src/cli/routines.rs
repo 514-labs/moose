@@ -430,15 +430,13 @@ async fn initialize_project_state(
     .await?;
 
     info!("Crawling version syncs");
-    with_spinner_async::<_, anyhow::Result<()>>("Setting up version syncs", {
-        async {
-            let version_syncs = get_all_version_syncs(&project, &framework_object_versions)?;
-            for vs in version_syncs {
-                debug!("Creating version sync: {:?}", vs);
-                create_or_replace_version_sync(vs, &configured_client).await?;
-            }
-            Ok(())
+    with_spinner_async::<_, anyhow::Result<()>>("Setting up version syncs", async {
+        let version_syncs = get_all_version_syncs(&project, &framework_object_versions)?;
+        for vs in version_syncs {
+            debug!("Creating version sync: {:?}", vs);
+            create_or_replace_version_sync(vs, &configured_client).await?;
         }
+        Ok(())
     })
     .await?;
 

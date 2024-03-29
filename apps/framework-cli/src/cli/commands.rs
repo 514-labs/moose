@@ -70,6 +70,7 @@ pub struct GenerateArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum GenerateCommand {
+    /// Generates migration files
     Migrations {},
 
     /// Structures the project's directory & files for a new flow

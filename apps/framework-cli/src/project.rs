@@ -29,7 +29,7 @@ use serde::Serialize;
 use crate::cli::local_webserver::{LocalWebserverConfig, RemoteWebserverConfig};
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::readme::BASE_README_TEMPLATE;
-use crate::framework::schema::templates::{BASE_FLOW_TEMPLATE, BASE_MODEL_TEMPLATE};
+use crate::framework::schema::templates::{BASE_FLOW_SAMPLE_TEMPLATE, BASE_MODEL_TEMPLATE};
 use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
@@ -43,7 +43,9 @@ use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS;
 use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM};
-use crate::utilities::constants::{FLOWS_DIR, FLOW_FILE, PROJECT_CONFIG_FILE, SAMPLE_FLOWS_DIR};
+use crate::utilities::constants::{
+    FLOWS_DIR, FLOW_FILE, PROJECT_CONFIG_FILE, SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE,
+};
 
 lazy_static! {
     pub static ref PROJECT: Mutex<Project> = Mutex::new(Project {
@@ -223,7 +225,11 @@ impl Project {
         let app_dir = self.app_dir();
         let readme_file_path = app_dir.join("README.md");
         let base_model_file_path = self.schemas_dir().join("models.prisma");
-        let flow_file_path = self.flows_dir().join(SAMPLE_FLOWS_DIR).join(FLOW_FILE);
+        let flow_file_path = self
+            .flows_dir()
+            .join(SAMPLE_FLOWS_SOURCE)
+            .join(SAMPLE_FLOWS_DEST)
+            .join(FLOW_FILE);
 
         let mut readme_file = std::fs::File::create(readme_file_path)?;
         let mut base_model_file = std::fs::File::create(base_model_file_path)?;
@@ -232,7 +238,7 @@ impl Project {
         readme_file.write_all(BASE_README_TEMPLATE.as_bytes())?;
         base_model_file.write_all(BASE_MODEL_TEMPLATE.as_bytes())?;
         flow_file.write_all(
-            BASE_FLOW_TEMPLATE
+            BASE_FLOW_SAMPLE_TEMPLATE
                 .to_string()
                 .replace("{{project_name}}", &self.name())
                 .as_bytes(),

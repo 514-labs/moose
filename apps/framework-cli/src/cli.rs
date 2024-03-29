@@ -22,7 +22,7 @@ use logger::setup_logging;
 use settings::{read_settings, Settings};
 
 use crate::cli::routines::flow::{CreateFlowDirectory, CreateFlowFile};
-use crate::cli::routines::start::CopyOldSchema;
+use crate::cli::routines::start::{CopyOldSchema, CreateModelsVolume};
 use crate::cli::routines::version::BumpVersion;
 use crate::cli::{
     display::{Message, MessageType},
@@ -281,6 +281,11 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                     CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
                     project_arc.name().clone()
                 );
+
+                let mut controller = RoutineController::new();
+                let run_mode = RunMode::Explicit {};
+                controller.add_routine(Box::new(CreateModelsVolume::new(project_arc.clone())));
+                controller.run_routines(run_mode);
 
                 routines::start_production_mode(project_arc).await.unwrap();
             }

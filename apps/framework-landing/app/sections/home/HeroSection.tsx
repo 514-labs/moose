@@ -7,6 +7,7 @@ import {
   Grid,
 } from "design-system/components/containers";
 import { Display, Text } from "design-system/typography";
+import Image from "next/image";
 
 export const HeroSection = () => {
   const content = {
@@ -36,17 +37,41 @@ export const HeroSection = () => {
       </Section>
       <Section gutterless>
         <Grid className="gap-5">
-          <QuarterWidthContentContainer className="bg-muted aspect-square">
-            <PlaceholderImage />
+          <QuarterWidthContentContainer className="bg-muted aspect-square relative">
+            <Image
+              priority
+              src="/images/hero/mjs_img_4.webp"
+              fill
+              alt="moose"
+              sizes=" (max-width: 768px) 150vw, 25vw"
+            />
           </QuarterWidthContentContainer>
-          <QuarterWidthContentContainer className="bg-muted aspect-square">
-            <PlaceholderImage />
+          <QuarterWidthContentContainer className="bg-muted aspect-square relative">
+            <Image
+              priority
+              src="/images/hero/mjs_img_2.webp"
+              fill
+              alt="girl"
+              sizes=" (max-width: 768px) 150vw, 25vw"
+            />
           </QuarterWidthContentContainer>
-          <QuarterWidthContentContainer className="bg-muted aspect-square">
-            <PlaceholderImage />
+          <QuarterWidthContentContainer className="bg-muted aspect-square relative">
+            <Image
+              priority
+              src="/images/hero/mjs_img_3.webp"
+              fill
+              alt="laptop on table"
+              sizes=" (max-width: 768px) 150vw, 25vw"
+            />
           </QuarterWidthContentContainer>
-          <QuarterWidthContentContainer className="bg-muted aspect-square">
-            <PlaceholderImage />
+          <QuarterWidthContentContainer className="bg-muted aspect-square relative">
+            <Image
+              priority
+              src="/images/hero/mjs_img_6.webp"
+              fill
+              alt="man in jacket"
+              sizes=" (max-width: 768px) 150vw, 25vw"
+            />
           </QuarterWidthContentContainer>
         </Grid>
       </Section>

@@ -8,6 +8,7 @@ import {
   Grid,
 } from "design-system/components/containers";
 import { Display, Heading, Text } from "design-system/typography";
+import Image from "next/image";
 
 export const TemplatesSection = () => {
   const content = {
@@ -57,8 +58,16 @@ export const TemplatesSection = () => {
       </Section>
       <Section>
         <Grid className="gap-y-5 justify-center">
-          <ThirdWidthContentContainer className="xl:order-1">
-            <PlaceholderImage className=" bg-muted aspect-[4/3]" />
+          <ThirdWidthContentContainer className="xl:order-1 bg-muted aspect-[4/3] flex flex-col item-center justify-center">
+            <div className="relative h-3/5">
+              <Image
+                priority
+                src="/images/templates/mjs-img-product-1.svg"
+                fill
+                alt="man in jacket"
+                sizes=" (max-width: 768px) 150vw, 25vw"
+              />
+            </div>
           </ThirdWidthContentContainer>
           <ThirdWidthContentContainer className="flex flex-col xl:justify-start xl:order-4">
             <Heading>
@@ -81,8 +90,16 @@ export const TemplatesSection = () => {
             </CTABar>
           </ThirdWidthContentContainer>
 
-          <ThirdWidthContentContainer className=" xl:m-0 xl:order-1">
-            <PlaceholderImage className=" bg-muted aspect-[4/3]" />
+          <ThirdWidthContentContainer className=" xl:m-0 bg-muted aspect-[4/3]  flex flex-col item-center justify-center xl:order-1">
+            <div className="relative h-3/5">
+              <Image
+                priority
+                src="/images/templates/mjs-img-product-2.svg"
+                fill
+                alt="man in jacket"
+                sizes=" (max-width: 768px) 150vw, 25vw"
+              />
+            </div>
           </ThirdWidthContentContainer>
           <ThirdWidthContentContainer className="flex flex-col xl:justify-start xl:m-0  xl:order-4">
             <Heading>
@@ -105,8 +122,16 @@ export const TemplatesSection = () => {
             </CTABar>
           </ThirdWidthContentContainer>
 
-          <ThirdWidthContentContainer className="xl:order-1">
-            <PlaceholderImage className="bg-muted aspect-[4/3]" />
+          <ThirdWidthContentContainer className="xl:order-1 bg-muted aspect-[4/3]  flex flex-col item-center justify-center">
+            <div className="relative h-3/5">
+              <Image
+                priority
+                src="/images/templates/mjs-img-product-3.svg"
+                fill
+                alt="man in jacket"
+                sizes=" (max-width: 768px) 150vw, 25vw"
+              />
+            </div>
           </ThirdWidthContentContainer>
           <ThirdWidthContentContainer className="flex flex-col  xl:justify-start xl:order-4">
             <Heading>

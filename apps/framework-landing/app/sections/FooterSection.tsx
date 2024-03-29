@@ -35,7 +35,7 @@ export const FooterNavItem = ({
       href={item.href}
       className={cn(
         "text-foreground flex flex-row justify-end lg:px-5",
-        className,
+        className
       )}
     >
       <Text> {children} </Text>
@@ -73,28 +73,22 @@ export const FooterNavContainer = () => {
 export const FooterDisclaimerContainer = () => {
   const disclaimer = {
     rights: "2024 All rights reserved",
-    by: "Moose.js from the fiveonefour team",
+    by: "By the folks at fiveonefour",
   };
 
   return (
-    <div className="flex flex-row grow min-h-16 col-span-12 items-center">
-      <div className="bg-primary aspect-square h-full min-h-16"></div>
-      <div className="flex flex-col justify-center px-5 no-wrap">
-        <Text className="my-0">{disclaimer.rights}</Text>
-        <Text className="my-0">{disclaimer.by}</Text>
-      </div>
-      <div className="grow" />
+    <>
+      <Text className="my-1.5 grow">{disclaimer.rights}</Text>
+      <Text className="my-1.5 mx-5">{disclaimer.by}</Text>
       <ThemeToggle />
-    </div>
+    </>
   );
 };
 
 export const FooterContent = () => {
   return (
-    <FullWidthContentContainer className="flex flex-col lg:flex-row">
-      <Grid className="grow">
-        <FooterDisclaimerContainer />
-      </Grid>
+    <FullWidthContentContainer className="flex flex-row">
+      <FooterDisclaimerContainer />
     </FullWidthContentContainer>
   );
 };

@@ -5,7 +5,8 @@ import {
 } from "design-system/components/containers";
 import { Heading, Text } from "design-system/typography";
 import { CodeSnippet } from "design-system/typography/animated";
-import { PlaceholderImage, CTABar } from "../../page";
+import { CTABar } from "../../page";
+import Image from "next/image";
 
 export const GetMooseCTASection = () => {
   const content = {
@@ -21,8 +22,14 @@ export const GetMooseCTASection = () => {
   return (
     <Section>
       <Grid className="gap-5-y">
-        <HalfWidthContentContainer className="2xl:col-span-3">
-          <PlaceholderImage className="aspect-square bg-muted" />
+        <HalfWidthContentContainer className="2xl:col-span-3 aspect-square bg-muted relative">
+          <Image
+            priority
+            src="/images/get-moose/mjs_img_7.webp"
+            fill
+            alt="man in jacket"
+            sizes=" (max-width: 768px) 150vw, 25vw"
+          />
         </HalfWidthContentContainer>
         <HalfWidthContentContainer className="2xl:col-start-7">
           <Heading> {content.title} </Heading>

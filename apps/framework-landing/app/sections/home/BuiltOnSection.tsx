@@ -5,6 +5,7 @@ import {
   HalfWidthContentContainer,
   Section,
 } from "design-system/components/containers";
+import Image from "next/image";
 
 export const BuiltOnSection = () => {
   const content = {
@@ -19,8 +20,14 @@ export const BuiltOnSection = () => {
           <Heading> {content.title} </Heading>
           <Text> {content.description} </Text>
         </HalfWidthContentContainer>
-        <HalfWidthContentContainer className="2xl:col-start-10 2xl:col-span-3">
-          <PlaceholderImage className="aspect-square bg-muted" />
+        <HalfWidthContentContainer className="2xl:col-start-10 2xl:col-span-3 aspect-square bg-muted relative">
+          <Image
+            priority
+            src="/images/built-on/mjs-img_logo_logo.gif"
+            fill
+            alt="man in jacket"
+            sizes=" (max-width: 768px) 150vw, 25vw"
+          />
         </HalfWidthContentContainer>
       </Grid>
     </Section>

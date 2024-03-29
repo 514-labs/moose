@@ -22,6 +22,7 @@ use log::{debug, info};
 use logger::setup_logging;
 use settings::{read_settings, Settings};
 
+use crate::cli::routines::flow::{CreateFlowDirectory, CreateFlowFile};
 use crate::cli::routines::start::CopyOldSchema;
 use crate::cli::routines::version::BumpVersion;
 use crate::cli::{
@@ -247,7 +248,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 routines::start_development_mode(project_arc).await.unwrap();
             }
-            Commands::Generate(generate) => match generate.command {
+            Commands::Generate(generate) => match &generate.command {
                 Some(GenerateCommand::Migrations {}) => {
                     info!("Running generate migration command");
                     let project = load_project();
@@ -257,6 +258,33 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                     controller.add_routine(Box::new(CopyOldSchema::new(Arc::new(project.clone()))));
                     controller.add_routine(Box::new(GenerateMigration::new(Arc::new(project))));
+                    controller.run_routines(run_mode);
+                }
+                Some(GenerateCommand::Flow(flow)) => {
+                    info!("Running generate flow command");
+
+                    let project = load_project();
+                    let project_arc = Arc::new(project);
+
+                    crate::utilities::capture::capture!(
+                        ActivityType::GenerateFlowCommand,
+                        CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                        project_arc.name().clone()
+                    );
+
+                    let mut controller = RoutineController::new();
+                    let run_mode = RunMode::Explicit {};
+
+                    controller.add_routine(Box::new(CreateFlowDirectory::new(
+                        project_arc.clone(),
+                        flow.source.clone(),
+                        flow.destination.clone(),
+                    )));
+                    controller.add_routine(Box::new(CreateFlowFile::new(
+                        project_arc,
+                        flow.source.clone(),
+                        flow.destination.clone(),
+                    )));
                     controller.run_routines(run_mode);
                 }
                 None => {

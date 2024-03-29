@@ -49,7 +49,7 @@ pub enum Commands {
     Dev {},
     /// Start a remote environment for use in cloud deployments
     Prod {},
-    /// Generates missing migration files
+    /// Generates files for the app
     Generate(GenerateArgs),
     BumpVersion {
         new_version: Option<String>,
@@ -71,4 +71,19 @@ pub struct GenerateArgs {
 #[derive(Debug, Subcommand)]
 pub enum GenerateCommand {
     Migrations {},
+
+    /// Structures the project's directory & files for a new flow
+    #[command(arg_required_else_help = true)]
+    Flow(FlowArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct FlowArgs {
+    /// Name of your source data model
+    #[arg(short, long, required = true)]
+    pub source: String,
+
+    /// Name of your destination data model
+    #[arg(short, long, required = true)]
+    pub destination: String,
 }

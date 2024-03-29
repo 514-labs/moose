@@ -7,7 +7,10 @@ import { FooterSection } from "./sections/FooterSection";
 import { HeroSection } from "./sections/home/HeroSection";
 import { WhyMooseSection } from "./sections/home/WhyMooseSection";
 import { WhatIsMooseSection } from "./sections/home/WhatIsMooseSection";
-import { TemplatesSection } from "./sections/home/TemplatesSection";
+import {
+  TemplateHeaderSection,
+  TemplatesSection,
+} from "./sections/home/TemplatesSection";
 import { FeaturesSection } from "./sections/home/FeaturesSection";
 import { BuiltOnSection } from "./sections/home/BuiltOnSection";
 import { SecondaryCTASection } from "./sections/home/SecondaryCTASection";
@@ -82,6 +85,7 @@ export default function Home() {
       <WhyMooseSection />
       <WhatIsMooseSection />
       <FeaturesSection />
+      <TemplateHeaderSection />
       <TemplatesSection />
       <BuiltOnSection />
       <LooseMooseSection />

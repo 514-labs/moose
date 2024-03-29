@@ -301,15 +301,13 @@ impl Webserver {
 
         let producer = redpanda::create_producer(project.redpanda_config.clone());
 
-        {
-            show_message!(
+        show_message!(
             MessageType::Info,
             Message {
                 action: "Started".to_string(),
                 details: format!(" web server on port http://{}:{}. You'll use this to host and port to send data to your MooseJS app", project.http_server_config.host.clone(), socket.port()),
             }
         );
-        }
 
         if !PROJECT.lock().unwrap().is_production {
             show_message!(

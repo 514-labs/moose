@@ -148,10 +148,22 @@ pub async fn create_or_replace_version_sync(
 
     if !PROJECT.lock().unwrap().is_production {
         let drop_trigger_query = version_sync.drop_trigger_query();
-        let create_trigger_query = version_sync.create_trigger_query();
         olap::clickhouse::run_query(&drop_trigger_query, configured_client).await?;
-        olap::clickhouse::run_query(&create_trigger_query, configured_client).await?;
     }
+
+    let is_table_new =
+        olap::clickhouse::check_is_table_new(&version_sync.dest_table, configured_client).await?;
+    if is_table_new {
+        debug!(
+            "Performing initial load for table: {:?}",
+            version_sync.dest_table.name
+        );
+        let initial_load_query = version_sync.clone().initial_load_query();
+        olap::clickhouse::run_query(&initial_load_query, configured_client).await?;
+    }
+
+    let create_trigger_query = version_sync.create_trigger_query();
+    olap::clickhouse::run_query(&create_trigger_query, configured_client).await?;
 
     Ok(())
 }

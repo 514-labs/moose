@@ -1,7 +1,8 @@
 use clickhouse::Client;
 use log::debug;
+use serde::{Deserialize, Serialize};
 
-use crate::infrastructure::olap::clickhouse::model::ClickHouseSystemTableRow;
+use crate::infrastructure::olap::clickhouse::model::{ClickHouseSystemTableRow, ClickHouseTable};
 
 use self::config::ClickHouseConfig;
 use self::model::ClickHouseSystemTable;
@@ -178,4 +179,34 @@ pub async fn delete_table_or_view(
         .query(format!("DROP TABLE {db_name}.{table_or_view_name}").as_str())
         .execute()
         .await
+}
+
+pub async fn check_is_table_new(
+    table: &ClickHouseTable,
+    configured_client: &ConfiguredDBClient,
+) -> Result<bool, clickhouse::error::Error> {
+    let client = &configured_client.client;
+
+    let mut cursor = client
+        .query("select engine, total_rows from system.tables where database = ? AND name = ?")
+        .bind(table.db_name.clone())
+        .bind(table.name.clone())
+        .fetch::<TableDetail>()?;
+
+    let mut result = vec![];
+
+    while let Some(row) = cursor.next().await? {
+        result.push(row);
+    }
+    match result.len() {
+        // i keep getting 2 rows when I have this logic in the select query
+        1 => Ok(result[0].engine != "View" && result[0].total_rows == Some(0)),
+        _ => panic!("Expected 1 result, got {:?}", result),
+    }
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize, clickhouse::Row)]
+struct TableDetail {
+    pub engine: String,
+    pub total_rows: Option<u64>,
 }

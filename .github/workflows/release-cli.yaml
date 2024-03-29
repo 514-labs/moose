@@ -11,6 +11,8 @@ on:
       - "apps/create-moose-app/**"
       - "apps/moose-console/**"
       - "packages/**"
+      - "templates/**"
+      - "pnpm-lock.yaml"
   workflow_dispatch:
     inputs:
       dry-run:

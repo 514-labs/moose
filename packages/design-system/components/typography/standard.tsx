@@ -58,15 +58,31 @@ export const Display = ({
   );
 };
 
+export enum HeadingLevel {
+  l1 = "text-primary text-4xl sm:text-6xl 3xl:text-7xl",
+  l2 = "text-primary text-3xl sm:text-5xl 3xl:text-6xl",
+  l3 = "text-primary text-2xl sm:text-4xl 3xl:text-5xl",
+  l4 = "text-primary text-4xl sm:text-6xl 3xl:text-7xl",
+}
+
+interface HeadingProps extends ComponentPropsWithoutRef<"h3"> {
+  level?: HeadingLevel;
+  longForm?: boolean; // Is the heading part of a long form text?
+}
+
+const longFormHeadingBase = textBase + " my-10";
+
 export const Heading = ({
   className,
   children,
-}: ComponentPropsWithoutRef<"h3">) => {
+  level = HeadingLevel.l1,
+  longForm,
+}: HeadingProps) => {
   return (
     <h3
       className={cn(
-        "text-primary text-4xl sm:text-6xl 3xl:text-7xl",
-        textBase,
+        level,
+        longForm ? longFormHeadingBase : textBase,
         className
       )}
     >
@@ -95,39 +111,45 @@ export const SmallText = ({
   );
 };
 
+const bodyBase =
+  "text-primary leading-normal 2xl:leading-normal text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl";
+
 export const TextEmbed = forwardRef<
   HTMLSpanElement,
   ComponentPropsWithoutRef<"span">
 >(({ className, children, ...props }, ref) => {
+  // This component is used to embed text in another paragraph component
+
   return (
-    <span
-      ref={ref}
-      className={cn("text-primary text-2xl 2xl:text-3xl", textBase, className)}
-      {...props}
-    >
+    <span ref={ref} className={cn(bodyBase, textBase, className)} {...props}>
       {children}
     </span>
   );
 });
 
-export const Text = forwardRef<
-  HTMLParagraphElement,
-  ComponentPropsWithoutRef<"p">
->(({ className, children, ...props }, ref) => {
-  return (
-    <p
-      ref={ref}
-      className={cn(
-        "text-primary leading-normal 2xl:leading-normal text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl",
-        textBase,
-        className
-      )}
-      {...props}
-    >
-      {children}
-    </p>
-  );
-});
+interface TextProps extends ComponentPropsWithoutRef<"p"> {
+  longForm?: boolean; // Is the text part of a long form text?
+}
+
+const longFormTextBase = textBase + " my-5";
+
+export const Text = forwardRef<HTMLParagraphElement, TextProps>(
+  ({ className, children, longForm, ...props }, ref) => {
+    return (
+      <p
+        ref={ref}
+        className={cn(
+          bodyBase,
+          longForm ? longFormTextBase : textBase,
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </p>
+    );
+  }
+);
 
 export const CodeSnippet = ({
   children,

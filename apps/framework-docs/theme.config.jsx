@@ -1,4 +1,4 @@
-import {Display, Heading, Text, TextEmbed} from "design-system/typography";
+import {Display, Heading, Text, TextEmbed, HeadingLevel} from "design-system/typography";
 import {Logo} from "design-system/components";``
 
 export default {
@@ -19,7 +19,10 @@ export default {
   ),
 
   components: {
-    h1: ({children}) => <Heading>{children}</Heading>,
+    h1: ({children}) => <Display >{children}</Display>,
+    h2: ({children}) => <Heading longForm>{children}</Heading>,
+    h3: ({children}) => <Heading longForm level={HeadingLevel.l2}>{children}</Heading>,
+    h4: ({children}) => <Heading longForm level={HeadingLevel.l3}>{children}</Heading>,
     p: ({children}) => <Text>{children}</Text>,
     ul: ({children}) => <TextEmbed>{children}</TextEmbed>,
     ol: ({children}) => <TextEmbed>{children}</TextEmbed>

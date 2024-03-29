@@ -9,7 +9,7 @@ import Image from "next/image";
 
 export const BuiltOnSection = () => {
   const content = {
-    title: "Build for speed, built for scale",
+    title: "Build for speed, built for scale, built for you",
     description:
       "Moose comes batteries included with a best-in-class data stack. Performant, scalable, reliable and, above all, runs on your laptop, this stack can handle different types of realtime and batch workloads. From high-heat shoe launches to bio informatics and everything else in between, moose has you covered.",
     stack: [
@@ -52,7 +52,7 @@ export const BuiltOnSection = () => {
 
       {content.stack.map((stackItem, index) => {
         return (
-          <Grid className="my-5">
+          <Grid className="my-5" key={index}>
             <HalfWidthContentContainer>
               <Text className="my-0"> {stackItem.tag} </Text>
             </HalfWidthContentContainer>

@@ -83,7 +83,7 @@ jobs:
       - name: "Deploy the new image"
         if: ${{ !inputs.dry-run }}
         run: |
-          kubectl set image deployment/moosedeployment moosedeploy=514labs/moose-df-deployment-x86_64-unknown-linux-gnu:${{needs.version.outputs.version}}
+          kubectl set image deployment/moosedeployment moosedeploy=514labs/moose-df-deployment-x86_64-unknown-linux-gnu:$(git rev-parse --short HEAD)
 
       - name: "Watch for the deployment to finish"
         if: ${{ !inputs.dry-run }}

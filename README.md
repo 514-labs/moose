@@ -17,5 +17,8 @@ You can join the Moose community [on Slack](https://join.slack.com/t/moose-commu
 
 Here you can get together with other Moose developers, ask questions, give feedback, make feature requests, and interact directly with Moose maintainers. 
 
+# Contributing
+We welcome contributions to Moose! Please check out the [contribution guidelines](https://github.com/514-labs/moose/blob/main/CONTRIBUTING). 
+
 # Made by 514
 Our mission at [fiveonefour](https://www.fiveonefour.com/) is to bring incredible developer experiences to the data stack. If you’re interested in enterprise solutions, commercial support, or design partnerships, then we’d love to [chat with you](https://xbac8793a37.typeform.com/to/KTf5bBbr?typeform-source=www.fiveonefour.com).

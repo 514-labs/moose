@@ -54,7 +54,7 @@ impl DeleteRedpandaMountVolume {
 
 impl Routine for DeleteRedpandaMountVolume {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let mount_dir = self.internal_dir.join(".panda_house");
+        let mount_dir = self.internal_dir.join("redpanda");
         fs::remove_dir_all(&mount_dir).map_err(|err| {
             RoutineFailure::new(
                 Message::new(
@@ -85,7 +85,7 @@ impl DeleteClickhouseMountVolume {
 }
 impl Routine for DeleteClickhouseMountVolume {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let mount_dir = self.internal_dir.join(".clickhouse");
+        let mount_dir = self.internal_dir.join("clickhouse");
         fs::remove_dir_all(&mount_dir).map_err(|err| {
             RoutineFailure::new(
                 Message::new(

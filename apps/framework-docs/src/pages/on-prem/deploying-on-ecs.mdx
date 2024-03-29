@@ -3,10 +3,17 @@ import { Callout } from "nextra/components";
 # Deploying on Amazon ECS
 
 Moose can be deployed to Amazon's Elastic Container Service (ECS). ECS offers a managed container orchestrator at a fraction of the complexity of managing a Kubernetes cluster.
-The first step is deciding whether you'll host your moose container on Docker Hub or Amazon's Elastic Container Registry (ECR).
 
-Amazon ECR is straightforward and is designed to work out of the box with ECS.
-Using Docker Hub works just fine if your moose container is publicly available; however, if your container is private, you'll need to do a bit more work to provide ECS with your Docker credentials.
+If you're relatively new to ECS we recommend the following resources:
+
+- [Amazon Elastic Container Service (ECS) with a Load Balancer | AWS Tutorial with New ECS Experience](https://www.youtube.com/watch?v=rUgZNXKbsrY)
+- [Tutorial: Deploy NGINX Containers On ECS Fargate with Load Balancer](https://bhaveshmuleva.hashnode.dev/tutorial-deploy-nginx-containers-on-ecs-fargate-with-load-balancer)
+- [How to configure target groups ports with listeners and tasks](https://stackoverflow.com/questions/66275574/how-to-configure-target-groups-ports-with-listeners-and-tasks)
+
+The first step is deciding whether you'll host your moose container on Docker Hub or Amazon's Elastic Container Registry (ECR).
+Amazon ECR is straightforward and is designed to work out of the box with ECS. Using Docker Hub works just fine if your moose container is publicly available; however, if your container is private, you'll need to do a bit more work to provide ECS with your Docker credentials.
+
+> See: [Authenticating with Docker Hub for AWS Container Services](https://aws.amazon.com/blogs/containers/authenticating-with-docker-hub-for-aws-container-services/)
 
 Here is an overview of the steps required:
 
@@ -16,7 +23,7 @@ Here is an overview of the steps required:
 - Under the Container section, specify the name of your moose deployment and provide the container image name you're using.
 - Next, specify the Container Port as 4000.
 
-In the next section below, choose `Amazon ECS` to view instructions for configuring your container environment variables.
+In the next section below, we'll see instructions for configuring your container environment variables.
 
 ## Configuring container environment variables
 
@@ -44,11 +51,13 @@ Scroll down to the Environment variables section and fill in each of the followi
 | Moose Redpanda Keys                         | Usage                                           |
 | ------------------------------------------- | ----------------------------------------------- |
 | MOOSE_REDPANDA_CONFIG\_\_BROKER             | The hostname for your redpanda instance         |
-| MOOSE_REDPANDA_CONFIG\_\_MESSAGE_TIMEOUT_MS | The message timeout delay in milliseconds       |
+| MOOSE_REDPANDA_CONFIG\_\_MESSAGE_TIMEOUT_MS | The message timeout delay in milliseconds\*     |
 | MOOSE_REDPANDA_CONFIG\_\_SASL_PASSWORD      | Your Redpanda password                          |
 | MOOSE_REDPANDA_CONFIG\_\_SASL_USERNAME      | Your Redpanda user name                         |
 | MOOSE_REDPANDA_CONFIG\_\_SASL_MECHANISM     | SCRAM-SHA-256 or SCRAM-SHA-512                  |
 | MOOSE_REDPANDA_CONFIG\_\_SECURITY_PROTOCOL  | The Redpanda security protocol such as SASL_SSL |
+
+> - For the Redpanda message timeout delay consider using a value of greater than one 1000ms (1 second) if you're using a hosted Redpanda cloud service.
 
 Consider other options on the Task creation page and press the `Create` button when ready.
 

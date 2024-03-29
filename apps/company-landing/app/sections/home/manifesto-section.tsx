@@ -11,14 +11,16 @@ export const ManifestoSection = () => {
     <Section>
       <Grid className="gap-y-5">
         <HalfWidthContentContainer className="2xl:col-span-3 aspect-square bg-muted sticky md:top-24">
-          <Image
-            className=""
-            priority
-            src="/images/manifesto/mjs_img_5.webp"
-            fill
-            alt="girl"
-            sizes=" (max-width: 768px) 150vw, 25vw"
-          />
+          <div className="relative h-full">
+            <Image
+              className=""
+              priority
+              src="/images/manifesto/mjs_img_5.webp"
+              fill
+              alt="girl"
+              sizes=" (max-width: 768px) 150vw, 25vw"
+            />
+          </div>
         </HalfWidthContentContainer>
         <HalfWidthContentContainer className="2xl:col-start-7">
           <Text className="mt-0">

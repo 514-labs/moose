@@ -74,8 +74,8 @@ export const FooterDisclaimerContainer = () => {
 
   return (
     <>
-      <Text className="my-1.5 grow">{disclaimer.rights}</Text>
-      <Text className="my-1.5 mx-5">{disclaimer.by}</Text>
+      <Text className="my-1.5 2xl:my-0 grow">{disclaimer.rights}</Text>
+      <Text className="my-1.5 2xl:my-0 mx-5">{disclaimer.by}</Text>
       <ThemeToggle />
     </>
   );

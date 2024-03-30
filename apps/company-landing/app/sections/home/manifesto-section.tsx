@@ -24,9 +24,10 @@ export const ManifestoSection = () => {
         </HalfWidthContentContainer>
         <HalfWidthContentContainer className="2xl:col-start-7">
           <Text className="mt-0">
-            Building a data-intensive application is still like needing to build
-            a car to drive to a destination.
+            The modern data stack has come a long way.
           </Text>
+
+          <Text>And yet...</Text>
 
           <Text>
             To do anything interesting with data, you have to immerse yourself
@@ -49,8 +50,7 @@ export const ManifestoSection = () => {
             isolation and cross their fingers, hoping everything plays nicely.
             They create holistic applications, with contracts between services.
             They don&apos;t manually configure in production and in the cloud,
-            spinning plates to keep everything alive. They build using the tools
-            they love, locally and in the cloud. They define their
+            spinning plates to keep everything alive. They define their
             infrastructure as code, and deploy with a single command. They use
             frameworks that abstract away infrastructure and middleware
             complexity. They leverage decades of software best practices for
@@ -81,13 +81,20 @@ export const ManifestoSection = () => {
           </Text>
 
           <Text>
-            Building software is delightful. It&apos;s time to bring some
-            delight to the data & analytics stack.
+            Building software is a delight <sup>*</sup>. It&apos;s time to bring
+            some delight to the data & analytics stack.
           </Text>
 
           <Text>
             —Tim, Nico, Alex, Chris, Dan, Carlos, Olivia and the Georges
           </Text>
+
+          <hr></hr>
+
+          <div className="text-md">
+            <sup>*</sup> Except for two things of course: naming things, cache
+            invalidation and off by one errors.
+          </div>
         </HalfWidthContentContainer>
       </Grid>
     </Section>

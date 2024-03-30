@@ -37,6 +37,9 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
                 <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary">
                   <Link href="/" className="flex h-full items-center">
                     <Logo property={property} subProperty={subProperty} />
+                    <div className="rounded-full ml-2 border-white border px-2">
+                      alpha
+                    </div>
                   </Link>
                 </div>
 

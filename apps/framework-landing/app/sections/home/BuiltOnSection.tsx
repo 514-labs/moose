@@ -29,12 +29,12 @@ export const BuiltOnSection = () => {
         description:
           "Lightning fast, columnar storage, and a SQL interface. Clickhouse is the perfect database for your large scale OLAP workloads.",
       },
-      {
-        tag: "coming soon",
-        title: "DuckDB",
-        description:
-          "For when you need to keep things fast and local. Duck DB is the perfect database for your local first data-intensive applications.",
-      },
+      // {
+      //   tag: "coming soon",
+      //   title: "DuckDB",
+      //   description:
+      //     "For when you need to keep things fast and local. Duck DB is the perfect database for your local first data-intensive applications.",
+      // },
     ],
   };
   return (

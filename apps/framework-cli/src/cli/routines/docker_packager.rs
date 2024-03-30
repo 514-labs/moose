@@ -28,6 +28,8 @@ WORKDIR /application
 
 # Copy the application files to the container
 COPY ./app ./app
+COPY ./package.json ./package.json
+COPY ./project.toml ./project.toml
 COPY ./versions .moose/versions
 
 # Expose the ports on which the application will listen
@@ -48,7 +50,6 @@ ARG FRAMEWORK_VERSION="0.0.0"
 ARG DOWNLOAD_URL
 RUN curl -Lo /usr/local/bin/moose ${DOWNLOAD_URL}
 RUN chmod +x /usr/local/bin/moose
-RUN moose init mymooseapp ts .
 
 # Set the command to run the application
 CMD ["moose", "prod"]
@@ -188,28 +189,29 @@ impl Routine for BuildDockerfile {
             }
         }
 
-        // Copy app folder to packager directory
+        // Copy app & etc to packager directory
         let project_root_path = self.project.project_location.clone();
-        let copy_result = system::copy_directory(
-            &project_root_path.join("app"),
-            &internal_dir.join("packager"),
-        );
-        match copy_result {
-            Ok(_) => {
-                info!("Copied app directory to packager directory");
-            }
-            Err(err) => {
-                error!(
-                    "Failed to copy app directory to packager directory: {}",
-                    err
-                );
-                return Err(RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        "to copy app directory to packager directory".to_string(),
-                    ),
-                    err,
-                ));
+        let items_to_copy = vec!["app", "package.json", "project.toml"];
+
+        for item in items_to_copy {
+            let copy_result = system::copy_directory(
+                &project_root_path.join(item),
+                &internal_dir.join("packager"),
+            );
+            match copy_result {
+                Ok(_) => {
+                    info!("Copied {} to packager directory", item);
+                }
+                Err(err) => {
+                    error!("Failed to copy {} to packager directory: {}", item, err);
+                    return Err(RoutineFailure::new(
+                        Message::new(
+                            "Failed".to_string(),
+                            format!("to copy {} to packager directory", item),
+                        ),
+                        err,
+                    ));
+                }
             }
         }
 

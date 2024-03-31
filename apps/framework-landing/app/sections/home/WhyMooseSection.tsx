@@ -23,7 +23,7 @@ export const WhyMooseSection = () => {
       {
         title: "Developers, delighted",
         description:
-          "Moose simplifies the way you interact with you data and analytics stack to let you build rich data-intensive experiences using the languages you know, the application frameworks you love and the tools you leverage in your day-to-day workflow. Moose lets you focus on building your best app.",
+          "Moose simplifies the way you interact with your data and analytics stack to let you build rich data-intensive experiences using the languages you know, the application frameworks you love and the tools you leverage in your day-to-day workflow. Moose lets you focus on building your best app.",
       },
     ],
   };

@@ -89,9 +89,8 @@ export const ManifestoSection = () => {
             —Tim, Nico, Alex, Chris, Dan, Carlos, Olivia and the Georges
           </Text>
 
-          <hr></hr>
-
-          <div className="text-md">
+          <div className="text-md mt-20">
+            <hr></hr>
             <sup>*</sup> Except for two things of course: naming things, cache
             invalidation and off by one errors.
           </div>

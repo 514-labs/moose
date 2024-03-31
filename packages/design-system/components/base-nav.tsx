@@ -11,6 +11,7 @@ import { usePathname } from "next/navigation";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import { Logo } from "./logo";
+import { Badge } from "./ui/badge";
 
 gsap.registerPlugin(SplitText);
 
@@ -37,9 +38,9 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
                 <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary">
                   <Link href="/" className="flex h-full items-center">
                     <Logo property={property} subProperty={subProperty} />
-                    <div className="rounded-full ml-2 border-white border px-2">
+                    <Badge className="ml-3 mt-1.5" variant={"outline"}>
                       alpha
-                    </div>
+                    </Badge>
                   </Link>
                 </div>
 

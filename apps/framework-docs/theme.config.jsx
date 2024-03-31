@@ -1,8 +1,11 @@
 import {Display, Heading, Text, TextEmbed, HeadingLevel} from "design-system/typography";
-import {Logo} from "design-system/components";``
+import {Logo, Badge} from "design-system/components";``
 
 export default {
-  logo: () => <Logo property="moosejs" subProperty="docs" />,
+  logo: () => <div className="flex flex-row"><Logo property="moosejs" subProperty="docs" />
+  <Badge className="ml-3 mt-1.5" variant={"outline"}>
+                      alpha
+                    </Badge></div>,
   project: {
     link: 'https://github.com/514-labs/moose'
   },

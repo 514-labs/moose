@@ -34,35 +34,12 @@ export const FooterNavItem = ({
       href={item.href}
       className={cn(
         "text-foreground flex flex-row justify-end lg:px-5",
-        className,
+        className
       )}
     >
       <Text> {children} </Text>
     </Link>
   );
-};
-
-export const FooterNav = () => {
-  const navigation = [
-    { name: "blog", href: "/blog" },
-    { name: "community", href: "/community" },
-  ];
-
-  return (
-    <div className="flex flex-col grow justify-center items-start sm:items-center md:flex-row md:justify-between lg:justify-end col-span-12 lg:col-span-6">
-      {navigation.map((item) => {
-        return (
-          <FooterNavItem item={item} key={item.name} className="md:p-5">
-            {item.name}
-          </FooterNavItem>
-        );
-      })}
-    </div>
-  );
-};
-
-export const FooterNavContainer = () => {
-  return <FooterNav />;
 };
 
 export const FooterDisclaimerContainer = () => {

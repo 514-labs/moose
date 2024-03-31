@@ -2,7 +2,6 @@
 import { useLayoutEffect } from "react";
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
-import React from "react";
 import { Disclosure } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
 import Link from "next/link";
@@ -11,23 +10,18 @@ import { Grid } from "./containers/page-containers";
 import { usePathname } from "next/navigation";
 import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
+import { Logo } from "./logo";
+import { Badge } from "./ui/badge";
 
 gsap.registerPlugin(SplitText);
 
-const default_navigation = [
-  { name: "docs", href: "https://docs.moosejs.com" },
-  { name: "templates", href: "/templates" },
-  { name: "blog", href: "https://blog.fiveonefour.com/" },
-  { name: "github", href: "https://github.com/514-labs/moose" },
-  { name: "community", href: "/community" },
-];
-
 interface NavProps {
   property: string;
+  subProperty?: string;
   navigation: { name: string; href: string; emphasized?: boolean }[];
 }
 
-export const Nav = ({ property, navigation }: NavProps) => {
+export const Nav = ({ property, subProperty, navigation }: NavProps) => {
   useLayoutEffect(() => {}, []);
   const pathname = usePathname();
 
@@ -40,10 +34,13 @@ export const Nav = ({ property, navigation }: NavProps) => {
         <>
           <div className="z-50 sticky w-full py-2">
             <div className="flex h-20 justify-between items-center">
-              <Grid className="sm:grow">
+              <Grid className="grow md:grid md:grid-cols-12 md:gap-x-10">
                 <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary">
                   <Link href="/" className="flex h-full items-center">
-                    <Text className="my-0">{property}</Text>
+                    <Logo property={property} subProperty={subProperty} />
+                    <Badge className="ml-3 mt-1.5" variant={"outline"}>
+                      alpha
+                    </Badge>
                   </Link>
                 </div>
 
@@ -56,7 +53,7 @@ export const Nav = ({ property, navigation }: NavProps) => {
                         className={cn(
                           isActive
                             ? "flex items-center text-action-primary px-5"
-                            : "flex items-center text-primary px-5",
+                            : "flex items-center text-primary px-5"
                         )}
                         key={item.name}
                       >
@@ -68,7 +65,7 @@ export const Nav = ({ property, navigation }: NavProps) => {
                                   isActive
                                     ? "hover:text-action-primary-foreground "
                                     : "hover:text-primary-foreground",
-                                  "text-primary-foreground",
+                                  "text-primary-foreground"
                                 )}
                               >
                                 {item.name}
@@ -80,7 +77,7 @@ export const Nav = ({ property, navigation }: NavProps) => {
                                 isActive
                                   ? "hover:text-action-primary border-b-2 border-black"
                                   : "hover:text-primary",
-                                "py-2",
+                                "py-2"
                               )}
                             >
                               {item.name}

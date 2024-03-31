@@ -11,24 +11,24 @@ export const FeaturesSection = () => {
     title: "Key Features",
     features: [
       {
-        title: "Git-based",
+        title: "Your tools, your way",
         description:
-          "Git-based workflow enables software development best practices like version control and CI/CD",
+          "Git-based workflows, languages you know, and the IDE of choice. Moose is built to slot into your existing tools from your local env, to CI/CD and the cloud",
       },
       {
-        title: "Magical change managing",
+        title: "Auto migrations",
         description:
-          "Run stacks locally: see and test the impact of changes in real time as you edit code - just like developing a web app frontend",
+          "Moose automatically manages schema evolution across your data stack, so you don’t break upstream and downstream dependencies",
       },
       {
         title: "End-to-end typed",
         description:
-          "Run stacks locally: see and test the impact of changes in real time as you edit code - just like developing a web app frontend",
+          "Moose types all your components from data capture through consumption, so you catch issues at build time, instead of in production",
       },
       {
         title: "Built-in testing",
         description:
-          "Git-based workflow enables software development best practices like version control and CI/CD",
+          "With Moose’s built-in testing framework, you can manage sample data and automatically test data pipelines as you’re developing",
       },
       {
         title: "Data product APIs",
@@ -38,7 +38,7 @@ export const FeaturesSection = () => {
       {
         title: "Local dev server",
         description:
-          "Run stacks locally: see and test the impact of changes in real time as you edit code - just like developing a web app frontend",
+          "Run your whole data/analytics stack locally: see the impact of changes in real time as you edit code - just like developing a web application",
       },
     ],
   };

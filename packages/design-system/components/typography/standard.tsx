@@ -14,8 +14,8 @@ export const BannerDisplay = ({
   return (
     <h1
       className={cn(
-        "text-primary text-9xl md:text-[20rem] text-nowrap",
-        className,
+        "text-primary text-nowrap text-9xl md:text-[20rem] ",
+        className
       )}
     >
       {children}
@@ -32,8 +32,8 @@ export const SuperDisplay = ({
   return (
     <h1
       className={cn(
-        "text-primary text-5xl sm:text-7xl md:text-8xl lg:text-9xl 2xl:text-[12rem]",
-        className,
+        "text-primary text-4xl xs:text-5xl sm:text-7xl md:text-8xl lg:text-9xl 2xl:text-[12rem] 3xl::text-[13rem]",
+        className
       )}
     >
       {children}
@@ -47,20 +47,44 @@ export const Display = ({
 }: ComponentPropsWithoutRef<"h2">) => {
   return (
     <h2
-      className={cn("text-primary text-7xl sm:text-9xl", textBase, className)}
+      className={cn(
+        "text-primary text-6xl sm:text-8xl 3xl:text-9xl",
+        textBase,
+        className
+      )}
     >
       {children}
     </h2>
   );
 };
 
+export enum HeadingLevel {
+  l1 = "text-primary text-4xl sm:text-6xl 3xl:text-7xl",
+  l2 = "text-primary text-3xl sm:text-5xl 3xl:text-6xl",
+  l3 = "text-primary text-2xl sm:text-4xl 3xl:text-5xl",
+  l4 = "text-primary text-4xl sm:text-6xl 3xl:text-7xl",
+}
+
+interface HeadingProps extends ComponentPropsWithoutRef<"h3"> {
+  level?: HeadingLevel;
+  longForm?: boolean; // Is the heading part of a long form text?
+}
+
+const longFormHeadingBase = textBase + " my-10";
+
 export const Heading = ({
   className,
   children,
-}: ComponentPropsWithoutRef<"h3">) => {
+  level = HeadingLevel.l1,
+  longForm,
+}: HeadingProps) => {
   return (
     <h3
-      className={cn("text-primary text-5xl sm:text-7xl", textBase, className)}
+      className={cn(
+        level,
+        longForm ? longFormHeadingBase : textBase,
+        className
+      )}
     >
       {children}
     </h3>
@@ -76,36 +100,56 @@ export const SmallText = ({
 }) => {
   return (
     <p
-      className={cn("text-primary text-2xl 2xl:text-3xl ", textBase, className)}
+      className={cn(
+        "text-primary text-1xl 2xl:text-2xl 3xl:text-3xl",
+        textBase,
+        className
+      )}
     >
       {children}
     </p>
   );
 };
 
-interface TextProps extends React.HTMLProps<HTMLParagraphElement> {
-  className?: string;
-  children: ReactNode;
-}
+const bodyBase =
+  "text-primary leading-normal 2xl:leading-normal text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl";
 
-export const Text = forwardRef<
-  HTMLParagraphElement,
-  ComponentPropsWithoutRef<"p">
+export const TextEmbed = forwardRef<
+  HTMLSpanElement,
+  ComponentPropsWithoutRef<"span">
 >(({ className, children, ...props }, ref) => {
+  // This component is used to embed text in another paragraph component
+
   return (
-    <p
-      ref={ref}
-      className={cn(
-        "text-primary text-2xl leading-normal 2xl:text-3xl 2xl:leading-normal",
-        textBase,
-        className,
-      )}
-      {...props}
-    >
+    <span ref={ref} className={cn(bodyBase, textBase, className)} {...props}>
       {children}
-    </p>
+    </span>
   );
 });
+
+interface TextProps extends ComponentPropsWithoutRef<"p"> {
+  longForm?: boolean; // Is the text part of a long form text?
+}
+
+const longFormTextBase = textBase + " my-5";
+
+export const Text = forwardRef<HTMLParagraphElement, TextProps>(
+  ({ className, children, longForm, ...props }, ref) => {
+    return (
+      <p
+        ref={ref}
+        className={cn(
+          bodyBase,
+          longForm ? longFormTextBase : textBase,
+          className
+        )}
+        {...props}
+      >
+        {children}
+      </p>
+    );
+  }
+);
 
 export const CodeSnippet = ({
   children,
@@ -118,7 +162,7 @@ export const CodeSnippet = ({
     <div
       className={cn(
         "text-primary bg-muted rounded-md py-5 px-6 flex flex-row gap-5 cursor-pointer",
-        className,
+        className
       )}
     >
       <Text className="grow my-0">{children}</Text>

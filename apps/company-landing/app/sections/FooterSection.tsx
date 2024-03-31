@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import {
   FullWidthContentContainer,
-  Grid,
   Section,
 } from "design-system/components/containers";
 
@@ -43,54 +42,25 @@ export const FooterNavItem = ({
   );
 };
 
-export const FooterNav = () => {
-  const navigation = [
-    { name: "blog", href: "/blog" },
-    { name: "community", href: "/community" },
-  ];
-
-  return (
-    <div className="flex flex-col grow justify-center items-start sm:items-center md:flex-row md:justify-between lg:justify-end col-span-12 lg:col-span-6">
-      {navigation.map((item) => {
-        return (
-          <FooterNavItem item={item} key={item.name} className="md:p-5">
-            {item.name}
-          </FooterNavItem>
-        );
-      })}
-      <ThemeToggle />
-    </div>
-  );
-};
-
-export const FooterNavContainer = () => {
-  return <FooterNav />;
-};
-
 export const FooterDisclaimerContainer = () => {
   const disclaimer = {
     rights: "2024 All rights reserved",
-    by: "Moose.js from the fiveonefour team",
+    by: "By the folks at fiveonefour",
   };
 
   return (
-    <div className="flex flex-row grow min-h-16 col-span-12 lg:col-span-6">
-      <div className="bg-primary aspect-square h-full min-h-16"></div>
-      <div className="flex flex-col justify-center px-5 no-wrap">
-        <Text className="my-0">{disclaimer.rights}</Text>
-        <Text className="my-0">{disclaimer.by}</Text>
-      </div>
-    </div>
+    <>
+      <Text className="my-1.5 2xl:my-0 grow">{disclaimer.rights}</Text>
+      <Text className="my-1.5 2xl:my-0 mx-5">{disclaimer.by}</Text>
+      <ThemeToggle />
+    </>
   );
 };
 
 export const FooterContent = () => {
   return (
-    <FullWidthContentContainer className="flex flex-col lg:flex-row">
-      <Grid className="grow">
-        <FooterDisclaimerContainer />
-        <FooterNavContainer />
-      </Grid>
+    <FullWidthContentContainer className="flex flex-row ">
+      <FooterDisclaimerContainer />
     </FullWidthContentContainer>
   );
 };

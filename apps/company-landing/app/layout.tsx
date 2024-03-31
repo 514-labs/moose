@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import "design-system/globals.css";
 import localFont from "next/font/local";
-import Script from "next/script";
 import { cn } from "design-system/utils";
 import { Nav } from "design-system/components";
 import { ThemeProvider } from "design-system/components";
@@ -26,7 +25,11 @@ export const metadata: Metadata = {
 const default_navigation = [
   { name: "blog", href: "/blog" },
   { name: "community", href: "/community" },
-  { name: "get in touch", href: "/contact", emphasized: true },
+  {
+    name: "get in touch",
+    href: "https://fiveonefour.typeform.com/signup",
+    emphasized: true,
+  },
 ];
 
 export default async function RootLayout({

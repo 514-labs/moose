@@ -3,8 +3,9 @@ import {
   HalfWidthContentContainer,
   Section,
 } from "design-system/components/containers";
-import { PlaceholderImage, CTABar, CTAButton } from "../../page";
+import { CTABar, CTAButton } from "../../page";
 import { Heading, Text } from "design-system/typography";
+import Image from "next/image";
 
 export const WhatIsMooseSection = () => {
   const content = {
@@ -20,8 +21,16 @@ export const WhatIsMooseSection = () => {
   return (
     <Section>
       <Grid className="gap-y-5">
-        <HalfWidthContentContainer className="2xl:col-span-3">
-          <PlaceholderImage className="aspect-square bg-muted" />
+        <HalfWidthContentContainer className="2xl:col-span-3 aspect-square bg-muted flex flex-col item-center justify-center">
+          <div className="relative h-1/3">
+            <Image
+              priority
+              src="/images/how-it-works/mjs-img-scaffold.svg"
+              fill
+              alt="man in jacket"
+              sizes=" (max-width: 768px) 150vw, 25vw"
+            />
+          </div>
         </HalfWidthContentContainer>
         <HalfWidthContentContainer className=" 2xl:col-start-7">
           <Heading> {content.title} </Heading>

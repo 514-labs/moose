@@ -1,10 +1,10 @@
 import { Cards, Card, Tabs } from 'nextra/components'
 
 # Model Data
-MooseJS's data modeling is built on top of Prisma's intuitive schema modeling language. You can read more about Prisma's schema modeling language [here](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-schema). To get started you simply need to create a `.prisma` file in your project's data model directory. If you're in development mode, MooseJS will automatically detect this file and use it to generate:
+MooseJS's data modeling is built on top of Prisma's intuitive schema modeling language. You can read more about Prisma's schema modeling language [here](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-schema). To get started you simply need to create a `.prisma` file in your project's data model directory. If you're in [development mode](https://docs.moosejs.com/getting-started/dev-mode), MooseJS will automatically detect this file and use it to generate:
 - A typed data capture SDK to instrument your application
-- A high performance ingestion server to receive data from your application
-- A buffer to store data as it's ingested from the webserver
+- A high-performance ingestion server to receive data from your application
+- A buffer to store data as it's ingested from the ingestion server
 - An ingestion table and an analytics view to store and query your data
 
 ## Creating a Model
@@ -17,15 +17,13 @@ model UserActivity {
 }
 ```
 
-As you can see, the model is very simple. It's just a list of fields and their types. MooseJS will automatically generate a table for you in your database and a view to query your data. We don't currently support all of Prisma's schema modeling features, but we're working on it. If you'd like to see a feature added, please join our [Slack community](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg) and let us know.
+As you can see, the data model is very simple. It's just a list of fields and their types. MooseJS will automatically generate a table for you in your database and a view to query your data. We don't currently support all of Prisma's schema modeling features, but we're working on it. If you'd like to see a feature added, please join our [Slack community](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg) and let us know.
 
 ## Inspecting Your Model
 Once you've created your model, you can inspect it along with the infrastructure that MooseJS automatically generated for you by navigating to the console at http://localhost:3001.
 
 ## Test Your Model
 When you create a model, MooseJS automatically creates an ingestion point to facilitate immediate data testing. Send a sample payload to this endpoint using:
-
-
 
 <Tabs items={['Single Data Sample', 'Batch Sample']}>
   <Tabs.Tab>

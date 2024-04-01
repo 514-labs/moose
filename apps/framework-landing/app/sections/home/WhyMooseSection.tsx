@@ -3,7 +3,7 @@ import {
   Grid,
   ThirdWidthContentContainer,
 } from "design-system/components/containers";
-import { Display, Heading, Text } from "design-system/typography";
+import { Heading, Text } from "design-system/typography";
 
 export const WhyMooseSection = () => {
   const content = {

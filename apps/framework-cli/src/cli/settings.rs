@@ -32,11 +32,24 @@ impl Default for Features {
 }
 
 #[derive(Deserialize, Debug)]
+pub struct Telemetry {
+    pub enabled: bool,
+}
+
+impl Default for Telemetry {
+    fn default() -> Self {
+        Telemetry { enabled: true }
+    }
+}
+
+#[derive(Deserialize, Debug)]
 pub struct Settings {
     #[serde(default)]
     pub logger: LoggerSettings,
     #[serde(default)]
     pub features: Features,
+    #[serde(default)]
+    pub telemetry: Telemetry,
 }
 
 fn config_path() -> PathBuf {
@@ -88,12 +101,19 @@ pub fn read_settings() -> Result<Settings, ConfigError> {
 pub fn init_config_file() -> Result<(), std::io::Error> {
     let path = config_path();
     if !path.exists() {
-        let contents_toml = r#"# Feature flags to hide ongoing feature work on the CLI
+        let contents_toml = r#"
+# Feature flags to hide ongoing feature work on the CLI
 [features]
 
 # Coming soon wall on all the CLI commands as we build the MVP.
 # if you want to try features as they are built, set this to false
 coming_soon_wall=false
+
+# Helps gather insights, identify issues, & improve the user experience
+[telemetry]
+
+# Set this to false to opt-out
+enabled=true
 "#;
         std::fs::write(path, contents_toml)?;
     }

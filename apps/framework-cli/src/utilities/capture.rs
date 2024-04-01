@@ -52,40 +52,32 @@ pub struct MooseActivity {
 }
 
 macro_rules! capture {
-    ($activity_type:expr, $sequence_id:expr, $project_name:expr) => {
-        use crate::project::PROJECT;
+    ($activity_type:expr, $project_name:expr, $settings:expr) => {
         use crate::utilities::capture::{ActivityType, MooseActivity};
         use crate::utilities::constants;
+        use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
         use chrono::Utc;
         use reqwest::Client;
         use serde_json::json;
-        use std::env;
         use std::time::Duration;
         use uuid::Uuid;
 
         // Ignore our deployments & internal testing
-        let moose_internal = env::var("MOOSE_INTERNAL");
-        if moose_internal.is_err() {
+        if $settings.telemetry.enabled {
             let event = json!(MooseActivity {
                 id: Uuid::new_v4(),
                 project: $project_name,
                 activity_type: $activity_type,
-                sequence_id: $sequence_id,
+                sequence_id: CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
                 timestamp: Utc::now(),
                 cli_version: constants::CLI_VERSION.to_string(),
             });
-            let remote_url = {
-                let guard = PROJECT.lock().unwrap();
-                guard.instrumentation_config.url().clone()
-            };
-
-            let instrumentation_url = format!("{}/ingest/MooseActivity", remote_url);
 
             // Sending this data can fail for a variety of reasons, so we don't want to
             // block user & no need to handle the result
             let client = Client::new();
             let request = client
-                .post(&instrumentation_url)
+                .post("https://moosefood.514.dev/ingest/MooseActivity")
                 .json(&event)
                 .timeout(Duration::from_secs(2));
             let _ = request.send().await;

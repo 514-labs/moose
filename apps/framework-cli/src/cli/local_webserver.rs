@@ -63,29 +63,6 @@ impl Default for LocalWebserverConfig {
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct RemoteWebserverConfig {
-    pub host: String,
-}
-
-impl RemoteWebserverConfig {
-    pub fn new(host: String) -> Self {
-        Self { host }
-    }
-
-    pub fn url(&self) -> String {
-        format!("https://{}", self.host)
-    }
-}
-
-impl Default for RemoteWebserverConfig {
-    fn default() -> Self {
-        Self {
-            host: "moosefood.514.dev".to_string(),
-        }
-    }
-}
-
 #[derive(Clone)]
 struct RouteService {
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,

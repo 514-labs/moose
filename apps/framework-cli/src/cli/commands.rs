@@ -60,6 +60,8 @@ pub enum Commands {
     Stop {},
     // Clears all temporary data and stops development infrastructure
     Clean {},
+    /// Transforms upstream data into materialized datasets for analysis
+    Flow(FlowArgs),
 }
 
 #[derive(Debug, Args)]
@@ -71,4 +73,29 @@ pub struct GenerateArgs {
 #[derive(Debug, Subcommand)]
 pub enum GenerateCommand {
     Migrations {},
+}
+
+#[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
+pub struct FlowArgs {
+    #[command(subcommand)]
+    pub command: Option<FlowCommands>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum FlowCommands {
+    /// Structures the project's directory & files for a new flow
+    #[command(arg_required_else_help = true)]
+    Init(FlowInitArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct FlowInitArgs {
+    /// Name of your source data model
+    #[arg(short, long, required = true)]
+    pub source: String,
+
+    /// Name of your destination data model
+    #[arg(short, long, required = true)]
+    pub destination: String,
 }

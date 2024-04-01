@@ -13,7 +13,7 @@ export default async function Meta() {
     <div>
       <Heading>{meta.title}</Heading>
       <Text>{humanReadableDate(meta.publishedAt)}</Text>
-      {meta.categories.map((cat, i) => (
+      {meta.categories.map((cat: string, i: number) => (
         <Text key={i}>{cat}</Text>
       ))}
     </div>

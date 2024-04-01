@@ -2,7 +2,9 @@ use crate::framework::controller::{FrameworkObject, FrameworkObjectVersions};
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
 };
-use crate::infrastructure::olap::clickhouse::queries::CreateVersionSyncTriggerQuery;
+use crate::infrastructure::olap::clickhouse::queries::{
+    CreateVersionSyncTriggerQuery, InitialLoadQuery,
+};
 use crate::project::Project;
 use lazy_static::lazy_static;
 use log::debug;
@@ -229,6 +231,10 @@ impl VersionSync {
 
     pub fn create_trigger_query(self) -> String {
         CreateVersionSyncTriggerQuery::build(self)
+    }
+
+    pub fn initial_load_query(self) -> String {
+        InitialLoadQuery::build(self)
     }
 
     pub fn drop_trigger_query(&self) -> String {

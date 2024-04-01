@@ -1,0 +1,91 @@
+name: Release Internal App
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/deploy-internal-app.yaml"
+      - "apps/framework-internal-app/**"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        type: boolean
+        description: "Run the release in dry-run mode"
+        required: true
+        default: true
+
+jobs:
+  deploy-internal:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "18"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Run Build
+        working-directory: ./apps/framework-internal-app
+        run: pnpm run build
+
+      - uses: 1password/load-secrets-action@v1
+        id: op-load-secret
+        with:
+          export-env: false
+        env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
+          DOCKER_HUB_ACCESS_KEY: "op://drqe7p6legi6ug2ijq2fnrkmjq/Docker Hub - Bot/Access Token"
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: 514iceman
+          password: ${{ steps.op-load-secret.outputs.DOCKER_HUB_ACCESS_KEY }}
+
+      - name: Docker Push
+        if: ${{ !inputs.dry-run }}
+        run: |
+          docker tag moose-df-deployment-x86_64-unknown-linux-gnu:latest 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:$(git rev-parse --short HEAD)
+          docker push 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:$(git rev-parse --short HEAD)
+
+      - uses: "google-github-actions/auth@v2"
+        with:
+          service_account: "github-actions@extended-ward-415018.iam.gserviceaccount.com"
+          workload_identity_provider: "projects/167275965848/locations/global/workloadIdentityPools/github/providers/github-actions-repos"
+
+      - name: "Set up Cloud SDK"
+        uses: "google-github-actions/setup-gcloud@v2"
+        with:
+          version: ">= 363.0.0"
+          install_components: "gke-gcloud-auth-plugin, kubectl"
+
+      - name: "Get credentials for the k8s cluster"
+        run: |
+          gcloud container clusters get-credentials moose-dev-cluster-1a --region=us-west1-a
+
+      - name: "Deploy the new image"
+        if: ${{ !inputs.dry-run }}
+        run: |
+          kubectl set image deployment/moosedeployment moosedeploy=514labs/moose-df-deployment-x86_64-unknown-linux-gnu:$(git rev-parse --short HEAD)
+
+      - name: "Watch for the deployment to finish"
+        if: ${{ !inputs.dry-run }}
+        run: |
+          kubectl rollout status deployment/moosedeployment

@@ -1,5 +1,5 @@
 import { CodeSnippet as AnimatedCodeSnipper } from "design-system/typography/animated";
-import { CTABar, PlaceholderImage } from "../../page";
+import { CTABar } from "../../page";
 import {
   Section,
   HalfWidthContentContainer,
@@ -7,10 +7,10 @@ import {
   Grid,
 } from "design-system/components/containers";
 import { Display, Text } from "design-system/typography";
+import Image from "next/image";
 
 export const HeroSection = () => {
   const content = {
-    label: "For all developers",
     tagLine: "Delightful & Insightful",
     description: "The developer framework for your data & analytics stack",
     cta: {
@@ -26,7 +26,6 @@ export const HeroSection = () => {
         <Grid>
           <HalfWidthContentContainer className="xl:col-start-7 md:col-span-9 xl:col-span-6">
             <div>
-              <Text> {content.label} </Text>
               <Display> {content.tagLine} </Display>
               <Text> {content.description} </Text>
             </div>
@@ -38,17 +37,41 @@ export const HeroSection = () => {
       </Section>
       <Section gutterless>
         <Grid className="gap-5">
-          <QuarterWidthContentContainer className="bg-muted aspect-square">
-            <PlaceholderImage />
+          <QuarterWidthContentContainer className="bg-muted aspect-square relative">
+            <Image
+              priority
+              src="/images/hero/mjs_img_4.webp"
+              fill
+              alt="moose"
+              sizes=" (max-width: 768px) 150vw, 25vw"
+            />
           </QuarterWidthContentContainer>
-          <QuarterWidthContentContainer className="bg-muted aspect-square">
-            <PlaceholderImage />
+          <QuarterWidthContentContainer className="bg-muted aspect-square relative">
+            <Image
+              priority
+              src="/images/hero/mjs_img_2.webp"
+              fill
+              alt="girl"
+              sizes=" (max-width: 768px) 150vw, 25vw"
+            />
           </QuarterWidthContentContainer>
-          <QuarterWidthContentContainer className="bg-muted aspect-square">
-            <PlaceholderImage />
+          <QuarterWidthContentContainer className="bg-muted aspect-square relative">
+            <Image
+              priority
+              src="/images/hero/mjs_img_3.webp"
+              fill
+              alt="laptop on table"
+              sizes=" (max-width: 768px) 150vw, 25vw"
+            />
           </QuarterWidthContentContainer>
-          <QuarterWidthContentContainer className="bg-muted aspect-square">
-            <PlaceholderImage />
+          <QuarterWidthContentContainer className="bg-muted aspect-square relative">
+            <Image
+              priority
+              src="/images/hero/mjs_img_6.webp"
+              fill
+              alt="man in jacket"
+              sizes=" (max-width: 768px) 150vw, 25vw"
+            />
           </QuarterWidthContentContainer>
         </Grid>
       </Section>

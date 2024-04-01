@@ -1,9 +1,9 @@
-use std::fs;
 use std::sync::Arc;
 
-use crate::utilities::constants::SAMPLE_FLOWS_DIR;
+use crate::utilities::constants::{SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE};
 use crate::{cli::display::Message, project::Project};
 
+use super::flow::CreateFlowDirectory;
 use super::{Routine, RoutineFailure, RoutineSuccess, RunMode};
 
 pub struct InitializeProject {
@@ -29,7 +29,12 @@ impl Routine for InitializeProject {
             )
         })?;
 
-        CreateSampleFlowDirectory::new(self.project.clone()).run(run_mode)?;
+        CreateFlowDirectory::new(
+            self.project.clone(),
+            SAMPLE_FLOWS_SOURCE.to_string(),
+            SAMPLE_FLOWS_DEST.to_string(),
+        )
+        .run(run_mode)?;
         CreateBaseAppFiles::new(self.project.clone()).run(run_mode)?;
 
         Ok(RoutineSuccess::success(Message::new(
@@ -59,39 +64,5 @@ impl Routine for CreateBaseAppFiles {
             "Created".to_string(),
             "base app files".to_string(),
         )))
-    }
-}
-
-pub struct CreateSampleFlowDirectory {
-    project: Arc<Project>,
-}
-
-impl CreateSampleFlowDirectory {
-    pub fn new(project: Arc<Project>) -> Self {
-        Self { project }
-    }
-}
-
-impl Routine for CreateSampleFlowDirectory {
-    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let flows_dir = self.project.flows_dir();
-        let sample_flows_dirs = flows_dir.join(SAMPLE_FLOWS_DIR);
-
-        match fs::create_dir_all(sample_flows_dirs.clone()) {
-            Ok(_) => Ok(RoutineSuccess::success(Message::new(
-                "Created".to_string(),
-                "sample flow directory".to_string(),
-            ))),
-            Err(err) => Err(RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    format!(
-                        "to create sample flow directory in {}",
-                        sample_flows_dirs.display()
-                    ),
-                ),
-                err,
-            )),
-        }
     }
 }

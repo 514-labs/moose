@@ -40,6 +40,17 @@ FROM (select {migration_function_name}(
 ) as moose_migrate_tuple FROM {db_name}.{source_table_name})
 "#;
 
+static INITIAL_DATA_LOAD_TEMPLATE: &str = r#"
+INSERT INTO {db_name}.{dest_table_name}
+SELECT
+{{for field in to_fields}} moose_migrate_tuple.({@index} + 1) AS {field}{{- if @last }}{{ else }}, {{ endif }}
+{{endfor}}
+FROM (select {migration_function_name}(
+{{for field in from_fields}}{field}{{- if @last }}{{ else }}, {{ endif }}
+{{endfor}}
+) as moose_migrate_tuple FROM {db_name}.{source_table_name})
+"#;
+
 pub struct CreateAliasQuery;
 impl CreateAliasQuery {
     pub fn build(old_table: &ClickHouseTable, new_table: &ClickHouseTable) -> String {
@@ -170,6 +181,18 @@ impl DropTableContext {
             db_name: table.db_name,
             table_name: table.name,
         })
+    }
+}
+
+pub struct InitialLoadQuery;
+impl InitialLoadQuery {
+    pub fn build(view: VersionSync) -> QueryString {
+        let mut tt = TinyTemplate::new();
+        tt.add_template("initial_load_trigger", INITIAL_DATA_LOAD_TEMPLATE)
+            .unwrap();
+        // same field names as the trigger context
+        let context = CreateVersionSyncTriggerContext::new(view);
+        tt.render("initial_load_trigger", &context).unwrap()
     }
 }
 

@@ -4,7 +4,7 @@
 
 You can help the project several ways
 
-- Give us feedback on your experience with the ecosystem through [Discord](https://discord.gg/WX3V3K4QCc) or [Github Discussions](https://github.com/514-labs/moose/discussions)
+- Give us feedback on your experience with the ecosystem through the [Moose slack community](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg) or [Github Discussions](https://github.com/514-labs/moose/discussions)
 - Report bugs through [Github Issues](https://github.com/514-labs/moose/issues)
 - Propose changes by [opening an RFD](./rfd/0001/README.mdx)
 - Give you perspective on an existing opened RFD

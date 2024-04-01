@@ -3,6 +3,7 @@ const remarkMdxDisableExplicitJsx = import("remark-mdx-disable-explicit-jsx");
 const withNextra = require("nextra")({
   theme: "nextra-theme-docs",
   themeConfig: "./theme.config.jsx",
+
   mdxOptions: {
     remarkPlugins: [
       [
@@ -17,6 +18,7 @@ const { withSentryConfig } = require("@sentry/nextjs");
 
 // your existing module.exports or default export
 const nextConfig = {
+  transpilePackages: ["design-system"],
   reactStrictMode: true,
   // Optional build-time configuration options
   sentry: {
@@ -59,9 +61,12 @@ const sentryWebpackPluginOptions = {
 };
 
 // Make sure adding Sentry options is the last code to run before exporting
-module.exports = withNextra(
-  withSentryConfig(nextConfig, sentryWebpackPluginOptions)
-);
+module.exports = withNextra(nextConfig);
+
+// Make sure adding Sentry options is the last code to run before exporting
+// module.exports = withNextra(
+//   withSentryConfig(nextConfig, sentryWebpackPluginOptions)
+// );
 
 // If you're using a next.config.mjs file:
 // export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);

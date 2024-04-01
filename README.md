@@ -12,6 +12,9 @@ MooseJS is an open-source developer framework for building data & analytics appl
 # Getting started
 To get started, check out the Moose documentation: [https://docs.moosejs.com/](https://docs.moosejs.com/)
 
+# Alpha release
+Moose is still in Alpha, and is not yet recommended for critical production use cases. That being said, we’d love for you to get your hands on it and try it out. Moose is in active development, and we’re looking for feedback and insights on how to harden and improve, as we build towards the Beta release. You can reach us at [hello@moosejs.dev](mailto:hello@moosejs.dev) or in the Moose developer community below. 
+
 # Community
 You can join the Moose community [on Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg).
 

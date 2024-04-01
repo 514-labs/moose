@@ -3,10 +3,10 @@
   "version": "0.0",
   "scripts": {
     "dev": "moose-cli dev",
-    "build": "moose-cli build --docker"
+    "build": "moose-cli --version && moose-cli build --docker"
   },
   "dependencies": {},
   "devDependencies": {
-    "@514labs/moose-cli": "0.3.199"
+    "@514labs/moose-cli": "latest"
   }
 }

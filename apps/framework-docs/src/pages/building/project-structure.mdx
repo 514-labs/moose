@@ -10,35 +10,31 @@ The following is the basic structure of a MooseJS project:
   <FileTree.Folder name=".moose"  />
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.Folder name="datamodels" defaultOpen>
-        <FileTree.File name="models.prisma" />
+        <FileTree.File name="model.prisma" />
     </FileTree.Folder>
     <FileTree.Folder name="flows" defaultOpen>
-        <FileTree.File name="flows.ts" />
-    </FileTree.Folder>
-    <FileTree.Folder name="insights" defaultOpen>
-      <FileTree.Folder name="metrics" />
-      <FileTree.Folder name="charts" />
+        <FileTree.Folder name="sourceModel" defaultOpen>
+          <FileTree.Folder name="destinationModel" defaultOpen>
+            <FileTree.File name="flow.ts" />
+          </FileTree.Folder>
+        </FileTree.Folder>
     </FileTree.Folder>
   </FileTree.Folder>
   <FileTree.File name="package.json" />
+  <FileTree.File name="project.toml" />
 </FileTree>
 
-## Top-level Folders
+## Top-level Folders and Files
 |  |  |
 | ------ | ----------- |
 | app | The main folder for your application. |
 | .moose | Moose internals. You shouldn't ever have to touch anything in here. |
-
-
-## Top-level Files
-|  |  |
-| ------ | ----------- |
-| package.json | The main configuration file for your application. |
+| package.json | Configuration file for your application. |
+| project.toml | Configuration file for your application. |
 
 ## App folders
 |  |  |
 | ------ | ----------- |
-| datamodels | The folder where you define your data models. |
-| flows | The folder where you define your data flows. |
-| insights | The folder where you define your data insights. |
+| datamodels | The folder where you define your [Data Models](https://docs.moosejs.com/building/model-data). |
+| flows | The folder where you define your [Flows](https://docs.moosejs.com/building/flows) - note that the hierarchy of folders here dictates the routing and orchestration of your flows. |
 

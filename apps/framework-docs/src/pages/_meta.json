@@ -5,8 +5,10 @@
       "breadcrumb": false
     }
   },
+  "architecture": "Architecture",
+  "version-status": "Alpha Status",
   "getting-started": "Getting Started",
-  "building": "Building Your App",
-  "moose-cli": "Moose CLI",
-  "on-prem": "Moose in the cloud"
+  "building": "Developing your App",
+  "deploying": "Deploying your App",
+  "moose-cli": "Moose CLI"
 }

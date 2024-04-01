@@ -1,0 +1,10 @@
+
+# Architecture
+
+Moose applications run with two similar but distinct architectures:
+1. Local dev server, aka “Dev”
+2. Production deployment, aka “Prod”
+
+The “Dev” architecture is designed to run locally on your machine as you’re developing. It updates in realtime based on code changes, and generally does not seek to preserve local data across changes. This architecture comes with “batteries included”, container-based infrastructure packaged in, so it’s lightweight and easy to get up and running. Specifically, a [Redpanda](https://redpanda.com/) container is included for data streaming, and a [Clickhouse](https://clickhouse.com/) container is included for data storage. 
+
+The “Prod” architecture is designed to run on-prem or in the cloud of your choice, and support highly scaled production workloads. It can be updated with a standard deployment process (such as CI/CD automation), and it provides deep assurances of underlying data integrity across versions and deployments. This architecture does NOT come with storage and streaming infrastructure included – it’s designed to run on top of the production data streaming and data storage clusters of your choice. Currently Moose supports [Redpanda](https://redpanda.com/) for data streaming, and [Clickhouse](https://clickhouse.com/) for data storage.

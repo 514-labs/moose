@@ -29,12 +29,11 @@ The following is the basic structure of a MooseJS project:
 | ------ | ----------- |
 | app | The main folder for your application. |
 | .moose | Moose internals. You shouldn't ever have to touch anything in here. |
-| package.json | Configuration file for your application. |
-| project.toml | Configuration file for your application. |
+| package.json | The default npm package manifest file, ref: [https://docs.npmjs.com/cli/v10/configuring-npm/package-json](https://docs.npmjs.com/cli/v10/configuring-npm/package-json) |
+| project.toml | Configuration file specific to Moose for your application. |
 
 ## App folders
 |  |  |
 | ------ | ----------- |
 | datamodels | The folder where you define your [Data Models](https://docs.moosejs.com/building/model-data). |
 | flows | The folder where you define your [Flows](https://docs.moosejs.com/building/flows) - note that the hierarchy of folders here dictates the routing and orchestration of your flows. |
-

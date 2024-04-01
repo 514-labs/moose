@@ -10,6 +10,7 @@ pub const PROJECT_CONFIG_FILE: &str = "project.toml";
 pub const CLI_CONFIG_FILE: &str = "config.toml";
 pub const CLI_USER_DIRECTORY: &str = ".moose";
 pub const CLI_PROJECT_INTERNAL_DIR: &str = ".moose";
+pub const CLI_INTERNAL_VERSIONS_DIR: &str = "versions";
 pub const CLI_DEV_REDPANDA_VOLUME_DIR: &str = "redpanda";
 pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS: &str = "clickhouse/logs";
 pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA: &str = "clickhouse/data";

@@ -368,6 +368,12 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                         let project = load_project();
                         let project_arc = Arc::new(project);
 
+                        crate::utilities::capture::capture!(
+                            ActivityType::FlowInitCommand,
+                            CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                            project_arc.name().clone()
+                        );
+
                         let mut controller = RoutineController::new();
                         let run_mode = RunMode::Explicit {};
 

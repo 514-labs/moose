@@ -80,7 +80,6 @@ macro_rules! capture {
             };
 
             let instrumentation_url = format!("{}/ingest/MooseActivity", remote_url);
-            println!("Sending to: {}. Event: {}", &instrumentation_url, &event);
 
             // Sending this data can fail for a variety of reasons, so we don't want to
             // block user & no need to handle the result

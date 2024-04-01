@@ -41,6 +41,7 @@ use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS;
 use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
+use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM};
 use crate::utilities::constants::{
@@ -298,6 +299,11 @@ impl Project {
         Ok(internal_dir)
     }
 
+    pub fn delete_internal_dir(&self) -> Result<(), std::io::Error> {
+        let internal_dir = self.internal_dir()?;
+        std::fs::remove_dir_all(internal_dir)
+    }
+
     pub fn create_internal_clickhouse_volume(&self) -> anyhow::Result<()> {
         let clikhouse_dir = self.internal_dir()?;
 
@@ -323,10 +329,22 @@ impl Project {
 
     pub fn old_version_location(&self, version: &str) -> Result<PathBuf, std::io::Error> {
         let mut old_base_path = self.internal_dir()?;
-        old_base_path.push("versions");
+        old_base_path.push(CLI_INTERNAL_VERSIONS_DIR);
         old_base_path.push(version);
 
         Ok(old_base_path)
+    }
+
+    pub fn delete_old_versions(&self) -> Result<(), std::io::Error> {
+        let internal_dir = self.internal_dir()?;
+        let mut old_versions = internal_dir.clone();
+        old_versions.push(CLI_INTERNAL_VERSIONS_DIR);
+
+        if old_versions.exists() {
+            std::fs::remove_dir_all(old_versions)?;
+        }
+
+        Ok(())
     }
 
     pub fn old_versions_sorted(&self) -> Vec<String> {

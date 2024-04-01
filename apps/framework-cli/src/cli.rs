@@ -39,8 +39,8 @@ use crate::utilities::git::is_git_repo;
 use crate::utilities::templates;
 
 use self::routines::{
-    clean::CleanProject, clean::DeleteVersions, docker_packager::BuildDockerfile,
-    docker_packager::CreateDockerfile, migrate::GenerateMigration, stop::StopLocalInfrastructure,
+    clean::CleanProject, docker_packager::BuildDockerfile, docker_packager::CreateDockerfile,
+    migrate::GenerateMigration,
 };
 
 #[derive(Parser)]
@@ -199,8 +199,16 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let mut controller = RoutineController::new();
 
                 // Remove versions directory so only the relevant versions will be populated
-                let internal_directory = project_arc.internal_dir().unwrap();
-                controller.add_routine(Box::new(DeleteVersions::new(internal_directory)));
+                let _ = project_arc.delete_old_versions().map_err(|err| {
+                    show_message!(
+                        MessageType::Error,
+                        Message {
+                            action: "Build".to_string(),
+                            details: format!("Failed to delete old versions: {:?}", err),
+                        }
+                    );
+                    exit(1)
+                });
 
                 // Copy the old schema
                 controller.add_routine(Box::new(CopyOldSchema::new(project_arc.clone())));
@@ -288,10 +296,6 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 routines::start_production_mode(project_arc).await.unwrap();
             }
-            Commands::Update {} => {
-                // This command may not be needed if we have incredible automation
-                todo!("Will update the project's underlying infrastructure based on any added objects")
-            }
             Commands::BumpVersion { new_version } => {
                 let project = load_project();
                 let project_arc = Arc::new(project);
@@ -326,21 +330,6 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 controller
                     .add_routine(Box::new(BumpVersion::new(project_arc.clone(), new_version)));
-                controller.run_routines(run_mode);
-            }
-            Commands::Stop {} => {
-                let mut controller = RoutineController::new();
-                let run_mode = RunMode::Explicit {};
-                let project = load_project();
-                let project_arc = Arc::new(project);
-
-                crate::utilities::capture::capture!(
-                    ActivityType::StopCommand,
-                    project_arc.name().clone(),
-                    &settings
-                );
-
-                controller.add_routine(Box::new(StopLocalInfrastructure::new(project_arc)));
                 controller.run_routines(run_mode);
             }
             Commands::Clean {} => {

@@ -51,14 +51,9 @@ pub enum Commands {
     Prod {},
     /// Generates missing migration files
     Generate(GenerateArgs),
-    BumpVersion {
-        new_version: Option<String>,
-    },
-    // Updates the redpanda cluster and clickhouse database with the latest objects
-    Update {},
-    // Stops development infrastructure
-    Stop {},
-    // Clears all temporary data and stops development infrastructure
+    /// Bumps the version of the project
+    BumpVersion { new_version: Option<String> },
+    /// Clears all temporary data and stops development infrastructure
     Clean {},
     /// Transforms upstream data into materialized datasets for analysis
     Flow(FlowArgs),

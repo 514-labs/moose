@@ -1,5 +1,4 @@
 use log::error;
-use std::fs;
 use std::sync::Arc;
 
 use crate::cli::routines::util::ensure_docker_running;

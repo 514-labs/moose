@@ -168,3 +168,17 @@
 .docs aside.md\:nx-w-64 {
   width: 20rem ;
 }
+
+@layer base {
+  /* .docs .nextra-code-block{
+    @apply text-primary;
+    @apply leading-normal;
+    @apply 2xl:leading-normal;
+    @apply text-base;
+    @apply sm:text-lg;
+    @apply 2xl:text-xl;
+    @apply 3xl:text-2xl;
+  } */
+
+ 
+}

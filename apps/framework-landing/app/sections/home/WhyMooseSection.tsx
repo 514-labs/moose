@@ -8,7 +8,6 @@ import { Display, Heading, Text } from "design-system/typography";
 
 export const WhyMooseSection = () => {
   const content = {
-    title: "Why Moose?",
     valueProps: [
       {
         title: "Your data stack, unified",
@@ -30,13 +29,6 @@ export const WhyMooseSection = () => {
 
   return (
     <>
-      <Section>
-        <Grid>
-          <FullWidthContentContainer>
-            <Display> {content.title} </Display>
-          </FullWidthContentContainer>
-        </Grid>
-      </Section>
       <Section>
         <Grid>
           <ThirdWidthContentContainer className="   xl:order-1">

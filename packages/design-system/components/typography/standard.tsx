@@ -62,7 +62,7 @@ export enum HeadingLevel {
   l1 = "text-primary text-4xl sm:text-6xl 3xl:text-7xl",
   l2 = "text-primary text-3xl sm:text-5xl 3xl:text-6xl",
   l3 = "text-primary text-2xl sm:text-4xl 3xl:text-5xl",
-  l4 = "text-primary text-4xl sm:text-6xl 3xl:text-7xl",
+  l4 = "text-primary text-xl sm:text-3xl 3xl:text-4xl",
 }
 
 interface HeadingProps extends ComponentPropsWithoutRef<"h3"> {
@@ -91,6 +91,9 @@ export const Heading = ({
   );
 };
 
+const smallBodyBase =
+  "text-primary leading-normal 2xl:leading-normal text-md sm:text-lg 2xl:text-xl 3xl:text-2xl";
+
 export const SmallText = ({
   className,
   children,
@@ -98,16 +101,18 @@ export const SmallText = ({
   className?: string;
   children: ReactNode;
 }) => {
+  return <p className={cn(smallBodyBase, textBase, className)}>{children}</p>;
+};
+
+export const SmallTextEmbed = ({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) => {
   return (
-    <p
-      className={cn(
-        "text-primary text-1xl 2xl:text-2xl 3xl:text-3xl",
-        textBase,
-        className
-      )}
-    >
-      {children}
-    </p>
+    <span className={cn(smallBodyBase, textBase, className)}>{children}</span>
   );
 };
 

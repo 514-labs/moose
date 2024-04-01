@@ -231,7 +231,7 @@ export default function TemplatePage({
   };
 
   const template = content.templateDetails.find(
-    (template) => template.slug === params.templateId,
+    (template) => template.slug === params.templateId
   );
 
   return (
@@ -286,17 +286,19 @@ export default function TemplatePage({
       <div className="col-span-12 md:col-span-6  ">
         <div className=" mb-5">
           <Section>
-            <div className="bg-muted aspect-[4/3]"></div>
-            <div className="relative h-3/5">
-              {template && (
-                <Image
-                  priority
-                  src={template.img}
-                  fill
-                  alt="man in jacket"
-                  sizes=" (max-width: 768px) 150vw, 25vw"
-                />
-              )}
+            <div className="bg-muted aspect-[4/3] flex flex-col justify-center">
+              <div className="relative h-3/5">
+                {template && (
+                  <Image
+                    priority
+                    className="shape"
+                    src={template.img}
+                    fill
+                    alt="man in jacket"
+                    sizes=" (max-width: 768px) 150vw, 25vw"
+                  />
+                )}
+              </div>
             </div>
             {template && (
               <TemplateAccordion templateAccordionItems={template.usage} />

@@ -46,7 +46,7 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
 
                 <div className="hidden md:ml-5 col-span-6 md:flex justify-end">
                   {navigation.map((item) => {
-                    const isActive = pathname === item.href;
+                    const isActive = pathname.startsWith(item.href);
 
                     return (
                       <div
@@ -108,7 +108,7 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
           <Disclosure.Panel className="sticky top-0 pt-16 h-screen w-full z-10 bg-background md:hidden">
             <div className="space-y-1 pb-3 pt-2">
               {navigation.map((item) => {
-                const isActive = pathname === item.href;
+                const isActive = pathname.startsWith(item.href);
 
                 return (
                   <Disclosure.Button

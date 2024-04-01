@@ -10,6 +10,5 @@
   "getting-started": "Getting Started",
   "building": "Developing your App",
   "deploying": "Deploying your App",
-  "moose-cli": "Moose CLI",
-  "flows": "Flows"
+  "moose-cli": "Moose CLI"
 }

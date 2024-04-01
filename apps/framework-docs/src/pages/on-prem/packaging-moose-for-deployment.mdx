@@ -2,13 +2,13 @@
 
 Once you've developed your Moose application locally, you can package it for deployment to your on-prem or cloud infrastructure.
 
-The first step is to `cd` into your moose project.
+The first step is to navigate (`cd`) to your moose project in your terminal.
 
 ```txt filename="Terminal" copy
 cd my-moose-project
 ```
 
-The moose-cli you've used to build your moose project also has a handy flag that will automate the packaging and building of your project into docker images.
+The Moose cli you've used to build your Moose project also has a handy flag that will automate the packaging and building of your project into docker images.
 
 ```txt filename="Terminal" copy
 npx @514labs/moose-cli build --docker
@@ -41,7 +41,7 @@ docker push {your-repo-user-name}/moose-df-deployment-aarch64-unknown-linux-gnu:
 docker push {your-repo-user-name}/moose-df-deployment-x86_64-unknown-linux-gnu:latest
 ```
 
-You can also use the following handy shell script to automate the two steps above.
+You can also use the following handy shell script to automate the steps above.
 
 ```bash filename="push.sh" copy
 #!/bin/bash

@@ -1,0 +1,9 @@
+# Introduction
+
+In Moose, setting up data transformation is straightforward: you write a TypeScript function that does the job automatically when new data arrives at the source data model you've chosen.
+Your job is simply to tell this function how to change the data from the source model to the destination model you want.
+
+Here's how it works: for every flow, you set the source and destination data models based on how you organize your folders and files in the `/flows` directory of your project.
+Moose then knows to watch these spots for new data to process, using your TypeScript code to do the transformation.
+
+Basically, with Moose, you're just setting up a clear path for your data, and the system handles the rest automatically.

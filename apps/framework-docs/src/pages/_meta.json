@@ -5,8 +5,6 @@
       "breadcrumb": false
     }
   },
-  "architecture": "Architecture",
-  "version-status": "Alpha Status",
   "getting-started": "Getting Started",
   "building": "Developing your App",
   "deploying": "Deploying your App",

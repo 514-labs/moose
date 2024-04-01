@@ -1,4 +1,6 @@
 {
-    "new-project": "Create a Project",
-    "dev-mode": "Run Dev Server"
+    "version-status": "Alpha warning",
+    "new-project": "Quick start",
+    "project-structure": "Project Structure",
+    "architecture": "Architecture"
 }

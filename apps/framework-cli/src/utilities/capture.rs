@@ -27,6 +27,8 @@ pub enum ActivityType {
     DevCommand,
     #[serde(rename = "dockerCommand")]
     DockerCommand,
+    #[serde(rename = "flowInitCommand")]
+    FlowInitCommand,
     #[serde(rename = "initCommand")]
     InitCommand,
     #[serde(rename = "prodCommand")]
@@ -50,46 +52,36 @@ pub struct MooseActivity {
 }
 
 macro_rules! capture {
-    ($activity_type:expr, $sequence_id:expr, $project_name:expr) => {
-        use crate::project::PROJECT;
+    ($activity_type:expr, $project_name:expr, $settings:expr) => {
         use crate::utilities::capture::{ActivityType, MooseActivity};
         use crate::utilities::constants;
+        use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
         use chrono::Utc;
         use reqwest::Client;
         use serde_json::json;
+        use std::time::Duration;
         use uuid::Uuid;
 
-        #[allow(unused)]
-        let event = json!(MooseActivity {
-            id: Uuid::new_v4(),
-            project: $project_name,
-            activity_type: $activity_type,
-            sequence_id: $sequence_id,
-            timestamp: Utc::now(),
-            cli_version: constants::CLI_VERSION.to_string(),
-        });
-        let remote_url = {
-            let guard = PROJECT.lock().unwrap();
-            guard.instrumentation_config.url().clone()
-        };
-
-        // Sending this data can fail for a variety of reasons, so we don't want to
-        // block user & no need to handle the result
-        tokio::spawn(async move {
-            // TODO: Change this to MooseActivity after the table is verified
-            let instrumentation_url = format!("{}/ingest/UserActivity", remote_url);
-            // TODO: Delete this, use event from above instead
-            let fake_event = json!({
-                "eventId": "1234",
-                "userId": "123456",
-                "activity": $activity_type,
-                "timestamp": Utc::now(),
+        // Ignore our deployments & internal testing
+        if $settings.telemetry.enabled {
+            let event = json!(MooseActivity {
+                id: Uuid::new_v4(),
+                project: $project_name,
+                activity_type: $activity_type,
+                sequence_id: CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
+                timestamp: Utc::now(),
+                cli_version: constants::CLI_VERSION.to_string(),
             });
 
+            // Sending this data can fail for a variety of reasons, so we don't want to
+            // block user & no need to handle the result
             let client = Client::new();
-            let request = client.post(&instrumentation_url).json(&fake_event);
-            request.send().await
-        });
+            let request = client
+                .post("https://moosefood.514.dev/ingest/MooseActivity")
+                .json(&event)
+                .timeout(Duration::from_secs(2));
+            let _ = request.send().await;
+        }
     };
 }
 

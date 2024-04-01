@@ -35,7 +35,6 @@ use crate::cli::{
 use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
 use crate::project::Project;
 use crate::utilities::constants::CLI_VERSION;
-use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
 use crate::utilities::git::is_git_repo;
 use crate::utilities::templates;
 
@@ -154,8 +153,8 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                         crate::utilities::capture::capture!(
                             ActivityType::InitCommand,
-                            CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
-                            name.clone()
+                            name.clone(),
+                            &settings
                         );
 
                         let mut controller = RoutineController::new();
@@ -193,8 +192,8 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 crate::utilities::capture::capture!(
                     ActivityType::BuildCommand,
-                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
-                    project_arc.name().clone()
+                    project_arc.name().clone(),
+                    &settings
                 );
 
                 let mut controller = RoutineController::new();
@@ -210,8 +209,8 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 if *docker {
                     crate::utilities::capture::capture!(
                         ActivityType::DockerCommand,
-                        CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
-                        project_arc.name().clone()
+                        project_arc.name().clone(),
+                        &settings
                     );
                     controller.add_routine(Box::new(CreateDockerfile::new(project_arc.clone())));
                     controller.add_routine(Box::new(BuildDockerfile::new(project_arc.clone())));
@@ -228,8 +227,8 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 crate::utilities::capture::capture!(
                     ActivityType::DevCommand,
-                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
-                    project_arc.name().clone()
+                    project_arc.name().clone(),
+                    &settings
                 );
 
                 let mut controller = RoutineController::new();
@@ -278,8 +277,8 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 crate::utilities::capture::capture!(
                     ActivityType::ProdCommand,
-                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
-                    project_arc.name().clone()
+                    project_arc.name().clone(),
+                    &settings
                 );
 
                 let mut controller = RoutineController::new();
@@ -299,8 +298,8 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 crate::utilities::capture::capture!(
                     ActivityType::BumpVersionCommand,
-                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
-                    project_arc.name().clone()
+                    project_arc.name().clone(),
+                    &settings
                 );
 
                 let mut controller = RoutineController::new();
@@ -337,8 +336,8 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 crate::utilities::capture::capture!(
                     ActivityType::StopCommand,
-                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
-                    project_arc.name().clone()
+                    project_arc.name().clone(),
+                    &settings
                 );
 
                 controller.add_routine(Box::new(StopLocalInfrastructure::new(project_arc)));
@@ -351,8 +350,8 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
 
                 crate::utilities::capture::capture!(
                     ActivityType::CleanCommand,
-                    CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
-                    project_arc.name().clone()
+                    project_arc.name().clone(),
+                    &settings
                 );
 
                 let mut controller = RoutineController::new();
@@ -367,6 +366,12 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                     FlowCommands::Init(init) => {
                         let project = load_project();
                         let project_arc = Arc::new(project);
+
+                        crate::utilities::capture::capture!(
+                            ActivityType::FlowInitCommand,
+                            project_arc.name().clone(),
+                            &settings
+                        );
 
                         let mut controller = RoutineController::new();
                         let run_mode = RunMode::Explicit {};

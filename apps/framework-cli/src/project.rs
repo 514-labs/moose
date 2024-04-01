@@ -26,7 +26,7 @@ use log::debug;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::cli::local_webserver::{LocalWebserverConfig, RemoteWebserverConfig};
+use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::readme::BASE_README_TEMPLATE;
 use crate::framework::schema::templates::{BASE_FLOW_SAMPLE_TEMPLATE, BASE_MODEL_TEMPLATE};
@@ -54,7 +54,6 @@ lazy_static! {
         redpanda_config: RedpandaConfig::default(),
         clickhouse_config: ClickHouseConfig::default(),
         http_server_config: LocalWebserverConfig::default(),
-        instrumentation_config: RemoteWebserverConfig::default(),
         console_config: ConsoleConfig::default(),
         language_project_config: LanguageProjectConfig::Typescript(TypescriptProject::default()),
         project_location: PathBuf::new(),
@@ -72,7 +71,6 @@ pub struct Project {
     pub redpanda_config: RedpandaConfig,
     pub clickhouse_config: ClickHouseConfig,
     pub http_server_config: LocalWebserverConfig,
-    pub instrumentation_config: RemoteWebserverConfig,
     pub console_config: ConsoleConfig,
 
     // This part of the configuration for the project is dynamic and not saved
@@ -128,7 +126,6 @@ impl Project {
                 redpanda_config: RedpandaConfig::default(),
                 clickhouse_config: ClickHouseConfig::default(),
                 http_server_config: LocalWebserverConfig::default(),
-                instrumentation_config: RemoteWebserverConfig::default(),
                 console_config: ConsoleConfig::default(),
                 language_project_config: LanguageProjectConfig::Typescript(TypescriptProject::new(
                     name,

@@ -19,9 +19,6 @@ kafka_port = 9092
 host = "localhost"
 port = 4000
 
-[instrumentation_config]
-host = "moosefood.514.dev"
-
 [console_config]
 host_port = 3001
 

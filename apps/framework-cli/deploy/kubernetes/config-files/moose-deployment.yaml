@@ -107,5 +107,7 @@ spec:
                   key: sk-moose-http-server-config--port
             - name: MOOSE_LOGGER_STDOUT
               value: "true"
+            - name: MOOSE_TELEMETRY_ENABLED
+              value: "false"
       imagePullSecrets:
         - name: moose-repo-credentials

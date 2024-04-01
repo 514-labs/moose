@@ -1,6 +1,5 @@
 use super::{Routine, RoutineFailure, RoutineSuccess};
 use crate::cli::display::with_spinner;
-use crate::cli::display::MessageType;
 use crate::cli::routines::util::ensure_docker_running;
 use crate::utilities::{constants, docker, system};
 use crate::{cli::display::Message, project::Project};
@@ -213,20 +212,6 @@ impl Routine for BuildDockerfile {
                     ));
                 }
             }
-        }
-
-        let container_names = docker::list_container_names().unwrap();
-        let substring = "buildx_buildkit";
-
-        let contains_substring = container_names.iter().any(|s| s.contains(substring));
-        if !contains_substring {
-            show_message!(
-                MessageType::Error,
-                Message {
-                    action: "Docker".to_string(),
-                    details: "Buildx not found, please load it using `docker buildx create --use` and try again.".to_string(),
-                }
-            );
         }
 
         // consts::CLI_VERSION is set from an environment variable during the CI/CD process

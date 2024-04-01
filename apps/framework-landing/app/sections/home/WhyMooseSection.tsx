@@ -1,7 +1,6 @@
 import {
   Section,
   Grid,
-  FullWidthContentContainer,
   ThirdWidthContentContainer,
 } from "design-system/components/containers";
 import { Display, Heading, Text } from "design-system/typography";

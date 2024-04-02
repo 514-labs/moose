@@ -187,12 +187,7 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
 
 pub fn create_compose_file(project: &Project) -> std::io::Result<()> {
     let compose_file = project.internal_dir()?.join("docker-compose.yml");
-
-    if !compose_file.exists() {
-        std::fs::write(compose_file, COMPOSE_FILE)
-    } else {
-        Ok(())
-    }
+    std::fs::write(compose_file, COMPOSE_FILE)
 }
 
 pub fn run_rpk_cluster_info(project_name: &str) -> anyhow::Result<()> {

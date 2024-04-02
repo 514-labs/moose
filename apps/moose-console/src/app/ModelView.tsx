@@ -73,7 +73,7 @@ export default function ModelView({
   const pathName = usePathname();
 
   const [_selectedTab, setSelectedTab] = useState<string>(
-    tab ? tab : "overview"
+    tab ? tab : "overview",
   );
 
   const { table, ingestion_point } = model;
@@ -85,7 +85,7 @@ export default function ModelView({
       params.set("tab", tab);
       return params.toString();
     },
-    [searchParams]
+    [searchParams],
   );
 
   return (
@@ -190,7 +190,7 @@ export default function ModelView({
                       subject="Query View directly"
                       onClick={() => {
                         router.push(
-                          `${pathName}?${createTabQueryString("query")}`
+                          `${pathName}?${createTabQueryString("query")}`,
                         );
                         setSelectedTab("query");
                       }}

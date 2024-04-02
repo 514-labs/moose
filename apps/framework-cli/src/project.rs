@@ -28,7 +28,6 @@ use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
-use crate::framework::readme::BASE_README_TEMPLATE;
 use crate::framework::schema::templates::{BASE_FLOW_SAMPLE_TEMPLATE, BASE_MODEL_TEMPLATE};
 use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
@@ -42,6 +41,7 @@ use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS;
 use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
+use crate::utilities::constants::README_PREFIX;
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM};
 use crate::utilities::constants::{
@@ -220,8 +220,7 @@ impl Project {
     }
 
     pub fn create_base_app_files(&self) -> Result<(), std::io::Error> {
-        let app_dir = self.app_dir();
-        let readme_file_path = app_dir.join("README.md");
+        let readme_file_path = self.project_location.join("README.md");
         let base_model_file_path = self.schemas_dir().join("models.prisma");
         let flow_file_path = self
             .flows_dir()
@@ -233,7 +232,10 @@ impl Project {
         let mut base_model_file = std::fs::File::create(base_model_file_path)?;
         let mut flow_file = std::fs::File::create(flow_file_path)?;
 
-        readme_file.write_all(BASE_README_TEMPLATE.as_bytes())?;
+        let mut readme = include_str!("../../../README.md").to_string();
+        readme.insert_str(0, README_PREFIX);
+
+        readme_file.write_all(readme.as_bytes())?;
         base_model_file.write_all(BASE_MODEL_TEMPLATE.as_bytes())?;
         flow_file.write_all(
             BASE_FLOW_SAMPLE_TEMPLATE

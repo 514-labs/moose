@@ -46,3 +46,9 @@ lazy_static! {
         map
     };
 }
+
+pub const README_PREFIX: &str = r#"
+This is a [MooseJs](https://www.moosejs.com/) project bootstrapped with the 
+[`Moose CLI`](https://github.com/514-labs/moose/tree/main/apps/framework-cli).
+
+"#;

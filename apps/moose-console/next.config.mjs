@@ -54,6 +54,4 @@ const sentryWebpackPluginOptions = {
 };
 
 // Make sure adding Sentry options is the last code to run before exporting
-// export default nextConfig;
-
 export default withSentryConfig(nextConfig, sentryWebpackPluginOptions);

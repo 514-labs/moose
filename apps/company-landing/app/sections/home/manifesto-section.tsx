@@ -91,8 +91,11 @@ export const ManifestoSection = () => {
 
           <div className="text-md mt-20">
             <hr></hr>
-            <sup>*</sup> Except for two things of course: naming things, cache
-            invalidation and off by one errors.
+            <sup>*</sup> Except for{" "}
+            <a href="https://twitter.com/secretGeek/status/7269997868">
+              two things
+            </a>{" "}
+            of course: naming things, cache invalidation and off by one errors.
           </div>
         </HalfWidthContentContainer>
       </Grid>

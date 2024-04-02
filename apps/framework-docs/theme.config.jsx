@@ -1,4 +1,4 @@
-import {Display, Heading, Text, TextEmbed, HeadingLevel} from "design-system/typography";
+import {Display, Heading, Text, TextEmbed, HeadingLevel, SmallText, SmallTextEmbed} from "design-system/typography";
 import {Logo, Badge} from "design-system/components";``
 
 export default {
@@ -22,36 +22,36 @@ export default {
   ),
 
   components: {
-    h1: ({children}) => <Display >{children}</Display>,
-    h2: ({children}) => <Heading longForm>{children}</Heading>,
-    h3: ({children}) => <Heading longForm level={HeadingLevel.l2}>{children}</Heading>,
-    h4: ({children}) => <Heading longForm level={HeadingLevel.l3}>{children}</Heading>,
-    p: ({children}) => <Text>{children}</Text>,
-    ul: ({children}) => <TextEmbed>{children}</TextEmbed>,
-    ol: ({children}) => <TextEmbed>{children}</TextEmbed>
+    h1: ({children}) => <Heading >{children}</Heading>,
+    h2: ({children}) => <Heading longForm level={HeadingLevel.l2}>{children}</Heading>,
+    h3: ({children}) => <Heading longForm level={HeadingLevel.l3}>{children}</Heading>,
+    h4: ({children}) => <Heading longForm level={HeadingLevel.l4}>{children}</Heading>,
+    p: ({children}) => <SmallText>{children}</SmallText>,
+    ul: ({children}) => <SmallTextEmbed>{children}</SmallTextEmbed>,
+    ol: ({children}) => <SmallTextEmbed>{children}</SmallTextEmbed>
   },
   primaryHue: 220,
   primarySaturation: 0,
   sidebar: {
     titleComponent({title}) {
       return (
-        <Text className="my-0 text-muted-foreground">
+        <SmallText className="my-0 text-muted-foreground">
           {title}
-        </Text>
+        </SmallText>
       )
     }
   },
   toc: {
     title: () => {
       return (
-        <TextEmbed> On this page </TextEmbed>
+        <SmallTextEmbed> On this page </SmallTextEmbed>
       )
     },
     headingComponent({children}) {
       return (
-        <Text className="my-0 text-muted-foreground">
+        <SmallText className="my-0 text-muted-foreground">
           {children}
-        </Text>
+        </SmallText>
       )
     }
   },

@@ -29,14 +29,14 @@ export const HeroSection = () => {
               <Display> {content.tagLine} </Display>
               <Text> {content.description} </Text>
             </div>
-            <CTABar>
+            <CTABar className="mb-5">
               <AnimatedCodeSnipper> {content.cta.text} </AnimatedCodeSnipper>
             </CTABar>
           </HalfWidthContentContainer>
         </Grid>
       </Section>
       <Section gutterless>
-        <Grid className="gap-5">
+        <Grid className="md:gap-5 gap-5">
           <QuarterWidthContentContainer className="bg-muted aspect-square relative">
             <Image
               priority

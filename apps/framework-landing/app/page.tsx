@@ -50,7 +50,7 @@ export const CTAButton = ({ className, children, variant }: CTAButtonProps) => {
     <Button
       size={"lg"}
       variant={variant}
-      className="px-6 h-full font-normal border-primary"
+      className=" h-full font-normal border-primary"
     >
       <Text
         className={cn(

@@ -1,11 +1,12 @@
 # Deploying Moose into production
 
-Once you've finished developing your Moose application locally, the next step is to deploy your Moose app into production. Check out the Architecture page to see what the architecture of your Moose application in production will look like. 
+Once you've finished developing your Moose application locally, the next step is to deploy your Moose app into production. Check out the [Architecture page](../getting-started/architecture.mdx) to see what the architecture of your Moose application in production will look like.
 
 Moose makes it easy to package up your app in Docker Images for deployment to your on-prem or cloud infrastructure of choice. Moose’s deployment process is designed to be CI/CD friendly, and should fit naturally with your other git-based, container-based deployment flows.
 
 There are only two aspects of the deployment process that are specific to Moose:
-1. Using the ```moose build --docker command``` to generate the Docker Image files for your Moose application
-2. Configuring the necessary environment variables for your Moose application for networking and access to underlying infrastructure, ie your production data streaming and data storage clusters. 
 
-The following pages walk through the details of these two steps, as well as providing examples of what the Docker-based Moose deployment might look like in common infrastructure / DevOps configurations you might be using. 
+1. Using the `moose build --docker` CLI command to generate the Docker Image files for your Moose application
+2. Configuring the necessary environment variables for your Moose application for networking and access to underlying infrastructure, ie your production data streaming and data storage clusters.
+
+The following pages walk through the details of these two steps, as well as providing examples of what the Docker-based Moose deployment might look like in common infrastructure / DevOps configurations you might be using.

@@ -20,6 +20,7 @@
   },
   "packageManager": "pnpm@8.6.12",
   "lint-staged": {
-    "*.rs": "rustfmt --edition 2021"
+    "*.rs": "rustfmt --edition 2021",
+    "**/*": "prettier --write --ignore-unknown"
   }
 }

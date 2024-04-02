@@ -187,7 +187,6 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
 
 pub fn create_compose_file(project: &Project) -> std::io::Result<()> {
     let compose_file = project.internal_dir()?.join("docker-compose.yml");
-
     std::fs::write(compose_file, COMPOSE_FILE)
 }
 

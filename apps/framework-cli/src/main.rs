@@ -14,14 +14,16 @@ fn main() {
         "production"
     };
 
-    let _guard = sentry::init(
-        ("https://83941f36fe439ebe1ffd4d35b834ed7a@o4505851966128128.ingest.sentry.io/4505851967963136", 
-        sentry::ClientOptions {
-        release: sentry::release_name!(),
-        traces_sample_rate: 1.0,
-        environment: Some(envionment.into()),
-        ..Default::default()
-      }));
+    if envionment == "production" {
+        let _guard = sentry::init(
+            ("https://83941f36fe439ebe1ffd4d35b834ed7a@o4505851966128128.ingest.sentry.io/4505851967963136", 
+            sentry::ClientOptions {
+            release: sentry::release_name!(),
+            traces_sample_rate: 1.0,
+            environment: Some(envionment.into()),
+            ..Default::default()
+          }));
+    }
 
     tokio::runtime::Builder::new_multi_thread()
         .enable_all()

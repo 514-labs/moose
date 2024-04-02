@@ -27,7 +27,6 @@
     "@sentry/nextjs": "^7.106.0",
     "@tanstack/react-table": "^8.11.7",
     "@types/heap": "^0.2.34",
-    "@vercel/analytics": "^1.1.1",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "cmdk": "^0.2.0",

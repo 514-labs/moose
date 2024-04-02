@@ -1,6 +1,5 @@
 {
-    "model-data": "Model Data",
-    "capture-data": "Capture Data",
-    "make-changes": "Make Changes",
-    "flows": "Flows"
+    "data-models": "Primitive: Data Models",
+    "flows": "Primitive: Flows",
+    "dcm": "Data Change Management"
 }

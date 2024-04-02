@@ -1,4 +1,4 @@
-import { Cards, Card, Tabs } from 'nextra/components'
+import { Cards, Card, Tabs } from "nextra/components";
 
 ## Creating a Model
 
@@ -13,15 +13,33 @@ model UserActivity {
 }
 ```
 
-As you can see, the data model is very simple. It's just a list of fields and their types. MooseJS's data modeling is built on top of Prisma's intuitive schema modeling language. You can read more about Prisma's schema modeling language [here](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-schema). We don't currently support all of Prisma's schema modeling features, but we're working on it. 
-
-## Inspecting Your Model
-Once you've created your model, you can inspect it along with the infrastructure that MooseJS automatically generated for you by navigating to the console at http://localhost:3001.
+As you can see, the data model is very simple. It's just a list of fields and their types. MooseJS's data modeling is built on top of Prisma's intuitive schema modeling language. You can read more about Prisma's schema modeling language [here](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-schema). We don't currently support all of Prisma's schema modeling features, but we're working on it.
 
 ## Supported Types
+
 The following types are currently supported within MooseJS data models:
+| Prisma | Clickhouse | Typescript | Moose |
+|:-------- |:---------- |:---------- |:------- |
+| String | String | String | ✅ |
+| Boolean | Boolean | Boolean | ✅ |
+| Int | Int64 | Number | ✅ |
+| BigInt | Int256 | BigInt | ❌ |
+| Float | Float64 | Number | ✅ |
+| Decimal | Decimal | Number | ✅ |
+| DateTime | DateTime | Date | ✅ |
+| Json | Json | Object | ❌ |
+| Bytes | n/a | n/a | ❌ |
+| Enum | Enum | Enum | ✅ |
+| Arrays | Array | Array | ❌ |
+
+Note: support for Enum in automatically generated Typescript SDK is coming soon.
+
+## Inspecting Your Model
+
+Once you've created your model, you can inspect it along with the infrastructure that MooseJS automatically generated for you by navigating to the console at http://localhost:3001.
 
 ## Test Your Model
+
 When you create a model, MooseJS automatically creates an ingestion point to facilitate immediate data testing. Send a sample payload to this endpoint using:
 
 <Tabs items={['Single Data Sample', 'Batch Sample']}>
@@ -47,5 +65,5 @@ When you create a model, MooseJS automatically creates an ingestion point to fac
 </Tabs>
 
 ## Next steps
-You're set to start sending data into your Moose application from upstream sources. Detailed integration steps are available in the [next section](/building/capture-data).
-To understand the impact of changes to your data model, refer to the [Make Changes](/building/make-changes) section of the docs.
+
+You're all set to start sending data into your Moose application from upstream sources, and consuming into downstream sources. Check out the next two sections of the docs for more details on Ingesting and Consuming Data. To understand the impact of changes to your Data Model, refer to the [Data Change Management](/building/dcm/intro) section of the docs.

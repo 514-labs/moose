@@ -53,6 +53,27 @@ Starts a development environment running the full stack of your MooseJS applicat
 moose dev
 ```
 
+### Generate
+
+#### Migrations
+
+Generates migration scripts for models that are different from the previous version.
+
+```txt filename="Terminal" copy
+moose generate migrations
+```
+
+### Bump Version
+
+Bumps the `version` field in `package.json`, and
+adds an entry of the current version and commit hash to `[supported_old_versions]` section in `project.toml`.
+
+```txt filename="Terminal" copy
+moose bump-version <new_version>
+```
+
+- `<new_version>`: optional parameter, if omitted, moose will default to bumping the minor version.
+
 ### Clean
 
 Clears all temporary data and stops development infrastructure.

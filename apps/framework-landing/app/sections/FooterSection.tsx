@@ -32,10 +32,7 @@ export const FooterNavItem = ({
   return (
     <Link
       href={item.href}
-      className={cn(
-        "text-foreground flex flex-row justify-end lg:px-5",
-        className,
-      )}
+      className={cn("text-foreground flex flex-row justify-end ", className)}
     >
       <Text> {children} </Text>
     </Link>
@@ -55,7 +52,7 @@ export const FooterNav = () => {
     <div className="flex flex-col grow justify-center items-start sm:items-center md:flex-row md:justify-between lg:justify-end col-span-12 lg:col-span-6">
       {navigation.map((item) => {
         return (
-          <FooterNavItem item={item} key={item.name} className="md:p-5">
+          <FooterNavItem item={item} key={item.name}>
             {item.name}
           </FooterNavItem>
         );
@@ -73,12 +70,24 @@ export const FooterDisclaimerContainer = () => {
   const disclaimer = {
     rights: "2024 All rights reserved",
     by: "By the folks at fiveonefour",
+    linkedin: {
+      href: "https://www.linkedin.com/company/fiveonefour",
+      name: "LinkedIn",
+    },
+    x: {
+      href: "x.com",
+      name: "X (prev. Twitter)",
+    },
   };
 
   return (
     <>
-      <Text className="my-1.5 grow">{disclaimer.rights}</Text>
-      <Text className="my-1.5 mx-5">{disclaimer.by}</Text>
+      <Text className="grow">{disclaimer.rights}</Text>
+      <Text>{disclaimer.by}</Text>
+      <FooterNavItem item={disclaimer.linkedin}>
+        {disclaimer.linkedin.name}
+      </FooterNavItem>
+      <FooterNavItem item={disclaimer.x}>{disclaimer.x.name}</FooterNavItem>
       <ThemeToggle />
     </>
   );
@@ -86,7 +95,7 @@ export const FooterDisclaimerContainer = () => {
 
 export const FooterContent = () => {
   return (
-    <FullWidthContentContainer className="flex flex-row">
+    <FullWidthContentContainer className="flex flex-col items-start md:flex-row md:items-center gap-x-5">
       <FooterDisclaimerContainer />
     </FullWidthContentContainer>
   );

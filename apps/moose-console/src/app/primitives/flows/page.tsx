@@ -7,9 +7,11 @@ import {
   CardHeader,
   CardTitle,
 } from "components/ui/card";
+import { sendServerEvent } from "event-capture/server-event";
 import Link from "next/link";
 
 export default async function FlowsPage(): Promise<JSX.Element> {
+  sendServerEvent("page_view", { path: "/flows" });
   return (
     <section className="p-4 max-h-screen overflow-y-auto">
       <NavBreadCrumb />

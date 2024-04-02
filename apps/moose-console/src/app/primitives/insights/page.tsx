@@ -7,9 +7,13 @@ import {
   CardHeader,
   CardTitle,
 } from "components/ui/card";
+import { sendServerEvent } from "event-capture/server-event";
 import Link from "next/link";
 
 export default async function InsightsPage(): Promise<JSX.Element> {
+  sendServerEvent("page_view", {
+    path: "/insights",
+  });
   return (
     <section className="p-4 max-h-screen overflow-y-auto">
       <NavBreadCrumb />

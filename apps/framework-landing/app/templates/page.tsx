@@ -1,3 +1,4 @@
+import { sendServerEvent } from "event-capture/server-event";
 import { EmailSection } from "../sections/EmailSection";
 import { FooterSection } from "../sections/FooterSection";
 import { TemplatesSection } from "../sections/home/TemplatesSection";
@@ -10,6 +11,7 @@ import {
 import { Display, Heading, Text } from "design-system/typography";
 
 export default function TemplatesPage() {
+  sendServerEvent("page_view", { page: "templates" });
   const content = {
     title: "Templates",
     hook: {

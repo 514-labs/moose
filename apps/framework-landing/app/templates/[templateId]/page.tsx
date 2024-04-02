@@ -17,6 +17,7 @@ import {
 } from "design-system/components/containers";
 import { CodeSnippet, Display, Text } from "design-system/typography";
 import Image from "next/image";
+import { sendServerEvent } from "event-capture/server-event";
 
 interface TemplateAccordionItem {
   title: string;
@@ -76,6 +77,7 @@ export default function TemplatePage({
 }: {
   params: { templateId: string };
 }) {
+  sendServerEvent("page_view", { page: `template/${params.templateId}` });
   const content = {
     templateDetails: [
       {
@@ -231,7 +233,7 @@ export default function TemplatePage({
   };
 
   const template = content.templateDetails.find(
-    (template) => template.slug === params.templateId,
+    (template) => template.slug === params.templateId
   );
 
   return (

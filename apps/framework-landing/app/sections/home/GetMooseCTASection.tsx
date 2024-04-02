@@ -4,9 +4,9 @@ import {
   HalfWidthContentContainer,
 } from "design-system/components/containers";
 import { Heading, Text } from "design-system/typography";
-import { CodeSnippet } from "design-system/typography/animated";
 import { CTABar } from "../../page";
 import Image from "next/image";
+import { TrackableCodeSnippet } from "../../trackable-components";
 
 export const GetMooseCTASection = () => {
   const content = {
@@ -35,7 +35,12 @@ export const GetMooseCTASection = () => {
           <Heading> {content.title} </Heading>
           <Text> {content.description} </Text>
           <CTABar>
-            <CodeSnippet> {content.cta.text} </CodeSnippet>
+            <TrackableCodeSnippet
+              name={content.cta.action}
+              subject={content.cta.text}
+            >
+              {content.cta.text}
+            </TrackableCodeSnippet>
           </CTABar>
         </HalfWidthContentContainer>
       </Grid>

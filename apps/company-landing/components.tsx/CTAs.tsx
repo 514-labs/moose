@@ -15,7 +15,7 @@ export const CTAText = ({
     <div
       className={cn(
         "text-center md:text-start text-primary text-4xl bg-muted rounded-md py-5 px-10 text-nowrap",
-        className,
+        className
       )}
     >
       {children}
@@ -26,19 +26,26 @@ export const CTAText = ({
 export interface CTAButtonProps extends VariantProps<typeof buttonVariants> {
   className?: string;
   children: ReactNode;
+  onClick?: () => void;
 }
 
-export const CTAButton = ({ className, children, variant }: CTAButtonProps) => {
+export const CTAButton = ({
+  className,
+  children,
+  variant,
+  onClick,
+}: CTAButtonProps) => {
   return (
     <Button
       size={"lg"}
       variant={variant}
       className="px-6 h-full font-normal border-primary"
+      onClick={onClick}
     >
       <Text
         className={cn(
           variant === "outline" ? "text-primary" : "text-primary-foreground",
-          className,
+          className
         )}
       >
         {children}

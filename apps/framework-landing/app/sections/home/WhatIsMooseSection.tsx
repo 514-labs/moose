@@ -4,9 +4,10 @@ import {
   HalfWidthContentContainer,
   Section,
 } from "design-system/components/containers";
-import { CTABar, CTAButton } from "../../page";
+import { CTABar } from "../../page";
 import { Display, Heading, Text } from "design-system/typography";
 import Image from "next/image";
+import { TrackCtaButton } from "../../trackable-components";
 
 export const WhatIsMooseSection = () => {
   const content = {
@@ -47,7 +48,9 @@ export const WhatIsMooseSection = () => {
             <Heading> {content.title} </Heading>
             <Text> {content.description} </Text>
             <CTABar>
-              <CTAButton> {content.cta.label} </CTAButton>
+              <TrackCtaButton name="How it works" subject={content.cta.label}>
+                {content.cta.label}
+              </TrackCtaButton>
             </CTABar>
           </HalfWidthContentContainer>
         </Grid>

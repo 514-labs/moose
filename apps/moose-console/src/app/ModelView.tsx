@@ -24,6 +24,8 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import { CliData, DataModel, MooseObject, Table } from "./types";
+import { sendServerEvent } from "event-capture/server-event";
+import { TrackButton } from "./trackable-components";
 
 interface TableTabsProps {
   model: DataModel;
@@ -71,7 +73,7 @@ export default function ModelView({
   const pathName = usePathname();
 
   const [_selectedTab, setSelectedTab] = useState<string>(
-    tab ? tab : "overview",
+    tab ? tab : "overview"
   );
 
   const { table, ingestion_point } = model;
@@ -83,7 +85,7 @@ export default function ModelView({
       params.set("tab", tab);
       return params.toString();
     },
-    [searchParams],
+    [searchParams]
   );
 
   return (
@@ -182,17 +184,19 @@ export default function ModelView({
                     </div>
                     <span className="grow" />
 
-                    <Button
+                    <TrackButton
                       variant="outline"
+                      name="Button"
+                      subject="Query View directly"
                       onClick={() => {
                         router.push(
-                          `${pathName}?${createTabQueryString("query")}`,
+                          `${pathName}?${createTabQueryString("query")}`
                         );
                         setSelectedTab("query");
                       }}
                     >
                       Query
-                    </Button>
+                    </TrackButton>
                   </h2>
                 </div>
                 <div className="py-8">

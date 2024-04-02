@@ -11,6 +11,8 @@ import {
 import { CURRENT_VERSION } from "app/types";
 import { VersionContext } from "version-context";
 import { usePathname } from "next/navigation";
+import { sendServerEvent } from "event-capture/server-event";
+import { TrackingVerb } from "event-capture/withTrack";
 
 function shouldSwitcherBeDisabled(pathname: string) {
   const regex = /^\/primitives\/models/;
@@ -39,7 +41,13 @@ export default function VersionSelect() {
     <div className="content-center m-4 w-24">
       <Select
         disabled={shouldSwitcherBeDisabled(pathName)}
-        onValueChange={(val) => setVersion(val)}
+        onValueChange={(val) => {
+          sendServerEvent("Select Version", {
+            version: val,
+            action: TrackingVerb.selected,
+          });
+          setVersion(val);
+        }}
         value={version}
       >
         <SelectTrigger>

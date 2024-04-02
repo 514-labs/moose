@@ -4,10 +4,12 @@ import {
   Section,
 } from "design-system/components/containers";
 import { Display, Heading, Text } from "design-system/typography";
-import { CTABar, CTAButton } from "../../components.tsx/CTAs";
+import { CTABar } from "../../components.tsx/CTAs";
 import FooterSection from "../sections/FooterSection";
 import { EmailSection } from "../sections/EmailSection";
 import Link from "next/link";
+import { TrackCTAButton } from "../trackable-components";
+import { sendServerEvent } from "event-capture/server-event";
 
 const content = {
   title: "Community",
@@ -50,6 +52,7 @@ const content = {
 };
 
 export default function Community() {
+  sendServerEvent("page_view", { page: "community" });
   return (
     <>
       <Section>
@@ -103,7 +106,13 @@ export default function Community() {
               <Text>{community.description}</Text>
               <CTABar>
                 <Link href={community.href}>
-                  <CTAButton variant={"outline"}>Join</CTAButton>
+                  <TrackCTAButton
+                    name={"Join Community"}
+                    subject={community.title}
+                    variant={"outline"}
+                  >
+                    Join
+                  </TrackCTAButton>
                 </Link>
               </CTABar>
             </HalfWidthContentContainer>

@@ -10,8 +10,8 @@ import {
 } from "components/ui/select";
 import { Card, CardContent } from "./ui/card";
 import { useEffect, useState } from "react";
-import { Button } from "./ui/button";
 import parse from "html-react-parser";
+import { TrackButton } from "app/trackable-components";
 
 interface Snippet {
   language: string;
@@ -53,7 +53,9 @@ export default function CodeCard({ title, snippets }: CodeCardProps) {
       <div className="flex flex-row items-center py-2">
         <h2>{title}</h2>
         <span className="grow" />
-        <Button
+        <TrackButton
+          name="Copy Snippet"
+          subject={selectedSnippet.code}
           variant="outline"
           className="mr-2"
           onClick={() => {
@@ -61,13 +63,13 @@ export default function CodeCard({ title, snippets }: CodeCardProps) {
           }}
         >
           copy
-        </Button>
+        </TrackButton>
         <div>
           <Select
             defaultValue={selectedSnippet.language}
             onValueChange={(value) => {
               const snippet = snippets.find(
-                (snippet) => snippet.language === value,
+                (snippet) => snippet.language === value
               );
               if (snippet) {
                 setSelectedSnippet(snippet);

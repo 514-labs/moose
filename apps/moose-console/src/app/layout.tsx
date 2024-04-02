@@ -4,7 +4,6 @@ import { cn } from "../lib/utils";
 
 import localFont from "next/font/local";
 
-import { Analytics } from "@vercel/analytics/react";
 import { ReactNode } from "react";
 import { ThemeToggle } from "../components/ui/theme-toggle";
 import { TopNavMenu } from "components/top-nav-menu";
@@ -75,7 +74,6 @@ export default function RootLayout({
             </footer>
           </VersionProvider>
         </ThemeProvider>
-        <Analytics />
       </body>
     </html>
   );

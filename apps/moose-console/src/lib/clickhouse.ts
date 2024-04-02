@@ -1,12 +1,9 @@
+"use server";
+
 import { createClient } from "@clickhouse/client-web";
 import { Project } from "app/types";
-import { unstable_noStore as noStore } from "next/cache";
 
-export function getClient(project?: Project) {
-  // This is to make sure the environment variables are read at runtime
-  // and not during build time
-  noStore();
-
+function getClient(project?: Project) {
   const CLICKHOUSE_HOST =
     process.env.CLICKHOUSE_HOST ||
     project?.clickhouse_config.host ||
@@ -34,4 +31,17 @@ export function getClient(project?: Project) {
   });
 
   return client;
+}
+
+export async function runQuery(
+  project: Project,
+  queryString: string
+): Promise<any> {
+  const client = getClient(project);
+  const resultSet = await client.query({
+    query: queryString,
+    format: "JSONEachRow",
+  });
+
+  return resultSet.json();
 }

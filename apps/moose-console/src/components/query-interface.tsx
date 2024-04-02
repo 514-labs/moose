@@ -15,11 +15,10 @@ import {
   useRef,
   useState,
 } from "react";
-import { getClient } from "../lib/clickhouse";
+import { runQuery } from "../lib/clickhouse";
 import { PreviewTable } from "./preview-table";
 import { Badge } from "./ui/badge";
 import { Card, CardContent } from "./ui/card";
-import { WebClickHouseClient } from "@clickhouse/client-web/dist/client";
 import { DataModel, Project } from "app/types";
 
 const sqlKeyWords = [
@@ -132,18 +131,6 @@ const sqlKeyWords = [
   "SQL",
 ];
 
-async function runQuery(
-  client: WebClickHouseClient,
-  queryString: string,
-): Promise<any> {
-  const resultSet = await client.query({
-    query: queryString,
-    format: "JSONEachRow",
-  });
-
-  return resultSet.json();
-}
-
 interface QueryInterfaceProps {
   model: DataModel;
   project: Project;
@@ -153,7 +140,7 @@ const insertSomeText = (
   insert: string,
   originalValue: string,
   ref: RefObject<HTMLTextAreaElement>,
-  setter: Dispatch<SetStateAction<string>>,
+  setter: Dispatch<SetStateAction<string>>
 ) => {
   if (ref.current) {
     const selectionStart = ref.current.selectionStart;
@@ -171,8 +158,6 @@ export default function QueryInterface({
   model,
   project,
 }: QueryInterfaceProps) {
-  const client = getClient(project);
-
   // Create a ref to the textarea
 
   const { table } = model;
@@ -180,7 +165,7 @@ export default function QueryInterface({
   const tables = [`${table.database}.${table.name}`];
 
   const [value, setValue] = useState(
-    `SELECT * FROM ${table.database}.${table.name} LIMIT 50;`,
+    `SELECT * FROM ${table.database}.${table.name} LIMIT 50;`
   );
 
   const [results, setResults] = useState<any[]>([]);
@@ -190,7 +175,7 @@ export default function QueryInterface({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
-        runQuery(client, value).then((results) => {
+        runQuery(project, value).then((results) => {
           e.preventDefault();
           setResults(results);
         });
@@ -261,7 +246,7 @@ export default function QueryInterface({
                                 word,
                                 value,
                                 textareaRef,
-                                setValue,
+                                setValue
                               );
                             }}
                             className="text-nowrap my-1"
@@ -302,7 +287,7 @@ export default function QueryInterface({
                                   word,
                                   value,
                                   textareaRef,
-                                  setValue,
+                                  setValue
                                 );
                               }}
                               className="text-nowrap my-1"
@@ -334,7 +319,7 @@ export default function QueryInterface({
                   <Button
                     variant="default"
                     onClick={async () => {
-                      const results = await runQuery(client, value);
+                      const results = await runQuery(project, value);
                       setResults(results);
                     }}
                   >

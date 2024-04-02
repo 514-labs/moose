@@ -35,7 +35,7 @@ function getClient(project?: Project) {
 
 export async function runQuery(
   project: Project,
-  queryString: string
+  queryString: string,
 ): Promise<any> {
   const client = getClient(project);
   const resultSet = await client.query({

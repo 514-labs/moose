@@ -1,0 +1,45 @@
+import { Steps } from 'nextra/components'
+
+# Capture SDK Documentation 
+To facilitate the ingestion process, Moose automatically generates a TypeScript SDK for every data model defined in your project. The SDK provides instant type safety and schema validation, offering real-time feedback on the data you intend to send to Moose during development.
+
+While Moose also provides [HTTP endpoints for data ingestion](https://docs.moosejs.com/building/capture-data#through-ingestion-points), we recommend utilizing the SDK for more robust data integrity enforcement and reduced runtime errors. We're actively expanding support to include more programming languages and welcome your input on which ones to prioritize.
+
+## Getting Started with the SDK
+Ensure your Moose application’s development server is running. If it’s not, [refer to the documentation on starting the development server](https://docs.moosejs.com/getting-started/dev-mode). Follow these steps to prepare your development environment for SDK usage:
+
+## Linking the SDK Globally
+Before using the SDK to send data to Moose from your other applications, it needs to be linked to your global Node.js modules. 
+
+1. *Navigate to the SDK Directory*: From your Moose project’s root directory, execute the following command `cd .moose/<YOUR_PROJECT_NAME>-sdk`
+2. *Execute the Link Command*: Use the appropriate command for your node package manager to create a global symlink. Run the following command in your terminal from the SDK directory: for npm: `npm link`; for pnpm `pnpm link -g`.
+
+## Integrating the SDK with Your Application
+Once you've linked the SDK to your global node modules, integrate it into your applications as follows:
+1. *Navigate to Your Application*: Go to the root directory of the application where you want to use the SDK, ensuring the `package.json` file is present.
+2. *Link the SDK*: Use the command corresponding to your package manager to create a symlink in your application's node_modules that points to the SDK. Replace `<YOUR_MOOSE_PROJECT_NAME>` with the name of your Moose project: for npm: `npm link <YOUR_MOOSE_PROJECT_NAME>-sdk`; for pnpm `pnpm link -g <YOUR_MOOSE_PROJECT_NAME>-sdk`.
+
+## Understanding the Linking Process
+Creating a global symlink in your `node_modules` directory mimics installing the SDK globally. When you link the SDK to an application, it forms a local `node_modules` symlink tied to this global one. This setup lets Node.js see the SDK as a direct dependency, ensuring updates spread instantly to all linked applications. During development, it ensures the SDK remains in sync with the latest data model versions in your Moose project, enabling accurate validation of captured data against the updated schemas.
+
+## Using the SDK to Send Data
+To capture data with your data models, import the respective send method from your Moose SDK into your application code. Each data model has a corresponding method that facilitates the transmission of data to the appropriate destination table in your database. The method name follows the format `send<DATA_MODEL_NAME>`.
+
+For example, if you're sending data for a UserActivity data model, your code snippet will look like this:
+
+```Javascript
+import sendUserActivity from "my-moose-project-name-sdk";
+...
+// YOUR APPLICATION CODE
+
+// WHEREVER YOU NEED TO LOG AN EVENT
+sendUserActivity({
+	id: activityId,
+	timestamp: new Date(),
+	activity: "Login"
+});
+
+// REST OF YOUR CODE...
+```
+
+

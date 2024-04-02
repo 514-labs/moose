@@ -1,35 +1,32 @@
-import { Steps } from "nextra/components";
+import { Tabs } from "nextra/components";
 
 # Installation
 
 MooseJS comes with a handy CLI for managing your MooseJS application. Navigate to your project's directory to run commands. There are a few ways to run the CLI:
 
-<Steps>
-### NPX
-The simplest method to run the CLI is via NPX. No extra installation is necessary for this method.
-```txt filename="Terminal" copy
-npx @514labs/moose-cli <command>
-```
+<Tabs items={['No Install', 'Project-level Install', 'Global Install']}>
+  <Tabs.Tab>
+    The simplest method to run the CLI is via NPX. No extra installation is necessary for this method.
+    ```txt filename="Terminal" copy
+    npx @514labs/moose-cli <command>
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    Alternatively, the Moose CLI comes packaged with your Moose application. You can install the dependency locally and then run the Moose CLI within your project with:
+    ```txt filename="Terminal" copy
+    npm install
+    npm run <command>
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+    Finally, you can install the Moose CLI globally using NPM. This will get you a cleaner command interface, and better performance on the CLI. You can then run the Moose CLI anywhere.  
+    ```txt filename="Terminal" copy
+    npm install -g @514labs/moose-cli
+    moose <command>
+    ```
+  </Tabs.Tab>
+</Tabs>
 
-### Dependency install
-
-Alternatively, the Moose CLI comes packaged with your Moose application. You can install the dependency locally and then run the Moose CLI within your project with:
-
-```txt filename="Terminal" copy
-npm install
-npm run <command>
-```
-
-### Global install
-
-Finally, you can install the Moose CLI globally using NPM. This will get you a cleaner command interface, and better performance on the CLI. You can then run the Moose CLI anywhere.
-
-```txt filename="Terminal" copy
-npm install -g @514labs/moose-cli
-moose <command>
-```
-
-</Steps>
 
 # Moose CLI commands
 
@@ -53,11 +50,21 @@ Starts a development environment running the full stack of your MooseJS applicat
 moose dev
 ```
 
+### Flow
+
+#### Flow Init
+
+Generates a new Flow for you, including creating and structuring the necessary directories and files based on your specified data models. Learn more in the [Flows docs](../building/flows/setup).
+
+```txt filename="Terminal" copy
+moose flow init --source <YourSourceDataModel> --destination <YourDestinationDataModel>
+```
+
 ### Generate
 
-#### Migrations
+#### Generate Migrations
 
-Generates migration scripts for models that are different from the previous version.
+Generates migration scripts for models that are different from the previous version. Learn more in the [Data Change Management docs](../building/dcm/intro).
 
 ```txt filename="Terminal" copy
 moose generate migrations
@@ -65,8 +72,7 @@ moose generate migrations
 
 ### Bump Version
 
-Bumps the `version` field in `package.json`, and
-adds an entry of the current version and commit hash to `[supported_old_versions]` section in `project.toml`.
+Bumps the `version` field in `package.json`, and adds an entry of the current version and commit hash to `[supported_old_versions]` section in `project.toml`. Learn more in the [Data Change Management docs](../building/dcm/intro).
 
 ```txt filename="Terminal" copy
 moose bump-version <new_version>
@@ -82,10 +88,4 @@ Clears all temporary data and stops development infrastructure.
 moose clean
 ```
 
-### Flow
 
-Transforms upstream data into materialized datasets for analysis.
-
-```txt filename="Terminal" copy
-moose flow init --source <YourSourceDataModel> --destination <YourDestinationDataModel>
-```

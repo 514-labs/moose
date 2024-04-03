@@ -96,7 +96,7 @@ data ecosystem (such as applications that emit the data, databases you extract d
 
 When you deploy a new version of your data model to be available for consumers or producers to
 put data into, you can keep your old version of the data model up and running.
-The two versions of a data model are linked together by a continuous data migration process.
+A continuous data migration process links together the two versions of a data model.
 
 Differently said, if data comes into your old model, the sync will bring it to your new model.
 
@@ -194,7 +194,7 @@ SELECT * FROM local.UserActivity_0_0 LIMIT 50;
 You should see the event we just added there.
 
 The continuous migration working behind the scenes will allow you to also see the data
-inside local.UserActivity_0_1
+inside `local.UserActivity_0_1`
 
 ```sql copy
 SELECT * FROM local.UserActivity_0_1 LIMIT 50;

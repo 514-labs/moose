@@ -10,13 +10,13 @@ import { TrackableCodeSnippet } from "../../trackable-components";
 
 export const GetMooseCTASection = () => {
   const content = {
-    title: "Try moose",
+    title: "Try Moose",
     description:
-      "Moose takes the decades-old best practices of frontend and backend developer frameworks, and brings them to the your data & analytics stack.",
+      "Easily build data-intensive applications with Moose. Get started with a single command.",
     cta: {
       action: "Copy Install",
       label: "Copy",
-      text: "npx create-moose-app test-app",
+      text: "npx create-moose-app my-moose-app",
     },
   };
   return (

@@ -21,6 +21,8 @@ import {
   TrackableCodeSnippet,
 } from "../../trackable-components";
 import { CopyButton } from "./copy-button";
+import { Suspense } from "react";
+import { TemplateImg } from "../../sections/home/TemplateImg";
 
 interface TemplateAccordionItem {
   title: string;
@@ -95,7 +97,8 @@ export default function TemplatePage({
       {
         slug: "product-analytics",
         title: "Product Analytics",
-        img: "/images/templates/mjs-img-product-1.svg",
+        imageSrcLight: "/images/templates/img-product-1-light.svg",
+        imageSrcDark: "/images/templates/img-product-1-dark.svg",
         cta: {
           action: "cta-product-analytics-install",
           label: "Create Template Command",
@@ -216,7 +219,8 @@ export default function TemplatePage({
       {
         slug: "llm-application",
         title: "LLM Application",
-        img: "/images/templates/mjs-img-product-2.svg",
+        imageSrcLight: "/images/templates/img-product-2-light.svg",
+        imageSrcDark: "/images/templates/img-product-2-dark.svg",
         description:
           "Leverage your custom business data and context to large language models to automate tasks based on data and context.",
         usage: [],
@@ -224,7 +228,8 @@ export default function TemplatePage({
       {
         slug: "data-warehouse",
         title: "Data Warehouse",
-        img: "/images/templates/mjs-img-product-3.svg",
+        imageSrcLight: "/images/templates/img-product-3-light.svg",
+        imageSrcDark: "/images/templates/img-product-3-dark.svg",
         description:
           "Unify data across your business domains, creating a platform optimized for analysis and data-driven strategy.",
         usage: [],

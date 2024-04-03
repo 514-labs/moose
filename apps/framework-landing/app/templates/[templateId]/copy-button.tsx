@@ -11,15 +11,14 @@ export function CopyButton({ children, subject, name, copyText }: Props) {
   return (
     <TrackCtaButton
       name={name}
+      className="flex items-center gap-4"
       subject={subject}
       onClick={() => {
         navigator.clipboard.writeText(copyText);
       }}
     >
-      <div className="flex items-center gap-4">
-        {children}
-        <CopyIcon size={24} />
-      </div>
+      {children}
+      <CopyIcon size={24} />
     </TrackCtaButton>
   );
 }

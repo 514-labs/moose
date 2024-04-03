@@ -11,7 +11,7 @@ import {
 import { Card, CardContent } from "./ui/card";
 import { useEffect, useState } from "react";
 import parse from "html-react-parser";
-import { TrackButton } from "app/trackable-components";
+import { TrackButton } from "components/trackable-components";
 
 interface Snippet {
   language: string;

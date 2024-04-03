@@ -9,7 +9,6 @@ import FooterSection from "../sections/FooterSection";
 import { EmailSection } from "../sections/EmailSection";
 import Link from "next/link";
 import { TrackCTAButton } from "../trackable-components";
-import { sendServerEvent } from "event-capture/server-event";
 
 const content = {
   title: "Community",
@@ -52,7 +51,6 @@ const content = {
 };
 
 export default function Community() {
-  sendServerEvent("page_view", { page: "community" });
   return (
     <>
       <Section>

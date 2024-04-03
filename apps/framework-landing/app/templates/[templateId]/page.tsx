@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { CTABar, CTAButton } from "../../page";
+import { CTABar } from "../../page";
 import FooterSection from "../../sections/FooterSection";
 import { EmailSection } from "../../sections/EmailSection";
 import {
@@ -15,9 +15,12 @@ import {
   Section,
   FullWidthContentContainer,
 } from "design-system/components/containers";
-import { CodeSnippet, Display, Text } from "design-system/typography";
+import { Display, Text } from "design-system/typography";
 import Image from "next/image";
-import { sendServerEvent } from "event-capture/server-event";
+import {
+  TrackCtaButton,
+  TrackableCodeSnippet,
+} from "../../trackable-components";
 
 interface TemplateAccordionItem {
   title: string;
@@ -55,11 +58,22 @@ function TemplateAccordion({ templateAccordionItems }: TemplateAccordionProps) {
                 <Text className="text-muted-foreground">{step.title}</Text>
                 <Text>{step.description}</Text>
                 {step.command && (
-                  <CodeSnippet className="my-5">{step.command}</CodeSnippet>
+                  <TrackableCodeSnippet
+                    name={item.title}
+                    subject={step.command}
+                    className="my-5"
+                  >
+                    {step.command}
+                  </TrackableCodeSnippet>
                 )}
                 {step.action && (
                   <Link href={step.action.href}>
-                    <CTAButton>{step.action.label}</CTAButton>
+                    <TrackCtaButton
+                      name={item.title}
+                      subject={step.action.label}
+                    >
+                      {step.action.label}
+                    </TrackCtaButton>
                   </Link>
                 )}
               </div>
@@ -77,7 +91,6 @@ export default function TemplatePage({
 }: {
   params: { templateId: string };
 }) {
-  sendServerEvent("page_view", { page: `template/${params.templateId}` });
   const content = {
     templateDetails: [
       {
@@ -86,7 +99,7 @@ export default function TemplatePage({
         img: "/images/templates/mjs-img-product-1.svg",
         cta: {
           action: "cta-product-analytics-install",
-          label: "Copy npx command",
+          label: "Template Command",
           text: "npx create-moose-app --template product-analytics",
         },
         description:
@@ -171,15 +184,15 @@ export default function TemplatePage({
                 title: "Step 4",
                 description:
                   "Navigate to localhost:3001 to view the events being captured in real-time.",
+                action: {
+                  label: "Go to localhost:3001",
+                  href: "http://localhost:3001",
+                },
               },
               {
                 title: "Additional Resources",
                 description:
                   "We provide additional snippets to instrument applications in other languages in your console.",
-                action: {
-                  label: "Go to localhost:3001",
-                  href: "/additional-resources",
-                },
               },
             ],
           },
@@ -254,7 +267,12 @@ export default function TemplatePage({
             <Display>{template?.title}</Display>
             <Text>{template?.description}</Text>
             <CTABar>
-              <CTAButton>{template?.cta?.label}</CTAButton>
+              <TrackCtaButton
+                name={template?.cta?.label}
+                subject={template?.cta?.text}
+              >
+                {template?.cta?.label}
+              </TrackCtaButton>
             </CTABar>
             <div className="py-10">
               {template?.features?.items.map((feature, index) => (

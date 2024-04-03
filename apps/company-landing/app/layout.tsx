@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "design-system/globals.css";
 import localFont from "next/font/local";
 import { cn } from "design-system/utils";
-import { Nav } from "design-system/components";
 import { ThemeProvider } from "design-system/components";
+import { Nav } from "design-system/trackable-components";
 
 const monoFont = localFont({
   src: "./ABCMonumentGroteskMonoVariable.woff2",

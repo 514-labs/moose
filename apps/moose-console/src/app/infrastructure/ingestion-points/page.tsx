@@ -1,13 +1,11 @@
 "use client";
 
-import { useTrackPageView } from "app/trackable-components";
 import { IngestionPointsList } from "components/ingestion-points-list";
 import { NavBreadCrumb } from "components/nav-breadcrumb";
 import { useContext } from "react";
 import { VersionContext } from "version-context";
 
 export default function IngestionPointsPage() {
-  useTrackPageView();
   const { models } = useContext(VersionContext);
   const ingestionPoints = models.map(({ ingestion_point }) => ingestion_point);
 

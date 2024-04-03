@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import {
   FullWidthContentContainer,
   Section,
@@ -9,6 +7,7 @@ import { Text } from "design-system/typography";
 
 import { cn } from "design-system/utils";
 import { ThemeToggle } from "design-system/components";
+import { TrackLink } from "design-system/trackable-components";
 
 export const FooterSection = () => {
   return (
@@ -30,12 +29,14 @@ export const FooterNavItem = ({
   className?: string;
 }) => {
   return (
-    <Link
+    <TrackLink
+      name="Footer Nav"
+      subject={item.name}
       href={item.href}
       className={cn("text-foreground flex flex-row justify-end ", className)}
     >
       <Text> {children} </Text>
-    </Link>
+    </TrackLink>
   );
 };
 

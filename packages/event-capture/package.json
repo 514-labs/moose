@@ -10,6 +10,10 @@
   "exports": {
     "./client-event": "./events/sendClientEvent.ts",
     "./server-event": "./events/sendServerEvent.ts",
-    "./withTrack": "./events/withTrackableComponent.tsx"
+    "./withTrack": "./events/withTrackableComponent.tsx",
+    "./event-library": "./events/eventLibrary.ts"
+  },
+  "devDependencies": {
+    "@types/react": "^18.2.74"
   }
 }

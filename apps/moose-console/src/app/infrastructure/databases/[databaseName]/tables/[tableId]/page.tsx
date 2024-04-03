@@ -1,6 +1,5 @@
 /* eslint-disable turbo/no-undeclared-env-vars */
 "use client";
-import Link from "next/link";
 import {
   bashSnippet,
   clickhouseJSSnippet,
@@ -13,7 +12,7 @@ import { Fragment, useContext } from "react";
 import ModelView from "app/ModelView";
 import { MooseObject } from "app/types";
 import { VersionContext } from "version-context";
-import { useTrackPageView } from "app/trackable-components";
+import { TrackLink } from "design-system/trackable-components";
 
 export default function Page({
   params,
@@ -21,7 +20,6 @@ export default function Page({
   params: { databaseName: string; tableId: string };
   searchParams: { tab: string };
 }) {
-  useTrackPageView();
   // This is to make sure the environment variables are read at runtime
   // and not during build time
   const { models, cliData } = useContext(VersionContext);
@@ -36,13 +34,23 @@ export default function Page({
     <section className="p-4 max-h-screen flex-grow overflow-y-auto flex flex-col grow">
       <div className="text-base text-muted-foreground flex">
         <Fragment>
-          <Link className={`capitalize text-white`} href={"/infrastructure"}>
+          <TrackLink
+            name={"Link"}
+            subject="infrastructure"
+            className={`capitalize text-white`}
+            href={"/infrastructure"}
+          >
             Infrastructure
-          </Link>
+          </TrackLink>
           <div className="px-1">/</div>
-          <Link className={`capitalize text-white`} href={"/infrastructure"}>
+          <TrackLink
+            name="Link"
+            subject="infrastructure"
+            className={`capitalize text-white`}
+            href={"/infrastructure"}
+          >
             Tables
-          </Link>
+          </TrackLink>
         </Fragment>
       </div>
       <div className="py-10">

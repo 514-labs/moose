@@ -8,6 +8,7 @@ const config = {
     "./app/**/*.{ts,tsx, md, mdx}",
     "./src/**/*.{ts,tsx, md, mdx}",
     "../../packages/design-system/**/*.{ts,tsx, md, mdx}",
+    "../../packages/event-capture/**/*.{ts,tsx, md, mdx}",
   ],
   prefix: "",
   theme: {

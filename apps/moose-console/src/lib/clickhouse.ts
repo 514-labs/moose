@@ -49,7 +49,7 @@ export async function runQuery(
         sendServerEvent("Query Success", { query: queryString });
         return res.json();
       },
-      (e) => {
+      (_e) => {
         sendServerEvent("Query Error", { query: queryString });
         return [];
       },

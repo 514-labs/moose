@@ -20,7 +20,6 @@ import { cn } from "design-system/utils";
 import { Button, buttonVariants } from "design-system/components";
 
 import { Text } from "design-system/typography";
-import { sendServerEvent } from "event-capture/server-event";
 
 export const CTAText = ({
   className,
@@ -87,7 +86,6 @@ export const CTABar = ({
 };
 
 export default function Home() {
-  sendServerEvent("page_view", { page: "home" });
   return (
     <main className="min-h-screen">
       <HeroSection />

@@ -1,7 +1,6 @@
 "use client";
 
-import { TrackButton } from "app/trackable-components";
-import { Button } from "./ui/button";
+import { TrackButton } from "components/trackable-components";
 import { Card } from "./ui/card";
 
 interface SnippetCardProps {

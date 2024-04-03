@@ -13,12 +13,10 @@ import ModelView from "app/ModelView";
 import { MooseObject } from "app/types";
 import { useContext } from "react";
 import { VersionContext } from "version-context";
-import { useTrackPageView } from "app/trackable-components";
 
 export default function Page({ params }: { params: { modelName: string } }) {
   // This is to make sure the environment variables are read at runtime
   // and not during build time
-  useTrackPageView();
   const { models, cliData } = useContext(VersionContext);
 
   const model = getModelByName(models, params.modelName);

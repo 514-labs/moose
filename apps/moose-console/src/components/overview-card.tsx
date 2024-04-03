@@ -1,7 +1,7 @@
-import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { ChevronRight } from "lucide-react";
 import { Separator } from "./ui/separator";
+import { TrackLink } from "design-system/trackable-components";
 
 interface OverviewItems {
   name: string;
@@ -22,7 +22,7 @@ export default function OverviewCard({
 }: OverviewCardProps) {
   return (
     <Card className="h-full">
-      <Link href={link}>
+      <TrackLink name="Link" subject={title} href={link}>
         <CardHeader className="">
           <CardTitle className="flex hover:text-white justify-between">
             <div>
@@ -31,11 +31,16 @@ export default function OverviewCard({
             <ChevronRight className="h-6 w-6" />
           </CardTitle>
         </CardHeader>
-      </Link>
+      </TrackLink>
       <CardContent className="m-0 p-0">
         {items?.length ? (
           items.map((model, index) => (
-            <Link href={model.link} key={index}>
+            <TrackLink
+              name="Link"
+              subject={`${title} ${model.name}`}
+              href={model.link}
+              key={index}
+            >
               <Separator />
               <div
                 key={index}
@@ -43,7 +48,7 @@ export default function OverviewCard({
               >
                 <div className="py-4 mx-6">{model.name}</div>
               </div>
-            </Link>
+            </TrackLink>
           ))
         ) : (
           <div className="py-4 mx-6">No data</div>

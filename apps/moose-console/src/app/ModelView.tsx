@@ -24,8 +24,7 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import { CliData, DataModel, MooseObject, Table } from "./types";
-import { sendServerEvent } from "event-capture/server-event";
-import { TrackButton } from "./trackable-components";
+import { TrackButton } from "../components/trackable-components";
 
 interface TableTabsProps {
   model: DataModel;
@@ -186,7 +185,7 @@ export default function ModelView({
 
                     <TrackButton
                       variant="outline"
-                      name="Button"
+                      name="Link"
                       subject="Query View directly"
                       onClick={() => {
                         router.push(

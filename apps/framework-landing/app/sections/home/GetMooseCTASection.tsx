@@ -14,7 +14,7 @@ export const GetMooseCTASection = () => {
     description:
       "Moose takes the decades-old best practices of frontend and backend developer frameworks, and brings them to the your data & analytics stack.",
     cta: {
-      action: "cta-early-access",
+      action: "Copy Install",
       label: "Copy",
       text: "npx create-moose-app",
     },

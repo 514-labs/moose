@@ -7,11 +7,9 @@ import {
   CardHeader,
   CardTitle,
 } from "components/ui/card";
-import { sendServerEvent } from "event-capture/server-event";
-import Link from "next/link";
+import { TrackLink } from "design-system/trackable-components";
 
 export default async function FlowsPage(): Promise<JSX.Element> {
-  sendServerEvent("page_view", { path: "/flows" });
   return (
     <section className="p-4 max-h-screen overflow-y-auto">
       <NavBreadCrumb />
@@ -32,9 +30,13 @@ export default async function FlowsPage(): Promise<JSX.Element> {
               </div>
             </CardContent>
             <CardFooter>
-              <Link href="https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg">
+              <TrackLink
+                name="Link"
+                subject="Join Community"
+                href="https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg"
+              >
                 <Button variant="outline">Join Community</Button>
-              </Link>
+              </TrackLink>
             </CardFooter>
           </Card>
         </div>
@@ -50,9 +52,13 @@ export default async function FlowsPage(): Promise<JSX.Element> {
               </div>
             </CardContent>
             <CardFooter>
-              <Link href="https://docs.moosejs.com">
+              <TrackLink
+                name="Link"
+                subject="Visit Docs"
+                href="https://docs.moosejs.com"
+              >
                 <Button variant="outline">Visit Docs</Button>
-              </Link>
+              </TrackLink>
             </CardFooter>
           </Card>
         </div>

@@ -4,7 +4,6 @@ import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { Disclosure } from "@headlessui/react";
 import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
-import Link from "next/link";
 import { Text } from "./typography/standard";
 import { Grid } from "./containers/page-containers";
 import { usePathname } from "next/navigation";
@@ -12,6 +11,7 @@ import { cn } from "../lib/utils";
 import { Button } from "./ui/button";
 import { Logo } from "./logo";
 import { Badge } from "./ui/badge";
+import { TrackLink } from "./trackable-components";
 
 gsap.registerPlugin(SplitText);
 
@@ -36,12 +36,17 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
             <div className="flex h-20 justify-between items-center">
               <Grid className="grow md:grid md:grid-cols-12 md:gap-x-10">
                 <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary">
-                  <Link href="/" className="flex h-full items-center">
+                  <TrackLink
+                    name={"Nav"}
+                    subject="home"
+                    href="/"
+                    className="flex h-full items-center"
+                  >
                     <Logo property={property} subProperty={subProperty} />
                     <Badge className="ml-3 mt-1.5" variant={"outline"}>
                       alpha
                     </Badge>
-                  </Link>
+                  </TrackLink>
                 </div>
 
                 <div className="hidden md:ml-5 col-span-6 md:flex justify-end">
@@ -53,11 +58,15 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
                         className={cn(
                           isActive
                             ? "flex items-center text-action-primary px-5"
-                            : "flex items-center text-primary px-5"
+                            : "flex items-center text-primary px-5",
                         )}
                         key={item.name}
                       >
-                        <Link href={item.href}>
+                        <TrackLink
+                          name={"Nav Click"}
+                          subject={item.name}
+                          href={item.href}
+                        >
                           {item.emphasized ? (
                             <Button size={"lg"} className="py-8">
                               <Text
@@ -65,7 +74,7 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
                                   isActive
                                     ? "hover:text-action-primary-foreground "
                                     : "hover:text-primary-foreground",
-                                  "text-primary-foreground"
+                                  "text-primary-foreground",
                                 )}
                               >
                                 {item.name}
@@ -77,13 +86,13 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
                                 isActive
                                   ? "hover:text-action-primary border-b-2 border-black"
                                   : "hover:text-primary",
-                                "py-2"
+                                "py-2",
                               )}
                             >
                               {item.name}
                             </Text>
                           )}
-                        </Link>
+                        </TrackLink>
                         <a></a>
                       </div>
                     );

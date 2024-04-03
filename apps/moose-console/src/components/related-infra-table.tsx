@@ -1,7 +1,7 @@
 import { Fragment } from "react";
-import Link from "next/link";
 import { Separator } from "./ui/separator";
 import { DataModel, MooseObject } from "app/types";
+import { TrackLink } from "design-system/trackable-components";
 
 export default function RelatedInfraTable({
   model,
@@ -14,7 +14,9 @@ export default function RelatedInfraTable({
   return (
     <Fragment>
       {mooseObject != MooseObject.Table && (
-        <Link
+        <TrackLink
+          name="Link"
+          subject="table"
           href={`/infrastructure/databases/${table.database}/tables/${table.uuid}`}
         >
           <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
@@ -28,10 +30,14 @@ export default function RelatedInfraTable({
             </div>
             <Separator />
           </div>
-        </Link>
+        </TrackLink>
       )}
       {mooseObject != MooseObject.Model && (
-        <Link href={`/primitives/models/${relatedModel.name}`}>
+        <TrackLink
+          name="Link"
+          subject="model"
+          href={`/primitives/models/${relatedModel.name}`}
+        >
           <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
             <div className="flex flex-row grow">
               <div className="flex grow py-4 space-x-4">
@@ -43,10 +49,12 @@ export default function RelatedInfraTable({
             </div>
             <Separator />
           </div>
-        </Link>
+        </TrackLink>
       )}
       {mooseObject != MooseObject.IngestionPoint && (
-        <Link
+        <TrackLink
+          name="Link"
+          subject="ingestion-point"
           href={`/infrastructure/ingestion-points/${ingestion_point.route_path.split("/").at(-2)}`}
         >
           <div className="hover:bg-accent hover:text-accent-foreground hover:cursor-pointer">
@@ -59,7 +67,7 @@ export default function RelatedInfraTable({
               </div>
             </div>
           </div>
-        </Link>
+        </TrackLink>
       )}
     </Fragment>
   );

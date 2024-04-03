@@ -75,8 +75,6 @@ const producer: Producer = kafka.producer({
   idempotent: true,
 });
 
-// ------------------------------------------------
-
 const getFlows = (): Map<string, Map<string, string>> => {
   const flowsDir = Deno.readDirSync(FLOWS_DIR_PATH);
   const output = new Map<string, Map<string, string>>();

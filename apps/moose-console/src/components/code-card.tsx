@@ -1,6 +1,5 @@
 "use client";
 
-import { codeToHtml } from "shiki";
 import {
   Select,
   SelectContent,
@@ -25,9 +24,15 @@ interface CodeCardProps {
   snippets: NonEmptyArray<Snippet>;
 }
 
+async function shiki() {
+  const { codeToHtml } = await import("shiki");
+  return codeToHtml;
+}
+
 export default function CodeCard({ title, snippets }: CodeCardProps) {
   useEffect(() => {
     const formatedCode = async () => {
+      const codeToHtml = await shiki();
       const newFormatedCodeSnippets: { [key: string]: string } = {};
 
       for (const snippet of snippets) {

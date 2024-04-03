@@ -2,6 +2,7 @@
 
 import { createClient } from "@clickhouse/client-web";
 import { Project } from "app/types";
+import { sendServerEvent } from "event-capture/server-event";
 
 function getClient(project?: Project) {
   const CLICKHOUSE_HOST =
@@ -38,10 +39,21 @@ export async function runQuery(
   queryString: string,
 ): Promise<any> {
   const client = getClient(project);
-  const resultSet = await client.query({
-    query: queryString,
-    format: "JSONEachRow",
-  });
+  const resultSet = await client
+    .query({
+      query: queryString,
+      format: "JSONEachRow",
+    })
+    .then(
+      (res) => {
+        sendServerEvent("Query Success", { query: queryString });
+        return res.json();
+      },
+      (e) => {
+        sendServerEvent("Query Error", { query: queryString });
+        return [];
+      },
+    );
 
-  return resultSet.json();
+  return resultSet;
 }

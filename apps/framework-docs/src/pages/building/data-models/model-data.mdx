@@ -2,7 +2,7 @@ import { Cards, Card, Tabs } from "nextra/components";
 
 ## Creating a Model
 
-To get started you simply need to create a `.prisma` file in your project's data model directory.
+To get started you simply need to open the `models.prisma` file in your project's `datamodels` directory and add a new Data Model definition.
 
 ```prisma filename="datamodels/models.prisma" copy
 model UserActivity {
@@ -13,11 +13,15 @@ model UserActivity {
 }
 ```
 
-As you can see, the data model is very simple. It's just a list of fields and their types. MooseJS's data modeling is built on top of Prisma's intuitive schema modeling language. You can read more about Prisma's schema modeling language [here](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-schema). We don't currently support all of Prisma's schema modeling features, but we're working on it.
+## Data Model conventions
+
+As you can see, the data model is very simple. It's just a list of fields and their types. MooseJS's data modeling is built on top of Prisma's intuitive schema modeling language. You can read more about Prisma's schema modeling language [here](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-schema). We don't currently support all of Prisma's schema modeling features, but we're working on it; and we’ll also soon be adding support to define Data Models as Typescript interfaces.
+
+Data Models can be defined in any file with a `.prisma` extension in your project's `datamodels` directory. The name of the file is not important. You may also define multiple models in the same Prisma file.
 
 ## Supported Types
 
-The following types are currently supported within MooseJS data models:
+Here is the status of MooseJS support for various data types in Data Models:
 | Prisma | Clickhouse | Typescript | Moose |
 |:-------- |:---------- |:---------- |:------- |
 | String | String | String | ✅ |
@@ -37,6 +41,10 @@ Note: support for Enum in automatically generated Typescript SDK is coming soon.
 ## Inspecting Your Model
 
 Once you've created your model, you can inspect it along with the infrastructure that MooseJS automatically generated for you by navigating to the console at http://localhost:3001.
+
+Here you fill find a list of all your Data Models. You can click into any Data Model to see details about it, to get information about the APIs/SDKs for that Data Model, and to directly query the data currently stored in the Data Model (technically, the data stored in the database table associated with that Data Model).
+
+![Data Model Console](/DataModelConsole.jpeg)
 
 ## Test Your Model
 

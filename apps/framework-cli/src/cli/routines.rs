@@ -79,12 +79,11 @@
 //! - Organize routines better in the file hiearchy
 //!
 
+use log::{debug, error, info};
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use log::debug;
-use log::info;
 use tokio::sync::RwLock;
 
 use crate::framework::controller::{
@@ -96,6 +95,9 @@ use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::get_all_version_syncs;
+use crate::infrastructure::olap::clickhouse::{
+    fetch_table_names, fetch_table_schema, table_schema_to_hash,
+};
 use crate::infrastructure::stream::redpanda;
 use crate::project::{Project, PROJECT};
 use crate::utilities::package_managers;
@@ -350,6 +352,84 @@ fn crawl_schema(
     Ok(framework_object_versions)
 }
 
+async fn check_for_model_changes(
+    project: Arc<Project>,
+    framework_object_versions: FrameworkObjectVersions,
+) {
+    let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
+
+    let mut current_data_models = HashMap::new();
+    for fo in framework_object_versions.current_models.models.values() {
+        let mut data_elements = vec![];
+        for column in &fo.data_model.columns {
+            data_elements.push((column.name.clone(), column.data_type.to_string()));
+        }
+        data_elements.sort();
+        info!("current_schema: {:?}", data_elements.clone());
+        let hash_val = table_schema_to_hash(data_elements).unwrap();
+        info!(
+            "current_schema_hash: {:?}-{:?}",
+            fo.topic.clone(),
+            hash_val.clone()
+        );
+        current_data_models.insert(fo.topic.clone(), hash_val.clone());
+    }
+
+    let mut prev_data_models = HashMap::new();
+    for sv in framework_object_versions.previous_version_models.values() {
+        for fo in sv.models.values() {
+            let mut data_elements = vec![];
+            for column in &fo.data_model.columns {
+                data_elements.push((column.name.clone(), column.data_type.to_string()));
+            }
+            data_elements.sort();
+            info!("prev_schema: {:?}", data_elements.clone());
+            let hash_val = table_schema_to_hash(data_elements).unwrap();
+            info!(
+                "prev_schema_hash: {:?}-{:?}",
+                fo.topic.clone(),
+                hash_val.clone()
+            );
+            prev_data_models.insert(fo.topic.clone(), hash_val.clone());
+        }
+    }
+
+    olap::clickhouse::check_ready(&configured_client)
+        .await
+        .unwrap();
+
+    let mut db_data_models = HashMap::new();
+    let tables_result = fetch_table_names(&configured_client).await;
+    match tables_result {
+        Ok(tables) => {
+            for table in &tables {
+                let table_schema_result = fetch_table_schema(&configured_client, table).await;
+                match table_schema_result {
+                    Ok(table_schema) => {
+                        let hash_result = table_schema_to_hash(table_schema.clone());
+                        match hash_result {
+                            Ok(hash) => {
+                                info!("table_schema: {:?}", table_schema.clone());
+                                info!("table_schema_hash: {:?}-{:?}", table.clone(), hash.clone());
+                                db_data_models.insert(table.clone(), hash.clone());
+                            }
+                            Err(e) => {
+                                error!("Failed to hash table schema for table {}: {}", table, e);
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        error!("Failed to fetch table schema for table {}: {}", table, e);
+                    }
+                }
+            }
+        }
+        Err(e) => {
+            error!("Failed to fetch table names: {}", e);
+        }
+    }
+}
+
 async fn initialize_project_state(
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
@@ -362,6 +442,8 @@ async fn initialize_project_state(
     info!("Checking for old version directories...");
 
     let mut framework_object_versions = crawl_schema(&project, &old_versions)?;
+
+    check_for_model_changes(project.clone(), framework_object_versions.clone()).await;
 
     with_spinner_async("Processing versions", async {
         // TODO: enforce linearity, if 1.1 is linked to 2.0, 1.2 cannot be added

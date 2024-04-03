@@ -10,7 +10,7 @@ use std::sync::Arc;
 static DOCKER_FILE: &str = r#"
 # Created from docker_packager routine
 
-ARG DENO_VERSION=1.42.1
+ARG DENO_VERSION=1.41.2
 FROM denoland/deno:bin-$DENO_VERSION AS deno
 
 FROM debian:bookworm-slim

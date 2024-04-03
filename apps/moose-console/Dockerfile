@@ -30,6 +30,8 @@ WORKDIR /app
 COPY .gitignore .gitignore
 COPY --from=builder /app/out/json/ .
 COPY --from=builder /app/apps/moose-console/gsap-bonus.tgz ./apps/moose-console/gsap-bonus.tgz
+
+# Hack for now to get the gsap-bonus.tgz into the design-system package, need to figure out better bundling
 COPY --from=builder /app/apps/moose-console/gsap-bonus.tgz /app/packages/design-system/gsap-bonus.tgz
 
 

@@ -1,4 +1,4 @@
-import { putCliData } from "../../db";
+import { putCliData } from "app/db";
 
 export async function POST(request: Request) {
   const json = await request.json();

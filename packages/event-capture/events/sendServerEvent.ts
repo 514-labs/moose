@@ -16,10 +16,7 @@ function IP() {
 export type ServerEventResponse = Promise<{
   ip: string;
 }>;
-export const sendServerEvent = async (
-  name: string,
-  event: any,
-): ServerEventResponse => {
+export const sendServerEvent = async (name: string, event: any) => {
   const headersList = headers();
   const host = headersList.get("host");
   const referrer = headersList.get("referer");
@@ -32,11 +29,4 @@ export const sendServerEvent = async (
   const mixpanel = Mixpanel.init("be8ca317356e20c587297d52f93f3f9e");
 
   mixpanel.track(name, enhancedEvent);
-
-  return { ip: ip };
-};
-
-export const getIpAddr = async () => {
-  const ip = IP();
-  return ip;
 };

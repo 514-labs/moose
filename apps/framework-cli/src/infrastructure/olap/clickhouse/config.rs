@@ -16,7 +16,6 @@ pub struct ClickHouseConfig {
     pub host: String,       // ex. localhost
     pub host_port: i32,     // ex. 18123
     pub postgres_port: i32, // ex. 9005
-    pub kafka_port: i32,    // ex. 9092
 }
 
 impl Default for ClickHouseConfig {
@@ -29,7 +28,6 @@ impl Default for ClickHouseConfig {
             host: "localhost".to_string(),
             host_port: 18123,
             postgres_port: 9005,
-            kafka_port: 9092,
         }
     }
 }

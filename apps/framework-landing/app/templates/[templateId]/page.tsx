@@ -1,4 +1,3 @@
-"use client";
 import Link from "next/link";
 
 import { CTABar } from "../../page";
@@ -24,6 +23,8 @@ import {
 } from "../../trackable-components";
 import { sendServerEvent } from "event-capture/server-event";
 import { useTheme } from "next-themes";
+import { Suspense } from "react";
+import { TemplateImg } from "../../sections/home/TemplateImg";
 
 const content = {
   templateDetails: [
@@ -245,7 +246,6 @@ export default function TemplatePage({
 }: {
   params: { templateId: string };
 }) {
-  const { theme } = useTheme();
   sendServerEvent("page_view", { page: `template/${params.templateId}` });
 
   const template = content.templateDetails.find(
@@ -314,18 +314,13 @@ export default function TemplatePage({
             <div className="bg-muted aspect-[4/3] flex flex-col justify-center">
               <div className="relative h-3/5">
                 {template && (
-                  <Image
-                    priority
-                    className="shape"
-                    src={
-                      theme && theme === "dark"
-                        ? template.imageSrcDark
-                        : template.imageSrcLight
-                    }
-                    fill
-                    alt="man in jacket"
-                    sizes=" (max-width: 768px) 150vw, 25vw"
-                  />
+                  <Suspense fallback={<div>Loading...</div>}>
+                    <TemplateImg
+                      srcDark={template.imageSrcDark}
+                      srcLight={template.imageSrcLight}
+                      alt={template.title}
+                    />
+                  </Suspense>
                 )}
               </div>
             </div>

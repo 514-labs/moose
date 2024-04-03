@@ -230,16 +230,18 @@ export default function TemplatePage({
       },
       {
         slug: "llm-application",
-        title: "Loose Moose",
-        img: "/images/templates/mjs-img-product-1.svg",
-        description: "Let the moose loose",
+        title: "LLM Application",
+        img: "/images/templates/mjs-img-product-2.svg",
+        description:
+          "Leverage your custom business data and context to large language models to automate tasks based on data and context.",
         usage: [],
       },
       {
         slug: "data-warehouse",
-        title: "Loose Moose",
-        img: "/images/templates/mjs-img-product-1.svg",
-        description: "Let the moose loose",
+        title: "Data Warehouse",
+        img: "/images/templates/mjs-img-product-3.svg",
+        description:
+          "Unify data across your business domains, creating a platform optimized for analysis and data-driven strategy.",
         usage: [],
       },
     ],
@@ -266,14 +268,18 @@ export default function TemplatePage({
             </div>
             <Display>{template?.title}</Display>
             <Text>{template?.description}</Text>
-            <CTABar>
-              <TrackCtaButton
-                name={template?.cta?.label ?? "Error_Event"}
-                subject={template?.cta?.text ?? ""}
-              >
-                {template?.cta?.label}
-              </TrackCtaButton>
-            </CTABar>
+            {template?.cta ? (
+              <CTABar>
+                <TrackCtaButton
+                  name={template?.cta?.label ?? "Error_Event"}
+                  subject={template?.cta?.text ?? ""}
+                >
+                  {template?.cta?.label}
+                </TrackCtaButton>
+              </CTABar>
+            ) : (
+              <Text className="text-muted-foreground">Coming Soon</Text>
+            )}
             <div className="py-10">
               {template?.features?.items.map((feature, index) => (
                 <Grid key={index}>
@@ -320,7 +326,7 @@ export default function TemplatePage({
                 )}
               </div>
             </div>
-            {template && (
+            {template?.usage && (
               <TemplateAccordion templateAccordionItems={template.usage} />
             )}
           </Section>

@@ -30,7 +30,7 @@ const content = {
       title: "LLM Application",
       imageSrc: "/images/templates/mjs-img-product-2.svg",
       description:
-        "Enhance your operational workflows using custom AI agents, trained specifically to handle tasks based on your proprietary data and business context.",
+        "Leverage your custom business data and context to  large language models to automate tasks based on data and context.",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",

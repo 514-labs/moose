@@ -5,8 +5,10 @@ import { Card } from "components/ui/card";
 import { NavBreadCrumb } from "components/nav-breadcrumb";
 import { useContext } from "react";
 import { VersionContext } from "version-context";
+import { useTrackPageView } from "app/trackable-components";
 
 export default function ModelsPage() {
+  useTrackPageView();
   const { models } = useContext(VersionContext);
   const modelMeta = models.map(({ model }) => model);
 

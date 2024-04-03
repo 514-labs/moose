@@ -8,7 +8,8 @@
     "react-dom": "^18"
   },
   "exports": {
-    "./client-event": "./src/sendClientEvent.ts",
-    "./server-event": "./src/sendServerEvent.ts"
+    "./client-event": "./events/sendClientEvent.ts",
+    "./server-event": "./events/sendServerEvent.ts",
+    "./withTrack": "./events/withTrackableComponent.tsx"
   }
 }

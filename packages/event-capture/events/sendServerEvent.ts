@@ -1,4 +1,6 @@
+"use server";
 import { headers } from "next/headers";
+import Mixpanel from "mixpanel";
 
 function IP() {
   const FALLBACK_IP_ADDRESS = "0.0.0.0";
@@ -11,7 +13,13 @@ function IP() {
   return headers().get("x-real-ip") ?? FALLBACK_IP_ADDRESS;
 }
 
-export const sendServerEvent = async (name: string, event: any) => {
+export type ServerEventResponse = Promise<{
+  ip: string;
+}>;
+export const sendServerEvent = async (
+  name: string,
+  event: any
+): ServerEventResponse => {
   const headersList = headers();
   const host = headersList.get("host");
   const referer = headersList.get("referer");
@@ -19,19 +27,16 @@ export const sendServerEvent = async (name: string, event: any) => {
 
   const env = process.env.NODE_ENV;
 
-  const scheme = env === "production" ? "https" : "http";
-  const url = `${scheme}://${host}/events/api`;
+  const enhancedEvent = { ...event, host, env, referer, ip };
 
-  fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      name,
-      event: { ...event, host, env, referer, ip },
-    }),
-  });
+  const mixpanel = Mixpanel.init("be8ca317356e20c587297d52f93f3f9e");
 
-  return { ip };
+  mixpanel.track(name, enhancedEvent);
+
+  return { ip: ip };
+};
+
+export const getIpAddr = async () => {
+  const ip = IP();
+  return ip;
 };

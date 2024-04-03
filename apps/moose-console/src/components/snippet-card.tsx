@@ -1,5 +1,6 @@
 "use client";
 
+import { TrackButton } from "app/trackable-components";
 import { Button } from "./ui/button";
 import { Card } from "./ui/card";
 
@@ -19,14 +20,16 @@ export default function SnippetCard({
       <h2 className="py-2 flex flex-row items-center">
         <span>{title}</span>
         <span className="grow" />
-        <Button
+        <TrackButton
+          name="Copy Snippet"
+          subject={code}
           variant="outline"
           onClick={() => {
             navigator.clipboard.writeText(code);
           }}
         >
           copy
-        </Button>
+        </TrackButton>
       </h2>
       <Card className="rounded-2xl bg-muted p-4 overflow-x-auto flex flex-col">
         <code>{comment}</code>

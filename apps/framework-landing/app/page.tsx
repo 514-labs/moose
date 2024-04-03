@@ -20,6 +20,7 @@ import { cn } from "design-system/utils";
 import { Button, buttonVariants } from "design-system/components";
 
 import { Text } from "design-system/typography";
+import { sendServerEvent } from "event-capture/server-event";
 
 export const CTAText = ({
   className,
@@ -43,14 +44,21 @@ export const CTAText = ({
 export interface CTAButtonProps extends VariantProps<typeof buttonVariants> {
   className?: string;
   children: ReactNode;
+  onClick?: () => void;
 }
 
-export const CTAButton = ({ className, children, variant }: CTAButtonProps) => {
+export const CTAButton = ({
+  className,
+  children,
+  variant,
+  onClick,
+}: CTAButtonProps) => {
   return (
     <Button
       size={"lg"}
       variant={variant}
       className=" h-full font-normal border-primary"
+      onClick={onClick}
     >
       <Text
         className={cn(
@@ -79,6 +87,7 @@ export const CTABar = ({
 };
 
 export default function Home() {
+  sendServerEvent("page_view", { page: "home" });
   return (
     <main className="min-h-screen">
       <HeroSection />

@@ -30,6 +30,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "cmdk": "^0.2.0",
+    "event-capture": "workspace:*",
     "gsap": "file:gsap-bonus.tgz",
     "lowdb": "^7.0.1",
     "lucide-react": "^0.312.0",

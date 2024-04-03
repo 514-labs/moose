@@ -15,6 +15,7 @@ const copyPasteAnimation = (
   inboundRef: MutableRefObject<any>,
   outboundRef: MutableRefObject<any>,
   wrapperRef: MutableRefObject<any>,
+  onCopy: (() => void) | undefined
 ) => {
   const ctx = gsap.context(() => {
     const tl = gsap.timeline();
@@ -31,6 +32,7 @@ const copyPasteAnimation = (
     wrapperRef.current.addEventListener("click", () => {
       // copy to clipboard
       if (outboundRef.current.innerText.trim().length > 0) {
+        onCopy && onCopy();
         navigator.clipboard.writeText(outboundRef.current.innerText.trim());
       }
 
@@ -46,7 +48,7 @@ const copyPasteAnimation = (
         {
           opacity: 1,
           stagger: { each: 0.03 },
-        },
+        }
       );
 
       gsap.delayedCall(1, () => {
@@ -64,7 +66,7 @@ const copyPasteAnimation = (
           {
             opacity: 1,
             stagger: { each: 0.03 },
-          },
+          }
         );
       });
     });
@@ -78,16 +80,18 @@ const copyPasteAnimation = (
 export const CodeSnippet = ({
   children,
   className,
+  onCopy,
 }: {
   children: ReactNode;
   className?: string;
+  onCopy?: () => void;
 }) => {
   const inboundRef = useRef(null);
   const outboundRef = useRef(null);
   const wrapperRef = useRef(null);
 
   useLayoutEffect(() => {
-    copyPasteAnimation(inboundRef, outboundRef, wrapperRef);
+    copyPasteAnimation(inboundRef, outboundRef, wrapperRef, onCopy);
   }, []);
 
   return (
@@ -95,7 +99,7 @@ export const CodeSnippet = ({
       ref={wrapperRef}
       className={cn(
         "text-primary bg-muted rounded-md py-5 px-6 flex flex-row gap-5 cursor-pointer items-center justify-center",
-        className,
+        className
       )}
     >
       <Text className="grow my-0 relative">

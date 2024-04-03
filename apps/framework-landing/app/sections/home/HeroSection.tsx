@@ -1,4 +1,3 @@
-import { CodeSnippet as AnimatedCodeSnipper } from "design-system/typography/animated";
 import { CTABar } from "../../page";
 import {
   Section,
@@ -8,6 +7,7 @@ import {
 } from "design-system/components/containers";
 import { Display, Text } from "design-system/typography";
 import Image from "next/image";
+import { TrackableCodeSnippet } from "../../trackable-components";
 
 export const HeroSection = () => {
   const content = {
@@ -30,7 +30,12 @@ export const HeroSection = () => {
               <Text> {content.description} </Text>
             </div>
             <CTABar className="mb-5">
-              <AnimatedCodeSnipper> {content.cta.text} </AnimatedCodeSnipper>
+              <TrackableCodeSnippet
+                name="Create Moose App"
+                subject={content.cta.text}
+              >
+                {content.cta.text}
+              </TrackableCodeSnippet>
             </CTABar>
           </HalfWidthContentContainer>
         </Grid>

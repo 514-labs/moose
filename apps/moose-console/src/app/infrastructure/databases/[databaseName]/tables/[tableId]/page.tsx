@@ -13,6 +13,7 @@ import { Fragment, useContext } from "react";
 import ModelView from "app/ModelView";
 import { MooseObject } from "app/types";
 import { VersionContext } from "version-context";
+import { useTrackPageView } from "app/trackable-components";
 
 export default function Page({
   params,
@@ -20,6 +21,7 @@ export default function Page({
   params: { databaseName: string; tableId: string };
   searchParams: { tab: string };
 }) {
+  useTrackPageView();
   // This is to make sure the environment variables are read at runtime
   // and not during build time
   const { models, cliData } = useContext(VersionContext);

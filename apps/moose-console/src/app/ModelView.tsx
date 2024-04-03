@@ -24,6 +24,8 @@ import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
 import { CliData, DataModel, MooseObject, Table } from "./types";
+import { sendServerEvent } from "event-capture/server-event";
+import { TrackButton } from "./trackable-components";
 
 interface TableTabsProps {
   model: DataModel;
@@ -182,8 +184,10 @@ export default function ModelView({
                     </div>
                     <span className="grow" />
 
-                    <Button
+                    <TrackButton
                       variant="outline"
+                      name="Button"
+                      subject="Query View directly"
                       onClick={() => {
                         router.push(
                           `${pathName}?${createTabQueryString("query")}`,
@@ -192,7 +196,7 @@ export default function ModelView({
                       }}
                     >
                       Query
-                    </Button>
+                    </TrackButton>
                   </h2>
                 </div>
                 <div className="py-8">

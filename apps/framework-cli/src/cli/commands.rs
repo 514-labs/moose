@@ -18,12 +18,15 @@ pub enum Commands {
         language: SupportedLanguages,
 
         /// Location of your app or service
-        #[arg(default_value = ".")]
-        location: String,
+        #[arg(short, long)]
+        location: Option<String>,
 
         /// Template to use for the project
         #[arg(short, long)]
         template: Option<String>,
+
+        #[arg(long)]
+        reinit: bool,
     },
     /// Builds your moose project
     Build {

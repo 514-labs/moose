@@ -9,10 +9,10 @@ In SQL databases, we have `ALTER TABLE` statements. We also have ORMs and databa
 migration tools. Those are well suited for Transactional workloads and database
 schema evolutions. However, they are not appropriate for Data Analytics and OLAP
 storage. Why? because the requirements are very different between the analytics and
-the transactional, especially when it comes to size.
+the transactional, especially when it comes to scale.
 
-In transactional databases, we necessarily emphasize the consistency of the data
-and the atomicity of the transactions—schema change operations in SQL are atomic.
+In transactional databases, we necessarily emphasize the data's consistency and the
+transactions' atomicity—schema change operations in SQL are atomic.
 When the data gets big, managing the schemas and their evolutions becomes challenging,
 and complex systems have been built to handle that complexity.
 
@@ -21,7 +21,7 @@ manually or through a similar schema change tool from the transactional side.
 Whilst the tools are similar to those used for transaction data migrations,
 the constraints are very different. More often than not, the data is event-based
 and immutable, meaning it can get duplicated without the overhead otherwise needed to
-keep versions in sync. On top of that, in analytical databases, the producer and consumer
+keep versions in sync. Additionally, in analytical databases, the producer and consumer
 of the data are often decoupled, whereas in a transactional system, those are often the same.
 For example, in a transactional system, you might have one service, that has its database.
 No other service touches that database. All external requests go through the API. As such,
@@ -31,8 +31,9 @@ On the analytics side, usually, the data is consumed by business dashboarding to
 and the dashboard evolves on a different schedule than the side producing the data.
 Most of the time, they are owned by different teams.
 
-On the transactional side, we constrained the problem. On the analytics side,
-the data is sandwiched between 2 sides that evolve at different speeds.
-Today's tools don't allow us to solve that problem quickly.
+We've made progress in constraining the problem on the transactional side. However, the
+data on the analytics side is caught between two sides that are evolving at different
+speeds. Regrettably, the current tools at our disposal do not enable us to resolve the
+issue expeditiously.
 
 Data Change Management in Moose is an attempt to solve for that.

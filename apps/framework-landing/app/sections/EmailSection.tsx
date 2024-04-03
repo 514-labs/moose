@@ -13,7 +13,7 @@ export const EmailSection = () => {
   };
 
   return (
-    <Section className="text-center mb-0 lg:mb-0 2xl:mb-0 ">
+    <Section className="text-center">
       <Grid>
         <FullWidthContentContainer>
           <SuperDisplay> {content.email} </SuperDisplay>

@@ -67,8 +67,8 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
                       <div
                         className={cn(
                           isActive
-                            ? "flex items-center text-action-primary px-5"
-                            : "flex items-center text-primary px-5",
+                            ? "flex items-center text-action-primary"
+                            : "flex items-center text-primary",
                         )}
                         key={item.name}
                       >
@@ -96,14 +96,13 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
                                 isActive
                                   ? "hover:text-action-primary border-b-2 border-primary"
                                   : "hover:text-primary border-b-2 border-transparent",
-                                "py-2",
+                                "py-2 px-5",
                               )}
                             >
                               {item.name}
                             </Text>
                           )}
                         </TrackLink>
-                        <a></a>
                       </div>
                     );
                   })}

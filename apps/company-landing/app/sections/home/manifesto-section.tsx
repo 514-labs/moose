@@ -1,9 +1,14 @@
 import {
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from "design-system/components";
+import {
   Grid,
   HalfWidthContentContainer,
   Section,
 } from "design-system/components/containers";
-import { Text } from "design-system/typography";
+import { SmallText, Text } from "design-system/typography";
 import Image from "next/image";
 
 export const ManifestoSection = () => {
@@ -81,23 +86,30 @@ export const ManifestoSection = () => {
           </Text>
 
           <Text>
-            Building software is a delight <sup>*</sup>. It&apos;s time to bring
-            some delight to the data & analytics stack.
+            Building software is a delight{" "}
+            <HoverCard>
+              <HoverCardTrigger>
+                <sup>*</sup>
+              </HoverCardTrigger>
+              <HoverCardContent className="p-5 w-96">
+                <SmallText>
+                  Except for{" "}
+                  <a href="https://twitter.com/secretGeek/status/7269997868">
+                    two things
+                  </a>{" "}
+                  of course: naming things, cache invalidation and off by one
+                  errors.
+                </SmallText>
+              </HoverCardContent>
+            </HoverCard>
+            . It&apos;s time to bring some delight to the data & analytics
+            stack.
           </Text>
 
           <Text>
             —Tim, Nico, Alex, Chris, Dan, Carlos, Olivia, Jonathan and the
             Georges
           </Text>
-
-          <div className="text-md mt-20">
-            <hr></hr>
-            <sup>*</sup> Except for{" "}
-            <a href="https://twitter.com/secretGeek/status/7269997868">
-              two things
-            </a>{" "}
-            of course: naming things, cache invalidation and off by one errors.
-          </div>
         </HalfWidthContentContainer>
       </Grid>
     </Section>

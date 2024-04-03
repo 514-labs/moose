@@ -142,7 +142,7 @@ importers:
     dependencies:
       "@514labs/moose-cli":
         specifier: latest
-        version: 0.3.214
+        version: 0.3.216
     devDependencies:
       "@repo/ts-config":
         specifier: workspace:*
@@ -699,6 +699,9 @@ importers:
       "@radix-ui/react-dropdown-menu":
         specifier: ^2.0.6
         version: 2.0.6(@types/react-dom@18.2.23)(@types/react@18.2.74)(react-dom@18.2.0)(react@18.2.0)
+      "@radix-ui/react-hover-card":
+        specifier: ^1.0.7
+        version: 1.0.7(@types/react-dom@18.2.23)(@types/react@18.2.74)(react-dom@18.2.0)(react@18.2.0)
       "@radix-ui/react-separator":
         specifier: ^1.0.3
         version: 1.0.3(@types/react-dom@18.2.23)(@types/react@18.2.74)(react-dom@18.2.0)(react@18.2.0)
@@ -853,10 +856,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-arm64@0.3.214:
+  /@514labs/moose-cli-darwin-arm64@0.3.216:
     resolution:
       {
-        integrity: sha512-pXLOOZFHthWrWAaBOJzGSBm5KhinwXe38TLgZc/o9KEH8tCIUHUPV2uhqDwPw0CR60NH4R2NYXUxD/YnG+JJaw==,
+        integrity: sha512-o+ZLzgjpa7IBrlnT+zky4/dVbe0qH+Kso/upVZ/Y/+eiyWWMDh8xZyNY4SHk30Z6ejgi3gV2OvPtEsVP2Ms2WQ==,
       }
     cpu: [arm64]
     os: [darwin]
@@ -886,10 +889,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-x64@0.3.214:
+  /@514labs/moose-cli-darwin-x64@0.3.216:
     resolution:
       {
-        integrity: sha512-eGTEJCybSZZKjFMNqs9K9aEUvxLa0ZR48jbWaeiTM2C0BXE6PZukPfKve3qCvRab4PWAbsavqjA0Q4IpssZrPA==,
+        integrity: sha512-DyYG+xw8h2ijdewTh7UaeBVevqbIdcO7IWmJcaOG2MH/I3vfV1JGl3Ug+48HtZyU5N0UxMG3JENZtSSWINXoqQ==,
       }
     cpu: [x64]
     os: [darwin]
@@ -919,10 +922,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-arm64@0.3.214:
+  /@514labs/moose-cli-linux-arm64@0.3.216:
     resolution:
       {
-        integrity: sha512-2XxK/NjRc1FQ4tsf65QtTj7H/vSSk/LpFYuwhyRUjwq/oSSbwG+1YHMReI4qHBodUko3q/lx20pD7Srxc51A4Q==,
+        integrity: sha512-TiXEKjwQwNtQxyub8+ruds1AQH9DHkc9hybyL1cd5JRsajA5d4GI2FwOE/mtcr2GsVDjZGKLJ6gfAgYnXaMoUw==,
       }
     cpu: [arm64]
     os: [linux]
@@ -952,10 +955,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-x64@0.3.214:
+  /@514labs/moose-cli-linux-x64@0.3.216:
     resolution:
       {
-        integrity: sha512-4tRJuWIU4na1gzuLsFLACn7CsXlJXDwJ799Im0Ai5QfNUlx+8VjiVmAMDdh61QbN1emRsiJ3OyW2GgTMp+JYnw==,
+        integrity: sha512-6uJjbOWuta7hRjNJGCtJYBDD8pU4zQfd8ZLPOICRGQ66u+DK1l6UaRVcAaFGcHF24QH3w/Wjkpe+gvnEchXCSA==,
       }
     cpu: [x64]
     os: [linux]
@@ -976,17 +979,17 @@ packages:
       "@514labs/moose-cli-linux-x64": 0.3.204
     dev: true
 
-  /@514labs/moose-cli@0.3.214:
+  /@514labs/moose-cli@0.3.216:
     resolution:
       {
-        integrity: sha512-l8J4vL1sKiLgZTpx/ahqs8kZ34vr263tdX90FgJuKu58t4nZYY7kptfGzvLjpndKEvsT9HhruKqRJQj9ZGtqlg==,
+        integrity: sha512-sd5W43r77ATnCscYMURiWWuK4MaDQwoS0xTTWi7W4glhv5TBHDu4r6WS9fhQ/Rewsm6CMoPBG+z0TeuijAo8IQ==,
       }
     hasBin: true
     optionalDependencies:
-      "@514labs/moose-cli-darwin-arm64": 0.3.214
-      "@514labs/moose-cli-darwin-x64": 0.3.214
-      "@514labs/moose-cli-linux-arm64": 0.3.214
-      "@514labs/moose-cli-linux-x64": 0.3.214
+      "@514labs/moose-cli-darwin-arm64": 0.3.216
+      "@514labs/moose-cli-darwin-x64": 0.3.216
+      "@514labs/moose-cli-linux-arm64": 0.3.216
+      "@514labs/moose-cli-linux-x64": 0.3.216
     dev: false
 
   /@aashutoshrathi/word-wrap@1.2.6:
@@ -3036,6 +3039,38 @@ packages:
       "@radix-ui/react-compose-refs": 1.0.1(@types/react@18.2.74)(react@18.2.0)
       "@radix-ui/react-primitive": 1.0.3(@types/react-dom@18.2.23)(@types/react@18.2.74)(react-dom@18.2.0)(react@18.2.0)
       "@radix-ui/react-use-callback-ref": 1.0.1(@types/react@18.2.74)(react@18.2.0)
+      "@types/react": 18.2.74
+      "@types/react-dom": 18.2.23
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+    dev: false
+
+  /@radix-ui/react-hover-card@1.0.7(@types/react-dom@18.2.23)(@types/react@18.2.74)(react-dom@18.2.0)(react@18.2.0):
+    resolution:
+      {
+        integrity: sha512-OcUN2FU0YpmajD/qkph3XzMcK/NmSk9hGWnjV68p6QiZMgILugusgQwnLSDs3oFSJYGKf3Y49zgFedhGh04k9A==,
+      }
+    peerDependencies:
+      "@types/react": "*"
+      "@types/react-dom": "*"
+      react: ^16.8 || ^17.0 || ^18.0
+      react-dom: ^16.8 || ^17.0 || ^18.0
+    peerDependenciesMeta:
+      "@types/react":
+        optional: true
+      "@types/react-dom":
+        optional: true
+    dependencies:
+      "@babel/runtime": 7.24.1
+      "@radix-ui/primitive": 1.0.1
+      "@radix-ui/react-compose-refs": 1.0.1(@types/react@18.2.74)(react@18.2.0)
+      "@radix-ui/react-context": 1.0.1(@types/react@18.2.74)(react@18.2.0)
+      "@radix-ui/react-dismissable-layer": 1.0.5(@types/react-dom@18.2.23)(@types/react@18.2.74)(react-dom@18.2.0)(react@18.2.0)
+      "@radix-ui/react-popper": 1.1.3(@types/react-dom@18.2.23)(@types/react@18.2.74)(react-dom@18.2.0)(react@18.2.0)
+      "@radix-ui/react-portal": 1.0.4(@types/react-dom@18.2.23)(@types/react@18.2.74)(react-dom@18.2.0)(react@18.2.0)
+      "@radix-ui/react-presence": 1.0.1(@types/react-dom@18.2.23)(@types/react@18.2.74)(react-dom@18.2.0)(react@18.2.0)
+      "@radix-ui/react-primitive": 1.0.3(@types/react-dom@18.2.23)(@types/react@18.2.74)(react-dom@18.2.0)(react@18.2.0)
+      "@radix-ui/react-use-controllable-state": 1.0.1(@types/react@18.2.74)(react@18.2.0)
       "@types/react": 18.2.74
       "@types/react-dom": 18.2.23
       react: 18.2.0
@@ -13706,6 +13741,7 @@ packages:
       {
         integrity: sha512-kJt5qhMxoszgU/62PLP1CJytzd2NKetjSRnyuj31fDd3Rlcz3fzlFdFLD1SItunPwyqEOkca6GbV612BWfaBag==,
       }
+    requiresBuild: true
     dev: false
 
   /randombytes@2.1.0:

@@ -15,7 +15,7 @@ export default function TemplatesPage() {
     hook: {
       title: "Get started in no time",
       description:
-        "Jobs, pipelines, streams, data models, tables, views, schemas, APIs, and SDKs -- no more coordinating a tangled web of individual components. With a framework-based approach, each component is aware of the bigger picture, so your data stack is easier to manage and more resilient to change.",
+        "Explore plug-and-play applications built with MooseJS, designed for immediate deployment, and fully customizable to meet your specific needs. Adapt the data models, flows, and insights effortlessly— all while using the programming languages and practices you prefer.",
     },
   };
 

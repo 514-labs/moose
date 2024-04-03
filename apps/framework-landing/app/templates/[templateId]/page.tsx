@@ -268,8 +268,8 @@ export default function TemplatePage({
             <Text>{template?.description}</Text>
             <CTABar>
               <TrackCtaButton
-                name={template?.cta?.label}
-                subject={template?.cta?.text}
+                name={template?.cta?.label ?? "Error_Event"}
+                subject={template?.cta?.text ?? ""}
               >
                 {template?.cta?.label}
               </TrackCtaButton>

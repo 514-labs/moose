@@ -30,6 +30,8 @@ WORKDIR /app
 COPY .gitignore .gitignore
 COPY --from=builder /app/out/json/ .
 COPY --from=builder /app/apps/moose-console/gsap-bonus.tgz ./apps/moose-console/gsap-bonus.tgz
+COPY --from=builder /app/apps/moose-console/gsap-bonus.tgz /app/packages/design-system/gsap-bonus.tgz
+
 
 RUN pnpm install --frozen-lockfile
 

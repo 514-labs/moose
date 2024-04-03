@@ -20,7 +20,7 @@ const content = {
       imageSrcLight: "/images/templates/img-product-1-light.svg",
       imageSrcDark: "/images/templates/img-product-1-dark.svg",
       description:
-        "Capture user events and derive actionable insights with our ready-to-deploy, end-to-end product analytics solution, powered by MooseJS and NextJS.",
+        "Capture user journeys and derive actionable insights to optimize your product development.",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -32,7 +32,7 @@ const content = {
       imageSrcLight: "/images/templates/img-product-2-light.svg",
       imageSrcDark: "/images/templates/img-product-2-dark.svg",
       description:
-        "Leverage your custom business data and context to  large language models to automate tasks based on data and context.",
+        "Optimize AI automations powered by RAG on your own data to create innovative end user experiences.",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -44,7 +44,7 @@ const content = {
       imageSrcLight: "/images/templates/img-product-3-light.svg",
       imageSrcDark: "/images/templates/img-product-3-dark.svg",
       description:
-        "Unify data across your business domains, creating a platform optimized for analysis and data-driven strategy.",
+        "Integrate data across business domains into a data warehouse with discoverable, consumable data products.",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",

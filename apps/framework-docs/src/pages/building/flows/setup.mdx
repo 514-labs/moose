@@ -1,6 +1,6 @@
 import { Callout, FileTree, Link } from "nextra/components";
 
-## Create Flow in CLI
+# Create Flow in CLI
 
 Initiate your flow setup in Moose with the `moose flow init` CLI command. This command structures your project's directory and creates necessary files based on your specified data models.
 
@@ -40,7 +40,7 @@ When you run this command, you will create the data flow file and file structure
   currently visible in the dashboard.
 </Callout>
 
-## Directory Structure Post-Initialization
+# Directory Structure Post-Initialization
 
 Running the `moose flow init` command with valid arguments will create a `flow.ts` file to represent this newly created data flow, in the following directory structure:
 
@@ -86,7 +86,7 @@ export default function run(event: UserActivity): ParsedActivity | null {
 }
 ```
 
-## Develop Transformation Logic
+# Develop Transformation Logic
 
 Now that you have your data flow file, `flow.ts`, you have to define the transformations within it:
 how you want to change the data in the source data model to get to the output anticipated by the destination data model.
@@ -119,7 +119,7 @@ export default function convertUtc(event: UserActivity): ParsedActivity {
 Adjust function specifics according to your data transformation needs. This structured approach ensures clarity in your
 data processing tasks, enabling Moose to efficiently handle and automate data flows.
 
-## Validate Your Flow
+# Validate Your Flow
 
 To test and confirm your flow's logic:
 

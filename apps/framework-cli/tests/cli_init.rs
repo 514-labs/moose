@@ -29,7 +29,7 @@ fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut cmd = Command::cargo_bin("moose-cli")?;
 
-    cmd.arg("init").arg("test-app").arg("ts").arg(dir);
+    cmd.arg("init").arg("test-app").arg("ts").arg("-l").arg(dir);
 
     cmd.assert().success();
 

@@ -26,7 +26,12 @@ fn setup_dev() -> Result<CargoDev, anyhow::Error> {
     // Setup the project with the cli
     let mut init_cmd = Command::cargo_bin("moose-cli")?;
 
-    init_cmd.arg("init").arg("test-app").arg("ts").arg(dir);
+    init_cmd
+        .arg("init")
+        .arg("test-app")
+        .arg("ts")
+        .arg("--location")
+        .arg(dir);
 
     init_cmd.assert().success();
 

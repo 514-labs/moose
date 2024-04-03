@@ -40,33 +40,6 @@ export const FooterNavItem = ({
   );
 };
 
-export const FooterNav = () => {
-  const navigation = [
-    { name: "docs", href: "https://docs.moosejs.dev" },
-    { name: "templates", href: "/templates" },
-    { name: "blog", href: "https://blog.fiveonefour.com/" },
-    { name: "github", href: "https://github.com/514-labs/moose" },
-    { name: "community", href: "/community" },
-  ];
-
-  return (
-    <div className="flex flex-col grow justify-center items-start sm:items-center md:flex-row md:justify-between lg:justify-end col-span-12 lg:col-span-6">
-      {navigation.map((item) => {
-        return (
-          <FooterNavItem item={item} key={item.name}>
-            {item.name}
-          </FooterNavItem>
-        );
-      })}
-      <ThemeToggle />
-    </div>
-  );
-};
-
-export const FooterNavContainer = () => {
-  return <FooterNav />;
-};
-
 export const FooterDisclaimerContainer = () => {
   const disclaimer = {
     rights: "2024 All rights reserved",
@@ -76,7 +49,7 @@ export const FooterDisclaimerContainer = () => {
       name: "LinkedIn",
     },
     x: {
-      href: "x.com",
+      href: "https://twitter.com/514hq",
       name: "X (prev. Twitter)",
     },
   };

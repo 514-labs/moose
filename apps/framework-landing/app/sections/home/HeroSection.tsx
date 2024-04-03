@@ -16,7 +16,7 @@ export const HeroSection = () => {
     cta: {
       action: "cta-copy",
       label: "Copy",
-      text: "npx create-moose-app",
+      text: "npx create-moose-app test-app",
     },
   };
 

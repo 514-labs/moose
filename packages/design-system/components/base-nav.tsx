@@ -84,8 +84,8 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
                             <Text
                               className={cn(
                                 isActive
-                                  ? "hover:text-action-primary border-b-2 border-black"
-                                  : "hover:text-primary",
+                                  ? "hover:text-action-primary border-b-2 border-primary"
+                                  : "hover:text-primary border-b-2 border-transparent",
                                 "py-2",
                               )}
                             >

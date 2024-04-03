@@ -33,7 +33,7 @@ export const FeaturesSection = () => {
       {
         title: "Data product APIs",
         description:
-          "Run stacks locally: see and test the impact of changes in real time as you edit code - just like developing a web app frontend",
+          "Moose automatically creates API endpoints for your data products, and generates SDKs in the languages of your choice (typescript, python, java, rust, etc).",
       },
       {
         title: "Local dev server",

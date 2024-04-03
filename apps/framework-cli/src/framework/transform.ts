@@ -44,7 +44,7 @@ const scrubVersionFromTopic = (topic: string): string => {
 };
 const version = getVersion();
 
-const getSasslConfig = (): SASLOptions | undefined => {
+const getSaslConfig = (): SASLOptions | undefined => {
   const mechanism = SASL_MECHANISM ? SASL_MECHANISM.toLowerCase() : "";
   switch (mechanism) {
     case "plain":
@@ -65,7 +65,7 @@ const kafka = new Kafka({
   clientId: "deno-consumer",
   brokers: [BROKER],
   ssl: SECURITY_PROTOCOL === "SASL_SSL",
-  sasl: getSasslConfig(),
+  sasl: getSaslConfig(),
 });
 
 const consumer: Consumer = kafka.consumer({ groupId: CONSUMER_ID });

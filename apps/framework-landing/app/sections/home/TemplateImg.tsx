@@ -1,7 +1,6 @@
 "use client";
 
 import Image from "next/image";
-import { useTheme } from "next-themes";
 
 export const TemplateImg = ({
   srcDark,
@@ -12,7 +11,6 @@ export const TemplateImg = ({
   srcLight: string;
   alt: string;
 }) => {
-  const { theme } = useTheme();
   return (
     <>
       <Image

@@ -1,23 +1,23 @@
-import { FileTree } from 'nextra/components'
+import { FileTree } from "nextra/components";
 
 # Project Structure
+
 MooseJS relies heavily on structural conventions to make sure you can build quickly and reliably. That means the project structure is important.
 
-
 The following is the basic structure of a MooseJS project:
- 
+
 <FileTree>
-  <FileTree.Folder name=".moose"  />
+  <FileTree.Folder name=".moose" />
   <FileTree.Folder name="app" defaultOpen>
     <FileTree.Folder name="datamodels" defaultOpen>
-        <FileTree.File name="model.prisma" />
+      <FileTree.File name="model.prisma" />
     </FileTree.Folder>
     <FileTree.Folder name="flows" defaultOpen>
-        <FileTree.Folder name="sourceModel" defaultOpen>
-          <FileTree.Folder name="destinationModel" defaultOpen>
-            <FileTree.File name="flow.ts" />
-          </FileTree.Folder>
+      <FileTree.Folder name="sourceModel" defaultOpen>
+        <FileTree.Folder name="destinationModel" defaultOpen>
+          <FileTree.File name="flow.ts" />
         </FileTree.Folder>
+      </FileTree.Folder>
     </FileTree.Folder>
   </FileTree.Folder>
   <FileTree.File name="package.json" />
@@ -25,15 +25,17 @@ The following is the basic structure of a MooseJS project:
 </FileTree>
 
 ## Top-level Folders and Files
-|  |  |
-| ------ | ----------- |
-| app | The main folder for your application. |
-| .moose | Moose internals. You shouldn't ever have to touch anything in here. |
+
+|              |                                                                                                                                                                        |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| app          | The main folder for your application.                                                                                                                                  |
+| .moose       | Moose internals. You shouldn't ever have to touch anything in here.                                                                                                    |
 | package.json | The default npm package manifest file, ref: [https://docs.npmjs.com/cli/v10/configuring-npm/package-json](https://docs.npmjs.com/cli/v10/configuring-npm/package-json) |
-| project.toml | Configuration file specific to Moose for your application. |
+| project.toml | Configuration file specific to Moose for your application.                                                                                                             |
 
 ## App folders
-|  |  |
-| ------ | ----------- |
-| datamodels | The folder where you define your [Data Models](https://docs.moosejs.com/building/model-data). |
-| flows | The folder where you define your [Flows](https://docs.moosejs.com/building/flows) - note that the hierarchy of folders here dictates the routing and orchestration of your flows. |
+
+|            |                                                                                                                                                                   |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| datamodels | The folder where you define your [Data Models](../building/data-models/intro).                                                                                    |
+| flows      | The folder where you define your [Flows](../building/flows/intro) - note that the hierarchy of folders here dictates the routing and orchestration of your flows. |

@@ -1,8 +1,17 @@
-# Concepts
+import { Callout } from "nextra/components";
 
-At its core, the concept of Data Change Management in MooseJS is simple: MooseJS will let you run multiple versions of your application in parallel.
+<Callout type="warning" emoji="ℹ️">
+  Data change management is in pre-alpha. We are releasing it to get feedback on
+  its direction. We intend to polish it up in the coming weeks and months [using
+  the community's
+  feedback](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg).
+</Callout>
 
-The implications of this are profound. For example, you might have a data model where the schema has evolved (in breaking ways) across versions. Moose will let you run multiple versions of the schema in production in parallel. This lets data producers and data consumers migrate to the latest version of the schema on their own time schedule, without breaking things upstream and downstream.
+# What is Data Change Management (DCM)?
+
+At its core, the concept of Data Change Management in MooseJS is simple: MooseJS will help you run multiple versions of your application in parallel.
+
+The implications of this are profound. For example, you might have a data model where the schema has evolved (in breaking ways) across versions. Moose will help you run multiple versions of the schema in production in parallel. This lets data producers and data consumers migrate to the latest version of the schema on their own time schedule, without breaking things upstream and downstream.
 
 Meanwhile, Moose will handle keeping your data in sync ACROSS ALL VERSIONS. So you don't drop data on the floor, and so data consumers pulling from the latest version get data that came in through all the older supported versions of the schema. This is pretty cool - let's see how it works.
 

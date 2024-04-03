@@ -70,7 +70,6 @@ export const FooterNavContainer = () => {
 export const FooterDisclaimerContainer = () => {
   const disclaimer = {
     rights: "2024 All rights reserved",
-    by: "By the folks at fiveonefour",
     linkedin: {
       href: "https://www.linkedin.com/company/fiveonefour/",
       name: "LinkedIn",
@@ -84,7 +83,6 @@ export const FooterDisclaimerContainer = () => {
   return (
     <>
       <Text className="grow">{disclaimer.rights}</Text>
-      <Text>{disclaimer.by}</Text>
       <FooterNavItem item={disclaimer.linkedin}>
         {disclaimer.linkedin.name}
       </FooterNavItem>

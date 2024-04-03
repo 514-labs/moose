@@ -71,8 +71,7 @@ Where:
 | flow.ts        | is the transformation function file that contains the logic for data transformation. As long as this file is named `flow.ts`, Moose will apply the default function to each new data entry from the source, and save the output to the destination. |
 
 The `flow.ts` file is a TypeScript file that you use to define the transformation needed to get from your source data model to the destination.
-In the `flow.ts` file created, Moose provides starter code. This code includes imports for your source and destination data model interfaces and sets up a
-default function template. The function is pre-configured with the correct argument and return types based on the specified data models:
+In the `flow.ts` file created, Moose provides starter code. This code includes imports for your source and destination data model interfaces and sets up a default function template. The function is pre-configured with the correct argument and return types based on the specified data models:
 
 ```ts filename="flow.ts" copy {2-3,7}
 // Add your models & start the development server to import these types

@@ -2,7 +2,7 @@
 import { createClient } from "@clickhouse/client";
 
 const clickhouseClient = createClient({
-  host: process.env.HOST || "http://localhost:18123",
+  host: process.env.DB_HOST || "http://localhost:18123",
   username: process.env.DB_USER || "panda",
   password: process.env.DB_PASS || "pandapass",
   database: process.env.DB || "local",

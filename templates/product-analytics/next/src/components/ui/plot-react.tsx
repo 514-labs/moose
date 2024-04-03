@@ -10,7 +10,7 @@ export default function PlotComponent({ options }: Data) {
   const [height, setHeight] = useState(0);
   const [width, setWidth] = useState(0);
 
-  const ref = useRef(null);
+  const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!ref.current) {
@@ -18,10 +18,10 @@ export default function PlotComponent({ options }: Data) {
     }
 
     const resizeObserver = new ResizeObserver(() => {
-      if (ref.current.offsetHeight !== height) {
+      if (ref.current && ref.current.offsetHeight !== height) {
         setHeight(ref.current.offsetHeight);
       }
-      if (ref.current.offsetWidth !== width) {
+      if (ref.current && ref.current.offsetWidth !== width) {
         setWidth(ref.current.offsetWidth);
       }
     });

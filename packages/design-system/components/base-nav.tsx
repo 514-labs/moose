@@ -35,18 +35,28 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
           <div className="z-50 sticky w-full py-2">
             <div className="flex h-20 justify-between items-center">
               <Grid className="grow md:grid md:grid-cols-12 md:gap-x-10">
-                <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary">
-                  <TrackLink
-                    name={"Nav"}
-                    subject="home"
-                    href="/"
-                    className="flex h-full items-center"
-                  >
-                    <Logo property={property} subProperty={subProperty} />
-                    <Badge className="ml-3 mt-1.5" variant={"outline"}>
-                      alpha
-                    </Badge>
-                  </TrackLink>
+                <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary content-center">
+                  <div className="flex items-center align-content">
+                    <TrackLink
+                      name={"Nav"}
+                      subject="home"
+                      href="/"
+                      className="flex items-center"
+                    >
+                      <Logo property={property} subProperty={subProperty} />
+                    </TrackLink>
+                    {property !== "fiveonefour" ? (
+                      <TrackLink
+                        name={"Link"}
+                        subject="Alpha Badge"
+                        href={"https://docs.moosejs.com"}
+                      >
+                        <Badge className="ml-3 mt-1.5" variant={"outline"}>
+                          alpha
+                        </Badge>
+                      </TrackLink>
+                    ) : null}
+                  </div>
                 </div>
 
                 <div className="hidden md:ml-5 col-span-6 md:flex justify-end">

@@ -1,0 +1,53 @@
+# Concepts
+
+Some high-level concepts core to Change Data Management
+
+![DCM diagram](/xx.webp)
+
+## Versions
+
+In the Moose Change Data Management model, code in the last commit of your `main`
+branch is the current, latest version. It is accordingly tagged as such in the version
+property in the `package.json` file in your Moose application's top-level folder.
+
+Previous versions are tagged in the `project.toml` file, `[supported_old_versions]`
+section. We decided to not use Git tags for workflow reasons and to let users leverage
+tags however they want. If you would rather manage versions through tags instead of a
+file committed in the repository, [please let us know](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg).
+
+When a data model is part of a version, the table, ingestion endpoint, and topic are
+all named with that version. This duplicates some infrastructure such that all
+the data for each version is consistent and replayable.
+
+We also maintain an alias to the latest version of tables and ingestion endpoints
+so that you can always send data to the latest version, if you so choose — the alias
+being the name of the table unmodified by version.
+
+## Continuous Migrations
+
+We want to enable you to move forward with your versions and changes without breaking
+upstream or downstream processes. We also want you to have the latest data available.
+We also want to incentivize your data consumers to move to the latest version of the
+data model.
+
+As such we continuously process data that lands in old versions to land in the latest
+version of the data. We do not, however, go back in time: data that lands in old
+versions of the data model will be populated in new Data Models, but data that lands
+in new Data Models will not be sent to old Data Models.
+
+This is a continuous process that runs directly in the database. It is near real-time
+so you will get the freshest data in your latest version of the data model at all times.
+
+This migration is defined in a SQL mapping file, which Moose populates with the expected
+migration, and can be changed by the user if specific migration mappings, typing, or
+other parameters need to be defined.
+
+## Initial Data Migrations
+
+When a new version of the table is first created, it needs to be filled with data
+from the previous version. The initial data migration is the initial provisioning of data.
+When that happens, behind the scenes, the associated infrastructure is paused to ensure
+that no data gets duplicated accidentally between your versions of the tables.
+
+Once the initial data load is complete in the new table, that infrastructure is unpaused
+and the data flows.

@@ -27,7 +27,6 @@ MooseJS comes with a handy CLI for managing your MooseJS application. Navigate t
   </Tabs.Tab>
 </Tabs>
 
-
 # Moose CLI commands
 
 ### Init
@@ -42,12 +41,30 @@ moose init <name> --language <language> --location <location>
 - `--language <language>`: Language of your app or service. We currently only support `Typescript`.
 - `--location <location>`: Location of your app or service. The default is the current directory (`.`).
 
+### Build
+
+Builds your moose project. Syncs model changes, performs cleanup and prepares your project for use and deployment.
+
+When the `--docker` flag is used, the Moose build command also packages your project into local Docker containers.
+
+```txt filename="Terminal" copy
+moose build <--docker>
+```
+
 ### Dev
 
 Starts a development environment running the full stack of your MooseJS application locally. As you develop your MooseJS application locally, changes you make to your codebase will be automatically reflected here in real-time (when you save changes).
 
 ```txt filename="Terminal" copy
 moose dev
+```
+
+### Prod
+
+Starts Moose in production mode. This command is automatically invoked from a packaged Moose Docker container.
+
+```txt filename="Terminal" copy
+moose prod
 ```
 
 ### Flow
@@ -87,5 +104,3 @@ Clears all temporary data and stops development infrastructure.
 ```txt filename="Terminal" copy
 moose clean
 ```
-
-

@@ -6,15 +6,37 @@ import {
   Kafka,
   KafkaMessage,
   Producer,
+  SASLOptions,
 } from "npm:kafkajs@2.2.4";
 import SnappyCodec from "npm:kafkajs-snappy@1.1.0";
 
 CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
 
+// ------------------------------------------------
+
 const cwd = Deno.args[0] || Deno.cwd();
 const FLOWS_DIR_PATH = `${cwd}/app/flows`;
 const FLOW_FILE = "flow.ts";
 const CONSUMER_ID = "deno-group";
+
+const FILEWATCHER_ENABLED = Deno.env.get("FILEWATCHER_ENABLED") || false;
+const BROKER = Deno.env.get("MOOSE_REDPANDA_CONFIG__BROKER");
+const SASL_USERNAME = Deno.env.get("MOOSE_REDPANDA_CONFIG__SASL_USERNAME");
+const SASL_PASSWORD = Deno.env.get("MOOSE_REDPANDA_CONFIG__SASL_PASSWORD");
+const SASL_MECHANISM = Deno.env.get("MOOSE_REDPANDA_CONFIG__SASL_MECHANISM");
+const SECURITY_PROTOCOL = Deno.env.get(
+  "MOOSE_REDPANDA_CONFIG__SECURITY_PROTOCOL",
+);
+console.log(
+  `FLOWS_DIR_PATH: ${FLOWS_DIR_PATH} | BROKER: ${BROKER} | FILEWATCHER_ENABLED: ${FILEWATCHER_ENABLED} | SECURITY_PROTOCOL: ${SECURITY_PROTOCOL} | SASL_MECHANISM: ${SASL_MECHANISM}`,
+);
+
+if (!BROKER) {
+  console.error("Missing environment variable MOOSE_REDPANDA_CONFIG__BROKER");
+  Deno.exit(1);
+}
+
+// ------------------------------------------------
 
 const getVersion = (): string => {
   const version = JSON.parse(Deno.readTextFileSync(`${cwd}/package.json`))
@@ -26,9 +48,30 @@ const scrubVersionFromTopic = (topic: string): string => {
 };
 const version = getVersion();
 
+const getSasslConfig = (): SASLOptions | undefined => {
+  const mechanism = SASL_MECHANISM ? SASL_MECHANISM.toLowerCase() : "";
+  switch (mechanism) {
+    case "plain":
+    case "scram-sha-256":
+    case "scram-sha-512":
+      return {
+        mechanism: mechanism,
+        username: SASL_USERNAME || "",
+        password: SASL_PASSWORD || "",
+      };
+    default:
+      console.log(`Unsupported SASL mechanism: ${SASL_MECHANISM}`);
+      return undefined;
+  }
+};
+
+// ------------------------------------------------
+
 const kafka = new Kafka({
   clientId: "deno-consumer",
-  brokers: ["redpanda:9092"],
+  brokers: [BROKER],
+  ssl: SECURITY_PROTOCOL === "SASL_SSL",
+  sasl: getSasslConfig(),
 });
 
 const consumer: Consumer = kafka.consumer({ groupId: CONSUMER_ID });
@@ -37,6 +80,8 @@ const producer: Producer = kafka.producer({
   maxInFlightRequests: 1,
   idempotent: true,
 });
+
+// ------------------------------------------------
 
 const getFlows = (): Map<string, Map<string, string>> => {
   const flowsDir = Deno.readDirSync(FLOWS_DIR_PATH);
@@ -166,6 +211,11 @@ const startProducer = async (): Promise<void> => {
 };
 
 const startFlowsFilewatcher = (): void => {
+  if (!FILEWATCHER_ENABLED) {
+    console.log("Filewatcher disabled");
+    return;
+  }
+
   const pathToWatch = `${FLOWS_DIR_PATH}/**/${FLOW_FILE}`;
   watch(pathToWatch, { usePolling: true }).on("all", async (event, path) => {
     if (path.endsWith(FLOW_FILE)) {

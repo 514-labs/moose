@@ -13,9 +13,6 @@ function IP() {
   return headers().get("x-real-ip") ?? FALLBACK_IP_ADDRESS;
 }
 
-export type ServerEventResponse = Promise<{
-  ip: string;
-}>;
 export const sendServerEvent = async (name: string, event: any) => {
   const headersList = headers();
   const host = headersList.get("host");

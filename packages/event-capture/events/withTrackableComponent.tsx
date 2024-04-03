@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { ServerEventResponse, sendServerEvent } from "./sendServerEvent";
+import { sendServerEvent } from "./sendServerEvent";
 
 export enum TrackingVerb {
   copy = "copy",
@@ -33,8 +33,8 @@ export function withTrack<T>({
   action,
 }: {
   Component: React.ComponentType<T>;
-  injectProps: (event: () => ServerEventResponse) => {
-    [key: string]: () => ServerEventResponse;
+  injectProps: (event: () => Promise<void>) => {
+    [key: string]: () => Promise<void>;
   };
   action: TrackingVerb;
 }) {

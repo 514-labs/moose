@@ -12,8 +12,6 @@ import SnappyCodec from "npm:kafkajs-snappy@1.1.0";
 
 CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
 
-// ------------------------------------------------
-
 const cwd = Deno.args[0] || Deno.cwd();
 const FLOWS_DIR_PATH = `${cwd}/app/flows`;
 const FLOW_FILE = "flow.ts";
@@ -35,8 +33,6 @@ if (!BROKER) {
   console.error("Missing environment variable MOOSE_REDPANDA_CONFIG__BROKER");
   Deno.exit(1);
 }
-
-// ------------------------------------------------
 
 const getVersion = (): string => {
   const version = JSON.parse(Deno.readTextFileSync(`${cwd}/package.json`))
@@ -64,8 +60,6 @@ const getSasslConfig = (): SASLOptions | undefined => {
       return undefined;
   }
 };
-
-// ------------------------------------------------
 
 const kafka = new Kafka({
   clientId: "deno-consumer",

@@ -1,8 +1,40 @@
-## Data Models Introduction
+# Data Models Introduction
 
-Data Models are foundational to your MooseJS application. Using Data Models, you define the schemas of the data you need to support in your application. Based on these simple schema definitions, MooseJS will configure end-to-end data infrastructure for you:
+Data Models are foundational to your MooseJS application. Using Data Models, you define the schemas of the data you need to support in your application. Based on these simple schema definitions, MooseJS will configure end-to-end data infrastructure for you.
 
-- A typed data capture SDK to instrument your application
-- A high-performance ingestion server to receive data from your application
-- A buffer to store data as it's ingested from the ingestion server
-- An ingestion table and an analytics view to store and query your data
+Data Models look like this:
+
+```prisma filename="datamodels/models.prisma" copy
+model UserActivity {
+    eventId     String @id
+    timestamp   DateTime
+    userId      String
+    activityType String
+}
+```
+
+---
+
+For each Data Model that you define, MooseJS with automatically configure for you:
+
+- A typed SDK to instrument your upstream application(s) to capture data (currently supports Typescript only)
+- A high-performance ingestion API endpoint to receive data from upstream data sources (including, but not limited to the SDK mentioned above)
+- A streaming buffer to store data as it's ingested from the ingestion server, in order to handle peak load ingest without dropping any data on the ground
+- A landing table in the underlying OLAP analytics database to store ingested data
+- A database view to access and query the underlying data
+- A consumption API endpoint to pull data into downstream applications (coming soon)
+- A typed SDK to use in your downstream application(s) to easily consume data from the API endpoint (coming soon)
+
+All of these components are typed to the schema of your Data Model, and automatically configured to be interconnected and to pass data seamlessly down the pipeline.
+
+In other words, simply by defining a couple simple Data Model primitives, you can be up and running with a modern, scalable, end-to-end data stack in just a couple minutes. You're ready to start ingesting data from data sources, building Flows to process that data, and consuming that data into downstream use cases like BI software, LLMs, or your own analytics-driven applications.
+
+---
+
+In the following documentation you’ll find information about:
+
+1. How to create and inspect your Data Models
+2. How to ingest data into your MooseJS applications (via Data Models)
+3. How to consume data from your MooseJS applications (via Data Models)
+4. How to build Flows that transform data from one Data Model to another Data Model
+5. How modify and manage versions of your Data Models with Data Change Management

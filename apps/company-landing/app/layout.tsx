@@ -26,11 +26,12 @@ export const metadata: Metadata = {
 const default_navigation = [
   { name: "blog", href: "/blog" },
   { name: "community", href: "/community" },
+
   {
     name: "get in touch",
     href: "https://fiveonefour.typeform.com/signup",
-    emphasized: true,
   },
+  { name: "get moose", href: "wwww.moosejs.com", emphasized: true },
 ];
 
 export default async function RootLayout({

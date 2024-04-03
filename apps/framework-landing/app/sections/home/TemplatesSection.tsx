@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Fragment } from "react";
+import { Fragment, Suspense } from "react";
 
 import { CTABar } from "../../page";
 import {
@@ -9,15 +9,16 @@ import {
   Grid,
 } from "design-system/components/containers";
 import { Display, Heading, Text } from "design-system/typography";
-import Image from "next/image";
 import { TrackCtaButton } from "../../trackable-components";
+import { TemplateImg } from "./TemplateImg";
 
 const content = {
   title: "Use cases & templates",
   templates: [
     {
       title: "Product Analytics",
-      imageSrc: "/images/templates/mjs-img-product-1.svg",
+      imageSrcLight: "/images/templates/img-product-1-light.svg",
+      imageSrcDark: "/images/templates/img-product-1-dark.svg",
       description:
         "Capture user events and derive actionable insights with our ready-to-deploy, end-to-end product analytics solution, powered by MooseJS and NextJS.",
       cta: {
@@ -28,7 +29,8 @@ const content = {
     },
     {
       title: "LLM Application",
-      imageSrc: "/images/templates/mjs-img-product-2.svg",
+      imageSrcLight: "/images/templates/img-product-2-light.svg",
+      imageSrcDark: "/images/templates/img-product-2-dark.svg",
       description:
         "Leverage your custom business data and context to  large language models to automate tasks based on data and context.",
       cta: {
@@ -39,7 +41,8 @@ const content = {
     },
     {
       title: "Data Warehouse",
-      imageSrc: "/images/templates/mjs-img-product-3.svg",
+      imageSrcLight: "/images/templates/img-product-3-light.svg",
+      imageSrcDark: "/images/templates/img-product-3-dark.svg",
       description:
         "Unify data across your business domains, creating a platform optimized for analysis and data-driven strategy.",
       cta: {
@@ -72,13 +75,13 @@ export const TemplatesSection = () => {
             <Fragment key={index}>
               <ThirdWidthContentContainer className=" xl:m-0 bg-muted aspect-[4/3]  flex flex-col item-center justify-center xl:order-1">
                 <div className="relative h-3/5">
-                  <Image
-                    priority
-                    src={template.imageSrc}
-                    fill
-                    alt="man in jacket"
-                    sizes=" (max-width: 768px) 150vw, 25vw"
-                  />
+                  <Suspense fallback={<div>Loading...</div>}>
+                    <TemplateImg
+                      srcDark={template.imageSrcDark}
+                      srcLight={template.imageSrcLight}
+                      alt={template.title}
+                    />
+                  </Suspense>
                 </div>
               </ThirdWidthContentContainer>
               <ThirdWidthContentContainer

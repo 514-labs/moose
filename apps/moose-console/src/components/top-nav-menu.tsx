@@ -7,12 +7,12 @@ import {
   NavigationMenu,
   NavigationMenuContent,
   NavigationMenuItem,
-  NavigationMenuLink,
   NavigationMenuList,
   NavigationMenuTrigger,
   navigationMenuTriggerStyle,
 } from "components/ui/navigation-menu";
 import { usePathname } from "next/navigation";
+import { NavigationMenuLinkTrack } from "./trackable-components";
 
 interface Section {
   name: string;
@@ -76,16 +76,24 @@ const NavItem = (section: Section, path: string, key: number) => {
             : "text-muted-foreground",
         )}
       >
-        <NavigationMenuLink href={section.href}>
+        <NavigationMenuLinkTrack
+          name="Nav Link"
+          subject={section.name}
+          href={section.href}
+        >
           {section.name}
-        </NavigationMenuLink>
+        </NavigationMenuLinkTrack>
       </NavigationMenuTrigger>
       <NavigationMenuContent>
         {section.links?.map((link, index) => (
           <div className="py-6 px-4 w-[500px]" key={index}>
-            <NavigationMenuLink href={link.href}>
+            <NavigationMenuLinkTrack
+              name="Nav Link"
+              subject={link.name}
+              href={link.href}
+            >
               {link.name}
-            </NavigationMenuLink>
+            </NavigationMenuLinkTrack>
           </div>
         ))}
       </NavigationMenuContent>
@@ -107,11 +115,15 @@ export const TopNavMenu = () => {
               : "text-muted-foreground",
           )}
         >
-          <NavigationMenuLink href="/">Overview</NavigationMenuLink>
+          <NavigationMenuLinkTrack name="Nav Link" subject="Overview" href="/">
+            Overview
+          </NavigationMenuLinkTrack>
         </NavigationMenuItem>
         {sections.map((section, index) => NavItem(section, path, index))}
         <NavigationMenuItem>
-          <NavigationMenuLink
+          <NavigationMenuLinkTrack
+            name="Nav Link"
+            subject="Docs"
             href="https://docs.moosejs.com"
             className={cn(
               navigationMenuTriggerStyle(),
@@ -119,7 +131,7 @@ export const TopNavMenu = () => {
             )}
           >
             Docs
-          </NavigationMenuLink>
+          </NavigationMenuLinkTrack>
         </NavigationMenuItem>
       </NavigationMenuList>
     </NavigationMenu>

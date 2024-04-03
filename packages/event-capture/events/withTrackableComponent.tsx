@@ -1,11 +1,7 @@
 "use client";
+import React from "react";
 import { ServerEventResponse, sendServerEvent } from "./sendServerEvent";
 
-/*
-interface CtaTrackProps {
-  onCopy: () => void;
-}
-*/
 export enum TrackingVerb {
   copy = "copy",
   clicked = "clicked",
@@ -43,7 +39,11 @@ export function withTrack<T>({
   action: TrackingVerb;
 }) {
   const trackableComponent = (
-    props: T & { children?: React.ReactNode; name: string; subject: string }
+    props: T & {
+      children?: React.ReactNode;
+      name: string;
+      subject: string;
+    },
   ) => {
     const trackEvent = () =>
       sendServerEvent(props.name, { action, subject: props.subject } as any);
@@ -51,6 +51,31 @@ export function withTrack<T>({
     const newProps = injectProps(trackEvent);
 
     const combined = combineCallbacks(props, newProps);
+    if (
+      typeof window !== "undefined" &&
+      window.localStorage.getItem("trackView") === "true"
+    ) {
+      return (
+        <div className="w-fit h-fit relative">
+          <div className="h-full w-full z-10 bg-blue-200 absolute top-0 left-0 hover:opacity-100 opacity-50 hover:[&>*]:bg-accent hover:[&>*]:opacity-100">
+            <div className="text-wrap min-h-full h-fit z-10 min-w-full w-max border-red-100 border-2 text-foreground flex flex-col te w-full text-xs opacity-0">
+              <span>
+                <span className="font-bold">Event:</span> {props.name}
+              </span>
+              <span className="text-wrap">
+                <span className="font-bold">Subject:</span> {props.subject}
+              </span>
+              <span>
+                <span className="font-bold">Action:</span> {action}
+              </span>
+            </div>
+          </div>
+          <Component {...(props as T)} {...combined}>
+            {props.children}
+          </Component>
+        </div>
+      );
+    }
 
     return (
       <Component {...(props as T)} {...combined}>

@@ -13,14 +13,12 @@ import ModelView from "app/ModelView";
 import { MooseObject } from "app/types";
 import { useContext } from "react";
 import { VersionContext } from "version-context";
-import { useTrackPageView } from "app/trackable-components";
 
 export default function Page({
   params,
 }: {
   params: { ingestionPointId: string };
 }) {
-  useTrackPageView();
   const { models, cliData } = useContext(VersionContext);
 
   const model = getModelByIngestionPointId(models, params.ingestionPointId);

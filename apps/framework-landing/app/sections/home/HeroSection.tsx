@@ -31,7 +31,7 @@ export const HeroSection = () => {
             </div>
             <CTABar className="mb-5">
               <TrackableCodeSnippet
-                name="Create Moose App"
+                name="Copy Install"
                 subject={content.cta.text}
               >
                 {content.cta.text}

@@ -1,5 +1,5 @@
 "use client";
-import Link from "next/link";
+import { TrackLink } from "design-system/trackable-components";
 import { usePathname } from "next/navigation";
 import { Fragment } from "react";
 
@@ -24,13 +24,15 @@ export function NavBreadCrumb() {
       {breadcrumbs.map(({ name, path }, index) => (
         <Fragment key={index}>
           {index != 0 && <div className="px-1">/</div>}
-          <Link
+          <TrackLink
+            name="Link"
+            subject={name}
             className={`capitalize ${path == pathName ? "text-foreground" : "hover:text-white"}`}
             href={path}
           >
             {" "}
             {name}
-          </Link>
+          </TrackLink>
         </Fragment>
       ))}
     </div>

@@ -18,16 +18,16 @@ export type ServerEventResponse = Promise<{
 }>;
 export const sendServerEvent = async (
   name: string,
-  event: any
+  event: any,
 ): ServerEventResponse => {
   const headersList = headers();
   const host = headersList.get("host");
-  const referer = headersList.get("referer");
+  const referrer = headersList.get("referer");
   const ip = IP();
 
   const env = process.env.NODE_ENV;
 
-  const enhancedEvent = { ...event, host, env, referer, ip };
+  const enhancedEvent = { ...event, host, env, referrer, ip };
 
   const mixpanel = Mixpanel.init("be8ca317356e20c587297d52f93f3f9e");
 

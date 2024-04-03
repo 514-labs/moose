@@ -5,6 +5,8 @@ import { withSentryConfig } from "@sentry/nextjs";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const nextConfig = {
+  transpilePackages: ["design-system"],
+
   output: "standalone",
   experimental: {
     // this includes files from the monorepo base two directories up

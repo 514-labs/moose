@@ -35,6 +35,10 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn(sansFont.variable, monoFont.variable)}
     >
+      <script
+        data-host="https://moosefood.514.dev"
+        src="https://analytics.514.dev/script.js"
+      />
       <body className={cn("min-h-screen font-sans antialiased")}>
         <ThemeProvider
           attribute="class"

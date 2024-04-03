@@ -44,6 +44,10 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning className="">
+      <script
+        data-host="https://moosefood.514.dev"
+        src="https://analytics.514.dev/script.js"
+      />
       <body
         className={cn(
           "min-h-screen bg-background font-sans antialiased",

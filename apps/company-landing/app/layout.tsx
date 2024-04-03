@@ -31,7 +31,7 @@ const default_navigation = [
     name: "get in touch",
     href: "https://fiveonefour.typeform.com/signup",
   },
-  { name: "get moose", href: "https://wwww.moosejs.com", emphasized: true },
+  { name: "get moose", href: "https://www.moosejs.com", emphasized: true },
 ];
 
 export default async function RootLayout({

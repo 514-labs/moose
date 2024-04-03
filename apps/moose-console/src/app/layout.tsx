@@ -10,6 +10,7 @@ import { TopNavMenu } from "components/top-nav-menu";
 import { VersionProvider } from "version-context";
 import { CURRENT_VERSION } from "./types";
 import VersionSelect from "components/version-select";
+import Script from "next/script";
 
 // Font files can be colocated inside of `app`
 const monoFont = localFont({
@@ -35,6 +36,10 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn(sansFont.variable, monoFont.variable)}
     >
+      <Script
+        data-host="https://moosefood.514.dev"
+        src="https://analytics.514.dev/script.js"
+      />
       <body className={cn("min-h-screen font-sans antialiased")}>
         <ThemeProvider
           attribute="class"

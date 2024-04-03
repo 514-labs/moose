@@ -13,8 +13,11 @@ import { TimeUnit } from "@/lib/time-utils";
 import { eventConfigFromNames } from "@/app/events";
 import { MetricForm } from "@/lib/form-types";
 
-function defaultBreakdown(breakdown: string[]) {
-  return breakdown.filter((b) => b != null).length == 0 ? [] : breakdown;
+function defaultBreakdown(breakdown?: string[]) {
+  // TODO check why bvreakdown can be undefined
+  return (
+    (breakdown?.filter((b) => b != null).length == 0 ? [] : breakdown) || []
+  );
 }
 
 export default function InsightsPage() {

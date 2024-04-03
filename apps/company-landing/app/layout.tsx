@@ -4,6 +4,7 @@ import localFont from "next/font/local";
 import { cn } from "design-system/utils";
 import { ThemeProvider } from "design-system/components";
 import { Nav } from "design-system/trackable-components";
+import Script from "next/script";
 
 const monoFont = localFont({
   src: "./ABCMonumentGroteskMonoVariable.woff2",
@@ -48,6 +49,10 @@ export default async function RootLayout({
 
   return (
     <html lang="en" suppressHydrationWarning className="">
+      <Script
+        src="https://analytics.514.dev/script.js"
+        data-host="https://moosefood.514.dev"
+      />
       <body
         className={cn(
           "min-h-screen bg-background font-sans antialiased",

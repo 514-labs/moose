@@ -20,6 +20,9 @@ const sansFont = localFont({
 export const metadata: Metadata = {
   title: "MooseJS—A data engineering framework for all developers.",
   description: "A data engineering framework for all developers.",
+  openGraph: {
+    images: "/images/open-graph/og_moose_4x_webp.webp",
+  },
 };
 
 const default_navigation = [

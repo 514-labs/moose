@@ -21,6 +21,9 @@ export const metadata: Metadata = {
   title: "514—A data platform for all devs",
   description:
     "We build the frameworks, workflows and infrastructure that make data accessible to all developers.",
+  openGraph: {
+    images: "/images/open-graph/og_514_4x_webp.webp",
+  },
 };
 
 const default_navigation = [

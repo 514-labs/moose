@@ -22,7 +22,7 @@ export const HeroSection = () => {
 
   return (
     <>
-      <Section>
+      <Section className="mt-12 lg:mt-12 2xl:mt-24 px-5">
         <Grid>
           <HalfWidthContentContainer className="xl:col-start-7 md:col-span-9 xl:col-span-6">
             <div>

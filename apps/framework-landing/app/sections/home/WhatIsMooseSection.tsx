@@ -48,13 +48,13 @@ export const WhatIsMooseSection = () => {
           <HalfWidthContentContainer className=" 2xl:col-start-7">
             <Heading> {content.title} </Heading>
             <Text> {content.description} </Text>
-            <CTABar>
-              <Link href={content.cta.href}>
+            <Link href={content.cta.href}>
+              <CTABar>
                 <TrackCtaButton name="How it works" subject={content.cta.label}>
                   {content.cta.label}
                 </TrackCtaButton>
-              </Link>
-            </CTABar>
+              </CTABar>
+            </Link>
           </HalfWidthContentContainer>
         </Grid>
       </Section>

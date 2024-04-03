@@ -87,14 +87,17 @@ export const ManifestoSection = () => {
 
           <Text>
             Building software is a delight{" "}
-            <HoverCard>
+            <HoverCard openDelay={300} closeDelay={300}>
               <HoverCardTrigger>
-                <sup>*</sup>
+                <sup className=" cursor-pointer">*</sup>
               </HoverCardTrigger>
               <HoverCardContent className="p-5 w-96">
                 <SmallText>
                   Except for{" "}
-                  <a href="https://twitter.com/secretGeek/status/7269997868">
+                  <a
+                    href="https://twitter.com/secretGeek/status/7269997868"
+                    className="underline"
+                  >
                     two things
                   </a>{" "}
                   of course: naming things, cache invalidation and off by one

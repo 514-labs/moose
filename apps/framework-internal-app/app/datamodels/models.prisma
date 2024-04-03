@@ -23,3 +23,15 @@ model MooseActivity {
     timestamp       DateTime
     cliVersion      String
 }
+
+model PageViewEvent {
+    eventId    String   @id
+    timestamp  DateTime
+    session_id String
+    user_agent String
+    locale     String
+    location   String
+    href       String
+    pathname   String
+    referrer   String
+}

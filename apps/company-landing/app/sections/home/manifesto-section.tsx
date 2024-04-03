@@ -86,7 +86,8 @@ export const ManifestoSection = () => {
           </Text>
 
           <Text>
-            —Tim, Nico, Alex, Chris, Dan, Carlos, Olivia and the Georges
+            —Tim, Nico, Alex, Chris, Dan, Carlos, Olivia, Jonathan and the
+            Georges
           </Text>
 
           <div className="text-md mt-20">

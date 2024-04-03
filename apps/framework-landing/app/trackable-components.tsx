@@ -9,8 +9,14 @@ export const TrackableCodeSnippet = withTrack({
   injectProps: (onCopy) => ({ onCopy }),
 });
 
-export const TrackCtaButton = withTrack<CTAButtonProps>({
-  Component: CTAButton,
-  action: TrackingVerb.clicked,
-  injectProps: (onClick) => ({ onClick }),
-});
+export interface TrackingFields {
+  name: string;
+  subject: string;
+}
+
+export const TrackCtaButton = (props: CTAButtonProps & TrackingFields) =>
+  withTrack<CTAButtonProps>({
+    Component: CTAButton,
+    action: TrackingVerb.clicked,
+    injectProps: (onClick) => ({ onClick }),
+  })(props);

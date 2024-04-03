@@ -16,7 +16,7 @@ export const GetMooseCTASection = () => {
     cta: {
       action: "Copy Install",
       label: "Copy",
-      text: "npx create-moose-app",
+      text: "npx create-moose-app test-app",
     },
   };
   return (

@@ -25,8 +25,8 @@ export const metadata: Metadata = {
 const default_navigation = [
   { name: "docs", href: "https://docs.moosejs.com" },
   { name: "templates", href: "/templates" },
-  { name: "community", href: "https://github.com/514-labs/moose" },
-  { name: "blog", href: "https://blog.fiveonefour.com/" },
+  { name: "community", href: "https://www.fiveonefour.com/community" },
+  // { name: "blog", href: "https://blog.fiveonefour.com/" },
   { name: "github", href: "https://github.com/514-labs/moose" },
 ];
 

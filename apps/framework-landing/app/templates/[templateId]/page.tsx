@@ -16,13 +16,11 @@ import {
   FullWidthContentContainer,
 } from "design-system/components/containers";
 import { Display, Text } from "design-system/typography";
-import Image from "next/image";
 import {
   TrackCtaButton,
   TrackableCodeSnippet,
 } from "../../trackable-components";
 import { sendServerEvent } from "event-capture/server-event";
-import { useTheme } from "next-themes";
 import { Suspense } from "react";
 import { TemplateImg } from "../../sections/home/TemplateImg";
 

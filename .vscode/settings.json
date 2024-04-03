@@ -1,9 +1,7 @@
 {
-  "rust-analyzer.linkedProjects": [
-    "apps/framework-cli/Cargo.toml"
-  ],
+  "rust-analyzer.linkedProjects": ["apps/framework-cli/Cargo.toml"],
   "rust-analyzer.showUnlinkedFileNotification": false,
-  "editor.formatOnSave": true,
+  "editor.formatOnSave": false,
   "[javascript]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
   },

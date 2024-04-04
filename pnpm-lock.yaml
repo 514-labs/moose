@@ -58,6 +58,9 @@ importers:
       "@repo/ts-config":
         specifier: workspace:*
         version: link:../../packages/ts-config
+      "@vercel/speed-insights":
+        specifier: ^1.0.10
+        version: 1.0.10(next@14.1.3)(react@18.2.0)
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.0
@@ -142,7 +145,7 @@ importers:
     dependencies:
       "@514labs/moose-cli":
         specifier: latest
-        version: 0.3.224
+        version: 0.3.225
     devDependencies:
       "@repo/ts-config":
         specifier: workspace:*
@@ -168,6 +171,9 @@ importers:
       "@sentry/nextjs":
         specifier: ^7.106.0
         version: 7.109.0(next@14.1.3)(react@18.2.0)(webpack@5.91.0)
+      "@vercel/speed-insights":
+        specifier: ^1.0.10
+        version: 1.0.10(next@14.1.3)(react@18.2.0)
       design-system:
         specifier: workspace:*
         version: link:../../packages/design-system
@@ -256,6 +262,9 @@ importers:
       "@radix-ui/react-slot":
         specifier: ^1.0.2
         version: 1.0.2(@types/react@18.2.74)(react@18.2.0)
+      "@vercel/speed-insights":
+        specifier: ^1.0.10
+        version: 1.0.10(next@14.1.3)(react@18.2.0)
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.0
@@ -774,10 +783,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-arm64@0.3.224:
+  /@514labs/moose-cli-darwin-arm64@0.3.225:
     resolution:
       {
-        integrity: sha512-HS7gRbqD+ag9grtwUNq7BmGXm51r2PAmGjrY37JXCqtzpglGUtmQkXyux5d/CI0v0oorRiK9dXvLU22hVVPtLQ==,
+        integrity: sha512-Dnvmm5bObnzk6DcqIpNhmozIvVQPYjGqXODo8GzLrFydX7NucFes0B+xmcPOSELF0mw8GCvUdPecHozDHg9OTw==,
       }
     cpu: [arm64]
     os: [darwin]
@@ -807,10 +816,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-x64@0.3.224:
+  /@514labs/moose-cli-darwin-x64@0.3.225:
     resolution:
       {
-        integrity: sha512-rfJGWy92L9lER6zVYamrxriXw8kxQ2o0R8R46yfUUNgeitPcXE6jtY/ZK/8xcURoXP5Fb2TcxMU+4iIGWarnrw==,
+        integrity: sha512-S0+fg2Gg/ndBxD13mtBGgw/az5vCxMTnlOyJPyL/R/nyMKOA0WVWgTGzahrV7k5Qg3fsNlVfXVApoqUtwaD2Ng==,
       }
     cpu: [x64]
     os: [darwin]
@@ -840,10 +849,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-arm64@0.3.224:
+  /@514labs/moose-cli-linux-arm64@0.3.225:
     resolution:
       {
-        integrity: sha512-nb0zPBx+39TLmEd+aizNFoHM7Yl+4+lnjM6rzHjiT6wmc0tbR+QZPOXD/Hn2ocZIypG12z3HOqVIlNk6J36jJA==,
+        integrity: sha512-VFZryxcid57hgLr+Y+72f998RdJw2E7BEV0Aa2w+MdurW1Hcp4epXnzQHC65Wr+t84fHI73CMq3egjd6ZzEIIQ==,
       }
     cpu: [arm64]
     os: [linux]
@@ -873,10 +882,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-x64@0.3.224:
+  /@514labs/moose-cli-linux-x64@0.3.225:
     resolution:
       {
-        integrity: sha512-NO7nLGfzuVWlh2uhKuF4zStE3lZuuie9cBRTOFaC/ERdWeRmxq0FN5jtKkoumKVxli5HHT7h9/t9E4s/i/cMtQ==,
+        integrity: sha512-xvoxV8qk9YoaZtxxqLYdjb9HRuyZ2/OnjXfkBOHLlWJAvdh883eUf/on+ie0RLrlMTDNppnas9ZuXAimRzvZJA==,
       }
     cpu: [x64]
     os: [linux]
@@ -897,17 +906,17 @@ packages:
       "@514labs/moose-cli-linux-x64": 0.3.204
     dev: true
 
-  /@514labs/moose-cli@0.3.224:
+  /@514labs/moose-cli@0.3.225:
     resolution:
       {
-        integrity: sha512-LYX9QJ7+K5NXz93lPq5MMTZ4e+FEf0sasom6ud2Pc3PNpMQ/rDG9uPxY5gFoR6tGP7ilP2WxNVnRIpQCGAj8ig==,
+        integrity: sha512-H7mv2fFqrASAphwN4O281D6wMAVuuldiGTY0x2lf82JcpwRti89l7LmicEUOPClny3mMdMmF5PYrlluqEoP12g==,
       }
     hasBin: true
     optionalDependencies:
-      "@514labs/moose-cli-darwin-arm64": 0.3.224
-      "@514labs/moose-cli-darwin-x64": 0.3.224
-      "@514labs/moose-cli-linux-arm64": 0.3.224
-      "@514labs/moose-cli-linux-x64": 0.3.224
+      "@514labs/moose-cli-darwin-arm64": 0.3.225
+      "@514labs/moose-cli-darwin-x64": 0.3.225
+      "@514labs/moose-cli-linux-arm64": 0.3.225
+      "@514labs/moose-cli-linux-x64": 0.3.225
     dev: false
 
   /@aashutoshrathi/word-wrap@1.2.6:
@@ -5147,6 +5156,37 @@ packages:
       {
         integrity: sha512-zuVdFrMJiuCDQUMCzQaD6KL28MjnqqN8XnAqiEq9PNm/hCPTSGfrXCOfwj1ow4LFb/tNymJPwsNbVePc1xFqrQ==,
       }
+
+  /@vercel/speed-insights@1.0.10(next@14.1.3)(react@18.2.0):
+    resolution:
+      {
+        integrity: sha512-4uzdKB0RW6Ff2FkzshzjZ+RlJfLPxgm/00i0XXgxfMPhwnnsk92YgtqsxT9OcPLdJUyVU1DqFlSWWjIQMPkh0g==,
+      }
+    requiresBuild: true
+    peerDependencies:
+      "@sveltejs/kit": ^1 || ^2
+      next: ">= 13"
+      react: ^18 || ^19
+      svelte: ^4
+      vue: ^3
+      vue-router: ^4
+    peerDependenciesMeta:
+      "@sveltejs/kit":
+        optional: true
+      next:
+        optional: true
+      react:
+        optional: true
+      svelte:
+        optional: true
+      vue:
+        optional: true
+      vue-router:
+        optional: true
+    dependencies:
+      next: 14.1.3(@babel/core@7.24.3)(react-dom@18.2.0)(react@18.2.0)
+      react: 18.2.0
+    dev: false
 
   /@webassemblyjs/ast@1.12.1:
     resolution:

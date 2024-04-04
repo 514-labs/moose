@@ -5,6 +5,7 @@ import { ThemeProvider } from "design-system/components";
 import { cn } from "design-system/utils";
 import { Nav } from "design-system/trackable-components";
 import Script from "next/script";
+import { SpeedInsights } from "@vercel/speed-insights/next";
 
 const monoFont = localFont({
   src: "./ABCMonumentGroteskMonoVariable.woff2",
@@ -66,6 +67,7 @@ export default async function RootLayout({
           <Nav property="moosejs" navigation={default_navigation} />
           {children}
         </ThemeProvider>
+        <SpeedInsights />
       </body>
     </html>
   );

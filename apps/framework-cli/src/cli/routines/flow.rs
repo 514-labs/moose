@@ -1,8 +1,15 @@
-use std::{fs, io::Write, sync::Arc};
+use log::{error, info};
+
+use std::{fs, io::Write, process::Stdio, sync::Arc};
+
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::Command;
 
 use crate::{
-    cli::display::Message, framework::schema::templates::BASE_FLOW_TEMPLATE, project::Project,
-    utilities::constants::FLOW_FILE,
+    cli::display::Message,
+    framework::schema::templates::BASE_FLOW_TEMPLATE,
+    project::Project,
+    utilities::constants::{DENO_DIR, DENO_TRANSFORM, FLOW_FILE},
 };
 
 use super::{Routine, RoutineFailure, RoutineSuccess};
@@ -105,6 +112,68 @@ impl Routine for CreateFlowFile {
         Ok(RoutineSuccess::success(Message::new(
             "Created".to_string(),
             format!("flow {}", flow_file_path.display()),
+        )))
+    }
+}
+
+pub struct StartFlowProcess {
+    project: Arc<Project>,
+}
+
+impl StartFlowProcess {
+    pub fn new(project: Arc<Project>) -> Self {
+        Self { project }
+    }
+}
+
+impl Routine for StartFlowProcess {
+    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
+        let project_root_path = self.project.project_location.clone();
+        let deno_file = self
+            .project
+            .internal_dir()
+            .unwrap()
+            .join(DENO_DIR)
+            .join(DENO_TRANSFORM);
+
+        let mut child = Command::new("deno")
+            .current_dir(&project_root_path)
+            .arg("run")
+            .arg("--allow-all")
+            .arg(deno_file)
+            .arg(&project_root_path)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .expect("Failed to start deno");
+
+        let stdout = child
+            .stdout
+            .take()
+            .expect("Deno process did not have a handle to stdout");
+        let stderr = child
+            .stderr
+            .take()
+            .expect("Deno process did not have a handle to stderr");
+
+        let mut stdout_reader = BufReader::new(stdout).lines();
+        let mut stderr_reader = BufReader::new(stderr).lines();
+
+        tokio::spawn(async move {
+            while let Ok(Some(line)) = stdout_reader.next_line().await {
+                info!("{}", line);
+            }
+        });
+
+        tokio::spawn(async move {
+            while let Ok(Some(line)) = stderr_reader.next_line().await {
+                error!("{}", line);
+            }
+        });
+
+        Ok(RoutineSuccess::success(Message::new(
+            "Started".to_string(),
+            "flow".to_string(),
         )))
     }
 }

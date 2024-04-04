@@ -139,12 +139,13 @@ const handleMessage = async (
       );
 
       if (transformedData) {
+        const destinationTopic = `${destination}_${version}`;
         await transaction.send({
-          topic: `${destination}_${version}`,
+          topic: destinationTopic,
           messages: [{ value: JSON.stringify(transformedData) }],
         });
         didTransform = true;
-        console.log(`Sent transformed data to ${destination}`);
+        console.log(`Sent transformed data to ${destinationTopic}`);
       }
     }
 
@@ -179,6 +180,7 @@ const startConsumer = async (): Promise<void> => {
 
   await consumer.connect();
   await consumer.subscribe({ topics: flowTopics, fromBeginning: false });
+  console.log("Subscribed to topics: ", flowTopics.join(", "));
 
   await consumer.run({
     autoCommit: false,

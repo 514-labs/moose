@@ -1,6 +1,5 @@
 {
-    "intro": "Introduction",
-    "model-data": "Using Data Models",
-    "capture-data": "Ingesting Data",
-    "consume-data": "Consuming Data"
+  "intro": "Introduction",
+  "model-data": "Using Data Models",
+  "capture-data": "Ingesting Data"
 }

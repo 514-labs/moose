@@ -18,6 +18,7 @@ fn cannot_run_cli_init_without_args() -> Result<(), Box<dyn std::error::Error>> 
 #[test]
 fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
     let temp = assert_fs::TempDir::new().unwrap();
+    std::fs::remove_dir(&temp)?;
     let dir: &str = temp.path().to_str().unwrap();
 
     // List the content of dir

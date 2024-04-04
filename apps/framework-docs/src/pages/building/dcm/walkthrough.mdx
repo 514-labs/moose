@@ -110,10 +110,19 @@ Let's see this in action.
 
 <Tabs items={["No Install", "Global Install"]}>
   <Tabs.Tab>
-    ```txt filename="Terminal" copy $ npx @514labs/moose-cli@latest bump-version
+
+    ```txt filename="Terminal" copy
+    $ npx @514labs/moose-cli@latest bump-version
     ```
+
   </Tabs.Tab>
-  <Tabs.Tab>```txt filename="Terminal" copy $ moose bump-version ```</Tabs.Tab>
+  <Tabs.Tab>
+  
+    ```txt filename="Terminal" copy
+    $ moose bump-version
+    ```
+
+  </Tabs.Tab>
 </Tabs>
 
 It will bump the version in your package.json file and add a pointer between the git commit and the previous version to the project.toml file.
@@ -140,7 +149,7 @@ that gets embedded into two other queries:
   version of the table.
 
 This represents Moose's best guess at the migration path between versions,
-but please feel free to edite the SQL mapping file to specify particular mapping,
+but please feel free to edit the SQL mapping file to specify particular mapping,
 typing, etc.
 
 This file allows a user to send data to the old data model version and the new data

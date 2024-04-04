@@ -25,8 +25,9 @@ pub enum Commands {
         #[arg(short, long)]
         template: Option<String>,
 
+        /// By default, the init command fails if the location directory exists, to prevent accidental reruns. This flag disables the check.
         #[arg(long)]
-        no_create_dir: bool,
+        no_fail_already_exists: bool,
     },
     /// Builds your moose project
     Build {

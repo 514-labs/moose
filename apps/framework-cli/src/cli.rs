@@ -101,7 +101,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 language,
                 location,
                 template,
-                no_create_dir,
+                no_fail_already_exists,
             } => {
                 info!(
                     "Running init command with name: {}, language: {}, location: {:?}, template: {:?}",
@@ -109,13 +109,13 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 );
 
                 let dir_path = Path::new(location.as_deref().unwrap_or(name));
-                if !no_create_dir && dir_path.exists() {
+                if !no_fail_already_exists && dir_path.exists() {
                     show_message!(
                         MessageType::Error,
                         Message {
                             action: "Init".to_string(),
                             details:
-                                "Directory already exists, please use the --no_create_dir flag."
+                                "Directory already exists, please use the --no-fail-already-exists flag if this is expected."
                                     .to_string(),
                         }
                     );

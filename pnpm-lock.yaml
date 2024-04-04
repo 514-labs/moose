@@ -142,7 +142,7 @@ importers:
     dependencies:
       "@514labs/moose-cli":
         specifier: latest
-        version: 0.3.216
+        version: 0.3.224
     devDependencies:
       "@repo/ts-config":
         specifier: workspace:*
@@ -609,88 +609,6 @@ importers:
         specifier: ^5
         version: 5.4.3
 
-  apps/web:
-    dependencies:
-      "@headlessui/react":
-        specifier: ^1.7.18
-        version: 1.7.18(react-dom@18.2.0)(react@18.2.0)
-      "@heroicons/react":
-        specifier: ^2.1.1
-        version: 2.1.3(react@18.2.0)
-      "@sentry/nextjs":
-        specifier: ^7.106.0
-        version: 7.109.0(next@14.1.3)(react@18.2.0)(webpack@5.91.0)
-      "@types/heap":
-        specifier: ^0.2.34
-        version: 0.2.34
-      "@vercel/analytics":
-        specifier: ^1.2.2
-        version: 1.2.2(next@14.1.3)(react@18.2.0)
-      class-variance-authority:
-        specifier: ^0.7.0
-        version: 0.7.0
-      clsx:
-        specifier: ^2.1.0
-        version: 2.1.0
-      gsap:
-        specifier: file:gsap-bonus.tgz
-        version: file:apps/web/gsap-bonus.tgz
-      lucide-react:
-        specifier: ^0.312.0
-        version: 0.312.0(react@18.2.0)
-      mixpanel:
-        specifier: ^0.18.0
-        version: 0.18.0
-      next:
-        specifier: ^14.1.0
-        version: 14.1.3(@babel/core@7.24.3)(react-dom@18.2.0)(react@18.2.0)
-      react:
-        specifier: ^18.2.0
-        version: 18.2.0
-      react-dom:
-        specifier: ^18.2.0
-        version: 18.2.0(react@18.2.0)
-      sharp:
-        specifier: ^0.32.6
-        version: 0.32.6
-      tailwind-merge:
-        specifier: ^2.2.1
-        version: 2.2.2
-      tailwindcss-animate:
-        specifier: ^1.0.7
-        version: 1.0.7(tailwindcss@3.4.3)
-    devDependencies:
-      "@repo/eslint-config-custom":
-        specifier: workspace:*
-        version: link:../../packages/eslint-config-custom
-      "@repo/ts-config":
-        specifier: workspace:*
-        version: link:../../packages/ts-config
-      "@types/node":
-        specifier: ^18.19.21
-        version: 18.19.29
-      "@types/react":
-        specifier: ^18.2.61
-        version: 18.2.74
-      "@types/react-dom":
-        specifier: ^18.2.19
-        version: 18.2.23
-      autoprefixer:
-        specifier: ^10.4.17
-        version: 10.4.19(postcss@8.4.38)
-      postcss:
-        specifier: ^8.4.35
-        version: 8.4.38
-      tailwind-config:
-        specifier: workspace:*
-        version: link:../../packages/tailwind-config
-      tailwindcss:
-        specifier: ^3.4.1
-        version: 3.4.3
-      typescript:
-        specifier: ^4.9.5
-        version: 4.9.5
-
   packages/design-system:
     dependencies:
       "@radix-ui/react-accordion":
@@ -856,10 +774,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-arm64@0.3.216:
+  /@514labs/moose-cli-darwin-arm64@0.3.224:
     resolution:
       {
-        integrity: sha512-o+ZLzgjpa7IBrlnT+zky4/dVbe0qH+Kso/upVZ/Y/+eiyWWMDh8xZyNY4SHk30Z6ejgi3gV2OvPtEsVP2Ms2WQ==,
+        integrity: sha512-HS7gRbqD+ag9grtwUNq7BmGXm51r2PAmGjrY37JXCqtzpglGUtmQkXyux5d/CI0v0oorRiK9dXvLU22hVVPtLQ==,
       }
     cpu: [arm64]
     os: [darwin]
@@ -889,10 +807,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-x64@0.3.216:
+  /@514labs/moose-cli-darwin-x64@0.3.224:
     resolution:
       {
-        integrity: sha512-DyYG+xw8h2ijdewTh7UaeBVevqbIdcO7IWmJcaOG2MH/I3vfV1JGl3Ug+48HtZyU5N0UxMG3JENZtSSWINXoqQ==,
+        integrity: sha512-rfJGWy92L9lER6zVYamrxriXw8kxQ2o0R8R46yfUUNgeitPcXE6jtY/ZK/8xcURoXP5Fb2TcxMU+4iIGWarnrw==,
       }
     cpu: [x64]
     os: [darwin]
@@ -922,10 +840,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-arm64@0.3.216:
+  /@514labs/moose-cli-linux-arm64@0.3.224:
     resolution:
       {
-        integrity: sha512-TiXEKjwQwNtQxyub8+ruds1AQH9DHkc9hybyL1cd5JRsajA5d4GI2FwOE/mtcr2GsVDjZGKLJ6gfAgYnXaMoUw==,
+        integrity: sha512-nb0zPBx+39TLmEd+aizNFoHM7Yl+4+lnjM6rzHjiT6wmc0tbR+QZPOXD/Hn2ocZIypG12z3HOqVIlNk6J36jJA==,
       }
     cpu: [arm64]
     os: [linux]
@@ -955,10 +873,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-x64@0.3.216:
+  /@514labs/moose-cli-linux-x64@0.3.224:
     resolution:
       {
-        integrity: sha512-6uJjbOWuta7hRjNJGCtJYBDD8pU4zQfd8ZLPOICRGQ66u+DK1l6UaRVcAaFGcHF24QH3w/Wjkpe+gvnEchXCSA==,
+        integrity: sha512-NO7nLGfzuVWlh2uhKuF4zStE3lZuuie9cBRTOFaC/ERdWeRmxq0FN5jtKkoumKVxli5HHT7h9/t9E4s/i/cMtQ==,
       }
     cpu: [x64]
     os: [linux]
@@ -979,17 +897,17 @@ packages:
       "@514labs/moose-cli-linux-x64": 0.3.204
     dev: true
 
-  /@514labs/moose-cli@0.3.216:
+  /@514labs/moose-cli@0.3.224:
     resolution:
       {
-        integrity: sha512-sd5W43r77ATnCscYMURiWWuK4MaDQwoS0xTTWi7W4glhv5TBHDu4r6WS9fhQ/Rewsm6CMoPBG+z0TeuijAo8IQ==,
+        integrity: sha512-LYX9QJ7+K5NXz93lPq5MMTZ4e+FEf0sasom6ud2Pc3PNpMQ/rDG9uPxY5gFoR6tGP7ilP2WxNVnRIpQCGAj8ig==,
       }
     hasBin: true
     optionalDependencies:
-      "@514labs/moose-cli-darwin-arm64": 0.3.216
-      "@514labs/moose-cli-darwin-x64": 0.3.216
-      "@514labs/moose-cli-linux-arm64": 0.3.216
-      "@514labs/moose-cli-linux-x64": 0.3.216
+      "@514labs/moose-cli-darwin-arm64": 0.3.224
+      "@514labs/moose-cli-darwin-x64": 0.3.224
+      "@514labs/moose-cli-linux-arm64": 0.3.224
+      "@514labs/moose-cli-linux-x64": 0.3.224
     dev: false
 
   /@aashutoshrathi/word-wrap@1.2.6:
@@ -5229,25 +5147,6 @@ packages:
       {
         integrity: sha512-zuVdFrMJiuCDQUMCzQaD6KL28MjnqqN8XnAqiEq9PNm/hCPTSGfrXCOfwj1ow4LFb/tNymJPwsNbVePc1xFqrQ==,
       }
-
-  /@vercel/analytics@1.2.2(next@14.1.3)(react@18.2.0):
-    resolution:
-      {
-        integrity: sha512-X0rctVWkQV1e5Y300ehVNqpOfSOufo7ieA5PIdna8yX/U7Vjz0GFsGf4qvAhxV02uQ2CVt7GYcrFfddXXK2Y4A==,
-      }
-    peerDependencies:
-      next: ">= 13"
-      react: ^18 || ^19
-    peerDependenciesMeta:
-      next:
-        optional: true
-      react:
-        optional: true
-    dependencies:
-      next: 14.1.3(@babel/core@7.24.3)(react-dom@18.2.0)(react@18.2.0)
-      react: 18.2.0
-      server-only: 0.0.1
-    dev: false
 
   /@webassemblyjs/ast@1.12.1:
     resolution:
@@ -14451,13 +14350,6 @@ packages:
     dependencies:
       randombytes: 2.1.0
 
-  /server-only@0.0.1:
-    resolution:
-      {
-        integrity: sha512-qepMx2JxAa5jjfzxG79yPPq+8BuFToHd1hm7kI+Z4zAq1ftQiP7HcxMhDDItrbtwVeLg/cY2JnKnrcFkmiswNA==,
-      }
-    dev: false
-
   /set-function-length@1.2.2:
     resolution:
       {
@@ -16503,16 +16395,6 @@ packages:
       {
         integrity: sha512-F/gcKtbqBb6ozpphFq8GLhZeB5KtterViGvNUJFgXCjvFaGvF47ySaWP+zW/D0af2OMjKxmdgzUyby/LsplDIA==,
         tarball: file:apps/moose-console/gsap-bonus.tgz,
-      }
-    name: gsap
-    version: 3.12.2
-    dev: false
-
-  file:apps/web/gsap-bonus.tgz:
-    resolution:
-      {
-        integrity: sha512-F/gcKtbqBb6ozpphFq8GLhZeB5KtterViGvNUJFgXCjvFaGvF47ySaWP+zW/D0af2OMjKxmdgzUyby/LsplDIA==,
-        tarball: file:apps/web/gsap-bonus.tgz,
       }
     name: gsap
     version: 3.12.2

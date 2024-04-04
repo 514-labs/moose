@@ -101,26 +101,22 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 language,
                 location,
                 template,
-                reinit,
+                no_create_dir,
             } => {
                 info!(
                     "Running init command with name: {}, language: {}, location: {:?}, template: {:?}",
                     name, language, location, template
                 );
 
-                let dir_path =
-                    Path::new(
-                        location
-                            .as_deref()
-                            .unwrap_or(if *reinit { "." } else { name }),
-                    );
-                if !reinit && dir_path.exists() {
+                let dir_path = Path::new(location.as_deref().unwrap_or(name));
+                if !no_create_dir && dir_path.exists() {
                     show_message!(
                         MessageType::Error,
                         Message {
                             action: "Init".to_string(),
-                            details: "Directory already exists, please use the --reinit flag to overwrite"
-                                .to_string(),
+                            details:
+                                "Directory already exists, please use the --no_create_dir flag."
+                                    .to_string(),
                         }
                     );
                     exit(1);

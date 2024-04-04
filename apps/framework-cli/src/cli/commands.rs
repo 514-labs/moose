@@ -26,7 +26,7 @@ pub enum Commands {
         template: Option<String>,
 
         #[arg(long)]
-        reinit: bool,
+        no_create_dir: bool,
     },
     /// Builds your moose project
     Build {

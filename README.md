@@ -1,4 +1,4 @@
-<a href="https://www.moosejs.com/"><img src="logo-m-light.png" alt="moose logo" height="250px"></a>
+<a href="https://www.moosejs.com/"><img src="logo-m-light.png" alt="moose logo" height="100px"></a>
 
 # MooseJS
 

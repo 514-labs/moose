@@ -1,16 +1,12 @@
 use log::{error, info};
-
 use std::{fs, io::Write, process::Stdio, sync::Arc};
-
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
-use crate::{
-    cli::display::Message,
-    framework::schema::templates::BASE_FLOW_TEMPLATE,
-    project::Project,
-    utilities::constants::{DENO_DIR, DENO_TRANSFORM, FLOW_FILE},
-};
+use crate::cli::display::Message;
+use crate::framework::schema::templates::BASE_FLOW_TEMPLATE;
+use crate::project::Project;
+use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM, FLOW_FILE};
 
 use super::{Routine, RoutineFailure, RoutineSuccess};
 
@@ -151,6 +147,7 @@ impl Routine for StartFlowProcess {
             .stdout
             .take()
             .expect("Deno process did not have a handle to stdout");
+
         let stderr = child
             .stderr
             .take()

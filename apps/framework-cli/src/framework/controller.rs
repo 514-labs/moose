@@ -4,7 +4,7 @@ use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
-
+use crypto_hash::{hex_digest, Algorithm};
 use log::{debug, info, warn};
 
 use crate::framework;
@@ -35,7 +35,62 @@ pub struct FrameworkObject {
     pub topic: String,
     pub ts_interface: TypescriptInterface,
     pub original_file_path: PathBuf,
+    pub version: String,
+    pub schema_hash: String,
 }
+
+impl FrameworkObject {
+    pub fn new(
+        data_model: DataModel,
+        table: ClickHouseTable,
+        topic: String,
+        ts_interface: TypescriptInterface,
+        original_file_path: PathBuf,
+        version: String,
+        schema_hash: String,
+    ) -> Self {
+        FrameworkObject {
+            data_model,
+            table,
+            topic,
+            ts_interface,
+            original_file_path,
+            version,
+            schema_hash,
+        }
+    }
+
+    pub fn update_version(&mut self, new_version: String) {
+        self.version = new_version;
+    }
+
+    pub fn table_to_hash(&self) -> String {
+        let table = self.table.clone();
+        let table_string = format!("{:?}", table);
+        hex_digest(Algorithm::SHA256, table_string.as_bytes())
+    }
+
+    pub fn data_model_to_hash(&self) -> String {
+        let data_model = self.data_model.clone();
+        let data_model_string = format!("{:?}", data_model);
+        hex_digest(Algorithm::SHA256, data_model_string.as_bytes())
+    }
+
+    fn table_schema_to_hash(
+        columns: Vec<(String, String)>,
+    ) -> String {
+        let data = columns
+            .iter()
+            .map(|(name, column_type)| format!("{}{}", name, column_type))
+            .collect::<Vec<String>>()
+            .join("");
+    
+        hex_digest(Algorithm::SHA256, data.as_bytes())
+    }
+
+    // TODO: ts_interface_to_hash   
+}
+
 
 pub fn framework_object_mapper(
     s: DataModel,
@@ -56,6 +111,8 @@ pub fn framework_object_mapper(
             s.name.as_str(),
         ),
         original_file_path: original_file_path.to_path_buf(),
+        version: version.to_string(),
+        schema_hash: String::new(),
     }
 }
 

@@ -98,7 +98,7 @@ async fn process_events(
         removed_old_objects_in_file
             .into_iter()
             .for_each(|(name, old)| {
-                debug!("Found {name:?} removed from file {path:?}");
+                debug!("<DCM> Found {name:?} removed from file {path:?}");
                 if let Some(moved) = new_objects.remove(&old.data_model.name) {
                     changed_objects.insert(old.data_model.name.clone(), moved);
                 } else if !changed_objects.contains_key(&old.data_model.name)
@@ -126,7 +126,7 @@ async fn process_events(
         .into());
     }
 
-    debug!("new_objects = {new_objects:?}\ndeleted_objects = {deleted_objects:?}\nchanged_objects = {changed_objects:?}\nmoved_objects = {moved_objects:?}");
+    debug!("<DCM> new_objects = {new_objects:?}\ndeleted_objects = {deleted_objects:?}\nchanged_objects = {changed_objects:?}\nmoved_objects = {moved_objects:?}");
 
     // grab the lock to prevent HTTP requests from being processed while we update the route table
     let mut route_table = route_table.write().await;
@@ -144,7 +144,7 @@ async fn process_events(
 
         let topics = vec![fo.data_model.name.clone()];
         match redpanda::delete_topics(&project.redpanda_config, topics).await {
-            Ok(_) => info!("Topics deleted successfully"),
+            Ok(_) => info!("<DCM> Topics deleted successfully"),
             Err(e) => warn!("Failed to delete topics: {}", e),
         }
 
@@ -188,7 +188,7 @@ async fn process_events(
         );
         let topics = vec![fo.topic.clone()];
         match redpanda::create_topics(&project.redpanda_config.clone(), topics).await {
-            Ok(_) => info!("Topics created successfully"),
+            Ok(_) => info!("<DCM> Topics created successfully"),
             Err(e) => warn!("Failed to create topics: {}", e),
         }
 

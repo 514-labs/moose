@@ -242,7 +242,7 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
 
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
-    info!("Initializing project state");
+    info!("<DCM> Initializing project state");
     let framework_object_versions =
         initialize_project_state(project.clone(), &mut route_table).await?;
 
@@ -284,7 +284,7 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
 
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
-    info!("Initializing project state");
+    info!("<DCM> Initializing project state");
     let framework_object_versions =
         initialize_project_state(project.clone(), &mut route_table).await?;
 
@@ -309,7 +309,7 @@ fn crawl_schema(
     project: &Project,
     old_versions: &[String],
 ) -> anyhow::Result<FrameworkObjectVersions> {
-    info!("Checking for old version directories...");
+    info!("<DCM> Checking for old version directories...");
 
     let mut framework_object_versions =
         FrameworkObjectVersions::new(project.version().to_string(), project.schemas_dir().clone());
@@ -317,7 +317,7 @@ fn crawl_schema(
     for version in old_versions.iter() {
         let path = project.old_version_location(version)?;
 
-        debug!("Processing old version directory: {:?}", path);
+        debug!("<DCM> Processing old version directory: {:?}", path);
 
         let mut framework_objects = HashMap::new();
         get_all_framework_objects(&mut framework_objects, &path, version)?;
@@ -334,7 +334,7 @@ fn crawl_schema(
     }
 
     let schema_dir = project.schemas_dir();
-    info!("Starting schema directory crawl...");
+    info!("<DCM> Starting schema directory crawl...");
     with_spinner("Processing schema file", || {
         let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
         get_all_framework_objects(&mut framework_objects, &schema_dir, project.version())?;
@@ -359,7 +359,7 @@ async fn initialize_project_state(
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let producer = redpanda::create_producer(project.redpanda_config.clone());
 
-    info!("Checking for old version directories...");
+    info!("<DCM> Checking for old version directories...");
 
     let mut framework_object_versions = crawl_schema(&project, &old_versions)?;
 
@@ -419,23 +419,23 @@ async fn initialize_project_state(
 
         match result {
             Ok(_) => {
-                info!("Schema directory crawl completed successfully");
+                info!("<DCM> Schema directory crawl completed successfully");
                 Ok(())
             }
             Err(e) => {
-                debug!("Schema directory crawl failed");
-                debug!("Error: {:?}", e);
+                debug!("<DCM> Schema directory crawl failed");
+                debug!("<DCM> Error: {:?}", e);
                 Err(e)
             }
         }
     })
     .await?;
 
-    info!("Crawling version syncs");
+    info!("<DCM> Crawling version syncs");
     with_spinner_async::<_, anyhow::Result<()>>("Setting up version syncs", async {
         let version_syncs = get_all_version_syncs(&project, &framework_object_versions)?;
         for vs in version_syncs {
-            debug!("Creating version sync: {:?}", vs);
+            debug!("<DCM> Creating version sync: {:?}", vs);
             create_or_replace_version_sync(vs, &configured_client).await?;
         }
         Ok(())

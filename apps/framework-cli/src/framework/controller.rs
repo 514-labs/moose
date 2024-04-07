@@ -106,10 +106,10 @@ pub fn get_all_framework_objects(
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
-                debug!("Processing directory: {:?}", path);
+                debug!("<DCM> Processing directory: {:?}", path);
                 get_all_framework_objects(framework_objects, &path, version)?;
             } else if is_prisma_file(&path) {
-                debug!("Processing file: {:?}", path);
+                debug!("<DCM> Processing file: {:?}", path);
                 let objects = get_framework_objects_from_schema_file(&path, version)?;
                 for fo in objects {
                     DuplicateModelError::try_insert(framework_objects, fo, &path)?;
@@ -129,7 +129,7 @@ pub fn get_framework_objects_from_schema_file(
             |e| {
                 Error::new(
                     ErrorKind::Other,
-                    format!("Failed to parse schema file. Error {}", e),
+                    format!("<DCM> Failed to parse schema file. Error {}", e),
                 )
             },
         )?;
@@ -172,7 +172,7 @@ pub(crate) async fn drop_tables(
     fo: &FrameworkObject,
     configured_client: &ConfiguredDBClient,
 ) -> anyhow::Result<()> {
-    info!("Dropping tables for: {:?}", fo.table.name);
+    info!("<DCM> Dropping tables for: {:?}", fo.table.name);
 
     let drop_data_table_query = fo.table.drop_data_table_query()?;
     olap::clickhouse::run_query(&drop_data_table_query, configured_client).await?;
@@ -197,7 +197,7 @@ pub(crate) async fn create_or_replace_tables(
     fo: &FrameworkObject,
     configured_client: &ConfiguredDBClient,
 ) -> anyhow::Result<()> {
-    info!("Creating table: {:?}", fo.table.name);
+    info!("<DCM> Creating table: {:?}", fo.table.name);
 
     let create_data_table_query = fo.table.create_data_table_query()?;
 

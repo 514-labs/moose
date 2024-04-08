@@ -177,7 +177,8 @@ pub async fn delete_table_or_view(
 
     info!(
         "<DCM> Deleting table or view: {}.{}",
-        db_name, table_or_view_name);
+        db_name, table_or_view_name
+    );
 
     client
         .query(format!("DROP TABLE {db_name}.{table_or_view_name}").as_str())

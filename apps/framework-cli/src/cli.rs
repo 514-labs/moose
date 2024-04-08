@@ -293,7 +293,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let run_mode = RunMode::Explicit {};
                 controller.add_routine(Box::new(CreateModelsVolume::new(project_arc.clone())));
                 controller.add_routine(Box::new(CreateDenoFiles::new(project_arc.clone())));
-                controller.add_routine(Box::new(StartFlowProcess::new(project_arc.clone())));
+                // controller.add_routine(Box::new(StartFlowProcess::new(project_arc.clone())));
                 controller.run_routines(run_mode);
 
                 routines::start_production_mode(project_arc).await.unwrap();

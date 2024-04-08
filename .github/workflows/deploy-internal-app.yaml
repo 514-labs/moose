@@ -1,12 +1,12 @@
 name: Release Internal App
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - ".github/workflows/deploy-internal-app.yaml"
-      - "apps/framework-internal-app/**"
+  # push:
+  #   branches:
+  #     - main
+  #   paths:
+  #     - ".github/workflows/deploy-internal-app.yaml"
+  #     - "apps/framework-internal-app/**"
   workflow_dispatch:
     inputs:
       dry-run:

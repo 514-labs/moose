@@ -117,9 +117,9 @@ pub struct StartFlowProcess {
 }
 
 impl StartFlowProcess {
-    pub fn new(project: Arc<Project>) -> Self {
-        Self { project }
-    }
+    // pub fn new(project: Arc<Project>) -> Self {
+    //     Self { project }
+    // }
 }
 
 impl Routine for StartFlowProcess {

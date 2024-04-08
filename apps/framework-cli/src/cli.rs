@@ -21,7 +21,7 @@ use log::{debug, info};
 use logger::setup_logging;
 use settings::{read_settings, Settings};
 
-use crate::cli::routines::flow::{CreateFlowDirectory, CreateFlowFile, StartFlowProcess};
+use crate::cli::routines::flow::{CreateFlowDirectory, CreateFlowFile}; //, StartFlowProcess};
 use crate::cli::routines::start::{CopyOldSchema, CreateDenoFiles, CreateModelsVolume};
 use crate::cli::routines::version::BumpVersion;
 use crate::cli::{
@@ -293,7 +293,7 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 let run_mode = RunMode::Explicit {};
                 controller.add_routine(Box::new(CreateModelsVolume::new(project_arc.clone())));
                 controller.add_routine(Box::new(CreateDenoFiles::new(project_arc.clone())));
-                controller.add_routine(Box::new(StartFlowProcess::new(project_arc.clone())));
+                // controller.add_routine(Box::new(StartFlowProcess::new(project_arc.clone())));
                 controller.run_routines(run_mode);
 
                 routines::start_production_mode(project_arc).await.unwrap();

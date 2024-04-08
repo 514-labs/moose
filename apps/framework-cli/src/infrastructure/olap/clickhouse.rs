@@ -1,5 +1,5 @@
 use clickhouse::Client;
-use log::debug;
+use log::{debug, info};
 use serde::{Deserialize, Serialize};
 
 use crate::infrastructure::olap::clickhouse::model::{ClickHouseSystemTableRow, ClickHouseTable};
@@ -153,7 +153,7 @@ pub async fn fetch_all_tables(
     // NOTE: The order of the columns in the query is important and must match the order of your struct fields.
     let query = "SELECT uuid, database, name, dependencies_table, engine FROM system.tables WHERE (database != 'information_schema') AND (database != 'INFORMATION_SCHEMA') AND (database != 'system')";
 
-    debug!("Fetching tables from: {:?}", db_name);
+    debug!("<DCM> Fetching tables from: {:?}", db_name);
 
     let mut cursor = client.query(query).fetch::<ClickHouseSystemTableRow>()?;
 
@@ -163,7 +163,7 @@ pub async fn fetch_all_tables(
         tables.push(row.to_table());
     }
 
-    debug!("Fetched tables: {:?}", tables);
+    debug!("<DCM> Fetched tables: {:?}", tables);
 
     Ok(tables)
 }
@@ -174,6 +174,11 @@ pub async fn delete_table_or_view(
 ) -> Result<(), clickhouse::error::Error> {
     let client = &configured_client.client;
     let db_name = &configured_client.config.db_name;
+
+    info!(
+        "<DCM> Deleting table or view: {}.{}",
+        db_name, table_or_view_name
+    );
 
     client
         .query(format!("DROP TABLE {db_name}.{table_or_view_name}").as_str())
@@ -187,6 +192,7 @@ pub async fn check_is_table_new(
 ) -> Result<bool, clickhouse::error::Error> {
     let client = &configured_client.client;
 
+    info!("<DCM> Checking if {} table is new", table.name.clone());
     let mut cursor = client
         .query("select engine, total_rows from system.tables where database = ? AND name = ?")
         .bind(table.db_name.clone())

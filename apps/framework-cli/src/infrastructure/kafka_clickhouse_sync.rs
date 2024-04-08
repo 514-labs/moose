@@ -8,6 +8,7 @@ use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
 use crate::infrastructure::stream::redpanda::create_subscriber;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use log::error;
+use log::info;
 use rdkafka::Message;
 
 use log::debug;
@@ -57,6 +58,8 @@ impl SyncingProcessesRegistry {
     }
 
     pub fn start_all(&mut self, framework_object_versions: &FrameworkObjectVersions) {
+        info!("<DCM> Starting all syncing processes");
+
         let kafka_config = self.kafka_config.clone();
         let clickhouse_config = self.clickhouse_config.clone();
 
@@ -89,6 +92,10 @@ impl SyncingProcessesRegistry {
     }
 
     pub fn start(&mut self, framework_object: &FrameworkObject) {
+        info!(
+            "<DCM> Starting syncing process for topic: {} and table: {}",
+            framework_object.topic, framework_object.table.name
+        );
         let key = Self::format_key_framework_obj(framework_object);
 
         // the schema of the currently running process is outdated

@@ -111,7 +111,7 @@ impl Routine for CopyOldSchema {
             })?;
             dump_old_version_schema(&self.project, commit_hash.clone(), dest).map_err(
                 |git_err| {
-                    debug!("Failed to retrieve old schema: {}", git_err);
+                    debug!("<DCM> Failed to retrieve old schema: {}", git_err);
                     RoutineFailure::new(
                         Message::new("Failed".to_string(), "to retrieve old schema".to_string()),
                         git_err,

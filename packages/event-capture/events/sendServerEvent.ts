@@ -21,7 +21,7 @@ export const sendServerEvent = async (name: string, event: any) => {
 
   const env = process.env.NODE_ENV;
 
-  const enhancedEvent = { ...event, host, env, referrer, ip };
+  const enhancedEvent = { host, env, referrer, ip, ...event };
 
   const mixpanel = Mixpanel.init("be8ca317356e20c587297d52f93f3f9e");
 

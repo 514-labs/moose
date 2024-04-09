@@ -109,7 +109,11 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 );
 
                 crate::utilities::capture::capture!(
-                    ActivityType::InitCommand,
+                    if template.is_some() {
+                        ActivityType::InitTemplateCommand
+                    } else {
+                        ActivityType::InitCommand
+                    },
                     name.clone(),
                     &settings
                 );

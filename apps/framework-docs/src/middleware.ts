@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { headers } from "next/headers";
+
 export const config = {
   matcher: [
     /*
@@ -14,7 +16,7 @@ export const config = {
 export async function middleware(request: NextRequest) {
   const ip = request.ip ? request.ip : request.headers.get("X-Forwarded-For");
   const host = request.nextUrl.host;
-  const referrer = request.referrer;
+  const referrer = headers().get("referer") ?? request.referrer;
   const pathname = request.nextUrl.pathname;
 
   const env = process.env.NODE_ENV;

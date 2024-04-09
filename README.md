@@ -7,10 +7,18 @@
 [![Docs](https://img.shields.io/badge/quick_start-docs-blue.svg)](https://docs.moosejs.com/)
 [![MIT license](https://img.shields.io/badge/license-MIT-yellow.svg)](LICENSE)
 
-MooseJS is an open-source developer framework for building data & analytics applications powered by a modern data stack. Moose takes the decades-old best practices of frontend and backend developer frameworks and brings them to your data & analytics stack.
+[MooseJS](https://www.moosejs.com/) is an open-source developer framework for your data & analytics stack. Moose is intended for any application where collecting data, processing data, and extracting insights from that data is at the heart of the application. Moose tries to take the decades-old best practices of frontend and backend developer frameworks, and bring them to the world of developing data-driven applications. 
+
+**Highlights**
+- Abstract away middleware and infrastructure complexity: expertise in the data engineering ecosystem not required. MooseJS automatically configures your data stack based on the business logic of your code.
+- Developer-first: Develop in languages you know, in the IDE of your choice. Git-based based workflows for version control and change management. Plug into CI/CD and automated testing workflows. Iterate quickly with local development, then scale to the cloud
+- Hot-reload local dev server: run your whole data/analytics stack locally, and see the impact of changes in real time as you edit code - just like developing a web application
+- Auto-managed migrations: Moose automatically manages schema evolution across your data stack with "Data Change Management", so you don’t break upstream and downstream dependencies
+- End-to-end typed: Moose types all your components from data capture through consumption, so you catch issues at build time, instead of in production
+- Data product APIs: Moose automatically creates API endpoints for your data products, and generates SDKs in the languages of your choice for easy discovery and consumption
 
 # Getting started
-To get started, check out the Moose documentation: [https://docs.moosejs.com/](https://docs.moosejs.com/)
+To learn more and/or get started using Moose, check out the documentation: [https://docs.moosejs.com/](https://docs.moosejs.com/)
 
 # Alpha release
 Moose is still in Alpha, and is not yet recommended for critical production use cases. That being said, we’d love for you to get your hands on it and try it out. Moose is in active development, and we’re looking for feedback and insights on how to harden and improve, as we build towards the Beta release. You can reach us at [hello@moosejs.dev](mailto:hello@moosejs.dev) or in the Moose developer community below. 

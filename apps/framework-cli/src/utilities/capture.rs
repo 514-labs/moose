@@ -51,8 +51,8 @@ pub struct MooseActivity {
     pub timestamp: DateTime<Utc>,
     #[serde(rename = "cliVersion")]
     pub cli_version: String,
-    #[serde(rename = "mooseDeveloper")]
-    pub moose_developer: bool,
+    #[serde(rename = "isMooseDeveloper")]
+    pub is_moose_developer: bool,
 }
 
 macro_rules! capture {
@@ -75,7 +75,7 @@ macro_rules! capture {
                 sequence_id: CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
                 timestamp: Utc::now(),
                 cli_version: constants::CLI_VERSION.to_string(),
-                moose_developer: $settings.telemetry.moose_developer,
+                is_moose_developer: $settings.telemetry.is_moose_developer,
             });
 
             // Sending this data can fail for a variety of reasons, so we don't want to

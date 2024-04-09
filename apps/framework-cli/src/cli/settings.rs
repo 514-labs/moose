@@ -35,19 +35,15 @@ impl Default for Features {
 pub struct Telemetry {
     pub enabled: bool,
 
-    #[serde(default = "default_moose_developer")]
-    pub moose_developer: bool,
-}
-
-fn default_moose_developer() -> bool {
-    false
+    #[serde(default)]
+    pub is_moose_developer: bool,
 }
 
 impl Default for Telemetry {
     fn default() -> Self {
         Telemetry {
             enabled: true,
-            moose_developer: false,
+            is_moose_developer: false,
         }
     }
 }

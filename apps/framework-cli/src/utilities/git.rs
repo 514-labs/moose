@@ -61,7 +61,7 @@ pub fn dump_old_version_schema(
     commit_hash: String,
     dest: &Path,
 ) -> Result<(), Error> {
-    let repo = Repository::open(project.project_location.clone())?;
+    let repo = Repository::discover(project.project_location.clone())?;
 
     let path = project.schemas_dir();
     let path = path.strip_prefix(&project.project_location).unwrap();
@@ -112,7 +112,7 @@ fn recursive_dump_tree_content(
 }
 
 pub fn current_commit_hash(project: &Project) -> Result<String, Error> {
-    let repo = Repository::open(project.project_location.clone())?;
+    let repo = Repository::discover(project.project_location.clone())?;
     let head = repo.head()?;
     let mut hash = head.target().unwrap().to_string();
     hash.truncate(7);

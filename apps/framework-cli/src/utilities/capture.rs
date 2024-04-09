@@ -31,6 +31,8 @@ pub enum ActivityType {
     FlowInitCommand,
     #[serde(rename = "initCommand")]
     InitCommand,
+    #[serde(rename = "initTemplateCommand")]
+    InitTemplateCommand,
     #[serde(rename = "prodCommand")]
     ProdCommand,
     #[serde(rename = "stopCommand")]

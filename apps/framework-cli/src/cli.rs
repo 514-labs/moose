@@ -108,6 +108,16 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                     name, language, location, template
                 );
 
+                crate::utilities::capture::capture!(
+                    if template.is_some() {
+                        ActivityType::InitTemplateCommand
+                    } else {
+                        ActivityType::InitCommand
+                    },
+                    name.clone(),
+                    &settings
+                );
+
                 let dir_path = Path::new(location.as_deref().unwrap_or(name));
                 if !no_fail_already_exists && dir_path.exists() {
                     show_message!(
@@ -165,12 +175,6 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                         let project_arc = Arc::new(project);
 
                         debug!("Project: {:?}", project_arc);
-
-                        crate::utilities::capture::capture!(
-                            ActivityType::InitCommand,
-                            name.clone(),
-                            &settings
-                        );
 
                         let mut controller = RoutineController::new();
                         let run_mode = RunMode::Explicit {};

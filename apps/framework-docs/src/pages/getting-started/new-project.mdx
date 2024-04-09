@@ -1,53 +1,55 @@
-import { Callout, Tabs } from 'nextra/components'
+import { Callout, Tabs } from "nextra/components";
 
 ## Requirements
+
 You will need the following dependencies installed on your machine before you can use MooseJS:
+
 - [Git](https://git-scm.com/)
 - [NodeJS](https://nodejs.org/en/)
 - [Docker](https://www.docker.com/)
 - macOS or Linux (Windows is not supported at this time, but may work using WSL Windows Subsystem for Linux)
 
 ---
+
 ## Quick Start
 
 The easiest way to get started with a new MooseJS application is to use `create-moose-app`. This will automatically create a project folder for you, and initialize a skeleton MooseJS app with the entire project structure you need to get started.
+
 ```txt filename="Terminal" copy
 npx create-moose-app my-moose-app
 ```
 
-Explore the docs to learn more about [your project structure](https://docs.moosejs.com/getting-started/project-structure) or the [architecture of your new app](https://docs.moosejs.com/getting-started/architecture). 
+Explore the docs to learn more about [your project structure](https://docs.moosejs.com/getting-started/project-structure) or the [architecture of your new app](https://docs.moosejs.com/getting-started/architecture).
 
 ## Run your Moose app locally
-One of Moose's most powerful features is its ability to run a dev server on your local machine. As you're developing, Moose can run a local version of your entire end-to-end app, watch your project folder for any code changes, and automatically update your locally running app as you save changes.  This lets you see and test changes in real time, before you push to production, just like if you were developing a web app. 
+
+One of Moose's most powerful features is its ability to run a dev server on your local machine. As you're developing, Moose can run a local version of your entire end-to-end app, watch your project folder for any code changes, and automatically update your locally running app as you save changes. This lets you see and test changes in real time, before you push to production, just like if you were developing a web app.
 
 Let's try it out, by using the Moose CLI command `Dev` to start the local dev server. First, go to your project directory `cd my-moose-app`.
 
-<Callout type="warning" emoji="ℹ️">
-  Note you must have Docker installed and RUNNING locally to run Dev. Please make sure you start Docker first.
+<Callout>
+  Note you must have Docker installed and RUNNING locally to run Dev. Please
+  make sure you start Docker first.
 </Callout>
 
 There are a couple of different ways you can utilize the Moose CLI:
 
-<Tabs items={['No Install', 'Project-level Install', 'Global Install']}>
+<Tabs items={["No Install", "Project-level Install", "Global Install"]}>
   <Tabs.Tab>
-    The simplest method to run the CLI is via NPX. No extra installation is necessary for this method.
-    ```txt filename="Terminal" copy
-    npx @514labs/moose-cli dev
-    ```
+    The simplest method to run the CLI is via NPX. No extra installation is
+    necessary for this method. ```txt filename="Terminal" copy npx
+    @514labs/moose-cli dev ```
   </Tabs.Tab>
   <Tabs.Tab>
-    Alternatively, the Moose CLI comes packaged with your Moose application. You can install the dependency locally and then run the Moose CLI within your project with:
-    ```txt filename="Terminal" copy
-    npm install
-    npm run dev
-    ```
+    Alternatively, the Moose CLI comes packaged with your Moose application. You
+    can install the dependency locally and then run the Moose CLI within your
+    project with: ```txt filename="Terminal" copy npm install npm run dev ```
   </Tabs.Tab>
   <Tabs.Tab>
-    Finally, you can install the Moose CLI globally using NPM. This will get you a cleaner command interface, and better performance on the CLI. You can then run the Moose CLI anywhere.  
-    ```txt filename="Terminal" copy
-    npm install -g @514labs/moose-cli
-    moose dev
-    ```
+    Finally, you can install the Moose CLI globally using NPM. This will get you
+    a cleaner command interface, and better performance on the CLI. You can then
+    run the Moose CLI anywhere. ```txt filename="Terminal" copy npm install -g
+    @514labs/moose-cli moose dev ```
   </Tabs.Tab>
 </Tabs>
 

@@ -9,7 +9,6 @@ import FooterSection from "../sections/FooterSection";
 import { EmailSection } from "../sections/EmailSection";
 import Link from "next/link";
 import { TrackCtaButton } from "../trackable-components";
-import { Button, buttonVariants } from "design-system/components";
 
 const content = {
   title: "Community",

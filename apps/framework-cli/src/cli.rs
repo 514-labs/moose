@@ -101,13 +101,28 @@ async fn top_command_handler(settings: Settings, commands: &Commands) {
                 language,
                 location,
                 template,
+                no_fail_already_exists,
             } => {
                 info!(
-                    "Running init command with name: {}, language: {}, location: {}, template: {:?}",
+                    "Running init command with name: {}, language: {}, location: {:?}, template: {:?}",
                     name, language, location, template
                 );
 
-                let dir_path = Path::new(location);
+                let dir_path = Path::new(location.as_deref().unwrap_or(name));
+                if !no_fail_already_exists && dir_path.exists() {
+                    show_message!(
+                        MessageType::Error,
+                        Message {
+                            action: "Init".to_string(),
+                            details:
+                                "Directory already exists, please use the --no-fail-already-exists flag if this is expected."
+                                    .to_string(),
+                        }
+                    );
+                    exit(1);
+                }
+
+                std::fs::create_dir_all(dir_path).expect("Failed to create directory");
 
                 if dir_path.canonicalize().unwrap() == home_dir().unwrap().canonicalize().unwrap() {
                     show_message!(

@@ -34,12 +34,13 @@ MooseJS comes with a handy CLI for managing your MooseJS application. Navigate t
 Instead of using `create-moose-app`, you can initialize your project manually with the CLI, if you'd like more flexibility and control. Either option will initialize a new MooseJS project for you, with all the necessary directories including temporary ones for data storage.
 
 ```txt filename="Terminal" copy
-moose init <name> --language <language> --location <location>
+moose init <name> --language <language> <--location <location>> <--no-fail-already-exists>
 ```
 
 - `<name>`: Name of your app or service.
 - `--language <language>`: Language of your app or service. We currently only support `Typescript`.
-- `--location <location>`: Location of your app or service. The default is the current directory (`.`).
+- `--location <location>`: Location of your app or service. The default is the name of the project.
+- `--no-fail-already-exists`: By default, the init command fails if `location` exists, to prevent accidental reruns. This flag disables the check.
 
 ### Build
 

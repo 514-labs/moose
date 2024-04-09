@@ -37,19 +37,9 @@ function getExePath() {
  */
 function run() {
   const args = process.argv.slice(2);
-  const name = args[0];
-  if (name !== undefined) {
-    if (existsSync(name)) {
-      console.log(
-        `${name} already exists. Either try using a new name, or remove the directory.`,
-      );
-      process.exit(1);
-    }
-    mkdirSync(name);
-  }
+
   const processResult = spawnSync(getExePath(), ["init"].concat(args), {
     stdio: "inherit",
-    cwd: name,
   });
   process.exit(processResult.status ?? 0);
 }

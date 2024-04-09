@@ -18,12 +18,16 @@ pub enum Commands {
         language: SupportedLanguages,
 
         /// Location of your app or service
-        #[arg(default_value = ".")]
-        location: String,
+        #[arg(short, long)]
+        location: Option<String>,
 
         /// Template to use for the project
         #[arg(short, long)]
         template: Option<String>,
+
+        /// By default, the init command fails if the location directory exists, to prevent accidental reruns. This flag disables the check.
+        #[arg(long)]
+        no_fail_already_exists: bool,
     },
     /// Builds your moose project
     Build {

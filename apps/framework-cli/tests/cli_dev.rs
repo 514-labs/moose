@@ -18,15 +18,21 @@ lazy_static! {
 }
 
 fn setup_dev() -> Result<CargoDev, anyhow::Error> {
-    // This is to setup a new sandbox directory / project to run the test
+    // This is to set up a new sandbox directory / project to run the test
     // inside of.
     let temp = assert_fs::TempDir::new()?;
+    fs::remove_dir(&temp)?;
     let dir = temp.path().to_str().unwrap();
 
     // Setup the project with the cli
     let mut init_cmd = Command::cargo_bin("moose-cli")?;
 
-    init_cmd.arg("init").arg("test-app").arg("ts").arg(dir);
+    init_cmd
+        .arg("init")
+        .arg("test-app")
+        .arg("ts")
+        .arg("--location")
+        .arg(dir);
 
     init_cmd.assert().success();
 

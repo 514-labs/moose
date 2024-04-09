@@ -53,6 +53,8 @@ pub struct MooseActivity {
     pub cli_version: String,
     #[serde(rename = "isMooseDeveloper")]
     pub is_moose_developer: bool,
+    #[serde(rename = "machineId")]
+    pub machine_id: String,
 }
 
 macro_rules! capture {
@@ -76,6 +78,7 @@ macro_rules! capture {
                 timestamp: Utc::now(),
                 cli_version: constants::CLI_VERSION.to_string(),
                 is_moose_developer: $settings.telemetry.is_moose_developer,
+                machine_id: $settings.telemetry.machine_id.clone(),
             });
 
             // Sending this data can fail for a variety of reasons, so we don't want to

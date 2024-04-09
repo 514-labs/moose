@@ -13,7 +13,7 @@ export const FeaturesSection = () => {
       {
         title: "Your tools, your way",
         description:
-          "Git-based workflows, languages you know, and the IDE of choice. Moose is built to slot into your existing tools from your local env, to CI/CD and the cloud",
+          "Git-based workflows, languages you know, and the IDE of your choice. Moose is built to slot into your existing tools from your local env, to CI/CD and the cloud",
       },
       {
         title: "Auto migrations",

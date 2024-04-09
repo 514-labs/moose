@@ -237,7 +237,7 @@ export default function TemplatePage({
 
   return (
     <Grid className="h-full w-full relative">
-      <div className="col-span-12 md:col-span-6 h-full  pb-5">
+      <div className="col-span-12 md:col-span-6 h-full pb-5">
         <div className="md:sticky top-20">
           <Section>
             <div>

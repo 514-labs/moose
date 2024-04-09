@@ -56,7 +56,7 @@ export const CTAButton = ({
     <Button
       size={"lg"}
       variant={variant}
-      className=" h-full w-full font-normal border-primary"
+      className=" h-full md:w-auto sm:w-full font-normal border-primary"
       onClick={onClick}
     >
       <Text

@@ -120,7 +120,7 @@ coming_soon_wall=false
 
 # Set this to false to opt-out
 enabled=true
-moose_developer=false
+is_moose_developer=false
 "#;
         std::fs::write(path, contents_toml)?;
     }

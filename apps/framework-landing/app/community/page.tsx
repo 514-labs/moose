@@ -8,7 +8,10 @@ import { CTABar } from "design-system/components";
 import FooterSection from "../sections/FooterSection";
 import { EmailSection } from "../sections/EmailSection";
 import Link from "next/link";
+import { TrackCtaButton } from "../trackable-components";
+
 //import { TrackCTAButton } from "../trackable-components.tsx";
+//import { Button, buttonVariants } from "design-system/components";
 
 const content = {
   title: "Community",
@@ -102,8 +105,13 @@ export default function Community() {
             <HalfWidthContentContainer className="py-5">
               <Heading>{community.title}</Heading>
               <Text>{community.description}</Text>
+              {/* <CTABar>
+                <Link variant={"outline"} href={community.href}>Join</Link>
+              </CTABar> */}
               <CTABar>
-                <Link href={community.href}>Join</Link>
+                <Link href={community.href}>
+                  <TrackCtaButton variant={"outline"}>Join</TrackCtaButton>
+                </Link>
               </CTABar>
             </HalfWidthContentContainer>
           </Grid>

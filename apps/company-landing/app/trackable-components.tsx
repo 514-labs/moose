@@ -1,6 +1,6 @@
 "use client";
 import { withTrack, TrackingVerb } from "event-capture/withTrack";
-import { CTAButton, CTAButtonProps } from "../components.tsx/CTAs";
+import { CTAButton, CTAButtonProps } from "design-system/components";
 
 export const TrackCTAButton = withTrack<CTAButtonProps>({
   Component: CTAButton,

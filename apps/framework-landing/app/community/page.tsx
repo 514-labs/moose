@@ -91,9 +91,6 @@ export default function Community() {
             <HalfWidthContentContainer className="py-5">
               <Heading>{community.title}</Heading>
               <Text>{community.description}</Text>
-              {/* <CTABar>
-                <Link variant={"outline"} href={community.href}>Join</Link>
-              </CTABar> */}
               <CTABar>
                 <Link href={community.href}>
                   <TrackCtaButton

@@ -9,7 +9,7 @@ import { SuperDisplay } from "design-system/typography";
 
 export const EmailSection = () => {
   const content = {
-    email: "hello@fiveonefour.com",
+    email: "hello@moosejs.dev",
   };
 
   return (

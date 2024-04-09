@@ -22,6 +22,7 @@ model MooseActivity {
     sequenceId      String
     timestamp       DateTime
     cliVersion      String
+    mooseDeveloper  Boolean
 }
 
 model PageViewEvent {

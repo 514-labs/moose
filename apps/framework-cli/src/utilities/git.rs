@@ -63,8 +63,10 @@ pub fn dump_old_version_schema(
 ) -> Result<(), Error> {
     let repo = Repository::discover(project.project_location.clone())?;
 
-    let path = project.schemas_dir();
-    let path = path.strip_prefix(&project.project_location).unwrap();
+    let schema_dir = project.schemas_dir();
+    let schema_relative_path_from_repo_root = schema_dir
+        .strip_prefix(repo.path().parent().unwrap())
+        .unwrap();
 
     let commit = repo.revparse_single(&commit_hash)?;
     let commit = commit.as_commit().ok_or(Error::from_str(&format!(
@@ -72,7 +74,10 @@ pub fn dump_old_version_schema(
         commit_hash
     )))?;
 
-    let tree = commit.tree()?.get_path(path)?.to_object(&repo)?;
+    let tree = commit
+        .tree()?
+        .get_path(schema_relative_path_from_repo_root)?
+        .to_object(&repo)?;
     let tree = tree.as_tree().ok_or(Error::from_str(&format!(
         "Object {} is not a tree",
         tree.id()

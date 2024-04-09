@@ -36,10 +36,10 @@
   }
 
   .dark {
-    --background: 0 0% 3.9%;
+    --background: 0 0% 0%;
     --foreground: 0 0% 98%;
 
-    --card: 0 0% 3.9%;
+    --card: 0 0% 0%;
     --card-foreground: 0 0% 98%;
 
     --popover: 0 0% 3.9%;
@@ -75,7 +75,6 @@
   }
 }
 
-
 /* Nextra overrides */
 .docs .nx-max-w-\[90rem\] {
   max-width: none;
@@ -86,38 +85,42 @@
 }
 
 .docs h2 {
-    margin-bottom: none;
+  margin-bottom: none;
 }
 
 .docs h2.nx-border-b {
-    border-bottom: none;
+  border-bottom: none;
 }
 
 .docs div.nx-border-b {
-    border-bottom: none;
+  border-bottom: none;
 }
 
 .docs div.nx-border-t {
-    border-top: none;
+  border-top: none;
 }
 
-.docs :is(html[class~=dark] .dark\:nx-bg-dark) {
+.docs :is(html[class~="dark"] .dark\:nx-bg-dark) {
   background-color: hsl(var(--background)) !important;
 }
 
-.docs :is(html[class~=dark] body) {
+.docs :is(html[class~="dark"] body) {
   background-color: hsl(var(--background)) !important;
 }
 
-.docs :is(html[class~=dark] .dark\:nx-shadow-\[0_-1px_0_rgba\(255\,255\,255\,\.1\)_inset\]) {
+.docs
+  :is(
+    html[class~="dark"]
+      .dark\:nx-shadow-\[0_-1px_0_rgba\(255\,255\,255\,\.1\)_inset\]
+  ) {
   box-shadow: none;
 }
 
-.docs :is(html[class~=dark] .nextra-nav-container-blur) {
+.docs :is(html[class~="dark"] .nextra-nav-container-blur) {
   background-color: hsl(var(--background) / 0.8) !important;
 }
 
-.docs :is(html[class~=dark] .dark\:nx-shadow-\[0_-12px_16px_\#111\]) {
+.docs :is(html[class~="dark"] .dark\:nx-shadow-\[0_-12px_16px_\#111\]) {
   box-shadow: none;
 }
 
@@ -125,7 +128,8 @@
   color: white;
 }
 
-.docs th, td {
+.docs th,
+td {
   border: none;
 }
 
@@ -139,20 +143,21 @@
 
 .docs table {
   table-layout: auto;
-  
 }
 
 .docs thead > tr {
   border-top: none;
 }
 
-.docs table, thead, tbody {
+.docs table,
+thead,
+tbody {
   display: table;
   width: 100%;
 }
 
-.docs :is(html[class~=dark] tr) {
-  border-color: hsl(var(--muted-foreground));
+.docs :is(html[class~="dark"] tr) {
+  border-color: rgba(38, 38, 38, var(--tw-bg-opacity));
 }
 
 .docs li.active > a {
@@ -166,7 +171,41 @@
 }
 
 .docs aside.md\:nx-w-64 {
-  width: 20rem ;
+  width: 20rem;
+}
+
+img,
+svg {
+  filter: grayscale(100%);
+}
+
+li.nx-my-2 {
+  list-style: none;
+}
+
+.nx-truncate {
+  background-color: transparent !important;
+  color: rgba(255, 255, 255, 0.5) !important;
+}
+
+footer {
+  background-color: transparent !important;
+}
+
+:is(html[class~="dark"] .nextra-sidebar-container) {
+  background-color: hsl(var(--background)) !important;
+}
+
+:is(html[class~="dark"] .dark\:nx-text-orange-300)
+  :is([dir="ltr"] .ltr\:nx-pl-3) {
+  display: none;
+}
+
+:is(html[class~="dark"] .dark\:nx-text-orange-300) {
+  background-color: transparent !important;
+  color: var(--primary-foreground) !important;
+  border-color: rgba(38, 38, 38, var(--tw-bg-opacity));
+  padding: 0 20px;
 }
 
 @layer base {
@@ -179,6 +218,4 @@
     @apply 2xl:text-xl;
     @apply 3xl:text-2xl;
   } */
-
- 
 }

@@ -23,13 +23,13 @@ export const metadata: Metadata = {
   description:
     "We build the frameworks, workflows and infrastructure that make data accessible to all developers.",
   openGraph: {
-    images: "/images/open-graph/og_514_4x_webp.webp",
+    images: "/images/open-graph/og_514_4x.png",
   },
 };
 
 const default_navigation = [
   // { name: "blog", href: "/blog" },
-  { name: "community", href: "/community" },
+  // { name: "community", href: "/community" },
 
   {
     name: "get in touch",

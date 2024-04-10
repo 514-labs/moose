@@ -36,7 +36,7 @@ export async function middleware(request: NextRequest) {
       pathname,
     }),
   }).then((res) => {
-    console.log("event sent", res.status);
+    console.log("event sent", res.status, JSON.stringify(res.headers));
   });
 
   return NextResponse.next();

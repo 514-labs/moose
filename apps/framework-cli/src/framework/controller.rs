@@ -158,11 +158,11 @@ pub async fn create_or_replace_version_sync(
             "Performing initial load for table: {:?}",
             version_sync.dest_table.name
         );
-        let initial_load_query = version_sync.clone().initial_load_query();
+        let initial_load_query = version_sync.clone().initial_load_query()?;
         olap::clickhouse::run_query(&initial_load_query, configured_client).await?;
     }
 
-    let create_trigger_query = version_sync.create_trigger_query();
+    let create_trigger_query = version_sync.create_trigger_query()?;
     olap::clickhouse::run_query(&create_trigger_query, configured_client).await?;
 
     Ok(())

@@ -1,4 +1,5 @@
 use crate::framework::controller::{FrameworkObject, FrameworkObjectVersions};
+use crate::framework::schema::UnsupportedDataTypeError;
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
 };
@@ -229,11 +230,11 @@ impl VersionSync {
         format!("DROP FUNCTION IF EXISTS {}", self.migration_function_name())
     }
 
-    pub fn create_trigger_query(self) -> String {
+    pub fn create_trigger_query(self) -> Result<String, UnsupportedDataTypeError> {
         CreateVersionSyncTriggerQuery::build(self)
     }
 
-    pub fn initial_load_query(self) -> String {
+    pub fn initial_load_query(self) -> Result<String, UnsupportedDataTypeError> {
         InitialLoadQuery::build(self)
     }
 

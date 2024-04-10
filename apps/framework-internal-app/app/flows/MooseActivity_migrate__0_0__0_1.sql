@@ -1,0 +1,1 @@
+(id, project, activityType, sequenceId, timestamp, cliVersion) -> (id, project, activityType, sequenceId, timestamp, cliVersion, NULL)

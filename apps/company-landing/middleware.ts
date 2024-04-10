@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const env = process.env.NODE_ENV;
-  fetch(`${request.nextUrl.origin}/api/event`, {
+  fetch(`${request.nextUrl.protocol}//${request.nextUrl.host}/api/event`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

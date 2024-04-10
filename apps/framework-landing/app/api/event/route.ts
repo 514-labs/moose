@@ -6,5 +6,5 @@ export async function POST(request: NextRequest) {
   console.log("framework-landing event route POST");
   const { name, ...payload } = await request.json();
   await sendServerEvent(name, payload);
-  return new Response(null, { status: 204 });
+  return new Response("OK");
 }

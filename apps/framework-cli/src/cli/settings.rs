@@ -2,6 +2,7 @@ use config::{Config, ConfigError, Environment, File};
 use home::home_dir;
 use serde::Deserialize;
 use std::path::PathBuf;
+use toml::Value;
 use uuid::Uuid;
 
 use super::display::{Message, MessageType};
@@ -130,6 +131,39 @@ machine_id="{{uuid}}"
             path,
             contents_toml.replace("{{uuid}}", &Uuid::new_v4().to_string()),
         )?;
+    } else {
+        let data = std::fs::read_to_string(&path)?;
+        match data.parse::<Value>() {
+            Ok(mut toml) => {
+                let machine_id_exists = toml
+                    .get("telemetry")
+                    .and_then(Value::as_table)
+                    .and_then(|telemetry| telemetry.get("machine_id"))
+                    .is_some();
+
+                if !machine_id_exists {
+                    toml.get_mut("telemetry")
+                        .and_then(Value::as_table_mut)
+                        .map(|telemetry| {
+                            telemetry.insert(
+                                "machine_id".to_string(),
+                                Value::String(Uuid::new_v4().to_string()),
+                            );
+                        });
+
+                    std::fs::write(path, toml.to_string())?;
+                }
+            }
+            Err(e) => {
+                show_message!(
+                    MessageType::Error,
+                    Message {
+                        action: "Init".to_string(),
+                        details: format!("Error parsing config file: {:?}", e),
+                    }
+                );
+            }
+        }
     }
     Ok(())
 }

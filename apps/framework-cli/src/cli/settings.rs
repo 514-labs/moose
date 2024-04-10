@@ -34,11 +34,17 @@ impl Default for Features {
 #[derive(Deserialize, Debug)]
 pub struct Telemetry {
     pub enabled: bool,
+
+    #[serde(default)]
+    pub is_moose_developer: bool,
 }
 
 impl Default for Telemetry {
     fn default() -> Self {
-        Telemetry { enabled: true }
+        Telemetry {
+            enabled: true,
+            is_moose_developer: false,
+        }
     }
 }
 
@@ -114,6 +120,7 @@ coming_soon_wall=false
 
 # Set this to false to opt-out
 enabled=true
+is_moose_developer=false
 "#;
         std::fs::write(path, contents_toml)?;
     }

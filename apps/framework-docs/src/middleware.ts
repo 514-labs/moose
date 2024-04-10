@@ -10,7 +10,7 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    "/((?!api|_next/static|images|favicon.ico).*)",
+    "/((?!monitoring-tunnel|api|_next/static|images|favicon.ico).*)",
   ],
 };
 export async function middleware(request: NextRequest) {

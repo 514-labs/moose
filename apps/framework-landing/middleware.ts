@@ -21,23 +21,20 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const env = process.env.NODE_ENV;
-  await fetch(
-    `${request.nextUrl.protocol}//${request.nextUrl.host}/api/event`,
-    {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        name: "page_view",
-        host,
-        referrer,
-        env,
-        ip,
-        pathname,
-      }),
+  fetch(`${request.nextUrl.protocol}//${request.nextUrl.host}/api/event`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
     },
-  );
+    body: JSON.stringify({
+      name: "page_view",
+      host,
+      referrer,
+      env,
+      ip,
+      pathname,
+    }),
+  });
 
   return NextResponse.next();
 }

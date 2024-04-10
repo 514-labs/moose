@@ -38,7 +38,7 @@ pub fn generate_version_syncs(
         .clone();
 
     for vs in version_sync_list {
-        if vs.dest_version == previous_version {
+        if vs.source_version == previous_version {
             previous_models.remove(&vs.model_name);
         }
     }

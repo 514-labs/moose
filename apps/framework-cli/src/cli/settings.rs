@@ -142,14 +142,13 @@ machine_id="{{uuid}}"
                     .is_some();
 
                 if !machine_id_exists {
-                    toml.get_mut("telemetry")
-                        .and_then(Value::as_table_mut)
-                        .map(|telemetry| {
-                            telemetry.insert(
-                                "machine_id".to_string(),
-                                Value::String(Uuid::new_v4().to_string()),
-                            );
-                        });
+                    if let Some(telemetry) = toml.get_mut("telemetry").and_then(Value::as_table_mut)
+                    {
+                        telemetry.insert(
+                            "machine_id".to_string(),
+                            Value::String(Uuid::new_v4().to_string()),
+                        );
+                    }
 
                     std::fs::write(path, toml.to_string())?;
                 }

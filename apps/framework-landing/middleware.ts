@@ -22,7 +22,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const env = process.env.NODE_ENV;
-  await fetch(`${request.nextUrl.origin}/api/event`, {
+  const test = await fetch(`${request.nextUrl.origin}/api/event`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -36,6 +36,7 @@ export async function middleware(request: NextRequest) {
       pathname,
     }),
   });
+  test.json();
 
   return NextResponse.next();
 }

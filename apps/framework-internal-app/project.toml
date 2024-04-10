@@ -23,4 +23,4 @@ port = 4000
 host_port = 3001
 
 [supported_old_versions]
-"0.0" = "8b2ea07"
+"0.0" = "1fe7b86"

@@ -14,7 +14,7 @@ export const config = {
   ],
 };
 export async function middleware(request: NextRequest) {
-  console.log("middleware");
+  console.log("middleware", request.nextUrl.pathname);
   const ip = request.ip ? request.ip : request.headers.get("X-Forwarded-For");
   const host = request.nextUrl.host;
 
@@ -22,7 +22,7 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const env = process.env.NODE_ENV;
-  const test = await fetch(`${request.nextUrl.origin}/api/event`, {
+  await fetch(`${request.nextUrl.origin}/api/event`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -35,8 +35,9 @@ export async function middleware(request: NextRequest) {
       ip,
       pathname,
     }),
+  }).then((res) => {
+    console.log("event sent", res.status);
   });
-  test.json();
 
   return NextResponse.next();
 }

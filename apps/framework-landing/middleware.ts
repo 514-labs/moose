@@ -14,6 +14,7 @@ export const config = {
   ],
 };
 export async function middleware(request: NextRequest) {
+  console.log("middleware");
   const ip = request.ip ? request.ip : request.headers.get("X-Forwarded-For");
   const host = request.nextUrl.host;
 

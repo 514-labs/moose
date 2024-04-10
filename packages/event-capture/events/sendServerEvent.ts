@@ -14,6 +14,7 @@ function IP() {
 }
 
 export const sendServerEvent = async (name: string, event: any) => {
+  console.log("Send Server Event");
   const headersList = headers();
   const host = headersList.get("host");
   const referrer = headersList.get("referer");

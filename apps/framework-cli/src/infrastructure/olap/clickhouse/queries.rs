@@ -30,9 +30,13 @@ ENGINE = {engine};
 
 static CREATE_VERSION_SYNC_TRIGGER_TEMPLATE: &str = r#"
 CREATE MATERIALIZED VIEW IF NOT EXISTS {db_name}.{view_name} TO {db_name}.{dest_table_name}
+(
+{{for field in to_fields}}{field.field_name} {field.field_type} {field.field_arity}{{- if @last }}{{ else }}, {{ endif }}
+{{endfor}}
+)
 AS
 SELECT
-{{for field in to_fields}} moose_migrate_tuple.({@index} + 1) AS {field}{{- if @last }}{{ else }}, {{ endif }}
+{{for field in to_fields}} moose_migrate_tuple.({@index} + 1) AS {field.field_name}{{- if @last }}{{ else }}, {{ endif }}
 {{endfor}}
 FROM (select {migration_function_name}(
 {{for field in from_fields}}{field}{{- if @last }}{{ else }}, {{ endif }}
@@ -43,7 +47,7 @@ FROM (select {migration_function_name}(
 static INITIAL_DATA_LOAD_TEMPLATE: &str = r#"
 INSERT INTO {db_name}.{dest_table_name}
 SELECT
-{{for field in to_fields}} moose_migrate_tuple.({@index} + 1) AS {field}{{- if @last }}{{ else }}, {{ endif }}
+{{for field in to_fields}} moose_migrate_tuple.({@index} + 1) AS {field.field_name}{{- if @last }}{{ else }}, {{ endif }}
 {{endfor}}
 FROM (select {migration_function_name}(
 {{for field in from_fields}}{field}{{- if @last }}{{ else }}, {{ endif }}
@@ -186,27 +190,27 @@ impl DropTableContext {
 
 pub struct InitialLoadQuery;
 impl InitialLoadQuery {
-    pub fn build(view: VersionSync) -> QueryString {
+    pub fn build(view: VersionSync) -> Result<QueryString, UnsupportedDataTypeError> {
         let mut tt = TinyTemplate::new();
         tt.add_template("initial_load_trigger", INITIAL_DATA_LOAD_TEMPLATE)
             .unwrap();
         // same field names as the trigger context
-        let context = CreateVersionSyncTriggerContext::new(view);
-        tt.render("initial_load_trigger", &context).unwrap()
+        let context = CreateVersionSyncTriggerContext::new(view)?;
+        Ok(tt.render("initial_load_trigger", &context).unwrap())
     }
 }
 
 pub struct CreateVersionSyncTriggerQuery;
 impl CreateVersionSyncTriggerQuery {
-    pub fn build(view: VersionSync) -> QueryString {
+    pub fn build(view: VersionSync) -> Result<QueryString, UnsupportedDataTypeError> {
         let mut tt = TinyTemplate::new();
         tt.add_template(
             "create_version_sync_trigger",
             CREATE_VERSION_SYNC_TRIGGER_TEMPLATE,
         )
         .unwrap();
-        let context = CreateVersionSyncTriggerContext::new(view);
-        tt.render("create_version_sync_trigger", &context).unwrap()
+        let context = CreateVersionSyncTriggerContext::new(view)?;
+        Ok(tt.render("create_version_sync_trigger", &context).unwrap())
     }
 }
 
@@ -218,14 +222,16 @@ struct CreateVersionSyncTriggerContext {
     source_table_name: String,
     dest_table_name: String,
     from_fields: Vec<String>,
-    to_fields: Vec<String>,
+    to_fields: Vec<CreateTableFieldContext>,
 }
 
 impl CreateVersionSyncTriggerContext {
-    pub fn new(version_sync: VersionSync) -> CreateVersionSyncTriggerContext {
+    pub fn new(
+        version_sync: VersionSync,
+    ) -> Result<CreateVersionSyncTriggerContext, UnsupportedDataTypeError> {
         let trigger_name = version_sync.migration_trigger_name();
         let migration_function_name = version_sync.migration_function_name();
-        CreateVersionSyncTriggerContext {
+        Ok(CreateVersionSyncTriggerContext {
             db_name: version_sync.db_name,
             view_name: trigger_name,
             migration_function_name,
@@ -241,9 +247,9 @@ impl CreateVersionSyncTriggerContext {
                 .dest_table
                 .columns
                 .into_iter()
-                .map(|column| column.name)
-                .collect(),
-        }
+                .map(CreateTableFieldContext::new)
+                .collect::<Result<Vec<_>, _>>()?,
+        })
     }
 }
 

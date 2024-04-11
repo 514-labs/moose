@@ -23,6 +23,7 @@ export const metadata: Metadata = {
   description:
     "We build the frameworks, workflows and infrastructure that make data accessible to all developers.",
   openGraph: {
+    url: "/",
     images: "/images/open-graph/og_514_4x.png",
   },
 };

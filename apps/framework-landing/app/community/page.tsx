@@ -4,11 +4,11 @@ import {
   Section,
 } from "design-system/components/containers";
 import { Display, Heading, Text } from "design-system/typography";
-import { CTABar } from "../../components.tsx/CTAs";
+import { CTABar } from "design-system/components";
 import FooterSection from "../sections/FooterSection";
 import { EmailSection } from "../sections/EmailSection";
 import Link from "next/link";
-import { TrackCTAButton } from "../trackable-components";
+import { TrackCtaButton } from "../trackable-components";
 
 const content = {
   title: "Community",
@@ -83,17 +83,6 @@ export default function Community() {
         <Heading>Pick your community</Heading>
       </Section>
       <Section>
-        {/* {content.communities.map((community, i) => (
-            <HalfWidthContentContainer key={i}>
-              <Heading>{community.title}</Heading>
-              <Text>{community.description}</Text>
-              <CTABar>
-                <Link href={community.href}>
-                  <CTAButton variant={"outline"}>Join</CTAButton>
-                </Link>
-              </CTABar>
-            </HalfWidthContentContainer>
-          ))} */}
         {content.communities.map((community, i) => (
           <Grid key={i}>
             <HalfWidthContentContainer>
@@ -104,13 +93,13 @@ export default function Community() {
               <Text>{community.description}</Text>
               <CTABar>
                 <Link href={community.href}>
-                  <TrackCTAButton
-                    name={"Join Community"}
-                    subject={community.title}
+                  <TrackCtaButton
+                    name={community.title} // Add any necessary props for tracking
+                    subject="Join Community" // Add any necessary props for tracking
                     variant={"outline"}
                   >
                     Join
-                  </TrackCTAButton>
+                  </TrackCtaButton>
                 </Link>
               </CTABar>
             </HalfWidthContentContainer>

@@ -16,7 +16,7 @@ export const EmailSection = () => {
     <Section className="text-center">
       <Grid>
         <FullWidthContentContainer>
-          <SuperDisplay> {content.email} </SuperDisplay>
+          <SuperDisplay className="break-words"> {content.email} </SuperDisplay>
         </FullWidthContentContainer>
       </Grid>
     </Section>

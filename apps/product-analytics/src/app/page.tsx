@@ -39,7 +39,7 @@ export default function DashboardPage() {
   }, []);
 
   return (
-    <div className="m-2 h-screen w-screen grid gap-2 grid-cols-2 overflow-auto">
+    <div className="m-2 h-screen w-screen grid gap-2 grid-cols-3 overflow-auto">
       <DashboardPanel name="Bounce Rate">
         <TimeSeriesChart
           yAccessor={"bounce_rate"}

@@ -43,13 +43,13 @@ export const FooterNavItem = ({
 export const FooterDisclaimerContainer = () => {
   const disclaimer = {
     rights: "2024 All rights reserved",
-    linkedin: {
-      href: "https://www.linkedin.com/company/fiveonefour",
-      name: "LinkedIn",
+    slack: {
+      href: "https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg",
+      name: "Slack",
     },
-    x: {
-      href: "https://twitter.com/514hq",
-      name: "X (prev. Twitter)",
+    github: {
+      href: "https://github.com/514-labs/moose",
+      name: "Github",
     },
   };
 
@@ -57,10 +57,12 @@ export const FooterDisclaimerContainer = () => {
     <>
       <Text className="grow">{disclaimer.rights}</Text>
 
-      <FooterNavItem item={disclaimer.linkedin}>
-        {disclaimer.linkedin.name}
+      <FooterNavItem item={disclaimer.slack}>
+        {disclaimer.slack.name}
       </FooterNavItem>
-      <FooterNavItem item={disclaimer.x}>{disclaimer.x.name}</FooterNavItem>
+      <FooterNavItem item={disclaimer.github}>
+        {disclaimer.github.name}
+      </FooterNavItem>
       <ThemeToggle />
     </>
   );
@@ -68,7 +70,7 @@ export const FooterDisclaimerContainer = () => {
 
 export const FooterContent = () => {
   return (
-    <FullWidthContentContainer className="flex flex-col items-start md:flex-row md:items-center gap-x-5">
+    <FullWidthContentContainer className="flex flex-col items-center md:flex-row sm:items-center gap-x-5">
       <FooterDisclaimerContainer />
     </FullWidthContentContainer>
   );

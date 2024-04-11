@@ -50,7 +50,7 @@ export const FooterNav = () => {
   ];
 
   return (
-    <div className="flex flex-col grow justify-center items-start sm:items-center md:flex-row md:justify-between lg:justify-end col-span-12 lg:col-span-6">
+    <div className="flex flex-col grow justify-center items-start sm:items-left md:flex-row md:justify-between lg:justify-end col-span-12 lg:col-span-6">
       {navigation.map((item) => {
         return (
           <FooterNavItem item={item} key={item.name}>
@@ -94,7 +94,7 @@ export const FooterDisclaimerContainer = () => {
 
 export const FooterContent = () => {
   return (
-    <FullWidthContentContainer className="flex flex-col items-start md:flex-row md:items-center gap-x-5">
+    <FullWidthContentContainer className="flex flex-col items-center md:flex-row sm:items-center gap-x-5">
       <FooterDisclaimerContainer />
     </FullWidthContentContainer>
   );

@@ -22,6 +22,7 @@ export const metadata: Metadata = {
   title: "MooseJS—A data engineering framework for all developers.",
   description: "A data engineering framework for all developers.",
   openGraph: {
+    url: "/",
     images: "/images/open-graph/og_moose_4x.png",
   },
 };

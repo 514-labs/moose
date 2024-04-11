@@ -24,7 +24,18 @@ export const sendServerEvent = async (name: string, event: any) => {
 
   const enhancedEvent = { host, env, referrer, ip, ...event };
 
-  sendServerEvent(name, enhancedEvent);
-
-  mixpanel.track(name, enhancedEvent);
+  try {
+    await new Promise((resolve, reject) => {
+      mixpanel.track(name, enhancedEvent, (err: Error | undefined) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(undefined);
+        }
+      });
+    });
+    console.log("asdfasdfadsf");
+  } catch (e) {
+    console.error("Error sending event to mixpanel", e);
+  }
 };

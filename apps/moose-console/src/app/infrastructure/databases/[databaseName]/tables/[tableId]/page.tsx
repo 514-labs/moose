@@ -6,6 +6,7 @@ import {
   clickhousePythonSnippet,
   jsSnippet,
   pythonSnippet,
+  rustSnippet,
 } from "lib/snippets";
 import { getModelByTableId, tableIsView } from "lib/utils";
 import { Fragment, useContext } from "react";
@@ -63,6 +64,7 @@ export default function Page({
         cliData={cliData}
         bashSnippet={bashSnippet(cliData, model)}
         jsSnippet={jsSnippet(cliData, model)}
+        rustSnippet={rustSnippet(cliData, model)}
         pythonSnippet={pythonSnippet(cliData, model)}
         clickhouseJSSnippet={clickhouseJSSnippet(cliData, model)}
         clickhousePythonSnippet={clickhousePythonSnippet(cliData, model)}

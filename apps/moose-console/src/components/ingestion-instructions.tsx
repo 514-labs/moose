@@ -11,6 +11,7 @@ interface IngestionInstructionProps {
   pythonSnippet: string;
   bashSnippet: string;
   ingestionPoint: Route;
+  rustSnippet: string;
 }
 export default function IngestionInstructions({
   cliData,
@@ -18,6 +19,7 @@ export default function IngestionInstructions({
   pythonSnippet,
   ingestionPoint,
   bashSnippet,
+  rustSnippet,
 }: IngestionInstructionProps) {
   if (!cliData.project) {
     return <div>Project not found</div>;
@@ -64,6 +66,10 @@ export default function IngestionInstructions({
                   {
                     language: "bash",
                     code: bashSnippet,
+                  },
+                  {
+                    language: "rust",
+                    code: rustSnippet,
                   },
                 ]}
               />

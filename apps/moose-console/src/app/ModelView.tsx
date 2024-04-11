@@ -35,6 +35,7 @@ interface TableTabsProps {
   clickhouseJSSnippet: string;
   clickhousePythonSnippet: string;
   mooseObject: MooseObject;
+  rustSnippet: string;
 }
 
 function ClickhouseTableRestriction(view: Table) {
@@ -65,6 +66,7 @@ export default function ModelView({
   clickhouseJSSnippet,
   clickhousePythonSnippet,
   mooseObject,
+  rustSnippet,
 }: TableTabsProps) {
   const searchParams = useSearchParams();
   const tab = searchParams.get("tab");
@@ -156,6 +158,7 @@ export default function ModelView({
                     jsSnippet={jsSnippet}
                     pythonSnippet={pythonSnippet}
                     ingestionPoint={ingestion_point}
+                    rustSnippet={rustSnippet}
                   />
                 )}
               </CardContent>

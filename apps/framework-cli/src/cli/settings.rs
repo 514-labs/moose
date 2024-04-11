@@ -2,6 +2,8 @@ use config::{Config, ConfigError, Environment, File};
 use home::home_dir;
 use serde::Deserialize;
 use std::path::PathBuf;
+use toml::Value;
+use uuid::Uuid;
 
 use super::display::{Message, MessageType};
 use super::logger::LoggerSettings;
@@ -33,6 +35,7 @@ impl Default for Features {
 
 #[derive(Deserialize, Debug)]
 pub struct Telemetry {
+    pub machine_id: String,
     pub enabled: bool,
 
     #[serde(default)]
@@ -44,6 +47,7 @@ impl Default for Telemetry {
         Telemetry {
             enabled: true,
             is_moose_developer: false,
+            machine_id: Uuid::new_v4().to_string(),
         }
     }
 }
@@ -121,8 +125,44 @@ coming_soon_wall=false
 # Set this to false to opt-out
 enabled=true
 is_moose_developer=false
+machine_id="{{uuid}}"
 "#;
-        std::fs::write(path, contents_toml)?;
+        std::fs::write(
+            path,
+            contents_toml.replace("{{uuid}}", &Uuid::new_v4().to_string()),
+        )?;
+    } else {
+        let data = std::fs::read_to_string(&path)?;
+        match data.parse::<Value>() {
+            Ok(mut toml) => {
+                let telemetry = toml
+                    .as_table_mut()
+                    .unwrap()
+                    .entry("telemetry")
+                    .or_insert_with(|| Value::Table(toml::map::Map::new()));
+
+                if let Some(telemetry) = telemetry.as_table_mut() {
+                    telemetry.entry("enabled").or_insert(Value::Boolean(true));
+                    telemetry
+                        .entry("is_moose_developer")
+                        .or_insert(Value::Boolean(false));
+                    telemetry
+                        .entry("machine_id")
+                        .or_insert(Value::String(Uuid::new_v4().to_string()));
+                }
+
+                std::fs::write(path, toml.to_string())?;
+            }
+            Err(e) => {
+                show_message!(
+                    MessageType::Error,
+                    Message {
+                        action: "Init".to_string(),
+                        details: format!("Error parsing config file: {:?}", e),
+                    }
+                );
+            }
+        }
     }
     Ok(())
 }

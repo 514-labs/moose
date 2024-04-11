@@ -23,6 +23,7 @@ model MooseActivity {
     timestamp       DateTime
     cliVersion      String
     isMooseDeveloper  Boolean?
+    machineId       String
 }
 
 model PageViewEvent {

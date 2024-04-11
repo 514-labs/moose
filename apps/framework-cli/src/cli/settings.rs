@@ -135,23 +135,23 @@ machine_id="{{uuid}}"
         let data = std::fs::read_to_string(&path)?;
         match data.parse::<Value>() {
             Ok(mut toml) => {
-                let machine_id_exists = toml
-                    .get("telemetry")
-                    .and_then(Value::as_table)
-                    .and_then(|telemetry| telemetry.get("machine_id"))
-                    .is_some();
+                let telemetry = toml
+                    .as_table_mut()
+                    .unwrap()
+                    .entry("telemetry")
+                    .or_insert_with(|| Value::Table(toml::map::Map::new()));
 
-                if !machine_id_exists {
-                    if let Some(telemetry) = toml.get_mut("telemetry").and_then(Value::as_table_mut)
-                    {
-                        telemetry.insert(
-                            "machine_id".to_string(),
-                            Value::String(Uuid::new_v4().to_string()),
-                        );
-                    }
-
-                    std::fs::write(path, toml.to_string())?;
+                if let Some(telemetry) = telemetry.as_table_mut() {
+                    telemetry.entry("enabled").or_insert(Value::Boolean(true));
+                    telemetry
+                        .entry("is_moose_developer")
+                        .or_insert(Value::Boolean(false));
+                    telemetry
+                        .entry("machine_id")
+                        .or_insert(Value::String(Uuid::new_v4().to_string()));
                 }
+
+                std::fs::write(path, toml.to_string())?;
             }
             Err(e) => {
                 show_message!(

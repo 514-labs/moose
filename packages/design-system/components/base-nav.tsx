@@ -124,7 +124,7 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
           </div>
 
           <Disclosure.Panel className="sticky top-20 h-screen md:h-auto justify-center w-full z-10 bg-background md:hidden">
-            <div className="space-y-1 pb-3 pt-2 mt-[50%]">
+            <div className="space-y-1 pb-3 pt-2 mt-[25%]">
               {navigation.map((item) => {
                 const isActive = pathname.startsWith(item.href);
 

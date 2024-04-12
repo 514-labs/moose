@@ -467,36 +467,36 @@ fn ts_interface_to_model(
                     _ => return None,
                 };
                 // match the type of the value and return the right column type
-                let data_type = match *prop.type_ann.clone().expect("no type for property") {
-                    TsTypeAnn { type_ann, .. } => match *type_ann {
-                        TsType::TsKeywordType(keyword) => match keyword.kind {
-                            TsKeywordTypeKind::TsStringKeyword => ColumnType::String,
-                            TsKeywordTypeKind::TsBooleanKeyword => ColumnType::Boolean,
-                            TsKeywordTypeKind::TsNumberKeyword => ColumnType::Float,
+                let TsTypeAnn { type_ann, .. } =
+                    *prop.type_ann.clone().expect("no type for property");
+                let data_type = match *type_ann {
+                    TsType::TsKeywordType(keyword) => match keyword.kind {
+                        TsKeywordTypeKind::TsStringKeyword => ColumnType::String,
+                        TsKeywordTypeKind::TsBooleanKeyword => ColumnType::Boolean,
+                        TsKeywordTypeKind::TsNumberKeyword => ColumnType::Float,
 
-                            _ => {
-                                debug!("found a weird type{:?}", keyword);
-                                ColumnType::Unsupported
-                            }
-                        },
-                        // match the enum type as a tstyperef
-                        TsType::TsTypeRef(TsTypeRef { type_name, .. }) => {
-                            let enum_name = match type_name {
-                                swc_ecma_ast::TsEntityName::Ident(ident) => ident.sym.to_string(),
-                                _ => {
-                                    debug!("found a weird type{:?}", type_name);
-                                    "unsupported".to_string()
-                                }
-                            };
-                            ColumnType::Enum(
-                                enums.iter().find(|e| e.name == enum_name).unwrap().clone(),
-                            )
-                        }
                         _ => {
-                            debug!("found a weird type{:?}", type_ann);
+                            debug!("found a weird type{:?}", keyword);
                             ColumnType::Unsupported
                         }
                     },
+                    // match the enum type as a tstyperef
+                    TsType::TsTypeRef(TsTypeRef { type_name, .. }) => {
+                        let enum_name = match type_name {
+                            swc_ecma_ast::TsEntityName::Ident(ident) => ident.sym.to_string(),
+                            _ => {
+                                debug!("found a weird type{:?}", type_name);
+                                "unsupported".to_string()
+                            }
+                        };
+                        ColumnType::Enum(
+                            enums.iter().find(|e| e.name == enum_name).unwrap().clone(),
+                        )
+                    }
+                    _ => {
+                        debug!("found a weird type{:?}", type_ann);
+                        ColumnType::Unsupported
+                    }
                 };
 
                 // match the optional flag
@@ -544,9 +544,7 @@ pub fn parse_ts_schema_file(path: &Path) -> Module {
 
     let mut parser = Parser::new_from(capturing);
 
-    let module = parser.parse_module().expect("failed to parse module");
-
-    module
+    parser.parse_module().expect("failed to parse module")
 }
 
 #[cfg(test)]

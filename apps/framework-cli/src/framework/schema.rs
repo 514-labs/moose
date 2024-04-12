@@ -23,6 +23,7 @@ use std::{
 };
 
 use crate::framework::controller::FrameworkObject;
+use crate::utilities::constants::SCHEMAS_DIR;
 use diagnostics::Diagnostics;
 
 use log::debug;
@@ -104,8 +105,12 @@ impl Display for DuplicateModelError {
 
 impl std::error::Error for DuplicateModelError {}
 
-pub fn is_prisma_file(path: &Path) -> bool {
-    path.extension().map(|e| e == "prisma").unwrap_or(false)
+pub fn is_schema_file(path: &Path) -> bool {
+    path.to_string_lossy().contains(SCHEMAS_DIR)
+        && path
+            .extension()
+            .map(|e| e == "prisma" || e == "ts")
+            .unwrap_or(false)
 }
 
 // TODO: Make the parse schema file a variable and pass it into the function
@@ -114,21 +119,38 @@ pub fn parse_schema_file<O>(
     version: &str,
     mapper: fn(DataModel, path: &Path, version: &str) -> O,
 ) -> Result<Vec<O>, ParsingError> {
-    let schema_file = std::fs::read_to_string(path).map_err(|_| ParsingError::FileNotFound {
-        path: path.to_path_buf(),
-    })?;
+    let is_prisma_schema = path.extension().map(|e| e == "prisma").unwrap_or(false);
 
-    let mut diagnostics = Diagnostics::default();
+    if is_prisma_schema {
+        let schema_file =
+            std::fs::read_to_string(path).map_err(|_| ParsingError::FileNotFound {
+                path: path.to_path_buf(),
+            })?;
 
-    let ast = parse_schema(&schema_file, &mut diagnostics);
+        let mut diagnostics = Diagnostics::default();
 
-    let file_objects = prisma_ast_mapper(ast)?;
+        let ast = parse_schema(&schema_file, &mut diagnostics);
 
-    Ok(file_objects
-        .models
-        .into_iter()
-        .map(|data_model| mapper(data_model, path, version))
-        .collect())
+        let file_objects = prisma_ast_mapper(ast)?;
+
+        Ok(file_objects
+            .models
+            .into_iter()
+            .map(|data_model| mapper(data_model, path, version))
+            .collect())
+    } else {
+        debug!("Parsing typescript file {:?}", path);
+
+        let ast = parse_ts_schema_file(path);
+
+        let file_objects = ts_ast_mapper(ast)?;
+
+        Ok(file_objects
+            .models
+            .into_iter()
+            .map(|data_model| mapper(data_model, path, version))
+            .collect())
+    }
 }
 
 pub struct FileObjects {
@@ -552,7 +574,7 @@ mod tests {
         let test_file = current_dir.join("tests/ts/simple.ts");
 
         let result = parse_ts_schema_file(&test_file);
-        ts_ast_mapper(result);
+        let _ = ts_ast_mapper(result);
         assert!(true);
     }
 
@@ -586,7 +608,7 @@ mod tests {
     fn test_parse_extend_typescript_file() {
         let current_dir = std::env::current_dir().unwrap();
 
-        let test_file = current_dir.join("tests/ts/extend.ts");
+        let test_file = current_dir.join("tests/ts/extend.m.ts");
 
         println!("{:?}", test_file);
 

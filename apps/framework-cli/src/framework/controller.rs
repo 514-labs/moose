@@ -24,7 +24,7 @@ use crate::project::PROJECT;
 #[cfg(test)]
 use crate::utilities::constants::SCHEMAS_DIR;
 
-use super::schema::{is_prisma_file, DataModel};
+use super::schema::{is_schema_file, DataModel};
 use super::schema::{parse_schema_file, DuplicateModelError};
 use super::typescript::TypescriptInterface;
 
@@ -108,7 +108,7 @@ pub fn get_all_framework_objects(
             if path.is_dir() {
                 debug!("<DCM> Processing directory: {:?}", path);
                 get_all_framework_objects(framework_objects, &path, version)?;
-            } else if is_prisma_file(&path) {
+            } else if is_schema_file(&path) {
                 debug!("<DCM> Processing file: {:?}", path);
                 let objects = get_framework_objects_from_schema_file(&path, version)?;
                 for fo in objects {

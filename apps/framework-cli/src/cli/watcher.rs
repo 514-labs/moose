@@ -16,7 +16,7 @@ use crate::framework::controller::{
     get_framework_objects_from_schema_file, schema_file_path_to_ingest_route,
     FrameworkObjectVersions,
 };
-use crate::framework::schema::{is_prisma_file, DuplicateModelError};
+use crate::framework::schema::{is_schema_file, DuplicateModelError};
 use crate::framework::sdks::generate_ts_sdk;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
@@ -46,7 +46,7 @@ async fn process_events(
     let paths = events
         .into_iter()
         .flat_map(|e| e.paths)
-        .filter(|p| is_prisma_file(p))
+        .filter(|p| is_schema_file(p))
         .collect::<HashSet<PathBuf>>();
 
     let mut new_objects = HashMap::new();

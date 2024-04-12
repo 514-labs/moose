@@ -37,19 +37,32 @@ There are a couple of different ways you can utilize the Moose CLI:
 <Tabs items={["No Install", "Project-level Install", "Global Install"]}>
   <Tabs.Tab>
     The simplest method to run the CLI is via NPX. No extra installation is
-    necessary for this method. ```txt filename="Terminal" copy npx
-    @514labs/moose-cli dev ```
+    necessary for this method.
+
+    ```txt filename="Terminal" copy
+    npx @514labs/moose-cli dev
+    ```
+
   </Tabs.Tab>
   <Tabs.Tab>
     Alternatively, the Moose CLI comes packaged with your Moose application. You
     can install the dependency locally and then run the Moose CLI within your
-    project with: ```txt filename="Terminal" copy npm install npm run dev ```
+    project with.
+
+    ```txt filename="Terminal" copy
+    npm install && npm run dev
+    ```
+
   </Tabs.Tab>
   <Tabs.Tab>
     Finally, you can install the Moose CLI globally using NPM. This will get you
     a cleaner command interface, and better performance on the CLI. You can then
-    run the Moose CLI anywhere. ```txt filename="Terminal" copy npm install -g
-    @514labs/moose-cli moose dev ```
+    run the Moose CLI anywhere.
+
+    ```txt filename="Terminal" copy
+    npm install -g @514labs/moose-cli && moose dev
+    ```
+
   </Tabs.Tab>
 </Tabs>
 

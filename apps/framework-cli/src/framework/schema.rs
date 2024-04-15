@@ -26,7 +26,7 @@ use crate::framework::controller::FrameworkObject;
 use crate::utilities::constants::SCHEMAS_DIR;
 use diagnostics::Diagnostics;
 
-use log::debug;
+use log::{debug, info};
 use schema_ast::ast::{Enum, Model};
 use schema_ast::{
     ast::{Attribute, Field, SchemaAst, Top, WithName},
@@ -425,7 +425,7 @@ pub fn ts_ast_mapper(ast: Module) -> Result<FileObjects, ParsingError> {
         _ => {}
     });
 
-    println!(
+    info!(
         "the interfaces {:#?}",
         ts_interface_to_model(ts_declarations[0], &enums)
     );

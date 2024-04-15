@@ -20,9 +20,18 @@ export function PrimitivesOverviewList({ models }: { models: DataModel[] }) {
         <div className="col-span-3 xl:col-span-1 flex flex-col">
           <OverviewCard
             title="Flows"
-            numItems={0}
+            numItems={models.reduce(
+              (count, model) => count + (model.flows ? model.flows.length : 0),
+              0,
+            )}
             link="/primitives/flows"
-            items={[]}
+            items={models
+              .filter((model) => model.flows && model.flows.length > 0)
+              .slice(0, 4)
+              .map((model) => ({
+                name: model.model.name,
+                link: "",
+              }))}
           />
         </div>
         <div className="col-span-3 xl:col-span-1 flex flex-col">

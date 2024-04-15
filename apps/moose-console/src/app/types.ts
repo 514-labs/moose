@@ -53,6 +53,7 @@ export interface DataModel {
   table: Table;
   ingestion_point: Route;
   model: ModelMeta;
+  flows: string[];
 }
 
 export interface MooseEnum {

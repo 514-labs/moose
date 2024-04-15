@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet};
-use std::str;
+use std::path::PathBuf;
+use std::{fs, str};
 
 use http_body_util::BodyExt;
 use http_body_util::Full;
@@ -24,6 +25,7 @@ use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 use crate::project::Project;
+use crate::utilities::constants::FLOW_FILE;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct ConsoleConfig {
@@ -58,12 +60,16 @@ pub async fn post_current_state_to_console(
             .into_iter(),
     );
 
+    let flows_dir = project.flows_dir();
+    let flows = find_flows(&flows_dir);
+
     let current_version = Version {
         models: serialize_version(
             &framework_object_versions.current_models,
             &framework_object_versions.current_version,
             &tables,
             &topics,
+            &flows,
         ),
     };
 
@@ -74,7 +80,7 @@ pub async fn post_current_state_to_console(
             (
                 version.clone(),
                 Version {
-                    models: serialize_version(schema_version, version, &tables, &topics),
+                    models: serialize_version(schema_version, version, &tables, &topics, &flows),
                 },
             )
         })
@@ -152,6 +158,7 @@ struct ModelInfra {
     // queue is None if it is the same as previous version
     // then we don't need to spin up a queue and a table
     queue: Option<String>,
+    flows: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -174,6 +181,7 @@ fn serialize_version(
     version: &str,
     tables: &HashMap<String, ClickHouseSystemTable>,
     topics: &HashSet<String>,
+    flows: &HashMap<String, Vec<String>>,
 ) -> Vec<ModelInfra> {
     schema_version
         .models
@@ -214,7 +222,53 @@ fn serialize_version(
                 } else {
                     None
                 },
+                flows: flows.get(&fo.data_model.name).unwrap_or(&vec![]).clone(),
             }
         })
         .collect()
+}
+
+fn find_flows(path: &PathBuf) -> HashMap<String, Vec<String>> {
+    let mut flows_map = HashMap::new();
+
+    if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries.flatten() {
+            if let Some((input_model, output_models)) = process_flow_input(&entry) {
+                flows_map.insert(input_model, output_models);
+            }
+        }
+    }
+
+    flows_map
+}
+
+fn process_flow_input(entry: &fs::DirEntry) -> Option<(String, Vec<String>)> {
+    let input_model = entry.file_name().to_string_lossy().into_owned();
+    let mut output_models = Vec::new();
+
+    if let Ok(output_entries) = fs::read_dir(entry.path()) {
+        for output_entry in output_entries.flatten() {
+            if let Some(output_model) = process_flow_output(&output_entry) {
+                output_models.push(output_model);
+            }
+        }
+    }
+
+    if !output_models.is_empty() {
+        Some((input_model, output_models))
+    } else {
+        None
+    }
+}
+
+fn process_flow_output(entry: &fs::DirEntry) -> Option<String> {
+    if let Ok(file_type) = entry.file_type() {
+        if file_type.is_dir() {
+            let flow_path = entry.path().join(FLOW_FILE);
+            if flow_path.exists() {
+                return Some(entry.file_name().to_string_lossy().into_owned());
+            }
+        }
+    }
+    None
 }

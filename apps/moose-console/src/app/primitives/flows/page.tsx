@@ -1,67 +1,42 @@
+"use client";
 import { NavBreadCrumb } from "components/nav-breadcrumb";
-import { Button } from "components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "components/ui/card";
-import { TrackLink } from "design-system/trackable-components";
+import { PreviewTable } from "components/preview-table";
+import { Card } from "components/ui/card";
+import { Separator } from "components/ui/separator";
+import { useContext } from "react";
+import { VersionContext } from "version-context";
 
 export default async function FlowsPage(): Promise<JSX.Element> {
+  const { models } = useContext(VersionContext);
+  const rows = models
+    .filter((model) => model.flows && model.flows.length > 0)
+    .flatMap((model) =>
+      model.flows.map((flow) => ({
+        source: model.model.name,
+        destination: flow,
+      })),
+    );
+
   return (
     <section className="p-4 max-h-screen overflow-y-auto">
       <NavBreadCrumb />
       <div className="py-10">
-        <div className="text-8xl">Flows</div>
-      </div>
-      <div className="py-4">Flows help you transform your data.</div>
-      <div className="grid grid-cols-2 gap-4">
-        <div className="col-span-3 xl:col-span-1">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle>Coming Soon</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div>
-                Insights are currently under development. Join our community to
-                contribute or share your thoughts.
-              </div>
-            </CardContent>
-            <CardFooter>
-              <TrackLink
-                name="Link"
-                subject="Join Community"
-                href="https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg"
-              >
-                <Button variant="outline">Join Community</Button>
-              </TrackLink>
-            </CardFooter>
-          </Card>
+        <div className="text-8xl">{rows.length} Flows</div>
+        <div className="py-5 max-w-screen-md">
+          Flows enable you to process your data as it moves through your MooseJS
+          application. If you want to learn more about them, head to the{" "}
+          <a className="underline" href="https://docs.moosejs.com">
+            documentation
+          </a>
         </div>
-        <div className="col-span-3 xl:col-span-1">
-          <Card className="h-full">
-            <CardHeader>
-              <CardTitle>Why use flows?</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div>
-                Flows enable you to process your data as it moves through your
-                MooseJS application
-              </div>
-            </CardContent>
-            <CardFooter>
-              <TrackLink
-                name="Link"
-                subject="Visit Docs"
-                href="https://docs.moosejs.com"
-              >
-                <Button variant="outline">Visit Docs</Button>
-              </TrackLink>
-            </CardFooter>
-          </Card>
-        </div>
+        {rows.length > 0 && (
+          <>
+            <Separator />
+            <Card>
+              <PreviewTable rows={rows} />
+            </Card>
+          </>
+        )}
       </div>
     </section>
   );

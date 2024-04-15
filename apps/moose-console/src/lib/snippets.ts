@@ -157,3 +157,17 @@ for i in {1..10}; do
 done
 `;
 };
+
+export const rustSnippet = (data: CliData, model: DataModel) => {
+  const { ingestion_point } = model;
+  const columns = createColumnStubs(model.model);
+
+  return `\
+use reqwest::Client;
+let client = Client::new();
+let res = client.post("http://${data.project && data.project.http_server_config.host}:${data.project!.http_server_config.port}/${ingestion_point.route_path}")
+    .json(&json!({${columns.join()}}))
+    .send()
+    .await?;
+`;
+};

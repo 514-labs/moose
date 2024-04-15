@@ -7,6 +7,7 @@ import {
   clickhouseJSSnippet,
   clickhousePythonSnippet,
   bashSnippet,
+  rustSnippet,
 } from "lib/snippets";
 import { NavBreadCrumb } from "components/nav-breadcrumb";
 import ModelView from "app/ModelView";
@@ -42,6 +43,7 @@ export default function Page({
         bashSnippet={bashSnippet(cliData, model)}
         jsSnippet={jsSnippet(cliData, model)}
         pythonSnippet={pythonSnippet(cliData, model)}
+        rustSnippet={rustSnippet(cliData, model)}
         clickhouseJSSnippet={clickhouseJSSnippet(cliData, model)}
         clickhousePythonSnippet={clickhousePythonSnippet(cliData, model)}
       />

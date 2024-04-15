@@ -23,8 +23,10 @@ use std::{
 };
 
 use crate::framework::controller::FrameworkObject;
+use crate::utilities::constants::SCHEMAS_DIR;
 use diagnostics::Diagnostics;
 
+use log::{debug, info};
 use schema_ast::ast::{Enum, Model};
 use schema_ast::{
     ast::{Attribute, Field, SchemaAst, Top, WithName},
@@ -34,6 +36,13 @@ use serde::Serialize;
 
 use crate::infrastructure::olap::clickhouse::mapper::arity_mapper;
 use crate::project::PROJECT;
+
+use swc_common::{self, sync::Lrc, SourceMap};
+use swc_ecma_ast::{
+    Decl, Expr, Module, ModuleItem, Stmt, TsEnumDecl, TsEnumMember, TsEnumMemberId,
+    TsInterfaceDecl, TsKeywordTypeKind, TsType, TsTypeAnn, TsTypeRef,
+};
+use swc_ecma_parser::{lexer::Lexer, Capturing, Parser, StringInput, Syntax};
 
 pub mod templates;
 
@@ -96,8 +105,12 @@ impl Display for DuplicateModelError {
 
 impl std::error::Error for DuplicateModelError {}
 
-pub fn is_prisma_file(path: &Path) -> bool {
-    path.extension().map(|e| e == "prisma").unwrap_or(false)
+pub fn is_schema_file(path: &Path) -> bool {
+    path.to_string_lossy().contains(SCHEMAS_DIR)
+        && path
+            .extension()
+            .map(|e| e == "prisma" || e == "ts")
+            .unwrap_or(false)
 }
 
 // TODO: Make the parse schema file a variable and pass it into the function
@@ -106,21 +119,38 @@ pub fn parse_schema_file<O>(
     version: &str,
     mapper: fn(DataModel, path: &Path, version: &str) -> O,
 ) -> Result<Vec<O>, ParsingError> {
-    let schema_file = std::fs::read_to_string(path).map_err(|_| ParsingError::FileNotFound {
-        path: path.to_path_buf(),
-    })?;
+    let is_prisma_schema = path.extension().map(|e| e == "prisma").unwrap_or(false);
 
-    let mut diagnostics = Diagnostics::default();
+    if is_prisma_schema {
+        let schema_file =
+            std::fs::read_to_string(path).map_err(|_| ParsingError::FileNotFound {
+                path: path.to_path_buf(),
+            })?;
 
-    let ast = parse_schema(&schema_file, &mut diagnostics);
+        let mut diagnostics = Diagnostics::default();
 
-    let file_objects = ast_mapper(ast)?;
+        let ast = parse_schema(&schema_file, &mut diagnostics);
 
-    Ok(file_objects
-        .models
-        .into_iter()
-        .map(|data_model| mapper(data_model, path, version))
-        .collect())
+        let file_objects = prisma_ast_mapper(ast)?;
+
+        Ok(file_objects
+            .models
+            .into_iter()
+            .map(|data_model| mapper(data_model, path, version))
+            .collect())
+    } else {
+        debug!("Parsing typescript file {:?}", path);
+
+        let ast = parse_ts_schema_file(path);
+
+        let file_objects = ts_ast_mapper(ast)?;
+
+        Ok(file_objects
+            .models
+            .into_iter()
+            .map(|data_model| mapper(data_model, path, version))
+            .collect())
+    }
 }
 
 pub struct FileObjects {
@@ -352,7 +382,7 @@ fn primsa_to_moose_enum(e: &Enum) -> DataEnum {
     DataEnum { name, values }
 }
 
-pub fn ast_mapper(ast: SchemaAst) -> Result<FileObjects, ParsingError> {
+pub fn prisma_ast_mapper(ast: SchemaAst) -> Result<FileObjects, ParsingError> {
     let mut models = Vec::new();
     let mut enums = Vec::new();
 
@@ -378,10 +408,152 @@ pub fn ast_mapper(ast: SchemaAst) -> Result<FileObjects, ParsingError> {
     Ok(FileObjects::new(parsed_models, enums))
 }
 
+pub fn ts_ast_mapper(ast: Module) -> Result<FileObjects, ParsingError> {
+    let models = Vec::new();
+    let mut enums = Vec::new();
+
+    let mut ts_declarations = Vec::new();
+
+    // collect all inteface and enum declarations
+    ast.body.iter().for_each(|item| match item {
+        ModuleItem::Stmt(Stmt::Decl(Decl::TsInterface(decl))) => {
+            ts_declarations.push(decl);
+        }
+        ModuleItem::Stmt(Stmt::Decl(Decl::TsEnum(decl))) => {
+            enums.push(ts_enum_to_data_enum(decl));
+        }
+        _ => {}
+    });
+
+    info!(
+        "the interfaces {:#?}",
+        ts_interface_to_model(ts_declarations[0], &enums)
+    );
+
+    Ok(FileObjects::new(models, enums))
+}
+
+fn ts_enum_to_data_enum(enum_decl: &TsEnumDecl) -> DataEnum {
+    let name = enum_decl.id.sym.to_string();
+    let values = enum_decl
+        .members
+        .iter()
+        .map(|member| match member {
+            TsEnumMember {
+                id: TsEnumMemberId::Ident(ident),
+                ..
+            } => ident.sym.to_string(),
+            _ => "unsupported".to_string(),
+        })
+        .collect();
+    DataEnum { name, values }
+}
+
+fn ts_interface_to_model(
+    interface: &TsInterfaceDecl,
+    enums: &[DataEnum],
+) -> Result<DataModel, ParsingError> {
+    let schema_name = interface.id.sym.to_string();
+
+    let columns: Result<Vec<Column>, ParsingError> = interface
+        .body
+        .body
+        .iter()
+        .filter_map(|field| match field {
+            swc_ecma_ast::TsTypeElement::TsPropertySignature(prop) => Some({
+                // match the key's sym if it's an ident
+                let name = match *prop.key.clone() {
+                    Expr::Ident(ident) => ident.sym.to_string(),
+                    _ => return None,
+                };
+                // match the type of the value and return the right column type
+                let TsTypeAnn { type_ann, .. } =
+                    *prop.type_ann.clone().expect("no type for property");
+                let data_type = match *type_ann {
+                    TsType::TsKeywordType(keyword) => match keyword.kind {
+                        TsKeywordTypeKind::TsStringKeyword => ColumnType::String,
+                        TsKeywordTypeKind::TsBooleanKeyword => ColumnType::Boolean,
+                        TsKeywordTypeKind::TsNumberKeyword => ColumnType::Float,
+
+                        _ => {
+                            debug!("found a weird type{:?}", keyword);
+                            ColumnType::Unsupported
+                        }
+                    },
+                    // match the enum type as a tstyperef
+                    TsType::TsTypeRef(TsTypeRef { type_name, .. }) => {
+                        let enum_name = match type_name {
+                            swc_ecma_ast::TsEntityName::Ident(ident) => ident.sym.to_string(),
+                            _ => {
+                                debug!("found a weird type{:?}", type_name);
+                                "unsupported".to_string()
+                            }
+                        };
+                        ColumnType::Enum(
+                            enums.iter().find(|e| e.name == enum_name).unwrap().clone(),
+                        )
+                    }
+                    _ => {
+                        debug!("found a weird type{:?}", type_ann);
+                        ColumnType::Unsupported
+                    }
+                };
+
+                // match the optional flag
+                let arity = FieldArity::Required;
+                let unique = false;
+                let primary_key = false;
+                let default = None;
+
+                Ok(Column {
+                    name,
+                    data_type,
+                    arity,
+                    unique,
+                    primary_key,
+                    default,
+                })
+            }),
+            _ => None,
+        })
+        .collect();
+
+    Ok(DataModel {
+        db_name: "local".to_string(),
+        columns: columns?,
+        name: schema_name,
+    })
+}
+
+pub fn parse_ts_schema_file(path: &Path) -> Module {
+    //! Parse a typescript file as a module and return the AST for that module
+    let cm: Lrc<SourceMap> = Default::default();
+
+    let fm = cm
+        .load_file(Path::new(path))
+        .expect("failed to load test.ts");
+
+    let lexer = Lexer::new(
+        Syntax::Typescript(Default::default()),
+        Default::default(),
+        StringInput::from(&*fm),
+        None,
+    );
+
+    let capturing = Capturing::new(lexer);
+
+    let mut parser = Parser::new_from(capturing);
+
+    parser.parse_module().expect("failed to parse module")
+}
+
 #[cfg(test)]
 mod tests {
 
-    use crate::framework::{controller::framework_object_mapper, schema::parse_schema_file};
+    use crate::framework::{
+        controller::framework_object_mapper,
+        schema::{parse_schema_file, parse_ts_schema_file, ts_ast_mapper},
+    };
 
     #[test]
     fn test_parse_schema_file() {
@@ -391,5 +563,55 @@ mod tests {
 
         let result = parse_schema_file(&test_file, "1.0", framework_object_mapper);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_ts_mapper() {
+        let current_dir = std::env::current_dir().unwrap();
+
+        let test_file = current_dir.join("tests/ts/simple.ts");
+
+        let result = parse_ts_schema_file(&test_file);
+        let _ = ts_ast_mapper(result);
+        assert!(true);
+    }
+
+    #[test]
+    fn test_parse_typescript_file() {
+        let current_dir = std::env::current_dir().unwrap();
+
+        let test_file = current_dir.join("tests/ts/simple.ts");
+
+        println!("{:?}", test_file);
+
+        let result = parse_ts_schema_file(&test_file);
+        println!("{:#?}", result);
+        assert!(true);
+    }
+
+    #[test]
+    fn test_parse_import_typescript_file() {
+        let current_dir = std::env::current_dir().unwrap();
+
+        let test_file = current_dir.join("tests/ts/import.ts");
+
+        println!("{:?}", test_file);
+
+        let result = parse_ts_schema_file(&test_file);
+        println!("{:?}", result);
+        assert!(true);
+    }
+
+    #[test]
+    fn test_parse_extend_typescript_file() {
+        let current_dir = std::env::current_dir().unwrap();
+
+        let test_file = current_dir.join("tests/ts/extend.m.ts");
+
+        println!("{:?}", test_file);
+
+        let result = parse_ts_schema_file(&test_file);
+        println!("{:?}", result);
+        assert!(true);
     }
 }

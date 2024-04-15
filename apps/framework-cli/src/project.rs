@@ -362,4 +362,49 @@ impl Project {
             .map(|v| version_to_string(&v))
             .collect::<Vec<String>>()
     }
+
+    pub fn get_flows(&self) -> HashMap<String, Vec<String>> {
+        let mut flows_map = HashMap::new();
+
+        if let Ok(entries) = std::fs::read_dir(self.flows_dir()) {
+            for entry in entries.flatten() {
+                if let Some((input_model, output_models)) = self.process_flow_input(&entry) {
+                    flows_map.insert(input_model, output_models);
+                }
+            }
+        }
+
+        flows_map
+    }
+
+    fn process_flow_input(&self, entry: &std::fs::DirEntry) -> Option<(String, Vec<String>)> {
+        let input_model = entry.file_name().to_string_lossy().into_owned();
+        let mut output_models = Vec::new();
+
+        if let Ok(output_entries) = std::fs::read_dir(entry.path()) {
+            for output_entry in output_entries.flatten() {
+                if let Some(output_model) = self.process_flow_output(&output_entry) {
+                    output_models.push(output_model);
+                }
+            }
+        }
+
+        if !output_models.is_empty() {
+            Some((input_model, output_models))
+        } else {
+            None
+        }
+    }
+
+    fn process_flow_output(&self, entry: &std::fs::DirEntry) -> Option<String> {
+        if let Ok(file_type) = entry.file_type() {
+            if file_type.is_dir() {
+                let flow_path = entry.path().join(FLOW_FILE);
+                if flow_path.exists() {
+                    return Some(entry.file_name().to_string_lossy().into_owned());
+                }
+            }
+        }
+        None
+    }
 }

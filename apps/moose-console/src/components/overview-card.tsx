@@ -51,7 +51,12 @@ export default function OverviewCard({
             </TrackLink>
           ))
         ) : (
-          <div className="py-4 mx-6">No data</div>
+          <div className="py-4 mx-6">
+            Nothing yet, view{" "}
+            <a className="underline" href="https://docs.moosejs.com">
+              docs
+            </a>
+          </div>
         )}
       </CardContent>
     </Card>

@@ -62,35 +62,17 @@ struct Cli {
     command: Commands,
 }
 
-fn load_project() -> Project {
-    match Project::load_from_current_dir() {
-        Ok(project) => project,
-        Err(e) => {
-            match e {
-                ConfigError::Foreign(_) => {
-                    show_message!(
-                        MessageType::Error,
-                        Message {
-                            action: "Loading".to_string(),
-                            details:
-                                "No project found, please run `moose init` to create a project"
-                                    .to_string(),
-                        }
-                    );
-                }
-                _ => {
-                    show_message!(
-                        MessageType::Error,
-                        Message {
-                            action: "Loading".to_string(),
-                            details: format!("Please validate the project's configs: {:?}", e),
-                        }
-                    );
-                }
-            }
-            exit(1);
-        }
-    }
+fn load_project() -> Result<Project, RoutineFailure> {
+    Project::load_from_current_dir().map_err(|e| match e {
+        ConfigError::Foreign(_) => RoutineFailure::error(Message {
+            action: "Loading".to_string(),
+            details: "No project found, please run `moose init` to create a project".to_string(),
+        }),
+        _ => RoutineFailure::error(Message {
+            action: "Loading".to_string(),
+            details: format!("Please validate the project's configs: {:?}", e),
+        }),
+    })
 }
 
 async fn top_command_handler(
@@ -122,29 +104,21 @@ async fn top_command_handler(
 
             let dir_path = Path::new(location.as_deref().unwrap_or(name));
             if !no_fail_already_exists && dir_path.exists() {
-                show_message!(
-                        MessageType::Error,
-                        Message {
-                            action: "Init".to_string(),
-                            details:
-                                "Directory already exists, please use the --no-fail-already-exists flag if this is expected."
-                                    .to_string(),
-                        }
-                    );
-                exit(1);
+                return Err(RoutineFailure::error(Message {
+                    action: "Init".to_string(),
+                    details:
+                        "Directory already exists, please use the --no-fail-already-exists flag if this is expected."
+                            .to_string(),
+                }));
             }
 
             std::fs::create_dir_all(dir_path).expect("Failed to create directory");
 
             if dir_path.canonicalize().unwrap() == home_dir().unwrap().canonicalize().unwrap() {
-                show_message!(
-                    MessageType::Error,
-                    Message {
-                        action: "Init".to_string(),
-                        details: "You cannot create a project in your home directory".to_string(),
-                    }
-                );
-                exit(1);
+                return Err(RoutineFailure::error(Message {
+                    action: "Init".to_string(),
+                    details: "You cannot create a project in your home directory".to_string(),
+                }));
             }
 
             // TODO: refactor this to be extracted in different functions
@@ -196,7 +170,7 @@ async fn top_command_handler(
         Commands::Build { docker } => {
             let run_mode = RunMode::Explicit {};
             info!("Running build command");
-            let project = load_project();
+            let project = load_project()?;
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(
@@ -243,7 +217,7 @@ async fn top_command_handler(
         Commands::Dev {} => {
             info!("Running dev command");
 
-            let project = load_project();
+            let project = load_project()?;
 
             let _ = project.set_enviroment(false);
             let project_arc = Arc::new(project);
@@ -273,7 +247,7 @@ async fn top_command_handler(
         Commands::Generate(generate) => match generate.command {
             Some(GenerateCommand::Migrations {}) => {
                 info!("Running generate migration command");
-                let project = load_project();
+                let project = load_project()?;
                 let project_arc = Arc::new(project);
 
                 let mut controller = RoutineController::new();
@@ -297,7 +271,7 @@ async fn top_command_handler(
         },
         Commands::Prod {} => {
             info!("Running prod command");
-            let project = load_project();
+            let project = load_project()?;
 
             let _ = project.set_enviroment(true);
             let project_arc = Arc::new(project);
@@ -319,7 +293,7 @@ async fn top_command_handler(
             )))
         }
         Commands::BumpVersion { new_version } => {
-            let project = load_project();
+            let project = load_project()?;
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(
@@ -361,7 +335,7 @@ async fn top_command_handler(
         }
         Commands::Clean {} => {
             let run_mode = RunMode::Explicit {};
-            let project = load_project();
+            let project = load_project()?;
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(
@@ -386,7 +360,7 @@ async fn top_command_handler(
             let flow_cmd = flow.command.as_ref().unwrap();
             match flow_cmd {
                 FlowCommands::Init(init) => {
-                    let project = load_project();
+                    let project = load_project()?;
                     let project_arc = Arc::new(project);
 
                     crate::utilities::capture::capture!(

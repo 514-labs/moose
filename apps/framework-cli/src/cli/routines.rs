@@ -106,20 +106,21 @@ use super::watcher::FileWatcher;
 use super::{Message, MessageType};
 
 pub mod clean;
+pub mod dev;
 pub mod docker_packager;
 pub mod flow;
 pub mod initialize;
 pub mod migrate;
-pub mod start;
 pub mod stop;
+pub mod templates;
 mod util;
 pub mod validate;
 pub mod version;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct RoutineSuccess {
-    message: Message,
-    message_type: MessageType,
+    pub message: Message,
+    pub message_type: MessageType,
 }
 
 // Implement success and info contructors and a new constructor that lets the user choose which type of message to display
@@ -142,9 +143,9 @@ impl RoutineSuccess {
 
 #[derive(Debug)]
 pub struct RoutineFailure {
-    message: Message,
-    message_type: MessageType,
-    error: Option<anyhow::Error>,
+    pub message: Message,
+    pub message_type: MessageType,
+    pub error: Option<anyhow::Error>,
 }
 impl RoutineFailure {
     pub fn new<F: Into<anyhow::Error>>(message: Message, error: F) -> Self {

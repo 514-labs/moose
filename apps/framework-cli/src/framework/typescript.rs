@@ -1,4 +1,3 @@
-use std::sync::Arc;
 use std::{fmt, path::PathBuf};
 
 use convert_case::{Case, Casing};
@@ -140,7 +139,7 @@ impl CodeGenerator for SendFunction {
     }
 }
 
-pub fn create_typescript_models_dir(project: Arc<Project>) -> Result<PathBuf, std::io::Error> {
+pub fn create_typescript_models_dir(project: &Project) -> Result<PathBuf, std::io::Error> {
     let models_dir = get_models_dir(project);
     match models_dir {
         Ok(dir) => {
@@ -151,7 +150,7 @@ pub fn create_typescript_models_dir(project: Arc<Project>) -> Result<PathBuf, st
     }
 }
 
-pub fn get_typescript_models_dir(project: Arc<Project>) -> Result<PathBuf, std::io::Error> {
+pub fn get_typescript_models_dir(project: &Project) -> Result<PathBuf, std::io::Error> {
     let models_dir = get_models_dir(project)?;
     let typescript_dir = models_dir.clone().join("typescript");
     if typescript_dir.exists() {

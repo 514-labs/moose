@@ -1,7 +1,6 @@
 use std::fs::File;
 use std::io::{prelude::*, Error, ErrorKind};
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
@@ -55,13 +54,13 @@ pub fn write_code_to_file(
     }
 }
 
-pub fn create_models_dir(project: Arc<Project>) -> Result<PathBuf, std::io::Error> {
+pub fn create_models_dir(project: &Project) -> Result<PathBuf, std::io::Error> {
     let internal_dir = project.internal_dir()?;
     std::fs::create_dir_all(internal_dir.join("models").clone())?;
     Ok(internal_dir)
 }
 
-pub fn get_models_dir(project: Arc<Project>) -> Result<PathBuf, std::io::Error> {
+pub fn get_models_dir(project: &Project) -> Result<PathBuf, std::io::Error> {
     let internal_dir = project.internal_dir()?;
     let models_dir = internal_dir.join("models");
 

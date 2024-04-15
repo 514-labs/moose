@@ -5,4 +5,3 @@ pub mod git;
 pub mod package_managers;
 pub mod retry;
 pub mod system;
-pub mod templates;

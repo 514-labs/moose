@@ -9,7 +9,13 @@ export const config = {
      * - _next/image (image optimization files)
      * - favicon.ico (favicon file)
      */
-    "/((?!monitoring-tunnel|api|_next/static|images|favicon.ico).*)",
+    {
+      source: "/((?!monitoring-tunnel|api|_next/static|images|favicon.ico).*)",
+      missing: [
+        { type: "header", key: "next-router-prefetch" },
+        { type: "header", key: "purpose", value: "prefetch" },
+      ],
+    },
   ],
 };
 export async function middleware(request: NextRequest) {

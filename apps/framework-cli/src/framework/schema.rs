@@ -23,7 +23,6 @@ use std::{
 };
 
 use crate::framework::controller::FrameworkObject;
-use crate::utilities::constants::SCHEMAS_DIR;
 use diagnostics::Diagnostics;
 
 use log::{debug, info};
@@ -106,11 +105,9 @@ impl Display for DuplicateModelError {
 impl std::error::Error for DuplicateModelError {}
 
 pub fn is_schema_file(path: &Path) -> bool {
-    path.to_string_lossy().contains(SCHEMAS_DIR)
-        && path
-            .extension()
-            .map(|e| e == "prisma" || e == "ts")
-            .unwrap_or(false)
+    path.extension()
+        .map(|e| e == "prisma" || e == "ts")
+        .unwrap_or(false)
 }
 
 // TODO: Make the parse schema file a variable and pass it into the function

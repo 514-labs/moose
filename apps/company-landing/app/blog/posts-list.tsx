@@ -10,7 +10,7 @@ import { humanReadableDate } from "../../lib/formatter";
 
 export function Posts({ posts }: { posts: Post[] }) {
   return (
-    <Section>
+    <Section className="px-0">
       <Grid>
         {posts.map(({ slug, title, description, publishedAt, categories }) => (
           <>

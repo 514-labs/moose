@@ -1,6 +1,7 @@
 import {
   Display,
   Heading,
+  HeadingLevel,
   SuperDisplay,
   Text,
   TextEmbed,
@@ -13,6 +14,11 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     h1: SuperDisplay,
     h2: Display,
     h3: Heading,
+    h4: ({ children }) => (
+      <Heading className="font-medium" longForm level={HeadingLevel.l4}>
+        {children}
+      </Heading>
+    ),
     ul: (props) => (
       <ul
         className="pl-8 list-disc text-primary leading-normal 2xl:leading-normal text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl"

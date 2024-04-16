@@ -61,7 +61,7 @@ async fn flush(
                     debug!("Inserted {} records", chunk.len());
                 }
                 Err(e) => {
-                    error!("Error inserting records: {:?}", e);
+                    error!("Error inserting records to {}: {:?}", table, e);
                 }
             }
         }

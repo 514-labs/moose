@@ -185,7 +185,9 @@ pub async fn create_or_replace_table_alias(
     previous_version: &FrameworkObject,
     configured_client: &ConfiguredDBClient,
 ) -> anyhow::Result<()> {
-    drop_tables(fo, configured_client).await?;
+    if !PROJECT.lock().unwrap().is_production {
+        drop_tables(fo, configured_client).await?;
+    }
 
     let query = CreateAliasQuery::build(&previous_version.table, &fo.table);
     olap::clickhouse::run_query(&query, configured_client).await?;

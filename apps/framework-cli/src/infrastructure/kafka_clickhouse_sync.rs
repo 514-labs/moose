@@ -156,7 +156,8 @@ async fn sync_kafka_to_clickhouse(
     clickhouse_config: ClickHouseConfig,
     framework_object: FrameworkObject,
 ) -> anyhow::Result<()> {
-    let subscriber = create_subscriber(&kafka_config, SYNC_GROUP_ID, &framework_object.topic);
+    let topic = &framework_object.topic;
+    let subscriber = create_subscriber(&kafka_config, SYNC_GROUP_ID, topic);
 
     let clikhouse_columns = framework_object
         .table
@@ -174,13 +175,13 @@ async fn sync_kafka_to_clickhouse(
     loop {
         match subscriber.recv().await {
             Err(e) => {
-                debug!("Error receiving message: {}", e);
+                debug!("Error receiving message from {}: {}", topic, e);
             }
 
             Ok(message) => match message.payload() {
                 Some(payload) => match std::str::from_utf8(payload) {
                     Ok(payload_str) => {
-                        debug!("Received message: {}", payload_str);
+                        debug!("Received message from {}: {}", topic, payload_str);
 
                         let parsed_json: Value = serde_json::from_str(payload_str)?;
                         let clickhouse_record = mapper_json_to_clickhouse_record(parsed_json)?;
@@ -188,11 +189,11 @@ async fn sync_kafka_to_clickhouse(
                         inserter.insert(clickhouse_record).await?;
                     }
                     Err(_) => {
-                        error!("Received message with invalid UTF-8");
+                        error!("Received message from {} with invalid UTF-8", topic);
                     }
                 },
                 None => {
-                    debug!("Received message with no payload");
+                    debug!("Received message from {} with no payload", topic);
                 }
             },
         }

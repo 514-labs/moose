@@ -41,6 +41,4 @@ export const sendServerEvent = async (name: string, event: any) => {
   const enhancedEvent = { host, env, referrer, ip, ...event };
 
   await mixpanelAsyncTrack(name, enhancedEvent, mixpanel);
-
-  mixpanel.track(name, enhancedEvent);
 };

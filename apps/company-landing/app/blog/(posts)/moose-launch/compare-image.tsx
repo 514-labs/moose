@@ -1,9 +1,9 @@
 import Image from "next/image";
 
 export const CompareImage = () => (
-  <div className="w-full relative aspect-video">
-    <div className=" dark:hidden flex relative aspect-video  flex-row">
-      <div className="w-[50%] h-full relative">
+  <div className="w-full relative py-5">
+    <div className=" dark:hidden flex relative aspect-square sm:aspect-video flex-col sm:flex-row">
+      <div className="w-full sm:w-[50%] h-full relative">
         <Image
           priority
           src={
@@ -14,7 +14,7 @@ export const CompareImage = () => (
           sizes=" (max-width: 768px) 50vw, 25vw"
         />
       </div>
-      <div className="w-[50%] h-full relative">
+      <div className="w-full sm:w-[50%] h-full relative">
         <Image
           priority
           src={
@@ -26,8 +26,8 @@ export const CompareImage = () => (
         />
       </div>
     </div>
-    <div className="hidden dark:flex aspect-video flex-row">
-      <div className="w-[50%] h-full relative">
+    <div className="hidden dark:flex aspect-square sm:aspect-video flex-col sm:flex-row">
+      <div className="w-full sm:w-[50%] h-full relative">
         <Image
           priority
           src={
@@ -38,7 +38,7 @@ export const CompareImage = () => (
           sizes=" (max-width: 768px) 50vw, 25vw"
         />
       </div>
-      <div className="w-[50%] h-full relative">
+      <div className="w-full sm:w-[50%] h-full relative">
         <Image
           priority
           src={

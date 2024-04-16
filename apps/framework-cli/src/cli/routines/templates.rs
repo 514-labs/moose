@@ -7,6 +7,8 @@ use flate2::read::GzDecoder;
 use futures::StreamExt;
 use tar::Archive;
 
+use super::{RoutineFailure, RoutineSuccess};
+use crate::cli::display::Message;
 use crate::cli::settings::user_directory;
 
 const TEMPLATE_REGISTRY_URL: &str = "https://templates.514.dev";
@@ -69,13 +71,22 @@ fn unpack(template_name: &str, template_version: &str, target_dir: &PathBuf) -> 
     Ok(())
 }
 
-pub async fn generate_template(
+async fn download_and_unpack(
     template_name: &str,
     template_version: &str,
     target_dir: &Path,
 ) -> anyhow::Result<()> {
     let canonnical_path = target_dir.canonicalize()?;
 
+    download(template_name, template_version).await?;
+    unpack(template_name, template_version, &canonnical_path)
+}
+
+pub async fn generate_template(
+    template_name: &str,
+    template_version: &str,
+    target_dir: &Path,
+) -> Result<RoutineSuccess, RoutineFailure> {
     // In dev we don't have a version, so we use the latest
     let version = if template_version == "0.0.1" {
         "latest".to_string()
@@ -83,7 +94,14 @@ pub async fn generate_template(
         template_version.to_string()
     };
 
-    download(template_name, &version).await?;
-    unpack(template_name, &version, &canonnical_path)?;
-    Ok(())
+    match download_and_unpack(template_name, &version, target_dir).await {
+        Ok(()) => Ok(RoutineSuccess::success(Message::new(
+            "Created".to_string(),
+            "Template".to_string(),
+        ))),
+        Err(e) => Err(RoutineFailure::error(Message {
+            action: "Template".to_string(),
+            details: format!("Failed to generate template: {:?}", e),
+        })),
+    }
 }

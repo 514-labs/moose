@@ -21,14 +21,15 @@ use log::{debug, info};
 use logger::setup_logging;
 use settings::{read_settings, Settings};
 
+use crate::cli::routines::dev::{copy_old_schema, create_deno_files, create_models_volume};
 use crate::cli::routines::flow::{CreateFlowDirectory, CreateFlowFile}; //, StartFlowProcess};
-use crate::cli::routines::start::{CopyOldSchema, CreateDenoFiles, CreateModelsVolume};
+use crate::cli::routines::templates;
 use crate::cli::routines::version::BumpVersion;
+use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::cli::{
     display::{Message, MessageType},
     routines::{
-        initialize::InitializeProject, start::RunLocalInfrastructure,
-        validate::ValidateRedPandaCluster, RoutineController, RunMode,
+        dev::run_local_infrastructure, initialize::InitializeProject, RoutineController, RunMode,
     },
     settings::{init_config_file, setup_user_directory},
 };
@@ -36,7 +37,6 @@ use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, versi
 use crate::project::Project;
 use crate::utilities::constants::CLI_VERSION;
 use crate::utilities::git::is_git_repo;
-use crate::utilities::templates;
 
 use self::routines::{
     clean::CleanProject, docker_packager::BuildDockerfile, docker_packager::CreateDockerfile,
@@ -62,350 +62,336 @@ struct Cli {
     command: Commands,
 }
 
-fn load_project() -> Project {
-    match Project::load_from_current_dir() {
-        Ok(project) => project,
-        Err(e) => {
-            match e {
-                ConfigError::Foreign(_) => {
-                    show_message!(
-                        MessageType::Error,
-                        Message {
-                            action: "Loading".to_string(),
-                            details:
-                                "No project found, please run `moose init` to create a project"
-                                    .to_string(),
-                        }
-                    );
-                }
-                _ => {
-                    show_message!(
-                        MessageType::Error,
-                        Message {
-                            action: "Loading".to_string(),
-                            details: format!("Please validate the project's configs: {:?}", e),
-                        }
-                    );
-                }
-            }
-            exit(1);
-        }
-    }
+fn load_project() -> Result<Project, RoutineFailure> {
+    Project::load_from_current_dir().map_err(|e| match e {
+        ConfigError::Foreign(_) => RoutineFailure::error(Message {
+            action: "Loading".to_string(),
+            details: "No project found, please run `moose init` to create a project".to_string(),
+        }),
+        _ => RoutineFailure::error(Message {
+            action: "Loading".to_string(),
+            details: format!("Please validate the project's configs: {:?}", e),
+        }),
+    })
 }
 
-async fn top_command_handler(settings: Settings, commands: &Commands) {
-    if !settings.features.coming_soon_wall {
-        match commands {
-            Commands::Init {
-                name,
-                language,
-                location,
-                template,
-                no_fail_already_exists,
-            } => {
-                info!(
-                    "Running init command with name: {}, language: {}, location: {:?}, template: {:?}",
-                    name, language, location, template
-                );
+async fn top_command_handler(
+    settings: Settings,
+    commands: &Commands,
+) -> Result<RoutineSuccess, RoutineFailure> {
+    match commands {
+        Commands::Init {
+            name,
+            language,
+            location,
+            template,
+            no_fail_already_exists,
+        } => {
+            info!(
+                "Running init command with name: {}, language: {}, location: {:?}, template: {:?}",
+                name, language, location, template
+            );
 
-                crate::utilities::capture::capture!(
-                    if template.is_some() {
-                        ActivityType::InitTemplateCommand
-                    } else {
-                        ActivityType::InitCommand
-                    },
-                    name.clone(),
-                    &settings
-                );
+            crate::utilities::capture::capture!(
+                if template.is_some() {
+                    ActivityType::InitTemplateCommand
+                } else {
+                    ActivityType::InitCommand
+                },
+                name.clone(),
+                &settings
+            );
 
-                let dir_path = Path::new(location.as_deref().unwrap_or(name));
-                if !no_fail_already_exists && dir_path.exists() {
-                    show_message!(
-                        MessageType::Error,
-                        Message {
-                            action: "Init".to_string(),
-                            details:
-                                "Directory already exists, please use the --no-fail-already-exists flag if this is expected."
-                                    .to_string(),
-                        }
-                    );
-                    exit(1);
-                }
-
-                std::fs::create_dir_all(dir_path).expect("Failed to create directory");
-
-                if dir_path.canonicalize().unwrap() == home_dir().unwrap().canonicalize().unwrap() {
-                    show_message!(
-                        MessageType::Error,
-                        Message {
-                            action: "Init".to_string(),
-                            details: "You cannot create a project in your home directory"
-                                .to_string(),
-                        }
-                    );
-                    exit(1);
-                }
-
-                // TODO: refactor this to be extracted in different functions
-                match template {
-                    Some(template) => {
-                        let res =
-                            templates::generate_template(template, CLI_VERSION, dir_path).await;
-
-                        match res {
-                            Ok(_) => {
-                                show_message!(
-                                    MessageType::Success,
-                                    Message::new("Created".to_string(), "Template".to_string())
-                                );
-                            }
-                            Err(e) => {
-                                show_message!(
-                                    MessageType::Error,
-                                    Message {
-                                        action: "Init".to_string(),
-                                        details: format!("Failed to create template: {:?}", e),
-                                    }
-                                );
-                            }
-                        }
-                    }
-                    None => {
-                        let project = Project::new(dir_path, name.clone(), *language);
-                        let project_arc = Arc::new(project);
-
-                        debug!("Project: {:?}", project_arc);
-
-                        let mut controller = RoutineController::new();
-                        let run_mode = RunMode::Explicit {};
-
-                        controller.add_routine(Box::new(InitializeProject::new(
-                            run_mode,
-                            project_arc.clone(),
-                        )));
-
-                        controller.run_routines(run_mode);
-
-                        project_arc
-                            .write_to_disk()
-                            .expect("Failed to write project to file");
-
-                        let is_git_repo = is_git_repo(dir_path)
-                            .expect("Failed to check if directory is a git repo");
-
-                        if !is_git_repo {
-                            crate::utilities::git::create_init_commit(project_arc, dir_path);
-                            show_message!(
-                                MessageType::Success,
-                                Message::new("Created".to_string(), "Git Repository".to_string())
-                            );
-                        }
-                    }
-                }
+            let dir_path = Path::new(location.as_deref().unwrap_or(name));
+            if !no_fail_already_exists && dir_path.exists() {
+                return Err(RoutineFailure::error(Message {
+                    action: "Init".to_string(),
+                    details:
+                        "Directory already exists, please use the --no-fail-already-exists flag if this is expected."
+                            .to_string(),
+                }));
             }
-            Commands::Build { docker } => {
-                let run_mode = RunMode::Explicit {};
-                info!("Running build command");
-                let project = load_project();
-                let project_arc = Arc::new(project);
 
-                crate::utilities::capture::capture!(
-                    ActivityType::BuildCommand,
-                    project_arc.name().clone(),
-                    &settings
-                );
+            std::fs::create_dir_all(dir_path).expect("Failed to create directory");
 
-                let mut controller = RoutineController::new();
+            if dir_path.canonicalize().unwrap() == home_dir().unwrap().canonicalize().unwrap() {
+                return Err(RoutineFailure::error(Message {
+                    action: "Init".to_string(),
+                    details: "You cannot create a project in your home directory".to_string(),
+                }));
+            }
 
-                // Remove versions directory so only the relevant versions will be populated
-                let _ = project_arc.delete_old_versions().map_err(|err| {
-                    show_message!(
-                        MessageType::Error,
-                        Message {
-                            action: "Build".to_string(),
-                            details: format!("Failed to delete old versions: {:?}", err),
-                        }
-                    );
-                    exit(1)
-                });
-
-                // Copy the old schema
-                controller.add_routine(Box::new(CopyOldSchema::new(project_arc.clone())));
-
-                // docker flag is true then build docker images
-                if *docker {
-                    crate::utilities::capture::capture!(
-                        ActivityType::DockerCommand,
-                        project_arc.name().clone(),
-                        &settings
-                    );
-                    controller.add_routine(Box::new(CreateDockerfile::new(project_arc.clone())));
-                    controller.add_routine(Box::new(BuildDockerfile::new(project_arc.clone())));
+            // TODO: refactor this to be extracted in different functions
+            match template {
+                Some(template) => {
+                    templates::generate_template(template, CLI_VERSION, dir_path).await
                 }
-                controller.run_routines(run_mode);
-            }
-            Commands::Dev {} => {
-                info!("Running dev command");
+                None => {
+                    let project = Project::new(dir_path, name.clone(), *language);
+                    let project_arc = Arc::new(project);
 
-                let project = load_project();
-
-                let _ = project.set_enviroment(false);
-                let project_arc = Arc::new(project);
-
-                crate::utilities::capture::capture!(
-                    ActivityType::DevCommand,
-                    project_arc.name().clone(),
-                    &settings
-                );
-
-                let mut controller = RoutineController::new();
-                let run_mode = RunMode::Explicit {};
-
-                controller.add_routine(Box::new(RunLocalInfrastructure::new(project_arc.clone())));
-
-                controller.add_routine(Box::new(ValidateRedPandaCluster::new(
-                    project_arc.name().clone(),
-                )));
-
-                controller.add_routine(Box::new(CopyOldSchema::new(project_arc.clone())));
-
-                controller.run_routines(run_mode);
-
-                routines::start_development_mode(project_arc).await.unwrap();
-            }
-            Commands::Generate(generate) => match generate.command {
-                Some(GenerateCommand::Migrations {}) => {
-                    info!("Running generate migration command");
-                    let project = load_project();
+                    debug!("Project: {:?}", project_arc);
 
                     let mut controller = RoutineController::new();
                     let run_mode = RunMode::Explicit {};
 
-                    controller.add_routine(Box::new(CopyOldSchema::new(Arc::new(project.clone()))));
-                    controller.add_routine(Box::new(GenerateMigration::new(Arc::new(project))));
+                    controller.add_routine(Box::new(InitializeProject::new(
+                        run_mode,
+                        project_arc.clone(),
+                    )));
+
                     controller.run_routines(run_mode);
-                }
-                None => {
-                    show_message!(
-                        MessageType::Error,
-                        Message {
-                            action: "Generate".to_string(),
-                            details: "Please provide a subcommand".to_string(),
-                        }
-                    );
-                }
-            },
-            Commands::Prod {} => {
-                info!("Running prod command");
-                let project = load_project();
 
-                let _ = project.set_enviroment(true);
-                let project_arc = Arc::new(project);
+                    project_arc
+                        .write_to_disk()
+                        .expect("Failed to write project to file");
 
-                crate::utilities::capture::capture!(
-                    ActivityType::ProdCommand,
-                    project_arc.name().clone(),
-                    &settings
-                );
+                    let is_git_repo =
+                        is_git_repo(dir_path).expect("Failed to check if directory is a git repo");
 
-                let mut controller = RoutineController::new();
-                let run_mode = RunMode::Explicit {};
-                controller.add_routine(Box::new(CreateModelsVolume::new(project_arc.clone())));
-                controller.add_routine(Box::new(CreateDenoFiles::new(project_arc.clone())));
-                // controller.add_routine(Box::new(StartFlowProcess::new(project_arc.clone())));
-                controller.run_routines(run_mode);
-
-                routines::start_production_mode(project_arc).await.unwrap();
-            }
-            Commands::BumpVersion { new_version } => {
-                let project = load_project();
-                let project_arc = Arc::new(project);
-
-                crate::utilities::capture::capture!(
-                    ActivityType::BumpVersionCommand,
-                    project_arc.name().clone(),
-                    &settings
-                );
-
-                let mut controller = RoutineController::new();
-                let run_mode = RunMode::Explicit {};
-
-                let new_version = match new_version {
-                    None => {
-                        let current = parse_version(project_arc.version());
-                        let bump_location = if current.len() > 1 { 1 } else { 0 };
-
-                        let new_version = current
-                            .into_iter()
-                            .enumerate()
-                            .map(|(i, v)| match i.cmp(&bump_location) {
-                                Ordering::Less => v,
-                                Ordering::Equal => v + 1,
-                                Ordering::Greater => 0,
-                            })
-                            .collect::<Vec<i32>>();
-                        version_to_string(&new_version)
-                    }
-                    Some(new_version) => new_version.clone(),
-                };
-
-                controller
-                    .add_routine(Box::new(BumpVersion::new(project_arc.clone(), new_version)));
-                controller.run_routines(run_mode);
-            }
-            Commands::Clean {} => {
-                let run_mode = RunMode::Explicit {};
-                let project = load_project();
-                let project_arc = Arc::new(project);
-
-                crate::utilities::capture::capture!(
-                    ActivityType::CleanCommand,
-                    project_arc.name().clone(),
-                    &settings
-                );
-
-                let mut controller = RoutineController::new();
-                controller.add_routine(Box::new(CleanProject::new(project_arc, run_mode)));
-                controller.run_routines(run_mode);
-            }
-            Commands::Flow(flow) => {
-                info!("Running flow command");
-
-                let flow_cmd = flow.command.as_ref().unwrap();
-                match flow_cmd {
-                    FlowCommands::Init(init) => {
-                        let project = load_project();
-                        let project_arc = Arc::new(project);
-
-                        crate::utilities::capture::capture!(
-                            ActivityType::FlowInitCommand,
-                            project_arc.name().clone(),
-                            &settings
+                    if !is_git_repo {
+                        crate::utilities::git::create_init_commit(project_arc, dir_path);
+                        show_message!(
+                            MessageType::Success,
+                            Message {
+                                action: "Init".to_string(),
+                                details: "Created a new git repository".to_string(),
+                            }
                         );
-
-                        let mut controller = RoutineController::new();
-                        let run_mode = RunMode::Explicit {};
-
-                        controller.add_routine(Box::new(CreateFlowDirectory::new(
-                            project_arc.clone(),
-                            init.source.clone(),
-                            init.destination.clone(),
-                        )));
-                        controller.add_routine(Box::new(CreateFlowFile::new(
-                            project_arc,
-                            init.source.clone(),
-                            init.destination.clone(),
-                        )));
-                        controller.run_routines(run_mode);
                     }
+
+                    Ok(RoutineSuccess::success(Message::new(
+                        "Created".to_string(),
+                        "New Project".to_string(),
+                    )))
                 }
             }
         }
-    } else {
-        show_message!(MessageType::Banner, Message {
-            action: "Coming Soon".to_string(),
-            details: "Join the MooseJS community to stay up to date on the latest features: https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg".to_string(),
-        });
+        Commands::Build { docker } => {
+            let run_mode = RunMode::Explicit {};
+            info!("Running build command");
+            let project = load_project()?;
+            let project_arc = Arc::new(project);
+
+            crate::utilities::capture::capture!(
+                ActivityType::BuildCommand,
+                project_arc.name().clone(),
+                &settings
+            );
+
+            let mut controller = RoutineController::new();
+
+            // Remove versions directory so only the relevant versions will be populated
+            project_arc.delete_old_versions().map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Build".to_string(),
+                    details: format!("Failed to delete old versions: {:?}", e),
+                })
+            })?;
+
+            copy_old_schema(&project_arc)?;
+
+            // docker flag is true then build docker images
+            if *docker {
+                crate::utilities::capture::capture!(
+                    ActivityType::DockerCommand,
+                    project_arc.name().clone(),
+                    &settings
+                );
+                // TODO get rid of the routines and use functions instead
+                controller.add_routine(Box::new(CreateDockerfile::new(project_arc.clone())));
+                controller.add_routine(Box::new(BuildDockerfile::new(project_arc.clone())));
+                controller.run_routines(run_mode);
+
+                Ok(RoutineSuccess::success(Message::new(
+                    "Built".to_string(),
+                    "Docker images".to_string(),
+                )))
+            } else {
+                Err(RoutineFailure::error(Message {
+                    action: "Build".to_string(),
+                    details: "Docker flag is not set and is currently mandatory".to_string(),
+                }))
+            }
+        }
+        Commands::Dev {} => {
+            info!("Running dev command");
+
+            let project = load_project()?;
+
+            let _ = project.set_enviroment(false);
+            let project_arc = Arc::new(project);
+
+            crate::utilities::capture::capture!(
+                ActivityType::DevCommand,
+                project_arc.name().clone(),
+                &settings
+            );
+
+            run_local_infrastructure(&project_arc)?;
+
+            routines::start_development_mode(project_arc)
+                .await
+                .map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Dev".to_string(),
+                        details: format!("Failed to start development mode: {:?}", e),
+                    })
+                })?;
+
+            Ok(RoutineSuccess::success(Message::new(
+                "Ran".to_string(),
+                "local infrastructure".to_string(),
+            )))
+        }
+        Commands::Generate(generate) => match generate.command {
+            Some(GenerateCommand::Migrations {}) => {
+                info!("Running generate migration command");
+                let project = load_project()?;
+                let project_arc = Arc::new(project);
+
+                let mut controller = RoutineController::new();
+                let run_mode = RunMode::Explicit {};
+
+                copy_old_schema(&project_arc)?;
+
+                // TODO get rid of the routines and use functions instead
+                controller.add_routine(Box::new(GenerateMigration::new(project_arc)));
+                controller.run_routines(run_mode);
+
+                Ok(RoutineSuccess::success(Message::new(
+                    "Generated".to_string(),
+                    "migrations".to_string(),
+                )))
+            }
+            None => Err(RoutineFailure::error(Message {
+                action: "Generate".to_string(),
+                details: "Please provide a subcommand".to_string(),
+            })),
+        },
+        Commands::Prod {} => {
+            info!("Running prod command");
+            let project = load_project()?;
+
+            let _ = project.set_enviroment(true);
+            let project_arc = Arc::new(project);
+
+            crate::utilities::capture::capture!(
+                ActivityType::ProdCommand,
+                project_arc.name().clone(),
+                &settings
+            );
+
+            create_models_volume(&project_arc)?;
+            create_deno_files(&project_arc)?;
+
+            routines::start_production_mode(project_arc).await.unwrap();
+
+            Ok(RoutineSuccess::success(Message::new(
+                "Ran".to_string(),
+                "production infrastructure".to_string(),
+            )))
+        }
+        Commands::BumpVersion { new_version } => {
+            let project = load_project()?;
+            let project_arc = Arc::new(project);
+
+            crate::utilities::capture::capture!(
+                ActivityType::BumpVersionCommand,
+                project_arc.name().clone(),
+                &settings
+            );
+
+            let mut controller = RoutineController::new();
+            let run_mode = RunMode::Explicit {};
+
+            let new_version = match new_version {
+                None => {
+                    let current = parse_version(project_arc.version());
+                    let bump_location = if current.len() > 1 { 1 } else { 0 };
+
+                    let new_version = current
+                        .into_iter()
+                        .enumerate()
+                        .map(|(i, v)| match i.cmp(&bump_location) {
+                            Ordering::Less => v,
+                            Ordering::Equal => v + 1,
+                            Ordering::Greater => 0,
+                        })
+                        .collect::<Vec<i32>>();
+                    version_to_string(&new_version)
+                }
+                Some(new_version) => new_version.clone(),
+            };
+
+            // TODO get rid of the routines and use functions instead
+            controller.add_routine(Box::new(BumpVersion::new(project_arc.clone(), new_version)));
+            controller.run_routines(run_mode);
+
+            Ok(RoutineSuccess::success(Message::new(
+                "Bumped".to_string(),
+                "Version".to_string(),
+            )))
+        }
+        Commands::Clean {} => {
+            let run_mode = RunMode::Explicit {};
+            let project = load_project()?;
+            let project_arc = Arc::new(project);
+
+            crate::utilities::capture::capture!(
+                ActivityType::CleanCommand,
+                project_arc.name().clone(),
+                &settings
+            );
+
+            // TODO get rid of the routines and use functions instead
+            let mut controller = RoutineController::new();
+            controller.add_routine(Box::new(CleanProject::new(project_arc, run_mode)));
+            controller.run_routines(run_mode);
+
+            Ok(RoutineSuccess::success(Message::new(
+                "Cleaned".to_string(),
+                "Project".to_string(),
+            )))
+        }
+        Commands::Flow(flow) => {
+            info!("Running flow command");
+
+            let flow_cmd = flow.command.as_ref().unwrap();
+            match flow_cmd {
+                FlowCommands::Init(init) => {
+                    let project = load_project()?;
+                    let project_arc = Arc::new(project);
+
+                    crate::utilities::capture::capture!(
+                        ActivityType::FlowInitCommand,
+                        project_arc.name().clone(),
+                        &settings
+                    );
+
+                    let mut controller = RoutineController::new();
+                    let run_mode = RunMode::Explicit {};
+
+                    // TODO get rid of the routines and use functions instead
+                    controller.add_routine(Box::new(CreateFlowDirectory::new(
+                        project_arc.clone(),
+                        init.source.clone(),
+                        init.destination.clone(),
+                    )));
+                    controller.add_routine(Box::new(CreateFlowFile::new(
+                        project_arc,
+                        init.source.clone(),
+                        init.destination.clone(),
+                    )));
+                    controller.run_routines(run_mode);
+
+                    Ok(RoutineSuccess::success(Message::new(
+                        "Created".to_string(),
+                        "Flow".to_string(),
+                    )))
+                }
+            }
+        }
     }
 }
 
@@ -420,5 +406,14 @@ pub async fn cli_run() {
 
     let cli = Cli::parse();
 
-    top_command_handler(config, &cli.command).await
+    match top_command_handler(config, &cli.command).await {
+        Ok(s) => {
+            show_message!(s.message_type, s.message);
+            exit(0);
+        }
+        Err(e) => {
+            show_message!(e.message_type, e.message);
+            exit(1);
+        }
+    };
 }

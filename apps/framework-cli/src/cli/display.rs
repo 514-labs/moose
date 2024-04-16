@@ -1,4 +1,3 @@
-use console::style;
 use lazy_static::lazy_static;
 use spinners::{Spinner, Spinners};
 use std::sync::{Arc, RwLock};
@@ -63,26 +62,6 @@ pub enum MessageType {
     Info,
     Success,
     Error,
-    Banner,
-}
-
-pub fn styled_banner() -> String {
-    format!(
-        r#"
-
----------------------------------------------------------------------------------------
-{} 
-We're simplifying how engineers build, deploy and maintain data-intensive applications 
-with the first full-stack data-intensive framework.  
-
-Join our community to keep up with our progress, contribute to moose or join our team:
-{}
----------------------------------------------------------------------------------------
-
-"#,
-        style("# Moose is coming soon").bold(),
-        style("https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg").color256(118).bold()
-    )
 }
 
 #[derive(Debug, Clone)]
@@ -103,7 +82,6 @@ lazy_static! {
 
 macro_rules! show_message {
     ($message_type:expr, $message:expr) => {
-        use crate::cli::display::styled_banner;
         use crate::cli::display::TERM;
         use console::{pad_str, style};
 
@@ -166,14 +144,6 @@ macro_rules! show_message {
                     ))
                     .expect("failed to write message to terminal");
                 command_terminal.counter += 1;
-            }
-            MessageType::Banner => {
-                let mut command_terminal = TERM.write().unwrap();
-                command_terminal
-                    .term
-                    .write_line(&styled_banner())
-                    .expect("failed to write message to terminal");
-                command_terminal.counter += styled_banner().lines().count();
             }
         };
     };

@@ -15,7 +15,7 @@ export const BannerDisplay = ({
     <h1
       className={cn(
         "text-primary text-nowrap text-9xl md:text-[20rem] ",
-        className
+        className,
       )}
     >
       {children}
@@ -33,7 +33,7 @@ export const SuperDisplay = ({
     <h1
       className={cn(
         "text-primary text-4xl xs:text-5xl sm:text-7xl md:text-8xl lg:text-9xl 2xl:text-[12rem] 3xl::text-[13rem]",
-        className
+        className,
       )}
     >
       {children}
@@ -50,7 +50,7 @@ export const Display = ({
       className={cn(
         "text-primary text-6xl sm:text-8xl 3xl:text-9xl",
         textBase,
-        className
+        className,
       )}
     >
       {children}
@@ -60,9 +60,9 @@ export const Display = ({
 
 export enum HeadingLevel {
   l1 = "text-primary text-4xl sm:text-6xl 3xl:text-7xl",
-  l2 = "text-primary text-3xl sm:text-5xl 3xl:text-6xl",
-  l3 = "text-primary text-2xl sm:text-4xl 3xl:text-5xl",
-  l4 = "text-primary text-xl sm:text-3xl 3xl:text-4xl",
+  l2 = "text-primary text-2xl sm:text-4xl 3xl:text-5xl",
+  l3 = "text-primary text-xl sm:text-3xl 3xl:text-4xl",
+  l4 = "text-primary text-lg sm:text-2xl 3xl:text-3xl",
 }
 
 interface HeadingProps extends ComponentPropsWithoutRef<"h3"> {
@@ -70,7 +70,7 @@ interface HeadingProps extends ComponentPropsWithoutRef<"h3"> {
   longForm?: boolean; // Is the heading part of a long form text?
 }
 
-const longFormHeadingBase = textBase + " my-10";
+const longFormHeadingBase = textBase + " mt-10 mb-0";
 
 export const Heading = ({
   className,
@@ -83,7 +83,7 @@ export const Heading = ({
       className={cn(
         level,
         longForm ? longFormHeadingBase : textBase,
-        className
+        className,
       )}
     >
       {children}
@@ -92,7 +92,7 @@ export const Heading = ({
 };
 
 const smallBodyBase =
-  "text-primary leading-normal 2xl:leading-normal text-md sm:text-lg 2xl:text-xl 3xl:text-2xl";
+  "text-primary leading-normal 2xl:leading-normal sm:text-base 2xl:text-lg 3xl:text-xl";
 
 export const SmallText = ({
   className,
@@ -117,7 +117,7 @@ export const SmallTextEmbed = ({
 };
 
 const bodyBase =
-  "text-primary leading-normal 2xl:leading-normal text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl";
+  "text-primary leading-normal 2xl:leading-normal sm:text-lg 2xl:text-xl 3xl:text-2xl";
 
 export const TextEmbed = forwardRef<
   HTMLSpanElement,
@@ -146,14 +146,14 @@ export const Text = forwardRef<HTMLParagraphElement, TextProps>(
         className={cn(
           bodyBase,
           longForm ? longFormTextBase : textBase,
-          className
+          className,
         )}
         {...props}
       >
         {children}
       </p>
     );
-  }
+  },
 );
 
 export const CodeSnippet = ({
@@ -167,7 +167,7 @@ export const CodeSnippet = ({
     <div
       className={cn(
         "text-primary bg-muted rounded-md py-5 px-6 flex flex-row gap-5 cursor-pointer",
-        className
+        className,
       )}
     >
       <Text className="grow my-0">{children}</Text>

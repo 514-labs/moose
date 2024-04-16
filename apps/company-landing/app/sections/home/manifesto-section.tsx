@@ -15,7 +15,7 @@ export const ManifestoSection = () => {
   return (
     <Section>
       <Grid className="gap-y-5">
-        <HalfWidthContentContainer className="2xl:col-span-3 aspect-square bg-muted sticky md:top-24">
+        <HalfWidthContentContainer className="xl:col-span-3 aspect-square bg-muted sticky md:top-24">
           <div className="relative h-full">
             <Image
               className=""
@@ -27,7 +27,7 @@ export const ManifestoSection = () => {
             />
           </div>
         </HalfWidthContentContainer>
-        <HalfWidthContentContainer className="2xl:col-start-7">
+        <HalfWidthContentContainer className="xl:col-start-7">
           <Text className="mt-0">
             The modern data stack has come a long way.
           </Text>

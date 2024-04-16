@@ -40,7 +40,9 @@ export async function middleware(request: NextRequest) {
     );
 
     if (!response.ok) {
-      throw new Error("Failed to send event");
+      throw new Error(
+        `Failed to send event: ${response.statusText}, ${response.url}`,
+      );
     }
   } catch (error) {
     console.error(error);

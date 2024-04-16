@@ -173,6 +173,7 @@ jobs:
     needs:
       - version
       - build-and-publish-binaries
+      - build-and-publish-console
     runs-on: ubuntu-20.04
     if: ${{ !inputs.dry-run }}
     steps:

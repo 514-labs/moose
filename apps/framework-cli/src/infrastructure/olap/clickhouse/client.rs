@@ -2,10 +2,12 @@ use base64::prelude::*;
 use http_body_util::BodyExt;
 use http_body_util::Full;
 
+use async_recursion::async_recursion;
 use hyper::body::Bytes;
 use hyper::{Request, Response, Uri};
 use hyper_tls::HttpsConnector;
 use hyper_util::client::legacy::{connect::HttpConnector, Client};
+use tokio::time::{sleep, Duration};
 
 use super::config::ClickHouseConfig;
 use super::model::ClickHouseRecord;
@@ -17,6 +19,11 @@ pub struct ClickHouseClient {
     ssl_client: Client<HttpsConnector<HttpConnector>, Full<Bytes>>,
     config: ClickHouseConfig,
 }
+
+// Considering Clickhouse could take 30s to wake up, we need to have a backoff strategy
+const BACKOFF_START_MILLIS: u64 = 1000;
+const MAX_RETRIES: u8 = 10;
+// Retries will be 1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s, 512s
 
 // TODO - investigate if we need to change basic auth
 impl ClickHouseClient {
@@ -37,14 +44,33 @@ impl ClickHouseClient {
         &self.config
     }
 
+    #[async_recursion]
     async fn request(
         &self,
         req: Request<Full<Bytes>>,
+        retries: u8,
+        backoff_millis: u64,
     ) -> Result<Response<hyper::body::Incoming>, hyper_util::client::legacy::Error> {
-        if self.config.use_ssl {
-            self.ssl_client.request(req).await
+        let res = if self.config.use_ssl {
+            self.ssl_client.request(req.clone()).await
         } else {
-            self.client.request(req).await
+            self.client.request(req.clone()).await
+        };
+
+        match res {
+            Ok(res) => Ok(res),
+            Err(e) => {
+                if e.is_connect() {
+                    if retries > 0 {
+                        sleep(Duration::from_millis(backoff_millis)).await;
+                        self.request(req, retries - 1, backoff_millis * 2).await
+                    } else {
+                        Err(e)
+                    }
+                } else {
+                    Err(e)
+                }
+            }
         }
     }
 
@@ -56,7 +82,8 @@ impl ClickHouseClient {
             .uri("/ping")
             .body(Full::new(empty_body))?;
 
-        let res: Response<hyper::body::Incoming> = self.request(req).await?;
+        let res: Response<hyper::body::Incoming> =
+            self.request(req, MAX_RETRIES, BACKOFF_START_MILLIS).await?;
 
         assert_eq!(res.status(), 200);
         Ok(())
@@ -129,7 +156,7 @@ impl ClickHouseClient {
             .header("Content-Length", bytes.len())
             .body(Full::new(bytes))?;
 
-        let res = self.request(req).await?;
+        let res = self.request(req, MAX_RETRIES, BACKOFF_START_MILLIS).await?;
 
         let status = res.status();
 

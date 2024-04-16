@@ -43,10 +43,12 @@ async fn process_events(
         events, route_table
     );
 
+    let schema_files = project.schemas_dir();
+
     let paths = events
         .into_iter()
         .flat_map(|e| e.paths)
-        .filter(|p| is_schema_file(p))
+        .filter(|p| is_schema_file(p) && p.starts_with(&schema_files))
         .collect::<HashSet<PathBuf>>();
 
     let mut new_objects = HashMap::new();

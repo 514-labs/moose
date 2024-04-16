@@ -14,7 +14,9 @@ function IP() {
 }
 
 export const sendServerEvent = async (name: string, event: any) => {
-  const mixpanel = Mixpanel.init("be8ca317356e20c587297d52f93f3f9e");
+  const mixpanel = Mixpanel.init("be8ca317356e20c587297d52f93f3f9e", {
+    keepAlive: false,
+  });
   const headersList = headers();
   const host = headersList.get("host");
   const referrer = headersList.get("referer");

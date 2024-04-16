@@ -29,7 +29,7 @@ export const metadata: Metadata = {
 };
 
 const default_navigation = [
-  // { name: "blog", href: "/blog" },
+  { name: "blog", href: "/blog" },
   // { name: "community", href: "/community" },
 
   {

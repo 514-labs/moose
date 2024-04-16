@@ -7,9 +7,11 @@ const config = {
     "./components/**/*.{ts,tsx, md, mdx}",
     "./app/**/*.{ts,tsx, md, mdx}",
     "./src/**/*.{ts,tsx, md, mdx}",
+    "./mdx-components.tsx",
     "../../packages/design-system/**/*.{ts,tsx, md, mdx}",
     "../../packages/event-capture/**/*.{ts,tsx, md, mdx}",
   ],
+  // safelist: ["list-disc", "list-decimal", "list-inside", "list-item", "pl-5", "aspect-video"],
   prefix: "",
   theme: {
     container: {

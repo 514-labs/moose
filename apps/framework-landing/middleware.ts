@@ -38,7 +38,6 @@ export async function middleware(request: NextRequest) {
         }),
       },
     );
-    console.log("URL", response.url);
 
     if (!response.ok) {
       throw new Error(

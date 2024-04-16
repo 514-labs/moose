@@ -1,4 +1,4 @@
-import { Heading, Text } from "design-system/typography";
+import { Text } from "design-system/typography";
 import { humanReadableDate } from "../../../../../lib/formatter";
 
 const getMetaFromParent = async () => {
@@ -11,11 +11,14 @@ export default async function Meta() {
 
   return (
     <div>
-      <Heading>{meta.title}</Heading>
       <Text>{humanReadableDate(meta.publishedAt)}</Text>
-      {meta.categories.map((cat: string, i: number) => (
-        <Text key={i}>{cat}</Text>
-      ))}
+      {meta.categories.map((cat: string, i: number) => {
+        if (i === meta.categories.length - 1) {
+          return <Text key={i}>{cat}</Text>;
+        } else {
+          return <Text key={i}>{cat}, </Text>;
+        }
+      })}
     </div>
   );
 }

@@ -16,25 +16,36 @@ export const config = {
 export async function middleware(request: NextRequest) {
   const ip = request.ip ? request.ip : request.headers.get("X-Forwarded-For");
   const host = request.nextUrl.host;
-
   const referrer = headers().get("referer") ?? request.referrer;
   const pathname = request.nextUrl.pathname;
 
   const env = process.env.NODE_ENV;
-  fetch(`${request.nextUrl.protocol}//${request.nextUrl.host}/api/event`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      name: "page_view",
-      host,
-      referrer,
-      env,
-      ip,
-      pathname,
-    }),
-  });
+  try {
+    const response = await fetch(
+      `${request.nextUrl.protocol}//${request.nextUrl.host}/api/event`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: "page_view",
+          host,
+          referrer,
+          env,
+          ip,
+          pathname,
+        }),
+      },
+    );
 
+    if (!response.ok) {
+      throw new Error(
+        `Failed to send event: ${response.status}, ${response.url}`,
+      );
+    }
+  } catch (error) {
+    console.error(error);
+  }
   return NextResponse.next();
 }

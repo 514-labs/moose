@@ -19,20 +19,30 @@ export async function middleware(request: NextRequest) {
   const pathname = request.nextUrl.pathname;
 
   const env = process.env.NODE_ENV;
-  fetch(`${request.nextUrl.protocol}//${request.nextUrl.host}/api/event`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      name: "page_view",
-      host,
-      referrer,
-      env,
-      ip,
-      pathname,
-    }),
-  });
+  try {
+    const response = await fetch(
+      `${request.nextUrl.protocol}//${request.nextUrl.host}/api/event`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          name: "page_view",
+          host,
+          referrer,
+          env,
+          ip,
+          pathname,
+        }),
+      },
+    );
 
+    if (!response.ok) {
+      throw new Error("Failed to send event");
+    }
+  } catch (error) {
+    console.error(error);
+  }
   return NextResponse.next();
 }

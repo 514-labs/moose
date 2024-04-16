@@ -22,7 +22,7 @@ FROM base AS installer
 RUN apk add --no-cache libc6-compat
 RUN apk update
 
-RUN npm install --g pnpm
+RUN npm install --g pnpm@latest-8
 
 WORKDIR /app
 

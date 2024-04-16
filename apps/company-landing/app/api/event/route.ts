@@ -4,6 +4,10 @@ import { sendServerEvent } from "event-capture/server-event";
 // send an event to mixpanel
 export async function POST(request: NextRequest) {
   const { name, ...payload } = await request.json();
-  sendServerEvent(name, payload);
+  try {
+    await sendServerEvent(name, payload);
+  } catch (error) {
+    console.error(error);
+  }
   return new Response("OK");
 }

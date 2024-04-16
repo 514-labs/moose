@@ -13,6 +13,22 @@ function IP() {
   return headers().get("x-real-ip") ?? FALLBACK_IP_ADDRESS;
 }
 
+async function mixpanelAsyncTrack(
+  event: string,
+  properties: object,
+  mixpanel: Mixpanel.Mixpanel,
+) {
+  return new Promise((resolve, reject) => {
+    mixpanel.track(event, properties, (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve("success");
+      }
+    });
+  });
+}
+
 export const sendServerEvent = async (name: string, event: any) => {
   const mixpanel = Mixpanel.init("be8ca317356e20c587297d52f93f3f9e", {
     keepAlive: false,
@@ -25,6 +41,8 @@ export const sendServerEvent = async (name: string, event: any) => {
   const env = process.env.NODE_ENV;
 
   const enhancedEvent = { host, env, referrer, ip, ...event };
+
+  await mixpanelAsyncTrack(name, enhancedEvent, mixpanel);
 
   mixpanel.track(name, enhancedEvent);
 };

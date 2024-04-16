@@ -15,13 +15,13 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     h3: Heading,
     ul: (props) => (
       <ul
-        className="pl-5 list-disc text-primary leading-normal 2xl:leading-normal text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl"
+        className="pl-8 list-disc text-primary leading-normal 2xl:leading-normal text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl"
         {...props}
       />
     ),
     ol: (props) => (
       <ol
-        className="pl-5 list-decimal text-primary leading-normal 2xl:leading-normal text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl"
+        className="pl-8 list-decimal text-primary leading-normal 2xl:leading-normal text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl"
         {...props}
       />
     ),

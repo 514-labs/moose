@@ -489,6 +489,8 @@ fn ts_parse_property_signature(
     enums: &[DataEnum],
 ) -> Result<Column, ParsingError> {
     let mut primary_key = false;
+    let unique = false;
+    let default = None;
 
     // match the key's sym if it's an ident
     let name = match *prop.key.clone() {
@@ -499,6 +501,13 @@ fn ts_parse_property_signature(
             })
         }
     };
+
+    // match the optional flag
+    let arity = match prop.optional {
+        true => FieldArity::Optional,
+        false => FieldArity::Required,
+    };
+
     // match the type of the value and return the right column type
     let TsTypeAnn { type_ann, .. } =
         *prop
@@ -509,15 +518,10 @@ fn ts_parse_property_signature(
             })?;
     let data_type = ts_parse_type_ann(type_ann, enums, &mut primary_key)?;
 
-    println!(
-        "name: {}, data_type: {:?}, primary_key: {:?}",
-        name, data_type, primary_key
+    debug!(
+        "name: {}, data_type: {:?}, primary_key: {:?}, arity: {:?}",
+        name, data_type, primary_key, arity
     );
-
-    // match the optional flag
-    let arity = FieldArity::Required;
-    let unique = false;
-    let default = None;
 
     Ok(Column {
         name,
@@ -679,7 +683,6 @@ mod tests {
 
         let result = parse_ts_schema_file(&test_file);
         println!("{:#?}", result);
-        let _ = ts_ast_mapper(result);
         assert!(true);
     }
 

@@ -11,6 +11,7 @@ use lazy_static::lazy_static;
 use log::debug;
 use regex::Regex;
 use std::collections::HashMap;
+use std::ffi::OsStr;
 
 pub fn parse_version(v: &str) -> Vec<i32> {
     v.split('.')
@@ -116,6 +117,7 @@ pub fn get_all_version_syncs(
                                 return Err(anyhow::anyhow!(
                                     "Failed to find tables in versions {:?}",
                                     path.file_name()
+                                        .unwrap_or(OsStr::new("File name not found"))
                                 ));
                             }
                         }

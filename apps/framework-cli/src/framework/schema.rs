@@ -422,6 +422,12 @@ pub fn ts_ast_mapper(ast: Module) -> Result<FileObjects, ParsingError> {
         ModuleItem::Stmt(Stmt::Decl(Decl::TsInterface(decl))) => {
             ts_declarations.push(decl);
         }
+        ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
+            decl: Decl::TsEnum(decl),
+            ..
+        })) => {
+            enums.push(ts_enum_to_data_enum(decl));
+        }
         ModuleItem::Stmt(Stmt::Decl(Decl::TsEnum(decl))) => {
             enums.push(ts_enum_to_data_enum(decl));
         }
@@ -502,6 +508,11 @@ fn ts_parse_property_signature(
                 type_name: "no type for property".to_string(),
             })?;
     let data_type = ts_parse_type_ann(type_ann, enums, &mut primary_key)?;
+
+    println!(
+        "name: {}, data_type: {:?}, primary_key: {:?}",
+        name, data_type, primary_key
+    );
 
     // match the optional flag
     let arity = FieldArity::Required;

@@ -494,7 +494,13 @@ fn ts_parse_property_signature(
         }
     };
     // match the type of the value and return the right column type
-    let TsTypeAnn { type_ann, .. } = *prop.type_ann.clone().expect("no type for property");
+    let TsTypeAnn { type_ann, .. } =
+        *prop
+            .type_ann
+            .clone()
+            .ok_or(ParsingError::UnsupportedDataTypeError {
+                type_name: "no type for property".to_string(),
+            })?;
     let data_type = ts_parse_type_ann(type_ann, enums, &mut primary_key)?;
 
     // match the optional flag
@@ -561,7 +567,7 @@ fn ts_parse_type_ref(
     }
 
     if type_ref_name == "Date" {
-        return Ok(ColumnType::DateTime);
+        Ok(ColumnType::DateTime)
     } else if is_enum_type(&type_ref_name, enums) {
         Ok(ColumnType::Enum(
             enums
@@ -575,6 +581,7 @@ fn ts_parse_type_ref(
     }
 }
 
+#[allow(clippy::vec_box)]
 fn ts_parse_union_or_intersection_type(
     union_or_intersection_type: Vec<Box<TsType>>,
     enums: &[DataEnum],

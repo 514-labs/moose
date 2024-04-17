@@ -38,9 +38,8 @@ use crate::project::PROJECT;
 
 use swc_common::{self, sync::Lrc, SourceMap};
 use swc_ecma_ast::{
-    Decl, ExportDecl, Expr, Module, ModuleDecl, ModuleItem, Stmt, TsEnumDecl, TsEnumMember,
-    TsEnumMemberId, TsInterfaceDecl, TsKeywordTypeKind, TsPropertySignature, TsType, TsTypeAnn,
-    TsTypeRef,
+    Decl, ExportDecl, Expr, Module, ModuleDecl, ModuleItem, Stmt, TsEnumDecl, TsEnumMemberId,
+    TsInterfaceDecl, TsKeywordTypeKind, TsPropertySignature, TsType, TsTypeAnn, TsTypeRef,
 };
 use swc_ecma_parser::{lexer::Lexer, Capturing, Parser, StringInput, Syntax};
 
@@ -447,12 +446,9 @@ fn ts_enum_to_data_enum(enum_decl: &TsEnumDecl) -> DataEnum {
     let values = enum_decl
         .members
         .iter()
-        .map(|member| match member {
-            TsEnumMember {
-                id: TsEnumMemberId::Ident(ident),
-                ..
-            } => ident.sym.to_string(),
-            _ => "unsupported".to_string(),
+        .map(|member| match &member.id {
+            TsEnumMemberId::Ident(ident) => ident.sym.to_string(),
+            TsEnumMemberId::Str(str) => str.value.to_string(),
         })
         .collect();
     DataEnum { name, values }

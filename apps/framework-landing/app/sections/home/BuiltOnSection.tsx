@@ -7,7 +7,7 @@ import {
 
 export const BuiltOnSection = () => {
   const content = {
-    title: "Build for speed, built for scale, built for you",
+    title: "Built for speed, built for scale, built for you",
     description:
       "Moose comes batteries included with a best-in-class data stack. Performant, scalable, reliable and, above all, runs on your laptop, this stack can handle different types of realtime and batch workloads. From high-heat shoe launches to bio informatics and everything else in between, moose has you covered.",
     stack: [

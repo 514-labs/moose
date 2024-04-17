@@ -22,6 +22,7 @@ export const metadata: Metadata = {
   title: "514—A data platform for all devs",
   description:
     "We build the frameworks, workflows and infrastructure that make data accessible to all developers.",
+  metadataBase: new URL("https://www.fiveonefour.com"),
 };
 
 const default_navigation = [

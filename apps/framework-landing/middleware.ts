@@ -12,7 +12,7 @@ export const config = {
      */
     {
       source:
-        "/((?!monitoring-tunnel|api|_next/static|images|favicon.ico|opengraph-image.jpg|wp-*|apple-*|cgi-*|robots.txt).*)",
+        "/((?!monitoring-tunnel|api|_next/static|images|favicon.ico|opengraph-image.*|wp-*|apple-*|cgi-*|robots.txt).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

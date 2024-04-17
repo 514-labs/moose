@@ -410,27 +410,23 @@ pub fn ts_ast_mapper(ast: Module) -> Result<FileObjects, ParsingError> {
 
     let mut ts_declarations = Vec::new();
 
-    // collect all inteface and enum declarations
-    ast.body.iter().for_each(|item| match item {
-        ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
-            decl: Decl::TsInterface(decl),
-            ..
-        })) => {
-            ts_declarations.push(decl);
+    // collect all interface and enum declarations
+    ast.body.iter().for_each(|item| {
+        let decl = match item {
+            ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl { decl, .. }))
+            | ModuleItem::Stmt(Stmt::Decl(decl)) => decl,
+            _ => return,
+        };
+
+        match decl {
+            Decl::TsInterface(decl) => {
+                ts_declarations.push(decl);
+            }
+            Decl::TsEnum(decl) => {
+                enums.push(ts_enum_to_data_enum(decl));
+            }
+            _ => {}
         }
-        ModuleItem::Stmt(Stmt::Decl(Decl::TsInterface(decl))) => {
-            ts_declarations.push(decl);
-        }
-        ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl {
-            decl: Decl::TsEnum(decl),
-            ..
-        })) => {
-            enums.push(ts_enum_to_data_enum(decl));
-        }
-        ModuleItem::Stmt(Stmt::Decl(Decl::TsEnum(decl))) => {
-            enums.push(ts_enum_to_data_enum(decl));
-        }
-        _ => {}
     });
 
     let parsed_models = ts_declarations

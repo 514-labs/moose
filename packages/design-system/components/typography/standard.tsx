@@ -116,7 +116,7 @@ export const SmallTextEmbed = ({
   );
 };
 
-const bodyBase =
+export const textBodyBase =
   "text-primary leading-normal 2xl:leading-normal sm:text-lg 2xl:text-xl 3xl:text-2xl";
 
 export const TextEmbed = forwardRef<
@@ -126,7 +126,11 @@ export const TextEmbed = forwardRef<
   // This component is used to embed text in another paragraph component
 
   return (
-    <span ref={ref} className={cn(bodyBase, textBase, className)} {...props}>
+    <span
+      ref={ref}
+      className={cn(textBodyBase, textBase, className)}
+      {...props}
+    >
       {children}
     </span>
   );
@@ -144,7 +148,7 @@ export const Text = forwardRef<HTMLParagraphElement, TextProps>(
       <p
         ref={ref}
         className={cn(
-          bodyBase,
+          textBase,
           longForm ? longFormTextBase : textBase,
           className,
         )}

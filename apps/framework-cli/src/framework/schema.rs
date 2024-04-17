@@ -560,6 +560,7 @@ fn ts_parse_keyword_type(keyword: swc_ecma_ast::TsKeywordType) -> Result<ColumnT
     }
 }
 
+#[allow(clippy::needless_return_with_question_mark)]
 fn ts_parse_type_ref(
     type_ref: TsTypeRef,
     enums: &[DataEnum],

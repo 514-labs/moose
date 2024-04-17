@@ -11,12 +11,20 @@ export default async function Meta() {
 
   return (
     <div>
-      <Text>{humanReadableDate(meta.publishedAt)}</Text>
+      <Text className="mb-0">{humanReadableDate(meta.publishedAt)}</Text>
       {meta.categories.map((cat: string, i: number) => {
         if (i === meta.categories.length - 1) {
-          return <Text key={i}>{cat}</Text>;
+          return (
+            <Text className="mt-0" key={i}>
+              {cat}
+            </Text>
+          );
         } else {
-          return <Text key={i}>{cat}, </Text>;
+          return (
+            <Text className="mt-0" key={i}>
+              {cat},{" "}
+            </Text>
+          );
         }
       })}
     </div>

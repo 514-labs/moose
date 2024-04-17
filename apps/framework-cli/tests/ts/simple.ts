@@ -1,3 +1,5 @@
+type Key<T extends string | number> = T;
+
 enum MyEnum {
   A,
   B,
@@ -5,7 +7,9 @@ enum MyEnum {
 }
 
 interface MyModel {
-  name: string;
+  name: Key<string>;
   age: number;
   abc: MyEnum;
+  flag: boolean;
+  opt?: string;
 }

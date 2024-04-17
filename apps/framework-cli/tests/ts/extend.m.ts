@@ -1,13 +1,10 @@
-export interface Base {
-  id: string;
-}
+type Key<T extends string | number> = T;
 
-type Key = string;
+export interface Base {
+  id: Key<string>;
+}
 
 interface User extends Base {
   name: string;
   email: string;
-  id: Key;
 }
-
-type UserKey = User["id" & "name"];

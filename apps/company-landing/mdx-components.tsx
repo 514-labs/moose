@@ -27,7 +27,7 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     ),
     ol: (props) => (
       <ol
-        className="pl-8 list-decimal text-primary leading-normal 2xl:leading-normal text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl"
+        className="pl-8 list-decimal text-primary leading-normal 2xl:leading-normal text-regular sm:text-lg 2xl:text-xl 3xl:text-xl"
         {...props}
       />
     ),

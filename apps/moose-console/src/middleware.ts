@@ -11,7 +11,8 @@ export const config = {
      * - favicon.ico (favicon file)
      */
     {
-      source: "/((?!monitoring-tunnel|api|_next/static|images|favicon.ico).*)",
+      source:
+        "/((?!monitoring-tunnel|api|_next/static|images|favicon.ico|opengraph-image.jpg|wp-*|apple-*|cgi-*|robots.txt).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

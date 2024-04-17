@@ -5,7 +5,9 @@ import {
   SuperDisplay,
   Text,
   TextEmbed,
+  textBodyBase,
 } from "design-system/typography";
+import { cn } from "design-system/utils";
 import type { MDXComponents } from "mdx/types";
 import Image from "next/image";
 
@@ -20,16 +22,10 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
       </Heading>
     ),
     ul: (props) => (
-      <ul
-        className="pl-8 list-disc text-primary leading-normal 2xl:leading-normal text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl"
-        {...props}
-      />
+      <ul className={cn("pl-8 list-disc", textBodyBase)} {...props} />
     ),
     ol: (props) => (
-      <ol
-        className="pl-8 list-decimal text-primary leading-normal 2xl:leading-normal text-lg sm:text-xl 2xl:text-2xl 3xl:text-3xl"
-        {...props}
-      />
+      <ol className={cn("pl-8 list-decimal", textBodyBase)} {...props} />
     ),
     li: (props) => (
       <li {...props} className="list-item">

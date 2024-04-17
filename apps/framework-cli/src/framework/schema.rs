@@ -39,8 +39,8 @@ use crate::project::PROJECT;
 use swc_common::{self, sync::Lrc, SourceMap};
 use swc_ecma_ast::{
     Decl, ExportDecl, Expr, Module, ModuleDecl, ModuleItem, Stmt, TsEnumDecl, TsEnumMember,
-    TsEnumMemberId, TsInterfaceDecl, TsIntersectionType, TsKeywordTypeKind, TsPropertySignature,
-    TsType, TsTypeAnn, TsTypeRef, TsUnionOrIntersectionType, TsUnionType,
+    TsEnumMemberId, TsInterfaceDecl, TsKeywordTypeKind, TsPropertySignature, TsType, TsTypeAnn,
+    TsTypeRef,
 };
 use swc_ecma_parser::{lexer::Lexer, Capturing, Parser, StringInput, Syntax};
 
@@ -541,10 +541,6 @@ fn ts_parse_type_ann(
     match *type_ann {
         TsType::TsKeywordType(keyword) => ts_parse_keyword_type(keyword),
         TsType::TsTypeRef(type_ref) => ts_parse_type_ref(type_ref, enums, primary_key),
-        TsType::TsUnionOrIntersectionType(
-            TsUnionOrIntersectionType::TsIntersectionType(TsIntersectionType { types, .. })
-            | TsUnionOrIntersectionType::TsUnionType(TsUnionType { types, .. }),
-        ) => ts_parse_union_or_intersection_type(types, enums, primary_key),
         _ => {
             debug!("found a weird type {:?}", type_ann);
             Ok(ColumnType::Unsupported)
@@ -579,6 +575,18 @@ fn ts_parse_type_ref(
 
     if type_ref_name == "Key" {
         *primary_key = true;
+        return type_ref
+            .type_params
+            .map(|params| {
+                if let Some(param) = params.params.first() {
+                    ts_parse_type_ann(param.clone(), enums, primary_key)
+                } else {
+                    Ok(ColumnType::Unsupported)
+                }
+            })
+            .ok_or(ParsingError::UnsupportedDataTypeError {
+                type_name: "no type for key".to_string(),
+            })?;
     }
 
     if type_ref_name == "Date" {
@@ -594,32 +602,6 @@ fn ts_parse_type_ref(
     } else {
         Ok(ColumnType::Unsupported)
     }
-}
-
-#[allow(clippy::vec_box)]
-fn ts_parse_union_or_intersection_type(
-    union_or_intersection_type: Vec<Box<TsType>>,
-    enums: &[DataEnum],
-    primary_key: &mut bool,
-) -> Result<ColumnType, ParsingError> {
-    let union_type: Vec<ColumnType> = union_or_intersection_type
-        .iter()
-        .map(|t| match &**t {
-            TsType::TsKeywordType(keyword) => ts_parse_keyword_type(keyword.clone()).unwrap(),
-            TsType::TsTypeRef(type_ref) => {
-                ts_parse_type_ref(type_ref.clone(), enums, primary_key).unwrap()
-            }
-            _ => {
-                debug!("found a weird type {:?}", t);
-                ColumnType::Unsupported
-            }
-        })
-        .collect();
-
-    Ok(union_type
-        .first()
-        .cloned()
-        .unwrap_or(ColumnType::Unsupported))
 }
 
 pub fn parse_ts_schema_file(path: &Path) -> Module {

@@ -148,7 +148,7 @@ export const Text = forwardRef<HTMLParagraphElement, TextProps>(
       <p
         ref={ref}
         className={cn(
-          textBase,
+          textBodyBase,
           longForm ? longFormTextBase : textBase,
           className,
         )}

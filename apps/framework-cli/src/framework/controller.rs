@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::ffi::OsStr;
 use std::io::Error;
 use std::io::ErrorKind;
 use std::path::Path;
@@ -23,6 +24,7 @@ use crate::project::Project;
 use crate::project::PROJECT;
 #[cfg(test)]
 use crate::utilities::constants::SCHEMAS_DIR;
+use crate::utilities::constants::TS_INTERFACE_GENERATE_EXT;
 
 use super::schema::{is_schema_file, DataModel};
 use super::schema::{parse_schema_file, DuplicateModelError};
@@ -254,11 +256,10 @@ pub(crate) fn create_language_objects(
         "Writing typescript interface to file: {:?}",
         interface_file_path
     );
-
     framework::languages::write_code_to_file(
         SupportedLanguages::Typescript,
         interface_file_path,
-        ts_interface_code,
+        ts_interface_code.clone(),
     )
     .map_err(|e| {
         Error::new(
@@ -266,6 +267,33 @@ pub(crate) fn create_language_objects(
             format!("Failed to write typescript interface to file: {:?}", e),
         )
     })?;
+
+    // TODO remove this when we move away from prisma
+    if fo.original_file_path.extension() == Some(OsStr::new("prisma")) {
+        let schemas_dir = project.schemas_dir();
+
+        debug!(
+            "Prisma model {:?} detected, generating typescript in the datamodels folder {:?}",
+            fo.original_file_path, schemas_dir
+        );
+
+        framework::languages::write_code_to_file(
+            SupportedLanguages::Typescript,
+            schemas_dir.join(format!(
+                "{}{}",
+                fo.ts_interface.file_name(),
+                TS_INTERFACE_GENERATE_EXT
+            )),
+            ts_interface_code,
+        )
+        .map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("Failed to write typescript interface to file: {:?}", e),
+            )
+        })?;
+    }
+
     framework::languages::write_code_to_file(
         SupportedLanguages::Typescript,
         send_func_file_path,

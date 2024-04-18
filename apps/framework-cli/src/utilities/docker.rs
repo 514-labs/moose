@@ -142,6 +142,12 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
         CLI_VERSION
     };
 
+    let console_pull_policy = if console_version == "latest" {
+        "always"
+    } else {
+        "missing"
+    };
+
     project.create_internal_redpanda_volume()?;
     project.create_internal_clickhouse_volume()?;
 
@@ -168,6 +174,7 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
         )
         .env("CLICKHOUSE_VERSION", "24.1.3") // https://github.com/ClickHouse/ClickHouse/issues/60020
         .env("CONSOLE_VERSION", console_version)
+        .env("CONSOLE_PULL_POLICY", console_pull_policy)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;

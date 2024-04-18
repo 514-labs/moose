@@ -1,6 +1,9 @@
 //! System utilities
 
-use std::{path::PathBuf, process::Command};
+use std::{
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 pub fn copy_directory(source: &PathBuf, destination: &PathBuf) -> Result<(), std::io::Error> {
     //! Recursively copy a directory from source to destination.
@@ -12,4 +15,12 @@ pub fn copy_directory(source: &PathBuf, destination: &PathBuf) -> Result<(), std
     command.output()?;
 
     Ok(())
+}
+
+pub fn file_name_contains(path: &Path, arbitry_string: &str) -> bool {
+    path.file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .contains(arbitry_string)
 }

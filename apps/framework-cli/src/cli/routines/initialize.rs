@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::utilities::constants::{SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE};
 use crate::{cli::display::Message, project::Project};
 
-use super::flow::CreateFlowDirectory;
+use super::flow::create_flow_directory;
 use super::{Routine, RoutineFailure, RoutineSuccess, RunMode};
 
 pub struct InitializeProject {
@@ -29,12 +29,12 @@ impl Routine for InitializeProject {
             )
         })?;
 
-        CreateFlowDirectory::new(
-            self.project.clone(),
+        create_flow_directory(
+            &self.project,
             SAMPLE_FLOWS_SOURCE.to_string(),
             SAMPLE_FLOWS_DEST.to_string(),
-        )
-        .run(run_mode)?;
+        )?;
+
         CreateBaseAppFiles::new(self.project.clone()).run(run_mode)?;
 
         Ok(RoutineSuccess::success(Message::new(

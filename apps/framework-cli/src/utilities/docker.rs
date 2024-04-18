@@ -174,7 +174,7 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
         )
         .env("CLICKHOUSE_VERSION", "24.1.3") // https://github.com/ClickHouse/ClickHouse/issues/60020
         .env("CONSOLE_VERSION", console_version)
-        .env("CONSOLE_PULL_POLICY", format!("{}", console_pull_policy))
+        .env("CONSOLE_PULL_POLICY", console_pull_policy)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;

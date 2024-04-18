@@ -37,10 +37,7 @@ jobs:
           args: --manifest-path ./apps/framework-cli/Cargo.toml
 
       - name: Run cargo Build in release mode
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --manifest-path ./apps/framework-cli/Cargo.toml --release --locked
+        run: cargo build --release --manifest-path ./apps/framework-cli/Cargo.toml --locked
 
   test-macos:
     name: Test Suite (MacOS)
@@ -62,11 +59,10 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 
-      - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --manifest-path ./apps/framework-cli/Cargo.toml
+      - name: Run Tests
+        run: cargo test --manifest-path ./apps/framework-cli/Cargo.toml
+        env:
+          MOOSE_TELEMETRY_ENABLED: false
 
       - name: Inspect Logs
         if: always()
@@ -93,11 +89,10 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 
-      - name: Test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --manifest-path ./apps/framework-cli/Cargo.toml
+      - name: Run Tests
+        run: cargo test --manifest-path ./apps/framework-cli/Cargo.toml
+        env:
+          MOOSE_TELEMETRY_ENABLED: false
 
       - name: Inspect Logs
         if: always()

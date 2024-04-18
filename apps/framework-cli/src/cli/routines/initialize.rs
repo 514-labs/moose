@@ -39,7 +39,7 @@ impl Routine for InitializeProject {
 
         Ok(RoutineSuccess::success(Message::new(
             "Created".to_string(),
-            "Moose app with file scafolding".to_string(),
+            "Moose app with file scaffolding".to_string(),
         )))
     }
 }

@@ -97,7 +97,7 @@ pub async fn generate_template(
     match download_and_unpack(template_name, &version, target_dir).await {
         Ok(()) => Ok(RoutineSuccess::success(Message::new(
             "Created".to_string(),
-            "Template".to_string(),
+            format!("template. Run these commands to start Moose: cd {}/moose && npx @514labs/moose-cli dev", target_dir.to_string_lossy()),
         ))),
         Err(e) => Err(RoutineFailure::error(Message {
             action: "Template".to_string(),

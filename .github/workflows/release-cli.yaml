@@ -187,6 +187,7 @@ jobs:
         with:
           export-env: false
         env:
+          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
           SENTRY_AUTH_TOKEN: "op://drqe7p6legi6ug2ijq2fnrkmjq/Sentry/credential"
           SENTRY_ORG: "op://drqe7p6legi6ug2ijq2fnrkmjq/Sentry/org"
 

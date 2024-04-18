@@ -1,8 +1,8 @@
 // Example flow function: Converts local timestamps in UserActivity data to UTC.
 
 // Imports: Source (UserActivity) and Destination (ParsedActivity) data models.
-import { ParsedActivity } from "../../../../.moose/internal-app-sdk/ParsedActivity.ts";
-import { UserActivity } from "../../../../.moose/internal-app-sdk/UserActivity.ts";
+import { ParsedActivity } from "../../../datamodels/ParsedActivity.generated.ts";
+import { UserActivity } from "../../../datamodels/UserActivity.generated.ts";
 
 // The 'run' function transforms UserActivity data to ParsedActivity format.
 // For more details on how Moose flows work, see: https://docs.moosejs.com

@@ -87,6 +87,7 @@ use log::debug;
 use log::info;
 use tokio::sync::RwLock;
 
+use crate::cli::routines::flow::start_flow_process;
 use crate::framework::controller::{
     create_or_replace_version_sync, get_all_framework_objects, process_objects, FrameworkObject,
     FrameworkObjectVersions, RouteMeta, SchemaVersion,
@@ -300,6 +301,8 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     );
     syncing_processes_registry.start_all(&framework_object_versions);
 
+    start_flow_process(&project)?;
+
     info!("Starting web server...");
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(server_config.host.clone(), server_config.port);
@@ -337,6 +340,7 @@ fn crawl_schema(
     }
 
     let schema_dir = project.schemas_dir();
+
     info!("<DCM> Starting schema directory crawl...");
     with_spinner("Processing schema file", || {
         let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();

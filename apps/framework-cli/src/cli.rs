@@ -22,7 +22,7 @@ use logger::setup_logging;
 use settings::{read_settings, Settings};
 
 use crate::cli::routines::dev::{copy_old_schema, create_deno_files, create_models_volume};
-use crate::cli::routines::flow::{CreateFlowDirectory, CreateFlowFile}; //, StartFlowProcess};
+use crate::cli::routines::flow::{create_flow_directory, create_flow_file};
 use crate::cli::routines::templates;
 use crate::cli::routines::version::BumpVersion;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
@@ -369,21 +369,12 @@ async fn top_command_handler(
                         &settings
                     );
 
-                    let mut controller = RoutineController::new();
-                    let run_mode = RunMode::Explicit {};
-
-                    // TODO get rid of the routines and use functions instead
-                    controller.add_routine(Box::new(CreateFlowDirectory::new(
-                        project_arc.clone(),
+                    create_flow_directory(
+                        &project_arc,
                         init.source.clone(),
                         init.destination.clone(),
-                    )));
-                    controller.add_routine(Box::new(CreateFlowFile::new(
-                        project_arc,
-                        init.source.clone(),
-                        init.destination.clone(),
-                    )));
-                    controller.run_routines(run_mode);
+                    )?;
+                    create_flow_file(&project_arc, init.source.clone(), init.destination.clone())?;
 
                     Ok(RoutineSuccess::success(Message::new(
                         "Created".to_string(),

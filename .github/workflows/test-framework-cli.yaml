@@ -60,7 +60,8 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Run Tests
-        run: cargo test --manifest-path ./apps/framework-cli/Cargo.toml
+        run: cargo test
+        working-directory: ./apps/framework-cli
         env:
           MOOSE_TELEMETRY_ENABLED: false
 
@@ -90,7 +91,8 @@ jobs:
         uses: mozilla-actions/sccache-action@v0.0.3
 
       - name: Run Tests
-        run: cargo test --manifest-path ./apps/framework-cli/Cargo.toml
+        run: cargo test
+        working-directory: ./apps/framework-cli
         env:
           MOOSE_TELEMETRY_ENABLED: false
 

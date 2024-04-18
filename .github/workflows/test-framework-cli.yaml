@@ -37,7 +37,7 @@ jobs:
           args: --manifest-path ./apps/framework-cli/Cargo.toml
 
       - name: Run cargo Build in release mode
-        run: cargo build --release --manifest-path ./apps/framework-cli/Cargo.toml --locked
+        run: cargo build --release --locked
 
   test-macos:
     name: Test Suite (MacOS)
@@ -61,7 +61,6 @@ jobs:
 
       - name: Run Tests
         run: cargo test
-        working-directory: ./apps/framework-cli
         env:
           MOOSE_TELEMETRY_ENABLED: false
 
@@ -92,7 +91,6 @@ jobs:
 
       - name: Run Tests
         run: cargo test
-        working-directory: ./apps/framework-cli
         env:
           MOOSE_TELEMETRY_ENABLED: false
 

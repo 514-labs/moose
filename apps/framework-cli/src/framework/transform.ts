@@ -39,9 +39,6 @@ const getVersion = (): string => {
     .version as string;
   return version.replace(/\./g, "_");
 };
-const scrubVersionFromTopic = (topic: string): string => {
-  return topic.replace(/(_\d+)+$/, "");
-};
 const version = getVersion();
 
 const getSaslConfig = (): SASLOptions | undefined => {
@@ -75,6 +72,44 @@ const producer: Producer = kafka.producer({
   idempotent: true,
 });
 
+interface VersionSync {
+  sourceTopic: string;
+  targetTopic: string;
+
+  filePath: string;
+}
+
+const migrationRegex =
+  /^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-9_]+)__)?([0-9_]+).ts$/;
+
+const getMigrations = (): Map<string, VersionSync> => {
+  const flowsDir = Deno.readDirSync(FLOWS_DIR_PATH);
+  const output = new Map<string, VersionSync>();
+  for (const entry of flowsDir) {
+    if (entry.isDirectory) continue;
+    const names = migrationRegex.exec(entry.name);
+    if (names === null) continue;
+
+    const sourceTable = names[1];
+    const targetTable = names[4] ?? sourceTable;
+    const sourceVersion = names[2];
+    const targetVersion = names[5];
+
+    const filePath = `${FLOWS_DIR_PATH}/${entry.name}`;
+
+    const sourceTopic = `${sourceTable}_${sourceVersion}`;
+    const targetTopic = `${targetTable}_${targetVersion}`;
+
+    output.set(sourceTopic, {
+      sourceTopic,
+      targetTopic,
+      filePath,
+    });
+  }
+
+  return output;
+};
+
 const getFlows = (): Map<string, Map<string, string>> => {
   const flowsDir = Deno.readDirSync(FLOWS_DIR_PATH);
   const output = new Map<string, Map<string, string>>();
@@ -96,7 +131,7 @@ const getFlows = (): Map<string, Map<string, string>> => {
           destinationFile.name.toLowerCase() === FLOW_FILE
         ) {
           flows.set(
-            destination.name,
+            `${destination.name}_${version}`,
             `${FLOWS_DIR_PATH}/${source.name}/${destination.name}/${destinationFile.name}`,
           );
         }
@@ -104,7 +139,7 @@ const getFlows = (): Map<string, Map<string, string>> => {
     }
 
     if (flows.size > 0) {
-      output.set(source.name, flows);
+      output.set(`${source.name}_${version}`, flows);
     }
   }
 
@@ -132,14 +167,13 @@ const handleMessage = async (
   let didTransform = false;
 
   try {
-    for (const [destination, flowFilePath] of flows) {
+    for (const [destinationTopic, flowFilePath] of flows) {
       const transform = await import(flowFilePath);
       const transformedData = await transform.default(
         JSON.parse(message.value.toString(), jsonDateReviver),
       );
 
       if (transformedData) {
-        const destinationTopic = `${destination}_${version}`;
         await transaction.send({
           topic: destinationTopic,
           messages: [{ value: JSON.stringify(transformedData) }],
@@ -174,9 +208,21 @@ const handleMessage = async (
 
 const startConsumer = async (): Promise<void> => {
   const flows = getFlows();
-  const flowTopics = Array.from(flows.keys()).map(
-    (flow) => `${flow}_${version}`,
-  );
+  const migrations = getMigrations();
+
+  for (const [sourceTopic, vs] of migrations) {
+    let targets;
+    if (flows.has(sourceTopic)) {
+      targets = flows.get(sourceTopic)!;
+    } else {
+      targets = new Map<string, string>();
+      flows.set(sourceTopic, targets);
+    }
+
+    targets.set(vs.targetTopic, vs.filePath);
+  }
+
+  const flowTopics = Array.from(flows.keys());
 
   await consumer.connect();
   await consumer.subscribe({ topics: flowTopics, fromBeginning: false });
@@ -185,14 +231,8 @@ const startConsumer = async (): Promise<void> => {
   await consumer.run({
     autoCommit: false,
     eachMessage: async ({ topic, partition, message }) => {
-      const topicNoVersion = scrubVersionFromTopic(topic);
-      if (flows.has(topicNoVersion)) {
-        await handleMessage(
-          topic,
-          partition,
-          flows.get(topicNoVersion)!,
-          message,
-        );
+      if (flows.has(topic)) {
+        await handleMessage(topic, partition, flows.get(topic)!, message);
       }
     },
   });

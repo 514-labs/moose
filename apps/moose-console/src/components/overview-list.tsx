@@ -2,6 +2,15 @@ import OverviewCard from "components/overview-card";
 import { DataModel } from "app/types";
 
 export function PrimitivesOverviewList({ models }: { models: DataModel[] }) {
+  const flows = models
+    .filter((model) => model.flows && model.flows.length > 0)
+    .flatMap((model) =>
+      model.flows.map((flow) => ({
+        name: `${model.model.name} to ${flow}`,
+        link: "",
+      })),
+    );
+
   return (
     <div className="">
       <div className="text-lg py-6">Primitives</div>
@@ -20,18 +29,9 @@ export function PrimitivesOverviewList({ models }: { models: DataModel[] }) {
         <div className="col-span-3 xl:col-span-1 flex flex-col">
           <OverviewCard
             title="Flows"
-            numItems={models.reduce(
-              (count, model) => count + (model.flows ? model.flows.length : 0),
-              0,
-            )}
+            numItems={flows.length}
             link="/primitives/flows"
-            items={models
-              .filter((model) => model.flows && model.flows.length > 0)
-              .slice(0, 4)
-              .map((model) => ({
-                name: model.model.name,
-                link: "",
-              }))}
+            items={flows}
           />
         </div>
         <div className="col-span-3 xl:col-span-1 flex flex-col">

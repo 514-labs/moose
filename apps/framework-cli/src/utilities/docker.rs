@@ -131,7 +131,7 @@ fn compose_command(project: &Project) -> Command {
         .arg("-f")
         .arg(project.internal_dir().unwrap().join("docker-compose.yml"))
         .arg("-p")
-        .arg(project.name());
+        .arg(project.name().to_lowercase());
     command
 }
 

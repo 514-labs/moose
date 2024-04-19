@@ -210,7 +210,7 @@ const startConsumer = async (): Promise<void> => {
   const flows = getFlows();
   const migrations = getMigrations();
 
-  for (let [sourceTopic, vs] of migrations) {
+  for (const [sourceTopic, vs] of migrations) {
     let targets;
     if (flows.has(sourceTopic)) {
       targets = flows.get(sourceTopic)!;

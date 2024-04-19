@@ -58,12 +58,15 @@ pub async fn post_current_state_to_console(
             .into_iter(),
     );
 
+    let flows = project.get_flows();
+
     let current_version = Version {
         models: serialize_version(
             &framework_object_versions.current_models,
             &framework_object_versions.current_version,
             &tables,
             &topics,
+            &flows,
         ),
     };
 
@@ -74,7 +77,7 @@ pub async fn post_current_state_to_console(
             (
                 version.clone(),
                 Version {
-                    models: serialize_version(schema_version, version, &tables, &topics),
+                    models: serialize_version(schema_version, version, &tables, &topics, &flows),
                 },
             )
         })
@@ -152,6 +155,7 @@ struct ModelInfra {
     // queue is None if it is the same as previous version
     // then we don't need to spin up a queue and a table
     queue: Option<String>,
+    flows: Vec<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
@@ -174,6 +178,7 @@ fn serialize_version(
     version: &str,
     tables: &HashMap<String, ClickHouseSystemTable>,
     topics: &HashSet<String>,
+    flows: &HashMap<String, Vec<String>>,
 ) -> Vec<ModelInfra> {
     schema_version
         .models
@@ -214,6 +219,7 @@ fn serialize_version(
                 } else {
                     None
                 },
+                flows: flows.get(&fo.data_model.name).unwrap_or(&vec![]).clone(),
             }
         })
         .collect()

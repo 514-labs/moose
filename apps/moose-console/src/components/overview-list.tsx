@@ -31,7 +31,7 @@ export function PrimitivesOverviewList({ models }: { models: DataModel[] }) {
             title="Flows"
             numItems={flows.length}
             link="/primitives/flows"
-            items={flows}
+            items={flows.slice(0, 4)}
           />
         </div>
         <div className="col-span-3 xl:col-span-1 flex flex-col">

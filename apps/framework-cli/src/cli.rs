@@ -160,9 +160,17 @@ async fn top_command_handler(
                         );
                     }
 
-                    Ok(RoutineSuccess::success(Message::new(
-                        "Created".to_string(),
-                        format!("new project. Run these commands to start Moose: cd {} && npx @514labs/moose-cli dev", dir_path.to_string_lossy()),
+                    show_message!(
+                        MessageType::Success,
+                        Message {
+                            action: "Created".to_string(),
+                            details: "new project".to_string(),
+                        }
+                    );
+
+                    Ok(RoutineSuccess::info(Message::new(
+                        "Next steps".to_string(),
+                        format!("Run these commands to start Moose: cd {} && npx @514labs/moose-cli dev", dir_path.to_string_lossy()),
                     )))
                 }
             }

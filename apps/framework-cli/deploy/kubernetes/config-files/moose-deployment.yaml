@@ -26,7 +26,7 @@ spec:
             - name: RUST_BACKTRACE
               value: "1"
             - name: MOOSE_LOGGER_LEVEL
-              value: "Debug"
+              value: "Info"
             - name: MOOSE_LOGGER_STDOUT
               value: "true"
             - name: MOOSE_TELEMETRY_ENABLED

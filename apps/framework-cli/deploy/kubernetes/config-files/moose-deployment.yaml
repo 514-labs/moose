@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: moosedeploy
-          image: 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:cfda9c0 # update with latest git commit when updating this document
+          image: 514labs/moose-df-deployment-x86_64-unknown-linux-gnu:969a0b7 # update with latest git commit when updating this document
           ports:
             - containerPort: 4000
           readinessProbe:
@@ -25,6 +25,8 @@ spec:
           env:
             - name: RUST_BACKTRACE
               value: "1"
+            - name: MOOSE_LOGGER_LEVEL
+              value: "Debug"
             - name: MOOSE_LOGGER_STDOUT
               value: "true"
             - name: MOOSE_TELEMETRY_ENABLED

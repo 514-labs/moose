@@ -6,6 +6,7 @@ model UserActivity {
     timestamp DateTime
     userId    String
     activity  String
+    description String
 }
 
 model ParsedActivity {

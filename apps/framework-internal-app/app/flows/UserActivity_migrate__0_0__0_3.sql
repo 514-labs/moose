@@ -1,0 +1,1 @@
+(eventId, timestamp, userId, activity) -> (eventId, timestamp, userId, activity, 'description')

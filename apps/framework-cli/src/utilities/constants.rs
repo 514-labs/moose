@@ -19,6 +19,7 @@ pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS: &str = "clickhouse/configs
 
 pub const SCHEMAS_DIR: &str = "datamodels";
 pub const FLOWS_DIR: &str = "flows";
+pub const AGGREGATES_DIR: &str = "aggregates";
 pub const SAMPLE_FLOWS_SOURCE: &str = "UserActivity";
 pub const SAMPLE_FLOWS_DEST: &str = "ParsedActivity";
 
@@ -35,6 +36,7 @@ pub const GITIGNORE: &str = ".gitignore";
 
 pub const DENO_DIR: &str = "deno";
 pub const DENO_TRANSFORM: &str = "transform.ts";
+pub const DENO_AGGREGATE: &str = "aggregates.ts";
 pub const FLOW_FILE: &str = "flow.ts";
 
 pub const CTX_SESSION_ID: &str = "session_id";

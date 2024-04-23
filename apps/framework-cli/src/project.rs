@@ -43,7 +43,7 @@ use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::README_PREFIX;
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
-use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM};
+use crate::utilities::constants::{DENO_AGGREGATE, DENO_DIR, DENO_TRANSFORM};
 use crate::utilities::constants::{
     FLOWS_DIR, FLOW_FILE, PROJECT_CONFIG_FILE, SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE,
 };
@@ -214,6 +214,14 @@ impl Project {
             let mut transform_file = std::fs::File::create(transform_file_path)?;
             let transform_file_content = include_str!("framework/transform.ts");
             transform_file.write_all(transform_file_content.as_bytes())?;
+        }
+
+        let aggregate_file_path = deno_dir.join(DENO_AGGREGATE);
+
+        if !aggregate_file_path.exists() {
+            let mut aggregate_file = std::fs::File::create(aggregate_file_path)?;
+            let aggregate_file_content = include_str!("framework/aggregates.ts");
+            aggregate_file.write_all(aggregate_file_content.as_bytes())?;
         }
 
         Ok(())

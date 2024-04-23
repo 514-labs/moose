@@ -11,8 +11,8 @@ interface ShowTablesResponse {
 }
 
 const cwd = Deno.args[0] || Deno.cwd();
-const AGGREGATES_DIR_PATH = `${cwd}/app/aggregates`;
-const AGGREGATE_FILE = "*.ts";
+const AGGREGATIONS_DIR_PATH = `${cwd}/app/aggregations`;
+const AGGREGATIONS_FILE = "*.ts";
 
 const CLICKHOUSE_DB =
   Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__DB_NAME") || "local";
@@ -81,7 +81,7 @@ const getFileName = (filePath: string) => {
   return "";
 };
 
-const createAggregate = async (
+const createAggregation = async (
   chClient: ClickHouseClient,
   path: string,
   version: string,
@@ -92,7 +92,7 @@ const createAggregate = async (
     const sqlString = (await import(path)).default;
     if (typeof sqlString !== "string") {
       console.error(
-        `Not creating aggregate. Expected an export default SQL string from ${fileName}`,
+        `Not creating aggregation. Expected an export default SQL string from ${fileName}`,
       );
       return;
     }
@@ -103,13 +103,13 @@ const createAggregate = async (
           AS ${sqlString}
       `;
     await chClient.command({ query: mvQuery });
-    console.log(`Created aggregate from ${fileName}`);
+    console.log(`Created aggregation ${fileName}`);
   } catch (err) {
-    console.error(`Failed to create aggregate from ${fileName}: ${err}`);
+    console.error(`Failed to create aggregation ${fileName}: ${err}`);
   }
 };
 
-const deleteAggregate = async (
+const deleteAggregation = async (
   chClient: ClickHouseClient,
   path: string,
   version: string,
@@ -121,15 +121,15 @@ const deleteAggregate = async (
     await chClient.command({
       query: `DROP TABLE IF EXISTS ${fileName}_${version}`,
     });
-    console.log(`Deleted aggregate from ${fileName}`);
+    console.log(`Deleted aggregation ${fileName}`);
   } catch (err) {
-    console.error(`Failed to delete aggregate from ${fileName}: ${err}`);
+    console.error(`Failed to delete aggregation ${fileName}: ${err}`);
   }
 };
 
 const startFileWatcher = (chClient: ClickHouseClient) => {
   const version = getVersion();
-  const pathToWatch = `${AGGREGATES_DIR_PATH}/**/${AGGREGATE_FILE}`;
+  const pathToWatch = `${AGGREGATIONS_DIR_PATH}/**/${AGGREGATIONS_FILE}`;
 
   watch(pathToWatch, { usePolling: true }).on(
     "all",
@@ -137,12 +137,12 @@ const startFileWatcher = (chClient: ClickHouseClient) => {
       const antiCachePath = `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
 
       if (event === "add") {
-        await createAggregate(chClient, antiCachePath, version);
+        await createAggregation(chClient, antiCachePath, version);
       } else if (event === "unlink") {
-        await deleteAggregate(chClient, antiCachePath, version);
+        await deleteAggregation(chClient, antiCachePath, version);
       } else if (event === "change") {
-        await deleteAggregate(chClient, antiCachePath, version);
-        await createAggregate(chClient, antiCachePath, version);
+        await deleteAggregation(chClient, antiCachePath, version);
+        await createAggregation(chClient, antiCachePath, version);
       }
     },
   );

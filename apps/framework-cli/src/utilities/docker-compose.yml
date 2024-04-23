@@ -68,7 +68,7 @@ services:
       - --allow-all
       - /home/.moose/deno/transform.ts
       - /home
-  aggregates:
+  aggregations:
     image: denoland/deno:1.41.2
     depends_on:
       - clickhousedb
@@ -88,5 +88,5 @@ services:
       - deno
       - run
       - --allow-all
-      - /home/.moose/deno/aggregates.ts
+      - /home/.moose/deno/aggregations.ts
       - /home

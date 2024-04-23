@@ -28,7 +28,7 @@ const default_navigation = [
   { name: "docs", href: "https://docs.moosejs.com" },
   { name: "templates", href: "/templates" },
   { name: "community", href: "/community" },
-  // { name: "blog", href: "https://blog.fiveonefour.com/" },
+  { name: "blog", href: "https://www.fiveonefour.com/blog" },
   { name: "github", href: "https://github.com/514-labs/moose" },
 ];
 

@@ -1,8 +1,8 @@
+use crate::infrastructure::olap::clickhouse::model::{ClickHouseSystemTableRow, ClickHouseTable};
 use clickhouse::Client;
+use crypto_hash::{hex_digest, Algorithm};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
-
-use crate::infrastructure::olap::clickhouse::model::{ClickHouseSystemTableRow, ClickHouseTable};
 
 use self::config::ClickHouseConfig;
 use self::model::ClickHouseSystemTable;
@@ -209,6 +209,68 @@ pub async fn check_is_table_new(
         1 => Ok(result[0].engine != "View" && result[0].total_rows == Some(0)),
         _ => panic!("Expected 1 result, got {:?}", result),
     }
+}
+
+pub async fn fetch_table_names(
+    configured_client: &ConfiguredDBClient,
+) -> Result<Vec<String>, clickhouse::error::Error> {
+    let client = &configured_client.client;
+    let db_name = &configured_client.config.db_name;
+
+    debug!("Fetching tables from: {:?}", db_name);
+
+    let query = format!("SELECT name FROM system.tables WHERE (database = '{db_name}')");
+    let mut cursor = client.query(query.as_str()).fetch::<String>()?;
+    let mut tables = vec![];
+
+    while let Some(name) = cursor.next().await? {
+        tables.push(name);
+    }
+
+    tables.sort();
+
+    debug!("Fetched tables: {:?}", tables);
+
+    Ok(tables)
+}
+
+pub async fn fetch_table_schema(
+    configured_client: &ConfiguredDBClient,
+    table_name: &str,
+) -> Result<Vec<(String, String)>, clickhouse::error::Error> {
+    let client = &configured_client.client;
+    let db_name = &configured_client.config.db_name;
+
+    debug!("Fetching columns from: {:?}", table_name);
+
+    let query = format!("SELECT name, type FROM system.columns WHERE (database = '{db_name}' AND table = '{table_name}')");
+    let mut cursor = client.query(query.as_str()).fetch::<(String, String)>()?;
+
+    let mut columns = vec![];
+
+    while let Some((name, column_type)) = cursor.next().await? {
+        columns.push((name, column_type));
+    }
+
+    columns.sort();
+
+    debug!("Fetched columns: {:?}", columns);
+
+    Ok(columns)
+}
+
+pub fn table_schema_to_hash(
+    columns: Vec<(String, String)>,
+) -> Result<String, clickhouse::error::Error> {
+    let data = columns
+        .iter()
+        .map(|(name, column_type)| format!("{}{}", name, column_type))
+        .collect::<Vec<String>>()
+        .join("");
+
+    let hashed = hex_digest(Algorithm::SHA256, data.as_bytes());
+
+    Ok(hashed)
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, clickhouse::Row)]

@@ -423,8 +423,8 @@ async fn check_for_model_changes(
                         let hash_result = table_schema_to_hash(table_schema.clone());
                         match hash_result {
                             Ok(hash) => {
-                                println!("  table_schema: {:?}", table_schema.clone());
-                                println!("db_data_models: {:?}-{:?}", table.clone(), hash.clone());
+                                // println!("  table_schema: {:?}", table_schema.clone());
+                                // println!("db_data_models: {:?}-{:?}", table.clone(), hash.clone());
                                 db_data_models.insert(table.clone(), hash.clone());
                             }
                             Err(e) => {

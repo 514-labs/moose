@@ -254,5 +254,5 @@ impl ClickHouseTable {
 }
 
 pub fn sanitize_column_name(name: String) -> String {
-    name.replace(" ", "_").replace("-", "_")
+    name.replace([' ', '-'], "_")
 }

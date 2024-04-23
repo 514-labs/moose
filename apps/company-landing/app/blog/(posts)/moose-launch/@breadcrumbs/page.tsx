@@ -1,5 +1,4 @@
 import { Text } from "design-system/typography";
-import { humanReadableDate } from "../../../../../lib/formatter";
 
 const getMetaFromParent = async () => {
   const { metadata } = await import(`../page.mdx`);

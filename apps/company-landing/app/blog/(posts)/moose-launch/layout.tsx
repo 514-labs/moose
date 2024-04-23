@@ -7,8 +7,6 @@ import {
   Section,
 } from "design-system/components/containers";
 
-import { Text } from "design-system/typography";
-
 export default function MdxLayout({
   children,
   meta,

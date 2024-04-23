@@ -16,6 +16,8 @@ export function column_type_mapper(source_type: string) {
   switch (source_type) {
     case "String":
       return "string";
+    case "Float":
+      return "float";
     case "Number":
       return "number";
     case "Boolean":

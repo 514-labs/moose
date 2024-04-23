@@ -12,6 +12,8 @@ function createColumnStubs(model: ModelMeta) {
     switch (data_type) {
       case "number":
         return `"${field.name}": ${index}`;
+      case "float":
+        return `"${field.name}": ${index}.1`;
       case "string":
         return `"${field.name}": "test-value${index}"`;
       case "boolean":

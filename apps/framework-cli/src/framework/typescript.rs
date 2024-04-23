@@ -101,7 +101,7 @@ impl fmt::Display for InterfaceFieldType {
             InterfaceFieldType::Date => write!(f, "Date"),
             InterfaceFieldType::Array(inner_type) => write!(f, "List<{}>", inner_type),
             InterfaceFieldType::Object(inner_type) => write!(f, "{}", inner_type.name),
-            InterfaceFieldType::Unsupported => write!(f, "Unsupported"),
+            InterfaceFieldType::Unsupported => write!(f, "Unsupported Interface field type"),
         }
     }
 }

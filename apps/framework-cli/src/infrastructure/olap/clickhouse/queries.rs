@@ -256,6 +256,8 @@ impl CreateVersionSyncTriggerContext {
 fn field_type_to_string(
     field_type: ClickHouseColumnType,
 ) -> Result<String, UnsupportedDataTypeError> {
+    log::info!("field_type_to_string: {:?}", field_type);
+
     // Blowing out match statements here in case we need to customize the output string for some types.
     match field_type {
         ClickHouseColumnType::String => Ok(field_type.to_string()),
@@ -297,6 +299,11 @@ fn field_type_to_string(
 fn clickhouse_column_to_create_table_field_context(
     column: ClickHouseColumn,
 ) -> Result<CreateTableFieldContext, UnsupportedDataTypeError> {
+    log::info!(
+        "clickhouse_column_to_create_table_field_context: {:?}",
+        column
+    );
+
     if column.arity == FieldArity::List {
         Ok(CreateTableFieldContext {
             field_name: column.name,

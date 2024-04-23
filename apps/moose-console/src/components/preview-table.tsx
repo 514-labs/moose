@@ -39,11 +39,15 @@ function PreviewTable<T>({ rows, caption, onRowClick }: TableProps<T>) {
             className={onRowClick ? "cursor-pointer" : ""}
             key={index}
             // @ts-expect-error something went wrong fething rows
-            onClick={() => onRowClick(row)}
+            onClick={() => {
+              if (onRowClick) {
+                onRowClick(row);
+              }
+            }}
           >
             {headers.map((value, index) => (
               // @ts-expect-error something went wrong fething rows
-              <TableCell key={index}>{row[value]}</TableCell>
+              <TableCell key={index}>{JSON.stringify(row[value])}</TableCell>
             ))}
           </TableRow>
         ))}

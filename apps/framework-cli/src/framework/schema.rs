@@ -483,8 +483,6 @@ fn ts_parse_property_signature(
     prop: &TsPropertySignature,
     enums: &[DataEnum],
 ) -> Result<Column, ParsingError> {
-    debug!("properties: {:?}", prop);
-
     let mut primary_key = false;
     let unique = false;
     let default = None;

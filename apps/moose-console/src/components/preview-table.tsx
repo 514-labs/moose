@@ -38,7 +38,6 @@ function PreviewTable<T>({ rows, caption, onRowClick }: TableProps<T>) {
           <TableRow
             className={onRowClick ? "cursor-pointer" : ""}
             key={index}
-            // @ts-expect-error something went wrong fething rows
             onClick={() => {
               if (onRowClick) {
                 onRowClick(row);

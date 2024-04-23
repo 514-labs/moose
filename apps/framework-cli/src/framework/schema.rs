@@ -40,7 +40,7 @@ use crate::project::PROJECT;
 
 use swc_common::{self, sync::Lrc, SourceMap};
 use swc_ecma_ast::{
-    Decl, ExportDecl, Expr, Module, ModuleDecl, ModuleItem, Stmt, TsEnumDecl, TsEnumMemberId,
+    Decl, ExportDecl, Expr, Lit, Module, ModuleDecl, ModuleItem, Stmt, TsEnumDecl, TsEnumMemberId,
     TsInterfaceDecl, TsKeywordTypeKind, TsPropertySignature, TsType, TsTypeAnn, TsTypeRef,
 };
 use swc_ecma_parser::{lexer::Lexer, Capturing, Parser, StringInput, Syntax};
@@ -490,6 +490,7 @@ fn ts_parse_property_signature(
     // match the key's sym if it's an ident
     let name = match *prop.key.clone() {
         Expr::Ident(ident) => ident.sym.to_string(),
+        Expr::Lit(Lit::Str(str)) => str.value.to_string(),
         _ => {
             return Err(ParsingError::UnsupportedDataTypeError {
                 type_name: "unsupported".to_string(),

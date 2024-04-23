@@ -5,6 +5,8 @@ use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseTableType,
 };
 
+use super::model::sanitize_column_name;
+
 pub fn clickhouse_table_type_mapper(table_type: TableType) -> ClickHouseTableType {
     match table_type {
         TableType::Table => ClickHouseTableType::Table,
@@ -40,7 +42,7 @@ pub fn std_table_to_clickhouse_table(table: Table) -> ClickHouseTable {
         .into_iter()
         .map(|column| {
             ClickHouseColumn {
-                name: column.name,
+                name: sanitize_column_name(column.name),
                 column_type: std_field_type_to_clickhouse_type_mapper(column.data_type),
                 arity: column.arity,
                 unique: column.unique,

@@ -182,7 +182,7 @@ impl ClickHouseRecord {
     }
 
     pub fn insert(&mut self, column: String, value: ClickHouseValue) {
-        self.values.insert(column, value);
+        self.values.insert(sanitize_column_name(column), value);
     }
 
     pub fn get(&self, column: &str) -> Option<&ClickHouseValue> {
@@ -251,4 +251,8 @@ impl ClickHouseTable {
     pub fn drop_data_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
         DropTableQuery::build(self.clone())
     }
+}
+
+pub fn sanitize_column_name(name: String) -> String {
+    name.replace(" ", "_").replace("-", "_")
 }

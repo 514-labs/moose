@@ -11,5 +11,6 @@ interface MyModel {
   age: number;
   abc: MyEnum;
   flag: boolean;
+  "test-key": string;
   opt?: string;
 }

@@ -414,23 +414,31 @@ pub fn ts_ast_mapper(ast: Module) -> Result<FileObjects, ParsingError> {
     let mut ts_declarations = Vec::new();
 
     // collect all interface and enum declarations
-    ast.body.iter().for_each(|item| {
+    ast.body.iter().try_for_each(|item| {
         let decl = match item {
             ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl { decl, .. }))
             | ModuleItem::Stmt(Stmt::Decl(decl)) => decl,
-            _ => return,
+            _ => {
+                return Err(ParsingError::UnsupportedDataTypeError {
+                    type_name: "we currently only support models and enums".to_string(),
+                })
+            }
         };
 
         match decl {
             Decl::TsInterface(decl) => {
                 ts_declarations.push(decl);
+                Ok(())
             }
             Decl::TsEnum(decl) => {
                 enums.push(ts_enum_to_data_enum(decl));
+                Ok(())
             }
-            _ => {}
+            _ => Err(ParsingError::UnsupportedDataTypeError {
+                type_name: "we currently only support models and enums".to_string(),
+            }),
         }
-    });
+    })?;
 
     let parsed_models = ts_declarations
         .into_iter()
@@ -493,7 +501,7 @@ fn ts_parse_property_signature(
         Expr::Lit(Lit::Str(str)) => str.value.to_string(),
         _ => {
             return Err(ParsingError::UnsupportedDataTypeError {
-                type_name: "unsupported".to_string(),
+                type_name: format!("{:?}", *prop.key.clone()),
             })
         }
     };
@@ -537,10 +545,9 @@ fn ts_parse_type_ann(
     match *type_ann {
         TsType::TsKeywordType(keyword) => ts_parse_keyword_type(keyword),
         TsType::TsTypeRef(type_ref) => ts_parse_type_ref(type_ref, enums, primary_key),
-        _ => {
-            debug!("found a weird type {:?}", type_ann);
-            Ok(ColumnType::Unsupported)
-        }
+        _ => Err(ParsingError::UnsupportedDataTypeError {
+            type_name: format!("{:?}", type_ann),
+        }),
     }
 }
 
@@ -549,10 +556,9 @@ fn ts_parse_keyword_type(keyword: swc_ecma_ast::TsKeywordType) -> Result<ColumnT
         TsKeywordTypeKind::TsStringKeyword => Ok(ColumnType::String),
         TsKeywordTypeKind::TsBooleanKeyword => Ok(ColumnType::Boolean),
         TsKeywordTypeKind::TsNumberKeyword => Ok(ColumnType::Float),
-        _ => {
-            debug!("found a weird type {:?}", keyword);
-            Ok(ColumnType::Unsupported)
-        }
+        _ => Err(ParsingError::UnsupportedDataTypeError {
+            type_name: format!("{:?}", keyword.kind),
+        }),
     }
 }
 
@@ -578,7 +584,9 @@ fn ts_parse_type_ref(
                 if let Some(param) = params.params.first() {
                     ts_parse_type_ann(param.clone(), enums, primary_key)
                 } else {
-                    Ok(ColumnType::Unsupported)
+                    Err(ParsingError::UnsupportedDataTypeError {
+                        type_name: "no type for key".to_string(),
+                    })
                 }
             })
             .ok_or(ParsingError::UnsupportedDataTypeError {
@@ -597,7 +605,9 @@ fn ts_parse_type_ref(
                 .clone(),
         ))
     } else {
-        Ok(ColumnType::Unsupported)
+        Err(ParsingError::UnsupportedDataTypeError {
+            type_name: type_ref_name,
+        })
     }
 }
 

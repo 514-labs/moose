@@ -226,20 +226,23 @@ fn parse_type_ref(
 
     if type_ref_name == "Key" {
         *primary_key = true;
-        return type_ref
-            .type_params
-            .map(|params| {
+
+        match type_ref.type_params {
+            Some(params) => {
                 if let Some(param) = params.params.first() {
-                    parse_type_ann(param.clone(), enums, primary_key)
+                    return parse_type_ann(param.clone(), enums, primary_key);
                 } else {
-                    Err(TypescriptParsingError::UnsupportedDataTypeError {
+                    return Err(TypescriptParsingError::UnsupportedDataTypeError {
                         type_name: "no type for key".to_string(),
-                    })
+                    });
                 }
-            })
-            .ok_or(TypescriptParsingError::UnsupportedDataTypeError {
-                type_name: "no type for key".to_string(),
-            })?;
+            }
+            None => {
+                return Err(TypescriptParsingError::UnsupportedDataTypeError {
+                    type_name: "no type for key".to_string(),
+                });
+            }
+        }
     }
 
     if type_ref_name == "Date" {

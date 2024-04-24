@@ -58,7 +58,7 @@ impl FieldAttributes {
 }
 
 pub fn extract_data_model_from_file(path: &Path) -> Result<FileObjects, PrismaParsingError> {
-    let schema_file = std::fs::read_to_string(&path)
+    let schema_file = std::fs::read_to_string(path)
         .map_err(|_| PrismaParsingError::FileNotFound { path: path.into() })?;
     let ast = parse_schema(&schema_file, &mut Diagnostics::default());
     prisma_ast_to_internal_ast(ast)

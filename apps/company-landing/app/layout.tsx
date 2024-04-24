@@ -27,6 +27,7 @@ export const metadata: Metadata = {
 
 const default_navigation = [
   { name: "blog", href: "/blog" },
+  { name: "about", href: "/about" },
   {
     name: "get in touch",
     href: "https://fiveonefour.typeform.com/signup",

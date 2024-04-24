@@ -23,7 +23,9 @@ export function Posts({ posts }: { posts: Post[] }) {
             <HalfWidthContentContainer>
               <Link href={`blog/${slug}`}>
                 <Heading>{title}</Heading>
-                <Text>{description}</Text>
+                <Text>
+                  {description} (<span className=" underline">more</span>)
+                </Text>
               </Link>
             </HalfWidthContentContainer>
           </>

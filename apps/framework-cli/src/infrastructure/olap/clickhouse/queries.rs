@@ -336,7 +336,6 @@ CREATE TABLE IF NOT EXISTS local.User_1_0
 id Int64 NOT NULL,
 email String NOT NULL,
 name String NULL,
-role Enum('USER', 'ADMIN') NOT NULL,
 
 
 PRIMARY KEY (id)

@@ -24,6 +24,7 @@ pub enum TypescriptParsingError {
     UnsupportedDataTypeError {
         type_name: String,
     },
+    #[error("Typescript Parser - Invalid typescript file, please refer to the documentation for an example of a valid typescript file")]
     InvalidTypescriptFile,
     OtherError,
 }
@@ -63,31 +64,25 @@ fn extract_data_models_from_ast(ast: Module) -> Result<FileObjects, TypescriptPa
     let mut ts_declarations = Vec::new();
 
     // collect all interface and enum declarations
-    ast.body.iter().try_for_each(|item| {
-        let decl = match item {
+    for item in ast.body.iter() {
+        match item {
             ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl { decl, .. }))
-            | ModuleItem::Stmt(Stmt::Decl(decl)) => decl,
-            _ => {
-                return Err(TypescriptParsingError::UnsupportedDataTypeError {
-                    type_name: "we currently only support models and enums".to_string(),
-                })
+            | ModuleItem::Stmt(Stmt::Decl(decl)) => {
+                match decl {
+                    Decl::TsInterface(decl) => {
+                        ts_declarations.push(decl);
+                    }
+                    Decl::TsEnum(decl) => {
+                        enums.push(enum_to_data_enum(decl));
+                    }
+                    // We ignore all other declarations
+                    _ => continue,
+                }
             }
-        };
-
-        match decl {
-            Decl::TsInterface(decl) => {
-                ts_declarations.push(decl);
-                Ok(())
-            }
-            Decl::TsEnum(decl) => {
-                enums.push(enum_to_data_enum(decl));
-                Ok(())
-            }
-            _ => Err(TypescriptParsingError::UnsupportedDataTypeError {
-                type_name: "we currently only support models and enums".to_string(),
-            }),
+            // We ignore all other top module items
+            _ => continue,
         }
-    })?;
+    }
 
     let parsed_models = ts_declarations
         .into_iter()
@@ -156,13 +151,11 @@ fn parse_property_signature(
     };
 
     // match the type of the value and return the right column type
-    let TsTypeAnn { type_ann, .. } =
-        *prop
-            .type_ann
-            .clone()
-            .ok_or(TypescriptParsingError::UnsupportedDataTypeError {
-                type_name: "no type for property".to_string(),
-            })?;
+    let TsTypeAnn { type_ann, .. } = *prop
+        .type_ann
+        .clone()
+        .ok_or(TypescriptParsingError::InvalidTypescriptFile {})?;
+
     let data_type = parse_type_ann(type_ann, enums, &mut primary_key)?;
 
     debug!(
@@ -286,8 +279,8 @@ mod tests {
 
         let test_file = current_dir.join("tests/ts/simple.ts");
 
-        let result = extract_data_model_from_file(&test_file).unwrap();
-        assert!(true);
+        let result = extract_data_model_from_file(&test_file);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -296,9 +289,9 @@ mod tests {
 
         let test_file = current_dir.join("tests/ts/simple.ts");
 
-        let result = extract_data_model_from_file(&test_file).unwrap();
+        let result = extract_data_model_from_file(&test_file);
 
-        assert!(true);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -307,8 +300,8 @@ mod tests {
 
         let test_file = current_dir.join("tests/ts/import.ts");
 
-        let result = extract_data_model_from_file(&test_file).unwrap();
-        assert!(true);
+        let result = extract_data_model_from_file(&test_file);
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -317,7 +310,7 @@ mod tests {
 
         let test_file = current_dir.join("tests/ts/extend.m.ts");
 
-        let result = extract_data_model_from_file(&test_file).unwrap();
-        assert!(true);
+        let result = extract_data_model_from_file(&test_file);
+        assert!(result.is_ok());
     }
 }

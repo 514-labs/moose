@@ -17,7 +17,7 @@ use crate::framework::controller::{
     FrameworkObjectVersions,
 };
 use crate::framework::schema::{is_schema_file, DuplicateModelError};
-use crate::framework::sdks::generate_ts_sdk;
+use crate::framework::typescript;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::stream::redpanda;
@@ -207,10 +207,11 @@ async fn process_events(
             .insert(fo.data_model.name.clone(), fo);
     }
 
-    let sdk_location = generate_ts_sdk(
-        project.clone(),
+    let sdk_location = typescript::generator::generate_sdk(
+        &project,
         &framework_object_versions.current_models.typescript_objects,
     )?;
+
     let package_manager = package_managers::PackageManager::Npm;
     package_managers::install_packages(&sdk_location, &package_manager)?;
     package_managers::run_build(&sdk_location, &package_manager)?;

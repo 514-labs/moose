@@ -12,5 +12,6 @@ interface MyModel {
   abc: MyEnum;
   flag: boolean;
   "test-key": string;
+  arr: string[];
   opt?: string;
 }

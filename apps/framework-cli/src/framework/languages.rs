@@ -1,13 +1,10 @@
-use std::fs::File;
-use std::io::{prelude::*, Error, ErrorKind};
+use std::io::{Error, ErrorKind};
 use std::path::PathBuf;
 
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 
 use crate::project::Project;
-
-use super::schema::UnsupportedDataTypeError;
 
 #[derive(ValueEnum, Copy, Serialize, Deserialize, Debug, Clone, Eq, PartialEq)]
 pub enum SupportedLanguages {
@@ -32,24 +29,6 @@ impl std::str::FromStr for SupportedLanguages {
         match s {
             "ts" => Ok(SupportedLanguages::Typescript),
             _ => Err(format!("{} is not a supported language", s)),
-        }
-    }
-}
-
-pub trait CodeGenerator {
-    fn create_code(&self) -> Result<String, UnsupportedDataTypeError>;
-}
-
-pub fn write_code_to_file(
-    language: SupportedLanguages,
-    path: PathBuf,
-    code: String,
-) -> Result<(), std::io::Error> {
-    match language {
-        SupportedLanguages::Typescript => {
-            let mut file = File::create(path)?;
-            file.write_all(code.as_bytes())?;
-            Ok(())
         }
     }
 }

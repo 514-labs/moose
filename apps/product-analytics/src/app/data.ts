@@ -2,12 +2,10 @@
 import { createClient } from "@clickhouse/client";
 
 const clickhouseClient = createClient({
-  host:
-    process.env.DB_HOST ||
-    "https://swtrnxdyro.us-central1.gcp.clickhouse.cloud:8443",
-  username: process.env.DB_USER || "default",
-  password: process.env.DB_PASS || "7On4.w79D84cn",
-  database: process.env.DB || "default",
+  host: process.env.DB_HOST || "http://localhost:18123",
+  username: process.env.DB_USER || "panda",
+  password: process.env.DB_PASS || "pandapass",
+  database: process.env.DB || "local",
 });
 
 export const getData = async (query: string): Promise<object[]> => {

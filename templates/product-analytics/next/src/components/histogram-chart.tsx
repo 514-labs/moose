@@ -65,7 +65,8 @@ export default function HistogramChart({
 
   const options: PlotOptions = {
     color: {
-      scheme: "Cividis",
+      scheme: "Plasma",
+      range: [0.2, 0.8],
     },
     y: {
       grid: true,

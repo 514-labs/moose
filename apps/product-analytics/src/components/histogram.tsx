@@ -14,7 +14,13 @@ interface Props {
 
 export default function Histogram({ data, yAccessor }: Props) {
   const options: PlotOptions = {
+    color: {
+      type: "categorical",
+      scheme: "Plasma",
+      range: [0.2, 0.8],
+    },
     y: {
+      label: null,
       grid: true,
     },
     marks: [

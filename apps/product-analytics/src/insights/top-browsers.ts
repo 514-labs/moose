@@ -12,8 +12,8 @@ const topBrowsers = (range: DateRange, table: string) => {
 timestamp >= timestampAdd(today(), interval -${rangeToNum[range]} day)
 and timestamp <= today()
     group by pathname
-    order by visits desc
-    limit 50`;
+    order by hits desc
+    limit 10`;
 };
 
 enum TopBrowserCTE {

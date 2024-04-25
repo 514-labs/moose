@@ -2,6 +2,7 @@ use crate::framework::controller::FrameworkObject;
 use serde::Serialize;
 use tinytemplate::{format_unescaped, TinyTemplate};
 
+use crate::framework::schema::EnumValue;
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
 };
@@ -290,14 +291,24 @@ fn field_type_to_string(field_type: ClickHouseColumnType) -> Result<String, Clic
         },
         ClickHouseColumnType::Decimal => Ok(field_type.to_string()),
         ClickHouseColumnType::DateTime => Ok(field_type.to_string()),
-        ClickHouseColumnType::Enum(x) => Ok(format!(
-            "Enum({})",
-            x.values
+        ClickHouseColumnType::Enum(data_enum) => {
+            let enum_statement = data_enum
+                .values
                 .iter()
-                .map(|x| format!("'{}'", x))
-                .collect::<Vec<_>>()
-                .join(", ")
-        )),
+                .map(|enum_member| match &enum_member.value {
+                    Some(value) => match value {
+                        EnumValue::Int(int) => format!("'{}' = {}", enum_member.name, int),
+                        EnumValue::String(string) => format!("'{}'", string),
+                    },
+                    None => {
+                        format!("'{}'", enum_member.name)
+                    }
+                })
+                .collect::<Vec<String>>()
+                .join(",");
+
+            Ok(format!("Enum({})", enum_statement))
+        }
         ClickHouseColumnType::Json => Err(ClickhouseError::UnsupportedDataTypeError {
             type_name: "Json".to_string(),
         }),

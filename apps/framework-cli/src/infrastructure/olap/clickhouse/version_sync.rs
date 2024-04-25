@@ -205,7 +205,7 @@ impl VersionSync {
                     ClickHouseColumnType::Json => format!("'{{\"{}\": null}}'", c.name),
                     ClickHouseColumnType::Bytes => "0.0".to_string(),
                     ClickHouseColumnType::Enum(data_enum) => {
-                        format!("'{}'", data_enum.values[0])
+                        format!("'{}'", data_enum.values[0].name)
                     }
                     ClickHouseColumnType::Array(_) => "[]".to_string(),
                 }

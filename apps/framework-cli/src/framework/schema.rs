@@ -137,7 +137,19 @@ pub struct DataModel {
 /// Avoiding the use of the `Enum` keyword to avoid conflicts with Prisma's Enum type
 pub struct DataEnum {
     pub name: String,
-    pub values: Vec<String>,
+    pub values: Vec<EnumMember>,
+}
+
+#[derive(Debug, Clone, Serialize, Eq, PartialEq)]
+pub struct EnumMember {
+    pub name: String,
+    pub value: Option<EnumValue>,
+}
+
+#[derive(Debug, Clone, Serialize, Eq, PartialEq)]
+pub enum EnumValue {
+    Int(u8),
+    String(String),
 }
 
 impl DataModel {

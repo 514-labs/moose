@@ -5,6 +5,7 @@ use std::{ffi::OsStr, fmt, path::PathBuf};
 
 use super::templates::{self, IndexTemplate, PackageJsonTemplate, TsConfigTemplate};
 use crate::framework::controller::FrameworkObjectVersions;
+use crate::framework::schema::{DataEnum, EnumValue};
 use crate::{
     framework::{
         controller::FrameworkObject,
@@ -129,6 +130,25 @@ pub enum InterfaceFieldType {
     Date,
     Array(Box<InterfaceFieldType>),
     Object(Box<TypescriptInterface>),
+    Enum(TSEnum),
+}
+
+#[derive(Debug, Clone)]
+pub struct TSEnum {
+    pub name: String,
+    pub values: Vec<TSEnumMember>,
+}
+
+#[derive(Debug, Clone)]
+pub struct TSEnumMember {
+    pub name: String,
+    pub value: Option<TSEnumValue>,
+}
+
+#[derive(Debug, Clone)]
+pub enum TSEnumValue {
+    String(String),
+    Number(u8),
 }
 
 impl fmt::Display for InterfaceFieldType {
@@ -140,6 +160,7 @@ impl fmt::Display for InterfaceFieldType {
             InterfaceFieldType::Date => write!(f, "Date"),
             InterfaceFieldType::Array(inner_type) => write!(f, "{}[]", inner_type),
             InterfaceFieldType::Object(inner_type) => write!(f, "{}", inner_type.name),
+            InterfaceFieldType::Enum(e) => write!(f, "{}", e.name),
         }
     }
 }
@@ -195,15 +216,35 @@ fn std_field_type_to_typescript_field_mapper(
         ColumnType::Bytes => Err(TypescriptGeneratorError::UnsupportedDataTypeError {
             type_name: "Bytes".to_string(),
         }),
-        ColumnType::Enum(_) => Err(TypescriptGeneratorError::UnsupportedDataTypeError {
-            type_name: "Enum".to_string(),
-        }),
+        ColumnType::Enum(enum_type) => Ok(InterfaceFieldType::Enum(map_std_enum_to_ts(enum_type))),
         ColumnType::Json => Err(TypescriptGeneratorError::UnsupportedDataTypeError {
             type_name: "Json".to_string(),
         }),
         ColumnType::BigInt => Err(TypescriptGeneratorError::UnsupportedDataTypeError {
             type_name: "BigInt".to_string(),
         }),
+    }
+}
+
+fn map_std_enum_to_ts(enum_type: DataEnum) -> TSEnum {
+    let mut values: Vec<TSEnumMember> = Vec::new();
+
+    for enum_member in enum_type.values {
+        let enum_value = match enum_member.value {
+            Some(EnumValue::String(value)) => Some(TSEnumValue::String(value)),
+            Some(EnumValue::Int(value)) => Some(TSEnumValue::Number(value)),
+            None => None,
+        };
+
+        values.push(TSEnumMember {
+            name: enum_member.name,
+            value: enum_value,
+        });
+    }
+
+    TSEnum {
+        name: enum_type.name,
+        values,
     }
 }
 

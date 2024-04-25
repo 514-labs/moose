@@ -1,5 +1,5 @@
 use crate::{
-    framework::schema::{is_enum_type, ColumnType},
+    framework::schema::{is_enum_type, ColumnType, EnumMember, EnumValue},
     project::PROJECT,
 };
 use log::debug;
@@ -60,7 +60,6 @@ fn parse_ts_module(path: &Path) -> Result<Module, TypescriptParsingError> {
 
 fn extract_data_models_from_ast(ast: Module) -> Result<FileObjects, TypescriptParsingError> {
     let mut enums = Vec::new();
-
     let mut ts_declarations = Vec::new();
 
     // collect all interface and enum declarations
@@ -73,7 +72,8 @@ fn extract_data_models_from_ast(ast: Module) -> Result<FileObjects, TypescriptPa
                         ts_declarations.push(decl);
                     }
                     Decl::TsEnum(decl) => {
-                        enums.push(enum_to_data_enum(decl));
+                        let new_enum = enum_to_data_enum(*decl.clone())?;
+                        enums.push(new_enum);
                     }
                     // We ignore all other declarations
                     _ => continue,
@@ -92,17 +92,33 @@ fn extract_data_models_from_ast(ast: Module) -> Result<FileObjects, TypescriptPa
     Ok(FileObjects::new(parsed_models, enums))
 }
 
-fn enum_to_data_enum(enum_decl: &TsEnumDecl) -> DataEnum {
+fn enum_to_data_enum(enum_decl: TsEnumDecl) -> Result<DataEnum, TypescriptParsingError> {
     let name = enum_decl.id.sym.to_string();
-    let values = enum_decl
-        .members
-        .iter()
-        .map(|member| match &member.id {
+    let mut values = Vec::new();
+
+    for member in enum_decl.members {
+        let name = match &member.id {
             TsEnumMemberId::Ident(ident) => ident.sym.to_string(),
             TsEnumMemberId::Str(str) => str.value.to_string(),
-        })
-        .collect();
-    DataEnum { name, values }
+        };
+
+        let value = match member.init {
+            Some(init) => match *init {
+                Expr::Lit(Lit::Str(str)) => Some(EnumValue::String(str.value.to_string())),
+                Expr::Lit(Lit::Num(num)) => Some(EnumValue::Int(num.value as u8)),
+                _ => {
+                    return Err(TypescriptParsingError::UnsupportedDataTypeError {
+                        type_name: format!("{:?}", init),
+                    })
+                }
+            },
+            None => None,
+        };
+
+        values.push(EnumMember { name, value });
+    }
+
+    Ok(DataEnum { name, values })
 }
 
 fn interface_to_model(

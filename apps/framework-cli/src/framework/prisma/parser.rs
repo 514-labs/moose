@@ -2,7 +2,8 @@ use std::path::{Path, PathBuf};
 
 use crate::{
     framework::schema::{
-        is_enum_type, Column, ColumnDefaults, ColumnType, DataEnum, DataModel, FileObjects,
+        is_enum_type, Column, ColumnDefaults, ColumnType, DataEnum, DataModel, EnumMember,
+        FileObjects,
     },
     project::PROJECT,
 };
@@ -74,7 +75,7 @@ fn prisma_ast_to_internal_ast(ast: SchemaAst) -> Result<FileObjects, PrismaParsi
             Ok(())
         }
         Top::Enum(e) => {
-            enums.push(primsa_to_moose_enum(e));
+            enums.push(to_moose_enum(e));
             Ok(())
         }
         _ => Err(PrismaParsingError::UnsupportedDataTypeError {
@@ -109,12 +110,18 @@ fn prisma_model_to_datamodel(
     })
 }
 
-fn primsa_to_moose_enum(e: &Enum) -> DataEnum {
+fn to_moose_enum(e: &Enum) -> DataEnum {
     let name = e.name().to_string();
-    let values = e
-        .iter_values()
-        .map(|(_id, v)| v.name().to_string())
-        .collect();
+
+    let mut values = Vec::new();
+
+    for (_, v) in e.iter_values() {
+        values.push(EnumMember {
+            name: v.name().to_string(),
+            value: None,
+        });
+    }
+
     DataEnum { name, values }
 }
 

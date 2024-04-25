@@ -1,4 +1,4 @@
-import { column_type_mapper, is_enum } from "./utils";
+import { is_enum } from "./utils";
 import { CliData, DataModel, ModelMeta } from "app/types";
 
 function createColumnStubs(model: ModelMeta) {
@@ -8,24 +8,21 @@ function createColumnStubs(model: ModelMeta) {
       return `"${field.name}": ${value}`;
     }
 
-    const data_type = column_type_mapper(field.data_type);
-    switch (data_type) {
-      case "number":
-        return `"${field.name}": ${index}`;
-      case "float":
-        return `"${field.name}": ${index}.1`;
-      case "string":
-        return `"${field.name}": "test-value${index}"`;
-      case "boolean":
-        return `"${field.name}": ${index % 2 === 0}`;
-      case "Date":
-        return `"${field.name}": "2022-01-01"`;
-      case "DateTime":
-        return `"${field.name}": "2024-02-20T23:14:57.788Z"`;
-      case "array":
-        return `"${field.name}": ["test-value${index}"]`;
-      case "object":
-        return `"${field.name}": { key: "test-value${index}" }`;
+    const data_type = field.data_type.toLowerCase();
+    if (data_type === "number") {
+      return `"${field.name}": ${index}`;
+    } else if (data_type === "float") {
+      return `"${field.name}": ${index}.1`;
+    } else if (data_type === "string") {
+      return `"${field.name}": "test-value${index}"`;
+    } else if (data_type === "boolean") {
+      return `"${field.name}": ${index % 2 === 0}`;
+    } else if (data_type === "date") {
+      return `"${field.name}": "2022-01-01"`;
+    } else if (data_type === "datetime") {
+      return `"${field.name}": "2024-02-20T23:14:57.788Z"`;
+    } else if (data_type.startsWith("array")) {
+      return `"${field.name}": []`;
     }
   });
 }

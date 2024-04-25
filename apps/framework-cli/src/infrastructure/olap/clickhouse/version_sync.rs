@@ -1,5 +1,4 @@
 use crate::framework::controller::{FrameworkObject, FrameworkObjectVersions};
-use crate::framework::schema::UnsupportedDataTypeError;
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
 };
@@ -12,6 +11,8 @@ use log::debug;
 use regex::Regex;
 use std::collections::HashMap;
 use std::ffi::OsStr;
+
+use super::errors::ClickhouseError;
 
 pub fn parse_version(v: &str) -> Vec<i32> {
     v.split('.')
@@ -194,7 +195,7 @@ impl VersionSync {
                     ClickHouseColumnType::Enum(data_enum) => {
                         format!("'{}'", data_enum.values[0])
                     }
-                    ClickHouseColumnType::Unsupported => "null".to_string(),
+                    ClickHouseColumnType::Array(_) => "[]".to_string(),
                 }
             })
             .collect::<Vec<String>>()
@@ -232,11 +233,11 @@ impl VersionSync {
         format!("DROP FUNCTION IF EXISTS {}", self.migration_function_name())
     }
 
-    pub fn create_trigger_query(self) -> Result<String, UnsupportedDataTypeError> {
+    pub fn create_trigger_query(self) -> Result<String, ClickhouseError> {
         CreateVersionSyncTriggerQuery::build(self)
     }
 
-    pub fn initial_load_query(self) -> Result<String, UnsupportedDataTypeError> {
+    pub fn initial_load_query(self) -> Result<String, ClickhouseError> {
         InitialLoadQuery::build(self)
     }
 

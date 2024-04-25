@@ -95,7 +95,7 @@ use crate::framework::controller::{
     create_or_replace_version_sync, get_all_framework_objects, process_objects, FrameworkObject,
     FrameworkObjectVersions, RouteMeta, SchemaVersion,
 };
-use crate::framework::sdks::generate_ts_sdk;
+use crate::framework::typescript;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
@@ -496,8 +496,8 @@ async fn initialize_project_state(
 
         // TODO: add old versions to SDK
         if !PROJECT.lock().unwrap().is_production {
-            let sdk_location = generate_ts_sdk(
-                project.clone(),
+            let sdk_location = typescript::generator::generate_sdk(
+                &project,
                 &framework_object_versions.current_models.typescript_objects,
             )?;
             let package_manager = package_managers::PackageManager::Npm;

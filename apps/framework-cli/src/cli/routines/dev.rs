@@ -4,7 +4,6 @@ use std::fs;
 use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
 use crate::framework::languages::create_models_dir;
-use crate::framework::typescript::create_typescript_models_dir;
 use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
 use crate::utilities::docker;
 use crate::utilities::git::dump_old_version_schema;
@@ -110,16 +109,6 @@ pub fn create_deno_files(project: &Project) -> Result<RoutineSuccess, RoutineFai
 
 pub fn create_models_volume(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
     create_models_dir(project).map_err(|err| {
-        RoutineFailure::new(
-            Message::new(
-                "Failed".to_string(),
-                format!("to create models volume in {}", err),
-            ),
-            err,
-        )
-    })?;
-
-    create_typescript_models_dir(project).map_err(|err| {
         RoutineFailure::new(
             Message::new(
                 "Failed".to_string(),

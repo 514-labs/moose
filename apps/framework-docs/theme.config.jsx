@@ -38,10 +38,10 @@ export default {
     <>
       <link rel="icon" href="/favicon.ico" type="image/x-icon" sizes="16x16" />
       <style>{`
-        a {
-          color: hsl(var(--muted-foreground)) !important;
-          /* Muted override */
-        }
+        // a, .nx-text-gray-500, .nx-text-gray-400 {
+        //   color: hsl(var(--muted-foreground));
+        //   /* Muted override */
+        // }
       `}</style>
     </>
   ),

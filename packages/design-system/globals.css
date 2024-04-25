@@ -75,6 +75,18 @@
   }
 }
 
+/* Core overrides */
+a,
+.nx-text-gray-500,
+.nx-text-gray-400 {
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+/* a.nx-text-gray-500:hover,
+a.nx-text-gray-400:hover {
+  color: hsl(var(--primary-foreground)) !important;
+} */
+
 /* Nextra overrides */
 .docs .nx-max-w-\[90rem\] {
   max-width: none;

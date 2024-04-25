@@ -20,12 +20,14 @@ use hyper::service::Service;
 use hyper::Request;
 use hyper::Response;
 use hyper::StatusCode;
+use hyper_util::client;
 use hyper_util::rt::TokioIo;
 use hyper_util::{rt::TokioExecutor, server::conn::auto};
 use log::debug;
 use log::error;
 use rdkafka::producer::FutureRecord;
 use rdkafka::util::Timeout;
+use serde::de;
 use serde::Deserialize;
 use serde::Serialize;
 use std::collections::HashMap;
@@ -36,6 +38,7 @@ use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
+use tokio::net::TcpStream;
 use tokio::sync::RwLock;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -61,6 +64,42 @@ impl Default for LocalWebserverConfig {
             port: 4000,
         }
     }
+}
+
+async fn create_client(
+    req: Request<hyper::body::Incoming>,
+    route: String,
+) -> Result<Response<Full<Bytes>>, anyhow::Error> {
+    let url = format!("http://localhost:{}", 4001).parse::<hyper::Uri>()?;
+
+    let host = url.host().expect("uri has no host");
+    let port = url.port_u16().unwrap();
+    let address = format!("{}:{}", host, port);
+
+    let stream = TcpStream::connect(address).await?;
+    let io = TokioIo::new(stream);
+    let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
+
+    tokio::task::spawn(async move {
+        if let Err(err) = conn.await {
+            println!("Connection failed: {:?}", err);
+        }
+    });
+
+    let authority = url.authority().unwrap().clone();
+
+    let req = Request::builder()
+        .uri(route)
+        .header(hyper::header::HOST, authority.as_str())
+        .body(Full::new(Bytes::new()))?;
+
+    let res = sender.send_request(req).await?;
+    let body = res.collect().await.unwrap().to_bytes().to_vec();
+
+    return Ok(Response::builder()
+        .status(StatusCode::OK)
+        .body(Full::new(Bytes::from(body)))
+        .unwrap());
 }
 
 #[derive(Clone)]
@@ -236,6 +275,18 @@ async fn router(
         }
         (&hyper::Method::POST, ["ingest", _, _]) => {
             ingest_route(req, route, configured_producer, route_table, console_config).await
+        }
+
+        (&hyper::Method::GET, ["consumption", rt]) => {
+            match create_client(req, rt.to_string()).await {
+                Ok(response) => Ok(response),
+                Err(e) => {
+                    debug!("Error: {:?}", e);
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Full::new(Bytes::from("Error")))
+                }
+            }
         }
         (&hyper::Method::GET, ["health"]) => health_route(),
 

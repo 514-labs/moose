@@ -90,3 +90,28 @@ services:
       - --allow-all
       - /home/.moose/deno/aggregations.ts
       - /home
+  consumption:
+    image: denoland/deno:1.41.2
+    depends_on:
+      - clickhousedb
+    environment:
+      - MOOSE_CLICKHOUSE_CONFIG__DB_NAME=${DB_NAME:-local}
+      - MOOSE_CLICKHOUSE_CONFIG__HOST=${CLICKHOUSE_HOST:-clickhousedb}
+      - MOOSE_CLICKHOUSE_CONFIG__HOST_PORT=${CLICKHOUSE_PORT:-8123}
+      - MOOSE_CLICKHOUSE_CONFIG__USER=${CLICKHOUSE_USER:-panda}
+      - MOOSE_CLICKHOUSE_CONFIG__PASSWORD=${CLICKHOUSE_PASSWORD:-pandapass}
+      - MOOSE_CLICKHOUSE_CONFIG__USE_SSL=${USE_SSL:-false}
+    ports:
+      - "4001:4001"
+    volumes:
+      - ../app/apis:/apis
+      - ../app:/home/app
+      - ../.moose:/home/.moose
+      - ../package.json:/home/package.json
+      - ../project.toml:/home/project.toml
+    command:
+      - deno
+      - run
+      - --allow-all
+      - /home/.moose/deno/consumption-api.ts
+      - /home

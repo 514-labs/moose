@@ -43,7 +43,9 @@ use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::README_PREFIX;
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
-use crate::utilities::constants::{DENO_AGGREGATIONS, DENO_DIR, DENO_TRANSFORM};
+use crate::utilities::constants::{
+    DENO_AGGREGATIONS, DENO_CONSUMPTION_API, DENO_DIR, DENO_TRANSFORM,
+};
 use crate::utilities::constants::{
     FLOWS_DIR, FLOW_FILE, PROJECT_CONFIG_FILE, SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE,
 };
@@ -222,6 +224,15 @@ impl Project {
             let mut aggregations_file = std::fs::File::create(aggregations_file_path)?;
             let aggregations_file_content = include_str!("framework/aggregations.ts");
             aggregations_file.write_all(aggregations_file_content.as_bytes())?;
+        }
+
+        let api_server_file = deno_dir.join(DENO_CONSUMPTION_API);
+
+        if !api_server_file.exists() {
+            let mut api_file = std::fs::File::create(api_server_file)?;
+            let api_file_content = include_str!("framework/consumption-api.ts");
+
+            api_file.write_all(api_file_content.as_bytes())?;
         }
 
         Ok(())

@@ -99,7 +99,7 @@ use crate::framework::sdks::generate_ts_sdk;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
-use crate::infrastructure::olap::clickhouse::version_sync::get_all_version_syncs;
+use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
 use crate::infrastructure::stream::redpanda;
 use crate::project::{Project, PROJECT};
 use crate::utilities::package_managers;
@@ -248,7 +248,7 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("<DCM> Initializing project state");
-    let framework_object_versions =
+    let (framework_object_versions, version_syncs) =
         initialize_project_state(project.clone(), &mut route_table).await?;
 
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
@@ -259,7 +259,7 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
         project.clickhouse_config.clone(),
     );
 
-    syncing_processes_registry.start_all(&framework_object_versions);
+    syncing_processes_registry.start_all(&framework_object_versions, &version_syncs);
 
     let file_watcher = FileWatcher::new();
     file_watcher.start(
@@ -290,7 +290,7 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("<DCM> Initializing project state");
-    let framework_object_versions =
+    let (framework_object_versions, version_syncs) =
         initialize_project_state(project.clone(), &mut route_table).await?;
 
     debug!("Route table: {:?}", route_table);
@@ -302,7 +302,7 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
         project.redpanda_config.clone(),
         project.clickhouse_config.clone(),
     );
-    syncing_processes_registry.start_all(&framework_object_versions);
+    syncing_processes_registry.start_all(&framework_object_versions, &version_syncs);
 
     start_flow_process(&project)?;
 
@@ -447,7 +447,7 @@ async fn check_for_model_changes(
 async fn initialize_project_state(
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
-) -> anyhow::Result<FrameworkObjectVersions> {
+) -> anyhow::Result<(FrameworkObjectVersions, Vec<VersionSync>)> {
     let old_versions = project.old_versions_sorted();
 
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
@@ -528,15 +528,18 @@ async fn initialize_project_state(
     .await?;
 
     info!("<DCM> Crawling version syncs");
-    with_spinner_async::<_, anyhow::Result<()>>("Setting up version syncs", async {
-        let version_syncs = get_all_version_syncs(&project, &framework_object_versions)?;
-        for vs in version_syncs {
-            debug!("<DCM> Creating version sync: {:?}", vs);
-            create_or_replace_version_sync(vs, &configured_client).await?;
-        }
-        Ok(())
-    })
+    let version_syncs = with_spinner_async::<_, anyhow::Result<Vec<VersionSync>>>(
+        "Setting up version syncs",
+        async {
+            let version_syncs = get_all_version_syncs(&project, &framework_object_versions)?;
+            for vs in &version_syncs {
+                debug!("<DCM> Creating version sync: {:?}", vs);
+                create_or_replace_version_sync(&project, vs, &configured_client).await?;
+            }
+            Ok(version_syncs)
+        },
+    )
     .await?;
 
-    Ok(framework_object_versions)
+    Ok((framework_object_versions, version_syncs))
 }

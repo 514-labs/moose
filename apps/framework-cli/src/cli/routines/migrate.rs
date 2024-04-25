@@ -3,7 +3,7 @@ use std::sync::Arc;
 use crate::cli::display::Message;
 use crate::cli::routines::{crawl_schema, Routine, RoutineFailure, RoutineSuccess};
 use crate::infrastructure::olap::clickhouse::version_sync::{
-    generate_version_syncs, get_all_version_syncs, parse_version,
+    generate_sql_version_syncs, get_all_version_syncs, parse_version,
 };
 use crate::project::Project;
 
@@ -48,7 +48,8 @@ impl Routine for GenerateMigration {
             )
         })?;
 
-        let new_vs_list = generate_version_syncs(&fo_versions, &version_syncs, previous_version);
+        let new_vs_list =
+            generate_sql_version_syncs(&fo_versions, &version_syncs, previous_version);
 
         let flow_dir = self.project.flows_dir();
         for vs in new_vs_list {
@@ -58,7 +59,7 @@ impl Routine for GenerateMigration {
                 vs.source_version.replace('.', "_"),
                 vs.dest_version.replace('.', "_")
             ));
-            let file_content = vs.migration_function;
+            let file_content = vs.sql_migration_function();
             std::fs::write(&file_path, file_content).map_err(|err| {
                 RoutineFailure::new(
                     Message::new("Failed".to_string(), "to write migration file".to_string()),

@@ -12,6 +12,7 @@ use log::debug;
 use regex::Regex;
 use std::collections::HashMap;
 use std::ffi::OsStr;
+use std::path::PathBuf;
 
 pub fn parse_version(v: &str) -> Vec<i32> {
     v.split('.')
@@ -26,7 +27,8 @@ pub fn version_to_string(v: &[i32]) -> String {
         .join(".")
 }
 
-pub fn generate_version_syncs(
+// to be removed when we move to all TS flow version syncs
+pub fn generate_sql_version_syncs(
     framework_object_versions: &FrameworkObjectVersions,
     version_sync_list: &[VersionSync],
     previous_version: &str,
@@ -55,10 +57,10 @@ pub fn generate_version_syncs(
                     source_table: old_model.table.clone(),
                     dest_version: framework_object_versions.current_version.clone(),
                     dest_table: fo.table.clone(),
-                    migration_function: VersionSync::generate_migration_function(
+                    sync_type: VersionSyncType::Sql(VersionSync::generate_migration_function(
                         &old_model.table.columns,
                         &fo.table.columns,
-                    ),
+                    )),
                 });
             }
         }
@@ -85,6 +87,12 @@ pub fn get_all_version_syncs(
                 let from_version = captures.get(2).unwrap().as_str().replace('_', ".");
                 let to_version = captures.get(5).unwrap().as_str().replace('_', ".");
 
+                let sync_type = match captures.get(6).unwrap().as_str() {
+                    "sql" => VersionSyncType::Sql(std::fs::read_to_string(&path)?),
+                    "ts" => VersionSyncType::Ts(path.clone()),
+                    _ => panic!(),
+                };
+
                 let from_version_models = framework_object_versions
                     .previous_version_models
                     .get(&from_version);
@@ -109,7 +117,7 @@ pub fn get_all_version_syncs(
                                     source_table: from_table.table.clone(),
                                     dest_version: to_version.clone(),
                                     dest_table: to_table.table.clone(),
-                                    migration_function: std::fs::read_to_string(&path)?,
+                                    sync_type,
                                 };
                                 version_syncs.push(version_sync);
                             }
@@ -140,6 +148,12 @@ pub fn get_all_version_syncs(
 }
 
 #[derive(Debug, Clone)]
+pub enum VersionSyncType {
+    Sql(String),
+    Ts(PathBuf),
+}
+
+#[derive(Debug, Clone)]
 pub struct VersionSync {
     pub db_name: String,
     pub model_name: String,
@@ -147,19 +161,17 @@ pub struct VersionSync {
     pub source_table: ClickHouseTable,
     pub dest_version: String,
     pub dest_table: ClickHouseTable,
-    pub migration_function: String,
+    pub sync_type: VersionSyncType,
 }
 
 lazy_static! {
     pub static ref VERSION_SYNC_REGEX: Regex =
         //            source_model_name         source     target_model_name   dest_version
-        Regex::new(r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-9_]+)__)?([0-9_]+).sql$")
+        Regex::new(r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-9_]+)__)?([0-9_]+).(sql|ts)$")
             .unwrap();
 }
 
 impl VersionSync {
-    pub fn write_new_version_sync() {}
-
     pub fn generate_migration_function(
         old_columns: &[ClickHouseColumn],
         new_columns: &[ClickHouseColumn],
@@ -221,18 +233,34 @@ impl VersionSync {
         )
     }
 
+    pub fn topic_name(&self, suffix: &str) -> String {
+        format!(
+            "{}_{}_{}",
+            self.source_table.name, self.dest_table.name, suffix
+        )
+    }
+
+    pub fn sql_migration_function(&self) -> &str {
+        match &self.sync_type {
+            VersionSyncType::Sql(migration_function) => migration_function,
+            VersionSyncType::Ts(_) => {
+                panic!("Retrieving SQL migration function from a flow version sync.")
+            }
+        }
+    }
+
     pub fn create_function_query(&self) -> String {
         format!(
             "CREATE FUNCTION {} AS {}",
             self.migration_function_name(),
-            self.migration_function
+            self.sql_migration_function()
         )
     }
     pub fn drop_function_query(&self) -> String {
         format!("DROP FUNCTION IF EXISTS {}", self.migration_function_name())
     }
 
-    pub fn create_trigger_query(self) -> Result<String, UnsupportedDataTypeError> {
+    pub fn create_trigger_query(&self) -> Result<String, UnsupportedDataTypeError> {
         CreateVersionSyncTriggerQuery::build(self)
     }
 

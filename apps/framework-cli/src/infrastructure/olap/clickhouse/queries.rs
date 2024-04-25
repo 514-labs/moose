@@ -195,14 +195,14 @@ impl InitialLoadQuery {
         tt.add_template("initial_load_trigger", INITIAL_DATA_LOAD_TEMPLATE)
             .unwrap();
         // same field names as the trigger context
-        let context = CreateVersionSyncTriggerContext::new(view)?;
+        let context = CreateVersionSyncTriggerContext::new(&view)?;
         Ok(tt.render("initial_load_trigger", &context).unwrap())
     }
 }
 
 pub struct CreateVersionSyncTriggerQuery;
 impl CreateVersionSyncTriggerQuery {
-    pub fn build(view: VersionSync) -> Result<QueryString, UnsupportedDataTypeError> {
+    pub fn build(view: &VersionSync) -> Result<QueryString, UnsupportedDataTypeError> {
         let mut tt = TinyTemplate::new();
         tt.add_template(
             "create_version_sync_trigger",
@@ -227,27 +227,27 @@ struct CreateVersionSyncTriggerContext {
 
 impl CreateVersionSyncTriggerContext {
     pub fn new(
-        version_sync: VersionSync,
+        version_sync: &VersionSync,
     ) -> Result<CreateVersionSyncTriggerContext, UnsupportedDataTypeError> {
         let trigger_name = version_sync.migration_trigger_name();
         let migration_function_name = version_sync.migration_function_name();
         Ok(CreateVersionSyncTriggerContext {
-            db_name: version_sync.db_name,
+            db_name: version_sync.db_name.clone(),
             view_name: trigger_name,
             migration_function_name,
-            source_table_name: version_sync.source_table.name,
-            dest_table_name: version_sync.dest_table.name,
+            source_table_name: version_sync.source_table.name.clone(),
+            dest_table_name: version_sync.dest_table.name.clone(),
             from_fields: version_sync
                 .source_table
                 .columns
-                .into_iter()
-                .map(|column| column.name)
+                .iter()
+                .map(|column| column.name.clone())
                 .collect(),
             to_fields: version_sync
                 .dest_table
                 .columns
-                .into_iter()
-                .map(CreateTableFieldContext::new)
+                .iter()
+                .map(|c| CreateTableFieldContext::new(c.clone()))
                 .collect::<Result<Vec<_>, _>>()?,
         })
     }

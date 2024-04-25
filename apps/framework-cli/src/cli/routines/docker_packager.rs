@@ -1,6 +1,7 @@
 use super::{Routine, RoutineFailure, RoutineSuccess};
 use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
+use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::{constants, docker, system};
 use crate::{cli::display::Message, project::Project};
 use log::{error, info};
@@ -172,7 +173,7 @@ impl Routine for BuildDockerfile {
 
         // Copy versions folder to packager directory
         let copy_result = system::copy_directory(
-            &internal_dir.join("versions"),
+            &internal_dir.join(CLI_INTERNAL_VERSIONS_DIR),
             &internal_dir.join("packager"),
         );
         match copy_result {

@@ -346,8 +346,7 @@ impl Project {
     }
 
     pub fn delete_old_versions(&self) -> Result<(), std::io::Error> {
-        let internal_dir = self.internal_dir()?;
-        let mut old_versions = internal_dir.clone();
+        let mut old_versions = self.internal_dir()?;
         old_versions.push(CLI_INTERNAL_VERSIONS_DIR);
 
         if old_versions.exists() {

@@ -25,15 +25,15 @@ export const WhatIsMooseSection = () => {
     <>
       <Section>
         <Grid className="gap-y-5">
-          <HalfWidthContentContainer className="2xl:col-span-3 aspect-square bg-muted flex flex-col item-center justify-center">
-            <div className="relative h-3/4">
+          <HalfWidthContentContainer className="lg:col-span-3 aspect-square bg-muted sticky md:top-24 flex items-center justify-center">
+            <div className="relative w-full h-3/4">
               <Image
                 priority
                 className="hidden dark:block"
                 src="/images/how-it-works/img-diagram-compare-dark.svg"
                 fill
                 alt="man in jacket"
-                sizes=" (max-width: 768px) 150vw, 25vw"
+                sizes="(max-width: 768px) 150vw, 25vw"
               />
               <Image
                 priority
@@ -41,11 +41,12 @@ export const WhatIsMooseSection = () => {
                 src="/images/how-it-works/img-diagram-compare-light.svg"
                 fill
                 alt="man in jacket"
-                sizes=" (max-width: 768px) 150vw, 25vw"
+                sizes="(max-width: 768px) 150vw, 25vw"
               />
             </div>
           </HalfWidthContentContainer>
-          <HalfWidthContentContainer className=" 2xl:col-start-7">
+
+          <HalfWidthContentContainer className="lg:col-start-7">
             <Heading> {content.title} </Heading>
             <Text> {content.description} </Text>
             <Link href={content.cta.href}>

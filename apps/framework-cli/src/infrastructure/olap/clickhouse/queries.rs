@@ -1,14 +1,12 @@
 use serde::Serialize;
 use tinytemplate::{format_unescaped, TinyTemplate};
 
-use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
-use crate::{
-    framework::schema::{FieldArity, UnsupportedDataTypeError},
-    infrastructure::olap::clickhouse::model::{
-        ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
-    },
+use crate::infrastructure::olap::clickhouse::model::{
+    ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
 };
+use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
 
+use super::errors::ClickhouseError;
 use super::QueryString;
 
 static CREATE_ALIAS_TEMPLATE: &str = r#"
@@ -19,7 +17,7 @@ CREATE VIEW IF NOT EXISTS {db_name}.{alias_name} AS SELECT * FROM {db_name}.{sou
 static CREATE_TABLE_TEMPLATE: &str = r#"
 CREATE TABLE IF NOT EXISTS {db_name}.{table_name} 
 (
-{{for field in fields}}{field.field_name} {field.field_type} {field.field_arity},
+{{for field in fields}}{field.field_name} {field.field_type} {field.field_nullable},
 {{endfor}}
 {{if primary_key_string}}
 PRIMARY KEY ({primary_key_string})
@@ -31,7 +29,7 @@ ENGINE = {engine};
 static CREATE_VERSION_SYNC_TRIGGER_TEMPLATE: &str = r#"
 CREATE MATERIALIZED VIEW IF NOT EXISTS {db_name}.{view_name} TO {db_name}.{dest_table_name}
 (
-{{for field in to_fields}}{field.field_name} {field.field_type} {field.field_arity}{{- if @last }}{{ else }}, {{ endif }}
+{{for field in to_fields}}{field.field_name} {field.field_type} {field.field_nullable}{{- if @last }}{{ else }}, {{ endif }}
 {{endfor}}
 )
 AS
@@ -86,7 +84,7 @@ impl CreateTableQuery {
     pub fn build(
         table: ClickHouseTable,
         engine: ClickhouseEngine,
-    ) -> Result<String, UnsupportedDataTypeError> {
+    ) -> Result<String, ClickhouseError> {
         let mut tt = TinyTemplate::new();
         tt.set_default_formatter(&format_unescaped); // by default it formats HTML-escaped and messes up single quotes
         tt.add_template("create_table", CREATE_TABLE_TEMPLATE)
@@ -110,7 +108,7 @@ impl CreateTableContext {
     fn new(
         table: ClickHouseTable,
         engine: ClickhouseEngine,
-    ) -> Result<CreateTableContext, UnsupportedDataTypeError> {
+    ) -> Result<CreateTableContext, ClickhouseError> {
         let (engine, ignore_primary_key) = match engine {
             ClickhouseEngine::MergeTree => ("MergeTree".to_string(), false),
         };
@@ -133,7 +131,7 @@ impl CreateTableContext {
                 .columns
                 .into_iter()
                 .map(CreateTableFieldContext::new)
-                .collect::<Result<Vec<CreateTableFieldContext>, UnsupportedDataTypeError>>()?,
+                .collect::<Result<Vec<CreateTableFieldContext>, ClickhouseError>>()?,
             primary_key_string: if !primary_key.is_empty() {
                 Some(primary_key.join(", "))
             } else {
@@ -148,11 +146,11 @@ impl CreateTableContext {
 struct CreateTableFieldContext {
     field_name: String,
     field_type: String,
-    field_arity: String,
+    field_nullable: String,
 }
 
 impl CreateTableFieldContext {
-    fn new(column: ClickHouseColumn) -> Result<CreateTableFieldContext, UnsupportedDataTypeError> {
+    fn new(column: ClickHouseColumn) -> Result<CreateTableFieldContext, ClickhouseError> {
         clickhouse_column_to_create_table_field_context(column)
     }
 }
@@ -164,7 +162,7 @@ DROP TABLE IF EXISTS {db_name}.{table_name};
 pub struct DropTableQuery;
 
 impl DropTableQuery {
-    pub fn build(table: ClickHouseTable) -> Result<String, UnsupportedDataTypeError> {
+    pub fn build(table: ClickHouseTable) -> Result<String, ClickhouseError> {
         let mut tt = TinyTemplate::new();
         tt.add_template("drop_table", DROP_TABLE_TEMPLATE).unwrap();
         let context = DropTableContext::new(table)?;
@@ -180,7 +178,7 @@ struct DropTableContext {
 }
 
 impl DropTableContext {
-    fn new(table: ClickHouseTable) -> Result<DropTableContext, UnsupportedDataTypeError> {
+    fn new(table: ClickHouseTable) -> Result<DropTableContext, ClickhouseError> {
         Ok(DropTableContext {
             db_name: table.db_name,
             table_name: table.name,
@@ -190,7 +188,7 @@ impl DropTableContext {
 
 pub struct InitialLoadQuery;
 impl InitialLoadQuery {
-    pub fn build(view: VersionSync) -> Result<QueryString, UnsupportedDataTypeError> {
+    pub fn build(view: VersionSync) -> Result<QueryString, ClickhouseError> {
         let mut tt = TinyTemplate::new();
         tt.add_template("initial_load_trigger", INITIAL_DATA_LOAD_TEMPLATE)
             .unwrap();
@@ -202,7 +200,7 @@ impl InitialLoadQuery {
 
 pub struct CreateVersionSyncTriggerQuery;
 impl CreateVersionSyncTriggerQuery {
-    pub fn build(view: &VersionSync) -> Result<QueryString, UnsupportedDataTypeError> {
+    pub fn build(view: &VersionSync) -> Result<QueryString, ClickhouseError> {
         let mut tt = TinyTemplate::new();
         tt.add_template(
             "create_version_sync_trigger",
@@ -228,9 +226,10 @@ struct CreateVersionSyncTriggerContext {
 impl CreateVersionSyncTriggerContext {
     pub fn new(
         version_sync: &VersionSync,
-    ) -> Result<CreateVersionSyncTriggerContext, UnsupportedDataTypeError> {
+    ) -> Result<CreateVersionSyncTriggerContext, ClickhouseError> {
         let trigger_name = version_sync.migration_trigger_name();
         let migration_function_name = version_sync.migration_function_name();
+
         Ok(CreateVersionSyncTriggerContext {
             db_name: version_sync.db_name.clone(),
             view_name: trigger_name,
@@ -243,6 +242,7 @@ impl CreateVersionSyncTriggerContext {
                 .iter()
                 .map(|column| column.name.clone())
                 .collect(),
+
             to_fields: version_sync
                 .dest_table
                 .columns
@@ -253,9 +253,7 @@ impl CreateVersionSyncTriggerContext {
     }
 }
 
-fn field_type_to_string(
-    field_type: ClickHouseColumnType,
-) -> Result<String, UnsupportedDataTypeError> {
+fn field_type_to_string(field_type: ClickHouseColumnType) -> Result<String, ClickhouseError> {
     // Blowing out match statements here in case we need to customize the output string for some types.
     match field_type {
         ClickHouseColumnType::String => Ok(field_type.to_string()),
@@ -288,41 +286,37 @@ fn field_type_to_string(
                 .collect::<Vec<_>>()
                 .join(", ")
         )),
-        _ => Err(UnsupportedDataTypeError {
-            type_name: field_type.to_string(),
+        ClickHouseColumnType::Json => Err(ClickhouseError::UnsupportedDataTypeError {
+            type_name: "Json".to_string(),
         }),
+        ClickHouseColumnType::Bytes => Err(ClickhouseError::UnsupportedDataTypeError {
+            type_name: "Bytes".to_string(),
+        }),
+        ClickHouseColumnType::Array(inner_type) => {
+            let inner_type_string = field_type_to_string(*inner_type)?;
+            Ok(format!("Array({})", inner_type_string))
+        }
     }
 }
 
 fn clickhouse_column_to_create_table_field_context(
     column: ClickHouseColumn,
-) -> Result<CreateTableFieldContext, UnsupportedDataTypeError> {
-    if column.arity == FieldArity::List {
-        Ok(CreateTableFieldContext {
-            field_name: column.name,
-            field_type: format!("Array({})", field_type_to_string(column.column_type)?),
-            field_arity: if column.arity.is_required() {
-                "NOT NULL".to_string()
-            } else {
-                "NULL".to_string()
-            },
-        })
-    } else {
-        Ok(CreateTableFieldContext {
-            field_name: column.name,
-            field_type: field_type_to_string(column.column_type)?,
-            field_arity: if column.arity.is_required() {
-                "NOT NULL".to_string()
-            } else {
-                "NULL".to_string()
-            },
-        })
-    }
+) -> Result<CreateTableFieldContext, ClickhouseError> {
+    let field_type = field_type_to_string(column.column_type)?;
+    Ok(CreateTableFieldContext {
+        field_name: column.name,
+        field_type,
+        field_nullable: if column.required {
+            "NOT NULL".to_string()
+        } else {
+            "NULL".to_string()
+        },
+    })
 }
 
 #[cfg(test)]
 mod tests {
-    use crate::framework::{controller::framework_object_mapper, schema::parse_schema_file};
+    use crate::framework::{controller::framework_object_mapper, schema::parse_data_model_file};
 
     #[test]
     fn test_create_query_from_prisma_model() {
@@ -330,7 +324,7 @@ mod tests {
 
         let test_file = current_dir.join("tests/psl/simple.prisma");
 
-        let result = parse_schema_file(&test_file, "1.0", framework_object_mapper).unwrap();
+        let result = parse_data_model_file(&test_file, "1.0", framework_object_mapper).unwrap();
 
         let ch_table = result[0].table.clone();
 
@@ -342,7 +336,6 @@ CREATE TABLE IF NOT EXISTS local.User_1_0
 id Int64 NOT NULL,
 email String NOT NULL,
 name String NULL,
-role Enum('USER', 'ADMIN') NOT NULL,
 
 
 PRIMARY KEY (id)

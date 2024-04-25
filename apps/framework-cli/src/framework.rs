@@ -2,8 +2,8 @@ use clap::Subcommand;
 
 pub mod controller;
 pub mod languages;
+pub mod prisma;
 pub mod schema;
-pub mod sdks;
 pub mod typescript;
 
 pub enum Insights {

@@ -66,7 +66,7 @@ export interface MooseEnum {
 export interface Column {
   name: string;
   data_type: string | MooseEnum;
-  arity: string;
+  required: boolean;
   unique: boolean;
   primary_key: boolean;
   default: string;

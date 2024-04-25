@@ -9,6 +9,7 @@ use self::model::ClickHouseSystemTable;
 
 pub mod client;
 pub mod config;
+pub mod errors;
 pub mod inserter;
 pub mod mapper;
 pub mod model;
@@ -28,7 +29,7 @@ mod tests {
             ClickHouseColumn {
                 name: "eventId".to_string(),
                 column_type: ClickHouseColumnType::String,
-                arity: crate::framework::schema::FieldArity::Required,
+                required: true,
                 unique: false,
                 primary_key: true,
                 default: None,
@@ -36,7 +37,7 @@ mod tests {
             ClickHouseColumn {
                 name: "timestamp".to_string(),
                 column_type: ClickHouseColumnType::DateTime,
-                arity: crate::framework::schema::FieldArity::Required,
+                required: true,
                 unique: false,
                 primary_key: false,
                 default: None,
@@ -44,7 +45,7 @@ mod tests {
             ClickHouseColumn {
                 name: "userId".to_string(),
                 column_type: ClickHouseColumnType::String,
-                arity: crate::framework::schema::FieldArity::Required,
+                required: true,
                 unique: false,
                 primary_key: false,
                 default: None,
@@ -52,7 +53,7 @@ mod tests {
             ClickHouseColumn {
                 name: "activity".to_string(),
                 column_type: ClickHouseColumnType::String,
-                arity: crate::framework::schema::FieldArity::Required,
+                required: true,
                 unique: false,
                 primary_key: false,
                 default: None,

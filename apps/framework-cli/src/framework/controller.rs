@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::ffi::OsStr;
 use std::io::Error;
 use std::io::ErrorKind;
 use std::path::Path;
@@ -8,12 +7,7 @@ use std::sync::Arc;
 
 use log::{debug, info, warn};
 
-use crate::framework;
-use crate::framework::languages::CodeGenerator;
-use crate::framework::languages::SupportedLanguages;
-use crate::framework::sdks::TypescriptObjects;
-use crate::framework::typescript::get_typescript_models_dir;
-use crate::framework::typescript::SendFunction;
+use crate::framework::typescript::generator::SendFunction;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
 use crate::infrastructure::olap::clickhouse::queries::CreateAliasQuery;
@@ -24,11 +18,13 @@ use crate::project::Project;
 use crate::project::PROJECT;
 #[cfg(test)]
 use crate::utilities::constants::SCHEMAS_DIR;
-use crate::utilities::constants::TS_INTERFACE_GENERATE_EXT;
 
+use super::schema::DataModelParsingError;
 use super::schema::{is_schema_file, DataModel};
-use super::schema::{parse_schema_file, DuplicateModelError};
-use super::typescript::TypescriptInterface;
+use super::schema::{parse_data_model_file, DuplicateModelError};
+use super::typescript::generator::generate_temp_data_model;
+use super::typescript::generator::TypescriptInterface;
+use super::typescript::generator::TypescriptObjects;
 
 #[derive(Debug, Clone)]
 pub struct FrameworkObject {
@@ -39,26 +35,36 @@ pub struct FrameworkObject {
     pub original_file_path: PathBuf,
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to build internal framework object representation")]
+#[non_exhaustive]
+pub enum MappingError {
+    ClickhouseError(#[from] crate::infrastructure::olap::clickhouse::errors::ClickhouseError),
+    TypescriptError(#[from] super::typescript::generator::TypescriptGeneratorError),
+}
+
 pub fn framework_object_mapper(
     s: DataModel,
     original_file_path: &Path,
     version: &str,
-) -> FrameworkObject {
+) -> Result<FrameworkObject, MappingError> {
     let clickhouse_table =
-        olap::clickhouse::mapper::std_table_to_clickhouse_table(s.to_table(version));
+        olap::clickhouse::mapper::std_table_to_clickhouse_table(s.to_table(version))?;
 
     let topic = format!("{}_{}", s.name.clone(), version.replace('.', "_"));
 
-    FrameworkObject {
+    let ts_interface = super::typescript::generator::std_table_to_typescript_interface(
+        s.to_table(version),
+        s.name.as_str(),
+    )?;
+
+    Ok(FrameworkObject {
         data_model: s.clone(),
         table: clickhouse_table,
         topic,
-        ts_interface: framework::typescript::mapper::std_table_to_typescript_interface(
-            s.to_table(version),
-            s.name.as_str(),
-        ),
+        ts_interface,
         original_file_path: original_file_path.to_path_buf(),
-    }
+    })
 }
 
 #[derive(Debug, Clone)]
@@ -125,17 +131,8 @@ pub fn get_all_framework_objects(
 pub fn get_framework_objects_from_schema_file(
     path: &Path,
     version: &str,
-) -> Result<Vec<FrameworkObject>, Error> {
-    let framework_objects =
-        parse_schema_file::<FrameworkObject>(path, version, framework_object_mapper).map_err(
-            |e| {
-                Error::new(
-                    ErrorKind::Other,
-                    format!("<DCM> Failed to parse schema file. Error {}", e),
-                )
-            },
-        )?;
-    Ok(framework_objects)
+) -> Result<Vec<FrameworkObject>, DataModelParsingError> {
+    parse_data_model_file::<FrameworkObject>(path, version, framework_object_mapper)
 }
 
 pub async fn create_or_replace_version_sync(
@@ -257,82 +254,15 @@ pub(crate) fn create_language_objects(
     ingest_route: &Path,
     project: Arc<Project>,
 ) -> Result<TypescriptObjects, Error> {
-    info!("Creating typescript interface: {:?}", fo.ts_interface);
-    let ts_interface_code = fo.ts_interface.create_code().map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to get typescript interface: {:?}", e),
-        )
-    })?;
-
     let send_func = SendFunction::new(
         fo.ts_interface.clone(),
         project.http_server_config.url(),
         ingest_route.to_str().unwrap().to_string(),
     );
-    let send_func_code = send_func.create_code().map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to generate send function: {:?}", e),
-        )
-    })?;
-    let typescript_dir = get_typescript_models_dir(&project)?;
-    let interface_file_path = typescript_dir.join(format!("{}.ts", fo.ts_interface.file_name()));
-    let send_func_file_path = typescript_dir.join(send_func.interface.send_function_file_name());
 
-    debug!(
-        "Writing typescript interface to file: {:?}",
-        interface_file_path
-    );
-    framework::languages::write_code_to_file(
-        SupportedLanguages::Typescript,
-        interface_file_path,
-        ts_interface_code.clone(),
-    )
-    .map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to write typescript interface to file: {:?}", e),
-        )
-    })?;
+    // TODO Remove when users write the interface
+    generate_temp_data_model(&project, fo)?;
 
-    // TODO remove this when we move away from prisma
-    if fo.original_file_path.extension() == Some(OsStr::new("prisma")) {
-        let schemas_dir = project.schemas_dir();
-
-        debug!(
-            "Prisma model {:?} detected, generating typescript in the datamodels folder {:?}",
-            fo.original_file_path, schemas_dir
-        );
-
-        framework::languages::write_code_to_file(
-            SupportedLanguages::Typescript,
-            schemas_dir.join(format!(
-                "{}{}",
-                fo.ts_interface.file_name(),
-                TS_INTERFACE_GENERATE_EXT
-            )),
-            ts_interface_code,
-        )
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Failed to write typescript interface to file: {:?}", e),
-            )
-        })?;
-    }
-
-    framework::languages::write_code_to_file(
-        SupportedLanguages::Typescript,
-        send_func_file_path,
-        send_func_code,
-    )
-    .map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to write typescript function to file: {:?}", e),
-        )
-    })?;
     Ok(TypescriptObjects::new(fo.ts_interface.clone(), send_func))
 }
 

@@ -35,7 +35,7 @@ export default function ModelTable({ datamodel }: { datamodel: DataModel }) {
                 {processType(field.data_type)}
               </div>
               <div className="grow basis-1 text-muted-foreground">
-                {field.arity}
+                {field.required}
               </div>
               <div className="grow basis-1 text-muted-foreground">
                 {`${field.unique}`}

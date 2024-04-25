@@ -12,29 +12,6 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function column_type_mapper(source_type: string) {
-  switch (source_type) {
-    case "String":
-      return "string";
-    case "Float":
-      return "float";
-    case "Number":
-      return "number";
-    case "Boolean":
-      return "boolean";
-    case "Date":
-      return "Date";
-    case "DateTime":
-      return "DateTime";
-    case "Array":
-      return "array";
-    case "Object":
-      return "object";
-    default:
-      return "unknown";
-  }
-}
-
 export function getModelsByVersion(
   cliData: CliData,
   version: VersionKey = CURRENT_VERSION,

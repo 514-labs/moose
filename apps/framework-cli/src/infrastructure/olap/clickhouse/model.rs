@@ -1,8 +1,7 @@
+use super::errors::ClickhouseError;
 use super::queries::{CreateTableQuery, DropTableQuery};
 use crate::framework::schema::DataEnum;
-use crate::framework::schema::{FieldArity, UnsupportedDataTypeError};
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
-
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -32,8 +31,8 @@ pub enum ClickHouseColumnType {
     DateTime,
     Json,
     Bytes,
+    Array(Box<ClickHouseColumnType>),
     Enum(DataEnum),
-    Unsupported,
 }
 
 impl fmt::Display for ClickHouseColumnType {
@@ -85,7 +84,7 @@ pub enum ClickHouseColumnDefaults {
 pub struct ClickHouseColumn {
     pub name: String,
     pub column_type: ClickHouseColumnType,
-    pub arity: FieldArity,
+    pub required: bool,
     pub unique: bool,
     pub primary_key: bool,
     pub default: Option<ClickHouseColumnDefaults>,
@@ -230,11 +229,11 @@ pub struct ClickHouseTable {
 }
 
 impl ClickHouseTable {
-    pub fn create_data_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
+    pub fn create_data_table_query(&self) -> Result<String, ClickhouseError> {
         CreateTableQuery::build(self.clone(), ClickhouseEngine::MergeTree)
     }
 
-    pub fn drop_data_table_query(&self) -> Result<String, UnsupportedDataTypeError> {
+    pub fn drop_data_table_query(&self) -> Result<String, ClickhouseError> {
         DropTableQuery::build(self.clone())
     }
 }

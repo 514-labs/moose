@@ -22,16 +22,18 @@ export const GetMooseCTASection = () => {
   return (
     <Section>
       <Grid className="gap-5-y">
-        <HalfWidthContentContainer className="2xl:col-span-3 aspect-square bg-muted relative">
-          <Image
-            priority
-            src="/images/get-moose/mjs_img_7.webp"
-            fill
-            alt="man in jacket"
-            sizes=" (max-width: 768px) 150vw, 25vw"
-          />
+        <HalfWidthContentContainer className="lg:col-span-3 aspect-square bg-muted sticky md:top-24 flex items-center justify-center">
+          <div className="relative w-full h-full">
+            <Image
+              priority
+              src="/images/get-moose/mjs_img_7.webp"
+              fill
+              alt="man in jacket"
+              sizes=" (max-width: 768px) 150vw, 25vw"
+            />
+          </div>
         </HalfWidthContentContainer>
-        <HalfWidthContentContainer className="2xl:col-start-7">
+        <HalfWidthContentContainer className="lg:col-start-7">
           <Heading> {content.title} </Heading>
           <Text> {content.description} </Text>
           <CTABar>

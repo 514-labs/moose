@@ -24,6 +24,7 @@ use std::{
 };
 
 use log::debug;
+use serde::ser::SerializeStruct;
 use serde::Serialize;
 
 use crate::framework::controller::FrameworkObject;
@@ -239,9 +240,11 @@ impl Serialize for ColumnType {
             ColumnType::Float => serializer.serialize_str("Float"),
             ColumnType::Decimal => serializer.serialize_str("Decimal"),
             ColumnType::DateTime => serializer.serialize_str("DateTime"),
-            ColumnType::Enum(_) => {
-                let serial = format!("{}", self);
-                serializer.serialize_str(&serial)
+            ColumnType::Enum(data_enum) => {
+                let mut state = serializer.serialize_struct("Enum", 2)?;
+                state.serialize_field("name", &data_enum.name)?;
+                state.serialize_field("values", &data_enum.values)?;
+                state.end()
             }
             ColumnType::Array(_) => {
                 let serial = format!("{}", self);

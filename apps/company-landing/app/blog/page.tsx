@@ -1,8 +1,4 @@
-import {
-  Section,
-  Grid,
-  HalfWidthContentContainer,
-} from "design-system/components/containers";
+import { Section } from "design-system/components/containers";
 import { Posts } from "./posts-list";
 import { getPosts } from "../../lib/posts";
 import { Display } from "design-system/typography";

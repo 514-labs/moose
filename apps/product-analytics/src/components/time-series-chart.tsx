@@ -1,8 +1,16 @@
 "use client";
 
-import { PlotOptions, axisX, axisY, rectY } from "@observablehq/plot";
+import {
+  PlotOptions,
+  areaY,
+  axisX,
+  axisY,
+  lineY,
+  rectY,
+} from "@observablehq/plot";
 import React from "react";
 import PlotComponent from "./ui/plot-react";
+import { interpolatePlasma } from "d3";
 
 interface Props {
   data: object & { timestamp: string }[];
@@ -20,11 +28,12 @@ export default function TimeSeriesChart({
   timeAccessor,
   yAccessor,
   xAccessor = "time",
-  fillAccessor,
   domain,
   percent,
 }: Props) {
   const newData = data.map((d) => ({ ...d, time: timeAccessor(d) }));
+
+  const barColor = interpolatePlasma(0.3);
 
   const options: PlotOptions = {
     y: {
@@ -33,11 +42,11 @@ export default function TimeSeriesChart({
     },
     axis: null,
     marks: [
-      rectY(newData, {
+      areaY(newData, {
         x: xAccessor,
         y: yAccessor,
         interval: "hour",
-        fill: fillAccessor,
+        fill: barColor,
         tip: { fill: "black" },
       }),
       axisY({ label: null }),

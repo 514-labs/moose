@@ -170,7 +170,7 @@ pub async fn fetch_all_tables(
 }
 
 pub async fn delete_table_or_view(
-    table_or_view_name: String,
+    table_or_view_name: &str,
     configured_client: &ConfiguredDBClient,
 ) -> Result<(), clickhouse::error::Error> {
     let client = &configured_client.client;
@@ -185,6 +185,21 @@ pub async fn delete_table_or_view(
         .query(format!("DROP TABLE {db_name}.{table_or_view_name}").as_str())
         .execute()
         .await
+}
+
+pub async fn get_engine(
+    db_name: &str,
+    name: &str,
+    configured_client: &ConfiguredDBClient,
+) -> anyhow::Result<Option<String>> {
+    let mut cursor = configured_client
+        .client
+        .query("SELECT engine FROM system.tables WHERE database = ? AND name = ?")
+        .bind(db_name)
+        .bind(name)
+        .fetch::<String>()?;
+
+    Ok(cursor.next().await?)
 }
 
 pub async fn check_is_table_new(

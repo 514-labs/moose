@@ -5,7 +5,7 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use log::{debug, info, warn};
+use log::{debug, error, info, warn};
 
 use crate::framework::typescript::generator::SendFunction;
 use crate::infrastructure::olap;
@@ -222,6 +222,37 @@ pub async fn create_or_replace_table_alias(
     Ok(())
 }
 
+pub async fn create_or_replace_latest_table_alias(
+    fo: &FrameworkObject,
+    configured_client: &ConfiguredDBClient,
+) -> anyhow::Result<()> {
+    info!(
+        "<DCM> Creating table alias: {:?} -> {:?}",
+        fo.data_model.name, fo.table.name
+    );
+
+    match olap::clickhouse::get_engine(&fo.table.db_name, &fo.data_model.name, configured_client)
+        .await?
+    {
+        None => {}
+        Some(v) if v == "View" => {
+            olap::clickhouse::delete_table_or_view(&fo.data_model.name, configured_client).await?;
+        }
+        Some(engine) => {
+            error!(
+                "Will not replace table {} alias, as it has engine {}.",
+                fo.data_model.name, engine
+            );
+            return Ok(());
+        }
+    };
+
+    let query = CreateAliasQuery::build_latest(fo);
+    olap::clickhouse::run_query(&query, configured_client).await?;
+
+    Ok(())
+}
+
 pub(crate) async fn create_or_replace_tables(
     fo: &FrameworkObject,
     configured_client: &ConfiguredDBClient,
@@ -283,7 +314,7 @@ pub async fn remove_table_and_topics_from_schema_file_path(
                 Err(e) => warn!("Failed to delete topics: {}", e),
             }
 
-            olap::clickhouse::delete_table_or_view(meta.table_name, configured_client)
+            olap::clickhouse::delete_table_or_view(&meta.table_name, configured_client)
                 .await
                 .map_err(|e| {
                     Error::new(
@@ -324,6 +355,7 @@ pub async fn set_up_topic_and_tables_and_route(
     configured_client: &ConfiguredDBClient,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     ingest_route: PathBuf,
+    is_latest: bool,
 ) -> anyhow::Result<()> {
     let topic = fo.topic.clone();
 
@@ -375,6 +407,10 @@ pub async fn set_up_topic_and_tables_and_route(
         }
     };
 
+    if is_latest {
+        create_or_replace_latest_table_alias(fo, configured_client).await?;
+    }
+
     route_table.insert(
         ingest_route.clone(),
         RouteMeta {
@@ -397,6 +433,8 @@ pub async fn process_objects(
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     version: &str,
 ) -> anyhow::Result<()> {
+    let is_latest = version == project.version();
+
     for (name, fo) in framework_objects.iter() {
         let ingest_route = schema_file_path_to_ingest_route(
             schema_dir,
@@ -412,6 +450,7 @@ pub async fn process_objects(
             configured_client,
             route_table,
             ingest_route.clone(),
+            is_latest,
         )
         .await?;
 

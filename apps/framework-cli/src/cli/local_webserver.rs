@@ -98,10 +98,10 @@ async fn create_client(
     let res = sender.send_request(req).await?;
     let body = res.collect().await.unwrap().to_bytes().to_vec();
 
-    return Ok(Response::builder()
+    Ok(Response::builder()
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from(body)))
-        .unwrap());
+        .unwrap())
 }
 
 #[derive(Clone)]

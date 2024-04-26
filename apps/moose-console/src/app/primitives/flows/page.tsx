@@ -25,7 +25,10 @@ export default async function FlowsPage(): Promise<JSX.Element> {
         <div className="py-5 max-w-screen-md">
           Flows enable you to process your data as it moves through your MooseJS
           application. If you want to learn more about them, head to the{" "}
-          <a className="underline" href="https://docs.moosejs.com">
+          <a
+            className="underline"
+            href="https://docs.moosejs.com/building/flows/intro"
+          >
             documentation
           </a>
         </div>

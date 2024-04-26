@@ -143,6 +143,13 @@ impl RoutineSuccess {
             message_type: MessageType::Success,
         }
     }
+
+    pub fn highlight(message: Message) -> Self {
+        Self {
+            message,
+            message_type: MessageType::Highlight,
+        }
+    }
 }
 
 #[derive(Debug)]

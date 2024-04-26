@@ -152,7 +152,7 @@ async fn top_command_handler(
                     if !is_git_repo {
                         crate::utilities::git::create_init_commit(project_arc, dir_path);
                         show_message!(
-                            MessageType::Success,
+                            MessageType::Info,
                             Message {
                                 action: "Init".to_string(),
                                 details: "Created a new git repository".to_string(),
@@ -160,17 +160,32 @@ async fn top_command_handler(
                         );
                     }
 
-                    show_message!(
-                        MessageType::Success,
-                        Message {
-                            action: "Created".to_string(),
-                            details: "new project".to_string(),
-                        }
-                    );
+                    {
+                        show_message!(
+                            MessageType::Success,
+                            Message {
+                                action: "Success!".to_string(),
+                                details: format!(
+                                    "Created project at {} 🚀",
+                                    dir_path.to_string_lossy()
+                                ),
+                            }
+                        );
+                    }
 
-                    Ok(RoutineSuccess::info(Message::new(
-                        "Next steps".to_string(),
-                        format!("Run these commands to start Moose: cd {} && npx @514labs/moose-cli dev", dir_path.to_string_lossy()),
+                    {
+                        show_message!(
+                            MessageType::Info,
+                            Message {
+                                action: "".to_string(),
+                                details: "\n".to_string(),
+                            }
+                        );
+                    }
+
+                    Ok(RoutineSuccess::highlight(Message::new(
+                        "Get Started".to_string(),
+                        format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n🛠️  Start dev server: \n\t$ npx @514labs/moose-cli dev\n\n", dir_path.to_string_lossy()),
                     )))
                 }
             }
@@ -178,7 +193,7 @@ async fn top_command_handler(
         Commands::Build { docker } => {
             let run_mode = RunMode::Explicit {};
             info!("Running build command");
-            let project = load_project()?;
+            let project: Project = load_project()?;
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(

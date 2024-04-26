@@ -62,6 +62,7 @@ pub enum MessageType {
     Info,
     Success,
     Error,
+    Highlight,
 }
 
 #[derive(Debug, Clone)]
@@ -100,7 +101,7 @@ macro_rules! show_message {
                             console::Alignment::Right,
                             Some("...")
                         ))
-                        .blue()
+                        .cyan()
                         .bold(),
                         $message.details
                     ))
@@ -141,6 +142,25 @@ macro_rules! show_message {
                         .red()
                         .bold(),
                         $message.details
+                    ))
+                    .expect("failed to write message to terminal");
+                command_terminal.counter += 1;
+            }
+            MessageType::Highlight => {
+                let mut command_terminal = TERM.write().unwrap();
+                command_terminal
+                    .term
+                    .write_line(&format!(
+                        "{} {}",
+                        style(pad_str(
+                            $message.action.as_str(),
+                            padder,
+                            console::Alignment::Center,
+                            Some("...")
+                        ))
+                        .on_green()
+                        .bold(),
+                        style($message.details.as_str()).white().bright()
                     ))
                     .expect("failed to write message to terminal");
                 command_terminal.counter += 1;

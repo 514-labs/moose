@@ -37,7 +37,7 @@ impl Routine for InitializeProject {
 
         CreateBaseAppFiles::new(self.project.clone()).run(run_mode)?;
 
-        Ok(RoutineSuccess::success(Message::new(
+        Ok(RoutineSuccess::info(Message::new(
             "Created".to_string(),
             "Moose app with file scaffolding".to_string(),
         )))
@@ -60,7 +60,7 @@ impl Routine for CreateBaseAppFiles {
             RoutineFailure::new(Message::new("Failed".to_string(), "".to_string()), err)
         })?;
 
-        Ok(RoutineSuccess::success(Message::new(
+        Ok(RoutineSuccess::info(Message::new(
             "Created".to_string(),
             "base app files".to_string(),
         )))

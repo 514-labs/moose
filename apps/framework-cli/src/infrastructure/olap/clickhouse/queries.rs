@@ -1,3 +1,4 @@
+use crate::framework::controller::FrameworkObject;
 use serde::Serialize;
 use tinytemplate::{format_unescaped, TinyTemplate};
 
@@ -55,16 +56,27 @@ FROM (select {migration_function_name}(
 
 pub struct CreateAliasQuery;
 impl CreateAliasQuery {
-    pub fn build(old_table: &ClickHouseTable, new_table: &ClickHouseTable) -> String {
+    fn render(context: CreateAliasContext) -> String {
         let mut tt = TinyTemplate::new();
         tt.add_template("create_alias", CREATE_ALIAS_TEMPLATE)
             .unwrap();
-        let context = CreateAliasContext {
+        tt.render("create_alias", &context).unwrap()
+    }
+
+    pub fn build(old_table: &ClickHouseTable, new_table: &ClickHouseTable) -> String {
+        CreateAliasQuery::render(CreateAliasContext {
             db_name: old_table.db_name.clone(),
             alias_name: new_table.name.clone(),
             source_table_name: old_table.name.clone(),
-        };
-        tt.render("create_alias", &context).unwrap()
+        })
+    }
+
+    pub fn build_latest(latest_table: &FrameworkObject) -> String {
+        CreateAliasQuery::render(CreateAliasContext {
+            db_name: latest_table.table.db_name.clone(),
+            alias_name: latest_table.data_model.name.clone(),
+            source_table_name: latest_table.table.name.clone(),
+        })
     }
 }
 #[derive(Serialize)]

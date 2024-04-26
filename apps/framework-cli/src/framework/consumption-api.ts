@@ -1,8 +1,4 @@
-import {
-  createClient,
-  ClickHouseClient,
-  ResultSet,
-} from "npm:@clickhouse/client-web@1.0.1";
+import { createClient, ResultSet } from "npm:@clickhouse/client-web@1.0.1";
 
 const CLICKHOUSE_DB =
   Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__DB_NAME") || "local";
@@ -32,54 +28,20 @@ const getClickhouseClient = () => {
 };
 
 let i = 0;
-const cwd = Deno.args[0] || Deno.cwd();
-const FLOWS_DIR_PATH = `${cwd}/app/apis`;
-
-const getFlows = (): Map<string, Map<string, string>> => {
-  const flowsDir = Deno.readDirSync(FLOWS_DIR_PATH);
-  const output = new Map<string, Map<string, string>>();
-
-  for (const source of flowsDir) {
-    if (!source.isDirectory) continue;
-
-    const flows = new Map<string, string>();
-    const destinations = Deno.readDirSync(`${FLOWS_DIR_PATH}/${source.name}`);
-    for (const destination of destinations) {
-      if (!destination.isDirectory) continue;
-
-      const destinationFiles = Deno.readDirSync(
-        `${FLOWS_DIR_PATH}/${source.name}/${destination.name}`,
-      );
-      for (const destinationFile of destinationFiles) {
-        if (destinationFile.isFile) {
-          flows.set(
-            destination.name,
-            `${FLOWS_DIR_PATH}/${source.name}/${destination.name}/${destinationFile.name}`,
-          );
-        }
-      }
-    }
-
-    if (flows.size > 0) {
-      output.set(source.name, flows);
-    }
-  }
-
-  return output;
-};
 
 const apiHandler = async (request: Request): Promise<Response> => {
-  console.log("Request received", request);
-  const path = request.url;
+  const path = new URL(request.url);
+  const pathname = path.pathname;
 
-  // TODO: use static imports and have watcher recreate this file
+  const searchParams = Object.fromEntries(path.searchParams.entries());
+
   const userFuncModule = await import(
     // the path is different every time so it reloads
-    `/apis/${path}?dynamic_import_path_hack=${i++}`
+    `/apis${pathname}?import_trigger=${i++}`
   );
 
   const result = await userFuncModule.default(
-    await request,
+    searchParams,
     getClickhouseClient(),
   );
 

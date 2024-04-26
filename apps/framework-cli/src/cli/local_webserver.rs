@@ -68,13 +68,17 @@ impl Default for LocalWebserverConfig {
 
 async fn create_client(
     req: Request<hyper::body::Incoming>,
-    route: String,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
+    // local only for now
     let url = format!("http://localhost:{}", 4001).parse::<hyper::Uri>()?;
 
     let host = url.host().expect("uri has no host");
     let port = url.port_u16().unwrap();
     let address = format!("{}:{}", host, port);
+    let path = req.uri().to_string();
+    let cleaned_path = path.strip_prefix("/consumption").unwrap_or(&path);
+
+    debug!("Creating client for route: {:?}", cleaned_path);
 
     let stream = TcpStream::connect(address).await?;
     let io = TokioIo::new(stream);
@@ -89,7 +93,7 @@ async fn create_client(
     let authority = url.authority().unwrap().clone();
 
     let req = Request::builder()
-        .uri(route)
+        .uri(cleaned_path)
         .header(hyper::header::HOST, authority.as_str())
         .body(Full::new(Bytes::new()))?;
 
@@ -277,17 +281,15 @@ async fn router(
             ingest_route(req, route, configured_producer, route_table, console_config).await
         }
 
-        (&hyper::Method::GET, ["consumption", rt]) => {
-            match create_client(req, rt.to_string()).await {
-                Ok(response) => Ok(response),
-                Err(e) => {
-                    debug!("Error: {:?}", e);
-                    Response::builder()
-                        .status(StatusCode::INTERNAL_SERVER_ERROR)
-                        .body(Full::new(Bytes::from("Error")))
-                }
+        (&hyper::Method::GET, ["consumption", _rt]) => match create_client(req).await {
+            Ok(response) => Ok(response),
+            Err(e) => {
+                debug!("Error: {:?}", e);
+                Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .body(Full::new(Bytes::from("Error")))
             }
-        }
+        },
         (&hyper::Method::GET, ["health"]) => health_route(),
 
         (&hyper::Method::OPTIONS, _) => options_route(),

@@ -189,7 +189,7 @@ async fn process_events(
             },
         );
         let topics = vec![fo.topic.clone()];
-        match redpanda::create_topics(&project.redpanda_config.clone(), topics).await {
+        match redpanda::create_topics(&project.redpanda_config, topics).await {
             Ok(_) => info!("<DCM> Topics created successfully"),
             Err(e) => warn!("Failed to create topics: {}", e),
         }

@@ -11,7 +11,7 @@ use crate::framework::typescript::generator::SendFunction;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
 use crate::infrastructure::olap::clickhouse::queries::CreateAliasQuery;
-use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
+use crate::infrastructure::olap::clickhouse::version_sync::{VersionSync, VersionSyncType};
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
 use crate::project::Project;
@@ -136,19 +136,32 @@ pub fn get_framework_objects_from_schema_file(
 }
 
 pub async fn create_or_replace_version_sync(
-    version_sync: VersionSync,
+    project: &Project,
+    version_sync: &VersionSync,
     configured_client: &ConfiguredDBClient,
 ) -> anyhow::Result<()> {
     let drop_function_query = version_sync.drop_function_query();
-    let create_function_query = version_sync.create_function_query();
-
     olap::clickhouse::run_query(&drop_function_query, configured_client).await?;
-    olap::clickhouse::run_query(&create_function_query, configured_client).await?;
 
     if !PROJECT.lock().unwrap().is_production {
         let drop_trigger_query = version_sync.drop_trigger_query();
         olap::clickhouse::run_query(&drop_trigger_query, configured_client).await?;
     }
+
+    match version_sync.sync_type {
+        VersionSyncType::Sql(_) => create_sql_version_sync(version_sync, configured_client).await?,
+        VersionSyncType::Ts(_) => create_ts_version_sync_topics(project, version_sync).await?,
+    };
+
+    Ok(())
+}
+
+pub async fn create_sql_version_sync(
+    version_sync: &VersionSync,
+    configured_client: &ConfiguredDBClient,
+) -> anyhow::Result<()> {
+    let create_function_query = version_sync.create_function_query();
+    olap::clickhouse::run_query(&create_function_query, configured_client).await?;
 
     let is_table_new =
         olap::clickhouse::check_is_table_new(&version_sync.dest_table, configured_client).await?;
@@ -164,6 +177,21 @@ pub async fn create_or_replace_version_sync(
     let create_trigger_query = version_sync.create_trigger_query()?;
     olap::clickhouse::run_query(&create_trigger_query, configured_client).await?;
 
+    Ok(())
+}
+
+pub async fn create_ts_version_sync_topics(
+    project: &Project,
+    version_sync: &VersionSync,
+) -> anyhow::Result<()> {
+    let input_topic = version_sync.topic_name("input");
+    let output_topic = version_sync.topic_name("output");
+
+    redpanda::create_topics(
+        &project.redpanda_config.clone(),
+        vec![input_topic, output_topic],
+    )
+    .await?;
     Ok(())
 }
 

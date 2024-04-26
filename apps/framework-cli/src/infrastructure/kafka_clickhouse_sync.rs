@@ -4,13 +4,14 @@ use crate::framework::controller::FrameworkObject;
 use crate::framework::controller::FrameworkObjectVersions;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::inserter::Inserter;
-use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
+use crate::infrastructure::olap::clickhouse::model::{ClickHouseTable, ClickHouseValue};
 use crate::infrastructure::stream::redpanda::create_subscriber;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use log::error;
 use log::info;
 use rdkafka::Message;
 
+use crate::infrastructure::olap::clickhouse::version_sync::{VersionSync, VersionSyncType};
 use log::debug;
 use serde_json::Value;
 use tokio::task::JoinHandle;
@@ -57,7 +58,11 @@ impl SyncingProcessesRegistry {
         self.registry.insert(key, syncing_process.process);
     }
 
-    pub fn start_all(&mut self, framework_object_versions: &FrameworkObjectVersions) {
+    pub fn start_all(
+        &mut self,
+        framework_object_versions: &FrameworkObjectVersions,
+        version_syncs: &[VersionSync],
+    ) {
         info!("<DCM> Starting all syncing processes");
 
         let kafka_config = self.kafka_config.clone();
@@ -86,7 +91,20 @@ impl SyncingProcessesRegistry {
                 ))
             });
 
-        for syncing_process in current_object_iterator.chain(previous_versions_iterator) {
+        let version_syncs_iterator = version_syncs.iter().filter_map(|vs| match vs.sync_type {
+            VersionSyncType::Sql(_) => None,
+            VersionSyncType::Ts(_) => Some(spawn_sync_process_core(
+                kafka_config.clone(),
+                clickhouse_config.clone(),
+                &vs.topic_name("output"),
+                vs.dest_table.clone(),
+            )),
+        });
+
+        for syncing_process in current_object_iterator
+            .chain(previous_versions_iterator)
+            .chain(version_syncs_iterator)
+        {
             self.insert(syncing_process);
         }
     }
@@ -106,7 +124,8 @@ impl SyncingProcessesRegistry {
         let syncing_process = spawn_sync_process_core(
             self.kafka_config.clone(),
             self.clickhouse_config.clone(),
-            framework_object.clone(),
+            &framework_object.topic,
+            framework_object.table.clone(),
         );
 
         self.insert(syncing_process);
@@ -128,7 +147,8 @@ fn spawn_sync_process(
         spawn_sync_process_core(
             kafka_config.clone(),
             clickhouse_config.clone(),
-            schema.clone(),
+            &schema.topic,
+            schema.table,
         )
     })
 }
@@ -136,41 +156,38 @@ fn spawn_sync_process(
 fn spawn_sync_process_core(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
-    framework_object: FrameworkObject,
+    topic: &str,
+    table: ClickHouseTable,
 ) -> SyncingProcess {
     let syncing_process = tokio::spawn(sync_kafka_to_clickhouse(
         kafka_config,
         clickhouse_config,
-        framework_object.clone(),
+        topic.to_string(),
+        table.clone(),
     ));
 
     SyncingProcess {
         process: syncing_process,
-        topic: framework_object.topic.clone(),
-        table: framework_object.table.name.clone(),
+        topic: topic.to_string(),
+        table: table.name.clone(),
     }
 }
 
 async fn sync_kafka_to_clickhouse(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
-    framework_object: FrameworkObject,
+    topic: String,
+    table: ClickHouseTable,
 ) -> anyhow::Result<()> {
-    let topic = &framework_object.topic;
-    let subscriber = create_subscriber(&kafka_config, SYNC_GROUP_ID, topic);
+    let subscriber = create_subscriber(&kafka_config, SYNC_GROUP_ID, &topic);
 
-    let clikhouse_columns = framework_object
-        .table
+    let clickhouse_columns = table
         .columns
-        .iter()
-        .map(|column| column.name.clone())
+        .into_iter()
+        .map(|column| column.name)
         .collect();
 
-    let inserter = Inserter::new(
-        clickhouse_config,
-        framework_object.table.name.clone(),
-        clikhouse_columns,
-    );
+    let inserter = Inserter::new(clickhouse_config, table.name, clickhouse_columns);
 
     loop {
         match subscriber.recv().await {

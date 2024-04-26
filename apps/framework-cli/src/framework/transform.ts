@@ -73,8 +73,8 @@ const producer: Producer = kafka.producer({
 });
 
 interface VersionSync {
-  sourceTopic: string;
-  targetTopic: string;
+  sourceTable: string;
+  targetTable: string;
 
   filePath: string;
 }
@@ -90,19 +90,19 @@ const getMigrations = (): Map<string, VersionSync> => {
     const names = migrationRegex.exec(entry.name);
     if (names === null) continue;
 
-    const sourceTable = names[1];
-    const targetTable = names[4] ?? sourceTable;
+    const sourceModel = names[1];
+    const targetModel = names[4] ?? sourceModel;
     const sourceVersion = names[2];
     const targetVersion = names[5];
 
     const filePath = `${FLOWS_DIR_PATH}/${entry.name}`;
 
-    const sourceTopic = `${sourceTable}_${sourceVersion}`;
-    const targetTopic = `${targetTable}_${targetVersion}`;
+    const sourceTable = `${sourceModel}_${sourceVersion}`;
+    const targetTable = `${targetModel}_${targetVersion}`;
 
-    output.set(sourceTopic, {
-      sourceTopic,
-      targetTopic,
+    output.set(sourceTable, {
+      sourceTable,
+      targetTable,
       filePath,
     });
   }
@@ -161,12 +161,20 @@ const handleMessage = async (
   topic: string,
   partition: number,
   flows: Map<string, string>,
+  versionSync: VersionSync | undefined,
   message: KafkaMessage,
 ): Promise<void> => {
   const transaction = await producer.transaction();
   let didTransform = false;
 
   try {
+    if (versionSync !== undefined) {
+      didTransform = true;
+      await transaction.send({
+        topic: `${versionSync.sourceTable}_${versionSync.targetTable}_input`,
+        messages: [{ value: message.value }],
+      });
+    }
     for (const [destinationTopic, flowFilePath] of flows) {
       const transform = await import(flowFilePath);
       const transformedData = await transform.default(
@@ -210,16 +218,13 @@ const startConsumer = async (): Promise<void> => {
   const flows = getFlows();
   const migrations = getMigrations();
 
-  for (const [sourceTopic, vs] of migrations) {
-    let targets;
-    if (flows.has(sourceTopic)) {
-      targets = flows.get(sourceTopic)!;
-    } else {
-      targets = new Map<string, string>();
-      flows.set(sourceTopic, targets);
+  for (const [_, vs] of migrations) {
+    if (!flows.has(vs.sourceTable)) {
+      flows.set(vs.sourceTable, new Map());
     }
-
-    targets.set(vs.targetTopic, vs.filePath);
+    let targets = new Map<string, string>();
+    targets.set(`${vs.sourceTable}_${vs.targetTable}_output`, vs.filePath);
+    flows.set(`${vs.sourceTable}_${vs.targetTable}_input`, targets);
   }
 
   const flowTopics = Array.from(flows.keys());
@@ -231,8 +236,14 @@ const startConsumer = async (): Promise<void> => {
   await consumer.run({
     autoCommit: false,
     eachMessage: async ({ topic, partition, message }) => {
-      if (flows.has(topic)) {
-        await handleMessage(topic, partition, flows.get(topic)!, message);
+      if (flows.has(topic) || migrations.has(topic)) {
+        await handleMessage(
+          topic,
+          partition,
+          flows.get(topic),
+          migrations.get(topic),
+          message,
+        );
       }
     },
   });

@@ -1,6 +1,7 @@
 use log::{error, info};
 use rdkafka::consumer::stream_consumer::StreamConsumer;
 use rdkafka::consumer::Consumer;
+use rdkafka::types::RDKafkaErrorCode;
 use rdkafka::{
     admin::{AdminClient, AdminOptions, NewTopic, TopicReplication},
     producer::{FutureProducer, Producer},
@@ -11,10 +12,7 @@ use std::time::Duration;
 
 // TODO: We need to configure the application based on the current project directory structure to ensure that we catch changes made outside of development mode
 
-pub async fn create_topics(
-    config: &RedpandaConfig,
-    topics: Vec<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn create_topics(config: &RedpandaConfig, topics: Vec<String>) -> anyhow::Result<()> {
     info!("Creating topics: {:?}", topics);
 
     let admin_client: AdminClient<_> = config_client(config)
@@ -25,6 +23,7 @@ pub async fn create_topics(
     let options = AdminOptions::new().operation_timeout(Some(std::time::Duration::from_secs(5)));
 
     let retention_ms = config.retention_ms.to_string();
+
     for topic_name in &topics {
         // Create a new topic with 1 partition and replication factor 1
         let topic = NewTopic::new(topic_name, 1, TopicReplication::Fixed(1));
@@ -39,8 +38,12 @@ pub async fn create_topics(
         for result in result_list {
             match result {
                 Ok(topic_name) => info!("Topic {} created successfully", topic_name),
+                Err((topic_name, RDKafkaErrorCode::TopicAlreadyExists)) => {
+                    info!("Topic {} already exists", topic_name)
+                }
                 Err((topic_name, err)) => {
-                    error!("Failed to create topic {}: {}", topic_name, err)
+                    error!("Failed to create topic {}: {}", topic_name, err);
+                    return Err(err.into());
                 }
             }
         }

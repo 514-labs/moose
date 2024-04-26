@@ -13,6 +13,7 @@ interface ShowTablesResponse {
 const cwd = Deno.args[0] || Deno.cwd();
 const AGGREGATIONS_DIR_PATH = `${cwd}/app/aggregations`;
 const AGGREGATIONS_FILE = "*.ts";
+const AGGREGATIONS_MV_SUFFIX = "aggregations_mv";
 
 const CLICKHOUSE_DB =
   Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__DB_NAME") || "local";
@@ -81,6 +82,24 @@ const getFileName = (filePath: string) => {
   return "";
 };
 
+const cleanUpAggregations = async (chClient: ClickHouseClient) => {
+  try {
+    console.log("Preparing aggregations");
+    const query = `SHOW TABLES LIKE '%${AGGREGATIONS_MV_SUFFIX}'`;
+    const queryResponse = await chClient.query({ query });
+    const showTablesResponse =
+      (await queryResponse.json()) as ShowTablesResponse;
+
+    showTablesResponse.data.forEach(async (table) => {
+      await chClient.command({
+        query: `DROP VIEW IF EXISTS ${table.name}`,
+      });
+    });
+  } catch (err) {
+    console.error(`Failed to clean up aggregations: ${err}`);
+  }
+};
+
 const createAggregation = async (
   chClient: ClickHouseClient,
   path: string,
@@ -98,7 +117,7 @@ const createAggregation = async (
     }
 
     const mvQuery = `
-          CREATE MATERIALIZED VIEW IF NOT EXISTS ${fileName}Mv
+          CREATE MATERIALIZED VIEW IF NOT EXISTS ${fileName}_${AGGREGATIONS_MV_SUFFIX}
           TO ${fileName}_${version}
           AS ${sqlString}
       `;
@@ -109,17 +128,12 @@ const createAggregation = async (
   }
 };
 
-const deleteAggregation = async (
-  chClient: ClickHouseClient,
-  path: string,
-  version: string,
-) => {
+const deleteAggregation = async (chClient: ClickHouseClient, path: string) => {
   const fileName = getFileName(path);
 
   try {
-    await chClient.command({ query: `DROP VIEW IF EXISTS ${fileName}Mv` });
     await chClient.command({
-      query: `DROP TABLE IF EXISTS ${fileName}_${version}`,
+      query: `DROP VIEW IF EXISTS ${fileName}_${AGGREGATIONS_MV_SUFFIX}`,
     });
     console.log(`Deleted aggregation ${fileName}`);
   } catch (err) {
@@ -139,9 +153,9 @@ const startFileWatcher = (chClient: ClickHouseClient) => {
       if (event === "add") {
         await createAggregation(chClient, antiCachePath, version);
       } else if (event === "unlink") {
-        await deleteAggregation(chClient, antiCachePath, version);
+        await deleteAggregation(chClient, antiCachePath);
       } else if (event === "change") {
-        await deleteAggregation(chClient, antiCachePath, version);
+        await deleteAggregation(chClient, antiCachePath);
         await createAggregation(chClient, antiCachePath, version);
       }
     },
@@ -155,6 +169,7 @@ const main = async () => {
   await waitForClickhouse(chClient);
 
   console.log(`Connected`);
+  await cleanUpAggregations(chClient);
   startFileWatcher(chClient);
 };
 

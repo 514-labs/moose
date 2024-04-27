@@ -71,8 +71,7 @@ impl InterfaceTemplate {
     }
 }
 
-pub static SEND_FUNC_TEMPLATE: &str = r#"
-import \{ {interface_context.name} } from './{interface_context.file_name}';
+pub static SEND_FUNC_TEMPLATE: &str = r#"import \{ {interface_context.name} } from './{interface_context.file_name}';
 
 export async function {declaration_name}({interface_context.var_name}: {interface_context.name}) \{
     return fetch('{server_url}/{api_route_name}', \{
@@ -127,10 +126,9 @@ impl SendFunctionTemplate {
     }
 }
 
-pub static INDEX_TEMPLATE: &str = r#"
-{{- for ts_object in ts_objects}}
-import \{ {ts_object.interface_context.name} } from './{ts_object.interface_context.name}';
-import \{ {ts_object.send_function_context.declaration_name} } from './{ts_object.send_function_context.file_name}';
+pub static INDEX_TEMPLATE: &str = r#"{{- for ts_object in ts_objects}}
+import \{ {ts_object.interface_context.name} } from './{latest_version}/{ts_object.interface_context.name}';
+import \{ {ts_object.send_function_context.declaration_name} } from './{latest_version}/{ts_object.send_function_context.file_name}';
 {{endfor}}
 
 {{for ts_object in ts_objects}}
@@ -160,11 +158,16 @@ impl TypescriptObjectsContext {
 
 #[derive(Serialize)]
 struct IndexContext {
+    latest_version: String,
     ts_objects: Vec<TypescriptObjectsContext>,
 }
 impl IndexContext {
-    fn new(ts_objects: &HashMap<String, TypescriptObjects>) -> IndexContext {
+    fn new(
+        latest_version: String,
+        ts_objects: &HashMap<String, TypescriptObjects>,
+    ) -> IndexContext {
         IndexContext {
+            latest_version,
             ts_objects: ts_objects
                 .values()
                 .map(TypescriptObjectsContext::new)
@@ -175,10 +178,13 @@ impl IndexContext {
 pub struct IndexTemplate;
 
 impl IndexTemplate {
-    pub fn build(ts_objects: &HashMap<String, TypescriptObjects>) -> String {
+    pub fn build(
+        latest_version: &str,
+        latest_objects: &HashMap<String, TypescriptObjects>,
+    ) -> String {
         let mut tt = TinyTemplate::new();
         tt.add_template("index", INDEX_TEMPLATE).unwrap();
-        let context = IndexContext::new(ts_objects);
+        let context = IndexContext::new(latest_version.to_string(), latest_objects);
 
         tt.render("index", &context).unwrap()
     }

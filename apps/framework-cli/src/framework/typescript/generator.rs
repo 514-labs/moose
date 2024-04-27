@@ -1,9 +1,10 @@
 use convert_case::{Case, Casing};
 use log::debug;
 use std::fs;
-use std::{collections::HashMap, ffi::OsStr, fmt, path::PathBuf};
+use std::{ffi::OsStr, fmt, path::PathBuf};
 
 use super::templates::{self, IndexTemplate, PackageJsonTemplate, TsConfigTemplate};
+use crate::framework::controller::FrameworkObjectVersions;
 use crate::{
     framework::{
         controller::FrameworkObject,
@@ -235,13 +236,13 @@ pub fn std_table_to_typescript_interface(
 
 pub fn generate_sdk(
     project: &Project,
-    ts_objects: &HashMap<String, TypescriptObjects>,
+    framework_object_versions: &FrameworkObjectVersions,
 ) -> Result<PathBuf, std::io::Error> {
     //! Generates a Typescript SDK for the given project and returns the path where the SDK was generated.
     //!
     //! # Arguments
     //! - `project` - The project to generate the SDK for.
-    //! - `ts_objects` - The objects to generate the SDK for.
+    //! - `framework_object_versions` - The objects to generate the SDK for.
     //!
     //!
     //! # Returns
@@ -252,7 +253,10 @@ pub fn generate_sdk(
     let package = TypescriptPackage::from_project(project);
     let package_json_code = PackageJsonTemplate::build(&package);
     let ts_config_code = TsConfigTemplate::build();
-    let index_code = IndexTemplate::build(ts_objects);
+    let index_code = IndexTemplate::build(
+        &framework_object_versions.current_version,
+        &framework_object_versions.current_models.typescript_objects,
+    );
 
     // This needs to write to the root of the NPM folder... creating in the current project location for now
     let sdk_dir = internal_dir.join(package.name);
@@ -268,18 +272,30 @@ pub fn generate_sdk(
     fs::write(sdk_dir.join("tsconfig.json"), ts_config_code)?;
     fs::write(sdk_dir.join("index.ts"), index_code)?;
 
-    for obj in ts_objects.values() {
-        let interface_code = obj.interface.create_code();
-        let send_function_code = obj.send_function.create_code();
+    let versions = framework_object_versions
+        .previous_version_models
+        .iter()
+        .chain(std::iter::once((
+            &framework_object_versions.current_version,
+            &framework_object_versions.current_models,
+        )));
+    for (version, models) in versions {
+        let version_dir = sdk_dir.join(version);
+        fs::create_dir(&version_dir)?;
+        let ts_objects = &models.typescript_objects;
+        for obj in ts_objects.values() {
+            let interface_code = obj.interface.create_code();
+            let send_function_code = obj.send_function.create_code();
 
-        fs::write(
-            sdk_dir.join(obj.interface.file_name_with_extension()),
-            interface_code,
-        )?;
-        fs::write(
-            sdk_dir.join(obj.send_function.file_name_with_extension()),
-            send_function_code,
-        )?;
+            fs::write(
+                version_dir.join(obj.interface.file_name_with_extension()),
+                interface_code,
+            )?;
+            fs::write(
+                version_dir.join(obj.send_function.file_name_with_extension()),
+                send_function_code,
+            )?;
+        }
     }
 
     Ok(sdk_dir)

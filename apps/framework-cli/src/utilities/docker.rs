@@ -117,7 +117,7 @@ pub fn stop_containers(project: &Project) -> anyhow::Result<()> {
             "Failed to stop containers: {}",
             String::from_utf8_lossy(&output.stderr)
         );
-        Err(anyhow::anyhow!("Failed to strop containers"))
+        Err(anyhow::anyhow!("Failed to stop containers"))
     } else {
         Ok(())
     }
@@ -200,7 +200,11 @@ pub fn create_compose_file(project: &Project) -> std::io::Result<()> {
 pub fn run_rpk_cluster_info(project_name: &str) -> anyhow::Result<()> {
     let child = Command::new("docker")
         .arg("exec")
-        .arg(format!("{}-{}", project_name, REDPANDA_CONTAINER_NAME))
+        .arg(format!(
+            "{}-{}",
+            project_name.to_lowercase(),
+            REDPANDA_CONTAINER_NAME
+        ))
         .arg("rpk")
         .arg("cluster")
         .arg("info")
@@ -215,7 +219,7 @@ pub fn run_rpk_cluster_info(project_name: &str) -> anyhow::Result<()> {
             "Failed to stop containers: {}",
             String::from_utf8_lossy(&output.stderr)
         );
-        Err(anyhow::anyhow!("Failed to strop containers"))
+        Err(anyhow::anyhow!("Failed to stop containers"))
     } else {
         Ok(())
     }

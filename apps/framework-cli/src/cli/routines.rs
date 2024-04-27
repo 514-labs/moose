@@ -503,10 +503,8 @@ async fn initialize_project_state(
 
         // TODO: add old versions to SDK
         if !PROJECT.lock().unwrap().is_production {
-            let sdk_location = typescript::generator::generate_sdk(
-                &project,
-                &framework_object_versions.current_models.typescript_objects,
-            )?;
+            let sdk_location =
+                typescript::generator::generate_sdk(&project, &framework_object_versions)?;
             let package_manager = package_managers::PackageManager::Npm;
             package_managers::install_packages(&sdk_location, &package_manager)?;
             package_managers::run_build(&sdk_location, &package_manager)?;

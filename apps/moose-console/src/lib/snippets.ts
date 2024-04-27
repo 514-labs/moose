@@ -10,7 +10,7 @@ function createColumnStubs(model: ModelMeta) {
 
       if (enumMember) {
         if (!enumMember.value) {
-          return `"${field.name}": "${enumMember.name}"`;
+          return `"${field.name}": 0`;
         } else if (is_MooseString(enumMember.value)) {
           return `"${field.name}": "${enumMember.value.String}"`;
         } else if (is_MooseInt(enumMember.value)) {

@@ -144,6 +144,13 @@ impl ClickHouseValue {
             value: format!("{}", value.format("%Y-%m-%d %H:%M:%S")),
         }
     }
+
+    pub fn new_array(value: Vec<ClickHouseValue>) -> ClickHouseValue {
+        ClickHouseValue {
+            value_type: ClickHouseColumnType::Array(Box::new(ClickHouseColumnType::String)),
+            value: format!("{:?}", value),
+        }
+    }
 }
 
 impl fmt::Display for ClickHouseValue {
@@ -158,7 +165,6 @@ impl fmt::Display for ClickHouseValue {
                 write!(f, "{}", &self.value)
             }
             ClickHouseColumnType::DateTime => write!(f, "'{}'", &self.value),
-            _ => Err(std::fmt::Error),
         }
     }
 }

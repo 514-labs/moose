@@ -12,9 +12,8 @@ use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::RwLock;
 
 use crate::framework::controller::{
-    create_language_objects, create_or_replace_tables, drop_tables,
-    get_framework_objects_from_schema_file, schema_file_path_to_ingest_route,
-    FrameworkObjectVersions,
+    create_or_replace_tables, drop_tables, get_framework_objects_from_schema_file,
+    schema_file_path_to_ingest_route, FrameworkObjectVersions,
 };
 use crate::framework::schema::{is_schema_file, DuplicateModelError};
 use crate::framework::typescript;
@@ -154,11 +153,6 @@ async fn process_events(
             .current_models
             .models
             .remove(&fo.data_model.name);
-
-        framework_object_versions
-            .current_models
-            .typescript_objects
-            .remove(&fo.data_model.name);
     }
 
     for (_, fo) in changed_objects.iter().chain(new_objects.iter()) {
@@ -172,14 +166,6 @@ async fn process_events(
             fo.data_model.name.clone(),
             &framework_object_versions.current_version,
         );
-
-        framework_object_versions
-            .current_models
-            .typescript_objects
-            .insert(
-                fo.data_model.name.clone(),
-                create_language_objects(fo, &ingest_route, project.clone())?,
-            );
 
         route_table.insert(
             ingest_route,

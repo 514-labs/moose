@@ -34,7 +34,7 @@ services:
       - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
     ports:
       - "${CLICKHOUSE_HOST_PORT:-18123}:8123"
-      - "${CLICKHOUSE_POSTGRES_PORT:-9005}:9005"
+      - "9000:9000"
     ulimits:
       nofile:
         soft: 20000

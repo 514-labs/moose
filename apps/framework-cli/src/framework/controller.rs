@@ -7,7 +7,6 @@ use std::sync::Arc;
 
 use log::{debug, error, info, warn};
 
-use crate::framework::typescript::generator::SendFunction;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
 use crate::infrastructure::olap::clickhouse::queries::CreateAliasQuery;
@@ -19,19 +18,18 @@ use crate::project::PROJECT;
 #[cfg(test)]
 use crate::utilities::constants::SCHEMAS_DIR;
 
+use super::schema::ColumnType;
+use super::schema::DataEnum;
 use super::schema::DataModelParsingError;
 use super::schema::{is_schema_file, DataModel};
 use super::schema::{parse_data_model_file, DuplicateModelError};
 use super::typescript::generator::generate_temp_data_model;
-use super::typescript::generator::TypescriptInterface;
-use super::typescript::generator::TypescriptObjects;
 
 #[derive(Debug, Clone)]
 pub struct FrameworkObject {
     pub data_model: DataModel,
     pub table: ClickHouseTable,
     pub topic: String,
-    pub ts_interface: TypescriptInterface,
     pub original_file_path: PathBuf,
 }
 
@@ -53,16 +51,10 @@ pub fn framework_object_mapper(
 
     let topic = format!("{}_{}", s.name.clone(), version.replace('.', "_"));
 
-    let ts_interface = super::typescript::generator::std_table_to_typescript_interface(
-        s.to_table(version),
-        s.name.as_str(),
-    )?;
-
     Ok(FrameworkObject {
         data_model: s.clone(),
         table: clickhouse_table,
         topic,
-        ts_interface,
         original_file_path: original_file_path.to_path_buf(),
     })
 }
@@ -71,7 +63,27 @@ pub fn framework_object_mapper(
 pub struct SchemaVersion {
     pub base_path: PathBuf,
     pub models: HashMap<String, FrameworkObject>,
-    pub typescript_objects: HashMap<String, TypescriptObjects>,
+}
+
+impl SchemaVersion {
+    pub fn get_all_enums(&self) -> Vec<DataEnum> {
+        let mut enums = Vec::new();
+        for model in self.models.values() {
+            for column in &model.data_model.columns {
+                if let ColumnType::Enum(data_enum) = &column.data_type {
+                    enums.push(data_enum.clone());
+                }
+            }
+        }
+        enums
+    }
+
+    pub fn get_all_models(&self) -> Vec<DataModel> {
+        self.models
+            .values()
+            .map(|model| model.data_model.clone())
+            .collect()
+    }
 }
 
 // TODO: save this object somewhere so that we can clean up removed models
@@ -91,7 +103,6 @@ impl FrameworkObjectVersions {
             current_models: SchemaVersion {
                 base_path: current_schema_directory,
                 models: HashMap::new(),
-                typescript_objects: HashMap::new(),
             },
             previous_version_models: HashMap::new(),
         }
@@ -165,6 +176,7 @@ pub async fn create_sql_version_sync(
 
     let is_table_new =
         olap::clickhouse::check_is_table_new(&version_sync.dest_table, configured_client).await?;
+
     if is_table_new {
         debug!(
             "Performing initial load for table: {:?}",
@@ -278,23 +290,6 @@ pub(crate) async fn create_or_replace_tables(
     olap::clickhouse::run_query(&create_data_table_query, configured_client).await?;
 
     Ok(())
-}
-
-pub(crate) fn create_language_objects(
-    fo: &FrameworkObject,
-    ingest_route: &Path,
-    project: Arc<Project>,
-) -> Result<TypescriptObjects, Error> {
-    let send_func = SendFunction::new(
-        fo.ts_interface.clone(),
-        project.http_server_config.url(),
-        ingest_route.to_str().unwrap().to_string(),
-    );
-
-    // TODO Remove when users write the interface
-    generate_temp_data_model(&project, fo)?;
-
-    Ok(TypescriptObjects::new(fo.ts_interface.clone(), send_func))
 }
 
 pub async fn remove_table_and_topics_from_schema_file_path(
@@ -429,7 +424,6 @@ pub async fn process_objects(
     project: Arc<Project>,
     schema_dir: &Path,
     configured_client: &ConfiguredDBClient,
-    compilable_objects: &mut HashMap<String, TypescriptObjects>, // Objects that require compilation after processing
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     version: &str,
 ) -> anyhow::Result<()> {
@@ -454,8 +448,8 @@ pub async fn process_objects(
         )
         .await?;
 
-        let typescript_objects = create_language_objects(fo, &ingest_route, project.clone())?;
-        compilable_objects.insert(name.clone(), typescript_objects);
+        // TODO Remove when users write the interface
+        generate_temp_data_model(&project, version, fo)?;
     }
     Ok(())
 }

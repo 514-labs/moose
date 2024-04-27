@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use crate::framework::controller::FrameworkObject;
 use crate::framework::controller::FrameworkObjectVersions;
+use crate::framework::schema::Column;
+use crate::framework::schema::ColumnType;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::inserter::Inserter;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
@@ -15,8 +17,8 @@ use log::debug;
 use serde_json::Value;
 use tokio::task::JoinHandle;
 
-use super::olap::clickhouse::model::ClickHouseColumn;
-use super::olap::clickhouse::model::ClickHouseColumnType;
+use super::olap::clickhouse::errors::ClickhouseError;
+use super::olap::clickhouse::mapper::std_field_type_to_clickhouse_type_mapper;
 use super::olap::clickhouse::model::ClickHouseRecord;
 use super::olap::clickhouse::model::ClickHouseRuntimeEnum;
 
@@ -196,7 +198,7 @@ async fn sync_kafka_to_clickhouse(
 
                         let parsed_json: Value = serde_json::from_str(payload_str)?;
                         let clickhouse_record = mapper_json_to_clickhouse_record(
-                            &framework_object.table.columns,
+                            &framework_object.data_model.columns,
                             parsed_json,
                         )?;
 
@@ -215,20 +217,27 @@ async fn sync_kafka_to_clickhouse(
 }
 
 fn mapper_json_to_clickhouse_record(
-    clickhouse_columns: &[ClickHouseColumn],
+    schema_columns: &[Column],
     json_value: Value,
 ) -> anyhow::Result<ClickHouseRecord> {
     match json_value {
         Value::Object(map) => {
             let mut record = ClickHouseRecord::new();
 
-            for column in clickhouse_columns.iter() {
+            for column in schema_columns.iter() {
                 let key = column.name.clone();
                 let value = map.get(&key);
 
+                log::debug!(
+                    "Looking to map column {:?} to values in map: {:?}",
+                    column,
+                    map
+                );
+                log::debug!("Value found for key {}: {:?}", key, value);
+
                 match value {
                     Some(value) => {
-                        match map_json_value_to_clickhouse_value(&column.column_type, value) {
+                        match map_json_value_to_clickhouse_value(&column.data_type, value) {
                             Ok(clickhouse_value) => {
                                 record.insert(key, clickhouse_value);
                             }
@@ -252,80 +261,82 @@ fn mapper_json_to_clickhouse_record(
 #[derive(Debug, thiserror::Error)]
 enum MappingError {
     #[error("Failed to map the JSON value {value:?} to ClickHouse column typed {column_type:?}")]
-    TypeMismatchError {
-        column_type: ClickHouseColumnType,
+    TypeMismatch {
+        column_type: ColumnType,
         value: Value,
     },
     #[error("The Column Type {column_type:?} is not supported")]
-    UnsupportedColumnTypeError { column_type: ClickHouseColumnType },
+    UnsupportedColumnType { column_type: ColumnType },
+    #[error("Mapping missing in the `std_field_type_to_clickhouse_type_mapper` method")]
+    ClickHouseModule(#[from] ClickhouseError),
 }
 
 fn map_json_value_to_clickhouse_value(
-    column_type: &ClickHouseColumnType,
+    column_type: &ColumnType,
     value: &Value,
 ) -> Result<ClickHouseValue, MappingError> {
     match column_type {
-        ClickHouseColumnType::String => {
+        ColumnType::String => {
             if let Some(value_str) = value.as_str() {
                 Ok(ClickHouseValue::new_string(value_str.to_string()))
             } else {
-                Err(MappingError::TypeMismatchError {
+                Err(MappingError::TypeMismatch {
                     column_type: column_type.clone(),
                     value: value.clone(),
                 })
             }
         }
-        ClickHouseColumnType::Boolean => {
+        ColumnType::Boolean => {
             if let Some(value_bool) = value.as_bool() {
                 Ok(ClickHouseValue::new_boolean(value_bool))
             } else {
-                Err(MappingError::TypeMismatchError {
+                Err(MappingError::TypeMismatch {
                     column_type: column_type.clone(),
                     value: value.clone(),
                 })
             }
         }
-        ClickHouseColumnType::ClickhouseInt(_) => {
+        ColumnType::Int => {
             if let Some(value_int) = value.as_i64() {
                 Ok(ClickHouseValue::new_int_64(value_int))
             } else {
-                Err(MappingError::TypeMismatchError {
+                Err(MappingError::TypeMismatch {
                     column_type: column_type.clone(),
                     value: value.clone(),
                 })
             }
         }
-        ClickHouseColumnType::ClickhouseFloat(_) => {
+        ColumnType::Float => {
             if let Some(value_float) = value.as_f64() {
                 Ok(ClickHouseValue::new_float_64(value_float))
             } else {
-                Err(MappingError::TypeMismatchError {
+                Err(MappingError::TypeMismatch {
                     column_type: column_type.clone(),
                     value: value.clone(),
                 })
             }
         }
-        ClickHouseColumnType::Decimal => Err(MappingError::UnsupportedColumnTypeError {
+        ColumnType::Decimal => Err(MappingError::UnsupportedColumnType {
             column_type: column_type.clone(),
         }),
-        ClickHouseColumnType::DateTime => {
+        ColumnType::DateTime => {
             if let Some(value_str) = value.as_str() {
                 if let Ok(date_time) = chrono::DateTime::parse_from_rfc3339(value_str) {
                     Ok(ClickHouseValue::new_date_time(date_time))
                 } else {
-                    Err(MappingError::TypeMismatchError {
+                    Err(MappingError::TypeMismatch {
                         column_type: column_type.clone(),
                         value: value.clone(),
                     })
                 }
             } else {
-                Err(MappingError::TypeMismatchError {
+                Err(MappingError::TypeMismatch {
                     column_type: column_type.clone(),
                     value: value.clone(),
                 })
             }
         }
-        ClickHouseColumnType::Enum(x) => {
+        ColumnType::Enum(x) => {
             // In this context what could be coming in could be a string or a number depending on
             // how the enum was defined at the source.
             if let Some(value_str) = value.as_str() {
@@ -339,36 +350,39 @@ fn map_json_value_to_clickhouse_value(
                     x.clone(),
                 ))
             } else {
-                Err(MappingError::TypeMismatchError {
+                Err(MappingError::TypeMismatch {
                     column_type: column_type.clone(),
                     value: value.clone(),
                 })
             }
         }
-        ClickHouseColumnType::Array(inner_clickhouse_type) => {
+        ColumnType::Array(inner_column_type) => {
             if let Some(arr) = value.as_array() {
+                let array_type =
+                    std_field_type_to_clickhouse_type_mapper(*inner_column_type.clone())?;
+
                 let mut array_values = Vec::new();
-                let array_type = *inner_clickhouse_type.clone();
                 for value in arr.iter() {
-                    let clickhouse_value = map_json_value_to_clickhouse_value(&array_type, value)?;
+                    let clickhouse_value =
+                        map_json_value_to_clickhouse_value(inner_column_type, value)?;
                     array_values.push(clickhouse_value);
                 }
 
-                Ok(ClickHouseValue::new_array(
-                    array_values,
-                    *inner_clickhouse_type.clone(),
-                ))
+                Ok(ClickHouseValue::new_array(array_values, array_type))
             } else {
-                Err(MappingError::TypeMismatchError {
+                Err(MappingError::TypeMismatch {
                     column_type: column_type.clone(),
                     value: value.clone(),
                 })
             }
         }
-        ClickHouseColumnType::Json => Err(MappingError::UnsupportedColumnTypeError {
+        ColumnType::Json => Err(MappingError::UnsupportedColumnType {
             column_type: column_type.clone(),
         }),
-        ClickHouseColumnType::Bytes => Err(MappingError::UnsupportedColumnTypeError {
+        ColumnType::Bytes => Err(MappingError::UnsupportedColumnType {
+            column_type: column_type.clone(),
+        }),
+        ColumnType::BigInt => Err(MappingError::UnsupportedColumnType {
             column_type: column_type.clone(),
         }),
     }

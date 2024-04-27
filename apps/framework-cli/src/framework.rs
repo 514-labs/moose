@@ -6,6 +6,8 @@ pub mod data_model;
 pub mod flows;
 pub mod languages;
 pub mod prisma;
+pub mod python;
+pub mod schema;
 pub mod typescript;
 
 pub enum Insights {

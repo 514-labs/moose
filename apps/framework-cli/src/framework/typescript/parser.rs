@@ -105,11 +105,7 @@ fn enum_to_data_enum(enum_decl: TsEnumDecl) -> Result<DataEnum, TypescriptParsin
         let value = match member.init {
             Some(init) => match *init {
                 Expr::Lit(Lit::Str(str)) => EnumValue::String(str.value.to_string()),
-                Expr::Lit(Lit::Num(_)) => {
-                    return Err(TypescriptParsingError::UnsupportedDataTypeError {
-                        type_name: format!("Non String Enums"),
-                    })
-                }
+                Expr::Lit(Lit::Num(num)) => EnumValue::Int(num.value as u8),
                 _ => {
                     return Err(TypescriptParsingError::UnsupportedDataTypeError {
                         type_name: format!("{:?}", init),
@@ -118,7 +114,7 @@ fn enum_to_data_enum(enum_decl: TsEnumDecl) -> Result<DataEnum, TypescriptParsin
             },
             None => {
                 return Err(TypescriptParsingError::UnsupportedDataTypeError {
-                    type_name: format!("Non String Enums"),
+                    type_name: format!("Non mapped enums"),
                 })
             }
         };

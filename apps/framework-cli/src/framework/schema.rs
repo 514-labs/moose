@@ -144,7 +144,7 @@ pub struct DataEnum {
 #[derive(Debug, Clone, Serialize, Eq, PartialEq)]
 pub struct EnumMember {
     pub name: String,
-    pub value: Option<EnumValue>,
+    pub value: EnumValue,
 }
 
 #[derive(Debug, Clone, Serialize, Eq, PartialEq)]

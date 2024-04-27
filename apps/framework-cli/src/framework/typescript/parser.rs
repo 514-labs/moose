@@ -106,7 +106,7 @@ fn enum_to_data_enum(enum_decl: TsEnumDecl) -> Result<DataEnum, TypescriptParsin
 
         let value = match member.init {
             Some(init) => match *init {
-                Expr::Lit(Lit::Str(str)) => Some(EnumValue::String(str.value.to_string())),
+                Expr::Lit(Lit::Str(str)) => EnumValue::String(str.value.to_string()),
                 Expr::Lit(Lit::Num(num)) => {
                     // In the case where we have
                     // enum Enum {
@@ -117,7 +117,7 @@ fn enum_to_data_enum(enum_decl: TsEnumDecl) -> Result<DataEnum, TypescriptParsin
                     // C should have the value of 11
 
                     integer_increment = num.value as u8 + 1;
-                    Some(EnumValue::Int(num.value as u8))
+                    EnumValue::Int(num.value as u8)
                 }
                 _ => {
                     return Err(TypescriptParsingError::UnsupportedDataTypeError {
@@ -128,9 +128,9 @@ fn enum_to_data_enum(enum_decl: TsEnumDecl) -> Result<DataEnum, TypescriptParsin
             None => {
                 // We standardize the integer increment to start from 1
                 // Typescript enums start from 0 so we need to align them
-                let enum_index = integer_increment.clone();
+                let enum_index = integer_increment;
                 integer_increment += 1;
-                Some(EnumValue::Int(enum_index))
+                EnumValue::Int(enum_index)
             }
         };
 

@@ -429,7 +429,7 @@ pub async fn process_objects(
 ) -> anyhow::Result<()> {
     let is_latest = version == project.version();
 
-    for (name, fo) in framework_objects.iter() {
+    for (_, fo) in framework_objects.iter() {
         let ingest_route = schema_file_path_to_ingest_route(
             schema_dir,
             &fo.original_file_path,

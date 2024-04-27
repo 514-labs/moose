@@ -4,11 +4,10 @@ use serde::Serialize;
 use std::fs;
 use std::{ffi::OsStr, fmt, path::PathBuf};
 
-use super::templates::{self, IndexTemplate, PackageJsonTemplate, TsConfigTemplate};
-use crate::framework::controller::FrameworkObjectVersions;
 use super::templates::{
     self, IndexTemplate, PackageJsonTemplate, TsConfigTemplate, TypescriptRenderingError,
 };
+use crate::framework::controller::FrameworkObjectVersions;
 use crate::framework::controller::SchemaVersion;
 use crate::framework::schema::{DataEnum, EnumValue};
 use crate::{
@@ -151,7 +150,7 @@ pub struct TSEnum {
 #[derive(Debug, Clone, Serialize)]
 pub struct TSEnumMember {
     pub name: String,
-    pub value: Option<TSEnumValue>,
+    pub value: TSEnumValue,
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -240,9 +239,8 @@ fn map_std_enum_to_ts(enum_type: DataEnum) -> TSEnum {
 
     for enum_member in enum_type.values {
         let enum_value = match enum_member.value {
-            Some(EnumValue::String(value)) => Some(TSEnumValue::String(value)),
-            Some(EnumValue::Int(value)) => Some(TSEnumValue::Number(value)),
-            None => None,
+            EnumValue::String(value) => TSEnumValue::String(value),
+            EnumValue::Int(value) => TSEnumValue::Number(value),
         };
 
         values.push(TSEnumMember {
@@ -319,7 +317,7 @@ fn collect_enums(framework_objects: &SchemaVersion) -> Vec<TSEnum> {
 pub fn generate_sdk(
     project: &Project,
     framework_object_versions: &FrameworkObjectVersions,
-) -> Result<PathBuf, std::io::Error> {
+) -> Result<PathBuf, TypescriptGeneratorError> {
     //! Generates a Typescript SDK for the given project and returns the path where the SDK was generated.
     //!
     //! # Arguments
@@ -330,8 +328,12 @@ pub fn generate_sdk(
     //! # Returns
     //! - `Result<PathBuf, std::io::Error>` - A result containing the path where the SDK was generated.
 
-    let current_version_ts_objects = collect_ts_objects(project,  &framework_object_versions.current_version, &framework_object_versions.current_models )?;
-    let enums: Vec<TSEnum> = collect_enums(framework_objects);
+    let current_version_ts_objects = collect_ts_objects(
+        project,
+        &framework_object_versions.current_version,
+        &framework_object_versions.current_models,
+    )?;
+    let enums: Vec<TSEnum> = collect_enums(&framework_object_versions.current_models);
 
     let internal_dir = project.internal_dir()?;
 
@@ -341,7 +343,7 @@ pub fn generate_sdk(
 
     let index_code = IndexTemplate::build(
         &framework_object_versions.current_version,
-        &current_version_ts_objects
+        &current_version_ts_objects,
     );
     let current_enum_code = templates::render_enums(enums)?;
 
@@ -371,9 +373,12 @@ pub fn generate_sdk(
     for (version, models) in versions {
         let version_dir = sdk_dir.join(version);
         fs::create_dir(&version_dir)?;
-        let ts_objects = collect_ts_objects(project, version, models);
-        let enums_code = collect_enums(models);
-        for obj in ts_objects.values() {
+        let ts_objects = collect_ts_objects(project, version, models)?;
+        let enums = collect_enums(models);
+        let enums_code = templates::render_enums(enums)?;
+        fs::write(version_dir.join("enums.ts"), enums_code)?;
+
+        for obj in ts_objects.iter() {
             let interface_code = obj.interface.create_code();
             let send_function_code = obj.send_function.create_code();
 
@@ -385,8 +390,6 @@ pub fn generate_sdk(
                 version_dir.join(obj.send_function.file_name_with_extension()),
                 send_function_code,
             )?;
-            fs::write(version_dir.join("enums.ts"), enums_code)?;
-
         }
     }
 

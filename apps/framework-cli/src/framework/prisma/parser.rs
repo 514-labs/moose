@@ -3,7 +3,7 @@ use std::path::{Path, PathBuf};
 use crate::{
     framework::schema::{
         is_enum_type, Column, ColumnDefaults, ColumnType, DataEnum, DataModel, EnumMember,
-        FileObjects,
+        EnumValue, FileObjects,
     },
     project::PROJECT,
 };
@@ -115,10 +115,14 @@ fn to_moose_enum(e: &Enum) -> DataEnum {
 
     let mut values = Vec::new();
 
+    let mut integer_increment = 1;
     for (_, v) in e.iter_values() {
+        let enum_index = integer_increment;
+        integer_increment += 1;
+
         values.push(EnumMember {
             name: v.name().to_string(),
-            value: None,
+            value: EnumValue::Int(enum_index),
         });
     }
 

@@ -296,13 +296,8 @@ fn field_type_to_string(field_type: ClickHouseColumnType) -> Result<String, Clic
                 .values
                 .iter()
                 .map(|enum_member| match &enum_member.value {
-                    Some(value) => match value {
-                        EnumValue::Int(int) => format!("'{}' = {}", enum_member.name, int),
-                        EnumValue::String(string) => format!("'{}'", string),
-                    },
-                    None => {
-                        format!("'{}'", enum_member.name)
-                    }
+                    EnumValue::Int(int) => format!("'{}' = {}", enum_member.name, int),
+                    EnumValue::String(string) => format!("'{}'", string),
                 })
                 .collect::<Vec<String>>()
                 .join(",");

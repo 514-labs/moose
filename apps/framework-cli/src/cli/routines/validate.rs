@@ -1,6 +1,7 @@
 use super::{RoutineFailure, RoutineSuccess};
 use crate::utilities::constants::{
-    CLICKHOUSE_CONTAINER_NAME, CONSOLE_CONTAINER_NAME, REDPANDA_CONTAINER_NAME,
+    AGGREGATIONS_CONTAINER_NAME, CLICKHOUSE_CONTAINER_NAME, CONSOLE_CONTAINER_NAME,
+    CONSUMPTION_CONTAINER_NAME, FLOWS_CONTAINER_NAME, REDPANDA_CONTAINER_NAME,
 };
 use crate::{cli::display::Message, utilities::docker};
 
@@ -38,6 +39,12 @@ pub fn validate_redpanda_run() -> Result<RoutineSuccess, RoutineFailure> {
 
 pub fn validate_console_run() -> Result<RoutineSuccess, RoutineFailure> {
     validate_container_run(CONSOLE_CONTAINER_NAME)
+}
+
+pub fn validate_deno_services() -> Result<RoutineSuccess, RoutineFailure> {
+    validate_container_run(FLOWS_CONTAINER_NAME)
+        .and_then(|_| validate_container_run(AGGREGATIONS_CONTAINER_NAME))
+        .and_then(|_| validate_container_run(CONSUMPTION_CONTAINER_NAME))
 }
 
 pub fn validate_redpanda_cluster(project_name: String) -> Result<RoutineSuccess, RoutineFailure> {

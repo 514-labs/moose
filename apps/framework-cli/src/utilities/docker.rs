@@ -1,9 +1,10 @@
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 
-use log::error;
+use log::{error, info};
 use serde::{Deserialize, Serialize};
 use serde_json::{from_slice, from_str};
+use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::project::Project;
 use crate::utilities::constants::{CLI_VERSION, REDPANDA_CONTAINER_NAME};
@@ -189,6 +190,74 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
         Err(anyhow::anyhow!("Failed to start containers"))
     } else {
         Ok(())
+    }
+}
+
+pub fn tail_container_logs(project: &Project, container_name: &str) -> anyhow::Result<()> {
+    let full_container_name = format!("{}-{}", project.name().to_lowercase(), container_name);
+    let container_id = get_container_id(&full_container_name)?;
+
+    let mut child = tokio::process::Command::new("docker")
+        .arg("logs")
+        .arg("--follow")
+        .arg(container_id)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let stdout = child.stdout.take().ok_or(anyhow::anyhow!(
+        "Failed to get stdout for {}",
+        full_container_name
+    ))?;
+
+    let stderr = child.stderr.take().ok_or(anyhow::anyhow!(
+        "Failed to get stderr for {}",
+        full_container_name
+    ))?;
+
+    let mut stdout_reader = BufReader::new(stdout).lines();
+    let mut stderr_reader = BufReader::new(stderr).lines();
+
+    let log_identifier_stdout = full_container_name.clone();
+    tokio::spawn(async move {
+        while let Ok(Some(line)) = stdout_reader.next_line().await {
+            info!("<{}> {}", log_identifier_stdout, line);
+        }
+    });
+
+    let log_identifier_stderr = full_container_name.clone();
+    tokio::spawn(async move {
+        while let Ok(Some(line)) = stderr_reader.next_line().await {
+            error!("<{}> {}", log_identifier_stderr, line);
+        }
+    });
+
+    Ok(())
+}
+
+fn get_container_id(container_name: &str) -> anyhow::Result<String> {
+    let child = Command::new("docker")
+        .arg("ps")
+        .arg("-aqf")
+        .arg(format!("name={}", container_name))
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    if !output.status.success() {
+        error!(
+            "Failed to get container id: {}",
+            String::from_utf8_lossy(&output.stderr)
+        );
+        Err(anyhow::anyhow!(format!(
+            "Failed to get container id for {}",
+            container_name
+        )))
+    } else {
+        let container_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        Ok(container_id)
     }
 }
 

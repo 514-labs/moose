@@ -15,7 +15,7 @@ const currentBranch = execSync("git branch --show-current").toString().trim();
 
 if (currentBranch !== "main") {
   console.error(
-    "You are not on the main branch, please checkout the main branch before continuing."
+    "You are not on the main branch, please checkout the main branch before continuing.",
   );
   process.exit(1);
 }
@@ -36,7 +36,7 @@ const branches = execSync(`git branch -al "*rfd/${rfdNumber}"`)
 
 if (branches.length > 0) {
   console.error(
-    `The branch 'rfd/${rfdNumber}' already exist, please contact other maintainers to merge it into main before continuing.`
+    `The branch 'rfd/${rfdNumber}' already exist, please contact other maintainers to merge it into main before continuing.`,
   );
   process.exit(1);
 }
@@ -45,7 +45,7 @@ if (branches.length > 0) {
 const author = execSync("git config user.name").toString().trim();
 if (!author) {
   console.error(
-    "No Git author name configured!, please configure git config user.name"
+    "No Git author name configured!, please configure git config user.name",
   );
   process.exit(1);
 }
@@ -53,7 +53,7 @@ if (!author) {
 const authorEmail = execSync("git config user.email").toString().trim();
 if (!authorEmail) {
   console.error(
-    "No Git author email configured!, please configure git config user.email"
+    "No Git author email configured!, please configure git config user.email",
   );
   process.exit(1);
 }
@@ -64,12 +64,12 @@ execSync(`git checkout -b "rfd/${rfdNumber}"`);
 // We read the template and hydrate it with the RFD number, title and author
 const template = fs.readFileSync(__dirname + "/template.mdx", "utf8");
 const hydratedTemplate = template
-  .replace("{{title}}", title)
-  .replace("{{authors}}", `${author} <${authorEmail}>`);
+  .replace("{ { title } }", title)
+  .replace("{ { authors } }", `${author} <${authorEmail}>`);
 
 // We create the RFD directory and write the hydrated template to it
 fs.mkdirSync(__dirname + `/../../rfd/${rfdNumber}`);
 fs.writeFileSync(
   __dirname + `/../../rfd/${rfdNumber}/README.mdx`,
-  hydratedTemplate
+  hydratedTemplate,
 );

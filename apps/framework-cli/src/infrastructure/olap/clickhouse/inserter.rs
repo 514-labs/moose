@@ -10,7 +10,7 @@ use tokio::time;
 use super::config::ClickHouseConfig;
 
 const MAX_FLUSH_INTERVAL_SECONDS: u64 = 1;
-const MAX_BATCH_SIZE: usize = 1000;
+const MAX_BATCH_SIZE: usize = 100000;
 
 pub type BatchRecords = Arc<Mutex<Vec<ClickHouseRecord>>>;
 

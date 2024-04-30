@@ -245,7 +245,7 @@ impl RoutineController {
 // Starts the file watcher and the webserver
 pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()> {
     show_message!(
-        MessageType::Success,
+        MessageType::Info,
         Message {
             action: "Starting".to_string(),
             details: "development mode".to_string(),

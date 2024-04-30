@@ -279,19 +279,19 @@ impl Webserver {
         let producer = redpanda::create_producer(project.redpanda_config.clone());
 
         show_message!(
-            MessageType::Info,
+            MessageType::Success,
             Message {
                 action: "Started".to_string(),
-                details: format!(" web server on port http://{}:{}. You'll use this to host and port to send data to your MooseJS app", project.http_server_config.host.clone(), socket.port()),
+                details: "deveopment server.\n\n".to_string(),
             }
         );
 
         if !PROJECT.lock().unwrap().is_production {
             show_message!(
-            MessageType::Info,
+            MessageType::Highlight,
             Message {
-                action: "Started".to_string(),
-                details: format!(" console on port http://{}:{}. Check it out to get a bird's eye view of your application and infrastructure", project.http_server_config.host.clone(), project.console_config.host_port),
+                action: "Next Steps".to_string(),
+                details: format!("\n\n💻 Open Developer Console\n\tGo to 👉 http://{}:{} 👈 for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: http://{}:{}/ingest", project.http_server_config.host.clone(), project.console_config.host_port, project.http_server_config.host.clone(), socket.port()),
             }
         );
         }

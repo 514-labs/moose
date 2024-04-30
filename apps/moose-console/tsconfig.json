@@ -12,7 +12,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "resolveJsonModule": true,
-    "jsx": "react-jsx"
+    "jsx": "preserve"
   },
   "include": [
     "next-env.d.ts",

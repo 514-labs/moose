@@ -288,24 +288,6 @@ fn class_attribute_node_to_column_builder(
     Ok(column)
 }
 
-fn slice_node_to_column_type(slice_node: &ast::Expr) -> Result<ColumnType, PythonParserError> {
-    match slice_node {
-        Expr::Name(name) => match name.id.to_string().as_str() {
-            "str" => Ok(ColumnType::String),
-            "int" => Ok(ColumnType::Int),
-            "float" => Ok(ColumnType::Float),
-            "bool" => Ok(ColumnType::Boolean),
-            "datetime" => Ok(ColumnType::DateTime),
-            _ => Err(PythonParserError::UnsupportedDataTypeError {
-                type_name: name.id.to_string(),
-            }),
-        },
-        _ => Err(PythonParserError::UnsupportedDataTypeError {
-            type_name: "Unsupported data type".to_string(),
-        }),
-    }
-}
-
 struct ColumnBuilder {
     name: Option<String>,
     data_type: Option<ColumnType>,

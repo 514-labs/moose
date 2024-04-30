@@ -1,19 +1,19 @@
-import { is_MooseInt, is_MooseString, is_enum } from "./utils";
+import { isMooseInt, isMooseString, isEnum } from "./utils";
 import { CliData, DataModel, ModelMeta } from "app/types";
 
 function createColumnStubs(model: ModelMeta) {
   return model.columns.map((field, index) => {
     console.log(field);
 
-    if (is_enum(field.data_type)) {
+    if (isEnum(field.data_type)) {
       const enumMember = field.data_type.values[0];
 
       if (enumMember) {
         if (!enumMember.value) {
           return `"${field.name}": 0`;
-        } else if (is_MooseString(enumMember.value)) {
+        } else if (isMooseString(enumMember.value)) {
           return `"${field.name}": "${enumMember.value.String}"`;
-        } else if (is_MooseInt(enumMember.value)) {
+        } else if (isMooseInt(enumMember.value)) {
           return `"${field.name}": ${enumMember.value.Int}`;
         }
       }

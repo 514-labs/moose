@@ -297,7 +297,7 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("<DCM> Initializing project state");
-    let (framework_object_versions, versions_syncs) =
+    let (framework_object_versions, version_syncs) =
         initialize_project_state(project.clone(), &mut route_table).await?;
 
     debug!("Route table: {:?}", route_table);
@@ -309,7 +309,7 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
         project.redpanda_config.clone(),
         project.clickhouse_config.clone(),
     );
-    syncing_processes_registry.start_all(&framework_object_versions, &versions_syncs);
+    syncing_processes_registry.start_all(&framework_object_versions, &version_syncs);
 
     start_flow_process(&project)?;
 

@@ -26,7 +26,10 @@ pub enum TypescriptParsingError {
     },
     #[error("Typescript Parser - Invalid typescript file, please refer to the documentation for an example of a valid typescript file")]
     InvalidTypescriptFile,
-    OtherError,
+    #[error("Typescript Parser - {message}")]
+    OtherError {
+        message: String,
+    },
 }
 
 pub fn extract_data_model_from_file(path: &Path) -> Result<FileObjects, TypescriptParsingError> {
@@ -96,6 +99,9 @@ fn enum_to_data_enum(enum_decl: TsEnumDecl) -> Result<DataEnum, TypescriptParsin
     let name = enum_decl.id.sym.to_string();
     let mut values = Vec::new();
 
+    let mut has_string_enums: bool = false;
+    let mut auto_increment_enum_index: u8 = 0;
+
     for member in enum_decl.members {
         let name = match &member.id {
             TsEnumMemberId::Ident(ident) => ident.sym.to_string(),
@@ -104,18 +110,42 @@ fn enum_to_data_enum(enum_decl: TsEnumDecl) -> Result<DataEnum, TypescriptParsin
 
         let value = match member.init {
             Some(init) => match *init {
-                Expr::Lit(Lit::Str(str)) => EnumValue::String(str.value.to_string()),
-                Expr::Lit(Lit::Num(num)) => EnumValue::Int(num.value as u8),
+                Expr::Lit(Lit::Str(str)) => {
+                    if auto_increment_enum_index != 0 {
+                        return Err(TypescriptParsingError::OtherError {
+                            message: "We do not allow to mix String enums with Number based enums, please choose one".to_string(),
+                        });
+                    } else {
+                        has_string_enums = true;
+                        EnumValue::String(str.value.to_string())
+                    }
+                }
+                Expr::Lit(Lit::Num(num)) => {
+                    if has_string_enums {
+                        return Err(TypescriptParsingError::OtherError {
+                            message: "We do not allow to mix String enums with Number based enums, please choose one".to_string(),
+                        });
+                    } else {
+                        auto_increment_enum_index = num.value as u8 + 1;
+                        EnumValue::Int(num.value as u8)
+                    }
+                }
                 _ => {
-                    return Err(TypescriptParsingError::UnsupportedDataTypeError {
-                        type_name: format!("{:?}", init),
-                    })
+                    return Err(TypescriptParsingError::OtherError {
+                        message: "We do not allow dynamic assignment to enums".to_string(),
+                    });
                 }
             },
             None => {
-                return Err(TypescriptParsingError::UnsupportedDataTypeError {
-                    type_name: "Non mapped enums".to_string(),
-                })
+                if has_string_enums {
+                    return Err(TypescriptParsingError::OtherError {
+                        message: "We do not allow to mix String enums with Number based enums, please choose one".to_string(),
+                    });
+                } else {
+                    let enum_value = EnumValue::Int(auto_increment_enum_index);
+                    auto_increment_enum_index += 1;
+                    enum_value
+                }
             }
         };
 

@@ -1,7 +1,17 @@
 type Key<T extends string | number> = T;
 
+enum NumEnum {
+  A = 1,
+}
+
 enum StringedEnum {
   A = "TEST",
+}
+
+enum IterationEnum {
+  A,
+  B = 10,
+  C,
 }
 
 interface MyModel {
@@ -13,4 +23,6 @@ interface MyModel {
   arr: string[];
   opt?: string;
   enum3: StringedEnum;
+  enum2: IterationEnum;
+  enum1: NumEnum;
 }

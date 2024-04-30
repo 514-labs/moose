@@ -59,15 +59,15 @@ export function tableIsQueryable(table: Table): boolean {
   return table.engine === "MergeTree";
 }
 
-export function is_enum(type: string | MooseEnum): type is MooseEnum {
+export function isEnum(type: string | MooseEnum): type is MooseEnum {
   return typeof type === "object";
 }
 
-export function is_MooseInt(input: MooseInt | MooseString): input is MooseInt {
+export function isMooseInt(input: MooseInt | MooseString): input is MooseInt {
   return "Int" in input;
 }
 
-export function is_MooseString(
+export function isMooseString(
   input: MooseInt | MooseString,
 ): input is MooseString {
   return "String" in input;

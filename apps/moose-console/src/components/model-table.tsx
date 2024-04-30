@@ -1,12 +1,12 @@
 import { Separator } from "./ui/separator";
-import { is_enum } from "../lib/utils";
+import { isEnum } from "../lib/utils";
 import { DataModel, MooseEnum } from "app/types";
 
 const processType = (type: string | MooseEnum) => {
   if (typeof type === "string") {
     return type;
-  } else if (is_enum(type)) {
-    return type.Enum.name;
+  } else if (isEnum(type)) {
+    return type.name;
   }
   return JSON.stringify(type);
 };

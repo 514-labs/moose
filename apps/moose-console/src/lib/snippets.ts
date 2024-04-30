@@ -1,28 +1,39 @@
-import { is_enum } from "./utils";
+import { isMooseInt, isMooseString, isEnum } from "./utils";
 import { CliData, DataModel, ModelMeta } from "app/types";
 
 function createColumnStubs(model: ModelMeta) {
   return model.columns.map((field, index) => {
-    if (is_enum(field.data_type)) {
-      const value = JSON.stringify(field.data_type.Enum.values[0]);
-      return `"${field.name}": ${value}`;
-    }
+    console.log(field);
 
-    const data_type = field.data_type.toLowerCase();
-    if (data_type === "number") {
-      return `"${field.name}": ${index}`;
-    } else if (data_type === "float") {
-      return `"${field.name}": ${index}.1`;
-    } else if (data_type === "string") {
-      return `"${field.name}": "test-value${index}"`;
-    } else if (data_type === "boolean") {
-      return `"${field.name}": ${index % 2 === 0}`;
-    } else if (data_type === "date") {
-      return `"${field.name}": "2022-01-01"`;
-    } else if (data_type === "datetime") {
-      return `"${field.name}": "2024-02-20T23:14:57.788Z"`;
-    } else if (data_type.startsWith("array")) {
-      return `"${field.name}": []`;
+    if (isEnum(field.data_type)) {
+      const enumMember = field.data_type.values[0];
+
+      if (enumMember) {
+        if (!enumMember.value) {
+          return `"${field.name}": 0`;
+        } else if (isMooseString(enumMember.value)) {
+          return `"${field.name}": "${enumMember.value.String}"`;
+        } else if (isMooseInt(enumMember.value)) {
+          return `"${field.name}": ${enumMember.value.Int}`;
+        }
+      }
+    } else {
+      const data_type = field.data_type.toLowerCase();
+      if (data_type === "number") {
+        return `"${field.name}": ${index}`;
+      } else if (data_type === "float") {
+        return `"${field.name}": ${index}.1`;
+      } else if (data_type === "string") {
+        return `"${field.name}": "test-value${index}"`;
+      } else if (data_type === "boolean") {
+        return `"${field.name}": ${index % 2 === 0}`;
+      } else if (data_type === "date") {
+        return `"${field.name}": "2022-01-01"`;
+      } else if (data_type === "datetime") {
+        return `"${field.name}": "2024-02-20T23:14:57.788Z"`;
+      } else if (data_type.startsWith("array")) {
+        return `"${field.name}": []`;
+      }
     }
   });
 }

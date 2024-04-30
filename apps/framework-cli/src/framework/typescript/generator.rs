@@ -1,10 +1,15 @@
 use convert_case::{Case, Casing};
 use log::debug;
+use serde::Serialize;
 use std::fs;
 use std::{ffi::OsStr, fmt, path::PathBuf};
 
-use super::templates::{self, IndexTemplate, PackageJsonTemplate, TsConfigTemplate};
+use super::templates::{
+    self, IndexTemplate, PackageJsonTemplate, TsConfigTemplate, TypescriptRenderingError,
+};
 use crate::framework::controller::FrameworkObjectVersions;
+use crate::framework::controller::SchemaVersion;
+use crate::framework::schema::{DataEnum, EnumValue};
 use crate::{
     framework::{
         controller::FrameworkObject,
@@ -19,7 +24,11 @@ use crate::{
 #[non_exhaustive]
 pub enum TypescriptGeneratorError {
     #[error("Typescript Code Generator - Unsupported data type: {type_name}")]
-    UnsupportedDataTypeError { type_name: String },
+    UnsupportedDataTypeError {
+        type_name: String,
+    },
+    FileWritingError(#[from] std::io::Error),
+    RenderingError(#[from] TypescriptRenderingError),
 }
 
 #[derive(Debug, Clone)]
@@ -129,6 +138,25 @@ pub enum InterfaceFieldType {
     Date,
     Array(Box<InterfaceFieldType>),
     Object(Box<TypescriptInterface>),
+    Enum(TSEnum),
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TSEnum {
+    pub name: String,
+    pub values: Vec<TSEnumMember>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub struct TSEnumMember {
+    pub name: String,
+    pub value: TSEnumValue,
+}
+
+#[derive(Debug, Clone, Serialize)]
+pub enum TSEnumValue {
+    String(String),
+    Number(u8),
 }
 
 impl fmt::Display for InterfaceFieldType {
@@ -140,6 +168,7 @@ impl fmt::Display for InterfaceFieldType {
             InterfaceFieldType::Date => write!(f, "Date"),
             InterfaceFieldType::Array(inner_type) => write!(f, "{}[]", inner_type),
             InterfaceFieldType::Object(inner_type) => write!(f, "{}", inner_type.name),
+            InterfaceFieldType::Enum(e) => write!(f, "{}", e.name),
         }
     }
 }
@@ -195,15 +224,34 @@ fn std_field_type_to_typescript_field_mapper(
         ColumnType::Bytes => Err(TypescriptGeneratorError::UnsupportedDataTypeError {
             type_name: "Bytes".to_string(),
         }),
-        ColumnType::Enum(_) => Err(TypescriptGeneratorError::UnsupportedDataTypeError {
-            type_name: "Enum".to_string(),
-        }),
+        ColumnType::Enum(enum_type) => Ok(InterfaceFieldType::Enum(map_std_enum_to_ts(enum_type))),
         ColumnType::Json => Err(TypescriptGeneratorError::UnsupportedDataTypeError {
             type_name: "Json".to_string(),
         }),
         ColumnType::BigInt => Err(TypescriptGeneratorError::UnsupportedDataTypeError {
             type_name: "BigInt".to_string(),
         }),
+    }
+}
+
+fn map_std_enum_to_ts(enum_type: DataEnum) -> TSEnum {
+    let mut values: Vec<TSEnumMember> = Vec::new();
+
+    for enum_member in enum_type.values {
+        let enum_value = match enum_member.value {
+            EnumValue::String(value) => TSEnumValue::String(value),
+            EnumValue::Int(value) => TSEnumValue::Number(value),
+        };
+
+        values.push(TSEnumMember {
+            name: enum_member.name,
+            value: enum_value,
+        });
+    }
+
+    TSEnum {
+        name: enum_type.name,
+        values,
     }
 }
 
@@ -234,10 +282,42 @@ pub fn std_table_to_typescript_interface(
     })
 }
 
+fn collect_ts_objects(
+    project: &Project,
+    version: &str,
+    framework_objects: &SchemaVersion,
+) -> Result<Vec<TypescriptObjects>, TypescriptGeneratorError> {
+    let mut ts_objects: Vec<TypescriptObjects> = Vec::new();
+
+    for model in framework_objects.get_all_models() {
+        let interface = std_table_to_typescript_interface(model.to_table(version), &model.name)?;
+
+        let send_function = SendFunction::new(
+            interface.clone(),
+            format!("{}/{}", project.http_server_config.host, "api"),
+            model.name.clone(),
+        );
+
+        ts_objects.push(TypescriptObjects::new(interface, send_function));
+    }
+
+    Ok(ts_objects)
+}
+
+fn collect_enums(framework_objects: &SchemaVersion) -> Vec<TSEnum> {
+    let mut enums: Vec<TSEnum> = Vec::new();
+
+    for enum_type in framework_objects.get_all_enums() {
+        enums.push(map_std_enum_to_ts(enum_type.clone()));
+    }
+
+    enums
+}
+
 pub fn generate_sdk(
     project: &Project,
     framework_object_versions: &FrameworkObjectVersions,
-) -> Result<PathBuf, std::io::Error> {
+) -> Result<PathBuf, TypescriptGeneratorError> {
     //! Generates a Typescript SDK for the given project and returns the path where the SDK was generated.
     //!
     //! # Arguments
@@ -247,16 +327,25 @@ pub fn generate_sdk(
     //!
     //! # Returns
     //! - `Result<PathBuf, std::io::Error>` - A result containing the path where the SDK was generated.
-    //!
+
+    let current_version_ts_objects = collect_ts_objects(
+        project,
+        &framework_object_versions.current_version,
+        &framework_object_versions.current_models,
+    )?;
+    let enums: Vec<TSEnum> = collect_enums(&framework_object_versions.current_models);
+
     let internal_dir = project.internal_dir()?;
 
     let package = TypescriptPackage::from_project(project);
     let package_json_code = PackageJsonTemplate::build(&package);
     let ts_config_code = TsConfigTemplate::build();
+
     let index_code = IndexTemplate::build(
         &framework_object_versions.current_version,
-        &framework_object_versions.current_models.typescript_objects,
+        &current_version_ts_objects,
     );
+    let current_enum_code = templates::render_enums(enums)?;
 
     // This needs to write to the root of the NPM folder... creating in the current project location for now
     let sdk_dir = internal_dir.join(package.name);
@@ -271,6 +360,7 @@ pub fn generate_sdk(
     fs::write(sdk_dir.join("package.json"), package_json_code)?;
     fs::write(sdk_dir.join("tsconfig.json"), ts_config_code)?;
     fs::write(sdk_dir.join("index.ts"), index_code)?;
+    fs::write(sdk_dir.join("enums.ts"), current_enum_code)?;
 
     let versions = framework_object_versions
         .previous_version_models
@@ -279,11 +369,16 @@ pub fn generate_sdk(
             &framework_object_versions.current_version,
             &framework_object_versions.current_models,
         )));
+
     for (version, models) in versions {
         let version_dir = sdk_dir.join(version);
         fs::create_dir(&version_dir)?;
-        let ts_objects = &models.typescript_objects;
-        for obj in ts_objects.values() {
+        let ts_objects = collect_ts_objects(project, version, models)?;
+        let enums = collect_enums(models);
+        let enums_code = templates::render_enums(enums)?;
+        fs::write(version_dir.join("enums.ts"), enums_code)?;
+
+        for obj in ts_objects.iter() {
             let interface_code = obj.interface.create_code();
             let send_function_code = obj.send_function.create_code();
 
@@ -303,12 +398,16 @@ pub fn generate_sdk(
 
 pub fn generate_temp_data_model(
     project: &Project,
+    version: &str,
     fo: &FrameworkObject,
-) -> Result<(), std::io::Error> {
+) -> Result<(), TypescriptGeneratorError> {
     // TODO remove this when we move away from prisma
     if fo.original_file_path.extension() == Some(OsStr::new("prisma")) {
         let schemas_dir = project.schemas_dir();
-        let ts_interface_code = fo.ts_interface.create_code();
+        let ts_interface = std_table_to_typescript_interface(
+            fo.data_model.to_table(version),
+            &fo.data_model.name,
+        )?;
 
         debug!(
             "Prisma model {:?} detected, generating typescript in the datamodels folder {:?}",
@@ -318,10 +417,10 @@ pub fn generate_temp_data_model(
         fs::write(
             schemas_dir.join(format!(
                 "{}{}",
-                fo.ts_interface.file_name(),
+                ts_interface.file_name(),
                 TS_INTERFACE_GENERATE_EXT
             )),
-            ts_interface_code,
+            ts_interface.create_code(),
         )?;
     }
 

@@ -4,6 +4,9 @@ import {
   CURRENT_VERSION,
   VersionKey,
   DataModel,
+  MooseEnum,
+  MooseInt,
+  MooseString,
 } from "app/types";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -56,6 +59,16 @@ export function tableIsQueryable(table: Table): boolean {
   return table.engine === "MergeTree";
 }
 
-export function is_enum(type: any): type is { Enum: any } {
-  return typeof type === "object" && type["Enum"] !== undefined;
+export function isEnum(type: string | MooseEnum): type is MooseEnum {
+  return typeof type === "object";
+}
+
+export function isMooseInt(input: MooseInt | MooseString): input is MooseInt {
+  return "Int" in input;
+}
+
+export function isMooseString(
+  input: MooseInt | MooseString,
+): input is MooseString {
+  return "String" in input;
 }

@@ -341,7 +341,6 @@ fn crawl_schema(
         let schema_version = SchemaVersion {
             base_path: path,
             models: framework_objects,
-            typescript_objects: HashMap::new(),
         };
 
         framework_object_versions
@@ -359,7 +358,6 @@ fn crawl_schema(
         framework_object_versions.current_models = SchemaVersion {
             base_path: schema_dir.clone(),
             models: framework_objects.clone(),
-            typescript_objects: HashMap::new(),
         };
         anyhow::Ok(())
     })?;
@@ -481,7 +479,6 @@ async fn initialize_project_state(
                 project.clone(),
                 &schema_version.base_path,
                 &configured_client,
-                &mut schema_version.typescript_objects,
                 route_table,
                 &version,
             )
@@ -495,7 +492,6 @@ async fn initialize_project_state(
             project.clone(),
             &framework_object_versions.current_models.base_path,
             &configured_client,
-            &mut framework_object_versions.current_models.typescript_objects,
             route_table,
             &framework_object_versions.current_version,
         )

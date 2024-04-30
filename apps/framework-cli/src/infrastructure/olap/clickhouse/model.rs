@@ -5,7 +5,7 @@ use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt::{self};
+use std::fmt;
 
 #[derive(Debug, Clone)]
 pub enum ClickHouseTableType {
@@ -90,6 +90,11 @@ pub struct ClickHouseColumn {
     pub default: Option<ClickHouseColumnDefaults>,
 }
 
+pub enum ClickHouseRuntimeEnum {
+    ClickHouseInt(u8),
+    ClickHouseString(String),
+}
+
 pub struct ClickHouseValue {
     pub value_type: ClickHouseColumnType,
 
@@ -144,6 +149,30 @@ impl ClickHouseValue {
             value: format!("{}", value.format("%Y-%m-%d %H:%M:%S")),
         }
     }
+
+    pub fn new_array(
+        value: Vec<ClickHouseValue>,
+        array_type: ClickHouseColumnType,
+    ) -> ClickHouseValue {
+        ClickHouseValue {
+            value_type: ClickHouseColumnType::Array(Box::new(array_type)),
+            value: value
+                .iter()
+                .map(|v| format!("{}", v))
+                .collect::<Vec<String>>()
+                .join(","),
+        }
+    }
+
+    pub fn new_enum(value: ClickHouseRuntimeEnum, enum_type: DataEnum) -> ClickHouseValue {
+        ClickHouseValue {
+            value_type: ClickHouseColumnType::Enum(enum_type),
+            value: match value {
+                ClickHouseRuntimeEnum::ClickHouseInt(v) => format!("{}", v),
+                ClickHouseRuntimeEnum::ClickHouseString(v) => format!("'{}'", v),
+            },
+        }
+    }
 }
 
 impl fmt::Display for ClickHouseValue {
@@ -158,7 +187,11 @@ impl fmt::Display for ClickHouseValue {
                 write!(f, "{}", &self.value)
             }
             ClickHouseColumnType::DateTime => write!(f, "'{}'", &self.value),
-            _ => Err(std::fmt::Error),
+            ClickHouseColumnType::Decimal => todo!(),
+            ClickHouseColumnType::Json => todo!(),
+            ClickHouseColumnType::Bytes => todo!(),
+            ClickHouseColumnType::Array(_) => write!(f, "[{}]", &self.value),
+            ClickHouseColumnType::Enum(_) => write!(f, "{}", &self.value),
         }
     }
 }
@@ -229,6 +262,20 @@ pub struct ClickHouseTable {
 }
 
 impl ClickHouseTable {
+    pub fn new(
+        db_name: String,
+        name: String,
+        columns: Vec<ClickHouseColumn>,
+        table_type: ClickHouseTableType,
+    ) -> ClickHouseTable {
+        ClickHouseTable {
+            db_name,
+            name,
+            columns,
+            table_type,
+        }
+    }
+
     pub fn create_data_table_query(&self) -> Result<String, ClickhouseError> {
         CreateTableQuery::build(self.clone(), ClickhouseEngine::MergeTree)
     }

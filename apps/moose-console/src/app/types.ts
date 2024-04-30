@@ -57,11 +57,17 @@ export interface DataModel {
 }
 
 export interface MooseEnum {
-  Enum: {
-    name: string;
-    values: string[];
-  };
+  name: string;
+  values: MooseEnumMember[];
 }
+
+export interface MooseEnumMember {
+  name: string;
+  value?: MooseInt | MooseString;
+}
+
+export type MooseInt = { Int: number };
+export type MooseString = { String: string };
 
 export interface Column {
   name: string;

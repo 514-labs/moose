@@ -1,5 +1,5 @@
 use crate::{
-    framework::schema::{is_enum_type, ColumnType},
+    framework::schema::{is_enum_type, ColumnType, EnumMember, EnumValue},
     project::PROJECT,
 };
 use log::debug;
@@ -26,7 +26,10 @@ pub enum TypescriptParsingError {
     },
     #[error("Typescript Parser - Invalid typescript file, please refer to the documentation for an example of a valid typescript file")]
     InvalidTypescriptFile,
-    OtherError,
+    #[error("Typescript Parser - {message}")]
+    OtherError {
+        message: String,
+    },
 }
 
 pub fn extract_data_model_from_file(path: &Path) -> Result<FileObjects, TypescriptParsingError> {
@@ -60,7 +63,6 @@ fn parse_ts_module(path: &Path) -> Result<Module, TypescriptParsingError> {
 
 fn extract_data_models_from_ast(ast: Module) -> Result<FileObjects, TypescriptParsingError> {
     let mut enums = Vec::new();
-
     let mut ts_declarations = Vec::new();
 
     // collect all interface and enum declarations
@@ -73,7 +75,8 @@ fn extract_data_models_from_ast(ast: Module) -> Result<FileObjects, TypescriptPa
                         ts_declarations.push(decl);
                     }
                     Decl::TsEnum(decl) => {
-                        enums.push(enum_to_data_enum(decl));
+                        let new_enum = enum_to_data_enum(*decl.clone())?;
+                        enums.push(new_enum);
                     }
                     // We ignore all other declarations
                     _ => continue,
@@ -92,17 +95,64 @@ fn extract_data_models_from_ast(ast: Module) -> Result<FileObjects, TypescriptPa
     Ok(FileObjects::new(parsed_models, enums))
 }
 
-fn enum_to_data_enum(enum_decl: &TsEnumDecl) -> DataEnum {
+fn enum_to_data_enum(enum_decl: TsEnumDecl) -> Result<DataEnum, TypescriptParsingError> {
     let name = enum_decl.id.sym.to_string();
-    let values = enum_decl
-        .members
-        .iter()
-        .map(|member| match &member.id {
+    let mut values = Vec::new();
+
+    let mut has_string_enums: bool = false;
+    let mut auto_increment_enum_index: u8 = 0;
+
+    for member in enum_decl.members {
+        let name = match &member.id {
             TsEnumMemberId::Ident(ident) => ident.sym.to_string(),
             TsEnumMemberId::Str(str) => str.value.to_string(),
-        })
-        .collect();
-    DataEnum { name, values }
+        };
+
+        let value = match member.init {
+            Some(init) => match *init {
+                Expr::Lit(Lit::Str(str)) => {
+                    if auto_increment_enum_index != 0 {
+                        return Err(TypescriptParsingError::OtherError {
+                            message: "We do not allow to mix String enums with Number based enums, please choose one".to_string(),
+                        });
+                    } else {
+                        has_string_enums = true;
+                        EnumValue::String(str.value.to_string())
+                    }
+                }
+                Expr::Lit(Lit::Num(num)) => {
+                    if has_string_enums {
+                        return Err(TypescriptParsingError::OtherError {
+                            message: "We do not allow to mix String enums with Number based enums, please choose one".to_string(),
+                        });
+                    } else {
+                        auto_increment_enum_index = num.value as u8 + 1;
+                        EnumValue::Int(num.value as u8)
+                    }
+                }
+                _ => {
+                    return Err(TypescriptParsingError::OtherError {
+                        message: "We do not allow dynamic assignment to enums".to_string(),
+                    });
+                }
+            },
+            None => {
+                if has_string_enums {
+                    return Err(TypescriptParsingError::OtherError {
+                        message: "We do not allow to mix String enums with Number based enums, please choose one".to_string(),
+                    });
+                } else {
+                    let enum_value = EnumValue::Int(auto_increment_enum_index);
+                    auto_increment_enum_index += 1;
+                    enum_value
+                }
+            }
+        };
+
+        values.push(EnumMember { name, value });
+    }
+
+    Ok(DataEnum { name, values })
 }
 
 fn interface_to_model(

@@ -169,10 +169,6 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
             "CLICKHOUSE_HOST_PORT",
             project.clickhouse_config.host_port.to_string(),
         )
-        .env(
-            "CLICKHOUSE_POSTGRES_PORT",
-            project.clickhouse_config.postgres_port.to_string(),
-        )
         .env("CLICKHOUSE_VERSION", "24.1.3") // https://github.com/ClickHouse/ClickHouse/issues/60020
         .env("CONSOLE_VERSION", console_version)
         .env("CONSOLE_PULL_POLICY", console_pull_policy)

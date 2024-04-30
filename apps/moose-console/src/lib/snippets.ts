@@ -1,5 +1,5 @@
 import { is_MooseInt, is_MooseString, is_enum } from "./utils";
-import { CliData, DataModel, ModelMeta, MooseEnumMember } from "app/types";
+import { CliData, DataModel, ModelMeta } from "app/types";
 
 function createColumnStubs(model: ModelMeta) {
   return model.columns.map((field, index) => {

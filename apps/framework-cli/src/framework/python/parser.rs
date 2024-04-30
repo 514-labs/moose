@@ -71,18 +71,18 @@ pub fn get_enum_ast_nodes(ast: &ast::Suite) -> Vec<&ast::Stmt> {
         .filter(|node| match node {
             Stmt::ClassDef(class_def) => {
                 if class_def.bases.is_empty() {
-                    return false;
+                    false
                 } else {
                     let enum_bases: Vec<_> = class_def
                         .bases
                         .iter()
                         .filter(|base| match base {
-                            Expr::Name(name) => return name.id == Identifier::new("Enum"),
+                            Expr::Name(name) => name.id == Identifier::new("Enum"),
                             _ => false,
                         })
                         .collect();
 
-                    return enum_bases.len() > 0;
+                    !enum_bases.is_empty()
                 }
             }
             _ => false,
@@ -97,18 +97,18 @@ pub fn get_non_enum_class_ast_nodes(ast: &ast::Suite) -> Vec<&ast::Stmt> {
         .filter(|node| match node {
             Stmt::ClassDef(class_def) => {
                 if class_def.bases.is_empty() {
-                    return true;
+                    true
                 } else {
                     let enum_bases: Vec<_> = class_def
                         .bases
                         .iter()
                         .filter(|base| match base {
-                            Expr::Name(name) => return name.id == Identifier::new("Enum"),
+                            Expr::Name(name) => name.id == Identifier::new("Enum"),
                             _ => false,
                         })
                         .collect();
 
-                    return enum_bases.len() == 0;
+                    enum_bases.is_empty()
                 }
             }
             _ => false,
@@ -219,7 +219,7 @@ fn class_attribute_node_to_column_builder(
                 Ok(col_type) => col_type,
                 Err(e) => enums
                     .iter()
-                    .find(|enum_item| enum_item.name == name.id.to_string())
+                    .find(|enum_item| name.id == enum_item.name)
                     .map(|enum_item| ColumnType::Enum(enum_item.clone()))
                     .ok_or(e)?,
             };
@@ -288,6 +288,7 @@ fn class_attribute_node_to_column_builder(
     Ok(column)
 }
 
+#[derive(Default)]
 struct ColumnBuilder {
     name: Option<String>,
     data_type: Option<ColumnType>,
@@ -326,19 +327,6 @@ impl ColumnBuilder {
     }
 }
 
-impl Default for ColumnBuilder {
-    fn default() -> Self {
-        ColumnBuilder {
-            name: None,
-            data_type: None,
-            required: None,
-            unique: None,
-            primary_key: None,
-            default: None,
-        }
-    }
-}
-
 fn body_node_to_column(
     body_node: &ast::Stmt,
     enums: &[FrameworkEnum],
@@ -374,7 +362,6 @@ pub fn extract_data_model_from_file(path: &PathBuf) -> Result<(), PythonParserEr
     let framework_enums = python_enums
         .iter()
         .map(|enum_node| python_enum_to_framework_enum(enum_node))
-        .into_iter()
         .collect::<Result<Vec<FrameworkEnum>, PythonParserError>>()?;
 
     let data_models: Vec<DataModel> = python_classes

@@ -138,7 +138,7 @@ mod tests {
         assert!(output.status.success());
         match String::from_utf8(output.stdout) {
             Ok(val) => {
-                assert!(val.len() > 0);
+                assert!(!val.is_empty());
             }
             Err(_e) => {
                 assert!(false)

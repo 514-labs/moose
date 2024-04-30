@@ -114,7 +114,7 @@ fn enum_to_data_enum(enum_decl: TsEnumDecl) -> Result<DataEnum, TypescriptParsin
             },
             None => {
                 return Err(TypescriptParsingError::UnsupportedDataTypeError {
-                    type_name: format!("Non mapped enums"),
+                    type_name: "Non mapped enums".to_string(),
                 })
             }
         };

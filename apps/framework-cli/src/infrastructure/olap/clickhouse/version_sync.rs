@@ -1,4 +1,5 @@
 use crate::framework::controller::{FrameworkObject, FrameworkObjectVersions};
+use crate::framework::schema::DataModel;
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
 };
@@ -55,6 +56,7 @@ pub fn generate_sql_version_syncs(
                     db_name: old_model.table.db_name.clone(),
                     model_name: old_model.data_model.name.clone(),
                     source_version: previous_version.to_string(),
+                    source_data_model: old_model.data_model.clone(),
                     source_table: old_model.table.clone(),
                     dest_version: framework_object_versions.current_version.clone(),
                     dest_table: fo.table.clone(),
@@ -116,6 +118,7 @@ pub fn get_all_version_syncs(
                                     model_name: from_table.data_model.name.clone(),
                                     source_version: from_version.clone(),
                                     source_table: from_table.table.clone(),
+                                    source_data_model: from_table.data_model.clone(),
                                     dest_version: to_version.clone(),
                                     dest_table: to_table.table.clone(),
                                     sync_type,
@@ -160,6 +163,7 @@ pub struct VersionSync {
     pub model_name: String,
     pub source_version: String,
     pub source_table: ClickHouseTable,
+    pub source_data_model: DataModel,
     pub dest_version: String,
     pub dest_table: ClickHouseTable,
     pub sync_type: VersionSyncType,

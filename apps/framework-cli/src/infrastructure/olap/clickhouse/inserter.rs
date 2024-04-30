@@ -20,10 +20,15 @@ pub struct Inserter {
 
 // TODO Add at least once delivery guarantees
 impl Inserter {
-    pub fn new(clickhouse_config: ClickHouseConfig, table: String, columns: Vec<String>) -> Self {
+    pub fn new(clickhouse_config: ClickHouseConfig, table: &str, columns: Vec<String>) -> Self {
         let buffer = Arc::new(Mutex::new(Vec::new()));
 
-        tokio::spawn(flush(clickhouse_config, buffer.clone(), table, columns));
+        tokio::spawn(flush(
+            clickhouse_config,
+            buffer.clone(),
+            table.to_string(),
+            columns,
+        ));
 
         Self { buffer }
     }

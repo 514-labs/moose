@@ -1,17 +1,7 @@
-use std::collections::HashMap;
-
-use crate::framework::controller::FrameworkObject;
-use crate::framework::controller::FrameworkObjectVersions;
-use crate::framework::schema::Column;
-use crate::framework::schema::ColumnType;
-use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
-use crate::infrastructure::olap::clickhouse::inserter::Inserter;
-use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
-use crate::infrastructure::stream::redpanda::create_subscriber;
-use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use log::error;
 use log::info;
 use rdkafka::Message;
+use std::collections::HashMap;
 
 use log::debug;
 use serde_json::Value;
@@ -19,8 +9,20 @@ use tokio::task::JoinHandle;
 
 use super::olap::clickhouse::errors::ClickhouseError;
 use super::olap::clickhouse::mapper::std_field_type_to_clickhouse_type_mapper;
+use super::olap::clickhouse::model::ClickHouseColumn;
 use super::olap::clickhouse::model::ClickHouseRecord;
 use super::olap::clickhouse::model::ClickHouseRuntimeEnum;
+use super::olap::clickhouse::version_sync::VersionSync;
+use crate::framework::controller::FrameworkObject;
+use crate::framework::controller::FrameworkObjectVersions;
+use crate::framework::schema::Column;
+use crate::framework::schema::ColumnType;
+use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
+use crate::infrastructure::olap::clickhouse::inserter::Inserter;
+use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
+use crate::infrastructure::olap::clickhouse::version_sync::VersionSyncType;
+use crate::infrastructure::stream::redpanda::create_subscriber;
+use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
 const SYNC_GROUP_ID: &str = "clickhouse_sync";
 
@@ -62,7 +64,11 @@ impl SyncingProcessesRegistry {
         self.registry.insert(key, syncing_process.process);
     }
 
-    pub fn start_all(&mut self, framework_object_versions: &FrameworkObjectVersions) {
+    pub fn start_all(
+        &mut self,
+        framework_object_versions: &FrameworkObjectVersions,
+        version_syncs: &[VersionSync],
+    ) {
         info!("<DCM> Starting all syncing processes");
 
         let kafka_config = self.kafka_config.clone();
@@ -91,7 +97,22 @@ impl SyncingProcessesRegistry {
                 ))
             });
 
-        for syncing_process in current_object_iterator.chain(previous_versions_iterator) {
+        let version_syncs_iterator = version_syncs.iter().filter_map(|vs| match vs.sync_type {
+            VersionSyncType::Sql(_) => None,
+            VersionSyncType::Ts(_) => Some(spawn_sync_process_core(
+                kafka_config.clone(),
+                clickhouse_config.clone(),
+                vs.topic_name("output"),
+                vs.source_data_model.columns.clone(),
+                vs.dest_table.name.clone(),
+                vs.dest_table.columns.clone(),
+            )),
+        });
+
+        for syncing_process in current_object_iterator
+            .chain(previous_versions_iterator)
+            .chain(version_syncs_iterator)
+        {
             self.insert(syncing_process);
         }
     }
@@ -111,7 +132,10 @@ impl SyncingProcessesRegistry {
         let syncing_process = spawn_sync_process_core(
             self.kafka_config.clone(),
             self.clickhouse_config.clone(),
-            framework_object.clone(),
+            framework_object.topic.clone(),
+            framework_object.data_model.columns.clone(),
+            framework_object.table.name.clone(),
+            framework_object.table.columns.clone(),
         );
 
         self.insert(syncing_process);
@@ -133,7 +157,10 @@ fn spawn_sync_process(
         spawn_sync_process_core(
             kafka_config.clone(),
             clickhouse_config.clone(),
-            schema.clone(),
+            schema.topic,
+            schema.data_model.columns,
+            schema.table.name,
+            schema.table.columns,
         )
     })
 }
@@ -141,41 +168,43 @@ fn spawn_sync_process(
 fn spawn_sync_process_core(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
-    framework_object: FrameworkObject,
+    source_topic_name: String,
+    source_topic_columns: Vec<Column>,
+    target_table_name: String,
+    target_table_columns: Vec<ClickHouseColumn>,
 ) -> SyncingProcess {
     let syncing_process = tokio::spawn(sync_kafka_to_clickhouse(
         kafka_config,
         clickhouse_config,
-        framework_object.clone(),
+        source_topic_name.clone(),
+        source_topic_columns,
+        target_table_name.clone(),
+        target_table_columns,
     ));
 
     SyncingProcess {
         process: syncing_process,
-        topic: framework_object.topic.clone(),
-        table: framework_object.table.name.clone(),
+        topic: source_topic_name,
+        table: target_table_name,
     }
 }
 
 async fn sync_kafka_to_clickhouse(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
-    framework_object: FrameworkObject,
+    source_topic_name: String,
+    source_topic_columns: Vec<Column>,
+    target_table_name: String,
+    target_table_columns: Vec<ClickHouseColumn>,
 ) -> anyhow::Result<()> {
-    let topic = &framework_object.topic;
-    let subscriber = create_subscriber(&kafka_config, SYNC_GROUP_ID, topic);
+    let subscriber = create_subscriber(&kafka_config, SYNC_GROUP_ID, &source_topic_name);
 
-    let clikhouse_columns = framework_object
-        .table
-        .columns
+    let clikhouse_columns = target_table_columns
         .iter()
         .map(|column| column.name.clone())
         .collect();
 
-    let inserter = Inserter::new(
-        clickhouse_config,
-        framework_object.table.name.clone(),
-        clikhouse_columns,
-    );
+    let inserter = Inserter::new(clickhouse_config, &target_table_name, clikhouse_columns);
 
     // WARNING: the code below is very performance sensitive
     // it is run for every message that needs to be written to clickhouse. As such we should
@@ -188,28 +217,35 @@ async fn sync_kafka_to_clickhouse(
     loop {
         match subscriber.recv().await {
             Err(e) => {
-                debug!("Error receiving message from {}: {}", topic, e);
+                debug!("Error receiving message from {}: {}", source_topic_name, e);
             }
 
             Ok(message) => match message.payload() {
                 Some(payload) => match std::str::from_utf8(payload) {
                     Ok(payload_str) => {
-                        debug!("Received message from {}: {}", topic, payload_str);
+                        debug!(
+                            "Received message from {}: {}",
+                            source_topic_name, payload_str
+                        );
 
                         let parsed_json: Value = serde_json::from_str(payload_str)?;
-                        let clickhouse_record = mapper_json_to_clickhouse_record(
-                            &framework_object.data_model.columns,
-                            parsed_json,
-                        )?;
+                        let clickhouse_record =
+                            mapper_json_to_clickhouse_record(&source_topic_columns, parsed_json)?;
 
                         inserter.insert(clickhouse_record).await?;
                     }
                     Err(_) => {
-                        error!("Received message from {} with invalid UTF-8", topic);
+                        error!(
+                            "Received message from {} with invalid UTF-8",
+                            source_topic_name
+                        );
                     }
                 },
                 None => {
-                    debug!("Received message from {} with no payload", topic);
+                    debug!(
+                        "Received message from {} with no payload",
+                        source_topic_name
+                    );
                 }
             },
         }

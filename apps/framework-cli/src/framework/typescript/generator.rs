@@ -101,8 +101,15 @@ impl TypescriptInterface {
         self.name.to_case(Case::Camel)
     }
 
-    pub fn create_code(&self) -> String {
-        templates::InterfaceTemplate::build(self)
+    pub fn create_code(&self) -> Result<String, TypescriptRenderingError> {
+        templates::render_interface(self)
+    }
+
+    pub fn has_enums(&self) -> bool {
+        self.fields.iter().any(|field| match &field.field_type {
+            InterfaceFieldType::Enum(_) => true,
+            _ => false,
+        })
     }
 }
 
@@ -379,7 +386,7 @@ pub fn generate_sdk(
         fs::write(version_dir.join("enums.ts"), enums_code)?;
 
         for obj in ts_objects.iter() {
-            let interface_code = obj.interface.create_code();
+            let interface_code = obj.interface.create_code()?;
             let send_function_code = obj.send_function.create_code();
 
             fs::write(
@@ -420,7 +427,7 @@ pub fn generate_temp_data_model(
                 ts_interface.file_name(),
                 TS_INTERFACE_GENERATE_EXT
             )),
-            ts_interface.create_code(),
+            ts_interface.create_code()?,
         )?;
     }
 

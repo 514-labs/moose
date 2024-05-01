@@ -106,10 +106,9 @@ impl TypescriptInterface {
     }
 
     pub fn has_enums(&self) -> bool {
-        self.fields.iter().any(|field| match &field.field_type {
-            InterfaceFieldType::Enum(_) => true,
-            _ => false,
-        })
+        self.fields
+            .iter()
+            .any(|field| matches!(&field.field_type, InterfaceFieldType::Enum(_)))
     }
 }
 

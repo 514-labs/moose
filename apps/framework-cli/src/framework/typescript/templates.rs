@@ -325,3 +325,69 @@ pub fn render_enums(ts_enum: Vec<TSEnum>) -> Result<String, TypescriptRenderingE
     let reg = Handlebars::new();
     Ok(reg.render_template(ENUM_FILE_TEMPLATE, &json!({"enums": ts_enum}))?)
 }
+
+
+pub static BASE_FLOW_SAMPLE_TEMPLATE: &str = r#"
+// Example flow function: Converts local timestamps in UserActivity data to UTC.
+
+// Imports: Source (UserActivity) and Destination (ParsedActivity) data models.
+import { ParsedActivity } from "../../../datamodels/ParsedActivity.generated.ts";
+import { UserActivity } from "../../../datamodels/UserActivity.generated.ts";
+
+// The 'run' function transforms UserActivity data to ParsedActivity format.
+// For more details on how Moose flows work, see: https://docs.moosejs.com
+export default function run(event: UserActivity): ParsedActivity {
+  // Convert local timestamp to UTC and return new ParsedActivity object.
+  return {
+    eventId: event.eventId,  // Retain original event ID.
+    userId: "puid" + event.userId,  // Example: Prefix user ID.
+    activity: event.activity,  // Copy activity unchanged.
+    timestamp: new Date(event.timestamp.toUTCString())  // Convert timestamp to UTC.
+  };
+}
+
+"#;
+
+pub static BASE_FLOW_TEMPLATE: &str = r#"
+// Add your models & start the development server to import these types
+import { {{source}} } from "../../../datamodels/{{source}}.generated.ts";
+import { {{destination}} } from "../../../datamodels/{{destination}}.generated.ts";
+
+// The 'run' function transforms {{source}} data to {{destination}} format.
+// For more details on how Moose flows work, see: https://docs.moosejs.com
+export default function run(event: {{source}}): {{destination}} | null {
+  return null;
+}
+
+"#;
+
+pub static BASE_AGGREGATION_SAMPLE_TEMPLATE: &str = r#"
+// Here is a sample aggregation query that calculates the number of daily active users
+// based on the number of unique users who complete a sign-in activity each day.
+
+export default {
+    select: ` 
+    SELECT 
+        uniqState(userId) as dailyActiveUsers,
+        toStartOfDay(timestamp) as date
+    FROM ParsedActivity_0_0
+    WHERE activity = 'Login' 
+    GROUP BY toStartOfDay(timestamp)
+    `,
+    orderBy: 'date',
+};
+
+"#;
+
+pub static BASE_AGGREGATION_TEMPLATE: &str = r#"
+// This file is where you can define your SQL query for aggregating your data 
+// from other data models you have defined in Moose. For more information on the 
+// types of aggregate functions you can run on your existing data, consult the 
+// Clickhouse documentation: https://clickhouse.com/docs/en/sql-reference/aggregate-functions
+
+export default {
+    select: ``,
+    orderBy: '',
+};
+
+"#;

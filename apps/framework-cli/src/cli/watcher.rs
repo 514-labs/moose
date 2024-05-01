@@ -15,7 +15,7 @@ use crate::framework::controller::{
     create_or_replace_tables, drop_tables, get_framework_objects_from_schema_file,
     schema_file_path_to_ingest_route, FrameworkObjectVersions,
 };
-use crate::framework::schema::{is_schema_file, DuplicateModelError};
+use crate::framework::data_model::{is_schema_file, DuplicateModelError};
 use crate::framework::typescript;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
@@ -52,7 +52,8 @@ async fn process_events(
 
     let mut new_objects = HashMap::new();
     let mut deleted_objects = HashMap::new();
-    let mut changed_objects = HashMap::new();
+    let mut changed_objects: HashMap<String, crate::framework::controller::FrameworkObject> =
+        HashMap::new();
     let mut moved_objects = HashMap::new();
 
     let mut extra_models = HashMap::new();
@@ -68,6 +69,7 @@ async fn process_events(
 
         if path.exists() {
             let obj_in_new_file = get_framework_objects_from_schema_file(&path, project.version())?;
+
             for obj in obj_in_new_file {
                 removed_old_objects_in_file.remove(&obj.data_model.name);
 
@@ -172,6 +174,7 @@ async fn process_events(
             RouteMeta {
                 original_file_path: fo.original_file_path.clone(),
                 table_name: fo.table.name.clone(),
+                format: fo.data_model.config.ingestion.format.clone(),
             },
         );
         let topics = vec![fo.topic.clone()];

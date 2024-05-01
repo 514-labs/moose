@@ -17,7 +17,7 @@ use tokio::net::TcpStream;
 use crate::framework::controller::{
     schema_file_path_to_ingest_route, FrameworkObjectVersions, SchemaVersion,
 };
-use crate::framework::schema::DataModel;
+use crate::framework::data_model::schema::DataModel;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseSystemTable;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;

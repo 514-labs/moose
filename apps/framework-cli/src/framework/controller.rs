@@ -18,11 +18,15 @@ use crate::project::PROJECT;
 #[cfg(test)]
 use crate::utilities::constants::SCHEMAS_DIR;
 
-use super::schema::ColumnType;
-use super::schema::DataEnum;
-use super::schema::DataModelParsingError;
-use super::schema::{is_schema_file, DataModel};
-use super::schema::{parse_data_model_file, DuplicateModelError};
+use super::data_model;
+use super::data_model::config::EndpointIngestionFormat;
+use super::data_model::config::ModelConfigurationError;
+use super::data_model::is_schema_file;
+use super::data_model::parser::{parse_data_model_file, DataModelParsingError};
+use super::data_model::schema::ColumnType;
+use super::data_model::schema::DataEnum;
+use super::data_model::schema::DataModel;
+use super::data_model::DuplicateModelError;
 use super::typescript::generator::generate_temp_data_model;
 
 #[derive(Debug, Clone)]
@@ -113,6 +117,7 @@ impl FrameworkObjectVersions {
 pub struct RouteMeta {
     pub original_file_path: PathBuf,
     pub table_name: String,
+    pub format: EndpointIngestionFormat,
 }
 
 pub fn get_all_framework_objects(
@@ -139,11 +144,51 @@ pub fn get_all_framework_objects(
     Ok(())
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to get the Data Model configuration")]
+#[non_exhaustive]
+pub enum DataModelError {
+    Configuration(#[from] ModelConfigurationError),
+    Parsing(#[from] DataModelParsingError),
+    Mapping(#[from] MappingError),
+
+    #[error("{message}")]
+    Other {
+        message: String,
+    },
+}
+
 pub fn get_framework_objects_from_schema_file(
     path: &Path,
     version: &str,
-) -> Result<Vec<FrameworkObject>, DataModelParsingError> {
-    parse_data_model_file::<FrameworkObject>(path, version, framework_object_mapper)
+) -> Result<Vec<FrameworkObject>, DataModelError> {
+    let framework_objects = parse_data_model_file(path)?;
+    let mut indexed_models = HashMap::new();
+
+    for model in framework_objects.models {
+        let fo = framework_object_mapper(model, path, version)?;
+        indexed_models.insert(fo.data_model.name.clone().trim().to_lowercase(), fo);
+    }
+
+    let data_models_configs = data_model::config::get(path)?;
+    for (config_variable_name, config) in data_models_configs.iter() {
+        let sanitized_config_name = config_variable_name.trim().to_lowercase();
+        match sanitized_config_name.strip_suffix("config") {
+            Some(config_name_without_suffix) => {
+                let fo = indexed_models.get_mut(config_name_without_suffix);
+                if let Some(fo) = fo {
+                    fo.data_model.config = config.clone();
+                }
+            }
+            None => {
+                return Err(DataModelError::Other { message: format!("Config name exports have to be of the format <dataModelName>Config so that they can be correlated to the proper datamodel. \n {} is not respecting this pattern", config_variable_name) })
+            }
+        }
+    }
+
+    Ok(indexed_models
+        .into_values()
+        .collect::<Vec<FrameworkObject>>())
 }
 
 pub async fn create_or_replace_version_sync(
@@ -411,6 +456,7 @@ pub async fn set_up_topic_and_tables_and_route(
         RouteMeta {
             original_file_path: fo.original_file_path.clone(),
             table_name: ingest_topic_name,
+            format: fo.data_model.config.ingestion.format.clone(),
         },
     );
 
@@ -463,6 +509,7 @@ mod tests {
         let schema_dir = PathBuf::from(manifest_location)
             .join("tests/test_project")
             .join(SCHEMAS_DIR);
+
         let mut framework_objects = HashMap::new();
         let result = get_all_framework_objects(&mut framework_objects, &schema_dir, "0.0");
         assert!(result.is_ok());

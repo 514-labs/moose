@@ -4,7 +4,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
 use crate::cli::display::Message;
-use crate::framework::schema::templates::BASE_FLOW_TEMPLATE;
+use crate::framework::typescript::templates::BASE_FLOW_TEMPLATE;
 use crate::project::Project;
 use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM, FLOW_FILE};
 

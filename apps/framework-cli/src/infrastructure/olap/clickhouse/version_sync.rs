@@ -1,5 +1,5 @@
 use crate::framework::controller::{FrameworkObject, FrameworkObjectVersions};
-use crate::framework::schema::DataModel;
+use crate::framework::data_model::schema::DataModel;
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
 };

@@ -1,9 +1,10 @@
 use std::path::{Path, PathBuf};
 
 use crate::{
-    framework::schema::{
+    framework::data_model::parser::FileObjects,
+    framework::data_model::schema::{
         is_enum_type, Column, ColumnDefaults, ColumnType, DataEnum, DataModel, EnumMember,
-        EnumValue, FileObjects,
+        EnumValue,
     },
     project::PROJECT,
 };
@@ -107,6 +108,7 @@ fn prisma_model_to_datamodel(
         db_name: project.clickhouse_config.db_name.to_string(),
         columns: columns?,
         name: schema_name,
+        config: Default::default(),
     })
 }
 

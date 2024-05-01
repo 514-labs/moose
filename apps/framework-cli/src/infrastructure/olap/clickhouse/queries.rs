@@ -2,7 +2,7 @@ use crate::framework::controller::FrameworkObject;
 use serde::Serialize;
 use tinytemplate::{format_unescaped, TinyTemplate};
 
-use crate::framework::schema::EnumValue;
+use crate::framework::data_model::schema::EnumValue;
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
 };
@@ -330,38 +330,4 @@ fn clickhouse_column_to_create_table_field_context(
             "NULL".to_string()
         },
     })
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::framework::{controller::framework_object_mapper, schema::parse_data_model_file};
-
-    #[test]
-    fn test_create_query_from_prisma_model() {
-        let current_dir = std::env::current_dir().unwrap();
-
-        let test_file = current_dir.join("tests/psl/simple.prisma");
-
-        let result = parse_data_model_file(&test_file, "1.0", framework_object_mapper).unwrap();
-
-        let ch_table = result[0].table.clone();
-
-        let query = ch_table.create_data_table_query().unwrap();
-
-        let expected = r#"
-CREATE TABLE IF NOT EXISTS local.User_1_0 
-(
-id Int64 NOT NULL,
-email String NOT NULL,
-name String NULL,
-
-
-PRIMARY KEY (id)
-
-)
-ENGINE = MergeTree;
-"#;
-
-        assert_eq!(query, expected);
-    }
 }

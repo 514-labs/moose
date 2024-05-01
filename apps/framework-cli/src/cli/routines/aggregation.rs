@@ -1,7 +1,7 @@
 use std::{fs, io::Write};
 
 use crate::{
-    cli::display::Message, framework::schema::templates::BASE_AGGREGATION_TEMPLATE,
+    cli::display::Message, framework::typescript::templates::BASE_AGGREGATION_TEMPLATE,
     project::Project,
 };
 

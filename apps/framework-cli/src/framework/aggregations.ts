@@ -10,6 +10,11 @@ interface ShowTablesResponse {
   rows: number;
 }
 
+interface MvQuery {
+  select: string;
+  orderBy: string;
+}
+
 const cwd = Deno.args[0] || Deno.cwd();
 const AGGREGATIONS_DIR_PATH = `${cwd}/app/aggregations`;
 const AGGREGATIONS_FILE = "*.ts";
@@ -67,12 +72,6 @@ const waitForClickhouse = (chClient: ClickHouseClient) => {
   return new Promise(poll);
 };
 
-const getVersion = () => {
-  const version = JSON.parse(Deno.readTextFileSync(`${cwd}/package.json`))
-    .version as string;
-  return version.replace(/\./g, "_");
-};
-
 const getFileName = (filePath: string) => {
   const regex = /\/([^\/]+)\.ts/;
   const matches = filePath.match(regex);
@@ -100,26 +99,24 @@ const cleanUpAggregations = async (chClient: ClickHouseClient) => {
   }
 };
 
-const createAggregation = async (
-  chClient: ClickHouseClient,
-  path: string,
-  version: string,
-) => {
+const createAggregation = async (chClient: ClickHouseClient, path: string) => {
   const fileName = getFileName(path);
 
   try {
-    const sqlString = (await import(path)).default;
-    if (typeof sqlString !== "string") {
-      console.error(
-        `Not creating aggregation. Expected an export default SQL string from ${fileName}`,
-      );
-      return;
+    const mvObj = (await import(path)).default as MvQuery;
+
+    if (!mvObj.select || typeof mvObj.select !== "string") {
+      throw new Error("Aggregation select query needs to be a string");
+    }
+    if (!mvObj.orderBy || typeof mvObj.orderBy !== "string") {
+      throw new Error("Aggregation orderBy field needs to be a string");
     }
 
     const mvQuery = `
           CREATE MATERIALIZED VIEW IF NOT EXISTS ${fileName}_${AGGREGATIONS_MV_SUFFIX}
-          TO ${fileName}_${version}
-          AS ${sqlString}
+          ENGINE = AggregatingMergeTree() ORDER BY ${mvObj.orderBy}
+          POPULATE
+          AS ${mvObj.select}
       `;
     await chClient.command({ query: mvQuery });
     console.log(`Created aggregation ${fileName}`);
@@ -142,7 +139,6 @@ const deleteAggregation = async (chClient: ClickHouseClient, path: string) => {
 };
 
 const startFileWatcher = (chClient: ClickHouseClient) => {
-  const version = getVersion();
   const pathToWatch = `${AGGREGATIONS_DIR_PATH}/**/${AGGREGATIONS_FILE}`;
 
   watch(pathToWatch, { usePolling: true }).on(
@@ -151,12 +147,12 @@ const startFileWatcher = (chClient: ClickHouseClient) => {
       const antiCachePath = `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
 
       if (event === "add") {
-        await createAggregation(chClient, antiCachePath, version);
+        await createAggregation(chClient, antiCachePath);
       } else if (event === "unlink") {
         await deleteAggregation(chClient, antiCachePath);
       } else if (event === "change") {
         await deleteAggregation(chClient, antiCachePath);
-        await createAggregation(chClient, antiCachePath, version);
+        await createAggregation(chClient, antiCachePath);
       }
     },
   );

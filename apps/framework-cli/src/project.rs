@@ -28,7 +28,9 @@ use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
-use crate::framework::schema::templates::{BASE_FLOW_SAMPLE_TEMPLATE, BASE_MODEL_TEMPLATE};
+use crate::framework::schema::templates::{
+    BASE_AGGREGATION_SAMPLE_TEMPLATE, BASE_FLOW_SAMPLE_TEMPLATE, BASE_MODEL_TEMPLATE,
+};
 use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
@@ -42,12 +44,13 @@ use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS;
 use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::README_PREFIX;
+use crate::utilities::constants::{
+    AGGREGATIONS_DIR, AGGREGATIONS_FILE, FLOWS_DIR, FLOW_FILE, PROJECT_CONFIG_FILE,
+    SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE,
+};
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{
     DENO_AGGREGATIONS, DENO_CONSUMPTION_API, DENO_DIR, DENO_TRANSFORM,
-};
-use crate::utilities::constants::{
-    FLOWS_DIR, FLOW_FILE, PROJECT_CONFIG_FILE, SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE,
 };
 
 lazy_static! {
@@ -246,10 +249,12 @@ impl Project {
             .join(SAMPLE_FLOWS_SOURCE)
             .join(SAMPLE_FLOWS_DEST)
             .join(FLOW_FILE);
+        let aggregations_file_path = self.aggregations_dir().join(AGGREGATIONS_FILE);
 
         let mut readme_file = std::fs::File::create(readme_file_path)?;
         let mut base_model_file = std::fs::File::create(base_model_file_path)?;
         let mut flow_file = std::fs::File::create(flow_file_path)?;
+        let mut aggregations_file = std::fs::File::create(aggregations_file_path)?;
 
         let mut readme = include_str!("../../../README.md").to_string();
         readme.insert_str(0, README_PREFIX);
@@ -262,6 +267,7 @@ impl Project {
                 .replace("{{project_name}}", &self.name())
                 .as_bytes(),
         )?;
+        aggregations_file.write_all(BASE_AGGREGATION_SAMPLE_TEMPLATE.as_bytes())?;
 
         Ok(())
     }
@@ -291,6 +297,18 @@ impl Project {
 
         debug!("Flows dir: {:?}", flows_dir);
         flows_dir
+    }
+
+    pub fn aggregations_dir(&self) -> PathBuf {
+        let aggregations_dir = self.app_dir().join(AGGREGATIONS_DIR);
+
+        if !aggregations_dir.exists() {
+            std::fs::create_dir_all(&aggregations_dir)
+                .expect("Failed to create aggregations directory");
+        }
+
+        debug!("Aggregations dir: {:?}", aggregations_dir);
+        aggregations_dir
     }
 
     // This is a Result of io::Error because the caller

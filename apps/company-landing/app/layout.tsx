@@ -29,7 +29,7 @@ const default_navigation = [
   { name: "blog", href: "/blog" },
   { name: "about", href: "/about" },
   {
-    name: "get in touch",
+    name: "contact",
     href: "https://fiveonefour.typeform.com/signup",
   },
   { name: "get moose", href: "https://www.moosejs.com", emphasized: true },

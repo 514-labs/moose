@@ -56,7 +56,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: "20"
-          cache: "pnpm"
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
@@ -92,7 +91,6 @@ jobs:
         uses: actions/setup-node@v3
         with:
           node-version: "20"
-          cache: "pnpm"
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:

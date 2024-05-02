@@ -154,6 +154,10 @@ fn spawn_sync_process(
     clickhouse_config: ClickHouseConfig,
 ) -> Box<dyn Fn((String, FrameworkObject)) -> SyncingProcess> {
     Box::new(move |(_, schema)| {
+        info!(
+            "Starting Kafka sync to clikchouse from topic: {} to table: {}",
+            schema.topic, schema.table.name
+        );
         spawn_sync_process_core(
             kafka_config.clone(),
             clickhouse_config.clone(),

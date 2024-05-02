@@ -24,6 +24,7 @@ use settings::{read_settings, Settings};
 use crate::cli::routines::aggregation::create_aggregation_file;
 use crate::cli::routines::dev::{copy_old_schema, create_deno_files, create_models_volume};
 use crate::cli::routines::flow::{create_flow_directory, create_flow_file};
+use crate::cli::routines::logs::{follow_logs, show_logs};
 use crate::cli::routines::templates;
 use crate::cli::routines::version::BumpVersion;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
@@ -429,6 +430,27 @@ async fn top_command_handler(
                         "Aggregation".to_string(),
                     )))
                 }
+            }
+        }
+        Commands::Logs { tail, filter } => {
+            info!("Running logs command");
+
+            let project = load_project()?;
+            let project_arc = Arc::new(project);
+
+            crate::utilities::capture::capture!(
+                ActivityType::LogsCommand,
+                project_arc.name().clone(),
+                &settings
+            );
+
+            let log_file_path = settings.logger.log_file.clone();
+            let filter_value = filter.clone().unwrap_or_else(|| "".to_string());
+
+            if *tail {
+                follow_logs(log_file_path, filter_value)
+            } else {
+                show_logs(log_file_path, filter_value)
             }
         }
     }

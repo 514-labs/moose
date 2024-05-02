@@ -66,7 +66,7 @@ fn get_ast_from_file(path: &PathBuf) -> Result<ast::Suite, PythonParserError> {
 
 /// ## Enum AST Nodes
 /// This function extracts all the enum nodes from the AST
-pub fn get_enum_ast_nodes(ast: &ast::Suite) -> Vec<&ast::Stmt> {
+fn get_enum_ast_nodes(ast: &ast::Suite) -> Vec<&ast::Stmt> {
     ast.iter()
         .filter(|node| match node {
             Stmt::ClassDef(class_def) => {
@@ -92,7 +92,7 @@ pub fn get_enum_ast_nodes(ast: &ast::Suite) -> Vec<&ast::Stmt> {
 
 /// ## Non Enum Class AST Nodes
 /// This function extracts all the class nodes that are not enums from the AST
-pub fn get_non_enum_class_ast_nodes(ast: &ast::Suite) -> Vec<&ast::Stmt> {
+fn get_non_enum_class_ast_nodes(ast: &ast::Suite) -> Vec<&ast::Stmt> {
     ast.iter()
         .filter(|node| match node {
             Stmt::ClassDef(class_def) => {
@@ -122,7 +122,7 @@ pub fn get_non_enum_class_ast_nodes(ast: &ast::Suite) -> Vec<&ast::Stmt> {
 ///
 /// ## Python Enum to Framework Enum
 /// This function takes a python enum AST node and turns it into a framework enum object
-pub fn python_enum_to_framework_enum(
+fn python_enum_to_framework_enum(
     enum_node: &ast::Stmt,
 ) -> Result<FrameworkEnum, PythonParserError> {
     // Get the name of the enum
@@ -143,7 +143,7 @@ pub fn python_enum_to_framework_enum(
 
 /// ## Python Class to Framework Data Model
 /// This function takes a python class AST node and turns it into a framework data model object
-pub fn python_class_to_framework_datamodel(
+fn python_class_to_framework_datamodel(
     class_node: &ast::Stmt,
     enums: &[FrameworkEnum],
 ) -> Result<DataModel, PythonParserError> {
@@ -301,13 +301,14 @@ struct ColumnBuilder {
 impl ColumnBuilder {
     fn build(self) -> Result<Column, PythonParserError> {
         let name = self.name.ok_or(PythonParserError::ClassParseError {
-            message: "Name not found".to_string(),
+            message: "Class builder property, name, not set properly".to_string(),
         })?;
 
         let data_type = self
             .data_type
             .ok_or(PythonParserError::UnsupportedDataTypeError {
-                type_name: "Data type not found".to_string(),
+                type_name: "Class builder property, data_type, unsupported or not set properly"
+                    .to_string(),
             })?;
 
         let required = self.required.unwrap_or(true);

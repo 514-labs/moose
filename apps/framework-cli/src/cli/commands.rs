@@ -63,6 +63,16 @@ pub enum Commands {
     Flow(FlowArgs),
     /// Defines aggregate table views of upstream data models
     Aggregation(AggregationArgs),
+    /// View Moose logs
+    Logs {
+        /// Follow the logs in real-time
+        #[arg(short, long)]
+        tail: bool,
+
+        /// Filter logs by a specific string
+        #[arg(short, long)]
+        filter: Option<String>,
+    },
 }
 
 #[derive(Debug, Args)]

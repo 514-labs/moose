@@ -115,6 +115,7 @@ pub mod dev;
 pub mod docker_packager;
 pub mod flow;
 pub mod initialize;
+pub mod logs;
 pub mod migrate;
 pub mod stop;
 pub mod templates;

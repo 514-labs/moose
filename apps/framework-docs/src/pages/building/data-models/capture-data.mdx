@@ -106,9 +106,10 @@ import sendUserActivity from "my-moose-project-name-sdk";
 
 // WHEREVER YOU NEED TO LOG AN EVENT
 sendUserActivity({
-	id: activityId,
-	timestamp: new Date(),
-	activity: "Login"
+  eventId: your_previously_defined_eventId,
+  timestamp: new Date(),
+  userId: your_previously_defined_userId,
+  activity: "Login"
 });
 
 // REST OF YOUR CODE...

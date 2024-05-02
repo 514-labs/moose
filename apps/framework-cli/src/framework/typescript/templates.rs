@@ -326,7 +326,6 @@ pub fn render_enums(ts_enum: Vec<TSEnum>) -> Result<String, TypescriptRenderingE
     Ok(reg.render_template(ENUM_FILE_TEMPLATE, &json!({"enums": ts_enum}))?)
 }
 
-
 pub static BASE_FLOW_SAMPLE_TEMPLATE: &str = r#"
 // Example flow function: Converts local timestamps in UserActivity data to UTC.
 

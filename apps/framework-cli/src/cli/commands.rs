@@ -61,6 +61,8 @@ pub enum Commands {
     Clean {},
     /// Transforms upstream data into materialized datasets for analysis
     Flow(FlowArgs),
+    /// Defines aggregate table views of upstream data models
+    Aggregation(AggregationArgs),
 }
 
 #[derive(Debug, Args)]
@@ -97,4 +99,21 @@ pub struct FlowInitArgs {
     /// Name of your destination data model
     #[arg(short, long, required = true)]
     pub destination: String,
+}
+
+#[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
+pub struct AggregationArgs {
+    #[command(subcommand)]
+    pub command: Option<AggregationCommands>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum AggregationCommands {
+    /// Creates a starter aggregation
+    #[command(arg_required_else_help = true)]
+    Init {
+        /// Name of your aggregation
+        name: String,
+    },
 }

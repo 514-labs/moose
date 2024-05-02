@@ -14,13 +14,14 @@ use std::process::exit;
 use std::sync::Arc;
 
 use clap::Parser;
-use commands::{Commands, FlowCommands, GenerateCommand};
+use commands::{AggregationCommands, Commands, FlowCommands, GenerateCommand};
 use config::ConfigError;
 use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
 use settings::{read_settings, Settings};
 
+use crate::cli::routines::aggregation::create_aggregation_file;
 use crate::cli::routines::dev::{copy_old_schema, create_deno_files, create_models_volume};
 use crate::cli::routines::flow::{create_flow_directory, create_flow_file};
 use crate::cli::routines::templates;
@@ -402,6 +403,30 @@ async fn top_command_handler(
                     Ok(RoutineSuccess::success(Message::new(
                         "Created".to_string(),
                         "Flow".to_string(),
+                    )))
+                }
+            }
+        }
+        Commands::Aggregation(aggregation) => {
+            info!("Running aggregation command");
+
+            let aggregation_cmd = aggregation.command.as_ref().unwrap();
+            match aggregation_cmd {
+                AggregationCommands::Init { name } => {
+                    let project = load_project()?;
+                    let project_arc = Arc::new(project);
+
+                    crate::utilities::capture::capture!(
+                        ActivityType::AggregationInitCommand,
+                        project_arc.name().clone(),
+                        &settings
+                    );
+
+                    create_aggregation_file(&project_arc, name.to_string())?;
+
+                    Ok(RoutineSuccess::success(Message::new(
+                        "Created".to_string(),
+                        "Aggregation".to_string(),
                     )))
                 }
             }

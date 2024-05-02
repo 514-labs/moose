@@ -109,6 +109,7 @@ use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
 
+pub mod aggregation;
 pub mod clean;
 pub mod dev;
 pub mod docker_packager;

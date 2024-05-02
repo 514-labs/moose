@@ -161,7 +161,7 @@ impl Project {
             .build()?
             .try_deserialize()?;
 
-        project_config.project_location = directory.clone();
+        project_config.project_location.clone_from(&directory);
 
         match project_config.language {
             SupportedLanguages::Typescript => {

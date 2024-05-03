@@ -379,7 +379,7 @@ export default {
     GROUP BY toStartOfDay(timestamp)
     `,
   orderBy: "date",
-} as Aggregation;
+} satisfies Aggregation as Aggregation;
 
 "#;
 
@@ -397,6 +397,6 @@ interface Aggregation {
 export default {
   select: ``,
   orderBy: "",
-} as Aggregation;
+} satisfies Aggregation as Aggregation;
 
 "#;

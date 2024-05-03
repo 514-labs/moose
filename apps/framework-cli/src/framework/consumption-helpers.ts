@@ -1,48 +1,36 @@
-// taken from https://github.com/Canner/vulcan-sql/blob/develop/packages/extension-driver-clickhouse/src/lib/typeMapper.ts
-
-const typeMapping = new Map<string, string>();
-
-const register = (clickHouseType: string, type: string) => {
-  typeMapping.set(clickHouseType, type);
+const typeMapping = {
+  Int: "number",
+  UInt: "number",
+  UInt8: "number",
+  LowCardinality: "string",
+  UInt16: "number",
+  UInt32: "number",
+  UInt64: "string",
+  UInt128: "string",
+  UInt256: "string",
+  Int8: "number",
+  Int16: "number",
+  Int32: "number",
+  Int64: "string",
+  Int128: "string",
+  Int256: "string",
+  Float32: "number",
+  Float64: "number",
+  Decimal: "number",
+  Bool: "boolean",
+  String: "string",
+  FixedString: "string",
+  UUID: "string",
+  Date32: "string",
+  Date64: "string",
+  DateTime32: "string",
+  DateTime64: "string",
+  IPv4: "string",
+  IPv6: "string",
 };
 
-// Reference
-// https://clickhouse.com/docs/en/native-protocol/columns#integers
-// Currently, FieldDataType only support number, string, boolean, Date for generating response schema in the specification.
-register("Int", "number");
-register("UInt", "number");
-register("UInt8", "number");
-register("LowCardinality", "string");
-register("UInt16", "number");
-register("UInt32", "number");
-register("UInt64", "string");
-register("UInt128", "string");
-register("UInt256", "string");
-register("Int8", "number");
-register("Int16", "number");
-register("Int32", "number");
-register("Int64", "string");
-register("Int128", "string");
-register("Int256", "string");
-register("Float32", "number");
-register("Float64", "number");
-register("Decimal", "number");
-// When define column type or query result with parameterized query, The Bool or Boolean type both supported.
-// But the column type of query result only return Bool, so we only support Bool type for safety.
-register("Bool", "boolean");
-register("String", "string");
-register("FixedString", "string");
-register("UUID", "string");
-register("Date32", "string");
-register("Date64", "string");
-register("DateTime32", "string");
-register("DateTime64", "string");
-register("IPv4", "string");
-register("IPv6", "string");
-
 export const mapFromClickHouseType = (clickHouseType: string) => {
-  if (typeMapping.has(clickHouseType)) return typeMapping.get(clickHouseType)!;
-  return "string";
+  return typeMapping?.[clickHouseType] || "string";
 };
 
 /**
@@ -74,6 +62,7 @@ export function createClickhouseParameter(parameterIndex, value) {
   return `{p${parameterIndex}:${mapToClickHouseType(value)}}`;
 }
 
+// source https://github.com/blakeembrey/sql-template-tag/blob/main/src/index.ts
 /**
  * Values supported by SQL engine.
  */
@@ -142,110 +131,8 @@ export class Sql {
       }
     }
   }
-
-  get sql() {
-    const len = this.strings.length;
-    let i = 1;
-    let value = this.strings[0];
-    while (i < len) value += `?${this.strings[i++]}`;
-    return value;
-  }
-
-  get statement() {
-    const len = this.strings.length;
-    let i = 1;
-    let value = this.strings[0];
-    while (i < len) value += `:${i}${this.strings[i++]}`;
-    return value;
-  }
-
-  get text() {
-    const len = this.strings.length;
-    let i = 1;
-    let value = this.strings[0];
-    while (i < len) value += `$${i}${this.strings[i++]}`;
-    return value;
-  }
-
-  inspect() {
-    return {
-      sql: this.sql,
-      statement: this.statement,
-      text: this.text,
-      values: this.values,
-    };
-  }
 }
 
-/**
- * Create a SQL query for a list of values.
- */
-export function join(
-  values: readonly RawValue[],
-  separator = ",",
-  prefix = "",
-  suffix = "",
-) {
-  if (values.length === 0) {
-    throw new TypeError(
-      "Expected `join([])` to be called with an array of multiple elements, but got an empty array",
-    );
-  }
-
-  return new Sql(
-    [prefix, ...Array(values.length - 1).fill(separator), suffix],
-    values,
-  );
-}
-
-/**
- * Create a SQL query for a list of structured values.
- */
-export function bulk(
-  data: ReadonlyArray<ReadonlyArray<RawValue>>,
-  separator = ",",
-  prefix = "",
-  suffix = "",
-) {
-  const length = data.length && data[0].length;
-
-  if (length === 0) {
-    throw new TypeError(
-      "Expected `bulk([][])` to be called with a nested array of multiple elements, but got an empty array",
-    );
-  }
-
-  const values = data.map((item, index) => {
-    if (item.length !== length) {
-      throw new TypeError(
-        `Expected \`bulk([${index}][])\` to have a length of ${length}, but got ${item.length}`,
-      );
-    }
-
-    return new Sql(["(", ...Array(item.length - 1).fill(separator), ")"], item);
-  });
-
-  return new Sql(
-    [prefix, ...Array(values.length - 1).fill(separator), suffix],
-    values,
-  );
-}
-
-/**
- * Create raw SQL statement.
- */
-export function raw(value: string) {
-  return new Sql([value], []);
-}
-
-/**
- * Placeholder value for "no text".
- */
-export const empty = raw("");
-
-/**
- * Create a SQL object from a template string.
- */
 export default function sql(
   strings: readonly string[],
   ...values: readonly RawValue[]

@@ -28,7 +28,7 @@ use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
-use crate::framework::prisma::templates::BASE_MODEL_TEMPLATE;
+use crate::framework::typescript::templates::BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
     BASE_AGGREGATION_SAMPLE_TEMPLATE, BASE_FLOW_SAMPLE_TEMPLATE,
 };
@@ -244,7 +244,7 @@ impl Project {
 
     pub fn create_base_app_files(&self) -> Result<(), std::io::Error> {
         let readme_file_path = self.project_location.join("README.md");
-        let base_model_file_path = self.schemas_dir().join("models.prisma");
+        let base_model_file_path = self.schemas_dir().join("models.ts");
 
         let flow_file_path = self
             .flows_dir()

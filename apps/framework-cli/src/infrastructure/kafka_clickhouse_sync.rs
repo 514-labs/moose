@@ -15,8 +15,8 @@ use super::olap::clickhouse::model::ClickHouseRuntimeEnum;
 use super::olap::clickhouse::version_sync::VersionSync;
 use crate::framework::controller::FrameworkObject;
 use crate::framework::controller::FrameworkObjectVersions;
-use crate::framework::schema::Column;
-use crate::framework::schema::ColumnType;
+use crate::framework::data_model::schema::Column;
+use crate::framework::data_model::schema::ColumnType;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::inserter::Inserter;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
@@ -154,6 +154,10 @@ fn spawn_sync_process(
     clickhouse_config: ClickHouseConfig,
 ) -> Box<dyn Fn((String, FrameworkObject)) -> SyncingProcess> {
     Box::new(move |(_, schema)| {
+        info!(
+            "Starting Kafka sync to clikchouse from topic: {} to table: {}",
+            schema.topic, schema.table.name
+        );
         spawn_sync_process_core(
             kafka_config.clone(),
             clickhouse_config.clone(),

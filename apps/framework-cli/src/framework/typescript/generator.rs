@@ -9,11 +9,11 @@ use super::templates::{
 };
 use crate::framework::controller::FrameworkObjectVersions;
 use crate::framework::controller::SchemaVersion;
-use crate::framework::schema::{DataEnum, EnumValue};
+use crate::framework::data_model::schema::{DataEnum, EnumValue};
 use crate::{
     framework::{
         controller::FrameworkObject,
-        schema::{ColumnType, Table},
+        data_model::schema::{ColumnType, Table},
     },
     project::Project,
     utilities::{constants::TS_INTERFACE_GENERATE_EXT, package_managers, system},

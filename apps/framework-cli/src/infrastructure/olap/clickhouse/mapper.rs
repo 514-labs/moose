@@ -1,4 +1,4 @@
-use crate::framework::schema::{ColumnType, Table, TableType};
+use crate::framework::data_model::schema::{ColumnType, Table, TableType};
 
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,

@@ -28,10 +28,11 @@ impl Default for TypescriptProject {
                 ("build".to_string(), "moose-cli build --docker".to_string()),
             ]),
             dependencies: HashMap::new(),
-            dev_dependencies: HashMap::from([(
-                "@514labs/moose-cli".to_string(),
-                "latest".to_string(),
-            )]),
+            dev_dependencies: HashMap::from([
+                ("@514labs/moose-cli".to_string(), "latest".to_string()),
+                ("typescript".to_string(), "^5.4.0".to_string()),
+                ("ts-node".to_string(), "^10.9.2".to_string()),
+            ]),
         }
     }
 }

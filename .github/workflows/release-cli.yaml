@@ -147,7 +147,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: "20"
           registry-url: "https://registry.npmjs.org"
 
       - name: Publish to NPM Moose
@@ -203,7 +203,7 @@ jobs:
       - name: Install node
         uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: "20"
           cache: "pnpm"
 
       - name: Publish the NPM Moose CLI package

@@ -1,5 +1,5 @@
 use crate::{
-    framework::schema::{is_enum_type, ColumnType, EnumMember, EnumValue},
+    framework::data_model::schema::{is_enum_type, ColumnType, EnumMember, EnumValue},
     project::PROJECT,
 };
 use log::debug;
@@ -11,7 +11,8 @@ use swc_ecma_ast::{
 };
 use swc_ecma_parser::{lexer::Lexer, Capturing, Parser, StringInput, Syntax};
 
-use crate::framework::schema::{Column, DataEnum, DataModel, FileObjects};
+use crate::framework::data_model::parser::FileObjects;
+use crate::framework::data_model::schema::{Column, DataEnum, DataModel};
 
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("Failed to parse the typescript file")]
@@ -178,6 +179,7 @@ fn interface_to_model(
         db_name: project.clickhouse_config.db_name.to_string(),
         columns: columns?,
         name: schema_name,
+        config: Default::default(),
     })
 }
 
@@ -309,8 +311,7 @@ fn parse_type_ref(
 mod tests {
 
     use crate::framework::{
-        controller::framework_object_mapper, schema::parse_data_model_file,
-        typescript::parser::extract_data_model_from_file,
+        data_model::parser::parse_data_model_file, typescript::parser::extract_data_model_from_file,
     };
 
     #[test]
@@ -319,7 +320,7 @@ mod tests {
 
         let test_file = current_dir.join("tests/psl/simple.prisma");
 
-        let result = parse_data_model_file(&test_file, "1.0", framework_object_mapper);
+        let result = parse_data_model_file(&test_file);
         assert!(result.is_ok());
     }
 

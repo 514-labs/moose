@@ -1,6 +1,6 @@
 use super::errors::ClickhouseError;
 use super::queries::{CreateTableQuery, DropTableQuery};
-use crate::framework::schema::DataEnum;
+use crate::framework::data_model::schema::DataEnum;
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};

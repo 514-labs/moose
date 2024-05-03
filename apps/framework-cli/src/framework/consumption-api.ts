@@ -1,4 +1,7 @@
+import type { ClickHouseClient } from "npm:@clickhouse/client-web@1.0.1";
+
 import { createClient, ResultSet } from "npm:@clickhouse/client-web@1.0.1";
+import sql, { Sql, createClickhouseParameter } from "./consumption-helpers.ts";
 
 const CLICKHOUSE_DB =
   Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__DB_NAME") || "local";
@@ -27,6 +30,35 @@ const getClickhouseClient = () => {
   });
 };
 
+class MooseClient {
+  client: ClickHouseClient;
+  constructor() {
+    this.client = getClickhouseClient();
+  }
+
+  async query(sql: Sql) {
+    const parameterizedStubs = sql.values.map((v, i) =>
+      createClickhouseParameter(i, v),
+    );
+
+    const query = sql.strings
+      .map((s, i) => (s != "" ? `${s}${parameterizedStubs[i]}` : ""))
+      .join("");
+
+    const query_params = sql.values.reduce(
+      (acc: Record<string, unknown>, v, i) => ({ ...acc, [`p${i}`]: v }),
+      {},
+    );
+
+    console.log("Querying Clickhouse with", query, query_params);
+
+    return this.client.query({
+      query,
+      query_params,
+    });
+  }
+}
+
 let i = 0;
 
 const apiHandler = async (request: Request): Promise<Response> => {
@@ -40,10 +72,10 @@ const apiHandler = async (request: Request): Promise<Response> => {
     `/apis${pathname}?import_trigger=${i++}`
   );
 
-  const result = await userFuncModule.default(
-    searchParams,
-    getClickhouseClient(),
-  );
+  const result = await userFuncModule.default(searchParams, {
+    client: new MooseClient(),
+    sql: sql,
+  });
 
   let body: string;
   if (result instanceof ResultSet) {

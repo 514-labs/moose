@@ -364,8 +364,13 @@ pub static BASE_AGGREGATION_SAMPLE_TEMPLATE: &str = r#"
 // Here is a sample aggregation query that calculates the number of daily active users
 // based on the number of unique users who complete a sign-in activity each day.
 
+interface Aggregation {
+  select: string;
+  orderBy: string;
+}
+
 export default {
-    select: ` 
+  select: ` 
     SELECT 
         uniqState(userId) as dailyActiveUsers,
         toStartOfDay(timestamp) as date
@@ -373,20 +378,25 @@ export default {
     WHERE activity = 'Login' 
     GROUP BY toStartOfDay(timestamp)
     `,
-    orderBy: 'date',
-};
+  orderBy: "date",
+} as Aggregation;
 
 "#;
 
 pub static BASE_AGGREGATION_TEMPLATE: &str = r#"
-// This file is where you can define your SQL query for aggregating your data 
-// from other data models you have defined in Moose. For more information on the 
-// types of aggregate functions you can run on your existing data, consult the 
+// This file is where you can define your SQL query for aggregating your data
+// from other data models you have defined in Moose. For more information on the
+// types of aggregate functions you can run on your existing data, consult the
 // Clickhouse documentation: https://clickhouse.com/docs/en/sql-reference/aggregate-functions
 
+interface Aggregation {
+  select: string;
+  orderBy: string;
+}
+
 export default {
-    select: ``,
-    orderBy: '',
-};
+  select: ``,
+  orderBy: "",
+} as Aggregation;
 
 "#;

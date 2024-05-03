@@ -25,6 +25,7 @@ impl Default for TypescriptProject {
             // change `moose-cli` to `<REPO_PATH>/apps/framework-cli/target/debug/moose-cli`
             scripts: HashMap::from([
                 ("dev".to_string(), "moose-cli dev".to_string()),
+                ("moose".to_string(), "moose-cli".to_string()),
                 ("build".to_string(), "moose-cli build --docker".to_string()),
             ]),
             dependencies: HashMap::new(),

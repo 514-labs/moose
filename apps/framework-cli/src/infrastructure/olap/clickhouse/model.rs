@@ -146,7 +146,7 @@ impl ClickHouseValue {
     pub fn new_date_time(value: DateTime<FixedOffset>) -> ClickHouseValue {
         ClickHouseValue {
             value_type: ClickHouseColumnType::DateTime,
-            value: format!("{}", value.format("%Y-%m-%d %H:%M:%S")),
+            value: format!("{}", value.format("%Y-%m-%d %H:%M:%S%z")),
         }
     }
 

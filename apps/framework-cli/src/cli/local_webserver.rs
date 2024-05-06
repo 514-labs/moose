@@ -420,7 +420,7 @@ impl Webserver {
             MessageType::Success,
             Message {
                 action: "Started".to_string(),
-                details: "deveopment server.\n\n".to_string(),
+                details: "Development server.\n\n".to_string(),
             }
         );
 

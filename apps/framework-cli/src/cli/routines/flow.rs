@@ -117,8 +117,8 @@ pub fn create_flow_file(
     }
 
     Ok(RoutineSuccess::success(Message::new(
-        "".to_string(),
-        "".to_string(),
+        "Created".to_string(),
+        format!("flow {}", flow_file_path.display()),
     )))
 }
 

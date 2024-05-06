@@ -330,18 +330,17 @@ pub static BASE_FLOW_SAMPLE_TEMPLATE: &str = r#"
 // Example flow function: Converts local timestamps in UserActivity data to UTC.
 
 // Imports: Source (UserActivity) and Destination (ParsedActivity) data models.
-import { ParsedActivity } from "../../../datamodels/ParsedActivity.generated.ts";
-import { UserActivity } from "../../../datamodels/UserActivity.generated.ts";
+import { ParsedActivity, UserActivity } from "../../../datamodels/models.ts";
 
 // The 'run' function transforms UserActivity data to ParsedActivity format.
 // For more details on how Moose flows work, see: https://docs.moosejs.com
-export default function run(event: UserActivity): ParsedActivity {
+export default function run(source: UserActivity): ParsedActivity {
   // Convert local timestamp to UTC and return new ParsedActivity object.
   return {
-    eventId: event.eventId,  // Retain original event ID.
-    userId: "puid" + event.userId,  // Example: Prefix user ID.
-    activity: event.activity,  // Copy activity unchanged.
-    timestamp: new Date(event.timestamp.toUTCString())  // Convert timestamp to UTC.
+    eventId: source.eventId,  // Retain original event ID.
+    userId: "puid" + source.userId,  // Example: Prefix user ID.
+    activity: source.activity,  // Copy activity unchanged.
+    timestamp: new Date(source.timestamp)  // Convert timestamp to UTC.
   };
 }
 
@@ -349,12 +348,11 @@ export default function run(event: UserActivity): ParsedActivity {
 
 pub static BASE_FLOW_TEMPLATE: &str = r#"
 // Add your models & start the development server to import these types
-import { {{source}} } from "../../../datamodels/{{source}}.generated.ts";
-import { {{destination}} } from "../../../datamodels/{{destination}}.generated.ts";
+import { {{source}}, {{destination}} } from "../../../datamodels/models.ts";
 
 // The 'run' function transforms {{source}} data to {{destination}} format.
 // For more details on how Moose flows work, see: https://docs.moosejs.com
-export default function run(event: {{source}}): {{destination}} | null {
+export default function run(source: {{source}}): {{destination}} | null {
   return null;
 }
 
@@ -408,7 +406,7 @@ type Key<T extends string | number> = T
 
 export interface UserActivity {
     eventId: Key<string>;
-    timestamp: Date;
+    timestamp: string;
     userId: string;
     activity: string;
 }

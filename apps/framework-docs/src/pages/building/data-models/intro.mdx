@@ -4,12 +4,14 @@ Data Models are foundational to your MooseJS application. Using Data Models, you
 
 Data Models look like this:
 
-```prisma filename="datamodels/models.prisma" copy
-model UserActivity {
-    eventId     String @id
-    timestamp   DateTime
-    userId      String
-    activityType String
+```ts filename="datamodels/models.ts" copy
+type Key<T extends string | number> = T;
+
+export interface UserActivity {
+  eventId: Key<string>;
+  timestamp: string;
+  userId: string;
+  activity: string;
 }
 ```
 

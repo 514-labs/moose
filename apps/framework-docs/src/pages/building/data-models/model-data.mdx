@@ -2,54 +2,63 @@ import { Cards, Card, Tabs } from "nextra/components";
 
 ## Creating a Model
 
-To get started you simply need to open the `models.prisma` file in your project's `datamodels` directory and add a new Data Model definition.
+To get started you simply need to open the `models.ts` file in your project's `datamodels` directory
+and add a new Data Model definition.
 
-```prisma filename="datamodels/models.prisma" copy
-model UserActivity {
-    eventId     String @id
-    timestamp   DateTime
-    userId      String
-    activityType String
+```ts filename="datamodels/models.ts" copy
+type Key<T extends string | number> = T;
+
+export interface UserActivity {
+  eventId: Key<string>;
+  timestamp: string;
+  userId: string;
+  activity: string;
 }
 ```
 
 ## Data Model conventions
 
-As you can see, the data model is very simple. It's just a list of fields and their types. MooseJS's data modeling is built on top of Prisma's intuitive schema modeling language. You can read more about Prisma's schema modeling language [here](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-schema). We don't currently support all of Prisma's schema modeling features, but we're working on it; and we’ll also soon be adding support to define Data Models as Typescript interfaces.
+As you can see, the data model is very simple. It's just a list of fields and their types.
+MooseJS's data modeling is integrated with the data modeling capabilities of your language of choice.
+For now that's Typescript Interfaces but Python is in the works, leveraging Data classes.
+We don't currently support all of Typescript schema modeling features, but we're working on it.
 
-Data Models can be defined in any file with a `.prisma` extension in your project's `datamodels` directory. The name of the file is not important. You may also define multiple models in the same Prisma file.
+Data Models can be defined in any file with a `.ts` extension in your project's `datamodels` directory.
+The name of the file is not important. You may also define multiple models in the same Typescript file.
 
 ## Supported Types
 
 Here is the status of MooseJS support for various data types in Data Models:
-| Prisma | Clickhouse | Typescript | Moose |
-|:-------- |:---------- |:---------- |:------- |
-| String | String | String | ✅ |
-| Boolean | Boolean | Boolean | ✅ |
-| Int | Int64 | Number | ✅ |
-| BigInt | Int256 | BigInt | ❌ |
-| Float | Float64 | Number | ✅ |
-| Decimal | Decimal | Number | ✅ |
-| DateTime | DateTime | Date | ✅ |
-| Json | Json | Object | ❌ |
-| Bytes | n/a | n/a | ❌ |
-| Enum | Enum | Enum | ✅ |
-| Arrays | Array | Array | ❌ |
-| Optional | nullable | nullable | ✅ |
-
-Note: support for Enum in automatically generated Typescript SDK is coming soon.
+| Clickhouse | Typescript | Moose |
+|:---------- |:---------- |:------- |
+| String | String | ✅ |
+| Boolean | Boolean | ✅ |
+| Int64 | Number | ✅ |
+| Int256 | BigInt | ❌ |
+| Float64 | Number | ✅ |
+| Decimal | Number | ✅ |
+| DateTime | Date | ✅ |
+| Json | Object | ❌ |
+| Bytes | bytes | ❌ |
+| Enum | Enum | ✅ |
+| Array | Array | ✅ |
+| nullable | nullable | ✅ |
 
 ## Inspecting Your Model
 
-Once you've created your model, you can inspect it along with the infrastructure that MooseJS automatically generated for you by navigating to the console at http://localhost:3001.
+Once you've created your model, you can inspect it along with the infrastructure that MooseJS automatically
+generated for you by navigating to the console at http://localhost:3001.
 
-Here you fill find a list of all your Data Models. You can click into any Data Model to see details about it, to get information about the APIs/SDKs for that Data Model, and to directly query the data currently stored in the Data Model (technically, the data stored in the database table associated with that Data Model).
+Here you fill find a list of all your Data Models. You can click into any Data Model to see details about it,
+to get information about the APIs/SDKs for that Data Model, and to directly query the data currently stored in
+the Data Model (technically, the data stored in the database table associated with that Data Model).
 
 ![Data Model Console](/DataModelConsole.jpeg)
 
 ## Test Your Model
 
-When you create a model, MooseJS automatically creates an ingestion point to facilitate immediate data testing. Send a sample payload to this endpoint using:
+When you create a model, MooseJS automatically creates an ingestion point to facilitate immediate data
+testing. Send a sample payload to this endpoint using:
 
 <Tabs items={['Single Data Sample', 'Batch Sample']}>
   <Tabs.Tab>
@@ -75,4 +84,7 @@ When you create a model, MooseJS automatically creates an ingestion point to fac
 
 ## Next steps
 
-You're all set to start sending data into your Moose application from upstream sources, and consuming into downstream sources. Check out the next two sections of the docs for more details on Ingesting and Consuming Data. To understand the impact of changes to your Data Model, refer to the [Data Change Management](/building/dcm/intro) section of the docs.
+You're all set to start sending data into your Moose application from upstream sources, and consuming
+into downstream sources. Check out the next two sections of the docs for more details on Ingesting and
+Consuming Data. To understand the impact of changes to your Data Model, refer to the
+[Data Change Management](/building/dcm/intro) section of the docs.

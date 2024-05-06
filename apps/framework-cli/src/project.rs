@@ -215,29 +215,19 @@ impl Project {
         }
 
         let transform_file_path = deno_dir.join(DENO_TRANSFORM);
-
-        if !transform_file_path.exists() {
-            let mut transform_file = std::fs::File::create(transform_file_path)?;
-            let transform_file_content = include_str!("framework/transform.ts");
-            transform_file.write_all(transform_file_content.as_bytes())?;
-        }
+        let mut transform_file = std::fs::File::create(transform_file_path)?;
+        let transform_file_content = include_str!("framework/transform.ts");
+        transform_file.write_all(transform_file_content.as_bytes())?;
 
         let aggregations_file_path = deno_dir.join(DENO_AGGREGATIONS);
-
-        if !aggregations_file_path.exists() {
-            let mut aggregations_file = std::fs::File::create(aggregations_file_path)?;
-            let aggregations_file_content = include_str!("framework/aggregations.ts");
-            aggregations_file.write_all(aggregations_file_content.as_bytes())?;
-        }
+        let mut aggregations_file = std::fs::File::create(aggregations_file_path)?;
+        let aggregations_file_content = include_str!("framework/aggregations.ts");
+        aggregations_file.write_all(aggregations_file_content.as_bytes())?;
 
         let api_server_file = deno_dir.join(DENO_CONSUMPTION_API);
-
-        if !api_server_file.exists() {
-            let mut api_file = std::fs::File::create(api_server_file)?;
-            let api_file_content = include_str!("framework/consumption-api.ts");
-
-            api_file.write_all(api_file_content.as_bytes())?;
-        }
+        let mut api_file = std::fs::File::create(api_server_file)?;
+        let api_file_content = include_str!("framework/consumption-api.ts");
+        api_file.write_all(api_file_content.as_bytes())?;
 
         Ok(())
     }

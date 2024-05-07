@@ -269,7 +269,7 @@ async fn watch(
                     )
                 })?;
 
-                let _ = verify_flows_against_datamodels(&project, &framework_object_versions);
+                let _ = verify_flows_against_datamodels(&project, framework_object_versions);
 
                 let _ = post_current_state_to_console(
                     project.clone(),

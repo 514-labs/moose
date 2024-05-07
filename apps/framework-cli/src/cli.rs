@@ -402,8 +402,8 @@ async fn top_command_handler(
                     create_flow_file(&project_arc, init.source.clone(), init.destination.clone())?;
 
                     Ok(RoutineSuccess::success(Message::new(
-                        "Created".to_string(),
-                        "Flow".to_string(),
+                        "".to_string(),
+                        "".to_string(),
                     )))
                 }
             }

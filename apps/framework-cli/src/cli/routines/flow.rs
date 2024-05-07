@@ -3,7 +3,7 @@ use std::{fs, io::Write, process::Stdio};
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
-use crate::cli::display::Message;
+use crate::cli::display::{Message, MessageType};
 use crate::framework::typescript::templates::BASE_FLOW_TEMPLATE;
 use crate::project::Project;
 use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM, FLOW_FILE};
@@ -76,10 +76,73 @@ pub fn create_flow_file(
             )
         })?;
 
+    show_message!(
+        MessageType::Success,
+        Message {
+            action: "Created".to_string(),
+            details: "flow".to_string(),
+        }
+    );
+
+    let mut missing_datamodels = Vec::new();
+    if verify_datamodel(project, source.clone()).is_err() {
+        missing_datamodels.push(source);
+    }
+    if verify_datamodel(project, destination.clone()).is_err() {
+        missing_datamodels.push(destination);
+    }
+    if !missing_datamodels.is_empty() {
+        {
+            show_message!(
+                MessageType::Info,
+                Message {
+                    action: "".to_string(),
+                    details: "\n".to_string(),
+                }
+            );
+        }
+
+        let missing_datamodels_str = missing_datamodels.join(", ");
+        show_message!(
+            MessageType::Highlight,
+            Message {
+                action: "Next steps".to_string(),
+                details: format!(
+                    "You may be missing the following datamodels. Add these to {}: {}",
+                    project.schemas_dir().display(),
+                    missing_datamodels_str
+                )
+            }
+        );
+    }
+
     Ok(RoutineSuccess::success(Message::new(
         "Created".to_string(),
         format!("flow {}", flow_file_path.display()),
     )))
+}
+
+pub fn verify_datamodel(project: &Project, datamodel: String) -> anyhow::Result<()> {
+    let child = std::process::Command::new("grep")
+        .arg("-r")
+        .arg("--include=*.ts")
+        .arg("-E")
+        .arg(format!("export\\s+interface\\s+\\b{}\\b", &datamodel))
+        .arg(project.schemas_dir())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()?;
+
+    let output = child.wait_with_output()?;
+
+    if output.status.success() {
+        Ok(())
+    } else {
+        Err(anyhow::anyhow!(
+            "Failed to search datamodels for {}",
+            &datamodel
+        ))
+    }
 }
 
 pub fn start_flow_process(project: &Project) -> anyhow::Result<()> {

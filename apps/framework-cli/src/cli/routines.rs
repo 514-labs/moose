@@ -90,7 +90,7 @@ use crate::infrastructure::olap::clickhouse::{
     fetch_table_names, fetch_table_schema, table_schema_to_hash,
 };
 
-use crate::cli::routines::flow::start_flow_process;
+use crate::cli::routines::flow::{start_flow_process, verify_flows_against_datamodels};
 use crate::framework::controller::{
     create_or_replace_version_sync, get_all_framework_objects, process_objects, FrameworkObject,
     FrameworkObjectVersions, RouteMeta, SchemaVersion,
@@ -543,6 +543,8 @@ async fn initialize_project_state(
         },
     )
     .await?;
+
+    let _ = verify_flows_against_datamodels(&project, &framework_object_versions);
 
     Ok((framework_object_versions, version_syncs))
 }

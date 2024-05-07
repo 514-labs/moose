@@ -429,7 +429,7 @@ impl Webserver {
             MessageType::Highlight,
             Message {
                 action: "Next Steps".to_string(),
-                details: format!("\n\n💻 Open Developer Console\n\tGo to 👉 http://{}:{} 👈 for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: http://{}:{}/ingest", project.http_server_config.host.clone(), project.console_config.host_port, project.http_server_config.host.clone(), socket.port()),
+                details: format!("\n\n💻 Open Developer Console\n\tGo to 👉 http://{}:{} 👈 for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: http://{}:{}/ingest\n", project.http_server_config.host.clone(), project.console_config.host_port, project.http_server_config.host.clone(), socket.port()),
             }
         );
         }

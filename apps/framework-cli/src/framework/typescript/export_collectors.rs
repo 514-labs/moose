@@ -10,7 +10,7 @@ use serde_json::Value;
 
 use crate::framework::data_model::config::{ConfigIdentifier, DataModelConfig};
 
-const MODULE_EXPORT_SERIALIZER: &str = include_str!("wrapper_scripts/moduleExportSerializer.ts");
+const MODULE_EXPORT_SERIALIZER: &str = include_str!("ts_scripts/moduleExportSerializer.ts");
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to run code")]

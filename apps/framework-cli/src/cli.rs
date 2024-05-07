@@ -19,6 +19,7 @@ use config::ConfigError;
 use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
+use regex::Regex;
 use settings::{read_settings, Settings};
 
 use crate::cli::routines::aggregation::create_aggregation_file;
@@ -36,7 +37,7 @@ use crate::cli::{
 };
 use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
 use crate::project::Project;
-use crate::utilities::constants::CLI_VERSION;
+use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 use crate::utilities::git::is_git_repo;
 
 use self::routines::{
@@ -76,6 +77,21 @@ fn load_project() -> Result<Project, RoutineFailure> {
     })
 }
 
+fn check_project_name(name: &str) -> Result<(), RoutineFailure> {
+    let project_name_regex = Regex::new(PROJECT_NAME_ALLOW_PATTERN).unwrap();
+
+    if !project_name_regex.is_match(name) {
+        return Err(RoutineFailure::error(Message {
+            action: "Init".to_string(),
+            details: format!(
+                "Project name should match the following: {}",
+                PROJECT_NAME_ALLOW_PATTERN
+            ),
+        }));
+    }
+    Ok(())
+}
+
 async fn top_command_handler(
     settings: Settings,
     commands: &Commands,
@@ -103,12 +119,7 @@ async fn top_command_handler(
                 &settings
             );
 
-            if name.contains('.') {
-                return Err(RoutineFailure::error(Message {
-                    action: "Init".to_string(),
-                    details: "Project name cannot contain a period".to_string(),
-                }));
-            }
+            check_project_name(name)?;
 
             let dir_path = Path::new(location.as_deref().unwrap_or(name));
             if !no_fail_already_exists && dir_path.exists() {
@@ -194,13 +205,6 @@ async fn top_command_handler(
             let run_mode = RunMode::Explicit {};
             info!("Running build command");
             let project: Project = load_project()?;
-            if project.name().contains('.') {
-                return Err(RoutineFailure::error(Message {
-                    action: "Build".to_string(),
-                    details: "Project name cannot contain a period".to_string(),
-                }));
-            }
-
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(
@@ -208,6 +212,7 @@ async fn top_command_handler(
                 project_arc.name().clone(),
                 &settings
             );
+            check_project_name(&project_arc.name())?;
 
             let mut controller = RoutineController::new();
 
@@ -258,6 +263,7 @@ async fn top_command_handler(
                 &settings
             );
 
+            check_project_name(&project_arc.name())?;
             run_local_infrastructure(&project_arc)?;
 
             routines::start_development_mode(project_arc)
@@ -279,6 +285,8 @@ async fn top_command_handler(
                 info!("Running generate migration command");
                 let project = load_project()?;
                 let project_arc = Arc::new(project);
+
+                check_project_name(&project_arc.name())?;
 
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
@@ -312,6 +320,7 @@ async fn top_command_handler(
                 &settings
             );
 
+            check_project_name(&project_arc.name())?;
             create_deno_files(&project_arc)?;
 
             routines::start_production_mode(project_arc).await.unwrap();
@@ -331,6 +340,7 @@ async fn top_command_handler(
                 &settings
             );
 
+            check_project_name(&project_arc.name())?;
             let mut controller = RoutineController::new();
             let run_mode = RunMode::Explicit {};
 
@@ -373,6 +383,8 @@ async fn top_command_handler(
                 &settings
             );
 
+            check_project_name(&project_arc.name())?;
+
             // TODO get rid of the routines and use functions instead
             let mut controller = RoutineController::new();
             controller.add_routine(Box::new(CleanProject::new(project_arc, run_mode)));
@@ -398,6 +410,7 @@ async fn top_command_handler(
                         &settings
                     );
 
+                    check_project_name(&project_arc.name())?;
                     create_flow_directory(
                         &project_arc,
                         init.source.clone(),
@@ -427,6 +440,7 @@ async fn top_command_handler(
                         &settings
                     );
 
+                    check_project_name(&project_arc.name())?;
                     create_aggregation_file(&project_arc, name.to_string())?;
 
                     Ok(RoutineSuccess::success(Message::new(
@@ -448,6 +462,7 @@ async fn top_command_handler(
                 &settings
             );
 
+            check_project_name(&project_arc.name())?;
             let log_file_path = settings.logger.log_file.clone();
             let filter_value = filter.clone().unwrap_or_else(|| "".to_string());
 

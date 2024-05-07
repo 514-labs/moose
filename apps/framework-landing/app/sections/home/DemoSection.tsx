@@ -15,7 +15,7 @@ export const DemoSection = () => {
         ></Image>
         <Video
           src={getStarted}
-          className="aspect-video rounded-md overflow-hidden"
+          className="aspect-video rounded-sm overflow-hidden"
         />
       </div>
     </Section>

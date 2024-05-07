@@ -230,13 +230,9 @@ impl Project {
         api_file.write_all(api_file_content.as_bytes())?;
 
         let deno_consumption_helper = deno_dir.join(CONSUMPTION_HELPERS);
-
-        if !deno_consumption_helper.exists() {
-            let mut helper_file = std::fs::File::create(deno_consumption_helper)?;
-            let deno_consumption_helper_content = include_str!("framework/consumption-helpers.ts");
-
-            helper_file.write_all(deno_consumption_helper_content.as_bytes())?;
-        }
+        let mut helper_file = std::fs::File::create(deno_consumption_helper)?;
+        let deno_consumption_helper_content = include_str!("framework/consumption-helpers.ts");
+        helper_file.write_all(deno_consumption_helper_content.as_bytes())?;
 
         Ok(())
     }

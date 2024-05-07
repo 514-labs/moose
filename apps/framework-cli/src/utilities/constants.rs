@@ -41,6 +41,9 @@ pub const DENO_DIR: &str = "deno";
 pub const DENO_TRANSFORM: &str = "transform.ts";
 pub const DENO_AGGREGATIONS: &str = "aggregations.ts";
 pub const DENO_CONSUMPTION_API: &str = "consumption-api.ts";
+
+pub const CONSUMPTION_HELPERS: &str = "consumption-helpers.ts";
+
 pub const FLOW_FILE: &str = "flow.ts";
 pub const AGGREGATIONS_FILE: &str = "DailyActiveUsers.ts";
 

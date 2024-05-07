@@ -51,7 +51,7 @@ use crate::utilities::constants::{
 };
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{
-    DENO_AGGREGATIONS, DENO_CONSUMPTION_API, DENO_DIR, DENO_TRANSFORM,
+    CONSUMPTION_HELPERS, DENO_AGGREGATIONS, DENO_CONSUMPTION_API, DENO_DIR, DENO_TRANSFORM,
 };
 
 lazy_static! {
@@ -228,6 +228,11 @@ impl Project {
         let mut api_file = std::fs::File::create(api_server_file)?;
         let api_file_content = include_str!("framework/consumption-api.ts");
         api_file.write_all(api_file_content.as_bytes())?;
+
+        let deno_consumption_helper = deno_dir.join(CONSUMPTION_HELPERS);
+        let mut helper_file = std::fs::File::create(deno_consumption_helper)?;
+        let deno_consumption_helper_content = include_str!("framework/consumption-helpers.ts");
+        helper_file.write_all(deno_consumption_helper_content.as_bytes())?;
 
         Ok(())
     }

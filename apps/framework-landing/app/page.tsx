@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 
 import { VariantProps } from "class-variance-authority";
-import { EmailSection } from "./sections/EmailSection";
 import { DemoSection } from "./sections/home/DemoSection";
 import { FooterSection } from "./sections/FooterSection";
 import { HeroSection } from "./sections/home/HeroSection";

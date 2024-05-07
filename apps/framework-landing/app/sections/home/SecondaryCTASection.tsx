@@ -10,15 +10,20 @@ import { TrackCtaButton } from "../../trackable-components";
 
 export const SecondaryCTASection = () => {
   const content = {
-    title: "Hosting",
-    description:
-      "Don't want to manage hosting for your Moose application? Check out Fiveonefour.",
+    title: "Up and running in minutes, no vendor, no lock-in",
+    description: "Get your data stack up and running in minutes with Moose",
     ctas: [
       {
-        href: "https://fiveonefour.com",
+        href: "https://docs.moosejs.com/getting-started/new-project",
         action: "cta-early-access",
-        label: "Get early access",
+        label: "Get Started",
         variant: "default",
+      },
+      {
+        href: "https://docs.moosejs.com/",
+        action: "cta-early-access",
+        label: "View Docs ",
+        variant: "outline",
       },
     ],
   };
@@ -28,7 +33,9 @@ export const SecondaryCTASection = () => {
       <Grid className="gap-y-5">
         <FullWidthContentContainer>
           <Heading>{content.title}</Heading>
-          <Text>{content.description}</Text>
+          <Heading level={HeadingLevel.l2} className="text-muted-foreground">
+            {content.description}
+          </Heading>
           <CTABar>
             {content.ctas.map((cta, index) => (
               <Link key={index} href={cta.href}>

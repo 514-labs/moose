@@ -2,19 +2,18 @@ import { ReactNode } from "react";
 
 import { VariantProps } from "class-variance-authority";
 import { EmailSection } from "./sections/EmailSection";
-import { LooseMooseSection } from "./sections/home/LooseMooseSection";
+import { DemoSection } from "./sections/home/DemoSection";
 import { FooterSection } from "./sections/FooterSection";
 import { HeroSection } from "./sections/home/HeroSection";
 import { WhyMooseSection } from "./sections/home/WhyMooseSection";
-import { WhatIsMooseSection } from "./sections/home/WhatIsMooseSection";
+import { MooseStackSection } from "./sections/home/MooseStackSection";
 import {
   TemplateHeaderSection,
   TemplatesSection,
 } from "./sections/home/TemplatesSection";
 import { FeaturesSection } from "./sections/home/FeaturesSection";
-import { BuiltOnSection } from "./sections/home/BuiltOnSection";
+
 import { SecondaryCTASection } from "./sections/home/SecondaryCTASection";
-import { GetMooseCTASection } from "./sections/home/GetMooseCTASection";
 import { cn } from "@514labs/design-system/utils";
 
 import { Button, buttonVariants } from "@514labs/design-system/components";
@@ -89,12 +88,13 @@ export default function Home() {
   return (
     <main className="min-h-screen">
       <HeroSection />
+      <DemoSection />
       <WhyMooseSection />
-      <WhatIsMooseSection />
+      <HowItWorksSection />
+      <MooseStackSection />
       <FeaturesSection />
       <TemplateHeaderSection />
       <TemplatesSection />
-
       <SecondaryCTASection />
       <FooterSection />
       <EmailSection />

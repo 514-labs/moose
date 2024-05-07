@@ -7,36 +7,38 @@ import { Text } from "@514labs/design-system/typography";
 
 export const WhyMooseSection = () => {
   const content = {
+    title:
+      "We built MooseJS to make building data products easier for all devs",
     features: [
       {
-        title: "Your tools, your way",
+        title: "Git-based workflows",
         description:
-          "Git-based workflows, languages you know, and the IDE of your choice. Moose is built to slot into your existing tools from your local env, to CI/CD and the cloud",
-      },
-      {
-        title: "Auto migrations",
-        description:
-          "Moose automatically manages schema evolution across your data stack, so you don’t break upstream and downstream dependencies",
-      },
-      {
-        title: "End-to-end typed",
-        description:
-          "Moose types all your components from data capture through consumption, so you catch issues at build time, instead of in production",
-      },
-      {
-        title: "Built-in testing",
-        description:
-          "With Moose’s built-in testing framework, you can manage sample data and automatically test data pipelines as you’re developing",
-      },
-      {
-        title: "Data product APIs",
-        description:
-          "Moose automatically creates API endpoints for your data products, and generates SDKs in the languages of your choice (typescript, python, java, rust, etc).",
+          "Git as your source of truth simplifies versioning and migrations",
       },
       {
         title: "Local dev server",
         description:
-          "Run your whole data/analytics stack locally: see the impact of changes in real time as you edit code - just like developing a web application",
+          "Build locally to make sure you can push to the cloud confidently",
+      },
+      {
+        title: "Domain derived infra",
+        description:
+          "Infrastructure is automatically derived from your data models",
+      },
+      {
+        title: "Test your way",
+        description:
+          "Use the testing frameworks you love to ensure high quality data",
+      },
+      {
+        title: "Loose coupling",
+        description:
+          "Automatically keep producers and consumers loosely coupled",
+      },
+      {
+        title: "Data primitives",
+        description:
+          "Simple, easy to configure primitives that ship with sane default",
       },
     ],
   };
@@ -45,6 +47,13 @@ export const WhyMooseSection = () => {
     <>
       <Section>
         <Grid>
+          <HalfWidthContentContainer className="lg:col-start-7">
+            <Heading> {content.title} </Heading>
+          </HalfWidthContentContainer>
+        </Grid>
+      </Section>
+      <Section>
+        <Grid className="gap-y-5">
           {content.features.map((feature, index) => {
             return (
               <ThirdWidthContentContainer key={index}>

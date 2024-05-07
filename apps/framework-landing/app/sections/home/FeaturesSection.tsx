@@ -11,49 +11,48 @@ export const FeaturesSection = () => {
     title: "Everything you need to build data-driven experiences",
     features: [
       {
-        title: "Your tools, your way",
+        title: "Data Models",
         description:
-          "Git-based workflows, languages you know, and the IDE of your choice. Moose is built to slot into your existing tools from your local env, to CI/CD and the cloud",
+          "Define data models in your language, Moose derives the rest",
       },
       {
-        title: "Auto migrations",
-        description:
-          "Moose automatically manages schema evolution across your data stack, so you don’t break upstream and downstream dependencies",
+        title: "Flows",
+        description: "Write simple functions to transform your data on the fly",
       },
       {
-        title: "End-to-end typed",
+        title: "Aggregations & metrics",
         description:
-          "Moose types all your components from data capture through consumption, so you catch issues at build time, instead of in production",
+          "Pivot, filter amd group your data for repeatable insights and metrics",
       },
       {
-        title: "Built-in testing",
+        title: "Migrations",
         description:
-          "With Moose’s built-in testing framework, you can manage sample data and automatically test data pipelines as you’re developing",
+          "Moose helps manage migrations for your end-to-end data  stack",
       },
       {
-        title: "Data product APIs",
+        title: "UI Components",
         description:
-          "Moose automatically creates API endpoints for your data products, and generates SDKs in the languages of your choice (typescript, python, java, rust, etc).",
+          "Embed insightful react components in your framework of choice",
       },
       {
-        title: "Local dev server",
+        title: "Connectors & SDKs",
         description:
-          "Run your whole data/analytics stack locally: see the impact of changes in real time as you edit code - just like developing a web application",
+          "Connectors and auto generated SDKs get data in and out of moose",
       },
       {
-        title: "Built-in testing",
+        title: "Templates",
         description:
-          "With Moose’s built-in testing framework, you can manage sample data and automatically test data pipelines as you’re developing",
+          "Get up and running in seconds with pre-built application templates",
       },
       {
-        title: "Data product APIs",
+        title: "Packaging",
         description:
-          "Moose automatically creates API endpoints for your data products, and generates SDKs in the languages of your choice (typescript, python, java, rust, etc).",
+          "Easily package your application for deployment in any environment",
       },
       {
-        title: "Local dev server",
+        title: "Orchestration",
         description:
-          "Run your whole data/analytics stack locally: see the impact of changes in real time as you edit code - just like developing a web application",
+          "Configurable orchestration to make sure things reliably happen",
       },
     ],
   };
@@ -68,7 +67,7 @@ export const FeaturesSection = () => {
         </Grid>
       </Section>
       <Section>
-        <Grid>
+        <Grid className="gap-y-5">
           {content.features.map((feature, index) => {
             return (
               <ThirdWidthContentContainer key={index}>

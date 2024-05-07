@@ -12,18 +12,23 @@ import {
 
 export const HeroSection = () => {
   const content = {
-    tagLine: "A developer framework for your data & analytics stack",
-    description: "Build your own data driven experiences with in minutes",
-    primaryCta: {
-      action: "cta-copy",
-      label: "Copy",
-      text: "Get Started",
-    },
-    secondaryCta: {
-      action: "cta-docs",
-      label: "Docs",
-      text: "View Docs",
-    },
+    tagLine: "Your own scalable data products in minutes",
+    description:
+      "An open source developer framework for your data & analytics stack",
+    ctas: [
+      {
+        href: "https://docs.moosejs.com/getting-started/new-project",
+        action: "cta-early-access",
+        label: "Get Started",
+        variant: "default",
+      },
+      {
+        href: "https://docs.moosejs.com/",
+        action: "cta-early-access",
+        label: "View Docs ",
+        variant: "outline",
+      },
+    ],
   };
 
   return (
@@ -42,19 +47,17 @@ export const HeroSection = () => {
               </Heading>
             </div>
             <CTABar className="mb-5">
-              <TrackCtaButton
-                name="Get Started"
-                subject={content.primaryCta.text}
-              >
-                {content.primaryCta.text}
-              </TrackCtaButton>
-              <TrackCtaButton
-                name="View Docs"
-                subject={content.secondaryCta.text}
-                variant={"outline"}
-              >
-                {content.secondaryCta.text}
-              </TrackCtaButton>
+              {content.ctas.map((cta, index) => (
+                <Link key={index} href={cta.href}>
+                  <TrackCtaButton
+                    name={cta.label}
+                    subject={cta.label}
+                    variant={cta.variant as "default" | "outline"}
+                  >
+                    {cta.label}
+                  </TrackCtaButton>
+                </Link>
+              ))}
             </CTABar>
           </FullWidthContentContainer>
         </Grid>

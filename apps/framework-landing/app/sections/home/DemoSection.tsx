@@ -6,11 +6,12 @@ import Image from "next/image";
 
 export const DemoSection = () => {
   return (
-    <Section>
-      <div className="bg-muted py-36 px-40 aspect-video relative">
+    <Section className="px-0 md:px-5">
+      <div className="bg-muted p-5 md:p-24 md:aspect-video relative">
         <Image
           src={"/images/demo/img_man_hero.webp"}
           alt="lifestyleimg"
+          objectFit="cover"
           fill
         ></Image>
         <Video

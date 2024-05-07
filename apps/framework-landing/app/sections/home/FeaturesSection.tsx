@@ -22,7 +22,7 @@ export const FeaturesSection = () => {
       {
         title: "Aggregations & metrics",
         description:
-          "Pivot, filter amd group your data for repeatable insights and metrics",
+          "Pivot, filter and group your data for repeatable insights and metrics",
       },
       {
         title: "Migrations",

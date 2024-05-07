@@ -11,7 +11,7 @@ import { TrackCtaButton } from "../../trackable-components";
 export const SecondaryCTASection = () => {
   const content = {
     title: "Up and running in minutes, no vendor, no lock-in",
-    description: "Get your data stack up and running in minutes with Moose",
+    description: "Build your own data-driven experiences in minutes with Moose",
     ctas: [
       {
         href: "https://docs.moosejs.com/getting-started/new-project",

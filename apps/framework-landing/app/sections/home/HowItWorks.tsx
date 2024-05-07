@@ -17,7 +17,7 @@ const content = {
     {
       title: "Moose automatically provisions your data stack",
       description:
-        "As you build your application, Moose provisions topics, tables and ingestion points",
+        "As you build your application, Moose provisions topics, tables and ingestion points locally",
     },
     {
       title: "Derive insights and make them available to users",

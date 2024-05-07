@@ -13,13 +13,14 @@ import { TrackCtaButton } from "../../trackable-components";
 
 const content = {
   title: "Use cases & templates",
+  description: "Templates let you go from zero to know in minutes",
   templates: [
     {
       title: "Product Analytics",
       imageSrcLight: "/images/templates/img-product-1-light.svg",
       imageSrcDark: "/images/templates/img-product-1-dark.svg",
       description:
-        "Capture user journeys and derive actionable insights to optimize your product development.",
+        "Capture user journeys and derive actionable insights to optimize your product development",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -31,7 +32,7 @@ const content = {
       imageSrcLight: "/images/templates/img-product-2-light.svg",
       imageSrcDark: "/images/templates/img-product-2-dark.svg",
       description:
-        "Optimize AI automations powered by RAG on your own data to create innovative end user experiences.",
+        "Optimize AI automations powered by RAG on your own data to create innovative end user experiences",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -43,7 +44,7 @@ const content = {
       imageSrcLight: "/images/templates/img-product-3-light.svg",
       imageSrcDark: "/images/templates/img-product-3-dark.svg",
       description:
-        "Integrate data across business domains into a data warehouse with discoverable, consumable data products.",
+        "Integrate data across business domains into a data warehouse with discoverable, consumable data products",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -59,6 +60,10 @@ export const TemplateHeaderSection = () => {
       <Grid>
         <FullWidthContentContainer>
           <Heading> {content.title} </Heading>
+          <Heading className="text-muted-foreground" level={HeadingLevel.l2}>
+            {" "}
+            {content.description}{" "}
+          </Heading>
         </FullWidthContentContainer>
       </Grid>
     </Section>

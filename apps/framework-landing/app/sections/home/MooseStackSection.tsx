@@ -41,7 +41,7 @@ export const MooseStackSection = () => {
       <Section>
         <Grid className="gap-y-5">
           <HalfWidthContentContainer className="sticky md:top-24 flex items-center justify-center">
-            <div className="relative w-full aspect-square">
+            <div className="relative w-full aspect-video">
               <Image
                 priority
                 className="hidden dark:block"

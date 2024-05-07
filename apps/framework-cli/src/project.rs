@@ -157,10 +157,9 @@ impl Project {
         }
     }
 
-    pub fn set_enviroment(&self, production: bool) -> () {
+    pub fn set_enviroment(&self, production: bool) {
         let mut proj = PROJECT.lock().unwrap();
         proj.is_production = production;
-        ()
     }
 
     pub fn load(directory: PathBuf) -> Result<Project, ConfigError> {

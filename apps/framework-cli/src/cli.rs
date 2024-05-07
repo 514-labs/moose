@@ -249,7 +249,7 @@ async fn top_command_handler(
 
             let project = load_project()?;
 
-            let _ = project.set_enviroment(false);
+            project.set_enviroment(false);
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(
@@ -303,7 +303,7 @@ async fn top_command_handler(
             info!("Running prod command");
             let project = load_project()?;
 
-            let _ = project.set_enviroment(true);
+            project.set_enviroment(true);
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(

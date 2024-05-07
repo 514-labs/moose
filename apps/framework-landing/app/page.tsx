@@ -94,10 +94,8 @@ export default function Home() {
       <FeaturesSection />
       <TemplateHeaderSection />
       <TemplatesSection />
-      <BuiltOnSection />
-      <LooseMooseSection />
+
       <SecondaryCTASection />
-      <GetMooseCTASection />
       <FooterSection />
       <EmailSection />
     </main>

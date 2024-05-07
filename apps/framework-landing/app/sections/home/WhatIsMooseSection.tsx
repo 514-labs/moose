@@ -25,6 +25,17 @@ export const WhatIsMooseSection = () => {
     <>
       <Section>
         <Grid className="gap-y-5">
+          <HalfWidthContentContainer>
+            <Heading> {content.title} </Heading>
+            <Text> {content.description} </Text>
+            <Link href={content.cta.href}>
+              <CTABar>
+                <TrackCtaButton name="How it works" subject={content.cta.label}>
+                  {content.cta.label}
+                </TrackCtaButton>
+              </CTABar>
+            </Link>
+          </HalfWidthContentContainer>
           <HalfWidthContentContainer className="lg:col-span-3 aspect-square bg-muted sticky md:top-24 flex items-center justify-center">
             <div className="relative w-full h-3/4">
               <Image
@@ -44,18 +55,6 @@ export const WhatIsMooseSection = () => {
                 sizes="(max-width: 768px) 150vw, 25vw"
               />
             </div>
-          </HalfWidthContentContainer>
-
-          <HalfWidthContentContainer className="lg:col-start-7">
-            <Heading> {content.title} </Heading>
-            <Text> {content.description} </Text>
-            <Link href={content.cta.href}>
-              <CTABar>
-                <TrackCtaButton name="How it works" subject={content.cta.label}>
-                  {content.cta.label}
-                </TrackCtaButton>
-              </CTABar>
-            </Link>
           </HalfWidthContentContainer>
         </Grid>
       </Section>

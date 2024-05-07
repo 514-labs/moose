@@ -59,7 +59,7 @@ export const TemplateHeaderSection = () => {
     <Section>
       <Grid>
         <FullWidthContentContainer>
-          <Display> {content.title} </Display>
+          <Heading> {content.title} </Heading>
         </FullWidthContentContainer>
       </Grid>
     </Section>
@@ -73,24 +73,15 @@ export const TemplatesSection = () => {
         {content.templates.map((template, index) => {
           return (
             <Fragment key={index}>
-              <ThirdWidthContentContainer className=" xl:m-0 bg-muted aspect-[4/3]  flex flex-col item-center justify-center xl:order-1">
-                <div className="relative h-3/5">
-                  <Suspense fallback={<div>Loading...</div>}>
-                    <TemplateImg
-                      srcDark={template.imageSrcDark}
-                      srcLight={template.imageSrcLight}
-                      alt={template.title}
-                    />
-                  </Suspense>
-                </div>
-              </ThirdWidthContentContainer>
               <ThirdWidthContentContainer
                 key={index}
                 className="flex flex-col xl:justify-start xl:order-4"
               >
-                <Heading>{template.title}</Heading>
-                <Text className="xl:grow">{template.description}</Text>
-                <CTABar>
+                <Text className="my-0">{template.title}</Text>
+                <Text className="my-0 text-muted-foreground xl:grow">
+                  {template.description}
+                </Text>
+                <CTABar className="my-5">
                   <Link className="flex flex-col" href={template.cta.href}>
                     <TrackCtaButton
                       name="Learn More"

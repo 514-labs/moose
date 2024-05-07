@@ -4,11 +4,11 @@ import {
   FullWidthContentContainer,
   ThirdWidthContentContainer,
 } from "@514labs/design-system/components/containers";
-import { Display, Heading, Text } from "@514labs/design-system/typography";
+import { Heading, Text } from "@514labs/design-system/typography";
 
 export const FeaturesSection = () => {
   const content = {
-    title: "Key Features",
+    title: "Everything you need to build data-driven experiences",
     features: [
       {
         title: "Your tools, your way",
@@ -40,6 +40,21 @@ export const FeaturesSection = () => {
         description:
           "Run your whole data/analytics stack locally: see the impact of changes in real time as you edit code - just like developing a web application",
       },
+      {
+        title: "Built-in testing",
+        description:
+          "With Moose’s built-in testing framework, you can manage sample data and automatically test data pipelines as you’re developing",
+      },
+      {
+        title: "Data product APIs",
+        description:
+          "Moose automatically creates API endpoints for your data products, and generates SDKs in the languages of your choice (typescript, python, java, rust, etc).",
+      },
+      {
+        title: "Local dev server",
+        description:
+          "Run your whole data/analytics stack locally: see the impact of changes in real time as you edit code - just like developing a web application",
+      },
     ],
   };
 
@@ -48,81 +63,22 @@ export const FeaturesSection = () => {
       <Section>
         <Grid>
           <FullWidthContentContainer>
-            <Display> {content.title} </Display>
+            <Heading> {content.title} </Heading>
           </FullWidthContentContainer>
         </Grid>
       </Section>
       <Section>
         <Grid>
-          <ThirdWidthContentContainer className="xl:order-1">
-            <Heading>
-              {content.features[0] && content.features[0].title}
-            </Heading>
-          </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="xl:mb-5 xl:order-4">
-            <Text>
-              {content.features[0] && content.features[0].description}
-            </Text>
-          </ThirdWidthContentContainer>
-
-          <ThirdWidthContentContainer className="mt-5 md:mt-5 xl:m-0 xl:order-2">
-            <Heading>
-              {content.features[1] && content.features[1].title}
-            </Heading>
-          </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="md:mt-5 xl:m-0 xl:order-5 xl:mb-5">
-            <Text>
-              {content.features[1] && content.features[1].description}
-            </Text>
-          </ThirdWidthContentContainer>
-
-          <ThirdWidthContentContainer className="md:mt-5 mt-5 xl:m-0 xl:order-3">
-            <Heading>
-              {content.features[2] && content.features[2].title}
-            </Heading>
-          </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="md:mt-5  xl:m-0 xl:order-6 xl:mb-5">
-            <Text>
-              {content.features[2] && content.features[2].description}
-            </Text>
-          </ThirdWidthContentContainer>
-
-          <ThirdWidthContentContainer className="mt-5 md:mt-5 xl:order-7 xl:m-0">
-            <Heading>
-              {content.features[3] && content.features[3].title}
-            </Heading>
-          </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="md:mt-5  xl:m-0 xl:order-10">
-            <Text>
-              {content.features[3] && content.features[3].description}
-            </Text>
-          </ThirdWidthContentContainer>
-
-          <ThirdWidthContentContainer className="mt-5 md:mb-5 md:mt-5  xl:m-0 xl:order-8">
-            <Heading>
-              {" "}
-              {content.features[4] && content.features[4].title}{" "}
-            </Heading>
-          </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="mb-5 md:mb-5 md:mt-5  xl:m-0 xl:order-11">
-            <Text>
-              {" "}
-              {content.features[4] && content.features[4].description}{" "}
-            </Text>
-          </ThirdWidthContentContainer>
-
-          <ThirdWidthContentContainer className="xl:order-9">
-            <Heading>
-              {" "}
-              {content.features[5] && content.features[5].title}{" "}
-            </Heading>
-          </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="xl:order-12">
-            <Text>
-              {" "}
-              {content.features[5] && content.features[5].description}{" "}
-            </Text>
-          </ThirdWidthContentContainer>
+          {content.features.map((feature, index) => {
+            return (
+              <ThirdWidthContentContainer key={index}>
+                <Text className="my-0">{feature.title}</Text>
+                <Text className="my-0 text-muted-foreground">
+                  {feature.description}
+                </Text>
+              </ThirdWidthContentContainer>
+            );
+          })}
         </Grid>
       </Section>
     </>

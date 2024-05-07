@@ -97,7 +97,7 @@ export default function Home() {
       <TemplatesSection />
       <SecondaryCTASection />
       <FooterSection />
-      <EmailSection />
+      <LooseMooseSection />
     </main>
   );
 }

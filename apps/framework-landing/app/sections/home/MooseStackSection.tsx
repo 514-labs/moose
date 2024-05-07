@@ -40,12 +40,12 @@ export const MooseStackSection = () => {
       </Section>
       <Section>
         <Grid className="gap-y-5">
-          <HalfWidthContentContainer className="bg-muted sticky md:top-24 flex items-center justify-center">
-            <div className="relative w-full">
+          <HalfWidthContentContainer className="sticky md:top-24 flex items-center justify-center">
+            <div className="relative w-full aspect-square">
               <Image
                 priority
                 className="hidden dark:block"
-                src="/images/how-it-works/img-diagram-compare-dark.svg"
+                src="/images/how-it-works/IMG-STACK-DARK.svg"
                 fill
                 alt="man in jacket"
                 sizes="(max-width: 768px) 150vw, 25vw"
@@ -53,14 +53,14 @@ export const MooseStackSection = () => {
               <Image
                 priority
                 className="block dark:hidden"
-                src="/images/how-it-works/img-diagram-compare-light.svg"
+                src="/images/how-it-works/IMG-STACK-LIGHT.svg"
                 fill
                 alt="man in jacket"
                 sizes="(max-width: 768px) 150vw, 25vw"
               />
             </div>
           </HalfWidthContentContainer>
-          <HalfWidthContentContainer>
+          <HalfWidthContentContainer className="flex flex-col justify-center">
             <div className="flex flex-col gap-5">
               {content.stack.map((step, index) => {
                 return (

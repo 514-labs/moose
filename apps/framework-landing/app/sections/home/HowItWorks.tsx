@@ -39,7 +39,7 @@ export const HowItWorksSection = () => {
       </Section>
 
       <Section>
-        <Grid>
+        <Grid className="gap-5">
           {content.steps.map((step, index) => {
             return (
               <ThirdWidthContentContainer key={index}>

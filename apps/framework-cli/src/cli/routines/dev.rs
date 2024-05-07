@@ -3,7 +3,6 @@ use std::fs;
 
 use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
-use crate::framework::languages::create_models_dir;
 use crate::utilities::constants::{
     AGGREGATIONS_CONTAINER_NAME, CLI_PROJECT_INTERNAL_DIR, CONSUMPTION_CONTAINER_NAME,
     FLOWS_CONTAINER_NAME,
@@ -23,7 +22,6 @@ use super::{
 
 pub fn run_local_infrastructure(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
     create_deno_files(project)?;
-    create_models_volume(project)?;
     create_docker_compose_file(project)?;
 
     copy_old_schema(project)?;
@@ -136,21 +134,10 @@ pub fn copy_old_schema(project: &Project) -> Result<RoutineSuccess, RoutineFailu
 
 pub fn create_deno_files(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
     project.create_deno_files().map_err(|err| {
-        RoutineFailure::new(Message::new("Failed".to_string(), "".to_string()), err)
-    })?;
-
-    Ok(RoutineSuccess::success(Message::new(
-        "Created".to_string(),
-        "deno files".to_string(),
-    )))
-}
-
-pub fn create_models_volume(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
-    create_models_dir(project).map_err(|err| {
         RoutineFailure::new(
             Message::new(
                 "Failed".to_string(),
-                format!("to create models volume in {}", err),
+                "to setup internal files, check your folder permissions or contact us.".to_string(),
             ),
             err,
         )
@@ -158,7 +145,7 @@ pub fn create_models_volume(project: &Project) -> Result<RoutineSuccess, Routine
 
     Ok(RoutineSuccess::success(Message::new(
         "Created".to_string(),
-        "Models volume".to_string(),
+        "deno files".to_string(),
     )))
 }
 

@@ -29,6 +29,7 @@ pub enum TypescriptGeneratorError {
     },
     FileWritingError(#[from] std::io::Error),
     RenderingError(#[from] TypescriptRenderingError),
+    ProjectFile(#[from] crate::project::ProjectFileError),
 }
 
 #[derive(Debug, Clone)]

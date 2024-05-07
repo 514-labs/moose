@@ -22,17 +22,16 @@ use logger::setup_logging;
 use settings::{read_settings, Settings};
 
 use crate::cli::routines::aggregation::create_aggregation_file;
-use crate::cli::routines::dev::{copy_old_schema, create_deno_files, create_models_volume};
+use crate::cli::routines::dev::{copy_old_schema, create_deno_files};
 use crate::cli::routines::flow::{create_flow_directory, create_flow_file};
+use crate::cli::routines::initialize::initialize_project;
 use crate::cli::routines::logs::{follow_logs, show_logs};
 use crate::cli::routines::templates;
 use crate::cli::routines::version::BumpVersion;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::cli::{
     display::{Message, MessageType},
-    routines::{
-        dev::run_local_infrastructure, initialize::InitializeProject, RoutineController, RunMode,
-    },
+    routines::{dev::run_local_infrastructure, RoutineController, RunMode},
     settings::{init_config_file, setup_user_directory},
 };
 use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
@@ -104,6 +103,13 @@ async fn top_command_handler(
                 &settings
             );
 
+            if name.contains('.') {
+                return Err(RoutineFailure::error(Message {
+                    action: "Init".to_string(),
+                    details: "Project name cannot contain a period".to_string(),
+                }));
+            }
+
             let dir_path = Path::new(location.as_deref().unwrap_or(name));
             if !no_fail_already_exists && dir_path.exists() {
                 return Err(RoutineFailure::error(Message {
@@ -134,15 +140,7 @@ async fn top_command_handler(
 
                     debug!("Project: {:?}", project_arc);
 
-                    let mut controller = RoutineController::new();
-                    let run_mode = RunMode::Explicit {};
-
-                    controller.add_routine(Box::new(InitializeProject::new(
-                        run_mode,
-                        project_arc.clone(),
-                    )));
-
-                    controller.run_routines(run_mode);
+                    initialize_project(&project_arc)?;
 
                     project_arc
                         .write_to_disk()
@@ -196,6 +194,13 @@ async fn top_command_handler(
             let run_mode = RunMode::Explicit {};
             info!("Running build command");
             let project: Project = load_project()?;
+            if project.name().contains('.') {
+                return Err(RoutineFailure::error(Message {
+                    action: "Build".to_string(),
+                    details: "Project name cannot contain a period".to_string(),
+                }));
+            }
+
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(
@@ -307,7 +312,6 @@ async fn top_command_handler(
                 &settings
             );
 
-            create_models_volume(&project_arc)?;
             create_deno_files(&project_arc)?;
 
             routines::start_production_mode(project_arc).await.unwrap();
@@ -457,7 +461,20 @@ async fn top_command_handler(
 }
 
 pub async fn cli_run() {
-    setup_user_directory().expect("Failed to setup moose user directory");
+    let user_directory = setup_user_directory();
+    if let Err(e) = user_directory {
+        show_message!(
+            MessageType::Error,
+            Message {
+                action: "Init".to_string(),
+                details: format!(
+                    "Failed to initialize ~/.moose, please check your permissions: {:?}",
+                    e
+                ),
+            }
+        );
+        exit(1);
+    }
     init_config_file().unwrap();
 
     let config = read_settings().unwrap();

@@ -11,6 +11,14 @@ use crate::utilities::constants::{CLI_VERSION, REDPANDA_CONTAINER_NAME};
 
 static COMPOSE_FILE: &str = include_str!("docker-compose.yml");
 
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to create or delete project files")]
+#[non_exhaustive]
+pub enum DockerError {
+    ProjectFile(#[from] crate::project::ProjectFileError),
+    IO(#[from] std::io::Error),
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "PascalCase")]
 pub struct ContainerRow {
@@ -257,9 +265,9 @@ fn get_container_id(container_name: &str) -> anyhow::Result<String> {
     }
 }
 
-pub fn create_compose_file(project: &Project) -> std::io::Result<()> {
+pub fn create_compose_file(project: &Project) -> Result<(), DockerError> {
     let compose_file = project.internal_dir()?.join("docker-compose.yml");
-    std::fs::write(compose_file, COMPOSE_FILE)
+    Ok(std::fs::write(compose_file, COMPOSE_FILE)?)
 }
 
 pub fn run_rpk_cluster_info(project_name: &str) -> anyhow::Result<()> {

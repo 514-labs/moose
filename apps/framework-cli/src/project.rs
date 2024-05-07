@@ -68,6 +68,21 @@ lazy_static! {
     });
 }
 
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to create or delete project files")]
+#[non_exhaustive]
+pub enum ProjectFileError {
+    InternalDirCreationFailed(std::io::Error),
+    #[error("Failed to create project files: {message}")]
+    Other {
+        message: String,
+    },
+    IO(#[from] std::io::Error),
+    TSProjectFileError(#[from] typescript_project::TSProjectFileError),
+    JSONSerde(#[from] serde_json::Error),
+    TOMLSerde(#[from] toml::ser::Error),
+}
+
 // We have explored using a Generic associated Types as well as
 // Dynamic Dispatch to handle the different types of projects
 // the approach with enums is the one that is the simplest to put into practice and
@@ -142,10 +157,10 @@ impl Project {
         }
     }
 
-    pub fn set_enviroment(&self, production: bool) -> Result<(), std::io::Error> {
+    pub fn set_enviroment(&self, production: bool) -> () {
         let mut proj = PROJECT.lock().unwrap();
         proj.is_production = production;
-        Ok(())
+        ()
     }
 
     pub fn load(directory: PathBuf) -> Result<Project, ConfigError> {
@@ -182,7 +197,7 @@ impl Project {
         Project::load(current_dir)
     }
 
-    pub fn write_to_disk(&self) -> Result<(), anyhow::Error> {
+    pub fn write_to_disk(&self) -> Result<(), ProjectFileError> {
         // Write to disk what is common to all project types, the project.toml
         let project_file = self.project_location.join(PROJECT_CONFIG_FILE);
         let toml_project = toml::to_string(&self)?;
@@ -191,11 +206,13 @@ impl Project {
 
         // Write language specific files to disk
         match &self.language_project_config {
-            LanguageProjectConfig::Typescript(p) => p.write_to_disk(self.project_location.clone()),
+            LanguageProjectConfig::Typescript(p) => {
+                Ok(p.write_to_disk(self.project_location.clone())?)
+            }
         }
     }
 
-    pub fn setup_app_dir(&self) -> Result<(), std::io::Error> {
+    pub fn setup_app_dir(&self) -> Result<(), ProjectFileError> {
         let app_dir = self.app_dir();
         std::fs::create_dir_all(&app_dir)?;
 
@@ -207,7 +224,7 @@ impl Project {
         Ok(())
     }
 
-    pub fn create_deno_files(&self) -> Result<(), std::io::Error> {
+    pub fn create_deno_files(&self) -> Result<(), ProjectFileError> {
         let deno_dir = self.internal_dir()?.join(DENO_DIR);
 
         if !deno_dir.exists() {
@@ -310,20 +327,19 @@ impl Project {
 
     // This is a Result of io::Error because the caller
     // can be returning a Result of io::Error or a Routine Failure
-    pub fn internal_dir(&self) -> std::io::Result<PathBuf> {
+    pub fn internal_dir(&self) -> Result<PathBuf, ProjectFileError> {
         let mut internal_dir = self.project_location.clone();
         internal_dir.push(CLI_PROJECT_INTERNAL_DIR);
 
         if !internal_dir.is_dir() {
             if internal_dir.exists() {
                 debug!("Internal dir exists as a file: {:?}", internal_dir);
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!(
+                return Err(ProjectFileError::Other {
+                    message: format!(
                         "The {} file exists but is not a directory",
                         CLI_PROJECT_INTERNAL_DIR
                     ),
-                ));
+                });
             } else {
                 debug!("Creating internal dir: {:?}", internal_dir);
                 std::fs::create_dir_all(&internal_dir)?;
@@ -335,9 +351,9 @@ impl Project {
         Ok(internal_dir)
     }
 
-    pub fn delete_internal_dir(&self) -> Result<(), std::io::Error> {
+    pub fn delete_internal_dir(&self) -> Result<(), ProjectFileError> {
         let internal_dir = self.internal_dir()?;
-        std::fs::remove_dir_all(internal_dir)
+        Ok(std::fs::remove_dir_all(internal_dir)?)
     }
 
     pub fn create_internal_clickhouse_volume(&self) -> anyhow::Result<()> {
@@ -363,7 +379,7 @@ impl Project {
         }
     }
 
-    pub fn old_version_location(&self, version: &str) -> Result<PathBuf, std::io::Error> {
+    pub fn old_version_location(&self, version: &str) -> Result<PathBuf, ProjectFileError> {
         let mut old_base_path = self.internal_dir()?;
         old_base_path.push(CLI_INTERNAL_VERSIONS_DIR);
         old_base_path.push(version);
@@ -371,7 +387,7 @@ impl Project {
         Ok(old_base_path)
     }
 
-    pub fn delete_old_versions(&self) -> Result<(), std::io::Error> {
+    pub fn delete_old_versions(&self) -> Result<(), ProjectFileError> {
         let mut old_versions = self.internal_dir()?;
         old_versions.push(CLI_INTERNAL_VERSIONS_DIR);
 

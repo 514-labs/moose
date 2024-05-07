@@ -4,11 +4,8 @@ import {
   HalfWidthContentContainer,
   Section,
 } from "design-system/components/containers";
-import { CTABar } from "../../page";
 import { Heading, Text } from "design-system/typography";
 import Image from "next/image";
-import { TrackCtaButton } from "../../trackable-components";
-import Link from "next/link";
 
 export const MooseStackSection = () => {
   const content = {
@@ -67,7 +64,7 @@ export const MooseStackSection = () => {
             <div className="flex flex-col gap-5">
               {content.stack.map((step, index) => {
                 return (
-                  <div className="flex flex-row gap-5">
+                  <div className="flex flex-row gap-5" key={index}>
                     <div>
                       <Text className="my-0 text-muted-foreground">
                         {`0${index + 1}`}

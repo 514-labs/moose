@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Fragment, Suspense } from "react";
+import { Fragment } from "react";
 
 import { CTABar } from "../../page";
 import {
@@ -10,7 +10,6 @@ import {
 } from "@514labs/design-system/components/containers";
 import { Display, Heading, Text } from "@514labs/design-system/typography";
 import { TrackCtaButton } from "../../trackable-components";
-import { TemplateImg } from "./TemplateImg";
 
 const content = {
   title: "Use cases & templates",

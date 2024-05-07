@@ -1,8 +1,6 @@
 import { CTABar } from "../../page";
 import {
   Section,
-  HalfWidthContentContainer,
-  QuarterWidthContentContainer,
   Grid,
 } from "@514labs/design-system/components/containers";
 import { Heading, HeadingLevel} from "@514labs/design-system/typography";

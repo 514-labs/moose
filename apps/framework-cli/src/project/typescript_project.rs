@@ -6,6 +6,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::utilities::constants::PACKAGE_JSON;
 
+#[derive(Debug, thiserror::Error)]
+#[error("Failed to create or delete project files")]
+#[non_exhaustive]
+pub enum TSProjectFileError {
+    IO(#[from] std::io::Error),
+    JSONSerde(#[from] serde_json::Error),
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TypescriptProject {
@@ -56,7 +64,7 @@ impl TypescriptProject {
             .try_deserialize()
     }
 
-    pub fn write_to_disk(&self, project_location: PathBuf) -> Result<(), anyhow::Error> {
+    pub fn write_to_disk(&self, project_location: PathBuf) -> Result<(), TSProjectFileError> {
         let mut package_json_location = project_location.clone();
         package_json_location.push(PACKAGE_JSON);
 

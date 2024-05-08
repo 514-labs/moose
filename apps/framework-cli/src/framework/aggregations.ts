@@ -3,6 +3,9 @@ import {
   ClickHouseClient,
 } from "npm:@clickhouse/client-web@1.0.1";
 import { watch } from "npm:chokidar@3.6.0";
+import * as fastq from "npm:fastq@1.17.1";
+import type { queueAsPromised } from "npm:fastq@1.17.1";
+import { walk } from "https://deno.land/std@0.207.0/fs/walk.ts";
 
 interface ShowTablesResponse {
   meta: { name: string; type: string }[];
@@ -13,6 +16,20 @@ interface ShowTablesResponse {
 interface MvQuery {
   select: string;
   orderBy: string;
+}
+
+interface MvQueueTask {
+  event: "add" | "unlink" | "change";
+  chClient: ClickHouseClient;
+  path: string;
+  retries: number;
+}
+
+class DependencyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "DependencyError";
+  }
 }
 
 const cwd = Deno.args[0] || Deno.cwd();
@@ -72,6 +89,19 @@ const waitForClickhouse = (chClient: ClickHouseClient) => {
   return new Promise(poll);
 };
 
+const countAggregations = async () => {
+  let count = 0;
+
+  for await (const _ of walk(AGGREGATIONS_DIR_PATH, {
+    includeDirs: false,
+    exts: ["ts"],
+  })) {
+    count++;
+  }
+
+  return count;
+};
+
 const getFileName = (filePath: string) => {
   const regex = /\/([^\/]+)\.ts/;
   const matches = filePath.match(regex);
@@ -122,6 +152,13 @@ const createAggregation = async (chClient: ClickHouseClient, path: string) => {
     console.log(`Created aggregation ${fileName}`);
   } catch (err) {
     console.error(`Failed to create aggregation ${fileName}: ${err}`);
+
+    if (
+      err &&
+      err.toString().includes(`${AGGREGATIONS_MV_SUFFIX} does not exist`)
+    ) {
+      throw new DependencyError(err);
+    }
   }
 };
 
@@ -138,22 +175,42 @@ const deleteAggregation = async (chClient: ClickHouseClient, path: string) => {
   }
 };
 
-const startFileWatcher = (chClient: ClickHouseClient) => {
+async function asyncWorker(task: MvQueueTask): Promise<void> {
+  if (task.event === "add") {
+    await createAggregation(task.chClient, task.path);
+  } else if (task.event === "unlink") {
+    await deleteAggregation(task.chClient, task.path);
+  } else if (task.event === "change") {
+    await deleteAggregation(task.chClient, task.path);
+    await createAggregation(task.chClient, task.path);
+  }
+}
+
+const startFileWatcher = async (chClient: ClickHouseClient) => {
   const pathToWatch = `${AGGREGATIONS_DIR_PATH}/**/${AGGREGATIONS_FILE}`;
+  const queue: queueAsPromised<MvQueueTask> = fastq.promise(asyncWorker, 1);
+  const numOfAggregations = await countAggregations();
+  console.log(`Found ${numOfAggregations} aggregations`);
+
+  queue.error((err: Error, task: MvQueueTask) => {
+    if (err && task.retries > 0) {
+      if (err instanceof DependencyError) {
+        queue.push({ ...task, retries: task.retries - 1 });
+      }
+    }
+  });
 
   watch(pathToWatch, { usePolling: true }).on(
     "all",
-    async (event: string, path: string) => {
+    (event: string, path: string) => {
+      console.log(`Adding to queue: ${event} ${path}`);
       const antiCachePath = `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
-
-      if (event === "add") {
-        await createAggregation(chClient, antiCachePath);
-      } else if (event === "unlink") {
-        await deleteAggregation(chClient, antiCachePath);
-      } else if (event === "change") {
-        await deleteAggregation(chClient, antiCachePath);
-        await createAggregation(chClient, antiCachePath);
-      }
+      queue.push({
+        event: event as MvQueueTask["event"],
+        chClient,
+        path: antiCachePath,
+        retries: numOfAggregations,
+      });
     },
   );
 

@@ -20,6 +20,7 @@ pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS: &str = "clickhouse/configs
 pub const SCHEMAS_DIR: &str = "datamodels";
 pub const FLOWS_DIR: &str = "flows";
 pub const AGGREGATIONS_DIR: &str = "aggregations";
+pub const APIS_DIR: &str = "apis";
 pub const SAMPLE_FLOWS_SOURCE: &str = "UserActivity";
 pub const SAMPLE_FLOWS_DEST: &str = "ParsedActivity";
 
@@ -46,6 +47,7 @@ pub const CONSUMPTION_HELPERS: &str = "consumption-helpers.ts";
 
 pub const FLOW_FILE: &str = "flow.ts";
 pub const AGGREGATIONS_FILE: &str = "DailyActiveUsers.ts";
+pub const API_FILE: &str = "daily_users.ts";
 
 pub const CTX_SESSION_ID: &str = "session_id";
 

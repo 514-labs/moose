@@ -381,6 +381,23 @@ export default {
 
 "#;
 
+pub static BASE_APIS_SAMPLE_TEMPLATE: &str = r#"
+// Here is a sample api configuration that creates an API which serves the daily active users materialized view
+
+interface QueryParams {
+    limit: string;
+  }
+  
+export default async function handle(
+    { limit = "10" }: QueryParams,
+    { client, sql }
+  ) {
+    return client.query(
+      sql`SELECT * FROM DailyActiveUsers_aggregations_mv LIMIT ${parseInt(limit)}`
+    );
+}
+"#;
+
 pub static BASE_AGGREGATION_TEMPLATE: &str = r#"
 // This file is where you can define your SQL query for aggregating your data
 // from other data models you have defined in Moose. For more information on the

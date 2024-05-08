@@ -28,6 +28,7 @@ use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
+use crate::framework::typescript::templates::BASE_APIS_SAMPLE_TEMPLATE;
 use crate::framework::typescript::templates::BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
     BASE_AGGREGATION_SAMPLE_TEMPLATE, BASE_FLOW_SAMPLE_TEMPLATE,
@@ -38,6 +39,7 @@ use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, versi
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 
+use crate::utilities::constants::API_FILE;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA;
@@ -46,7 +48,7 @@ use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::README_PREFIX;
 use crate::utilities::constants::{
-    AGGREGATIONS_DIR, AGGREGATIONS_FILE, FLOWS_DIR, FLOW_FILE, PROJECT_CONFIG_FILE,
+    AGGREGATIONS_DIR, AGGREGATIONS_FILE, APIS_DIR, FLOWS_DIR, FLOW_FILE, PROJECT_CONFIG_FILE,
     SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE,
 };
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
@@ -247,11 +249,13 @@ impl Project {
             .join(SAMPLE_FLOWS_DEST)
             .join(FLOW_FILE);
         let aggregations_file_path = self.aggregations_dir().join(AGGREGATIONS_FILE);
+        let apis_file_path = self.apis_dir().join(API_FILE);
 
         let mut readme_file = std::fs::File::create(readme_file_path)?;
         let mut base_model_file = std::fs::File::create(base_model_file_path)?;
         let mut flow_file = std::fs::File::create(flow_file_path)?;
         let mut aggregations_file = std::fs::File::create(aggregations_file_path)?;
+        let mut apis_file = std::fs::File::create(apis_file_path)?;
 
         let mut readme = include_str!("../../../README.md").to_string();
         readme.insert_str(0, README_PREFIX);
@@ -265,6 +269,7 @@ impl Project {
                 .as_bytes(),
         )?;
         aggregations_file.write_all(BASE_AGGREGATION_SAMPLE_TEMPLATE.as_bytes())?;
+        apis_file.write_all(BASE_APIS_SAMPLE_TEMPLATE.as_bytes())?;
 
         Ok(())
     }
@@ -306,6 +311,17 @@ impl Project {
 
         debug!("Aggregations dir: {:?}", aggregations_dir);
         aggregations_dir
+    }
+
+    pub fn apis_dir(&self) -> PathBuf {
+        let apis_dir = self.app_dir().join(APIS_DIR);
+
+        if !apis_dir.exists() {
+            std::fs::create_dir_all(&apis_dir).expect("Failed to create apis directory");
+        }
+
+        debug!("Apis dir: {:?}", apis_dir);
+        apis_dir
     }
 
     // This is a Result of io::Error because the caller

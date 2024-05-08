@@ -30,6 +30,10 @@ const getClickhouseClient = () => {
   });
 };
 
+function emptyIfUndefined(value: string | undefined): string {
+  return value === undefined ? "" : value;
+}
+
 class MooseClient {
   client: ClickHouseClient;
   constructor() {
@@ -42,7 +46,9 @@ class MooseClient {
     );
 
     const query = sql.strings
-      .map((s, i) => (s != "" ? `${s}${parameterizedStubs[i]}` : ""))
+      .map((s, i) =>
+        s != "" ? `${s}${emptyIfUndefined(parameterizedStubs[i])}` : "",
+      )
       .join("");
 
     const query_params = sql.values.reduce(
@@ -55,6 +61,7 @@ class MooseClient {
     return this.client.query({
       query,
       query_params,
+      format: "JSONEachRow",
     });
   }
 }
@@ -69,7 +76,7 @@ const apiHandler = async (request: Request): Promise<Response> => {
 
   const userFuncModule = await import(
     // the path is different every time so it reloads
-    `/apis${pathname}?import_trigger=${i++}`
+    `/apis${pathname}.ts?import_trigger=${i++}`
   );
 
   const result = await userFuncModule.default(searchParams, {

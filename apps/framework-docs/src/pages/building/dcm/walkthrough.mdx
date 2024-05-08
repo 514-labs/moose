@@ -43,7 +43,7 @@ and the inside of your app folder should look like the following:
     <FileTree.File name="project.toml" />
     <FileTree.Folder name="app" defaultOpen>
       <FileTree.Folder name="datamodels" defaultOpen>
-        <FileTree.File name="models.prisma" />
+        <FileTree.File name="models.ts" />
       </FileTree.Folder>
       <FileTree.Folder name="flows" defaultOpen>
         <FileTree.Folder name="UserActivity" defaultOpen>
@@ -103,7 +103,7 @@ Differently said, if data comes into your old model, the sync will bring it to y
 Let's see this in action.
 
 1. Stop the dev server from running (CTRL+C)
-2. With your favorite text editor, open the `app/datamodels/models.prisma` file above
+2. With your favorite text editor, open the `app/datamodels/models.ts` file above
 3. Delete the line that says `activity` in the `UserActivity` data model, this will
    remove the activity from the data model and create a change.
 4. Run the following command

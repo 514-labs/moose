@@ -9,7 +9,7 @@ moose flow init --source <YourSourceDataModel> --destination <YourDestinationDat
 ```
 
 This command takes two arguments: `--source` and `--destination`, which should each be followed by the name of the source and destination data models you wish to connect through this flow.
-These data models must exist before you create your data flow. You can find a list of your existing data flows in `/datamodels/models.prisma`.
+These data models must exist before you create your data flow. You can find a list of your existing data flows in `/datamodels/models.ts`.
 
 By way of example:
 
@@ -17,15 +17,17 @@ By way of example:
 moose flow init --source UserActivity --destination ParsedActivity
 ```
 
-Represents a data flow from a source data model `UserActivity` and a destination data model `ParsedActivity`, which themselves were defined in `/datamodels/models.prisma`:
+Represents a data flow from a source data model `UserActivity` and a destination data model `ParsedActivity`, which themselves were defined in `/datamodels/models.ts`:
 
-```ts filename="models.prisma"
-model UserActivity {
-  ...
+```ts filename="models.ts"
+type Key<T extends string | number> = T
+
+export interface UserActivity {
+    ...
 }
 
-model ParsedActivity {
-  ...
+export interface ParsedActivity {
+    ...
 }
 ```
 

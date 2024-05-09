@@ -31,6 +31,16 @@ pub fn initialize_project(project: &Project) -> Result<RoutineSuccess, RoutineFa
         )
     })?;
 
+    project.create_vscode_files().map_err(|err| {
+        RoutineFailure::new(
+            Message::new(
+                "Failed".to_string(),
+                "to create 'vscode' files, Check permissions or contact us".to_string(),
+            ),
+            err,
+        )
+    })?;
+
     Ok(RoutineSuccess::info(Message::new(
         "Created".to_string(),
         "starting `app` files".to_string(),

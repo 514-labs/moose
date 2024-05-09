@@ -243,6 +243,7 @@ pub async fn initial_data_load(
             let mut stream =
                 olap::clickhouse_alt_client::select_all_as_json(table, &mut client, offset).await?;
 
+            // TODO: enable idempotence
             let producer = redpanda::create_producer(config.clone()).producer;
 
             let mut queue: VecDeque<DeliveryFuture> = VecDeque::new();

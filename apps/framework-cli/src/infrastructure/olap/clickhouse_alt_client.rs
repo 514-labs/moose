@@ -51,6 +51,8 @@ fn value_to_json(value_ref: &ValueRef, enum_mapping: &Option<Vec<&str>>) -> Valu
         ValueRef::Int16(v) => json!(v),
         ValueRef::Int32(v) => json!(v),
         ValueRef::Int64(v) => json!(v),
+        // TODO: base64 encode if type is Bytes (probably Uint8Array in TS)
+        // In clickhouse the String type means arbitrary bytes
         ValueRef::String(v) => json!(from_utf8_lossy(v)),
         ValueRef::Float32(v) => json!(v),
         ValueRef::Float64(v) => json!(v),

@@ -10,12 +10,7 @@ import {
   Section,
 } from "design-system/components/containers";
 
-import {
-  Heading,
-  HeadingLevel,
-  SmallText,
-  Text,
-} from "design-system/typography";
+import { Heading, Text } from "design-system/typography";
 
 const content = {
   title: "Purpose built for data focused applications",
@@ -68,8 +63,6 @@ const content = {
     },
   ],
 };
-
-const UsecasesSectionInfo = () => {};
 
 const UsecasesAccordion = () => {
   return (

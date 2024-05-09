@@ -1,7 +1,6 @@
 import {
   Section,
   Grid,
-  FullWidthContentContainer,
   ThirdWidthContentContainer,
 } from "@514labs/design-system/components/containers";
 import { Heading, Text } from "@514labs/design-system/typography";

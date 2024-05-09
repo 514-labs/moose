@@ -1,4 +1,3 @@
-import { EmailSection } from "../sections/EmailSection";
 import { FooterSection } from "../sections/FooterSection";
 import { LooseMooseSection } from "../sections/home/LooseMooseSection";
 import { TemplatesSection } from "../sections/home/TemplatesSection";

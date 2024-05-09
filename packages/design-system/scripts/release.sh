@@ -15,4 +15,4 @@ jq \
 cd ../..
 pnpm build --filter=design-system
 cd packages/design-system
-pnpm publish --access public --no-git-checks --dry-run
+pnpm publish --access public --no-git-checks

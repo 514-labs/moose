@@ -288,19 +288,15 @@ fn mapper_json_to_clickhouse_record(
                     }
                     None => {
                         // Clickhouse doesn't like NULLABLE arrays so we are inserting an empty array instead.
-                        match &column.data_type {
-                            ColumnType::Array(inner_type) => {
-                                let clickhouse_inner_type =
-                                    std_field_type_to_clickhouse_type_mapper(*inner_type.clone())?;
-                                record.insert(
-                                    key,
-                                    ClickHouseValue::new_array(Vec::new(), clickhouse_inner_type),
-                                );
-                            }
-                            _ => {
-                                record.insert(key, ClickHouseValue::new_string("NULL".to_string()));
-                            }
+                        if let ColumnType::Array(inner_type) = &column.data_type {
+                            let clickhouse_inner_type =
+                                std_field_type_to_clickhouse_type_mapper(*inner_type.clone())?;
+                            record.insert(
+                                key,
+                                ClickHouseValue::new_array(Vec::new(), clickhouse_inner_type),
+                            );
                         }
+                        // Other values are ignored and the client will insert NULL instead
                     }
                 }
             }

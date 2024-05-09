@@ -28,7 +28,6 @@ use super::data_model::schema::ColumnType;
 use super::data_model::schema::DataEnum;
 use super::data_model::schema::DataModel;
 use super::data_model::DuplicateModelError;
-use super::typescript::generator::generate_temp_data_model;
 
 #[derive(Debug, Clone)]
 pub struct FrameworkObject {
@@ -494,9 +493,6 @@ pub async fn process_objects(
             is_latest,
         )
         .await?;
-
-        // TODO Remove when users write the interface
-        generate_temp_data_model(&project, version, fo)?;
     }
     Ok(())
 }

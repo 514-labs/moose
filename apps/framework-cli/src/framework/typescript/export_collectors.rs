@@ -80,9 +80,9 @@ pub fn get_data_model_configs(
         Value::Object(map) => {
             let mut result = HashMap::new();
             for (key, value) in map {
-                let _ = serde_json::from_value(value).map(|model_config| {
+                if let Ok(model_config) = serde_json::from_value(value) {
                     result.insert(key, model_config);
-                });
+                }
             }
             Ok(result)
         }

@@ -136,6 +136,16 @@ fn config_client(config: &RedpandaConfig) -> ClientConfig {
     client_config
 }
 
+pub fn create_idempotent_producer(config: &RedpandaConfig) -> FutureProducer {
+    let mut client_config = config_client(config);
+
+    client_config
+        .set("message.timeout.ms", (5 * 60 * 1000).to_string())
+        .set("enable.idempotence", true.to_string())
+        .set("enable.gapless.guarantee", true.to_string());
+    client_config.create().expect("Failed to create producer")
+}
+
 pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
     let mut client_config = config_client(&config);
 

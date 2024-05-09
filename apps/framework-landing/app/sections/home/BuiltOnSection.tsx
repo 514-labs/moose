@@ -1,9 +1,9 @@
-import { Heading, Text } from "design-system/typography";
+import { Heading, Text } from "@514labs/design-system/typography";
 import {
   Grid,
   HalfWidthContentContainer,
   Section,
-} from "design-system/components/containers";
+} from "@514labs/design-system/components/containers";
 
 export const BuiltOnSection = () => {
   const content = {

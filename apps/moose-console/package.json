@@ -30,7 +30,7 @@
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
     "cmdk": "^0.2.0",
-    "design-system": "workspace:*",
+    "@514labs/design-system": "workspace:*",
     "event-capture": "workspace:*",
     "gsap": "file:gsap-bonus.tgz",
     "lowdb": "^7.0.1",

@@ -5,7 +5,7 @@ import {
   Grid,
   HalfWidthContentContainer,
   Section,
-} from "design-system/components/containers";
+} from "@514labs/design-system/components/containers";
 
 export default function MdxLayout({
   children,

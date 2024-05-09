@@ -1,8 +1,8 @@
 "use client";
 
 import { horizontalLoop } from "../../../lib/animation-helpers";
-import { Section } from "design-system/components/containers";
-import { BannerDisplay } from "design-system/typography";
+import { Section } from "@514labs/design-system/components/containers";
+import { BannerDisplay } from "@514labs/design-system/typography";
 import { useRef } from "react";
 import { useLayoutEffect } from "react";
 

@@ -1,1 +1,1 @@
-declare module "design-system/animation";
+declare module "@514labs/design-system/animation";

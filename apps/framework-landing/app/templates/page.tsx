@@ -6,8 +6,8 @@ import {
   Section,
   FullWidthContentContainer,
   HalfWidthContentContainer,
-} from "design-system/components/containers";
-import { Display, Heading, Text } from "design-system/typography";
+} from "@514labs/design-system/components/containers";
+import { Display, Heading, Text } from "@514labs/design-system/typography";
 
 export default function TemplatesPage() {
   const content = {

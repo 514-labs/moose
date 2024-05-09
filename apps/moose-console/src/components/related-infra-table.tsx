@@ -1,7 +1,7 @@
 import { Fragment } from "react";
 import { Separator } from "./ui/separator";
 import { DataModel, MooseObject } from "app/types";
-import { TrackLink } from "design-system/trackable-components";
+import { TrackLink } from "@514labs/design-system/trackable-components";
 
 export default function RelatedInfraTable({
   model,

@@ -14,7 +14,7 @@
     "@radix-ui/react-slot": "^1.0.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
-    "design-system": "workspace:*",
+    "@514labs/design-system": "workspace:*",
     "event-capture": "workspace:*",
     "lucide-react": "^0.359.0",
     "mixpanel": "^0.18.0",

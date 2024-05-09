@@ -1,83 +1,64 @@
 import { CTABar } from "../../page";
 import {
   Section,
-  HalfWidthContentContainer,
-  QuarterWidthContentContainer,
   Grid,
+  FullWidthContentContainer,
 } from "@514labs/design-system/components/containers";
-import { Display, Text } from "@514labs/design-system/typography";
-import Image from "next/image";
-import { TrackableCodeSnippet } from "../../trackable-components";
+import { Heading, HeadingLevel } from "@514labs/design-system/typography";
+import { TrackCtaButton } from "../../trackable-components";
+import React from "react";
+import Link from "next/link";
 
 export const HeroSection = () => {
   const content = {
-    tagLine: "Delightful & Insightful",
-    description: "The developer framework for your data & analytics stack",
-    cta: {
-      action: "cta-copy",
-      label: "Copy",
-      text: "npx create-moose-app my-moose-app",
-    },
+    tagLine: "Build your own data products in minutes",
+    description:
+      "An open source developer framework for your data & analytics stack",
+    ctas: [
+      {
+        href: "https://docs.moosejs.com/getting-started/new-project",
+        action: "cta-early-access",
+        label: "Get Started",
+        variant: "default",
+      },
+      {
+        href: "https://docs.moosejs.com/",
+        action: "cta-early-access",
+        label: "Learn More",
+        variant: "outline",
+      },
+    ],
   };
 
   return (
     <>
       <Section className="mt-12 lg:mt-12 2xl:mt-24 px-5">
         <Grid>
-          <HalfWidthContentContainer className="xl:col-start-7 md:col-span-9 xl:col-span-6">
+          <FullWidthContentContainer className="">
             <div>
-              <Display> {content.tagLine} </Display>
-              <Text> {content.description} </Text>
+              <Heading> {content.tagLine} </Heading>
+              <Heading
+                level={HeadingLevel.l2}
+                className="text-muted-foreground"
+              >
+                {" "}
+                {content.description}{" "}
+              </Heading>
             </div>
             <CTABar className="mb-5">
-              <TrackableCodeSnippet
-                name="Copy Install"
-                subject={content.cta.text}
-              >
-                {content.cta.text}
-              </TrackableCodeSnippet>
+              {content.ctas.map((cta, index) => (
+                <Link key={index} href={cta.href}>
+                  <TrackCtaButton
+                    name={cta.label}
+                    subject={cta.label}
+                    variant={cta.variant as "default" | "outline"}
+                  >
+                    {cta.label}
+                  </TrackCtaButton>
+                </Link>
+              ))}
             </CTABar>
-          </HalfWidthContentContainer>
-        </Grid>
-      </Section>
-      <Section gutterless>
-        <Grid className="md:gap-5 gap-5">
-          <QuarterWidthContentContainer className="bg-muted aspect-square relative">
-            <Image
-              priority
-              src="/images/hero/mjs_img_4.webp"
-              fill
-              alt="moose"
-              sizes=" (max-width: 768px) 150vw, 25vw"
-            />
-          </QuarterWidthContentContainer>
-          <QuarterWidthContentContainer className="bg-muted aspect-square relative">
-            <Image
-              priority
-              src="/images/hero/mjs_img_2.webp"
-              fill
-              alt="girl"
-              sizes=" (max-width: 768px) 150vw, 25vw"
-            />
-          </QuarterWidthContentContainer>
-          <QuarterWidthContentContainer className="bg-muted aspect-square relative">
-            <Image
-              priority
-              src="/images/hero/mjs_img_3.webp"
-              fill
-              alt="laptop on table"
-              sizes=" (max-width: 768px) 150vw, 25vw"
-            />
-          </QuarterWidthContentContainer>
-          <QuarterWidthContentContainer className="bg-muted aspect-square relative">
-            <Image
-              priority
-              src="/images/hero/mjs_img_6.webp"
-              fill
-              alt="man in jacket"
-              sizes=" (max-width: 768px) 150vw, 25vw"
-            />
-          </QuarterWidthContentContainer>
+          </FullWidthContentContainer>
         </Grid>
       </Section>
     </>

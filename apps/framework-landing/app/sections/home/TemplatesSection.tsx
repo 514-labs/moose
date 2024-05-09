@@ -8,19 +8,22 @@ import {
   ThirdWidthContentContainer,
   Grid,
 } from "@514labs/design-system/components/containers";
-import { Display, Heading, Text } from "@514labs/design-system/typography";
+import { Heading, HeadingLevel, Text } from "@514labs/design-system/typography";
 import { TrackCtaButton } from "../../trackable-components";
 import { TemplateImg } from "./TemplateImg";
+import React from "react";
 
 const content = {
-  title: "Use cases & templates",
+  title: "Templates",
+  description:
+    "Full-stack data & analytics application templates to get you started quickly",
   templates: [
     {
       title: "Product Analytics",
-      imageSrcLight: "/images/templates/img-product-1-light.svg",
-      imageSrcDark: "/images/templates/img-product-1-dark.svg",
+      imageSrcLight: "/images/templates/IMG_TEMPLATE_PA_LIGHT.svg",
+      imageSrcDark: "/images/templates/IMG_TEMPLATE_PA_DARK.svg",
       description:
-        "Capture user journeys and derive actionable insights to optimize your product development.",
+        "Capture user journeys and derive actionable insights to optimize your product development",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -29,10 +32,10 @@ const content = {
     },
     {
       title: "LLM Application",
-      imageSrcLight: "/images/templates/img-product-2-light.svg",
-      imageSrcDark: "/images/templates/img-product-2-dark.svg",
+      imageSrcLight: "/images/templates/IMG_TEMPLATE_LLM_LIGHT.svg",
+      imageSrcDark: "/images/templates/IMG_TEMPLATE_LLM_DARK.svg",
       description:
-        "Optimize AI automations powered by RAG on your own data to create innovative end user experiences.",
+        "Optimize AI automations powered by RAG on your own data to create innovative end user experiences",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -41,10 +44,10 @@ const content = {
     },
     {
       title: "Data Warehouse",
-      imageSrcLight: "/images/templates/img-product-3-light.svg",
-      imageSrcDark: "/images/templates/img-product-3-dark.svg",
+      imageSrcLight: "/images/templates/IMG_TEMPLATE_DW_LIGHT.svg",
+      imageSrcDark: "/images/templates/IMG_TEMPLATE_DW_DARK.svg",
       description:
-        "Integrate data across business domains into a data warehouse with discoverable, consumable data products.",
+        "Integrate data across business domains into a data warehouse with discoverable, consumable data products",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -56,10 +59,14 @@ const content = {
 
 export const TemplateHeaderSection = () => {
   return (
-    <Section>
+    <Section className="2xl:mb-0">
       <Grid>
         <FullWidthContentContainer>
-          <Display> {content.title} </Display>
+          <Heading> {content.title} </Heading>
+          <Heading className="text-muted-foreground" level={HeadingLevel.l2}>
+            {" "}
+            {content.description}{" "}
+          </Heading>
         </FullWidthContentContainer>
       </Grid>
     </Section>
@@ -68,13 +75,16 @@ export const TemplateHeaderSection = () => {
 
 export const TemplatesSection = () => {
   return (
-    <Section>
+    <Section className="2xl:mt-12">
       <Grid className="gap-y-5 justify-center">
         {content.templates.map((template, index) => {
           return (
             <Fragment key={index}>
-              <ThirdWidthContentContainer className=" xl:m-0 bg-muted aspect-[4/3]  flex flex-col item-center justify-center xl:order-1">
-                <div className="relative h-3/5">
+              <ThirdWidthContentContainer
+                key={index}
+                className="flex flex-col xl:justify-start xl:order-4"
+              >
+                <div className="relative aspect-video my-5">
                   <Suspense fallback={<div>Loading...</div>}>
                     <TemplateImg
                       srcDark={template.imageSrcDark}
@@ -83,14 +93,13 @@ export const TemplatesSection = () => {
                     />
                   </Suspense>
                 </div>
-              </ThirdWidthContentContainer>
-              <ThirdWidthContentContainer
-                key={index}
-                className="flex flex-col xl:justify-start xl:order-4"
-              >
-                <Heading>{template.title}</Heading>
-                <Text className="xl:grow">{template.description}</Text>
-                <CTABar>
+                <div className="my-5">
+                  <Text className="my-0">{template.title}</Text>
+                  <Text className="my-0 text-muted-foreground xl:grow">
+                    {template.description}
+                  </Text>
+                </div>
+                <CTABar className="my-5">
                   <Link className="flex flex-col" href={template.cta.href}>
                     <TrackCtaButton
                       name="Learn More"

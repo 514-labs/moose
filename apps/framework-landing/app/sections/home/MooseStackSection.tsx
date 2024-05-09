@@ -12,7 +12,7 @@ export const MooseStackSection = () => {
     title: "The Moose Stack",
     stack: [
       {
-        title: "Data Experience (React or BI apps)",
+        title: "Data Experience (React, Notebook or BI apps)",
         description:
           "Integrate Moose UI components into rich react based applications, connect your existing frontend applications",
       },
@@ -32,20 +32,19 @@ export const MooseStackSection = () => {
   return (
     <>
       <Section>
-        <Grid>
+        <Grid className="mb-12 2xl:mb-20">
           <FullWidthContentContainer>
             <Heading>{content.title}</Heading>
           </FullWidthContentContainer>
         </Grid>
-      </Section>
-      <Section>
+
         <Grid className="gap-y-5">
           <HalfWidthContentContainer className="sticky md:top-24 flex items-center justify-center">
             <div className="relative w-full aspect-video">
               <Image
                 priority
                 className="hidden dark:block"
-                src="/images/how-it-works/IMG-STACK-DARK.svg"
+                src="/images/how-it-works/IMG_STACK_DARK.svg"
                 fill
                 alt="man in jacket"
                 sizes="(max-width: 768px) 150vw, 25vw"
@@ -53,7 +52,7 @@ export const MooseStackSection = () => {
               <Image
                 priority
                 className="block dark:hidden"
-                src="/images/how-it-works/IMG-STACK-LIGHT.svg"
+                src="/images/how-it-works/IMG_STACK_LIGHT.svg"
                 fill
                 alt="man in jacket"
                 sizes="(max-width: 768px) 150vw, 25vw"
@@ -64,7 +63,7 @@ export const MooseStackSection = () => {
             <div className="flex flex-col gap-5">
               {content.stack.map((step, index) => {
                 return (
-                  <div className="flex flex-row gap-5" key={index}>
+                  <div className="flex flex-col lg:flex-row gap-5" key={index}>
                     <div>
                       <Text className="my-0 text-muted-foreground">
                         {`0${index + 1}`}

@@ -88,10 +88,13 @@ export default function Home() {
     <main className="min-h-screen">
       <HeroSection />
       <DemoSection />
-      <WhyMooseSection />
-      <HowItWorksSection />
-      <MooseStackSection />
       <FeaturesSection />
+      <UsecasesSection />
+      <WhyMooseSection />
+
+      {/* <HowItWorksSection /> */}
+      <MooseStackSection />
+
       <TemplateHeaderSection />
       <TemplatesSection />
       <SecondaryCTASection />

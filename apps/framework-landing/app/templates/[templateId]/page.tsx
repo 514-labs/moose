@@ -97,8 +97,8 @@ export default function TemplatePage({
       {
         slug: "product-analytics",
         title: "Product Analytics",
-        imageSrcLight: "/images/templates/img-product-1-light.svg",
-        imageSrcDark: "/images/templates/img-product-1-dark.svg",
+        imageSrcLight: "/images/templates/IMG_TEMPLATE_PA_LIGHT.svg",
+        imageSrcDark: "/images/templates/IMG_TEMPLATE_PA_DARK.svg",
         cta: {
           action: "cta-product-analytics-install",
           label: "Create Template Command",
@@ -213,8 +213,8 @@ export default function TemplatePage({
       {
         slug: "llm-application",
         title: "LLM Application",
-        imageSrcLight: "/images/templates/img-product-2-light.svg",
-        imageSrcDark: "/images/templates/img-product-2-dark.svg",
+        imageSrcLight: "/images/templates/IMG_TEMPLATE_LLM_LIGHT.svg",
+        imageSrcDark: "/images/templates/IMG_TEMPLATE_LLM_DARK.svg",
         description:
           "Optimize AI automations powered by RAG on your own data to create innovative end user experiences.",
         usage: [],
@@ -222,8 +222,8 @@ export default function TemplatePage({
       {
         slug: "data-warehouse",
         title: "Data Warehouse",
-        imageSrcLight: "/images/templates/img-product-3-light.svg",
-        imageSrcDark: "/images/templates/img-product-3-dark.svg",
+        imageSrcLight: "/images/templates/IMG_TEMPLATE_DW_LIGHT.svg",
+        imageSrcDark: "/images/templates/IMG_TEMPLATE_DW_DARK.svg",
         description:
           "Integrate data across business domains into a data warehouse with discoverable, consumable data products.",
         usage: [],

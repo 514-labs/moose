@@ -13,11 +13,12 @@ export const FeaturesSection = () => {
       {
         title: "Data Models",
         description:
-          "Define data models in your language, Moose derives the rest",
+          "Define data models in your language, Moose derives the infrastructure for you",
       },
       {
         title: "Flows",
-        description: "Write simple functions to transform your data on the fly",
+        description:
+          "Write simple functions to transform and augment your data on the fly",
       },
       {
         title: "Aggregations & metrics",
@@ -30,16 +31,6 @@ export const FeaturesSection = () => {
           "Moose helps manage migrations for your end-to-end data  stack",
       },
       {
-        title: "UI Components",
-        description:
-          "Embed insightful react components in your framework of choice",
-      },
-      {
-        title: "Connectors & SDKs",
-        description:
-          "Connectors and auto generated SDKs get data in and out of moose",
-      },
-      {
         title: "Templates",
         description:
           "Get up and running in seconds with pre-built application templates",
@@ -50,9 +41,19 @@ export const FeaturesSection = () => {
           "Easily package your application for deployment in any environment",
       },
       {
-        title: "Orchestration",
+        title: "UI Components (coming soon)",
         description:
-          "Configurable orchestration to make sure things reliably happen",
+          "Embed insightful react components in your framework of choice",
+      },
+      {
+        title: "Connectors & SDKs (coming soon)",
+        description:
+          "Connectors and auto generated SDKs get data in and out of moose",
+      },
+      {
+        title: "Orchestration (coming soon)",
+        description:
+          "Configurable orchestration to make sure data gets where it needs to go reliably",
       },
     ],
   };
@@ -60,14 +61,12 @@ export const FeaturesSection = () => {
   return (
     <>
       <Section>
-        <Grid>
-          <FullWidthContentContainer>
+        <Grid className="mb-12 2xl:mb-20">
+          <HalfWidthContentContainer className="lg:col-start-7">
             <Heading> {content.title} </Heading>
-          </FullWidthContentContainer>
+          </HalfWidthContentContainer>
         </Grid>
-      </Section>
-      <Section>
-        <Grid className="gap-y-5">
+        <Grid>
           {content.features.map((feature, index) => {
             return (
               <ThirdWidthContentContainer key={index}>

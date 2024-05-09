@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Fragment } from "react";
+import { Fragment, Suspense } from "react";
 
 import { CTABar } from "../../page";
 import {
@@ -10,15 +10,17 @@ import {
 } from "@514labs/design-system/components/containers";
 import { Display, Heading, Text } from "@514labs/design-system/typography";
 import { TrackCtaButton } from "../../trackable-components";
+import { TemplateImg } from "./TemplateImg";
 
 const content = {
-  title: "Use cases & templates",
-  description: "Templates let you go from zero to know in minutes",
+  title: "Templates",
+  description:
+    "Full-stack data & analytics application templates to get you started quickly",
   templates: [
     {
       title: "Product Analytics",
-      imageSrcLight: "/images/templates/img-product-1-light.svg",
-      imageSrcDark: "/images/templates/img-product-1-dark.svg",
+      imageSrcLight: "/images/templates/IMG_TEMPLATE_PA_LIGHT.svg",
+      imageSrcDark: "/images/templates/IMG_TEMPLATE_PA_DARK.svg",
       description:
         "Capture user journeys and derive actionable insights to optimize your product development",
       cta: {
@@ -29,8 +31,8 @@ const content = {
     },
     {
       title: "LLM Application",
-      imageSrcLight: "/images/templates/img-product-2-light.svg",
-      imageSrcDark: "/images/templates/img-product-2-dark.svg",
+      imageSrcLight: "/images/templates/IMG_TEMPLATE_LLM_LIGHT.svg",
+      imageSrcDark: "/images/templates/IMG_TEMPLATE_LLM_DARK.svg",
       description:
         "Optimize AI automations powered by RAG on your own data to create innovative end user experiences",
       cta: {
@@ -41,8 +43,8 @@ const content = {
     },
     {
       title: "Data Warehouse",
-      imageSrcLight: "/images/templates/img-product-3-light.svg",
-      imageSrcDark: "/images/templates/img-product-3-dark.svg",
+      imageSrcLight: "/images/templates/IMG_TEMPLATE_DW_LIGHT.svg",
+      imageSrcDark: "/images/templates/IMG_TEMPLATE_DW_DARK.svg",
       description:
         "Integrate data across business domains into a data warehouse with discoverable, consumable data products",
       cta: {
@@ -56,7 +58,7 @@ const content = {
 
 export const TemplateHeaderSection = () => {
   return (
-    <Section>
+    <Section className="2xl:mb-0">
       <Grid>
         <FullWidthContentContainer>
           <Heading> {content.title} </Heading>
@@ -72,7 +74,7 @@ export const TemplateHeaderSection = () => {
 
 export const TemplatesSection = () => {
   return (
-    <Section>
+    <Section className="2xl:mt-12">
       <Grid className="gap-y-5 justify-center">
         {content.templates.map((template, index) => {
           return (
@@ -81,10 +83,21 @@ export const TemplatesSection = () => {
                 key={index}
                 className="flex flex-col xl:justify-start xl:order-4"
               >
-                <Text className="my-0">{template.title}</Text>
-                <Text className="my-0 text-muted-foreground xl:grow">
-                  {template.description}
-                </Text>
+                <div className="relative aspect-video my-5">
+                  <Suspense fallback={<div>Loading...</div>}>
+                    <TemplateImg
+                      srcDark={template.imageSrcDark}
+                      srcLight={template.imageSrcLight}
+                      alt={template.title}
+                    />
+                  </Suspense>
+                </div>
+                <div className="my-5">
+                  <Text className="my-0">{template.title}</Text>
+                  <Text className="my-0 text-muted-foreground xl:grow">
+                    {template.description}
+                  </Text>
+                </div>
                 <CTABar className="my-5">
                   <Link className="flex flex-col" href={template.cta.href}>
                     <TrackCtaButton

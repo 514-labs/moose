@@ -46,14 +46,13 @@ export const WhyMooseSection = () => {
   return (
     <>
       <Section>
-        <Grid>
+        <Grid className="mb-12 2xl:mb-20">
           <HalfWidthContentContainer className="lg:col-start-7">
             <Heading> {content.title} </Heading>
           </HalfWidthContentContainer>
         </Grid>
-      </Section>
-      <Section>
-        <Grid className="gap-y-5">
+
+        <Grid>
           {content.features.map((feature, index) => {
             return (
               <ThirdWidthContentContainer key={index}>

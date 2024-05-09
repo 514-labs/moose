@@ -12,7 +12,7 @@ import {
 
 export const HeroSection = () => {
   const content = {
-    tagLine: "Your own scalable data products in minutes",
+    tagLine: "Build your own data products in minutes",
     description:
       "An open source developer framework for your data & analytics stack",
     ctas: [
@@ -25,7 +25,7 @@ export const HeroSection = () => {
       {
         href: "https://docs.moosejs.com/",
         action: "cta-early-access",
-        label: "View Docs ",
+        label: "Learn More",
         variant: "outline",
       },
     ],

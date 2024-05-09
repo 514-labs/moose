@@ -440,3 +440,31 @@ export interface ParsedActivity {
 }
 
 "#;
+
+pub static VSCODE_EXTENSIONS_TEMPLATE: &str = r#"
+{
+    "recommendations": [
+        "frigus02.vscode-sql-tagged-template-literals-syntax-only",
+        "mtxr.sqltools",
+        "ultram4rine.sqltools-clickhouse-driver"
+    ]
+}
+"#;
+
+pub static VSCODE_SETTINGS_TEMPLATE: &str = r#"
+{
+    "sqltools.connections": [
+        {
+            "server": "localhost",
+            "port": 18123,
+            "useHTTPS": false,
+            "database": "local",
+            "username": "panda",
+            "enableTls": false,
+            "password": "pandapass",
+            "driver": "ClickHouse",
+            "name": "moose clickhouse"
+        }
+    ]
+}
+"#;

@@ -33,6 +33,9 @@ use crate::framework::typescript::templates::BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
     BASE_AGGREGATION_SAMPLE_TEMPLATE, BASE_FLOW_SAMPLE_TEMPLATE,
 };
+use crate::framework::typescript::templates::{
+    VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
+};
 use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
@@ -55,6 +58,7 @@ use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_
 use crate::utilities::constants::{
     CONSUMPTION_HELPERS, DENO_AGGREGATIONS, DENO_CONSUMPTION_API, DENO_DIR, DENO_TRANSFORM,
 };
+use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 
 lazy_static! {
     pub static ref PROJECT: Mutex<Project> = Mutex::new(Project {
@@ -290,6 +294,21 @@ impl Project {
         Ok(())
     }
 
+    pub fn create_vscode_files(&self) -> Result<(), ProjectFileError> {
+        let vscode_dir = self.vscode_dir();
+
+        let ext_file_path = vscode_dir.join(VSCODE_EXT_FILE);
+        let settings_file_path = vscode_dir.join(VSCODE_SETTINGS_FILE);
+
+        let mut ext_file = std::fs::File::create(ext_file_path)?;
+        let mut settings_file = std::fs::File::create(settings_file_path)?;
+
+        ext_file.write_all(VSCODE_EXTENSIONS_TEMPLATE.as_bytes())?;
+        settings_file.write_all(VSCODE_SETTINGS_TEMPLATE.as_bytes())?;
+
+        Ok(())
+    }
+
     pub fn app_dir(&self) -> PathBuf {
         let mut app_dir = self.project_location.clone();
         app_dir.push(APP_DIR);
@@ -338,6 +357,18 @@ impl Project {
 
         debug!("Apis dir: {:?}", apis_dir);
         apis_dir
+    }
+
+    pub fn vscode_dir(&self) -> PathBuf {
+        let mut vscode_dir = self.project_location.clone();
+        vscode_dir.push(VSCODE_DIR);
+
+        if !vscode_dir.exists() {
+            std::fs::create_dir_all(&vscode_dir).expect("Failed to create .vscode directory");
+        }
+
+        debug!(".vscode dir: {:?}", vscode_dir);
+        vscode_dir
     }
 
     // This is a Result of io::Error because the caller

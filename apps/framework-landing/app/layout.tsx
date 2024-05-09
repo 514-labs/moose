@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
-import "design-system/globals.css";
+import "@514labs/design-system/globals.css";
 import localFont from "next/font/local";
-import { ThemeProvider } from "design-system/components";
-import { cn } from "design-system/utils";
-import { Nav } from "design-system/trackable-components";
+import { ThemeProvider } from "@514labs/design-system/components";
+import { cn } from "@514labs/design-system/utils";
+import { Nav } from "@514labs/design-system/trackable-components";
 import Script from "next/script";
 
 const monoFont = localFont({

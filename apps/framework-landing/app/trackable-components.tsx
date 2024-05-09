@@ -1,5 +1,5 @@
 "use client";
-import { CodeSnippet as AnimatedCodeSnippet } from "design-system/typography/animated";
+import { CodeSnippet as AnimatedCodeSnippet } from "@514labs/design-system/typography/animated";
 import { withTrack, TrackingVerb } from "event-capture/withTrack";
 import { CTAButton, CTAButtonProps } from "./page";
 

@@ -7,8 +7,8 @@ import {
   FullWidthContentContainer,
   ThirdWidthContentContainer,
   Grid,
-} from "design-system/components/containers";
-import { Display, Heading, Text } from "design-system/typography";
+} from "@514labs/design-system/components/containers";
+import { Display, Heading, Text } from "@514labs/design-system/typography";
 import { TrackCtaButton } from "../../trackable-components";
 import { TemplateImg } from "./TemplateImg";
 

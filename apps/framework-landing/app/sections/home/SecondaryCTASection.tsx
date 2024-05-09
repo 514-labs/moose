@@ -3,9 +3,9 @@ import {
   Grid,
   HalfWidthContentContainer,
   Section,
-} from "design-system/components/containers";
+} from "@514labs/design-system/components/containers";
 import { CTABar } from "../../page";
-import { Heading, Text } from "design-system/typography";
+import { Heading, Text } from "@514labs/design-system/typography";
 import { TrackCtaButton } from "../../trackable-components";
 
 export const SecondaryCTASection = () => {

@@ -6,8 +6,8 @@ import {
   HeadingLevel,
   SmallText,
   SmallTextEmbed,
-} from "design-system/typography";
-import { Logo, Badge } from "design-system/components";
+} from "@514labs/design-system/typography";
+import { Logo, Badge } from "@514labs/design-system/components";
 ``;
 
 export default {

@@ -3,8 +3,8 @@ import {
   Grid,
   FullWidthContentContainer,
   ThirdWidthContentContainer,
-} from "design-system/components/containers";
-import { Display, Heading, Text } from "design-system/typography";
+} from "@514labs/design-system/components/containers";
+import { Display, Heading, Text } from "@514labs/design-system/typography";
 
 export const FeaturesSection = () => {
   const content = {

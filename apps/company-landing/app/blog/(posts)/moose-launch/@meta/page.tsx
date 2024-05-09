@@ -1,4 +1,4 @@
-import { Text } from "design-system/typography";
+import { Text } from "@514labs/design-system/typography";
 import { humanReadableDate } from "../../../../../lib/formatter";
 
 const getMetaFromParent = async () => {

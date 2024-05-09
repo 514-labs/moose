@@ -9,13 +9,13 @@ import {
   AccordionItem,
   AccordionTrigger,
   Separator,
-} from "design-system/components";
+} from "@514labs/design-system/components";
 import {
   Grid,
   Section,
   FullWidthContentContainer,
-} from "design-system/components/containers";
-import { Display, Text } from "design-system/typography";
+} from "@514labs/design-system/components/containers";
+import { Display, Text } from "@514labs/design-system/typography";
 import {
   TrackCtaButton,
   TrackableCodeSnippet,

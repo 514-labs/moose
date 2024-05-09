@@ -15,11 +15,11 @@ import { FeaturesSection } from "./sections/home/FeaturesSection";
 import { BuiltOnSection } from "./sections/home/BuiltOnSection";
 import { SecondaryCTASection } from "./sections/home/SecondaryCTASection";
 import { GetMooseCTASection } from "./sections/home/GetMooseCTASection";
-import { cn } from "design-system/utils";
+import { cn } from "@514labs/design-system/utils";
 
-import { Button, buttonVariants } from "design-system/components";
+import { Button, buttonVariants } from "@514labs/design-system/components";
 
-import { Text } from "design-system/typography";
+import { Text } from "@514labs/design-system/typography";
 
 export const CTAText = ({
   className,

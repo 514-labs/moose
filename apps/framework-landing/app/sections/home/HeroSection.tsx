@@ -4,8 +4,8 @@ import {
   HalfWidthContentContainer,
   QuarterWidthContentContainer,
   Grid,
-} from "design-system/components/containers";
-import { Display, Text } from "design-system/typography";
+} from "@514labs/design-system/components/containers";
+import { Display, Text } from "@514labs/design-system/typography";
 import Image from "next/image";
 import { TrackableCodeSnippet } from "../../trackable-components";
 

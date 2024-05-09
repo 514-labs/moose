@@ -49,7 +49,7 @@ pub const CONSUMPTION_HELPERS: &str = "consumption-helpers.ts";
 
 pub const FLOW_FILE: &str = "flow.ts";
 pub const AGGREGATIONS_FILE: &str = "DailyActiveUsers.ts";
-pub const API_FILE: &str = "daily_users.ts";
+pub const API_FILE: &str = "dailyActiveUsers.ts";
 
 pub const VSCODE_EXT_FILE: &str = "extensions.json";
 pub const VSCODE_SETTINGS_FILE: &str = "settings.json";

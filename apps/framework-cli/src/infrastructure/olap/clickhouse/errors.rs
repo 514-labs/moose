@@ -3,5 +3,8 @@
 #[non_exhaustive]
 pub enum ClickhouseError {
     #[error("Clickhouse - Unsupported data type: {type_name}")]
-    UnsupportedDataTypeError { type_name: String },
+    UnsupportedDataType {
+        type_name: String,
+    },
+    QueryRender(#[from] handlebars::RenderError),
 }

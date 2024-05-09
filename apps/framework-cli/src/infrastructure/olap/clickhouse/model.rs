@@ -1,5 +1,5 @@
 use super::errors::ClickhouseError;
-use super::queries::{CreateTableQuery, DropTableQuery};
+use super::queries::{create_table_query, drop_table_query};
 use crate::framework::data_model::schema::DataEnum;
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use chrono::{DateTime, FixedOffset};
@@ -88,6 +88,12 @@ pub struct ClickHouseColumn {
     pub unique: bool,
     pub primary_key: bool,
     pub default: Option<ClickHouseColumnDefaults>,
+}
+
+impl ClickHouseColumn {
+    pub fn is_array(&self) -> bool {
+        matches!(&self.column_type, ClickHouseColumnType::Array(_))
+    }
 }
 
 pub enum ClickHouseRuntimeEnum {
@@ -277,11 +283,11 @@ impl ClickHouseTable {
     }
 
     pub fn create_data_table_query(&self) -> Result<String, ClickhouseError> {
-        CreateTableQuery::build(self.clone(), ClickhouseEngine::MergeTree)
+        create_table_query(self.clone(), ClickhouseEngine::MergeTree)
     }
 
     pub fn drop_data_table_query(&self) -> Result<String, ClickhouseError> {
-        DropTableQuery::build(self.clone())
+        drop_table_query(self.clone())
     }
 }
 

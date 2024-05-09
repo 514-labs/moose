@@ -32,13 +32,13 @@ pub fn std_field_type_to_clickhouse_type_mapper(
             let inner_clickhouse_type = std_field_type_to_clickhouse_type_mapper(*inner_std_type)?;
             Ok(ClickHouseColumnType::Array(Box::new(inner_clickhouse_type)))
         }
-        ColumnType::BigInt => Err(ClickhouseError::UnsupportedDataTypeError {
+        ColumnType::BigInt => Err(ClickhouseError::UnsupportedDataType {
             type_name: "BigInt".to_string(),
         }),
-        ColumnType::Json => Err(ClickhouseError::UnsupportedDataTypeError {
+        ColumnType::Json => Err(ClickhouseError::UnsupportedDataType {
             type_name: "Json".to_string(),
         }),
-        ColumnType::Bytes => Err(ClickhouseError::UnsupportedDataTypeError {
+        ColumnType::Bytes => Err(ClickhouseError::UnsupportedDataType {
             type_name: "Bytes".to_string(),
         }),
     }

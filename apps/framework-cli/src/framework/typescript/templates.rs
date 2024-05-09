@@ -370,7 +370,7 @@ interface Aggregation {
 export default {
   select: ` 
     SELECT 
-        uniqState(userId) as dailyActiveUsers,
+        count(distinct userId) as dailyActiveUsers,
         toStartOfDay(timestamp) as date
     FROM ParsedActivity_0_0
     WHERE activity = 'Login' 
@@ -386,18 +386,20 @@ pub static BASE_APIS_SAMPLE_TEMPLATE: &str = r#"
 
 interface QueryParams {
   limit: string;
+  minDailyActiveUsers: string;
 }
 
 export default async function handle(
-  { limit = "10" }: QueryParams,
+  { limit = "10", minDailyActiveUsers = "0" }: QueryParams,
   { client, sql }
 ) {
   return client.query(
     sql`SELECT 
       date,
-      uniqMerge(dailyActiveUsers) as dailyActiveUsers
+      dailyActiveUsers
   FROM DailyActiveUsers_aggregations_mv
-  GROUP BY date LIMIT ${parseInt(limit)}`
+  WHERE dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
+  LIMIT ${parseInt(limit)}`
   );
 }
 "#;

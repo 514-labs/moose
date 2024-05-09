@@ -39,6 +39,7 @@ fn collect_exports(file: &Path) -> Result<Value, ExportCollectorError> {
     let process = Command::new("npx")
         .arg("--yes")
         .arg("ts-node")
+        .arg("--skipProject")
         .arg("-e")
         .arg(MODULE_EXPORT_SERIALIZER)
         .arg("--")
@@ -79,8 +80,9 @@ pub fn get_data_model_configs(
         Value::Object(map) => {
             let mut result = HashMap::new();
             for (key, value) in map {
-                let config: DataModelConfig = serde_json::from_value(value)?;
-                result.insert(key, config);
+                if let Ok(model_config) = serde_json::from_value(value) {
+                    result.insert(key, model_config);
+                }
             }
             Ok(result)
         }

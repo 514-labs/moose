@@ -1,5 +1,5 @@
 use super::errors::ClickhouseError;
-use super::queries::{CreateTableQuery, DropTableQuery};
+use super::queries::{create_table_query, drop_table_query};
 use crate::framework::data_model::schema::DataEnum;
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use chrono::{DateTime, FixedOffset};
@@ -90,11 +90,18 @@ pub struct ClickHouseColumn {
     pub default: Option<ClickHouseColumnDefaults>,
 }
 
+impl ClickHouseColumn {
+    pub fn is_array(&self) -> bool {
+        matches!(&self.column_type, ClickHouseColumnType::Array(_))
+    }
+}
+
 pub enum ClickHouseRuntimeEnum {
     ClickHouseInt(u8),
     ClickHouseString(String),
 }
 
+#[derive(Debug, Clone)]
 pub struct ClickHouseValue {
     pub value_type: ClickHouseColumnType,
 
@@ -178,7 +185,12 @@ impl ClickHouseValue {
 impl fmt::Display for ClickHouseValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.value_type {
-            ClickHouseColumnType::String => write!(f, "'{}'", &self.value),
+            // Need to escape the content of the strings for special characters
+            ClickHouseColumnType::String => write!(
+                f,
+                "'{}'",
+                &self.value.replace('\\', "\\\\").replace('\'', "\\\'")
+            ),
             ClickHouseColumnType::Boolean => write!(f, "{}", &self.value),
             ClickHouseColumnType::ClickhouseInt(_) => {
                 write!(f, "{}", &self.value)
@@ -196,6 +208,7 @@ impl fmt::Display for ClickHouseValue {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ClickHouseRecord {
     values: HashMap<String, ClickHouseValue>,
 }
@@ -277,11 +290,11 @@ impl ClickHouseTable {
     }
 
     pub fn create_data_table_query(&self) -> Result<String, ClickhouseError> {
-        CreateTableQuery::build(self.clone(), ClickhouseEngine::MergeTree)
+        create_table_query(self.clone(), ClickhouseEngine::MergeTree)
     }
 
     pub fn drop_data_table_query(&self) -> Result<String, ClickhouseError> {
-        DropTableQuery::build(self.clone())
+        drop_table_query(self.clone())
     }
 }
 

@@ -9,7 +9,8 @@ use log::{debug, error, info, warn};
 
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
-use crate::infrastructure::olap::clickhouse::queries::CreateAliasQuery;
+use crate::infrastructure::olap::clickhouse::queries::create_alias_query_from_framwork_object;
+use crate::infrastructure::olap::clickhouse::queries::create_alias_query_from_table;
 use crate::infrastructure::olap::clickhouse::version_sync::{VersionSync, VersionSyncType};
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
@@ -27,7 +28,6 @@ use super::data_model::schema::ColumnType;
 use super::data_model::schema::DataEnum;
 use super::data_model::schema::DataModel;
 use super::data_model::DuplicateModelError;
-use super::typescript::generator::generate_temp_data_model;
 
 #[derive(Debug, Clone)]
 pub struct FrameworkObject {
@@ -273,7 +273,7 @@ pub async fn create_or_replace_table_alias(
         drop_tables(fo, configured_client).await?;
     }
 
-    let query = CreateAliasQuery::build(&previous_version.table, &fo.table);
+    let query = create_alias_query_from_table(&previous_version.table, &fo.table)?;
     olap::clickhouse::run_query(&query, configured_client).await?;
 
     Ok(())
@@ -304,7 +304,7 @@ pub async fn create_or_replace_latest_table_alias(
         }
     };
 
-    let query = CreateAliasQuery::build_latest(fo);
+    let query = create_alias_query_from_framwork_object(fo)?;
     olap::clickhouse::run_query(&query, configured_client).await?;
 
     Ok(())
@@ -493,9 +493,6 @@ pub async fn process_objects(
             is_latest,
         )
         .await?;
-
-        // TODO Remove when users write the interface
-        generate_temp_data_model(&project, version, fo)?;
     }
     Ok(())
 }

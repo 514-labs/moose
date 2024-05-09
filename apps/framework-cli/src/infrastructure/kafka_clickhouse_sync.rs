@@ -218,6 +218,8 @@ async fn sync_kafka_to_clickhouse(
     // The user doesn't currently get feedback on the error since the process is burried behind the scenes and
     // asynchronous.
 
+    // This should also not be broken, otherwise, the subscriber will stop receiving messages
+
     loop {
         match subscriber.recv().await {
             Err(e) => {
@@ -232,11 +234,20 @@ async fn sync_kafka_to_clickhouse(
                             source_topic_name, payload_str
                         );
 
-                        let parsed_json: Value = serde_json::from_str(payload_str)?;
-                        let clickhouse_record =
-                            mapper_json_to_clickhouse_record(&source_topic_columns, parsed_json)?;
+                        if let Ok(json_value) = serde_json::from_str(payload_str) {
+                            if let Ok(clickhouse_record) =
+                                mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
+                            {
+                                let res = inserter.insert(clickhouse_record).await;
 
-                        inserter.insert(clickhouse_record).await?;
+                                if let Err(e) = res {
+                                    error!(
+                                        "Error adding records to the queue to be inserted: {}",
+                                        e
+                                    );
+                                }
+                            }
+                        }
                     }
                     Err(_) => {
                         error!(
@@ -287,7 +298,16 @@ fn mapper_json_to_clickhouse_record(
                         };
                     }
                     None => {
-                        record.insert(key, ClickHouseValue::new_string("NULL".to_string()));
+                        // Clickhouse doesn't like NULLABLE arrays so we are inserting an empty array instead.
+                        if let ColumnType::Array(inner_type) = &column.data_type {
+                            let clickhouse_inner_type =
+                                std_field_type_to_clickhouse_type_mapper(*inner_type.clone())?;
+                            record.insert(
+                                key,
+                                ClickHouseValue::new_array(Vec::new(), clickhouse_inner_type),
+                            );
+                        }
+                        // Other values are ignored and the client will insert NULL instead
                     }
                 }
             }

@@ -1,272 +1,182 @@
 use crate::framework::controller::FrameworkObject;
-use serde::Serialize;
-use tinytemplate::{format_unescaped, TinyTemplate};
+use handlebars::Handlebars;
+use serde_json::{json, Value};
 
 use crate::framework::data_model::schema::EnumValue;
 use crate::infrastructure::olap::clickhouse::model::{
-    ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
+    ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
 };
 use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
 
 use super::errors::ClickhouseError;
-use super::QueryString;
+use super::model::ClickHouseColumn;
 
 static CREATE_ALIAS_TEMPLATE: &str = r#"
-CREATE VIEW IF NOT EXISTS {db_name}.{alias_name} AS SELECT * FROM {db_name}.{source_table_name};
+CREATE VIEW IF NOT EXISTS {{db_name}}.{{alias_name}} AS SELECT * FROM {{db_name}}.{{source_table_name}};
 "#;
+
+fn create_alias_query(
+    db_name: &str,
+    alias_name: &str,
+    source_table_name: &str,
+) -> Result<String, ClickhouseError> {
+    let reg = Handlebars::new();
+
+    let context = json!({
+        "db_name": db_name,
+        "alias_name": alias_name,
+        "source_table_name": source_table_name,
+    });
+
+    Ok(reg.render_template(CREATE_ALIAS_TEMPLATE, &context)?)
+}
+
+pub fn create_alias_query_from_table(
+    old_table: &ClickHouseTable,
+    new_table: &ClickHouseTable,
+) -> Result<String, ClickhouseError> {
+    create_alias_query(&old_table.db_name, &new_table.name, &old_table.name)
+}
+
+pub fn create_alias_query_from_framwork_object(
+    latest_table: &FrameworkObject,
+) -> Result<String, ClickhouseError> {
+    create_alias_query(
+        &latest_table.table.db_name,
+        &latest_table.data_model.name,
+        &latest_table.table.name,
+    )
+}
 
 // TODO: Add column comment capability to the schema and template
 static CREATE_TABLE_TEMPLATE: &str = r#"
-CREATE TABLE IF NOT EXISTS {db_name}.{table_name} 
+CREATE TABLE IF NOT EXISTS {{db_name}}.{{table_name}} 
 (
-{{for field in fields}}{field.field_name} {field.field_type} {field.field_nullable},
-{{endfor}}
-{{if primary_key_string}}
-PRIMARY KEY ({primary_key_string})
-{{endif}}
+{{#each fields}}   {{field_name}} {{{field_type}}} {{field_nullable}}{{#unless @last}},{{/unless}} 
+{{/each}}
 )
-ENGINE = {engine};
+ENGINE = {{engine}}
+{{#if primary_key_string}}PRIMARY KEY ({{primary_key_string}}) {{/if}}
 "#;
-
-static CREATE_VERSION_SYNC_TRIGGER_TEMPLATE: &str = r#"
-CREATE MATERIALIZED VIEW IF NOT EXISTS {db_name}.{view_name} TO {db_name}.{dest_table_name}
-(
-{{for field in to_fields}}{field.field_name} {field.field_type} {field.field_nullable}{{- if @last }}{{ else }}, {{ endif }}
-{{endfor}}
-)
-AS
-SELECT
-{{for field in to_fields}} moose_migrate_tuple.({@index} + 1) AS {field.field_name}{{- if @last }}{{ else }}, {{ endif }}
-{{endfor}}
-FROM (select {migration_function_name}(
-{{for field in from_fields}}{field}{{- if @last }}{{ else }}, {{ endif }}
-{{endfor}}
-) as moose_migrate_tuple FROM {db_name}.{source_table_name})
-"#;
-
-static INITIAL_DATA_LOAD_TEMPLATE: &str = r#"
-INSERT INTO {db_name}.{dest_table_name}
-SELECT
-{{for field in to_fields}} moose_migrate_tuple.({@index} + 1) AS {field.field_name}{{- if @last }}{{ else }}, {{ endif }}
-{{endfor}}
-FROM (select {migration_function_name}(
-{{for field in from_fields}}{field}{{- if @last }}{{ else }}, {{ endif }}
-{{endfor}}
-) as moose_migrate_tuple FROM {db_name}.{source_table_name})
-"#;
-
-pub struct CreateAliasQuery;
-impl CreateAliasQuery {
-    fn render(context: CreateAliasContext) -> String {
-        let mut tt = TinyTemplate::new();
-        tt.add_template("create_alias", CREATE_ALIAS_TEMPLATE)
-            .unwrap();
-        tt.render("create_alias", &context).unwrap()
-    }
-
-    pub fn build(old_table: &ClickHouseTable, new_table: &ClickHouseTable) -> String {
-        CreateAliasQuery::render(CreateAliasContext {
-            db_name: old_table.db_name.clone(),
-            alias_name: new_table.name.clone(),
-            source_table_name: old_table.name.clone(),
-        })
-    }
-
-    pub fn build_latest(latest_table: &FrameworkObject) -> String {
-        CreateAliasQuery::render(CreateAliasContext {
-            db_name: latest_table.table.db_name.clone(),
-            alias_name: latest_table.data_model.name.clone(),
-            source_table_name: latest_table.table.name.clone(),
-        })
-    }
-}
-#[derive(Serialize)]
-struct CreateAliasContext {
-    db_name: String,
-    alias_name: String,
-    source_table_name: String,
-}
-
-pub struct CreateTableQuery;
 
 pub enum ClickhouseEngine {
     MergeTree,
 }
 
-impl CreateTableQuery {
-    pub fn build(
-        table: ClickHouseTable,
-        engine: ClickhouseEngine,
-    ) -> Result<String, ClickhouseError> {
-        let mut tt = TinyTemplate::new();
-        tt.set_default_formatter(&format_unescaped); // by default it formats HTML-escaped and messes up single quotes
-        tt.add_template("create_table", CREATE_TABLE_TEMPLATE)
-            .unwrap();
-        let context = CreateTableContext::new(table, engine)?;
-        let rendered = tt.render("create_table", &context).unwrap();
-        Ok(rendered)
-    }
-}
+pub fn create_table_query(
+    table: ClickHouseTable,
+    engine: ClickhouseEngine,
+) -> Result<String, ClickhouseError> {
+    let reg = Handlebars::new();
 
-#[derive(Serialize)]
-struct CreateTableContext {
-    db_name: String,
-    table_name: String,
-    fields: Vec<CreateTableFieldContext>,
-    primary_key_string: Option<String>,
-    engine: String,
-}
+    let (engine, ignore_primary_key) = match engine {
+        ClickhouseEngine::MergeTree => ("MergeTree".to_string(), false),
+    };
 
-impl CreateTableContext {
-    fn new(
-        table: ClickHouseTable,
-        engine: ClickhouseEngine,
-    ) -> Result<CreateTableContext, ClickhouseError> {
-        let (engine, ignore_primary_key) = match engine {
-            ClickhouseEngine::MergeTree => ("MergeTree".to_string(), false),
-        };
+    let primary_key = if ignore_primary_key {
+        Vec::new()
+    } else {
+        table
+            .columns
+            .iter()
+            .filter(|column| column.primary_key)
+            .map(|column| column.name.clone())
+            .collect::<Vec<String>>()
+    };
 
-        let primary_key = if ignore_primary_key {
-            Vec::new()
+    let template_context = json!({
+        "db_name": table.db_name,
+        "table_name": table.name,
+        "fields":  builds_field_context(&table.columns)?,
+        "primary_key_string": if !primary_key.is_empty() {
+            Some(primary_key.join(", "))
         } else {
-            table
-                .columns
-                .iter()
-                .filter(|column| column.primary_key)
-                .map(|column| column.name.clone())
-                .collect::<Vec<String>>()
-        };
+            None
+        },
+        "engine": engine
+    });
 
-        Ok(CreateTableContext {
-            db_name: table.db_name,
-            table_name: table.name,
-            fields: table
-                .columns
-                .into_iter()
-                .map(CreateTableFieldContext::new)
-                .collect::<Result<Vec<CreateTableFieldContext>, ClickhouseError>>()?,
-            primary_key_string: if !primary_key.is_empty() {
-                Some(primary_key.join(", "))
-            } else {
-                None
-            },
-            engine,
-        })
-    }
+    Ok(reg.render_template(CREATE_TABLE_TEMPLATE, &template_context)?)
 }
 
-#[derive(Serialize)]
-struct CreateTableFieldContext {
-    field_name: String,
-    field_type: String,
-    field_nullable: String,
+static CREATE_VERSION_SYNC_TRIGGER_TEMPLATE: &str = r#"
+CREATE MATERIALIZED VIEW IF NOT EXISTS {{db_name}}.{{view_name}} TO {{db_name}}.{{dest_table_name}}
+(
+    {{#each to_fields}} {{field_name}} {{{field_type}}} {{field_nullable}}{{#unless @last}},{{/unless}}
+    {{/each}}
+)
+AS
+SELECT
+    {{#each to_fields}} moose_migrate_tuple.({{@index}} + 1) AS {{field_name}}{{#unless @last}},{{/unless}}
+    {{/each}}
+FROM (
+    select {{migration_function_name}}(
+        {{#each from_fields}} {{this}}{{#unless @last}},{{/unless}}
+        {{/each}}
+    ) as moose_migrate_tuple FROM {{db_name}}.{{source_table_name}}
+)
+"#;
+
+pub fn create_version_sync_trigger_query(view: &VersionSync) -> Result<String, ClickhouseError> {
+    let reg = Handlebars::new();
+
+    let context = json!({
+        "db_name": view.db_name,
+        "view_name": view.migration_trigger_name(),
+        "migration_function_name": view.migration_function_name(),
+        "source_table_name": view.source_table.name,
+        "dest_table_name": view.dest_table.name,
+        "from_fields": view.source_table.columns.iter().map(|column| column.name.clone()).collect::<Vec<String>>(),
+        "to_fields":  builds_field_context(&view.dest_table.columns)?,
+    });
+
+    Ok(reg.render_template(CREATE_VERSION_SYNC_TRIGGER_TEMPLATE, &context)?)
 }
 
-impl CreateTableFieldContext {
-    fn new(column: ClickHouseColumn) -> Result<CreateTableFieldContext, ClickhouseError> {
-        clickhouse_column_to_create_table_field_context(column)
-    }
+static INITIAL_DATA_LOAD_TEMPLATE: &str = r#"
+INSERT INTO {{db_name}}.{{dest_table_name}}
+SELECT
+    {{#each to_fields}} moose_migrate_tuple.({{@index}} + 1) AS {{field_name}}{{#unless @last}},{{/unless}}
+    {{/each}}
+FROM (
+    select {{migration_function_name}}(
+        {{#each from_fields}}{{this}} {{#unless @last}},{{/unless}}
+        {{/each}}
+    ) as moose_migrate_tuple FROM {{db_name}}.{{source_table_name}}
+)
+"#;
+
+pub fn create_initial_data_load_query(view: &VersionSync) -> Result<String, ClickhouseError> {
+    let reg = Handlebars::new();
+
+    let context = json!({
+        "db_name": view.db_name,
+        "dest_table_name": view.dest_table.name,
+        "migration_function_name": view.migration_function_name(),
+        "source_table_name": view.source_table.name,
+        "from_fields": view.source_table.columns.iter().map(|column| column.name.clone()).collect::<Vec<String>>(),
+        "to_fields": builds_field_context(&view.dest_table.columns)?,
+    });
+
+    Ok(reg.render_template(INITIAL_DATA_LOAD_TEMPLATE, &context)?)
 }
 
 pub static DROP_TABLE_TEMPLATE: &str = r#"
-DROP TABLE IF EXISTS {db_name}.{table_name};
+DROP TABLE IF EXISTS {{db_name}}.{{table_name}};
 "#;
 
-pub struct DropTableQuery;
+pub fn drop_table_query(table: ClickHouseTable) -> Result<String, ClickhouseError> {
+    let reg = Handlebars::new();
 
-impl DropTableQuery {
-    pub fn build(table: ClickHouseTable) -> Result<String, ClickhouseError> {
-        let mut tt = TinyTemplate::new();
-        tt.add_template("drop_table", DROP_TABLE_TEMPLATE).unwrap();
-        let context = DropTableContext::new(table)?;
-        let rendered = tt.render("drop_table", &context).unwrap();
-        Ok(rendered)
-    }
+    let context = json!({
+        "db_name": table.db_name,
+        "table_name": table.name,
+    });
+
+    Ok(reg.render_template(DROP_TABLE_TEMPLATE, &context)?)
 }
 
-#[derive(Serialize)]
-struct DropTableContext {
-    db_name: String,
-    table_name: String,
-}
-
-impl DropTableContext {
-    fn new(table: ClickHouseTable) -> Result<DropTableContext, ClickhouseError> {
-        Ok(DropTableContext {
-            db_name: table.db_name,
-            table_name: table.name,
-        })
-    }
-}
-
-pub struct InitialLoadQuery;
-impl InitialLoadQuery {
-    pub fn build(view: VersionSync) -> Result<QueryString, ClickhouseError> {
-        let mut tt = TinyTemplate::new();
-        tt.add_template("initial_load_trigger", INITIAL_DATA_LOAD_TEMPLATE)
-            .unwrap();
-        // same field names as the trigger context
-        let context = CreateVersionSyncTriggerContext::new(&view)?;
-        Ok(tt.render("initial_load_trigger", &context).unwrap())
-    }
-}
-
-pub struct CreateVersionSyncTriggerQuery;
-impl CreateVersionSyncTriggerQuery {
-    pub fn build(view: &VersionSync) -> Result<QueryString, ClickhouseError> {
-        let mut tt = TinyTemplate::new();
-        tt.add_template(
-            "create_version_sync_trigger",
-            CREATE_VERSION_SYNC_TRIGGER_TEMPLATE,
-        )
-        .unwrap();
-        let context = CreateVersionSyncTriggerContext::new(view)?;
-        Ok(tt.render("create_version_sync_trigger", &context).unwrap())
-    }
-}
-
-#[derive(Serialize)]
-struct CreateVersionSyncTriggerContext {
-    db_name: String,
-    view_name: String,
-    migration_function_name: String,
-    source_table_name: String,
-    dest_table_name: String,
-    from_fields: Vec<String>,
-    to_fields: Vec<CreateTableFieldContext>,
-}
-
-impl CreateVersionSyncTriggerContext {
-    pub fn new(
-        version_sync: &VersionSync,
-    ) -> Result<CreateVersionSyncTriggerContext, ClickhouseError> {
-        let trigger_name = version_sync.migration_trigger_name();
-        let migration_function_name = version_sync.migration_function_name();
-
-        Ok(CreateVersionSyncTriggerContext {
-            db_name: version_sync.db_name.clone(),
-            view_name: trigger_name,
-            migration_function_name,
-            source_table_name: version_sync.source_table.name.clone(),
-            dest_table_name: version_sync.dest_table.name.clone(),
-            from_fields: version_sync
-                .source_table
-                .columns
-                .iter()
-                .map(|column| column.name.clone())
-                .collect(),
-
-            to_fields: version_sync
-                .dest_table
-                .columns
-                .iter()
-                .map(|c| CreateTableFieldContext::new(c.clone()))
-                .collect::<Result<Vec<_>, _>>()?,
-        })
-    }
-}
-
-fn field_type_to_string(field_type: ClickHouseColumnType) -> Result<String, ClickhouseError> {
+fn field_type_to_string(field_type: &ClickHouseColumnType) -> Result<String, ClickhouseError> {
     // Blowing out match statements here in case we need to customize the output string for some types.
     match field_type {
         ClickHouseColumnType::String => Ok(field_type.to_string()),
@@ -304,30 +214,35 @@ fn field_type_to_string(field_type: ClickHouseColumnType) -> Result<String, Clic
 
             Ok(format!("Enum({})", enum_statement))
         }
-        ClickHouseColumnType::Json => Err(ClickhouseError::UnsupportedDataTypeError {
+        ClickHouseColumnType::Json => Err(ClickhouseError::UnsupportedDataType {
             type_name: "Json".to_string(),
         }),
-        ClickHouseColumnType::Bytes => Err(ClickhouseError::UnsupportedDataTypeError {
+        ClickHouseColumnType::Bytes => Err(ClickhouseError::UnsupportedDataType {
             type_name: "Bytes".to_string(),
         }),
         ClickHouseColumnType::Array(inner_type) => {
-            let inner_type_string = field_type_to_string(*inner_type)?;
+            let inner_type_string = field_type_to_string(inner_type)?;
             Ok(format!("Array({})", inner_type_string))
         }
     }
 }
 
-fn clickhouse_column_to_create_table_field_context(
-    column: ClickHouseColumn,
-) -> Result<CreateTableFieldContext, ClickhouseError> {
-    let field_type = field_type_to_string(column.column_type)?;
-    Ok(CreateTableFieldContext {
-        field_name: column.name,
-        field_type,
-        field_nullable: if column.required {
-            "NOT NULL".to_string()
-        } else {
-            "NULL".to_string()
-        },
-    })
+fn builds_field_context(columns: &[ClickHouseColumn]) -> Result<Vec<Value>, ClickhouseError> {
+    columns
+        .iter()
+        .map(|column| {
+            let field_type = field_type_to_string(&column.column_type)?;
+
+            Ok(json!({
+                "field_name": column.name,
+                "field_type": field_type,
+                // Clickhouse doesn't allow array fields to be nullable
+                "field_nullable": if column.required || column.is_array() {
+                    "NOT NULL".to_string()
+                } else {
+                    "NULL".to_string()
+                },
+            }))
+        })
+        .collect::<Result<Vec<Value>, ClickhouseError>>()
 }

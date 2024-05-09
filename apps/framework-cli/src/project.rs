@@ -155,6 +155,12 @@ impl Project {
         project_file.push(PROJECT_CONFIG_FILE);
 
         let mut project_config: Project = Config::builder()
+            // TODO: consider putting the defaults into a source (e.g. include_str a toml file)
+            .set_default(
+                "clickhouse_config.native_port",
+                ClickHouseConfig::default().native_port,
+            )
+            .unwrap() // key in set_default is a static string, this never fails
             .add_source(File::from(project_file).required(true))
             .add_source(
                 Environment::with_prefix("MOOSE")

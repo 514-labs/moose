@@ -249,7 +249,11 @@ async fn handle_json_req(
     }
 
     let res = send_payload_to_topic(configured_producer, topic_name, parsed.ok().unwrap()).await;
-    if let Err((_, _)) = res {
+    if let Err((kafka_error, _)) = res {
+        debug!(
+            "Failed to deliver message to {} with error: {}",
+            topic_name, kafka_error
+        );
         return internal_server_error_response();
     }
 

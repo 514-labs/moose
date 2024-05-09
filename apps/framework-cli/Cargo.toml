@@ -24,6 +24,7 @@ config = { version = "0.13.1", features = ["toml"] }
 home = "0.5.5"
 sentry = "0.31.7"
 clickhouse = { version = "0.11.5", features = ["uuid"] }
+clickhouse-rs = { version = "1.1.0-alpha.1", features = ["tls"] }
 schema-ast = { git = "https://github.com/prisma/prisma-engines.git" }
 diagnostics = { git = "https://github.com/prisma/prisma-engines.git" }
 # datamodel-renderer = { git = "https://github.com/prisma/prisma-engines.git"}

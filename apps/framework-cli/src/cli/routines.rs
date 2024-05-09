@@ -413,8 +413,6 @@ async fn check_for_model_changes(
         }
     }
 
-    // println!("");
-
     olap::clickhouse::check_ready(&configured_client)
         .await
         .unwrap();

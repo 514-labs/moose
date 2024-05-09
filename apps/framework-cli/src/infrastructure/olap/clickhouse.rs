@@ -164,12 +164,6 @@ pub async fn fetch_all_tables(
         .into_iter()
         .map(|row| row.to_table())
         .collect();
-    //
-    // let mut tables = vec![];
-    //
-    // while let Some(row) = cursor.next().await? {
-    //     tables.push(row.to_table());
-    // }
 
     debug!("<DCM> Fetched tables: {:?}", tables);
 

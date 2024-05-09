@@ -5,7 +5,7 @@ import {
 import { watch } from "npm:chokidar@3.6.0";
 import * as fastq from "npm:fastq@1.17.1";
 import type { queueAsPromised } from "npm:fastq@1.17.1";
-import { walk } from "https://deno.land/std@0.207.0/fs/walk.ts";
+import { existsSync, walkSync } from "https://deno.land/std@0.224.0/fs/mod.ts";
 
 interface ShowTablesResponse {
   meta: { name: string; type: string }[];
@@ -89,10 +89,10 @@ const waitForClickhouse = (chClient: ClickHouseClient) => {
   return new Promise(poll);
 };
 
-const countAggregations = async () => {
+const countAggregations = () => {
   let count = 0;
 
-  for await (const _ of walk(AGGREGATIONS_DIR_PATH, {
+  for (const _ of walkSync(AGGREGATIONS_DIR_PATH, {
     includeDirs: false,
     exts: ["ts"],
   })) {
@@ -189,7 +189,7 @@ async function asyncWorker(task: MvQueueTask): Promise<void> {
 const startFileWatcher = async (chClient: ClickHouseClient) => {
   const pathToWatch = `${AGGREGATIONS_DIR_PATH}/**/${AGGREGATIONS_FILE}`;
   const queue: queueAsPromised<MvQueueTask> = fastq.promise(asyncWorker, 1);
-  const numOfAggregations = await countAggregations();
+  const numOfAggregations = countAggregations();
   console.log(`Found ${numOfAggregations} aggregations`);
 
   queue.error((err: Error, task: MvQueueTask) => {
@@ -218,6 +218,11 @@ const startFileWatcher = async (chClient: ClickHouseClient) => {
 };
 
 const main = async () => {
+  if (!existsSync(AGGREGATIONS_DIR_PATH)) {
+    console.log(`${AGGREGATIONS_DIR_PATH} not found. Exiting...`);
+    Deno.exit(1);
+  }
+
   const chClient = getClickhouseClient();
   await waitForClickhouse(chClient);
 

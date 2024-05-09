@@ -200,7 +200,7 @@ fn field_type_to_string(field_type: &ClickHouseColumnType) -> Result<String, Cli
             ClickHouseFloat::Float64 => Ok(float.to_string()),
         },
         ClickHouseColumnType::Decimal => Ok(field_type.to_string()),
-        ClickHouseColumnType::DateTime => Ok(field_type.to_string()),
+        ClickHouseColumnType::DateTime => Ok("DateTime('UTC')".to_string()),
         ClickHouseColumnType::Enum(data_enum) => {
             let enum_statement = data_enum
                 .values

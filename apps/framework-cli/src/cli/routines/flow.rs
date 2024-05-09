@@ -6,8 +6,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
 use crate::cli::display::{Message, MessageType};
-use crate::framework::controller::FrameworkObjectVersions;
-use crate::framework::controller::FrameworkObject;
+use crate::framework::controller::{FrameworkObject, FrameworkObjectVersions};
 use crate::framework::data_model::schema::ColumnType;
 use crate::framework::typescript::templates::BASE_FLOW_TEMPLATE;
 use crate::project::Project;

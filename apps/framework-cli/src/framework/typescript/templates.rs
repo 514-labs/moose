@@ -353,7 +353,7 @@ import { {{source}}, {{destination}} } from "../../../datamodels/models.ts";
 // The 'run' function transforms {{source}} data to {{destination}} format.
 // For more details on how Moose flows work, see: https://docs.moosejs.com
 export default function run(source: {{source}}): {{destination}} | null {
-  return null;
+  return {{destination_object}};
 }
 
 "#;

@@ -101,6 +101,7 @@ pub enum ClickHouseRuntimeEnum {
     ClickHouseString(String),
 }
 
+#[derive(Debug, Clone)]
 pub struct ClickHouseValue {
     pub value_type: ClickHouseColumnType,
 
@@ -184,7 +185,12 @@ impl ClickHouseValue {
 impl fmt::Display for ClickHouseValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.value_type {
-            ClickHouseColumnType::String => write!(f, "'{}'", &self.value),
+            // Need to escape the content of the strings for special characters
+            ClickHouseColumnType::String => write!(
+                f,
+                "'{}'",
+                &self.value.replace('\\', "\\\\").replace('\'', "\\\'")
+            ),
             ClickHouseColumnType::Boolean => write!(f, "{}", &self.value),
             ClickHouseColumnType::ClickhouseInt(_) => {
                 write!(f, "{}", &self.value)
@@ -202,6 +208,7 @@ impl fmt::Display for ClickHouseValue {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ClickHouseRecord {
     values: HashMap<String, ClickHouseValue>,
 }

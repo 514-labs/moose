@@ -4,6 +4,7 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command;
 
 use crate::cli::display::{Message, MessageType};
+use crate::framework::controller::FrameworkObjectVersions;
 use crate::framework::typescript::templates::BASE_FLOW_TEMPLATE;
 use crate::project::Project;
 use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM, FLOW_FILE};
@@ -143,6 +144,62 @@ pub fn verify_datamodel(project: &Project, datamodel: String) -> anyhow::Result<
             &datamodel
         ))
     }
+}
+
+pub fn verify_flows_against_datamodels(
+    project: &Project,
+    framework_object_versions: &FrameworkObjectVersions,
+) -> anyhow::Result<()> {
+    let flows = project.get_flows();
+    let flows_dir = project.flows_dir();
+
+    let mut flows_with_missing_models = Vec::<String>::new();
+    for (source, destinations) in flows {
+        if !framework_object_versions
+            .current_models
+            .models
+            .contains_key(&source)
+        {
+            flows_with_missing_models.push(format!("{}/{}", flows_dir.display(), source));
+        }
+
+        destinations.iter().for_each(|destination| {
+            if !framework_object_versions
+                .current_models
+                .models
+                .contains_key(destination)
+            {
+                flows_with_missing_models.push(format!(
+                    "{}/{}/{}",
+                    flows_dir.display(),
+                    source,
+                    destination
+                ));
+            }
+        });
+    }
+
+    if !flows_with_missing_models.is_empty() {
+        flows_with_missing_models.sort();
+        show_message!(
+            MessageType::Error,
+            Message {
+                action: "Flow".to_string(),
+                details: "These flow sources/destinations have missing data models. Add the data models or rename the flow directories".to_string(),
+            }
+        );
+        flows_with_missing_models.iter().for_each(|flow_path| {
+            show_message!(
+                MessageType::Error,
+                Message {
+                    action: "".to_string(),
+                    details: flow_path.to_string(),
+                }
+            );
+        });
+    }
+
+    Ok(())
 }
 
 pub fn start_flow_process(project: &Project) -> anyhow::Result<()> {

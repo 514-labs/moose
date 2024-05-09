@@ -295,8 +295,8 @@ export default function TemplatePage({
       <div className="col-span-12 md:col-span-6  ">
         <div className=" mb-5">
           <Section>
-            <div className="bg-muted aspect-[4/3] flex flex-col justify-center">
-              <div className="relative h-3/5">
+            <div className="aspect-[4/3] flex flex-col justify-center">
+              <div className="relative h-4/5">
                 {template && (
                   <Suspense fallback={<div>Loading...</div>}>
                     <TemplateImg

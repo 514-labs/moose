@@ -11,7 +11,7 @@ export const FeaturesSection = () => {
     title: "Everything you need to build data-driven experiences",
     features: [
       {
-        title: "Data Models",
+        title: "Data models",
         description:
           "Define data models in your language, Moose derives the infrastructure for you",
       },

@@ -90,10 +90,10 @@ export default function Home() {
       <DemoSection />
       <FeaturesSection />
       <UsecasesSection />
+      <MooseStackSection />
       <WhyMooseSection />
 
       {/* <HowItWorksSection /> */}
-      <MooseStackSection />
 
       <TemplateHeaderSection />
       <TemplatesSection />

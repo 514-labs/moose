@@ -8,15 +8,17 @@ interface Props {
 }
 export default function ReportLayout({ filterCard, table, chart }: Props) {
   return (
-    <div className="grid grid-rows-4 grid-cols-5 gap-4 h-screen w-full p-4">
-      <Card className="row-span-2 col-span-2 overflow-auto">
-        <CardHeader className="sticky top-0 bg-background">
+    <div className="p-5 w-screen grid gap-5 grid-cols-3 overflow-auto p-0 w-full">
+      <Card className="h-full flex flex-col rounded-2xl w-full">
+        <CardHeader className="p-4 gap-4 w-full">
           <TabNav />
         </CardHeader>
         <CardContent>{filterCard}</CardContent>
       </Card>
-      <Card className="col-span-3 row-span-2">{chart}</Card>
-      <Card className="row-span-2 col-span-5 overflow-auto">{table}</Card>
+      <Card className="p-4 col-span-3 w-full rounded-2xl">{chart}</Card>
+      <Card className="p-4 row-span-2 col-span-4 overflow-auto w-full rounded-2xl">
+        {table}
+      </Card>
     </div>
   );
 }

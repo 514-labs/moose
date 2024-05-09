@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Display,
   Heading,
@@ -8,7 +9,6 @@ import {
   SmallTextEmbed,
 } from "design-system/typography";
 import { Logo, Badge } from "design-system/components";
-``;
 
 // Apply muted link color const
 const textLinkStyle = {
@@ -37,12 +37,6 @@ export default {
   head: () => (
     <>
       <link rel="icon" href="/favicon.ico" type="image/x-icon" sizes="16x16" />
-      <style>{`
-        // a, .nx-text-gray-500, .nx-text-gray-400 {
-        //   color: hsl(var(--muted-foreground));
-        //   /* Muted override */
-        // }
-      `}</style>
     </>
   ),
 
@@ -71,6 +65,16 @@ export default {
         {children}
       </a>
     ),
+    // img: ({ src, alt }) => (
+    //   <Dialog>
+    //     <DialogTrigger>
+    //       <img src={src} alt={alt} />
+    //     </DialogTrigger>
+    //     <DialogContent>
+    //       <img src={src} alt={alt} />
+    //     </DialogContent>
+    //   </Dialog>
+    // ),
   },
   primaryHue: 220,
   primarySaturation: 0,

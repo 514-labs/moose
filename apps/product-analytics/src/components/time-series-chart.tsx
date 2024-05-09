@@ -46,7 +46,7 @@ export default function TimeSeriesChart({
   };
 
   return (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full flex flex-col p-[0]">
       <div className="flex-1 overflow-hidden">
         {data?.[0] ? (
           <PlotComponent options={options} />

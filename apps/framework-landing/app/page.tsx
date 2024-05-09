@@ -18,6 +18,9 @@ import { cn } from "@514labs/design-system/utils";
 import { Button, buttonVariants } from "@514labs/design-system/components";
 
 import { Text } from "@514labs/design-system/typography";
+import React from "react";
+import { UsecasesSection } from "./sections/home/UsecasesSection";
+import { LooseMooseSection } from "./sections/home/LooseMooseSection";
 
 export const CTAText = ({
   className,

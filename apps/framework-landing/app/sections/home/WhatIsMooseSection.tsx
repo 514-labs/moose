@@ -8,6 +8,7 @@ import { Heading, Text } from "@514labs/design-system/typography";
 import Image from "next/image";
 import { TrackCtaButton } from "../../trackable-components";
 import Link from "next/link";
+import React from "react";
 
 export const WhatIsMooseSection = () => {
   const content = {

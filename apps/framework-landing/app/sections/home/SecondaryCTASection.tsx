@@ -5,8 +5,9 @@ import {
   Section,
 } from "@514labs/design-system/components/containers";
 import { CTABar } from "../../page";
-import { Heading, Text } from "@514labs/design-system/typography";
+import { Heading, HeadingLevel } from "@514labs/design-system/typography";
 import { TrackCtaButton } from "../../trackable-components";
+import React from "react";
 
 export const SecondaryCTASection = () => {
   const content = {

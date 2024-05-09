@@ -23,6 +23,7 @@ import {
 import { CopyButton } from "./copy-button";
 import { Suspense } from "react";
 import { TemplateImg } from "../../sections/home/TemplateImg";
+import React from "react";
 
 interface TemplateAccordionItem {
   title: string;

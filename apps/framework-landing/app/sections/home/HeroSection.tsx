@@ -2,13 +2,12 @@ import { CTABar } from "../../page";
 import {
   Section,
   Grid,
+  FullWidthContentContainer,
 } from "@514labs/design-system/components/containers";
-import { Heading, HeadingLevel} from "@514labs/design-system/typography";
-import Image from "next/image";
-import {
-  TrackCtaButton,
-  TrackableCodeSnippet,
-} from "../../trackable-components";
+import { Heading, HeadingLevel } from "@514labs/design-system/typography";
+import { TrackCtaButton } from "../../trackable-components";
+import React from "react";
+import Link from "next/link";
 
 export const HeroSection = () => {
   const content = {

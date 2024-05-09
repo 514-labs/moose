@@ -3,14 +3,15 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "design-system/components";
+} from "@514labs/design-system/components";
 import {
   Grid,
   HalfWidthContentContainer,
   Section,
-} from "design-system/components/containers";
+} from "@514labs/design-system/components/containers";
 
-import { Heading, Text } from "design-system/typography";
+import { Heading, Text } from "@514labs/design-system/typography";
+import React from "react";
 
 const content = {
   title: "Purpose built for data focused applications",

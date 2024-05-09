@@ -3,8 +3,9 @@ import {
   Grid,
   Section,
   ThirdWidthContentContainer,
-} from "design-system/components/containers";
-import { Heading, Text } from "design-system/typography";
+} from "@514labs/design-system/components/containers";
+import { Heading, Text } from "@514labs/design-system/typography";
+import React from "react";
 
 const content = {
   title: "How it works",

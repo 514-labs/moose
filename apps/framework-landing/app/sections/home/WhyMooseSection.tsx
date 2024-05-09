@@ -2,8 +2,10 @@ import {
   Section,
   Grid,
   ThirdWidthContentContainer,
+  HalfWidthContentContainer,
 } from "@514labs/design-system/components/containers";
-import { Text } from "@514labs/design-system/typography";
+import { Heading, Text } from "@514labs/design-system/typography";
+import React from "react";
 
 export const WhyMooseSection = () => {
   const content = {

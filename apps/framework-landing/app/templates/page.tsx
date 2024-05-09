@@ -1,3 +1,4 @@
+import React from "react";
 import { FooterSection } from "../sections/FooterSection";
 import { LooseMooseSection } from "../sections/home/LooseMooseSection";
 import { TemplatesSection } from "../sections/home/TemplatesSection";

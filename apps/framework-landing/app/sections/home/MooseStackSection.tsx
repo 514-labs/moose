@@ -3,9 +3,10 @@ import {
   Grid,
   HalfWidthContentContainer,
   Section,
-} from "design-system/components/containers";
-import { Heading, Text } from "design-system/typography";
+} from "@514labs/design-system/components/containers";
+import { Heading, Text } from "@514labs/design-system/typography";
 import Image from "next/image";
+import React from "react";
 
 export const MooseStackSection = () => {
   const content = {

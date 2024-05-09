@@ -8,9 +8,10 @@ import {
   ThirdWidthContentContainer,
   Grid,
 } from "@514labs/design-system/components/containers";
-import { Display, Heading, Text } from "@514labs/design-system/typography";
+import { Heading, HeadingLevel, Text } from "@514labs/design-system/typography";
 import { TrackCtaButton } from "../../trackable-components";
 import { TemplateImg } from "./TemplateImg";
+import React from "react";
 
 const content = {
   title: "Templates",

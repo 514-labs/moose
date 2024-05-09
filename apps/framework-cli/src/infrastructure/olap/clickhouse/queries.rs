@@ -52,7 +52,7 @@ pub fn create_alias_query_from_framwork_object(
 static CREATE_TABLE_TEMPLATE: &str = r#"
 CREATE TABLE IF NOT EXISTS {{db_name}}.{{table_name}} 
 (
-{{#each fields}}   {{field_name}} {{field_type}} {{field_nullable}}{{#unless @last}},{{/unless}} 
+{{#each fields}}   {{field_name}} {{{field_type}}} {{field_nullable}}{{#unless @last}},{{/unless}} 
 {{/each}}
 )
 ENGINE = {{engine}}
@@ -102,7 +102,7 @@ pub fn create_table_query(
 static CREATE_VERSION_SYNC_TRIGGER_TEMPLATE: &str = r#"
 CREATE MATERIALIZED VIEW IF NOT EXISTS {{db_name}}.{{view_name}} TO {{db_name}}.{{dest_table_name}}
 (
-    {{#each to_fields}} {{field_name}} {{field_type}} {{field_nullable}}{{#unless @last}},{{/unless}}
+    {{#each to_fields}} {{field_name}} {{{field_type}}} {{field_nullable}}{{#unless @last}},{{/unless}}
     {{/each}}
 )
 AS

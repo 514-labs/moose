@@ -36,15 +36,6 @@ const content = {
       ],
     },
     {
-      title: "Prediction, Automation, Operations",
-      description:
-        "Streamline digital operations with predictions backed by high quality data",
-      details: [
-        "Enrich your data streams with whatever sources you need, to make self-evidently valuable data",
-        "Build applications (for understanding, observability, visualization, automation and more) that use your data, or let your users build them themselves",
-      ],
-    },
-    {
       title: "Internal BI and Analytics Applications",
       description:
         "Understand users and business operations across technologies and products",
@@ -54,6 +45,16 @@ const content = {
         "Use your data infrastructure or use our open source infrastructure out of the box",
       ],
     },
+    {
+      title: "Prediction, Automation, Operations",
+      description:
+        "Streamline digital operations with predictions backed by high quality data",
+      details: [
+        "Enrich your data streams with whatever sources you need, to make self-evidently valuable data",
+        "Build applications (for understanding, observability, visualization, automation and more) that use your data, or let your users build them themselves",
+      ],
+    },
+
     {
       title: "End user facing analytics and applications",
       description:

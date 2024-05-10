@@ -1,5 +1,4 @@
 import { Text } from "design-system/typography";
-import { Avatar } from "design-system/avatar";
 import { humanReadableDate } from "../../../../../lib/formatter";
 
 const getMetaFromParent = async () => {

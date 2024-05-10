@@ -18,7 +18,7 @@ const { withSentryConfig } = require("@sentry/nextjs");
 
 // your existing module.exports or default export
 const nextConfig = {
-  transpilePackages: ["design-system"],
+  transpilePackages: ["@514labs/design-system"],
   reactStrictMode: true,
   // Optional build-time configuration options
   sentry: {

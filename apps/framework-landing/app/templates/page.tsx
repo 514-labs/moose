@@ -1,13 +1,14 @@
-import { EmailSection } from "../sections/EmailSection";
+import React from "react";
 import { FooterSection } from "../sections/FooterSection";
+import { LooseMooseSection } from "../sections/home/LooseMooseSection";
 import { TemplatesSection } from "../sections/home/TemplatesSection";
 import {
   Grid,
   Section,
   FullWidthContentContainer,
   HalfWidthContentContainer,
-} from "design-system/components/containers";
-import { Display, Heading, Text } from "design-system/typography";
+} from "@514labs/design-system/components/containers";
+import { Display, Heading, Text } from "@514labs/design-system/typography";
 
 export default function TemplatesPage() {
   const content = {
@@ -38,7 +39,7 @@ export default function TemplatesPage() {
       </Section>
       <TemplatesSection />
       <FooterSection />
-      <EmailSection />
+      <LooseMooseSection />
     </>
   );
 }

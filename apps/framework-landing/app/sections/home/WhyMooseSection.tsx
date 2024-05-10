@@ -2,26 +2,45 @@ import {
   Section,
   Grid,
   ThirdWidthContentContainer,
-} from "design-system/components/containers";
-import { Heading, Text } from "design-system/typography";
+  HalfWidthContentContainer,
+} from "@514labs/design-system/components/containers";
+import { Heading, Text } from "@514labs/design-system/typography";
+import React from "react";
 
 export const WhyMooseSection = () => {
   const content = {
-    valueProps: [
+    title:
+      "We built MooseJS to make building data products easier for all devs",
+    features: [
       {
-        title: "Your data stack, unified",
+        title: "Git-based workflows",
         description:
-          "Jobs, pipelines, streams, data models, tables, views, schemas, APIs, and SDKs -- no more coordinating a tangled web of individual components. With a framework-based approach, each component is aware of the bigger picture, so your data stack is easier to manage and more resilient to change.",
+          "Git as your source of truth simplifies versioning and migrations",
       },
       {
-        title: "Best practices, unlocked",
+        title: "Local dev server",
         description:
-          "Moose’s developer framework-based approach brings the standard software development workflow to the modern data stack, enabling best practices like: local development, rapid iteration, CI/CD, automated testing, version control, change management, code collaboration, DevOps, etc.",
+          "Build locally to make sure you can push to the cloud confidently",
       },
       {
-        title: "Developers, delighted",
+        title: "Domain derived infra",
         description:
-          "Moose simplifies the way you interact with your data and analytics stack to let you build rich data-intensive experiences using the languages you know, the application frameworks you love and the tools you leverage in your day-to-day workflow. Moose lets you focus on building your best app.",
+          "Infrastructure is automatically derived from your data models",
+      },
+      {
+        title: "Test your way",
+        description:
+          "Use the testing frameworks you love to ensure high quality data",
+      },
+      {
+        title: "Loose coupling",
+        description:
+          "Automatically keep producers and consumers loosely coupled",
+      },
+      {
+        title: "Data primitives",
+        description:
+          "Simple, easy to configure primitives that ship with sane default",
       },
     ],
   };
@@ -29,39 +48,23 @@ export const WhyMooseSection = () => {
   return (
     <>
       <Section>
+        <Grid className="mb-12 2xl:mb-20">
+          <HalfWidthContentContainer>
+            <Heading> {content.title} </Heading>
+          </HalfWidthContentContainer>
+        </Grid>
+
         <Grid>
-          <ThirdWidthContentContainer className="   xl:order-1">
-            <Heading>
-              {content.valueProps[0] && content.valueProps[0].title}
-            </Heading>
-          </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="   xl:order-4">
-            <Text>
-              {content.valueProps[0] && content.valueProps[0].description}
-            </Text>
-          </ThirdWidthContentContainer>
-
-          <ThirdWidthContentContainer className="  mt-5  md:mt-5 md:mb-5 xl:m-0 xl:order-2">
-            <Heading>
-              {content.valueProps[1] && content.valueProps[1].title}
-            </Heading>
-          </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="  mb-5  md:mt-5 md:mb-5 xl:m-0 xl:order-5">
-            <Text>
-              {content.valueProps[1] && content.valueProps[1].description}
-            </Text>
-          </ThirdWidthContentContainer>
-
-          <ThirdWidthContentContainer className="   xl:order-3">
-            <Heading>
-              {content.valueProps[2] && content.valueProps[2].title}
-            </Heading>
-          </ThirdWidthContentContainer>
-          <ThirdWidthContentContainer className="   xl:order-6">
-            <Text>
-              {content.valueProps[2] && content.valueProps[2].description}
-            </Text>
-          </ThirdWidthContentContainer>
+          {content.features.map((feature, index) => {
+            return (
+              <ThirdWidthContentContainer key={index}>
+                <Text className="my-0">{feature.title}</Text>
+                <Text className="my-0 text-muted-foreground">
+                  {feature.description}
+                </Text>
+              </ThirdWidthContentContainer>
+            );
+          })}
         </Grid>
       </Section>
     </>

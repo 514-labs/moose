@@ -1,47 +1,30 @@
 import Link from "next/link";
 import {
+  FullWidthContentContainer,
   Grid,
-  HalfWidthContentContainer,
   Section,
-} from "design-system/components/containers";
+} from "@514labs/design-system/components/containers";
 import { CTABar } from "../../page";
-import { Heading, Text } from "design-system/typography";
+import { Heading, HeadingLevel } from "@514labs/design-system/typography";
 import { TrackCtaButton } from "../../trackable-components";
+import React from "react";
 
 export const SecondaryCTASection = () => {
   const content = {
-    sections: [
+    title: "Up and running in minutes, no vendor, no lock-in",
+    description: "Build your own data-driven experiences in minutes with Moose",
+    ctas: [
       {
-        title: "Hosting",
-        description:
-          "Don't want to manage hosting for your Moose application? Check out Fiveonefour.",
-        ctas: [
-          {
-            href: "https://fiveonefour.com",
-            action: "cta-early-access",
-            label: "Get early access",
-            variant: "default",
-          },
-        ],
+        href: "https://docs.moosejs.com/getting-started/new-project",
+        action: "cta-early-access",
+        label: "Get Started",
+        variant: "default",
       },
       {
-        title: "Communities",
-        description:
-          "We aim to build a place for developers to get together, share feedback and gain early access to our journey.",
-        ctas: [
-          {
-            action: "cta-join-community",
-            label: "Slack",
-            href: "https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg",
-            variant: "default",
-          },
-          {
-            action: "cta-join-community",
-            label: "GitHub",
-            href: "https://github.com/514-labs/moose",
-            variant: "outline",
-          },
-        ],
+        href: "https://docs.moosejs.com/",
+        action: "cta-early-access",
+        label: "View Docs ",
+        variant: "outline",
       },
     ],
   };
@@ -49,25 +32,25 @@ export const SecondaryCTASection = () => {
   return (
     <Section>
       <Grid className="gap-y-5">
-        {content.sections.map((section, index) => (
-          <HalfWidthContentContainer key={index}>
-            <Heading>{section.title}</Heading>
-            <Text>{section.description}</Text>
-            <CTABar>
-              {section.ctas.map((cta, index) => (
-                <Link key={index} href={cta.href}>
-                  <TrackCtaButton
-                    name={section.title}
-                    subject={cta.label}
-                    variant={cta.variant as "default" | "outline"}
-                  >
-                    {cta.label}
-                  </TrackCtaButton>
-                </Link>
-              ))}
-            </CTABar>
-          </HalfWidthContentContainer>
-        ))}
+        <FullWidthContentContainer>
+          <Heading>{content.title}</Heading>
+          <Heading level={HeadingLevel.l2} className="text-muted-foreground">
+            {content.description}
+          </Heading>
+          <CTABar>
+            {content.ctas.map((cta, index) => (
+              <Link key={index} href={cta.href}>
+                <TrackCtaButton
+                  name={content.title}
+                  subject={cta.label}
+                  variant={cta.variant as "default" | "outline"}
+                >
+                  {cta.label}
+                </TrackCtaButton>
+              </Link>
+            ))}
+          </CTABar>
+        </FullWidthContentContainer>
       </Grid>
     </Section>
   );

@@ -6,6 +6,7 @@ pub const CLI_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const PACKAGE_JSON: &str = "package.json";
 pub const PROJECT_CONFIG_FILE: &str = "project.toml";
+pub const PROJECT_NAME_ALLOW_PATTERN: &str = r"^[a-zA-Z0-9_-]+$";
 
 pub const CLI_CONFIG_FILE: &str = "config.toml";
 pub const CLI_USER_DIRECTORY: &str = ".moose";
@@ -21,6 +22,7 @@ pub const SCHEMAS_DIR: &str = "datamodels";
 pub const FLOWS_DIR: &str = "flows";
 pub const AGGREGATIONS_DIR: &str = "aggregations";
 pub const APIS_DIR: &str = "apis";
+pub const VSCODE_DIR: &str = ".vscode";
 pub const SAMPLE_FLOWS_SOURCE: &str = "UserActivity";
 pub const SAMPLE_FLOWS_DEST: &str = "ParsedActivity";
 
@@ -47,7 +49,10 @@ pub const CONSUMPTION_HELPERS: &str = "consumption-helpers.ts";
 
 pub const FLOW_FILE: &str = "flow.ts";
 pub const AGGREGATIONS_FILE: &str = "DailyActiveUsers.ts";
-pub const API_FILE: &str = "daily_users.ts";
+pub const API_FILE: &str = "dailyActiveUsers.ts";
+
+pub const VSCODE_EXT_FILE: &str = "extensions.json";
+pub const VSCODE_SETTINGS_FILE: &str = "settings.json";
 
 pub const CTX_SESSION_ID: &str = "session_id";
 

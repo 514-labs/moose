@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { ChevronRight } from "lucide-react";
 import { Separator } from "./ui/separator";
-import { TrackLink } from "design-system/trackable-components";
+import { TrackLink } from "@514labs/design-system/trackable-components";
 
 interface OverviewItems {
   name: string;

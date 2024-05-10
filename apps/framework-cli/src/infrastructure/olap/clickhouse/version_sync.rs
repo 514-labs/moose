@@ -3,9 +3,7 @@ use crate::framework::data_model::schema::DataModel;
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
 };
-use crate::infrastructure::olap::clickhouse::queries::{
-    CreateVersionSyncTriggerQuery, InitialLoadQuery,
-};
+use crate::infrastructure::olap::clickhouse::queries::create_version_sync_trigger_query;
 use crate::project::Project;
 use lazy_static::lazy_static;
 use log::debug;
@@ -15,6 +13,7 @@ use std::ffi::OsStr;
 use std::path::PathBuf;
 
 use super::errors::ClickhouseError;
+use super::queries::create_initial_data_load_query;
 
 pub fn parse_version(v: &str) -> Vec<i32> {
     v.split('.')
@@ -266,11 +265,11 @@ impl VersionSync {
     }
 
     pub fn create_trigger_query(&self) -> Result<String, ClickhouseError> {
-        CreateVersionSyncTriggerQuery::build(self)
+        create_version_sync_trigger_query(self)
     }
 
-    pub fn initial_load_query(self) -> Result<String, ClickhouseError> {
-        InitialLoadQuery::build(self)
+    pub fn initial_load_query(&self) -> Result<String, ClickhouseError> {
+        create_initial_data_load_query(self)
     }
 
     pub fn drop_trigger_query(&self) -> String {

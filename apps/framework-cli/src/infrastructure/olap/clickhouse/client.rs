@@ -7,6 +7,7 @@ use hyper::body::Bytes;
 use hyper::{Request, Response, Uri};
 use hyper_tls::HttpsConnector;
 use hyper_util::client::legacy::{connect::HttpConnector, Client};
+use log::debug;
 use tokio::time::{sleep, Duration};
 
 use super::config::ClickHouseConfig;
@@ -142,10 +143,15 @@ impl ClickHouseClient {
             columns.join(","),
         );
 
+        debug!("Inserting into clickhouse: {}", insert_query);
+
         let query: String = query_param(&insert_query)?;
         let uri = self.uri(format!("/?{}", query))?;
 
         let body = Self::build_body(columns, records);
+
+        debug!("Inserting into clickhouse with values: {}", body);
+
         let bytes = Bytes::from(body);
 
         let req = Request::builder()

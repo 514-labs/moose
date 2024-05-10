@@ -67,6 +67,7 @@ async fn flush(
                 }
                 Err(e) => {
                     error!("Error inserting records to {}: {:?}", table, e);
+                    debug!("Failed batch {:?}", chunk);
                 }
             }
         }

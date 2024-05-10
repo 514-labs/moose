@@ -353,7 +353,7 @@ import { {{source}}, {{destination}} } from "../../../datamodels/models.ts";
 // The 'run' function transforms {{source}} data to {{destination}} format.
 // For more details on how Moose flows work, see: https://docs.moosejs.com
 export default function run(source: {{source}}): {{destination}} | null {
-  return null;
+  return {{destination_object}};
 }
 
 "#;
@@ -370,7 +370,7 @@ interface Aggregation {
 export default {
   select: ` 
     SELECT 
-        uniqState(userId) as dailyActiveUsers,
+        count(distinct userId) as dailyActiveUsers,
         toStartOfDay(timestamp) as date
     FROM ParsedActivity_0_0
     WHERE activity = 'Login' 
@@ -386,18 +386,20 @@ pub static BASE_APIS_SAMPLE_TEMPLATE: &str = r#"
 
 interface QueryParams {
   limit: string;
+  minDailyActiveUsers: string;
 }
 
 export default async function handle(
-  { limit = "10" }: QueryParams,
+  { limit = "10", minDailyActiveUsers = "0" }: QueryParams,
   { client, sql }
 ) {
   return client.query(
     sql`SELECT 
       date,
-      uniqMerge(dailyActiveUsers) as dailyActiveUsers
+      dailyActiveUsers
   FROM DailyActiveUsers_aggregations_mv
-  GROUP BY date LIMIT ${parseInt(limit)}`
+  WHERE dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
+  LIMIT ${parseInt(limit)}`
   );
 }
 "#;
@@ -439,4 +441,32 @@ export interface ParsedActivity {
     activity: string;
 }
 
+"#;
+
+pub static VSCODE_EXTENSIONS_TEMPLATE: &str = r#"
+{
+    "recommendations": [
+        "frigus02.vscode-sql-tagged-template-literals-syntax-only",
+        "mtxr.sqltools",
+        "ultram4rine.sqltools-clickhouse-driver"
+    ]
+}
+"#;
+
+pub static VSCODE_SETTINGS_TEMPLATE: &str = r#"
+{
+    "sqltools.connections": [
+        {
+            "server": "localhost",
+            "port": 18123,
+            "useHTTPS": false,
+            "database": "local",
+            "username": "panda",
+            "enableTls": false,
+            "password": "pandapass",
+            "driver": "ClickHouse",
+            "name": "moose clickhouse"
+        }
+    ]
+}
 "#;

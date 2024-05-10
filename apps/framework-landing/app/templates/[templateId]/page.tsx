@@ -9,13 +9,13 @@ import {
   AccordionItem,
   AccordionTrigger,
   Separator,
-} from "design-system/components";
+} from "@514labs/design-system/components";
 import {
   Grid,
   Section,
   FullWidthContentContainer,
-} from "design-system/components/containers";
-import { Display, Text } from "design-system/typography";
+} from "@514labs/design-system/components/containers";
+import { Display, Text } from "@514labs/design-system/typography";
 import {
   TrackCtaButton,
   TrackableCodeSnippet,
@@ -23,6 +23,7 @@ import {
 import { CopyButton } from "./copy-button";
 import { Suspense } from "react";
 import { TemplateImg } from "../../sections/home/TemplateImg";
+import React from "react";
 
 interface TemplateAccordionItem {
   title: string;
@@ -97,8 +98,8 @@ export default function TemplatePage({
       {
         slug: "product-analytics",
         title: "Product Analytics",
-        imageSrcLight: "/images/templates/img-product-1-light.svg",
-        imageSrcDark: "/images/templates/img-product-1-dark.svg",
+        imageSrcLight: "/images/templates/IMG_TEMPLATE_PA_LIGHT.svg",
+        imageSrcDark: "/images/templates/IMG_TEMPLATE_PA_DARK.svg",
         cta: {
           action: "cta-product-analytics-install",
           label: "Create Template Command",
@@ -213,8 +214,8 @@ export default function TemplatePage({
       {
         slug: "llm-application",
         title: "LLM Application",
-        imageSrcLight: "/images/templates/img-product-2-light.svg",
-        imageSrcDark: "/images/templates/img-product-2-dark.svg",
+        imageSrcLight: "/images/templates/IMG_TEMPLATE_LLM_LIGHT.svg",
+        imageSrcDark: "/images/templates/IMG_TEMPLATE_LLM_DARK.svg",
         description:
           "Optimize AI automations powered by RAG on your own data to create innovative end user experiences.",
         usage: [],
@@ -222,8 +223,8 @@ export default function TemplatePage({
       {
         slug: "data-warehouse",
         title: "Data Warehouse",
-        imageSrcLight: "/images/templates/img-product-3-light.svg",
-        imageSrcDark: "/images/templates/img-product-3-dark.svg",
+        imageSrcLight: "/images/templates/IMG_TEMPLATE_DW_LIGHT.svg",
+        imageSrcDark: "/images/templates/IMG_TEMPLATE_DW_DARK.svg",
         description:
           "Integrate data across business domains into a data warehouse with discoverable, consumable data products.",
         usage: [],
@@ -295,8 +296,8 @@ export default function TemplatePage({
       <div className="col-span-12 md:col-span-6  ">
         <div className=" mb-5">
           <Section>
-            <div className="bg-muted aspect-[4/3] flex flex-col justify-center">
-              <div className="relative h-3/5">
+            <div className="aspect-[4/3] flex flex-col justify-center">
+              <div className="relative h-4/5">
                 {template && (
                   <Suspense fallback={<div>Loading...</div>}>
                     <TemplateImg

@@ -1,8 +1,7 @@
 use convert_case::{Case, Casing};
-use log::debug;
 use serde::Serialize;
 use std::fs;
-use std::{ffi::OsStr, fmt, path::PathBuf};
+use std::{fmt, path::PathBuf};
 
 use super::templates::{
     self, IndexTemplate, PackageJsonTemplate, TsConfigTemplate, TypescriptRenderingError,
@@ -11,12 +10,9 @@ use crate::framework::controller::FrameworkObjectVersions;
 use crate::framework::controller::SchemaVersion;
 use crate::framework::data_model::schema::{DataEnum, EnumValue};
 use crate::{
-    framework::{
-        controller::FrameworkObject,
-        data_model::schema::{ColumnType, Table},
-    },
+    framework::data_model::schema::{ColumnType, Table},
     project::Project,
-    utilities::{constants::TS_INTERFACE_GENERATE_EXT, package_managers, system},
+    utilities::{package_managers, system},
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -29,6 +25,7 @@ pub enum TypescriptGeneratorError {
     },
     FileWritingError(#[from] std::io::Error),
     RenderingError(#[from] TypescriptRenderingError),
+    ProjectFile(#[from] crate::project::ProjectFileError),
 }
 
 #[derive(Debug, Clone)]
@@ -400,37 +397,6 @@ pub fn generate_sdk(
     }
 
     Ok(sdk_dir)
-}
-
-pub fn generate_temp_data_model(
-    project: &Project,
-    version: &str,
-    fo: &FrameworkObject,
-) -> Result<(), TypescriptGeneratorError> {
-    // TODO remove this when we move away from prisma
-    if fo.original_file_path.extension() == Some(OsStr::new("prisma")) {
-        let schemas_dir = project.schemas_dir();
-        let ts_interface = std_table_to_typescript_interface(
-            fo.data_model.to_table(version),
-            &fo.data_model.name,
-        )?;
-
-        debug!(
-            "Prisma model {:?} detected, generating typescript in the datamodels folder {:?}",
-            fo.original_file_path, schemas_dir
-        );
-
-        fs::write(
-            schemas_dir.join(format!(
-                "{}{}",
-                ts_interface.file_name(),
-                TS_INTERFACE_GENERATE_EXT
-            )),
-            ts_interface.create_code()?,
-        )?;
-    }
-
-    Ok(())
 }
 
 pub fn move_to_npm_global_dir(sdk_location: &PathBuf) -> Result<PathBuf, std::io::Error> {

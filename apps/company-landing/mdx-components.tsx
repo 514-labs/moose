@@ -6,8 +6,8 @@ import {
   Text,
   TextEmbed,
   textBodyBase,
-} from "design-system/typography";
-import { cn } from "design-system/utils";
+} from "@514labs/design-system/typography";
+import { cn } from "@514labs/design-system/utils";
 import type { MDXComponents } from "mdx/types";
 import Image from "next/image";
 

@@ -1,13 +1,13 @@
 import {
   FullWidthContentContainer,
   Section,
-} from "design-system/components/containers";
+} from "@514labs/design-system/components/containers";
 
-import { Text } from "design-system/typography";
+import { Text } from "@514labs/design-system/typography";
 
-import { cn } from "design-system/utils";
-import { ThemeToggle } from "design-system/components";
-import { TrackLink } from "design-system/trackable-components";
+import { cn } from "@514labs/design-system/utils";
+import { ThemeToggle } from "@514labs/design-system/components";
+import { TrackLink } from "@514labs/design-system/trackable-components";
 
 export const FooterSection = () => {
   return (

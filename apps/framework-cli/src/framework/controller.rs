@@ -1,11 +1,13 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, VecDeque};
 use std::io::Error;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use futures::StreamExt;
 use log::{debug, error, info, warn};
+use rdkafka::producer::DeliveryFuture;
 
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
@@ -14,6 +16,9 @@ use crate::infrastructure::olap::clickhouse::queries::create_alias_query_from_ta
 use crate::infrastructure::olap::clickhouse::version_sync::{VersionSync, VersionSyncType};
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
+use crate::infrastructure::stream::redpanda::{
+    send_with_back_pressure, wait_for_delivery, RedpandaConfig,
+};
 use crate::project::Project;
 use crate::project::PROJECT;
 #[cfg(test)]
@@ -206,10 +211,74 @@ pub async fn create_or_replace_version_sync(
 
     match version_sync.sync_type {
         VersionSyncType::Sql(_) => create_sql_version_sync(version_sync, configured_client).await?,
-        VersionSyncType::Ts(_) => create_ts_version_sync_topics(project, version_sync).await?,
+        VersionSyncType::Ts(_) => {
+            create_ts_version_sync_topics(project, version_sync).await?;
+            initial_data_load(
+                &version_sync.source_table,
+                configured_client,
+                &version_sync.topic_name("input"),
+                &project.redpanda_config,
+            )
+            .await?;
+        }
     };
 
     Ok(())
+}
+
+pub async fn initial_data_load(
+    table: &ClickHouseTable,
+    configured_client: &ConfiguredDBClient,
+    topic: &str,
+    config: &RedpandaConfig,
+) -> anyhow::Result<()> {
+    match check_topic_fully_populated(table, configured_client, topic, config).await? {
+        None => {
+            debug!("Topic {} is already fully populated.", topic)
+        }
+        Some(offset) => {
+            // TODO: we should probably have a lazy_static pool, after we actually use the global project instance
+            let pool = olap::clickhouse_alt_client::get_pool(&configured_client.config);
+            let mut client = pool.get_handle().await?;
+            let mut stream =
+                olap::clickhouse_alt_client::select_all_as_json(table, &mut client, offset).await?;
+
+            let producer = redpanda::create_idempotent_producer(config);
+
+            let mut queue: VecDeque<DeliveryFuture> = VecDeque::new();
+
+            while let Some(s) = stream.next().await {
+                match s {
+                    Ok(value) => {
+                        let payload = value.to_string();
+                        send_with_back_pressure(&mut queue, &producer, topic, payload).await;
+                    }
+                    Err(e) => println!("<DCM> Failure in row {:?}", e),
+                }
+            }
+            for future in queue {
+                wait_for_delivery(topic, future).await;
+            }
+        }
+    };
+    Ok(())
+}
+
+/// returns None if fully populated, Some(topic_record_count) if not
+async fn check_topic_fully_populated(
+    table: &ClickHouseTable,
+    configured_client: &ConfiguredDBClient,
+    topic: &str,
+    config: &RedpandaConfig,
+) -> anyhow::Result<Option<i64>> {
+    let topic_size = redpanda::check_topic_size(topic, config).await?;
+    let table_size = olap::clickhouse::check_table_size(table, configured_client).await?;
+
+    Ok(if topic_size >= table_size {
+        None
+    } else {
+        Some(topic_size)
+    })
 }
 
 pub async fn create_sql_version_sync(

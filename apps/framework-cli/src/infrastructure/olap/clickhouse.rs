@@ -1,8 +1,9 @@
-use crate::infrastructure::olap::clickhouse::model::{ClickHouseSystemTableRow, ClickHouseTable};
 use clickhouse::Client;
 use crypto_hash::{hex_digest, Algorithm};
 use log::{debug, info};
 use serde::{Deserialize, Serialize};
+
+use crate::infrastructure::olap::clickhouse::model::{ClickHouseSystemTableRow, ClickHouseTable};
 
 use self::config::ClickHouseConfig;
 use self::model::ClickHouseSystemTable;
@@ -156,13 +157,13 @@ pub async fn fetch_all_tables(
 
     debug!("<DCM> Fetching tables from: {:?}", db_name);
 
-    let mut cursor = client.query(query).fetch::<ClickHouseSystemTableRow>()?;
-
-    let mut tables = vec![];
-
-    while let Some(row) = cursor.next().await? {
-        tables.push(row.to_table());
-    }
+    let tables = client
+        .query(query)
+        .fetch_all::<ClickHouseSystemTableRow>()
+        .await?
+        .into_iter()
+        .map(|row| row.to_table())
+        .collect();
 
     debug!("<DCM> Fetched tables: {:?}", tables);
 
@@ -209,20 +210,37 @@ pub async fn check_is_table_new(
     let client = &configured_client.client;
 
     info!("<DCM> Checking if {} table is new", table.name.clone());
-    let mut cursor = client
+    let result = client
         .query("select engine, total_rows from system.tables where database = ? AND name = ?")
         .bind(table.db_name.clone())
         .bind(table.name.clone())
-        .fetch::<TableDetail>()?;
+        .fetch_all::<TableDetail>()
+        .await?;
 
-    let mut result = vec![];
-
-    while let Some(row) = cursor.next().await? {
-        result.push(row);
-    }
     match result.len() {
         // i keep getting 2 rows when I have this logic in the select query
         1 => Ok(result[0].engine != "View" && result[0].total_rows == Some(0)),
+        _ => panic!("Expected 1 result, got {:?}", result),
+    }
+}
+
+pub async fn check_table_size(
+    table: &ClickHouseTable,
+    configured_client: &ConfiguredDBClient,
+) -> Result<i64, clickhouse::error::Error> {
+    let client = &configured_client.client;
+
+    info!("<DCM> Checking size of {} table", table.name.clone());
+    let result: Vec<i64> = client
+        .query(&format!(
+            "select count(*) from {}.{}",
+            table.db_name, table.name
+        ))
+        .fetch_all::<i64>()
+        .await?;
+
+    match result.len() {
+        1 => Ok(result[0]),
         _ => panic!("Expected 1 result, got {:?}", result),
     }
 }

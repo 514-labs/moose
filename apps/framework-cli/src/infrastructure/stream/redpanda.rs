@@ -1,6 +1,8 @@
-use log::{error, info};
+use log::{error, info, warn};
 use rdkafka::consumer::stream_consumer::StreamConsumer;
 use rdkafka::consumer::Consumer;
+use rdkafka::error::KafkaError;
+use rdkafka::producer::{DeliveryFuture, FutureRecord};
 use rdkafka::types::RDKafkaErrorCode;
 use rdkafka::{
     admin::{AdminClient, AdminOptions, NewTopic, TopicReplication},
@@ -8,6 +10,7 @@ use rdkafka::{
     ClientConfig,
 };
 use serde::{Deserialize, Serialize};
+use std::collections::VecDeque;
 use std::time::Duration;
 
 // TODO: We need to configure the application based on the current project directory structure to ensure that we catch changes made outside of development mode
@@ -133,6 +136,16 @@ fn config_client(config: &RedpandaConfig) -> ClientConfig {
     client_config
 }
 
+pub fn create_idempotent_producer(config: &RedpandaConfig) -> FutureProducer {
+    let mut client_config = config_client(config);
+
+    client_config
+        .set("message.timeout.ms", (5 * 60 * 1000).to_string())
+        .set("enable.idempotence", true.to_string())
+        .set("enable.gapless.guarantee", true.to_string());
+    client_config.create().expect("Failed to create producer")
+}
+
 pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
     let mut client_config = config_client(&config);
 
@@ -142,6 +155,29 @@ pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
     );
     let producer = client_config.create().expect("Failed to create producer");
     ConfiguredProducer { producer, config }
+}
+
+pub async fn check_topic_size(topic: &str, config: &RedpandaConfig) -> Result<i64, KafkaError> {
+    let client: StreamConsumer<_> = config_client(config).create()?;
+    let timeout = Duration::from_secs(1);
+    let md = client.fetch_metadata(Some(topic), timeout)?;
+    let partitions = md
+        .topics()
+        .iter()
+        .find(|t| t.name() == topic)
+        .ok_or_else(|| KafkaError::MetadataFetch(RDKafkaErrorCode::UnknownTopic))?
+        .partitions();
+    let total_count = partitions
+        .iter()
+        .map(|partition| {
+            let (_, high_watermark) = client.fetch_watermarks(topic, partition.id(), timeout)?;
+            Ok::<i64, KafkaError>(high_watermark)
+        })
+        .collect::<Result<Vec<i64>, _>>()?
+        .into_iter()
+        .sum();
+
+    Ok(total_count)
 }
 
 pub async fn fetch_topics(
@@ -179,4 +215,75 @@ pub fn create_subscriber(config: &RedpandaConfig, group_id: &str, topic: &str) -
         .expect("Can't subscribe to specified topic");
 
     consumer
+}
+
+pub async fn wait_for_delivery(topic: &str, future: DeliveryFuture) {
+    match future.await {
+        Ok(Ok((partition, offset))) => {
+            if offset % 1024 == 0 {
+                info!(
+                    // the timestamp of this logging is not the same time Kafka receives the message
+                    "Sent to {} partition {} offset {}",
+                    topic, partition, offset
+                )
+            }
+        }
+        Ok(Err((error, _))) => {
+            warn!(
+                "Failed to deliver message to {} with error: {}",
+                topic, error
+            );
+        }
+        Err(cancelled) => {
+            error!(
+                "Kafka DeliveryFuture is {}. This should never happen.",
+                cancelled
+            );
+        }
+    }
+}
+
+async fn maybe_dequeue(topic: &str, queue: &mut VecDeque<DeliveryFuture>) {
+    if queue.len() >= 2 << 16 {
+        while queue.len() >= 2 << 15 {
+            match queue.pop_front() {
+                None => return,
+                Some(f) => wait_for_delivery(topic, f).await,
+            };
+        }
+    }
+}
+pub async fn send_with_back_pressure(
+    queue: &mut VecDeque<DeliveryFuture>,
+    producer: &FutureProducer,
+    topic: &str,
+    payload: String,
+) {
+    let mut record = FutureRecord::to(topic)
+        .key(topic)
+        .payload(payload.as_bytes());
+
+    loop {
+        let queue_result = producer.send_result(record);
+        match queue_result {
+            Ok(f) => {
+                queue.push_back(f);
+                maybe_dequeue(topic, queue).await;
+                return;
+            }
+            Err((KafkaError::MessageProduction(RDKafkaErrorCode::QueueFull), r)) => {
+                record = r;
+                if let Some(f) = queue.pop_front() {
+                    wait_for_delivery(topic, f).await;
+                }
+            }
+            Err((unknown_err, _)) => {
+                error!(
+                    "Got unknown error {}. This should never happen.",
+                    unknown_err
+                );
+                return;
+            }
+        }
+    }
 }

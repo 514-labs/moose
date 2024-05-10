@@ -13,8 +13,9 @@ pub struct ClickHouseConfig {
     pub user: String,
     pub password: String,
     pub use_ssl: bool,
-    pub host: String,   // ex. localhost
-    pub host_port: i32, // ex. 18123
+    pub host: String,     // e.g. localhost
+    pub host_port: i32,   // e.g. 18123
+    pub native_port: i32, // e.g. 9000
 }
 
 impl Default for ClickHouseConfig {
@@ -26,6 +27,7 @@ impl Default for ClickHouseConfig {
             use_ssl: false,
             host: "localhost".to_string(),
             host_port: 18123,
+            native_port: 9000,
         }
     }
 }

@@ -2,7 +2,7 @@
 
 First and foremost, thanks for being here. It's early days over here at Moose, so we're stoked to have you along for the ride. Don't worry if you're new here, you've found us at a perfect time. To quickly catch you up: we're building a developer framework that makes it easy for you to build data-driven applications.
 
-This new blog series is your inside source for all things new and exciting in the world of Moose. You might even uncover a sneak peek (or two) into what's coming next, hot off the press. Hopefully they can inspire you to get creative with the new capabilities we're working on, build some amazing applications, and share your experiences with us. We're all ears!
+This new blog series is your inside source for all things new and exciting in the world of Moose. We might even let slip a sneak peek (or two) into what's coming next. Hopefully these posts can inspire you to get creative with the new capabilities we're working on, build some amazing applications, and share your experiences with us. We're all ears!
 
 Seriously, we can't bring the best developer experience to Moose without your feedback. We want to hear all about how these updates work for you, what amazing applications you’re able to build leveraging these capabilities, and, most importantly, how they can be improved to meet your needs even better. We’re on this journey together, and this is just the start, so buckle up!
 
@@ -23,13 +23,13 @@ export interface UserActivity {
 }
 ```
 
-Yes, you read that right. You can now turn a plain ol' Typescript interface into a full-blown data ingestion service. Just save your interface inside your project’s `/datamodels` folder and run `npx @514labs/moose-cli dev` to see it in action.
+Yes, you read that right. You can now turn a plain ol' Typescript interface into a full-blown data ingestion service. Just save your interface in a `.ts` file within your project’s `/datamodels` folder and run `npx @514labs/moose-cli dev` to see it in action.
 
 Don't have a Moose project yet? No problem.
 Run `npx create-moose-app` for a fast-track to get started with Typescript data models. If you've been reading closely, you'll probably even recognize the starter code we placed in your `/datamodels` directory ;).
 
 And that’s not all.
-More languages are coming soon. Like really soon. In fact, there might even be a spoiler futher down this page with more info...
+More languages are coming soon. Like really soon. Remember what I mentioned about letting some secrets slip? Wink wink- there might be some spoilers futher down this page...
 
 #### Wait... but what about Prisma? 🤔
 
@@ -42,6 +42,7 @@ If you’ve been keeping tabs on us, you might recall we were previously all in 
 #### We gave the CLI a facelift 🎨
 
 ![create-moose-app](/images/posts/product-update/1/create-moose-app.png)
+
 We know... bouncing back and forth between your terminal and our docs just to get started with a new project is a pain. So, we’ve made some updates to the Moose CLI to make your life easier and get you writing code way faster. Now, when you run `npx create-moose-app`, you'll find a new and improved CLI experience that lays out the next steps for you right in your terminal. No more jumping around to find the right commands to get started. We’ve got you covered.
 
 ### What’s next?
@@ -54,9 +55,9 @@ We’re pumped to announce that Python is the next language we’re adding to th
 
 As you can probably tell, we've been busy making our Data Models primitive even more powerful. But we’re not stopping there. **We’re working on two new primitives that will make it easy to stage and serve your data as packaged insights.** Here’s the scoop on what's around the corner:
 
-#### Aggregations
+##### Aggregations
 
-Aggregations let you derive summarized or computed data from your existing data, making it easier and faster to analyze trends and metrics. You'll define these computations as dedicated components in your Moose project, which means you’ll be able to integrate these pre-computed metrics into other parts of your application and build even more curated insights on top of these bases. Think of it like importing a library or module in your code that contains pre-written functions. You can simply call these functions without having to write them yourself, saving you time and effort.
+Aggregations let you calculate summary statistics or compute other derived data from your existing data that you can save and re-use across your Moose project. We hope this will make it easier and faster for you to analyze trends and metrics from your data. Think of it like importing a library or module in your code that contains pre-written functions. You can simply call these functions without having to write them yourself, saving you time and effort.
 
 Here’s a sneak peek at what defining an aggregation might look like:
 
@@ -83,7 +84,9 @@ export default ActivityCounts {
 
 ```
 
-#### Consumption APIs
+All you need to do is write a SQL `SELECT` query as a string. Keep an eye out for some fun easter eggs when you create a new Moose project. Right now, this feature is only available in development mode for you to play around with, so you can start experimenting right away. We're super excited to share more about how it all works behind the scenes once we roll out the official release.
+
+##### Consumption APIs
 
 Soon, you’ll be able to easily convert your Moose data into consumable API endpoints accessible by all your downstream dependencies. Say goodbye to the constant requests for data from business stakeholders or analyst teams. Standardize a single source of truth for how your most important KPIs and metrics are computed and reported. Eliminate discrepancies where different cross-functional stakeholders report different figures for the same target metrics. Take weekly active users, for example:
 

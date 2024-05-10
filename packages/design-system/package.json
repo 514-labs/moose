@@ -13,7 +13,7 @@
     "@radix-ui/react-slot": "^1.0.2",
     "class-variance-authority": "^0.7.0",
     "clsx": "^2.1.0",
-    "event-capture": "workspace:*",
+    "@514labs/event-capture": "workspace:*",
     "gsap": "file:gsap-bonus.tgz",
     "lucide-react": "^0.359.0",
     "mixpanel": "^0.18.0",

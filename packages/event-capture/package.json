@@ -1,5 +1,5 @@
 {
-  "name": "event-capture",
+  "name": "@514labs/event-capture",
   "version": "0.0.1",
   "dependencies": {
     "mixpanel": "^0.18.0",

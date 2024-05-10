@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { sendServerEvent } from "event-capture/server-event";
+import { sendServerEvent } from "@514labs/event-capture/server-event";
 
 // send an event to mixpanel
 export async function POST(request: NextRequest) {

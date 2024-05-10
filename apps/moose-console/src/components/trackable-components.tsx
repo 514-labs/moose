@@ -1,6 +1,6 @@
 "use client";
 import { Button, ButtonProps } from "components/ui/button";
-import { withTrack, TrackingVerb } from "event-capture/withTrack";
+import { withTrack, TrackingVerb } from "@514labs/event-capture/withTrack";
 import { NavigationMenuLink } from "./ui/navigation-menu";
 import { NavigationMenuLinkProps } from "@radix-ui/react-navigation-menu";
 

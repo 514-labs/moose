@@ -18,7 +18,7 @@
     "react-dom": "^18.2.0",
     "remark-mdx-disable-explicit-jsx": "^0.1.0",
     "@514labs/design-system": "workspace:*",
-    "event-capture": "workspace:*"
+    "@514labs/event-capture": "workspace:*"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^5.17.0",

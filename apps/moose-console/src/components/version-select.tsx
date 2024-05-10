@@ -11,8 +11,8 @@ import {
 import { CURRENT_VERSION } from "app/types";
 import { VersionContext } from "version-context";
 import { usePathname } from "next/navigation";
-import { sendServerEvent } from "event-capture/server-event";
-import { TrackingVerb } from "event-capture/withTrack";
+import { sendServerEvent } from "@514labs/event-capture/server-event";
+import { TrackingVerb } from "@514labs/event-capture/withTrack";
 
 function shouldSwitcherBeDisabled(pathname: string) {
   const regex = /^\/primitives\/models/;

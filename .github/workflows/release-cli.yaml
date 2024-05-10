@@ -218,6 +218,10 @@ jobs:
         shell: bash
         run: ./packages/design-system/scripts/release.sh ${{ needs.version.outputs.version }}
 
+      - name: Publish the NPM Moose event-capture package
+        shell: bash
+        run: ./packages/event-capture/scripts/release.sh ${{ needs.version.outputs.version }}
+
       # TODO - convert to use 1password for the secret
       - name: Notify Sentry release
         uses: getsentry/action-release@v1

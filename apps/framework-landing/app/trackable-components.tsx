@@ -1,6 +1,6 @@
 "use client";
 import { CodeSnippet as AnimatedCodeSnippet } from "@514labs/design-system/typography/animated";
-import { withTrack, TrackingVerb } from "event-capture/withTrack";
+import { withTrack, TrackingVerb } from "@514labs/event-capture/withTrack";
 import { CTAButton, CTAButtonProps } from "./page";
 
 export const TrackableCodeSnippet = withTrack({

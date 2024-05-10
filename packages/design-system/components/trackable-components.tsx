@@ -1,6 +1,6 @@
 "use client";
 import React from "react";
-import { withTrack, TrackingVerb } from "event-capture/withTrack";
+import { withTrack, TrackingVerb } from "@514labs/event-capture/withTrack";
 import Link from "next/link";
 
 export { Nav } from "../components/base-nav";

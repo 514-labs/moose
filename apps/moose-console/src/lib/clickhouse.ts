@@ -2,7 +2,7 @@
 
 import { createClient } from "@clickhouse/client-web";
 import { Project } from "app/types";
-import { sendServerEvent } from "event-capture/server-event";
+import { sendServerEvent } from "@514labs/event-capture/server-event";
 
 function getClient(project?: Project) {
   const CLICKHOUSE_HOST =

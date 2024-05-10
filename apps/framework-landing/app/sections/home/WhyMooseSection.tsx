@@ -49,7 +49,7 @@ export const WhyMooseSection = () => {
     <>
       <Section>
         <Grid className="mb-12 2xl:mb-20">
-          <HalfWidthContentContainer className="lg:col-start-7">
+          <HalfWidthContentContainer>
             <Heading> {content.title} </Heading>
           </HalfWidthContentContainer>
         </Grid>

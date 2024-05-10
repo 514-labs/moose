@@ -8,8 +8,9 @@ import React from "react";
 export const DemoSection = () => {
   return (
     <Section className="px-0 md:px-5">
-      <div className="bg-muted p-5 md:p-24 md:aspect-video relative overflow-hidden">
+      <div className="bg-muted p-5 md:p-24 md:aspect-video relative">
         <Image
+          className="object-cover"
           src={"/images/demo/img_man_hero.webp"}
           alt="lifestyleimg"
           fill

@@ -142,7 +142,7 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
     type Value = ColumnType;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("an integer between -2^31 and 2^31")
+        formatter.write_str("a string or an object for Enum")
     }
 
     fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>

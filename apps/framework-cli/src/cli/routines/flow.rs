@@ -262,14 +262,13 @@ fn show_missing_datamodels_messages(missing_datamodels: &[&str], project: &Proje
         );
     }
 
-    let missing_datamodels_str = missing_datamodels.join(", ");
+    let missing_datamodels_str = missing_datamodels.join("\n\t- ");
     show_message!(
         MessageType::Highlight,
         Message {
             action: "Next steps".to_string(),
             details: format!(
-                "You may be missing the following datamodels. Add these to {}: {}",
-                project.schemas_dir().display(),
+                "\n\n📂 You may be missing the following datamodels. Add these to your datamodels directory:\n\t- {}",
                 missing_datamodels_str
             )
         }

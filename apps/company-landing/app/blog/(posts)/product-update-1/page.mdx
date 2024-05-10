@@ -1,0 +1,127 @@
+### Our first crack at a product update
+
+Welcome to the inaugural MooseJS Product Update! I’m psyched to launch this new blog series to share the latest developments and enhancements our team is bringing to MooseJS. These updates will give you a closer look at the new features and functionalities, offer a sneak peek into what’s coming next, and invite you to help shape the future of building data-intensive applications with Moose. I hope these posts will inspire you to dive in and experiment with the capabilities we’re working on.
+
+Your feedback is crucial to helping us create the best developer experience with Moose. We want to hear all about how these updates work for you, what amazing applications you’re able to build leveraging these capabilities, and, most importantly, how they can be improved to meet your needs even better. We’re on this journey together, and this is just the start, so buckle up!
+
+### On to the latest and greatest...
+
+#### Typescript data modeling is here 🚀
+
+We’ve been busy behind the scenes, rethinking and redesigning how Moose parses your data models. What does this mean for you? **You can now define your data models natively in your favorite programming language– starting with Typescript.**
+
+```typescript
+type Key<T extends string | number> = T;
+
+export interface UserActivity {
+  eventId: Key<string>;
+  timestamp: string;
+  userId: string;
+  activity: string;
+}
+```
+
+Yes, you read that right. You can now turn a plain ol' Typescript interface into a full-blown data ingestion service. Just save your interface inside your project’s `/datamodels` folder and run `npx @514labs/moose-cli dev` to see it in action.
+
+Don't have a Moose project yet? No problem.
+Run `npx create-moose-app` for a fast-track to get started with Typescript data models. If you've been reading closely, you'll probably even recognize the starter code we placed in your `/datamodels` directory ;).
+
+And that’s not all.
+More languages are coming soon. Like really soon. In fact, there might even be a spoiler futher down this page with more info...
+
+#### Wait... but what about Prisma? 🤔
+
+If you’ve been keeping tabs on us, you might recall we were previously all in on Prisma’s Schema Modeling Language. Well, times have changed, and so have we. Here’s the scoop on why we made the switch:
+
+- **Just Like Old Times**: Jumping to TypeScript means there’s nothing new to trip you up. It’s the same TypeScript you know and love—no extra learning curve here.
+- **Simplify Your Workflows**: Who wants extra steps? Direct use of TypeScript cuts out the intermediate compilation step that Prisma required. Previously, Moose had to parse your Prisma models and generate Typescript interfaces in sync with your Prisma schemas. Now, you can just reference your Typescript data models right where you defined them.
+- **(Coming Soon) Leverage Typescript Native Features**: With TypeScript, cool features like inheritance and type aliases come into play. What does this mean for you? You can create reusable types that fit into various data models, all without fussing over relations. This setup is a big win for analytics databases, which perform better with data duplication and intensive analytics queries on large datasets—sidestepping the costly joins and frequent record updates typically seen in transactional databases.
+
+#### We gave the CLI a facelift 🎨
+
+![create-moose-app](/images/posts/product-update/1/create-moose-app.png)
+We know... bouncing back and forth between your terminal and our docs just to get started with a new project is a pain. So, we’ve made some updates to the Moose CLI to make your life easier and get you writing code way faster. Now, when you run `npx create-moose-app`, you'll find a new and improved CLI experience that lays out the next steps for you right in your terminal. No more jumping around to find the right commands to get started. We’ve got you covered.
+
+### What’s next?
+
+#### Python is coming to Moose 🐍
+
+We’re pumped to announce that Python is the next language we’re adding to the Moose family. We’re working hard to bring you the same intuitive data modeling experience you’ve come to expect with Typescript, but now with Python data classes. We're still in the early stages of development, but we can’t wait to share more with you soon. Stay tuned for updates on our progress and how you can get involved in shaping the future of Moose with Python.
+
+#### New primitives are coming your way
+
+As you can probably tell, we've been busy making our Data Models primitive even more powerful. But we’re not stopping there. **We’re working on two new primitives that will make it easy to stage and serve your data as packaged insights.** Here’s the scoop on what's around the corner:
+
+#### Aggregations
+
+Aggregations let you derive summarized or computed data from your existing data, making it easier and faster to analyze trends and metrics. You'll define these computations as dedicated components in your Moose project, which means you’ll be able to integrate these pre-computed metrics into other parts of your application and build even more curated insights on top of these bases. Think of it like importing a library or module in your code that contains pre-written functions. You can simply call these functions without having to write them yourself, saving you time and effort.
+
+Here’s a sneak peek at what defining an aggregation might look like:
+
+```typescript
+/* /aggregations/activity-counts.ts */
+
+interface Aggregation {
+  select: string;
+  orderBy: string;
+}
+
+export default ActivityCounts {
+  select: sql`
+    SELECT
+      toStartOfDay(timestamp) as day,
+      activity,
+      uniq(userId) as unique_users,
+      COUNT(*) as total_occurrences
+    FROM UserActivity
+    GROUP BY day, activity
+  `,
+  orderBy: "day",
+}
+
+```
+
+#### Consumption APIs
+
+Soon, you’ll be able to easily convert your Moose data into consumable API endpoints accessible by all your downstream dependencies. Say goodbye to the constant requests for data from business stakeholders or analyst teams. Standardize a single source of truth for how your most important KPIs and metrics are computed and reported. Eliminate discrepancies where different cross-functional stakeholders report different figures for the same target metrics. Take weekly active users, for example:
+
+```typescript
+/* /apis/weekly-active-users.ts */
+
+export interface QueryParams {
+	startDate: Date;
+	endDate: Date;
+}
+
+export default async funciton getWaus(
+  {
+    startDate: new Date("01-01-2024"),
+    endDate: new Date(),
+  }: QueryParams,
+  {client, sql}
+) {
+	return client.query(sql`
+    SELECT
+      toStartOfWeek(timestamp) as week,
+      uniq(userId) as active_users
+    FROM UserActivity
+    WHERE
+      timestamp >= ${startDate}
+      AND timestamp <= ${endDate}
+      AND activity = 'Login'
+    GROUP BY toStartOfWeek(timestamp);`);
+}
+```
+
+We're infusing a familiar web development experience, inspired by our favorite application development frameworks. You'll implement your data fetching in a way that feels just like writing a backend API, then optionally post-process that data before returning it—all within a simple TypeScript function. We've also included some handy helper functions to make query execution and data fetching more reliable and less burdensome.
+
+Stay tuned as we forge ahead with these exciting developments, and thank you for helping us shape the future of Moose! Thanks for reading! 🦌
+
+export const metadata = {
+  title: "Hello product update",
+  publishedAt: "2024-05-10T18:00:30Z",
+  categories: ["Announcements, Product"],
+  author: "Olivia",
+  description:
+    "Welcome to the inaugural MooseJS Product Update! I’m psyched to launch this new blog series to share the latest developments and enhancements our team is bringing to MooseJS.",
+};

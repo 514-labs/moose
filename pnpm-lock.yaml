@@ -3513,6 +3513,10 @@ packages:
     dependencies:
       "@babel/runtime": 7.24.5
       "@radix-ui/react-primitive": 1.0.3(@types/react-dom@18.3.0)(@types/react@18.3.1)(react-dom@18.3.1)(react@18.3.1)
+      "@radix-ui/react-context": 1.0.1(@types/react@18.3.1)(react@18.3.1)
+      "@radix-ui/react-primitive": 1.0.3(@types/react-dom@18.3.0)(@types/react@18.3.1)(react-dom@18.3.1)(react@18.3.1)
+      "@radix-ui/react-use-callback-ref": 1.0.1(@types/react@18.3.1)(react@18.3.1)
+      "@radix-ui/react-use-layout-effect": 1.0.1(@types/react@18.3.1)(react@18.3.1)
       "@types/react": 18.3.1
       "@types/react-dom": 18.3.0
       react: 18.3.1

@@ -70,7 +70,6 @@ pub fn create_flow_file(
                     &destination,
                 )?;
                 verify_datamodels_with_framework_objects(
-                    project,
                     &framework_objects.current_models.models,
                     &source,
                     &destination,
@@ -204,7 +203,7 @@ fn verify_datamodels_with_grep(project: &Project, source: &str, destination: &st
     }
 
     if !missing_datamodels.is_empty() {
-        show_missing_datamodels_messages(&missing_datamodels, project);
+        show_missing_datamodels_messages(&missing_datamodels);
     }
 }
 
@@ -232,7 +231,6 @@ fn grep_datamodel(project: &Project, datamodel: &str) -> anyhow::Result<()> {
 }
 
 fn verify_datamodels_with_framework_objects(
-    project: &Project,
     models: &HashMap<String, FrameworkObject>,
     source: &str,
     destination: &str,
@@ -247,11 +245,11 @@ fn verify_datamodels_with_framework_objects(
     }
 
     if !missing_datamodels.is_empty() {
-        show_missing_datamodels_messages(&missing_datamodels, project);
+        show_missing_datamodels_messages(&missing_datamodels);
     }
 }
 
-fn show_missing_datamodels_messages(missing_datamodels: &[&str], project: &Project) {
+fn show_missing_datamodels_messages(missing_datamodels: &[&str]) {
     {
         show_message!(
             MessageType::Info,
@@ -262,14 +260,13 @@ fn show_missing_datamodels_messages(missing_datamodels: &[&str], project: &Proje
         );
     }
 
-    let missing_datamodels_str = missing_datamodels.join(", ");
+    let missing_datamodels_str = missing_datamodels.join("\n\t- ");
     show_message!(
         MessageType::Highlight,
         Message {
             action: "Next steps".to_string(),
             details: format!(
-                "You may be missing the following datamodels. Add these to {}: {}",
-                project.schemas_dir().display(),
+                "\n\n📂 You may be missing the following datamodels. Add these to your datamodels directory:\n\t- {}",
                 missing_datamodels_str
             )
         }

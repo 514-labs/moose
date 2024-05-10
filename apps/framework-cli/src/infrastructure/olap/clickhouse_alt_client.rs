@@ -1,3 +1,4 @@
+use std::num::TryFromIntError;
 use std::str::FromStr;
 use std::time::Duration;
 
@@ -8,6 +9,7 @@ use clickhouse_rs::types::{FromSql, FromSqlResult, Options, ValueRef};
 use clickhouse_rs::ClientHandle;
 use futures::stream::BoxStream;
 use futures::StreamExt;
+use serde::Serialize;
 use serde::__private::from_utf8_lossy;
 use serde_json::{json, Map, Value};
 use swc_common::pass::Either;
@@ -40,8 +42,8 @@ impl<'a> FromSql<'a> for ValueRefWrapper<'a> {
     }
 }
 
-fn value_to_json(value_ref: &ValueRef, enum_mapping: &Option<Vec<&str>>) -> Value {
-    match value_ref {
+fn value_to_json(value_ref: &ValueRef, enum_mapping: &Option<Vec<&str>>) -> Result<Value, Error> {
+    let result = match value_ref {
         ValueRef::Bool(v) => json!(v),
         ValueRef::UInt8(v) => json!(v),
         ValueRef::UInt16(v) => json!(v),
@@ -60,15 +62,14 @@ fn value_to_json(value_ref: &ValueRef, enum_mapping: &Option<Vec<&str>>) -> Valu
             let unix_epoch = NaiveDate::from_ymd_opt(1970, 1, 1).unwrap();
             let naive_date = unix_epoch
                 .checked_add_days(Days::new((*v).into()))
-                .ok_or(Error::FromSql(FromSqlError::OutOfRange))
-                .unwrap();
+                .ok_or(Error::FromSql(FromSqlError::OutOfRange))?;
             json!(naive_date.to_string())
         }
 
         // in the following two cases the timezones are dropped
         ValueRef::DateTime(t, _tz) => {
             json!(DateTime::from_timestamp((*t).into(), 0)
-                .unwrap()
+                .ok_or(Error::FromSql(FromSqlError::OutOfRange))?
                 .to_rfc3339())
         }
         ValueRef::DateTime64(value, (precision, _tz)) => {
@@ -82,30 +83,40 @@ fn value_to_json(value_ref: &ValueRef, enum_mapping: &Option<Vec<&str>>) -> Valu
             };
 
             let sec = nano / 1_000_000_000;
-            let nsec = nano - sec * 1_000_000_000;
+            let nsec: u32 = (nano - sec * 1_000_000_000).try_into().unwrap(); // always in range
 
-            json!(DateTime::from_timestamp(sec, nsec.try_into().unwrap()).unwrap())
+            json!(DateTime::from_timestamp(sec, nsec)
+                .ok_or(Error::FromSql(FromSqlError::OutOfRange))?)
         }
 
         ValueRef::Nullable(Either::Left(_)) => Value::Null,
-        ValueRef::Nullable(Either::Right(v)) => value_to_json(v.as_ref(), enum_mapping),
+        ValueRef::Nullable(Either::Right(v)) => value_to_json(v.as_ref(), enum_mapping)?,
         ValueRef::Array(_t, values) => json!(values
             .iter()
             .map(|v| value_to_json(v, enum_mapping))
-            .collect::<Vec<_>>()),
+            .collect::<Result<Vec<_>, Error>>()?),
         ValueRef::Decimal(d) => json!(f64::from(d.clone())), // consider using arbitrary_precision in serde_json
         ValueRef::Uuid(_) => json!(value_ref.to_string()),
-        ValueRef::Enum16(_mapping, i) => match enum_mapping {
-            None => json!(i.internal()),
-            Some(values) => json!(values[usize::try_from(i.internal()).unwrap()]),
-        },
-        ValueRef::Enum8(_mapping, i) => match enum_mapping {
-            None => json!(i.internal()),
-            Some(values) => json!(values[usize::try_from(i.internal()).unwrap()]),
-        },
+        ValueRef::Enum16(_mapping, i) => convert_enum(i.internal(), enum_mapping),
+        ValueRef::Enum8(_mapping, i) => convert_enum(i.internal(), enum_mapping),
         ValueRef::Ipv4(_) => todo!(),
         ValueRef::Ipv6(_) => todo!(),
         ValueRef::Map(_, _, _) => todo!(),
+    };
+    Ok(result)
+}
+
+fn convert_enum<I>(i: I, enum_mapping: &Option<Vec<&str>>) -> Value
+where
+    I: Serialize,
+    usize: TryFrom<I, Error = TryFromIntError>,
+{
+    match enum_mapping {
+        None => json!(i),
+        // if they cannot be converted to usize but have an enum_mapping, the invariant -
+        // enum_mapping is Some only when the TS enum has string values -
+        // is broken
+        Some(values) => json!(values[usize::try_from(i).unwrap() - 1]),
     }
 }
 
@@ -124,7 +135,7 @@ where
 
     for (i, enum_mapping) in enum_mappings.iter().enumerate() {
         let value = value_to_json(&row.get::<ValueRefWrapper, _>(i).unwrap().0, enum_mapping);
-        result.insert(row.name(i)?.into(), value);
+        result.insert(row.name(i)?.into(), value?);
     }
     Ok(Value::Object(result))
 }

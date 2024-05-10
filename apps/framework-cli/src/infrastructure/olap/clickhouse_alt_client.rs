@@ -113,9 +113,8 @@ where
 {
     match enum_mapping {
         None => json!(i),
-        // if they cannot be converted to usize but have an enum_mapping, the invariant -
-        // enum_mapping is Some only when the TS enum has string values -
-        // is broken
+        // unwrap is safe because of the invariant -
+        // enum_mapping is Some only when the TS enum has string values
         Some(values) => json!(values[usize::try_from(i).unwrap() - 1]),
     }
 }

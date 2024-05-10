@@ -21,6 +21,11 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         {children}
       </Heading>
     ),
+    h5: ({ children }) => (
+      <Heading className="font-medium" longForm level={HeadingLevel.l5}>
+        {children}
+      </Heading>
+    ),
     ul: (props) => (
       <ul className={cn("pl-8 list-disc", textBodyBase)} {...props} />
     ),

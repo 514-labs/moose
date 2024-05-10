@@ -18,7 +18,7 @@ const content = {
   description:
     "Moose provides the primitives you need for batch, streaming and event-driven data applications and lets you focus on your business logic. ",
   disclaimer:
-    "If you're building a user workflow centric, transactional application, we recomend you'll need to use a more general purpose framework like Next.js, Rails, Django, or Express.js.",
+    "If you're building a user workflow centric, transactional application, you'll need to use a more general purpose framework like Next.js, Rails, Django, or Express.js.",
   usecases: [
     {
       title: "Data-centric Generative AI Applications",

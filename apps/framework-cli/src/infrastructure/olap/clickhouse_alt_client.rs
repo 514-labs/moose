@@ -1,20 +1,22 @@
 use std::num::TryFromIntError;
+use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
+use crate::framework::controller::FrameworkObjectVersions;
 use chrono::{DateTime, Days, NaiveDate};
-use clickhouse_rs::errors::{Error, FromSqlError};
+use clickhouse_rs::errors::FromSqlError;
 use clickhouse_rs::types::{ColumnType, Row};
 use clickhouse_rs::types::{FromSql, FromSqlResult, Options, ValueRef};
 use clickhouse_rs::ClientHandle;
 use futures::stream::BoxStream;
 use futures::StreamExt;
-use serde::Serialize;
 use serde::__private::from_utf8_lossy;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use swc_common::pass::Either;
 
-use crate::framework::data_model::schema::EnumValue;
+use crate::framework::data_model::schema::{DataModel, EnumValue};
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::model::{ClickHouseColumnType, ClickHouseTable};
 
@@ -42,7 +44,10 @@ impl<'a> FromSql<'a> for ValueRefWrapper<'a> {
     }
 }
 
-fn value_to_json(value_ref: &ValueRef, enum_mapping: &Option<Vec<&str>>) -> Result<Value, Error> {
+fn value_to_json(
+    value_ref: &ValueRef,
+    enum_mapping: &Option<Vec<&str>>,
+) -> Result<Value, clickhouse_rs::errors::Error> {
     let result = match value_ref {
         ValueRef::Bool(v) => json!(v),
         ValueRef::UInt8(v) => json!(v),
@@ -60,16 +65,18 @@ fn value_to_json(value_ref: &ValueRef, enum_mapping: &Option<Vec<&str>>) -> Resu
         ValueRef::Float64(v) => json!(v),
         ValueRef::Date(v) => {
             let unix_epoch = NaiveDate::from_ymd_opt(1970, 1, 1).unwrap();
-            let naive_date = unix_epoch
-                .checked_add_days(Days::new((*v).into()))
-                .ok_or(Error::FromSql(FromSqlError::OutOfRange))?;
+            let naive_date = unix_epoch.checked_add_days(Days::new((*v).into())).ok_or(
+                clickhouse_rs::errors::Error::FromSql(FromSqlError::OutOfRange),
+            )?;
             json!(naive_date.to_string())
         }
 
         // in the following two cases the timezones are dropped
         ValueRef::DateTime(t, _tz) => {
             json!(DateTime::from_timestamp((*t).into(), 0)
-                .ok_or(Error::FromSql(FromSqlError::OutOfRange))?
+                .ok_or(clickhouse_rs::errors::Error::FromSql(
+                    FromSqlError::OutOfRange
+                ))?
                 .to_rfc3339())
         }
         ValueRef::DateTime64(value, (precision, _tz)) => {
@@ -85,8 +92,9 @@ fn value_to_json(value_ref: &ValueRef, enum_mapping: &Option<Vec<&str>>) -> Resu
             let sec = nano / 1_000_000_000;
             let nsec: u32 = (nano - sec * 1_000_000_000).try_into().unwrap(); // always in range
 
-            json!(DateTime::from_timestamp(sec, nsec)
-                .ok_or(Error::FromSql(FromSqlError::OutOfRange))?)
+            json!(DateTime::from_timestamp(sec, nsec).ok_or(
+                clickhouse_rs::errors::Error::FromSql(FromSqlError::OutOfRange)
+            )?)
         }
 
         ValueRef::Nullable(Either::Left(_)) => Value::Null,
@@ -94,7 +102,7 @@ fn value_to_json(value_ref: &ValueRef, enum_mapping: &Option<Vec<&str>>) -> Resu
         ValueRef::Array(_t, values) => json!(values
             .iter()
             .map(|v| value_to_json(v, enum_mapping))
-            .collect::<Result<Vec<_>, Error>>()?),
+            .collect::<Result<Vec<_>, clickhouse_rs::errors::Error>>()?),
         ValueRef::Decimal(d) => json!(f64::from(d.clone())), // consider using arbitrary_precision in serde_json
         ValueRef::Uuid(_) => json!(value_ref.to_string()),
         ValueRef::Enum16(_mapping, i) => convert_enum(i.internal(), enum_mapping),
@@ -124,7 +132,10 @@ where
 /// In other words, it's Some only when it is an enum that has string values
 ///
 /// If the enum has int values, the JSON representation will be integers as well, so no need to map.
-fn row_to_json<C>(row: &Row<'_, C>, enum_mappings: &[Option<Vec<&str>>]) -> Result<Value, Error>
+fn row_to_json<C>(
+    row: &Row<'_, C>,
+    enum_mappings: &[Option<Vec<&str>>],
+) -> Result<Value, clickhouse_rs::errors::Error>
 where
     C: ColumnType,
 {
@@ -170,7 +181,8 @@ pub async fn select_all_as_json<'a>(
     table: &'a ClickHouseTable,
     client: &'a mut ClientHandle,
     offset: i64,
-) -> Result<BoxStream<'a, Result<Value, Error>>, Error> {
+) -> Result<BoxStream<'a, Result<Value, clickhouse_rs::errors::Error>>, clickhouse_rs::errors::Error>
+{
     let enum_mapping: Vec<Option<Vec<&str>>> = table
         .columns
         .iter()
@@ -201,4 +213,105 @@ pub async fn select_all_as_json<'a>(
         .stream()
         .map(move |row| row_to_json(&row?, &enum_mapping));
     Ok(Box::pin(stream))
+}
+
+async fn create_state_table(
+    client: &mut ClientHandle,
+    click_house_config: &ClickHouseConfig,
+) -> Result<(), clickhouse_rs::errors::Error> {
+    let sql = format!(
+        r#"CREATE TABLE IF NOT EXISTS {}._MOOSE_STATE(
+    timestamp DateTime('UTC') DEFAULT now(),
+    state String
+)ENGINE = MergeTree
+PRIMARY KEY timestamp
+ORDER BY timestamp"#,
+        click_house_config.db_name
+    );
+    client.execute(sql).await
+}
+pub async fn store_current_state(
+    client: &mut ClientHandle,
+    framework_object_versions: &FrameworkObjectVersions,
+    click_house_config: &ClickHouseConfig,
+) -> Result<(), StateStorageError> {
+    create_state_table(client, click_house_config).await?;
+
+    let data = clickhouse_rs::Block::new().column(
+        "state",
+        vec![serde_json::to_string(&ApplicationState::from(
+            framework_object_versions,
+        ))?],
+    );
+    client
+        .insert(format!("{}._MOOSE_STATE", click_house_config.db_name), data)
+        .await?;
+    Ok(())
+}
+
+pub async fn retrieve_current_state(
+    client: &mut ClientHandle,
+    click_house_config: &ClickHouseConfig,
+) -> Result<Option<ApplicationState>, StateStorageError> {
+    create_state_table(client, click_house_config).await?;
+    let block = client
+        .query(format!(
+            "SELECT state from {}._MOOSE_STATE ORDER BY timestamp DESC LIMIT 1",
+            click_house_config.db_name
+        ))
+        .fetch_all()
+        .await?;
+
+    let state_str = block
+        .rows()
+        .map(|row| row.get(0).unwrap())
+        .collect::<Vec<String>>();
+    match state_str.len() {
+        0 => Ok(None),
+        1 => Ok(serde_json::from_str(state_str.first().unwrap())?),
+        len => panic!("LIMIT 1 but got {} rows: {:?}", len, state_str),
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum StateStorageError {
+    #[error("Failed to serialize the state")]
+    SerdeError(#[from] serde_json::Error),
+    #[error("Clickhouse error")]
+    ClickhouseError(#[from] clickhouse_rs::errors::Error),
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ApplicationState {
+    pub models: Vec<(String, Vec<Model>)>,
+}
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Model {
+    pub data_model: DataModel,
+    pub original_file_path: PathBuf,
+}
+
+impl From<&FrameworkObjectVersions> for ApplicationState {
+    fn from(versions: &FrameworkObjectVersions) -> Self {
+        let models = versions
+            .previous_version_models
+            .iter()
+            .chain(std::iter::once((
+                &versions.current_version,
+                &versions.current_models,
+            )))
+            .map(|(version, schema_version)| {
+                let models = schema_version
+                    .models
+                    .values()
+                    .map(|model| Model {
+                        data_model: model.data_model.clone(),
+                        original_file_path: model.original_file_path.clone(),
+                    })
+                    .collect();
+                (version.clone(), models)
+            })
+            .collect();
+        ApplicationState { models }
+    }
 }

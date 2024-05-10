@@ -100,6 +100,7 @@ use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
+use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
 use crate::infrastructure::stream::redpanda;
 use crate::project::{Project, PROJECT};
 use crate::utilities::package_managers;
@@ -259,6 +260,16 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     info!("<DCM> Initializing project state");
     let (framework_object_versions, version_syncs) =
         initialize_project_state(project.clone(), &mut route_table).await?;
+
+    {
+        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+        store_current_state(
+            &mut client,
+            &framework_object_versions,
+            &project.clickhouse_config,
+        )
+        .await?
+    }
 
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));

@@ -190,9 +190,8 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
             ColumnType::Bytes
         } else if v.starts_with("Array<") && v.ends_with('>') {
             let inner = self
-                .visit_str(&v[6..(v.len() - 1)])
-                // .map_err(|e| E::custom(format!("Array inner type deserialization error {}.", e)))
-                ?;
+                .visit_str::<E>(&v[6..(v.len() - 1)])
+                .map_err(|e| E::custom(format!("Array inner type deserialization error {}.", e)))?;
             ColumnType::Array(Box::new(inner))
         } else {
             return Err(E::custom(format!("Unknown column type {}.", v)));

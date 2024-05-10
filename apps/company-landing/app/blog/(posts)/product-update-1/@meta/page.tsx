@@ -1,7 +1,6 @@
-import { Text } from "design-system/typography";
-import { humanReadableDate } from "../../../../../lib/formatter";
+import BlogMeta from "../../../blog-meta";
 
-const getMetaFromParent = async () => {
+export const getMetaFromParent = async () => {
   const { metadata } = await import(`../page.mdx`);
   return metadata;
 };
@@ -9,24 +8,5 @@ const getMetaFromParent = async () => {
 export default async function Meta() {
   const meta = await getMetaFromParent();
 
-  return (
-    <div>
-      <Text className="mb-0">{humanReadableDate(meta.publishedAt)}</Text>
-      {meta.categories.map((cat: string, i: number) => {
-        if (i === meta.categories.length - 1) {
-          return (
-            <Text className="mt-0" key={i}>
-              {cat}
-            </Text>
-          );
-        } else {
-          return (
-            <Text className="mt-0" key={i}>
-              {cat},{" "}
-            </Text>
-          );
-        }
-      })}
-    </div>
-  );
+  return <BlogMeta meta={meta} />;
 }

@@ -15,8 +15,10 @@ export function Posts({ posts }: { posts: Post[] }) {
         {posts.map(({ slug, title, description, publishedAt, categories }) => (
           <>
             <HalfWidthContentContainer>
-              <Text className="mb-0">{humanReadableDate(publishedAt)}</Text>
-              <Text className="mt-0">
+              <Text className="mb-0">
+                {"Published " + humanReadableDate(publishedAt)}
+              </Text>
+              <Text className="mt-0 text-muted-foreground">
                 {categories.map((cat, i) => `${i ? ", " : ""}${cat}`)}
               </Text>
             </HalfWidthContentContainer>

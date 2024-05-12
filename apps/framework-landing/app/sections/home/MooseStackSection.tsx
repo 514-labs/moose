@@ -7,7 +7,6 @@ import {
 import { Heading, Text } from "@514labs/design-system/typography";
 import Image from "next/image";
 import React from "react";
-import { TemplateImg } from "./TemplateImg";
 
 export const MooseStackSection = () => {
   const content = {

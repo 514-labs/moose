@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { CTABar } from "../../page";
 import FooterSection from "../../sections/FooterSection";
-import { EmailSection } from "../../sections/EmailSection";
 import {
   Accordion,
   AccordionContent,

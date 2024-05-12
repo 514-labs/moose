@@ -6,7 +6,6 @@ import {
 import { Display, Heading, Text } from "@514labs/design-system/typography";
 import { CTABar } from "@514labs/design-system/components";
 import FooterSection from "../sections/FooterSection";
-import { EmailSection } from "../sections/EmailSection";
 import Link from "next/link";
 import { TrackCtaButton } from "../trackable-components";
 import { LooseMooseSection } from "../sections/home/LooseMooseSection";

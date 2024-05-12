@@ -5,7 +5,7 @@ import {
   Grid,
   Section,
 } from "@514labs/design-system/components/containers";
-import { SuperDisplay, Display } from "@514labs/design-system/typography";
+import { Display } from "@514labs/design-system/typography";
 
 export const EmailSection = () => {
   const content = {

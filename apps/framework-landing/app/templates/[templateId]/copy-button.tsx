@@ -1,6 +1,6 @@
 "use client";
 import { TrackCtaButton } from "../../trackable-components";
-import { CopyIcon } from "lucide-react";
+// import { CopyIcon } from "lucide-react"; // Fix floating issue
 interface Props {
   children: React.ReactNode;
   subject: string;

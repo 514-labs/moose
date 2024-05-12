@@ -1,4 +1,4 @@
-import { EmailSection } from "./sections/EmailSection";
+// import { EmailSection } from "./sections/EmailSection";
 import { FooterSection } from "./sections/FooterSection";
 
 import { ManifestoSection } from "./sections/home/manifesto-section";

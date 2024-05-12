@@ -63,7 +63,6 @@ export const CTAButton = ({
       <Text
         className={cn(
           variant === "outline" ? "text-primary" : "text-primary-foreground",
-          (className = ""),
         )}
       >
         {children}

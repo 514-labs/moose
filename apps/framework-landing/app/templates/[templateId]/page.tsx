@@ -242,7 +242,7 @@ export default function TemplatePage({
   );
 
   return (
-    <Grid className="">
+    <Grid>
       <div className="col-span-12 md:col-span-6 w-full relative mx-auto xl:max-w-screen-xl 2xl:px-10">
         <div className="md:sticky top-10 w-full relative mx-auto">
           <Section className="sm:pr=l-0 xl:pl-32 2xl:pl-48 3xl:pl-96 my-0">

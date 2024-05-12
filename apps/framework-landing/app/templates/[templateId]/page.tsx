@@ -276,7 +276,7 @@ export default function TemplatePage({
             )}
             <div className="py-10 grid gap-x-0 gap-y-0">
               {template?.features?.items.map((feature, index) => (
-                <Grid className="" key={index}>
+                <Grid key={index}>
                   <div key={index} className="col-span-6">
                     <Text className="my-0">{feature.title}</Text>
                     <Text className="my-0 text-muted-foreground">

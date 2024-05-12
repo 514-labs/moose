@@ -13,7 +13,7 @@ import { TrackLink } from "@514labs/design-system/trackable-components";
 export const FooterSection = () => {
   return (
     <Section className="md:my-0">
-      <HalfWidthContentContainer className="">
+      <HalfWidthContentContainer>
         <FooterContent />
       </HalfWidthContentContainer>
     </Section>

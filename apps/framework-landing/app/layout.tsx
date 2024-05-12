@@ -42,7 +42,7 @@ export default async function RootLayout({
   // });
 
   return (
-    <html lang="en" suppressHydrationWarning className="">
+    <html lang="en" suppressHydrationWarning>
       <Script
         src="https://analytics.514.dev/script.js"
         data-host="https://moosefood.514.dev"

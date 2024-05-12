@@ -76,7 +76,7 @@ export const Section = ({
   return (
     <section
       className={cn(
-        "my-20 lg:my-20 2xl:my-36",
+        "my-24 lg:my-24 2xl:my-36",
         gutterless ? "overflow-hidden" : "px-5",
         className,
       )}

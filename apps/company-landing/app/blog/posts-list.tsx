@@ -7,6 +7,7 @@ import { type Post } from "../../lib/posts";
 import Link from "next/link";
 import { Heading, Text } from "@514labs/design-system/typography";
 import { humanReadableDate } from "../../lib/formatter";
+import FooterSection from "../../sections/FooterSection";
 
 export function Posts({ posts }: { posts: Post[] }) {
   return (
@@ -22,7 +23,7 @@ export function Posts({ posts }: { posts: Post[] }) {
                 {categories.map((cat, i) => `${i ? ", " : ""}${cat}`)}
               </Text>
             </HalfWidthContentContainer>
-            <HalfWidthContentContainer>
+            <HalfWidthContentContainer className="hover:opacity-75 transition-all">
               <Link href={`blog/${slug}`}>
                 <Heading>{title}</Heading>
                 <Text>

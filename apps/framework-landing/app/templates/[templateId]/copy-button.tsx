@@ -18,7 +18,7 @@ export function CopyButton({ children, subject, name, copyText }: Props) {
       }}
     >
       {children}
-      <CopyIcon size={24} />
+      {/* <CopyIcon size={24} /> */}
     </TrackCtaButton>
   );
 }

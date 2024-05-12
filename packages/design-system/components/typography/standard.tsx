@@ -32,7 +32,7 @@ export const SuperDisplay = ({
   return (
     <h1
       className={cn(
-        "text-primary text-4xl xs:text-5xl sm:text-7xl md:text-8xl lg:text-9xl 2xl:text-[12rem] 3xl::text-[13rem]",
+        "text-primary text-3xl xs:text-4xl sm:text-6xl md:text-7xl lg:text-8xl 2xl:text-[10rem] 3xl::text-[10rem]",
         className,
       )}
     >
@@ -48,7 +48,7 @@ export const Display = ({
   return (
     <h2
       className={cn(
-        "text-primary text-6xl sm:text-8xl 3xl:text-9xl",
+        "text-primary text-4xl sm:text-6xl 3xl:text-7xl",
         textBase,
         className,
       )}
@@ -59,7 +59,7 @@ export const Display = ({
 };
 
 export enum HeadingLevel {
-  l1 = "text-primary text-4xl sm:text-6xl 3xl:text-7xl",
+  l1 = "text-primary text-3xl sm:text-5xl 3xl:text-6xl",
   l2 = "text-primary text-2xl sm:text-4xl 3xl:text-5xl",
   l3 = "text-primary text-xl sm:text-3xl 3xl:text-4xl",
   l4 = "text-primary text-lg sm:text-2xl 3xl:text-3xl",

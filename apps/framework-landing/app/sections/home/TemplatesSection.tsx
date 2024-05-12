@@ -4,6 +4,7 @@ import { Fragment, Suspense } from "react";
 import { CTABar } from "../../page";
 import {
   Section,
+  HalfWidthContentContainer,
   FullWidthContentContainer,
   ThirdWidthContentContainer,
   Grid,
@@ -59,15 +60,15 @@ const content = {
 
 export const TemplateHeaderSection = () => {
   return (
-    <Section className="2xl:mb-0">
+    <Section className="w-full relative mx-auto xl:max-w-screen-xl">
       <Grid>
-        <FullWidthContentContainer>
+        <HalfWidthContentContainer>
           <Heading> {content.title} </Heading>
           <Heading className="text-muted-foreground" level={HeadingLevel.l2}>
             {" "}
             {content.description}{" "}
           </Heading>
-        </FullWidthContentContainer>
+        </HalfWidthContentContainer>
       </Grid>
     </Section>
   );
@@ -75,7 +76,7 @@ export const TemplateHeaderSection = () => {
 
 export const TemplatesSection = () => {
   return (
-    <Section className="2xl:mt-12">
+    <Section className="w-full relative mx-auto xl:my-10 xl:max-w-screen-xl 2xl:my-0">
       <Grid className="gap-y-5 justify-center">
         {content.templates.map((template, index) => {
           return (
@@ -84,7 +85,7 @@ export const TemplatesSection = () => {
                 key={index}
                 className="flex flex-col xl:justify-start xl:order-4"
               >
-                <div className="relative aspect-video my-5">
+                <div className="relative aspect-square my-0">
                   <Suspense fallback={<div>Loading...</div>}>
                     <TemplateImg
                       srcDark={template.imageSrcDark}

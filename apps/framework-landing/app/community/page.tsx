@@ -9,6 +9,7 @@ import FooterSection from "../sections/FooterSection";
 import { EmailSection } from "../sections/EmailSection";
 import Link from "next/link";
 import { TrackCtaButton } from "../trackable-components";
+import { LooseMooseSection } from "../sections/home/LooseMooseSection";
 
 const content = {
   title: "Community",
@@ -53,10 +54,10 @@ const content = {
 export default function Community() {
   return (
     <>
-      <Section>
+      <Section className="px-6 w-full relative mx-auto xl:max-w-screen-xl">
         <Display>Community</Display>
       </Section>
-      <Section>
+      <Section className="px-6 w-full relative mx-auto xl:max-w-screen-xl">
         <Grid>
           <HalfWidthContentContainer>
             <Heading>{content.description.headline}</Heading>
@@ -66,11 +67,11 @@ export default function Community() {
           </HalfWidthContentContainer>
         </Grid>
       </Section>
-      <Section>
+      <Section className="px-6 w-full relative mx-auto xl:max-w-screen-xl">
         {content.reasons.map((reason, i) => (
-          <Grid key={i}>
+          <Grid key={i} className="py-5 md:py-0">
             <HalfWidthContentContainer>
-              <Text>0{i + 1}</Text>
+              <Text className="p-0 m-0">0{i + 1}</Text>
             </HalfWidthContentContainer>
             <HalfWidthContentContainer>
               <Heading>{reason.title}</Heading>
@@ -79,14 +80,14 @@ export default function Community() {
           </Grid>
         ))}
       </Section>
-      <Section>
+      <Section className="px-6 w-full relative mx-auto xl:max-w-screen-xl">
         <Heading>Pick your community</Heading>
       </Section>
-      <Section>
+      <Section className="px-6 w-full relative mx-auto xl:max-w-screen-xl">
         {content.communities.map((community, i) => (
-          <Grid key={i}>
+          <Grid key={i} className="py-5 md:py-0">
             <HalfWidthContentContainer>
-              <Text>0{i + 1}</Text>
+              <Text className="p-0 m-0">0{i + 1}</Text>
             </HalfWidthContentContainer>
             <HalfWidthContentContainer className="py-5">
               <Heading>{community.title}</Heading>
@@ -107,7 +108,8 @@ export default function Community() {
         ))}
       </Section>
       <FooterSection />
-      <EmailSection />
+      {/* <EmailSection /> */}
+      <LooseMooseSection />
     </>
   );
 }

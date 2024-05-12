@@ -30,7 +30,7 @@ export const SecondaryCTASection = () => {
   };
 
   return (
-    <Section>
+    <Section className="mx-auto py-24 xl:max-w-screen-xl">
       <Grid className="gap-y-5">
         <FullWidthContentContainer>
           <Heading>{content.title}</Heading>

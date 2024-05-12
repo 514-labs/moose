@@ -5,7 +5,7 @@ import {
   Grid,
   Section,
 } from "@514labs/design-system/components/containers";
-import { SuperDisplay } from "@514labs/design-system/typography";
+import { SuperDisplay, Display } from "@514labs/design-system/typography";
 
 export const EmailSection = () => {
   const content = {
@@ -16,7 +16,7 @@ export const EmailSection = () => {
     <Section className="text-center">
       <Grid>
         <FullWidthContentContainer>
-          <SuperDisplay className="break-words"> {content.email} </SuperDisplay>
+          <Display> {content.email} </Display>
         </FullWidthContentContainer>
       </Grid>
     </Section>

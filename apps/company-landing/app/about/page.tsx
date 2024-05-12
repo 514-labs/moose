@@ -85,10 +85,10 @@ const content = {
 export default function About() {
   return (
     <>
-      <Section>
+      <Section className="px-6 w-full relative mx-auto xl:max-w-screen-xl">
         <Display>About</Display>
       </Section>
-      <Section>
+      <Section className="px-6 w-full relative mx-auto xl:max-w-screen-xl">
         <Grid>
           <HalfWidthContentContainer>
             <Heading>{content.description.headline}</Heading>
@@ -98,7 +98,7 @@ export default function About() {
           </HalfWidthContentContainer>
         </Grid>
       </Section>
-      <Section>
+      <Section className="px-6 w-full relative mx-auto xl:max-w-screen-xl">
         {content.reasons.map((reason, i) => (
           <Grid key={i} className="py-5 md:py-0">
             <HalfWidthContentContainer>
@@ -111,10 +111,10 @@ export default function About() {
           </Grid>
         ))}
       </Section>
-      <Section>
+      <Section className="px-6 w-full relative mx-auto xl:max-w-screen-xl">
         <Heading>Backed by the bold</Heading>
       </Section>
-      <Section>
+      <Section className="px-6 w-full relative mx-auto xl:max-w-screen-xl">
         {content.investors.map((about, i) => (
           <Grid key={i} className="py-5 md:py-0">
             <HalfWidthContentContainer>
@@ -126,10 +126,11 @@ export default function About() {
             </HalfWidthContentContainer>
           </Grid>
         ))}
+        <ImageSection />
+        <FooterSection />
       </Section>
-      <ImageSection />
-      <FooterSection />
-      <EmailSection />
+
+      {/* <EmailSection /> */}
     </>
   );
 }

@@ -125,6 +125,7 @@ const cleanUpAggregations = async (chClient: ClickHouseClient) => {
       await chClient.command({
         query: `DROP VIEW IF EXISTS ${table.name}`,
       });
+      console.log(`Cleaned up ${table.name}`);
     });
   } catch (err) {
     console.error(`Failed to clean up aggregations: ${err}`);
@@ -151,7 +152,7 @@ const createAggregation = async (chClient: ClickHouseClient, path: string) => {
           AS ${mvObj.select}
       `;
     await chClient.command({ query: mvQuery });
-    console.log(`Created aggregation ${fileName}`);
+    console.log(`Created aggregation ${fileName}. Query: ${mvQuery}`);
   } catch (err) {
     console.error(`Failed to create aggregation ${fileName}: ${err}`);
 

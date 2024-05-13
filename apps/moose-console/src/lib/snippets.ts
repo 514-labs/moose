@@ -1,4 +1,4 @@
-import { isMooseInt, isMooseString, isEnum } from "./utils";
+import { isMooseInt, isMooseString, isEnum, isArray } from "./utils";
 import { CliData, DataModel, ModelMeta } from "app/types";
 
 function createColumnStubs(model: ModelMeta) {
@@ -17,6 +17,8 @@ function createColumnStubs(model: ModelMeta) {
           return `"${field.name}": ${enumMember.value.Int}`;
         }
       }
+    } else if (isArray(field.data_type)) {
+      return `"${field.name}": []`;
     } else {
       const data_type = field.data_type.toLowerCase();
       if (data_type === "number") {
@@ -31,8 +33,6 @@ function createColumnStubs(model: ModelMeta) {
         return `"${field.name}": "2022-01-01"`;
       } else if (data_type === "datetime") {
         return `"${field.name}": "2024-02-20T23:14:57.788Z"`;
-      } else if (data_type.startsWith("array")) {
-        return `"${field.name}": []`;
       }
     }
   });

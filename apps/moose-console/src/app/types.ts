@@ -56,6 +56,12 @@ export interface DataModel {
   flows: string[];
 }
 
+export type MooseColumnType = string | MooseEnum | MooseArrayType;
+
+export interface MooseArrayType {
+  elementType: MooseColumnType;
+}
+
 export interface MooseEnum {
   name: string;
   values: MooseEnumMember[];
@@ -71,7 +77,7 @@ export type MooseString = { String: string };
 
 export interface Column {
   name: string;
-  data_type: string | MooseEnum;
+  data_type: MooseColumnType;
   required: boolean;
   unique: boolean;
   primary_key: boolean;

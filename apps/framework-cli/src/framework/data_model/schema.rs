@@ -126,9 +126,10 @@ impl Serialize for ColumnType {
                 state.serialize_field("values", &data_enum.values)?;
                 state.end()
             }
-            ColumnType::Array(_) => {
-                let serial = format!("{}", self);
-                serializer.serialize_str(&serial)
+            ColumnType::Array(inner) => {
+                let mut state = serializer.serialize_struct("Array", 1)?;
+                state.serialize_field("elementType", inner)?;
+                state.end()
             }
             ColumnType::Json => serializer.serialize_str("Json"),
             ColumnType::Bytes => serializer.serialize_str("Bytes"),
@@ -143,27 +144,6 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
         formatter.write_str("a string or an object for Enum")
-    }
-
-    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
-    where
-        A: MapAccess<'de>,
-    {
-        // we don't have a tag, right now it runs fine
-        // because the only object to deserialize is the Enum case
-        let mut name = None;
-        let mut values = None;
-        while let Some(key) = map.next_key::<&str>()? {
-            if key == "name" {
-                name = Some(map.next_value::<String>()?);
-            } else if key == "values" {
-                values = Some(map.next_value::<Vec<EnumMember>>()?)
-            }
-        }
-
-        let name = name.ok_or(A::Error::custom("Missing field: name."))?;
-        let values = values.ok_or(A::Error::custom("Missing field: values."))?;
-        Ok(ColumnType::Enum(DataEnum { name, values }))
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -188,15 +168,37 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
             ColumnType::Json
         } else if v == "Bytes" {
             ColumnType::Bytes
-        } else if v.starts_with("Array<") && v.ends_with('>') {
-            let inner = self
-                .visit_str::<E>(&v[6..(v.len() - 1)])
-                .map_err(|e| E::custom(format!("Array inner type deserialization error {}.", e)))?;
-            ColumnType::Array(Box::new(inner))
         } else {
             return Err(E::custom(format!("Unknown column type {}.", v)));
         };
         Ok(t)
+    }
+
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        // we don't have a tag, right now it runs fine
+        // because we can distinguish them from the field names
+        let mut name = None;
+        let mut values = None;
+        while let Some(key) = map.next_key::<&str>()? {
+            if key == "elementType" {
+                return Ok(ColumnType::Array(Box::new(
+                    map.next_value::<ColumnType>().map_err(|e| {
+                        A::Error::custom(format!("Array inner type deserialization error {}.", e))
+                    })?,
+                )));
+            } else if key == "name" {
+                name = Some(map.next_value::<String>()?);
+            } else if key == "values" {
+                values = Some(map.next_value::<Vec<EnumMember>>()?)
+            }
+        }
+
+        let name = name.ok_or(A::Error::custom("Missing field: name."))?;
+        let values = values.ok_or(A::Error::custom("Missing field: values."))?;
+        Ok(ColumnType::Enum(DataEnum { name, values }))
     }
 }
 
@@ -228,14 +230,10 @@ mod tests {
     fn test_t(t: ColumnType) {
         serialize_and_deserialize(&t);
 
-        if let ColumnType::Enum(_) = t {
-            // The inner type for Array is missing in serialization
-            // JSON for Array<Enum<with_string_values>> is "Array<Enum<with_string_values>>"
-            // maybe fix later
-            return;
-        }
         let array = ColumnType::Array(Box::new(t));
         serialize_and_deserialize(&array);
+        let nested_array = ColumnType::Array(Box::new(array));
+        serialize_and_deserialize(&nested_array);
     }
 
     #[test]

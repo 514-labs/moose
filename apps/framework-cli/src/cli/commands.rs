@@ -63,6 +63,8 @@ pub enum Commands {
     Flow(FlowArgs),
     /// Defines aggregate table views of upstream data models
     Aggregation(AggregationArgs),
+    /// Defines consumption APIs
+    Consumption(ConsumptionArgs),
     /// View Moose logs
     Logs {
         /// Follow the logs in real-time
@@ -124,6 +126,23 @@ pub enum AggregationCommands {
     #[command(arg_required_else_help = true)]
     Init {
         /// Name of your aggregation
+        name: String,
+    },
+}
+
+#[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
+pub struct ConsumptionArgs {
+    #[command(subcommand)]
+    pub command: Option<ConsumptionCommands>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum ConsumptionCommands {
+    /// Creates a starter api
+    #[command(arg_required_else_help = true)]
+    Init {
+        /// Name of your api
         name: String,
     },
 }

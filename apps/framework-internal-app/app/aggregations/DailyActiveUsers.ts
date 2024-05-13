@@ -11,7 +11,7 @@ export default {
     SELECT 
         count(distinct userId) as dailyActiveUsers,
         toStartOfDay(timestamp) as date
-    FROM ParsedActivity_0_3
+    FROM ParsedActivity_0_0
     WHERE activity = 'Login' 
     GROUP BY toStartOfDay(timestamp)
     `,

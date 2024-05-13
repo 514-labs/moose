@@ -28,6 +28,7 @@ use crate::{
 };
 
 use super::display::{with_spinner_async, Message, MessageType};
+use super::routines::flow::verify_flows_against_datamodels;
 
 async fn process_events(
     project: Arc<Project>,
@@ -267,6 +268,8 @@ async fn watch(
                         format!("Processing error occurred: {}", e),
                     )
                 })?;
+
+                let _ = verify_flows_against_datamodels(&project, framework_object_versions);
 
                 let _ = post_current_state_to_console(
                     project.clone(),

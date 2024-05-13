@@ -121,12 +121,12 @@ const cleanUpAggregations = async (chClient: ClickHouseClient) => {
     const showTablesResponse =
       (await queryResponse.json()) as ShowTablesResponse;
 
-    showTablesResponse.data.forEach(async (table) => {
+    for (const table of showTablesResponse.data) {
       await chClient.command({
         query: `DROP VIEW IF EXISTS ${table.name}`,
       });
       console.log(`Cleaned up ${table.name}`);
-    });
+    }
   } catch (err) {
     console.error(`Failed to clean up aggregations: ${err}`);
   }
@@ -146,11 +146,11 @@ const createAggregation = async (chClient: ClickHouseClient, path: string) => {
     }
 
     const mvQuery = `
-          CREATE MATERIALIZED VIEW IF NOT EXISTS ${fileName}_${AGGREGATIONS_MV_SUFFIX}
-          ENGINE = AggregatingMergeTree() ORDER BY ${mvObj.orderBy}
-          POPULATE
-          AS ${mvObj.select}
-      `;
+            CREATE MATERIALIZED VIEW IF NOT EXISTS ${fileName}_${AGGREGATIONS_MV_SUFFIX}
+            ENGINE = AggregatingMergeTree() ORDER BY ${mvObj.orderBy}
+            POPULATE
+            AS ${mvObj.select}
+        `;
     await chClient.command({ query: mvQuery });
     console.log(`Created aggregation ${fileName}. Query: ${mvQuery}`);
   } catch (err) {

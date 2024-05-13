@@ -438,16 +438,6 @@ export interface QueryParams {
     );
   }
   
-interface Aggregation {
-  select: string;
-  orderBy: string;
-}
-
-export default {
-  select: ``,
-  orderBy: "",
-} satisfies Aggregation as Aggregation;
-
 "#;
 
 pub static BASE_MODEL_TEMPLATE: &str = r#"

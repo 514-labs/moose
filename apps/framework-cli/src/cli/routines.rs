@@ -87,6 +87,8 @@ use log::{debug, error, info};
 use tokio::sync::RwLock;
 
 use crate::cli::routines::aggregation::start_aggregation_process;
+use crate::cli::routines::consumption::start_consumption_process;
+
 use crate::infrastructure::olap::clickhouse::{
     fetch_table_names, fetch_table_schema, table_schema_to_hash,
 };
@@ -112,6 +114,7 @@ use super::{Message, MessageType};
 
 pub mod aggregation;
 pub mod clean;
+pub mod consumption;
 pub mod dev;
 pub mod docker_packager;
 pub mod flow;
@@ -316,6 +319,7 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
 
     start_flow_process(&project)?;
     start_aggregation_process(&project)?;
+    start_consumption_process(&project)?;
 
     info!("Starting web server...");
     let server_config = project.http_server_config.clone();

@@ -17,7 +17,6 @@ const FLOWS_DIR_PATH = `${cwd}/app/flows`;
 const FLOW_FILE = "flow.ts";
 const CONSUMER_ID = "deno-group";
 
-const FILEWATCHER_ENABLED = Deno.env.get("FILEWATCHER_ENABLED") || false;
 const BROKER = Deno.env.get("MOOSE_REDPANDA_CONFIG__BROKER");
 const SASL_USERNAME = Deno.env.get("MOOSE_REDPANDA_CONFIG__SASL_USERNAME");
 const SASL_PASSWORD = Deno.env.get("MOOSE_REDPANDA_CONFIG__SASL_PASSWORD");
@@ -26,7 +25,7 @@ const SECURITY_PROTOCOL = Deno.env.get(
   "MOOSE_REDPANDA_CONFIG__SECURITY_PROTOCOL",
 );
 console.log(
-  `FLOWS_DIR_PATH: ${FLOWS_DIR_PATH} | BROKER: ${BROKER} | FILEWATCHER_ENABLED: ${FILEWATCHER_ENABLED} | SECURITY_PROTOCOL: ${SECURITY_PROTOCOL} | SASL_MECHANISM: ${SASL_MECHANISM}`,
+  `FLOWS_DIR_PATH: ${FLOWS_DIR_PATH} | BROKER: ${BROKER} | SECURITY_PROTOCOL: ${SECURITY_PROTOCOL} | SASL_MECHANISM: ${SASL_MECHANISM}`,
 );
 
 if (!BROKER) {
@@ -230,8 +229,8 @@ const startConsumer = async (): Promise<void> => {
   const flowTopics = Array.from(flows.keys());
 
   await consumer.connect();
+  console.log("Subscribing to topics: ", flowTopics.join(", "));
   await consumer.subscribe({ topics: flowTopics, fromBeginning: false });
-  console.log("Subscribed to topics: ", flowTopics.join(", "));
 
   await consumer.run({
     autoCommit: false,
@@ -256,11 +255,6 @@ const startProducer = async (): Promise<void> => {
 };
 
 const startFlowsFilewatcher = (): void => {
-  if (!FILEWATCHER_ENABLED) {
-    console.log("Filewatcher disabled");
-    return;
-  }
-
   const pathToWatch = `${FLOWS_DIR_PATH}/**/${FLOW_FILE}`;
   watch(pathToWatch, { usePolling: true }).on("all", async (event, path) => {
     if (path.endsWith(FLOW_FILE)) {
@@ -287,4 +281,4 @@ const startKafkaGroup = async (): Promise<void> => {
   }
 };
 
-startKafkaGroup().then(() => startFlowsFilewatcher());
+startFlowsFilewatcher();

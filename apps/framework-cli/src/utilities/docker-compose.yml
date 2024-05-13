@@ -55,7 +55,6 @@ services:
     depends_on:
       - redpanda
     environment:
-      - FILEWATCHER_ENABLED=${FILEWATCHER_ENABLED:-true}
       - MOOSE_REDPANDA_CONFIG__BROKER=${MOOSE_REDPANDA_CONFIG__BROKER:-redpanda:9092}
     volumes:
       - ../app:/home/app

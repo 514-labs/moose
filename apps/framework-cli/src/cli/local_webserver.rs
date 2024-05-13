@@ -71,9 +71,10 @@ impl Default for LocalWebserverConfig {
 
 async fn create_client(
     req: Request<hyper::body::Incoming>,
+    host: String,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
     // local only for now
-    let url = format!("http://localhost:{}", 4001).parse::<hyper::Uri>()?;
+    let url = format!("http://{}:{}", host, 4001).parse::<hyper::Uri>()?;
 
     let host = url.host().expect("uri has no host");
     let port = url.port_u16().unwrap();
@@ -111,6 +112,7 @@ async fn create_client(
 
 #[derive(Clone)]
 struct RouteService {
+    host: String,
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
     configured_producer: ConfiguredProducer,
     console_config: ConsoleConfig,
@@ -129,6 +131,7 @@ impl Service<Request<Incoming>> for RouteService {
             self.route_table,
             self.configured_producer.clone(),
             self.console_config.clone(),
+            self.host.clone(),
         ))
     }
 }
@@ -335,6 +338,7 @@ async fn router(
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     configured_producer: ConfiguredProducer,
     console_config: ConsoleConfig,
+    host: String,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     debug!(
         "HTTP Request Received: {:?}, with Route Table {:?}",
@@ -370,7 +374,7 @@ async fn router(
             ingest_route(req, route, configured_producer, route_table, console_config).await
         }
 
-        (&hyper::Method::GET, ["consumption", _rt]) => match create_client(req).await {
+        (&hyper::Method::GET, ["consumption", _rt]) => match create_client(req, host).await {
             Ok(response) => Ok(response),
             Err(e) => {
                 debug!("Error: {:?}", e);
@@ -444,6 +448,7 @@ impl Webserver {
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()).unwrap();
 
         let route_service = RouteService {
+            host: self.host.clone(),
             route_table,
             current_version: project.version().to_string(),
             configured_producer: producer,

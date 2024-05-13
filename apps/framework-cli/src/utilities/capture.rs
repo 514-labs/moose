@@ -25,6 +25,8 @@ pub enum ActivityType {
     BumpVersionCommand,
     #[serde(rename = "cleanCommand")]
     CleanCommand,
+    #[serde(rename = "consumptionInitCommand")]
+    ConsumptionInitCommand,
     #[serde(rename = "devCommand")]
     DevCommand,
     #[serde(rename = "dockerCommand")]

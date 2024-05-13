@@ -14,7 +14,7 @@ use std::process::exit;
 use std::sync::Arc;
 
 use clap::Parser;
-use commands::{AggregationCommands, Commands, FlowCommands, GenerateCommand};
+use commands::{AggregationCommands, Commands, ConsumptionCommands, FlowCommands, GenerateCommand};
 use config::ConfigError;
 use home::home_dir;
 use log::{debug, info};
@@ -23,6 +23,8 @@ use regex::Regex;
 use settings::{read_settings, Settings};
 
 use crate::cli::routines::aggregation::create_aggregation_file;
+use crate::cli::routines::consumption::create_consumption_file;
+
 use crate::cli::routines::dev::{copy_old_schema, create_deno_files};
 use crate::cli::routines::flow::{create_flow_directory, create_flow_file};
 use crate::cli::routines::initialize::initialize_project;
@@ -446,6 +448,31 @@ async fn top_command_handler(
                     Ok(RoutineSuccess::success(Message::new(
                         "Created".to_string(),
                         "Aggregation".to_string(),
+                    )))
+                }
+            }
+        }
+        Commands::Consumption(consumption) => {
+            info!("Running consumption command");
+
+            let consumption_cmd = consumption.command.as_ref().unwrap();
+            match consumption_cmd {
+                ConsumptionCommands::Init { name } => {
+                    let project = load_project()?;
+                    let project_arc = Arc::new(project);
+
+                    crate::utilities::capture::capture!(
+                        ActivityType::ConsumptionInitCommand,
+                        project_arc.name().clone(),
+                        &settings
+                    );
+
+                    check_project_name(&project_arc.name())?;
+                    create_consumption_file(&project_arc, name.to_string())?;
+
+                    Ok(RoutineSuccess::success(Message::new(
+                        "Created".to_string(),
+                        "Api".to_string(),
                     )))
                 }
             }

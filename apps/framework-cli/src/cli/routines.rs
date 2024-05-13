@@ -86,6 +86,7 @@ use std::sync::Arc;
 use log::{debug, error, info};
 use tokio::sync::RwLock;
 
+use crate::cli::routines::aggregation::start_aggregation_process;
 use crate::infrastructure::olap::clickhouse::{
     fetch_table_names, fetch_table_schema, table_schema_to_hash,
 };
@@ -314,6 +315,7 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     syncing_processes_registry.start_all(&framework_object_versions, &version_syncs);
 
     start_flow_process(&project)?;
+    start_aggregation_process(&project)?;
 
     info!("Starting web server...");
     let server_config = project.http_server_config.clone();

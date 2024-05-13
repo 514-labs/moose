@@ -52,7 +52,9 @@ const CLICKHOUSE_USE_SSL =
 
 const getClickhouseClient = () => {
   const protocol =
-    CLICKHOUSE_USE_SSL.toLowerCase() === "true" ? "https" : "http";
+    CLICKHOUSE_USE_SSL === "1" || CLICKHOUSE_USE_SSL.toLowerCase() === "true"
+      ? "https"
+      : "http";
   console.log(
     `Connecting to Clickhouse at ${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
   );

@@ -2,7 +2,6 @@ import Link from "next/link";
 
 import { CTABar } from "../../page";
 import FooterSection from "../../sections/FooterSection";
-import { EmailSection } from "../../sections/EmailSection";
 import {
   Accordion,
   AccordionContent,
@@ -15,7 +14,12 @@ import {
   Section,
   FullWidthContentContainer,
 } from "@514labs/design-system/components/containers";
-import { Display, Text } from "@514labs/design-system/typography";
+import {
+  Display,
+  Text,
+  Heading,
+  HeadingLevel,
+} from "@514labs/design-system/typography";
 import {
   TrackCtaButton,
   TrackableCodeSnippet,
@@ -24,6 +28,7 @@ import { CopyButton } from "./copy-button";
 import { Suspense } from "react";
 import { TemplateImg } from "../../sections/home/TemplateImg";
 import React from "react";
+import { LooseMooseSection } from "../../sections/home/LooseMooseSection";
 
 interface TemplateAccordionItem {
   title: string;
@@ -126,7 +131,7 @@ export default function TemplatePage({
               items: [
                 "Event Capture SDK",
                 "Page tacking",
-                "Session managemment",
+                "Session management",
               ],
             },
           ],
@@ -237,20 +242,25 @@ export default function TemplatePage({
   );
 
   return (
-    <Grid className="h-full w-full relative">
-      <div className="col-span-12 md:col-span-6 h-full pb-5">
-        <div className="md:sticky top-20">
-          <Section>
+    <Grid>
+      <div className="col-span-12 md:col-span-6 w-full relative mx-auto xl:max-w-screen-xl 2xl:px-10">
+        <div className="md:sticky top-10 w-full relative mx-auto">
+          <Section className="sm:pr=l-0 xl:pl-32 2xl:pl-48 3xl:pl-96 my-0">
             <div>
               <Link href="/templates">
-                <Text className="mt-0 pt-5">
+                <Text className="mt-0 pt-0">
                   <span className="text-muted-foreground">Templates / </span>{" "}
                   <span> {template?.title} </span>
                 </Text>
               </Link>
             </div>
             <Display>{template?.title}</Display>
-            <Text>{template?.description}</Text>
+            <Heading
+              level={HeadingLevel.l2}
+              className="text-muted-foreground pb-10"
+            >
+              {template?.description}
+            </Heading>
             {template?.cta ? (
               <CTABar>
                 <CopyButton
@@ -264,7 +274,7 @@ export default function TemplatePage({
             ) : (
               <Text className="text-muted-foreground">Coming Soon</Text>
             )}
-            <div className="py-10">
+            <div className="py-10 grid gap-x-0 gap-y-0">
               {template?.features?.items.map((feature, index) => (
                 <Grid key={index}>
                   <div key={index} className="col-span-6">
@@ -284,7 +294,7 @@ export default function TemplatePage({
                   </div>
                   {index < template.features.items.length - 1 && (
                     <div className="col-span-12">
-                      <Separator className="my-5" />
+                      <Separator className="my-3" />
                     </div>
                   )}
                 </Grid>
@@ -293,9 +303,9 @@ export default function TemplatePage({
           </Section>
         </div>
       </div>
-      <div className="col-span-12 md:col-span-6  ">
-        <div className=" mb-5">
-          <Section>
+      <div className="col-span-12 md:col-span-6 w-full relative mx-auto xl:max-w-screen-xl">
+        <div className="mb-5">
+          <Section className="sm:pr=l-0 xl:pr-32 2xl:pr-48 3xl:pr-96">
             <div className="aspect-[4/3] flex flex-col justify-center">
               <div className="relative h-4/5">
                 {template && (
@@ -317,7 +327,8 @@ export default function TemplatePage({
       </div>
       <FullWidthContentContainer className="col-span-12 ">
         <FooterSection />
-        <EmailSection />
+        {/* <EmailSection /> */}
+        <LooseMooseSection />
       </FullWidthContentContainer>
     </Grid>
   );

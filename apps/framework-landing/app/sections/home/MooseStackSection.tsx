@@ -32,7 +32,7 @@ export const MooseStackSection = () => {
 
   return (
     <>
-      <Section>
+      <Section className="mx-auto xl:max-w-screen-xl">
         <Grid className="mb-12 2xl:mb-20">
           <FullWidthContentContainer>
             <Heading>{content.title}</Heading>
@@ -49,6 +49,7 @@ export const MooseStackSection = () => {
                 fill
                 alt="man in jacket"
                 sizes="(max-width: 768px) 150vw, 25vw"
+                style={{ strokeWidth: "12px" }}
               />
               <Image
                 priority

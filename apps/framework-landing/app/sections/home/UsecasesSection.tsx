@@ -74,7 +74,7 @@ const UsecasesAccordion = () => {
             <AccordionItem
               key={index}
               value={`item-${index}`}
-              className="border-none"
+              className="last:border-none"
             >
               <AccordionTrigger>
                 <div className="flex flex-col text-start justify-start">
@@ -109,7 +109,7 @@ const UsecasesAccordion = () => {
 export const UsecasesSection = () => {
   return (
     <>
-      <Section className="mb-0">
+      <Section className="mx-auto xl:max-w-screen-xl">
         <Grid className="mb-12 2xl:mb-20">
           <HalfWidthContentContainer>
             <Heading>{content.title}</Heading>

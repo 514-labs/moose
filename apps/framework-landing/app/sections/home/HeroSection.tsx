@@ -4,7 +4,11 @@ import {
   Grid,
   FullWidthContentContainer,
 } from "@514labs/design-system/components/containers";
-import { Heading, HeadingLevel } from "@514labs/design-system/typography";
+import {
+  Heading,
+  Display,
+  HeadingLevel,
+} from "@514labs/design-system/typography";
 import { TrackCtaButton } from "../../trackable-components";
 import React from "react";
 import Link from "next/link";
@@ -32,11 +36,13 @@ export const HeroSection = () => {
 
   return (
     <>
-      <Section className="mt-12 lg:mt-12 2xl:mt-24 px-5">
+      <Section className="w-full relative mx-auto xl:max-w-screen-xl pb-10">
         <Grid>
-          <FullWidthContentContainer className="">
+          <FullWidthContentContainer className="pt-0">
             <div>
-              <Heading> {content.tagLine} </Heading>
+              {/* <Heading> {content.tagLine} </Heading> */}
+              <Display className="my-0">{content.tagLine} </Display>
+
               <Heading
                 level={HeadingLevel.l2}
                 className="text-muted-foreground"
@@ -45,7 +51,7 @@ export const HeroSection = () => {
                 {content.description}{" "}
               </Heading>
             </div>
-            <CTABar className="mb-5">
+            <CTABar className="mb-10">
               {content.ctas.map((cta, index) => (
                 <Link key={index} href={cta.href}>
                   <TrackCtaButton

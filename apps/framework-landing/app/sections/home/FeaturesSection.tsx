@@ -61,7 +61,7 @@ export const FeaturesSection = () => {
 
   return (
     <>
-      <Section>
+      <Section className="mx-auto xl:max-w-screen-xl">
         <Grid className="mb-12 2xl:mb-20">
           <HalfWidthContentContainer>
             <Heading> {content.title} </Heading>

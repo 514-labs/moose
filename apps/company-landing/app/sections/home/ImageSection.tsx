@@ -20,7 +20,7 @@ export const ImageSection = () => {
     // },
   };
   return (
-    <Section>
+    <Section className="w-full relative mx-auto xl:max-w-screen-xl">
       <Grid className="gap-5-y">
         <HalfWidthContentContainer className="lg:col-span-3 aspect-square bg-muted sticky md:top-24">
           <div className="relative h-full">

@@ -23,8 +23,8 @@ export const LooseMooseSection = () => {
   });
 
   return (
-    <Section gutterless className="hidden md:block">
-      <BannerDisplay className="flex flex-row">
+    <Section gutterless className="hidden w-full md:my-0 md:block">
+      <BannerDisplay className="flex flex-row w-full inset-x-0 bottom-0">
         <span className="px-20 will-change-transform" ref={bannerItem1}>
           {content.banner}
         </span>

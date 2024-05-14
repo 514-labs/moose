@@ -19,7 +19,6 @@ export const TemplateImg = ({
         src={srcDark}
         fill
         alt={alt}
-        sizes=" (max-width: 768px) 150vw, 25vw"
       />
 
       <Image

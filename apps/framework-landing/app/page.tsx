@@ -57,13 +57,15 @@ export const CTAButton = ({
     <Button
       size={"lg"}
       variant={variant}
-      className="h-full font-normal border-primary w-full sm:w-auto"
+      className={cn(
+        "h-full font-normal border-primary w-full sm:w-auto px-10 py-0 rounded-xl",
+        className,
+      )}
       onClick={onClick}
     >
       <Text
         className={cn(
           variant === "outline" ? "text-primary" : "text-primary-foreground",
-          className,
         )}
       >
         {children}
@@ -88,7 +90,7 @@ export const CTABar = ({
 
 export default function Home() {
   return (
-    <main className="min-h-screen">
+    <main>
       <HeroSection />
       <DemoSection />
       <FeaturesSection />

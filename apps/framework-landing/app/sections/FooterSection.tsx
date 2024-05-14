@@ -1,5 +1,6 @@
 import {
   FullWidthContentContainer,
+  HalfWidthContentContainer,
   Section,
 } from "@514labs/design-system/components/containers";
 
@@ -11,10 +12,10 @@ import { TrackLink } from "@514labs/design-system/trackable-components";
 
 export const FooterSection = () => {
   return (
-    <Section>
-      <FullWidthContentContainer className="">
+    <Section className="md:my-0">
+      <HalfWidthContentContainer>
         <FooterContent />
-      </FullWidthContentContainer>
+      </HalfWidthContentContainer>
     </Section>
   );
 };
@@ -70,7 +71,7 @@ export const FooterDisclaimerContainer = () => {
 
 export const FooterContent = () => {
   return (
-    <FullWidthContentContainer className="flex flex-col items-center md:flex-row sm:items-center gap-x-5">
+    <FullWidthContentContainer className="px-0 xl:px-6 flex flex-col items-center md:flex-row sm:items-center gap-x-5 mx-auto xl:max-w-screen-xl">
       <FooterDisclaimerContainer />
     </FullWidthContentContainer>
   );

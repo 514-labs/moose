@@ -53,7 +53,7 @@ export const ThirdWidthContentContainer = ({
   return (
     <div
       className={cn(
-        "col-span-12 md:col-span-6 xl:col-span-4 2xl:col-span-4",
+        "col-span-12 sm:col-span-6 lg:col-span-4 xl:col-span-4",
         className,
       )}
     >
@@ -76,7 +76,7 @@ export const Section = ({
   return (
     <section
       className={cn(
-        "my-20 lg:my-20 2xl:my-36",
+        "my-24 lg:my-24 2xl:my-36",
         gutterless ? "overflow-hidden" : "px-5",
         className,
       )}
@@ -95,8 +95,6 @@ export const Grid = ({
   className?: string;
 }) => {
   return (
-    <div className={cn("grid grid-cols-12 gap-y-5 md:gap-10", className)}>
-      {children}
-    </div>
+    <div className={cn("grid grid-cols-12 gap-y-5", className)}>{children}</div>
   );
 };

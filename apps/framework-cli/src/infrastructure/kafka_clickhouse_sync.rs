@@ -13,7 +13,6 @@ use super::olap::clickhouse::model::ClickHouseColumn;
 use super::olap::clickhouse::model::ClickHouseRecord;
 use super::olap::clickhouse::model::ClickHouseRuntimeEnum;
 use super::olap::clickhouse::version_sync::VersionSync;
-use crate::framework::controller::FrameworkObject;
 use crate::framework::controller::FrameworkObjectVersions;
 use crate::framework::data_model::schema::Column;
 use crate::framework::data_model::schema::ColumnType;
@@ -55,10 +54,6 @@ impl SyncingProcessesRegistry {
         format!("{}-{}", topic, table)
     }
 
-    fn format_key_framework_obj(framework_object: &FrameworkObject) -> String {
-        Self::format_key_str(&framework_object.topic, &framework_object.table.name)
-    }
-
     fn insert(&mut self, syncing_process: SyncingProcess) {
         let key = Self::format_key(&syncing_process);
         self.registry.insert(key, syncing_process.process);
@@ -80,6 +75,16 @@ impl SyncingProcessesRegistry {
             .models
             .clone()
             .into_iter()
+            .filter_map(|(_, framework_object)| {
+                framework_object.table.map(|table| {
+                    (
+                        framework_object.topic,
+                        framework_object.data_model.columns,
+                        table.name,
+                        table.columns,
+                    )
+                })
+            })
             .map(spawn_sync_process(
                 kafka_config.clone(),
                 clickhouse_config.clone(),
@@ -91,10 +96,22 @@ impl SyncingProcessesRegistry {
             .flat_map(|schema_version| {
                 let schema_version_cloned = schema_version.models.clone();
 
-                schema_version_cloned.into_iter().map(spawn_sync_process(
-                    kafka_config.clone(),
-                    clickhouse_config.clone(),
-                ))
+                schema_version_cloned
+                    .into_iter()
+                    .filter_map(|(_, framework_object)| {
+                        framework_object.table.map(|table| {
+                            (
+                                framework_object.topic,
+                                framework_object.data_model.columns,
+                                table.name,
+                                table.columns,
+                            )
+                        })
+                    })
+                    .map(spawn_sync_process(
+                        kafka_config.clone(),
+                        clickhouse_config.clone(),
+                    ))
             });
 
         let version_syncs_iterator = version_syncs.iter().filter_map(|vs| match vs.sync_type {
@@ -117,12 +134,18 @@ impl SyncingProcessesRegistry {
         }
     }
 
-    pub fn start(&mut self, framework_object: &FrameworkObject) {
+    pub fn start(
+        &mut self,
+        source_topic_name: String,
+        source_topic_columns: Vec<Column>,
+        target_table_name: String,
+        target_table_columns: Vec<ClickHouseColumn>,
+    ) {
         info!(
             "<DCM> Starting syncing process for topic: {} and table: {}",
-            framework_object.topic, framework_object.table.name
+            source_topic_name, target_table_name
         );
-        let key = Self::format_key_framework_obj(framework_object);
+        let key = Self::format_key_str(&source_topic_name, &target_table_name);
 
         // the schema of the currently running process is outdated
         if let Some(process) = self.registry.remove(&key) {
@@ -132,17 +155,17 @@ impl SyncingProcessesRegistry {
         let syncing_process = spawn_sync_process_core(
             self.kafka_config.clone(),
             self.clickhouse_config.clone(),
-            framework_object.topic.clone(),
-            framework_object.data_model.columns.clone(),
-            framework_object.table.name.clone(),
-            framework_object.table.columns.clone(),
+            source_topic_name,
+            source_topic_columns,
+            target_table_name,
+            target_table_columns,
         );
 
         self.insert(syncing_process);
     }
 
-    pub fn stop(&mut self, framework_object: &FrameworkObject) {
-        let key = Self::format_key_framework_obj(framework_object);
+    pub fn stop(&mut self, topic_name: &str, table_name: &str) {
+        let key = Self::format_key_str(&topic_name, &table_name);
         if let Some(process) = self.registry.remove(&key) {
             process.abort();
         }
@@ -152,21 +175,28 @@ impl SyncingProcessesRegistry {
 fn spawn_sync_process(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
-) -> Box<dyn Fn((String, FrameworkObject)) -> SyncingProcess> {
-    Box::new(move |(_, schema)| {
-        info!(
-            "Starting Kafka sync to clikchouse from topic: {} to table: {}",
-            schema.topic, schema.table.name
-        );
-        spawn_sync_process_core(
-            kafka_config.clone(),
-            clickhouse_config.clone(),
-            schema.topic,
-            schema.data_model.columns,
-            schema.table.name,
-            schema.table.columns,
-        )
-    })
+) -> Box<dyn Fn((String, Vec<Column>, String, Vec<ClickHouseColumn>)) -> SyncingProcess> {
+    Box::new(
+        move |(
+            source_topic_name,
+            source_topic_columns,
+            target_table_name,
+            target_table_columns,
+        )| {
+            info!(
+                "Starting Kafka sync to clikchouse from topic: {} to table: {}",
+                source_topic_name, target_table_name
+            );
+            spawn_sync_process_core(
+                kafka_config.clone(),
+                clickhouse_config.clone(),
+                source_topic_name,
+                source_topic_columns,
+                target_table_name,
+                target_table_columns,
+            )
+        },
+    )
 }
 
 fn spawn_sync_process_core(

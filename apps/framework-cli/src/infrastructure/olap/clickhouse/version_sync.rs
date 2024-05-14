@@ -50,20 +50,26 @@ pub fn generate_sql_version_syncs(
     let mut res = vec![];
     for fo in framework_object_versions.current_models.models.values() {
         if let Some(old_model) = previous_models.get(&fo.data_model.name) {
-            if old_model.data_model.columns != fo.data_model.columns {
-                res.push(VersionSync {
-                    db_name: old_model.table.db_name.clone(),
-                    model_name: old_model.data_model.name.clone(),
-                    source_version: previous_version.to_string(),
-                    source_data_model: old_model.data_model.clone(),
-                    source_table: old_model.table.clone(),
-                    dest_version: framework_object_versions.current_version.clone(),
-                    dest_table: fo.table.clone(),
-                    sync_type: VersionSyncType::Sql(VersionSync::generate_migration_function(
-                        &old_model.table.columns,
-                        &fo.table.columns,
-                    )),
-                });
+            if let Some(old_table) = &old_model.table {
+                if let Some(new_table) = &fo.table {
+                    if old_model.data_model.columns != fo.data_model.columns {
+                        res.push(VersionSync {
+                            db_name: old_table.db_name.clone(),
+                            model_name: old_model.data_model.name.clone(),
+                            source_version: previous_version.to_string(),
+                            source_data_model: old_model.data_model.clone(),
+                            source_table: old_table.clone(),
+                            dest_version: framework_object_versions.current_version.clone(),
+                            dest_table: new_table.clone(),
+                            sync_type: VersionSyncType::Sql(
+                                VersionSync::generate_migration_function(
+                                    &old_table.columns,
+                                    &new_table.columns,
+                                ),
+                            ),
+                        });
+                    }
+                }
             }
         }
     }
@@ -111,18 +117,22 @@ pub fn get_all_version_syncs(
                         let from_table = from_version_models.models.get(from_table_name);
                         let to_table = to_version_models.models.get(to_table_name);
                         match (from_table, to_table) {
-                            (Some(from_table), Some(to_table)) => {
-                                let version_sync = VersionSync {
-                                    db_name: from_table.table.db_name.clone(),
-                                    model_name: from_table.data_model.name.clone(),
-                                    source_version: from_version.clone(),
-                                    source_table: from_table.table.clone(),
-                                    source_data_model: from_table.data_model.clone(),
-                                    dest_version: to_version.clone(),
-                                    dest_table: to_table.table.clone(),
-                                    sync_type,
-                                };
-                                version_syncs.push(version_sync);
+                            (Some(from_table_fo), Some(to_table_fo)) => {
+                                if let Some(from_table) = &from_table_fo.table {
+                                    if let Some(to_table) = &to_table_fo.table {
+                                        let version_sync = VersionSync {
+                                            db_name: from_table.db_name.clone(),
+                                            model_name: from_table_fo.data_model.name.clone(),
+                                            source_version: from_version.clone(),
+                                            source_table: from_table.clone(),
+                                            source_data_model: from_table_fo.data_model.clone(),
+                                            dest_version: to_version.clone(),
+                                            dest_table: to_table.clone(),
+                                            sync_type,
+                                        };
+                                        version_syncs.push(version_sync);
+                                    }
+                                }
                             }
                             _ => {
                                 return Err(anyhow::anyhow!(

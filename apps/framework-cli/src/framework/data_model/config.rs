@@ -22,19 +22,30 @@ pub struct IngestionConfig {
     pub format: EndpointIngestionFormat,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct DataModelConfig {
-    pub ingestion: IngestionConfig,
-}
-
-impl Default for DataModelConfig {
+impl Default for IngestionConfig {
     fn default() -> Self {
         Self {
-            ingestion: IngestionConfig {
-                format: EndpointIngestionFormat::Json,
-            },
+            format: EndpointIngestionFormat::Json,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+
+pub struct StorageConfig {
+    pub enabled: bool,
+}
+
+impl Default for StorageConfig {
+    fn default() -> Self {
+        Self { enabled: true }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default)]
+pub struct DataModelConfig {
+    pub ingestion: IngestionConfig,
+    pub storage: StorageConfig,
 }
 
 #[derive(Debug, thiserror::Error)]

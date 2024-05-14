@@ -7,6 +7,8 @@ import {
   MooseEnum,
   MooseInt,
   MooseString,
+  MooseColumnType,
+  MooseArrayType,
 } from "app/types";
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
@@ -59,8 +61,11 @@ export function tableIsQueryable(table: Table): boolean {
   return table.engine === "MergeTree";
 }
 
-export function isEnum(type: string | MooseEnum): type is MooseEnum {
-  return typeof type === "object";
+export function isEnum(type: MooseColumnType): type is MooseEnum {
+  return typeof type === "object" && Object.hasOwn(type, "name");
+}
+export function isArray(type: MooseColumnType): type is MooseArrayType {
+  return typeof type === "object" && Object.hasOwn(type, "elementType");
 }
 
 export function isMooseInt(input: MooseInt | MooseString): input is MooseInt {

@@ -165,17 +165,20 @@ impl SyncingProcessesRegistry {
     }
 
     pub fn stop(&mut self, topic_name: &str, table_name: &str) {
-        let key = Self::format_key_str(&topic_name, &table_name);
+        let key = Self::format_key_str(topic_name, table_name);
         if let Some(process) = self.registry.remove(&key) {
             process.abort();
         }
     }
 }
 
+type FnSyncProcess =
+    Box<dyn Fn((String, Vec<Column>, String, Vec<ClickHouseColumn>)) -> SyncingProcess>;
+
 fn spawn_sync_process(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
-) -> Box<dyn Fn((String, Vec<Column>, String, Vec<ClickHouseColumn>)) -> SyncingProcess> {
+) -> FnSyncProcess {
     Box::new(
         move |(
             source_topic_name,

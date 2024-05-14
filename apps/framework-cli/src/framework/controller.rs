@@ -348,7 +348,7 @@ pub async fn create_or_replace_table_alias(
         drop_table(table, configured_client).await?;
     }
 
-    let query = create_alias_query_from_table(&previous_version, &table)?;
+    let query = create_alias_query_from_table(previous_version, table)?;
     olap::clickhouse::run_query(&query, configured_client).await?;
 
     Ok(())
@@ -466,7 +466,7 @@ pub async fn set_up_topic_and_tables_and_route(
             }
 
             if fo.data_model.config.storage.enabled {
-                create_or_replace_table_alias(&current_table, &previous_table, configured_client)
+                create_or_replace_table_alias(current_table, previous_table, configured_client)
                     .await?;
             }
 

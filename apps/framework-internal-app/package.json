@@ -7,6 +7,6 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@514labs/moose-cli": "0.3.330"
+    "@514labs/moose-cli": "0.3.332"
   }
 }

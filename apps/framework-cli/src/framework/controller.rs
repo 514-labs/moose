@@ -482,7 +482,7 @@ pub async fn set_up_topic_and_tables_and_route(
         Some((_, previous_models)) => previous_models.get(&fo.data_model.name),
     };
 
-    match (
+    let topic_name = match (
         previous_fo_opt,
         &fo.table,
         &previous_fo_opt.and_then(|previous_fo| previous_fo.table.clone()),
@@ -502,6 +502,8 @@ pub async fn set_up_topic_and_tables_and_route(
                 create_or_replace_table_alias(&current_table, &previous_table, configured_client)
                     .await?;
             }
+
+            previous_fo.topic.clone()
         }
         _ => {
             match redpanda::create_topics(&project.redpanda_config, vec![topic]).await {
@@ -516,6 +518,8 @@ pub async fn set_up_topic_and_tables_and_route(
 
                 debug!("Table created: {:?}", table.name);
             }
+
+            fo.topic.clone()
         }
     };
 
@@ -528,7 +532,7 @@ pub async fn set_up_topic_and_tables_and_route(
         RouteMeta {
             original_file_path: fo.original_file_path.clone(),
             table_name: fo.table.clone().map(|t| t.name),
-            topic_name: fo.topic.clone(),
+            topic_name,
             format: fo.data_model.config.ingestion.format.clone(),
         },
     );

@@ -114,9 +114,10 @@ pub fn get_all_version_syncs(
 
                 match (from_version_models, to_version_models) {
                     (Some(from_version_models), Some(to_version_models)) => {
-                        let from_table = from_version_models.models.get(from_table_name);
-                        let to_table = to_version_models.models.get(to_table_name);
-                        match (from_table, to_table) {
+                        match (
+                            from_version_models.models.get(from_table_name),
+                            to_version_models.models.get(to_table_name),
+                        ) {
                             (Some(from_table_fo), Some(to_table_fo)) => {
                                 if let Some(from_table) = &from_table_fo.table {
                                     if let Some(to_table) = &to_table_fo.table {

@@ -76,7 +76,7 @@ const apiHandler = async (request: Request): Promise<Response> => {
 
   const userFuncModule = await import(
     // the path is different every time so it reloads
-    `app/apis${pathname}.ts?import_trigger=${i++}`
+    `/app/apis${pathname}.ts?import_trigger=${i++}`
   );
 
   const result = await userFuncModule.default(searchParams, {

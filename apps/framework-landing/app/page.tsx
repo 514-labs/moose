@@ -57,7 +57,10 @@ export const CTAButton = ({
     <Button
       size={"lg"}
       variant={variant}
-      className="h-full font-normal border-primary w-full sm:w-auto px-10 py-0 rounded-xl"
+      className={cn(
+        "h-full font-normal border-primary w-full sm:w-auto px-10 py-0 rounded-xl",
+        className,
+      )}
       onClick={onClick}
     >
       <Text

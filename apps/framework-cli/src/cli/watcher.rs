@@ -181,7 +181,6 @@ async fn process_events(
             ingest_route,
             RouteMeta {
                 original_file_path: fo.original_file_path.clone(),
-                table_name: fo.table.clone().map(|t| t.name),
                 topic_name: fo.topic.clone(),
                 format: fo.data_model.config.ingestion.format.clone(),
             },

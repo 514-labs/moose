@@ -126,7 +126,6 @@ impl FrameworkObjectVersions {
 #[derive(Debug, Clone)]
 pub struct RouteMeta {
     pub original_file_path: PathBuf,
-    pub table_name: Option<String>,
     pub topic_name: String,
     pub format: EndpointIngestionFormat,
 }
@@ -415,38 +414,6 @@ pub(crate) async fn create_or_replace_tables(
     Ok(())
 }
 
-// pub async fn remove_table_and_topics_from_schema_file_path(
-//     project: &Project,
-//     schema_file_path: &Path,
-//     route_table: &mut HashMap<PathBuf, RouteMeta>,
-//     configured_client: &ConfiguredDBClient,
-// ) -> anyhow::Result<()> {
-//     //need to get the path of the file, scan the route table and remove all the files that need to be deleted.
-//     // This doesn't have to be as fast as the scanning for routes in the web server so we're ok with the scan here.
-
-//     for (k, meta) in route_table.clone().into_iter() {
-//         if meta.original_file_path == schema_file_path {
-//             let topics = vec![meta.table_name.clone()];
-//             match redpanda::delete_topics(&project.redpanda_config, topics).await {
-//                 Ok(_) => info!("Topics deleted successfully"),
-//                 Err(e) => warn!("Failed to delete topics: {}", e),
-//             }
-
-//             olap::clickhouse::delete_table_or_view(&meta.table_name, configured_client)
-//                 .await
-//                 .map_err(|e| {
-//                     Error::new(
-//                         ErrorKind::Other,
-//                         format!("Failed to create table in clickhouse: {}", e),
-//                     )
-//                 })?;
-
-//             (*route_table).remove(&k);
-//         }
-//     }
-//     Ok(())
-// }
-
 pub fn schema_file_path_to_ingest_route(
     base_path: &Path,
     path: &Path,
@@ -531,7 +498,6 @@ pub async fn set_up_topic_and_tables_and_route(
         ingest_route.clone(),
         RouteMeta {
             original_file_path: fo.original_file_path.clone(),
-            table_name: fo.table.clone().map(|t| t.name),
             topic_name,
             format: fo.data_model.config.ingestion.format.clone(),
         },

@@ -96,7 +96,7 @@ export interface QueryParams {
 export default async funciton getWaus(
   {
     startDate: new Date("01-01-2024"),
-    endDate: new Date(),
+    endDate: Date.now(),
   }: QueryParams,
   {client, sql}
 ) {
@@ -106,8 +106,8 @@ export default async funciton getWaus(
       uniq(userId) as active_users
     FROM UserActivity
     WHERE
-      timestamp >= ${startDate}
-      AND timestamp <= ${endDate}
+      timestamp >= toDateTime(${startDate.toIsoString()})
+      AND timestamp <= toDateTime(${endDate.toIsoString()})
       AND activity = 'Login'
     GROUP BY toStartOfWeek(timestamp);`);
 }

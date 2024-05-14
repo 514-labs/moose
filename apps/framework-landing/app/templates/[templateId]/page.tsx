@@ -131,7 +131,7 @@ export default function TemplatePage({
               items: [
                 "Event Capture SDK",
                 "Page tacking",
-                "Session managemment",
+                "Session management",
               ],
             },
           ],

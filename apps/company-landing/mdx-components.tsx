@@ -37,6 +37,8 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         <TextEmbed className="my-0">{props.children}</TextEmbed>
       </li>
     ),
+    pre: (props) => <pre {...props} className="bg-muted rounded-md p-2" />,
+    code: (props) => <code {...props} className="bg-muted p-1 rounded-md" />,
     a: (props) => <a {...props} className="text-primary underline" />,
     p: Text,
     Image: (props) => <Image {...props} />,

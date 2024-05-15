@@ -35,7 +35,6 @@ class DependencyError extends Error {
 const cwd = Deno.args[0] || Deno.cwd();
 const AGGREGATIONS_DIR_PATH = `${cwd}/app/aggregations`;
 const AGGREGATIONS_FILE = "*.ts";
-const AGGREGATIONS_MV_SUFFIX = "aggregations_mv";
 
 const CLICKHOUSE_DB =
   Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__DB_NAME") || "local";
@@ -113,25 +112,6 @@ const getFileName = (filePath: string) => {
   return "";
 };
 
-const cleanUpAggregations = async (chClient: ClickHouseClient) => {
-  try {
-    console.log("Preparing aggregations");
-    const query = `SHOW TABLES LIKE '%${AGGREGATIONS_MV_SUFFIX}'`;
-    const queryResponse = await chClient.query({ query });
-    const showTablesResponse =
-      (await queryResponse.json()) as ShowTablesResponse;
-
-    for (const table of showTablesResponse.data) {
-      await chClient.command({
-        query: `DROP VIEW IF EXISTS ${table.name}`,
-      });
-      console.log(`Cleaned up ${table.name}`);
-    }
-  } catch (err) {
-    console.error(`Failed to clean up aggregations: ${err}`);
-  }
-};
-
 const createAggregation = async (chClient: ClickHouseClient, path: string) => {
   const fileName = getFileName(path);
 
@@ -146,7 +126,7 @@ const createAggregation = async (chClient: ClickHouseClient, path: string) => {
     }
 
     const mvQuery = `
-            CREATE MATERIALIZED VIEW IF NOT EXISTS ${fileName}_${AGGREGATIONS_MV_SUFFIX}
+            CREATE MATERIALIZED VIEW IF NOT EXISTS ${fileName}
             ENGINE = AggregatingMergeTree() ORDER BY ${mvObj.orderBy}
             POPULATE
             AS ${mvObj.select}
@@ -156,10 +136,7 @@ const createAggregation = async (chClient: ClickHouseClient, path: string) => {
   } catch (err) {
     console.error(`Failed to create aggregation ${fileName}: ${err}`);
 
-    if (
-      err &&
-      err.toString().includes(`${AGGREGATIONS_MV_SUFFIX} does not exist`)
-    ) {
+    if (err && err.toString().includes(`${fileName} does not exist`)) {
       throw new DependencyError(err);
     }
   }
@@ -170,7 +147,7 @@ const deleteAggregation = async (chClient: ClickHouseClient, path: string) => {
 
   try {
     await chClient.command({
-      query: `DROP VIEW IF EXISTS ${fileName}_${AGGREGATIONS_MV_SUFFIX}`,
+      query: `DROP VIEW IF EXISTS ${fileName}`,
     });
     console.log(`Deleted aggregation ${fileName}`);
   } catch (err) {
@@ -179,13 +156,11 @@ const deleteAggregation = async (chClient: ClickHouseClient, path: string) => {
 };
 
 async function asyncWorker(task: MvQueueTask): Promise<void> {
-  if (task.event === "add") {
+  if (task.event === "add" || task.event === "change") {
+    await deleteAggregation(task.chClient, task.path);
     await createAggregation(task.chClient, task.path);
   } else if (task.event === "unlink") {
     await deleteAggregation(task.chClient, task.path);
-  } else if (task.event === "change") {
-    await deleteAggregation(task.chClient, task.path);
-    await createAggregation(task.chClient, task.path);
   }
 }
 
@@ -230,7 +205,6 @@ const main = async () => {
   await waitForClickhouse(chClient);
 
   console.log(`Connected`);
-  await cleanUpAggregations(chClient);
   startFileWatcher(chClient);
 };
 

@@ -397,7 +397,7 @@ export default async function handle(
     sql`SELECT 
       date,
       dailyActiveUsers
-  FROM DailyActiveUsers_aggregations_mv
+  FROM DailyActiveUsers
   WHERE dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
   LIMIT ${parseInt(limit)}`
   );

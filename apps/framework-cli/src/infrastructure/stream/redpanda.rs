@@ -1,4 +1,5 @@
 use log::{error, info, warn};
+use rdkafka::config::RDKafkaLogLevel;
 use rdkafka::consumer::stream_consumer::StreamConsumer;
 use rdkafka::consumer::Consumer;
 use rdkafka::error::KafkaError;
@@ -119,6 +120,10 @@ pub struct ConfiguredProducer {
 
 fn config_client(config: &RedpandaConfig) -> ClientConfig {
     let mut client_config = ClientConfig::new();
+
+    // to prevent the wrapped library from writing to stderr
+    client_config.log_level = RDKafkaLogLevel::Emerg;
+
     client_config.set("bootstrap.servers", config.clone().broker);
 
     if let Some(username) = config.clone().sasl_username {

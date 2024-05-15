@@ -169,6 +169,7 @@ export default function QueryInterface({
   );
 
   const [results, setResults] = useState<any[]>([]);
+  const [hasQueried, setHasQueried] = useState(false);
   const [sqlKeyWordCount, setSqlKeyWordCount] = useState(12);
   const [tableCount, setTableCount] = useState(12);
 
@@ -178,6 +179,7 @@ export default function QueryInterface({
         runQuery(project, value).then((results) => {
           e.preventDefault();
           setResults(results);
+          setHasQueried(true);
         });
       }
     };
@@ -321,13 +323,18 @@ export default function QueryInterface({
                     onClick={async () => {
                       const results = await runQuery(project, value);
                       setResults(results);
+                      setHasQueried(true);
                     }}
                   >
                     Run
                   </Button>
                 </div>
-                {results.length != 0 ? (
-                  <PreviewTable rows={results} caption="query results" />
+                {hasQueried ? (
+                  results.length != 0 ? (
+                    <PreviewTable rows={results} caption="query results" />
+                  ) : (
+                    "no results found"
+                  )
                 ) : (
                   "query results will appear here"
                 )}

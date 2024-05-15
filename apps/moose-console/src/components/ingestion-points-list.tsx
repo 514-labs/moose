@@ -13,7 +13,7 @@ export function IngestionPointsList({
   const router = useRouter();
   const ingestionRows = ingestionPoints.map((points) => ({
     route: points.route_path,
-    table_name: points.table_name,
+    table_name: points.table_name || "N/A",
   }));
 
   if (!ingestionRows.length) {

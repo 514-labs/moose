@@ -26,18 +26,12 @@ export default function Page({ params }: { params: { modelName: string } }) {
     return <div>Model not found</div>;
   }
 
-  const { table: triggerTable } = model;
-
   const jsCodeSnippet = jsSnippet(cliData, model);
   const pythonCodeSnippet = pythonSnippet(cliData, model);
   const bashCodeSnippet = bashSnippet(cliData, model);
   const rustCodeSnippet = rustSnippet(cliData, model);
   const clickhouseJSCode = clickhouseJSSnippet(cliData, model);
   const clickhousePythonCode = clickhousePythonSnippet(cliData, model);
-
-  if (!triggerTable) {
-    return <div>Table not found</div>;
-  }
 
   return (
     <section className="p-4 max-h-screen overflow-y-auto grow">

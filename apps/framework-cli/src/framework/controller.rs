@@ -176,8 +176,7 @@ pub fn get_framework_objects_from_schema_file(
     let mut indexed_models = HashMap::new();
 
     for model in framework_objects.models {
-        let fo = framework_object_mapper(model, path, version)?;
-        indexed_models.insert(fo.data_model.name.clone().trim().to_lowercase(), fo);
+        indexed_models.insert(model.name.clone().trim().to_lowercase(), model);
     }
 
     let data_models_configs = data_model::config::get(path)?;
@@ -185,9 +184,9 @@ pub fn get_framework_objects_from_schema_file(
         let sanitized_config_name = config_variable_name.trim().to_lowercase();
         match sanitized_config_name.strip_suffix("config") {
             Some(config_name_without_suffix) => {
-                let fo = indexed_models.get_mut(config_name_without_suffix);
-                if let Some(fo) = fo {
-                    fo.data_model.config = config.clone();
+                let data_model_opt = indexed_models.get_mut(config_name_without_suffix);
+                if let Some(data_model) = data_model_opt {
+                    data_model.config = config.clone();
                 }
             }
             None => {
@@ -196,9 +195,12 @@ pub fn get_framework_objects_from_schema_file(
         }
     }
 
-    Ok(indexed_models
-        .into_values()
-        .collect::<Vec<FrameworkObject>>())
+    let mut to_return = Vec::new();
+    for model in indexed_models.into_values() {
+        to_return.push(framework_object_mapper(model, path, version)?);
+    }
+
+    Ok(to_return)
 }
 
 pub async fn create_or_replace_version_sync(

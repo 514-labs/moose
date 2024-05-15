@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use log::info;
 use serde::Deserialize;
 use serde::Serialize;
 use std::ffi::OsStr;
@@ -44,7 +45,9 @@ impl Default for StorageConfig {
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default)]
 pub struct DataModelConfig {
+    #[serde(default)]
     pub ingestion: IngestionConfig,
+    #[serde(default)]
     pub storage: StorageConfig,
 }
 
@@ -59,7 +62,9 @@ pub fn get(
     path: &Path,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
     if path.extension() == Some(OsStr::new("ts")) {
-        Ok(get_data_model_configs(path)?)
+        let config = get_data_model_configs(path)?;
+        info!("Data Model configuration for {:?}: {:?}", path, config);
+        Ok(config)
     } else {
         // We currently fail transparently if the file is not a typescript file and
         // we will use defaults values for the configuration for each data model.

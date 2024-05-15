@@ -160,6 +160,10 @@ export default function QueryInterface({
 }: QueryInterfaceProps) {
   // Create a ref to the textarea
 
+  if (!model.table) {
+    return <div>No Table for that data model</div>;
+  }
+
   const { table } = model;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const tables = [`${table.database}.${table.name}`];

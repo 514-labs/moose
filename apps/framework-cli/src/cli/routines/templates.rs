@@ -106,7 +106,7 @@ pub async fn generate_template(
             Ok(RoutineSuccess::info(Message::new(
                 "Next steps".to_string(),
                 format!(
-                    "Run these commands to start Moose: cd {}/moose && npx @514labs/moose-cli dev",
+                    "Run these commands to start Moose: cd {}/moose && npx @514labs/moose-cli@latest dev",
                     target_dir.to_string_lossy()
                 ),
             )))

@@ -53,12 +53,25 @@ export function InfrastructureOverviewList({
   models: DataModel[];
 }) {
   const views = models
-    .filter(({ table }) => table.engine == "View")
-    .slice(0, 4);
-
+    .filter(({ table }) => table && table.engine == "View")
+    .slice(0, 4)
+    .map(({ table }) => {
+      return {
+        name: table?.name || "",
+        link: table
+          ? `/infrastructure/databases/${table.database}/tables/${table.uuid}`
+          : "",
+      };
+    });
   const tables = models
-    .filter(({ table }) => table.engine != "View")
-    .slice(0, 4);
+    .filter(({ table }) => table && table.engine != "View")
+    .slice(0, 4)
+    .map(({ table }) => ({
+      name: table?.name || "",
+      link: table
+        ? `/infrastructure/databases/${table.database}/tables/${table.uuid}`
+        : "",
+    }));
 
   return (
     <div>
@@ -80,10 +93,7 @@ export function InfrastructureOverviewList({
             title="Tables"
             numItems={tables.length}
             link="infrastructure/databases/tables?type=table"
-            items={tables.map(({ table }) => ({
-              name: table.name,
-              link: `/infrastructure/databases/${table.database}/tables/${table.uuid}`,
-            }))}
+            items={tables}
           />
         </div>
         <div className="col-span-3 xl:col-span-1">
@@ -91,12 +101,7 @@ export function InfrastructureOverviewList({
             title="Views"
             numItems={views.length}
             link="infrastructure/databases/tables?type=view"
-            items={views.map(({ table }) => {
-              return {
-                name: table.name,
-                link: `/infrastructure/databases/${table.database}/tables/${table.uuid}`,
-              };
-            })}
+            items={views}
           />
         </div>
       </div>

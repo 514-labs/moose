@@ -227,16 +227,18 @@ export default function ModelView({
           <CardContent className="font-mono p-4">some log content</CardContent>
         </Card>
       </TabsContent>
-      <TabsContent className="h-full" value="query">
-        {/* add query here */}
-        <div className="p-0 h-full">
-          {table && tableIsQueryable(table) && cliData.project ? (
-            <QueryInterface project={cliData.project} model={model} />
-          ) : (
-            associatedView && ClickhouseTableRestriction(associatedView)
-          )}
-        </div>
-      </TabsContent>
+      {model.table && (
+        <TabsContent className="h-full" value="query">
+          {/* add query here */}
+          <div className="p-0 h-full">
+            {table && tableIsQueryable(table) && cliData.project ? (
+              <QueryInterface project={cliData.project} table={model.table} />
+            ) : (
+              associatedView && ClickhouseTableRestriction(associatedView)
+            )}
+          </div>
+        </TabsContent>
+      )}
     </Tabs>
   );
 }

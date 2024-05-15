@@ -95,6 +95,8 @@ export const Grid = ({
   className?: string;
 }) => {
   return (
-    <div className={cn("grid grid-cols-12 gap-y-5", className)}>{children}</div>
+    <div className={cn("grid grid-cols-12 gap-y-5 md:gap-x-10", className)}>
+      {children}
+    </div>
   );
 };

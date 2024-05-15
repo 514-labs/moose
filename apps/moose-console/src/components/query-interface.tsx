@@ -19,7 +19,7 @@ import { runQuery } from "../lib/clickhouse";
 import { PreviewTable } from "./preview-table";
 import { Badge } from "./ui/badge";
 import { Card, CardContent } from "./ui/card";
-import { DataModel, Project } from "app/types";
+import { Project, Table } from "app/types";
 
 const sqlKeyWords = [
   "SELECT",
@@ -132,7 +132,7 @@ const sqlKeyWords = [
 ];
 
 interface QueryInterfaceProps {
-  model: DataModel;
+  table: Table;
   project: Project;
 }
 
@@ -155,12 +155,11 @@ const insertSomeText = (
 };
 
 export default function QueryInterface({
-  model,
+  table,
   project,
 }: QueryInterfaceProps) {
   // Create a ref to the textarea
 
-  const { table } = model;
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const tables = [`${table.database}.${table.name}`];
 

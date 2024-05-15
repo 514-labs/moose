@@ -29,7 +29,7 @@ export default function Page({
   }
   const model = getModelByTableId(models, params.tableId);
 
-  const isView = tableIsView(model.table);
+  const isView = model.table ? tableIsView(model.table) : false;
 
   return (
     <section className="p-4 max-h-screen flex-grow overflow-y-auto flex flex-col grow">
@@ -55,12 +55,20 @@ export default function Page({
         </Fragment>
       </div>
       <div className="py-10">
-        <div className="text-8xl">{model.table.name}</div>
-        <div className="text-muted-foreground">{model.table.engine}</div>
+        <div className="text-8xl">{model.model.name}</div>
+        <div className="text-muted-foreground">
+          {model.table?.engine || "No Table"}
+        </div>
       </div>
       <ModelView
         model={model}
-        mooseObject={isView ? MooseObject.View : MooseObject.Table}
+        mooseObject={
+          isView
+            ? MooseObject.View
+            : model.table
+              ? MooseObject.Table
+              : MooseObject.Model
+        }
         cliData={cliData}
         bashSnippet={bashSnippet(cliData, model)}
         jsSnippet={jsSnippet(cliData, model)}

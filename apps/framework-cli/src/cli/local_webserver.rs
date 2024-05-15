@@ -312,14 +312,14 @@ async fn ingest_route(
             EndpointIngestionFormat::Json => Ok(handle_json_req(
                 &console_config,
                 &configured_producer,
-                &route_meta.table_name,
+                &route_meta.topic_name,
                 req,
             )
             .await),
             EndpointIngestionFormat::JsonArray => Ok(handle_json_array_body(
                 &console_config,
                 &configured_producer,
-                &route_meta.table_name,
+                &route_meta.topic_name,
                 req,
             )
             .await),

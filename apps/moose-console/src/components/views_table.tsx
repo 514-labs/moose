@@ -7,10 +7,10 @@ export function ViewsTable({ models }: { models: DataModel[] }) {
   const router = useRouter();
 
   const modelRows = models.map((model) => ({
-    name: model.table.name,
-    database: model.table.database,
+    name: model.table?.name || "N/A",
+    database: model.table?.database || "N/A",
     model: model.model.name,
-    uuid: model.table.uuid,
+    uuid: model.table?.uuid || "N/A",
   }));
 
   if (!modelRows.length) {
@@ -19,11 +19,13 @@ export function ViewsTable({ models }: { models: DataModel[] }) {
   return (
     <PreviewTable
       rows={modelRows}
-      onRowClick={(row) =>
-        router.push(
-          `/infrastructure/databases/${row.database}/tables/${row.uuid}`,
-        )
-      }
+      onRowClick={(row) => {
+        if (row.uuid !== "N/A" && row.database !== "N/A") {
+          router.push(
+            `/infrastructure/databases/${row.database}/tables/${row.uuid}`,
+          );
+        }
+      }}
     />
   );
 }

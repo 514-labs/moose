@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::path::Path;
 
+use log::info;
 use serde::Deserialize;
 use serde::Serialize;
 use std::ffi::OsStr;
@@ -22,19 +23,32 @@ pub struct IngestionConfig {
     pub format: EndpointIngestionFormat,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub struct DataModelConfig {
-    pub ingestion: IngestionConfig,
-}
-
-impl Default for DataModelConfig {
+impl Default for IngestionConfig {
     fn default() -> Self {
         Self {
-            ingestion: IngestionConfig {
-                format: EndpointIngestionFormat::Json,
-            },
+            format: EndpointIngestionFormat::Json,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+
+pub struct StorageConfig {
+    pub enabled: bool,
+}
+
+impl Default for StorageConfig {
+    fn default() -> Self {
+        Self { enabled: true }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default)]
+pub struct DataModelConfig {
+    #[serde(default)]
+    pub ingestion: IngestionConfig,
+    #[serde(default)]
+    pub storage: StorageConfig,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -48,7 +62,9 @@ pub fn get(
     path: &Path,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
     if path.extension() == Some(OsStr::new("ts")) {
-        Ok(get_data_model_configs(path)?)
+        let config = get_data_model_configs(path)?;
+        info!("Data Model configuration for {:?}: {:?}", path, config);
+        Ok(config)
     } else {
         // We currently fail transparently if the file is not a typescript file and
         // we will use defaults values for the configuration for each data model.

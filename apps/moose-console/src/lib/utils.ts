@@ -32,7 +32,7 @@ export function getModelByName(models: DataModel[], modelName: string) {
   return models.find((model) => model.model.name === modelName);
 }
 export function getModelByTableId(models: DataModel[], tableId: string) {
-  const model = models.find((model) => model.table.uuid === tableId);
+  const model = models.find((model) => model.table?.uuid === tableId);
   if (model === undefined) throw new Error(`Model not found`);
   return model;
 }

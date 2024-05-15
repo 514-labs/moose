@@ -17,7 +17,7 @@ export default function TablesPage({
   const isView = searchParams.type == "view";
 
   const filteredModels = models.filter(
-    (model) => tableIsView(model.table) === isView,
+    (model) => model.table && tableIsView(model.table) === isView,
   );
 
   return (

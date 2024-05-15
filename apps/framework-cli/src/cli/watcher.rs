@@ -12,7 +12,7 @@ use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::RwLock;
 
 use crate::framework::controller::{
-    create_or_replace_tables, drop_tables, get_framework_objects_from_schema_file,
+    create_or_replace_tables, drop_table, get_framework_objects_from_schema_file,
     schema_file_path_to_ingest_route, FrameworkObjectVersions,
 };
 use crate::framework::data_model::{is_schema_file, DuplicateModelError};
@@ -135,9 +135,10 @@ async fn process_events(
     // grab the lock to prevent HTTP requests from being processed while we update the route table
     let mut route_table = route_table.write().await;
     for (_, fo) in deleted_objects {
-        drop_tables(&fo, configured_client).await?;
-
-        syncing_process_registry.stop(&fo);
+        if let Some(table) = &fo.table {
+            drop_table(table, configured_client).await?;
+            syncing_process_registry.stop(&fo.topic, &table.name);
+        }
 
         route_table.remove(&schema_file_path_to_ingest_route(
             &framework_object_versions.current_models.base_path,
@@ -159,9 +160,15 @@ async fn process_events(
     }
 
     for (_, fo) in changed_objects.iter().chain(new_objects.iter()) {
-        create_or_replace_tables(fo, configured_client).await?;
-
-        syncing_process_registry.start(fo);
+        if let Some(table) = &fo.table {
+            create_or_replace_tables(table, configured_client).await?;
+            syncing_process_registry.start(
+                fo.topic.clone(),
+                fo.data_model.columns.clone(),
+                table.name.clone(),
+                table.columns.clone(),
+            );
+        }
 
         let ingest_route = schema_file_path_to_ingest_route(
             &framework_object_versions.current_models.base_path,
@@ -174,7 +181,7 @@ async fn process_events(
             ingest_route,
             RouteMeta {
                 original_file_path: fo.original_file_path.clone(),
-                table_name: fo.table.name.clone(),
+                topic_name: fo.topic.clone(),
                 format: fo.data_model.config.ingestion.format.clone(),
             },
         );

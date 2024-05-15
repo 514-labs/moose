@@ -198,7 +198,7 @@ async fn top_command_handler(
 
                     Ok(RoutineSuccess::highlight(Message::new(
                         "Get Started".to_string(),
-                        format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n🛠️  Start dev server: \n\t$ npx @514labs/moose-cli dev\n\n", dir_path.to_string_lossy()),
+                        format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n🛠️  Start dev server: \n\t$ npx @514labs/moose-cli@latest dev\n\n", dir_path.to_string_lossy()),
                     )))
                 }
             }

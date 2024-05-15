@@ -78,7 +78,7 @@ export default function ModelView({
   );
 
   const { table, ingestion_point } = model;
-  const associatedView = table.dependencies_table[0] ? table : null;
+  const associatedView = table?.dependencies_table[0] ? table : null;
 
   const createTabQueryString = useCallback(
     (tab: string) => {
@@ -108,7 +108,7 @@ export default function ModelView({
         <TabsTrigger className={cn(tabTriggerStyle)} value="logs">
           Logs
         </TabsTrigger>
-        {tableIsQueryable(table) && (
+        {table && tableIsQueryable(table) && (
           <TabsTrigger className={cn(tabTriggerStyle)} value="query">
             Query
           </TabsTrigger>
@@ -227,16 +227,18 @@ export default function ModelView({
           <CardContent className="font-mono p-4">some log content</CardContent>
         </Card>
       </TabsContent>
-      <TabsContent className="h-full" value="query">
-        {/* add query here */}
-        <div className="p-0 h-full">
-          {tableIsQueryable(table) && cliData.project ? (
-            <QueryInterface project={cliData.project} model={model} />
-          ) : (
-            associatedView && ClickhouseTableRestriction(associatedView)
-          )}
-        </div>
-      </TabsContent>
+      {model.table && (
+        <TabsContent className="h-full" value="query">
+          {/* add query here */}
+          <div className="p-0 h-full">
+            {table && tableIsQueryable(table) && cliData.project ? (
+              <QueryInterface project={cliData.project} table={model.table} />
+            ) : (
+              associatedView && ClickhouseTableRestriction(associatedView)
+            )}
+          </div>
+        </TabsContent>
+      )}
     </Tabs>
   );
 }

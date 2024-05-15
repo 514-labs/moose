@@ -144,14 +144,14 @@ pub async fn post_current_state_to_console(
 struct RouteInfo {
     pub route_path: String,
     pub file_path: String,
-    pub table_name: String,
+    pub table_name: Option<String>,
 }
 
 #[derive(Clone, Debug, Serialize)]
 struct ModelInfra {
     model: DataModel,
     ingestion_point: RouteInfo,
-    table: ClickHouseSystemTable,
+    table: Option<ClickHouseSystemTable>,
     // queue is None if it is the same as previous version
     // then we don't need to spin up a queue and a table
     queue: Option<String>,
@@ -164,7 +164,7 @@ struct Version {
 }
 
 impl RouteInfo {
-    pub fn new(route_path: String, file_path: String, table_name: String) -> Self {
+    pub fn new(route_path: String, file_path: String, table_name: Option<String>) -> Self {
         Self {
             route_path,
             file_path,
@@ -196,15 +196,15 @@ fn serialize_version(
             let ingestion_point = RouteInfo::new(
                 route_path,
                 fo.original_file_path.to_str().unwrap().to_string(),
-                fo.table.name.clone(),
+                fo.table.clone().map(|table| table.name),
             );
             ModelInfra {
                 model: fo.data_model.clone(),
                 ingestion_point,
-                table: match tables.get(&fo.table.name) {
+                table: fo.table.clone().map(|table| match tables.get(&table.name) {
                     Some(table) => table.clone(),
                     None => {
-                        warn!("Table not found: {}", fo.table.name);
+                        warn!("Table not found: {}", table.name);
                         ClickHouseSystemTable {
                             uuid: "".to_string(),
                             database: "".to_string(),
@@ -213,7 +213,7 @@ fn serialize_version(
                             engine: "".to_string(),
                         }
                     }
-                },
+                }),
                 queue: if topics.contains(&fo.topic) {
                     Some(fo.topic.clone())
                 } else {

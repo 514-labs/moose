@@ -13,7 +13,7 @@ export default function RelatedInfraTable({
   const { table, ingestion_point, model: relatedModel } = model;
   return (
     <Fragment>
-      {mooseObject != MooseObject.Table && (
+      {mooseObject != MooseObject.Table && table && (
         <TrackLink
           name="Link"
           subject="table"
@@ -32,7 +32,7 @@ export default function RelatedInfraTable({
           </div>
         </TrackLink>
       )}
-      {mooseObject != MooseObject.Model && (
+      {mooseObject != MooseObject.Model && table && (
         <TrackLink
           name="Link"
           subject="model"

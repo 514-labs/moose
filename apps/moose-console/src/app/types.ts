@@ -4,7 +4,7 @@ export type VersionKey = typeof CURRENT_VERSION | keyof VersionMap;
 export interface Route {
   file_path: string;
   route_path: string;
-  table_name: string;
+  table_name?: string;
   view_name: string;
 }
 
@@ -50,7 +50,7 @@ export interface ModelMeta {
 
 export interface DataModel {
   queue: string;
-  table: Table;
+  table?: Table;
   ingestion_point: Route;
   model: ModelMeta;
   flows: string[];

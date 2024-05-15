@@ -1,34 +1,13 @@
 import type { ClickHouseClient } from "npm:@clickhouse/client-web@1.0.1";
 
-import { createClient, ResultSet } from "npm:@clickhouse/client-web@1.0.1";
+import { ResultSet } from "npm:@clickhouse/client-web@1.0.1";
 import sql, { Sql, createClickhouseParameter } from "./consumption-helpers.ts";
+import { antiCachePath, getClickhouseClient } from "./ts-helpers.ts";
 
-const CLICKHOUSE_DB =
-  Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__DB_NAME") || "local";
-const CLICKHOUSE_HOST =
-  Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__HOST") || "localhost";
-const CLICKHOUSE_PORT =
-  Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__HOST_PORT") || "18123";
-const CLICKHOUSE_USERNAME =
-  Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__USER") || "panda";
-const CLICKHOUSE_PASSWORD =
-  Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__PASSWORD") || "pandapass";
-const CLICKHOUSE_USE_SSL =
-  Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__USE_SSL") || "false";
+const cwd = Deno.args[0] || Deno.cwd();
+const CONSUMPTION_DIR_PATH = `${cwd}/app/apis`;
 
-const getClickhouseClient = () => {
-  const protocol =
-    CLICKHOUSE_USE_SSL.toLowerCase() === "true" ? "https" : "http";
-  console.log(
-    `Connecting to Clickhouse at ${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-  );
-  return createClient({
-    host: `${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-    username: CLICKHOUSE_USERNAME,
-    password: CLICKHOUSE_PASSWORD,
-    database: CLICKHOUSE_DB,
-  });
-};
+const createPath = (path: string) => `${CONSUMPTION_DIR_PATH}/${path}.ts`;
 
 function emptyIfUndefined(value: string | undefined): string {
   return value === undefined ? "" : value;
@@ -66,18 +45,15 @@ class MooseClient {
   }
 }
 
-let i = 0;
-
 const apiHandler = async (request: Request): Promise<Response> => {
-  const path = new URL(request.url);
-  const pathname = path.pathname;
+  const url = new URL(request.url);
+  const fileName = url.pathname;
 
-  const searchParams = Object.fromEntries(path.searchParams.entries());
+  const pathName = antiCachePath(createPath(fileName));
 
-  const userFuncModule = await import(
-    // the path is different every time so it reloads
-    `/app/apis${pathname}.ts?import_trigger=${i++}`
-  );
+  const searchParams = Object.fromEntries(url.searchParams.entries());
+
+  const userFuncModule = await import(pathName);
 
   const result = await userFuncModule.default(searchParams, {
     client: new MooseClient(),

@@ -50,6 +50,7 @@ use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS;
 use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::README_PREFIX;
+use crate::utilities::constants::TS_HELPER_FILE;
 use crate::utilities::constants::{
     AGGREGATIONS_DIR, AGGREGATIONS_FILE, APIS_DIR, FLOWS_DIR, FLOW_FILE, PROJECT_CONFIG_FILE,
     SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE,
@@ -261,6 +262,11 @@ impl Project {
         let mut helper_file = std::fs::File::create(deno_consumption_helper)?;
         let deno_consumption_helper_content = include_str!("framework/consumption-helpers.ts");
         helper_file.write_all(deno_consumption_helper_content.as_bytes())?;
+
+        let deno_ts_helpers = deno_dir.join(TS_HELPER_FILE);
+        let mut ts_helper_file = std::fs::File::create(deno_ts_helpers)?;
+        let deno_ts_helper_content = include_str!("framework/ts-helpers.ts");
+        ts_helper_file.write_all(deno_ts_helper_content.as_bytes())?;
 
         Ok(())
     }

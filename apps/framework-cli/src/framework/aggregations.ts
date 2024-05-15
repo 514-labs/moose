@@ -1,11 +1,9 @@
-import {
-  createClient,
-  ClickHouseClient,
-} from "npm:@clickhouse/client-web@1.0.1";
+import { ClickHouseClient } from "npm:@clickhouse/client-web@1.0.1";
 import { watch } from "npm:chokidar@3.6.0";
 import * as fastq from "npm:fastq@1.17.1";
 import type { queueAsPromised } from "npm:fastq@1.17.1";
 import { existsSync, walkSync } from "https://deno.land/std@0.224.0/fs/mod.ts";
+import { antiCachePath, getClickhouseClient } from "./ts-helpers.ts";
 
 interface ShowTablesResponse {
   meta: { name: string; type: string }[];
@@ -35,35 +33,6 @@ class DependencyError extends Error {
 const cwd = Deno.args[0] || Deno.cwd();
 const AGGREGATIONS_DIR_PATH = `${cwd}/app/aggregations`;
 const AGGREGATIONS_FILE = "*.ts";
-
-const CLICKHOUSE_DB =
-  Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__DB_NAME") || "local";
-const CLICKHOUSE_HOST =
-  Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__HOST") || "localhost";
-const CLICKHOUSE_PORT =
-  Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__HOST_PORT") || "18123";
-const CLICKHOUSE_USERNAME =
-  Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__USER") || "panda";
-const CLICKHOUSE_PASSWORD =
-  Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__PASSWORD") || "pandapass";
-const CLICKHOUSE_USE_SSL =
-  Deno.env.get("MOOSE_CLICKHOUSE_CONFIG__USE_SSL") || "false";
-
-const getClickhouseClient = () => {
-  const protocol =
-    CLICKHOUSE_USE_SSL === "1" || CLICKHOUSE_USE_SSL.toLowerCase() === "true"
-      ? "https"
-      : "http";
-  console.log(
-    `Connecting to Clickhouse at ${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-  );
-  return createClient({
-    url: `${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-    username: CLICKHOUSE_USERNAME,
-    password: CLICKHOUSE_PASSWORD,
-    database: CLICKHOUSE_DB,
-  });
-};
 
 const waitForClickhouse = (chClient: ClickHouseClient) => {
   const pingClickhouse = async () => {
@@ -182,11 +151,10 @@ const startFileWatcher = async (chClient: ClickHouseClient) => {
     "all",
     (event: string, path: string) => {
       console.log(`Adding to queue: ${event} ${path}`);
-      const antiCachePath = `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
       queue.push({
         event: event as MvQueueTask["event"],
         chClient,
-        path: antiCachePath,
+        path: antiCachePath(path),
         retries: numOfAggregations,
       });
     },

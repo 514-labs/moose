@@ -81,6 +81,7 @@
 
 use std::collections::HashMap;
 use std::path::PathBuf;
+use std::process::exit;
 use std::sync::Arc;
 
 use log::{debug, error, info};
@@ -102,8 +103,12 @@ use crate::framework::typescript;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
-use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
-use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
+use crate::infrastructure::olap::clickhouse::version_sync::{
+    get_all_version_syncs, parse_version, version_to_string, VersionSync,
+};
+use crate::infrastructure::olap::clickhouse_alt_client::{
+    get_pool, retrieve_current_state, store_current_state, ApplicationState,
+};
 use crate::infrastructure::stream::redpanda;
 use crate::project::{Project, PROJECT};
 use crate::utilities::package_managers;
@@ -262,11 +267,13 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("<DCM> Initializing project state");
+    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+
+    let old_state = retrieve_current_state(&mut client, &project.clickhouse_config).await?;
     let (framework_object_versions, version_syncs) =
-        initialize_project_state(project.clone(), &mut route_table).await?;
+        initialize_project_state(project.clone(), &mut route_table, old_state).await?;
 
     {
-        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
         store_current_state(
             &mut client,
             &framework_object_versions,
@@ -314,8 +321,12 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("<DCM> Initializing project state");
+
+    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+    let old_state = retrieve_current_state(&mut client, &project.clickhouse_config).await?;
+
     let (framework_object_versions, version_syncs) =
-        initialize_project_state(project.clone(), &mut route_table).await?;
+        initialize_project_state(project.clone(), &mut route_table, old_state).await?;
 
     debug!("Route table: {:?}", route_table);
 
@@ -469,7 +480,47 @@ async fn check_for_model_changes(
 async fn initialize_project_state(
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
+    old_state: Option<ApplicationState>,
 ) -> anyhow::Result<(FrameworkObjectVersions, Vec<VersionSync>)> {
+    let existing_versions = match old_state {
+        None => vec![],
+        Some(state) => {
+            let mut parsed_versions = state
+                .models
+                .iter()
+                .map(|(v, _)| parse_version(v))
+                .collect::<Vec<Vec<i32>>>();
+            parsed_versions.sort();
+            parsed_versions
+                .into_iter()
+                .map(|v| version_to_string(&v))
+                .collect::<Vec<String>>()
+        }
+    };
+
+    let mut previous_version_index_in_existing = None;
+    let linearity_check = |version: &str, previous_version_index_in_existing: Option<usize>| {
+        if let Some(index_in_existing) = previous_version_index_in_existing {
+            if index_in_existing < existing_versions.len()
+                && version != existing_versions[index_in_existing + 1]
+            {
+                show_message!(
+                    MessageType::Error,
+                    Message {
+                        action: "Invalid".to_string(),
+                        details: format!(
+                            "Expected version after {} should be {}, got {}.",
+                            existing_versions[index_in_existing],
+                            existing_versions[index_in_existing + 1],
+                            version
+                        ),
+                    }
+                );
+                exit(1)
+            }
+        }
+    };
+
     let old_versions = project.old_versions_sorted();
 
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
@@ -482,9 +533,10 @@ async fn initialize_project_state(
     check_for_model_changes(project.clone(), framework_object_versions.clone()).await;
 
     with_spinner_async("Processing versions", async {
-        // TODO: enforce linearity, if 1.1 is linked to 2.0, 1.2 cannot be added
         let mut previous_version: Option<(String, HashMap<String, FrameworkObject>)> = None;
         for version in old_versions {
+            linearity_check(&version, previous_version_index_in_existing);
+
             let schema_version: &mut SchemaVersion = framework_object_versions
                 .previous_version_models
                 .get_mut(&version)
@@ -500,8 +552,18 @@ async fn initialize_project_state(
                 &version,
             )
             .await?;
+
+            previous_version_index_in_existing = match previous_version_index_in_existing {
+                None => existing_versions.iter().position(|v| v == &version),
+                Some(i) => Some(i + 1),
+            };
             previous_version = Some((version, schema_version.models.clone()));
         }
+
+        linearity_check(
+            &framework_object_versions.current_version,
+            previous_version_index_in_existing,
+        );
 
         let result = process_objects(
             &framework_object_versions.current_models.models,

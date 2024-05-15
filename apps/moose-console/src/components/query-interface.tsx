@@ -19,7 +19,7 @@ import { runQuery } from "../lib/clickhouse";
 import { PreviewTable } from "./preview-table";
 import { Badge } from "./ui/badge";
 import { Card, CardContent } from "./ui/card";
-import { DataModel, Project, Table } from "app/types";
+import { Project, Table } from "app/types";
 
 const sqlKeyWords = [
   "SELECT",

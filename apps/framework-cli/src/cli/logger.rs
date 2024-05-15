@@ -97,7 +97,7 @@ impl Default for LoggerSettings {
 }
 
 // TODO ensure that the log file rotates after a certain size
-pub fn setup_logging(settings: LoggerSettings) -> Result<(), fern::InitError> {
+pub fn setup_logging(settings: &LoggerSettings) -> Result<(), fern::InitError> {
     let session_id = CONTEXT.get(CTX_SESSION_ID).unwrap();
 
     let base_config = fern::Dispatch::new().level(settings.level.to_log_level());
@@ -116,7 +116,7 @@ pub fn setup_logging(settings: LoggerSettings) -> Result<(), fern::InitError> {
     let output_config = if settings.stdout {
         format_config.chain(std::io::stdout())
     } else {
-        format_config.chain(fern::log_file(settings.log_file)?)
+        format_config.chain(fern::log_file(&settings.log_file)?)
     };
 
     base_config.chain(output_config).apply()?;

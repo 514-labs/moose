@@ -1,5 +1,8 @@
 // Add your models & start the development server to import these types
-import { MooseActivityRaw, MooseActivity } from "../../../datamodels/models.ts";
+import {
+  MooseActivity,
+  MooseActivityAugmented,
+} from "../../../datamodels/models.ts";
 import process from "node:process";
 import crypto from "node:crypto";
 
@@ -12,9 +15,9 @@ if (!IP_INFO_API_KEY) {
 // The 'run' function transforms MooseActivityRaw data to MooseActivity format.
 // For more details on how Moose flows work, see: https://docs.moosejs.com
 export default async function run(
-  source: MooseActivityRaw,
-): Promise<MooseActivity | null> {
-  const mooseActivity: MooseActivity = {
+  source: MooseActivity,
+): Promise<MooseActivityAugmented | null> {
+  const mooseActivity: MooseActivityAugmented = {
     ...source,
   };
 

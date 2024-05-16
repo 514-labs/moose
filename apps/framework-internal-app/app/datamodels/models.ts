@@ -1,12 +1,12 @@
 type Key<T extends string | number> = T;
 
-export const MooseActivityRawConfig = {
+export const MooseActivityConfig = {
   storage: {
     enabled: false,
   },
 };
 
-export interface MooseActivityRaw {
+export interface MooseActivity {
   id: Key<string>;
   project: string;
   activityType: string;
@@ -18,7 +18,7 @@ export interface MooseActivityRaw {
   ip?: string;
 }
 
-export interface MooseActivity {
+export interface MooseActivityAugmented {
   id: Key<string>;
   project: string;
   activityType: string;

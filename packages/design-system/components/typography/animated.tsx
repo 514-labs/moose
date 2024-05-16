@@ -1,6 +1,6 @@
 "use client";
 
-import { cn } from "@ui/lib/utils";
+import { cn } from "../../lib/utils";
 import { Copy } from "lucide-react";
 import { ReactNode } from "react";
 import { Text } from "./standard";

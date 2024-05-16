@@ -12,6 +12,6 @@
   },
   "aliases": {
     "components": "@ui/components",
-    "utils": "@ui/lib/utils"
+    "utils": "../../lib/utils"
   }
 }

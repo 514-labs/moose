@@ -61,6 +61,8 @@ pub struct MooseActivity {
     pub is_moose_developer: bool,
     #[serde(rename = "machineId")]
     pub machine_id: String,
+
+    pub ip: Option<String>,
 }
 
 macro_rules! capture {
@@ -76,6 +78,22 @@ macro_rules! capture {
 
         // Ignore our deployments & internal testing
         if $settings.telemetry.enabled {
+            let client = Client::new();
+
+            let mut ip = None;
+            match client
+                .get("https://api64.ipify.org?format=text")
+                .send()
+                .await
+            {
+                Ok(response) => {
+                    ip = Some(response.text().await.unwrap());
+                }
+                Err(e) => {
+                    log::warn!("Failed to get IP address for telemetry: {:?}", e);
+                }
+            }
+
             let event = json!(MooseActivity {
                 id: Uuid::new_v4(),
                 project: $project_name,
@@ -85,15 +103,18 @@ macro_rules! capture {
                 cli_version: constants::CLI_VERSION.to_string(),
                 is_moose_developer: $settings.telemetry.is_moose_developer,
                 machine_id: $settings.telemetry.machine_id.clone(),
+                ip
             });
 
             // Sending this data can fail for a variety of reasons, so we don't want to
             // block user & no need to handle the result
-            let client = Client::new();
+            // The API version is pinned on purpose to avoid breaking changes. We
+            // can deliberately update this when the schema changes.
             let request = client
-                .post("https://moosefood.514.dev/ingest/MooseActivity")
+                .post("https://moosefood.514.dev/ingest/MooseActivity/3.0")
                 .json(&event)
                 .timeout(Duration::from_secs(2));
+
             let _ = request.send().await;
         }
     };

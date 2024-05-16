@@ -111,7 +111,7 @@ macro_rules! capture {
             // The API version is pinned on purpose to avoid breaking changes. We
             // can deliberately update this when the schema changes.
             let request = client
-                .post("https://moosefood.514.dev/ingest/MooseActivity/3.0")
+                .post("https://moosefood.514.dev/ingest/MooseActivity/0.3")
                 .json(&event)
                 .timeout(Duration::from_secs(2));
 

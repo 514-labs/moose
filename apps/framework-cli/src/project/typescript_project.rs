@@ -41,6 +41,7 @@ impl Default for TypescriptProject {
                 ("@514labs/moose-cli".to_string(), "latest".to_string()),
                 ("typescript".to_string(), "^5.4.0".to_string()),
                 ("ts-node".to_string(), "^10.9.2".to_string()),
+                ("@types/node".to_string(), "^20.12.12".to_string()),
             ]),
         }
     }

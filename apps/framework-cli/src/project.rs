@@ -13,6 +13,7 @@
 
 use lazy_static::lazy_static;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::io::Write;
 use std::sync::Mutex;
 pub mod typescript_project;
@@ -482,6 +483,18 @@ impl Project {
         }
 
         flows_map
+    }
+
+    pub fn get_aggregations(&self) -> HashSet<String> {
+        match std::fs::read_dir(self.aggregations_dir()) {
+            Ok(files) => files
+                .filter_map(Result::ok)
+                .filter_map(|entry| entry.file_name().to_str().map(String::from))
+                .filter(|file_name| file_name.ends_with(".ts"))
+                .map(|file_name| file_name.trim_end_matches(".ts").to_string())
+                .collect::<HashSet<_>>(),
+            Err(_) => HashSet::new(),
+        }
     }
 
     fn process_flow_input(&self, entry: &std::fs::DirEntry) -> Option<(String, Vec<String>)> {

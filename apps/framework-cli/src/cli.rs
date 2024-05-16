@@ -443,12 +443,7 @@ async fn top_command_handler(
                     );
 
                     check_project_name(&project_arc.name())?;
-                    create_aggregation_file(&project_arc, name.to_string())?;
-
-                    Ok(RoutineSuccess::success(Message::new(
-                        "Created".to_string(),
-                        "Aggregation".to_string(),
-                    )))
+                    create_aggregation_file(&project_arc, name.to_string())
                 }
             }
         }

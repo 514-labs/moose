@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::Error;
 use std::io::ErrorKind;
 use std::path::Path;
@@ -134,6 +134,7 @@ pub fn get_all_framework_objects(
     framework_objects: &mut HashMap<String, FrameworkObject>,
     schema_dir: &Path,
     version: &str,
+    aggregations: &HashSet<String>,
 ) -> anyhow::Result<()> {
     if schema_dir.is_dir() {
         for entry in std::fs::read_dir(schema_dir)? {
@@ -141,10 +142,10 @@ pub fn get_all_framework_objects(
             let path = entry.path();
             if path.is_dir() {
                 debug!("<DCM> Processing directory: {:?}", path);
-                get_all_framework_objects(framework_objects, &path, version)?;
+                get_all_framework_objects(framework_objects, &path, version, aggregations)?;
             } else if is_schema_file(&path) {
                 debug!("<DCM> Processing file: {:?}", path);
-                let objects = get_framework_objects_from_schema_file(&path, version)?;
+                let objects = get_framework_objects_from_schema_file(&path, version, aggregations)?;
                 for fo in objects {
                     DuplicateModelError::try_insert(framework_objects, fo, &path)?;
                 }
@@ -171,11 +172,21 @@ pub enum DataModelError {
 pub fn get_framework_objects_from_schema_file(
     path: &Path,
     version: &str,
+    aggregations: &HashSet<String>,
 ) -> Result<Vec<FrameworkObject>, DataModelError> {
     let framework_objects = parse_data_model_file(path)?;
     let mut indexed_models = HashMap::new();
 
     for model in framework_objects.models {
+        if aggregations.contains(model.name.clone().trim()) {
+            return Err(DataModelError::Other {
+                message: format!(
+                    "Model & aggregation {} cannot have the same name",
+                    model.name
+                ),
+            });
+        }
+
         indexed_models.insert(model.name.clone().trim().to_lowercase(), model);
     }
 
@@ -553,7 +564,8 @@ mod tests {
             .join(SCHEMAS_DIR);
 
         let mut framework_objects = HashMap::new();
-        let result = get_all_framework_objects(&mut framework_objects, &schema_dir, "0.0");
+        let result =
+            get_all_framework_objects(&mut framework_objects, &schema_dir, "0.0", &HashSet::new());
         assert!(result.is_ok());
         assert_eq!(framework_objects.len(), 2);
     }

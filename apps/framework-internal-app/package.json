@@ -7,6 +7,9 @@
   },
   "dependencies": {},
   "devDependencies": {
-    "@514labs/moose-cli": "0.3.343"
+    "@514labs/moose-cli": "0.3.343",
+    "typescript": "^5.4.0",
+    "ts-node": "^10.4.0",
+    "@types/node": "^20.12.12"
   }
 }

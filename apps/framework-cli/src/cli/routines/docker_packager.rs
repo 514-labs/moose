@@ -283,14 +283,18 @@ impl Routine for BuildDockerfile {
         }
 
         info!("Creating docker linux/amd64 image");
-        let buildx_result = with_spinner("Creating docker linux/amd64 image", || {
-            docker::buildx(
-                &internal_dir.join("packager"),
-                cli_version,
-                "linux/amd64",
-                "x86_64-unknown-linux-gnu",
-            )
-        });
+        let buildx_result = with_spinner(
+            "Creating docker linux/amd64 image",
+            || {
+                docker::buildx(
+                    &internal_dir.join("packager"),
+                    cli_version,
+                    "linux/amd64",
+                    "x86_64-unknown-linux-gnu",
+                )
+            },
+            !self.project.is_production,
+        );
         match buildx_result {
             Ok(_) => {
                 info!("Docker image created");
@@ -305,14 +309,18 @@ impl Routine for BuildDockerfile {
         }
 
         info!("Creating docker linux/arm64 image");
-        let buildx_result = with_spinner("Creating docker linux/arm64 image", || {
-            docker::buildx(
-                &internal_dir.join("packager"),
-                cli_version,
-                "linux/arm64",
-                "aarch64-unknown-linux-gnu",
-            )
-        });
+        let buildx_result = with_spinner(
+            "Creating docker linux/arm64 image",
+            || {
+                docker::buildx(
+                    &internal_dir.join("packager"),
+                    cli_version,
+                    "linux/arm64",
+                    "aarch64-unknown-linux-gnu",
+                )
+            },
+            !self.project.is_production,
+        );
         match buildx_result {
             Ok(_) => {
                 info!("Docker image created");

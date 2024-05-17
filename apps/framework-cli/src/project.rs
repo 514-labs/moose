@@ -117,6 +117,11 @@ pub struct Project {
     pub supported_old_versions: HashMap<String, String>,
 }
 
+pub struct AggregationSet {
+    pub current_version: String,
+    pub names: HashSet<String>,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum LanguageProjectConfig {
     Typescript(TypescriptProject),

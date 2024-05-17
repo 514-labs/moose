@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::io::Error;
 use std::io::ErrorKind;
 use std::path::Path;
@@ -19,8 +19,8 @@ use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::{
     send_with_back_pressure, wait_for_delivery, RedpandaConfig,
 };
-use crate::project::Project;
 use crate::project::PROJECT;
+use crate::project::{AggregationSet, Project};
 #[cfg(test)]
 use crate::utilities::constants::SCHEMAS_DIR;
 
@@ -134,7 +134,7 @@ pub fn get_all_framework_objects(
     framework_objects: &mut HashMap<String, FrameworkObject>,
     schema_dir: &Path,
     version: &str,
-    aggregations: &HashSet<String>,
+    aggregations: &AggregationSet,
 ) -> anyhow::Result<()> {
     if schema_dir.is_dir() {
         for entry in std::fs::read_dir(schema_dir)? {
@@ -172,13 +172,15 @@ pub enum DataModelError {
 pub fn get_framework_objects_from_schema_file(
     path: &Path,
     version: &str,
-    aggregations: &HashSet<String>,
+    aggregations: &AggregationSet,
 ) -> Result<Vec<FrameworkObject>, DataModelError> {
     let framework_objects = parse_data_model_file(path)?;
     let mut indexed_models = HashMap::new();
 
     for model in framework_objects.models {
-        if aggregations.contains(model.name.clone().trim()) {
+        if aggregations.current_version == version
+            && aggregations.names.contains(model.name.clone().trim())
+        {
             return Err(DataModelError::Other {
                 message: format!(
                     "Model & aggregation {} cannot have the same name",
@@ -555,6 +557,8 @@ pub async fn process_objects(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     #[test]
     fn test_get_all_framework_objects() {
         use super::*;
@@ -564,8 +568,12 @@ mod tests {
             .join(SCHEMAS_DIR);
 
         let mut framework_objects = HashMap::new();
+        let aggregations = AggregationSet {
+            current_version: "0.0".to_string(),
+            names: HashSet::new(),
+        };
         let result =
-            get_all_framework_objects(&mut framework_objects, &schema_dir, "0.0", &HashSet::new());
+            get_all_framework_objects(&mut framework_objects, &schema_dir, "0.0", &aggregations);
         assert!(result.is_ok());
         assert_eq!(framework_objects.len(), 2);
     }

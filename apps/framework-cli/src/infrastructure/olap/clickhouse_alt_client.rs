@@ -20,6 +20,7 @@ use crate::framework::data_model::schema::{DataModel, EnumValue};
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::model::{ClickHouseColumnType, ClickHouseTable};
 
+// TODO: make a global pool
 pub fn get_pool(click_house_config: &ClickHouseConfig) -> clickhouse_rs::Pool {
     let address = format!(
         "tcp://{}:{}",

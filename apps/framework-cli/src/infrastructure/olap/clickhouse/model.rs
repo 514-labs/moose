@@ -268,7 +268,6 @@ pub struct ClickHouseSystemTable {
 
 #[derive(Debug, Clone)]
 pub struct ClickHouseTable {
-    pub db_name: String,
     pub name: String,
     pub columns: Vec<ClickHouseColumn>,
     pub table_type: ClickHouseTableType,
@@ -276,25 +275,23 @@ pub struct ClickHouseTable {
 
 impl ClickHouseTable {
     pub fn new(
-        db_name: String,
         name: String,
         columns: Vec<ClickHouseColumn>,
         table_type: ClickHouseTableType,
     ) -> ClickHouseTable {
         ClickHouseTable {
-            db_name,
             name,
             columns,
             table_type,
         }
     }
 
-    pub fn create_data_table_query(&self) -> Result<String, ClickhouseError> {
-        create_table_query(self.clone(), ClickhouseEngine::MergeTree)
+    pub fn create_data_table_query(&self, db_name: &str) -> Result<String, ClickhouseError> {
+        create_table_query(db_name, self.clone(), ClickhouseEngine::MergeTree)
     }
 
-    pub fn drop_data_table_query(&self) -> Result<String, ClickhouseError> {
-        drop_table_query(self.clone())
+    pub fn drop_data_table_query(&self, db_name: &str) -> Result<String, ClickhouseError> {
+        drop_table_query(db_name, self.clone())
     }
 }
 

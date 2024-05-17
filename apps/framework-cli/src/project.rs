@@ -11,11 +11,9 @@
 //! - `project_file_location` - The location of the project file on disk
 //! ```
 
-use lazy_static::lazy_static;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io::Write;
-use std::sync::Mutex;
 pub mod typescript_project;
 
 use std::fmt::Debug;
@@ -61,20 +59,6 @@ use crate::utilities::constants::{
     CONSUMPTION_HELPERS, DENO_AGGREGATIONS, DENO_CONSUMPTION_API, DENO_DIR, DENO_TRANSFORM,
 };
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
-
-lazy_static! {
-    pub static ref PROJECT: Mutex<Project> = Mutex::new(Project {
-        language: SupportedLanguages::Typescript,
-        is_production: false,
-        redpanda_config: RedpandaConfig::default(),
-        clickhouse_config: ClickHouseConfig::default(),
-        http_server_config: LocalWebserverConfig::default(),
-        console_config: ConsoleConfig::default(),
-        language_project_config: LanguageProjectConfig::Typescript(TypescriptProject::default()),
-        project_location: PathBuf::new(),
-        supported_old_versions: HashMap::new(),
-    });
-}
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to create or delete project files")]
@@ -170,9 +154,8 @@ impl Project {
         }
     }
 
-    pub fn set_enviroment(&self, production: bool) {
-        let mut proj = PROJECT.lock().unwrap();
-        proj.is_production = production;
+    pub fn set_enviroment(&mut self, production: bool) {
+        self.is_production = production;
     }
 
     pub fn load(directory: PathBuf) -> Result<Project, ConfigError> {
@@ -205,8 +188,6 @@ impl Project {
             }
         }
 
-        let mut proj = PROJECT.lock().unwrap();
-        *proj = project_config.clone();
         Ok(project_config)
     }
 

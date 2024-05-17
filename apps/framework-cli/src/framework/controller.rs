@@ -19,7 +19,6 @@ use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::{
     send_with_back_pressure, wait_for_delivery, RedpandaConfig,
 };
-use crate::project::PROJECT;
 use crate::project::{AggregationSet, Project};
 #[cfg(test)]
 use crate::utilities::constants::SCHEMAS_DIR;
@@ -224,7 +223,7 @@ pub async fn create_or_replace_version_sync(
     let drop_function_query = version_sync.drop_function_query();
     olap::clickhouse::run_query(&drop_function_query, configured_client).await?;
 
-    if !PROJECT.lock().unwrap().is_production {
+    if !project.is_production {
         let drop_trigger_query = version_sync.drop_trigger_query();
         olap::clickhouse::run_query(&drop_trigger_query, configured_client).await?;
     }
@@ -260,8 +259,13 @@ pub async fn initial_data_load(
             // TODO: we should probably have a lazy_static pool, after we actually use the global project instance
             let pool = olap::clickhouse_alt_client::get_pool(&configured_client.config);
             let mut client = pool.get_handle().await?;
-            let mut stream =
-                olap::clickhouse_alt_client::select_all_as_json(table, &mut client, offset).await?;
+            let mut stream = olap::clickhouse_alt_client::select_all_as_json(
+                &configured_client.config.db_name,
+                table,
+                &mut client,
+                offset,
+            )
+            .await?;
 
             let producer = redpanda::create_idempotent_producer(config);
 
@@ -342,11 +346,12 @@ pub async fn create_ts_version_sync_topics(
 }
 
 pub(crate) async fn drop_table(
+    db_name: &str,
     table: &ClickHouseTable,
     configured_client: &ConfiguredDBClient,
 ) -> anyhow::Result<()> {
     info!("<DCM> Dropping tables for: {:?}", table.name);
-    let drop_data_table_query = table.drop_data_table_query()?;
+    let drop_data_table_query = table.drop_data_table_query(db_name)?;
     olap::clickhouse::run_query(&drop_data_table_query, configured_client).await?;
 
     Ok(())
@@ -358,12 +363,14 @@ pub async fn create_or_replace_table_alias(
     table: &ClickHouseTable,
     previous_version: &ClickHouseTable,
     configured_client: &ConfiguredDBClient,
+    is_production: bool,
 ) -> anyhow::Result<()> {
-    if !PROJECT.lock().unwrap().is_production {
-        drop_table(table, configured_client).await?;
+    if !is_production {
+        drop_table(&configured_client.config.db_name, table, configured_client).await?;
     }
 
-    let query = create_alias_query_from_table(previous_version, table)?;
+    let query =
+        create_alias_query_from_table(&configured_client.config.db_name, previous_version, table)?;
     olap::clickhouse::run_query(&query, configured_client).await?;
 
     Ok(())
@@ -379,8 +386,12 @@ pub async fn create_or_replace_latest_table_alias(
             fo.data_model.name, table.name
         );
 
-        match olap::clickhouse::get_engine(&table.db_name, &fo.data_model.name, configured_client)
-            .await?
+        match olap::clickhouse::get_engine(
+            &configured_client.config.db_name,
+            &fo.data_model.name,
+            configured_client,
+        )
+        .await?
         {
             None => {}
             Some(v) if v == "View" => {
@@ -396,7 +407,11 @@ pub async fn create_or_replace_latest_table_alias(
             }
         };
 
-        let query = create_alias_for_table(&fo.data_model.name, table)?;
+        let query = create_alias_for_table(
+            &configured_client.config.db_name,
+            &fo.data_model.name,
+            table,
+        )?;
         olap::clickhouse::run_query(&query, configured_client).await?;
     }
 
@@ -406,9 +421,11 @@ pub async fn create_or_replace_latest_table_alias(
 pub(crate) async fn create_or_replace_tables(
     table: &ClickHouseTable,
     configured_client: &ConfiguredDBClient,
+    is_production: bool,
 ) -> anyhow::Result<()> {
     info!("<DCM> Creating table: {:?}", table.name);
-    let create_data_table_query = table.create_data_table_query()?;
+    let create_data_table_query =
+        table.create_data_table_query(&configured_client.config.db_name)?;
 
     olap::clickhouse::check_ready(configured_client)
         .await
@@ -420,8 +437,8 @@ pub(crate) async fn create_or_replace_tables(
         })?;
 
     // Clickhouse doesn't support dropping a view if it doesn't exist, so we need to drop it first in case the schema has changed
-    if !PROJECT.lock().unwrap().is_production {
-        drop_table(table, configured_client).await?;
+    if !is_production {
+        drop_table(&configured_client.config.db_name, table, configured_client).await?;
     }
 
     olap::clickhouse::run_query(&create_data_table_query, configured_client).await?;
@@ -491,8 +508,13 @@ pub async fn set_up_topic_and_tables_and_route(
             }
 
             if fo.data_model.config.storage.enabled {
-                create_or_replace_table_alias(current_table, previous_table, configured_client)
-                    .await?;
+                create_or_replace_table_alias(
+                    current_table,
+                    previous_table,
+                    configured_client,
+                    project.is_production,
+                )
+                .await?;
             }
 
             previous_fo.topic.clone()
@@ -506,7 +528,7 @@ pub async fn set_up_topic_and_tables_and_route(
             if let Some(table) = &fo.table {
                 debug!("Creating table: {:?}", table.name);
 
-                create_or_replace_tables(table, configured_client).await?;
+                create_or_replace_tables(table, configured_client, project.is_production).await?;
 
                 debug!("Table created: {:?}", table.name);
             }

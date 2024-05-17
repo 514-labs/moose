@@ -143,7 +143,7 @@ async fn process_events(
     let mut route_table = route_table.write().await;
     for (_, fo) in deleted_objects {
         if let Some(table) = &fo.table {
-            drop_table(table, configured_client).await?;
+            drop_table(&project.clickhouse_config.db_name, table, configured_client).await?;
             syncing_process_registry.stop(&fo.topic, &table.name);
         }
 
@@ -168,7 +168,7 @@ async fn process_events(
 
     for (_, fo) in changed_objects.iter().chain(new_objects.iter()) {
         if let Some(table) = &fo.table {
-            create_or_replace_tables(table, configured_client).await?;
+            create_or_replace_tables(table, configured_client, project.is_production).await?;
             syncing_process_registry.start(
                 fo.topic.clone(),
                 fo.data_model.columns.clone(),

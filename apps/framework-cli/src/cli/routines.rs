@@ -105,7 +105,7 @@ use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
 use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
 use crate::infrastructure::stream::redpanda;
-use crate::project::{AggregationSet, Project, PROJECT};
+use crate::project::{AggregationSet, Project};
 use crate::utilities::package_managers;
 
 use super::display::{with_spinner, with_spinner_async};
@@ -536,7 +536,7 @@ async fn initialize_project_state(
             .await;
 
             // TODO: add old versions to SDK
-            if !PROJECT.lock().unwrap().is_production {
+            if !project.is_production {
                 let sdk_location =
                     typescript::generator::generate_sdk(&project, &framework_object_versions)?;
                 let package_manager = package_managers::PackageManager::Npm;

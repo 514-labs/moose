@@ -474,6 +474,16 @@ pub async fn set_up_topic_and_tables_and_route(
         (Some(previous_fo), Some(current_table), Some(previous_table))
             if previous_fo.data_model == fo.data_model =>
         {
+            info!(
+                "Data model {} has not changed, using previous version table {} and topic {}",
+                fo.data_model.name,
+                previous_fo
+                    .table
+                    .clone()
+                    .map(|table| { table.name })
+                    .unwrap_or("None".to_string()),
+                previous_fo.topic
+            );
             // In this case no need for a topic on the current table since it is all the same as the previous table.
             match redpanda::delete_topics(&project.redpanda_config, vec![topic]).await {
                 Ok(_) => info!("Topics deleted successfully"),

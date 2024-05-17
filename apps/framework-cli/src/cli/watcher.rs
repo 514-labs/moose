@@ -20,6 +20,7 @@ use crate::framework::typescript;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::stream::redpanda;
+use crate::project::AggregationSet;
 use crate::utilities::package_managers;
 use crate::{
     framework::controller::RouteMeta,
@@ -61,6 +62,11 @@ async fn process_events(
 
     let old_objects = &framework_object_versions.current_models.models;
 
+    let aggregations = AggregationSet {
+        current_version: project.version().to_owned(),
+        names: project.get_aggregations(),
+    };
+
     for path in paths {
         // This is O(mn) but m and n are both small, so it should be fine
         let mut removed_old_objects_in_file = old_objects
@@ -69,7 +75,8 @@ async fn process_events(
             .collect::<HashMap<_, _>>();
 
         if path.exists() {
-            let obj_in_new_file = get_framework_objects_from_schema_file(&path, project.version())?;
+            let obj_in_new_file =
+                get_framework_objects_from_schema_file(&path, project.version(), &aggregations)?;
 
             for obj in obj_in_new_file {
                 removed_old_objects_in_file.remove(&obj.data_model.name);

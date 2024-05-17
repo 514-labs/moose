@@ -105,7 +105,7 @@ use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
 use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
 use crate::infrastructure::stream::redpanda;
-use crate::project::{Project, PROJECT};
+use crate::project::{AggregationSet, Project, PROJECT};
 use crate::utilities::package_managers;
 
 use super::display::{with_spinner, with_spinner_async};
@@ -349,13 +349,18 @@ fn crawl_schema(
     let mut framework_object_versions =
         FrameworkObjectVersions::new(project.version().to_string(), project.schemas_dir().clone());
 
+    let aggregations = AggregationSet {
+        current_version: project.version().to_owned(),
+        names: project.get_aggregations(),
+    };
+
     for version in old_versions.iter() {
         let path = project.old_version_location(version)?;
 
         debug!("<DCM> Processing old version directory: {:?}", path);
 
         let mut framework_objects = HashMap::new();
-        get_all_framework_objects(&mut framework_objects, &path, version)?;
+        get_all_framework_objects(&mut framework_objects, &path, version, &aggregations)?;
 
         let schema_version = SchemaVersion {
             base_path: path,
@@ -369,10 +374,20 @@ fn crawl_schema(
 
     let schema_dir = project.schemas_dir();
 
+    let aggregations = AggregationSet {
+        current_version: project.version().to_owned(),
+        names: project.get_aggregations(),
+    };
+
     info!("<DCM> Starting schema directory crawl...");
     with_spinner("Processing schema file", || {
         let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
-        get_all_framework_objects(&mut framework_objects, &schema_dir, project.version())?;
+        get_all_framework_objects(
+            &mut framework_objects,
+            &schema_dir,
+            project.version(),
+            &aggregations,
+        )?;
 
         framework_object_versions.current_models = SchemaVersion {
             base_path: schema_dir.clone(),

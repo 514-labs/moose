@@ -274,6 +274,7 @@ async fn watch(
                         &configured_client,
                         syncing_process_registry,
                     ),
+                    !project.is_production,
                 )
                 .await
                 .map_err(|e| {

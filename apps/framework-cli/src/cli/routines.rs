@@ -380,21 +380,25 @@ fn crawl_schema(
     };
 
     info!("<DCM> Starting schema directory crawl...");
-    with_spinner("Processing schema file", || {
-        let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
-        get_all_framework_objects(
-            &mut framework_objects,
-            &schema_dir,
-            project.version(),
-            &aggregations,
-        )?;
+    with_spinner(
+        "Processing schema file",
+        || {
+            let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
+            get_all_framework_objects(
+                &mut framework_objects,
+                &schema_dir,
+                project.version(),
+                &aggregations,
+            )?;
 
-        framework_object_versions.current_models = SchemaVersion {
-            base_path: schema_dir.clone(),
-            models: framework_objects.clone(),
-        };
-        anyhow::Ok(())
-    })?;
+            framework_object_versions.current_models = SchemaVersion {
+                base_path: schema_dir.clone(),
+                models: framework_objects.clone(),
+            };
+            anyhow::Ok(())
+        },
+        !project.is_production,
+    )?;
 
     Ok(framework_object_versions)
 }
@@ -496,68 +500,72 @@ async fn initialize_project_state(
 
     check_for_model_changes(project.clone(), framework_object_versions.clone()).await;
 
-    with_spinner_async("Processing versions", async {
-        // TODO: enforce linearity, if 1.1 is linked to 2.0, 1.2 cannot be added
-        let mut previous_version: Option<(String, HashMap<String, FrameworkObject>)> = None;
-        for version in old_versions {
-            let schema_version: &mut SchemaVersion = framework_object_versions
-                .previous_version_models
-                .get_mut(&version)
-                .unwrap();
+    with_spinner_async(
+        "Processing versions",
+        async {
+            // TODO: enforce linearity, if 1.1 is linked to 2.0, 1.2 cannot be added
+            let mut previous_version: Option<(String, HashMap<String, FrameworkObject>)> = None;
+            for version in old_versions {
+                let schema_version: &mut SchemaVersion = framework_object_versions
+                    .previous_version_models
+                    .get_mut(&version)
+                    .unwrap();
 
-            process_objects(
-                &schema_version.models,
+                process_objects(
+                    &schema_version.models,
+                    &previous_version,
+                    project.clone(),
+                    &schema_version.base_path,
+                    &configured_client,
+                    route_table,
+                    &version,
+                )
+                .await?;
+                previous_version = Some((version, schema_version.models.clone()));
+            }
+
+            let result = process_objects(
+                &framework_object_versions.current_models.models,
                 &previous_version,
                 project.clone(),
-                &schema_version.base_path,
+                &framework_object_versions.current_models.base_path,
                 &configured_client,
                 route_table,
-                &version,
+                &framework_object_versions.current_version,
             )
-            .await?;
-            previous_version = Some((version, schema_version.models.clone()));
-        }
+            .await;
 
-        let result = process_objects(
-            &framework_object_versions.current_models.models,
-            &previous_version,
-            project.clone(),
-            &framework_object_versions.current_models.base_path,
-            &configured_client,
-            route_table,
-            &framework_object_versions.current_version,
-        )
-        .await;
-
-        // TODO: add old versions to SDK
-        if !PROJECT.lock().unwrap().is_production {
-            let sdk_location =
-                typescript::generator::generate_sdk(&project, &framework_object_versions)?;
-            let package_manager = package_managers::PackageManager::Npm;
-            package_managers::install_packages(&sdk_location, &package_manager)?;
-            package_managers::run_build(&sdk_location, &package_manager)?;
-            package_managers::link_sdk(&sdk_location, None, &package_manager)?;
-        }
-        let _ = post_current_state_to_console(
-            project.clone(),
-            &configured_client,
-            &producer,
-            &framework_object_versions,
-        )
-        .await;
-
-        match result {
-            Ok(_) => {
-                info!("<DCM> Schema directory crawl completed successfully");
-                Ok(())
+            // TODO: add old versions to SDK
+            if !PROJECT.lock().unwrap().is_production {
+                let sdk_location =
+                    typescript::generator::generate_sdk(&project, &framework_object_versions)?;
+                let package_manager = package_managers::PackageManager::Npm;
+                package_managers::install_packages(&sdk_location, &package_manager)?;
+                package_managers::run_build(&sdk_location, &package_manager)?;
+                package_managers::link_sdk(&sdk_location, None, &package_manager)?;
             }
-            Err(e) => {
-                debug!("<DCM> Schema directory crawl failed");
-                debug!("<DCM> Error: {:?}", e);
-                Err(e)
+            let _ = post_current_state_to_console(
+                project.clone(),
+                &configured_client,
+                &producer,
+                &framework_object_versions,
+            )
+            .await;
+
+            match result {
+                Ok(_) => {
+                    info!("<DCM> Schema directory crawl completed successfully");
+                    Ok(())
+                }
+                Err(e) => {
+                    debug!("<DCM> Schema directory crawl failed");
+                    debug!("<DCM> Error: {:?}", e);
+                    Err(e)
+                }
             }
-        }
-    })
+        },
+        !project.is_production,
+    )
     .await?;
 
     info!("<DCM> Crawling version syncs");
@@ -571,6 +579,7 @@ async fn initialize_project_state(
             }
             Ok(version_syncs)
         },
+        !project.is_production,
     )
     .await?;
 

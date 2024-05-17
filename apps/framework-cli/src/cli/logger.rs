@@ -62,6 +62,12 @@ impl LoggerLevel {
     }
 }
 
+#[derive(Deserialize, Debug, Clone, PartialEq)]
+pub enum LogFormat {
+    Json,
+    Text,
+}
+
 #[derive(Deserialize, Debug, Clone)]
 pub struct LoggerSettings {
     #[serde(default = "default_log_file")]
@@ -70,6 +76,9 @@ pub struct LoggerSettings {
     pub level: LoggerLevel,
     #[serde(default = "default_log_stdout")]
     pub stdout: bool,
+
+    #[serde(default = "default_log_format")]
+    pub format: LogFormat,
 }
 
 fn default_log_file() -> String {
@@ -86,12 +95,17 @@ fn default_log_stdout() -> bool {
     false
 }
 
+fn default_log_format() -> LogFormat {
+    LogFormat::Text
+}
+
 impl Default for LoggerSettings {
     fn default() -> Self {
         LoggerSettings {
             log_file: default_log_file(),
             level: default_log_level(),
             stdout: default_log_stdout(),
+            format: default_log_format(),
         }
     }
 }
@@ -102,16 +116,34 @@ pub fn setup_logging(settings: &LoggerSettings) -> Result<(), fern::InitError> {
 
     let base_config = fern::Dispatch::new().level(settings.level.to_log_level());
 
-    let format_config = fern::Dispatch::new().format(move |out, message, record| {
-        out.finish(format_args!(
-            "[{} {} {} - {}] {}",
-            humantime::format_rfc3339_seconds(SystemTime::now()),
-            record.level(),
-            &session_id,
-            record.target(),
-            message
-        ))
-    });
+    let format_config = if settings.format == LogFormat::Text {
+        fern::Dispatch::new().format(move |out, message, record| {
+            out.finish(format_args!(
+                "[{} {} {} - {}] {}",
+                humantime::format_rfc3339_seconds(SystemTime::now()),
+                record.level(),
+                &session_id,
+                record.target(),
+                message
+            ))
+        })
+    } else {
+        fern::Dispatch::new().format(move |out, message, record| {
+            out.finish(format_args!(
+                "{}",
+                serde_json::to_string(&serde_json::json!(
+                    {
+                        "timestamp": chrono::Utc::now().to_rfc3339(),
+                        "severity": record.level(),
+                        "session_id": &session_id,
+                        "target": record.target(),
+                        "message": message,
+                    }
+                ))
+                .expect("formatting `serde_json::Value` with string keys never fails")
+            ))
+        })
+    };
 
     let output_config = if settings.stdout {
         format_config.chain(std::io::stdout())

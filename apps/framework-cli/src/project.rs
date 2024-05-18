@@ -154,8 +154,8 @@ impl Project {
         }
     }
 
-    pub fn set_enviroment(&mut self, production: bool) {
-        self.is_production = production;
+    pub fn set_is_production_env(&mut self, is_production: bool) {
+        self.is_production = is_production;
     }
 
     pub fn load(directory: PathBuf) -> Result<Project, ConfigError> {

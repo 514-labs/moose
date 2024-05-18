@@ -255,7 +255,7 @@ async fn top_command_handler(
             info!("Running dev command");
 
             let mut project = load_project()?;
-            project.set_enviroment(false);
+            project.set_is_production_env(false);
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(
@@ -305,7 +305,7 @@ async fn top_command_handler(
             info!("Running prod command");
             let mut project = load_project()?;
 
-            project.set_enviroment(true);
+            project.set_is_production_env(true);
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(

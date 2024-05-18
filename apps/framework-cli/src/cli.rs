@@ -29,8 +29,9 @@ use crate::cli::routines::dev::{copy_old_schema, create_deno_files};
 use crate::cli::routines::flow::{create_flow_directory, create_flow_file};
 use crate::cli::routines::initialize::initialize_project;
 use crate::cli::routines::logs::{follow_logs, show_logs};
+use crate::cli::routines::migrate::generate_migration;
 use crate::cli::routines::templates;
-use crate::cli::routines::version::BumpVersion;
+use crate::cli::routines::version::bump_version;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::cli::{
     display::{Message, MessageType},
@@ -44,7 +45,6 @@ use crate::utilities::git::is_git_repo;
 
 use self::routines::{
     clean::CleanProject, docker_packager::BuildDockerfile, docker_packager::CreateDockerfile,
-    migrate::GenerateMigration,
 };
 
 #[derive(Parser)]
@@ -254,9 +254,8 @@ async fn top_command_handler(
         Commands::Dev {} => {
             info!("Running dev command");
 
-            let project = load_project()?;
-
-            project.set_enviroment(false);
+            let mut project = load_project()?;
+            project.set_is_production_env(false);
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(
@@ -289,15 +288,8 @@ async fn top_command_handler(
                 let project_arc = Arc::new(project);
 
                 check_project_name(&project_arc.name())?;
-
-                let mut controller = RoutineController::new();
-                let run_mode = RunMode::Explicit {};
-
                 copy_old_schema(&project_arc)?;
-
-                // TODO get rid of the routines and use functions instead
-                controller.add_routine(Box::new(GenerateMigration::new(project_arc)));
-                controller.run_routines(run_mode);
+                generate_migration(&project_arc)?;
 
                 Ok(RoutineSuccess::success(Message::new(
                     "Generated".to_string(),
@@ -311,9 +303,9 @@ async fn top_command_handler(
         },
         Commands::Prod {} => {
             info!("Running prod command");
-            let project = load_project()?;
+            let mut project = load_project()?;
 
-            project.set_enviroment(true);
+            project.set_is_production_env(true);
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(
@@ -343,8 +335,6 @@ async fn top_command_handler(
             );
 
             check_project_name(&project_arc.name())?;
-            let mut controller = RoutineController::new();
-            let run_mode = RunMode::Explicit {};
 
             let new_version = match new_version {
                 None => {
@@ -365,9 +355,7 @@ async fn top_command_handler(
                 Some(new_version) => new_version.clone(),
             };
 
-            // TODO get rid of the routines and use functions instead
-            controller.add_routine(Box::new(BumpVersion::new(project_arc.clone(), new_version)));
-            controller.run_routines(run_mode);
+            bump_version(&project_arc, new_version)?;
 
             Ok(RoutineSuccess::success(Message::new(
                 "Bumped".to_string(),

@@ -30,6 +30,7 @@ pub fn version_to_string(v: &[i32]) -> String {
 
 // to be removed when we move to all TS flow version syncs
 pub fn generate_sql_version_syncs(
+    db_name: &str,
     framework_object_versions: &FrameworkObjectVersions,
     version_sync_list: &[VersionSync],
     previous_version: &str,
@@ -54,7 +55,7 @@ pub fn generate_sql_version_syncs(
                 if let Some(new_table) = &fo.table {
                     if old_model.data_model.columns != fo.data_model.columns {
                         res.push(VersionSync {
-                            db_name: old_table.db_name.clone(),
+                            db_name: db_name.to_string(),
                             model_name: old_model.data_model.name.clone(),
                             source_version: previous_version.to_string(),
                             source_data_model: old_model.data_model.clone(),
@@ -122,7 +123,7 @@ pub fn get_all_version_syncs(
                                 if let Some(from_table) = &from_table_fo.table {
                                     if let Some(to_table) = &to_table_fo.table {
                                         let version_sync = VersionSync {
-                                            db_name: from_table.db_name.clone(),
+                                            db_name: project.clickhouse_config.db_name.clone(),
                                             model_name: from_table_fo.data_model.name.clone(),
                                             source_version: from_version.clone(),
                                             source_table: from_table.clone(),

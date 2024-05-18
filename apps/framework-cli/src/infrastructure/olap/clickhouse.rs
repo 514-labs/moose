@@ -212,7 +212,7 @@ pub async fn check_is_table_new(
     info!("<DCM> Checking if {} table is new", table.name.clone());
     let result = client
         .query("select engine, total_rows from system.tables where database = ? AND name = ?")
-        .bind(table.db_name.clone())
+        .bind(configured_client.config.db_name.clone())
         .bind(table.name.clone())
         .fetch_all::<TableDetail>()
         .await?;
@@ -234,7 +234,8 @@ pub async fn check_table_size(
     let result: Vec<i64> = client
         .query(&format!(
             "select count(*) from {}.{}",
-            table.db_name, table.name
+            configured_client.config.db_name.clone(),
+            table.name
         ))
         .fetch_all::<i64>()
         .await?;

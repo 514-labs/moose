@@ -1,7 +1,4 @@
-use crate::{
-    framework::data_model::schema::{is_enum_type, ColumnType, EnumMember, EnumValue},
-    project::PROJECT,
-};
+use crate::framework::data_model::schema::{is_enum_type, ColumnType, EnumMember, EnumValue};
 use log::debug;
 use std::path::{Path, PathBuf};
 use swc_common::{self, sync::Lrc, SourceMap};
@@ -174,9 +171,7 @@ fn interface_to_model(
         })
         .collect();
 
-    let project = PROJECT.lock().unwrap();
     Ok(DataModel {
-        db_name: project.clickhouse_config.db_name.to_string(),
         columns: columns?,
         name: schema_name,
         config: Default::default(),

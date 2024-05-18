@@ -59,7 +59,6 @@ pub fn std_table_to_clickhouse_table(table: Table) -> Result<ClickHouseTable, Cl
     }
 
     Ok(ClickHouseTable {
-        db_name: table.db_name,
         name: table.name,
         columns,
         table_type: clickhouse_table_type_mapper(table.table_type),

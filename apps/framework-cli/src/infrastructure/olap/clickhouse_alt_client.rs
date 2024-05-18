@@ -178,6 +178,7 @@ fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
 }
 
 pub async fn select_all_as_json<'a>(
+    db_name: &str,
     table: &'a ClickHouseTable,
     client: &'a mut ClientHandle,
     offset: i64,
@@ -208,7 +209,7 @@ pub async fn select_all_as_json<'a>(
     let stream = client
         .query(&format!(
             "select * from {}.{} {} offset {}",
-            table.db_name, table.name, order_by, offset
+            db_name, table.name, order_by, offset
         ))
         .stream()
         .map(move |row| row_to_json(&row?, &enum_mapping));

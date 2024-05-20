@@ -267,9 +267,11 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
 
     {
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+        let aggregations = project.get_aggregations();
         store_current_state(
             &mut client,
             &framework_object_versions,
+            &aggregations,
             &project.clickhouse_config,
         )
         .await?

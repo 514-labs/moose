@@ -6,7 +6,6 @@ use crate::{
         is_enum_type, Column, ColumnDefaults, ColumnType, DataEnum, DataModel, EnumMember,
         EnumValue,
     },
-    project::PROJECT,
 };
 use diagnostics::Diagnostics;
 use schema_ast::ast::{Attribute, Field, WithName};
@@ -103,9 +102,7 @@ fn prisma_model_to_datamodel(
         .map(|(_id, f)| field_to_column(f, enums))
         .collect();
 
-    let project = PROJECT.lock().unwrap();
     Ok(DataModel {
-        db_name: project.clickhouse_config.db_name.to_string(),
         columns: columns?,
         name: schema_name,
         config: Default::default(),

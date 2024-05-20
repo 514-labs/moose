@@ -169,21 +169,29 @@ macro_rules! show_message {
     };
 }
 
-pub fn with_spinner<F, R>(message: &str, f: F) -> R
+pub fn with_spinner<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: FnOnce() -> R,
 {
-    let mut sp = Spinner::new(Spinners::Dots9, message.into());
+    if !activate {
+        return f();
+    }
+
+    let mut sp = Spinner::with_stream(Spinners::Dots9, message.into(), spinners::Stream::Stdout);
     let res = f();
     sp.stop_with_newline();
     res
 }
 
-pub async fn with_spinner_async<F, R>(message: &str, f: F) -> R
+pub async fn with_spinner_async<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: Future<Output = R>,
 {
-    let mut sp = Spinner::new(Spinners::Dots9, message.into());
+    if !activate {
+        return f.await;
+    }
+
+    let mut sp = Spinner::with_stream(Spinners::Dots9, message.into(), spinners::Stream::Stdout);
     let res = f.await;
     sp.stop_with_newline();
     res
@@ -199,10 +207,14 @@ mod tests {
         use std::thread;
         use std::time::Duration;
 
-        let _ = with_spinner("Test delay for one second", || {
-            thread::sleep(Duration::from_secs(1));
-            Ok(())
-        })
+        let _ = with_spinner(
+            "Test delay for one second",
+            || {
+                thread::sleep(Duration::from_secs(1));
+                Ok(())
+            },
+            true,
+        )
         .map_err(|err: std::io::Error| {
             RoutineFailure::new(
                 Message::new("Failed".to_string(), "to execute a delay".to_string()),
@@ -224,10 +236,14 @@ mod tests {
         use crate::cli::routines::RoutineFailure;
         use tokio::time::{sleep, Duration};
 
-        let result = with_spinner_async("Test delay", async {
-            sleep(Duration::from_secs(15)).await;
-            Ok(())
-        })
+        let result = with_spinner_async(
+            "Test delay",
+            async {
+                sleep(Duration::from_secs(15)).await;
+                Ok(())
+            },
+            true,
+        )
         .await
         .map_err(|err: std::io::Error| {
             RoutineFailure::new(

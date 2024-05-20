@@ -56,9 +56,11 @@ lazy_static! {
 }
 
 pub fn run_containers(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
-    let docker_compose_res = with_spinner("Starting local infrastructure", || {
-        docker::start_containers(project)
-    });
+    let docker_compose_res = with_spinner(
+        "Starting local infrastructure",
+        || docker::start_containers(project),
+        !project.is_production,
+    );
 
     match docker_compose_res {
         Ok(_) => Ok(RoutineSuccess::success(Message::new(

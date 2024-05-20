@@ -19,8 +19,7 @@ use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::{
     send_with_back_pressure, wait_for_delivery, RedpandaConfig,
 };
-use crate::project::Project;
-use crate::project::PROJECT;
+use crate::project::{AggregationSet, Project};
 #[cfg(test)]
 use crate::utilities::constants::SCHEMAS_DIR;
 
@@ -134,6 +133,7 @@ pub fn get_all_framework_objects(
     framework_objects: &mut HashMap<String, FrameworkObject>,
     schema_dir: &Path,
     version: &str,
+    aggregations: &AggregationSet,
 ) -> anyhow::Result<()> {
     if schema_dir.is_dir() {
         for entry in std::fs::read_dir(schema_dir)? {
@@ -141,10 +141,10 @@ pub fn get_all_framework_objects(
             let path = entry.path();
             if path.is_dir() {
                 debug!("<DCM> Processing directory: {:?}", path);
-                get_all_framework_objects(framework_objects, &path, version)?;
+                get_all_framework_objects(framework_objects, &path, version, aggregations)?;
             } else if is_schema_file(&path) {
                 debug!("<DCM> Processing file: {:?}", path);
-                let objects = get_framework_objects_from_schema_file(&path, version)?;
+                let objects = get_framework_objects_from_schema_file(&path, version, aggregations)?;
                 for fo in objects {
                     DuplicateModelError::try_insert(framework_objects, fo, &path)?;
                 }
@@ -171,11 +171,23 @@ pub enum DataModelError {
 pub fn get_framework_objects_from_schema_file(
     path: &Path,
     version: &str,
+    aggregations: &AggregationSet,
 ) -> Result<Vec<FrameworkObject>, DataModelError> {
     let framework_objects = parse_data_model_file(path)?;
     let mut indexed_models = HashMap::new();
 
     for model in framework_objects.models {
+        if aggregations.current_version == version
+            && aggregations.names.contains(model.name.clone().trim())
+        {
+            return Err(DataModelError::Other {
+                message: format!(
+                    "Model & aggregation {} cannot have the same name",
+                    model.name
+                ),
+            });
+        }
+
         indexed_models.insert(model.name.clone().trim().to_lowercase(), model);
     }
 
@@ -211,7 +223,7 @@ pub async fn create_or_replace_version_sync(
     let drop_function_query = version_sync.drop_function_query();
     olap::clickhouse::run_query(&drop_function_query, configured_client).await?;
 
-    if !PROJECT.lock().unwrap().is_production {
+    if !project.is_production {
         let drop_trigger_query = version_sync.drop_trigger_query();
         olap::clickhouse::run_query(&drop_trigger_query, configured_client).await?;
     }
@@ -247,8 +259,13 @@ pub async fn initial_data_load(
             // TODO: we should probably have a lazy_static pool, after we actually use the global project instance
             let pool = olap::clickhouse_alt_client::get_pool(&configured_client.config);
             let mut client = pool.get_handle().await?;
-            let mut stream =
-                olap::clickhouse_alt_client::select_all_as_json(table, &mut client, offset).await?;
+            let mut stream = olap::clickhouse_alt_client::select_all_as_json(
+                &configured_client.config.db_name,
+                table,
+                &mut client,
+                offset,
+            )
+            .await?;
 
             let producer = redpanda::create_idempotent_producer(config);
 
@@ -329,11 +346,12 @@ pub async fn create_ts_version_sync_topics(
 }
 
 pub(crate) async fn drop_table(
+    db_name: &str,
     table: &ClickHouseTable,
     configured_client: &ConfiguredDBClient,
 ) -> anyhow::Result<()> {
     info!("<DCM> Dropping tables for: {:?}", table.name);
-    let drop_data_table_query = table.drop_data_table_query()?;
+    let drop_data_table_query = table.drop_data_table_query(db_name)?;
     olap::clickhouse::run_query(&drop_data_table_query, configured_client).await?;
 
     Ok(())
@@ -345,12 +363,14 @@ pub async fn create_or_replace_table_alias(
     table: &ClickHouseTable,
     previous_version: &ClickHouseTable,
     configured_client: &ConfiguredDBClient,
+    is_production: bool,
 ) -> anyhow::Result<()> {
-    if !PROJECT.lock().unwrap().is_production {
-        drop_table(table, configured_client).await?;
+    if !is_production {
+        drop_table(&configured_client.config.db_name, table, configured_client).await?;
     }
 
-    let query = create_alias_query_from_table(previous_version, table)?;
+    let query =
+        create_alias_query_from_table(&configured_client.config.db_name, previous_version, table)?;
     olap::clickhouse::run_query(&query, configured_client).await?;
 
     Ok(())
@@ -366,8 +386,12 @@ pub async fn create_or_replace_latest_table_alias(
             fo.data_model.name, table.name
         );
 
-        match olap::clickhouse::get_engine(&table.db_name, &fo.data_model.name, configured_client)
-            .await?
+        match olap::clickhouse::get_engine(
+            &configured_client.config.db_name,
+            &fo.data_model.name,
+            configured_client,
+        )
+        .await?
         {
             None => {}
             Some(v) if v == "View" => {
@@ -383,7 +407,11 @@ pub async fn create_or_replace_latest_table_alias(
             }
         };
 
-        let query = create_alias_for_table(&fo.data_model.name, table)?;
+        let query = create_alias_for_table(
+            &configured_client.config.db_name,
+            &fo.data_model.name,
+            table,
+        )?;
         olap::clickhouse::run_query(&query, configured_client).await?;
     }
 
@@ -393,9 +421,11 @@ pub async fn create_or_replace_latest_table_alias(
 pub(crate) async fn create_or_replace_tables(
     table: &ClickHouseTable,
     configured_client: &ConfiguredDBClient,
+    is_production: bool,
 ) -> anyhow::Result<()> {
     info!("<DCM> Creating table: {:?}", table.name);
-    let create_data_table_query = table.create_data_table_query()?;
+    let create_data_table_query =
+        table.create_data_table_query(&configured_client.config.db_name)?;
 
     olap::clickhouse::check_ready(configured_client)
         .await
@@ -407,8 +437,8 @@ pub(crate) async fn create_or_replace_tables(
         })?;
 
     // Clickhouse doesn't support dropping a view if it doesn't exist, so we need to drop it first in case the schema has changed
-    if !PROJECT.lock().unwrap().is_production {
-        drop_table(table, configured_client).await?;
+    if !is_production {
+        drop_table(&configured_client.config.db_name, table, configured_client).await?;
     }
 
     olap::clickhouse::run_query(&create_data_table_query, configured_client).await?;
@@ -461,6 +491,16 @@ pub async fn set_up_topic_and_tables_and_route(
         (Some(previous_fo), Some(current_table), Some(previous_table))
             if previous_fo.data_model == fo.data_model =>
         {
+            info!(
+                "Data model {} has not changed, using previous version table {} and topic {}",
+                fo.data_model.name,
+                previous_fo
+                    .table
+                    .clone()
+                    .map(|table| { table.name })
+                    .unwrap_or("None".to_string()),
+                previous_fo.topic
+            );
             // In this case no need for a topic on the current table since it is all the same as the previous table.
             match redpanda::delete_topics(&project.redpanda_config, vec![topic]).await {
                 Ok(_) => info!("Topics deleted successfully"),
@@ -468,8 +508,13 @@ pub async fn set_up_topic_and_tables_and_route(
             }
 
             if fo.data_model.config.storage.enabled {
-                create_or_replace_table_alias(current_table, previous_table, configured_client)
-                    .await?;
+                create_or_replace_table_alias(
+                    current_table,
+                    previous_table,
+                    configured_client,
+                    project.is_production,
+                )
+                .await?;
             }
 
             previous_fo.topic.clone()
@@ -483,7 +528,7 @@ pub async fn set_up_topic_and_tables_and_route(
             if let Some(table) = &fo.table {
                 debug!("Creating table: {:?}", table.name);
 
-                create_or_replace_tables(table, configured_client).await?;
+                create_or_replace_tables(table, configured_client, project.is_production).await?;
 
                 debug!("Table created: {:?}", table.name);
             }
@@ -544,6 +589,8 @@ pub async fn process_objects(
 
 #[cfg(test)]
 mod tests {
+    use std::collections::HashSet;
+
     #[test]
     fn test_get_all_framework_objects() {
         use super::*;
@@ -553,7 +600,12 @@ mod tests {
             .join(SCHEMAS_DIR);
 
         let mut framework_objects = HashMap::new();
-        let result = get_all_framework_objects(&mut framework_objects, &schema_dir, "0.0");
+        let aggregations = AggregationSet {
+            current_version: "0.0".to_string(),
+            names: HashSet::new(),
+        };
+        let result =
+            get_all_framework_objects(&mut framework_objects, &schema_dir, "0.0", &aggregations);
         assert!(result.is_ok());
         assert_eq!(framework_objects.len(), 2);
     }

@@ -11,10 +11,9 @@
 //! - `project_file_location` - The location of the project file on disk
 //! ```
 
-use lazy_static::lazy_static;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::io::Write;
-use std::sync::Mutex;
 pub mod typescript_project;
 
 use std::fmt::Debug;
@@ -61,20 +60,6 @@ use crate::utilities::constants::{
 };
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 
-lazy_static! {
-    pub static ref PROJECT: Mutex<Project> = Mutex::new(Project {
-        language: SupportedLanguages::Typescript,
-        is_production: false,
-        redpanda_config: RedpandaConfig::default(),
-        clickhouse_config: ClickHouseConfig::default(),
-        http_server_config: LocalWebserverConfig::default(),
-        console_config: ConsoleConfig::default(),
-        language_project_config: LanguageProjectConfig::Typescript(TypescriptProject::default()),
-        project_location: PathBuf::new(),
-        supported_old_versions: HashMap::new(),
-    });
-}
-
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to create or delete project files")]
 #[non_exhaustive]
@@ -114,6 +99,11 @@ pub struct Project {
 
     #[serde(default = "HashMap::new")]
     pub supported_old_versions: HashMap<String, String>,
+}
+
+pub struct AggregationSet {
+    pub current_version: String,
+    pub names: HashSet<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -164,9 +154,8 @@ impl Project {
         }
     }
 
-    pub fn set_enviroment(&self, production: bool) {
-        let mut proj = PROJECT.lock().unwrap();
-        proj.is_production = production;
+    pub fn set_is_production_env(&mut self, is_production: bool) {
+        self.is_production = is_production;
     }
 
     pub fn load(directory: PathBuf) -> Result<Project, ConfigError> {
@@ -199,8 +188,6 @@ impl Project {
             }
         }
 
-        let mut proj = PROJECT.lock().unwrap();
-        *proj = project_config.clone();
         Ok(project_config)
     }
 
@@ -482,6 +469,18 @@ impl Project {
         }
 
         flows_map
+    }
+
+    pub fn get_aggregations(&self) -> HashSet<String> {
+        match std::fs::read_dir(self.aggregations_dir()) {
+            Ok(files) => files
+                .filter_map(Result::ok)
+                .filter_map(|entry| entry.file_name().to_str().map(String::from))
+                .filter(|file_name| file_name.ends_with(".ts"))
+                .map(|file_name| file_name.trim_end_matches(".ts").to_string())
+                .collect::<HashSet<_>>(),
+            Err(_) => HashSet::new(),
+        }
     }
 
     fn process_flow_input(&self, entry: &std::fs::DirEntry) -> Option<(String, Vec<String>)> {

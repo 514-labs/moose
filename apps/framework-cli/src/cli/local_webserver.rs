@@ -12,7 +12,6 @@ use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 
 use crate::infrastructure::console::ConsoleConfig;
 use crate::project::Project;
-use crate::project::PROJECT;
 use bytes::Buf;
 use http_body_util::BodyExt;
 use http_body_util::Full;
@@ -432,7 +431,7 @@ impl Webserver {
             }
         );
 
-        if !PROJECT.lock().unwrap().is_production {
+        if !project.is_production {
             show_message!(
             MessageType::Highlight,
             Message {

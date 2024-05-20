@@ -1,12 +1,15 @@
 {
   "name": "internal-app",
-  "version": "0.3",
+  "version": "0.4",
   "scripts": {
     "dev": "moose-cli dev",
     "build": "moose-cli --version && moose-cli build --docker"
   },
   "dependencies": {},
   "devDependencies": {
-    "@514labs/moose-cli": "0.3.343"
+    "@514labs/moose-cli": "0.3.358",
+    "typescript": "^5.4.0",
+    "ts-node": "^10.4.0",
+    "@types/node": "^20.12.12"
   }
 }

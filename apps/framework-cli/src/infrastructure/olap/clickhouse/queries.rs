@@ -33,17 +33,19 @@ fn create_alias_query(
 // This is used when a new table doesn't have a different schema from the old table
 // so we use a view to alias the old table to the new table name
 pub fn create_alias_query_from_table(
+    db_name: &str,
     old_table: &ClickHouseTable,
     new_table: &ClickHouseTable,
 ) -> Result<String, ClickhouseError> {
-    create_alias_query(&old_table.db_name, &new_table.name, &old_table.name)
+    create_alias_query(db_name, &new_table.name, &old_table.name)
 }
 
 pub fn create_alias_for_table(
+    db_name: &str,
     alias_name: &str,
     latest_table: &ClickHouseTable,
 ) -> Result<String, ClickhouseError> {
-    create_alias_query(&latest_table.db_name, alias_name, &latest_table.name)
+    create_alias_query(db_name, alias_name, &latest_table.name)
 }
 
 // TODO: Add column comment capability to the schema and template
@@ -63,6 +65,7 @@ pub enum ClickhouseEngine {
 }
 
 pub fn create_table_query(
+    db_name: &str,
     table: ClickHouseTable,
     engine: ClickhouseEngine,
 ) -> Result<String, ClickhouseError> {
@@ -84,7 +87,7 @@ pub fn create_table_query(
     };
 
     let template_context = json!({
-        "db_name": table.db_name,
+        "db_name": db_name,
         "table_name": table.name,
         "fields":  builds_field_context(&table.columns)?,
         "primary_key_string": if !primary_key.is_empty() {
@@ -171,11 +174,11 @@ pub static DROP_TABLE_TEMPLATE: &str = r#"
 DROP TABLE IF EXISTS {{db_name}}.{{table_name}};
 "#;
 
-pub fn drop_table_query(table: ClickHouseTable) -> Result<String, ClickhouseError> {
+pub fn drop_table_query(db_name: &str, table: ClickHouseTable) -> Result<String, ClickhouseError> {
     let reg = Handlebars::new();
 
     let context = json!({
-        "db_name": table.db_name,
+        "db_name": db_name,
         "table_name": table.name,
     });
 

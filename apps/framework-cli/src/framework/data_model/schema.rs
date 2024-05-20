@@ -7,7 +7,6 @@ use super::config::DataModelConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct DataModel {
-    pub db_name: String,
     pub columns: Vec<Column>,
     pub name: String,
     pub config: DataModelConfig,
@@ -16,7 +15,6 @@ pub struct DataModel {
 impl DataModel {
     pub fn to_table(&self, version: &str) -> Table {
         Table {
-            db_name: self.db_name.clone(),
             table_type: TableType::Table,
             name: format!("{}_{}", self.name, version.replace('.', "_")),
             columns: self.columns.clone(),
@@ -54,7 +52,6 @@ pub enum TableType {
 
 #[derive(Debug, Clone)]
 pub struct Table {
-    pub db_name: String,
     pub table_type: TableType,
     pub name: String,
     pub columns: Vec<Column>,

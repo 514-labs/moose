@@ -103,9 +103,7 @@ pub fn create_table_query(
         "engine": engine
     });
 
-    let asdf = reg.render_template(CREATE_TABLE_TEMPLATE, &template_context)?;
-    println!("{}", asdf);
-    Ok(asdf)
+    Ok(reg.render_template(CREATE_TABLE_TEMPLATE, &template_context)?)
 }
 
 static CREATE_VERSION_SYNC_TRIGGER_TEMPLATE: &str = r#"

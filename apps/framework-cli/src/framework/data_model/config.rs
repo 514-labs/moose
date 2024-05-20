@@ -83,9 +83,9 @@ pub fn get(
 #[cfg(test)]
 mod tests {
     #[test]
-    fn test_serde_default() {
-        let asdf: super::DataModelConfig =
+    fn test_partial_config() {
+        let config: super::DataModelConfig =
             serde_json::from_str("{\"storage\":{\"enabled\": true}}").unwrap();
-        println!("{:?}", asdf)
+        println!("{:?}", config)
     }
 }

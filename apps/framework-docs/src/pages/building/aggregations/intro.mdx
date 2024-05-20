@@ -1,0 +1,13 @@
+# Introduction
+
+Aggregations in Moose are reusable queries that compute derived data or summary statistics from your raw data.
+One way of thinking about how Aggregations are different from Flows is that Aggregations are functions that run on your data inside your database.
+They are functions for calculating, summarizing, combining, and/or deriving new data from the data across your database tables.
+Flows, on the other hand, are functions for processing, cleaning, mapping, or augmenting individual events or batches of events in memory in a NodeJS runtime.
+Aggregations are best served after all of your data is ingested, transformed, and landed in your database, so you can make your data staged and ready to be consumed.
+
+The result set of these queries is pre-computed and saved as dedicated tables in your database, enabling integration into various
+parts of your application for enhanced metrics and insights.
+
+These aggregated values can be used in analysis, reporting, and dashboards to aid decision-making.
+Aggregation also optimizes database performance by reducing the number of queries needed to process data.

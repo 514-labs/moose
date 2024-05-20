@@ -1,5 +1,6 @@
 {
-    "data-models": "Primitive: Data Models",
-    "flows": "Primitive: Flows",
-    "dcm": "Data Change Management"
+  "data-models": "Primitive: Data Models",
+  "flows": "Primitive: Flows",
+  "aggregations": "Primitive: Aggregations",
+  "dcm": "Data Change Management"
 }

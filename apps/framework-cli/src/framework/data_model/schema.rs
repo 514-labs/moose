@@ -20,6 +20,7 @@ impl DataModel {
             table_type: TableType::Table,
             name: format!("{}_{}", self.name, version.replace('.', "_")),
             columns: self.columns.clone(),
+            order_by: self.config.storage.order_by_fields.clone(),
         }
     }
 }
@@ -57,6 +58,7 @@ pub struct Table {
     pub table_type: TableType,
     pub name: String,
     pub columns: Vec<Column>,
+    pub order_by: Vec<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]

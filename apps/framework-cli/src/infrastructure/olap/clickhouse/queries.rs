@@ -55,6 +55,7 @@ CREATE TABLE IF NOT EXISTS {{db_name}}.{{table_name}}
 )
 ENGINE = {{engine}}
 {{#if primary_key_string}}PRIMARY KEY ({{primary_key_string}}) {{/if}}
+{{#if order_by_string}}ORDER BY {{order_by_string}} {{/if}}
 "#;
 
 pub enum ClickhouseEngine {
@@ -91,10 +92,17 @@ pub fn create_table_query(
         } else {
             None
         },
+        "order_by_string": if !table.order_by.is_empty() {
+            Some(table.order_by.join(", "))
+        } else {
+            None
+        },
         "engine": engine
     });
 
-    Ok(reg.render_template(CREATE_TABLE_TEMPLATE, &template_context)?)
+    let asdf = reg.render_template(CREATE_TABLE_TEMPLATE, &template_context)?;
+    println!("{}", asdf);
+    Ok(asdf)
 }
 
 static CREATE_VERSION_SYNC_TRIGGER_TEMPLATE: &str = r#"

@@ -63,5 +63,6 @@ pub fn std_table_to_clickhouse_table(table: Table) -> Result<ClickHouseTable, Cl
         name: table.name,
         columns,
         table_type: clickhouse_table_type_mapper(table.table_type),
+        order_by: table.order_by,
     })
 }

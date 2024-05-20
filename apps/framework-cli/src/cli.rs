@@ -153,7 +153,7 @@ async fn top_command_handler(
 
                     debug!("Project: {:?}", project_arc);
 
-                    initialize_project(&project_arc)?;
+                    initialize_project(&project_arc)?.show();
 
                     project_arc
                         .write_to_disk()
@@ -226,7 +226,7 @@ async fn top_command_handler(
                 })
             })?;
 
-            copy_old_schema(&project_arc)?;
+            copy_old_schema(&project_arc)?.show();
 
             // docker flag is true then build docker images
             if *docker {
@@ -266,7 +266,7 @@ async fn top_command_handler(
             );
 
             check_project_name(&project_arc.name())?;
-            run_local_infrastructure(&project_arc)?;
+            run_local_infrastructure(&project_arc)?.show();
 
             routines::start_development_mode(project_arc)
                 .await
@@ -293,7 +293,7 @@ async fn top_command_handler(
                 let mut controller = RoutineController::new();
                 let run_mode = RunMode::Explicit {};
 
-                copy_old_schema(&project_arc)?;
+                copy_old_schema(&project_arc)?.show();
 
                 // TODO get rid of the routines and use functions instead
                 controller.add_routine(Box::new(GenerateMigration::new(project_arc)));
@@ -323,7 +323,7 @@ async fn top_command_handler(
             );
 
             check_project_name(&project_arc.name())?;
-            create_deno_files(&project_arc)?;
+            create_deno_files(&project_arc)?.show();
 
             routines::start_production_mode(project_arc).await.unwrap();
 
@@ -417,8 +417,10 @@ async fn top_command_handler(
                         &project_arc,
                         init.source.clone(),
                         init.destination.clone(),
-                    )?;
-                    create_flow_file(&project_arc, init.source.clone(), init.destination.clone())?;
+                    )?
+                    .show();
+                    create_flow_file(&project_arc, init.source.clone(), init.destination.clone())?
+                        .show();
 
                     Ok(RoutineSuccess::success(Message::new(
                         "".to_string(),
@@ -443,7 +445,7 @@ async fn top_command_handler(
                     );
 
                     check_project_name(&project_arc.name())?;
-                    create_aggregation_file(&project_arc, name.to_string())?;
+                    create_aggregation_file(&project_arc, name.to_string())?.show();
 
                     Ok(RoutineSuccess::success(Message::new(
                         "Created".to_string(),
@@ -468,7 +470,7 @@ async fn top_command_handler(
                     );
 
                     check_project_name(&project_arc.name())?;
-                    create_consumption_file(&project_arc, name.to_string())?;
+                    create_consumption_file(&project_arc, name.to_string())?.show();
 
                     Ok(RoutineSuccess::success(Message::new(
                         "Created".to_string(),

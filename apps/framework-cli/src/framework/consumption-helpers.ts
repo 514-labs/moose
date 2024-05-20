@@ -52,6 +52,7 @@ export const mapToClickHouseType = (value: any) => {
   // When define column type or query result with parameterized query, The Bool or Boolean type both supported.
   // But the column type of query result only return Bool, so we only support Bool type for safety.
   if (typeof value === "boolean") return "Bool";
+  if (value instanceof Date) return "DateTime";
   return "String";
 };
 

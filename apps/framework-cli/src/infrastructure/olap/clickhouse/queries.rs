@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS {{db_name}}.{{table_name}}
 )
 ENGINE = {{engine}}
 {{#if primary_key_string}}PRIMARY KEY ({{primary_key_string}}) {{/if}}
+{{#if order_by_string}}ORDER BY {{order_by_string}} {{/if}}
 "#;
 
 pub enum ClickhouseEngine {
@@ -91,6 +92,11 @@ pub fn create_table_query(
         "fields":  builds_field_context(&table.columns)?,
         "primary_key_string": if !primary_key.is_empty() {
             Some(primary_key.join(", "))
+        } else {
+            None
+        },
+        "order_by_string": if !table.order_by.is_empty() {
+            Some(table.order_by.join(", "))
         } else {
             None
         },

@@ -13,12 +13,12 @@ use crate::{
 
 use super::{crawl_schema, RoutineFailure, RoutineSuccess};
 
-pub fn create_aggregation_file(
+pub async fn create_aggregation_file(
     project: &Project,
     filename: String,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let old_versions = project.old_versions_sorted();
-    let framework_objects = crawl_schema(project, &old_versions).map_err(|err| {
+    let framework_objects = crawl_schema(project, &old_versions).await.map_err(|err| {
         RoutineFailure::error(Message::new(
             "Failed".to_string(),
             format!("to create aggregation: {}", err),

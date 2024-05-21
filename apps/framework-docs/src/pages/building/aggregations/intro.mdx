@@ -1,0 +1,29 @@
+# Introduction
+
+Aggregations are reusable queries that let you compute derived data tables from your existing data. They operate directly on your database, enabling you to calculate, summarize, combine, and derive new data from across your database tables. The results are saved as dedicated tables, optimizing performance with pre-computed results ready for consumption.
+
+## When to Use Aggregations
+
+Aggregations are particularly useful when you need to:
+
+- Summarize data for quick insights
+- Compute new metrics derived from existing data
+- Combine or filter data from multiple tables
+- Optimize query performance by reducing repeated computations
+- Ensure real-time updates to your aggregated data
+
+## How Aggregations Work
+
+As a developer, you write a SQL `SELECT` query to perform transformations on columns from your existing database tables. This query can:
+
+- Summarize columns
+- Compute new columns derived from other columns
+- Combine or filter data from multiple tables
+
+The results of these queries are saved to a new table, which can then be used for further data derivations like other aggregations, insights, metrics, reports, and charts.
+
+The SQL `SELECT` query is defined as a string and exported from a TypeScript file. When saved inside the `/aggregations` folder of your Moose project, Moose creates a materialized view in your database using the provided query. Moose currently supports Clickhouse for the database layer, which automatically updates the result set of your aggregation query in real-time as new data is added to your source table(s). This approach delivers several advantages, including:
+
+- Optimized query execution, resulting in faster data retrieval and reduced database load.
+- Always up-to-date data, ensuring better accuracy and quicker insights for downstream consumers.
+- More reusable data assets, simplifying database management and enhancing scalability as your data consumption needs grow.

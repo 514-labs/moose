@@ -370,7 +370,7 @@ interface Aggregation {
 export default {
   select: ` 
     SELECT 
-        count(distinct userId) as dailyActiveUsers,
+        uniqState(userId) as dailyActiveUsers,
         toStartOfDay(timestamp) as date
     FROM ParsedActivity_0_0
     WHERE activity = 'Login' 
@@ -396,9 +396,11 @@ export default async function handle(
   return client.query(
     sql`SELECT 
       date,
-      dailyActiveUsers
+      uniqMerge(dailyActiveUsers) as dailyActiveUsers
   FROM DailyActiveUsers
-  WHERE dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
+  GROUP BY date 
+  HAVING dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
+  ORDER BY date 
   LIMIT ${parseInt(limit)}`
   );
 }

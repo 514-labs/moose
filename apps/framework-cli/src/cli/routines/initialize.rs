@@ -19,7 +19,8 @@ pub fn initialize_project(project: &Project) -> Result<RoutineSuccess, RoutineFa
         project,
         SAMPLE_FLOWS_SOURCE.to_string(),
         SAMPLE_FLOWS_DEST.to_string(),
-    )?;
+    )?
+    .show();
 
     project.create_base_app_files().map_err(|err| {
         RoutineFailure::new(

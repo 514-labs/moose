@@ -5,7 +5,7 @@ use crate::infrastructure::olap::clickhouse::version_sync::{
 };
 use crate::project::Project;
 
-pub fn generate_migration(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
+pub async fn generate_migration(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
     let previous_version = match project
         .supported_old_versions
         .keys()
@@ -20,12 +20,14 @@ pub fn generate_migration(project: &Project) -> Result<RoutineSuccess, RoutineFa
         Some(previous_version) => previous_version,
     };
 
-    let fo_versions = crawl_schema(project, &project.old_versions_sorted()).map_err(|err| {
-        RoutineFailure::new(
-            Message::new("Failed".to_string(), "to crawl schema".to_string()),
-            err,
-        )
-    })?;
+    let fo_versions = crawl_schema(project, &project.old_versions_sorted())
+        .await
+        .map_err(|err| {
+            RoutineFailure::new(
+                Message::new("Failed".to_string(), "to crawl schema".to_string()),
+                err,
+            )
+        })?;
 
     let version_syncs = get_all_version_syncs(project, &fo_versions).map_err(|err| {
         RoutineFailure::new(

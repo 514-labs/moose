@@ -5,7 +5,6 @@ use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
 use crate::utilities::constants::{
     AGGREGATIONS_CONTAINER_NAME, CLI_PROJECT_INTERNAL_DIR, CONSUMPTION_CONTAINER_NAME,
-    FLOWS_CONTAINER_NAME,
 };
 use crate::utilities::docker;
 use crate::utilities::git::dump_old_version_schema;
@@ -21,23 +20,22 @@ use super::{
 };
 
 pub fn run_local_infrastructure(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
-    create_deno_files(project)?;
-    create_docker_compose_file(project)?;
+    create_deno_files(project)?.show();
+    create_docker_compose_file(project)?.show();
 
-    copy_old_schema(project)?;
+    copy_old_schema(project)?.show();
 
     ensure_docker_running()?;
-    run_containers(project)?;
+    run_containers(project)?.show();
 
-    validate_clickhouse_run()?;
-    validate_redpanda_run()?;
-    validate_console_run()?;
-    validate_deno_services()?;
-    validate_redpanda_cluster(project.name())?;
+    validate_clickhouse_run()?.show();
+    validate_redpanda_run()?.show();
+    validate_console_run()?.show();
+    validate_deno_services()?.show();
+    validate_redpanda_cluster(project.name())?.show();
 
-    tail_flows_container_logs(project)?;
-    tail_aggregations_container_logs(project)?;
-    tail_consumption_container_logs(project)?;
+    tail_aggregations_container_logs(project)?.show();
+    tail_consumption_container_logs(project)?.show();
 
     Ok(RoutineSuccess::success(Message::new(
         "Successfully".to_string(),
@@ -78,10 +76,6 @@ pub fn tail_aggregations_container_logs(
     project: &Project,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     tail_container_logs(project, AGGREGATIONS_CONTAINER_NAME)
-}
-
-pub fn tail_flows_container_logs(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
-    tail_container_logs(project, FLOWS_CONTAINER_NAME)
 }
 
 pub fn tail_consumption_container_logs(

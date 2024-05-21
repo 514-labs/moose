@@ -31,8 +31,8 @@ pub fn bump_version(
     })?;
 
     Ok(RoutineSuccess::success(Message::new(
-        "Successfully".to_string(),
-        "bumped version".to_string(),
+        "Bumped".to_string(),
+        "version".to_string(),
     )))
 }
 

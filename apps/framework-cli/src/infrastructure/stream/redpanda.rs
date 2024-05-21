@@ -14,7 +14,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 use std::time::Duration;
 
-// TODO: We need to configure the application based on the current project directory structure to ensure that we catch changes made outside of development mode
+// TODO: We need to configure the application based on the current project directory structure to
+// ensure that we catch changes made outside of development mode
+
+// TODO: We need to make this a proper client so that we don't have
+// to reinstantiate the client every time we want to use it
 
 pub async fn create_topics(config: &RedpandaConfig, topics: Vec<String>) -> anyhow::Result<()> {
     info!("Creating topics: {:?}", topics);

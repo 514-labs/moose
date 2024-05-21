@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use log::info;
@@ -32,14 +32,22 @@ impl Default for IngestionConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-
 pub struct StorageConfig {
+    #[serde(default = "_true")]
     pub enabled: bool,
+    #[serde(default)]
+    pub order_by_fields: Vec<String>,
+}
+const fn _true() -> bool {
+    true
 }
 
 impl Default for StorageConfig {
     fn default() -> Self {
-        Self { enabled: true }
+        Self {
+            enabled: true,
+            order_by_fields: vec![],
+        }
     }
 }
 
@@ -58,16 +66,27 @@ pub enum ModelConfigurationError {
     TypescriptRunner(#[from] crate::framework::typescript::export_collectors::ExportCollectorError),
 }
 
-pub fn get(
+pub async fn get(
     path: &Path,
+    enums: HashSet<&str>,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
     if path.extension() == Some(OsStr::new("ts")) {
-        let config = get_data_model_configs(path)?;
+        let config = get_data_model_configs(path, enums).await?;
         info!("Data Model configuration for {:?}: {:?}", path, config);
         Ok(config)
     } else {
         // We currently fail transparently if the file is not a typescript file and
         // we will use defaults values for the configuration for each data model.
         Ok(HashMap::new())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_partial_config() {
+        let config: super::DataModelConfig =
+            serde_json::from_str("{\"storage\":{\"enabled\": true}}").unwrap();
+        println!("{:?}", config)
     }
 }

@@ -7,8 +7,9 @@ use std::{
     path::PathBuf,
 };
 
+use anyhow::bail;
 use log::{debug, info, warn};
-use notify::{Config, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::RwLock;
 
 use crate::framework::controller::{
@@ -16,11 +17,14 @@ use crate::framework::controller::{
     schema_file_path_to_ingest_route, FrameworkObjectVersions,
 };
 use crate::framework::data_model::{is_schema_file, DuplicateModelError};
+use crate::framework::flows::loader::get_all_current_flows;
+use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::framework::typescript;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::stream::redpanda;
 use crate::project::AggregationSet;
+use crate::utilities::constants::{FLOWS_DIR, SCHEMAS_DIR};
 use crate::utilities::package_managers;
 use crate::{
     framework::controller::RouteMeta,
@@ -31,7 +35,7 @@ use crate::{
 use super::display::{with_spinner_async, Message, MessageType};
 use super::routines::flow::verify_flows_against_datamodels;
 
-async fn process_events(
+async fn process_data_models_changes(
     project: Arc<Project>,
     events: Vec<notify::Event>,
     framework_object_versions: &mut FrameworkObjectVersions,
@@ -76,7 +80,8 @@ async fn process_events(
 
         if path.exists() {
             let obj_in_new_file =
-                get_framework_objects_from_schema_file(&path, project.version(), &aggregations)?;
+                get_framework_objects_from_schema_file(&path, project.version(), &aggregations)
+                    .await?;
 
             for obj in obj_in_new_file {
                 removed_old_objects_in_file.remove(&obj.data_model.name);
@@ -221,12 +226,51 @@ async fn process_events(
     Ok(())
 }
 
+struct EventBuckets {
+    flows: Vec<Event>,
+    data_models: Vec<Event>,
+}
+
+impl EventBuckets {
+    pub fn new(events: Vec<Event>) -> Self {
+        info!("Events: {:?}", events);
+
+        let mut flows = Vec::new();
+        let mut data_models = Vec::new();
+
+        for event in events {
+            if event.kind.is_create() || event.kind.is_modify() || event.kind.is_remove() {
+                if event.paths.iter().any(|path: &PathBuf| {
+                    path.iter()
+                        .any(|component| component.eq_ignore_ascii_case(FLOWS_DIR))
+                }) {
+                    flows.push(event);
+                } else if event.paths.iter().any(|path: &PathBuf| {
+                    path.iter()
+                        .any(|component| component.eq_ignore_ascii_case(SCHEMAS_DIR))
+                }) {
+                    data_models.push(event);
+                }
+            }
+        }
+
+        info!("Flows: {:?}", flows);
+        info!("Data Models: {:?}", data_models);
+        Self { flows, data_models }
+    }
+
+    pub fn non_empty(&self) -> bool {
+        !self.flows.is_empty() || !self.data_models.is_empty()
+    }
+}
+
 async fn watch(
     project: Arc<Project>,
     framework_object_versions: &mut FrameworkObjectVersions,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     syncing_process_registry: &mut SyncingProcessesRegistry,
-) -> Result<(), Error> {
+    flows_process_registry: &mut FlowProcessRegistry,
+) -> Result<(), anyhow::Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let configured_producer = redpanda::create_producer(project.redpanda_config.clone());
 
@@ -264,44 +308,79 @@ async fn watch(
                     }
                 }
 
-                with_spinner_async(
-                    &format!("Processing {} events from file watcher", events.len()),
-                    process_events(
+                let bucketed_events = EventBuckets::new(events);
+
+                if bucketed_events.non_empty() {
+                    if !bucketed_events.data_models.is_empty() {
+                        with_spinner_async(
+                            &format!(
+                                "Processing {} Data Model(s) changes from file watcher",
+                                bucketed_events.data_models.len()
+                            ),
+                            process_data_models_changes(
+                                project.clone(),
+                                bucketed_events.data_models,
+                                framework_object_versions,
+                                route_table,
+                                &configured_client,
+                                syncing_process_registry,
+                            ),
+                            !project.is_production,
+                        )
+                        .await
+                        .map_err(|e| {
+                            Error::new(
+                                ErrorKind::Other,
+                                format!("Processing error occurred: {}", e),
+                            )
+                        })?;
+                    } else if !bucketed_events.flows.is_empty() {
+                        with_spinner_async(
+                            &format!(
+                                "Processing {} Flow(s) changes from file watcher",
+                                bucketed_events.flows.len()
+                            ),
+                            process_flows_changes(&project, flows_process_registry),
+                            !project.is_production,
+                        )
+                        .await?;
+                    }
+
+                    let _ = verify_flows_against_datamodels(&project, framework_object_versions);
+
+                    let _ = post_current_state_to_console(
                         project.clone(),
-                        events,
-                        framework_object_versions,
-                        route_table,
                         &configured_client,
-                        syncing_process_registry,
-                    ),
-                    !project.is_production,
-                )
-                .await
-                .map_err(|e| {
-                    Error::new(
-                        ErrorKind::Other,
-                        format!("Processing error occurred: {}", e),
+                        &configured_producer,
+                        framework_object_versions,
                     )
-                })?;
-
-                let _ = verify_flows_against_datamodels(&project, framework_object_versions);
-
-                let _ = post_current_state_to_console(
-                    project.clone(),
-                    &configured_client,
-                    &configured_producer,
-                    framework_object_versions,
-                )
-                .await;
+                    .await;
+                }
             }
             Err(error) => {
-                return Err(Error::new(
-                    ErrorKind::Other,
-                    format!("File watcher event caused a failure: {}", error),
-                ))
+                bail!("File watcher event caused a failure: {}", error);
             }
         }
     }
+}
+
+/**
+ * Process to start/stop/restart the flows based on changes on local files
+ *
+ * This does not resolve dependencies between files. It just reloads the flow files.
+ *
+ * This is currently very dumb and restarts all the flows for all the changes.
+ * This can be definitely optimized.
+ */
+pub async fn process_flows_changes(
+    project: &Project,
+    flows_process_registry: &mut FlowProcessRegistry,
+) -> anyhow::Result<()> {
+    let flows = get_all_current_flows(project).await?;
+    flows_process_registry.stop_all().await?;
+    flows_process_registry.start_all(&flows)?;
+
+    Ok(())
 }
 
 pub struct FileWatcher;
@@ -317,6 +396,7 @@ impl FileWatcher {
         framework_object_versions: FrameworkObjectVersions,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
         syncing_process_registry: SyncingProcessesRegistry,
+        flows_process_registry: FlowProcessRegistry,
     ) -> Result<(), Error> {
         show_message!(MessageType::Info, {
             Message {
@@ -327,6 +407,7 @@ impl FileWatcher {
 
         let mut framework_object_versions = framework_object_versions;
         let mut syncing_process_registry = syncing_process_registry;
+        let mut flows_process_registry = flows_process_registry;
 
         tokio::spawn(async move {
             if let Err(error) = watch(
@@ -334,6 +415,7 @@ impl FileWatcher {
                 &mut framework_object_versions,
                 route_table,
                 &mut syncing_process_registry,
+                &mut flows_process_registry,
             )
             .await
             {

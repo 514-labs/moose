@@ -427,7 +427,7 @@ impl Webserver {
             MessageType::Success,
             Message {
                 action: "Started".to_string(),
-                details: "Development server.\n\n".to_string(),
+                details: "Webserver.\n\n".to_string(),
             }
         );
 
@@ -458,12 +458,12 @@ impl Webserver {
             tokio::select! {
                 _ = sigint.recv() => {
                     let run_mode = RunMode::Explicit;
-                    StopLocalInfrastructure::new(project.clone()).run(run_mode).unwrap();
+                    StopLocalInfrastructure::new(project.clone()).run(run_mode).unwrap().show();
                     std::process::exit(0);
                 }
                 _ = sigterm.recv() => {
                     let run_mode = RunMode::Explicit;
-                    StopLocalInfrastructure::new(project.clone()).run(run_mode).unwrap();
+                    StopLocalInfrastructure::new(project.clone()).run(run_mode).unwrap().show();
                     std::process::exit(0);
                 }
                 listener_result = listener.accept() => {

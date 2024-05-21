@@ -153,7 +153,7 @@ async fn top_command_handler(
 
                     debug!("Project: {:?}", project_arc);
 
-                    initialize_project(&project_arc)?;
+                    initialize_project(&project_arc)?.show();
 
                     project_arc
                         .write_to_disk()
@@ -226,7 +226,7 @@ async fn top_command_handler(
                 })
             })?;
 
-            copy_old_schema(&project_arc)?;
+            copy_old_schema(&project_arc)?.show();
 
             // docker flag is true then build docker images
             if *docker {
@@ -265,7 +265,7 @@ async fn top_command_handler(
             );
 
             check_project_name(&project_arc.name())?;
-            run_local_infrastructure(&project_arc)?;
+            run_local_infrastructure(&project_arc)?.show();
 
             routines::start_development_mode(project_arc)
                 .await
@@ -288,8 +288,8 @@ async fn top_command_handler(
                 let project_arc = Arc::new(project);
 
                 check_project_name(&project_arc.name())?;
-                copy_old_schema(&project_arc)?;
-                generate_migration(&project_arc)?;
+                copy_old_schema(&project_arc)?.show();
+                generate_migration(&project_arc).await?.show();
 
                 Ok(RoutineSuccess::success(Message::new(
                     "Generated".to_string(),
@@ -315,7 +315,7 @@ async fn top_command_handler(
             );
 
             check_project_name(&project_arc.name())?;
-            create_deno_files(&project_arc)?;
+            create_deno_files(&project_arc)?.show();
 
             routines::start_production_mode(project_arc).await.unwrap();
 
@@ -355,12 +355,7 @@ async fn top_command_handler(
                 Some(new_version) => new_version.clone(),
             };
 
-            bump_version(&project_arc, new_version)?;
-
-            Ok(RoutineSuccess::success(Message::new(
-                "Bumped".to_string(),
-                "Version".to_string(),
-            )))
+            bump_version(&project_arc, new_version)
         }
         Commands::Clean {} => {
             let run_mode = RunMode::Explicit {};
@@ -405,8 +400,11 @@ async fn top_command_handler(
                         &project_arc,
                         init.source.clone(),
                         init.destination.clone(),
-                    )?;
-                    create_flow_file(&project_arc, init.source.clone(), init.destination.clone())?;
+                    )?
+                    .show();
+                    create_flow_file(&project_arc, init.source.clone(), init.destination.clone())
+                        .await?
+                        .show();
 
                     Ok(RoutineSuccess::success(Message::new(
                         "".to_string(),
@@ -431,7 +429,7 @@ async fn top_command_handler(
                     );
 
                     check_project_name(&project_arc.name())?;
-                    create_aggregation_file(&project_arc, name.to_string())
+                    create_aggregation_file(&project_arc, name.to_string()).await
                 }
             }
         }
@@ -451,7 +449,7 @@ async fn top_command_handler(
                     );
 
                     check_project_name(&project_arc.name())?;
-                    create_consumption_file(&project_arc, name.to_string())?;
+                    create_consumption_file(&project_arc, name.to_string())?.show();
 
                     Ok(RoutineSuccess::success(Message::new(
                         "Created".to_string(),

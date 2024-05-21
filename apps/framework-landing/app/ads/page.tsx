@@ -2,9 +2,6 @@ import { ReactNode } from "react";
 
 import { VariantProps } from "class-variance-authority";
 import { FooterSection } from "../sections/FooterSection";
-import { WhyMooseSection } from "../sections/home/WhyMooseSection";
-
-import { SecondaryCTASection } from "../sections/home/SecondaryCTASection";
 import { cn } from "@514labs/design-system/utils";
 
 import { Button, buttonVariants } from "@514labs/design-system/components";
@@ -20,7 +17,6 @@ import {
   Section,
   Grid,
   HalfWidthContentContainer,
-  FullWidthContentContainer,
   ThirdWidthContentContainer,
 } from "@514labs/design-system/components/containers";
 import Link from "next/link";
@@ -166,9 +162,9 @@ export default function Home() {
 
   return (
     <main>
-      <Section className="w-full relative mx-auto xl:max-w-screen-xl pb-10">
+      <Section className="w-full relative mx-auto xl:max-w-screen-xl py-0">
         <Grid>
-          <HalfWidthContentContainer className="pt-0">
+          <HalfWidthContentContainer className="py-0">
             <div>
               {/* <Heading> {heroContent.tagLine} </Heading> */}
               <Display className="my-0">{heroContent.tagLine} </Display>
@@ -198,7 +194,7 @@ export default function Home() {
           </HalfWidthContentContainer>
         </Grid>
       </Section>
-      <Section className="mx-auto xl:max-w-screen-xl">
+      <Section className="mx-auto xl:max-w-screen-xl my-5">
         <Grid>
           {featuresContent.features.map((feature, index) => {
             return (

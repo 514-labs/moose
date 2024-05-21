@@ -129,6 +129,7 @@ pub mod validate;
 pub mod version;
 
 #[derive(Debug, Clone)]
+#[must_use = "The message should be displayed."]
 pub struct RoutineSuccess {
     pub message: Message,
     pub message_type: MessageType,
@@ -156,6 +157,10 @@ impl RoutineSuccess {
             message,
             message_type: MessageType::Highlight,
         }
+    }
+
+    pub fn show(&self) {
+        show_message!(self.message_type, self.message);
     }
 }
 

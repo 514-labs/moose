@@ -458,12 +458,12 @@ impl Webserver {
             tokio::select! {
                 _ = sigint.recv() => {
                     let run_mode = RunMode::Explicit;
-                    StopLocalInfrastructure::new(project.clone()).run(run_mode).unwrap();
+                    StopLocalInfrastructure::new(project.clone()).run(run_mode).unwrap().show();
                     std::process::exit(0);
                 }
                 _ = sigterm.recv() => {
                     let run_mode = RunMode::Explicit;
-                    StopLocalInfrastructure::new(project.clone()).run(run_mode).unwrap();
+                    StopLocalInfrastructure::new(project.clone()).run(run_mode).unwrap().show();
                     std::process::exit(0);
                 }
                 listener_result = listener.accept() => {

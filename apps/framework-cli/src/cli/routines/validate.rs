@@ -24,8 +24,8 @@ fn validate_container_run(container_name: &str) -> Result<RoutineSuccess, Routin
             ))
         })?;
     Ok(RoutineSuccess::success(Message::new(
-        "Successfully".to_string(),
-        format!("validated {} docker container", container_name),
+        "Validated".to_string(),
+        format!("{} docker container", container_name),
     )))
 }
 

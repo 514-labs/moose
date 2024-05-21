@@ -32,14 +32,22 @@ impl Default for IngestionConfig {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-
 pub struct StorageConfig {
+    #[serde(default = "_true")]
     pub enabled: bool,
+    #[serde(default)]
+    pub order_by_fields: Vec<String>,
+}
+const fn _true() -> bool {
+    true
 }
 
 impl Default for StorageConfig {
     fn default() -> Self {
-        Self { enabled: true }
+        Self {
+            enabled: true,
+            order_by_fields: vec![],
+        }
     }
 }
 
@@ -69,5 +77,15 @@ pub fn get(
         // We currently fail transparently if the file is not a typescript file and
         // we will use defaults values for the configuration for each data model.
         Ok(HashMap::new())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_partial_config() {
+        let config: super::DataModelConfig =
+            serde_json::from_str("{\"storage\":{\"enabled\": true}}").unwrap();
+        println!("{:?}", config)
     }
 }

@@ -21,7 +21,9 @@ impl Routine for CleanProject {
         let run_mode = self.run_mode;
 
         ensure_docker_running()?;
-        StopLocalInfrastructure::new(self.project.clone()).run(run_mode)?;
+        StopLocalInfrastructure::new(self.project.clone())
+            .run(run_mode)?
+            .show();
 
         self.project.delete_old_versions().map_err(|err| {
             error!("Failed to remove .moose directory: {:?}", err);

@@ -271,21 +271,10 @@ pub struct ClickHouseTable {
     pub name: String,
     pub columns: Vec<ClickHouseColumn>,
     pub table_type: ClickHouseTableType,
+    pub order_by: Vec<String>,
 }
 
 impl ClickHouseTable {
-    pub fn new(
-        name: String,
-        columns: Vec<ClickHouseColumn>,
-        table_type: ClickHouseTableType,
-    ) -> ClickHouseTable {
-        ClickHouseTable {
-            name,
-            columns,
-            table_type,
-        }
-    }
-
     pub fn create_data_table_query(&self, db_name: &str) -> Result<String, ClickhouseError> {
         create_table_query(db_name, self.clone(), ClickhouseEngine::MergeTree)
     }

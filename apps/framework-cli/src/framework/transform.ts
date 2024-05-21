@@ -9,6 +9,7 @@ import {
   SASLOptions,
 } from "npm:kafkajs@2.2.4";
 import SnappyCodec from "npm:kafkajs-snappy@1.1.0";
+import { antiCachePath } from "./ts-helpers.ts";
 
 CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
 
@@ -176,7 +177,7 @@ const handleMessage = async (
       });
     }
     for (const [destinationTopic, flowFilePath] of flows) {
-      const transform = await import(flowFilePath);
+      const transform = await import(antiCachePath(flowFilePath));
       const transformedData = await transform.default(
         JSON.parse(message.value.toString(), jsonDateReviver),
       );

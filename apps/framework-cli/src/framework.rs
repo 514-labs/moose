@@ -2,6 +2,7 @@ use clap::Subcommand;
 
 pub mod controller;
 pub mod data_model;
+pub mod flows;
 pub mod languages;
 pub mod prisma;
 pub mod typescript;

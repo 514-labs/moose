@@ -231,8 +231,10 @@ const startConsumer = async (): Promise<void> => {
   const flowTopics = Array.from(flows.keys());
 
   await consumer.connect();
+  console.log(
+    `Starting consumer group '${CONSUMER_ID}' with topics: ${flowTopics.join(", ")}`,
+  );
   await consumer.subscribe({ topics: flowTopics, fromBeginning: false });
-  console.log("Subscribed to topics: ", flowTopics.join(", "));
 
   await consumer.run({
     autoCommit: false,

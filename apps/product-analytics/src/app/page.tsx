@@ -31,6 +31,8 @@ export default function DashboardPage() {
     getKPI(DateRange["3D"]).then((val) => setData(val));
   }, []);
 
+  console.log(data, "data");
+
   const [topBrowsers, setTopBrowsers] = useState([{}]);
   useEffect(() => {
     getData(topBrowsersQuery(DateRange["3D"])).then((val) =>

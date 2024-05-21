@@ -6,7 +6,6 @@ import TimeSeriesChart from "@/components/time-series-chart";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { topBrowsersQuery } from "@/insights/top-browsers";
 import Histogram from "@/components/histogram";
-import { getData } from "./data";
 
 const DashboardPanel = ({
   name,
@@ -28,14 +27,12 @@ const DashboardPanel = ({
 export default function DashboardPage() {
   const [data, setData] = useState<KPI[]>([]);
   useEffect(() => {
-    getKPI(DateRange["3D"]).then((val) => setData(val));
+    getKPI().then((val) => setData(val));
   }, []);
 
   const [topBrowsers, setTopBrowsers] = useState([{}]);
   useEffect(() => {
-    getData(topBrowsersQuery(DateRange["3D"])).then((val) =>
-      setTopBrowsers(val),
-    );
+    topBrowsersQuery().then((val) => setTopBrowsers(val));
   }, []);
 
   return (

@@ -9,7 +9,7 @@ export interface EventTable {
 
 export const pageViewEvent = {
   eventName: "Page View",
-  tableName: "PageViewEvent_0_0",
+  tableName: "PageViewRaw",
   modelName: "PageViewEvent",
 };
 

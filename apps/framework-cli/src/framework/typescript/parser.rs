@@ -381,7 +381,11 @@ mod tests {
 
         let result = extract_data_model_from_file(&test_file);
         assert!(result.is_err());
-        assert_eq!(result.err().unwrap().to_string(), "Typescript Parser - Invalid typescript file, please refer to the documentation for an example of a valid typescript file\nExpected ',', got ';'");
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            r#"Typescript Parser - Invalid typescript file, please refer to the documentation for an example of a valid typescript file
+Expected ',', got ';'"#
+        );
     }
 
     #[test]

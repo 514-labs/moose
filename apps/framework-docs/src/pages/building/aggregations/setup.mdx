@@ -2,28 +2,30 @@ import { Callout, FileTree, Link } from "nextra/components";
 
 # Create Aggregation in CLI
 
-Aggregations are essentially SQL `SELECT` queries defined in a `.ts` file within the `/aggregations` folder of your Moose project.
-Moose automatically handles the infrastructure and database setup, ensuring that calculations are updated and executed in real-time as new data becomes available.
-
 Initialize your aggregation in Moose with a CLI command:
 
 ```txt filename="Terminal" copy
 moose aggregation init <aggregation_name>
 ```
 
-The command takes an `aggregation_name` which will be used as the filename of the aggregation and the table name of the aggregated data.
+The command takes an `aggregation_name` which will be used as both the filename
+of the aggregation and the table name of the aggregated data.
 
-# Develop Aggregation Logic
+# Develop Your Aggregation Logic
 
-Moose leverages materialized views which are pre-computed queries stored as their own tables. When new data is added to the
-source table, the database automatically updates the materialized view with the aggregated data.
+Moose leverages materialized views which are pre-computed queries stored as
+their own tables. When new data is added to the source table, the database
+automatically updates the materialized view with the aggregated data.
 
-You should define the query in the aggregation file. It exports an object with two properties:
+You should define the query in the aggregation file. It exports an object with
+two properties:
 
 - `select` is a valid SQL `SELECT` query that aggregates data
-- `orderBy` is a column used to sort the data in the materialized view
+- `orderBy` are columns that define the primary key for the view. To define
+  multiple columns, put them in parentheses e.g. `orderBy: “(column1, column2)”`
 
-The default Moose project comes with an example aggregation, it calculates the number of unique users who complete a sign-in activity each day:
+The default Moose project comes with an example aggregation, it calculates the
+number of unique users who complete a sign-in activity each day:
 
 ```ts filename="DailyActiveUsers.ts" copy
 interface Aggregation {
@@ -44,22 +46,38 @@ export default {
 } as Aggregation;
 ```
 
-We recommend iterating on the `SELECT` query in a SQL explorer for a more efficient workflow. Once you’re satisfied with the query
-that will aggregate the data, you can easily copy-paste it into the aggregation file. If you’re using VS Code, Moose will automatically
-configure a [SQL explorer extension](https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools) that will connect to the local database.
-You can find these settings in the `.vscode` folder of your Moose project.
+We recommend iterating on the `SELECT` query in a SQL explorer for a more
+efficient workflow. Once you’re satisfied with the query that will aggregate the
+data, you can easily copy-paste it into the aggregation file. If you’re using VS
+Code, Moose will automatically configure a [SQL explorer
+extension](https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools)
+that will connect to the local database. You can find these settings in the
+`.vscode` folder of your Moose project.
+
+You might also be curious why we require you to designate at least one column
+name from your Aggregation `SELECT` query result set to use as the `orderBy` key.
+As previously mentioned, Moose creates a Materialized View in your Clickhouse
+database whenever you create or update an Aggregation query. Clickhouse actually
+creates a new table in your database where the Materialized View result set is
+stored, and so this requires you to actually specify at least one column to use
+as the key for this table in the `CREATE` command syntax.
 
 # Using Your Aggregation
 
-When you save the aggregation file, Moose automatically creates a new table named after your file and populates it with the results of the `SELECT` statement.
-You can then use this table in other queries to build further insights. Check out the Consumption API section of the documentation to learn
+When you save the aggregation file, Moose automatically creates a new table
+named after your file and populates it with the results of the `SELECT`
+statement. You can then use this table in other queries to build further
+insights. Check out the Consumption API section of the documentation to learn
 how you could create an API to consume the aggregated data.
 
 # Advanced: Aggregations on Aggregations
 
-You can build further aggregations based on existing ones. For example, you might create a time series for average session duration,
-average page hits per session, and total page hits over each time interval across all sessions. This allows for dynamic data fetching
-and rendering on your dashboard frontend.
+You can build further aggregations based on existing ones. For example, you
+might create a time series for average session duration, average page hits per
+session, and total page hits over each time interval across all sessions. This
+allows for dynamic data fetching and rendering on your dashboard frontend.
 
-Check out our [blog](https://www.fiveonefour.com/blog) to see how we used aggregations for product analytics.
-Explore the [template](https://github.com/514-labs/moose/tree/main/templates/product-analytics) on GitHub to see examples and implementation details.
+Check out our [blog](https://www.fiveonefour.com/blog) to see how we used
+aggregations for product analytics. Explore the
+[template](https://github.com/514-labs/moose/tree/main/templates/product-analytics)
+on GitHub to see examples and implementation details.

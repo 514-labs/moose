@@ -22,8 +22,14 @@ pub enum TypescriptParsingError {
     UnsupportedDataTypeError {
         type_name: String,
     },
-    #[error("Typescript Parser - Invalid typescript file, please refer to the documentation for an example of a valid typescript file")]
-    InvalidTypescriptFile,
+    #[error("Typescript Parser - Invalid typescript file, please refer to the documentation for an example of a valid typescript file\n{}", syntax_error.msg())]
+    InvalidTypescriptFile {
+        syntax_error: swc_ecma_parser::error::SyntaxError,
+    },
+    #[error("Typescript Parser - Missing type annotation for {field_name}")]
+    MissingTypeAnnotation {
+        field_name: String,
+    },
     #[error("Typescript Parser - {message}")]
     OtherError {
         message: String,
@@ -54,9 +60,12 @@ fn parse_ts_module(path: &Path) -> Result<Module, TypescriptParsingError> {
 
     let mut parser = Parser::new_from(capturing);
 
-    parser
-        .parse_module()
-        .map_err(|_| TypescriptParsingError::InvalidTypescriptFile)
+    parser.parse_module().map_err(|e| {
+        // TODO: report the offending code from fm.src
+        TypescriptParsingError::InvalidTypescriptFile {
+            syntax_error: e.into_kind(),
+        }
+    })
 }
 
 fn extract_data_models_from_ast(ast: Module) -> Result<FileObjects, TypescriptParsingError> {
@@ -198,10 +207,14 @@ fn parse_property_signature(
     };
 
     // match the type of the value and return the right column type
-    let TsTypeAnn { type_ann, .. } = *prop
-        .type_ann
-        .clone()
-        .ok_or(TypescriptParsingError::InvalidTypescriptFile {})?;
+    let TsTypeAnn { type_ann, .. } =
+        *prop
+            .type_ann
+            .clone()
+            .ok_or_else(|| TypescriptParsingError::MissingTypeAnnotation {
+                // shouldn't need to clone, we're early returning
+                field_name: name.clone(),
+            })?;
 
     let data_type = parse_type_ann(type_ann, enums, &mut primary_key)?;
 
@@ -358,5 +371,34 @@ mod tests {
 
         let result = extract_data_model_from_file(&test_file);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_ts_syntax_error() {
+        let current_dir = std::env::current_dir().unwrap();
+
+        let test_file = current_dir.join("tests/ts/syntax_error.ts");
+
+        let result = extract_data_model_from_file(&test_file);
+        assert!(result.is_err());
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            r#"Typescript Parser - Invalid typescript file, please refer to the documentation for an example of a valid typescript file
+Expected ',', got ';'"#
+        );
+    }
+
+    #[test]
+    fn test_ts_missing_type() {
+        let current_dir = std::env::current_dir().unwrap();
+
+        let test_file = current_dir.join("tests/ts/type_missing.ts");
+
+        let result = extract_data_model_from_file(&test_file);
+        assert!(result.is_err());
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            "Typescript Parser - Missing type annotation for foo"
+        );
     }
 }

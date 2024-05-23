@@ -5,6 +5,7 @@ import { ThemeProvider } from "@514labs/design-system/components";
 import { cn } from "@514labs/design-system/utils";
 import { Nav } from "@514labs/design-system/trackable-components";
 import Script from "next/script";
+import { GoogleTagManager } from "@next/third-parties/google";
 
 const monoFont = localFont({
   src: "./ABCMonumentGroteskMonoVariable.woff2",
@@ -47,6 +48,7 @@ export default async function RootLayout({
         src="https://analytics.514.dev/script.js"
         data-host="https://moosefood.514.dev"
       />
+      <GoogleTagManager gtmId="AW-16560033470" />
       <body
         className={cn(
           "min-h-screen bg-background font-sans antialiased",

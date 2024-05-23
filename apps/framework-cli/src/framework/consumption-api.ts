@@ -1,7 +1,11 @@
 import type { ClickHouseClient } from "npm:@clickhouse/client-web@1.0.1";
 
 import { ResultSet } from "npm:@clickhouse/client-web@1.0.1";
-import sql, { Sql, createClickhouseParameter } from "./consumption-helpers.ts";
+import sql, {
+  Sql,
+  createClickhouseParameter,
+  getValueFromParameter,
+} from "./consumption-helpers.ts";
 import { antiCachePath, getClickhouseClient } from "./ts-helpers.ts";
 
 const cwd = Deno.args[0] || Deno.cwd();
@@ -31,7 +35,10 @@ class MooseClient {
       .join("");
 
     const query_params = sql.values.reduce(
-      (acc: Record<string, unknown>, v, i) => ({ ...acc, [`p${i}`]: v }),
+      (acc: Record<string, unknown>, v, i) => ({
+        ...acc,
+        [`p${i}`]: getValueFromParameter(v),
+      }),
       {},
     );
 
@@ -44,6 +51,10 @@ class MooseClient {
     });
   }
 }
+
+const helpers = {
+  column: (value: string) => ["Identifier", value],
+};
 
 const apiHandler = async (request: Request): Promise<Response> => {
   const url = new URL(request.url);
@@ -58,6 +69,7 @@ const apiHandler = async (request: Request): Promise<Response> => {
   const result = await userFuncModule.default(searchParams, {
     client: new MooseClient(),
     sql: sql,
+    helpers: helpers,
   });
 
   let body: string;

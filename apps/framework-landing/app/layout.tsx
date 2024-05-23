@@ -5,6 +5,7 @@ import { ThemeProvider } from "@514labs/design-system/components";
 import { cn } from "@514labs/design-system/utils";
 import { Nav } from "@514labs/design-system/trackable-components";
 import Script from "next/script";
+import { GoogleTagManager } from "@next/third-parties/google";
 
 const monoFont = localFont({
   src: "./ABCMonumentGroteskMonoVariable.woff2",

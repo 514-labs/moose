@@ -19,13 +19,13 @@ export default function Page({
 }) {
   const content = campaignContent?.[campaign] || defaultContent;
   return (
-    <div>
+    <>
       <CTASection content={content.ctaSection} />
       <Section className="mx-auto xl:max-w-screen-xl">
         <FeatureGrid features={content.features} />
       </Section>
       <FooterSection />
-    </div>
+    </>
   );
 }
 

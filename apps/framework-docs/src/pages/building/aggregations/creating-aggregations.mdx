@@ -1,0 +1,71 @@
+import { Callout, Steps } from "nextra/components";
+
+## Creating & Using Aggregations
+
+Here's a step-by-step guide to creating and using aggregations:
+
+<Steps>
+### Initialize Your Aggregation
+Run the following command in your CLI to get started with a new aggregation in your Moose project:
+
+```bash copy
+moose aggregation init <aggregation_name>
+```
+
+Replace `<aggregation_name>` with your desired name. This name will be used both as the filename of the aggregation and the table name of the aggregated data.
+
+### Develop Your Aggregation Logic
+
+Moose uses materialized views, which are pre-computed queries stored as their own tables. When new data is added to the source table, the database updates the materialized view with the aggregated data.
+
+Define your query in the `<aggregation_name>.ts` file. This file must export an object with two properties:
+
+- `select`: A valid Clickhouse SQL `SELECT` query that aggregates data
+- `orderBy`: Columns that define the primary key for the target table where your query results will be stored. To define multiple columns, put them in parentheses e.g. `orderBy: “(column1, column2)”`
+
+<Callout type="info" emoji="💡">
+  [Test your query in a SQL explorer for a more efficient
+  workflow.](./workflow-tips) Once satisfied, copy-paste it into the aggregation
+  file. Be sure to validate your query using the [Clickhouse SQL
+  Reference](https://clickhouse.com/docs/en/sql-reference/aggregate-functions/reference)
+  to ensure it adheres to Clickhouse's syntax and utilizes the available
+  functions effectively.
+</Callout>
+
+### Using Your Aggregation
+
+When you save the aggregation file, Moose automatically creates a new table named after your file and populates it with the results of the `SELECT` statement. You can then use this table in other queries to build further insights. Check out the Consumption API section of the documentation to learn how you could create an API to consume the aggregated data.
+
+<Callout type="info" emoji="💡">
+  Materialized Views in Clickhouse automatically refresh your target table with
+  the latest query results whenever new data is added to your source tables.
+  [Learn more about Clickhouse Materialized
+  Views.](https://clickhouse.com/blog/using-materialized-views-in-clickhouse)
+</Callout>
+
+</Steps>
+### Example Aggregation
+The default Moose project comes with an example aggregation, it calculates the number of unique users who complete a sign-in activity each day:
+
+```ts filename="aggregations/DailyActiveUsers.ts" copy
+interface Aggregation {
+  select: string;
+  orderBy: string;
+}
+
+export default {
+  select: ` 
+    SELECT 
+        count(distinct userId) as dailyActiveUsers,
+        toStartOfDay(timestamp) as date
+    FROM ParsedActivity_0_0
+    WHERE activity = 'Login' 
+    GROUP BY toStartOfDay(timestamp)
+    `,
+  orderBy: "date",
+} as Aggregation;
+```
+
+### Advanced: Aggregations on Aggregations
+
+You can build further aggregations based on existing ones. For example, you might create a time series for average session duration, average page hits per session, and total page hits over each time interval across all sessions. This allows for dynamic data fetching and rendering on your dashboard frontend.

@@ -4,18 +4,19 @@ use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
-use super::ts_node::run;
+use super::ts_node;
 
 const FLOW_RUNNER_WRAPPER: &str = include_str!("ts_scripts/flow.ts");
 
 // TODO: we currently refer repanda configuration here. If we want to be able to
 // abstract this to other type of streaming engine, we will need to be able to abstract this away.
-fn run_flow(
+pub fn run(
     redpanda_config: RedpandaConfig,
     source_topic: &str,
     target_topic: &str,
     flow_path: &Path,
-) {
+    // TODO Remove the anyhow type here
+) -> Result<tokio::process::Child, std::io::Error> {
     let mut args = vec![
         source_topic,
         target_topic,
@@ -39,7 +40,7 @@ fn run_flow(
         args.push(&redpanda_config.security_protocol.as_ref().unwrap());
     }
 
-    let flow_process = run(FLOW_RUNNER_WRAPPER, &args)?;
+    let flow_process = ts_node::run(FLOW_RUNNER_WRAPPER, &args)?;
 
     let stdout = flow_process
         .stdout
@@ -66,13 +67,5 @@ fn run_flow(
         }
     });
 
-    Ok(())
+    Ok(flow_process)
 }
-
-struct Flow {
-    source_topic: String,
-    target_topic: String,
-    flow_path: Path,
-}
-
-fn get_all_current_flows() -> Vec<Flow> {}

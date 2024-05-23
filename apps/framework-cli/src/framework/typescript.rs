@@ -1,5 +1,5 @@
 pub mod export_collectors;
-pub mod flow_runner;
+pub mod flow;
 pub mod generator;
 pub mod parser;
 pub mod templates;

@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
 use log::info;
@@ -68,9 +68,10 @@ pub enum ModelConfigurationError {
 
 pub fn get(
     path: &Path,
+    enums: HashSet<&str>,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
     if path.extension() == Some(OsStr::new("ts")) {
-        let config = get_data_model_configs(path)?;
+        let config = get_data_model_configs(path, enums)?;
         info!("Data Model configuration for {:?}: {:?}", path, config);
         Ok(config)
     } else {

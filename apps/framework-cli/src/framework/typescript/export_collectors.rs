@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::io::Read;
 use std::{
     io::BufReader,
@@ -73,6 +73,7 @@ fn collect_exports(file: &Path) -> Result<Value, ExportCollectorError> {
 
 pub fn get_data_model_configs(
     file: &Path,
+    enums: HashSet<&str>,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ExportCollectorError> {
     let exports = collect_exports(file)?;
 
@@ -80,6 +81,9 @@ pub fn get_data_model_configs(
         Value::Object(map) => {
             let mut result = HashMap::new();
             for (key, value) in map {
+                if enums.contains(key.as_str()) {
+                    continue;
+                }
                 if let Ok(model_config) = serde_json::from_value(value) {
                     result.insert(key, model_config);
                 }

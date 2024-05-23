@@ -1,4 +1,4 @@
-use std::collections::{HashMap, VecDeque};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::io::Error;
 use std::io::ErrorKind;
 use std::path::Path;
@@ -191,7 +191,14 @@ pub fn get_framework_objects_from_schema_file(
         indexed_models.insert(model.name.clone().trim().to_lowercase(), model);
     }
 
-    let data_models_configs = data_model::config::get(path)?;
+    let data_models_configs = data_model::config::get(
+        path,
+        framework_objects
+            .enums
+            .iter()
+            .map(|e| e.name.as_str())
+            .collect::<HashSet<&str>>(),
+    )?;
     for (config_variable_name, config) in data_models_configs.iter() {
         let sanitized_config_name = config_variable_name.trim().to_lowercase();
         match sanitized_config_name.strip_suffix("config") {
@@ -202,7 +209,7 @@ pub fn get_framework_objects_from_schema_file(
                 }
             }
             None => {
-                return Err(DataModelError::Other { message: format!("Config name exports have to be of the format <dataModelName>Config so that they can be correlated to the proper datamodel. \n {} is not respecting this pattern", config_variable_name) })
+                return Err(DataModelError::Other { message: format!("Config name exports have to be of the format <dataModelName>Config so that they can be correlated to the proper data model. \n {} is not respecting this pattern", config_variable_name) })
             }
         }
     }
@@ -589,7 +596,6 @@ pub async fn process_objects(
 
 #[cfg(test)]
 mod tests {
-    use std::collections::HashSet;
 
     #[test]
     fn test_get_all_framework_objects() {

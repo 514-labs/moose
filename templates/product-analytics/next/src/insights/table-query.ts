@@ -8,7 +8,6 @@ import {
 } from "./time-query";
 import { createCTE } from "./util";
 import { getData } from "@/app/data";
-import { sessionData } from "./sessions";
 
 function createColumnSnippet(columnNames: string[]) {
   if (columnNames.length == 0) {
@@ -49,7 +48,6 @@ export function virtualTableQuery(
   columnNames: string[],
 ) {
   const cte = {
-    ["virtual_session"]: sessionData(),
     ["combined_events"]: tableQuery(events, dateRange, columnNames),
   };
   return (
@@ -84,7 +82,6 @@ enum Ctes {
   allTables = "allTables",
   combinations = "combinations",
   analytics = "analytics",
-  sessions = "sessions",
 }
 
 export function chartQuery(

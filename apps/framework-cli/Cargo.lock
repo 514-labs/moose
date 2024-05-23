@@ -717,7 +717,7 @@ dependencies = [
 name = "crossbeam-utils"
 version = "0.8.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "248e3bacc7dc6baa3b21e405ee045c3047101a49145e7e9eca583ab4c2ca5345"
+checksum = "22ec99545bb0ed0ea7bb9b8e1e9122ea386ff8a48c0922e43f36d45ab09e0e80"
 
 [[package]]
 name = "crunchy"
@@ -1222,7 +1222,7 @@ dependencies = [
 name = "hashbrown"
 version = "0.14.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "290f1a1d9242c78d09ce40a5e87e7554ee637af1351968159f4952f028f75604"
+checksum = "e5274423e17b7c9fc20b6e7e208532f9b19825d82dfd615708b70edd83df41f1"
 dependencies = [
  "ahash 0.8.11",
 ]
@@ -1594,6 +1594,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7655c9839580ee829dfacba1d1278c2b7883e50a277ff7541299489d6bdfdc45"
 
 [[package]]
+name = "is_terminal_polyfill"
+version = "1.70.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f8478577c03552c21db0e2724ffb8986a5ce7af88107e6be5d2ee6e158c12800"
+
+[[package]]
 name = "itertools"
 version = "0.11.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1810,9 +1816,9 @@ dependencies = [
 
 [[package]]
 name = "malachite"
-version = "0.4.7"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "38ad951c9d45bd4c77f4c843844870dddeb2e332864226f5a62277498e1627b8"
+checksum = "07b7d9a19f361ff1702218089fe80d8b94ef170d50585e9b62bfd0763a70a3ea"
 dependencies = [
  "malachite-base",
  "malachite-nz",
@@ -1821,11 +1827,11 @@ dependencies = [
 
 [[package]]
 name = "malachite-base"
-version = "0.4.7"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d073a3d1e4e037975af5ef176a2632672e25e8ddbe8e1811745c2e0726b6ad94"
+checksum = "2c1189508294c7720b50c652670cd0fab596873482f57d31dc2737a02a7bbc34"
 dependencies = [
- "hashbrown 0.14.3",
+ "hashbrown 0.14.5",
  "itertools 0.11.0",
  "libm",
  "ryu",
@@ -1846,9 +1852,9 @@ dependencies = [
 
 [[package]]
 name = "malachite-nz"
-version = "0.4.7"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2546fc6ae29728079e87a2a0f011509e6060713b65e62ee46ba5d413b495ebc7"
+checksum = "95a3eed175b73b3ee4a4e19f4e7ffcc9d6d5c8c485a067d220670da7ba33c365"
 dependencies = [
  "itertools 0.11.0",
  "libm",
@@ -1857,9 +1863,9 @@ dependencies = [
 
 [[package]]
 name = "malachite-q"
-version = "0.4.7"
+version = "0.4.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0ad0ac879ecbb7e1cc8060b48696eebed0b0de8d922db4f8b378dfbc1bad806a"
+checksum = "4e0a3652adf704b95a1a8fae715ecf9b001e9e32f015448cec73fe0d84c56943"
 dependencies = [
  "itertools 0.11.0",
  "malachite-base",
@@ -1987,7 +1993,7 @@ dependencies = [
  "predicates",
  "rdkafka",
  "regex",
- "reqwest 0.12.2",
+ "reqwest 0.12.4",
  "rustpython-parser",
  "schema-ast",
  "sentry",
@@ -2273,10 +2279,12 @@ checksum = "1f2a05b18d44e2957b88f96ba460715e295bc1d7510468a2f3d3b44535d26c24"
 dependencies = [
  "regex",
 ]
+
+[[package]]
 name = "paste"
-version = "1.0.14"
+version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "path-clean"
@@ -2860,6 +2868,22 @@ checksum = "1c74cae0a4cf6ccbbf5f359f08efdf8ee7e1dc532573bf0db71968cb56b1448c"
 dependencies = [
  "base64 0.21.7",
 ]
+
+[[package]]
+name = "rustls-pemfile"
+version = "2.1.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "29993a25686778eb88d4189742cd713c9bce943bc54251a33509dc63cbacf73d"
+dependencies = [
+ "base64 0.22.1",
+ "rustls-pki-types",
+]
+
+[[package]]
+name = "rustls-pki-types"
+version = "1.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "976295e77ce332211c0d24d92c0e83e50f5c5f046d11082cea19f3df13a3562d"
 
 [[package]]
 name = "rustpython-ast"
@@ -4861,7 +4885,7 @@ checksum = "d4c87d22b6e3f4a18d4d40ef354e97c90fcb14dd91d7dc0aa9d8a1172ebf7202"
 name = "unicode-width"
 version = "0.1.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e51733f11c9c4f72aa0c160008246859e340b00807569a0da0e7a1079b27ba85"
+checksum = "68f5e5f3158ecfd4b8ff6fe086db7c8467a2dfdac97fe420f2b7c4aa97af66d6"
 
 [[package]]
 name = "unicode_names2"

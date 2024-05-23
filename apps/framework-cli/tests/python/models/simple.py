@@ -20,7 +20,7 @@ class MyModel:
     age: int
     flag: bool
     status: Status
-    test_key: str = field(alias="test-key")
+    test_key: str
     arr: List[str]
     opt: Optional[str]
 

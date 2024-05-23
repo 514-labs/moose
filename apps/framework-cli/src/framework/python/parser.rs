@@ -16,9 +16,8 @@ use rustpython_parser::{
     Parse,
 };
 
-use crate::{
-    framework::schema::{Column, ColumnDefaults, ColumnType, DataEnum as FrameworkEnum, DataModel},
-    project::PROJECT,
+use crate::framework::data_model::schema::{
+    Column, ColumnDefaults, ColumnType, DataEnum as FrameworkEnum, DataModel,
 };
 
 #[derive(Debug, Clone, thiserror::Error)]
@@ -147,8 +146,6 @@ fn python_class_to_framework_datamodel(
     class_node: &ast::Stmt,
     enums: &[FrameworkEnum],
 ) -> Result<DataModel, PythonParserError> {
-    let project = PROJECT.lock().unwrap();
-
     let class_name = match class_node {
         Stmt::ClassDef(class_def) => class_def.name.to_string(),
         _ => {
@@ -166,9 +163,9 @@ fn python_class_to_framework_datamodel(
         .collect::<Result<Vec<Column>, PythonParserError>>()?;
 
     Ok(DataModel {
-        db_name: project.clickhouse_config.db_name.to_string(),
         columns,
         name: class_name,
+        config: Default::default(),
     })
 }
 

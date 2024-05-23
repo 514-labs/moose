@@ -12,7 +12,7 @@ import {
 } from "./sections/home/TemplatesSection";
 import { FeaturesSection } from "./sections/home/FeaturesSection";
 
-import { SecondaryCTASection } from "./sections/home/SecondaryCTASection";
+import { HomeSecondaryCTASection } from "./sections/home/SecondaryCTASection";
 import { cn } from "@514labs/design-system/utils";
 
 import { Button, buttonVariants } from "@514labs/design-system/components";
@@ -102,7 +102,7 @@ export default function Home() {
 
       <TemplateHeaderSection />
       <TemplatesSection />
-      <SecondaryCTASection />
+      <HomeSecondaryCTASection />
       <FooterSection />
       <LooseMooseSection />
     </main>

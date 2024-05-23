@@ -30,7 +30,13 @@ const defaultCTASectionContent: CTASectionContent = {
   description: "Build your own data-driven experiences in minutes with Moose",
   ctas: defaultCtas,
 };
+export const defaultContent: CampaignContent = {
+  ctaSection: defaultCTASectionContent,
+  features: featureContent.features,
+};
 
+// Edit this object to add a new campaign
+// the key is the pathname of the campaign
 export const campaignContent: ContentMap = {
   ["mixpanel-alternative"]: {
     ctaSection: {
@@ -41,9 +47,4 @@ export const campaignContent: ContentMap = {
     },
     features: featureContent.features,
   },
-};
-
-export const defaultContent: CampaignContent = {
-  ctaSection: defaultCTASectionContent,
-  features: featureContent.features,
 };

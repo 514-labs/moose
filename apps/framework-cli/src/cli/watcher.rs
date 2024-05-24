@@ -232,6 +232,8 @@ struct EventBuckets {
 
 impl EventBuckets {
     pub fn new(events: Vec<Event>) -> Self {
+        info!("Events: {:?}", events);
+
         let mut flows = Vec::new();
         let mut data_models = Vec::new();
 
@@ -251,11 +253,13 @@ impl EventBuckets {
             }
         }
 
+        info!("Flows: {:?}", flows);
+        info!("Data Models: {:?}", data_models);
         Self { flows, data_models }
     }
 
     pub fn non_empty(&self) -> bool {
-        !self.flows.is_empty() && !self.data_models.is_empty()
+        !self.flows.is_empty() || !self.data_models.is_empty()
     }
 }
 
@@ -333,7 +337,7 @@ async fn watch(
                         with_spinner_async(
                             &format!(
                                 "Processing {} Flow(s) changes from file watcher",
-                                bucketed_events.data_models.len()
+                                bucketed_events.flows.len()
                             ),
                             process_flows_changes(&project, flows_process_registry),
                             !project.is_production,

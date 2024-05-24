@@ -38,7 +38,6 @@ impl Default for TypescriptProject {
             ]),
             dependencies: HashMap::from([
                 ("kafkajs".to_string(), "2.2.4".to_string()),
-                ("kafkajs-snappy".to_string(), "1.1.0".to_string()),
                 // TODO: in production we should use the tsc compiler instead of ts-node
                 // For now though it is easier to use ts-node
                 ("ts-node".to_string(), "^10.9.2".to_string()),

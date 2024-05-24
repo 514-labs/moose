@@ -2,7 +2,7 @@
 import {
   MooseActivity,
   MooseActivityAugmented,
-} from "../../../datamodels/models.ts";
+} from "../../../datamodels/models";
 import process from "node:process";
 import crypto from "node:crypto";
 
@@ -21,13 +21,26 @@ export default async function run(
     ...source,
   };
 
+  // This is adding a comment
+
   const ip = source.ip;
 
   if (ip) {
     const ipRes = await fetch(
       `https://ipinfo.io/${ip}/json?token=${IP_INFO_API_KEY}`,
     );
-    const ipData = await ipRes.json();
+    const ipData = (await ipRes.json()) as
+      | {
+          city: string;
+          country: string;
+          company: {
+            name: string;
+            type: string;
+            domain: string;
+          };
+        }
+      | undefined;
+
     const hash = crypto.createHash("sha256");
     hash.update(ip);
 

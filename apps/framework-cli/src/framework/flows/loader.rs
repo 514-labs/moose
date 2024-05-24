@@ -1,5 +1,5 @@
 use itertools::sorted;
-use log::warn;
+use log::{info, warn};
 use regex::{Captures, Regex};
 use std::{fs, path::Path};
 
@@ -47,7 +47,7 @@ async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>
         let source = source?;
 
         // We check if the file is a migration flow
-        if source.metadata()?.is_file() {
+        if source.metadata()?.is_file() && !source.file_name().to_str().unwrap().ends_with("sql") {
             let potential_migration_file_name = &source.file_name().to_string_lossy().to_string();
             let Some(caps) = migration_regex.captures(potential_migration_file_name) else {
                 // This is a file but not a migration flow, so we can skip it
@@ -136,8 +136,9 @@ fn get_latest_topic(topics: &[String], data_model: &str) -> Option<String> {
 }
 
 fn build_migration_flow(caps: Captures, executable: &Path) -> Flow {
+    info!("Flows Data Captures for migrations {:?}", caps);
     let source_model = caps.get(1).unwrap().as_str();
-    let target_model = caps.get(4).unwrap().as_str();
+    let target_model = caps.get(4).map(|m| m.as_str()).unwrap_or(source_model);
     let source_version = caps.get(2).unwrap().as_str();
     let target_version = caps.get(5).unwrap().as_str();
 

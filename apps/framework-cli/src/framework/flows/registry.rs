@@ -2,6 +2,8 @@ use std::collections::HashMap;
 
 use std::process::Child;
 
+use log::info;
+
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
 use super::model::{flow_id, Flow, FlowError};
@@ -23,6 +25,7 @@ impl FlowProcessRegistry {
     }
 
     pub fn start(&mut self, flow: Flow) -> Result<(), FlowError> {
+        info!("Starting flow {:?}...", flow);
         let child = flow.start(self.kafka_config.clone())?;
 
         self.registry.insert(flow.id(), child);
@@ -40,6 +43,7 @@ impl FlowProcessRegistry {
 
     pub async fn stop(&mut self, source_topic: &str, target_topic: &str) -> Result<(), FlowError> {
         let flow_id = flow_id(source_topic, target_topic);
+        info!("Stopping flow {:?}...", flow_id);
 
         if let Some(running_flow) = self.registry.get_mut(&flow_id) {
             running_flow.kill()?;
@@ -50,7 +54,8 @@ impl FlowProcessRegistry {
     }
 
     pub async fn stop_all(&mut self) -> Result<(), FlowError> {
-        for (_, running_flow) in self.registry.iter_mut() {
+        for (id, running_flow) in self.registry.iter_mut() {
+            info!("Stopping flow {:?}...", id);
             running_flow.kill()?;
         }
 

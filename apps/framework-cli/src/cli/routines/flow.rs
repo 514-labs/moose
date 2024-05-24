@@ -1,4 +1,5 @@
 use log::debug;
+use pathdiff::diff_paths;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{fs, io::Write, process::Stdio};
@@ -230,7 +231,18 @@ fn write_null_to_flow_file(
     source: &str,
     destination: &str,
 ) -> Result<(), RoutineFailure> {
-    write_to_flow_file(project, flow_file_path, source, destination, "null")
+    let default_imports = format!(
+        "import {{ {}, {} }} from \"../../../datamodels/models.ts\";",
+        source, destination
+    );
+    write_to_flow_file(
+        project,
+        flow_file_path,
+        source,
+        destination,
+        "null",
+        &default_imports,
+    )
 }
 
 fn write_destination_object_to_flow_file(
@@ -256,12 +268,41 @@ fn write_destination_object_to_flow_file(
         });
     destination_object.push_str("  }");
 
+    let source_path = models.get(source).unwrap().original_file_path.clone();
+
+    let source_relative_path = diff_paths(source_path.clone(), flow_file_path.parent().unwrap())
+        .unwrap_or(source_path.clone());
+
+    let destination_path = models.get(destination).unwrap().original_file_path.clone();
+
+    let destination_relative_path =
+        diff_paths(destination_path.clone(), flow_file_path.parent().unwrap())
+            .unwrap_or(destination_path.clone());
+
+    let imports = if source_path == destination_path {
+        format!(
+            "import {{ {}, {} }} from \"{}\";",
+            source,
+            destination,
+            destination_relative_path.display()
+        )
+    } else {
+        format!(
+            "import {{ {} }} from \"{}\";\nimport {{ {} }} from \"{}\";",
+            source,
+            source_relative_path.display(),
+            destination,
+            destination_relative_path.display()
+        )
+    };
+
     write_to_flow_file(
         project,
         flow_file_path,
         source,
         destination,
         &destination_object,
+        &imports,
     )
 }
 
@@ -271,6 +312,7 @@ fn write_to_flow_file(
     source: &str,
     destination: &str,
     destination_object: &str,
+    imports: &str,
 ) -> Result<(), RoutineFailure> {
     let mut flow_file = fs::File::create(&flow_file_path).map_err(|err| {
         RoutineFailure::new(
@@ -286,6 +328,7 @@ fn write_to_flow_file(
         .write_all(
             BASE_FLOW_TEMPLATE
                 .to_string()
+                .replace("{{imports}}", imports)
                 .replace("{{project_name}}", &project.name())
                 .replace("{{source}}", source)
                 .replace("{{destination}}", destination)

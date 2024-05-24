@@ -37,7 +37,7 @@ impl Default for TypescriptProject {
                 ("build".to_string(), "moose-cli build --docker".to_string()),
             ]),
             dependencies: HashMap::from([
-                ("kafkajs".to_string(), "2.2.4".to_string()),
+                ("kafkajs".to_string(), "^2.2.4".to_string()),
                 // TODO: in production we should use the tsc compiler instead of ts-node
                 // For now though it is easier to use ts-node
                 ("ts-node".to_string(), "^10.9.2".to_string()),

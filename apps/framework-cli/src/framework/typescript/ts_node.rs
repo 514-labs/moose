@@ -1,8 +1,11 @@
+use std::process::Child;
+use std::process::Command;
 use std::process::Stdio;
-use tokio::process::{Child, Command};
 
 pub fn run(script: &str, args: &[&str]) -> Result<Child, std::io::Error> {
-    let mut base_process = Command::new("npx")
+    let mut command = Command::new("npx");
+
+    command
         .arg("--yes")
         .arg("ts-node")
         .arg("--skipProject")
@@ -11,10 +14,10 @@ pub fn run(script: &str, args: &[&str]) -> Result<Child, std::io::Error> {
         .arg("--");
 
     for arg in args {
-        base_process.arg(arg);
+        command.arg(arg);
     }
 
-    base_process
+    command
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()

@@ -17,12 +17,9 @@ const MIGRATION_REGEX: &str = r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-
  * This function gets the flows as defined by the user for the
  * current version of the moose application.
  */
-pub async fn get_all_current_flows(
-    config: RedpandaConfig,
-    project: Project,
-) -> Result<Vec<Flow>, FlowError> {
+pub async fn get_all_current_flows(project: &Project) -> Result<Vec<Flow>, FlowError> {
     let flows_path = project.flows_dir();
-    get_all_flows(config, &flows_path).await
+    get_all_flows(&project.redpanda_config, &flows_path).await
 }
 
 /**
@@ -38,7 +35,7 @@ pub async fn get_all_current_flows(
  * TODO - handle historical versions. For now this only collects the latest/current version
  * of flows using the latest available topics for each data model.
  */
-async fn get_all_flows(config: RedpandaConfig, path: &Path) -> Result<Vec<Flow>, FlowError> {
+async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>, FlowError> {
     let topics = fetch_topics(&config).await?;
 
     // This should not fail since the regex is hardcoded

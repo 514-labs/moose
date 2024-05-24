@@ -1,6 +1,7 @@
 use log::{error, info};
-use std::{path::Path, vec};
-use tokio::io::{AsyncBufReadExt, BufReader};
+use std::io::BufRead;
+use std::process::Child;
+use std::{io::BufReader, path::Path};
 
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
@@ -10,19 +11,26 @@ const FLOW_RUNNER_WRAPPER: &str = include_str!("ts_scripts/flow.ts");
 
 // TODO: we currently refer repanda configuration here. If we want to be able to
 // abstract this to other type of streaming engine, we will need to be able to abstract this away.
+// TODO: compilation errors are not proxied to the user in dev mode. We need to fix it
+// so that they can have some feedback when they mess up the typescript
 pub fn run(
     redpanda_config: RedpandaConfig,
     source_topic: &str,
     target_topic: &str,
     flow_path: &Path,
     // TODO Remove the anyhow type here
-) -> Result<tokio::process::Child, std::io::Error> {
+) -> Result<Child, std::io::Error> {
     let mut args = vec![
         source_topic,
         target_topic,
         flow_path.to_str().unwrap(),
         &redpanda_config.broker,
     ];
+
+    info!(
+        "Starting a flow with the following public arguments: {:#?}",
+        args
+    );
 
     if redpanda_config.sasl_username.is_some() {
         args.push(&redpanda_config.sasl_username.as_ref().unwrap());
@@ -40,7 +48,7 @@ pub fn run(
         args.push(&redpanda_config.security_protocol.as_ref().unwrap());
     }
 
-    let flow_process = ts_node::run(FLOW_RUNNER_WRAPPER, &args)?;
+    let mut flow_process = ts_node::run(FLOW_RUNNER_WRAPPER, &args)?;
 
     let stdout = flow_process
         .stdout
@@ -56,13 +64,13 @@ pub fn run(
     let mut stderr_reader = BufReader::new(stderr).lines();
 
     tokio::spawn(async move {
-        while let Ok(Some(line)) = stdout_reader.next_line().await {
+        while let Some(Ok(line)) = stdout_reader.next() {
             info!("{}", line);
         }
     });
 
     tokio::spawn(async move {
-        while let Ok(Some(line)) = stderr_reader.next_line().await {
+        while let Some(Ok(line)) = stderr_reader.next() {
             error!("{}", line);
         }
     });

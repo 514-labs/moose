@@ -1,6 +1,4 @@
-use std::path::PathBuf;
-
-use tokio::process::Child;
+use std::{path::PathBuf, process::Child};
 
 use crate::{framework::typescript, infrastructure::stream::redpanda::RedpandaConfig};
 

@@ -3,7 +3,6 @@ use std::io::Read;
 use std::{io::BufReader, path::Path};
 
 use serde_json::Value;
-use tokio::io::AsyncRead;
 
 use super::ts_node::run;
 use crate::framework::data_model::config::{ConfigIdentifier, DataModelConfig};
@@ -22,7 +21,7 @@ pub enum ExportCollectorError {
     },
 }
 
-fn collect_std_to_string<R: AsyncRead>(container: R) -> Result<String, ExportCollectorError> {
+fn collect_std_to_string<R: Read>(container: R) -> Result<String, ExportCollectorError> {
     let mut reader = BufReader::new(container);
     let mut result = String::new();
     reader.read_to_string(&mut result)?;

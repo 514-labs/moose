@@ -89,11 +89,13 @@ use tokio::sync::RwLock;
 use crate::cli::routines::aggregation::start_aggregation_process;
 use crate::cli::routines::consumption::start_consumption_process;
 
+use crate::cli::watcher::process_flows_changes;
+use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::infrastructure::olap::clickhouse::{
     fetch_table_names, fetch_table_schema, table_schema_to_hash,
 };
 
-use crate::cli::routines::flow::{start_flow_process, verify_flows_against_datamodels};
+use crate::cli::routines::flow::verify_flows_against_datamodels;
 use crate::framework::controller::{
     create_or_replace_version_sync, get_all_framework_objects, process_objects, FrameworkObject,
     FrameworkObjectVersions, RouteMeta, SchemaVersion,
@@ -292,12 +294,18 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
 
     syncing_processes_registry.start_all(&framework_object_versions, &version_syncs);
 
+    let mut flows_process_registry = FlowProcessRegistry::new(project.redpanda_config.clone());
+    // Once the below function is optimized to act on events, this
+    // will need to get refactored out.
+    process_flows_changes(&project, &mut flows_process_registry).await?;
+
     let file_watcher = FileWatcher::new();
     file_watcher.start(
         project.clone(),
         framework_object_versions,
         route_table,
         syncing_processes_registry,
+        flows_process_registry,
     )?;
 
     info!("Starting web server...");
@@ -335,7 +343,10 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     );
     syncing_processes_registry.start_all(&framework_object_versions, &version_syncs);
 
-    start_flow_process(&project)?;
+    let mut flows_process_registry = FlowProcessRegistry::new(project.redpanda_config.clone());
+    // Once the below function is optimized to act on events, this
+    // will need to get refactored out.
+    process_flows_changes(&project, &mut flows_process_registry).await?;
     start_aggregation_process(&project)?;
     start_consumption_process(&project)?;
 

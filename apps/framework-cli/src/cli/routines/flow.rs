@@ -1,16 +1,14 @@
-use log::{debug, error, info};
+use log::debug;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{fs, io::Write, process::Stdio};
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Command;
 
 use crate::cli::display::{Message, MessageType};
 use crate::framework::controller::{FrameworkObject, FrameworkObjectVersions};
 use crate::framework::data_model::schema::ColumnType;
 use crate::framework::typescript::templates::BASE_FLOW_TEMPLATE;
 use crate::project::Project;
-use crate::utilities::constants::{DENO_DIR, DENO_TRANSFORM, FLOW_FILE};
+use crate::utilities::constants::FLOW_FILE;
 
 use super::{crawl_schema, RoutineFailure, RoutineSuccess};
 
@@ -141,53 +139,6 @@ pub fn verify_flows_against_datamodels(
             );
         });
     }
-
-    Ok(())
-}
-
-pub fn start_flow_process(project: &Project) -> anyhow::Result<()> {
-    let project_root_path = project.project_location.clone();
-    let deno_file = project
-        .internal_dir()
-        .unwrap()
-        .join(DENO_DIR)
-        .join(DENO_TRANSFORM);
-
-    let mut child = Command::new("deno")
-        .current_dir(&project_root_path)
-        .arg("run")
-        .arg("--allow-all")
-        .arg(deno_file)
-        .arg(&project_root_path)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to start deno");
-
-    let stdout = child
-        .stdout
-        .take()
-        .expect("Deno process did not have a handle to stdout");
-
-    let stderr = child
-        .stderr
-        .take()
-        .expect("Deno process did not have a handle to stderr");
-
-    let mut stdout_reader = BufReader::new(stdout).lines();
-    let mut stderr_reader = BufReader::new(stderr).lines();
-
-    tokio::spawn(async move {
-        while let Ok(Some(line)) = stdout_reader.next_line().await {
-            info!("{}", line);
-        }
-    });
-
-    tokio::spawn(async move {
-        while let Ok(Some(line)) = stderr_reader.next_line().await {
-            error!("{}", line);
-        }
-    });
 
     Ok(())
 }

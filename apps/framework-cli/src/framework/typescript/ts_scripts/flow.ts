@@ -1,25 +1,16 @@
-import {
-  CompressionCodecs,
-  CompressionTypes,
-  Consumer,
-  Kafka,
-  KafkaMessage,
-  Producer,
-  SASLOptions,
-} from "kafkajs";
-import SnappyCodec from "kafkajs-snappy";
+import { Consumer, Kafka, KafkaMessage, Producer, SASLOptions } from "kafkajs";
 import process from "node:process";
 
-CompressionCodecs[CompressionTypes.Snappy] = SnappyCodec;
+const SOURCE_TOPIC = process.argv[1];
+const TARGET_TOPIC = process.argv[2];
+const FLOW_FILE_PATH = process.argv[3];
+const BROKER = process.argv[4];
+const SASL_USERNAME = process.argv[5];
+const SASL_PASSWORD = process.argv[6];
+const SASL_MECHANISM = process.argv[7];
+const SECURITY_PROTOCOL = process.argv[8];
 
-const SOURCE_TOPIC = process.args[2];
-const TARGET_TOPIC = process.args[3];
-const FLOW_FILE_PATH = process.args[4];
-const BROKER = process.argv[5];
-const SASL_USERNAME = process.argv[6];
-const SASL_PASSWORD = process.argv[7];
-const SASL_MECHANISM = process.argv[8];
-const SECURITY_PROTOCOL = process.argv[9];
+console.log(process.argv);
 
 type FlowFunction = (data: unknown) => unknown | Promise<unknown>;
 
@@ -133,6 +124,11 @@ const handleMessage = async (
   flowFn: FlowFunction,
   message: KafkaMessage,
 ): Promise<void> => {
+  if (message.value === undefined || message.value === null) {
+    log(`Received message with no value, skipping...`);
+    return;
+  }
+
   const transaction = await producer.transaction();
   let didTransform = false;
 
@@ -176,9 +172,12 @@ const handleMessage = async (
         offset: (Number(message.offset) + 1).toString(),
       },
     ]);
-  } catch (error) {
+  } catch (e) {
     await transaction.abort();
-    error(`Failed to send transformed data`, error);
+    error(`Failed to send transformed data`);
+    if (e instanceof Error) {
+      error(e.message);
+    }
   }
 };
 
@@ -192,7 +191,9 @@ const startConsumer = async (
     `Starting consumer group '${flowIdentifier}' with source topic: ${sourceTopic} and target topic: ${targetTopic}`,
   );
 
-  const flowModuleImport = await import(FLOW_FILE_PATH);
+  const flowModuleImport = await import(
+    FLOW_FILE_PATH.substring(0, FLOW_FILE_PATH.length - 3)
+  );
   const flowFunction: FlowFunction = flowModuleImport.default;
 
   await consumer.subscribe({ topics: [sourceTopic], fromBeginning: false });
@@ -214,11 +215,17 @@ const startFlow = async (
 
     try {
       await startConsumer(sourceTopic, targetTopic);
-    } catch (error) {
-      error("Failed to start kafka consumer: ", error);
+    } catch (e) {
+      error("Failed to start kafka consumer: ");
+      if (e instanceof Error) {
+        error(e.message);
+      }
     }
-  } catch (error) {
-    error("Failed to start kafka producer: ", error);
+  } catch (e) {
+    error("Failed to start kafka producer: ");
+    if (e instanceof Error) {
+      error(e.message);
+    }
   }
 };
 

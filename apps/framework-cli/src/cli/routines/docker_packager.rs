@@ -90,6 +90,10 @@ COPY ./package.json ./package.json
 COPY ./project.toml ./project.toml
 COPY ./versions .moose/versions
 
+# We should get compatible with other package managers 
+# and respect log files
+RUN npm install
+
 # Expose the ports on which the application will listen
 EXPOSE 4000
 

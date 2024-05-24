@@ -1,17 +1,17 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional
 
 
 type Key[T: (str, int)] = T 
 
-
-# Might be a solid idea to use the field specifier parameters to rename errand fields?
-# https://typing.readthedocs.io/en/latest/spec/dataclasses.html#field-specifier-parameters
-
 class Status(Enum):
     OK = "ok"
     ERROR = "error"
+
+class MySubModel:
+    name: str
+    age: int
 
 
 @dataclass 
@@ -23,4 +23,5 @@ class MyModel:
     test_key: str
     arr: List[str]
     opt: Optional[str]
+    sub: MySubModel
 

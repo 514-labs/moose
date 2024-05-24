@@ -36,7 +36,7 @@ pub async fn get_all_current_flows(project: &Project) -> Result<Vec<Flow>, FlowE
  * of flows using the latest available topics for each data model.
  */
 async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>, FlowError> {
-    let topics = fetch_topics(&config).await?;
+    let topics = fetch_topics(config).await?;
 
     // This should not fail since the regex is hardcoded
     let migration_regex = Regex::new(MIGRATION_REGEX).unwrap();

@@ -33,19 +33,19 @@ pub fn run(
     );
 
     if redpanda_config.sasl_username.is_some() {
-        args.push(&redpanda_config.sasl_username.as_ref().unwrap());
+        args.push(redpanda_config.sasl_username.as_ref().unwrap());
     }
 
     if redpanda_config.sasl_password.is_some() {
-        args.push(&redpanda_config.sasl_password.as_ref().unwrap());
+        args.push(redpanda_config.sasl_password.as_ref().unwrap());
     }
 
     if redpanda_config.sasl_mechanism.is_some() {
-        args.push(&redpanda_config.sasl_mechanism.as_ref().unwrap());
+        args.push(redpanda_config.sasl_mechanism.as_ref().unwrap());
     }
 
     if redpanda_config.security_protocol.is_some() {
-        args.push(&redpanda_config.security_protocol.as_ref().unwrap());
+        args.push(redpanda_config.security_protocol.as_ref().unwrap());
     }
 
     let mut flow_process = ts_node::run(FLOW_RUNNER_WRAPPER, &args)?;

@@ -10,8 +10,6 @@ const SASL_PASSWORD = process.argv[6];
 const SASL_MECHANISM = process.argv[7];
 const SECURITY_PROTOCOL = process.argv[8];
 
-console.log(process.argv);
-
 type FlowFunction = (data: unknown) => unknown | Promise<unknown>;
 
 const logPrefix = `${SOURCE_TOPIC} -> ${TARGET_TOPIC}`;

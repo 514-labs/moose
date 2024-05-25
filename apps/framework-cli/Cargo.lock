@@ -323,7 +323,7 @@ dependencies = [
  "chrono",
  "either",
  "indexmap",
- "itertools",
+ "itertools 0.12.1",
  "nom",
  "once_cell",
  "quote",
@@ -1558,6 +1558,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1845,6 +1854,7 @@ dependencies = [
  "hyper 1.2.0",
  "hyper-tls 0.6.0",
  "hyper-util",
+ "itertools 0.13.0",
  "lazy_static",
  "log",
  "notify",

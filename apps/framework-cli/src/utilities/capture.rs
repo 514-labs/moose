@@ -2,7 +2,6 @@
 //!
 //! This module leverages moose to instrument moose. It includes a macro to easily capture data anywhere in the codebase.
 //!
-use chrono::serde::ts_seconds;
 use lazy_static::lazy_static;
 
 // Create a lazy static instance of the client
@@ -53,7 +52,6 @@ pub struct MooseActivity {
     pub activity_type: ActivityType,
     #[serde(rename = "sequenceId")]
     pub sequence_id: String,
-    #[serde(with = "ts_seconds")]
     pub timestamp: DateTime<Utc>,
     #[serde(rename = "cliVersion")]
     pub cli_version: String,

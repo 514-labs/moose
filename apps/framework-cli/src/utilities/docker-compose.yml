@@ -50,24 +50,6 @@ services:
       - CLICKHOUSE_PORT=8123
     ports:
       - "${CONSOLE_HOST_PORT:-3001}:3000"
-  flows:
-    image: denoland/deno:1.41.2
-    depends_on:
-      - redpanda
-    environment:
-      - FILEWATCHER_ENABLED=${FILEWATCHER_ENABLED:-true}
-      - MOOSE_REDPANDA_CONFIG__BROKER=${MOOSE_REDPANDA_CONFIG__BROKER:-redpanda:9092}
-    volumes:
-      - ../app:/home/app
-      - ../.moose:/home/.moose
-      - ../package.json:/home/package.json
-      - ../project.toml:/home/project.toml
-    command:
-      - deno
-      - run
-      - --allow-all
-      - /home/.moose/deno/transform.ts
-      - /home
   aggregations:
     image: denoland/deno:1.41.2
     depends_on:

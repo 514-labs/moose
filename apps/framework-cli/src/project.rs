@@ -56,7 +56,7 @@ use crate::utilities::constants::{
 };
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{
-    CONSUMPTION_HELPERS, DENO_AGGREGATIONS, DENO_CONSUMPTION_API, DENO_DIR, DENO_TRANSFORM,
+    CONSUMPTION_HELPERS, DENO_AGGREGATIONS, DENO_CONSUMPTION_API, DENO_DIR,
 };
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 
@@ -229,11 +229,6 @@ impl Project {
         if !deno_dir.exists() {
             std::fs::create_dir_all(&deno_dir)?;
         }
-
-        let transform_file_path = deno_dir.join(DENO_TRANSFORM);
-        let mut transform_file = std::fs::File::create(transform_file_path)?;
-        let transform_file_content = include_str!("framework/transform.ts");
-        transform_file.write_all(transform_file_content.as_bytes())?;
 
         let aggregations_file_path = deno_dir.join(DENO_AGGREGATIONS);
         let mut aggregations_file = std::fs::File::create(aggregations_file_path)?;

@@ -1,13 +1,10 @@
 use std::collections::{HashMap, HashSet};
 use std::io::Read;
-use std::{
-    io::BufReader,
-    path::Path,
-    process::{Command, Stdio},
-};
+use std::{io::BufReader, path::Path};
 
 use serde_json::Value;
 
+use super::ts_node::run;
 use crate::framework::data_model::config::{ConfigIdentifier, DataModelConfig};
 
 const MODULE_EXPORT_SERIALIZER: &str = include_str!("ts_scripts/moduleExportSerializer.ts");
@@ -32,26 +29,17 @@ fn collect_std_to_string<R: Read>(container: R) -> Result<String, ExportCollecto
 }
 
 fn collect_exports(file: &Path) -> Result<Value, ExportCollectorError> {
-    let file_path_str = &file.to_str().ok_or(ExportCollectorError::Other {
+    let file_path_str = file.to_str().ok_or(ExportCollectorError::Other {
         message: "Did not get a proper file path to load exports from".to_string(),
     })?;
 
-    let process = Command::new("npx")
-        .arg("--yes")
-        .arg("ts-node")
-        .arg("--skipProject")
-        .arg("-e")
-        .arg(MODULE_EXPORT_SERIALIZER)
-        .arg("--")
-        .arg(file_path_str)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed start data model config process");
+    let args = vec![file_path_str];
+    let process = run(MODULE_EXPORT_SERIALIZER, &args)?;
 
     let stdout = process
         .stdout
         .expect("Data model config process did not have a handle to stdout");
+
     let stderr = process
         .stderr
         .expect("Data model config process did not have a handle to stderr");

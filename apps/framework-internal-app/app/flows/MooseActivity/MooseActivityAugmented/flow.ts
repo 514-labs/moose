@@ -21,7 +21,11 @@ export default async function run(
     ...source,
   };
 
-  // This is adding a comment
+  // Unix Timestamp was sent through on the previous version of the CLI
+  // but the JS date object takes milliseconds, so we need to multiply by 1000
+  if (typeof source.timestamp === "number") {
+    mooseActivity.timestamp = new Date(source.timestamp * 1000);
+  }
 
   const ip = source.ip;
 

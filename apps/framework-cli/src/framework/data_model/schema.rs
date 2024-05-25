@@ -31,6 +31,12 @@ pub struct DataEnum {
     pub values: Vec<EnumMember>,
 }
 
+#[derive(Debug, Clone, Serialize, Eq, PartialEq)]
+pub struct Nested {
+    pub name: String,
+    pub columns: Vec<Column>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub struct EnumMember {
     pub name: String,
@@ -87,6 +93,7 @@ pub enum ColumnType {
     DateTime,
     Enum(DataEnum),
     Array(Box<ColumnType>),
+    Nested(Nested),
     Json,  // TODO: Eventually support for only views and tables (not topics)
     Bytes, // TODO: Explore if we ever need this type
 }
@@ -103,6 +110,7 @@ impl fmt::Display for ColumnType {
             ColumnType::DateTime => write!(f, "DateTime"),
             ColumnType::Enum(e) => write!(f, "Enum<{}>", e.name),
             ColumnType::Array(inner) => write!(f, "Array<{}>", inner),
+            ColumnType::Nested(n) => write!(f, "Nested<{}>", n.name),
             ColumnType::Json => write!(f, "Json"),
             ColumnType::Bytes => write!(f, "Bytes"),
         }
@@ -128,6 +136,12 @@ impl Serialize for ColumnType {
             ColumnType::Array(inner) => {
                 let mut state = serializer.serialize_struct("Array", 1)?;
                 state.serialize_field("elementType", inner)?;
+                state.end()
+            }
+            ColumnType::Nested(nested) => {
+                let mut state = serializer.serialize_struct("Nested", 2)?;
+                state.serialize_field("name", &nested.name)?;
+                state.serialize_field("columns", &nested.columns)?;
                 state.end()
             }
             ColumnType::Json => serializer.serialize_str("Json"),

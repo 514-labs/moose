@@ -234,6 +234,9 @@ fn std_field_type_to_typescript_field_mapper(
         ColumnType::BigInt => Err(TypescriptGeneratorError::UnsupportedDataTypeError {
             type_name: "BigInt".to_string(),
         }),
+        ColumnType::Nested(_) => Err(TypescriptGeneratorError::UnsupportedDataTypeError {
+            type_name: "Nested".to_string(),
+        }),
     }
 }
 

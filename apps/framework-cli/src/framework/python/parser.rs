@@ -11,13 +11,14 @@
 
 use std::path::PathBuf;
 
+use hyper::body;
 use rustpython_parser::{
-    ast::{self, Expr, Identifier, Stmt},
+    ast::{self, Expr, ExprName, Identifier, Stmt, StmtClassDef},
     Parse,
 };
 
 use crate::framework::data_model::schema::{
-    Column, ColumnDefaults, ColumnType, DataEnum as FrameworkEnum, DataModel,
+    Column, ColumnDefaults, ColumnType, DataEnum as FrameworkEnum, DataModel, Nested,
 };
 
 #[derive(Debug, Clone, thiserror::Error)]
@@ -65,12 +66,12 @@ fn get_ast_from_file(path: &PathBuf) -> Result<ast::Suite, PythonParserError> {
 
 /// ## Enum AST Nodes
 /// This function extracts all the enum nodes from the AST
-fn get_enum_ast_nodes(ast: &ast::Suite) -> Vec<&ast::Stmt> {
+fn get_enum_ast_nodes(ast: &ast::Suite) -> Vec<&StmtClassDef> {
     ast.iter()
-        .filter(|node| match node {
+        .filter_map(|node| match node {
             Stmt::ClassDef(class_def) => {
                 if class_def.bases.is_empty() {
-                    false
+                    None
                 } else {
                     let enum_bases: Vec<_> = class_def
                         .bases
@@ -81,22 +82,25 @@ fn get_enum_ast_nodes(ast: &ast::Suite) -> Vec<&ast::Stmt> {
                         })
                         .collect();
 
-                    !enum_bases.is_empty()
+                    match enum_bases.is_empty() {
+                        true => None,
+                        false => Some(class_def),
+                    }
                 }
             }
-            _ => false,
+            _ => None,
         })
         .collect()
 }
 
 /// ## Non Enum Class AST Nodes
 /// This function extracts all the class nodes that are not enums from the AST
-fn get_non_enum_class_ast_nodes(ast: &ast::Suite) -> Vec<&ast::Stmt> {
+fn get_non_enum_class_ast_nodes(ast: &ast::Suite) -> Vec<&StmtClassDef> {
     ast.iter()
-        .filter(|node| match node {
+        .filter_map(|node| match node {
             Stmt::ClassDef(class_def) => {
                 if class_def.bases.is_empty() {
-                    true
+                    Some(class_def)
                 } else {
                     let enum_bases: Vec<_> = class_def
                         .bases
@@ -107,10 +111,13 @@ fn get_non_enum_class_ast_nodes(ast: &ast::Suite) -> Vec<&ast::Stmt> {
                         })
                         .collect();
 
-                    enum_bases.is_empty()
+                    match enum_bases.is_empty() {
+                        true => Some(class_def),
+                        false => None,
+                    }
                 }
             }
-            _ => false,
+            _ => None,
         })
         .collect()
 }
@@ -122,17 +129,10 @@ fn get_non_enum_class_ast_nodes(ast: &ast::Suite) -> Vec<&ast::Stmt> {
 /// ## Python Enum to Framework Enum
 /// This function takes a python enum AST node and turns it into a framework enum object
 fn python_enum_to_framework_enum(
-    enum_node: &ast::Stmt,
+    enum_node: &StmtClassDef,
 ) -> Result<FrameworkEnum, PythonParserError> {
     // Get the name of the enum
-    let enum_name = match enum_node {
-        Stmt::ClassDef(class_def) => class_def.name.to_string(),
-        _ => {
-            return Err(PythonParserError::EnumParseError {
-                message: "Invalid enum node".to_string(),
-            })
-        }
-    };
+    let enum_name = enum_node.name.to_string();
 
     Ok(FrameworkEnum {
         name: enum_name,
@@ -143,23 +143,19 @@ fn python_enum_to_framework_enum(
 /// ## Python Class to Framework Data Model
 /// This function takes a python class AST node and turns it into a framework data model object
 fn python_class_to_framework_datamodel(
-    class_node: &ast::Stmt,
-    enums: &[FrameworkEnum],
+    class_node: &StmtClassDef,
+    framework_enums: &[FrameworkEnum],
+    python_classes: &[&StmtClassDef],
+    nested_classes: &[Identifier],
 ) -> Result<DataModel, PythonParserError> {
-    let class_name = match class_node {
-        Stmt::ClassDef(class_def) => class_def.name.to_string(),
-        _ => {
-            return Err(PythonParserError::ClassParseError {
-                message: "Invalid class node".to_string(),
-            })
-        }
-    };
-
-    let body_nodes = get_class_body_nodes(class_node)?;
+    let class_name = class_node.clone().name.to_string();
+    let body_nodes = class_node.clone().body;
 
     let columns = body_nodes
         .iter()
-        .map(|body_node| body_node_to_column(body_node, enums))
+        .map(|body_node| {
+            body_node_to_column(body_node, framework_enums, python_classes, nested_classes)
+        })
         .collect::<Result<Vec<Column>, PythonParserError>>()?;
 
     Ok(DataModel {
@@ -169,17 +165,8 @@ fn python_class_to_framework_datamodel(
     })
 }
 
-/// ### Get the body nodes for the class
-/// This function gets the body nodes for a class node
-fn get_class_body_nodes(class_node: &ast::Stmt) -> Result<&Vec<ast::Stmt>, PythonParserError> {
-    match class_node {
-        Stmt::ClassDef(class_def) => Ok(&class_def.body),
-        _ => Err(PythonParserError::ClassParseError {
-            message: "Invalid class node".to_string(),
-        }),
-    }
-}
-
+/// ### Name Node to Base Column Type
+/// This function converts an AST expr name to a base column type
 fn name_node_to_base_column_type(
     name_node: ast::ExprName,
 ) -> Result<ColumnType, PythonParserError> {
@@ -195,9 +182,63 @@ fn name_node_to_base_column_type(
     }
 }
 
+fn attempt_enum(name: &ExprName, enums: &[FrameworkEnum]) -> Result<ColumnType, PythonParserError> {
+    enums
+        .iter()
+        .find(|enum_item| name.id == enum_item.name)
+        .map(|enum_item| ColumnType::Enum(enum_item.clone()))
+        .ok_or(PythonParserError::ClassParseError {
+            message: "Failed to parse enum type".to_string(),
+        })
+}
+
+/// # Attempt to turn a nested class into a nested column type
+fn attempt_nested_class(
+    name: &ExprName,
+    enums: &[FrameworkEnum],
+    python_classes: &[&StmtClassDef],
+    nested_classes: &[Identifier],
+) -> Result<ColumnType, PythonParserError> {
+    if let Some(class_node) = python_classes
+        .iter()
+        .find(|class_node| class_node.name == name.id)
+    {
+        let body_nodes = &class_node.body;
+        let col_type = body_nodes
+            .iter()
+            .map(|body_node| body_node_to_column(body_node, enums, python_classes, nested_classes))
+            .collect::<Result<Vec<Column>, PythonParserError>>()
+            .map(|columns| {
+                ColumnType::Nested(Nested {
+                    name: name.id.to_string(),
+                    columns,
+                })
+            });
+
+        println!("{:?}", col_type);
+        return col_type;
+    };
+
+    todo!("Handle nested classes")
+}
+
+fn handle_complex_named_type(
+    name: ExprName,
+    enums: &[FrameworkEnum],
+    python_classes: &[&StmtClassDef],
+    nested_classes: &[Identifier],
+) -> Result<ColumnType, PythonParserError> {
+    match attempt_enum(&name, enums) {
+        Ok(col_type) => Ok(col_type),
+        Err(_) => attempt_nested_class(&name, enums, python_classes, nested_classes),
+    }
+}
+
 fn class_attribute_node_to_column_builder(
     attribute_node: &ast::StmtAnnAssign,
     enums: &[FrameworkEnum],
+    python_classes: &[&StmtClassDef],
+    nested_classes: &[Identifier],
 ) -> Result<ColumnBuilder, PythonParserError> {
     let mut column = ColumnBuilder::default();
     match *attribute_node.target.clone() {
@@ -211,18 +252,17 @@ fn class_attribute_node_to_column_builder(
         }
     }
     match *attribute_node.annotation.clone() {
+        // Handles the case where the annotation is a straight name such as str, int, float, bool, datetime
+        // this also includes enums and other custom types that are named in the schema, such as nested classes
         Expr::Name(name) => {
             let col_type = match name_node_to_base_column_type(name.clone()) {
                 Ok(col_type) => col_type,
-                Err(e) => enums
-                    .iter()
-                    .find(|enum_item| name.id == enum_item.name)
-                    .map(|enum_item| ColumnType::Enum(enum_item.clone()))
-                    .ok_or(e)?,
+                Err(e) => handle_complex_named_type(name, enums, python_classes, nested_classes)?,
             };
             column.required = Some(true);
             column.data_type = Some(col_type);
         }
+        // Handles the case where the annotation is a subscript such as List[str], Optional[int], Key[str]
         Expr::Subscript(subscript) => match &*subscript.value {
             Expr::Name(name) => match name.id.to_string().as_str() {
                 "List" => {
@@ -328,10 +368,17 @@ impl ColumnBuilder {
 fn body_node_to_column(
     body_node: &ast::Stmt,
     enums: &[FrameworkEnum],
+    python_classes: &[&StmtClassDef],
+    nested_classes: &[Identifier],
 ) -> Result<Column, PythonParserError> {
     match body_node {
         Stmt::AnnAssign(ann_assign) => {
-            let column_builder = class_attribute_node_to_column_builder(ann_assign, enums);
+            let column_builder = class_attribute_node_to_column_builder(
+                ann_assign,
+                enums,
+                python_classes,
+                nested_classes,
+            );
             let column = column_builder?.build()?;
 
             Ok(column)
@@ -345,6 +392,47 @@ fn body_node_to_column(
     }
 }
 
+/// # Recursively collect nested classes for a given class node
+fn collect_nested_classes(
+    class: &StmtClassDef,
+    classes: &Vec<&StmtClassDef>,
+    collector: &mut Vec<Identifier>,
+) {
+    let body_nodes = class.clone().body;
+
+    for body_node in body_nodes {
+        match body_node {
+            Stmt::AnnAssign(assignment) => {
+                let id = match *assignment.annotation.clone() {
+                    Expr::Name(name) => name.id,
+                    _ => Identifier::new(""),
+                };
+
+                let class_node = classes.iter().find(|class| class.name == id);
+
+                match class_node {
+                    Some(cn) => {
+                        collector.push(id.clone());
+                        collect_nested_classes(cn, classes, collector);
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn get_nested_classes(python_classes: &Vec<&StmtClassDef>) -> Vec<Identifier> {
+    let mut nested_classes_collector: Vec<Identifier> = Vec::new();
+
+    for class_node in python_classes {
+        collect_nested_classes(class_node, python_classes, &mut nested_classes_collector);
+    }
+
+    nested_classes_collector
+}
+
 pub fn extract_data_model_from_file(path: &PathBuf) -> Result<(), PythonParserError> {
     // todo!("Handle the enums in the class parsing");
 
@@ -352,19 +440,31 @@ pub fn extract_data_model_from_file(path: &PathBuf) -> Result<(), PythonParserEr
     let ast = get_ast_from_file(path)?;
 
     // Get the enums from the AST
-    let python_enums: Vec<&ast::Stmt> = get_enum_ast_nodes(&ast);
+    let python_enums: Vec<&StmtClassDef> = get_enum_ast_nodes(&ast);
 
     // Get the non-enum classes from the AST
-    let python_classes: Vec<&ast::Stmt> = get_non_enum_class_ast_nodes(&ast);
+    let python_classes: Vec<&StmtClassDef> = get_non_enum_class_ast_nodes(&ast);
 
     let framework_enums = python_enums
         .iter()
         .map(|enum_node| python_enum_to_framework_enum(enum_node))
         .collect::<Result<Vec<FrameworkEnum>, PythonParserError>>()?;
 
+    let nested_classes = get_nested_classes(&python_classes);
+
+    println!("{:?}", "Nested Classes");
+    println!("{:?}", nested_classes);
+
     let data_models: Vec<DataModel> = python_classes
         .iter()
-        .map(|class_node| python_class_to_framework_datamodel(class_node, &framework_enums))
+        .map(|class_node| {
+            python_class_to_framework_datamodel(
+                class_node,
+                &framework_enums,
+                &python_classes,
+                &nested_classes,
+            )
+        })
         .collect::<Result<Vec<DataModel>, PythonParserError>>()?;
 
     // Process each of the class nodes
@@ -379,7 +479,7 @@ mod tests {
 
     fn get_simple_python_file_path() -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap();
-        current_dir.join("tests/python/simple.py")
+        current_dir.join("tests/python/models/simple.py")
     }
 
     #[test]
@@ -425,7 +525,7 @@ mod tests {
 
         let class_node = classes.first().unwrap();
 
-        let body_nodes = get_class_body_nodes(class_node).unwrap();
+        let body_nodes = &class_node.body;
 
         assert_eq!(body_nodes.len(), 7);
     }

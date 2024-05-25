@@ -20,8 +20,6 @@ framework_object_dirs = {
     'aggregations': os.path.join(project_root_dir, 'aggregations')
 }
 
-
-
 sys.path.append(framework_object_dirs['models'])
 import simple
 

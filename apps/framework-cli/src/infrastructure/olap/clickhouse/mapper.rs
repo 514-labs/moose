@@ -41,6 +41,9 @@ pub fn std_field_type_to_clickhouse_type_mapper(
         ColumnType::Bytes => Err(ClickhouseError::UnsupportedDataType {
             type_name: "Bytes".to_string(),
         }),
+        ColumnType::Nested(_) => Err(ClickhouseError::UnsupportedDataType {
+            type_name: "Nested".to_string(),
+        }),
     }
 }
 

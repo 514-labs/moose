@@ -501,5 +501,8 @@ fn map_json_value_to_clickhouse_value(
         ColumnType::BigInt => Err(MappingError::UnsupportedColumnType {
             column_type: column_type.clone(),
         }),
+        ColumnType::Nested(_) => Err(MappingError::UnsupportedColumnType {
+            column_type: column_type.clone(),
+        }),
     }
 }

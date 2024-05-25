@@ -38,7 +38,7 @@ pub fn create_flow_directory(
     }
 }
 
-pub fn create_flow_file(
+pub async fn create_flow_file(
     project: &Project,
     source: String,
     destination: String,
@@ -50,7 +50,7 @@ pub fn create_flow_file(
         .join(FLOW_FILE);
 
     let old_versions = project.old_versions_sorted();
-    match crawl_schema(project, &old_versions) {
+    match crawl_schema(project, &old_versions).await {
         Ok(framework_objects) => {
             if !framework_objects
                 .current_models

@@ -1,6 +1,6 @@
-use std::process::Child;
-use std::process::Command;
 use std::process::Stdio;
+
+use tokio::process::{Child, Command};
 
 pub fn run(script: &str, args: &[&str]) -> Result<Child, std::io::Error> {
     let mut command = Command::new("npx");

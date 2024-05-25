@@ -289,7 +289,7 @@ async fn top_command_handler(
 
                 check_project_name(&project_arc.name())?;
                 copy_old_schema(&project_arc)?.show();
-                generate_migration(&project_arc)?.show();
+                generate_migration(&project_arc).await?.show();
 
                 Ok(RoutineSuccess::success(Message::new(
                     "Generated".to_string(),
@@ -402,7 +402,8 @@ async fn top_command_handler(
                         init.destination.clone(),
                     )?
                     .show();
-                    create_flow_file(&project_arc, init.source.clone(), init.destination.clone())?
+                    create_flow_file(&project_arc, init.source.clone(), init.destination.clone())
+                        .await?
                         .show();
 
                     Ok(RoutineSuccess::success(Message::new(
@@ -428,7 +429,7 @@ async fn top_command_handler(
                     );
 
                     check_project_name(&project_arc.name())?;
-                    create_aggregation_file(&project_arc, name.to_string())
+                    create_aggregation_file(&project_arc, name.to_string()).await
                 }
             }
         }

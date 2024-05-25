@@ -1,7 +1,8 @@
 use std::path::PathBuf;
 
+use tokio::process::Child;
+
 use crate::{framework::typescript, infrastructure::stream::redpanda::RedpandaConfig};
-use std::process::Child;
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]

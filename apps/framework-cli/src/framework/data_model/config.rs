@@ -66,12 +66,12 @@ pub enum ModelConfigurationError {
     TypescriptRunner(#[from] crate::framework::typescript::export_collectors::ExportCollectorError),
 }
 
-pub fn get(
+pub async fn get(
     path: &Path,
     enums: HashSet<&str>,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
     if path.extension() == Some(OsStr::new("ts")) {
-        let config = get_data_model_configs(path, enums)?;
+        let config = get_data_model_configs(path, enums).await?;
         info!("Data Model configuration for {:?}: {:?}", path, config);
         Ok(config)
     } else {

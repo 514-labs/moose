@@ -602,7 +602,7 @@ pub async fn process_objects(
 mod tests {
 
     #[tokio::test]
-    fn test_get_all_framework_objects() {
+    async fn test_get_all_framework_objects() {
         use super::*;
         let manifest_location = env!("CARGO_MANIFEST_DIR");
         let schema_dir = PathBuf::from(manifest_location)

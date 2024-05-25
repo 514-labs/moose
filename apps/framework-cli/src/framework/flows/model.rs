@@ -1,6 +1,7 @@
 use std::path::PathBuf;
 
 use crate::{framework::typescript, infrastructure::stream::redpanda::RedpandaConfig};
+use std::process::Child;
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]

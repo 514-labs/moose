@@ -110,7 +110,7 @@ use crate::infrastructure::stream::redpanda;
 use crate::project::{AggregationSet, Project};
 use crate::utilities::package_managers;
 
-use super::display::{with_spinner, with_spinner_async};
+use super::display::with_spinner_async;
 use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
@@ -358,7 +358,7 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     Ok(())
 }
 
-fn crawl_schema(
+async fn crawl_schema(
     project: &Project,
     old_versions: &[String],
 ) -> anyhow::Result<FrameworkObjectVersions> {
@@ -378,7 +378,7 @@ fn crawl_schema(
         debug!("<DCM> Processing old version directory: {:?}", path);
 
         let mut framework_objects = HashMap::new();
-        get_all_framework_objects(&mut framework_objects, &path, version, &aggregations)?;
+        get_all_framework_objects(&mut framework_objects, &path, version, &aggregations).await?;
 
         let schema_version = SchemaVersion {
             base_path: path,
@@ -398,25 +398,19 @@ fn crawl_schema(
     };
 
     info!("<DCM> Starting schema directory crawl...");
-    with_spinner(
-        "Processing schema file",
-        || {
-            let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
-            get_all_framework_objects(
-                &mut framework_objects,
-                &schema_dir,
-                project.version(),
-                &aggregations,
-            )?;
+    let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
+    get_all_framework_objects(
+        &mut framework_objects,
+        &schema_dir,
+        project.version(),
+        &aggregations,
+    )
+    .await?;
 
-            framework_object_versions.current_models = SchemaVersion {
-                base_path: schema_dir.clone(),
-                models: framework_objects.clone(),
-            };
-            anyhow::Ok(())
-        },
-        !project.is_production,
-    )?;
+    framework_object_versions.current_models = SchemaVersion {
+        base_path: schema_dir.clone(),
+        models: framework_objects.clone(),
+    };
 
     Ok(framework_object_versions)
 }
@@ -514,7 +508,7 @@ async fn initialize_project_state(
 
     info!("<DCM> Checking for old version directories...");
 
-    let mut framework_object_versions = crawl_schema(&project, &old_versions)?;
+    let mut framework_object_versions = crawl_schema(&project, &old_versions).await?;
 
     check_for_model_changes(project.clone(), framework_object_versions.clone()).await;
 

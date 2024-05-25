@@ -1,7 +1,7 @@
 use log::{error, info};
-use std::io::BufRead;
-use std::process::Child;
-use std::{io::BufReader, path::Path};
+use std::path::Path;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::Child;
 
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
@@ -64,13 +64,13 @@ pub fn run(
     let mut stderr_reader = BufReader::new(stderr).lines();
 
     tokio::spawn(async move {
-        while let Some(Ok(line)) = stdout_reader.next() {
+        while let Ok(Some(line)) = stdout_reader.next_line().await {
             info!("{}", line);
         }
     });
 
     tokio::spawn(async move {
-        while let Some(Ok(line)) = stderr_reader.next() {
+        while let Ok(Some(line)) = stderr_reader.next_line().await {
             error!("{}", line);
         }
     });

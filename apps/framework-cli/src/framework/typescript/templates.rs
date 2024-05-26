@@ -348,7 +348,8 @@ export default function run(source: UserActivity): ParsedActivity {
 
 pub static BASE_FLOW_TEMPLATE: &str = r#"
 // Add your models & start the development server to import these types
-{{imports}}
+{{source_import}}
+{{destination_import}}
 
 // The 'run' function transforms {{source}} data to {{destination}} format.
 // For more details on how Moose flows work, see: https://docs.moosejs.com

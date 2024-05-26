@@ -13,6 +13,140 @@ use crate::utilities::constants::FLOW_FILE;
 
 use super::{crawl_schema, RoutineFailure, RoutineSuccess};
 
+pub struct FlowFileBuilder {
+    flow_file_path: PathBuf,
+    flow_file_template: String,
+}
+
+impl FlowFileBuilder {
+    pub fn new(project: &Project, source: &str, destination: &str) -> Self {
+        let flow_file_template = BASE_FLOW_TEMPLATE
+            .to_string()
+            .replace("{{source}}", source)
+            .replace("{{destination}}", destination);
+
+        let flows_dir = project.flows_dir();
+        let flow_file_path = flows_dir.join(source).join(destination).join(FLOW_FILE);
+
+        Self {
+            flow_file_path,
+            flow_file_template,
+        }
+    }
+
+    pub fn return_object(
+        &mut self,
+        destination: &str,
+        models: &HashMap<String, FrameworkObject>,
+    ) -> &mut Self {
+        if models.contains_key(destination) {
+            let mut destination_object = "{\n".to_string();
+            models
+                .get(destination)
+                .unwrap()
+                .data_model
+                .columns
+                .iter()
+                .for_each(|field| {
+                    destination_object.push_str(&format!(
+                        "    {}: {},\n",
+                        field.name,
+                        get_default_value_for_type(&field.data_type)
+                    ));
+                });
+            destination_object.push_str("  }");
+
+            self.flow_file_template = self
+                .flow_file_template
+                .replace("{{destination_object}}", &destination_object);
+        } else {
+            self.flow_file_template = self
+                .flow_file_template
+                .replace("{{destination_object}}", "null");
+        }
+
+        self
+    }
+
+    pub fn imports(
+        &mut self,
+        source: &str,
+        destination: &str,
+        models: &HashMap<String, FrameworkObject>,
+    ) -> &mut Self {
+        let source_import = self.get_import(source, models);
+        self.flow_file_template = self
+            .flow_file_template
+            .replace("{{source_import}}", &source_import);
+
+        let destination_import = self.get_import(destination, models);
+        self.flow_file_template = self
+            .flow_file_template
+            .replace("{{destination_import}}", &destination_import);
+
+        self
+    }
+
+    pub fn get_import(
+        &self,
+        target_model: &str,
+        models: &HashMap<String, FrameworkObject>,
+    ) -> String {
+        let import = if models.contains_key(target_model) {
+            let model_path = models.get(target_model).unwrap().original_file_path.clone();
+            let model_relative_path =
+                diff_paths(model_path.clone(), self.flow_file_path.parent().unwrap())
+                    .unwrap_or(model_path.clone());
+            format!(
+                "import {{ {} }} from \"{}\";",
+                target_model,
+                model_relative_path.display()
+            )
+        } else {
+            format!(
+                "import {{ {} }} from \"../../../datamodels/models.ts\";",
+                target_model
+            )
+        };
+
+        import
+    }
+
+    pub fn write(&self) -> Result<(), RoutineFailure> {
+        let mut flow_file = fs::File::create(self.flow_file_path.as_path()).map_err(|err| {
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    format!("to create flow file in {}", self.flow_file_path.display()),
+                ),
+                err,
+            )
+        })?;
+
+        let _ = flow_file
+            .write_all(self.flow_file_template.as_bytes())
+            .map_err(|err| {
+                RoutineFailure::new(
+                    Message::new(
+                        "Failed".to_string(),
+                        format!("to write to flow file in {}", self.flow_file_path.display()),
+                    ),
+                    err,
+                )
+            });
+
+        show_message!(
+            MessageType::Success,
+            Message {
+                action: "Created".to_string(),
+                details: "flow".to_string(),
+            }
+        );
+
+        Ok(())
+    }
+}
+
 pub fn create_flow_directory(
     project: &Project,
     source: String,
@@ -44,47 +178,37 @@ pub async fn create_flow_file(
     source: String,
     destination: String,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let flows_dir = project.flows_dir();
-    let flow_file_path = flows_dir
-        .join(source.clone())
-        .join(destination.clone())
-        .join(FLOW_FILE);
-
     let old_versions = project.old_versions_sorted();
     match crawl_schema(project, &old_versions).await {
         Ok(framework_objects) => {
-            if !framework_objects
-                .current_models
-                .models
-                .contains_key(&destination)
-            {
-                write_null_to_flow_file(project, flow_file_path, &source, &destination)?;
-                verify_datamodels_with_grep(project, &source, &destination);
+            let models = framework_objects.current_models.models;
+
+            let _ = FlowFileBuilder::new(project, &source, &destination)
+                .imports(&source, &destination, &models)
+                .return_object(&destination, &models)
+                .write();
+
+            if models.contains_key(&source) && models.contains_key(&destination) {
+                verify_datamodels_with_framework_objects(&models, &source, &destination);
             } else {
-                write_destination_object_to_flow_file(
-                    project,
-                    flow_file_path,
-                    &framework_objects.current_models.models,
-                    &source,
-                    &destination,
-                )?;
-                verify_datamodels_with_framework_objects(
-                    &framework_objects.current_models.models,
-                    &source,
-                    &destination,
-                );
+                verify_datamodels_with_grep(project, &source, &destination);
             }
         }
         Err(err) => {
             debug!("Failed to crawl schema while creating flow: {:?}", err);
-            write_null_to_flow_file(project, flow_file_path, &source, &destination)?;
+
+            let _ = FlowFileBuilder::new(project, &source, &destination)
+                .imports(&source, &destination, &HashMap::new())
+                .return_object(&destination, &HashMap::new())
+                .write();
+
             verify_datamodels_with_grep(project, &source, &destination);
         }
     }
 
     Ok(RoutineSuccess::success(Message::new(
-        "Created".to_string(),
-        "flow".to_string(),
+        "".to_string(),
+        "".to_string(),
     )))
 }
 
@@ -223,137 +347,6 @@ fn show_missing_datamodels_messages(missing_datamodels: &[&str]) {
             )
         }
     );
-}
-
-fn write_null_to_flow_file(
-    project: &Project,
-    flow_file_path: PathBuf,
-    source: &str,
-    destination: &str,
-) -> Result<(), RoutineFailure> {
-    let default_imports = format!(
-        "import {{ {}, {} }} from \"../../../datamodels/models.ts\";",
-        source, destination
-    );
-    write_to_flow_file(
-        project,
-        flow_file_path,
-        source,
-        destination,
-        "null",
-        &default_imports,
-    )
-}
-
-fn write_destination_object_to_flow_file(
-    project: &Project,
-    flow_file_path: PathBuf,
-    models: &HashMap<String, FrameworkObject>,
-    source: &str,
-    destination: &str,
-) -> Result<(), RoutineFailure> {
-    let mut destination_object = "{\n".to_string();
-    models
-        .get(destination)
-        .unwrap()
-        .data_model
-        .columns
-        .iter()
-        .for_each(|field| {
-            destination_object.push_str(&format!(
-                "    {}: {},\n",
-                field.name,
-                get_default_value_for_type(&field.data_type)
-            ));
-        });
-    destination_object.push_str("  }");
-
-    let source_path = models.get(source).unwrap().original_file_path.clone();
-
-    let source_relative_path = diff_paths(source_path.clone(), flow_file_path.parent().unwrap())
-        .unwrap_or(source_path.clone());
-
-    let destination_path = models.get(destination).unwrap().original_file_path.clone();
-
-    let destination_relative_path =
-        diff_paths(destination_path.clone(), flow_file_path.parent().unwrap())
-            .unwrap_or(destination_path.clone());
-
-    let imports = if source_path == destination_path {
-        format!(
-            "import {{ {}, {} }} from \"{}\";",
-            source,
-            destination,
-            destination_relative_path.display()
-        )
-    } else {
-        format!(
-            "import {{ {} }} from \"{}\";\nimport {{ {} }} from \"{}\";",
-            source,
-            source_relative_path.display(),
-            destination,
-            destination_relative_path.display()
-        )
-    };
-
-    write_to_flow_file(
-        project,
-        flow_file_path,
-        source,
-        destination,
-        &destination_object,
-        &imports,
-    )
-}
-
-fn write_to_flow_file(
-    project: &Project,
-    flow_file_path: PathBuf,
-    source: &str,
-    destination: &str,
-    destination_object: &str,
-    imports: &str,
-) -> Result<(), RoutineFailure> {
-    let mut flow_file = fs::File::create(&flow_file_path).map_err(|err| {
-        RoutineFailure::new(
-            Message::new(
-                "Failed".to_string(),
-                format!("to create flow file in {}", flow_file_path.display()),
-            ),
-            err,
-        )
-    })?;
-
-    let _ = flow_file
-        .write_all(
-            BASE_FLOW_TEMPLATE
-                .to_string()
-                .replace("{{imports}}", imports)
-                .replace("{{project_name}}", &project.name())
-                .replace("{{source}}", source)
-                .replace("{{destination}}", destination)
-                .replace("{{destination_object}}", destination_object)
-                .as_bytes(),
-        )
-        .map_err(|err| {
-            RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    format!("to write to flow file in {}", flow_file_path.display()),
-                ),
-                err,
-            )
-        });
-
-    show_message!(
-        MessageType::Success,
-        Message {
-            action: "Created".to_string(),
-            details: "flow".to_string(),
-        }
-    );
-
-    Ok(())
 }
 
 fn get_default_value_for_type(column_type: &ColumnType) -> String {

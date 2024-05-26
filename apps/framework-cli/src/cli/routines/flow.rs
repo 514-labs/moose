@@ -75,13 +75,11 @@ impl FlowFileBuilder {
         models: &HashMap<String, FrameworkObject>,
     ) -> &mut Self {
         let source_import = self.get_import(source, models);
-        self.flow_file_template = self
-            .flow_file_template
-            .replace("{{source_import}}", &source_import);
-
         let destination_import = self.get_import(destination, models);
+
         self.flow_file_template = self
             .flow_file_template
+            .replace("{{source_import}}", &source_import)
             .replace("{{destination_import}}", &destination_import);
 
         self
@@ -179,31 +177,25 @@ pub async fn create_flow_file(
     destination: String,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let old_versions = project.old_versions_sorted();
-    match crawl_schema(project, &old_versions).await {
-        Ok(framework_objects) => {
-            let models = framework_objects.current_models.models;
-
-            let _ = FlowFileBuilder::new(project, &source, &destination)
-                .imports(&source, &destination, &models)
-                .return_object(&destination, &models)
-                .write();
-
-            if models.contains_key(&source) && models.contains_key(&destination) {
-                verify_datamodels_with_framework_objects(&models, &source, &destination);
-            } else {
-                verify_datamodels_with_grep(project, &source, &destination);
-            }
-        }
+    let framework_objects = crawl_schema(project, &old_versions).await;
+    let empty_map = HashMap::new();
+    let (models, error_occurred) = match &framework_objects {
+        Ok(framework_objects) => (&framework_objects.current_models.models, false),
         Err(err) => {
             debug!("Failed to crawl schema while creating flow: {:?}", err);
-
-            let _ = FlowFileBuilder::new(project, &source, &destination)
-                .imports(&source, &destination, &HashMap::new())
-                .return_object(&destination, &HashMap::new())
-                .write();
-
-            verify_datamodels_with_grep(project, &source, &destination);
+            (&empty_map, true)
         }
+    };
+
+    let _ = FlowFileBuilder::new(project, &source, &destination)
+        .imports(&source, &destination, models)
+        .return_object(&destination, models)
+        .write()?;
+
+    if error_occurred || !models.contains_key(&source) || !models.contains_key(&destination) {
+        verify_datamodels_with_grep(project, &source, &destination);
+    } else {
+        verify_datamodels_with_framework_objects(models, &source, &destination);
     }
 
     Ok(RoutineSuccess::success(Message::new(

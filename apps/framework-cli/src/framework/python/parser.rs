@@ -11,15 +11,16 @@
 
 use std::path::PathBuf;
 
-use hyper::body;
 use rustpython_parser::{
     ast::{self, Expr, ExprName, Identifier, Stmt, StmtClassDef},
     Parse,
 };
 
 use crate::framework::data_model::schema::{
-    Column, ColumnDefaults, ColumnType, DataEnum as FrameworkEnum, DataModel, Nested,
+    Column, ColumnType, DataEnum as FrameworkEnum, DataModel, Nested,
 };
+
+use crate::framework::python::utils::ColumnBuilder;
 
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("Failed to parse the python file")]
@@ -255,65 +256,10 @@ fn class_attribute_node_to_column_builder(
         // Handles the case where the annotation is a straight name such as str, int, float, bool, datetime
         // this also includes enums and other custom types that are named in the schema, such as nested classes
         Expr::Name(name) => {
-            let col_type = match name_node_to_base_column_type(name.clone()) {
-                Ok(col_type) => col_type,
-                Err(e) => handle_complex_named_type(name, enums, python_classes, nested_classes)?,
-            };
-            column.required = Some(true);
-            column.data_type = Some(col_type);
+            process_name_node(name, enums, python_classes, nested_classes, &mut column)?
         }
         // Handles the case where the annotation is a subscript such as List[str], Optional[int], Key[str]
-        Expr::Subscript(subscript) => match &*subscript.value {
-            Expr::Name(name) => match name.id.to_string().as_str() {
-                "List" => {
-                    let col_type = ColumnType::Array(match &*subscript.slice {
-                        Expr::Name(name) => Box::new(name_node_to_base_column_type(name.clone())?),
-                        _ => {
-                            return Err(PythonParserError::UnsupportedDataTypeError {
-                                type_name: "Unsupported data type".to_string(),
-                            })
-                        }
-                    });
-                    column.data_type = Some(col_type);
-                }
-                "Key" => match &*subscript.slice {
-                    Expr::Name(name) => {
-                        let col_type = name_node_to_base_column_type(name.clone())?;
-                        column.data_type = Some(col_type);
-                        column.required = Some(true);
-                        column.primary_key = Some(true);
-                    }
-                    _ => {
-                        return Err(PythonParserError::UnsupportedDataTypeError {
-                            type_name: "Unsupported data type".to_string(),
-                        })
-                    }
-                },
-                "Optional" => match &*subscript.slice {
-                    Expr::Name(name) => {
-                        let col_type = name_node_to_base_column_type(name.clone())?;
-                        column.data_type = Some(col_type);
-                        column.required = Some(false);
-                    }
-                    _ => {
-                        return Err(PythonParserError::UnsupportedDataTypeError {
-                            type_name: "Unsupported data type".to_string(),
-                        })
-                    }
-                },
-
-                _ => {
-                    return Err(PythonParserError::UnsupportedDataTypeError {
-                        type_name: "Unsupported data type".to_string(),
-                    })
-                }
-            },
-            _ => {
-                return Err(PythonParserError::UnsupportedDataTypeError {
-                    type_name: "Unsupported data type".to_string(),
-                })
-            }
-        },
+        Expr::Subscript(subscript) => process_subscript_node(subscript, &mut column)?,
 
         _ => {
             return Err(PythonParserError::UnsupportedDataTypeError {
@@ -325,44 +271,77 @@ fn class_attribute_node_to_column_builder(
     Ok(column)
 }
 
-#[derive(Default)]
-struct ColumnBuilder {
-    name: Option<String>,
-    data_type: Option<ColumnType>,
-    required: Option<bool>,
-    unique: Option<bool>,
-    primary_key: Option<bool>,
-    default: Option<ColumnDefaults>,
+fn process_subscript_node(
+    subscript: ast::ExprSubscript,
+    column: &mut ColumnBuilder,
+) -> Result<(), PythonParserError> {
+    Ok(match &*subscript.value {
+        Expr::Name(name) => match name.id.to_string().as_str() {
+            "List" => {
+                let col_type = ColumnType::Array(match &*subscript.slice {
+                    Expr::Name(name) => Box::new(name_node_to_base_column_type(name.clone())?),
+                    _ => {
+                        return Err(PythonParserError::UnsupportedDataTypeError {
+                            type_name: "Unsupported data type".to_string(),
+                        })
+                    }
+                });
+                column.data_type = Some(col_type);
+            }
+            "Key" => match &*subscript.slice {
+                Expr::Name(name) => {
+                    let col_type = name_node_to_base_column_type(name.clone())?;
+                    column.data_type = Some(col_type);
+                    column.required = Some(true);
+                    column.primary_key = Some(true);
+                }
+                _ => {
+                    return Err(PythonParserError::UnsupportedDataTypeError {
+                        type_name: "Unsupported data type".to_string(),
+                    })
+                }
+            },
+            "Optional" => match &*subscript.slice {
+                Expr::Name(name) => {
+                    let col_type = name_node_to_base_column_type(name.clone())?;
+                    column.data_type = Some(col_type);
+                    column.required = Some(false);
+                }
+                _ => {
+                    return Err(PythonParserError::UnsupportedDataTypeError {
+                        type_name: "Unsupported data type".to_string(),
+                    })
+                }
+            },
+
+            _ => {
+                return Err(PythonParserError::UnsupportedDataTypeError {
+                    type_name: "Unsupported data type".to_string(),
+                })
+            }
+        },
+        _ => {
+            return Err(PythonParserError::UnsupportedDataTypeError {
+                type_name: "Unsupported data type".to_string(),
+            })
+        }
+    })
 }
 
-impl ColumnBuilder {
-    fn build(self) -> Result<Column, PythonParserError> {
-        let name = self.name.ok_or(PythonParserError::ClassParseError {
-            message: "Class builder property, name, not set properly".to_string(),
-        })?;
-
-        let data_type = self
-            .data_type
-            .ok_or(PythonParserError::UnsupportedDataTypeError {
-                type_name: "Class builder property, data_type, unsupported or not set properly"
-                    .to_string(),
-            })?;
-
-        let required = self.required.unwrap_or(true);
-
-        let unique = self.unique.unwrap_or(false);
-
-        let primary_key = self.primary_key.unwrap_or(false);
-
-        Ok(Column {
-            name,
-            data_type,
-            required,
-            unique,
-            primary_key,
-            default: self.default,
-        })
-    }
+fn process_name_node(
+    name: ExprName,
+    enums: &[FrameworkEnum],
+    python_classes: &[&StmtClassDef],
+    nested_classes: &[Identifier],
+    column: &mut ColumnBuilder,
+) -> Result<(), PythonParserError> {
+    let col_type = match name_node_to_base_column_type(name.clone()) {
+        Ok(col_type) => col_type,
+        Err(_e) => handle_complex_named_type(name, enums, python_classes, nested_classes)?,
+    };
+    column.required = Some(true);
+    column.data_type = Some(col_type);
+    Ok(())
 }
 
 fn body_node_to_column(

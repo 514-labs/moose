@@ -9,6 +9,7 @@ pub struct ColumnBuilder {
     pub required: Option<bool>,
     pub unique: Option<bool>,
     pub primary_key: Option<bool>,
+    pub path: Option<String>,
     pub default: Option<ColumnDefaults>,
 }
 

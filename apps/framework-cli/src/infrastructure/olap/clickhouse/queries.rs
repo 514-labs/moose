@@ -221,6 +221,9 @@ fn field_type_to_string(field_type: &ClickHouseColumnType) -> Result<String, Cli
 
             Ok(format!("Enum({})", enum_statement))
         }
+        ClickHouseColumnType::Nested(_) => {
+            todo!("Implement the nested type mapper")
+        }
         ClickHouseColumnType::Json => Err(ClickhouseError::UnsupportedDataType {
             type_name: "Json".to_string(),
         }),

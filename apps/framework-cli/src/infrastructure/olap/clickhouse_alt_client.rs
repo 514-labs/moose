@@ -162,6 +162,9 @@ fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
         | ClickHouseColumnType::Json
         | ClickHouseColumnType::Bytes => None,
         ClickHouseColumnType::Array(t) => column_type_to_enum_mapping(t.as_ref()),
+        ClickHouseColumnType::Nested(_) => {
+            todo!("Implement the nested type mapper")
+        }
         ClickHouseColumnType::Enum(values) => values.values.first().and_then(|m| match m.value {
             EnumValue::Int(_) => None,
             EnumValue::String(_) => Some(

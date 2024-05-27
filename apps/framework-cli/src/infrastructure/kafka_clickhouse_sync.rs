@@ -1,3 +1,4 @@
+use clickhouse_rs::types::column;
 use log::error;
 use log::info;
 use rdkafka::Message;
@@ -12,12 +13,14 @@ use tokio::task::JoinHandle;
 use super::olap::clickhouse::errors::ClickhouseError;
 use super::olap::clickhouse::mapper::std_field_type_to_clickhouse_type_mapper;
 use super::olap::clickhouse::model::ClickHouseColumn;
+use super::olap::clickhouse::model::ClickHouseColumnType;
 use super::olap::clickhouse::model::ClickHouseRecord;
 use super::olap::clickhouse::model::ClickHouseRuntimeEnum;
 use super::olap::clickhouse::version_sync::VersionSync;
 use crate::framework::controller::FrameworkObjectVersions;
 use crate::framework::data_model::schema::Column;
 use crate::framework::data_model::schema::ColumnType;
+use crate::framework::data_model::schema::Nested;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::inserter::Inserter;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
@@ -492,6 +495,50 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
+        ColumnType::Nested(inner_nested) => {
+            // Under default settings, to insert a nested object clickhouse requires that the object be passed as an array
+            // A, B, C.a, C.b, C.c  where there are multiple Cs (in this case three) would be passed as
+            // (A', B', [C.a', C.a', C.a'], [C.b', C.b', C.b'], [C.c', C.c', C.c'])
+            // where A', B' are the values of A and B and C.a', C.b', C.c' are the values of C.a, C.b, C.c
+            //
+            // if there are two levels of nesting such as A, B, C.a, C.b.a, C.b.b, C.b.c, C.c inserts would be
+            // (A', B', [C.a', C.a', C.a'], [([C.b.a', C.b.a', C.b.a'], [C.b.b', C.b.b', C.b.b'], [C.b.c', C.b.c', C.b.c']), [C.c', C.c', C.c'])
+            //
+            // Under flatten_nested=0, nested objects are passed in as arrays of tuples
+            // If A, B and C are columnd and C is a nested object with columns a, b, c you'd insert data as follows
+            // (A', B', [(C.a', C.b', C.c')])
+            // If C.c is a nested object with columns d, e, f you'd insert data as follows
+            // (A', B', [(C.a', C.b', [(C.c.d', C.c.e', C.c.f')])])
+            // For now, we'll assume that flatten_nested=0 is set in clickhouse
+
+            if let Some(obj) = value.as_object() {
+                // Needs a null if the column isn't present
+                let column_values = inner_nested
+                    .columns
+                    .iter()
+                    .map(|col| {
+                        let col_name = &col.name;
+                        let val = obj.get(col_name);
+                        match val {
+                            Some(val) => {
+                                map_json_value_to_clickhouse_value(&col.data_type, val).unwrap()
+                            }
+                            None => ClickHouseValue::new_null(
+                                std_field_type_to_clickhouse_type_mapper(col.data_type.clone())
+                                    .unwrap(),
+                            ),
+                        }
+                    })
+                    .collect();
+
+                return Ok(ClickHouseValue::new_tuple(column_values));
+            } else {
+                Err(MappingError::TypeMismatch {
+                    column_type: column_type.clone(),
+                    value: value.clone(),
+                })
+            }
+        }
         ColumnType::Json => Err(MappingError::UnsupportedColumnType {
             column_type: column_type.clone(),
         }),
@@ -501,8 +548,136 @@ fn map_json_value_to_clickhouse_value(
         ColumnType::BigInt => Err(MappingError::UnsupportedColumnType {
             column_type: column_type.clone(),
         }),
-        ColumnType::Nested(_) => Err(MappingError::UnsupportedColumnType {
-            column_type: column_type.clone(),
-        }),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::framework::data_model::schema::Nested;
+
+    use super::*;
+
+    #[test]
+    fn test_map_json_value_to_clickhouse_value_for_nested() {
+        let example_json = r#"
+        {
+            "A": "A",
+            "B": "B",
+            "C": {
+                "a": "a",
+                "b": {
+                    "d": "d",
+                    "e": "e",
+                    "f": "f"
+                },
+                "c": "c"
+            }
+        }
+        "#;
+
+        let nested_column_type: Nested = Nested {
+            name: "my_nested_column".to_string(),
+            // constructed from the example json
+            columns: vec![
+                Column {
+                    name: "A".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+                Column {
+                    name: "B".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+                Column {
+                    name: "C".to_string(),
+                    data_type: ColumnType::Nested(Nested {
+                        name: "C".to_string(),
+                        columns: vec![
+                            Column {
+                                name: "a".to_string(),
+                                data_type: ColumnType::String,
+                                required: true,
+                                unique: false,
+                                primary_key: false,
+                                default: None,
+                            },
+                            Column {
+                                name: "b".to_string(),
+                                data_type: ColumnType::Nested(Nested {
+                                    name: "b".to_string(),
+                                    columns: vec![
+                                        Column {
+                                            name: "d".to_string(),
+                                            data_type: ColumnType::String,
+                                            required: true,
+                                            unique: false,
+                                            primary_key: false,
+                                            default: None,
+                                        },
+                                        Column {
+                                            name: "e".to_string(),
+                                            data_type: ColumnType::String,
+                                            required: true,
+                                            unique: false,
+                                            primary_key: false,
+                                            default: None,
+                                        },
+                                        Column {
+                                            name: "f".to_string(),
+                                            data_type: ColumnType::String,
+                                            required: true,
+                                            unique: false,
+                                            primary_key: false,
+                                            default: None,
+                                        },
+                                    ],
+                                }),
+                                required: true,
+                                unique: false,
+                                primary_key: false,
+                                default: None,
+                            },
+                            Column {
+                                name: "c".to_string(),
+                                data_type: ColumnType::String,
+                                required: true,
+                                unique: false,
+                                primary_key: false,
+                                default: None,
+                            },
+                        ],
+                    }),
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+                Column {
+                    name: "D".to_string(),
+                    data_type: ColumnType::Int,
+                    required: false,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+            ],
+        };
+
+        let example_json_value: Value = serde_json::from_str(example_json).unwrap();
+
+        let values = map_json_value_to_clickhouse_value(
+            &ColumnType::Nested(nested_column_type),
+            &example_json_value,
+        );
+
+        println!("{:?}", values);
     }
 }

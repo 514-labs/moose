@@ -32,6 +32,9 @@ pub fn std_field_type_to_clickhouse_type_mapper(
             let inner_clickhouse_type = std_field_type_to_clickhouse_type_mapper(*inner_std_type)?;
             Ok(ClickHouseColumnType::Array(Box::new(inner_clickhouse_type)))
         }
+        ColumnType::Nested(inner_nested) => {
+            todo!("Implement the nested type mapper");
+        }
         ColumnType::BigInt => Err(ClickhouseError::UnsupportedDataType {
             type_name: "BigInt".to_string(),
         }),
@@ -40,9 +43,6 @@ pub fn std_field_type_to_clickhouse_type_mapper(
         }),
         ColumnType::Bytes => Err(ClickhouseError::UnsupportedDataType {
             type_name: "Bytes".to_string(),
-        }),
-        ColumnType::Nested(_) => Err(ClickhouseError::UnsupportedDataType {
-            type_name: "Nested".to_string(),
         }),
     }
 }

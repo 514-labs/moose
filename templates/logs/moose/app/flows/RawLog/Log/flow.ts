@@ -1,9 +1,14 @@
 // Add your models & start the development server to import these types
-import { Log } from "../../../datamodels/models.ts";
-import { RawLog, AnyValue, KeyValue } from "../../../otel.ts"; // not great
+import { Log } from "../../../datamodels/models";
+import { RawLog, AnyValue, KeyValue } from "../../../otel"; // not great
 
-const rawToDate = (raw: undefined | string | number) =>
-  raw === undefined ? undefined : new Date(Number(raw) / 1000000);
+const rawToDate = (raw: undefined | string | number): Date => {
+  if (raw === undefined) {
+    throw new Error("raw is undefined");
+  }
+
+  return new Date(Number(raw) / 1000000);
+};
 
 const simplifyAttributes = (raw: { attributes: KeyValue[] } | undefined) =>
   raw === undefined
@@ -14,7 +19,8 @@ const simplifyAttributes = (raw: { attributes: KeyValue[] } | undefined) =>
         },
       });
 
-const simplifyAny = (raw: AnyValue): any => {
+const simplifyAny = (raw: AnyValue | undefined): any => {
+  if (raw === undefined) return null;
   if ("stringValue" in raw) return raw.stringValue;
   if ("boolValue" in raw) return raw.boolValue;
   if ("intValue" in raw) return raw.intValue.toString();

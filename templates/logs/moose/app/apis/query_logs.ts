@@ -25,7 +25,10 @@ export default async function handle(
 
   return client.query(
     sql`SELECT * FROM Log
-  WHERE coalesce(timestamp, observedTimestamp) >= ${start.getTime() / 1000} AND coalesce(timestamp, observedTimestamp) < ${end.getTime() / 1000} AND
-  ilike(body, ${pattern})`,
+      WHERE 
+        observedTimestamp >= ${start.getTime() / 1000} AND 
+        observedTimestamp < ${end.getTime() / 1000} AND
+        ilike(body, ${pattern})
+    `,
   );
 }

@@ -123,6 +123,47 @@ fn get_non_enum_class_ast_nodes(ast: &ast::Suite) -> Vec<&StmtClassDef> {
         .collect()
 }
 
+/// # Recursively collect nested classes for a given class node
+fn collect_nested_classes(
+    class: &StmtClassDef,
+    classes: &Vec<&StmtClassDef>,
+    collector: &mut Vec<Identifier>,
+) {
+    let body_nodes = class.clone().body;
+
+    for body_node in body_nodes {
+        match body_node {
+            Stmt::AnnAssign(assignment) => {
+                let id = match *assignment.annotation.clone() {
+                    Expr::Name(name) => name.id,
+                    _ => Identifier::new(""),
+                };
+
+                let class_node = classes.iter().find(|class| class.name == id);
+
+                match class_node {
+                    Some(cn) => {
+                        collector.push(id.clone());
+                        collect_nested_classes(cn, classes, collector);
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
+    }
+}
+
+pub fn get_nested_classes(python_classes: &Vec<&StmtClassDef>) -> Vec<Identifier> {
+    let mut nested_classes_collector: Vec<Identifier> = Vec::new();
+
+    for class_node in python_classes {
+        collect_nested_classes(class_node, python_classes, &mut nested_classes_collector);
+    }
+
+    nested_classes_collector
+}
+
 /// # Second pass processing: Turn classes and enums into framework data models and framework enums
 /// These functions are responsible for turning the AST nodes into data model and enum objects that
 /// can be used by the rest of the system.
@@ -132,11 +173,8 @@ fn get_non_enum_class_ast_nodes(ast: &ast::Suite) -> Vec<&StmtClassDef> {
 fn python_enum_to_framework_enum(
     enum_node: &StmtClassDef,
 ) -> Result<FrameworkEnum, PythonParserError> {
-    // Get the name of the enum
-    let enum_name = enum_node.name.to_string();
-
     Ok(FrameworkEnum {
-        name: enum_name,
+        name: enum_node.name.to_string(),
         values: vec![],
     })
 }
@@ -183,6 +221,7 @@ fn name_node_to_base_column_type(
     }
 }
 
+/// # Attempt to turn a name into an enum or a nested class
 fn attempt_enum(name: &ExprName, enums: &[FrameworkEnum]) -> Result<ColumnType, PythonParserError> {
     enums
         .iter()
@@ -235,6 +274,8 @@ fn handle_complex_named_type(
     }
 }
 
+/// # Class Attribute Node to Column Builder
+/// This function processes a class attribute node and turns it into a column builder
 fn class_attribute_node_to_column_builder(
     attribute_node: &ast::StmtAnnAssign,
     enums: &[FrameworkEnum],
@@ -271,6 +312,8 @@ fn class_attribute_node_to_column_builder(
     Ok(column)
 }
 
+/// # Process subscript node
+/// This function processes a subscript node and adds the relevant properties to the column builder
 fn process_subscript_node(
     subscript: ast::ExprSubscript,
     column: &mut ColumnBuilder,
@@ -328,6 +371,7 @@ fn process_subscript_node(
     })
 }
 
+/// # Add the column builder properties to the column builder that are available in the name node
 fn process_name_node(
     name: ExprName,
     enums: &[FrameworkEnum],
@@ -344,6 +388,10 @@ fn process_name_node(
     Ok(())
 }
 
+/// # Construct and build a column from a class body node
+/// These body nodes are statements that are part of a class definition and are used to define the
+/// attributes of the class. This function is responsible for turning these body nodes into column
+/// objects.
 fn body_node_to_column(
     body_node: &ast::Stmt,
     enums: &[FrameworkEnum],
@@ -371,48 +419,7 @@ fn body_node_to_column(
     }
 }
 
-/// # Recursively collect nested classes for a given class node
-fn collect_nested_classes(
-    class: &StmtClassDef,
-    classes: &Vec<&StmtClassDef>,
-    collector: &mut Vec<Identifier>,
-) {
-    let body_nodes = class.clone().body;
-
-    for body_node in body_nodes {
-        match body_node {
-            Stmt::AnnAssign(assignment) => {
-                let id = match *assignment.annotation.clone() {
-                    Expr::Name(name) => name.id,
-                    _ => Identifier::new(""),
-                };
-
-                let class_node = classes.iter().find(|class| class.name == id);
-
-                match class_node {
-                    Some(cn) => {
-                        collector.push(id.clone());
-                        collect_nested_classes(cn, classes, collector);
-                    }
-                    _ => {}
-                }
-            }
-            _ => {}
-        }
-    }
-}
-
-pub fn get_nested_classes(python_classes: &Vec<&StmtClassDef>) -> Vec<Identifier> {
-    let mut nested_classes_collector: Vec<Identifier> = Vec::new();
-
-    for class_node in python_classes {
-        collect_nested_classes(class_node, python_classes, &mut nested_classes_collector);
-    }
-
-    nested_classes_collector
-}
-
-pub fn extract_data_model_from_file(path: &PathBuf) -> Result<(), PythonParserError> {
+pub fn extract_data_model_from_file(path: &PathBuf) -> Result<Vec<DataModel>, PythonParserError> {
     // todo!("Handle the enums in the class parsing");
 
     // Parse the schema file into an AST
@@ -424,16 +431,16 @@ pub fn extract_data_model_from_file(path: &PathBuf) -> Result<(), PythonParserEr
     // Get the non-enum classes from the AST
     let python_classes: Vec<&StmtClassDef> = get_non_enum_class_ast_nodes(&ast);
 
+    // Process the python enums into framework enums
     let framework_enums = python_enums
         .iter()
         .map(|enum_node| python_enum_to_framework_enum(enum_node))
         .collect::<Result<Vec<FrameworkEnum>, PythonParserError>>()?;
 
+    // Get the nested classes found in the python file
     let nested_classes = get_nested_classes(&python_classes);
 
-    println!("{:?}", "Nested Classes");
-    println!("{:?}", nested_classes);
-
+    // Process the python classes into framework data models (includes all declared classes as datamodels)
     let data_models: Vec<DataModel> = python_classes
         .iter()
         .map(|class_node| {
@@ -446,10 +453,16 @@ pub fn extract_data_model_from_file(path: &PathBuf) -> Result<(), PythonParserEr
         })
         .collect::<Result<Vec<DataModel>, PythonParserError>>()?;
 
-    // Process each of the class nodes
-    println!("{:#?}", data_models);
+    // Remove the nested classes from the top level data models
+    let data_models = data_models
+        .iter()
+        .filter(|data_model| !nested_classes.contains(&Identifier::new(&data_model.name)))
+        .cloned()
+        .collect();
 
-    Ok(())
+    println!("{:?}", "Data Models");
+
+    Ok(data_models)
 }
 
 #[cfg(test)]
@@ -491,21 +504,53 @@ mod tests {
 
         let classes = get_non_enum_class_ast_nodes(&ast);
 
-        assert_eq!(classes.len(), 1);
+        assert_eq!(classes.len(), 2);
+    }
+
+    #[test]
+    fn creates_right_number_if_data_models() {
+        let test_file = get_simple_python_file_path();
+
+        let data_models = extract_data_model_from_file(&test_file).unwrap();
+
+        assert_eq!(data_models.len(), 1);
+    }
+
+    #[test]
+    fn data_model_has_right_number_of_nested_objects() {
+        // checks that the data model has one nested object column
+        let test_file = get_simple_python_file_path();
+
+        let data_models = extract_data_model_from_file(&test_file).unwrap();
+
+        let data_model = data_models.first().unwrap();
+
+        // get the nested object columns
+        let nested_columns = data_model
+            .columns
+            .iter()
+            .filter(|column| matches!(column.data_type, ColumnType::Nested(_)))
+            .collect::<Vec<&Column>>();
+
+        assert_eq!(nested_columns.len(), 1);
     }
 
     #[test]
     fn has_right_number_of_attributes() {
+        // checks that all the parsed classes have the right number of attributes
+
         let test_file = get_simple_python_file_path();
 
         let ast = get_ast_from_file(&test_file).unwrap();
 
         let classes = get_non_enum_class_ast_nodes(&ast);
 
-        let class_node = classes.first().unwrap();
+        // get number of attributes from all the classes
+        let body_nodes_attribute_counts = classes
+            .iter()
+            .map(|class_node| class_node.body.clone().len())
+            .collect::<Vec<usize>>();
 
-        let body_nodes = &class_node.body;
-
-        assert_eq!(body_nodes.len(), 7);
+        assert_eq!(body_nodes_attribute_counts, [2, 8]);
     }
 }

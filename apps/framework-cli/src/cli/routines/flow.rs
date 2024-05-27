@@ -25,8 +25,11 @@ impl FlowFileBuilder {
             .replace("{{source}}", source)
             .replace("{{destination}}", destination);
 
-        let flows_dir = project.flows_dir();
-        let flow_file_path = flows_dir.join(source).join(destination).join(FLOW_FILE);
+        let flow_file_path = project
+            .flows_dir()
+            .join(source)
+            .join(destination)
+            .join(FLOW_FILE);
 
         Self {
             flow_file_path,
@@ -187,7 +190,7 @@ pub async fn create_flow_file(
         }
     };
 
-    let _ = FlowFileBuilder::new(project, &source, &destination)
+    FlowFileBuilder::new(project, &source, &destination)
         .imports(&source, &destination, models)
         .return_object(&destination, models)
         .write()?;

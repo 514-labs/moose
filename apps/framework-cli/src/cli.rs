@@ -402,7 +402,8 @@ async fn top_command_handler(
                         init.destination.clone(),
                     )?
                     .show();
-                    create_flow_file(&project_arc, init.source.clone(), init.destination.clone()).await
+                    create_flow_file(&project_arc, init.source.clone(), init.destination.clone())
+                        .await
                 }
             }
         }

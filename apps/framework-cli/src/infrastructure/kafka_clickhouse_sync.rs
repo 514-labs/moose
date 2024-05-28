@@ -509,6 +509,7 @@ fn map_json_value_to_clickhouse_value(
             // (A', B', [(C.a', C.b', C.c')])
             // If C.c is a nested object with columns d, e, f you'd insert data as follows
             // (A', B', [(C.a', C.b', [(C.c.d', C.c.e', C.c.f')])])
+            //
             // For now, we'll assume that flatten_nested=0 is set in clickhouse
 
             if let Some(obj) = value.as_object() {
@@ -678,6 +679,11 @@ mod tests {
             &example_json_value,
         );
 
-        println!("{:?}", values);
+        let values_string = "[('A','B',[('a',[('d','e','f')],'c')],NULL)]".to_string();
+        // Note the corresponding insert statement would be
+        // INSERT INTO TimLiveTest VALUES ('T', [('A','B',[('a',[('d','e','f')],'c')],NULL)])
+        // where TimLiveTest is the table name and contains our nested object and a order by Key
+
+        assert_eq!(values.unwrap().to_string(), values_string);
     }
 }

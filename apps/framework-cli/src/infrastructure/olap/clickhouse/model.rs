@@ -1,12 +1,11 @@
 use super::errors::ClickhouseError;
 use super::queries::{create_table_query, drop_table_query};
-use crate::framework::data_model::schema::{ColumnType, DataEnum, Nested};
+use crate::framework::data_model::schema::DataEnum;
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use std::fmt::format;
-use std::{fmt, mem};
+use std::fmt;
 
 #[derive(Debug, Clone)]
 pub enum ClickHouseTableType {
@@ -223,9 +222,9 @@ impl fmt::Display for ClickHouseValue {
                 write!(f, "{}", &self.value)
             }
             ClickHouseColumnType::DateTime => write!(f, "'{}'", &self.value),
-            ClickHouseColumnType::Decimal => todo!(),
-            ClickHouseColumnType::Json => todo!(),
-            ClickHouseColumnType::Bytes => todo!(),
+            ClickHouseColumnType::Decimal => todo!("Decimal not implemented yet"),
+            ClickHouseColumnType::Json => todo!("Json not implemented yet"),
+            ClickHouseColumnType::Bytes => todo!("Bytes not implemented yet"),
             ClickHouseColumnType::Array(_) => write!(f, "[{}]", &self.value),
             ClickHouseColumnType::Enum(_) => write!(f, "{}", &self.value),
             ClickHouseColumnType::Nested(_) => write!(f, "{}", &self.value),

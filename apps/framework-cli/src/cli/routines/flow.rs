@@ -95,9 +95,11 @@ impl FlowFileBuilder {
     ) -> String {
         let import = if models.contains_key(target_model) {
             let model_path = models.get(target_model).unwrap().original_file_path.clone();
-            let model_relative_path =
+            let mut model_relative_path =
                 diff_paths(model_path.clone(), self.flow_file_path.parent().unwrap())
                     .unwrap_or(model_path.clone());
+            model_relative_path.set_extension("");
+
             format!(
                 "import {{ {} }} from \"{}\";",
                 target_model,
@@ -105,7 +107,7 @@ impl FlowFileBuilder {
             )
         } else {
             format!(
-                "import {{ {} }} from \"../../../datamodels/models.ts\";",
+                "import {{ {} }} from \"../../../datamodels/models\";",
                 target_model
             )
         };

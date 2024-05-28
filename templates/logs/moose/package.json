@@ -1,0 +1,18 @@
+{
+  "name": "log-storage",
+  "version": "0.0",
+  "scripts": {
+    "build": "moose-cli build --docker",
+    "moose": "moose-cli",
+    "dev": "moose-cli dev"
+  },
+  "dependencies": {
+    "kafkajs": "^2.2.4",
+    "ts-node": "^10.9.2"
+  },
+  "devDependencies": {
+    "@514labs/moose-cli": "latest",
+    "typescript": "^5.4.0",
+    "ts-node": "^10.9.2"
+  }
+}

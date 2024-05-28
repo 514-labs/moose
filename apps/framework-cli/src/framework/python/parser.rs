@@ -132,24 +132,18 @@ fn collect_nested_classes(
     let body_nodes = class.clone().body;
 
     for body_node in body_nodes {
-        match body_node {
-            Stmt::AnnAssign(assignment) => {
-                let id = match *assignment.annotation.clone() {
-                    Expr::Name(name) => name.id,
-                    _ => Identifier::new(""),
-                };
+        if let Stmt::AnnAssign(assignment) = body_node {
+            let id = match *assignment.annotation.clone() {
+                Expr::Name(name) => name.id,
+                _ => Identifier::new(""),
+            };
 
-                let class_node = classes.iter().find(|class| class.name == id);
+            let class_node = classes.iter().find(|class| class.name == id);
 
-                match class_node {
-                    Some(cn) => {
-                        collector.push(id.clone());
-                        collect_nested_classes(cn, classes, collector);
-                    }
-                    _ => {}
-                }
+            if let Some(cn) = class_node {
+                collector.push(id.clone());
+                collect_nested_classes(cn, classes, collector);
             }
-            _ => {}
         }
     }
 }

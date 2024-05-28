@@ -77,8 +77,26 @@ impl FlowFileBuilder {
         destination: &str,
         models: &HashMap<String, FrameworkObject>,
     ) -> &mut Self {
-        let source_import = self.get_import(source, models);
-        let destination_import = self.get_import(destination, models);
+        let source_path = self.get_model_path(source, models);
+        let destination_path = self.get_model_path(destination, models);
+
+        let (source_import, destination_import) = if source_path == destination_path {
+            (
+                format!(
+                    "import {{ {}, {} }} from \"{}\";",
+                    source, destination, source_path
+                ),
+                "".to_string(),
+            )
+        } else {
+            (
+                format!("import {{ {} }} from \"{}\";", source, source_path),
+                format!(
+                    "import {{ {} }} from \"{}\";",
+                    destination, destination_path
+                ),
+            )
+        };
 
         self.flow_file_template = self
             .flow_file_template
@@ -88,31 +106,22 @@ impl FlowFileBuilder {
         self
     }
 
-    pub fn get_import(
+    pub fn get_model_path(
         &self,
         target_model: &str,
         models: &HashMap<String, FrameworkObject>,
     ) -> String {
-        let import = if models.contains_key(target_model) {
+        if models.contains_key(target_model) {
             let model_path = models.get(target_model).unwrap().original_file_path.clone();
             let mut model_relative_path =
                 diff_paths(model_path.clone(), self.flow_file_path.parent().unwrap())
                     .unwrap_or(model_path.clone());
             model_relative_path.set_extension("");
 
-            format!(
-                "import {{ {} }} from \"{}\";",
-                target_model,
-                model_relative_path.display()
-            )
+            model_relative_path.to_string_lossy().to_string()
         } else {
-            format!(
-                "import {{ {} }} from \"../../../datamodels/models\";",
-                target_model
-            )
-        };
-
-        import
+            "../../../datamodels/models".to_string()
+        }
     }
 
     pub fn write(&self) -> Result<(), RoutineFailure> {

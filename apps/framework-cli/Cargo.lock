@@ -1859,6 +1859,7 @@ dependencies = [
  "log",
  "notify",
  "openssl",
+ "pathdiff",
  "predicates",
  "rdkafka",
  "regex",

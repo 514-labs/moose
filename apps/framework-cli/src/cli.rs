@@ -403,13 +403,7 @@ async fn top_command_handler(
                     )?
                     .show();
                     create_flow_file(&project_arc, init.source.clone(), init.destination.clone())
-                        .await?
-                        .show();
-
-                    Ok(RoutineSuccess::success(Message::new(
-                        "".to_string(),
-                        "".to_string(),
-                    )))
+                        .await
                 }
             }
         }

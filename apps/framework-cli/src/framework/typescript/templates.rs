@@ -330,7 +330,7 @@ pub static BASE_FLOW_SAMPLE_TEMPLATE: &str = r#"
 // Example flow function: Converts local timestamps in UserActivity data to UTC.
 
 // Imports: Source (UserActivity) and Destination (ParsedActivity) data models.
-import { ParsedActivity, UserActivity } from "../../../datamodels/models.ts";
+import { ParsedActivity, UserActivity } from "../../../datamodels/models";
 
 // The 'run' function transforms UserActivity data to ParsedActivity format.
 // For more details on how Moose flows work, see: https://docs.moosejs.com
@@ -348,7 +348,8 @@ export default function run(source: UserActivity): ParsedActivity {
 
 pub static BASE_FLOW_TEMPLATE: &str = r#"
 // Add your models & start the development server to import these types
-import { {{source}}, {{destination}} } from "../../../datamodels/models.ts";
+{{source_import}}
+{{destination_import}}
 
 // The 'run' function transforms {{source}} data to {{destination}} format.
 // For more details on how Moose flows work, see: https://docs.moosejs.com

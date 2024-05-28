@@ -1,4 +1,4 @@
-use crate::framework::data_model::schema::{ColumnType, Table, TableType};
+use crate::framework::data_model::schema::{Column, ColumnType, Table, TableType};
 
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
@@ -13,6 +13,21 @@ pub fn clickhouse_table_type_mapper(table_type: TableType) -> ClickHouseTableTyp
         TableType::Table => ClickHouseTableType::Table,
         _ => ClickHouseTableType::Unsupported,
     }
+}
+
+pub fn std_column_to_clickhouse_column(
+    column: Column,
+) -> Result<ClickHouseColumn, ClickhouseError> {
+    let clickhouse_column = ClickHouseColumn {
+        name: sanitize_column_name(column.name),
+        column_type: std_field_type_to_clickhouse_type_mapper(column.data_type)?,
+        required: column.required,
+        unique: column.unique,
+        primary_key: column.primary_key,
+        default: None, // TODO: Implement the default mapper
+    };
+
+    Ok(clickhouse_column)
 }
 
 pub fn std_field_type_to_clickhouse_type_mapper(
@@ -33,7 +48,13 @@ pub fn std_field_type_to_clickhouse_type_mapper(
             Ok(ClickHouseColumnType::Array(Box::new(inner_clickhouse_type)))
         }
         ColumnType::Nested(inner_nested) => {
-            todo!("Implement the nested type mapper");
+            let column_types = inner_nested
+                .columns
+                .iter()
+                .map(|column| Ok(std_column_to_clickhouse_column(column.clone())?))
+                .collect::<Result<Vec<ClickHouseColumn>, ClickhouseError>>()?;
+
+            Ok(ClickHouseColumnType::Nested(column_types))
         }
         ColumnType::BigInt => Err(ClickhouseError::UnsupportedDataType {
             type_name: "BigInt".to_string(),

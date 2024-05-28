@@ -1,4 +1,3 @@
-use clickhouse_rs::types::column;
 use log::error;
 use log::info;
 use rdkafka::Message;
@@ -11,16 +10,15 @@ use serde_json::Value;
 use tokio::task::JoinHandle;
 
 use super::olap::clickhouse::errors::ClickhouseError;
+use super::olap::clickhouse::mapper::std_column_to_clickhouse_column;
 use super::olap::clickhouse::mapper::std_field_type_to_clickhouse_type_mapper;
 use super::olap::clickhouse::model::ClickHouseColumn;
-use super::olap::clickhouse::model::ClickHouseColumnType;
 use super::olap::clickhouse::model::ClickHouseRecord;
 use super::olap::clickhouse::model::ClickHouseRuntimeEnum;
 use super::olap::clickhouse::version_sync::VersionSync;
 use crate::framework::controller::FrameworkObjectVersions;
 use crate::framework::data_model::schema::Column;
 use crate::framework::data_model::schema::ColumnType;
-use crate::framework::data_model::schema::Nested;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::inserter::Inserter;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
@@ -521,12 +519,16 @@ fn map_json_value_to_clickhouse_value(
                         let col_name = &col.name;
                         let val = obj.get(col_name);
                         match val {
-                            Some(val) => {
-                                map_json_value_to_clickhouse_value(&col.data_type, val).unwrap()
-                            }
-                            None => ClickHouseValue::new_null(
-                                std_field_type_to_clickhouse_type_mapper(col.data_type.clone())
-                                    .unwrap(),
+                            Some(val) => (
+                                std_column_to_clickhouse_column(col.clone()).unwrap(),
+                                map_json_value_to_clickhouse_value(&col.data_type, val).unwrap(),
+                            ),
+                            None => (
+                                std_column_to_clickhouse_column(col.clone()).unwrap(),
+                                ClickHouseValue::new_null(
+                                    std_field_type_to_clickhouse_type_mapper(col.data_type.clone())
+                                        .unwrap(),
+                                ),
                             ),
                         }
                     })

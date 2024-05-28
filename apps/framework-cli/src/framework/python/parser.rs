@@ -254,12 +254,12 @@ fn attempt_nested_class(
                     columns,
                 })
             });
-
-        println!("{:?}", col_type);
         return col_type;
-    };
-
-    todo!("Handle nested classes")
+    } else {
+        return Err(PythonParserError::ClassParseError {
+            message: "Failed to parse nested class type".to_string(),
+        });
+    }
 }
 
 fn handle_complex_named_type(
@@ -420,8 +420,6 @@ fn body_node_to_column(
 }
 
 pub fn extract_data_model_from_file(path: &PathBuf) -> Result<Vec<DataModel>, PythonParserError> {
-    // todo!("Handle the enums in the class parsing");
-
     // Parse the schema file into an AST
     let ast = get_ast_from_file(path)?;
 
@@ -459,8 +457,6 @@ pub fn extract_data_model_from_file(path: &PathBuf) -> Result<Vec<DataModel>, Py
         .filter(|data_model| !nested_classes.contains(&Identifier::new(&data_model.name)))
         .cloned()
         .collect();
-
-    println!("{:?}", "Data Models");
 
     Ok(data_models)
 }

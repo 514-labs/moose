@@ -39,7 +39,7 @@ pub enum ClickHouseColumnType {
     Bytes,
     Array(Box<ClickHouseColumnType>),
     Enum(DataEnum),
-    Nested(Vec<ClickHouseColumnType>),
+    Nested(Vec<ClickHouseColumn>),
 }
 
 impl fmt::Display for ClickHouseColumnType {
@@ -188,16 +188,16 @@ impl ClickHouseValue {
         }
     }
 
-    pub fn new_tuple(members: Vec<ClickHouseValue>) -> ClickHouseValue {
-        let nested_types = members.iter().map(|v| v.value_type.clone()).collect();
+    pub fn new_tuple(members: Vec<(ClickHouseColumn, ClickHouseValue)>) -> ClickHouseValue {
+        let (cols, vals): (Vec<ClickHouseColumn>, Vec<ClickHouseValue>) =
+            members.iter().cloned().unzip();
 
         ClickHouseValue {
-            value_type: ClickHouseColumnType::Nested(nested_types),
+            value_type: ClickHouseColumnType::Nested(cols),
             value: format!(
                 "[({})]",
-                members
-                    .iter()
-                    .map(|v| format!("{}", v))
+                vals.iter()
+                    .map(|v| format!("{}", v.value))
                     .collect::<Vec<String>>()
                     .join(",")
             ),

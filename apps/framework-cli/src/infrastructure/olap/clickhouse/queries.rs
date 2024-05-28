@@ -10,6 +10,7 @@ use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
 use super::errors::ClickhouseError;
 use super::model::ClickHouseColumn;
 
+// Unclear if we need to add flatten_nested to the views setting as well
 static CREATE_ALIAS_TEMPLATE: &str = r#"
 CREATE VIEW IF NOT EXISTS {{db_name}}.{{alias_name}} AS SELECT * FROM {{db_name}}.{{source_table_name}};
 "#;

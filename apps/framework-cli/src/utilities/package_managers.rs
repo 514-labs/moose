@@ -141,7 +141,7 @@ mod tests {
                 assert!(!val.is_empty());
             }
             Err(_e) => {
-                assert!(false)
+                panic!();
             }
         }
 

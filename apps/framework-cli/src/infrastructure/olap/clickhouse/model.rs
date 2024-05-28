@@ -197,7 +197,7 @@ impl ClickHouseValue {
             value: format!(
                 "[({})]",
                 vals.iter()
-                    .map(|v| format!("{}", v.value))
+                    .map(|v| v.value.to_string())
                     .collect::<Vec<String>>()
                     .join(",")
             ),

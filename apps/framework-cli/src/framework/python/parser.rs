@@ -254,11 +254,11 @@ fn attempt_nested_class(
                     columns,
                 })
             });
-        return col_type;
+        col_type
     } else {
-        return Err(PythonParserError::ClassParseError {
+        Err(PythonParserError::ClassParseError {
             message: "Failed to parse nested class type".to_string(),
-        });
+        })
     }
 }
 
@@ -318,7 +318,7 @@ fn process_subscript_node(
     subscript: ast::ExprSubscript,
     column: &mut ColumnBuilder,
 ) -> Result<(), PythonParserError> {
-    Ok(match &*subscript.value {
+    match &*subscript.value {
         Expr::Name(name) => match name.id.to_string().as_str() {
             "List" => {
                 let col_type = ColumnType::Array(match &*subscript.slice {
@@ -368,7 +368,8 @@ fn process_subscript_node(
                 type_name: "Unsupported data type".to_string(),
             })
         }
-    })
+    };
+    Ok(())
 }
 
 /// # Add the column builder properties to the column builder that are available in the name node

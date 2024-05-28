@@ -534,7 +534,7 @@ fn map_json_value_to_clickhouse_value(
                     })
                     .collect();
 
-                return Ok(ClickHouseValue::new_tuple(column_values));
+                Ok(ClickHouseValue::new_tuple(column_values))
             } else {
                 Err(MappingError::TypeMismatch {
                     column_type: column_type.clone(),

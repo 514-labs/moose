@@ -51,7 +51,7 @@ pub fn std_field_type_to_clickhouse_type_mapper(
             let column_types = inner_nested
                 .columns
                 .iter()
-                .map(|column| Ok(std_column_to_clickhouse_column(column.clone())?))
+                .map(|column| std_column_to_clickhouse_column(column.clone()))
                 .collect::<Result<Vec<ClickHouseColumn>, ClickhouseError>>()?;
 
             Ok(ClickHouseColumnType::Nested(column_types))

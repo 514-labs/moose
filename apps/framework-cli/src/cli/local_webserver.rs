@@ -105,9 +105,6 @@ async fn create_client(
 
     Ok(Response::builder()
         .status(StatusCode::OK)
-        .header("Access-Control-Allow-Origin", "*")
-        .header("Access-Control-Allow-Method", "GET, POST")
-        .header("Access-Control-Allow-Headers", "Content-Type")
         .body(Full::new(Bytes::from(body)))
         .unwrap())
 }

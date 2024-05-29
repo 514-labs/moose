@@ -528,7 +528,26 @@ pub async fn set_up_topic_and_tables_and_route(
                 .await?;
             }
 
-            previous_fo.topic.clone()
+            // In the case where we use a view here, we need to use the previous topic that was set
+            // That topic may be the topic of n - 2 version of the data model. Right now the Route object
+            // is where this is kept.
+            // this is a gross way to find the previous ingest route
+            let previous_version = previous_version.as_ref().unwrap().0.as_str();
+            let old_base_path = project.old_version_location(previous_version)?;
+            let old_ingest_route = schema_file_path_to_ingest_route(
+                &old_base_path,
+                &previous_fo.original_file_path,
+                fo.data_model.name.clone(),
+                previous_version,
+            );
+
+            route_table
+                .get(&old_ingest_route)
+                .unwrap()
+                // this might be chained multiple times,
+                // so we cannot just use the previous.table.name
+                .topic_name
+                .clone()
         }
         _ => {
             match redpanda::create_topics(&project.redpanda_config, vec![topic]).await {

@@ -72,5 +72,6 @@ reqwest = { version = "0.12", features = ["blocking", "json"] }
 
 [profile.dev]
 panic = "abort"
+
 [profile.release]
 panic = "abort"

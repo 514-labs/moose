@@ -221,6 +221,9 @@ async fn send_payload_to_topic(
     payload: Value,
 ) -> Result<(i32, i64), (KafkaError, OwnedMessage)> {
     let payload = serde_json::to_vec(&payload).unwrap();
+
+    log::debug!("Sending payload {:?} to topic: {}", payload, topic_name);
+
     configured_producer
         .producer
         .send(

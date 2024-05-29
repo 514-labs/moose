@@ -588,7 +588,7 @@
 
     // Wait a bit for SPA routers
     setTimeout(() => {
-      _sendEvent("PageViewEvent", {
+      _sendEvent("PageViewEvent/0.0", {
         referrer: document.referrer,
         href: window.location.href,
       });

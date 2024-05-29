@@ -542,6 +542,6 @@ mod tests {
             .map(|class_node| class_node.body.clone().len())
             .collect::<Vec<usize>>();
 
-        assert_eq!(body_nodes_attribute_counts, [2, 8]);
+        assert_eq!(body_nodes_attribute_counts, [2, 9]);
     }
 }

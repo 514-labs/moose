@@ -5,6 +5,7 @@ use uuid::Uuid;
 pub const CLI_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const PACKAGE_JSON: &str = "package.json";
+pub const REQUIREMENTS_TXT: &str = "requirements.txt";
 pub const PROJECT_CONFIG_FILE: &str = "project.toml";
 pub const PROJECT_NAME_ALLOW_PATTERN: &str = r"^[a-zA-Z0-9_-]+$";
 

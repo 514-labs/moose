@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Optional
+from datetime import datetime
+
 
 
 type Key[T: (str, int)] = T 
@@ -24,4 +26,5 @@ class MyModel:
     arr: List[str]
     opt: Optional[str]
     sub: MySubModel
+    date: datetime
 

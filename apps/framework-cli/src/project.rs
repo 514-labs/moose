@@ -14,6 +14,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io::Write;
+pub mod python_project;
 pub mod typescript_project;
 
 use std::fmt::Debug;
@@ -149,6 +150,9 @@ impl Project {
                 )),
                 supported_old_versions: HashMap::new(),
             },
+            SupportedLanguages::Python => {
+                unimplemented!("Python project creation is not yet implemented")
+            }
         }
     }
 
@@ -183,6 +187,9 @@ impl Project {
                 let ts_config = TypescriptProject::load(directory)?;
                 project_config.language_project_config =
                     LanguageProjectConfig::Typescript(ts_config);
+            }
+            SupportedLanguages::Python => {
+                unimplemented!("Python project loading is not yet implemented");
             }
         }
 

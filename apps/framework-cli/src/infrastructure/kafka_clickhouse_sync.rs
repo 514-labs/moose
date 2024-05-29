@@ -681,7 +681,7 @@ mod tests {
             &example_json_value,
         );
 
-        let values_string = "[('A','B',[('a',[('d','e','f')],'c')],NULL)]".to_string();
+        let values_string = "[(A,B,[(a,[(d,e,f)],c)],NULL)]".to_string();
         // Note the corresponding insert statement would be
         // INSERT INTO TimLiveTest VALUES ('T', [('A','B',[('a',[('d','e','f')],'c')],NULL)])
         // where TimLiveTest is the table name and contains our nested object and a order by Key

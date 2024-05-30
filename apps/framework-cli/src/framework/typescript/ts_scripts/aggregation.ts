@@ -33,10 +33,6 @@ const [
   CLICKHOUSE_USE_SSL,
 ] = process.argv;
 
-console.log(
-  `${AGGREGATIONS_DIR_PATH} | ${CLICKHOUSE_DB} | ${CLICKHOUSE_HOST} | ${CLICKHOUSE_PORT} | ${CLICKHOUSE_USERNAME} | ${CLICKHOUSE_PASSWORD} | ${CLICKHOUSE_USE_SSL}`,
-);
-
 const getClickhouseClient = () => {
   const protocol =
     CLICKHOUSE_USE_SSL === "1" || CLICKHOUSE_USE_SSL.toLowerCase() === "true"

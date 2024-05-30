@@ -12,6 +12,8 @@ use log::{debug, info, warn};
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::RwLock;
 
+use crate::framework::aggregations::model::Aggregation;
+use crate::framework::aggregations::registry::AggregationProcessRegistry;
 use crate::framework::controller::{
     create_or_replace_tables, drop_table, get_framework_objects_from_schema_file,
     schema_file_path_to_ingest_route, FrameworkObjectVersions,
@@ -24,7 +26,7 @@ use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::stream::redpanda;
 use crate::project::AggregationSet;
-use crate::utilities::constants::{FLOWS_DIR, SCHEMAS_DIR};
+use crate::utilities::constants::{AGGREGATIONS_DIR, FLOWS_DIR, SCHEMAS_DIR};
 use crate::utilities::package_managers;
 use crate::{
     framework::controller::RouteMeta,
@@ -228,6 +230,7 @@ async fn process_data_models_changes(
 
 struct EventBuckets {
     flows: Vec<Event>,
+    aggregations: Vec<Event>,
     data_models: Vec<Event>,
 }
 
@@ -236,6 +239,7 @@ impl EventBuckets {
         info!("Events: {:?}", events);
 
         let mut flows = Vec::new();
+        let mut aggregations = Vec::new();
         let mut data_models = Vec::new();
 
         for event in events {
@@ -247,6 +251,11 @@ impl EventBuckets {
                     flows.push(event);
                 } else if event.paths.iter().any(|path: &PathBuf| {
                     path.iter()
+                        .any(|component| component.eq_ignore_ascii_case(AGGREGATIONS_DIR))
+                }) {
+                    aggregations.push(event);
+                } else if event.paths.iter().any(|path: &PathBuf| {
+                    path.iter()
                         .any(|component| component.eq_ignore_ascii_case(SCHEMAS_DIR))
                 }) {
                     data_models.push(event);
@@ -255,12 +264,17 @@ impl EventBuckets {
         }
 
         info!("Flows: {:?}", flows);
+        info!("Aggregations: {:?}", aggregations);
         info!("Data Models: {:?}", data_models);
-        Self { flows, data_models }
+        Self {
+            flows,
+            aggregations,
+            data_models,
+        }
     }
 
     pub fn non_empty(&self) -> bool {
-        !self.flows.is_empty() || !self.data_models.is_empty()
+        !self.flows.is_empty() || !self.data_models.is_empty() || !self.aggregations.is_empty()
     }
 }
 
@@ -270,6 +284,7 @@ async fn watch(
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     syncing_process_registry: &mut SyncingProcessesRegistry,
     flows_process_registry: &mut FlowProcessRegistry,
+    aggregations_process_registry: &mut AggregationProcessRegistry,
 ) -> Result<(), anyhow::Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let configured_producer = redpanda::create_producer(project.redpanda_config.clone());
@@ -344,6 +359,16 @@ async fn watch(
                             !project.is_production,
                         )
                         .await?;
+                    } else if !bucketed_events.aggregations.is_empty() {
+                        with_spinner_async(
+                            &format!(
+                                "Processing {} Aggregation(s) changes from file watcher",
+                                bucketed_events.aggregations.len()
+                            ),
+                            process_aggregations_changes(&project, aggregations_process_registry),
+                            !project.is_production,
+                        )
+                        .await?;
                     }
 
                     let _ = verify_flows_against_datamodels(&project, framework_object_versions);
@@ -383,6 +408,18 @@ pub async fn process_flows_changes(
     Ok(())
 }
 
+pub async fn process_aggregations_changes(
+    project: &Project,
+    aggregations_process_registry: &mut AggregationProcessRegistry,
+) -> anyhow::Result<()> {
+    aggregations_process_registry.stop_all().await?;
+    aggregations_process_registry.start_all(Aggregation {
+        dir: project.aggregations_dir(),
+    })?;
+
+    Ok(())
+}
+
 pub struct FileWatcher;
 
 impl FileWatcher {
@@ -397,6 +434,7 @@ impl FileWatcher {
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
         syncing_process_registry: SyncingProcessesRegistry,
         flows_process_registry: FlowProcessRegistry,
+        aggregations_process_registry: AggregationProcessRegistry,
     ) -> Result<(), Error> {
         show_message!(MessageType::Info, {
             Message {
@@ -408,6 +446,7 @@ impl FileWatcher {
         let mut framework_object_versions = framework_object_versions;
         let mut syncing_process_registry = syncing_process_registry;
         let mut flows_process_registry = flows_process_registry;
+        let mut aggregations_process_registry = aggregations_process_registry;
 
         tokio::spawn(async move {
             if let Err(error) = watch(
@@ -416,6 +455,7 @@ impl FileWatcher {
                 route_table,
                 &mut syncing_process_registry,
                 &mut flows_process_registry,
+                &mut aggregations_process_registry,
             )
             .await
             {

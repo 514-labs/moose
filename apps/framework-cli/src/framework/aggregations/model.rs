@@ -7,8 +7,8 @@ use crate::{framework::typescript, infrastructure::olap::clickhouse::config::Cli
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum AggregationError {
-    #[error("TODO: error msg")]
-    GenericError(#[from] std::io::Error),
+    #[error("Failed to start/stop the aggregation process")]
+    IoError(#[from] std::io::Error),
 }
 
 #[derive(Debug, Clone)]
@@ -18,7 +18,7 @@ pub struct Aggregation {
 
 impl Aggregation {
     pub fn id(&self) -> String {
-        "TODO: id".to_string()
+        "onlyone".to_string()
     }
 
     pub fn start(&self, clickhouse_config: ClickHouseConfig) -> Result<Child, AggregationError> {

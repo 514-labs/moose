@@ -412,8 +412,8 @@ pub async fn process_aggregations_changes(
     project: &Project,
     aggregations_process_registry: &mut AggregationProcessRegistry,
 ) -> anyhow::Result<()> {
-    aggregations_process_registry.stop_all().await?;
-    aggregations_process_registry.start_all(Aggregation {
+    aggregations_process_registry.stop().await?;
+    aggregations_process_registry.start(Aggregation {
         dir: project.aggregations_dir(),
     })?;
 

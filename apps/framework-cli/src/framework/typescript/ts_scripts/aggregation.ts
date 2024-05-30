@@ -86,7 +86,7 @@ const createAggregation = async (chClient: ClickHouseClient, path: string) => {
   } catch (err) {
     console.error(`Failed to create aggregation ${fileName}: ${err}`);
 
-    if (err && err.toString().includes(`${fileName} does not exist`)) {
+    if (err && JSON.stringify(err).includes(`UNKNOWN_TABLE`)) {
       throw new DependencyError(err.toString());
     }
   }

@@ -20,7 +20,7 @@ impl AggregationProcessRegistry {
         }
     }
 
-    pub fn start_all(&mut self, aggregation: Aggregation) -> Result<(), AggregationError> {
+    pub fn start(&mut self, aggregation: Aggregation) -> Result<(), AggregationError> {
         info!("Starting aggregation {:?}...", aggregation);
         let child = aggregation.start(self.clickhouse_config.clone())?;
 
@@ -29,7 +29,7 @@ impl AggregationProcessRegistry {
         Ok(())
     }
 
-    pub async fn stop_all(&mut self) -> Result<(), AggregationError> {
+    pub async fn stop(&mut self) -> Result<(), AggregationError> {
         info!("Stopping aggregation...");
 
         for child in self.registry.values_mut() {

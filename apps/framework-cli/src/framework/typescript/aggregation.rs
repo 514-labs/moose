@@ -3,6 +3,7 @@ use std::path::Path;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 
+use crate::framework::aggregations::model::AggregationError;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 
 use super::ts_node;
@@ -14,7 +15,7 @@ const AGGREGATION_RUNNER_WRAPPER: &str = include_str!("ts_scripts/aggregation.ts
 pub fn run(
     clickhouse_config: ClickHouseConfig,
     aggregations_path: &Path,
-) -> Result<Child, std::io::Error> {
+) -> Result<Child, AggregationError> {
     let host_port = clickhouse_config.host_port.to_string();
     let use_ssl = clickhouse_config.use_ssl.to_string();
     let args = vec![

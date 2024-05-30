@@ -1,5 +1,6 @@
 use clap::Subcommand;
 
+pub mod aggregations;
 pub mod controller;
 pub mod data_model;
 pub mod flows;

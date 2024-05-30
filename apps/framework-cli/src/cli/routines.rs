@@ -86,10 +86,10 @@ use std::sync::Arc;
 use log::{debug, error, info};
 use tokio::sync::RwLock;
 
-use crate::cli::routines::aggregation::start_aggregation_process;
 use crate::cli::routines::consumption::start_consumption_process;
 
-use crate::cli::watcher::process_flows_changes;
+use crate::cli::watcher::{process_aggregations_changes, process_flows_changes};
+use crate::framework::aggregations::registry::AggregationProcessRegistry;
 use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::infrastructure::olap::clickhouse::{
     fetch_table_names, fetch_table_schema, table_schema_to_hash,
@@ -299,6 +299,10 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     // will need to get refactored out.
     process_flows_changes(&project, &mut flows_process_registry).await?;
 
+    let mut aggregations_process_registry =
+        AggregationProcessRegistry::new(project.clickhouse_config.clone());
+    process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
+
     let file_watcher = FileWatcher::new();
     file_watcher.start(
         project.clone(),
@@ -306,6 +310,7 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
         route_table,
         syncing_processes_registry,
         flows_process_registry,
+        aggregations_process_registry,
     )?;
 
     info!("Starting web server...");
@@ -347,7 +352,11 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     // Once the below function is optimized to act on events, this
     // will need to get refactored out.
     process_flows_changes(&project, &mut flows_process_registry).await?;
-    start_aggregation_process(&project)?;
+
+    let mut aggregations_process_registry =
+        AggregationProcessRegistry::new(project.clickhouse_config.clone());
+    process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
+
     start_consumption_process(&project)?;
 
     info!("Starting web server...");

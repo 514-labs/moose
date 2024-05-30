@@ -55,9 +55,7 @@ use crate::utilities::constants::{
     SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE,
 };
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
-use crate::utilities::constants::{
-    CONSUMPTION_HELPERS, DENO_AGGREGATIONS, DENO_CONSUMPTION_API, DENO_DIR,
-};
+use crate::utilities::constants::{CONSUMPTION_HELPERS, DENO_CONSUMPTION_API, DENO_DIR};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 
 #[derive(Debug, thiserror::Error)]
@@ -229,11 +227,6 @@ impl Project {
         if !deno_dir.exists() {
             std::fs::create_dir_all(&deno_dir)?;
         }
-
-        let aggregations_file_path = deno_dir.join(DENO_AGGREGATIONS);
-        let mut aggregations_file = std::fs::File::create(aggregations_file_path)?;
-        let aggregations_file_content = include_str!("framework/aggregations.ts");
-        aggregations_file.write_all(aggregations_file_content.as_bytes())?;
 
         let api_server_file = deno_dir.join(DENO_CONSUMPTION_API);
         let mut api_file = std::fs::File::create(api_server_file)?;

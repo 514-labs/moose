@@ -3,9 +3,7 @@ use std::fs;
 
 use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
-use crate::utilities::constants::{
-    AGGREGATIONS_CONTAINER_NAME, CLI_PROJECT_INTERNAL_DIR, CONSUMPTION_CONTAINER_NAME,
-};
+use crate::utilities::constants::{CLI_PROJECT_INTERNAL_DIR, CONSUMPTION_CONTAINER_NAME};
 use crate::utilities::docker;
 use crate::utilities::git::dump_old_version_schema;
 use crate::{cli::display::Message, project::Project};
@@ -34,7 +32,6 @@ pub fn run_local_infrastructure(project: &Project) -> Result<RoutineSuccess, Rou
     validate_deno_services()?.show();
     validate_redpanda_cluster(project.name())?.show();
 
-    tail_aggregations_container_logs(project)?.show();
     tail_consumption_container_logs(project)?.show();
 
     Ok(RoutineSuccess::success(Message::new(
@@ -70,12 +67,6 @@ pub fn run_containers(project: &Project) -> Result<RoutineSuccess, RoutineFailur
             err,
         )),
     }
-}
-
-pub fn tail_aggregations_container_logs(
-    project: &Project,
-) -> Result<RoutineSuccess, RoutineFailure> {
-    tail_container_logs(project, AGGREGATIONS_CONTAINER_NAME)
 }
 
 pub fn tail_consumption_container_logs(

@@ -29,7 +29,6 @@ pub const SAMPLE_FLOWS_DEST: &str = "ParsedActivity";
 pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb-1";
 pub const CONSOLE_CONTAINER_NAME: &str = "console-1";
 pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";
-pub const AGGREGATIONS_CONTAINER_NAME: &str = "aggregations-1";
 pub const CONSUMPTION_CONTAINER_NAME: &str = "consumption-1";
 
 pub const REDPANDA_HOSTS: [&str; 2] = ["redpanda", "localhost"];
@@ -40,8 +39,6 @@ pub const APP_DIR_LAYOUT: [&str; 2] = [SCHEMAS_DIR, FLOWS_DIR];
 pub const GITIGNORE: &str = ".gitignore";
 
 pub const DENO_DIR: &str = "deno";
-pub const DENO_TRANSFORM: &str = "transform.ts";
-pub const DENO_AGGREGATIONS: &str = "aggregations.ts";
 pub const DENO_CONSUMPTION_API: &str = "consumption-api.ts";
 
 pub const CONSUMPTION_HELPERS: &str = "consumption-helpers.ts";

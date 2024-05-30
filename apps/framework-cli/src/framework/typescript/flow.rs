@@ -53,12 +53,12 @@ pub fn run(
     let stdout = flow_process
         .stdout
         .take()
-        .expect("Deno process did not have a handle to stdout");
+        .expect("Flow process did not have a handle to stdout");
 
     let stderr = flow_process
         .stderr
         .take()
-        .expect("Deno process did not have a handle to stderr");
+        .expect("Flow process did not have a handle to stderr");
 
     let mut stdout_reader = BufReader::new(stdout).lines();
     let mut stderr_reader = BufReader::new(stderr).lines();

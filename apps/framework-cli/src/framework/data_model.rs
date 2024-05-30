@@ -10,8 +10,6 @@ use std::{
 };
 
 use crate::framework::controller::FrameworkObject;
-use crate::utilities::constants::TS_INTERFACE_GENERATE_EXT;
-use crate::utilities::system::file_name_contains;
 
 #[derive(Debug, Clone)]
 pub struct DuplicateModelError {
@@ -56,5 +54,4 @@ pub fn is_schema_file(path: &Path) -> bool {
     path.extension()
         .map(|extension| extension == "prisma" || extension == "ts")
         .unwrap_or(false)
-        && !file_name_contains(path, TS_INTERFACE_GENERATE_EXT)
 }

@@ -22,6 +22,6 @@ impl Aggregation {
     }
 
     pub fn start(&self, clickhouse_config: ClickHouseConfig) -> Result<Child, AggregationError> {
-        Ok(typescript::aggregation::run(clickhouse_config, &self.dir)?)
+        typescript::aggregation::run(clickhouse_config, &self.dir)
     }
 }

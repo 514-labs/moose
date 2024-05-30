@@ -241,6 +241,12 @@ importers:
 
   apps/framework-internal-app:
     dependencies:
+      "@clickhouse/client-web":
+        specifier: ^1.0.1
+        version: 1.0.2
+      fastq:
+        specifier: ^1.17.1
+        version: 1.17.1
       kafkajs:
         specifier: ^2.2.4
         version: 2.2.4
@@ -2128,6 +2134,13 @@ packages:
       }
     dev: false
 
+  /@clickhouse/client-common@1.0.2:
+    resolution:
+      {
+        integrity: sha512-5oI2URFsXlzoysv5lAxoTUAnAHjXnaJ+1Jz3HUARR06Hkbr1sN0pGxfGwgjEd8E/lI4+UNdNEZicG2rlFnWSaA==,
+      }
+    dev: false
+
   /@clickhouse/client-web@0.2.10:
     resolution:
       {
@@ -2135,6 +2148,15 @@ packages:
       }
     dependencies:
       "@clickhouse/client-common": 0.2.10
+    dev: false
+
+  /@clickhouse/client-web@1.0.2:
+    resolution:
+      {
+        integrity: sha512-tWngMvP7W2oNWW4y2E2yCXmzFVYqjzTbZJXzTHPR3KR1oGYAraB11ucI4LsV3M1m46rBH5MaJ7SLxT8S1itliQ==,
+      }
+    dependencies:
+      "@clickhouse/client-common": 1.0.2
     dev: false
 
   /@clickhouse/client@0.3.1:

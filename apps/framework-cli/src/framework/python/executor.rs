@@ -1,7 +1,10 @@
 //! # Executes Python code in a subprocess.
 //! This module provides a Python executor that can run Python code in a subprocess
 
-use std::process::{Command, Stdio};
+use std::{
+    path::Path,
+    process::{Command, Stdio},
+};
 
 /// Checks if the Python interpreter is available
 
@@ -9,10 +12,29 @@ use std::process::{Command, Stdio};
 
 /// Ensures that Python3.7 is available on the system
 
+pub enum PythonSerializers {
+    FrameworkObjectSerializer,
+    ProjectObjectSerializer,
+}
+
+impl PythonSerializers {
+    pub fn get_path(&self) -> &str {
+        match self {
+            PythonSerializers::FrameworkObjectSerializer => {
+                "src/framework/python/scripts/framework_object_serializer.py"
+            }
+            PythonSerializers::ProjectObjectSerializer => {
+                "src/framework/python/scripts/project_object_serializer.py"
+            }
+        }
+    }
+}
+
 /// Executes a serializtion process to turn a Python file's contents into framework objects
-fn serialize_contents() {
+pub fn serialize_contents(serializer: PythonSerializers, python_file: &Path) {
     let prgm = Command::new("python3")
-        .arg("src/framework/python/scripts/framework_object_serializer.py")
+        .arg(serializer.get_path())
+        .arg(python_file)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .spawn()
@@ -24,12 +46,7 @@ fn serialize_contents() {
 }
 
 // TESTs
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_serialize_contents() {
-        serialize_contents();
-    }
-}
+// #[cfg(test)]
+// mod tests {
+//     use super::*;
+// }

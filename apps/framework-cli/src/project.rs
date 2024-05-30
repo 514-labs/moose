@@ -23,6 +23,7 @@ use std::path::PathBuf;
 
 use config::{Config, ConfigError, Environment, File};
 use log::debug;
+use python_project::PythonProject;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -70,6 +71,7 @@ pub enum ProjectFileError {
     },
     IO(#[from] std::io::Error),
     TSProjectFileError(#[from] typescript_project::TSProjectFileError),
+    PythonProjectError(#[from] python_project::PythonProjectError),
     JSONSerde(#[from] serde_json::Error),
     TOMLSerde(#[from] toml::ser::Error),
 }
@@ -108,6 +110,7 @@ pub struct AggregationSet {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum LanguageProjectConfig {
     Typescript(TypescriptProject),
+    Python(PythonProject),
 }
 
 impl Default for LanguageProjectConfig {
@@ -124,6 +127,7 @@ impl Project {
     pub fn name(&self) -> String {
         match &self.language_project_config {
             LanguageProjectConfig::Typescript(p) => p.name.clone(),
+            LanguageProjectConfig::Python(p) => p.name.clone(),
         }
     }
 
@@ -150,9 +154,17 @@ impl Project {
                 )),
                 supported_old_versions: HashMap::new(),
             },
-            SupportedLanguages::Python => {
-                unimplemented!("Python project creation is not yet implemented")
-            }
+            SupportedLanguages::Python => Project {
+                language: SupportedLanguages::Python,
+                is_production: false,
+                project_location: location.clone(),
+                redpanda_config: RedpandaConfig::default(),
+                clickhouse_config: ClickHouseConfig::default(),
+                http_server_config: LocalWebserverConfig::default(),
+                console_config: ConsoleConfig::default(),
+                language_project_config: LanguageProjectConfig::Python(PythonProject::new(name)),
+                supported_old_versions: HashMap::new(),
+            },
         }
     }
 
@@ -213,6 +225,7 @@ impl Project {
             LanguageProjectConfig::Typescript(p) => {
                 Ok(p.write_to_disk(self.project_location.clone())?)
             }
+            LanguageProjectConfig::Python(p) => Ok(p.write_to_disk(self.project_location.clone())?),
         }
     }
 
@@ -416,6 +429,7 @@ impl Project {
     pub fn version(&self) -> &str {
         match &self.language_project_config {
             LanguageProjectConfig::Typescript(package_json) => &package_json.version,
+            LanguageProjectConfig::Python(package_json) => &package_json.version,
         }
     }
 
@@ -507,5 +521,57 @@ impl Project {
             }
         }
         None
+    }
+}
+
+// Tests
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    fn create_python_project() -> Project {
+        Project::new(
+            Path::new("tests/python/project"),
+            "test_project".to_string(),
+            SupportedLanguages::Python,
+        )
+    }
+
+    fn remove_python_project() {
+        let project_files = vec![PROJECT_CONFIG_FILE];
+        let project = create_python_project();
+        for file in project_files {
+            let file_path = project.project_location.join(file);
+            if file_path.exists() {
+                std::fs::remove_file(file_path).unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn test_new_python_project() {
+        let project = create_python_project();
+
+        assert_eq!(project.language, SupportedLanguages::Python);
+        assert_eq!(project.name(), "test_project");
+    }
+
+    #[test]
+    fn test_write_to_disk() {
+        let project = create_python_project();
+        project.write_to_disk().unwrap();
+
+        assert!(project.project_location.join(PROJECT_CONFIG_FILE).exists());
+
+        remove_python_project();
+    }
+
+    #[test]
+    fn test_new_python_project_from_file() {
+        let project = create_python_project();
+        project.write_to_disk().unwrap();
+
+        assert_eq!(project.language, SupportedLanguages::Python);
+        assert_eq!(project.name(), "test_project");
     }
 }

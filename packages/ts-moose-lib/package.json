@@ -13,6 +13,12 @@
     "lint:fix": "eslint . --fix",
     "build": "tsup"
   },
+  "dependencies": {
+    "@clickhouse/client-web": "^1.0.1",
+    "fastq": "^1.17.1",
+    "kafkajs": "^2.2.4",
+    "ts-node": "^10.9.2"
+  },
   "devDependencies": {
     "@repo/ts-config": "workspace:*",
     "@types/node": "20.12.13",

@@ -69,6 +69,11 @@ jobs:
           node-version: "20"
           cache: "pnpm"
 
+      - name: Login NPM
+        shell: bash
+        run: |
+          pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
+
       - name: Publish the NPM Moose CLI package
         shell: bash
         run: ./packages/ts-moose-lib/scripts/release-lib.sh ${{ needs.version.outputs.version }}
@@ -222,7 +227,7 @@ jobs:
         with:
           version: 8
 
-      - name: Login GSAP
+      - name: Login NPM
         shell: bash
         run: |
           pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}

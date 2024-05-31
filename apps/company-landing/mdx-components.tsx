@@ -40,7 +40,9 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
     pre: (props) => (
       <pre {...props} className="bg-muted rounded-md p-2 overflow-x-scroll" />
     ),
-    code: (props) => <code {...props} className="bg-muted p-1 rounded-md" />,
+    code: (props) => (
+      <code {...props} className="bg-muted p-1 rounded-md break-words" />
+    ),
     a: (props) => <a {...props} className="text-primary underline" />,
     p: Text,
     Image: (props) => <Image {...props} />,

@@ -1,6 +1,6 @@
 import BlogMeta from "../../../blog-meta";
 
-export const getMetaFromParent = async () => {
+const getMetaFromParent = async () => {
   const { metadata } = await import(`../page.mdx`);
   return metadata;
 };

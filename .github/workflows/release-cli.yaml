@@ -47,6 +47,32 @@ jobs:
           generateReleaseNotes: true
           commit: ${{ github.sha }}
 
+  package-and-publish-lib-ts-package:
+    name: Package and Publish Lib TS Package
+    runs-on: ubuntu-20.04
+    needs:
+      - version
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v2
+        with:
+          version: 8
+
+      - name: Install node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Publish the NPM Moose CLI package
+        shell: bash
+        run: ./packages/ts-moose-lib/scripts/release-lib.sh ${{ needs.version.outputs.version }}
+
   package-and-publish-templates:
     name: Package and Publish Templates
     runs-on: ubuntu-20.04
@@ -174,6 +200,7 @@ jobs:
       - version
       - build-and-publish-binaries
       - build-and-publish-console
+      - package-and-publish-lib-ts-package
     runs-on: ubuntu-20.04
     if: ${{ !inputs.dry-run }}
     steps:

@@ -241,18 +241,9 @@ importers:
 
   apps/framework-internal-app:
     dependencies:
-      "@clickhouse/client-web":
-        specifier: ^1.0.1
-        version: 1.0.2
-      fastq:
-        specifier: ^1.17.1
-        version: 1.17.1
-      kafkajs:
-        specifier: ^2.2.4
-        version: 2.2.4
-      ts-node:
-        specifier: ^10.9.2
-        version: 10.9.2(@types/node@20.12.12)(typescript@5.4.5)
+      "@514labs/moose-lib":
+        specifier: latest
+        version: 0.3.381(@types/node@20.12.12)(typescript@5.4.5)
     devDependencies:
       "@514labs/moose-cli":
         specifier: 0.3.369
@@ -933,6 +924,23 @@ packages:
       "@514labs/moose-cli-linux-arm64": 0.3.369
       "@514labs/moose-cli-linux-x64": 0.3.369
     dev: true
+
+  /@514labs/moose-lib@0.3.381(@types/node@20.12.12)(typescript@5.4.5):
+    resolution:
+      {
+        integrity: sha512-6KC8tsN7AFO5oynLtrd/eWf9EFKnXQrE6E7+UmfH2YzaRFvCcwPwvfFwUvhzfLGL58m3bzMqtt3Nx3VKGgPM7Q==,
+      }
+    dependencies:
+      "@clickhouse/client-web": 1.0.2
+      fastq: 1.17.1
+      kafkajs: 2.2.4
+      ts-node: 10.9.2(@types/node@20.12.12)(typescript@5.4.5)
+    transitivePeerDependencies:
+      - "@swc/core"
+      - "@swc/wasm"
+      - "@types/node"
+      - typescript
+    dev: false
 
   /@adobe/css-tools@4.3.3:
     resolution:

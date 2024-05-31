@@ -292,7 +292,9 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
         project.clickhouse_config.clone(),
     );
 
-    syncing_processes_registry.start_all(&framework_object_versions, &version_syncs);
+    let _ = syncing_processes_registry
+        .start_all(&framework_object_versions, &version_syncs)
+        .await;
 
     let mut flows_process_registry = FlowProcessRegistry::new(project.redpanda_config.clone());
     // Once the below function is optimized to act on events, this
@@ -346,7 +348,9 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
         project.redpanda_config.clone(),
         project.clickhouse_config.clone(),
     );
-    syncing_processes_registry.start_all(&framework_object_versions, &version_syncs);
+    let _ = syncing_processes_registry
+        .start_all(&framework_object_versions, &version_syncs)
+        .await;
 
     let mut flows_process_registry = FlowProcessRegistry::new(project.redpanda_config.clone());
     // Once the below function is optimized to act on events, this

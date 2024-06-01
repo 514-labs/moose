@@ -12,12 +12,18 @@
 use std::path::PathBuf;
 
 use rustpython_parser::{
-    ast::{self, Expr, ExprName, Identifier, Stmt, StmtClassDef},
+    ast::{
+        self, Arguments, Constant, Expr, ExprConstant, ExprName, Identifier, Keyword, Stmt,
+        StmtClassDef,
+    },
     Parse,
 };
 
-use crate::framework::data_model::schema::{
-    Column, ColumnType, DataEnum as FrameworkEnum, DataModel, Nested,
+use crate::{
+    framework::data_model::schema::{
+        Column, ColumnType, DataEnum as FrameworkEnum, DataModel, Nested,
+    },
+    project::python_project::PythonProject,
 };
 
 use crate::framework::python::utils::ColumnBuilder;
@@ -43,7 +49,10 @@ pub enum PythonParserError {
     },
     #[error("Python Parser - Invalid python file, please refer to the documentation for an example of a valid python file")]
     InvalidPythonFile,
-    OtherError,
+    #[error("Python Parser - Error parsing: {message}")]
+    OtherError {
+        message: String,
+    },
 }
 
 /// # First pass: AST processing functions
@@ -456,6 +465,159 @@ pub fn extract_data_model_from_file(path: &PathBuf) -> Result<Vec<DataModel>, Py
     Ok(data_models)
 }
 
+#[derive(Debug, Clone)]
+struct PythonFunctionIntermediateRepr {
+    name: String,
+    args: Vec<Expr>,
+    kwargs: Vec<Keyword>,
+}
+
+impl PythonFunctionIntermediateRepr {
+    fn new(name: String, args: Vec<Expr>, kwargs: Vec<Keyword>) -> Self {
+        Self { name, args, kwargs }
+    }
+}
+
+/// # Get function arguments and keyword arguments
+/// This function extracts the arguments and keyword arguments from a function call
+fn get_func(
+    func_name: &str,
+    ast: &ast::Suite,
+) -> Result<PythonFunctionIntermediateRepr, PythonParserError> {
+    let funcs: Vec<PythonFunctionIntermediateRepr> = ast
+        .iter()
+        .filter_map(|node| {
+            if let Stmt::Expr(expr) = node {
+                if let Expr::Call(call) = *expr.value.clone() {
+                    if let Expr::Name(name) = *call.func {
+                        if name.id == Identifier::new(func_name) {
+                            return Some(PythonFunctionIntermediateRepr::new(
+                                func_name.to_string(),
+                                call.args,
+                                call.keywords,
+                            ));
+                        }
+                    }
+                }
+            }
+            None
+        })
+        .collect();
+
+    funcs
+        .first()
+        .ok_or(PythonParserError::OtherError {
+            message: "Function not found".to_string(),
+        })
+        .map(|p| p.clone())
+}
+
+fn get_list_string_values(expr: &Expr) -> Option<Vec<String>> {
+    if let Expr::List(list) = expr {
+        let values: Option<Vec<String>> = list
+            .elts
+            .iter()
+            .map(|e| {
+                if let Expr::Constant(c) = e {
+                    if let Constant::Str(s) = &c.value {
+                        Some(s.clone())
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect();
+        values
+    } else {
+        None
+    }
+}
+
+fn get_keyword_string_value(keyword: &Keyword) -> Option<String> {
+    if let Expr::Constant(c) = &keyword.value {
+        if let Constant::Str(s) = &c.value {
+            Some(s.to_string())
+        } else {
+            None
+        }
+    } else {
+        None
+    }
+}
+
+fn setup_parse(ast: &ast::Suite) -> Result<PythonProject, PythonParserError> {
+    let func = get_func("setup", ast)?;
+
+    let setup_args = vec!["name", "version", "install_requires"];
+
+    let mut project = PythonProject::default();
+    // The name and version  either be args or kwargs
+    project.name = match &func.args.first() {
+        Some(Expr::Constant(c)) => {
+            if let Constant::Str(s) = &c.value {
+                s.clone()
+            } else {
+                project.name
+            }
+        }
+        _ => func
+            .kwargs
+            .iter()
+            .find_map(|keyword| {
+                if keyword.arg.clone().unwrap() == Identifier::new("name") {
+                    get_keyword_string_value(keyword)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(project.name),
+    };
+
+    project.version = match &func.args.get(1) {
+        Some(Expr::Constant(c)) => {
+            if let Constant::Str(s) = &c.value {
+                s.clone()
+            } else {
+                project.version
+            }
+        }
+        _ => func
+            .kwargs
+            .iter()
+            .find_map(|keyword| {
+                if keyword.arg.clone().unwrap() == Identifier::new("version") {
+                    get_keyword_string_value(keyword)
+                } else {
+                    None
+                }
+            })
+            .unwrap_or(project.version),
+    };
+
+    // The install_requires will be a kwarg
+    project.dependencies = func
+        .kwargs
+        .iter()
+        .find_map(|keyword| {
+            if keyword.arg.clone().unwrap() == Identifier::new("install_requires") {
+                get_list_string_values(&keyword.value)
+            } else {
+                None
+            }
+        })
+        .unwrap_or_default();
+
+    Ok(project)
+}
+
+pub fn get_project_from_file(path: &PathBuf) -> Result<PythonProject, PythonParserError> {
+    let ast = get_ast_from_file(path)?;
+
+    setup_parse(&ast)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -463,6 +625,34 @@ mod tests {
     fn get_simple_python_file_path() -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap();
         current_dir.join("tests/python/models/simple.py")
+    }
+
+    fn get_setup_python_file_path() -> std::path::PathBuf {
+        let current_dir = std::env::current_dir().unwrap();
+        current_dir.join("tests/python/project/setup.py")
+    }
+
+    #[test]
+    fn test_get_func_args() {
+        let test_file = get_setup_python_file_path();
+
+        let ast = get_ast_from_file(&test_file).unwrap();
+
+        let args = get_func("setup", &ast);
+        assert!(args.is_ok());
+    }
+
+    #[test]
+    fn test_setup_parse() {
+        let test_file = get_setup_python_file_path();
+
+        let ast = get_ast_from_file(&test_file).unwrap();
+
+        let project = setup_parse(&ast);
+
+        println!("{:?}", project);
+
+        assert!(project.is_ok());
     }
 
     #[test]

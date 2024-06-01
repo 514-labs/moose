@@ -31,18 +31,19 @@ impl PythonSerializers {
 }
 
 /// Executes a serializtion process to turn a Python file's contents into framework objects
-pub fn serialize_contents(serializer: PythonSerializers, python_file: &Path) {
+pub fn serialize_contents(serializer: PythonSerializers, python_file: &Path) -> String {
     let prgm = Command::new("python3")
         .arg(serializer.get_path())
         .arg(python_file)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
         .spawn()
         .expect("Failed to execute Python3");
 
     let output = prgm.wait_with_output().unwrap();
     let output = String::from_utf8(output.stdout).unwrap();
-    println!("{}", output);
+    output
 }
 
 // TESTs

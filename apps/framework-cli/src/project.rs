@@ -29,8 +29,9 @@ use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
+use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::BASE_APIS_SAMPLE_TEMPLATE;
-use crate::framework::typescript::templates::BASE_MODEL_TEMPLATE;
+use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
     BASE_AGGREGATION_SAMPLE_TEMPLATE, BASE_FLOW_SAMPLE_TEMPLATE,
 };
@@ -201,7 +202,8 @@ impl Project {
                     LanguageProjectConfig::Typescript(ts_config);
             }
             SupportedLanguages::Python => {
-                unimplemented!("Python project loading is not yet implemented");
+                let py_config = PythonProject::load(directory)?;
+                project_config.language_project_config = LanguageProjectConfig::Python(py_config);
             }
         }
 
@@ -268,7 +270,10 @@ impl Project {
 
     pub fn create_base_app_files(&self) -> Result<(), std::io::Error> {
         let readme_file_path = self.project_location.join("README.md");
-        let base_model_file_path = self.schemas_dir().join("models.ts");
+        let base_model_file_path = match self.language {
+            SupportedLanguages::Typescript => self.schemas_dir().join("models.ts"),
+            SupportedLanguages::Python => self.schemas_dir().join("models.py"),
+        };
 
         let flow_file_path = self
             .flows_dir()
@@ -288,7 +293,15 @@ impl Project {
         readme.insert_str(0, README_PREFIX);
 
         readme_file.write_all(readme.as_bytes())?;
-        base_model_file.write_all(BASE_MODEL_TEMPLATE.as_bytes())?;
+
+        match self.language {
+            SupportedLanguages::Typescript => {
+                base_model_file.write_all(TS_BASE_MODEL_TEMPLATE.as_bytes())?;
+            }
+            SupportedLanguages::Python => {
+                base_model_file.write_all(PYTHON_BASE_MODEL_TEMPLATE.as_bytes())?;
+            }
+        }
         flow_file.write_all(
             BASE_FLOW_SAMPLE_TEMPLATE
                 .to_string()

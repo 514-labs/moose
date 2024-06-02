@@ -1,9 +1,9 @@
 use log::error;
 use log::info;
 use rdkafka::Message;
+use std::collections::hash_map::RandomState;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::hash::RandomState;
 
 use log::debug;
 use serde_json::Value;

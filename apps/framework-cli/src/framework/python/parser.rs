@@ -547,6 +547,13 @@ fn get_keyword_string_value(keyword: &Keyword) -> Option<String> {
 fn setup_parse(ast: &ast::Suite) -> Result<PythonProject, PythonParserError> {
     let func = get_func("setup", ast)?;
 
+    // Validate that we got the setup function
+    if func.name != "setup" {
+        return Err(PythonParserError::OtherError {
+            message: "Setup function not found".to_string(),
+        });
+    }
+
     let _setup_args = ["name", "version", "install_requires"];
 
     let mut project = PythonProject::default();

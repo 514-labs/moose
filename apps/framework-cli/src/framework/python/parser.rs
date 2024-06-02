@@ -628,11 +628,13 @@ mod tests {
 
     fn get_simple_python_file_path() -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap();
+        println!("Simple python file lookup current dir: {:?}", current_dir);
         current_dir.join("tests/python/models/simple.py")
     }
 
     fn get_setup_python_file_path() -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap();
+        println!("Setup python file lookup current dir: {:?}", current_dir);
         current_dir.join("tests/python/project/setup.py")
     }
 
@@ -654,8 +656,6 @@ mod tests {
 
         let project = setup_parse(&ast);
 
-        println!("{:?}", project);
-
         assert!(project.is_ok());
     }
 
@@ -664,8 +664,6 @@ mod tests {
         let test_file = get_simple_python_file_path();
 
         let result = extract_data_model_from_file(&test_file);
-
-        println!("{:?}", result);
 
         assert!(result.is_ok());
     }

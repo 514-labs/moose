@@ -13,6 +13,7 @@ pub enum PythonRenderingError {
 }
 
 pub static PYTHON_BASE_MODEL_TEMPLATE: &str = r#"
+from dataclasses import dataclass
 import datetime
 
 type Key[T: (str, int)] = T 

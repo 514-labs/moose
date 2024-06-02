@@ -1,9 +1,6 @@
 use handlebars::Handlebars;
 
-use crate::{
-    framework::typescript::templates::TypescriptRenderingError,
-    project::python_project::PythonProject,
-};
+use crate::project::python_project::PythonProject;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to generate Typescript code")]

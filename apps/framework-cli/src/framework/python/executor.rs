@@ -42,8 +42,8 @@ pub fn serialize_contents(serializer: PythonSerializers, python_file: &Path) -> 
         .expect("Failed to execute Python3");
 
     let output = prgm.wait_with_output().unwrap();
-    let output = String::from_utf8(output.stdout).unwrap();
-    output
+
+    String::from_utf8(output.stdout).unwrap()
 }
 
 // TESTs

@@ -535,7 +535,7 @@ mod tests {
     }
 
     async fn run_project_init(project_type: &str) -> Result<RoutineSuccess, RoutineFailure> {
-        let cli = Cli::parse_from(&["moose", "init", "test_project", project_type]);
+        let cli = Cli::parse_from(["moose", "init", "test_project", project_type]);
 
         let config = read_settings().unwrap();
 
@@ -564,7 +564,7 @@ mod tests {
             let file = file.unwrap();
             let file_name = file.file_name();
             let file_name = file_name.to_str().unwrap();
-            assert_eq!(file_name.ends_with(".py"), true);
+            assert!(file_name.ends_with(".py"));
         }
     }
 }

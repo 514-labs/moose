@@ -1,4 +1,3 @@
-use std::collections::HashMap;
 use std::path::PathBuf;
 
 use config::ConfigError;
@@ -6,7 +5,6 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     framework::python::{
-        executor::{serialize_contents, PythonSerializers},
         parser::{get_project_from_file, PythonParserError},
         templates::{render_setup_py, PythonRenderingError},
     },
@@ -74,8 +72,8 @@ mod tests {
 
     fn get_test_project_abs_dir_path() -> PathBuf {
         let test_project_location = PathBuf::from("tests/python/project");
-        let abs_test_project_location = std::fs::canonicalize(test_project_location).unwrap();
-        abs_test_project_location
+
+        std::fs::canonicalize(test_project_location).unwrap()
     }
 
     #[test]

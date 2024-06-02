@@ -12,10 +12,7 @@
 use std::path::PathBuf;
 
 use rustpython_parser::{
-    ast::{
-        self, Arguments, Constant, Expr, ExprConstant, ExprName, Identifier, Keyword, Stmt,
-        StmtClassDef,
-    },
+    ast::{self, Constant, Expr, ExprName, Identifier, Keyword, Stmt, StmtClassDef},
     Parse,
 };
 
@@ -550,7 +547,7 @@ fn get_keyword_string_value(keyword: &Keyword) -> Option<String> {
 fn setup_parse(ast: &ast::Suite) -> Result<PythonProject, PythonParserError> {
     let func = get_func("setup", ast)?;
 
-    let setup_args = vec!["name", "version", "install_requires"];
+    let _setup_args = ["name", "version", "install_requires"];
 
     let mut project = PythonProject::default();
     // The name and version  either be args or kwargs

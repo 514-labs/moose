@@ -507,7 +507,7 @@ fn get_func(
         .ok_or(PythonParserError::OtherError {
             message: "Function not found".to_string(),
         })
-        .map(|p| p.clone())
+        .cloned()
 }
 
 fn get_list_string_values(expr: &Expr) -> Option<Vec<String>> {

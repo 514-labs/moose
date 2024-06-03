@@ -14,6 +14,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::io::Write;
+pub mod python_project;
 pub mod typescript_project;
 
 use std::fmt::Debug;
@@ -22,13 +23,15 @@ use std::path::PathBuf;
 
 use config::{Config, ConfigError, Environment, File};
 use log::debug;
+use python_project::PythonProject;
 use serde::Deserialize;
 use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
+use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::BASE_APIS_SAMPLE_TEMPLATE;
-use crate::framework::typescript::templates::BASE_MODEL_TEMPLATE;
+use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
     BASE_AGGREGATION_SAMPLE_TEMPLATE, BASE_FLOW_SAMPLE_TEMPLATE,
 };
@@ -69,6 +72,7 @@ pub enum ProjectFileError {
     },
     IO(#[from] std::io::Error),
     TSProjectFileError(#[from] typescript_project::TSProjectFileError),
+    PythonProjectError(#[from] python_project::PythonProjectError),
     JSONSerde(#[from] serde_json::Error),
     TOMLSerde(#[from] toml::ser::Error),
 }
@@ -107,6 +111,7 @@ pub struct AggregationSet {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub enum LanguageProjectConfig {
     Typescript(TypescriptProject),
+    Python(PythonProject),
 }
 
 impl Default for LanguageProjectConfig {
@@ -123,6 +128,7 @@ impl Project {
     pub fn name(&self) -> String {
         match &self.language_project_config {
             LanguageProjectConfig::Typescript(p) => p.name.clone(),
+            LanguageProjectConfig::Python(p) => p.name.clone(),
         }
     }
 
@@ -147,6 +153,17 @@ impl Project {
                 language_project_config: LanguageProjectConfig::Typescript(TypescriptProject::new(
                     name,
                 )),
+                supported_old_versions: HashMap::new(),
+            },
+            SupportedLanguages::Python => Project {
+                language: SupportedLanguages::Python,
+                is_production: false,
+                project_location: location.clone(),
+                redpanda_config: RedpandaConfig::default(),
+                clickhouse_config: ClickHouseConfig::default(),
+                http_server_config: LocalWebserverConfig::default(),
+                console_config: ConsoleConfig::default(),
+                language_project_config: LanguageProjectConfig::Python(PythonProject::new(name)),
                 supported_old_versions: HashMap::new(),
             },
         }
@@ -184,6 +201,10 @@ impl Project {
                 project_config.language_project_config =
                     LanguageProjectConfig::Typescript(ts_config);
             }
+            SupportedLanguages::Python => {
+                let py_config = PythonProject::load(directory)?;
+                project_config.language_project_config = LanguageProjectConfig::Python(py_config);
+            }
         }
 
         Ok(project_config)
@@ -206,6 +227,7 @@ impl Project {
             LanguageProjectConfig::Typescript(p) => {
                 Ok(p.write_to_disk(self.project_location.clone())?)
             }
+            LanguageProjectConfig::Python(p) => Ok(p.write_to_disk(self.project_location.clone())?),
         }
     }
 
@@ -248,7 +270,10 @@ impl Project {
 
     pub fn create_base_app_files(&self) -> Result<(), std::io::Error> {
         let readme_file_path = self.project_location.join("README.md");
-        let base_model_file_path = self.schemas_dir().join("models.ts");
+        let base_model_file_path = match self.language {
+            SupportedLanguages::Typescript => self.schemas_dir().join("models.ts"),
+            SupportedLanguages::Python => self.schemas_dir().join("models.py"),
+        };
 
         let flow_file_path = self
             .flows_dir()
@@ -268,7 +293,15 @@ impl Project {
         readme.insert_str(0, README_PREFIX);
 
         readme_file.write_all(readme.as_bytes())?;
-        base_model_file.write_all(BASE_MODEL_TEMPLATE.as_bytes())?;
+
+        match self.language {
+            SupportedLanguages::Typescript => {
+                base_model_file.write_all(TS_BASE_MODEL_TEMPLATE.as_bytes())?;
+            }
+            SupportedLanguages::Python => {
+                base_model_file.write_all(PYTHON_BASE_MODEL_TEMPLATE.as_bytes())?;
+            }
+        }
         flow_file.write_all(
             BASE_FLOW_SAMPLE_TEMPLATE
                 .to_string()
@@ -409,6 +442,7 @@ impl Project {
     pub fn version(&self) -> &str {
         match &self.language_project_config {
             LanguageProjectConfig::Typescript(package_json) => &package_json.version,
+            LanguageProjectConfig::Python(package_json) => &package_json.version,
         }
     }
 
@@ -500,5 +534,57 @@ impl Project {
             }
         }
         None
+    }
+}
+
+// Tests
+#[cfg(test)]
+pub mod tests {
+    use super::*;
+
+    fn create_python_project() -> Project {
+        Project::new(
+            Path::new("tests/python/project"),
+            "test_project".to_string(),
+            SupportedLanguages::Python,
+        )
+    }
+
+    fn remove_python_project() {
+        let project_files = vec![PROJECT_CONFIG_FILE];
+        let project = create_python_project();
+        for file in project_files {
+            let file_path = project.project_location.join(file);
+            if file_path.exists() {
+                std::fs::remove_file(file_path).unwrap();
+            }
+        }
+    }
+
+    #[test]
+    fn test_new_python_project() {
+        let project = create_python_project();
+
+        assert_eq!(project.language, SupportedLanguages::Python);
+        assert_eq!(project.name(), "test_project");
+    }
+
+    #[test]
+    fn test_write_to_disk() {
+        let project = create_python_project();
+        project.write_to_disk().unwrap();
+
+        assert!(project.project_location.join(PROJECT_CONFIG_FILE).exists());
+
+        remove_python_project();
+    }
+
+    #[test]
+    fn test_new_python_project_from_file() {
+        let project = create_python_project();
+        project.write_to_disk().unwrap();
+
+        assert_eq!(project.language, SupportedLanguages::Python);
+        assert_eq!(project.name(), "test_project");
     }
 }

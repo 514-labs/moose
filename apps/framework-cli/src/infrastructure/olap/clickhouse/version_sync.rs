@@ -219,6 +219,9 @@ impl VersionSync {
                     ClickHouseColumnType::DateTime => "'2024-02-20T23:14:57.788Z'".to_string(),
                     ClickHouseColumnType::Json => format!("'{{\"{}\": null}}'", c.name),
                     ClickHouseColumnType::Bytes => "0.0".to_string(),
+                    ClickHouseColumnType::Nested(_) => {
+                        todo!("Implement the nested type mapper")
+                    }
                     ClickHouseColumnType::Enum(data_enum) => {
                         format!("'{}'", data_enum.values[0].name)
                     }

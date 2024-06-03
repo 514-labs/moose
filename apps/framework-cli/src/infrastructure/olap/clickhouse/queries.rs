@@ -10,6 +10,7 @@ use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
 use super::errors::ClickhouseError;
 use super::model::ClickHouseColumn;
 
+// Unclear if we need to add flatten_nested to the views setting as well
 static CREATE_ALIAS_TEMPLATE: &str = r#"
 CREATE VIEW IF NOT EXISTS {{db_name}}.{{alias_name}} AS SELECT * FROM {{db_name}}.{{source_table_name}};
 "#;
@@ -183,7 +184,9 @@ pub fn drop_table_query(db_name: &str, table: ClickHouseTable) -> Result<String,
     Ok(reg.render_template(DROP_TABLE_TEMPLATE, &context)?)
 }
 
-fn field_type_to_string(field_type: &ClickHouseColumnType) -> Result<String, ClickhouseError> {
+fn basic_field_type_to_string(
+    field_type: &ClickHouseColumnType,
+) -> Result<String, ClickhouseError> {
     // Blowing out match statements here in case we need to customize the output string for some types.
     match field_type {
         ClickHouseColumnType::String => Ok(field_type.to_string()),
@@ -221,6 +224,21 @@ fn field_type_to_string(field_type: &ClickHouseColumnType) -> Result<String, Cli
 
             Ok(format!("Enum({})", enum_statement))
         }
+        ClickHouseColumnType::Nested(cols) => {
+            let nested_fields = cols
+                .iter()
+                .map(|col| {
+                    let field_type_string = basic_field_type_to_string(&col.column_type)?;
+                    match col.required {
+                        true => Ok(format!("{} {}", col.name, field_type_string)),
+                        false => Ok(format!("{} Nullable({})", col.name, field_type_string)),
+                    }
+                })
+                .collect::<Result<Vec<String>, ClickhouseError>>()?
+                .join(", ");
+
+            Ok(format!("Nested({})", nested_fields))
+        }
         ClickHouseColumnType::Json => Err(ClickhouseError::UnsupportedDataType {
             type_name: "Json".to_string(),
         }),
@@ -228,7 +246,7 @@ fn field_type_to_string(field_type: &ClickHouseColumnType) -> Result<String, Cli
             type_name: "Bytes".to_string(),
         }),
         ClickHouseColumnType::Array(inner_type) => {
-            let inner_type_string = field_type_to_string(inner_type)?;
+            let inner_type_string = basic_field_type_to_string(inner_type)?;
             Ok(format!("Array({})", inner_type_string))
         }
     }
@@ -238,7 +256,7 @@ fn builds_field_context(columns: &[ClickHouseColumn]) -> Result<Vec<Value>, Clic
     columns
         .iter()
         .map(|column| {
-            let field_type = field_type_to_string(&column.column_type)?;
+            let field_type = basic_field_type_to_string(&column.column_type)?;
 
             Ok(json!({
                 "field_name": column.name,
@@ -252,4 +270,97 @@ fn builds_field_context(columns: &[ClickHouseColumn]) -> Result<Vec<Value>, Clic
             }))
         })
         .collect::<Result<Vec<Value>, ClickhouseError>>()
+}
+
+// Tests
+#[cfg(test)]
+mod tests {
+    use std::vec;
+
+    use crate::framework::data_model::schema::{DataEnum, EnumMember};
+
+    use super::*;
+
+    #[test]
+    fn test_nested_query_generator() {
+        let complete_nest_type = ClickHouseColumnType::Nested(vec![
+            ClickHouseColumn {
+                name: "nested_field_1".to_string(),
+                column_type: ClickHouseColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            ClickHouseColumn {
+                name: "nested_field_2".to_string(),
+                column_type: ClickHouseColumnType::Boolean,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            ClickHouseColumn {
+                name: "nested_field_3".to_string(),
+                column_type: ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int64),
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            ClickHouseColumn {
+                name: "nested_field_4".to_string(),
+                column_type: ClickHouseColumnType::ClickhouseFloat(ClickHouseFloat::Float64),
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            ClickHouseColumn {
+                name: "nested_field_5".to_string(),
+                column_type: ClickHouseColumnType::DateTime,
+                required: false,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            ClickHouseColumn {
+                name: "nested_field_6".to_string(),
+                column_type: ClickHouseColumnType::Enum(DataEnum {
+                    name: "TestEnum".to_string(),
+                    values: vec![
+                        EnumMember {
+                            name: "TestEnumValue1".to_string(),
+                            value: EnumValue::Int(1),
+                        },
+                        EnumMember {
+                            name: "TestEnumValue2".to_string(),
+                            value: EnumValue::Int(2),
+                        },
+                    ],
+                }),
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            ClickHouseColumn {
+                name: "nested_field_7".to_string(),
+                column_type: ClickHouseColumnType::Array(Box::new(ClickHouseColumnType::String)),
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+        ]);
+
+        let expected_nested_query = "Nested(nested_field_1 String, nested_field_2 Boolean, nested_field_3 Int64, nested_field_4 Float64, nested_field_5 Nullable(DateTime('UTC')), nested_field_6 Enum('TestEnumValue1' = 1,'TestEnumValue2' = 2), nested_field_7 Array(String))";
+
+        let nested_query = basic_field_type_to_string(&complete_nest_type).unwrap();
+
+        assert_eq!(nested_query, expected_nested_query);
+    }
+
+    #[test]
+    fn test_nested_nested_generator() {}
 }

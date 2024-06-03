@@ -52,6 +52,6 @@ impl std::error::Error for DuplicateModelError {}
 
 pub fn is_schema_file(path: &Path) -> bool {
     path.extension()
-        .map(|extension| extension == "prisma" || extension == "ts")
+        .map(|extension| extension == "prisma" || extension == "ts" || extension == "py")
         .unwrap_or(false)
 }

@@ -5,8 +5,9 @@ use toml_edit::{table, value, DocumentMut, Item, Value};
 
 use crate::cli::display::Message;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
+use crate::framework::languages::SupportedLanguages;
 use crate::project::Project;
-use crate::utilities::constants::{PACKAGE_JSON, PROJECT_CONFIG_FILE};
+use crate::utilities::constants::{PACKAGE_JSON, PROJECT_CONFIG_FILE, SETUP_PY};
 use crate::utilities::git::current_commit_hash;
 
 pub fn bump_version(
@@ -23,17 +24,41 @@ pub fn bump_version(
         )
     })?;
 
-    bump_package_json_version(project.version(), &new_version).map_err(|err| {
-        RoutineFailure::new(
-            Message::new("Failed".to_string(), format!("to update {}", PACKAGE_JSON)),
-            err,
-        )
-    })?;
+    match project.language {
+        SupportedLanguages::Python => {
+            bump_setup_py_version(project.version(), &new_version).map_err(|err| {
+                RoutineFailure::new(
+                    Message::new("Failed".to_string(), format!("to update {}", SETUP_PY)),
+                    err,
+                )
+            })?;
+        }
+        SupportedLanguages::Typescript => {
+            bump_package_json_version(project.version(), &new_version).map_err(|err| {
+                RoutineFailure::new(
+                    Message::new("Failed".to_string(), format!("to update {}", PACKAGE_JSON)),
+                    err,
+                )
+            })?;
+        }
+    }
 
     Ok(RoutineSuccess::success(Message::new(
         "Bumped".to_string(),
         "version".to_string(),
     )))
+}
+
+fn bump_setup_py_version(current_version: &str, new_version: &str) -> anyhow::Result<()> {
+    let contents = fs::read_to_string(SETUP_PY)?;
+
+    // rather than parsing it, this keeps the formatting and field ordering of setup.py
+    let updated = Regex::new(&format!("(version='{}')", current_version))?
+        .replace(&contents, format!("version='{}'", new_version));
+
+    fs::write(SETUP_PY, updated.to_string())?;
+
+    Ok(())
 }
 
 fn bump_package_json_version(current_version: &str, new_version: &str) -> anyhow::Result<()> {

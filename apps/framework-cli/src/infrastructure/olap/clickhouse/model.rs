@@ -22,6 +22,12 @@ impl fmt::Display for ClickHouseTableType {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ClickHouseNested {
+    name: String,
+    columns: Vec<ClickHouseColumn>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClickHouseColumnType {
     String,
     Boolean,
@@ -33,6 +39,7 @@ pub enum ClickHouseColumnType {
     Bytes,
     Array(Box<ClickHouseColumnType>),
     Enum(DataEnum),
+    Nested(Vec<ClickHouseColumn>),
 }
 
 impl fmt::Display for ClickHouseColumnType {
@@ -75,12 +82,12 @@ impl fmt::Display for ClickHouseFloat {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClickHouseColumnDefaults {
     Now,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ClickHouseColumn {
     pub name: String,
     pub column_type: ClickHouseColumnType,
@@ -108,16 +115,16 @@ pub struct ClickHouseValue {
     // This is a string right now because that's the value we send over the wire with the HTTP protocol
     // if we used the RowBinary // https://clickhouse.yandex/docs/en/query_language/syntax/#syntax-identifiers
     // or another format, we could optimize
-    value: String,
+    pub value: String,
 }
 
 const NULL: &str = "NULL";
 
-// TODO - add support for Decimal, Json, Bytes, Enum
+// TODO - add support for Decimal, Json, Bytes
 impl ClickHouseValue {
-    pub fn new_null() -> ClickHouseValue {
+    pub fn new_null(col_type: ClickHouseColumnType) -> ClickHouseValue {
         ClickHouseValue {
-            value_type: ClickHouseColumnType::String,
+            value_type: col_type,
             value: NULL.to_string(),
         }
     }
@@ -180,6 +187,22 @@ impl ClickHouseValue {
             },
         }
     }
+
+    pub fn new_tuple(members: Vec<(ClickHouseColumn, ClickHouseValue)>) -> ClickHouseValue {
+        let (cols, vals): (Vec<ClickHouseColumn>, Vec<ClickHouseValue>) =
+            members.iter().cloned().unzip();
+
+        ClickHouseValue {
+            value_type: ClickHouseColumnType::Nested(cols),
+            value: format!(
+                "[({})]",
+                vals.iter()
+                    .map(|v| v.value.to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            ),
+        }
+    }
 }
 
 impl fmt::Display for ClickHouseValue {
@@ -199,11 +222,12 @@ impl fmt::Display for ClickHouseValue {
                 write!(f, "{}", &self.value)
             }
             ClickHouseColumnType::DateTime => write!(f, "'{}'", &self.value),
-            ClickHouseColumnType::Decimal => todo!(),
-            ClickHouseColumnType::Json => todo!(),
-            ClickHouseColumnType::Bytes => todo!(),
+            ClickHouseColumnType::Decimal => todo!("Decimal not implemented yet"),
+            ClickHouseColumnType::Json => todo!("Json not implemented yet"),
+            ClickHouseColumnType::Bytes => todo!("Bytes not implemented yet"),
             ClickHouseColumnType::Array(_) => write!(f, "[{}]", &self.value),
             ClickHouseColumnType::Enum(_) => write!(f, "{}", &self.value),
+            ClickHouseColumnType::Nested(_) => write!(f, "{}", &self.value),
         }
     }
 }

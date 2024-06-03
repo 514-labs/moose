@@ -366,6 +366,7 @@ fn get_default_value_for_type(column_type: &ColumnType) -> String {
         ColumnType::DateTime => "new Date()".to_string(),
         ColumnType::Enum(_) => "any".to_string(),
         ColumnType::Array(_) => "[]".to_string(),
+        ColumnType::Nested(_) => "{}".to_string(),
         ColumnType::Json => "{}".to_string(),
         ColumnType::Bytes => "[]".to_string(),
     }

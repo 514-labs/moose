@@ -512,3 +512,79 @@ pub async fn cli_run() {
         }
     };
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn set_test_temp_dir() {
+        let test_dir = "tests/tmp";
+        // check that the directory isn't already set to test_dir
+        let current_dir = std::env::current_dir().unwrap();
+        if current_dir.ends_with(test_dir) {
+            return;
+        }
+        std::env::set_current_dir(test_dir).unwrap();
+    }
+
+    fn get_test_project_dir() -> std::path::PathBuf {
+        set_test_temp_dir();
+        let current_dir = std::env::current_dir().unwrap();
+        current_dir.join("test_project")
+    }
+
+    fn set_test_project_dir() {
+        let test_project_dir = get_test_project_dir();
+        std::env::set_current_dir(test_project_dir).unwrap();
+    }
+
+    async fn run_project_init(project_type: &str) -> Result<RoutineSuccess, RoutineFailure> {
+        let cli = Cli::parse_from([
+            "moose",
+            "init",
+            "test_project",
+            project_type,
+            "--no-fail-already-exists",
+        ]);
+
+        let config = read_settings().unwrap();
+
+        top_command_handler(config, &cli.command).await
+    }
+
+    #[tokio::test]
+    #[ignore] // Ignoring this test until we have a better way of creating temp directories
+    async fn cli_python_init() {
+        let og_directory = std::env::current_dir().unwrap();
+        // Set current working directory to the tmp test directory
+        set_test_temp_dir();
+        let result = run_project_init("python").await;
+        std::env::set_current_dir(og_directory).unwrap();
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore] // Ignoring this test until we have a better way of creating temp directories
+    async fn test_project_has_py_data_model() {
+        let og_directory = std::env::current_dir().unwrap();
+
+        set_test_temp_dir();
+        let _ = run_project_init("python").await.unwrap();
+        set_test_project_dir();
+
+        let project = Project::load_from_current_dir().unwrap();
+
+        let data_model_path = project.app_dir().join("datamodels");
+
+        // Make sure all the data models are .py files
+        let data_model_files = std::fs::read_dir(data_model_path).unwrap();
+
+        std::env::set_current_dir(og_directory).unwrap();
+        for file in data_model_files {
+            let file = file.unwrap();
+            let file_name = file.file_name();
+            let file_name = file_name.to_str().unwrap();
+            assert!(file_name.ends_with(".py"));
+        }
+    }
+}

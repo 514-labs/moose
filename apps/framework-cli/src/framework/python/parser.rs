@@ -9,7 +9,7 @@
 //! The file objects are all the data model objects that are extracted from the python schema file
 //! and it's associsted supporting objects such as enums.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use rustpython_parser::{
     ast::{self, Constant, Expr, ExprName, Identifier, Keyword, Stmt, StmtClassDef},
@@ -17,8 +17,9 @@ use rustpython_parser::{
 };
 
 use crate::{
-    framework::data_model::schema::{
-        Column, ColumnType, DataEnum as FrameworkEnum, DataModel, Nested,
+    framework::data_model::{
+        parser::FileObjects,
+        schema::{Column, ColumnType, DataEnum as FrameworkEnum, DataModel, Nested},
     },
     project::python_project::PythonProject,
 };
@@ -58,7 +59,7 @@ pub enum PythonParserError {
 
 /// ## Get AST from File
 /// This function reads the python schema file and turns it into an AST
-fn get_ast_from_file(path: &PathBuf) -> Result<ast::Suite, PythonParserError> {
+fn get_ast_from_file(path: &Path) -> Result<ast::Suite, PythonParserError> {
     // Read the schema file
     // todo!("Add file validation like checking extension and other checks");
     let schema_file =
@@ -420,7 +421,7 @@ fn body_node_to_column(
     }
 }
 
-pub fn extract_data_model_from_file(path: &PathBuf) -> Result<Vec<DataModel>, PythonParserError> {
+pub fn extract_data_model_from_file(path: &Path) -> Result<FileObjects, PythonParserError> {
     // Parse the schema file into an AST
     let ast = get_ast_from_file(path)?;
 
@@ -459,7 +460,7 @@ pub fn extract_data_model_from_file(path: &PathBuf) -> Result<Vec<DataModel>, Py
         .cloned()
         .collect();
 
-    Ok(data_models)
+    Ok(FileObjects::new(data_models, framework_enums))
 }
 
 #[derive(Debug, Clone)]
@@ -694,7 +695,7 @@ mod tests {
     fn creates_right_number_if_data_models() {
         let test_file = get_simple_python_file_path();
 
-        let data_models = extract_data_model_from_file(&test_file).unwrap();
+        let data_models = extract_data_model_from_file(&test_file).unwrap().models;
 
         assert_eq!(data_models.len(), 1);
     }
@@ -704,7 +705,7 @@ mod tests {
         // checks that the data model has one nested object column
         let test_file = get_simple_python_file_path();
 
-        let data_models = extract_data_model_from_file(&test_file).unwrap();
+        let data_models = extract_data_model_from_file(&test_file).unwrap().models;
 
         let data_model = data_models.first().unwrap();
 

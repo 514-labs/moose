@@ -1,7 +1,6 @@
-use log::debug;
 use std::path::Path;
 
-use crate::framework::{controller::MappingError, prisma, typescript};
+use crate::framework::{controller::MappingError, prisma, python, typescript};
 
 use super::schema::{DataEnum, DataModel};
 
@@ -11,7 +10,9 @@ use super::schema::{DataEnum, DataModel};
 pub enum DataModelParsingError {
     PrismaParsingError(#[from] prisma::parser::PrismaParsingError),
     TypescriptParsingError(#[from] typescript::parser::TypescriptParsingError),
+    PythonParsingError(#[from] python::parser::PythonParserError),
     MappingError(#[from] MappingError),
+    UnsupportedFileType,
 }
 
 pub struct FileObjects {
@@ -26,13 +27,14 @@ impl FileObjects {
 }
 
 pub fn parse_data_model_file(path: &Path) -> Result<FileObjects, DataModelParsingError> {
-    let is_prisma_schema = path.extension().map(|e| e == "prisma").unwrap_or(false);
-
-    if is_prisma_schema {
-        debug!("Parsing prisma file {:?}", path);
-        Ok(prisma::parser::extract_data_model_from_file(path)?)
+    if let Some(ext) = path.extension() {
+        match ext.to_str() {
+            Some("prisma") => Ok(prisma::parser::extract_data_model_from_file(path)?),
+            Some("ts") => Ok(typescript::parser::extract_data_model_from_file(path)?),
+            Some("py") => Ok(python::parser::extract_data_model_from_file(path)?),
+            _ => Err(DataModelParsingError::UnsupportedFileType),
+        }
     } else {
-        debug!("Parsing typescript file {:?}", path);
-        Ok(typescript::parser::extract_data_model_from_file(path)?)
+        Err(DataModelParsingError::UnsupportedFileType)
     }
 }

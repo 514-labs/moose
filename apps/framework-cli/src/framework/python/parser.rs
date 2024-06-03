@@ -617,7 +617,7 @@ fn setup_parse(ast: &ast::Suite) -> Result<PythonProject, PythonParserError> {
     Ok(project)
 }
 
-pub fn get_project_from_file(path: &PathBuf) -> Result<PythonProject, PythonParserError> {
+pub fn get_project_from_file(path: &Path) -> Result<PythonProject, PythonParserError> {
     let ast = get_ast_from_file(path)?;
 
     setup_parse(&ast)

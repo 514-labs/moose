@@ -14,6 +14,15 @@ class EnhancedJSONEncoder(json.JSONEncoder):
         return super().default(o)
 
 
+class EnhancedJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+        if dataclasses.is_dataclass(o):
+            return dataclasses.asdict(o)
+        return super().default(o)
+
+
 parser = argparse.ArgumentParser(description='Run a flow')
 
 parser.add_argument('source_topic', type=str, help='The source topic for the flow')

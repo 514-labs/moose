@@ -1,10 +1,40 @@
-import type { ClickHouseClient } from "npm:@clickhouse/client-web@1.0.1";
+import {
+  ClickHouseClient,
+  ResultSet,
+  createClient,
+} from "@clickhouse/client-web";
+import http from "http";
 
-import { ResultSet } from "npm:@clickhouse/client-web@1.0.1";
 import sql, { Sql, createClickhouseParameter } from "./consumption-helpers.ts";
-import { antiCachePath, getClickhouseClient } from "./ts-helpers.ts";
+import { antiCachePath } from "./ts-helpers.ts";
 
-const cwd = Deno.args[0] || Deno.cwd();
+const [
+  ,
+  _,
+  CLICKHOUSE_DB,
+  CLICKHOUSE_HOST,
+  CLICKHOUSE_PORT,
+  CLICKHOUSE_USERNAME,
+  CLICKHOUSE_PASSWORD,
+  CLICKHOUSE_USE_SSL,
+] = process.argv;
+
+const getClickhouseClient = () => {
+  const protocol =
+    CLICKHOUSE_USE_SSL === "1" || CLICKHOUSE_USE_SSL.toLowerCase() === "true"
+      ? "https"
+      : "http";
+  console.log(
+    `Connecting to Clickhouse at ${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
+  );
+  return createClient({
+    url: `${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
+    username: CLICKHOUSE_USERNAME,
+    password: CLICKHOUSE_PASSWORD,
+    database: CLICKHOUSE_DB,
+  });
+};
+
 const CONSUMPTION_DIR_PATH = `${cwd}/app/apis`;
 
 const createPath = (path: string) => `${CONSUMPTION_DIR_PATH}/${path}.ts`;
@@ -45,8 +75,8 @@ class MooseClient {
   }
 }
 
-const apiHandler = async (request: Request): Promise<Response> => {
-  const url = new URL(request.url);
+const apiHandler = async (req, res) => {
+  const url = new URL(req.url);
   const fileName = url.pathname;
 
   const pathName = antiCachePath(createPath(fileName));
@@ -66,10 +96,17 @@ const apiHandler = async (request: Request): Promise<Response> => {
   } else {
     body = JSON.stringify(result);
   }
-  return new Response(body, { status: 200 });
+
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(body);
 };
 
-export const startApiService = async () =>
-  Deno.serve({ port: 4001 }, apiHandler);
+export const startApiService = async () => {
+  const server = http.createServer(apiHandler);
+
+  server.listen(4001, () => {
+    console.log("Server running on port 4001");
+  });
+};
 
 startApiService();

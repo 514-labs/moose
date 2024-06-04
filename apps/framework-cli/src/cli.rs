@@ -25,7 +25,7 @@ use settings::{read_settings, Settings};
 use crate::cli::routines::aggregation::create_aggregation_file;
 use crate::cli::routines::consumption::create_consumption_file;
 
-use crate::cli::routines::dev::{copy_old_schema, create_deno_files};
+use crate::cli::routines::dev::copy_old_schema;
 use crate::cli::routines::flow::{create_flow_directory, create_flow_file};
 use crate::cli::routines::initialize::initialize_project;
 use crate::cli::routines::logs::{follow_logs, show_logs};
@@ -315,7 +315,6 @@ async fn top_command_handler(
             );
 
             check_project_name(&project_arc.name())?;
-            create_deno_files(&project_arc)?.show();
 
             routines::start_production_mode(project_arc).await.unwrap();
 

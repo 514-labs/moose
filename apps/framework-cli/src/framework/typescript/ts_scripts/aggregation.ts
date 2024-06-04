@@ -1,8 +1,7 @@
-import fs from "node:fs";
-import path from "node:path";
 import process from "node:process";
 import { ClickHouseClient, createClient } from "@clickhouse/client-web";
 import fastq, { queueAsPromised } from "fastq";
+import { getFileName, walkDir } from "./ts-helpers";
 
 interface MvQuery {
   select: string;
@@ -47,15 +46,6 @@ const getClickhouseClient = () => {
     password: CLICKHOUSE_PASSWORD,
     database: CLICKHOUSE_DB,
   });
-};
-
-const getFileName = (filePath: string) => {
-  const regex = /\/([^\/]+)\.ts/;
-  const matches = filePath.match(regex);
-  if (matches && matches.length > 1) {
-    return matches[1];
-  }
-  return "";
 };
 
 const createAggregation = async (chClient: ClickHouseClient, path: string) => {
@@ -104,20 +94,6 @@ const deleteAggregation = async (chClient: ClickHouseClient, path: string) => {
 const asyncWorker = async (task: MvQueueTask) => {
   await deleteAggregation(task.chClient, task.path);
   await createAggregation(task.chClient, task.path);
-};
-
-const walkDir = (dir: string, fileExtension: string, fileList: string[]) => {
-  const files = fs.readdirSync(dir);
-
-  files.forEach((file) => {
-    if (fs.statSync(path.join(dir, file)).isDirectory()) {
-      fileList = walkDir(path.join(dir, file), fileExtension, fileList);
-    } else if (file.endsWith(fileExtension)) {
-      fileList.push(path.join(dir, file));
-    }
-  });
-
-  return fileList;
 };
 
 const main = async () => {

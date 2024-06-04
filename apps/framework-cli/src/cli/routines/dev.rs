@@ -3,7 +3,7 @@ use std::fs;
 
 use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
-use crate::utilities::constants::{CLI_PROJECT_INTERNAL_DIR, CONSUMPTION_CONTAINER_NAME};
+use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
 use crate::utilities::docker;
 use crate::utilities::git::dump_old_version_schema;
 use crate::{cli::display::Message, project::Project};
@@ -11,14 +11,13 @@ use log::debug;
 
 use super::{
     validate::{
-        validate_clickhouse_run, validate_console_run, validate_deno_services,
-        validate_redpanda_cluster, validate_redpanda_run,
+        validate_clickhouse_run, validate_console_run, validate_redpanda_cluster,
+        validate_redpanda_run,
     },
     RoutineFailure, RoutineSuccess,
 };
 
 pub fn run_local_infrastructure(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
-    create_deno_files(project)?.show();
     create_docker_compose_file(project)?.show();
 
     copy_old_schema(project)?.show();
@@ -29,10 +28,7 @@ pub fn run_local_infrastructure(project: &Project) -> Result<RoutineSuccess, Rou
     validate_clickhouse_run()?.show();
     validate_redpanda_run()?.show();
     validate_console_run()?.show();
-    validate_deno_services()?.show();
     validate_redpanda_cluster(project.name())?.show();
-
-    tail_consumption_container_logs(project)?.show();
 
     Ok(RoutineSuccess::success(Message::new(
         "Successfully".to_string(),
@@ -69,30 +65,6 @@ pub fn run_containers(project: &Project) -> Result<RoutineSuccess, RoutineFailur
     }
 }
 
-pub fn tail_consumption_container_logs(
-    project: &Project,
-) -> Result<RoutineSuccess, RoutineFailure> {
-    tail_container_logs(project, CONSUMPTION_CONTAINER_NAME)
-}
-
-pub fn tail_container_logs(
-    project: &Project,
-    container_name: &str,
-) -> Result<RoutineSuccess, RoutineFailure> {
-    let tail_containers_res = docker::tail_container_logs(project, container_name);
-
-    match tail_containers_res {
-        Ok(_) => Ok(RoutineSuccess::success(Message::new(
-            "Successfully".to_string(),
-            "tailing container logs".to_string(),
-        ))),
-        Err(err) => Err(RoutineFailure::new(
-            Message::new("Failed".to_string(), "to tail container logs".to_string()),
-            err,
-        )),
-    }
-}
-
 pub fn copy_old_schema(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
     for (version, commit_hash) in project.supported_old_versions.iter() {
         let dest = project.old_version_location(version).unwrap();
@@ -116,23 +88,6 @@ pub fn copy_old_schema(project: &Project) -> Result<RoutineSuccess, RoutineFailu
     Ok(RoutineSuccess::success(Message::new(
         "Loaded".to_string(),
         "old schemas".to_string(),
-    )))
-}
-
-pub fn create_deno_files(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
-    project.create_deno_files().map_err(|err| {
-        RoutineFailure::new(
-            Message::new(
-                "Failed".to_string(),
-                "to setup internal files, check your folder permissions or contact us.".to_string(),
-            ),
-            err,
-        )
-    })?;
-
-    Ok(RoutineSuccess::success(Message::new(
-        "Created".to_string(),
-        "deno files".to_string(),
     )))
 }
 

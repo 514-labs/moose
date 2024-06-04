@@ -5,6 +5,6 @@ setup(
     name='test_project',
     version='0.0',
     install_requires=[
-        "kafka-python==2.0.2",
+        "kafka-python-ng==2.2.2",
     ],
 )

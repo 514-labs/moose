@@ -23,7 +23,12 @@ class ParsedActivity:
     activity: str
 
 def my_func(dm: UserActivity) -> ParsedActivity:
-    print(dm)
+    return ParsedActivity(
+        eventId=dm.eventId,
+        timestamp=datetime.fromisoformat(dm.timestamp),
+        userId=dm.userId,
+        activity="yo"
+    )
 
 my_flow = Flow(
     run=my_func

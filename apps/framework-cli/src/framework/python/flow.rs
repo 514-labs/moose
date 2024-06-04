@@ -29,7 +29,18 @@ mod tests {
     use super::*;
 
     #[test]
+    #[ignore]
     fn test_run() {
+        // Use these tests by configuring a timeout in the flow runner
+        //  consumer = KafkaConsumer(
+        //     source_topic,
+        //     client_id= "python_flow_consumer",
+        //     group_id=flow_id,
+        //     bootstrap_servers=broker,
+        // +   consumer_timeout_ms=10000,
+        //     value_deserializer=lambda m: json.loads(m.decode('utf-8'))
+        // )
+        // You can then run a moose instance and send data to the endpoints
         let redpanda_config = RedpandaConfig::default();
         let source_topic = "UserActivity_0_0";
         let target_topic = "ParsedActivity_0_0";
@@ -41,6 +52,7 @@ mod tests {
     }
 
     #[test]
+    #[ignore]
     fn test_run_with_invalid_flow_file() {
         let redpanda_config = RedpandaConfig::default();
         let source_topic = "source";

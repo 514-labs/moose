@@ -1,8 +1,19 @@
 import argparse
+import dataclasses
+from datetime import datetime
 import json
 import sys
 from kafka import KafkaConsumer, KafkaProducer
 from runner import hello
+
+class EnhancedJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+        if dataclasses.is_dataclass(o):
+            return dataclasses.asdict(o)
+        return super().default(o)
+
 
 parser = argparse.ArgumentParser(description='Run a flow')
 
@@ -71,7 +82,6 @@ run_input_type = flow_run.__annotations__[list(flow_run.__annotations__.keys())[
 def parse_input(json_input):
     return run_input_type(**json_input)
 
-
 flow_id = f'flow-{source_topic} -> {target_topic}'
 
 if sasl_config['mechanism'] is not None:
@@ -84,7 +94,7 @@ if sasl_config['mechanism'] is not None:
         sasl_plain_password=sasl_config['password'],
         sasl_mechanism=sasl_config['mechanism'],
         security_protocol=args.security_protocol,
-        value_deserializer=lambda m: json.loads(m.decode('ascii'))
+        value_deserializer=lambda m: json.loads(m.decode('utf-8'))
     )
 else:
     print("No sasl mechanism specified. Using default consumer.")
@@ -94,8 +104,7 @@ else:
         group_id=flow_id,
         bootstrap_servers=broker,
         consumer_timeout_ms=10000,
-        value_deserializer=lambda m: json.loads(m.decode('ascii'))
-        
+        value_deserializer=lambda m: json.loads(m.decode('utf-8'))
     )
 
 # Doesn't look like python producers can be idempotent
@@ -115,7 +124,6 @@ else:
 
 consumer.subscribe([source_topic])
 
-
 # Print each message that is consumed
 for message in consumer:
     print(f"Consumed: {message.value}")
@@ -125,21 +133,12 @@ for message in consumer:
 
     print(input_data)
 
-    # # Run the flow
-    # output_data = flow_run(input_data)
+    # Run the flow
+    output_data = flow_run(input_data)
 
-    # # Send the output to the target topic
-    # producer.send(target_topic, json.dumps(output_data).encode('ascii'))
-
-
+    # Send the output to the target topic
+    producer.send(target_topic, json.dumps(output_data, cls=EnhancedJSONEncoder).encode('utf-8'))
 
 
 
-
-
-
-
-
-
-flow.my_flow.run()
 

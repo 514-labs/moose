@@ -59,4 +59,5 @@ export interface UserActivity {
   timestamp: Date;
   userId: string;
   activity: string;
+  description: string;
 }

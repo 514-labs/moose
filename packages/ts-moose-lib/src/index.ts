@@ -32,3 +32,5 @@ export type DataModelConfig<T> = Partial<{
     order_by_fields?: (keyof T)[];
   };
 }>;
+
+export * from "./commons";

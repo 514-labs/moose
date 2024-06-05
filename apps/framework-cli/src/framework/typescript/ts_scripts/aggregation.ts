@@ -1,7 +1,7 @@
 import process from "node:process";
 import { ClickHouseClient, createClient } from "@clickhouse/client-web";
 import fastq, { queueAsPromised } from "fastq";
-import { getFileName, walkDir } from "./ts-helpers.ts";
+import { getFileName, walkDir } from "@514labs/moose-lib";
 
 interface MvQuery {
   select: string;

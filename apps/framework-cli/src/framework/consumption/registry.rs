@@ -3,7 +3,9 @@ use std::collections::HashMap;
 use log::info;
 use tokio::process::Child;
 
-use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
+use crate::{
+    infrastructure::olap::clickhouse::config::ClickHouseConfig, utilities::system::kill_child,
+};
 
 use super::model::{Consumption, ConsumptionError};
 
@@ -23,6 +25,7 @@ impl ConsumptionProcessRegistry {
     pub fn start(&mut self, consumption: Consumption) -> Result<(), ConsumptionError> {
         info!("Starting consumption {:?}...", consumption);
         let child = consumption.start(self.clickhouse_config.clone())?;
+        info!("Child id george: {:?}", child.id());
 
         self.registry.insert(consumption.id(), child);
 
@@ -33,7 +36,7 @@ impl ConsumptionProcessRegistry {
         info!("Stopping consumption...");
 
         for child in self.registry.values_mut() {
-            child.kill().await?;
+            kill_child(child).await?;
         }
 
         self.registry.clear();

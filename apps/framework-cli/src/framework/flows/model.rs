@@ -5,6 +5,7 @@ use tokio::process::Child;
 use crate::{
     framework::{python, typescript},
     infrastructure::stream::redpanda::RedpandaConfig,
+    utilities::system::KillProcessError,
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -18,6 +19,9 @@ pub enum FlowError {
 
     #[error("Could not fetch the list of topics from Kafka")]
     KafkaError(#[from] rdkafka::error::KafkaError),
+
+    #[error("Kill process Error")]
+    KillProcessError(#[from] KillProcessError),
 }
 
 #[derive(Debug, Clone)]

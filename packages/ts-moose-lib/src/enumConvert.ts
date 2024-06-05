@@ -3,12 +3,12 @@ import ts, {
   StringLiteralType,
   UnionType,
 } from "typescript";
-import { DataType, UnsupportedEnum } from "./dataModelTypes";
+import { DataEnum, DataType, UnsupportedEnum } from "./dataModelTypes";
 
 export const isEnum = (t: ts.Type): boolean =>
   !!(t.getFlags() & ts.TypeFlags.EnumLiteral);
 
-export const enumConvert = (enumType: ts.Type): DataType => {
+export const enumConvert = (enumType: ts.Type): DataEnum => {
   const name = enumType.symbol.name;
 
   // an enum is the union of the values

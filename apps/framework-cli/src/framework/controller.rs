@@ -136,6 +136,7 @@ pub async fn get_all_framework_objects(
     schema_dir: &Path,
     version: &str,
     aggregations: &AggregationSet,
+    project: &Project,
 ) -> anyhow::Result<()> {
     if schema_dir.is_dir() {
         for entry in std::fs::read_dir(schema_dir)? {
@@ -143,11 +144,13 @@ pub async fn get_all_framework_objects(
             let path = entry.path();
             if path.is_dir() {
                 debug!("<DCM> Processing directory: {:?}", path);
-                get_all_framework_objects(framework_objects, &path, version, aggregations).await?;
+                get_all_framework_objects(framework_objects, &path, version, aggregations, project)
+                    .await?;
             } else if is_schema_file(&path) {
                 debug!("<DCM> Processing file: {:?}", path);
                 let objects =
-                    get_framework_objects_from_schema_file(&path, version, aggregations).await?;
+                    get_framework_objects_from_schema_file(&path, version, aggregations, project)
+                        .await?;
                 for fo in objects {
                     DuplicateModelError::try_insert(framework_objects, fo, &path)?;
                 }
@@ -175,8 +178,9 @@ pub async fn get_framework_objects_from_schema_file(
     path: &Path,
     version: &str,
     aggregations: &AggregationSet,
+    project: &Project,
 ) -> Result<Vec<FrameworkObject>, DataModelError> {
-    let framework_objects = parse_data_model_file(path)?;
+    let framework_objects = parse_data_model_file(path, project)?;
     let mut indexed_models = HashMap::new();
 
     for model in framework_objects.models {

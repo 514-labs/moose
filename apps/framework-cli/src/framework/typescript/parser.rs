@@ -1,323 +1,81 @@
-use crate::framework::data_model::schema::{is_enum_type, ColumnType, EnumMember, EnumValue};
-use log::debug;
-use std::path::{Path, PathBuf};
-use swc_common::{self, sync::Lrc, SourceMap};
-use swc_ecma_ast::{
-    Decl, ExportDecl, Expr, Lit, Module, ModuleDecl, ModuleItem, Stmt, TsEnumDecl, TsEnumMemberId,
-    TsInterfaceDecl, TsKeywordTypeKind, TsPropertySignature, TsType, TsTypeAnn, TsTypeRef,
-};
-use swc_ecma_parser::{lexer::Lexer, Capturing, Parser, StringInput, Syntax};
+use std::fs;
+use std::io::ErrorKind::NotFound;
+use std::path::Path;
+use std::process::Command;
+
+use serde_json::json;
 
 use crate::framework::data_model::parser::FileObjects;
-use crate::framework::data_model::schema::{Column, DataEnum, DataModel};
+use crate::framework::typescript::parser::TypescriptParsingError::TypescriptCompilerError;
+use crate::project::Project;
 
-#[derive(Debug, Clone, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 #[error("Failed to parse the typescript file")]
 #[non_exhaustive]
 pub enum TypescriptParsingError {
-    FileNotFound {
-        path: PathBuf,
-    },
-    #[error("Typescript Parser - Unsupported data type: {type_name}")]
-    UnsupportedDataTypeError {
-        type_name: String,
-    },
-    #[error("Typescript Parser - Invalid typescript file, please refer to the documentation for an example of a valid typescript file\n{}", syntax_error.msg())]
-    InvalidTypescriptFile {
-        syntax_error: swc_ecma_parser::error::SyntaxError,
-    },
-    #[error("Typescript Parser - Missing type annotation for {field_name}")]
-    MissingTypeAnnotation {
-        field_name: String,
-    },
-    #[error("Typescript Parser - {message}")]
-    OtherError {
-        message: String,
-    },
+    #[error("Failure setting up the file structure")]
+    FileSystemError(#[from] std::io::Error),
+    TypescriptCompilerError(Option<std::io::Error>),
+    #[error("Invalid output from compiler plugin. Possible incompatible versions between moose-lib and moose-cli")]
+    DeserializationError(#[from] serde_json::Error),
 }
 
-pub fn extract_data_model_from_file(path: &Path) -> Result<FileObjects, TypescriptParsingError> {
-    let ast = parse_ts_module(path)?;
-    extract_data_models_from_ast(ast)
-}
+pub fn extract_data_model_from_file(
+    path: &Path,
+    project: &Project,
+) -> Result<FileObjects, TypescriptParsingError> {
+    let internal = project.internal_dir().unwrap();
+    let output_dir = internal.join("serialized_datamodels");
 
-fn parse_ts_module(path: &Path) -> Result<Module, TypescriptParsingError> {
-    //! Parse a typescript file as a module and return the AST for that module
-    let cm: Lrc<SourceMap> = Default::default();
-
-    let fm = cm
-        .load_file(Path::new(path))
-        .expect("failed to load test.ts");
-
-    let lexer = Lexer::new(
-        Syntax::Typescript(Default::default()),
-        Default::default(),
-        StringInput::from(&*fm),
-        None,
-    );
-
-    let capturing = Capturing::new(lexer);
-
-    let mut parser = Parser::new_from(capturing);
-
-    parser.parse_module().map_err(|e| {
-        // TODO: report the offending code from fm.src
-        TypescriptParsingError::InvalidTypescriptFile {
-            syntax_error: e.into_kind(),
-        }
-    })
-}
-
-fn extract_data_models_from_ast(ast: Module) -> Result<FileObjects, TypescriptParsingError> {
-    let mut enums = Vec::new();
-    let mut ts_declarations = Vec::new();
-
-    // collect all interface and enum declarations
-    for item in ast.body.iter() {
-        match item {
-            ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl { decl, .. }))
-            | ModuleItem::Stmt(Stmt::Decl(decl)) => {
-                match decl {
-                    Decl::TsInterface(decl) => {
-                        ts_declarations.push(decl);
-                    }
-                    Decl::TsEnum(decl) => {
-                        let new_enum = enum_to_data_enum(*decl.clone())?;
-                        enums.push(new_enum);
-                    }
-                    // We ignore all other declarations
-                    _ => continue,
-                }
-            }
-            // We ignore all other top module items
-            _ => continue,
-        }
-    }
-
-    let parsed_models = ts_declarations
-        .into_iter()
-        .map(|m| interface_to_model(m, &enums))
-        .collect::<Result<Vec<DataModel>, TypescriptParsingError>>()?;
-
-    Ok(FileObjects::new(parsed_models, enums))
-}
-
-fn enum_to_data_enum(enum_decl: TsEnumDecl) -> Result<DataEnum, TypescriptParsingError> {
-    let name = enum_decl.id.sym.to_string();
-    let mut values = Vec::new();
-
-    let mut has_string_enums: bool = false;
-    let mut auto_increment_enum_index: u8 = 0;
-
-    for member in enum_decl.members {
-        let name = match &member.id {
-            TsEnumMemberId::Ident(ident) => ident.sym.to_string(),
-            TsEnumMemberId::Str(str) => str.value.to_string(),
-        };
-
-        let value = match member.init {
-            Some(init) => match *init {
-                Expr::Lit(Lit::Str(str)) => {
-                    if auto_increment_enum_index != 0 {
-                        return Err(TypescriptParsingError::OtherError {
-                            message: "We do not allow to mix String enums with Number based enums, please choose one".to_string(),
-                        });
-                    } else {
-                        has_string_enums = true;
-                        EnumValue::String(str.value.to_string())
-                    }
-                }
-                Expr::Lit(Lit::Num(num)) => {
-                    if has_string_enums {
-                        return Err(TypescriptParsingError::OtherError {
-                            message: "We do not allow to mix String enums with Number based enums, please choose one".to_string(),
-                        });
-                    } else {
-                        auto_increment_enum_index = num.value as u8 + 1;
-                        EnumValue::Int(num.value as u8)
-                    }
-                }
-                _ => {
-                    return Err(TypescriptParsingError::OtherError {
-                        message: "We do not allow dynamic assignment to enums".to_string(),
-                    });
-                }
+    fs::write(
+        internal.join("tsconfig.json"),
+        json!({
+            "compilerOptions":{
+                "outDir": "dist", // relative path, so .moose/dist
+                "plugins": [{
+                    "transform": "../node_modules/@514labs/moose-lib/dist/toDataModels.js"
+                }],
+                "strict":true
             },
-            None => {
-                if has_string_enums {
-                    return Err(TypescriptParsingError::OtherError {
-                        message: "We do not allow to mix String enums with Number based enums, please choose one".to_string(),
-                    });
-                } else {
-                    let enum_value = EnumValue::Int(auto_increment_enum_index);
-                    auto_increment_enum_index += 1;
-                    enum_value
-                }
-            }
-        };
-
-        values.push(EnumMember { name, value });
-    }
-
-    Ok(DataEnum { name, values })
-}
-
-fn interface_to_model(
-    interface: &TsInterfaceDecl,
-    enums: &[DataEnum],
-) -> Result<DataModel, TypescriptParsingError> {
-    let schema_name = interface.id.sym.to_string();
-
-    let columns: Result<Vec<Column>, TypescriptParsingError> = interface
-        .body
-        .body
-        .iter()
-        .filter_map(|field| match field {
-            swc_ecma_ast::TsTypeElement::TsPropertySignature(prop) => {
-                Some(parse_property_signature(prop, enums))
-            }
-            _ => None,
+            "include":[path]
         })
-        .collect();
-
-    Ok(DataModel {
-        columns: columns?,
-        name: schema_name,
-        config: Default::default(),
-    })
-}
-
-fn parse_property_signature(
-    prop: &TsPropertySignature,
-    enums: &[DataEnum],
-) -> Result<Column, TypescriptParsingError> {
-    let mut primary_key = false;
-    let unique = false;
-    let default = None;
-
-    // match the key's sym if it's an ident
-    let name = match *prop.key.clone() {
-        Expr::Ident(ident) => ident.sym.to_string(),
-        Expr::Lit(Lit::Str(str)) => str.value.to_string(),
-        _ => {
-            return Err(TypescriptParsingError::UnsupportedDataTypeError {
-                type_name: format!("{:?}", *prop.key.clone()),
-            })
-        }
-    };
-
-    // match the type of the value and return the right column type
-    let TsTypeAnn { type_ann, .. } =
-        *prop
-            .type_ann
-            .clone()
-            .ok_or_else(|| TypescriptParsingError::MissingTypeAnnotation {
-                // shouldn't need to clone, we're early returning
-                field_name: name.clone(),
-            })?;
-
-    let data_type = parse_type_ann(type_ann, enums, &mut primary_key)?;
-
-    debug!(
-        "name: {}, data_type: {:?}, primary_key: {:?}",
-        name, data_type, primary_key
-    );
-
-    Ok(Column {
-        name,
-        data_type,
-        required: !prop.optional,
-        unique,
-        primary_key,
-        default,
-    })
-}
-
-fn parse_type_ann(
-    type_ann: Box<TsType>,
-    enums: &[DataEnum],
-    primary_key: &mut bool,
-) -> Result<ColumnType, TypescriptParsingError> {
-    match *type_ann {
-        TsType::TsKeywordType(keyword) => ts_parse_keyword_type(keyword),
-        TsType::TsArrayType(array_type) => {
-            let inner_type =
-                parse_type_ann(Box::new(*array_type.elem_type.clone()), enums, primary_key)?;
-            Ok(ColumnType::Array(Box::new(inner_type)))
-        }
-        TsType::TsTypeRef(type_ref) => parse_type_ref(type_ref, enums, primary_key),
-        _ => Err(TypescriptParsingError::UnsupportedDataTypeError {
-            type_name: format!("{:?}", type_ann),
-        }),
-    }
-}
-
-fn ts_parse_keyword_type(
-    keyword: swc_ecma_ast::TsKeywordType,
-) -> Result<ColumnType, TypescriptParsingError> {
-    match keyword.kind {
-        TsKeywordTypeKind::TsStringKeyword => Ok(ColumnType::String),
-        TsKeywordTypeKind::TsBooleanKeyword => Ok(ColumnType::Boolean),
-        TsKeywordTypeKind::TsNumberKeyword => Ok(ColumnType::Float),
-        _ => Err(TypescriptParsingError::UnsupportedDataTypeError {
-            type_name: format!("{:?}", keyword.kind),
-        }),
-    }
-}
-
-fn parse_type_ref(
-    type_ref: TsTypeRef,
-    enums: &[DataEnum],
-    primary_key: &mut bool,
-) -> Result<ColumnType, TypescriptParsingError> {
-    let type_ref_name = match type_ref.type_name {
-        swc_ecma_ast::TsEntityName::Ident(ident) => Ok(ident.sym.to_string()),
-        _ => Err(TypescriptParsingError::UnsupportedDataTypeError {
-            type_name: format!("{:?}", type_ref.type_name),
-        }),
-    }?;
-
-    if type_ref_name == "Key" {
-        *primary_key = true;
-
-        match type_ref.type_params {
-            Some(params) => {
-                if let Some(param) = params.params.first() {
-                    return parse_type_ann(param.clone(), enums, primary_key);
-                } else {
-                    return Err(TypescriptParsingError::UnsupportedDataTypeError {
-                        type_name: "no type for key".to_string(),
-                    });
-                }
+        .to_string(),
+    )?;
+    fs::remove_dir_all(&output_dir).or_else(
+        |e| {
+            if e.kind() == NotFound {
+                Ok(())
+            } else {
+                Err(e)
             }
-            None => {
-                return Err(TypescriptParsingError::UnsupportedDataTypeError {
-                    type_name: "no type for key".to_string(),
-                });
-            }
-        }
+        },
+    )?;
+    let ts_return_code = Command::new("npx")
+        .arg("tspc")
+        .arg("--project")
+        .arg(".moose/tsconfig.json")
+        .spawn()?
+        .wait()
+        .map_err(|err| TypescriptCompilerError(Some(err)))?;
+    if !ts_return_code.success() {
+        return Err(TypescriptCompilerError(None));
     }
-
-    if type_ref_name == "Date" {
-        Ok(ColumnType::DateTime)
-    } else if is_enum_type(&type_ref_name, enums) {
-        Ok(ColumnType::Enum(
-            enums
-                .iter()
-                .find(|e| e.name == type_ref_name)
+    let output = fs::read(
+        output_dir.join(
+            path.file_name()
                 .unwrap()
-                .clone(),
-        ))
-    } else {
-        Err(TypescriptParsingError::UnsupportedDataTypeError {
-            type_name: type_ref_name,
-        })
-    }
+                .to_str()
+                .unwrap()
+                .replace(".ts", ".json"),
+        ),
+    )
+    .map_err(|_| TypescriptCompilerError(None))?;
+
+    Ok(serde_json::from_slice(&output)?)
 }
 
 #[cfg(test)]
 mod tests {
-
     use crate::framework::{
         data_model::parser::parse_data_model_file, typescript::parser::extract_data_model_from_file,
     };

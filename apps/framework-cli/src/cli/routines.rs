@@ -391,7 +391,14 @@ async fn crawl_schema(
         debug!("<DCM> Processing old version directory: {:?}", path);
 
         let mut framework_objects = HashMap::new();
-        get_all_framework_objects(&mut framework_objects, &path, version, &aggregations).await?;
+        get_all_framework_objects(
+            &mut framework_objects,
+            &path,
+            version,
+            &aggregations,
+            project,
+        )
+        .await?;
 
         let schema_version = SchemaVersion {
             base_path: path,
@@ -417,6 +424,7 @@ async fn crawl_schema(
         &schema_dir,
         project.version(),
         &aggregations,
+        &project,
     )
     .await?;
 

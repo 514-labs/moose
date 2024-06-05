@@ -15,16 +15,23 @@ const dateType = (checker: TypeChecker) =>
     .getConstructSignatures()[0]
     .getReturnType();
 
-const throwUnknownType = (t: ts.Type): never => {
-  throw new UnknownType(t);
+const throwUnknownType = (
+  t: ts.Type,
+  fieldName: string,
+  typeName: string,
+): never => {
+  throw new UnknownType(t, fieldName, typeName);
 };
 
 const tsTypeToDataType = (
   t: ts.Type,
   checker: TypeChecker,
+
+  fieldName: string,
+  typeName: string,
 ): [boolean, DataType] => {
   const nonNull = t.getNonNullableType();
-  const nullable = nonNull == t;
+  const nullable = nonNull != t;
 
   // this looks nicer if we turn on experimentalTernaries in prettier
   const dataType: DataType = isEnum(nonNull)
@@ -36,15 +43,17 @@ const tsTypeToDataType = (
         : nonNull == checker.getBooleanType()
           ? "Float"
           : nonNull == dateType(checker)
-            ? "Date"
+            ? "DateTime"
             : checker.isArrayType(nonNull)
               ? {
                   elementType: tsTypeToDataType(
                     nonNull.getNumberIndexType()!,
                     checker,
+                    fieldName,
+                    typeName,
                   )[1],
                 }
-              : throwUnknownType(t);
+              : throwUnknownType(t, fieldName, typeName);
 
   return [nullable, dataType];
 };
@@ -67,12 +76,17 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
     const type = checker.getTypeOfSymbolAtLocation(prop, node);
 
     const isKey = hasKeyWrapping(node.type);
-    const [nullable, dataType] = tsTypeToDataType(type, checker);
+    const [nullable, dataType] = tsTypeToDataType(
+      type,
+      checker,
+      prop.name,
+      t.symbol.name,
+    );
 
     return {
       name: prop.name,
-      dataType,
-      isKey,
+      data_type: dataType,
+      primary_key: isKey,
       required: !nullable,
       unique: false,
       default: null,

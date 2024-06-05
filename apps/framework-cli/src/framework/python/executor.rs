@@ -1,10 +1,9 @@
 //! # Executes Python code in a subprocess.
 //! This module provides a Python executor that can run Python code in a subprocess
 
-use std::{
-    path::Path,
-    process::{Command, Output, Stdio},
-};
+use std::{path::Path, process::Stdio};
+
+use tokio::process::{Child, Command};
 
 /// Checks if the Python interpreter is available
 
@@ -44,37 +43,18 @@ impl PythonProgram {
 }
 
 /// Executes a Python program in a subprocess
-pub fn run_python_program(program: PythonProgram) -> Output {
+pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Error> {
     let get_args = match program.clone() {
         PythonProgram::FlowRunner { args } => args,
     };
 
-    let prgm = Command::new("python3")
+    Command::new("python3")
         .arg(program.get_path())
         .args(get_args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .expect("Failed to execute Python3");
-
-    prgm.wait_with_output().unwrap()
-}
-
-/// Executes a serializtion process to turn a Python file's contents into framework objects
-pub fn serialize_contents(serializer: PythonSerializers, python_file: &Path) -> String {
-    let prgm = Command::new("python3")
-        .arg(serializer.get_path())
-        .arg(python_file)
-        .stdin(Stdio::piped())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed to execute Python3");
-
-    let output = prgm.wait_with_output().unwrap();
-
-    String::from_utf8(output.stdout).unwrap()
 }
 
 // TESTs

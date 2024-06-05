@@ -1,24 +1,52 @@
 use std::path::Path;
 
+use tokio::process::Child;
+
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use tokio::io::AsyncBufReadExt;
 
 use super::executor;
 
-fn run(redpanda_config: RedpandaConfig, source_topic: &str, target_topic: &str, flow_path: &Path) {
-    let output = executor::run_python_program(executor::PythonProgram::FlowRunner {
+pub fn run(
+    redpanda_config: RedpandaConfig,
+    source_topic: &str,
+    target_topic: &str,
+    flow_path: &Path,
+) -> Result<Child, std::io::Error> {
+    let mut flow_process = executor::run_python_program(executor::PythonProgram::FlowRunner {
         args: vec![
             source_topic.to_string(),
             target_topic.to_string(),
             flow_path.to_str().unwrap().to_string(),
             redpanda_config.broker,
         ],
+    })?;
+
+    let stdout = flow_process
+        .stdout
+        .take()
+        .expect("Flow process did not have a handle to stdout");
+    let stderr = flow_process
+        .stderr
+        .take()
+        .expect("Flow process did not have a handle to stderr");
+
+    let mut stdout_reader = tokio::io::BufReader::new(stdout).lines();
+    let mut stderr_reader = tokio::io::BufReader::new(stderr).lines();
+
+    tokio::spawn(async move {
+        while let Ok(Some(line)) = stdout_reader.next_line().await {
+            log::info!("{}", line);
+        }
     });
 
-    let stdout = String::from_utf8(output.stdout).unwrap();
-    let stderr = String::from_utf8(output.stderr).unwrap();
+    tokio::spawn(async move {
+        while let Ok(Some(line)) = stderr_reader.next_line().await {
+            log::error!("{}", line);
+        }
+    });
 
-    println!("stdout: {}", stdout);
-    println!("stderr: {}", stderr);
+    Ok(flow_process)
 }
 
 // tests
@@ -48,7 +76,7 @@ mod tests {
             "/Users/timdelisle/Dev/igloo-stack/apps/framework-cli/tests/python/flows/valid",
         );
 
-        run(redpanda_config, source_topic, target_topic, flow_path);
+        let _ = run(redpanda_config, source_topic, target_topic, flow_path);
     }
 
     #[test]

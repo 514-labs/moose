@@ -9,7 +9,7 @@
     "@514labs/moose-lib": "latest"
   },
   "devDependencies": {
-    "@514labs/moose-cli": "0.3.369",
+    "@514labs/moose-cli": "0.3.387",
     "typescript": "^5.4.0",
     "@types/node": "^20.12.12"
   }

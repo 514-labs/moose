@@ -24,6 +24,7 @@ export const getClickhouseClient = () => {
   console.log(
     `Connecting to Clickhouse at ${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
   );
+
   return createClient({
     url: `${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
     username: CLICKHOUSE_USERNAME,

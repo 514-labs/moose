@@ -1,7 +1,7 @@
 //! # Executes Python code in a subprocess.
 //! This module provides a Python executor that can run Python code in a subprocess
 
-use std::{path::Path, process::Stdio};
+use std::process::Stdio;
 
 use tokio::process::{Child, Command};
 
@@ -36,9 +36,7 @@ pub enum PythonProgram {
 
 impl PythonProgram {
     pub fn get_path(&self) -> &str {
-        match self {
-            _ => "src/framework/python/scripts/flow_runner.py",
-        }
+        "src/framework/python/scripts/flow_runner.py"
     }
 }
 

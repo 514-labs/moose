@@ -29,11 +29,12 @@ use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
+use crate::framework::python::templates::PYTHON_BASE_FLOW_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::BASE_APIS_SAMPLE_TEMPLATE;
 use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
-    BASE_AGGREGATION_SAMPLE_TEMPLATE, BASE_FLOW_SAMPLE_TEMPLATE,
+    BASE_AGGREGATION_SAMPLE_TEMPLATE, TS_BASE_FLOW_SAMPLE_TEMPLATE,
 };
 use crate::framework::typescript::templates::{
     VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
@@ -51,11 +52,12 @@ use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS;
 use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
+use crate::utilities::constants::PY_FLOW_FILE;
 use crate::utilities::constants::README_PREFIX;
 use crate::utilities::constants::TS_HELPER_FILE;
 use crate::utilities::constants::{
-    AGGREGATIONS_DIR, AGGREGATIONS_FILE, APIS_DIR, FLOWS_DIR, FLOW_FILE, PROJECT_CONFIG_FILE,
-    SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE,
+    AGGREGATIONS_DIR, AGGREGATIONS_FILE, APIS_DIR, FLOWS_DIR, PROJECT_CONFIG_FILE,
+    SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE, TS_FLOW_FILE,
 };
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{CONSUMPTION_HELPERS, DENO_CONSUMPTION_API, DENO_DIR};
@@ -275,11 +277,16 @@ impl Project {
             SupportedLanguages::Python => self.schemas_dir().join("models.py"),
         };
 
+        let flow_file_name = match self.language {
+            SupportedLanguages::Typescript => TS_FLOW_FILE,
+            SupportedLanguages::Python => PY_FLOW_FILE,
+        };
+
         let flow_file_path = self
             .flows_dir()
             .join(SAMPLE_FLOWS_SOURCE)
             .join(SAMPLE_FLOWS_DEST)
-            .join(FLOW_FILE);
+            .join(flow_file_name);
         let aggregations_file_path = self.aggregations_dir().join(AGGREGATIONS_FILE);
         let apis_file_path = self.apis_dir().join(API_FILE);
 
@@ -297,17 +304,29 @@ impl Project {
         match self.language {
             SupportedLanguages::Typescript => {
                 base_model_file.write_all(TS_BASE_MODEL_TEMPLATE.as_bytes())?;
+
+                // Unclear whether the replace is still needed here?!
+                flow_file.write_all(
+                    TS_BASE_FLOW_SAMPLE_TEMPLATE
+                        .to_string()
+                        .replace("{{project_name}}", &self.name())
+                        .as_bytes(),
+                )?;
             }
             SupportedLanguages::Python => {
                 base_model_file.write_all(PYTHON_BASE_MODEL_TEMPLATE.as_bytes())?;
+
+                // Create __init__.py file in the app directory tree
+                std::fs::File::create(self.app_dir().join("__init__.py"))?;
+
+                std::fs::File::create(self.schemas_dir().join("__init__.py"))?;
+                std::fs::File::create(self.aggregations_dir().join("__init__.py"))?;
+                std::fs::File::create(self.apis_dir().join("__init__.py"))?;
+
+                flow_file.write_all(PYTHON_BASE_FLOW_TEMPLATE.as_bytes())?;
             }
         }
-        flow_file.write_all(
-            BASE_FLOW_SAMPLE_TEMPLATE
-                .to_string()
-                .replace("{{project_name}}", &self.name())
-                .as_bytes(),
-        )?;
+
         aggregations_file.write_all(BASE_AGGREGATION_SAMPLE_TEMPLATE.as_bytes())?;
         apis_file.write_all(BASE_APIS_SAMPLE_TEMPLATE.as_bytes())?;
 
@@ -334,12 +353,20 @@ impl Project {
         app_dir.push(APP_DIR);
 
         debug!("App dir: {:?}", app_dir);
+
+        if !app_dir.exists() {
+            std::fs::create_dir_all(&app_dir).expect("Failed to create app directory");
+        }
         app_dir
     }
 
     pub fn schemas_dir(&self) -> PathBuf {
         let mut schemas_dir = self.app_dir();
         schemas_dir.push(SCHEMAS_DIR);
+
+        if !schemas_dir.exists() {
+            std::fs::create_dir_all(&schemas_dir).expect("Failed to create schemas directory");
+        }
 
         debug!("Schemas dir: {:?}", schemas_dir);
         schemas_dir
@@ -527,7 +554,7 @@ impl Project {
     fn process_flow_output(&self, entry: &std::fs::DirEntry) -> Option<String> {
         if let Ok(file_type) = entry.file_type() {
             if file_type.is_dir() {
-                let flow_path = entry.path().join(FLOW_FILE);
+                let flow_path = entry.path().join(TS_FLOW_FILE);
                 if flow_path.exists() {
                     return Some(entry.file_name().to_string_lossy().into_owned());
                 }

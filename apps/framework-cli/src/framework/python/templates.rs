@@ -44,6 +44,29 @@ setup(
 )
 "#;
 
+pub static PYTHON_BASE_FLOW_TEMPLATE: &str = r#"
+from datetime import datetime
+from app.datamodels.models import UserActivity, ParsedActivity
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass
+class Flow:
+    run: Callable
+
+def parse_activity(activity: UserActivity) -> ParsedActivity:
+    return ParsedActivity(
+        eventId=activity.eventId,
+        timestamp=datetime.fromisoformat(activity.timestamp),
+        userId=activity.userId,
+        activity=activity.activity,
+    )
+
+my_flow = Flow(
+    run=parse_activity
+)
+"#;
+
 pub fn render_setup_py(project: PythonProject) -> Result<String, PythonRenderingError> {
     let reg = Handlebars::new();
 

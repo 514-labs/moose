@@ -6,7 +6,7 @@ use std::{fs, path::Path};
 use crate::{
     infrastructure::stream::redpanda::{fetch_topics, RedpandaConfig},
     project::Project,
-    utilities::constants::FLOW_FILE,
+    utilities::constants::TS_FLOW_FILE,
 };
 
 use super::model::{Flow, FlowError};
@@ -99,7 +99,7 @@ async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>
                     && flow_file
                         .file_name()
                         .to_string_lossy()
-                        .starts_with(FLOW_FILE)
+                        .starts_with(TS_FLOW_FILE)
                 {
                     let flow = Flow {
                         source_topic: source_topic.clone(),

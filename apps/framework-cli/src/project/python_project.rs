@@ -62,6 +62,7 @@ impl PythonProject {
 
         let setup_py = render_setup_py(self.clone())?;
         std::fs::write(setup_py_location, setup_py)?;
+
         Ok(())
     }
 }

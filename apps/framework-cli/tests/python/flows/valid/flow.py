@@ -6,7 +6,7 @@ from datetime import datetime
 class Flow:
     run: Callable
 
-type Key[T: (str, int)] = T 
+type Key[T: (str, int)] = T
 
 @dataclass
 class UserActivity:

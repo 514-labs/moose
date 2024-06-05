@@ -1,7 +1,7 @@
 import process from "node:process";
-import { ClickHouseClient, createClient } from "@clickhouse/client-web";
+import { ClickHouseClient } from "@clickhouse/client-web";
 import fastq, { queueAsPromised } from "fastq";
-import { getFileName, walkDir } from "@514labs/moose-lib";
+import { getFileName, walkDir, getClickhouseClient } from "@514labs/moose-lib";
 
 interface MvQuery {
   select: string;
@@ -21,32 +21,7 @@ class DependencyError extends Error {
   }
 }
 
-const [
-  ,
-  AGGREGATIONS_DIR_PATH,
-  CLICKHOUSE_DB,
-  CLICKHOUSE_HOST,
-  CLICKHOUSE_PORT,
-  CLICKHOUSE_USERNAME,
-  CLICKHOUSE_PASSWORD,
-  CLICKHOUSE_USE_SSL,
-] = process.argv;
-
-const getClickhouseClient = () => {
-  const protocol =
-    CLICKHOUSE_USE_SSL === "1" || CLICKHOUSE_USE_SSL.toLowerCase() === "true"
-      ? "https"
-      : "http";
-  console.log(
-    `Connecting to Clickhouse at ${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-  );
-  return createClient({
-    url: `${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-    username: CLICKHOUSE_USERNAME,
-    password: CLICKHOUSE_PASSWORD,
-    database: CLICKHOUSE_DB,
-  });
-};
+const AGGREGATIONS_DIR_PATH = process.argv[1];
 
 const createAggregation = async (chClient: ClickHouseClient, path: string) => {
   const fileName = getFileName(path);

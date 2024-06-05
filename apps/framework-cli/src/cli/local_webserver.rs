@@ -25,7 +25,6 @@ use hyper_util::rt::TokioIo;
 use hyper_util::{rt::TokioExecutor, server::conn::auto};
 use log::debug;
 use log::error;
-use log::info;
 use rdkafka::error::KafkaError;
 use rdkafka::message::OwnedMessage;
 use rdkafka::producer::FutureRecord;
@@ -75,8 +74,6 @@ async fn create_client(
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
     // local only for now
     let url = format!("http://{}:{}", host, 4001).parse::<hyper::Uri>()?;
-
-    info!("Creating client for route: {:?}", req.uri().to_string());
 
     let host = url.host().expect("uri has no host");
     let port = url.port_u16().unwrap();

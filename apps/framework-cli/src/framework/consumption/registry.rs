@@ -25,7 +25,6 @@ impl ConsumptionProcessRegistry {
     pub fn start(&mut self, consumption: Consumption) -> Result<(), ConsumptionError> {
         info!("Starting consumption {:?}...", consumption);
         let child = consumption.start(self.clickhouse_config.clone())?;
-        info!("Child id george: {:?}", child.id());
 
         self.registry.insert(consumption.id(), child);
 

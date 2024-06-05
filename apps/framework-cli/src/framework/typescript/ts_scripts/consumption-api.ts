@@ -1,82 +1,20 @@
-import {
-  ClickHouseClient,
-  ResultSet,
-  createClient,
-} from "@clickhouse/client-web";
+import { ResultSet } from "@clickhouse/client-web";
 import http from "http";
 import process from "node:process";
-import { createClickhouseParameter, Sql, sql } from "@514labs/moose-lib";
+import { getClickhouseClient, MooseClient, sql } from "@514labs/moose-lib";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
 
-console.log("Starting consumption API");
-
-const [
-  ,
-  CONSUMPTION_DIR_PATH,
-  CLICKHOUSE_DB,
-  CLICKHOUSE_HOST,
-  CLICKHOUSE_PORT,
-  CLICKHOUSE_USERNAME,
-  CLICKHOUSE_PASSWORD,
-  CLICKHOUSE_USE_SSL,
-] = process.argv;
-
-const getClickhouseClient = () => {
-  const protocol =
-    CLICKHOUSE_USE_SSL === "1" || CLICKHOUSE_USE_SSL.toLowerCase() === "true"
-      ? "https"
-      : "http";
-  console.log(
-    `Connecting to Clickhouse at ${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-  );
-  return createClient({
-    url: `${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-    username: CLICKHOUSE_USERNAME,
-    password: CLICKHOUSE_PASSWORD,
-    database: CLICKHOUSE_DB,
-  });
-};
+const CONSUMPTION_DIR_PATH = process.argv[1];
 
 const createPath = (path: string) => `${CONSUMPTION_DIR_PATH}${path}.ts`;
 
-function emptyIfUndefined(value: string | undefined): string {
-  return value === undefined ? "" : value;
-}
-
-class MooseClient {
-  client: ClickHouseClient;
-  constructor() {
-    this.client = getClickhouseClient();
-  }
-
-  async query(sql: Sql) {
-    const parameterizedStubs = sql.values.map((v, i) =>
-      createClickhouseParameter(i, v),
-    );
-
-    const query = sql.strings
-      .map((s, i) =>
-        s != "" ? `${s}${emptyIfUndefined(parameterizedStubs[i])}` : "",
-      )
-      .join("");
-
-    const query_params = sql.values.reduce(
-      (acc: Record<string, unknown>, v, i) => ({ ...acc, [`p${i}`]: v }),
-      {},
-    );
-
-    return this.client.query({
-      query,
-      query_params,
-      format: "JSONEachRow",
-    });
-  }
-}
-
-const apiHandler = async (req, res) => {
-  const url = new URL(req.url, "https://localhost");
+const apiHandler = async (
+  req: http.IncomingMessage,
+  res: http.ServerResponse,
+) => {
+  const url = new URL(req.url || "", "https://localhost");
   const fileName = url.pathname;
 
   const pathName = createPath(fileName);
@@ -86,7 +24,7 @@ const apiHandler = async (req, res) => {
   const userFuncModule = await import(pathName);
 
   const result = await userFuncModule.default(searchParams, {
-    client: new MooseClient(),
+    client: new MooseClient(getClickhouseClient()),
     sql: sql,
   });
 

@@ -1,3 +1,4 @@
+import { createClient } from "@clickhouse/client-web";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -29,4 +30,31 @@ export const getFileName = (filePath: string) => {
     return matches[1];
   }
   return "";
+};
+
+const [
+  ,
+  ,
+  CLICKHOUSE_DB,
+  CLICKHOUSE_HOST,
+  CLICKHOUSE_PORT,
+  CLICKHOUSE_USERNAME,
+  CLICKHOUSE_PASSWORD,
+  CLICKHOUSE_USE_SSL,
+] = process.argv;
+
+export const getClickhouseClient = () => {
+  const protocol =
+    CLICKHOUSE_USE_SSL === "1" || CLICKHOUSE_USE_SSL.toLowerCase() === "true"
+      ? "https"
+      : "http";
+  console.log(
+    `Connecting to Clickhouse at ${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
+  );
+  return createClient({
+    url: `${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
+    username: CLICKHOUSE_USERNAME,
+    password: CLICKHOUSE_PASSWORD,
+    database: CLICKHOUSE_DB,
+  });
 };

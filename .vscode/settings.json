@@ -10,32 +10,5 @@
   },
   "[typescriptreact]": {
     "editor.defaultFormatter": "esbenp.prettier-vscode"
-  },
-  "deno.enable": true,
-  "sqltools.connections": [
-    {
-      "server": "localhost",
-      "port": 8123,
-      "useHTTPS": false,
-      "database": "default",
-      "username": "panda",
-      "enableTls": false,
-      "previewLimit": 50,
-      "password": "pandapass",
-      "driver": "ClickHouse",
-      "name": "test"
-    },
-    {
-      "server": "localhost",
-      "port": 18123,
-      "useHTTPS": false,
-      "database": "local",
-      "username": "panda",
-      "enableTls": false,
-      "previewLimit": 50,
-      "password": "pandapass",
-      "driver": "ClickHouse",
-      "name": "please"
-    }
-  ]
+  }
 }

@@ -56,9 +56,9 @@ mod tests {
 
     use super::*;
 
-    #[test]
+    #[tokio::test]
     #[ignore]
-    fn test_run() {
+    async fn test_run() {
         // Use these tests by configuring a timeout in the flow runner
         //  consumer = KafkaConsumer(
         //     source_topic,
@@ -76,12 +76,18 @@ mod tests {
             "/Users/timdelisle/Dev/igloo-stack/apps/framework-cli/tests/python/flows/valid",
         );
 
-        let _ = run(redpanda_config, source_topic, target_topic, flow_path);
+        let child = run(redpanda_config, source_topic, target_topic, flow_path).unwrap();
+
+        let output = child.wait_with_output().await.unwrap();
+
+        //print output stdout and stderr
+        println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+        println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
     }
 
-    #[test]
+    #[tokio::test]
     #[ignore]
-    fn test_run_with_invalid_flow_file() {
+    async fn test_run_with_invalid_flow_file() {
         let redpanda_config = RedpandaConfig::default();
         let source_topic = "source";
         let target_topic = "target";
@@ -89,6 +95,12 @@ mod tests {
             "/Users/timdelisle/Dev/igloo-stack/apps/framework-cli/tests/python/flows/invalid",
         );
 
-        run(redpanda_config, source_topic, target_topic, flow_path);
+        let child = run(redpanda_config, source_topic, target_topic, flow_path).unwrap();
+
+        let output = child.wait_with_output().await.unwrap();
+
+        //print output stdout and stderr
+        println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+        println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
     }
 }

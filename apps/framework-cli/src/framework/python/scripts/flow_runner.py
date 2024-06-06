@@ -4,7 +4,6 @@ from datetime import datetime
 import json
 import sys
 from kafka import KafkaConsumer, KafkaProducer
-from runner import hello
 
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -94,6 +93,7 @@ if sasl_config['mechanism'] is not None:
         sasl_plain_password=sasl_config['password'],
         sasl_mechanism=sasl_config['mechanism'],
         security_protocol=args.security_protocol,
+        # consumer_timeout_ms=10000,
         value_deserializer=lambda m: json.loads(m.decode('utf-8'))
     )
 else:
@@ -103,7 +103,7 @@ else:
         client_id= "python_flow_consumer",
         group_id=flow_id,
         bootstrap_servers=broker,
-        consumer_timeout_ms=10000,
+        # consumer_timeout_ms=10000,
         value_deserializer=lambda m: json.loads(m.decode('utf-8'))
     )
 

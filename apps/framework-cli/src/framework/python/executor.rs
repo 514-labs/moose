@@ -34,11 +34,7 @@ pub enum PythonProgram {
     FlowRunner { args: Vec<String> },
 }
 
-impl PythonProgram {
-    pub fn get_path(&self) -> &str {
-        "src/framework/python/scripts/flow_runner.py"
-    }
-}
+pub static FLOW_RUNNER: &str = include_str!("scripts/flow_runner.py");
 
 /// Executes a Python program in a subprocess
 pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Error> {
@@ -47,7 +43,8 @@ pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Erro
     };
 
     Command::new("python3")
-        .arg(program.get_path())
+        .arg("-c")
+        .arg(FLOW_RUNNER)
         .args(get_args)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
@@ -56,7 +53,38 @@ pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Erro
 }
 
 // TESTs
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-// }
+#[cfg(test)]
+mod tests {
+    use std::path::Path;
+
+    use crate::infrastructure::stream::redpanda::RedpandaConfig;
+
+    use super::*;
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_run_python_program() {
+        let redpanda_config = RedpandaConfig::default();
+        let source_topic = "UserActivity_0_0";
+        let target_topic = "ParsedActivity_0_0";
+        let flow_path = Path::new(
+            "/Users/timdelisle/Dev/igloo-stack/apps/framework-cli/tests/python/flows/valid",
+        );
+
+        let program = PythonProgram::FlowRunner {
+            args: vec![
+                source_topic.to_string(),
+                target_topic.to_string(),
+                flow_path.to_str().unwrap().to_string(),
+                redpanda_config.broker,
+            ],
+        };
+
+        let child = run_python_program(program).unwrap();
+        let output = child.wait_with_output().await.unwrap();
+
+        //print output stdout and stderr
+        println!("stdout: {}", String::from_utf8_lossy(&output.stdout));
+        println!("stderr: {}", String::from_utf8_lossy(&output.stderr));
+    }
+}

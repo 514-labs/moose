@@ -45,7 +45,8 @@ pub const DENO_CONSUMPTION_API: &str = "consumption-api.ts";
 pub const CONSUMPTION_HELPERS: &str = "consumption-helpers.ts";
 pub const TS_HELPER_FILE: &str = "ts-helpers.ts";
 
-pub const FLOW_FILE: &str = "flow.ts";
+pub const TS_FLOW_FILE: &str = "flow.ts";
+pub const PY_FLOW_FILE: &str = "flow.py";
 pub const AGGREGATIONS_FILE: &str = "DailyActiveUsers.ts";
 pub const API_FILE: &str = "dailyActiveUsers.ts";
 

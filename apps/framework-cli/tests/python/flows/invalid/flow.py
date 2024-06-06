@@ -7,7 +7,7 @@ class Flow:
 
 
 my_flow = Flow(
-    run=lambda: print("Hello, world!")
+    run=lambda: print("Hello, from the flow, yo!")
 )
 
 @dataclass

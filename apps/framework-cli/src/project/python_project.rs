@@ -35,7 +35,10 @@ impl Default for PythonProject {
         Self {
             name: "new_project".to_string(),
             version: "0.0".to_string(),
-            dependencies: vec!["kafka-python==2.0.2".to_string()],
+            dependencies: vec![
+                "kafka-python-ng==2.2.2".to_string(),
+                "clickhouse_connect==0.7.12".to_string(),
+            ],
         }
     }
 }
@@ -62,6 +65,7 @@ impl PythonProject {
 
         let setup_py = render_setup_py(self.clone())?;
         std::fs::write(setup_py_location, setup_py)?;
+
         Ok(())
     }
 }
@@ -86,7 +90,10 @@ mod tests {
         assert_eq!(project.version, "0.0");
         assert_eq!(
             project.dependencies,
-            vec!["kafka-python==2.0.2".to_string()]
+            vec![
+                "kafka-python-ng==2.2.2".to_string(),
+                "clickhouse_connect==0.7.12".to_string(),
+            ]
         );
     }
 }

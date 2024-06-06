@@ -2,7 +2,10 @@ use std::path::PathBuf;
 
 use tokio::process::Child;
 
-use crate::{framework::typescript, infrastructure::stream::redpanda::RedpandaConfig};
+use crate::{
+    framework::{python, typescript},
+    infrastructure::stream::redpanda::RedpandaConfig,
+};
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
@@ -36,6 +39,12 @@ impl Flow {
     pub fn start(&self, redpanda_config: RedpandaConfig) -> Result<Child, FlowError> {
         match &self.executable.extension() {
             Some(ext) if ext.to_str().unwrap() == "ts" => Ok(typescript::flow::run(
+                redpanda_config,
+                &self.source_topic,
+                &self.target_topic,
+                &self.executable,
+            )?),
+            Some(ext) if ext.to_str().unwrap() == "py" => Ok(python::flow::run(
                 redpanda_config,
                 &self.source_topic,
                 &self.target_topic,

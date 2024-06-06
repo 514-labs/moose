@@ -74,7 +74,7 @@ from dataclasses import dataclass
 # based on the number of unique users who complete a sign-in activity each day.
 
 @dataclass
-Aggregation:
+class Aggregation:
     select: str
     order_by: str
 

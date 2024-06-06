@@ -126,12 +126,8 @@ consumer.subscribe([source_topic])
 
 # Print each message that is consumed
 for message in consumer:
-    print(f"Consumed: {message.value}")
-
     # Parse the message into the input type
     input_data = parse_input(message.value)
-
-    print(input_data)
 
     # Run the flow
     output_data = flow_run(input_data)

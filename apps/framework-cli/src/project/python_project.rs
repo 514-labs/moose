@@ -35,7 +35,10 @@ impl Default for PythonProject {
         Self {
             name: "new_project".to_string(),
             version: "0.0".to_string(),
-            dependencies: vec!["kafka-python-ng==2.2.2".to_string()],
+            dependencies: vec![
+                "kafka-python-ng==2.2.2".to_string(),
+                "clickhouse_connect==0.7.12".to_string(),
+            ],
         }
     }
 }
@@ -87,7 +90,10 @@ mod tests {
         assert_eq!(project.version, "0.0");
         assert_eq!(
             project.dependencies,
-            vec!["kafka-python-ng==2.2.2".to_string()]
+            vec![
+                "kafka-python-ng==2.2.2".to_string(),
+                "clickhouse_connect==0.7.12".to_string(),
+            ]
         );
     }
 }

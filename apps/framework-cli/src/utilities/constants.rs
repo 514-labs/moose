@@ -40,7 +40,8 @@ pub const GITIGNORE: &str = ".gitignore";
 
 pub const TS_FLOW_FILE: &str = "flow.ts";
 pub const PY_FLOW_FILE: &str = "flow.py";
-pub const AGGREGATIONS_FILE: &str = "DailyActiveUsers.ts";
+pub const TS_AGGREGATIONS_FILE: &str = "DailyActiveUsers.ts";
+pub const PY_AGGREGATIONS_FILE: &str = "DailyActiveUsers.py";
 pub const API_FILE: &str = "dailyActiveUsers.ts";
 
 pub const VSCODE_EXT_FILE: &str = "extensions.json";

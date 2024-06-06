@@ -1,0 +1,8 @@
+{
+  "name": "stuff",
+  "devDependencies": {
+    "typescript": "latest",
+    "ts-patch": "latest",
+    "@514labs/moose-lib": "latest"
+  }
+}

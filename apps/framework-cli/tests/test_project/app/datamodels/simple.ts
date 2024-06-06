@@ -14,7 +14,7 @@ enum IterationEnum {
   C,
 }
 
-interface MyModel {
+export interface MyModel {
   name: Key<string>;
   age: number;
   // abc: MyEnum;

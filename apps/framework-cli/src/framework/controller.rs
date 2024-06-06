@@ -623,6 +623,7 @@ pub async fn process_objects(
 
 #[cfg(test)]
 mod tests {
+    use crate::framework::languages::SupportedLanguages;
 
     #[tokio::test]
     async fn test_get_all_framework_objects() {
@@ -637,9 +638,21 @@ mod tests {
             current_version: "0.0".to_string(),
             names: HashSet::new(),
         };
-        let result =
-            get_all_framework_objects(&mut framework_objects, &schema_dir, "0.0", &aggregations)
-                .await;
+
+        let project = Project::new(
+            &PathBuf::from(manifest_location).join("tests/test_project"),
+            "testing".to_string(),
+            SupportedLanguages::Typescript,
+        );
+        let result = get_all_framework_objects(
+            &mut framework_objects,
+            &schema_dir,
+            "0.0",
+            &aggregations,
+            &project,
+        )
+        .await;
+
         assert!(result.is_ok());
         assert_eq!(framework_objects.len(), 2);
     }

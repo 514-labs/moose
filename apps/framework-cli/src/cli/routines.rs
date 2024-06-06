@@ -424,7 +424,7 @@ async fn crawl_schema(
         &schema_dir,
         project.version(),
         &aggregations,
-        &project,
+        project,
     )
     .await?;
 

@@ -54,6 +54,7 @@ pub fn extract_data_model_from_file(
         .arg("tspc")
         .arg("--project")
         .arg(".moose/tsconfig.json")
+        .current_dir(&project.project_location)
         .spawn()?
         .wait()
         .map_err(|err| TypescriptCompilerError(Some(err)))?;
@@ -76,9 +77,53 @@ pub fn extract_data_model_from_file(
 
 #[cfg(test)]
 mod tests {
+    use crate::framework::languages::SupportedLanguages;
     use crate::framework::{
         data_model::parser::parse_data_model_file, typescript::parser::extract_data_model_from_file,
     };
+    use crate::project::Project;
+    use lazy_static::lazy_static;
+    use std::path::PathBuf;
+    use std::process::Command;
+    use std::sync::Mutex;
+
+    lazy_static! {
+        static ref TS_COMPILER_SERIAL_RUN: Mutex<()> = Mutex::new(());
+        static ref TEST_PROJECT: Project = {
+            Command::new("pnpm")
+                .arg("run")
+                .arg("build")
+                .arg("--filter=moose-lib")
+                .current_dir("../../")
+                .spawn()
+                .unwrap()
+                .wait()
+                .unwrap();
+
+            Command::new("npm")
+                .arg("i")
+                .current_dir("./tests/test_project")
+                .spawn()
+                .unwrap()
+                .wait()
+                .unwrap();
+
+            Command::new("cp")
+                .arg("-r")
+                .arg("../../packages/ts-moose-lib/dist/")
+                .arg("./tests/test_project/node_modules/@514labs/moose-lib/dist/")
+                .spawn()
+                .unwrap()
+                .wait()
+                .unwrap();
+
+            Project::new(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/test_project"),
+                "testing".to_string(),
+                SupportedLanguages::Typescript,
+            )
+        };
+    }
 
     #[test]
     fn test_parse_schema_file() {
@@ -86,77 +131,82 @@ mod tests {
 
         let test_file = current_dir.join("tests/psl/simple.prisma");
 
-        let result = parse_data_model_file(&test_file);
+        let result = parse_data_model_file(&test_file, &TEST_PROJECT);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_ts_mapper() {
-        let current_dir = std::env::current_dir().unwrap();
+        let _lock = TS_COMPILER_SERIAL_RUN.lock();
 
-        let test_file = current_dir.join("tests/ts/simple.ts");
+        let test_file = TEST_PROJECT.schemas_dir().join("simple.ts");
 
-        let result = extract_data_model_from_file(&test_file);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT);
+
         assert!(result.is_ok());
+        println!("{:?}", result.unwrap().models)
     }
 
     #[test]
     fn test_parse_typescript_file() {
-        let current_dir = std::env::current_dir().unwrap();
+        let _lock = TS_COMPILER_SERIAL_RUN.lock();
 
-        let test_file = current_dir.join("tests/ts/simple.ts");
+        let test_file = TEST_PROJECT.schemas_dir().join("simple.ts");
 
-        let result = extract_data_model_from_file(&test_file);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT);
 
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_parse_import_typescript_file() {
-        let current_dir = std::env::current_dir().unwrap();
+        let _lock = TS_COMPILER_SERIAL_RUN.lock();
 
-        let test_file = current_dir.join("tests/ts/import.ts");
+        let test_file = TEST_PROJECT.schemas_dir().join("import.ts");
 
-        let result = extract_data_model_from_file(&test_file);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_parse_extend_typescript_file() {
-        let current_dir = std::env::current_dir().unwrap();
+        let _lock = TS_COMPILER_SERIAL_RUN.lock();
 
-        let test_file = current_dir.join("tests/ts/extend.m.ts");
+        let test_file = TEST_PROJECT.schemas_dir().join("extend.m.ts");
 
-        let result = extract_data_model_from_file(&test_file);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT);
         assert!(result.is_ok());
     }
 
     #[test]
     fn test_ts_syntax_error() {
-        let current_dir = std::env::current_dir().unwrap();
+        let _lock = TS_COMPILER_SERIAL_RUN.lock();
 
-        let test_file = current_dir.join("tests/ts/syntax_error.ts");
+        let test_file = TEST_PROJECT.schemas_dir().join("syntax_error.ts");
 
-        let result = extract_data_model_from_file(&test_file);
+        // The TS compiler prints this, which is forwarded to the user's console
+        // app/datamodels/syntax_error.ts(7,23): error TS1005: ',' expected.
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT);
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
-            r#"Typescript Parser - Invalid typescript file, please refer to the documentation for an example of a valid typescript file
-Expected ',', got ';'"#
+            "Failed to parse the typescript file"
         );
     }
 
     #[test]
     fn test_ts_missing_type() {
-        let current_dir = std::env::current_dir().unwrap();
+        let _lock = TS_COMPILER_SERIAL_RUN.lock();
 
-        let test_file = current_dir.join("tests/ts/type_missing.ts");
+        let test_file = TEST_PROJECT.schemas_dir().join("type_missing.ts");
 
-        let result = extract_data_model_from_file(&test_file);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT);
         assert!(result.is_err());
+        // The TS compiler prints this, which is forwarded to the user's console
+        // app/datamodels/type_missing.ts(2,5): error TS7008: Member 'foo' implicitly has an 'any' type.
         assert_eq!(
             result.err().unwrap().to_string(),
-            "Typescript Parser - Missing type annotation for foo"
+            "Failed to parse the typescript file"
         );
     }
 }

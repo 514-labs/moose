@@ -12,7 +12,9 @@ export const enumConvert = (enumType: ts.Type): DataEnum => {
   const name = enumType.symbol.name;
 
   // an enum is the union of the values
-  const values = (enumType as UnionType).types;
+  const values = enumType.isUnion()
+    ? (enumType as UnionType).types
+    : [enumType];
   const allStrings = values.every((v) => v.isStringLiteral());
   const allIntegers = values.every(
     (v) => v.isNumberLiteral() && Number.isInteger(v.value),

@@ -294,7 +294,7 @@ impl Project {
 
                 std::fs::File::create(self.schemas_dir().join("__init__.py"))?;
                 std::fs::File::create(self.aggregations_dir().join("__init__.py"))?;
-                std::fs::File::create(self.apis_dir().join("__init__.py"))?;
+                std::fs::File::create(self.consumption_dir().join("__init__.py"))?;
 
                 flow_file.write_all(PYTHON_BASE_FLOW_TEMPLATE.as_bytes())?;
             }

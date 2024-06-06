@@ -112,13 +112,12 @@ const startProducer = async (): Promise<void> => {
 };
 
 const handleMessage = async (
-  targetTopic: string,
   flowFn: FlowFunction,
   message: KafkaMessage,
-): Promise<void> => {
+): Promise<{ value: string } | null> => {
   if (message.value === undefined || message.value === null) {
     log(`Received message with no value, skipping...`);
-    return;
+    return null;
   }
 
   try {
@@ -127,19 +126,17 @@ const handleMessage = async (
     );
 
     if (transformedData) {
-      await producer.send({
-        topic: targetTopic,
-        messages: [{ value: JSON.stringify(transformedData) }],
-      });
-      log(`Sent transformed data to ${targetTopic}`);
+      return { value: JSON.stringify(transformedData) };
     }
   } catch (e) {
     // TODO: Track failure rate
-    error(`Failed to send transformed data`);
+    error(`Failed to transform data`);
     if (e instanceof Error) {
       error(e.message);
     }
   }
+
+  return null;
 };
 
 const startConsumer = async (
@@ -159,10 +156,26 @@ const startConsumer = async (
 
   await consumer.subscribe({ topics: [sourceTopic], fromBeginning: false });
   await consumer.run({
-    eachMessage: async ({ topic, partition, message }) => {
-      await handleMessage(targetTopic, flowFunction, message);
+    eachBatchAutoResolve: true,
+    eachBatch: async ({ batch }) => {
+      const messages = await Promise.all(
+        batch.messages.map((message) => handleMessage(flowFunction, message)),
+      );
+
+      const filteredMessages = messages.filter((msg) => msg !== null);
+
+      if (filteredMessages.length > 0) {
+        await producer.send({
+          topic: targetTopic,
+          messages: filteredMessages as { value: string }[],
+        });
+        log(
+          `Sent ${filteredMessages.length} transformed data to ${targetTopic}`,
+        );
+      }
     },
   });
+
   log("Consumer is running...");
 };
 

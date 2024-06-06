@@ -5,7 +5,7 @@ Data Models are foundational to your MooseJS application. Using Data Models, you
 Data Models look like this:
 
 ```ts filename="datamodels/models.ts" copy
-type Key<T extends string | number> = T;
+import { Key } from "@514labs/moose-lib";
 
 export interface UserActivity {
   eventId: Key<string>;

@@ -29,12 +29,13 @@ use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
+use crate::framework::python::templates::PTYHON_BASE_AGG_SAMPLE_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_FLOW_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::BASE_APIS_SAMPLE_TEMPLATE;
 use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
-    BASE_AGGREGATION_SAMPLE_TEMPLATE, TS_BASE_FLOW_SAMPLE_TEMPLATE,
+    TS_BASE_AGGREGATION_SAMPLE_TEMPLATE, TS_BASE_FLOW_SAMPLE_TEMPLATE,
 };
 use crate::framework::typescript::templates::{
     VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
@@ -285,6 +286,8 @@ impl Project {
                         .replace("{{project_name}}", &self.name())
                         .as_bytes(),
                 )?;
+
+                aggregations_file.write_all(TS_BASE_AGGREGATION_SAMPLE_TEMPLATE.as_bytes())?;
             }
             SupportedLanguages::Python => {
                 base_model_file.write_all(PYTHON_BASE_MODEL_TEMPLATE.as_bytes())?;
@@ -297,10 +300,10 @@ impl Project {
                 std::fs::File::create(self.consumption_dir().join("__init__.py"))?;
 
                 flow_file.write_all(PYTHON_BASE_FLOW_TEMPLATE.as_bytes())?;
+                aggregations_file.write_all(PTYHON_BASE_AGG_SAMPLE_TEMPLATE.as_bytes())?;
             }
         }
 
-        aggregations_file.write_all(BASE_AGGREGATION_SAMPLE_TEMPLATE.as_bytes())?;
         apis_file.write_all(BASE_APIS_SAMPLE_TEMPLATE.as_bytes())?;
 
         Ok(())

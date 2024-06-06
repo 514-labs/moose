@@ -304,7 +304,7 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     process_flows_changes(&project, &mut flows_process_registry).await?;
 
     let mut aggregations_process_registry =
-        AggregationProcessRegistry::new(project.clickhouse_config.clone());
+        AggregationProcessRegistry::new(project.language, project.clickhouse_config.clone());
     process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
 
     let mut consumption_process_registry =
@@ -369,7 +369,7 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     process_flows_changes(&project, &mut flows_process_registry).await?;
 
     let mut aggregations_process_registry =
-        AggregationProcessRegistry::new(project.clickhouse_config.clone());
+        AggregationProcessRegistry::new(project.language, project.clickhouse_config.clone());
     process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
 
     let mut consumption_process_registry =

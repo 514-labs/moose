@@ -46,7 +46,7 @@ def get_agg_from_file(path):
     agg = import_module(get_file_name(path), package=agg_dir_path)
 
     # Find the Aggregation definition in the module
-    agg_def = agg.Aggegration
+    agg_def = agg.Aggregration
 
     # Find the Aggregation objects in the module
     agg_objs = [obj for obj in dir(agg) if isinstance(

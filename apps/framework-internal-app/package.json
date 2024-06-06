@@ -12,7 +12,7 @@
     "kafkajs": "^2.2.4"
   },
   "devDependencies": {
-    "@514labs/moose-cli": "0.3.387",
+    "@514labs/moose-cli": "0.3.392",
     "typescript": "^5.4.0",
     "@types/node": "^20.12.12"
   }

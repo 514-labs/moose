@@ -243,7 +243,7 @@ importers:
     dependencies:
       "@514labs/moose-lib":
         specifier: latest
-        version: 0.3.391(@types/node@20.12.12)(typescript@5.4.5)
+        version: 0.3.392
       "@clickhouse/client-web":
         specifier: ^1.0.1
         version: 1.0.2
@@ -255,8 +255,8 @@ importers:
         version: 2.2.4
     devDependencies:
       "@514labs/moose-cli":
-        specifier: 0.3.387
-        version: 0.3.387
+        specifier: 0.3.392
+        version: 0.3.392
       "@types/node":
         specifier: ^20.12.12
         version: 20.12.12
@@ -828,10 +828,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-arm64@0.3.387:
+  /@514labs/moose-cli-darwin-arm64@0.3.392:
     resolution:
       {
-        integrity: sha512-mmwsXCB6TT3bXAsKIhO89N4l23XnxeBejlUoiD+DFT8DtrXQe38Nsz5eDwGDsx7Ukc6fj0RlTEKjmJ3vygO+Dw==,
+        integrity: sha512-2Z2Nu4RFGqx0ri4EFIlygLC4yOUOGr6kOhujTluKqyBedswbhPNksol2THZkUOoIY6nrvUkFihU3dD/U9BQvfg==,
       }
     cpu: [arm64]
     os: [darwin]
@@ -850,10 +850,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-x64@0.3.387:
+  /@514labs/moose-cli-darwin-x64@0.3.392:
     resolution:
       {
-        integrity: sha512-HPY06POtrgpLutfJv8ilZUlR8bm7nkVdawCWP5iATQOvT7xnq/JiAAj8cEofCNEtj3/fqFOLpX2mEV3cHCIRvA==,
+        integrity: sha512-sLN69UVOPoPmUlODd4r9WBTwHewG/yJuVG4bmMqbLwoU/QwHe5mWDQPPDAWxNOQ+Mj6JJy0MCtgoslEon0YsDA==,
       }
     cpu: [x64]
     os: [darwin]
@@ -872,10 +872,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-arm64@0.3.387:
+  /@514labs/moose-cli-linux-arm64@0.3.392:
     resolution:
       {
-        integrity: sha512-z69P4FBM+h3hsA3qeduTI4RDKgis+JyEWIekkN5MXVC5s5ynoteauL79BSz8Y4ka2CeaxTiaOCPRppqpIAQPtA==,
+        integrity: sha512-zyYWr8ABO6Ik/iAULWN2/+uuoZ+r/Q/CZeXsUJ3NoQDEgZKVae8rQ+VVj/eS//s/XoebIjIzSROWKtN5fIpmwA==,
       }
     cpu: [arm64]
     os: [linux]
@@ -894,10 +894,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-x64@0.3.387:
+  /@514labs/moose-cli-linux-x64@0.3.392:
     resolution:
       {
-        integrity: sha512-HbECu7gMaXYR1n2wW11ewF2FKs9UlWyX6ZGzoVWo2PSffmZ1KbkxKSwawUs1Qg08nHQhnGekzFpoOc5Zn3fkiA==,
+        integrity: sha512-HTx/GM8d5oB2iV+yA/33jOuDBPCnRbheYGbsTq6vHpcLI4oh5udZuZF+G/Jt1i+ZJql8aZk+veQsnZKT8/SknA==,
       }
     cpu: [x64]
     os: [linux]
@@ -918,36 +918,30 @@ packages:
       "@514labs/moose-cli-linux-x64": 0.3.205
     dev: false
 
-  /@514labs/moose-cli@0.3.387:
+  /@514labs/moose-cli@0.3.392:
     resolution:
       {
-        integrity: sha512-yBiHu0kY5NTqIeYxuTE7nmelbkY/TXRK67frWIhkloCsklzhWPZSmNJLgkFB8I1fov3jsIvruvxtWowTlKLX7A==,
+        integrity: sha512-bRxA5KVAfYDG+N0ZGT+GbJodLe/MoO94TOy2s6OEt/9pR9998U1dP/zlUle2czfdBnm1HoW7aycdb1IzwrG8xw==,
       }
     hasBin: true
     optionalDependencies:
-      "@514labs/moose-cli-darwin-arm64": 0.3.387
-      "@514labs/moose-cli-darwin-x64": 0.3.387
-      "@514labs/moose-cli-linux-arm64": 0.3.387
-      "@514labs/moose-cli-linux-x64": 0.3.387
+      "@514labs/moose-cli-darwin-arm64": 0.3.392
+      "@514labs/moose-cli-darwin-x64": 0.3.392
+      "@514labs/moose-cli-linux-arm64": 0.3.392
+      "@514labs/moose-cli-linux-x64": 0.3.392
     dev: true
 
-  /@514labs/moose-lib@0.3.391(@types/node@20.12.12)(typescript@5.4.5):
+  /@514labs/moose-lib@0.3.392:
     resolution:
       {
-        integrity: sha512-M9RhMdPwdskiuIImKvBbNW6YmRS6d7zpGdDrzuvGp85dfeQq5fp7/nloRjbPTuw01Y9NG2vQHHIclLQipaWl3w==,
+        integrity: sha512-0TyssqZ/IsKTVM9s/6gundSim0LtBGxmk1tcomq1EUDrw3w9BKYzppKZ4p2QJOZKNsF3qZjGiYoG8unuXoHlvQ==,
       }
     hasBin: true
     dependencies:
       "@clickhouse/client-web": 1.0.2
       fastq: 1.17.1
       kafkajs: 2.2.4
-      ts-node: 10.9.2(@types/node@20.12.12)(typescript@5.4.5)
       ts-patch: 3.1.2
-    transitivePeerDependencies:
-      - "@swc/core"
-      - "@swc/wasm"
-      - "@types/node"
-      - typescript
     dev: false
 
   /@adobe/css-tools@4.3.3:
@@ -2225,16 +2219,6 @@ packages:
       "@clickhouse/client-common": 0.3.1
     dev: false
 
-  /@cspotcode/source-map-support@0.8.1:
-    resolution:
-      {
-        integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==,
-      }
-    engines: { node: ">=12" }
-    dependencies:
-      "@jridgewell/trace-mapping": 0.3.9
-    dev: false
-
   /@esbuild/aix-ppc64@0.19.12:
     resolution:
       {
@@ -3231,16 +3215,6 @@ packages:
     dependencies:
       "@jridgewell/resolve-uri": 3.1.2
       "@jridgewell/sourcemap-codec": 1.4.15
-
-  /@jridgewell/trace-mapping@0.3.9:
-    resolution:
-      {
-        integrity: sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ==,
-      }
-    dependencies:
-      "@jridgewell/resolve-uri": 3.1.2
-      "@jridgewell/sourcemap-codec": 1.4.15
-    dev: false
 
   /@mdx-js/loader@3.0.1(webpack@5.91.0):
     resolution:
@@ -6286,34 +6260,6 @@ packages:
     engines: { node: ">= 10" }
     dev: true
 
-  /@tsconfig/node10@1.0.11:
-    resolution:
-      {
-        integrity: sha512-DcRjDCujK/kCk/cUe8Xz8ZSpm8mS3mNNpta+jGCA6USEDfktlNvm1+IuZ9eTcDbNk41BHwpHHeW+N1lKCz4zOw==,
-      }
-    dev: false
-
-  /@tsconfig/node12@1.0.11:
-    resolution:
-      {
-        integrity: sha512-cqefuRsh12pWyGsIoBKJA9luFu3mRxCA+ORZvA4ktLSzIuCUtWVxGIuXigEwO5/ywWFMZ2QEGKWvkZG1zDMTag==,
-      }
-    dev: false
-
-  /@tsconfig/node14@1.0.3:
-    resolution:
-      {
-        integrity: sha512-ysT8mhdixWK6Hw3i1V2AeRqZ5WfXg1G43mqoYlM2nc6388Fq5jcXyr5mRsqViLx/GJYdoL0bfXD8nmF+Zn/Iow==,
-      }
-    dev: false
-
-  /@tsconfig/node16@1.0.4:
-    resolution:
-      {
-        integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==,
-      }
-    dev: false
-
   /@types/acorn@4.0.6:
     resolution:
       {
@@ -6874,6 +6820,7 @@ packages:
       }
     dependencies:
       undici-types: 5.26.5
+    dev: true
 
   /@types/node@20.12.13:
     resolution:
@@ -7699,6 +7646,7 @@ packages:
         integrity: sha512-cjkyv4OtNCIeqhHrfS81QWXoCBPExR/J62oyEqepVw8WaQeSqpW2uhuLPh1m9eWhDuOo/jUXVTlifvesOWp/4A==,
       }
     engines: { node: ">=0.4.0" }
+    dev: true
 
   /acorn@7.4.1:
     resolution:
@@ -7877,13 +7825,6 @@ packages:
     resolution:
       {
         integrity: sha512-Wk7TEzl1KqvTGs/uyhmHO/3XLd3t1UeU4IstvPXVzGPM522cTjqjNZ99esCkcL52sjqjo8e8CTBcWhkxvGzoAw==,
-      }
-    dev: false
-
-  /arg@4.1.3:
-    resolution:
-      {
-        integrity: sha512-58S9QDqG0Xx27YwPSt9fJxivjYl432YCwfDMfZ+71RAqUrZef7LrKQZ3LHLOwCS4FLNBplP533Zx895SeOCHvA==,
       }
     dev: false
 
@@ -8946,13 +8887,6 @@ packages:
       - ts-node
     dev: true
 
-  /create-require@1.1.1:
-    resolution:
-      {
-        integrity: sha512-dcKFX3jn0MpIaXjisoRvexIJVEKzaq7z2rZKxf+MSr9TkdmHmsU4m2lcLojrj/FHl8mk5VxMmYA+ftRkP/3oKQ==,
-      }
-    dev: false
-
   /cross-spawn@5.1.0:
     resolution:
       {
@@ -9702,14 +9636,6 @@ packages:
       }
     engines: { node: ^14.15.0 || ^16.10.0 || >=18.0.0 }
     dev: true
-
-  /diff@4.0.2:
-    resolution:
-      {
-        integrity: sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==,
-      }
-    engines: { node: ">=0.3.1" }
-    dev: false
 
   /diff@5.2.0:
     resolution:
@@ -13885,13 +13811,6 @@ packages:
     dependencies:
       semver: 7.6.2
     dev: true
-
-  /make-error@1.3.6:
-    resolution:
-      {
-        integrity: sha512-s8UhlNe7vPKomQhC1qFelMokr/Sc3AgNbso3n74mVPA5LTZwkB9NlXf4XPamLxJE8h0gh73rM94xvwRT2CVInw==,
-      }
-    dev: false
 
   /makeerror@1.0.12:
     resolution:
@@ -18204,40 +18123,6 @@ packages:
         integrity: sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==,
       }
 
-  /ts-node@10.9.2(@types/node@20.12.12)(typescript@5.4.5):
-    resolution:
-      {
-        integrity: sha512-f0FFpIdcHgn8zcPSbf1dRevwt047YMnaiJM3u2w2RewrB+fob/zePZcrOyQoLMMO7aBIddLcQIEK5dYjkLnGrQ==,
-      }
-    hasBin: true
-    peerDependencies:
-      "@swc/core": ">=1.2.50"
-      "@swc/wasm": ">=1.2.50"
-      "@types/node": "*"
-      typescript: ">=2.7"
-    peerDependenciesMeta:
-      "@swc/core":
-        optional: true
-      "@swc/wasm":
-        optional: true
-    dependencies:
-      "@cspotcode/source-map-support": 0.8.1
-      "@tsconfig/node10": 1.0.11
-      "@tsconfig/node12": 1.0.11
-      "@tsconfig/node14": 1.0.3
-      "@tsconfig/node16": 1.0.4
-      "@types/node": 20.12.12
-      acorn: 8.11.3
-      acorn-walk: 8.3.2
-      arg: 4.1.3
-      create-require: 1.1.1
-      diff: 4.0.2
-      make-error: 1.3.6
-      typescript: 5.4.5
-      v8-compile-cache-lib: 3.0.1
-      yn: 3.1.1
-    dev: false
-
   /ts-patch@3.1.2:
     resolution:
       {
@@ -18900,13 +18785,6 @@ packages:
       sade: 1.8.1
     dev: false
 
-  /v8-compile-cache-lib@3.0.1:
-    resolution:
-      {
-        integrity: sha512-wa7YjyUGfNZngI/vtK0UHAN+lgDCxBPCylVXGp0zu59Fz5aiGtNXaq3DhIov063MorB+VfufLh3JlF2KdTK3xg==,
-      }
-    dev: false
-
   /v8-compile-cache@2.4.0:
     resolution:
       {
@@ -19417,14 +19295,6 @@ packages:
       string-width: 4.2.3
       y18n: 5.0.8
       yargs-parser: 21.1.1
-
-  /yn@3.1.1:
-    resolution:
-      {
-        integrity: sha512-Ux4ygGWsu2c7isFWe8Yu1YluJmqVhxqK2cLXNQA5AcC3QfbGNpM7fu0Y8b/z16pXLnFxZYvWhd3fhBY9DLmC6Q==,
-      }
-    engines: { node: ">=6" }
-    dev: false
 
   /yocto-queue@0.1.0:
     resolution:

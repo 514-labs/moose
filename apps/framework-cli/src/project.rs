@@ -54,13 +54,11 @@ use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::PY_FLOW_FILE;
 use crate::utilities::constants::README_PREFIX;
-use crate::utilities::constants::TS_HELPER_FILE;
 use crate::utilities::constants::{
-    AGGREGATIONS_DIR, AGGREGATIONS_FILE, APIS_DIR, FLOWS_DIR, PROJECT_CONFIG_FILE,
+    AGGREGATIONS_DIR, AGGREGATIONS_FILE, CONSUMPTION_DIR, FLOWS_DIR, PROJECT_CONFIG_FILE,
     SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE, TS_FLOW_FILE,
 };
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
-use crate::utilities::constants::{CONSUMPTION_HELPERS, DENO_CONSUMPTION_API, DENO_DIR};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 
 #[derive(Debug, thiserror::Error)]
@@ -245,31 +243,6 @@ impl Project {
         Ok(())
     }
 
-    pub fn create_deno_files(&self) -> Result<(), ProjectFileError> {
-        let deno_dir = self.internal_dir()?.join(DENO_DIR);
-
-        if !deno_dir.exists() {
-            std::fs::create_dir_all(&deno_dir)?;
-        }
-
-        let api_server_file = deno_dir.join(DENO_CONSUMPTION_API);
-        let mut api_file = std::fs::File::create(api_server_file)?;
-        let api_file_content = include_str!("framework/consumption-api.ts");
-        api_file.write_all(api_file_content.as_bytes())?;
-
-        let deno_consumption_helper = deno_dir.join(CONSUMPTION_HELPERS);
-        let mut helper_file = std::fs::File::create(deno_consumption_helper)?;
-        let deno_consumption_helper_content = include_str!("framework/consumption-helpers.ts");
-        helper_file.write_all(deno_consumption_helper_content.as_bytes())?;
-
-        let deno_ts_helpers = deno_dir.join(TS_HELPER_FILE);
-        let mut ts_helper_file = std::fs::File::create(deno_ts_helpers)?;
-        let deno_ts_helper_content = include_str!("framework/ts-helpers.ts");
-        ts_helper_file.write_all(deno_ts_helper_content.as_bytes())?;
-
-        Ok(())
-    }
-
     pub fn create_base_app_files(&self) -> Result<(), std::io::Error> {
         let readme_file_path = self.project_location.join("README.md");
         let base_model_file_path = match self.language {
@@ -288,7 +261,7 @@ impl Project {
             .join(SAMPLE_FLOWS_DEST)
             .join(flow_file_name);
         let aggregations_file_path = self.aggregations_dir().join(AGGREGATIONS_FILE);
-        let apis_file_path = self.apis_dir().join(API_FILE);
+        let apis_file_path = self.consumption_dir().join(API_FILE);
 
         let mut readme_file = std::fs::File::create(readme_file_path)?;
         let mut base_model_file = std::fs::File::create(base_model_file_path)?;
@@ -321,7 +294,7 @@ impl Project {
 
                 std::fs::File::create(self.schemas_dir().join("__init__.py"))?;
                 std::fs::File::create(self.aggregations_dir().join("__init__.py"))?;
-                std::fs::File::create(self.apis_dir().join("__init__.py"))?;
+                std::fs::File::create(self.consumption_dir().join("__init__.py"))?;
 
                 flow_file.write_all(PYTHON_BASE_FLOW_TEMPLATE.as_bytes())?;
             }
@@ -395,14 +368,14 @@ impl Project {
         aggregations_dir
     }
 
-    pub fn apis_dir(&self) -> PathBuf {
-        let apis_dir = self.app_dir().join(APIS_DIR);
+    pub fn consumption_dir(&self) -> PathBuf {
+        let apis_dir = self.app_dir().join(CONSUMPTION_DIR);
 
         if !apis_dir.exists() {
-            std::fs::create_dir_all(&apis_dir).expect("Failed to create apis directory");
+            std::fs::create_dir_all(&apis_dir).expect("Failed to create consumption directory");
         }
 
-        debug!("Apis dir: {:?}", apis_dir);
+        debug!("Consumptions dir: {:?}", apis_dir);
         apis_dir
     }
 

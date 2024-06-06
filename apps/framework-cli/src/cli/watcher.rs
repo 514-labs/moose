@@ -12,6 +12,9 @@ use log::{debug, info, warn};
 use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::RwLock;
 
+use crate::framework::consumption::model::Consumption;
+use crate::framework::consumption::registry::ConsumptionProcessRegistry;
+
 use crate::framework::aggregations::model::Aggregation;
 use crate::framework::aggregations::registry::AggregationProcessRegistry;
 use crate::framework::controller::{
@@ -21,12 +24,13 @@ use crate::framework::controller::{
 use crate::framework::data_model::{is_schema_file, DuplicateModelError};
 use crate::framework::flows::loader::get_all_current_flows;
 use crate::framework::flows::registry::FlowProcessRegistry;
+use crate::framework::registry::model::ProcessRegistries;
 use crate::framework::typescript;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::stream::redpanda;
 use crate::project::AggregationSet;
-use crate::utilities::constants::{AGGREGATIONS_DIR, FLOWS_DIR, SCHEMAS_DIR};
+use crate::utilities::constants::{AGGREGATIONS_DIR, CONSUMPTION_DIR, FLOWS_DIR, SCHEMAS_DIR};
 use crate::utilities::package_managers;
 use crate::{
     framework::controller::RouteMeta,
@@ -232,6 +236,7 @@ struct EventBuckets {
     flows: Vec<Event>,
     aggregations: Vec<Event>,
     data_models: Vec<Event>,
+    consumption: Vec<Event>,
 }
 
 impl EventBuckets {
@@ -241,6 +246,7 @@ impl EventBuckets {
         let mut flows = Vec::new();
         let mut aggregations = Vec::new();
         let mut data_models = Vec::new();
+        let mut consumption = Vec::new();
 
         for event in events {
             if event.kind.is_create() || event.kind.is_modify() || event.kind.is_remove() {
@@ -259,6 +265,11 @@ impl EventBuckets {
                         .any(|component| component.eq_ignore_ascii_case(SCHEMAS_DIR))
                 }) {
                     data_models.push(event);
+                } else if event.paths.iter().any(|path: &PathBuf| {
+                    path.iter()
+                        .any(|component| component.eq_ignore_ascii_case(CONSUMPTION_DIR))
+                }) {
+                    consumption.push(event);
                 }
             }
         }
@@ -266,15 +277,21 @@ impl EventBuckets {
         info!("Flows: {:?}", flows);
         info!("Aggregations: {:?}", aggregations);
         info!("Data Models: {:?}", data_models);
+        info!("Consumption: {:?}", consumption);
+
         Self {
             flows,
             aggregations,
             data_models,
+            consumption,
         }
     }
 
     pub fn non_empty(&self) -> bool {
-        !self.flows.is_empty() || !self.data_models.is_empty() || !self.aggregations.is_empty()
+        !self.flows.is_empty()
+            || !self.data_models.is_empty()
+            || !self.aggregations.is_empty()
+            || !self.consumption.is_empty()
     }
 }
 
@@ -283,8 +300,7 @@ async fn watch(
     framework_object_versions: &mut FrameworkObjectVersions,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     syncing_process_registry: &mut SyncingProcessesRegistry,
-    flows_process_registry: &mut FlowProcessRegistry,
-    aggregations_process_registry: &mut AggregationProcessRegistry,
+    project_registries: &mut ProcessRegistries,
 ) -> Result<(), anyhow::Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let configured_producer = redpanda::create_producer(project.redpanda_config.clone());
@@ -355,7 +371,7 @@ async fn watch(
                                 "Processing {} Flow(s) changes from file watcher",
                                 bucketed_events.flows.len()
                             ),
-                            process_flows_changes(&project, flows_process_registry),
+                            process_flows_changes(&project, &mut project_registries.flows),
                             !project.is_production,
                         )
                         .await?;
@@ -365,7 +381,23 @@ async fn watch(
                                 "Processing {} Aggregation(s) changes from file watcher",
                                 bucketed_events.aggregations.len()
                             ),
-                            process_aggregations_changes(&project, aggregations_process_registry),
+                            process_aggregations_changes(
+                                &project,
+                                &mut project_registries.aggregations,
+                            ),
+                            !project.is_production,
+                        )
+                        .await?;
+                    } else if !bucketed_events.consumption.is_empty() {
+                        with_spinner_async(
+                            &format!(
+                                "Processing {} Consumption(s) changes from file watcher",
+                                bucketed_events.consumption.len()
+                            ),
+                            process_consumption_changes(
+                                &project,
+                                &mut project_registries.consumption,
+                            ),
                             !project.is_production,
                         )
                         .await?;
@@ -420,6 +452,18 @@ pub async fn process_aggregations_changes(
     Ok(())
 }
 
+pub async fn process_consumption_changes(
+    project: &Project,
+    consumption_process_registry: &mut ConsumptionProcessRegistry,
+) -> anyhow::Result<()> {
+    consumption_process_registry.stop().await?;
+    consumption_process_registry.start(Consumption {
+        dir: project.consumption_dir(),
+    })?;
+
+    Ok(())
+}
+
 pub struct FileWatcher;
 
 impl FileWatcher {
@@ -433,8 +477,7 @@ impl FileWatcher {
         framework_object_versions: FrameworkObjectVersions,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
         syncing_process_registry: SyncingProcessesRegistry,
-        flows_process_registry: FlowProcessRegistry,
-        aggregations_process_registry: AggregationProcessRegistry,
+        project_registries: ProcessRegistries,
     ) -> Result<(), Error> {
         show_message!(MessageType::Info, {
             Message {
@@ -445,8 +488,7 @@ impl FileWatcher {
 
         let mut framework_object_versions = framework_object_versions;
         let mut syncing_process_registry = syncing_process_registry;
-        let mut flows_process_registry = flows_process_registry;
-        let mut aggregations_process_registry = aggregations_process_registry;
+        let mut project_registry = project_registries;
 
         tokio::spawn(async move {
             if let Err(error) = watch(
@@ -454,8 +496,7 @@ impl FileWatcher {
                 &mut framework_object_versions,
                 route_table,
                 &mut syncing_process_registry,
-                &mut flows_process_registry,
-                &mut aggregations_process_registry,
+                &mut project_registry,
             )
             .await
             {

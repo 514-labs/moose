@@ -7,6 +7,9 @@
   "files": [
     "dist"
   ],
+  "bin": {
+    "ts-node": "node_modules/ts-node/dist/bin.js"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use log::info;
 use tokio::process::Child;
 
-use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use crate::{infrastructure::stream::redpanda::RedpandaConfig, utilities::system::kill_child};
 
 use super::model::{flow_id, Flow, FlowError};
 
@@ -45,7 +45,7 @@ impl FlowProcessRegistry {
         info!("Stopping flow {:?}...", flow_id);
 
         if let Some(running_flow) = self.registry.get_mut(&flow_id) {
-            running_flow.kill().await?;
+            kill_child(running_flow).await?;
             self.registry.remove(&flow_id);
         }
 
@@ -55,7 +55,7 @@ impl FlowProcessRegistry {
     pub async fn stop_all(&mut self) -> Result<(), FlowError> {
         for (id, running_flow) in self.registry.iter_mut() {
             info!("Stopping flow {:?}...", id);
-            running_flow.kill().await?;
+            kill_child(running_flow).await?;
         }
 
         self.registry.clear();

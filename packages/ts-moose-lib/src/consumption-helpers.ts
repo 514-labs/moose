@@ -1,38 +1,3 @@
-const typeMapping = {
-  Int: "number",
-  UInt: "number",
-  UInt8: "number",
-  LowCardinality: "string",
-  UInt16: "number",
-  UInt32: "number",
-  UInt64: "string",
-  UInt128: "string",
-  UInt256: "string",
-  Int8: "number",
-  Int16: "number",
-  Int32: "number",
-  Int64: "string",
-  Int128: "string",
-  Int256: "string",
-  Float32: "number",
-  Float64: "number",
-  Decimal: "number",
-  Bool: "boolean",
-  String: "string",
-  FixedString: "string",
-  UUID: "string",
-  Date32: "string",
-  Date64: "string",
-  DateTime32: "string",
-  DateTime64: "string",
-  IPv4: "string",
-  IPv6: "string",
-};
-
-export const mapFromClickHouseType = (clickHouseType: string) => {
-  return typeMapping[clickHouseType] || "string";
-};
-
 /**
  * Convert the JS type (source is JSON format by API query parameter) to the corresponding ClickHouse type for generating named placeholder of parameterized query.
  * Only support to convert number to Int or Float, boolean to Bool, string to String, other types will convert to String.
@@ -43,7 +8,9 @@ export const mapFromClickHouseType = (clickHouseType: string) => {
  * @returns 'FLoat', 'Int', 'Bool', 'String'
  */
 
-export const mapToClickHouseType = (value: any) => {
+import { ClickHouseClient } from "@clickhouse/client-web";
+
+export const mapToClickHouseType = (value: Value) => {
   if (typeof value === "number") {
     // infer the float or int according to exist remainder or not
     if (value % 1 !== 0) return "Float";
@@ -56,7 +23,10 @@ export const mapToClickHouseType = (value: any) => {
   return "String";
 };
 
-export function createClickhouseParameter(parameterIndex, value) {
+export function createClickhouseParameter(
+  parameterIndex: number,
+  value: Value,
+) {
   // ClickHouse use {name:type} be a placeholder, so if we only use number string as name e.g: {1:Unit8}
   // it will face issue when converting to the query params => {1: value1}, because the key is value not string type, so here add prefix "p" to avoid this issue.
   return `{p${parameterIndex}:${mapToClickHouseType(value)}}`;
@@ -66,7 +36,7 @@ export function createClickhouseParameter(parameterIndex, value) {
 /**
  * Values supported by SQL engine.
  */
-export type Value = unknown;
+export type Value = string | number | boolean | Date;
 
 /**
  * Supported value or SQL instance.
@@ -133,9 +103,43 @@ export class Sql {
   }
 }
 
-export default function sql(
+export function sql(
   strings: readonly string[],
   ...values: readonly RawValue[]
 ) {
   return new Sql(strings, values);
+}
+
+function emptyIfUndefined(value: string | undefined): string {
+  return value === undefined ? "" : value;
+}
+
+export class MooseClient {
+  client: ClickHouseClient;
+  constructor(client: ClickHouseClient) {
+    this.client = client;
+  }
+
+  async query(sql: Sql) {
+    const parameterizedStubs = sql.values.map((v, i) =>
+      createClickhouseParameter(i, v),
+    );
+
+    const query = sql.strings
+      .map((s, i) =>
+        s != "" ? `${s}${emptyIfUndefined(parameterizedStubs[i])}` : "",
+      )
+      .join("");
+
+    const query_params = sql.values.reduce(
+      (acc: Record<string, unknown>, v, i) => ({ ...acc, [`p${i}`]: v }),
+      {},
+    );
+
+    return this.client.query({
+      query,
+      query_params,
+      format: "JSONEachRow",
+    });
+  }
 }

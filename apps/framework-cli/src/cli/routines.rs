@@ -86,11 +86,13 @@ use std::sync::Arc;
 use log::{debug, error, info};
 use tokio::sync::RwLock;
 
-use crate::cli::routines::consumption::start_consumption_process;
-
-use crate::cli::watcher::{process_aggregations_changes, process_flows_changes};
+use crate::cli::watcher::{
+    process_aggregations_changes, process_consumption_changes, process_flows_changes,
+};
 use crate::framework::aggregations::registry::AggregationProcessRegistry;
+use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 use crate::framework::flows::registry::FlowProcessRegistry;
+use crate::framework::registry::model::ProcessRegistries;
 use crate::infrastructure::olap::clickhouse::{
     fetch_table_names, fetch_table_schema, table_schema_to_hash,
 };
@@ -305,14 +307,23 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
         AggregationProcessRegistry::new(project.clickhouse_config.clone());
     process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
 
+    let mut consumption_process_registry =
+        ConsumptionProcessRegistry::new(project.clickhouse_config.clone());
+    process_consumption_changes(&project, &mut consumption_process_registry).await?;
+
+    let project_registries = ProcessRegistries::new(
+        flows_process_registry,
+        aggregations_process_registry,
+        consumption_process_registry,
+    );
+
     let file_watcher = FileWatcher::new();
     file_watcher.start(
         project.clone(),
         framework_object_versions,
         route_table,
         syncing_processes_registry,
-        flows_process_registry,
-        aggregations_process_registry,
+        project_registries,
     )?;
 
     info!("Starting web server...");
@@ -361,7 +372,9 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
         AggregationProcessRegistry::new(project.clickhouse_config.clone());
     process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
 
-    start_consumption_process(&project)?;
+    let mut consumption_process_registry =
+        ConsumptionProcessRegistry::new(project.clickhouse_config.clone());
+    process_consumption_changes(&project, &mut consumption_process_registry).await?;
 
     info!("Starting web server...");
     let server_config = project.http_server_config.clone();

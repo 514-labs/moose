@@ -8,8 +8,6 @@ use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 
 use super::executor;
 
-const AGGREGATION_RUNNER_WRAPPER: &str = include_str!("scripts/aggregations_runner.py");
-
 pub fn run(
     clickhouse_config: ClickHouseConfig,
     aggregations_path: &Path,

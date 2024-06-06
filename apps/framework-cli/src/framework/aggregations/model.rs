@@ -5,7 +5,6 @@ use tokio::process::Child;
 use crate::{
     framework::{languages::SupportedLanguages, python, typescript},
     infrastructure::olap::clickhouse::config::ClickHouseConfig,
-    project::Project,
 };
 
 #[derive(Debug, thiserror::Error)]

@@ -5,7 +5,7 @@ use tokio::process::Child;
 
 use crate::{
     framework::languages::SupportedLanguages,
-    infrastructure::olap::clickhouse::config::ClickHouseConfig, project::Project,
+    infrastructure::olap::clickhouse::config::ClickHouseConfig,
 };
 
 use super::model::{Aggregation, AggregationError};

@@ -9,7 +9,7 @@ export default function run(event: UserActivity): ParsedActivity {
   // Convert local timestamp to UTC and return new ParsedActivity object.
   return {
     eventId: event.eventId, // Retain original event ID.
-    userId: "puid" + event.userId, // Example: Prefix user ID.
+    userId: "puid2" + event.userId, // Example: Prefix user ID.
     activity: event.activity, // Copy activity unchanged.
     timestamp: new Date(event.timestamp.toUTCString()), // Convert timestamp to UTC.
   };

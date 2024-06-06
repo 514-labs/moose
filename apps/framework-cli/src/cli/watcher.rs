@@ -24,6 +24,7 @@ use crate::framework::controller::{
 use crate::framework::data_model::{is_schema_file, DuplicateModelError};
 use crate::framework::flows::loader::get_all_current_flows;
 use crate::framework::flows::registry::FlowProcessRegistry;
+use crate::framework::registry::model::ProcessRegistries;
 use crate::framework::typescript;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
@@ -299,9 +300,7 @@ async fn watch(
     framework_object_versions: &mut FrameworkObjectVersions,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     syncing_process_registry: &mut SyncingProcessesRegistry,
-    flows_process_registry: &mut FlowProcessRegistry,
-    aggregations_process_registry: &mut AggregationProcessRegistry,
-    consumption_process_registry: &mut ConsumptionProcessRegistry,
+    project_registries: &mut ProcessRegistries,
 ) -> Result<(), anyhow::Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let configured_producer = redpanda::create_producer(project.redpanda_config.clone());
@@ -372,7 +371,7 @@ async fn watch(
                                 "Processing {} Flow(s) changes from file watcher",
                                 bucketed_events.flows.len()
                             ),
-                            process_flows_changes(&project, flows_process_registry),
+                            process_flows_changes(&project, &mut project_registries.flows),
                             !project.is_production,
                         )
                         .await?;
@@ -382,7 +381,10 @@ async fn watch(
                                 "Processing {} Aggregation(s) changes from file watcher",
                                 bucketed_events.aggregations.len()
                             ),
-                            process_aggregations_changes(&project, aggregations_process_registry),
+                            process_aggregations_changes(
+                                &project,
+                                &mut project_registries.aggregations,
+                            ),
                             !project.is_production,
                         )
                         .await?;
@@ -392,7 +394,10 @@ async fn watch(
                                 "Processing {} Consumption(s) changes from file watcher",
                                 bucketed_events.consumption.len()
                             ),
-                            process_consumption_changes(&project, consumption_process_registry),
+                            process_consumption_changes(
+                                &project,
+                                &mut project_registries.consumption,
+                            ),
                             !project.is_production,
                         )
                         .await?;
@@ -472,9 +477,7 @@ impl FileWatcher {
         framework_object_versions: FrameworkObjectVersions,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
         syncing_process_registry: SyncingProcessesRegistry,
-        flows_process_registry: FlowProcessRegistry,
-        aggregations_process_registry: AggregationProcessRegistry,
-        consumption_process_registry: ConsumptionProcessRegistry,
+        project_registries: ProcessRegistries,
     ) -> Result<(), Error> {
         show_message!(MessageType::Info, {
             Message {
@@ -485,9 +488,7 @@ impl FileWatcher {
 
         let mut framework_object_versions = framework_object_versions;
         let mut syncing_process_registry = syncing_process_registry;
-        let mut flows_process_registry = flows_process_registry;
-        let mut aggregations_process_registry = aggregations_process_registry;
-        let mut consumption_process_registry = consumption_process_registry;
+        let mut project_registry = project_registries;
 
         tokio::spawn(async move {
             if let Err(error) = watch(
@@ -495,9 +496,7 @@ impl FileWatcher {
                 &mut framework_object_versions,
                 route_table,
                 &mut syncing_process_registry,
-                &mut flows_process_registry,
-                &mut aggregations_process_registry,
-                &mut consumption_process_registry,
+                &mut project_registry,
             )
             .await
             {

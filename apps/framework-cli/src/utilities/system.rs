@@ -42,7 +42,7 @@ pub async fn kill_child(child: &Child) -> Result<(), KillProcessError> {
     };
 
     let mut kill = tokio::process::Command::new("kill")
-        .args(&["-s", "SIGTERM", &id.to_string()])
+        .args(["-s", "SIGTERM", &id.to_string()])
         .spawn()?;
 
     kill.wait().await?;

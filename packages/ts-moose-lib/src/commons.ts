@@ -32,29 +32,30 @@ export const getFileName = (filePath: string) => {
   return "";
 };
 
-const [
-  ,
-  ,
-  CLICKHOUSE_DB,
-  CLICKHOUSE_HOST,
-  CLICKHOUSE_PORT,
-  CLICKHOUSE_USERNAME,
-  CLICKHOUSE_PASSWORD,
-  CLICKHOUSE_USE_SSL,
-] = process.argv;
+interface ClientConfig {
+  username: string;
+  password: string;
+  database: string;
+  useSSL: string;
+  host: string;
+  port: string;
+}
 
-export const getClickhouseClient = () => {
+export const getClickhouseClient = ({
+  username,
+  password,
+  database,
+  useSSL,
+  host,
+  port,
+}: ClientConfig) => {
   const protocol =
-    CLICKHOUSE_USE_SSL === "1" || CLICKHOUSE_USE_SSL.toLowerCase() === "true"
-      ? "https"
-      : "http";
-  console.log(
-    `Connecting to Clickhouse at ${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-  );
+    useSSL === "1" || useSSL.toLowerCase() === "true" ? "https" : "http";
+  console.log(`Connecting to Clickhouse at ${protocol}://${host}:${port}`);
   return createClient({
-    url: `${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-    username: CLICKHOUSE_USERNAME,
-    password: CLICKHOUSE_PASSWORD,
-    database: CLICKHOUSE_DB,
+    url: `${protocol}://${host}:${port}`,
+    username: username,
+    password: password,
+    database: database,
   });
 };

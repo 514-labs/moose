@@ -23,6 +23,26 @@ class DependencyError extends Error {
 
 const AGGREGATIONS_DIR_PATH = process.argv[1];
 
+const [
+  ,
+  ,
+  CLICKHOUSE_DB,
+  CLICKHOUSE_HOST,
+  CLICKHOUSE_PORT,
+  CLICKHOUSE_USERNAME,
+  CLICKHOUSE_PASSWORD,
+  CLICKHOUSE_USE_SSL,
+] = process.argv;
+
+export const clickhouseConfig = {
+  username: CLICKHOUSE_USERNAME,
+  password: CLICKHOUSE_PASSWORD,
+  database: CLICKHOUSE_DB,
+  useSSL: CLICKHOUSE_USE_SSL,
+  host: CLICKHOUSE_HOST,
+  port: CLICKHOUSE_PORT,
+};
+
 const createAggregation = async (chClient: ClickHouseClient, path: string) => {
   const fileName = getFileName(path);
 
@@ -72,7 +92,7 @@ const asyncWorker = async (task: MvQueueTask) => {
 };
 
 const main = async () => {
-  const chClient = getClickhouseClient();
+  const chClient = getClickhouseClient(clickhouseConfig);
   console.log(`Connected`);
 
   const aggregationFiles = walkDir(AGGREGATIONS_DIR_PATH, ".ts", []);

@@ -203,6 +203,7 @@ pub async fn get_framework_objects_from_schema_file(
             .collect::<HashSet<&str>>(),
     )
     .await?;
+
     for (config_variable_name, config) in data_models_configs.iter() {
         let sanitized_config_name = config_variable_name.trim().to_lowercase();
         match sanitized_config_name.strip_suffix("config") {
@@ -210,6 +211,13 @@ pub async fn get_framework_objects_from_schema_file(
                 let data_model_opt = indexed_models.get_mut(config_name_without_suffix);
                 if let Some(data_model) = data_model_opt {
                     data_model.config = config.clone();
+                } else {
+                    return Err(DataModelError::Other {
+                        message: format!(
+                            "Config with name `{}` does not match any data model. Please make sure that the config variable name matches the pattern: <dataModelName>Config",
+                            config_variable_name
+                        ),
+                    });
                 }
             }
             None => {

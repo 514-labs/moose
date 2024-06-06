@@ -110,17 +110,27 @@ async def async_worker(task):
     await create_aggregation(task['ch_client'], task['path'])
 
 
+
 async def main():
     print(f"Connecting to Clickhouse at {interface}://{host}:{port}")
 
     ch_client = get_client(interface=interface, host=host,
                            port=port, database=db, username=user, password=password)
-    files = walk_dir(agg_dir_path, '.py')
+    py_files = walk_dir(agg_dir_path, '.py')
 
-    print(f"Found {len(files)} aggregations in {agg_dir_path}")
-    print(f"Aggregations: {files}")
+    agg_files = []
 
-    task_defs = [{'ch_client': ch_client, 'path': path, 'retries': len(files)} for path in files]
+    for file in py_files:
+        try:
+            get_agg_from_file(file)
+            agg_files.append(file)
+        except ValueError as err:
+            print(f"Skipping {file}: {err}")
+
+    print(f"Found {len(agg_files)} aggregations in {agg_dir_path}")
+    print(f"Aggregations: {agg_files}")
+
+    task_defs = [{'ch_client': ch_client, 'path': path, 'retries': len(agg_files)} for path in agg_files]
 
     print(f"Creating {len(task_defs)} tasks...")
     print(f"Tasks: {task_defs}")

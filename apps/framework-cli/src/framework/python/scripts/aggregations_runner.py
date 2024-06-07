@@ -46,11 +46,12 @@ def get_agg_from_file(path):
     agg = import_module(get_file_name(path), package=agg_dir_path)
 
     # Find the Aggregation definition in the module
-    agg_def = agg.Aggregration
+    agg_def = agg.Aggregation
 
     # Find the Aggregation objects in the module
     agg_objs = [obj for obj in dir(agg) if isinstance(
         getattr(agg, obj), agg_def)]
+    
 
     # Make sure there is exactly one Aggregation object in the modules
     if len(agg_objs) == 0:
@@ -124,8 +125,8 @@ async def main():
         try:
             get_agg_from_file(file)
             agg_files.append(file)
-        except ValueError as err:
-            print(f"Skipping {file}: {err}")
+        except Exception as err:
+            print(f"Skipping {file} due to error: {err}")
 
     print(f"Found {len(agg_files)} aggregations in {agg_dir_path}")
     print(f"Aggregations: {agg_files}")

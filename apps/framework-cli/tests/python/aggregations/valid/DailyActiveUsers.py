@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 @dataclass
-class Aggegration:
+class Aggregation:
     select: str
     orderBy: str
 
@@ -14,4 +14,4 @@ WHERE activity = 'Login'
 GROUP BY toStartOfDay(timestamp)
 """
 
-agg = Aggegration(select=sql,orderBy="date")
+agg = Aggregation(select=sql,orderBy="date")

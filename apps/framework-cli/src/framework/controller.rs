@@ -642,7 +642,7 @@ mod tests {
 
         let result = get_all_framework_objects(
             &mut framework_objects,
-            &project.schemas_dir(),
+            &project.schemas_dir().join("separate_dir_to_test_get_all"),
             "0.0",
             &aggregations,
             &project,

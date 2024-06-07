@@ -53,7 +53,9 @@ const tsTypeToDataType = (
                     typeName,
                   )[1],
                 }
-              : throwUnknownType(t, fieldName, typeName);
+              : nonNull.isClassOrInterface()
+                ? { name: t.symbol.name, columns: toColumns(nonNull, checker) }
+                : throwUnknownType(t, fieldName, typeName);
 
   return [nullable, dataType];
 };

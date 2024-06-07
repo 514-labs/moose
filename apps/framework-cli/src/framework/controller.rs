@@ -21,8 +21,6 @@ use crate::infrastructure::stream::redpanda::{
     send_with_back_pressure, wait_for_delivery, RedpandaConfig,
 };
 use crate::project::{AggregationSet, Project};
-#[cfg(test)]
-use crate::utilities::constants::SCHEMAS_DIR;
 
 use super::data_model;
 use super::data_model::config::EndpointIngestionFormat;
@@ -629,9 +627,12 @@ mod tests {
     async fn test_get_all_framework_objects() {
         use super::*;
         let manifest_location = env!("CARGO_MANIFEST_DIR");
-        let schema_dir = PathBuf::from(manifest_location)
-            .join("tests/test_project")
-            .join(SCHEMAS_DIR);
+
+        let project = Project::new(
+            &PathBuf::from(manifest_location).join("tests/test_project"),
+            "testing".to_string(),
+            SupportedLanguages::Typescript,
+        );
 
         let mut framework_objects = HashMap::new();
         let aggregations = AggregationSet {
@@ -639,14 +640,9 @@ mod tests {
             names: HashSet::new(),
         };
 
-        let project = Project::new(
-            &PathBuf::from(manifest_location).join("tests/test_project"),
-            "testing".to_string(),
-            SupportedLanguages::Typescript,
-        );
         let result = get_all_framework_objects(
             &mut framework_objects,
-            &schema_dir,
+            &project.schemas_dir(),
             "0.0",
             &aggregations,
             &project,

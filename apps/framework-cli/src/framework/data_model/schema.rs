@@ -216,7 +216,7 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
         // we should probably add a tag to distinguish the object types
         // because we can distinguish them from the field names
         match (values, columns) {
-            (None, None) => Err(A::Error::custom("Missing field: values.")),
+            (None, None) => Err(A::Error::custom("Missing field: values/columns.")),
             (Some(values), _) => Ok(ColumnType::Enum(DataEnum { name, values })),
             (_, Some(columns)) => Ok(ColumnType::Nested(Nested { name, columns })),
         }

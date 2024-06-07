@@ -3,10 +3,9 @@ use std::io::ErrorKind::NotFound;
 use std::path::Path;
 use std::process::Command;
 
-use serde_json::json;
+use serde_json::{json, Value};
 
 use crate::framework::data_model::parser::FileObjects;
-use crate::framework::typescript::parser::TypescriptParsingError::TypescriptCompilerError;
 use crate::project::Project;
 
 #[derive(Debug, thiserror::Error)]
@@ -16,8 +15,17 @@ pub enum TypescriptParsingError {
     #[error("Failure setting up the file structure")]
     FileSystemError(#[from] std::io::Error),
     TypescriptCompilerError(Option<std::io::Error>),
+    #[error("Typescript Parser - Unsupported data type: {type_name}")]
+    UnsupportedDataTypeError {
+        type_name: String,
+    },
+
     #[error("Invalid output from compiler plugin. Possible incompatible versions between moose-lib and moose-cli")]
     DeserializationError(#[from] serde_json::Error),
+
+    OtherError {
+        message: String,
+    },
 }
 
 pub fn extract_data_model_from_file(
@@ -57,9 +65,9 @@ pub fn extract_data_model_from_file(
         .current_dir(&project.project_location)
         .spawn()?
         .wait()
-        .map_err(|err| TypescriptCompilerError(Some(err)))?;
+        .map_err(|err| TypescriptParsingError::TypescriptCompilerError(Some(err)))?;
     if !ts_return_code.success() {
-        return Err(TypescriptCompilerError(None));
+        return Err(TypescriptParsingError::TypescriptCompilerError(None));
     }
     let output = fs::read(
         output_dir.join(
@@ -70,9 +78,30 @@ pub fn extract_data_model_from_file(
                 .replace(".ts", ".json"),
         ),
     )
-    .map_err(|_| TypescriptCompilerError(None))?;
+    .map_err(|e| TypescriptParsingError::OtherError {
+        message: format!("Unable to read output of compiler: {}", e),
+    })?;
 
-    Ok(serde_json::from_slice(&output)?)
+    let output = serde_json::from_slice::<Value>(&output)
+        .map_err(|_| TypescriptParsingError::TypescriptCompilerError(None))?;
+    if let Some(error_type) = output.get("error_type") {
+        if let Some(error_type) = error_type.as_str() {
+            if error_type == "unknown_type" {
+                let type_name = output
+                    .get("type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                return Err(TypescriptParsingError::UnsupportedDataTypeError { type_name });
+            } else if error_type == "unsupported_enum" {
+                return Err(TypescriptParsingError::OtherError {
+                    message: "We do not allow to mix String enums with Number based enums, please choose one".to_string()
+                });
+            }
+        }
+    }
+
+    Ok(serde_json::from_value(output)?)
 }
 
 #[cfg(test)]

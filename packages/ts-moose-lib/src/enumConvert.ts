@@ -11,10 +11,11 @@ export const isEnum = (t: ts.Type): boolean =>
 export const enumConvert = (enumType: ts.Type): DataEnum => {
   const name = enumType.symbol.name;
 
-  // an enum is the union of the values
   const values = enumType.isUnion()
-    ? (enumType as UnionType).types
-    : [enumType];
+    ? // an enum is the union of the values
+      (enumType as UnionType).types
+    : // unless there's only one element
+      [enumType];
   const allStrings = values.every((v) => v.isStringLiteral());
   const allIntegers = values.every(
     (v) => v.isNumberLiteral() && Number.isInteger(v.value),

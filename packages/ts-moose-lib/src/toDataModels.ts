@@ -28,30 +28,11 @@ const convertSourceFile = (
         const name = declaration.name.text;
         const t = checker.getTypeAtLocation(declaration);
 
-        // try {
         const columns: Column[] = toColumns(t, checker);
         output.models.push({
           name,
           columns,
         });
-        // } catch (e) {
-        //   if (e instanceof UnknownType) {
-        //     const unknownType = e.t.getSymbol()?.name;
-        //     fs.writeFileSync(
-        //       `${outputDir}/${name}.json`,
-        //       `Unknown type: ${unknownType}`,
-        //       "utf8",
-        //     );
-        //   } else if (e instanceof UnsupportedEnum) {
-        //     fs.writeFileSync(
-        //       `${outputDir}/${name}.json`,
-        //       `Unsupported enum members in ${e.name}`,
-        //       "utf8",
-        //     );
-        //   } else {
-        //     throw e;
-        //   }
-        // }
       }
       if (isEnumDeclaration(declaration)) {
         const t = checker.getTypeAtLocation(declaration);

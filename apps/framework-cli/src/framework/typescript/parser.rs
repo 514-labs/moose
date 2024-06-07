@@ -144,6 +144,14 @@ mod tests {
                 .wait()
                 .unwrap();
 
+            Command::new("rm")
+                .arg("-rf")
+                .arg("./tests/test_project/node_modules/@514labs/moose-lib/dist/")
+                .spawn()
+                .unwrap()
+                .wait()
+                .unwrap();
+
             Command::new("cp")
                 .arg("-r")
                 .arg("../../packages/ts-moose-lib/dist/")

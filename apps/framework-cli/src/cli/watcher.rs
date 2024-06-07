@@ -18,20 +18,20 @@ use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 use crate::framework::aggregations::model::Aggregation;
 use crate::framework::aggregations::registry::AggregationProcessRegistry;
 use crate::framework::controller::{
-    create_or_replace_tables, drop_table, get_framework_objects_from_schema_file,
-    schema_file_path_to_ingest_route, FrameworkObjectVersions,
+    create_or_replace_tables, drop_table, schema_file_path_to_ingest_route,
+};
+use crate::framework::core::code_loader::{
+    get_framework_objects_from_schema_file, FrameworkObjectVersions,
 };
 use crate::framework::data_model::{is_schema_file, DuplicateModelError};
 use crate::framework::flows::loader::get_all_current_flows;
 use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::framework::registry::model::ProcessRegistries;
-use crate::framework::typescript;
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::stream::redpanda;
 use crate::project::AggregationSet;
 use crate::utilities::constants::{AGGREGATIONS_DIR, CONSUMPTION_DIR, FLOWS_DIR, SCHEMAS_DIR};
-use crate::utilities::package_managers;
 use crate::{
     framework::controller::RouteMeta,
     infrastructure::olap::{self, clickhouse::ConfiguredDBClient},
@@ -64,7 +64,7 @@ async fn process_data_models_changes(
 
     let mut new_objects = HashMap::new();
     let mut deleted_objects = HashMap::new();
-    let mut changed_objects: HashMap<String, crate::framework::controller::FrameworkObject> =
+    let mut changed_objects: HashMap<String, crate::framework::core::code_loader::FrameworkObject> =
         HashMap::new();
     let mut moved_objects = HashMap::new();
 
@@ -86,10 +86,10 @@ async fn process_data_models_changes(
 
         if path.exists() {
             let obj_in_new_file = get_framework_objects_from_schema_file(
+                &project,
                 &path,
                 project.version(),
                 &aggregations,
-                &project,
             )
             .await?;
 
@@ -225,13 +225,6 @@ async fn process_data_models_changes(
             .models
             .insert(fo.data_model.name.clone(), fo);
     }
-
-    let sdk_location = typescript::generator::generate_sdk(&project, framework_object_versions)?;
-
-    let package_manager = package_managers::PackageManager::Npm;
-    package_managers::install_packages(&sdk_location, &package_manager)?;
-    package_managers::run_build(&sdk_location, &package_manager)?;
-    package_managers::link_sdk(&sdk_location, None, &package_manager)?;
 
     Ok(())
 }

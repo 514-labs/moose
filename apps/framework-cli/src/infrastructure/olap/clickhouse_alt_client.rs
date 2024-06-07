@@ -4,7 +4,6 @@ use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
-use crate::framework::controller::FrameworkObjectVersions;
 use chrono::{DateTime, Days, NaiveDate};
 use clickhouse_rs::errors::FromSqlError;
 use clickhouse_rs::types::{ColumnType, Row};
@@ -17,6 +16,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 use swc_common::pass::Either;
 
+use crate::framework::core::code_loader::FrameworkObjectVersions;
 use crate::framework::data_model::schema::{DataModel, EnumValue};
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::model::{ClickHouseColumnType, ClickHouseTable};

@@ -16,7 +16,7 @@ use super::olap::clickhouse::model::ClickHouseColumn;
 use super::olap::clickhouse::model::ClickHouseRecord;
 use super::olap::clickhouse::model::ClickHouseRuntimeEnum;
 use super::olap::clickhouse::version_sync::VersionSync;
-use crate::framework::controller::FrameworkObjectVersions;
+use crate::framework::core::code_loader::FrameworkObjectVersions;
 use crate::framework::data_model::schema::Column;
 use crate::framework::data_model::schema::ColumnType;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;

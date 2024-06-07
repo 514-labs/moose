@@ -1,6 +1,8 @@
 //! # CLI Commands
 //! A module for all the commands that can be run from the CLI
 
+use std::path::PathBuf;
+
 use clap::{Args, Subcommand};
 
 use crate::framework::languages::SupportedLanguages;
@@ -86,6 +88,17 @@ pub struct GenerateArgs {
 #[derive(Debug, Subcommand)]
 pub enum GenerateCommand {
     Migrations {},
+    Sdk {
+        /// Language of the SDK to be generated
+        #[arg(default_value_t = SupportedLanguages::Typescript, value_enum, short, long)]
+        language: SupportedLanguages,
+        /// Where the SDK files should be written to
+        #[arg(default_value = "./sdk", short, long)]
+        destination: PathBuf,
+        /// The location of the Moose project
+        #[arg(default_value = ".", short, long)]
+        project_location: PathBuf,
+    },
 }
 
 #[derive(Debug, Args)]

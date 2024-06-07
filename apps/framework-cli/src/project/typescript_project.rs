@@ -1,5 +1,4 @@
-use std::collections::HashMap;
-use std::path::PathBuf;
+use std::{collections::HashMap, path::Path};
 
 use config::{Config, ConfigError, File};
 use serde::{Deserialize, Serialize};
@@ -59,8 +58,8 @@ impl TypescriptProject {
         }
     }
 
-    pub fn load(directory: PathBuf) -> Result<Self, ConfigError> {
-        let mut package_json_location = directory.clone();
+    pub fn load(directory: &Path) -> Result<Self, ConfigError> {
+        let mut package_json_location = directory.to_path_buf();
         package_json_location.push(PACKAGE_JSON);
 
         Config::builder()
@@ -69,8 +68,8 @@ impl TypescriptProject {
             .try_deserialize()
     }
 
-    pub fn write_to_disk(&self, project_location: PathBuf) -> Result<(), TSProjectFileError> {
-        let mut package_json_location = project_location.clone();
+    pub fn write_to_disk(&self, project_location: &Path) -> Result<(), TSProjectFileError> {
+        let mut package_json_location = project_location.to_path_buf();
         package_json_location.push(PACKAGE_JSON);
 
         let json = serde_json::to_string_pretty(&self)?;

@@ -1,3 +1,4 @@
+/// Deprecated - to be removed when we remove old version of the internal app.
 use std::path::{Path, PathBuf};
 
 use crate::{

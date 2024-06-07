@@ -1,8 +1,10 @@
 use serde::Deserialize;
 use std::path::Path;
 
-use crate::framework::{controller::MappingError, prisma, python, typescript};
-use crate::project::Project;
+use crate::{
+    framework::{core::code_loader::MappingError, prisma, python, typescript},
+    project::Project,
+};
 
 use super::schema::{DataEnum, DataModel};
 

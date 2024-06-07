@@ -38,6 +38,8 @@ use crate::cli::{
     routines::{dev::run_local_infrastructure, RoutineController, RunMode},
     settings::{init_config_file, setup_user_directory},
 };
+use crate::framework::core::code_loader::load_framework_objects;
+use crate::framework::sdk::ingest::generate_sdk;
 use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
 use crate::project::Project;
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
@@ -281,7 +283,7 @@ async fn top_command_handler(
                 "local infrastructure".to_string(),
             )))
         }
-        Commands::Generate(generate) => match generate.command {
+        Commands::Generate(generate) => match &generate.command {
             Some(GenerateCommand::Migrations {}) => {
                 info!("Running generate migration command");
                 let project = load_project()?;
@@ -294,6 +296,40 @@ async fn top_command_handler(
                 Ok(RoutineSuccess::success(Message::new(
                     "Generated".to_string(),
                     "migrations".to_string(),
+                )))
+            }
+            Some(GenerateCommand::Sdk {
+                language,
+                destination,
+                project_location,
+            }) => {
+                let project = Project::load(project_location).map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Generate".to_string(),
+                        details: format!("Failed to load project: {:?}", e),
+                    })
+                })?;
+
+                let framework_object_versions =
+                    load_framework_objects(&project).await.map_err(|e| {
+                        RoutineFailure::error(Message {
+                            action: "Generate".to_string(),
+                            details: format!("Failed to load initial project state: {:?}", e),
+                        })
+                    })?;
+
+                generate_sdk(language, &project, &framework_object_versions, destination).map_err(
+                    |e| {
+                        RoutineFailure::error(Message {
+                            action: "Generate".to_string(),
+                            details: format!("Failed to generate SDK: {:?}", e),
+                        })
+                    },
+                )?;
+
+                Ok(RoutineSuccess::success(Message::new(
+                    "Generated".to_string(),
+                    "SDK".to_string(),
                 )))
             }
             None => Err(RoutineFailure::error(Message {

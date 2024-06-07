@@ -1,15 +1,16 @@
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::io::Error;
 use std::io::ErrorKind;
 use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use async_recursion::async_recursion;
 use futures::StreamExt;
 use log::{debug, error, info, warn};
 use rdkafka::producer::DeliveryFuture;
 
+use super::core::code_loader::FrameworkObject;
+use super::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
 use crate::infrastructure::olap::clickhouse::queries::create_alias_for_table;
@@ -20,220 +21,13 @@ use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::{
     send_with_back_pressure, wait_for_delivery, RedpandaConfig,
 };
-use crate::project::{AggregationSet, Project};
-
-use super::data_model;
-use super::data_model::config::EndpointIngestionFormat;
-use super::data_model::config::ModelConfigurationError;
-use super::data_model::is_schema_file;
-use super::data_model::parser::{parse_data_model_file, DataModelParsingError};
-use super::data_model::schema::ColumnType;
-use super::data_model::schema::DataEnum;
-use super::data_model::schema::DataModel;
-use super::data_model::DuplicateModelError;
-
-#[derive(Debug, Clone)]
-pub struct FrameworkObject {
-    pub data_model: DataModel,
-    pub table: Option<ClickHouseTable>,
-    pub topic: String,
-    pub original_file_path: PathBuf,
-}
-
-#[derive(Debug, thiserror::Error)]
-#[error("Failed to build internal framework object representation")]
-#[non_exhaustive]
-pub enum MappingError {
-    ClickhouseError(#[from] crate::infrastructure::olap::clickhouse::errors::ClickhouseError),
-    TypescriptError(#[from] super::typescript::generator::TypescriptGeneratorError),
-}
-
-pub fn framework_object_mapper(
-    s: DataModel,
-    original_file_path: &Path,
-    version: &str,
-) -> Result<FrameworkObject, MappingError> {
-    let clickhouse_table = if s.config.storage.enabled {
-        Some(olap::clickhouse::mapper::std_table_to_clickhouse_table(
-            s.to_table(version),
-        )?)
-    } else {
-        None
-    };
-
-    let topic = format!("{}_{}", s.name.clone(), version.replace('.', "_"));
-
-    Ok(FrameworkObject {
-        data_model: s.clone(),
-        table: clickhouse_table,
-        topic,
-        original_file_path: original_file_path.to_path_buf(),
-    })
-}
-
-#[derive(Debug, Clone)]
-pub struct SchemaVersion {
-    pub base_path: PathBuf,
-    pub models: HashMap<String, FrameworkObject>,
-}
-
-impl SchemaVersion {
-    pub fn get_all_enums(&self) -> Vec<DataEnum> {
-        let mut enums = Vec::new();
-        for model in self.models.values() {
-            for column in &model.data_model.columns {
-                if let ColumnType::Enum(data_enum) = &column.data_type {
-                    enums.push(data_enum.clone());
-                }
-            }
-        }
-        enums
-    }
-
-    pub fn get_all_models(&self) -> Vec<DataModel> {
-        self.models
-            .values()
-            .map(|model| model.data_model.clone())
-            .collect()
-    }
-}
-
-// TODO: save this object somewhere so that we can clean up removed models
-// TODO abstract this with an iterator and some helper functions to make the internal state hidden.
-// That would enable us to do things like .next() and .peek() on the iterator that are now not possible
-#[derive(Debug, Clone)]
-pub struct FrameworkObjectVersions {
-    pub current_version: String,
-    pub current_models: SchemaVersion,
-    pub previous_version_models: HashMap<String, SchemaVersion>,
-}
-
-impl FrameworkObjectVersions {
-    pub fn new(current_version: String, current_schema_directory: PathBuf) -> Self {
-        FrameworkObjectVersions {
-            current_version,
-            current_models: SchemaVersion {
-                base_path: current_schema_directory,
-                models: HashMap::new(),
-            },
-            previous_version_models: HashMap::new(),
-        }
-    }
-}
+use crate::project::Project;
 
 #[derive(Debug, Clone)]
 pub struct RouteMeta {
     pub original_file_path: PathBuf,
     pub topic_name: String,
     pub format: EndpointIngestionFormat,
-}
-
-#[async_recursion]
-pub async fn get_all_framework_objects(
-    framework_objects: &mut HashMap<String, FrameworkObject>,
-    schema_dir: &Path,
-    version: &str,
-    aggregations: &AggregationSet,
-    project: &Project,
-) -> anyhow::Result<()> {
-    if schema_dir.is_dir() {
-        for entry in std::fs::read_dir(schema_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_dir() {
-                debug!("<DCM> Processing directory: {:?}", path);
-                get_all_framework_objects(framework_objects, &path, version, aggregations, project)
-                    .await?;
-            } else if is_schema_file(&path) {
-                debug!("<DCM> Processing file: {:?}", path);
-                let objects =
-                    get_framework_objects_from_schema_file(&path, version, aggregations, project)
-                        .await?;
-                for fo in objects {
-                    DuplicateModelError::try_insert(framework_objects, fo, &path)?;
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-#[derive(Debug, thiserror::Error)]
-#[error("Failed to get the Data Model configuration")]
-#[non_exhaustive]
-pub enum DataModelError {
-    Configuration(#[from] ModelConfigurationError),
-    Parsing(#[from] DataModelParsingError),
-    Mapping(#[from] MappingError),
-
-    #[error("{message}")]
-    Other {
-        message: String,
-    },
-}
-
-pub async fn get_framework_objects_from_schema_file(
-    path: &Path,
-    version: &str,
-    aggregations: &AggregationSet,
-    project: &Project,
-) -> Result<Vec<FrameworkObject>, DataModelError> {
-    let framework_objects = parse_data_model_file(path, project)?;
-    let mut indexed_models = HashMap::new();
-
-    for model in framework_objects.models {
-        if aggregations.current_version == version
-            && aggregations.names.contains(model.name.clone().trim())
-        {
-            return Err(DataModelError::Other {
-                message: format!(
-                    "Model & aggregation {} cannot have the same name",
-                    model.name
-                ),
-            });
-        }
-
-        indexed_models.insert(model.name.clone().trim().to_lowercase(), model);
-    }
-
-    let data_models_configs = data_model::config::get(
-        path,
-        framework_objects
-            .enums
-            .iter()
-            .map(|e| e.name.as_str())
-            .collect::<HashSet<&str>>(),
-    )
-    .await?;
-
-    for (config_variable_name, config) in data_models_configs.iter() {
-        let sanitized_config_name = config_variable_name.trim().to_lowercase();
-        match sanitized_config_name.strip_suffix("config") {
-            Some(config_name_without_suffix) => {
-                let data_model_opt = indexed_models.get_mut(config_name_without_suffix);
-                if let Some(data_model) = data_model_opt {
-                    data_model.config = config.clone();
-                } else {
-                    return Err(DataModelError::Other {
-                        message: format!(
-                            "Config with name `{}` does not match any data model. Please make sure that the config variable name matches the pattern: <dataModelName>Config",
-                            config_variable_name
-                        ),
-                    });
-                }
-            }
-            None => {
-                return Err(DataModelError::Other { message: format!("Config name exports have to be of the format <dataModelName>Config so that they can be correlated to the proper data model. \n {} is not respecting this pattern", config_variable_name) })
-            }
-        }
-    }
-
-    let mut to_return = Vec::new();
-    for model in indexed_models.into_values() {
-        to_return.push(framework_object_mapper(model, path, version)?);
-    }
-
-    Ok(to_return)
 }
 
 pub async fn create_or_replace_version_sync(
@@ -625,39 +419,4 @@ pub async fn process_objects(
         .await?;
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::framework::languages::SupportedLanguages;
-
-    #[tokio::test]
-    async fn test_get_all_framework_objects() {
-        use super::*;
-        let manifest_location = env!("CARGO_MANIFEST_DIR");
-
-        let project = Project::new(
-            &PathBuf::from(manifest_location).join("tests/test_project"),
-            "testing".to_string(),
-            SupportedLanguages::Typescript,
-        );
-
-        let mut framework_objects = HashMap::new();
-        let aggregations = AggregationSet {
-            current_version: "0.0".to_string(),
-            names: HashSet::new(),
-        };
-
-        let result = get_all_framework_objects(
-            &mut framework_objects,
-            &project.schemas_dir().join("separate_dir_to_test_get_all"),
-            "0.0",
-            &aggregations,
-            &project,
-        )
-        .await;
-
-        assert!(result.is_ok());
-        assert_eq!(framework_objects.len(), 2);
-    }
 }

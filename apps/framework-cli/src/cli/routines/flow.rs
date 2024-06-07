@@ -5,13 +5,15 @@ use std::path::PathBuf;
 use std::{fs, io::Write, process::Stdio};
 
 use crate::cli::display::{Message, MessageType};
-use crate::framework::controller::{FrameworkObject, FrameworkObjectVersions};
+use crate::framework::core::code_loader::{
+    load_framework_objects, FrameworkObject, FrameworkObjectVersions,
+};
 use crate::framework::data_model::schema::ColumnType;
 use crate::framework::typescript::templates::BASE_FLOW_TEMPLATE;
 use crate::project::Project;
 use crate::utilities::constants::TS_FLOW_FILE;
 
-use super::{crawl_schema, RoutineFailure, RoutineSuccess};
+use super::{RoutineFailure, RoutineSuccess};
 
 pub struct FlowFileBuilder {
     flow_file_path: PathBuf,
@@ -190,8 +192,7 @@ pub async fn create_flow_file(
     source: String,
     destination: String,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let old_versions = project.old_versions_sorted();
-    let framework_objects = crawl_schema(project, &old_versions).await;
+    let framework_objects = load_framework_objects(project).await;
     let empty_map = HashMap::new();
     let (models, error_occurred) = match &framework_objects {
         Ok(framework_objects) => (&framework_objects.current_models.models, false),

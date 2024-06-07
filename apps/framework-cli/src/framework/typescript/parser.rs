@@ -59,6 +59,7 @@ pub fn extract_data_model_from_file(
         },
     )?;
     let ts_return_code = Command::new("npx")
+        .arg("--yes")
         .arg("tspc")
         .arg("--project")
         .arg(".moose/tsconfig.json")

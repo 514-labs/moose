@@ -1,0 +1,161 @@
+lockfileVersion: "6.0"
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+dependencies:
+  "@514labs/moose-lib":
+    specifier: ^0.0.0
+    version: 0.0.0
+  "@clickhouse/client-web":
+    specifier: ^1.0.1
+    version: 1.1.0
+  fastq:
+    specifier: ^1.17.1
+    version: 1.17.1
+  kafkajs:
+    specifier: ^2.2.4
+    version: 2.2.4
+
+devDependencies:
+  "@514labs/moose-cli":
+    specifier: latest
+    version: 0.3.393
+  "@types/node":
+    specifier: ^20.12.12
+    version: 20.14.2
+  typescript:
+    specifier: ^5.4.0
+    version: 5.4.5
+
+packages:
+  /@514labs/moose-cli-darwin-arm64@0.3.393:
+    resolution:
+      {
+        integrity: sha512-0yRLMQMfYMzWEMCdexCVCtH1uZIa1LhSPgnJpNV/PWaT+CRGQO21ZkXp+rXmI88ElN+LdnsQvTN2KG1a+/Jrew==,
+      }
+    cpu: [arm64]
+    os: [darwin]
+    requiresBuild: true
+    dev: true
+    optional: true
+
+  /@514labs/moose-cli-darwin-x64@0.3.393:
+    resolution:
+      {
+        integrity: sha512-n/VBpxtfiebwNQoEluJsbp8h6no6gQikmx4sURa8cwBboDGV+wbBBYSsFZ3O6Q+FVVtXI8K/Rg1wvZgTTTYPSQ==,
+      }
+    cpu: [x64]
+    os: [darwin]
+    requiresBuild: true
+    dev: true
+    optional: true
+
+  /@514labs/moose-cli-linux-arm64@0.3.393:
+    resolution:
+      {
+        integrity: sha512-tbjes7TnDQwLcM2JBJfxHQw7IvgU7OP/Tc/WGV5ATAIbM1K3Cls09QagTDI9V/iyCwitXgsH77inq7+zo4UULw==,
+      }
+    cpu: [arm64]
+    os: [linux]
+    requiresBuild: true
+    dev: true
+    optional: true
+
+  /@514labs/moose-cli-linux-x64@0.3.393:
+    resolution:
+      {
+        integrity: sha512-w8C9/4d8i6gx+tJQkzzelmSnjRmhgeJ9jE0PnFvaUIZA6H2AEMXds76j2WzkGjtEz8qnElAW3RS6igYJvHSGIQ==,
+      }
+    cpu: [x64]
+    os: [linux]
+    requiresBuild: true
+    dev: true
+    optional: true
+
+  /@514labs/moose-cli@0.3.393:
+    resolution:
+      {
+        integrity: sha512-rdd3fNatWNGqPbOEd7+GkXpgTPf/uG/SEwHSH9anRq51mvdChtd1g2M8CrxbeOSA+BAx9r8f0Kj5H5+XKssYNg==,
+      }
+    hasBin: true
+    optionalDependencies:
+      "@514labs/moose-cli-darwin-arm64": 0.3.393
+      "@514labs/moose-cli-darwin-x64": 0.3.393
+      "@514labs/moose-cli-linux-arm64": 0.3.393
+      "@514labs/moose-cli-linux-x64": 0.3.393
+    dev: true
+
+  /@514labs/moose-lib@0.0.0:
+    resolution:
+      {
+        integrity: sha512-5P2GGsbv5zt1lwIXHxi1S7Db8DMYp05jHJTl8HKRtAUkpp0FW5R5tgdMwxI+sy6E5HUTwLXSSSOvOLoMe+JuDQ==,
+      }
+    dev: false
+
+  /@clickhouse/client-common@1.1.0:
+    resolution:
+      {
+        integrity: sha512-saD6vNg+gIZACT5OSCWn0evLBP+Cs5bBR2Ol24yOQc8AXcw94b1qcDjQEVxms1xzO6heFhZRuPf+YefMNrL3Ig==,
+      }
+    dev: false
+
+  /@clickhouse/client-web@1.1.0:
+    resolution:
+      {
+        integrity: sha512-BicoD3siXefroCgwVvZwCJhAOp+jo62La5yPyZp0FZ38mh7Po2vNS/VU34GRU+Kgc9+DJuDiAOmgclSveXsgMA==,
+      }
+    dependencies:
+      "@clickhouse/client-common": 1.1.0
+    dev: false
+
+  /@types/node@20.14.2:
+    resolution:
+      {
+        integrity: sha512-xyu6WAMVwv6AKFLB+e/7ySZVr/0zLCzOa7rSpq6jNwpqOrUbcACDWC+53d4n2QHOnDou0fbIsg8wZu/sxrnI4Q==,
+      }
+    dependencies:
+      undici-types: 5.26.5
+    dev: true
+
+  /fastq@1.17.1:
+    resolution:
+      {
+        integrity: sha512-sRVD3lWVIXWg6By68ZN7vho9a1pQcN/WBFaAAsDDFzlJjvoGx0P8z7V1t72grFJfJhu3YPZBuu25f7Kaw2jN1w==,
+      }
+    dependencies:
+      reusify: 1.0.4
+    dev: false
+
+  /kafkajs@2.2.4:
+    resolution:
+      {
+        integrity: sha512-j/YeapB1vfPT2iOIUn/vxdyKEuhuY2PxMBvf5JWux6iSaukAccrMtXEY/Lb7OvavDhOWME589bpLrEdnVHjfjA==,
+      }
+    engines: { node: ">=14.0.0" }
+    dev: false
+
+  /reusify@1.0.4:
+    resolution:
+      {
+        integrity: sha512-U9nH88a3fc/ekCF1l0/UP1IosiuIjyTh7hBvXVMHYgVcfGvt897Xguj2UOLDeI5BG2m7/uwyaLVT6fbtCwTyzw==,
+      }
+    engines: { iojs: ">=1.0.0", node: ">=0.10.0" }
+    dev: false
+
+  /typescript@5.4.5:
+    resolution:
+      {
+        integrity: sha512-vcI4UpRgg81oIRUFwR0WSIHKt11nJ7SAVlYNIu+QpqeyXP+gpQJy/Z4+F0aGxSE4MqwjyXvW/TzgkLAx2AGHwQ==,
+      }
+    engines: { node: ">=14.17" }
+    hasBin: true
+    dev: true
+
+  /undici-types@5.26.5:
+    resolution:
+      {
+        integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==,
+      }
+    dev: true

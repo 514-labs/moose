@@ -1,3 +1,5 @@
+import { ConsumptionUtil, ConsumptionHelpers } from "@514labs/moose-lib";
+
 export interface QueryParams {
   step: string;
   from: number;
@@ -17,23 +19,23 @@ export interface QueryParams {
 
 export default async function handle(
   { step = "3600", from = 1715497586, to = 1715843186, hostname }: QueryParams,
-  { client, sql, helpers },
+  { client, sql }: ConsumptionUtil,
 ) {
   const stepNum = parseInt(step);
 
   const hostStub = `%${hostname}%`;
   const hostFilterStub = hostname
-    ? sql`AND ${helpers.column("hostname")} ilike ${hostStub}`
+    ? sql`AND ${ConsumptionHelpers.column("hostname")} ilike ${hostStub}`
     : sql``;
 
   return client.query(
     sql`
       SELECT toStartOfInterval(timestamp, interval ${stepNum} second) as timestamp,
       count(*) as hits,
-      ${helpers.column("hostname")},
+      ${ConsumptionHelpers.column("hostname")},
       FROM PageViewProcessed WHERE timestamp >= fromUnixTimestamp(${from}) AND timestamp < fromUnixTimestamp(${to})
       ${hostFilterStub}
-      GROUP BY timestamp, ${helpers.column("hostname")}
+      GROUP BY timestamp, ${ConsumptionHelpers.column("hostname")}
       ORDER BY timestamp ASC WITH FILL FROM toStartOfInterval(fromUnixTimestamp(${from}), interval ${stepNum} second) TO fromUnixTimestamp(${to}) STEP ${stepNum}
   `,
   );

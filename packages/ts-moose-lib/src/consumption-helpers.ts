@@ -38,7 +38,8 @@ export const getValueFromParameter = (value: any) => {
 export function createClickhouseParameter(
   parameterIndex: number,
   value: Value,
-) {  // ClickHouse use {name:type} be a placeholder, so if we only use number string as name e.g: {1:Unit8}
+) {
+  // ClickHouse use {name:type} be a placeholder, so if we only use number string as name e.g: {1:Unit8}
   // it will face issue when converting to the query params => {1: value1}, because the key is value not string type, so here add prefix "p" to avoid this issue.
   return `{p${parameterIndex}:${mapToClickHouseType(value)}}`;
 }
@@ -159,6 +160,7 @@ export class MooseClient {
 }
 
 export const ConsumptionHelpers = {
+<<<<<<< HEAD
   column: (value: string) => ["Identifier", value] as [string, string],
   table: (value: string) => ["Identifier", value] as [string, string],
 };
@@ -185,3 +187,7 @@ export function join_queries({
     values,
   );
 }
+=======
+  column: (value: string) => ["Identifier", value],
+};
+>>>>>>> 4c115f3f (rebase)

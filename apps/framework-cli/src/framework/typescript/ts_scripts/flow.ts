@@ -104,11 +104,7 @@ const kafka = new Kafka({
 
 const flowIdentifier = `flow-${SOURCE_TOPIC}-${TARGET_TOPIC}`;
 const consumer: Consumer = kafka.consumer({ groupId: flowIdentifier });
-const producer: Producer = kafka.producer({
-  transactionalId: flowIdentifier,
-  maxInFlightRequests: 1,
-  idempotent: true,
-});
+const producer: Producer = kafka.producer({ transactionalId: flowIdentifier });
 
 const startProducer = async (): Promise<void> => {
   await producer.connect();
@@ -116,19 +112,13 @@ const startProducer = async (): Promise<void> => {
 };
 
 const handleMessage = async (
-  sourceTopic: string,
-  targetTopic: string,
-  partition: number,
   flowFn: FlowFunction,
   message: KafkaMessage,
-): Promise<void> => {
+): Promise<{ value: string } | null> => {
   if (message.value === undefined || message.value === null) {
     log(`Received message with no value, skipping...`);
-    return;
+    return null;
   }
-
-  const transaction = await producer.transaction();
-  let didTransform = false;
 
   try {
     const transformedData = await flowFn(
@@ -136,47 +126,17 @@ const handleMessage = async (
     );
 
     if (transformedData) {
-      await transaction.send({
-        topic: targetTopic,
-        messages: [{ value: JSON.stringify(transformedData) }],
-      });
-      didTransform = true;
-      log(`Sent transformed data to ${targetTopic}`);
+      return { value: JSON.stringify(transformedData) };
     }
-
-    if (didTransform) {
-      await transaction.sendOffsets({
-        consumerGroupId: flowIdentifier,
-        topics: [
-          // Not sure why here we are sending the offset of the message we just processed
-          // to the target topic.
-          {
-            topic: sourceTopic,
-            partitions: [{ partition, offset: message.offset }],
-          },
-        ],
-      });
-      await transaction.commit();
-    } else {
-      await transaction.abort();
-    }
-
-    // https://github.com/tulios/kafkajs/issues/540#issuecomment-601443828
-    // Without it, the consumer receives last message on restart.
-    await consumer.commitOffsets([
-      {
-        topic: sourceTopic,
-        partition,
-        offset: (Number(message.offset) + 1).toString(),
-      },
-    ]);
   } catch (e) {
-    await transaction.abort();
-    error(`Failed to send transformed data`);
+    // TODO: Track failure rate
+    error(`Failed to transform data`);
     if (e instanceof Error) {
       error(e.message);
     }
   }
+
+  return null;
 };
 
 const startConsumer = async (
@@ -196,11 +156,26 @@ const startConsumer = async (
 
   await consumer.subscribe({ topics: [sourceTopic], fromBeginning: false });
   await consumer.run({
-    autoCommit: false,
-    eachMessage: async ({ topic, partition, message }) => {
-      await handleMessage(topic, targetTopic, partition, flowFunction, message);
+    eachBatchAutoResolve: true,
+    eachBatch: async ({ batch }) => {
+      const messages = await Promise.all(
+        batch.messages.map((message) => handleMessage(flowFunction, message)),
+      );
+
+      const filteredMessages = messages.filter((msg) => msg !== null);
+
+      if (filteredMessages.length > 0) {
+        await producer.send({
+          topic: targetTopic,
+          messages: filteredMessages as { value: string }[],
+        });
+        log(
+          `Sent ${filteredMessages.length} transformed data to ${targetTopic}`,
+        );
+      }
     },
   });
+
   log("Consumer is running...");
 };
 

@@ -1,8 +1,7 @@
-import fs from "node:fs";
-import path from "node:path";
 import process from "node:process";
-import { ClickHouseClient, createClient } from "@clickhouse/client-web";
+import { ClickHouseClient } from "@clickhouse/client-web";
 import fastq, { queueAsPromised } from "fastq";
+import { getFileName, walkDir, getClickhouseClient } from "@514labs/moose-lib";
 
 interface MvQuery {
   select: string;
@@ -22,9 +21,11 @@ class DependencyError extends Error {
   }
 }
 
+const AGGREGATIONS_DIR_PATH = process.argv[1];
+
 const [
   ,
-  AGGREGATIONS_DIR_PATH,
+  ,
   CLICKHOUSE_DB,
   CLICKHOUSE_HOST,
   CLICKHOUSE_PORT,
@@ -33,29 +34,13 @@ const [
   CLICKHOUSE_USE_SSL,
 ] = process.argv;
 
-const getClickhouseClient = () => {
-  const protocol =
-    CLICKHOUSE_USE_SSL === "1" || CLICKHOUSE_USE_SSL.toLowerCase() === "true"
-      ? "https"
-      : "http";
-  console.log(
-    `Connecting to Clickhouse at ${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-  );
-  return createClient({
-    url: `${protocol}://${CLICKHOUSE_HOST}:${CLICKHOUSE_PORT}`,
-    username: CLICKHOUSE_USERNAME,
-    password: CLICKHOUSE_PASSWORD,
-    database: CLICKHOUSE_DB,
-  });
-};
-
-const getFileName = (filePath: string) => {
-  const regex = /\/([^\/]+)\.ts/;
-  const matches = filePath.match(regex);
-  if (matches && matches.length > 1) {
-    return matches[1];
-  }
-  return "";
+export const clickhouseConfig = {
+  username: CLICKHOUSE_USERNAME,
+  password: CLICKHOUSE_PASSWORD,
+  database: CLICKHOUSE_DB,
+  useSSL: CLICKHOUSE_USE_SSL,
+  host: CLICKHOUSE_HOST,
+  port: CLICKHOUSE_PORT,
 };
 
 const createAggregation = async (chClient: ClickHouseClient, path: string) => {
@@ -106,22 +91,8 @@ const asyncWorker = async (task: MvQueueTask) => {
   await createAggregation(task.chClient, task.path);
 };
 
-const walkDir = (dir: string, fileExtension: string, fileList: string[]) => {
-  const files = fs.readdirSync(dir);
-
-  files.forEach((file) => {
-    if (fs.statSync(path.join(dir, file)).isDirectory()) {
-      fileList = walkDir(path.join(dir, file), fileExtension, fileList);
-    } else if (file.endsWith(fileExtension)) {
-      fileList.push(path.join(dir, file));
-    }
-  });
-
-  return fileList;
-};
-
 const main = async () => {
-  const chClient = getClickhouseClient();
+  const chClient = getClickhouseClient(clickhouseConfig);
   console.log(`Connected`);
 
   const aggregationFiles = walkDir(AGGREGATIONS_DIR_PATH, ".ts", []);

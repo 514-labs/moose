@@ -9,7 +9,7 @@ use crate::framework::controller::{FrameworkObject, FrameworkObjectVersions};
 use crate::framework::data_model::schema::ColumnType;
 use crate::framework::typescript::templates::BASE_FLOW_TEMPLATE;
 use crate::project::Project;
-use crate::utilities::constants::FLOW_FILE;
+use crate::utilities::constants::TS_FLOW_FILE;
 
 use super::{crawl_schema, RoutineFailure, RoutineSuccess};
 
@@ -29,7 +29,7 @@ impl FlowFileBuilder {
             .flows_dir()
             .join(source)
             .join(destination)
-            .join(FLOW_FILE);
+            .join(TS_FLOW_FILE);
 
         Self {
             flow_file_path,

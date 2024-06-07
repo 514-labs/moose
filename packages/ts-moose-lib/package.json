@@ -7,6 +7,9 @@
   "files": [
     "dist"
   ],
+  "bin": {
+    "ts-node": "node_modules/ts-node/dist/bin.js"
+  },
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
@@ -17,7 +20,6 @@
     "@clickhouse/client-web": "^1.0.1",
     "fastq": "^1.17.1",
     "kafkajs": "^2.2.4",
-    "ts-node": "^10.9.2",
     "ts-patch": "^3.1.2"
   },
   "devDependencies": {

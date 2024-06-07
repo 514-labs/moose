@@ -117,18 +117,23 @@ mod tests {
     use std::process::Command;
     use std::sync::Mutex;
 
+    fn pnpm_moose_lib(cmd_action: fn(&mut Command) -> &mut Command) {
+        let mut cmd = Command::new("pnpm");
+        cmd_action(&mut cmd)
+            .arg("--filter=moose-lib")
+            .current_dir("../../")
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+    }
+
     lazy_static! {
         static ref TS_COMPILER_SERIAL_RUN: Mutex<()> = Mutex::new(());
         static ref TEST_PROJECT: Project = {
-            Command::new("pnpm")
-                .arg("run")
-                .arg("build")
-                .arg("--filter=moose-lib")
-                .current_dir("../../")
-                .spawn()
-                .unwrap()
-                .wait()
-                .unwrap();
+            pnpm_moose_lib(|cmd| cmd.arg("i").arg("--frozen-lockfile"));
+
+            pnpm_moose_lib(|cmd| cmd.arg("run").arg("build"));
 
             Command::new("npm")
                 .arg("i")

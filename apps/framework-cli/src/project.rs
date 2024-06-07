@@ -263,11 +263,12 @@ impl Project {
             SupportedLanguages::Python => PY_AGGREGATIONS_FILE,
         };
 
-        let flow_file_path = self
+        let flow_file_dir = self
             .flows_dir()
             .join(SAMPLE_FLOWS_SOURCE)
-            .join(SAMPLE_FLOWS_DEST)
-            .join(flow_file_name);
+            .join(SAMPLE_FLOWS_DEST);
+
+        let flow_file_path = flow_file_dir.join(flow_file_name);
         let aggregations_file_path = self.aggregations_dir().join(agg_file_name);
         let apis_file_path = self.consumption_dir().join(API_FILE);
 
@@ -305,6 +306,14 @@ impl Project {
                 std::fs::File::create(self.schemas_dir().join("__init__.py"))?;
                 std::fs::File::create(self.aggregations_dir().join("__init__.py"))?;
                 std::fs::File::create(self.consumption_dir().join("__init__.py"))?;
+                std::fs::File::create(self.flows_dir().join("__init__.py"))?;
+                std::fs::File::create(
+                    flow_file_dir
+                        .parent()
+                        .unwrap_or(&flow_file_dir)
+                        .join("__init__.py"),
+                )?;
+                std::fs::File::create(flow_file_dir.join("__init__.py"))?;
 
                 flow_file.write_all(PYTHON_BASE_FLOW_TEMPLATE.as_bytes())?;
                 aggregations_file.write_all(PTYHON_BASE_AGG_SAMPLE_TEMPLATE.as_bytes())?;

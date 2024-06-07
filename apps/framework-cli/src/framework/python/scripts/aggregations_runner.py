@@ -81,7 +81,7 @@ async def create_aggregation(ch_client, path):
 
     mv_query = f"""
 CREATE MATERIALIZED VIEW IF NOT EXISTS {file_name}
-ENGINE = AggregatingMergeTree() ORDER BY {mv_obj.orderBy}
+ENGINE = AggregatingMergeTree() ORDER BY {mv_obj.order_by}
 POPULATE
 AS {mv_obj.select}
     """

@@ -157,7 +157,7 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
     type Value = ColumnType;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a string or an object for Enum")
+        formatter.write_str("a string or an object for Enum/Array/Nested")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>

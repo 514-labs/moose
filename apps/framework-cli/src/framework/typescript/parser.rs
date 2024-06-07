@@ -83,12 +83,12 @@ pub fn extract_data_model_from_file(
         message: format!("Unable to read output of compiler: {}", e),
     })?;
 
-    let output = serde_json::from_slice::<Value>(&output)
+    let output_json = serde_json::from_slice::<Value>(&output)
         .map_err(|_| TypescriptParsingError::TypescriptCompilerError(None))?;
-    if let Some(error_type) = output.get("error_type") {
+    if let Some(error_type) = output_json.get("error_type") {
         if let Some(error_type) = error_type.as_str() {
             if error_type == "unknown_type" {
-                let type_name = output
+                let type_name = output_json
                     .get("type")
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
@@ -102,7 +102,8 @@ pub fn extract_data_model_from_file(
         }
     }
 
-    Ok(serde_json::from_value(output)?)
+    // TODO: parsing with Value as an intermediate step fails, but works fine if we parse from slice
+    Ok(serde_json::from_slice(&output)?)
 }
 
 #[cfg(test)]

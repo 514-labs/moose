@@ -29,12 +29,13 @@ use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
+use crate::framework::python::templates::PTYHON_BASE_AGG_SAMPLE_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_FLOW_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::BASE_APIS_SAMPLE_TEMPLATE;
 use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
-    BASE_AGGREGATION_SAMPLE_TEMPLATE, TS_BASE_FLOW_SAMPLE_TEMPLATE,
+    TS_BASE_AGGREGATION_SAMPLE_TEMPLATE, TS_BASE_FLOW_SAMPLE_TEMPLATE,
 };
 use crate::framework::typescript::templates::{
     VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
@@ -52,11 +53,13 @@ use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS;
 use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
+use crate::utilities::constants::PY_AGGREGATIONS_FILE;
 use crate::utilities::constants::PY_FLOW_FILE;
 use crate::utilities::constants::README_PREFIX;
+use crate::utilities::constants::TS_AGGREGATIONS_FILE;
 use crate::utilities::constants::{
-    AGGREGATIONS_DIR, AGGREGATIONS_FILE, CONSUMPTION_DIR, FLOWS_DIR, PROJECT_CONFIG_FILE,
-    SAMPLE_FLOWS_DEST, SAMPLE_FLOWS_SOURCE, TS_FLOW_FILE,
+    AGGREGATIONS_DIR, CONSUMPTION_DIR, FLOWS_DIR, PROJECT_CONFIG_FILE, SAMPLE_FLOWS_DEST,
+    SAMPLE_FLOWS_SOURCE, TS_FLOW_FILE,
 };
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
@@ -255,12 +258,18 @@ impl Project {
             SupportedLanguages::Python => PY_FLOW_FILE,
         };
 
-        let flow_file_path = self
+        let agg_file_name: &str = match self.language {
+            SupportedLanguages::Typescript => TS_AGGREGATIONS_FILE,
+            SupportedLanguages::Python => PY_AGGREGATIONS_FILE,
+        };
+
+        let flow_file_dir = self
             .flows_dir()
             .join(SAMPLE_FLOWS_SOURCE)
-            .join(SAMPLE_FLOWS_DEST)
-            .join(flow_file_name);
-        let aggregations_file_path = self.aggregations_dir().join(AGGREGATIONS_FILE);
+            .join(SAMPLE_FLOWS_DEST);
+
+        let flow_file_path = flow_file_dir.join(flow_file_name);
+        let aggregations_file_path = self.aggregations_dir().join(agg_file_name);
         let apis_file_path = self.consumption_dir().join(API_FILE);
 
         let mut readme_file = std::fs::File::create(readme_file_path)?;
@@ -285,6 +294,8 @@ impl Project {
                         .replace("{{project_name}}", &self.name())
                         .as_bytes(),
                 )?;
+
+                aggregations_file.write_all(TS_BASE_AGGREGATION_SAMPLE_TEMPLATE.as_bytes())?;
             }
             SupportedLanguages::Python => {
                 base_model_file.write_all(PYTHON_BASE_MODEL_TEMPLATE.as_bytes())?;
@@ -295,12 +306,20 @@ impl Project {
                 std::fs::File::create(self.schemas_dir().join("__init__.py"))?;
                 std::fs::File::create(self.aggregations_dir().join("__init__.py"))?;
                 std::fs::File::create(self.consumption_dir().join("__init__.py"))?;
+                std::fs::File::create(self.flows_dir().join("__init__.py"))?;
+                std::fs::File::create(
+                    flow_file_dir
+                        .parent()
+                        .unwrap_or(&flow_file_dir)
+                        .join("__init__.py"),
+                )?;
+                std::fs::File::create(flow_file_dir.join("__init__.py"))?;
 
                 flow_file.write_all(PYTHON_BASE_FLOW_TEMPLATE.as_bytes())?;
+                aggregations_file.write_all(PTYHON_BASE_AGG_SAMPLE_TEMPLATE.as_bytes())?;
             }
         }
 
-        aggregations_file.write_all(BASE_AGGREGATION_SAMPLE_TEMPLATE.as_bytes())?;
         apis_file.write_all(BASE_APIS_SAMPLE_TEMPLATE.as_bytes())?;
 
         Ok(())

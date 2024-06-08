@@ -1,10 +1,10 @@
 import argparse
 import dataclasses
 from datetime import datetime
+from importlib import import_module
 import json
 import sys
 from kafka import KafkaConsumer, KafkaProducer
-
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, datetime):
@@ -56,11 +56,19 @@ def log(msg):
 def error(msg):
     raise Exception(f"{log_prefix}: {msg}")
 
+
+
 sys.path.append(args.flow_file_path)
-import flow
+log(f"Importing flow from {flow_file_path}")
+
+try:
+    flow = import_module('flow', package=flow_file_path)
+    flow_def = flow.Flow
+except Exception as e:
+    error(f"Error importing flow: {e} in file {flow_file_path}")
 
 # Get all the named flows in the flow file and make sure the flow is of type Flow
-flows = [f for f in dir(flow) if getattr(flow, f).__class__.__name__ == 'Flow']
+flows = [f for f in dir(flow) if isinstance(getattr(flow, f), flow_def)]
 
 # Make sure that there is only one flow in the file
 if len(flows) != 1:

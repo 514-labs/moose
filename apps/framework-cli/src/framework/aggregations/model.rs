@@ -2,7 +2,10 @@ use std::path::PathBuf;
 
 use tokio::process::Child;
 
-use crate::{framework::typescript, infrastructure::olap::clickhouse::config::ClickHouseConfig};
+use crate::{
+    framework::{languages::SupportedLanguages, python, typescript},
+    infrastructure::olap::clickhouse::config::ClickHouseConfig,
+};
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
@@ -21,7 +24,16 @@ impl Aggregation {
         "onlyone".to_string()
     }
 
-    pub fn start(&self, clickhouse_config: ClickHouseConfig) -> Result<Child, AggregationError> {
-        typescript::aggregation::run(clickhouse_config, &self.dir)
+    pub fn start(
+        &self,
+        language: SupportedLanguages,
+        clickhouse_config: ClickHouseConfig,
+    ) -> Result<Child, AggregationError> {
+        match language {
+            SupportedLanguages::Typescript => {
+                typescript::aggregation::run(clickhouse_config, &self.dir)
+            }
+            SupportedLanguages::Python => python::aggregation::run(clickhouse_config, &self.dir),
+        }
     }
 }

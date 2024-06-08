@@ -3,6 +3,7 @@
   "devDependencies": {
     "typescript": "latest",
     "ts-patch": "latest",
-    "@514labs/moose-lib": "latest"
+    "@514labs/moose-lib": "latest",
+    "ts-node": "latest"
   }
 }

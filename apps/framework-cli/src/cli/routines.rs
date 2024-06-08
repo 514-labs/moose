@@ -308,7 +308,7 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
 
     let mut consumption_process_registry =
-        ConsumptionProcessRegistry::new(project.clickhouse_config.clone());
+        ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());
     process_consumption_changes(&project, &mut consumption_process_registry).await?;
 
     let project_registries = ProcessRegistries::new(
@@ -373,7 +373,7 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
 
     let mut consumption_process_registry =
-        ConsumptionProcessRegistry::new(project.clickhouse_config.clone());
+        ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());
     process_consumption_changes(&project, &mut consumption_process_registry).await?;
 
     info!("Starting web server...");

@@ -85,9 +85,13 @@ async fn process_data_models_changes(
             .collect::<HashMap<_, _>>();
 
         if path.exists() {
-            let obj_in_new_file =
-                get_framework_objects_from_schema_file(&path, project.version(), &aggregations)
-                    .await?;
+            let obj_in_new_file = get_framework_objects_from_schema_file(
+                &path,
+                project.version(),
+                &aggregations,
+                &project,
+            )
+            .await?;
 
             for obj in obj_in_new_file {
                 removed_old_objects_in_file.remove(&obj.data_model.name);

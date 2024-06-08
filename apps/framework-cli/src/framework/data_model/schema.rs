@@ -9,6 +9,7 @@ use super::config::DataModelConfig;
 pub struct DataModel {
     pub columns: Vec<Column>,
     pub name: String,
+    #[serde(default)]
     pub config: DataModelConfig,
 }
 
@@ -23,7 +24,7 @@ impl DataModel {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 /// An internal framework representation for an enum.
 /// Avoiding the use of the `Enum` keyword to avoid conflicts with Prisma's Enum type
 pub struct DataEnum {
@@ -156,7 +157,7 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
     type Value = ColumnType;
 
     fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
-        formatter.write_str("a string or an object for Enum")
+        formatter.write_str("a string or an object for Enum/Array/Nested")
     }
 
     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
@@ -191,10 +192,9 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
     where
         A: MapAccess<'de>,
     {
-        // we don't have a tag, right now it runs fine
-        // because we can distinguish them from the field names
         let mut name = None;
         let mut values = None;
+        let mut columns = None;
         while let Some(key) = map.next_key::<&str>()? {
             if key == "elementType" {
                 return Ok(ColumnType::Array(Box::new(
@@ -206,12 +206,20 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
                 name = Some(map.next_value::<String>()?);
             } else if key == "values" {
                 values = Some(map.next_value::<Vec<EnumMember>>()?)
+            } else if key == "columns" {
+                columns = Some(map.next_value::<Vec<Column>>()?)
             }
         }
 
         let name = name.ok_or(A::Error::custom("Missing field: name."))?;
-        let values = values.ok_or(A::Error::custom("Missing field: values."))?;
-        Ok(ColumnType::Enum(DataEnum { name, values }))
+
+        // we should probably add a tag to distinguish the object types
+        // because we can distinguish them from the field names
+        match (values, columns) {
+            (None, None) => Err(A::Error::custom("Missing field: values/columns.")),
+            (Some(values), _) => Ok(ColumnType::Enum(DataEnum { name, values })),
+            (_, Some(columns)) => Ok(ColumnType::Nested(Nested { name, columns })),
+        }
     }
 }
 

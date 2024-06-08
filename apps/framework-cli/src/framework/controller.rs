@@ -21,8 +21,6 @@ use crate::infrastructure::stream::redpanda::{
     send_with_back_pressure, wait_for_delivery, RedpandaConfig,
 };
 use crate::project::{AggregationSet, Project};
-#[cfg(test)]
-use crate::utilities::constants::SCHEMAS_DIR;
 
 use super::data_model;
 use super::data_model::config::EndpointIngestionFormat;
@@ -136,6 +134,7 @@ pub async fn get_all_framework_objects(
     schema_dir: &Path,
     version: &str,
     aggregations: &AggregationSet,
+    project: &Project,
 ) -> anyhow::Result<()> {
     if schema_dir.is_dir() {
         for entry in std::fs::read_dir(schema_dir)? {
@@ -143,11 +142,13 @@ pub async fn get_all_framework_objects(
             let path = entry.path();
             if path.is_dir() {
                 debug!("<DCM> Processing directory: {:?}", path);
-                get_all_framework_objects(framework_objects, &path, version, aggregations).await?;
+                get_all_framework_objects(framework_objects, &path, version, aggregations, project)
+                    .await?;
             } else if is_schema_file(&path) {
                 debug!("<DCM> Processing file: {:?}", path);
                 let objects =
-                    get_framework_objects_from_schema_file(&path, version, aggregations).await?;
+                    get_framework_objects_from_schema_file(&path, version, aggregations, project)
+                        .await?;
                 for fo in objects {
                     DuplicateModelError::try_insert(framework_objects, fo, &path)?;
                 }
@@ -175,8 +176,9 @@ pub async fn get_framework_objects_from_schema_file(
     path: &Path,
     version: &str,
     aggregations: &AggregationSet,
+    project: &Project,
 ) -> Result<Vec<FrameworkObject>, DataModelError> {
-    let framework_objects = parse_data_model_file(path)?;
+    let framework_objects = parse_data_model_file(path, project)?;
     let mut indexed_models = HashMap::new();
 
     for model in framework_objects.models {
@@ -619,23 +621,34 @@ pub async fn process_objects(
 
 #[cfg(test)]
 mod tests {
+    use crate::framework::languages::SupportedLanguages;
 
     #[tokio::test]
     async fn test_get_all_framework_objects() {
         use super::*;
         let manifest_location = env!("CARGO_MANIFEST_DIR");
-        let schema_dir = PathBuf::from(manifest_location)
-            .join("tests/test_project")
-            .join(SCHEMAS_DIR);
+
+        let project = Project::new(
+            &PathBuf::from(manifest_location).join("tests/test_project"),
+            "testing".to_string(),
+            SupportedLanguages::Typescript,
+        );
 
         let mut framework_objects = HashMap::new();
         let aggregations = AggregationSet {
             current_version: "0.0".to_string(),
             names: HashSet::new(),
         };
-        let result =
-            get_all_framework_objects(&mut framework_objects, &schema_dir, "0.0", &aggregations)
-                .await;
+
+        let result = get_all_framework_objects(
+            &mut framework_objects,
+            &project.schemas_dir().join("separate_dir_to_test_get_all"),
+            "0.0",
+            &aggregations,
+            &project,
+        )
+        .await;
+
         assert!(result.is_ok());
         assert_eq!(framework_objects.len(), 2);
     }

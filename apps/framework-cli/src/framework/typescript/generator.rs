@@ -234,9 +234,25 @@ fn std_field_type_to_typescript_field_mapper(
         ColumnType::BigInt => Err(TypescriptGeneratorError::UnsupportedDataTypeError {
             type_name: "BigInt".to_string(),
         }),
-        ColumnType::Nested(_) => Err(TypescriptGeneratorError::UnsupportedDataTypeError {
-            type_name: "Nested".to_string(),
-        }),
+        ColumnType::Nested(inner) => {
+            Ok(InterfaceFieldType::Object(Box::new(TypescriptInterface {
+                name: inner.name,
+                fields: inner
+                    .columns
+                    .iter()
+                    .map(|c| {
+                        Ok(InterfaceField {
+                            name: c.name.clone(),
+                            comment: None,
+                            is_optional: !c.required,
+                            field_type: std_field_type_to_typescript_field_mapper(
+                                c.data_type.clone(),
+                            )?,
+                        })
+                    })
+                    .collect::<Result<Vec<InterfaceField>, TypescriptGeneratorError>>()?,
+            })))
+        }
     }
 }
 

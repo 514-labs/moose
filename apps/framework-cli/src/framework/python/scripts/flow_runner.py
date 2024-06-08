@@ -56,11 +56,16 @@ def log(msg):
 def error(msg):
     raise Exception(f"{log_prefix}: {msg}")
 
-sys.path.append(args.flow_file_path)
-log(f"Importing flow from {args.flow_file_path}")
 
-flow = import_module('flow', package=args.flow_file_path)
-flow_def = flow.Flow
+
+sys.path.append(args.flow_file_path)
+log(f"Importing flow from {flow_file_path}")
+
+try:
+    flow = import_module('flow', package=flow_file_path)
+    flow_def = flow.Flow
+except Exception as e:
+    error(f"Error importing flow: {e} in file {flow_file_path}")
 
 # Get all the named flows in the flow file and make sure the flow is of type Flow
 flows = [f for f in dir(flow) if isinstance(getattr(flow, f), flow_def)]

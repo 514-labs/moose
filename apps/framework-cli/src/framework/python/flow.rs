@@ -17,7 +17,7 @@ pub fn run(
         args: vec![
             source_topic.to_string(),
             target_topic.to_string(),
-            flow_path.to_str().unwrap().to_string(),
+            flow_path.parent().unwrap().to_str().unwrap().to_string(),
             redpanda_config.broker,
         ],
     })?;

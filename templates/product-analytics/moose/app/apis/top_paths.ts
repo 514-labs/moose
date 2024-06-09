@@ -1,3 +1,5 @@
+import { ConsumptionUtil } from "@514labs/moose-lib";
+
 export interface QueryParams {
   step: string;
   from: number;
@@ -16,7 +18,7 @@ export interface QueryParams {
 
 export default async function handle(
   { step = "3600", from = 1715497586, to = 1715843186 }: QueryParams,
-  { client, sql },
+  { client, sql }: ConsumptionUtil,
 ) {
   const stepNum = parseInt(step);
   return client.query(

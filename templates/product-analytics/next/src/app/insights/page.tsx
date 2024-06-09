@@ -1,7 +1,12 @@
 "use client";
 import { useEffect, useState } from "react";
 import ReportLayout from "../report-layout";
-import { getTableQueryData, getChartQueryData } from "@/insights/table-query";
+import {
+  getTableQueryData,
+  getChartQueryData,
+  getTableData,
+  getChartData,
+} from "@/insights/table-query";
 import { DataTable } from "@/components/ui/data-table/data-table";
 import { createColumns } from "@/components/ui/data-table/columns";
 import TimeSelector from "@/components/time-selector";
@@ -32,23 +37,18 @@ export default function InsightsPage() {
   useEffect(() => {
     const defaultedBreakdown = defaultBreakdown(breakdown);
 
-    const queriedEvents = eventConfigFromNames(formState);
-    getTableQueryData(queriedEvents, dateRange, defaultedBreakdown).then(
-      (val) => setData(val),
+    getTableData({ dateRange, breakdown: defaultedBreakdown }).then((val) =>
+      setData(val),
     );
-    getChartQueryData(
-      queriedEvents,
+    getChartData({
       dateRange,
       interval,
-      defaultedBreakdown,
-    ).then((val) => setTimeSeries(val));
+      breakdown: defaultedBreakdown,
+    }).then((val) => setTimeSeries(val));
   }, [formState, dateRange, breakdown, interval]);
 
   useEffect(() => {
-    const queriedEvents = eventConfigFromNames(formState);
-    if (modelInfo) {
-      getModelMeta(queriedEvents).then((val) => setModelMeta(val));
-    }
+    getModelMeta().then((val) => setModelMeta(val || []));
   }, [formState]);
 
   const chart = (
@@ -56,7 +56,7 @@ export default function InsightsPage() {
       timeAccessor={(obj: object & { timestamp: string }) =>
         new Date(obj?.timestamp)
       }
-      yAccessor="count"
+      yAccessor="hits"
       fillAccessor={(d: { [key: string]: any }) => {
         return defaultedBreakdown.map((b) => d[b]).join(", ");
       }}

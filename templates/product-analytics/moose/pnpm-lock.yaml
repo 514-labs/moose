@@ -10,7 +10,7 @@ dependencies:
     version: 0.0.0
   "@clickhouse/client-web":
     specifier: ^1.0.1
-    version: 1.1.0
+    version: 1.0.2
   fastq:
     specifier: ^1.17.1
     version: 1.17.1
@@ -94,20 +94,20 @@ packages:
       }
     dev: false
 
-  /@clickhouse/client-common@1.1.0:
+  /@clickhouse/client-common@1.0.2:
     resolution:
       {
-        integrity: sha512-saD6vNg+gIZACT5OSCWn0evLBP+Cs5bBR2Ol24yOQc8AXcw94b1qcDjQEVxms1xzO6heFhZRuPf+YefMNrL3Ig==,
+        integrity: sha512-5oI2URFsXlzoysv5lAxoTUAnAHjXnaJ+1Jz3HUARR06Hkbr1sN0pGxfGwgjEd8E/lI4+UNdNEZicG2rlFnWSaA==,
       }
     dev: false
 
-  /@clickhouse/client-web@1.1.0:
+  /@clickhouse/client-web@1.0.2:
     resolution:
       {
-        integrity: sha512-BicoD3siXefroCgwVvZwCJhAOp+jo62La5yPyZp0FZ38mh7Po2vNS/VU34GRU+Kgc9+DJuDiAOmgclSveXsgMA==,
+        integrity: sha512-tWngMvP7W2oNWW4y2E2yCXmzFVYqjzTbZJXzTHPR3KR1oGYAraB11ucI4LsV3M1m46rBH5MaJ7SLxT8S1itliQ==,
       }
     dependencies:
-      "@clickhouse/client-common": 1.1.0
+      "@clickhouse/client-common": 1.0.2
     dev: false
 
   /@types/node@20.14.2:

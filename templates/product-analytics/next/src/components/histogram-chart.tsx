@@ -60,6 +60,9 @@ export default function HistogramChart({
   interval,
 }: Props) {
   const [chartType, setChartType] = useState("bar");
+  if (!data) {
+    return null;
+  }
 
   const newData = data.map((d) => ({ ...d, time: timeAccessor(d) }));
 

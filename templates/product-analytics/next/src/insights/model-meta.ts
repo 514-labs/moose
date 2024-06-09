@@ -18,11 +18,15 @@ export function modelMeta(events: EventTable[]) {
 }
 
 export interface ModelMeta {
-  column_name: string;
-  data_type: string;
+  name: string;
+  type: number;
 }
 
-export function getModelMeta(events: EventTable[]) {
-  if (events.length === 0) return Promise.resolve([]);
-  return getData(modelMeta(events)) as Promise<ModelMeta[]>;
+export function getModelMeta() {
+  const test = fetch("http://localhost:4000/consumption/event_attributes")
+    .then((response) => response.json())
+    .then((data: ModelMeta[]) => data)
+    .catch((error) => console.error("Error:", error));
+
+  return test;
 }

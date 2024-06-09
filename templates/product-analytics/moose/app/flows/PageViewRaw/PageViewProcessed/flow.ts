@@ -1,5 +1,5 @@
 // Add your models & start the development server to import these types
-import { PageViewProcessed, PageViewRaw } from "../../../datamodels/models.ts";
+import { PageViewProcessed, PageViewRaw } from "../../../datamodels/models";
 // The 'run' function transforms PageViewRaw data to PageViewProcessed format.
 // For more details on how Moose flows work, see: https://docs.moosejs.com
 
@@ -71,7 +71,7 @@ export default function run(event: PageViewRaw): PageViewProcessed | null {
     /www\.moosejs\.com|www\.fiveonefour\.com|www\.docs\.moosejs\.com/;
 
   const hostname = pattern.test(event.href)
-    ? pattern.exec(event.href)[0]
+    ? pattern.exec(event.href)?.[0]
     : "development";
 
   return {
@@ -81,7 +81,7 @@ export default function run(event: PageViewRaw): PageViewProcessed | null {
     locale: event.locale,
     location: event.location,
     href: event.href,
-    hostname: hostname,
+    hostname: hostname || "development",
     pathname: event.pathname,
     referrer: event.referrer,
     device_manufacturer: deviceManufacturer,

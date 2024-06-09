@@ -20,8 +20,8 @@ export default function TimeSeriesForm({
   }));
 
   const breakdownList = breakdownOptions.map((bd) => ({
-    label: bd.column_name,
-    val: bd.column_name,
+    label: bd.name,
+    val: bd.name,
   }));
 
   return (

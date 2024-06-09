@@ -865,12 +865,6 @@ importers:
         specifier: ^5.4.0
         version: 5.4.5
 
-  templates/product-analytics/moose:
-    dependencies:
-      "@514labs/moose-lib":
-        specifier: ^0.0.0
-        version: link:../../../packages/ts-moose-lib
-
 packages:
   /@514labs/moose-cli-darwin-arm64@0.3.205:
     resolution:

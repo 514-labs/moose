@@ -25,22 +25,3 @@ export function timeToClickHouseInterval(timeUnit: TimeUnit) {
       return "toStartOfMinute";
   }
 }
-
-export function createDateStub(range: DateRange) {
-  return `WHERE timestamp >= toDateTime(now() - interval ${rangeToNum[range]} hour)`;
-}
-
-export const timeseries = (dateRange: DateRange, timeUnit: TimeUnit) => {
-  const start = `${timeToClickHouseInterval(timeUnit)}(timestampAdd(now(), interval -${rangeToNum[dateRange]} hour)) as start`;
-  const end = `${timeToClickHouseInterval(timeUnit)}(now()) as end`;
-  return `
-    with ${start}, ${end}
-      select
-      arrayJoin(
-          arrayMap(
-              x -> toDateTime(x),
-              range(toUInt32(start), toUInt32(timestampAdd(end, interval 1 hour)), ${timeUnitToSeconds[timeUnit]})
-          )
-      ) as timestamp
-      where timestamp <= now()`;
-};

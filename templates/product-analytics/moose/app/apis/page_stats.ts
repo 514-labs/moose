@@ -1,3 +1,5 @@
+import { ConsumptionUtil } from "@514labs/moose-lib";
+
 export interface QueryParams {
   limit: string;
   hostname: string;
@@ -6,7 +8,7 @@ export interface QueryParams {
 
 export default async function handle(
   { limit = "100", hostname = "moosejs", step = "60" }: QueryParams,
-  { client, sql },
+  { client, sql }: ConsumptionUtil,
 ) {
   const limitNum = parseInt(limit);
   const stepNum = parseInt(step);

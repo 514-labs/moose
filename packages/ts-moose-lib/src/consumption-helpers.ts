@@ -160,7 +160,6 @@ export class MooseClient {
 }
 
 export const ConsumptionHelpers = {
-<<<<<<< HEAD
   column: (value: string) => ["Identifier", value] as [string, string],
   table: (value: string) => ["Identifier", value] as [string, string],
 };
@@ -187,7 +186,3 @@ export function join_queries({
     values,
   );
 }
-=======
-  column: (value: string) => ["Identifier", value],
-};
->>>>>>> 4c115f3f (rebase)

@@ -103,7 +103,12 @@ const kafka = new Kafka({
 });
 
 const flowIdentifier = `flow-${SOURCE_TOPIC}-${TARGET_TOPIC}`;
-const consumer: Consumer = kafka.consumer({ groupId: flowIdentifier });
+// We limit consumption to 800KB to hiting the batch limit of 1MB on the producer side.
+// In order to increase this we should increase the accepting size on the topic itself.
+const consumer: Consumer = kafka.consumer({
+  groupId: flowIdentifier,
+  maxBytes: 800 * 1024,
+});
 const producer: Producer = kafka.producer({ transactionalId: flowIdentifier });
 
 const startProducer = async (): Promise<void> => {
@@ -154,7 +159,10 @@ const startConsumer = async (
   );
   const flowFunction: FlowFunction = flowModuleImport.default;
 
-  await consumer.subscribe({ topics: [sourceTopic], fromBeginning: false });
+  await consumer.subscribe({
+    topics: [sourceTopic],
+    fromBeginning: false,
+  });
   await consumer.run({
     eachBatchAutoResolve: true,
     eachBatch: async ({ batch }) => {

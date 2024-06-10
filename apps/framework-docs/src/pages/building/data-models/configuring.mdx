@@ -1,0 +1,92 @@
+# Configuring Data Models
+
+Each data model's configuration can be tweaked to fit your needs.
+To set the configuration for a data model, just export a configuration object from the model file
+with the data model name as a prefix and `config` as the suffix, like so:
+
+```ts filename="UserActivity.ts" copy
+import { Key, DataModelConfig, IngestionFormat } from "@514labs/moose-lib";
+
+// <modelName>Config
+export const UserActivityConfig: DataModelConfig<UserActivity> = {
+  ingestion: {
+    format: "json",
+  },
+  storage: {
+    enabled: true,
+    order_by_fields: ["timestamp"],
+  },
+};
+
+export interface UserActivity {
+  eventId: Key<string>;
+  timestamp: string;
+  userId: string;
+  activity: string;
+}
+```
+
+## Configuration Options
+
+### Ingestion
+
+Configures the API endpoint that we provision to ingest data into the data model.
+
+```ts copy
+export const UserActivityConfig: DataModelConfig<UserActivity> = {
+  ingestion: {},
+};
+```
+
+#### `format`
+
+The format of the data that the ingestion endpoint will accept. This defaults to `IngestionFormat.JSON`.
+
+```ts copy
+export const UserActivityConfig: DataModelConfig<UserActivity> = {
+  ingestion: {
+    format: IngestionFormat.JSON,
+  },
+};
+```
+
+Possible values:
+
+- `IngestionFormat.JSON`: Single JSON object expected in the body of the request
+- `IngestionFormat.JSON_ARRAY` Array of JSON objects expected in the body of the request
+
+### Storage
+
+Configures the persistence layer for the data model.
+
+```ts copy
+export const UserActivityConfig: DataModelConfig<UserActivity> = {
+  storage: {},
+};
+```
+
+#### `enabled`
+
+Whether to enable a table in the OLAP storage for the data model. This is enabled by default.
+
+```ts copy
+export const UserActivityConfig: DataModelConfig<UserActivity> = {
+  storage: {
+    enabled: true,
+  },
+};
+```
+
+#### `order_by_fields`
+
+Adds an order by clause to the table in the OLAP storage.
+This is useful when you want to query the data model by a specific field. This will be used to order
+the data on disk. Is empty as default.
+
+```ts copy
+export const UserActivityConfig: DataModelConfig<UserActivity> = {
+  storage: {
+    order_by_fields: ["timestamp"],
+  },
+};
+```

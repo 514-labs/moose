@@ -20,7 +20,7 @@ moose flow init --source UserActivity --destination ParsedActivity
 Represents a data flow from a source data model `UserActivity` and a destination data model `ParsedActivity`, which themselves were defined in `/datamodels/models.ts`:
 
 ```ts filename="models.ts"
-type Key<T extends string | number> = T
+import { Key } from "@514labs/moose-lib";
 
 export interface UserActivity {
     ...

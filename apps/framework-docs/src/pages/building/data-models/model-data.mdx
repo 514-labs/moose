@@ -6,7 +6,7 @@ To get started you simply need to open the `models.ts` file in your project's `d
 and add a new Data Model definition.
 
 ```ts filename="datamodels/models.ts" copy
-type Key<T extends string | number> = T;
+import { Key } from "@514labs/moose-lib";
 
 export interface UserActivity {
   eventId: Key<string>;
@@ -27,9 +27,6 @@ We don't currently support all of Typescript schema modeling features, but we're
 
 The `Key<T>` type is a MooseJS-specific type that allows you to define a primary key for your data model.
 This is a required field for all data models. It can be added to multiple columns if you have a composite key.
-
-We are planning to add a moose helper package that will allow you to import the `Key` type from it. Right now,
-you have to defined it in your project. It doesn't matter what the type of the key is.
 
 When we are provioning the OLAP storage table, we will use the `Key` type to define the primary key of the table.
 What a primary key means in that database will depend on the database you are using. For Clickhouse, it will be

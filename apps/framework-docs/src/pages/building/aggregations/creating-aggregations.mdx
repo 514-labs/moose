@@ -48,10 +48,7 @@ When you save the aggregation file, Moose automatically creates a new table name
 The default Moose project comes with an example aggregation, it calculates the number of unique users who complete a sign-in activity each day:
 
 ```ts filename="aggregations/DailyActiveUsers.ts" copy
-interface Aggregation {
-  select: string;
-  orderBy: string;
-}
+import { Aggregation } from "@514labs/moose-lib";
 
 export default {
   select: ` 

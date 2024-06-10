@@ -154,7 +154,13 @@ const startConsumer = async (
   );
   const flowFunction: FlowFunction = flowModuleImport.default;
 
-  await consumer.subscribe({ topics: [sourceTopic], fromBeginning: false });
+  // We limit consumption to 900KB to hiting the batch limit of 1MB on the producer side.
+  // In order to increase this we should increase the accepting size on the topic itself.
+  await consumer.subscribe({
+    topics: [sourceTopic],
+    fromBeginning: false,
+    maxBytes: 900 * 1024,
+  });
   await consumer.run({
     eachBatchAutoResolve: true,
     eachBatch: async ({ batch }) => {

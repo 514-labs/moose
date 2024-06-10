@@ -91,6 +91,9 @@ use crate::cli::watcher::{
 };
 use crate::framework::aggregations::registry::AggregationProcessRegistry;
 use crate::framework::consumption::registry::ConsumptionProcessRegistry;
+use crate::framework::core::code_loader::{
+    load_framework_objects, FrameworkObject, FrameworkObjectVersions, SchemaVersion,
+};
 use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::framework::registry::model::ProcessRegistries;
 use crate::infrastructure::olap::clickhouse::{
@@ -98,19 +101,14 @@ use crate::infrastructure::olap::clickhouse::{
 };
 
 use crate::cli::routines::flow::verify_flows_against_datamodels;
-use crate::framework::controller::{
-    create_or_replace_version_sync, get_all_framework_objects, process_objects, FrameworkObject,
-    FrameworkObjectVersions, RouteMeta, SchemaVersion,
-};
-use crate::framework::typescript;
+use crate::framework::controller::{create_or_replace_version_sync, process_objects, RouteMeta};
 use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
 use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
 use crate::infrastructure::stream::redpanda;
-use crate::project::{AggregationSet, Project};
-use crate::utilities::package_managers;
+use crate::project::Project;
 
 use super::display::with_spinner_async;
 use super::local_webserver::Webserver;
@@ -384,71 +382,6 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     Ok(())
 }
 
-async fn crawl_schema(
-    project: &Project,
-    old_versions: &[String],
-) -> anyhow::Result<FrameworkObjectVersions> {
-    info!("<DCM> Checking for old version directories...");
-
-    let mut framework_object_versions =
-        FrameworkObjectVersions::new(project.version().to_string(), project.schemas_dir().clone());
-
-    let aggregations = AggregationSet {
-        current_version: project.version().to_owned(),
-        names: project.get_aggregations(),
-    };
-
-    for version in old_versions.iter() {
-        let path = project.old_version_location(version)?;
-
-        debug!("<DCM> Processing old version directory: {:?}", path);
-
-        let mut framework_objects = HashMap::new();
-        get_all_framework_objects(
-            &mut framework_objects,
-            &path,
-            version,
-            &aggregations,
-            project,
-        )
-        .await?;
-
-        let schema_version = SchemaVersion {
-            base_path: path,
-            models: framework_objects,
-        };
-
-        framework_object_versions
-            .previous_version_models
-            .insert(version.clone(), schema_version);
-    }
-
-    let schema_dir = project.schemas_dir();
-
-    let aggregations = AggregationSet {
-        current_version: project.version().to_owned(),
-        names: project.get_aggregations(),
-    };
-
-    info!("<DCM> Starting schema directory crawl...");
-    let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
-    get_all_framework_objects(
-        &mut framework_objects,
-        &schema_dir,
-        project.version(),
-        &aggregations,
-        project,
-    )
-    .await?;
-
-    framework_object_versions.current_models = SchemaVersion {
-        base_path: schema_dir.clone(),
-        models: framework_objects.clone(),
-    };
-
-    Ok(framework_object_versions)
-}
-
 async fn check_for_model_changes(
     project: Arc<Project>,
     framework_object_versions: FrameworkObjectVersions,
@@ -531,7 +464,10 @@ async fn check_for_model_changes(
     }
 }
 
-async fn initialize_project_state(
+// TODO - this function should be split in 2
+// 1. one that gathers the curnent state of the project from the files
+// 2. another one that changes the routes based on the current state
+pub async fn initialize_project_state(
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> anyhow::Result<(FrameworkObjectVersions, Vec<VersionSync>)> {
@@ -542,7 +478,7 @@ async fn initialize_project_state(
 
     info!("<DCM> Checking for old version directories...");
 
-    let mut framework_object_versions = crawl_schema(&project, &old_versions).await?;
+    let mut framework_object_versions = load_framework_objects(&project).await?;
 
     check_for_model_changes(project.clone(), framework_object_versions.clone()).await;
 
@@ -581,15 +517,6 @@ async fn initialize_project_state(
             )
             .await;
 
-            // TODO: add old versions to SDK
-            if !project.is_production {
-                let sdk_location =
-                    typescript::generator::generate_sdk(&project, &framework_object_versions)?;
-                let package_manager = package_managers::PackageManager::Npm;
-                package_managers::install_packages(&sdk_location, &package_manager)?;
-                package_managers::run_build(&sdk_location, &package_manager)?;
-                package_managers::link_sdk(&sdk_location, None, &package_manager)?;
-            }
             let _ = post_current_state_to_console(
                 project.clone(),
                 &configured_client,

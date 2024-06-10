@@ -9,8 +9,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::framework::controller::FrameworkObject;
 use crate::utilities::system::file_name_contains;
+
+use super::core::code_loader::FrameworkObject;
 
 #[derive(Debug, Clone)]
 pub struct DuplicateModelError {

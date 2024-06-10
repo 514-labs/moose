@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::Path;
 
 use config::ConfigError;
 use serde::{Deserialize, Serialize};
@@ -51,16 +51,16 @@ impl PythonProject {
         }
     }
 
-    pub fn load(directory: PathBuf) -> Result<Self, ConfigError> {
-        let mut location = directory.clone();
+    pub fn load(directory: &Path) -> Result<Self, ConfigError> {
+        let mut location = directory.to_path_buf();
         location.push(SETUP_PY);
 
         get_project_from_file(&location)
             .map_err(|_| ConfigError::Message("Failed to load Python project".to_string()))
     }
 
-    pub fn write_to_disk(&self, project_location: PathBuf) -> Result<(), PythonProjectError> {
-        let mut setup_py_location = project_location.clone();
+    pub fn write_to_disk(&self, project_location: &Path) -> Result<(), PythonProjectError> {
+        let mut setup_py_location = project_location.to_path_buf();
         setup_py_location.push("setup.py");
 
         let setup_py = render_setup_py(self.clone())?;
@@ -72,6 +72,8 @@ impl PythonProject {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use super::*;
 
     fn get_test_project_abs_dir_path() -> PathBuf {
@@ -84,7 +86,7 @@ mod tests {
     fn test_python_load() {
         let test_project_dir = get_test_project_abs_dir_path();
         println!("Test Project Dir: {:?}", test_project_dir);
-        let project = PythonProject::load(test_project_dir).unwrap();
+        let project = PythonProject::load(&test_project_dir).unwrap();
 
         assert_eq!(project.name, "test_project");
         assert_eq!(project.version, "0.0");

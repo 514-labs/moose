@@ -1,13 +1,13 @@
 use convert_case::{Case, Casing};
 use serde::Serialize;
 use std::fs;
+use std::path::Path;
 use std::{fmt, path::PathBuf};
 
 use super::templates::{
     self, IndexTemplate, PackageJsonTemplate, TsConfigTemplate, TypescriptRenderingError,
 };
-use crate::framework::controller::FrameworkObjectVersions;
-use crate::framework::controller::SchemaVersion;
+use crate::framework::core::code_loader::{FrameworkObjectVersions, SchemaVersion};
 use crate::framework::data_model::schema::{DataEnum, EnumValue};
 use crate::{
     framework::data_model::schema::{ColumnType, Table},
@@ -339,13 +339,14 @@ fn collect_enums(framework_objects: &SchemaVersion) -> Vec<TSEnum> {
 pub fn generate_sdk(
     project: &Project,
     framework_object_versions: &FrameworkObjectVersions,
-) -> Result<PathBuf, TypescriptGeneratorError> {
+    sdk_dir: &Path,
+) -> Result<(), TypescriptGeneratorError> {
     //! Generates a Typescript SDK for the given project and returns the path where the SDK was generated.
     //!
     //! # Arguments
     //! - `project` - The project to generate the SDK for.
     //! - `framework_object_versions` - The objects to generate the SDK for.
-    //!
+    //! - `sdk_dir` - Where to write the generated SDK.
     //!
     //! # Returns
     //! - `Result<PathBuf, std::io::Error>` - A result containing the path where the SDK was generated.
@@ -357,8 +358,6 @@ pub fn generate_sdk(
     )?;
     let enums: Vec<TSEnum> = collect_enums(&framework_object_versions.current_models);
 
-    let internal_dir = project.internal_dir()?;
-
     let package = TypescriptPackage::from_project(project);
     let package_json_code = PackageJsonTemplate::build(&package);
     let ts_config_code = TsConfigTemplate::build();
@@ -369,15 +368,12 @@ pub fn generate_sdk(
     );
     let current_enum_code = templates::render_enums(enums)?;
 
-    // This needs to write to the root of the NPM folder... creating in the current project location for now
-    let sdk_dir = internal_dir.join(package.name);
-
-    std::fs::remove_dir_all(sdk_dir.clone()).or_else(|err| match err.kind() {
+    std::fs::remove_dir_all(sdk_dir).or_else(|err| match err.kind() {
         std::io::ErrorKind::NotFound => Ok(()),
         _ => Err(err),
     })?;
 
-    std::fs::create_dir_all(sdk_dir.clone())?;
+    std::fs::create_dir_all(sdk_dir)?;
 
     fs::write(sdk_dir.join("package.json"), package_json_code)?;
     fs::write(sdk_dir.join("tsconfig.json"), ts_config_code)?;
@@ -415,7 +411,7 @@ pub fn generate_sdk(
         }
     }
 
-    Ok(sdk_dir)
+    Ok(())
 }
 
 pub fn move_to_npm_global_dir(sdk_location: &PathBuf) -> Result<PathBuf, std::io::Error> {

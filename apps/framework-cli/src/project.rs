@@ -176,7 +176,7 @@ impl Project {
         self.is_production = is_production;
     }
 
-    pub fn load(directory: PathBuf) -> Result<Project, ConfigError> {
+    pub fn load(directory: &PathBuf) -> Result<Project, ConfigError> {
         let mut project_file = directory.clone();
         project_file.push(PROJECT_CONFIG_FILE);
 
@@ -196,7 +196,7 @@ impl Project {
             .build()?
             .try_deserialize()?;
 
-        project_config.project_location.clone_from(&directory);
+        project_config.project_location.clone_from(directory);
 
         match project_config.language {
             SupportedLanguages::Typescript => {
@@ -215,7 +215,7 @@ impl Project {
 
     pub fn load_from_current_dir() -> Result<Project, ConfigError> {
         let current_dir = std::env::current_dir().expect("Failed to get the current directory");
-        Project::load(current_dir)
+        Project::load(&current_dir)
     }
 
     pub fn write_to_disk(&self) -> Result<(), ProjectFileError> {
@@ -227,10 +227,8 @@ impl Project {
 
         // Write language specific files to disk
         match &self.language_project_config {
-            LanguageProjectConfig::Typescript(p) => {
-                Ok(p.write_to_disk(self.project_location.clone())?)
-            }
-            LanguageProjectConfig::Python(p) => Ok(p.write_to_disk(self.project_location.clone())?),
+            LanguageProjectConfig::Typescript(p) => Ok(p.write_to_disk(&self.project_location)?),
+            LanguageProjectConfig::Python(p) => Ok(p.write_to_disk(&self.project_location)?),
         }
     }
 

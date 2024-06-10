@@ -1,5 +1,6 @@
 use crate::cli::display::Message;
-use crate::cli::routines::{crawl_schema, RoutineFailure, RoutineSuccess};
+use crate::cli::routines::{RoutineFailure, RoutineSuccess};
+use crate::framework::core::code_loader::load_framework_objects;
 use crate::infrastructure::olap::clickhouse::version_sync::{
     generate_sql_version_syncs, get_all_version_syncs, parse_version,
 };
@@ -20,14 +21,12 @@ pub async fn generate_migration(project: &Project) -> Result<RoutineSuccess, Rou
         Some(previous_version) => previous_version,
     };
 
-    let fo_versions = crawl_schema(project, &project.old_versions_sorted())
-        .await
-        .map_err(|err| {
-            RoutineFailure::new(
-                Message::new("Failed".to_string(), "to crawl schema".to_string()),
-                err,
-            )
-        })?;
+    let fo_versions = load_framework_objects(project).await.map_err(|err| {
+        RoutineFailure::new(
+            Message::new("Failed".to_string(), "to crawl schema".to_string()),
+            err,
+        )
+    })?;
 
     let version_syncs = get_all_version_syncs(project, &fo_versions).map_err(|err| {
         RoutineFailure::new(

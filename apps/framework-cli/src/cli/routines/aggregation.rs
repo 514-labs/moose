@@ -1,18 +1,20 @@
 use std::{fs, io::Write};
 
 use crate::{
-    cli::display::Message, framework::typescript::templates::BASE_AGGREGATION_TEMPLATE,
+    cli::display::Message,
+    framework::{
+        core::code_loader::load_framework_objects, typescript::templates::BASE_AGGREGATION_TEMPLATE,
+    },
     project::Project,
 };
 
-use super::{crawl_schema, RoutineFailure, RoutineSuccess};
+use super::{RoutineFailure, RoutineSuccess};
 
 pub async fn create_aggregation_file(
     project: &Project,
     filename: String,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let old_versions = project.old_versions_sorted();
-    let framework_objects = crawl_schema(project, &old_versions).await.map_err(|err| {
+    let framework_objects = load_framework_objects(project).await.map_err(|err| {
         RoutineFailure::error(Message::new(
             "Failed".to_string(),
             format!("to create aggregation: {}", err),

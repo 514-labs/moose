@@ -3,12 +3,14 @@ use clap::Subcommand;
 pub mod aggregations;
 pub mod consumption;
 pub mod controller;
+pub mod core;
 pub mod data_model;
 pub mod flows;
 pub mod languages;
 pub mod prisma;
 pub mod python;
 pub mod registry;
+pub mod sdk;
 pub mod typescript;
 
 pub enum Insights {

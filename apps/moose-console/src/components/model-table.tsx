@@ -2,13 +2,13 @@ import { Separator } from "./ui/separator";
 import { isArray, isEnum } from "../lib/utils";
 import { DataModel, MooseColumnType } from "app/types";
 
-const processType = (type: MooseColumnType) => {
+const processType = (type: MooseColumnType): string => {
   if (typeof type === "string") {
     return type;
   } else if (isEnum(type)) {
     return type.name;
   } else if (isArray(type)) {
-    `Array<${processType(type.elementType)}>`;
+    return `Array<${processType(type.elementType)}>`;
   }
   console.log("Unknown type", type);
   return JSON.stringify(type);

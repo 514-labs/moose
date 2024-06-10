@@ -103,11 +103,11 @@ const kafka = new Kafka({
 });
 
 const flowIdentifier = `flow-${SOURCE_TOPIC}-${TARGET_TOPIC}`;
-// We limit consumption to 900KB to hiting the batch limit of 1MB on the producer side.
+// We limit consumption to 800KB to hiting the batch limit of 1MB on the producer side.
 // In order to increase this we should increase the accepting size on the topic itself.
 const consumer: Consumer = kafka.consumer({
   groupId: flowIdentifier,
-  maxBytes: 900 * 1024,
+  maxBytes: 800 * 1024,
 });
 const producer: Producer = kafka.producer({ transactionalId: flowIdentifier });
 

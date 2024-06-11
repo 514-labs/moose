@@ -1,16 +1,19 @@
 import { Consumer, Kafka, KafkaMessage, Producer, SASLOptions } from "kafkajs";
+import { Buffer } from "node:buffer";
 import process from "node:process";
 
 const SOURCE_TOPIC = process.argv[1];
 const TARGET_TOPIC = process.argv[2];
-const FLOW_FILE_PATH = process.argv[3];
-const BROKER = process.argv[4];
-const SASL_USERNAME = process.argv[5];
-const SASL_PASSWORD = process.argv[6];
-const SASL_MECHANISM = process.argv[7];
-const SECURITY_PROTOCOL = process.argv[8];
+const TARGET_TOPIC_CONFIG = process.argv[3];
+const FLOW_FILE_PATH = process.argv[4];
+const BROKER = process.argv[5];
+const SASL_USERNAME = process.argv[6];
+const SASL_PASSWORD = process.argv[7];
+const SASL_MECHANISM = process.argv[8];
+const SECURITY_PROTOCOL = process.argv[9];
 
 type FlowFunction = (data: unknown) => unknown | Promise<unknown>;
+type SlimKafkaMessage = { value: string };
 
 const logPrefix = `${SOURCE_TOPIC} -> ${TARGET_TOPIC}`;
 const log = (message: string): void => {
@@ -103,11 +106,8 @@ const kafka = new Kafka({
 });
 
 const flowIdentifier = `flow-${SOURCE_TOPIC}-${TARGET_TOPIC}`;
-// We limit consumption to 800KB to hiting the batch limit of 1MB on the producer side.
-// In order to increase this we should increase the accepting size on the topic itself.
 const consumer: Consumer = kafka.consumer({
   groupId: flowIdentifier,
-  maxBytes: 800 * 1024,
 });
 const producer: Producer = kafka.producer({ transactionalId: flowIdentifier });
 
@@ -119,7 +119,7 @@ const startProducer = async (): Promise<void> => {
 const handleMessage = async (
   flowFn: FlowFunction,
   message: KafkaMessage,
-): Promise<{ value: string } | null> => {
+): Promise<SlimKafkaMessage | null> => {
   if (message.value === undefined || message.value === null) {
     log(`Received message with no value, skipping...`);
     return null;
@@ -144,9 +144,50 @@ const handleMessage = async (
   return null;
 };
 
+const sendMessages = async (
+  targetTopic: string,
+  messages: SlimKafkaMessage[],
+  maxMessageSize: number,
+): Promise<void> => {
+  try {
+    let chunks: SlimKafkaMessage[] = [];
+    let chunkSize = 0;
+
+    for (const message of messages) {
+      const messageSize = Buffer.byteLength(message.value, "utf8");
+
+      if (chunkSize + messageSize > maxMessageSize) {
+        // Send the current chunk before adding the new message
+        await producer.send({ topic: targetTopic, messages: chunks });
+        log(`Sent ${chunks.length} transformed data to ${targetTopic}`);
+
+        // Start a new chunk
+        chunks = [message];
+        chunkSize = messageSize;
+      } else {
+        // Add the new message to the current chunk
+        chunks.push(message);
+        chunkSize += messageSize;
+      }
+    }
+
+    // Send the last chunk
+    if (chunks.length > 0) {
+      await producer.send({ topic: targetTopic, messages: chunks });
+      log(`Sent final ${chunks.length} transformed data to ${targetTopic}`);
+    }
+  } catch (e) {
+    error(`Failed to send transformed data`);
+    if (e instanceof Error) {
+      error(e.message);
+    }
+  }
+};
+
 const startConsumer = async (
   sourceTopic: string,
   targetTopic: string,
+  maxMessageSize: number,
 ): Promise<void> => {
   await consumer.connect();
 
@@ -173,12 +214,10 @@ const startConsumer = async (
       const filteredMessages = messages.filter((msg) => msg !== null);
 
       if (filteredMessages.length > 0) {
-        await producer.send({
-          topic: targetTopic,
-          messages: filteredMessages as { value: string }[],
-        });
-        log(
-          `Sent ${filteredMessages.length} transformed data to ${targetTopic}`,
+        await sendMessages(
+          targetTopic,
+          filteredMessages as SlimKafkaMessage[],
+          maxMessageSize,
         );
       }
     },
@@ -187,15 +226,40 @@ const startConsumer = async (
   log("Consumer is running...");
 };
 
+/**
+ * message.max.bytes a broker setting that applies to all topics.
+ * max.message.bytes is a per-topic setting.
+ *
+ * In general, max.message.bytes should be less than or equal to message.max.bytes.
+ * If max.message.bytes is larger than message.max.bytes, the broker will still reject
+ * any message that is larger than message.max.bytes, even if it's sent to a topic
+ * where max.message.bytes is larger.
+ */
+const getMaxMessageSize = (config: Record<string, unknown>): number => {
+  const maxMessageBytes =
+    (config["max.message.bytes"] as number) || 1024 * 1024;
+  const messageMaxBytes =
+    (config["message.max.bytes"] as number) || 1024 * 1024;
+
+  return Math.min(maxMessageBytes, messageMaxBytes);
+};
+
 const startFlow = async (
   sourceTopic: string,
   targetTopic: string,
+  targetTopicConfigJson: string,
 ): Promise<void> => {
   try {
     await startProducer();
 
     try {
-      await startConsumer(sourceTopic, targetTopic);
+      const targetTopicConfig = JSON.parse(targetTopicConfigJson) as Record<
+        string,
+        unknown
+      >;
+      const maxMessageSize = getMaxMessageSize(targetTopicConfig);
+
+      await startConsumer(sourceTopic, targetTopic, maxMessageSize);
     } catch (e) {
       error("Failed to start kafka consumer: ");
       if (e instanceof Error) {
@@ -210,4 +274,4 @@ const startFlow = async (
   }
 };
 
-startFlow(SOURCE_TOPIC, TARGET_TOPIC);
+startFlow(SOURCE_TOPIC, TARGET_TOPIC, TARGET_TOPIC_CONFIG);

@@ -4,7 +4,7 @@ use regex::{Captures, Regex};
 use std::{fs, path::Path};
 
 use crate::{
-    infrastructure::stream::redpanda::{fetch_topics, RedpandaConfig},
+    infrastructure::stream::redpanda::{describe_topic_config, fetch_topics, RedpandaConfig},
     project::Project,
     utilities::constants::{PY_FLOW_FILE, TS_FLOW_FILE},
 };
@@ -91,6 +91,7 @@ async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>
                     continue;
                 }
             };
+            let target_topic_config = describe_topic_config(config, &target_topic).await?;
 
             for flow_file in fs::read_dir(target.path())? {
                 let flow_file = flow_file?;
@@ -102,6 +103,7 @@ async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>
                     let flow = Flow {
                         source_topic: source_topic.clone(),
                         target_topic: target_topic.clone(),
+                        target_topic_config: target_topic_config.clone(),
                         executable: flow_file.path().to_path_buf(),
                     };
                     flows.push(flow);
@@ -146,6 +148,7 @@ fn build_migration_flow(caps: Captures, executable: &Path) -> Flow {
     Flow {
         source_topic: format!("{}_{}_input", source_table, target_table),
         target_topic: format!("{}_{}_output", source_table, target_table),
+        target_topic_config: std::collections::HashMap::new(),
         executable: executable.to_path_buf(),
     }
 }

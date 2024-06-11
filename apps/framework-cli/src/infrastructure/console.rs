@@ -117,7 +117,10 @@ pub async fn post_current_state_to_console(
     let req = Request::builder()
         .uri(url.path())
         .method(Method::POST)
-        .header("Host", "localhost:3001")
+        .header(
+            "Host",
+            format!("localhost:{}", project.console_config.host_port),
+        )
         .header("Content-Type", "application/json")
         .header("Content-Length", body.len())
         .header("Accept", "*/*")

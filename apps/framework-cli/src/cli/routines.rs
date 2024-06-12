@@ -106,7 +106,9 @@ use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
-use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
+use crate::infrastructure::olap::clickhouse_alt_client::{
+    get_pool, retrieve_current_state, store_current_state, ApplicationState, Model,
+};
 use crate::infrastructure::stream::redpanda;
 use crate::project::Project;
 
@@ -266,14 +268,21 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
         }
     );
 
+    let clickhouse_pool = get_pool(&project.clickhouse_config);
+
+    let existing: Option<ApplicationState> = {
+        let mut client = clickhouse_pool.get_handle().await?;
+        retrieve_current_state(&mut client, &project.clickhouse_config).await?
+    };
+
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("<DCM> Initializing project state");
     let (framework_object_versions, version_syncs) =
-        initialize_project_state(project.clone(), &mut route_table).await?;
+        initialize_project_state(project.clone(), &mut route_table, existing).await?;
 
     {
-        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+        let mut client = clickhouse_pool.get_handle().await?;
         let aggregations = project.get_aggregations();
         store_current_state(
             &mut client,
@@ -346,7 +355,7 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
 
     info!("<DCM> Initializing project state");
     let (framework_object_versions, version_syncs) =
-        initialize_project_state(project.clone(), &mut route_table).await?;
+        initialize_project_state(project.clone(), &mut route_table, None).await?;
 
     debug!("Route table: {:?}", route_table);
 
@@ -470,8 +479,17 @@ async fn check_for_model_changes(
 pub async fn initialize_project_state(
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
+    existing_state: Option<ApplicationState>,
 ) -> anyhow::Result<(FrameworkObjectVersions, Vec<VersionSync>)> {
     let old_versions = project.old_versions_sorted();
+    let existing_state: HashMap<String, Vec<Model>> = match existing_state {
+        None => HashMap::new(),
+        Some(state) => state
+            .models
+            .into_iter()
+            .map(|pair| (pair.0, pair.1))
+            .collect(),
+    };
 
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
     let producer = redpanda::create_producer(project.redpanda_config.clone());
@@ -501,6 +519,7 @@ pub async fn initialize_project_state(
                     &configured_client,
                     route_table,
                     &version,
+                    existing_state.get(version.as_str()),
                 )
                 .await?;
                 previous_version = Some((version, schema_version.models.clone()));
@@ -514,6 +533,7 @@ pub async fn initialize_project_state(
                 &configured_client,
                 route_table,
                 &framework_object_versions.current_version,
+                existing_state.get(&framework_object_versions.current_version),
             )
             .await;
 

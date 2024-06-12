@@ -17,6 +17,7 @@ use crate::infrastructure::olap::clickhouse::queries::create_alias_for_table;
 use crate::infrastructure::olap::clickhouse::queries::create_alias_query_from_table;
 use crate::infrastructure::olap::clickhouse::version_sync::{VersionSync, VersionSyncType};
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
+use crate::infrastructure::olap::clickhouse_alt_client::Model;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::{
     send_with_back_pressure, wait_for_delivery, RedpandaConfig,
@@ -396,10 +397,29 @@ pub async fn process_objects(
     configured_client: &ConfiguredDBClient,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     version: &str,
+    previous: Option<&Vec<Model>>,
 ) -> anyhow::Result<()> {
+    let previous: Option<HashMap<&str, &Model>> = previous.map(|models| {
+        models
+            .iter()
+            .map(|m| (m.data_model.name.as_str(), m))
+            .collect()
+    });
+
     let is_latest = version == project.version();
 
     for (_, fo) in framework_objects.iter() {
+        if let Some(model) = previous
+            .as_ref()
+            .and_then(|models| models.get(fo.data_model.name.as_str()))
+        {
+            if model.original_file_path == fo.original_file_path
+                && model.data_model == fo.data_model
+            {
+                continue;
+            }
+        };
+
         let ingest_route = schema_file_path_to_ingest_route(
             schema_dir,
             &fo.original_file_path,

@@ -1,8 +1,9 @@
 use config::{Config, ConfigError, Environment, File};
 use home::home_dir;
+use log::warn;
 use serde::Deserialize;
 use std::path::PathBuf;
-use toml::Value;
+use toml_edit::{table, value, DocumentMut, Item};
 use uuid::Uuid;
 
 use super::display::{Message, MessageType};
@@ -133,23 +134,25 @@ machine_id="{{uuid}}"
         )?;
     } else {
         let data = std::fs::read_to_string(&path)?;
-        match data.parse::<Value>() {
+        match data.parse::<DocumentMut>() {
             Ok(mut toml) => {
-                let telemetry = toml
-                    .as_table_mut()
-                    .unwrap()
-                    .entry("telemetry")
-                    .or_insert_with(|| Value::Table(toml::map::Map::new()));
+                let table = match toml.get_mut("telemetry") {
+                    Some(Item::Table(table)) => table,
+                    Some(_) => {
+                        warn!("telemetry in config is not a table.");
+                        return Ok(());
+                    }
+                    None => {
+                        toml["telemetry"] = table();
+                        toml["telemetry"].as_table_mut().unwrap()
+                    }
+                };
 
-                if let Some(telemetry) = telemetry.as_table_mut() {
-                    telemetry.entry("enabled").or_insert(Value::Boolean(true));
-                    telemetry
-                        .entry("is_moose_developer")
-                        .or_insert(Value::Boolean(false));
-                    telemetry
-                        .entry("machine_id")
-                        .or_insert(Value::String(Uuid::new_v4().to_string()));
-                }
+                table.entry("enabled").or_insert(value(true));
+                table.entry("is_moose_developer").or_insert(value(false));
+                table
+                    .entry("machine_id")
+                    .or_insert_with(|| value(Uuid::new_v4().to_string()));
 
                 std::fs::write(path, toml.to_string())?;
             }

@@ -289,6 +289,7 @@ pub async fn set_up_topic_and_tables_and_route(
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     ingest_route: PathBuf,
     is_latest: bool,
+    unchanged: bool,
 ) -> anyhow::Result<()> {
     let topic = fo.topic.clone();
 
@@ -363,8 +364,10 @@ pub async fn set_up_topic_and_tables_and_route(
             if let Some(table) = &fo.table {
                 debug!("Creating table: {:?}", table.name);
 
-                create_or_replace_tables(table, configured_client, project.is_production).await?;
-
+                if !unchanged {
+                    create_or_replace_tables(table, configured_client, project.is_production)
+                        .await?;
+                }
                 debug!("Table created: {:?}", table.name);
             }
 
@@ -409,15 +412,13 @@ pub async fn process_objects(
     let is_latest = version == project.version();
 
     for (_, fo) in framework_objects.iter() {
-        if let Some(model) = previous
+        let unchanged = if let Some(model) = previous
             .as_ref()
             .and_then(|models| models.get(fo.data_model.name.as_str()))
         {
-            if model.original_file_path == fo.original_file_path
-                && model.data_model == fo.data_model
-            {
-                continue;
-            }
+            model.original_file_path == fo.original_file_path && model.data_model == fo.data_model
+        } else {
+            false
         };
 
         let ingest_route = schema_file_path_to_ingest_route(
@@ -435,6 +436,7 @@ pub async fn process_objects(
             route_table,
             ingest_route.clone(),
             is_latest,
+            unchanged,
         )
         .await?;
     }

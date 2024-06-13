@@ -55,7 +55,9 @@ async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>
                 continue;
             };
 
-            let flow = build_migration_flow(caps, &source.path());
+            let mut flow = build_migration_flow(caps, &source.path());
+            let target_topic_config = describe_topic_config(config, &flow.target_topic).await?;
+            flow.target_topic_config = target_topic_config;
             flows.push(flow);
 
             // In this case we are currently parsing a migration flow

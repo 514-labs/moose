@@ -2,14 +2,19 @@ import { Callout, FileTree, Link } from "nextra/components";
 
 # Create Flow in CLI
 
-Initiate your flow setup in Moose with the `moose flow init` CLI command. This command structures your project's directory and creates necessary files based on your specified data models.
+Initiate your flow setup in Moose with the `moose flow init` CLI command. This
+command structures your project's directory and creates necessary files based on
+your specified data models.
 
 ```txt filename="Terminal" copy
 moose flow init --source <YourSourceDataModel> --destination <YourDestinationDataModel>
 ```
 
-This command takes two arguments: `--source` and `--destination`, which should each be followed by the name of the source and destination data models you wish to connect through this flow.
-These data models must exist before you create your data flow. You can find a list of your existing data flows in `/datamodels/models.ts`.
+This command takes two arguments: `--source` and `--destination`, which should
+each be followed by the name of the source and destination data models you wish
+to connect through this flow. These data models must exist before you create
+your data flow. You can find a list of your existing data flows in
+`/datamodels/models.ts`.
 
 By way of example:
 
@@ -17,7 +22,9 @@ By way of example:
 moose flow init --source UserActivity --destination ParsedActivity
 ```
 
-Represents a data flow from a source data model `UserActivity` and a destination data model `ParsedActivity`, which themselves were defined in `/datamodels/models.ts`:
+Represents a data flow from a source data model `UserActivity` and a destination
+data model `ParsedActivity`, which themselves were defined in
+`/datamodels/models.ts`:
 
 ```ts filename="models.ts"
 import { Key } from "@514labs/moose-lib";
@@ -31,31 +38,32 @@ export interface ParsedActivity {
 }
 ```
 
-Ensure your development server is running to keep Moose updated with your data model definitions.
+Ensure your development server is running to keep Moose updated with your data
+model definitions.
 
-When you run this command, you will create the data flow file and file structure described below.
-
-<Callout type="warning" emoji="ℹ️">
-  Alpha warning: You will soon also be able to see your data flow in your
-  development dashboard (e.g., if you are running Moose locally, at
-  http://localhost:3001/). This is still in development, and the flows are not
-  currently visible in the dashboard.
-</Callout>
+When you run this command, you will create the data flow file and file structure
+described below.
 
 # Directory Structure Post-Initialization
 
-Running the `moose flow init` command with valid arguments will create a `flow.ts` file to represent this newly created data flow, in the following directory structure:
+Running the `moose flow init` command with valid arguments will create a
+`flow.ts` file to represent this newly created data flow, in the following
+directory structure:
 
 <FileTree>
+  {" "}
   <FileTree.Folder name="my-moose-app" defaultOpen>
+    {" "}
     <FileTree.Folder name="flows" defaultOpen>
+      {" "}
       <FileTree.Folder name="UserActivity" defaultOpen>
         <FileTree.Folder name="ParsedActivity" defaultOpen>
-          <FileTree.File name="flow.ts" />
-        </FileTree.Folder>
-      </FileTree.Folder>
+          {" "}
+          <FileTree.File name="flow.ts" />{" "}
+        </FileTree.Folder>{" "}
+      </FileTree.Folder>{" "}
     </FileTree.Folder>
-  </FileTree.Folder>
+  </FileTree.Folder>{" "}
 </FileTree>
 
 In the example above
@@ -72,8 +80,12 @@ Where:
 | ParsedActivity | is the destination data model where Moose routes the transformed data.                                                                                                                                                                              |
 | flow.ts        | is the transformation function file that contains the logic for data transformation. As long as this file is named `flow.ts`, Moose will apply the default function to each new data entry from the source, and save the output to the destination. |
 
-The `flow.ts` file is a TypeScript file that you use to define the transformation needed to get from your source data model to the destination.
-In the `flow.ts` file created, Moose provides starter code. This code includes imports for your source and destination data model interfaces and sets up a default function template. The function is pre-configured with the correct argument and return types based on the specified data models:
+The `flow.ts` file is a TypeScript file that you use to define the
+transformation needed to get from your source data model to the destination. In
+the `flow.ts` file created, Moose provides starter code. This code includes
+imports for your source and destination data model interfaces and sets up a
+default function template. The function is pre-configured with the correct
+argument and return types based on the specified data models:
 
 ```ts filename="flow.ts" copy {2-3,7}
 // Add your models & start the development server to import these types
@@ -89,12 +101,17 @@ export default function run(event: UserActivity): ParsedActivity | null {
 
 # Develop Transformation Logic
 
-Now that you have your data flow file, `flow.ts`, you have to define the transformations within it:
-how you want to change the data in the source data model to get to the output anticipated by the destination data model.
+Now that you have your data flow file, `flow.ts`, you have to define the
+transformations within it: how you want to change the data in the source data
+model to get to the output anticipated by the destination data model.
 
-**This requires a default export function:** The transformation function should be the file's default export, allowing Moose to automatically identify and execute it.
+**This requires a default export function:** The transformation function should
+be the file's default export, allowing Moose to automatically identify and
+execute it.
 
-**And allows for type definitions:** Use TypeScript interfaces generated for your data models to type-check the function's input and output, ensuring they match the source and destination data models, respectively.
+**And allows for type definitions:** Use TypeScript interfaces generated for
+your data models to type-check the function's input and output, ensuring they
+match the source and destination data models, respectively.
 
 Here's an example `flow.ts` that converts timestamps to UTC:
 
@@ -105,33 +122,39 @@ import { UserActivity } from "/path/to/UserActivity";
 import { ParsedActivity } from "/path/to/ParsedActivity";
 
 // The 'convertUtc' function transforms UserActivity data to ParsedActivity format.
-export default function convertUtc(event: UserActivity): ParsedActivity {
+export default function convertUtc(source: UserActivity): ParsedActivity {
   // Convert local timestamp to UTC and return new ParsedActivity object.
   return {
-    id: event.id, // Retain original event ID.
-    userId: "puid" + event.userId, // Example: Prefix user ID.
-    activity: event.activity, // Copy activity unchanged.
-    timestamp: new Date(event.timestamp.toUTCString()), // Convert timestamp to UTC.
+    id: source.id, // Retain original event ID.
+    userId: "puid" + source.userId, // Example: Prefix user ID.
+    activity: source.activity, // Copy activity unchanged.
+    timestamp: new Date(source.timestamp), // Convert timestamp to UTC.
   };
 }
 ```
 
-Adjust function specifics according to your data transformation needs. This structured approach ensures clarity in your
-data processing tasks, enabling Moose to efficiently handle and automate data flows.
+Adjust function specifics according to your data transformation needs. The
+function's return type can be null (meaning no transformation will take place),
+a single object, or an array of objects. This structured approach ensures
+clarity in your data processing tasks, enabling Moose to efficiently handle and
+automate data flows.
 
 # Validate Your Flow
 
 To test and confirm your flow's logic:
 
-1. Send Test Data: Ingest test data into the source data model to trigger the flow.
-2. Verify Transformation: After the flow processes the data, check the destination model in the
-   Moose developer console to see if the data has been transformed correctly.
+1. Send Test Data: Ingest test data into the source data model to trigger the
+   flow.
+2. Verify Transformation: After the flow processes the data, check the
+   destination model in the Moose developer console to see if the data has been
+   transformed correctly.
 
-For detailed instructions on data ingestion, consult the [Ingesting Data](../data-models/capture-data.mdx) section of the documentation.
+For detailed instructions on data ingestion, consult the [Ingesting
+Data](../data-models/capture-data.mdx) section of the documentation.
 
 <Callout type="info" emoji="ℹ️">
-  Disclaimer: Flows are in alpha, meaning they can currently be used only in
-  development environments and are not ready for production deployment. Progress
-  is being made to enable the use of flows in production, with updates expected
-  soon.
+  {" "}
+  Disclaimer: Flows are in alpha, meaning they can currently be used only in development
+  environments and are not ready for production deployment. Progress is being made
+  to enable the use of flows in production, with updates expected soon.{" "}
 </Callout>

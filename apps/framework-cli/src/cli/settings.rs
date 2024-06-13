@@ -23,6 +23,7 @@ const ENVIRONMENT_VARIABLE_PREFIX: &str = "MOOSE";
 
 #[derive(Deserialize, Debug)]
 pub struct Features {
+    #[allow(dead_code)]
     pub coming_soon_wall: bool,
 }
 
@@ -57,6 +58,7 @@ impl Default for Telemetry {
 pub struct Settings {
     #[serde(default)]
     pub logger: LoggerSettings,
+    #[allow(dead_code)]
     #[serde(default)]
     pub features: Features,
     #[serde(default)]

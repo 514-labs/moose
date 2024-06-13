@@ -1,4 +1,5 @@
 use log::{error, info, warn};
+use rdkafka::admin::ResourceSpecifier;
 use rdkafka::config::RDKafkaLogLevel;
 use rdkafka::consumer::stream_consumer::StreamConsumer;
 use rdkafka::consumer::Consumer;
@@ -11,7 +12,7 @@ use rdkafka::{
     ClientConfig,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
 
 // TODO: We need to configure the application based on the current project directory structure to
@@ -89,6 +90,48 @@ pub async fn delete_topics(
     }
 
     Ok(())
+}
+
+pub async fn describe_topic_config(
+    config: &RedpandaConfig,
+    topic_name: &str,
+) -> Result<HashMap<String, String>, rdkafka::error::KafkaError> {
+    info!("Describing config for topic: {}", topic_name);
+
+    let admin_client: AdminClient<_> = config_client(config)
+        .create()
+        .expect("Redpanda Admin Client creation failed");
+
+    let options = AdminOptions::new().operation_timeout(Some(std::time::Duration::from_secs(5)));
+
+    let result = admin_client
+        .describe_configs(&[ResourceSpecifier::Topic(topic_name)], &options)
+        .await?;
+
+    match result.into_iter().next() {
+        Some(Ok(config_resource)) => {
+            let config_map: HashMap<String, String> = config_resource
+                .entry_map()
+                .into_iter()
+                .filter_map(|(config_name, config_entry)| {
+                    config_entry
+                        .value
+                        .as_ref()
+                        .map(|value| (config_name.to_string(), value.to_string()))
+                })
+                .collect();
+
+            Ok(config_map)
+        }
+        Some(Err(err)) => {
+            error!("Failed to describe topic config: {}", err);
+            Ok(HashMap::new())
+        }
+        None => {
+            error!("No response from describe_configs");
+            Ok(HashMap::new())
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

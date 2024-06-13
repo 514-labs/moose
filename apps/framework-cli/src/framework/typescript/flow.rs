@@ -17,12 +17,14 @@ pub fn run(
     redpanda_config: RedpandaConfig,
     source_topic: &str,
     target_topic: &str,
+    target_topic_config: &str,
     flow_path: &Path,
     // TODO Remove the anyhow type here
 ) -> Result<Child, std::io::Error> {
     let mut args = vec![
         source_topic,
         target_topic,
+        target_topic_config,
         flow_path.to_str().unwrap(),
         &redpanda_config.broker,
     ];

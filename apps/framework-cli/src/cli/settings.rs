@@ -22,20 +22,6 @@ use crate::utilities::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
 const ENVIRONMENT_VARIABLE_PREFIX: &str = "MOOSE";
 
 #[derive(Deserialize, Debug)]
-pub struct Features {
-    #[allow(dead_code)]
-    pub coming_soon_wall: bool,
-}
-
-impl Default for Features {
-    fn default() -> Self {
-        Features {
-            coming_soon_wall: true,
-        }
-    }
-}
-
-#[derive(Deserialize, Debug)]
 pub struct Telemetry {
     pub machine_id: String,
     pub enabled: bool,
@@ -58,9 +44,6 @@ impl Default for Telemetry {
 pub struct Settings {
     #[serde(default)]
     pub logger: LoggerSettings,
-    #[allow(dead_code)]
-    #[serde(default)]
-    pub features: Features,
     #[serde(default)]
     pub telemetry: Telemetry,
 }
@@ -115,13 +98,6 @@ pub fn init_config_file() -> Result<(), std::io::Error> {
     let path = config_path();
     if !path.exists() {
         let contents_toml = r#"
-# Feature flags to hide ongoing feature work on the CLI
-[features]
-
-# Coming soon wall on all the CLI commands as we build the MVP.
-# if you want to try features as they are built, set this to false
-coming_soon_wall=false
-
 # Helps gather insights, identify issues, & improve the user experience
 [telemetry]
 

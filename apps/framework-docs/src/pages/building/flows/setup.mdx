@@ -118,7 +118,9 @@ import { UserActivity } from "/path/to/UserActivity";
 import { ParsedActivity } from "/path/to/ParsedActivity";
 
 // The 'convertUtc' function transforms UserActivity data to ParsedActivity format.
-export default function convertUtc(source: UserActivity): ParsedActivity {
+export default function convertUtc(
+  source: UserActivity,
+): ParsedActivity[] | ParsedActivity | null {
   // Convert local timestamp to UTC and return new ParsedActivity object.
   return {
     id: source.id, // Retain original event ID.

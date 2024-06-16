@@ -14,6 +14,7 @@
   "devDependencies": {
     "@514labs/moose-cli": "0.3.392",
     "typescript": "^5.4.0",
-    "@types/node": "^20.12.12"
+    "@types/node": "^20.12.12",
+    "ts-patch": "^3.2.0"
   }
 }

@@ -333,8 +333,6 @@ async fn top_command_handler(
                                 })
                             })?;
 
-                        println!("Framework Object Versions: {:?}", framework_object_versions);
-
                         generate_sdk(
                             language,
                             &project,

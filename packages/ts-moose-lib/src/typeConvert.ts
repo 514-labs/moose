@@ -41,7 +41,7 @@ const tsTypeToDataType = (
       : nonNull == checker.getNumberType()
         ? "Float"
         : nonNull == checker.getBooleanType()
-          ? "Float"
+          ? "Boolean"
           : nonNull == dateType(checker)
             ? "DateTime"
             : checker.isArrayType(nonNull)

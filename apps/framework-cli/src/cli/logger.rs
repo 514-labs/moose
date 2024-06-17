@@ -189,7 +189,6 @@ pub fn setup_logging(settings: &LoggerSettings) -> Result<(), fern::InitError> {
                     ])))
                     .with_batch_exporter(otel_exporter, opentelemetry_sdk::runtime::Tokio)
                     .build();
-            // opentelemetry::global::set_error_handler(|_| {}).unwrap();
 
             let logger: Box<dyn log::Log> = Box::new(OpenTelemetryLogBridge::new(&logger_provider));
 

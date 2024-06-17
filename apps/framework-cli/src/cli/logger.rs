@@ -45,9 +45,13 @@ const LOG_FILE: &str = "cli.log";
 
 #[derive(Deserialize, Debug, Clone)]
 pub enum LoggerLevel {
+    #[serde(alias = "DEBUG", alias = "debug")]
     Debug,
+    #[serde(alias = "INFO", alias = "info")]
     Info,
+    #[serde(alias = "WARN", alias = "warn")]
     Warn,
+    #[serde(alias = "ERROR", alias = "error")]
     Error,
 }
 

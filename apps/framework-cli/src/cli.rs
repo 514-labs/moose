@@ -16,6 +16,7 @@ use std::sync::Arc;
 use clap::Parser;
 use commands::{AggregationCommands, Commands, ConsumptionCommands, FlowCommands, GenerateCommand};
 use config::ConfigError;
+use display::with_spinner_async;
 use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
@@ -302,30 +303,53 @@ async fn top_command_handler(
                 language,
                 destination,
                 project_location,
+                full_package: packaged,
             }) => {
-                let project = Project::load(project_location).map_err(|e| {
+                let canonical_location = project_location.canonicalize().map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Generate".to_string(),
+                        details: format!("Failed to canonicalize path: {:?}", e),
+                    })
+                })?;
+
+                let project = Project::load(&canonical_location).map_err(|e| {
                     RoutineFailure::error(Message {
                         action: "Generate".to_string(),
                         details: format!("Failed to load project: {:?}", e),
                     })
                 })?;
 
-                let framework_object_versions =
-                    load_framework_objects(&project).await.map_err(|e| {
-                        RoutineFailure::error(Message {
-                            action: "Generate".to_string(),
-                            details: format!("Failed to load initial project state: {:?}", e),
-                        })
-                    })?;
+                with_spinner_async(
+                    "Generating SDK",
+                    async {
+                        let framework_object_versions =
+                            load_framework_objects(&project).await.map_err(|e| {
+                                RoutineFailure::error(Message {
+                                    action: "Generate".to_string(),
+                                    details: format!(
+                                        "Failed to load initial project state: {:?}",
+                                        e
+                                    ),
+                                })
+                            })?;
 
-                generate_sdk(language, &project, &framework_object_versions, destination).map_err(
-                    |e| {
-                        RoutineFailure::error(Message {
-                            action: "Generate".to_string(),
-                            details: format!("Failed to generate SDK: {:?}", e),
+                        generate_sdk(
+                            language,
+                            &project,
+                            &framework_object_versions,
+                            destination,
+                            packaged,
+                        )
+                        .map_err(|e| {
+                            RoutineFailure::error(Message {
+                                action: "Generate".to_string(),
+                                details: format!("Failed to generate SDK: {:?}", e),
+                            })
                         })
                     },
-                )?;
+                    true,
+                )
+                .await?;
 
                 Ok(RoutineSuccess::success(Message::new(
                     "Generated".to_string(),

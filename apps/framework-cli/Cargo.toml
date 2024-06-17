@@ -30,8 +30,6 @@ schema-ast = { git = "https://github.com/prisma/prisma-engines.git" }
 diagnostics = { git = "https://github.com/prisma/prisma-engines.git" }
 # datamodel-renderer = { git = "https://github.com/prisma/prisma-engines.git"}
 handlebars = "5.1"
-# TODO Remove the following
-tinytemplate = "1.1"
 rdkafka = { version = "0.36", features = ["ssl"] }
 convert_case = "0.6.0"
 log = "0.4"

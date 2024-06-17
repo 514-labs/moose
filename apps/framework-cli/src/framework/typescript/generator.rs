@@ -1,19 +1,20 @@
 use convert_case::{Case, Casing};
 use serde::Serialize;
+use std::collections::HashSet;
 use std::fs;
 use std::path::Path;
 use std::{fmt, path::PathBuf};
 
-use super::templates::{
-    self, IndexTemplate, PackageJsonTemplate, TsConfigTemplate, TypescriptRenderingError,
-};
 use crate::framework::core::code_loader::{FrameworkObjectVersions, SchemaVersion};
 use crate::framework::data_model::schema::{DataEnum, EnumValue};
+use crate::framework::typescript;
 use crate::{
     framework::data_model::schema::{ColumnType, Table},
     project::Project,
     utilities::{package_managers, system},
 };
+
+use super::templates::TypescriptRenderingError;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to generate Typescript code")]
@@ -24,40 +25,8 @@ pub enum TypescriptGeneratorError {
         type_name: String,
     },
     FileWritingError(#[from] std::io::Error),
-    RenderingError(#[from] TypescriptRenderingError),
+    RenderingError(#[from] typescript::templates::TypescriptRenderingError),
     ProjectFile(#[from] crate::project::ProjectFileError),
-}
-
-#[derive(Debug, Clone)]
-pub struct SendFunction {
-    pub interface: TypescriptInterface,
-    pub server_url: String,
-    pub api_route_name: String,
-}
-
-impl SendFunction {
-    pub fn new(interface: TypescriptInterface, server_url: String, api_route_name: String) -> Self {
-        Self {
-            interface,
-            server_url,
-            api_route_name,
-        }
-    }
-    pub fn file_name(&self) -> String {
-        self.interface.send_function_file_name().to_string()
-    }
-
-    pub fn file_name_with_extension(&self) -> String {
-        format!("{}.ts", self.interface.send_function_file_name())
-    }
-
-    pub fn create_code(&self) -> String {
-        templates::SendFunctionTemplate::build(
-            &self.interface,
-            self.server_url.clone(),
-            self.api_route_name.clone(),
-        )
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -99,13 +68,20 @@ impl TypescriptInterface {
     }
 
     pub fn create_code(&self) -> Result<String, TypescriptRenderingError> {
-        templates::render_interface(self)
+        typescript::templates::render_interface(self)
     }
 
-    pub fn has_enums(&self) -> bool {
+    pub fn enums(&self) -> HashSet<String> {
         self.fields
             .iter()
-            .any(|field| matches!(&field.field_type, InterfaceFieldType::Enum(_)))
+            .filter_map(|field| {
+                if let InterfaceFieldType::Enum(e) = &field.field_type {
+                    Some(e.name.clone())
+                } else {
+                    None
+                }
+            })
+            .collect()
     }
 }
 
@@ -144,19 +120,19 @@ pub enum InterfaceFieldType {
     Enum(TSEnum),
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Eq, PartialEq, Hash)]
 pub struct TSEnum {
     pub name: String,
     pub values: Vec<TSEnumMember>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Eq, PartialEq, Hash)]
 pub struct TSEnumMember {
     pub name: String,
     pub value: TSEnumValue,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Eq, PartialEq, Hash)]
 pub enum TSEnumValue {
     String(String),
     Number(u8),
@@ -179,15 +155,11 @@ impl fmt::Display for InterfaceFieldType {
 #[derive(Debug, Clone)]
 pub struct TypescriptObjects {
     pub interface: TypescriptInterface,
-    pub send_function: SendFunction,
 }
 
 impl TypescriptObjects {
-    pub fn new(interface: TypescriptInterface, send_function: SendFunction) -> Self {
-        Self {
-            interface,
-            send_function,
-        }
+    pub fn new(interface: TypescriptInterface) -> Self {
+        Self { interface }
     }
 }
 
@@ -305,7 +277,6 @@ pub fn std_table_to_typescript_interface(
 }
 
 fn collect_ts_objects(
-    project: &Project,
     version: &str,
     framework_objects: &SchemaVersion,
 ) -> Result<Vec<TypescriptObjects>, TypescriptGeneratorError> {
@@ -313,24 +284,17 @@ fn collect_ts_objects(
 
     for model in framework_objects.get_all_models() {
         let interface = std_table_to_typescript_interface(model.to_table(version), &model.name)?;
-
-        let send_function = SendFunction::new(
-            interface.clone(),
-            format!("{}/{}", project.http_server_config.host, "api"),
-            model.name.clone(),
-        );
-
-        ts_objects.push(TypescriptObjects::new(interface, send_function));
+        ts_objects.push(TypescriptObjects::new(interface));
     }
 
     Ok(ts_objects)
 }
 
-fn collect_enums(framework_objects: &SchemaVersion) -> Vec<TSEnum> {
-    let mut enums: Vec<TSEnum> = Vec::new();
+fn collect_enums(framework_objects: &SchemaVersion) -> HashSet<TSEnum> {
+    let mut enums: HashSet<TSEnum> = HashSet::new();
 
     for enum_type in framework_objects.get_all_enums() {
-        enums.push(map_std_enum_to_ts(enum_type.clone()));
+        enums.insert(map_std_enum_to_ts(enum_type.clone()));
     }
 
     enums
@@ -340,6 +304,7 @@ pub fn generate_sdk(
     project: &Project,
     framework_object_versions: &FrameworkObjectVersions,
     sdk_dir: &Path,
+    packaged: &bool,
 ) -> Result<(), TypescriptGeneratorError> {
     //! Generates a Typescript SDK for the given project and returns the path where the SDK was generated.
     //!
@@ -347,66 +312,74 @@ pub fn generate_sdk(
     //! - `project` - The project to generate the SDK for.
     //! - `framework_object_versions` - The objects to generate the SDK for.
     //! - `sdk_dir` - Where to write the generated SDK.
+    //! - `packaged` - Whether or not to generate a full fledged package or just the source files in the
+    //!                language of choice.
     //!
     //! # Returns
     //! - `Result<PathBuf, std::io::Error>` - A result containing the path where the SDK was generated.
 
     let current_version_ts_objects = collect_ts_objects(
-        project,
         &framework_object_versions.current_version,
         &framework_object_versions.current_models,
     )?;
-    let enums: Vec<TSEnum> = collect_enums(&framework_object_versions.current_models);
 
-    let package = TypescriptPackage::from_project(project);
-    let package_json_code = PackageJsonTemplate::build(&package);
-    let ts_config_code = TsConfigTemplate::build();
-
-    let index_code = IndexTemplate::build(
-        &framework_object_versions.current_version,
-        &current_version_ts_objects,
-    );
-    let current_enum_code = templates::render_enums(enums)?;
+    let enums: HashSet<TSEnum> = collect_enums(&framework_object_versions.current_models);
 
     std::fs::remove_dir_all(sdk_dir).or_else(|err| match err.kind() {
         std::io::ErrorKind::NotFound => Ok(()),
         _ => Err(err),
     })?;
-
     std::fs::create_dir_all(sdk_dir)?;
 
-    fs::write(sdk_dir.join("package.json"), package_json_code)?;
-    fs::write(sdk_dir.join("tsconfig.json"), ts_config_code)?;
-    fs::write(sdk_dir.join("index.ts"), index_code)?;
-    fs::write(sdk_dir.join("enums.ts"), current_enum_code)?;
+    if *packaged {
+        let package = TypescriptPackage::from_project(project);
+        let package_json_code = typescript::templates::render_package_json(&package.name)?;
+        fs::write(sdk_dir.join("package.json"), package_json_code)?;
+        let ts_config_code = typescript::templates::render_ts_config()?;
+        fs::write(sdk_dir.join("tsconfig.json"), ts_config_code)?;
+    }
 
-    let versions = framework_object_versions
-        .previous_version_models
-        .iter()
-        .chain(std::iter::once((
-            &framework_object_versions.current_version,
-            &framework_object_versions.current_models,
-        )));
+    let index_code = typescript::templates::render_ingest_client(
+        &framework_object_versions.current_version,
+        &current_version_ts_objects,
+    )?;
+    fs::write(sdk_dir.join("index.ts"), index_code)?;
+
+    if !enums.is_empty() {
+        let current_enum_code = typescript::templates::render_enums(enums)?;
+        fs::write(sdk_dir.join("enums.ts"), current_enum_code)?;
+    }
+
+    for obj in current_version_ts_objects.iter() {
+        let interface_code = obj.interface.create_code()?;
+        fs::write(
+            sdk_dir.join(obj.interface.file_name_with_extension()),
+            interface_code,
+        )?;
+    }
+
+    let versions = framework_object_versions.previous_version_models.iter();
 
     for (version, models) in versions {
         let version_dir = sdk_dir.join(version);
-        fs::create_dir(&version_dir)?;
-        let ts_objects = collect_ts_objects(project, version, models)?;
-        let enums = collect_enums(models);
-        let enums_code = templates::render_enums(enums)?;
-        fs::write(version_dir.join("enums.ts"), enums_code)?;
+        fs::create_dir_all(&version_dir)?;
+
+        let ts_objects = collect_ts_objects(version, models)?;
+        let version_enums = collect_enums(models);
+
+        if !version_enums.is_empty() {
+            let enums_code = typescript::templates::render_enums(version_enums)?;
+            fs::write(version_dir.join("enums.ts"), enums_code)?;
+        }
+
+        let client_code = typescript::templates::render_ingest_client(version, &ts_objects)?;
+        fs::write(version_dir.join("index.ts"), client_code)?;
 
         for obj in ts_objects.iter() {
-            let interface_code = obj.interface.create_code()?;
-            let send_function_code = obj.send_function.create_code();
-
+            let interface_code = typescript::templates::render_interface(&obj.interface)?;
             fs::write(
                 version_dir.join(obj.interface.file_name_with_extension()),
                 interface_code,
-            )?;
-            fs::write(
-                version_dir.join(obj.send_function.file_name_with_extension()),
-                send_function_code,
             )?;
         }
     }

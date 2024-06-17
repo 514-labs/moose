@@ -21,12 +21,14 @@ pub fn generate_sdk(
     project: &Project,
     framework_objects: &FrameworkObjectVersions,
     destination: &Path,
+    packaged: &bool,
 ) -> Result<(), SDKGenerationError> {
     match language {
         SupportedLanguages::Typescript => Ok(typescript::generator::generate_sdk(
             project,
             framework_objects,
             destination,
+            packaged,
         )?),
         SupportedLanguages::Python => {
             todo!("Python SDK generation is not yet supported");

@@ -316,6 +316,7 @@ async fn watch(
         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to watch file: {}", e)))?;
 
     loop {
+        // FIXME: we're blocking a thread in tokio
         let res = rx.recv().unwrap();
         match res {
             Ok(event) => {

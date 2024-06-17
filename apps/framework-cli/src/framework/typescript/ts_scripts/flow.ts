@@ -119,7 +119,7 @@ const startProducer = async (): Promise<void> => {
 const handleMessage = async (
   flowFn: FlowFunction,
   message: KafkaMessage,
-): Promise<SlimKafkaMessage | null> => {
+): Promise<SlimKafkaMessage[] | null> => {
   if (message.value === undefined || message.value === null) {
     log(`Received message with no value, skipping...`);
     return null;
@@ -131,7 +131,11 @@ const handleMessage = async (
     );
 
     if (transformedData) {
-      return { value: JSON.stringify(transformedData) };
+      if (Array.isArray(transformedData)) {
+        return transformedData.map((item) => ({ value: JSON.stringify(item) }));
+      } else {
+        return [{ value: JSON.stringify(transformedData) }];
+      }
     }
   } catch (e) {
     // TODO: Track failure rate
@@ -207,9 +211,11 @@ const startConsumer = async (
   await consumer.run({
     eachBatchAutoResolve: true,
     eachBatch: async ({ batch }) => {
-      const messages = await Promise.all(
-        batch.messages.map((message) => handleMessage(flowFunction, message)),
-      );
+      const messages = (
+        await Promise.all(
+          batch.messages.map((message) => handleMessage(flowFunction, message)),
+        )
+      ).flat();
 
       const filteredMessages = messages.filter((msg) => msg !== null);
 
@@ -227,13 +233,14 @@ const startConsumer = async (
 };
 
 /**
- * message.max.bytes a broker setting that applies to all topics.
+ * message.max.bytes is a broker setting that applies to all topics.
  * max.message.bytes is a per-topic setting.
  *
  * In general, max.message.bytes should be less than or equal to message.max.bytes.
  * If max.message.bytes is larger than message.max.bytes, the broker will still reject
  * any message that is larger than message.max.bytes, even if it's sent to a topic
- * where max.message.bytes is larger.
+ * where max.message.bytes is larger. So we take the minimum of the two values,
+ * or default to 1MB if either value is not set. 1MB is the server's default.
  */
 const getMaxMessageSize = (config: Record<string, unknown>): number => {
   const maxMessageBytes =

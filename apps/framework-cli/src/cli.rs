@@ -303,7 +303,7 @@ async fn top_command_handler(
                 language,
                 destination,
                 project_location,
-                packaged,
+                full_package: packaged,
             }) => {
                 let canonical_location = project_location.canonicalize().map_err(|e| {
                     RoutineFailure::error(Message {

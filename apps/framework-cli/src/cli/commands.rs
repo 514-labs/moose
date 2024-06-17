@@ -99,8 +99,8 @@ pub enum GenerateCommand {
         #[arg(default_value = ".", short, long)]
         project_location: PathBuf,
         /// Whether or not to generate a full fledged package or just the source files in the language of choice
-        #[arg(default_value = "false", short = 'a', long)]
-        packaged: bool,
+        #[arg(default_value = "false", short = 'f', long)]
+        full_package: bool,
     },
 }
 

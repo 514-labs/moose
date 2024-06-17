@@ -34,9 +34,10 @@
 //!
 //! - Log file rotation: The log file should be rotated after it reaches a certain size to manage disk space.
 
-use log::LevelFilter;
+use log::{LevelFilter, Metadata, Record};
 use std::time::{Duration, SystemTime};
 
+use opentelemetry::logs::Logger;
 use opentelemetry::KeyValue;
 use opentelemetry_appender_log::OpenTelemetryLogBridge;
 use opentelemetry_http::hyper::HyperClient;
@@ -178,21 +179,23 @@ pub fn setup_logging(settings: &LoggerSettings) -> Result<(), fern::InitError> {
                     client,
                     Duration::from_millis(100),
                 ))
-                .with_timeout(Duration::from_millis(10000))
+                .with_timeout(Duration::from_millis(100))
                 .build_log_exporter()
                 .unwrap();
 
-            let logger_provider =
-                LoggerProvider::builder()
-                    .with_config(Config::default().with_resource(Resource::new(vec![
-                        KeyValue::new(SERVICE_NAME, "moose-cli"),
-                    ])))
-                    .with_batch_exporter(otel_exporter, opentelemetry_sdk::runtime::Tokio)
-                    .build();
+            let logger_provider = LoggerProvider::builder()
+                .with_config(Config::default().with_resource(Resource::new(vec![
+                    KeyValue::new(SERVICE_NAME, "moose-cli"),
+                    KeyValue::new("session_id", session_id.as_str()),
+                ])))
+                .with_batch_exporter(otel_exporter, opentelemetry_sdk::runtime::Tokio)
+                .build();
 
-            let logger: Box<dyn log::Log> = Box::new(OpenTelemetryLogBridge::new(&logger_provider));
+            let logger: Box<dyn log::Log> = Box::new(TargetToKvLogger {
+                inner: OpenTelemetryLogBridge::new(&logger_provider),
+            });
 
-            output_config.chain(
+            fern::Dispatch::new().chain(output_config).chain(
                 fern::Dispatch::new()
                     // to prevent exporter recursively calls logging and thus itself
                     .level(LevelFilter::Off)
@@ -204,4 +207,33 @@ pub fn setup_logging(settings: &LoggerSettings) -> Result<(), fern::InitError> {
     base_config.chain(output_config).apply()?;
 
     Ok(())
+}
+
+struct TargetToKvLogger<P, L>
+where
+    P: opentelemetry::logs::LoggerProvider<Logger = L> + Send + Sync,
+    L: Logger + Send + Sync,
+{
+    inner: OpenTelemetryLogBridge<P, L>,
+}
+
+impl<P, L> log::Log for TargetToKvLogger<P, L>
+where
+    P: opentelemetry::logs::LoggerProvider<Logger = L> + Send + Sync,
+    L: Logger + Send + Sync,
+{
+    fn enabled(&self, metadata: &Metadata) -> bool {
+        self.inner.enabled(metadata)
+    }
+
+    fn log(&self, record: &Record) {
+        let mut with_target = record.to_builder();
+        let kvs: &dyn log::kv::Source = &("target", record.target());
+        with_target.key_values(kvs);
+        self.inner.log(&with_target.build());
+    }
+
+    fn flush(&self) {
+        self.inner.flush()
+    }
 }

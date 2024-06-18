@@ -16,6 +16,6 @@ jq '.dependencies["@514labs/event-capture"]="'$version'"' \
     package.json > package.json.tmp \
     && mv package.json.tmp package.json
 cd ../..
-pnpm build --filter=design-system
-cd packages/design-system
+pnpm build --filter=design-system-base
+cd packages/design-system-base
 pnpm publish --access public --no-git-checks

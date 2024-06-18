@@ -1,4 +1,1 @@
-export const plugins = {
-  tailwindcss: {},
-  autoprefixer: {},
-};
+module.exports = require("@514labs/design-system-base/postcss.config");

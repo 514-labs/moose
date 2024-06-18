@@ -7,12 +7,12 @@
   "dependencies": {
     "@514labs/event-capture": "workspace:*",
     "gsap": "file:gsap-bonus.tgz",
-    "tailwindcss": "^3.4.1",
     "tailwind-merge": "^2.2.2",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss": "^3.4.1"
   },
   "devDependencies": {
     "@sentry/nextjs": "^7.106.0",
+    "@types/node": "^20.14.5",
     "autoprefixer": "^10.0.1",
     "eslint": "^8",
     "eslint-config-next": "14.1.3",

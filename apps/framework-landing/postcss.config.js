@@ -1,1 +1,1 @@
-module.exports = require("@514labs/design-system-base/postcss.config");
+module.exports = require("@514labs/design-system/postcss.config");

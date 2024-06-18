@@ -21,6 +21,7 @@ use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
+use routines::ps::show_processes;
 use settings::{read_settings, Settings};
 
 use crate::cli::routines::aggregation::create_aggregation_file;
@@ -532,6 +533,25 @@ async fn top_command_handler(
             } else {
                 show_logs(log_file_path, filter_value)
             }
+        }
+        Commands::Ps {} => {
+            info!("Running ps command");
+
+            let project = load_project()?;
+            let project_arc = Arc::new(project);
+
+            crate::utilities::capture::capture!(
+                ActivityType::PsCommand,
+                project_arc.name().clone(),
+                &settings
+            );
+
+            show_processes(project_arc);
+
+            Ok(RoutineSuccess::success(Message::new(
+                "".to_string(),
+                "".to_string(),
+            )))
         }
     }
 }

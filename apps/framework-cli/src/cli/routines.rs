@@ -124,6 +124,7 @@ pub mod flow;
 pub mod initialize;
 pub mod logs;
 pub mod migrate;
+pub mod ps;
 pub mod stop;
 pub mod templates;
 mod util;

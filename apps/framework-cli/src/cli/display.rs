@@ -1,3 +1,4 @@
+use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
 use lazy_static::lazy_static;
 use spinners::{Spinner, Spinners};
 use std::sync::{Arc, RwLock};
@@ -195,6 +196,27 @@ where
     let res = f.await;
     sp.stop_with_newline();
     res
+}
+
+pub fn show_table(headers: Vec<String>, rows: Vec<Vec<String>>) {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .apply_modifier(UTF8_ROUND_CORNERS);
+    table.set_content_arrangement(ContentArrangement::Dynamic);
+    table.set_header(headers.into_iter().map(|s| s.to_string()));
+
+    for row in rows {
+        table.add_row(row);
+    }
+
+    show_message!(
+        MessageType::Info,
+        Message {
+            action: "".to_string(),
+            details: format!("\n{}", table),
+        }
+    );
 }
 
 #[cfg(test)]

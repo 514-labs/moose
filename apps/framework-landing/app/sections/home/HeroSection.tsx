@@ -3,12 +3,12 @@ import {
   Section,
   Grid,
   FullWidthContentContainer,
-} from "@514labs/design-system/components/containers";
+} from "@514labs/design-system-components/components/containers";
 import {
   Heading,
   Display,
   HeadingLevel,
-} from "@514labs/design-system/typography";
+} from "@514labs/design-system-components/typography";
 import { TrackCtaButton } from "../../trackable-components";
 import React from "react";
 import Link from "next/link";

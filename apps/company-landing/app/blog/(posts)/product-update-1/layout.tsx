@@ -5,7 +5,7 @@ import {
   Grid,
   HalfWidthContentContainer,
   Section,
-} from "@514labs/design-system/components/containers";
+} from "@514labs/design-system-components/components/containers";
 import FooterSection from "../../../sections/FooterSection";
 
 export default function MdxLayout({

@@ -8,18 +8,18 @@ import {
   AccordionItem,
   AccordionTrigger,
   Separator,
-} from "@514labs/design-system/components";
+} from "@514labs/design-system-components/components";
 import {
   Grid,
   Section,
   FullWidthContentContainer,
-} from "@514labs/design-system/components/containers";
+} from "@514labs/design-system-components/components/containers";
 import {
   Display,
   Text,
   Heading,
   HeadingLevel,
-} from "@514labs/design-system/typography";
+} from "@514labs/design-system-components/typography";
 import {
   TrackCtaButton,
   TrackableCodeSnippet,

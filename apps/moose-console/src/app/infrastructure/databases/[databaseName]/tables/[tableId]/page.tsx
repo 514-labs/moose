@@ -13,7 +13,7 @@ import { Fragment, useContext } from "react";
 import ModelView from "app/ModelView";
 import { MooseObject } from "app/types";
 import { VersionContext } from "version-context";
-import { TrackLink } from "@514labs/design-system/trackable-components";
+import { TrackLink } from "@514labs/design-system-components/trackable-components";
 
 export default function Page({
   params,

@@ -2,10 +2,10 @@ import {
   Section,
   Grid,
   HalfWidthContentContainer,
-} from "@514labs/design-system/components/containers";
+} from "@514labs/design-system-components/components/containers";
 import { type Post } from "../../lib/posts";
 import Link from "next/link";
-import { Heading, Text } from "@514labs/design-system/typography";
+import { Heading, Text } from "@514labs/design-system-components/typography";
 import { humanReadableDate } from "../../lib/formatter";
 // import FooterSection from "../sections/FooterSection";
 

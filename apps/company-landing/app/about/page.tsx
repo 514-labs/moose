@@ -2,8 +2,12 @@ import {
   Grid,
   HalfWidthContentContainer,
   Section,
-} from "@514labs/design-system/components/containers";
-import { Display, Heading, Text } from "@514labs/design-system/typography";
+} from "@514labs/design-system-components/components/containers";
+import {
+  Display,
+  Heading,
+  Text,
+} from "@514labs/design-system-components/typography";
 import FooterSection from "../sections/FooterSection";
 // import { EmailSection } from "../sections/EmailSection";
 import { ImageSection } from "../sections/home/ImageSection";

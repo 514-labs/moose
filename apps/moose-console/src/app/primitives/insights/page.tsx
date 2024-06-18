@@ -7,7 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from "components/ui/card";
-import { TrackLink } from "@514labs/design-system/trackable-components";
+import { TrackLink } from "@514labs/design-system-components/trackable-components";
 
 export default async function InsightsPage(): Promise<JSX.Element> {
   return (

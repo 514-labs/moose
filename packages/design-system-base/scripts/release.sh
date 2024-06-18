@@ -4,7 +4,7 @@ set -eo pipefail
 
 version=$1
 
-cd packages/design-system
+cd packages/design-system-base
 npm version $version --no-git-tag-version
 
 jq \

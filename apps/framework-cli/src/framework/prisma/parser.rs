@@ -100,7 +100,7 @@ fn prisma_ast_to_internal_ast(
 }
 
 fn prisma_model_to_datamodel(
-    file_path: &PathBuf,
+    file_path: &Path,
     version: &str,
     m: &Model,
     enums: &[DataEnum],
@@ -116,7 +116,7 @@ fn prisma_model_to_datamodel(
         columns: columns?,
         name: schema_name,
         config: Default::default(),
-        file_path: file_path.clone(),
+        file_path: file_path.to_path_buf(),
         version: version.to_string(),
     })
 }

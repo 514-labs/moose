@@ -1,5 +1,5 @@
 "use client";
-import { TrackLink } from "@514labs/design-system/trackable-components";
+import { TrackLink } from "@514labs/design-system-components/trackable-components";
 import { usePathname } from "next/navigation";
 import { Fragment } from "react";
 

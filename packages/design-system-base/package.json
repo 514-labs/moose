@@ -1,0 +1,33 @@
+{
+  "name": "@514labs/design-system-base",
+  "version": "0.0.1",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "dependencies": {
+    "@514labs/event-capture": "workspace:*",
+    "gsap": "file:gsap-bonus.tgz",
+    "tailwind-merge": "^2.2.2",
+    "tailwindcss": "^3.4.1"
+  },
+  "devDependencies": {
+    "@sentry/nextjs": "^7.106.0",
+    "@types/node": "^20.14.5",
+    "autoprefixer": "^10.0.1",
+    "eslint": "^8",
+    "eslint-config-next": "14.1.3",
+    "postcss": "^8",
+    "typescript": "^5"
+  },
+  "exports": {
+    "./globals.css": "./globals.css",
+    "./postcss.config": "./postcss.config.js",
+    "./tailwind.config": "./tailwind.config.ts",
+    "./animation": {
+      "require": "./lib/animation-helpers.js",
+      "types": "./types/design-system.d.ts",
+      "default": "./lib/animation-helpers.js"
+    },
+    "./utils": "./lib/utils.ts"
+  }
+}

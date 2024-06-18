@@ -3,8 +3,8 @@ import {
   Grid,
   HalfWidthContentContainer,
   Section,
-} from "@514labs/design-system/components/containers";
-import { Heading, Text } from "@514labs/design-system/typography";
+} from "@514labs/design-system-components/components/containers";
+import { Heading, Text } from "@514labs/design-system-components/typography";
 import Image from "next/image";
 import React from "react";
 

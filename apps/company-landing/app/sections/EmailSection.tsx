@@ -4,8 +4,8 @@ import {
   FullWidthContentContainer,
   Grid,
   Section,
-} from "@514labs/design-system/components/containers";
-import { SuperDisplay } from "@514labs/design-system/typography";
+} from "@514labs/design-system-components/components/containers";
+import { SuperDisplay } from "@514labs/design-system-components/typography";
 
 export const EmailSection = () => {
   const content = {

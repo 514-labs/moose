@@ -1,4 +1,4 @@
-import { Text } from "@514labs/design-system/typography";
+import { Text } from "@514labs/design-system-components/typography";
 import { humanReadableDate } from "../../lib/formatter";
 
 interface BlogMetaProps {

@@ -7,8 +7,12 @@ import {
   HalfWidthContentContainer,
   ThirdWidthContentContainer,
   Grid,
-} from "@514labs/design-system/components/containers";
-import { Heading, HeadingLevel, Text } from "@514labs/design-system/typography";
+} from "@514labs/design-system-components/components/containers";
+import {
+  Heading,
+  HeadingLevel,
+  Text,
+} from "@514labs/design-system-components/typography";
 import { TrackCtaButton } from "../../trackable-components";
 import { TemplateImg } from "./TemplateImg";
 import React from "react";

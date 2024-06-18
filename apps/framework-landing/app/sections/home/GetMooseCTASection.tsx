@@ -2,8 +2,8 @@ import {
   Section,
   Grid,
   HalfWidthContentContainer,
-} from "@514labs/design-system/components/containers";
-import { Heading, Text } from "@514labs/design-system/typography";
+} from "@514labs/design-system-components/components/containers";
+import { Heading, Text } from "@514labs/design-system-components/typography";
 import { CTABar } from "../../page";
 import Image from "next/image";
 import { TrackableCodeSnippet } from "../../trackable-components";

@@ -3,14 +3,14 @@ import {
   AccordionContent,
   AccordionItem,
   AccordionTrigger,
-} from "@514labs/design-system/components";
+} from "@514labs/design-system-components/components";
 import {
   Grid,
   HalfWidthContentContainer,
   Section,
-} from "@514labs/design-system/components/containers";
+} from "@514labs/design-system-components/components/containers";
 
-import { Heading, Text } from "@514labs/design-system/typography";
+import { Heading, Text } from "@514labs/design-system-components/typography";
 import React from "react";
 
 const content = {

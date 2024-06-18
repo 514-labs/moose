@@ -252,7 +252,7 @@ jobs:
 
       - name: Publish the NPM Moose design-system package
         shell: bash
-        run: ./packages/design-system/scripts/release.sh ${{ needs.version.outputs.version }}
+        run: ./packages/design-system-base/scripts/release.sh ${{ needs.version.outputs.version }}
 
       # TODO - convert to use 1password for the secret
       - name: Notify Sentry release

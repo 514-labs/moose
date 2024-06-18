@@ -67,6 +67,7 @@ mod tests {
     };
 
     #[test]
+    #[ignore]
     fn test_load_primitive_map() {
         let project = Project::new(
             Path::new("/Users/nicolas/code/514/test"),

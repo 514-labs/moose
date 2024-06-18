@@ -118,7 +118,6 @@ pub fn extract_data_model_from_file(
         }
     }
 
-    // TODO: parsing with Value as an intermediate step fails, but works fine if we parse from slice
     Ok(serde_json::from_value(output_json)?)
 }
 

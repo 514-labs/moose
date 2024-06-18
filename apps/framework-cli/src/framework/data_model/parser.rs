@@ -19,7 +19,7 @@ pub enum DataModelParsingError {
     UnsupportedFileType,
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct FileObjects {
     pub models: Vec<DataModel>,
     pub enums: Vec<DataEnum>,

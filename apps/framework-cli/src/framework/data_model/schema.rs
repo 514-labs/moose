@@ -198,7 +198,7 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
         let mut name = None;
         let mut values = None;
         let mut columns = None;
-        while let Some(key) = map.next_key::<&str>()? {
+        while let Some(key) = map.next_key::<String>()? {
             if key == "elementType" {
                 return Ok(ColumnType::Array(Box::new(
                     map.next_value::<ColumnType>().map_err(|e| {

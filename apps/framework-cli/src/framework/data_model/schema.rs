@@ -2,6 +2,7 @@ use serde::de::{Error, MapAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
+use std::path::PathBuf;
 
 use super::config::DataModelConfig;
 
@@ -11,6 +12,8 @@ pub struct DataModel {
     pub name: String,
     #[serde(default)]
     pub config: DataModelConfig,
+    pub file_path: PathBuf,
+    pub version: String,
 }
 
 impl DataModel {
@@ -195,7 +198,7 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
         let mut name = None;
         let mut values = None;
         let mut columns = None;
-        while let Some(key) = map.next_key::<&str>()? {
+        while let Some(key) = map.next_key::<String>()? {
             if key == "elementType" {
                 return Ok(ColumnType::Array(Box::new(
                     map.next_value::<ColumnType>().map_err(|e| {

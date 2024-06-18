@@ -107,7 +107,7 @@ pub fn dump_old_version_schema(
 ) -> Result<(), Error> {
     let repo = Repository::discover(project.project_location.clone())?;
 
-    let schema_dir = project.schemas_dir();
+    let schema_dir = project.data_models_dir();
     let schema_relative_path_from_repo_root = schema_dir
         .strip_prefix(repo.path().parent().unwrap())
         .unwrap();

@@ -247,8 +247,8 @@ impl Project {
     pub fn create_base_app_files(&self) -> Result<(), std::io::Error> {
         let readme_file_path = self.project_location.join("README.md");
         let base_model_file_path = match self.language {
-            SupportedLanguages::Typescript => self.schemas_dir().join("models.ts"),
-            SupportedLanguages::Python => self.schemas_dir().join("models.py"),
+            SupportedLanguages::Typescript => self.data_models_dir().join("models.ts"),
+            SupportedLanguages::Python => self.data_models_dir().join("models.py"),
         };
 
         let flow_file_name = match self.language {
@@ -301,7 +301,7 @@ impl Project {
                 // Create __init__.py file in the app directory tree
                 std::fs::File::create(self.app_dir().join("__init__.py"))?;
 
-                std::fs::File::create(self.schemas_dir().join("__init__.py"))?;
+                std::fs::File::create(self.data_models_dir().join("__init__.py"))?;
                 std::fs::File::create(self.aggregations_dir().join("__init__.py"))?;
                 std::fs::File::create(self.consumption_dir().join("__init__.py"))?;
                 std::fs::File::create(self.flows_dir().join("__init__.py"))?;
@@ -350,7 +350,7 @@ impl Project {
         app_dir
     }
 
-    pub fn schemas_dir(&self) -> PathBuf {
+    pub fn data_models_dir(&self) -> PathBuf {
         let mut schemas_dir = self.app_dir();
         schemas_dir.push(SCHEMAS_DIR);
 
@@ -456,7 +456,7 @@ impl Project {
         Ok(())
     }
 
-    pub fn version(&self) -> &str {
+    pub fn cur_version(&self) -> &str {
         match &self.language_project_config {
             LanguageProjectConfig::Typescript(package_json) => &package_json.version,
             LanguageProjectConfig::Python(package_json) => &package_json.version,

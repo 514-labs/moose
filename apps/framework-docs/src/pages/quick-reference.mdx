@@ -18,10 +18,10 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
         import { Key } from "@514labs/moose-lib";
 
         export interface UserActivity {
-        eventId: Key<string>;
-        timestamp: string;
-        userId: string;
-        activity: string;
+          eventId: Key<string>;
+          timestamp: string;
+          userId: string;
+          activity: string;
         }
         ```
 
@@ -53,20 +53,20 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
 
         // <modelName>Config
         export const UserActivityConfig: DataModelConfig<UserActivity> = {
-        ingestion: {
+          ingestion: {
             format: "json",
-        },
-        storage: {
+          },
+          storage: {
             enabled: true,
             order_by_fields: ["timestamp"],
-        },
+          },
         };
 
         export interface UserActivity {
-        eventId: Key<string>;
-        timestamp: string;
-        userId: string;
-        activity: string;
+          eventId: Key<string>;
+          timestamp: string;
+          userId: string;
+          activity: string;
         }
         ```
 
@@ -79,16 +79,16 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
             <Tabs.Tab>
             ``` bash
             curl -X POST \
-                -H "Content-Type: application/json" \
-                -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activityType":"click"}' \
-                http://localhost:4000/ingest/UserActivity
+              -H "Content-Type: application/json" \
+              -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activityType":"click"}' \
+              http://localhost:4000/ingest/UserActivity
             ```
             </Tabs.Tab>
             <Tabs.Tab>
             ``` bash
             for i in {1..10}
             do
-                curl -X POST \
+              curl -X POST \
                 -H "Content-Type: application/json" \
                 -d '{"eventId": "$i", "timestamp": "2024-01-01 00:00:00", "userId": "1234", "activityType":"click"}' \
                 http://localhost:4000/ingest/UserActivity
@@ -120,16 +120,16 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
         <Tabs.Tab>
         ```javascript
         fetch('http://localhost:4000/ingest/UserActivity', {
-            method: 'POST',
-            headers: {
+          method: 'POST',
+          headers: {
             'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
+          },
+          body: JSON.stringify({
             eventId: '1234567890',
             timestamp: '2019-01-01 00:00:01',
             userId: '123456',
             activityType: 'click'
-            })
+          })
         })
         ```
         </Tabs.Tab>
@@ -138,10 +138,10 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
             import requests
 
             requests.post('http://localhost:4000/ingest/UserActivity', json={
-            'eventId': '1234567890',
-            'timestamp': '2019-01-01 00:00:01',
-            'userId': '123456',
-            'activityType': 'click'
+              'eventId': '1234567890',
+              'timestamp': '2019-01-01 00:00:01',
+              'userId': '123456',
+              'activityType': 'click'
             })
             ```
 
@@ -205,15 +205,15 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
 
         // The 'convertUtc' function transforms UserActivity data to ParsedActivity format.
         export default function convertUtc(
-        source: UserActivity,
+          source: UserActivity,
         ): ParsedActivity[] | ParsedActivity | null {
-        // Convert local timestamp to UTC and return new ParsedActivity object.
-        return {
+          // Convert local timestamp to UTC and return new ParsedActivity object.
+          return {
             id: source.id, // Retain original event ID.
             userId: "puid" + source.userId, // Example: Prefix user ID.
             activity: source.activity, // Copy activity unchanged.
             timestamp: new Date(source.timestamp), // Convert timestamp to UTC.
-        };
+          };
         }
         ```
 
@@ -260,7 +260,7 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
         import { Aggregation } from "@514labs/moose-lib";
 
         export default {
-        select: `
+          select: `
             SELECT
                 count(distinct userId) as dailyActiveUsers,
                 toStartOfDay(timestamp) as date
@@ -268,7 +268,7 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
             WHERE activity = 'Login'
             GROUP BY toStartOfDay(timestamp)
             `,
-        orderBy: "date",
+          orderBy: "date",
         } as Aggregation;
         ```
 
@@ -296,22 +296,22 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
 
         ```ts filename="api/dailyActiveUsers.ts" copy
         interface QueryParams {
-        limit: string;
-        minDailyActiveUsers: string;
+          limit: string;
+          minDailyActiveUsers: string;
         }
 
         export default async function handle(
-        { limit = "10", minDailyActiveUsers = "0" }: QueryParams,
-        { client, sql },
+          { limit = "10", minDailyActiveUsers = "0" }: QueryParams,
+          { client, sql },
         ) {
-        return client.query(
+          return client.query(
             sql`SELECT
-            date,
-            dailyActiveUsers
+              date,
+              dailyActiveUsers
             FROM DailyActiveUsers
             WHERE dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
             LIMIT ${parseInt(limit)}`,
-        );
+          );
         }
         ```
 

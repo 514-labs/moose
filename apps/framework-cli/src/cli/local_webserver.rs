@@ -455,7 +455,7 @@ impl Webserver {
         let route_service = RouteService {
             host: self.host.clone(),
             route_table,
-            current_version: project.version().to_string(),
+            current_version: project.cur_version().to_string(),
             configured_producer: producer,
             console_config: project.console_config.clone(),
         };

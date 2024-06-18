@@ -397,7 +397,7 @@ pub async fn process_objects(
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     version: &str,
 ) -> anyhow::Result<()> {
-    let is_latest = version == project.version();
+    let is_latest = version == project.cur_version();
 
     for (_, fo) in framework_objects.iter() {
         let ingest_route = schema_file_path_to_ingest_route(

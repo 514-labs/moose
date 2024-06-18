@@ -31,6 +31,7 @@ pub enum TypescriptParsingError {
 pub fn extract_data_model_from_file(
     path: &Path,
     project: &Project,
+    version: &str,
 ) -> Result<FileObjects, TypescriptParsingError> {
     let internal = project.internal_dir().unwrap();
     let output_dir = internal.join("serialized_datamodels");
@@ -82,7 +83,7 @@ pub fn extract_data_model_from_file(
         message: format!("Unable to read output of compiler: {}", e),
     })?;
 
-    let output_json = serde_json::from_slice::<Value>(&output)
+    let mut output_json = serde_json::from_slice::<Value>(&output)
         .map_err(|_| TypescriptParsingError::TypescriptCompilerError(None))?;
     if let Some(error_type) = output_json.get("error_type") {
         if let Some(error_type) = error_type.as_str() {
@@ -101,8 +102,24 @@ pub fn extract_data_model_from_file(
         }
     }
 
+    // There is probably a better way to do this by communicating to the underlying
+    // process. But for now, we will just add the version and file path to the output
+    if let Some(data_models) = output_json.get_mut("models") {
+        if let Some(data_models) = data_models.as_array_mut() {
+            for data_model in data_models {
+                if let Some(dm) = data_model.as_object_mut() {
+                    dm.insert("version".to_string(), version.into());
+                    dm.insert(
+                        "file_path".to_string(),
+                        path.to_string_lossy().to_string().into(),
+                    );
+                }
+            }
+        }
+    }
+
     // TODO: parsing with Value as an intermediate step fails, but works fine if we parse from slice
-    Ok(serde_json::from_slice(&output)?)
+    Ok(serde_json::from_value(output_json)?)
 }
 
 #[cfg(test)]
@@ -174,7 +191,7 @@ mod tests {
 
         let test_file = current_dir.join("tests/psl/simple.prisma");
 
-        let result = parse_data_model_file(&test_file, &TEST_PROJECT);
+        let result = parse_data_model_file(&test_file, "", &TEST_PROJECT);
         assert!(result.is_ok());
     }
 
@@ -182,9 +199,9 @@ mod tests {
     fn test_ts_mapper() {
         let _lock = TS_COMPILER_SERIAL_RUN.lock();
 
-        let test_file = TEST_PROJECT.schemas_dir().join("simple.ts");
+        let test_file = TEST_PROJECT.data_models_dir().join("simple.ts");
 
-        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
 
         assert!(result.is_ok());
         println!("{:?}", result.unwrap().models)
@@ -194,9 +211,9 @@ mod tests {
     fn test_parse_typescript_file() {
         let _lock = TS_COMPILER_SERIAL_RUN.lock();
 
-        let test_file = TEST_PROJECT.schemas_dir().join("simple.ts");
+        let test_file = TEST_PROJECT.data_models_dir().join("simple.ts");
 
-        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
 
         assert!(result.is_ok());
     }
@@ -205,9 +222,9 @@ mod tests {
     fn test_parse_import_typescript_file() {
         let _lock = TS_COMPILER_SERIAL_RUN.lock();
 
-        let test_file = TEST_PROJECT.schemas_dir().join("import.ts");
+        let test_file = TEST_PROJECT.data_models_dir().join("import.ts");
 
-        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
         assert!(result.is_ok());
     }
 
@@ -215,9 +232,9 @@ mod tests {
     fn test_parse_extend_typescript_file() {
         let _lock = TS_COMPILER_SERIAL_RUN.lock();
 
-        let test_file = TEST_PROJECT.schemas_dir().join("extend.m.ts");
+        let test_file = TEST_PROJECT.data_models_dir().join("extend.m.ts");
 
-        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
         assert!(result.is_ok());
     }
 
@@ -225,11 +242,11 @@ mod tests {
     fn test_ts_syntax_error() {
         let _lock = TS_COMPILER_SERIAL_RUN.lock();
 
-        let test_file = TEST_PROJECT.schemas_dir().join("syntax_error.ts");
+        let test_file = TEST_PROJECT.data_models_dir().join("syntax_error.ts");
 
         // The TS compiler prints this, which is forwarded to the user's console
         // app/datamodels/syntax_error.ts(7,23): error TS1005: ',' expected.
-        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
         assert!(result.is_err());
         assert_eq!(
             result.err().unwrap().to_string(),
@@ -241,9 +258,9 @@ mod tests {
     fn test_ts_missing_type() {
         let _lock = TS_COMPILER_SERIAL_RUN.lock();
 
-        let test_file = TEST_PROJECT.schemas_dir().join("type_missing.ts");
+        let test_file = TEST_PROJECT.data_models_dir().join("type_missing.ts");
 
-        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
         assert!(result.is_err());
         // The TS compiler prints this, which is forwarded to the user's console
         // app/datamodels/type_missing.ts(2,5): error TS7008: Member 'foo' implicitly has an 'any' type.

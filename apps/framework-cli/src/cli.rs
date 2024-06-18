@@ -397,7 +397,7 @@ async fn top_command_handler(
 
             let new_version = match new_version {
                 None => {
-                    let current = parse_version(project_arc.version());
+                    let current = parse_version(project_arc.cur_version());
                     let bump_location = if current.len() > 1 { 1 } else { 0 };
 
                     let new_version = current

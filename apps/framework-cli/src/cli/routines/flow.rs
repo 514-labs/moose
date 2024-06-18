@@ -296,7 +296,7 @@ fn grep_datamodel(project: &Project, datamodel: &str) -> anyhow::Result<()> {
         .arg("--include=*.ts")
         .arg("-E")
         .arg(format!("export\\s+interface\\s+\\b{}\\b", &datamodel))
-        .arg(project.schemas_dir())
+        .arg(project.data_models_dir())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;

@@ -59,14 +59,21 @@ impl FieldAttributes {
     }
 }
 
-pub fn extract_data_model_from_file(path: &Path) -> Result<FileObjects, PrismaParsingError> {
+pub fn extract_data_model_from_file(
+    path: &Path,
+    version: &str,
+) -> Result<FileObjects, PrismaParsingError> {
     let schema_file = std::fs::read_to_string(path)
         .map_err(|_| PrismaParsingError::FileNotFound { path: path.into() })?;
     let ast = parse_schema(&schema_file, &mut Diagnostics::default(), FileId::ZERO);
-    prisma_ast_to_internal_ast(ast)
+    prisma_ast_to_internal_ast(path.to_path_buf(), version, ast)
 }
 
-fn prisma_ast_to_internal_ast(ast: SchemaAst) -> Result<FileObjects, PrismaParsingError> {
+fn prisma_ast_to_internal_ast(
+    file_path: PathBuf,
+    version: &str,
+    ast: SchemaAst,
+) -> Result<FileObjects, PrismaParsingError> {
     let mut models = Vec::new();
     let mut enums = Vec::new();
 
@@ -86,13 +93,15 @@ fn prisma_ast_to_internal_ast(ast: SchemaAst) -> Result<FileObjects, PrismaParsi
 
     let parsed_models = models
         .into_iter()
-        .map(|m| prisma_model_to_datamodel(m, &enums))
+        .map(|m| prisma_model_to_datamodel(&file_path, version, m, &enums))
         .collect::<Result<Vec<DataModel>, PrismaParsingError>>()?;
 
     Ok(FileObjects::new(parsed_models, enums))
 }
 
 fn prisma_model_to_datamodel(
+    file_path: &PathBuf,
+    version: &str,
     m: &Model,
     enums: &[DataEnum],
 ) -> Result<DataModel, PrismaParsingError> {
@@ -107,6 +116,8 @@ fn prisma_model_to_datamodel(
         columns: columns?,
         name: schema_name,
         config: Default::default(),
+        file_path: file_path.clone(),
+        version: version.to_string(),
     })
 }
 

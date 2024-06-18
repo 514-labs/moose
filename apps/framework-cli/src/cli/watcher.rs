@@ -54,7 +54,7 @@ async fn process_data_models_changes(
         events, route_table
     );
 
-    let schema_files = project.schemas_dir();
+    let schema_files = project.data_models_dir();
 
     let paths = events
         .into_iter()
@@ -73,7 +73,7 @@ async fn process_data_models_changes(
     let old_objects = &framework_object_versions.current_models.models;
 
     let aggregations = AggregationSet {
-        current_version: project.version().to_owned(),
+        current_version: project.cur_version().to_owned(),
         names: project.get_aggregations(),
     };
 
@@ -88,7 +88,7 @@ async fn process_data_models_changes(
             let obj_in_new_file = get_framework_objects_from_schema_file(
                 &project,
                 &path,
-                project.version(),
+                project.cur_version(),
                 &aggregations,
             )
             .await?;

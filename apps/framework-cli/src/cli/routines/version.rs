@@ -14,7 +14,7 @@ pub fn bump_version(
     project: &Project,
     new_version: String,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    add_current_version_to_config(project, project.version()).map_err(|err| {
+    add_current_version_to_config(project, project.cur_version()).map_err(|err| {
         RoutineFailure::new(
             Message::new(
                 "Failed".to_string(),
@@ -26,7 +26,7 @@ pub fn bump_version(
 
     match project.language {
         SupportedLanguages::Python => {
-            bump_setup_py_version(project.version(), &new_version).map_err(|err| {
+            bump_setup_py_version(project.cur_version(), &new_version).map_err(|err| {
                 RoutineFailure::new(
                     Message::new("Failed".to_string(), format!("to update {}", SETUP_PY)),
                     err,
@@ -34,7 +34,7 @@ pub fn bump_version(
             })?;
         }
         SupportedLanguages::Typescript => {
-            bump_package_json_version(project.version(), &new_version).map_err(|err| {
+            bump_package_json_version(project.cur_version(), &new_version).map_err(|err| {
                 RoutineFailure::new(
                     Message::new("Failed".to_string(), format!("to update {}", PACKAGE_JSON)),
                     err,

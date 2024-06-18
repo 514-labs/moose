@@ -33,15 +33,16 @@ impl FileObjects {
 
 pub fn parse_data_model_file(
     path: &Path,
+    version: &str,
     project: &Project,
 ) -> Result<FileObjects, DataModelParsingError> {
     if let Some(ext) = path.extension() {
         match ext.to_str() {
-            Some("prisma") => Ok(prisma::parser::extract_data_model_from_file(path)?),
+            Some("prisma") => Ok(prisma::parser::extract_data_model_from_file(path, version)?),
             Some("ts") => Ok(typescript::parser::extract_data_model_from_file(
-                path, project,
+                path, project, version,
             )?),
-            Some("py") => Ok(python::parser::extract_data_model_from_file(path)?),
+            Some("py") => Ok(python::parser::extract_data_model_from_file(path, version)?),
             _ => Err(DataModelParsingError::UnsupportedFileType),
         }
     } else {

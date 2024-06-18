@@ -143,7 +143,7 @@ pub async fn get_framework_objects_from_schema_file(
     version: &str,
     aggregations: &AggregationSet,
 ) -> Result<Vec<FrameworkObject>, DataModelError> {
-    let framework_objects = parse_data_model_file(path, project)?;
+    let framework_objects = parse_data_model_file(path, version, project)?;
     let mut indexed_models = HashMap::new();
 
     for model in framework_objects.models {
@@ -238,11 +238,13 @@ async fn crawl_schema(
 ) -> anyhow::Result<FrameworkObjectVersions> {
     info!("<DCM> Checking for old version directories...");
 
-    let mut framework_object_versions =
-        FrameworkObjectVersions::new(project.version().to_string(), project.schemas_dir().clone());
+    let mut framework_object_versions = FrameworkObjectVersions::new(
+        project.cur_version().to_string(),
+        project.data_models_dir().clone(),
+    );
 
     let aggregations = AggregationSet {
-        current_version: project.version().to_owned(),
+        current_version: project.cur_version().to_owned(),
         names: project.get_aggregations(),
     };
 
@@ -271,10 +273,10 @@ async fn crawl_schema(
             .insert(version.clone(), schema_version);
     }
 
-    let schema_dir = project.schemas_dir();
+    let schema_dir = project.data_models_dir();
 
     let aggregations = AggregationSet {
-        current_version: project.version().to_owned(),
+        current_version: project.cur_version().to_owned(),
         names: project.get_aggregations(),
     };
 
@@ -284,7 +286,7 @@ async fn crawl_schema(
         project,
         &mut framework_objects,
         &schema_dir,
-        project.version(),
+        project.cur_version(),
         &aggregations,
     )
     .await?;
@@ -321,7 +323,9 @@ mod tests {
         let result = get_all_framework_objects(
             &project,
             &mut framework_objects,
-            &project.schemas_dir().join("separate_dir_to_test_get_all"),
+            &project
+                .data_models_dir()
+                .join("separate_dir_to_test_get_all"),
             "0.0",
             &aggregations,
         )

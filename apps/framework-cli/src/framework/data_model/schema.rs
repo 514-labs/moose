@@ -2,6 +2,7 @@ use serde::de::{Error, MapAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
+use std::path::PathBuf;
 
 use super::config::DataModelConfig;
 
@@ -11,6 +12,8 @@ pub struct DataModel {
     pub name: String,
     #[serde(default)]
     pub config: DataModelConfig,
+    pub file_path: PathBuf,
+    pub version: String,
 }
 
 impl DataModel {

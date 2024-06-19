@@ -1,21 +1,19 @@
-use log::error;
-use log::info;
-use rdkafka::Message;
 use std::collections::hash_map::RandomState;
-use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::{HashMap, VecDeque};
+use std::future::Future;
+use std::pin::Pin;
 
 use log::debug;
+use log::error;
+use log::info;
+use rdkafka::consumer::StreamConsumer;
+use rdkafka::producer::{DeliveryFuture, FutureProducer};
+use rdkafka::Message;
 use serde_json::Value;
+use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
-use super::olap::clickhouse::errors::ClickhouseError;
-use super::olap::clickhouse::mapper::std_column_to_clickhouse_column;
-use super::olap::clickhouse::mapper::std_field_type_to_clickhouse_type_mapper;
-use super::olap::clickhouse::model::ClickHouseColumn;
-use super::olap::clickhouse::model::ClickHouseRecord;
-use super::olap::clickhouse::model::ClickHouseRuntimeEnum;
-use super::olap::clickhouse::version_sync::VersionSync;
 use crate::framework::core::code_loader::FrameworkObjectVersions;
 use crate::framework::data_model::schema::Column;
 use crate::framework::data_model::schema::ColumnType;
@@ -26,17 +24,35 @@ use crate::infrastructure::olap::clickhouse::version_sync::VersionSyncType;
 use crate::infrastructure::stream::redpanda::create_subscriber;
 use crate::infrastructure::stream::redpanda::fetch_topics;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use crate::infrastructure::stream::redpanda::{create_producer, send_with_back_pressure};
 
-const SYNC_GROUP_ID: &str = "clickhouse_sync";
+use super::olap::clickhouse::errors::ClickhouseError;
+use super::olap::clickhouse::mapper::std_column_to_clickhouse_column;
+use super::olap::clickhouse::mapper::std_field_type_to_clickhouse_type_mapper;
+use super::olap::clickhouse::model::ClickHouseColumn;
+use super::olap::clickhouse::model::ClickHouseRecord;
+use super::olap::clickhouse::model::ClickHouseRuntimeEnum;
+use super::olap::clickhouse::version_sync::VersionSync;
 
-struct SyncingProcess {
+const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
+const FLOW_SYNC_GROUP_ID: &str = "version_sync_flow_sync";
+
+struct TableSyncingProcess {
     process: JoinHandle<anyhow::Result<()>>,
     topic: String,
     table: String,
 }
 
+struct TopicToTopicSyncingProcess {
+    process: JoinHandle<()>,
+    #[allow(dead_code)]
+    from_topic: String,
+    to_topic: String,
+}
+
 pub struct SyncingProcessesRegistry {
-    registry: HashMap<String, JoinHandle<anyhow::Result<()>>>,
+    to_table_registry: HashMap<String, JoinHandle<anyhow::Result<()>>>,
+    to_topic_registry: HashMap<String, JoinHandle<()>>,
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
 }
@@ -44,13 +60,14 @@ pub struct SyncingProcessesRegistry {
 impl SyncingProcessesRegistry {
     pub fn new(kafka_config: RedpandaConfig, clickhouse_config: ClickHouseConfig) -> Self {
         Self {
-            registry: HashMap::new(),
+            to_table_registry: HashMap::new(),
+            to_topic_registry: HashMap::new(),
             kafka_config,
             clickhouse_config,
         }
     }
 
-    fn format_key(syncing_process: &SyncingProcess) -> String {
+    fn format_key(syncing_process: &TableSyncingProcess) -> String {
         Self::format_key_str(&syncing_process.topic, &syncing_process.table)
     }
 
@@ -58,9 +75,13 @@ impl SyncingProcessesRegistry {
         format!("{}-{}", topic, table)
     }
 
-    fn insert(&mut self, syncing_process: SyncingProcess) {
+    fn insert_table_sync(&mut self, syncing_process: TableSyncingProcess) {
         let key = Self::format_key(&syncing_process);
-        self.registry.insert(key, syncing_process.process);
+        self.to_table_registry.insert(key, syncing_process.process);
+    }
+    fn insert_topic_sync(&mut self, syncing_process: TopicToTopicSyncingProcess) {
+        let key = syncing_process.to_topic; // the source input topic
+        self.to_topic_registry.insert(key, syncing_process.process);
     }
 
     pub async fn start_all(
@@ -76,69 +97,45 @@ impl SyncingProcessesRegistry {
         let available_topics: HashSet<String, RandomState> =
             HashSet::from_iter(fetch_topics(&kafka_config).await?);
 
-        // Spawn sync for the current models
-        let current_object_iterator = framework_object_versions
-            .current_models
-            .models
-            .clone()
-            .into_iter()
-            .filter_map(|(_, framework_object)| {
-                if available_topics.contains(&framework_object.topic) {
-                    framework_object.table.map(|table| {
-                        (
-                            framework_object.topic,
-                            framework_object.data_model.columns,
-                            table.name,
-                            table.columns,
-                        )
-                    })
-                } else {
-                    None
-                }
-            })
-            .map(spawn_sync_process(
-                kafka_config.clone(),
-                clickhouse_config.clone(),
-            ));
+        // Spawn sync for the current and old models
+        let versions_iterator =
+            framework_object_versions
+                .all_versions()
+                .flat_map(|schema_version| {
+                    let schema_version_cloned = schema_version.models.clone();
 
-        let previous_versions_iterator = framework_object_versions
-            .previous_version_models
-            .values()
-            .flat_map(|schema_version| {
-                let schema_version_cloned = schema_version.models.clone();
-
-                schema_version_cloned
-                    .into_iter()
-                    .filter_map(|(_, framework_object)| {
-                        if available_topics.contains(&framework_object.topic) {
-                            framework_object.table.map(|table| {
-                                (
-                                    framework_object.topic,
-                                    framework_object.data_model.columns,
-                                    table.name,
-                                    table.columns,
-                                )
-                            })
-                        } else {
-                            None
-                        }
-                    })
-                    .map(spawn_sync_process(
-                        kafka_config.clone(),
-                        clickhouse_config.clone(),
-                    ))
-            });
+                    schema_version_cloned
+                        .into_iter()
+                        .filter_map(|(_, framework_object)| {
+                            if available_topics.contains(&framework_object.topic) {
+                                framework_object.table.map(|table| {
+                                    (
+                                        framework_object.topic,
+                                        framework_object.data_model.columns,
+                                        table.name,
+                                        table.columns,
+                                    )
+                                })
+                            } else {
+                                None
+                            }
+                        })
+                        .map(spawn_sync_process(
+                            kafka_config.clone(),
+                            clickhouse_config.clone(),
+                        ))
+                });
 
         let version_syncs_iterator = version_syncs.iter().filter_map(|vs| match vs.sync_type {
             VersionSyncType::Sql(_) => None,
             VersionSyncType::Ts(_) => {
-                let topic_name = vs.topic_name("output");
-                if available_topics.contains(&topic_name) {
+                let output_topic = vs.topic_name("output");
+                if available_topics.contains(&output_topic) {
                     Some(spawn_sync_process_core(
                         kafka_config.clone(),
                         clickhouse_config.clone(),
-                        topic_name,
-                        vs.source_data_model.columns.clone(),
+                        output_topic,
+                        vs.dest_data_model.columns.clone(),
                         vs.dest_table.name.clone(),
                         vs.dest_table.columns.clone(),
                     ))
@@ -148,12 +145,22 @@ impl SyncingProcessesRegistry {
             }
         });
 
-        for syncing_process in current_object_iterator
-            .chain(previous_versions_iterator)
-            .chain(version_syncs_iterator)
-        {
-            self.insert(syncing_process);
+        for syncing_process in versions_iterator.chain(version_syncs_iterator) {
+            self.insert_table_sync(syncing_process);
         }
+
+        version_syncs.iter().for_each(|vs| {
+            let input_topic = vs.topic_name("input");
+            let source_topic = vs.source_topic_name();
+
+            if available_topics.contains(&input_topic) && available_topics.contains(&source_topic) {
+                self.insert_topic_sync(spawn_kafka_to_kafka_process(
+                    kafka_config.clone(),
+                    source_topic,
+                    input_topic,
+                ));
+            }
+        });
 
         Ok(())
     }
@@ -172,7 +179,7 @@ impl SyncingProcessesRegistry {
         let key = Self::format_key_str(&source_topic_name, &target_table_name);
 
         // the schema of the currently running process is outdated
-        if let Some(process) = self.registry.remove(&key) {
+        if let Some(process) = self.to_table_registry.remove(&key) {
             process.abort();
         }
 
@@ -185,19 +192,19 @@ impl SyncingProcessesRegistry {
             target_table_columns,
         );
 
-        self.insert(syncing_process);
+        self.insert_table_sync(syncing_process);
     }
 
     pub fn stop(&mut self, topic_name: &str, table_name: &str) {
         let key = Self::format_key_str(topic_name, table_name);
-        if let Some(process) = self.registry.remove(&key) {
+        if let Some(process) = self.to_table_registry.remove(&key) {
             process.abort();
         }
     }
 }
 
 type FnSyncProcess =
-    Box<dyn Fn((String, Vec<Column>, String, Vec<ClickHouseColumn>)) -> SyncingProcess>;
+    Box<dyn Fn((String, Vec<Column>, String, Vec<ClickHouseColumn>)) -> TableSyncingProcess>;
 
 fn spawn_sync_process(
     kafka_config: RedpandaConfig,
@@ -211,7 +218,7 @@ fn spawn_sync_process(
             target_table_columns,
         )| {
             info!(
-                "Starting Kafka sync to clikchouse from topic: {} to table: {}",
+                "Starting Kafka sync to clickhouse from topic: {} to table: {}",
                 source_topic_name, target_table_name
             );
             spawn_sync_process_core(
@@ -233,7 +240,7 @@ fn spawn_sync_process_core(
     source_topic_columns: Vec<Column>,
     target_table_name: String,
     target_table_columns: Vec<ClickHouseColumn>,
-) -> SyncingProcess {
+) -> TableSyncingProcess {
     let syncing_process = tokio::spawn(sync_kafka_to_clickhouse(
         kafka_config,
         clickhouse_config,
@@ -243,11 +250,57 @@ fn spawn_sync_process_core(
         target_table_columns,
     ));
 
-    SyncingProcess {
+    TableSyncingProcess {
         process: syncing_process,
         topic: source_topic_name,
         table: target_table_name,
     }
+}
+
+fn spawn_kafka_to_kafka_process(
+    kafka_config: RedpandaConfig,
+    source_topic_name: String,
+    target_topic_name: String,
+) -> TopicToTopicSyncingProcess {
+    let syncing_process = tokio::spawn(sync_kafka_to_kafka(
+        kafka_config,
+        source_topic_name.clone(),
+        target_topic_name.clone(),
+    ));
+
+    TopicToTopicSyncingProcess {
+        process: syncing_process,
+        from_topic: source_topic_name,
+        to_topic: target_topic_name,
+    }
+}
+
+async fn sync_kafka_to_kafka(
+    kafka_config: RedpandaConfig,
+    source_topic_name: String,
+    target_topic_name: String,
+) {
+    let subscriber = create_subscriber(&kafka_config, FLOW_SYNC_GROUP_ID, &source_topic_name);
+    let producer = create_producer(kafka_config.clone());
+
+    // there is no concurrency on this queue, the mutex is to satisfy the borrow checker
+    let queue: Mutex<VecDeque<DeliveryFuture>> = Mutex::new(VecDeque::new());
+    let target_topic_name = &target_topic_name;
+
+    iterate_subscriber(subscriber, source_topic_name, |payload| {
+        let producer: &FutureProducer = &producer.producer;
+        let queue = &queue;
+        Box::pin(async move {
+            send_with_back_pressure(
+                &mut *queue.lock().await,
+                producer,
+                target_topic_name,
+                payload,
+            )
+            .await
+        })
+    })
+    .await
 }
 
 async fn sync_kafka_to_clickhouse(
@@ -258,25 +311,53 @@ async fn sync_kafka_to_clickhouse(
     target_table_name: String,
     target_table_columns: Vec<ClickHouseColumn>,
 ) -> anyhow::Result<()> {
-    let subscriber = create_subscriber(&kafka_config, SYNC_GROUP_ID, &source_topic_name);
+    let subscriber = create_subscriber(&kafka_config, TABLE_SYNC_GROUP_ID, &source_topic_name);
 
-    let clikhouse_columns = target_table_columns
+    let clickhouse_columns = target_table_columns
         .iter()
         .map(|column| column.name.clone())
         .collect();
 
-    let inserter = Inserter::new(clickhouse_config, &target_table_name, clikhouse_columns);
+    let inserter = Inserter::new(clickhouse_config, &target_table_name, clickhouse_columns);
 
     // WARNING: the code below is very performance sensitive
     // it is run for every message that needs to be written to clickhouse. As such we should
     // optimize as much as possible
 
-    // In that context we would rather not interupt the syncing process if an error occurs.
-    // The user doesn't currently get feedback on the error since the process is burried behind the scenes and
+    // In that context we would rather not interrupt the syncing process if an error occurs.
+    // The user doesn't currently get feedback on the error since the process is buried behind the scenes and
     // asynchronous.
 
     // This should also not be broken, otherwise, the subscriber will stop receiving messages
 
+    iterate_subscriber(subscriber, source_topic_name, |payload_str| {
+        // allow the async block to move the borrows
+        let inserter = &inserter;
+        let source_topic_columns = &source_topic_columns;
+
+        Box::pin(async move {
+            if let Ok(json_value) = serde_json::from_str(payload_str.as_str()) {
+                if let Ok(clickhouse_record) =
+                    mapper_json_to_clickhouse_record(source_topic_columns, json_value)
+                {
+                    let res = inserter.insert(clickhouse_record).await;
+
+                    if let Err(e) = res {
+                        error!("Error adding records to the queue to be inserted: {}", e);
+                    }
+                }
+            }
+        })
+    })
+    .await;
+    Ok(())
+}
+
+async fn iterate_subscriber<'a, F>(subscriber: StreamConsumer, source_topic_name: String, action: F)
+where
+    // we shouldn't need the boxing, but i can't make the borrow checker happy
+    F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>>,
+{
     loop {
         match subscriber.recv().await {
             Err(e) => {
@@ -291,20 +372,7 @@ async fn sync_kafka_to_clickhouse(
                             source_topic_name, payload_str
                         );
 
-                        if let Ok(json_value) = serde_json::from_str(payload_str) {
-                            if let Ok(clickhouse_record) =
-                                mapper_json_to_clickhouse_record(&source_topic_columns, json_value)
-                            {
-                                let res = inserter.insert(clickhouse_record).await;
-
-                                if let Err(e) = res {
-                                    error!(
-                                        "Error adding records to the queue to be inserted: {}",
-                                        e
-                                    );
-                                }
-                            }
-                        }
+                        action(payload_str.to_string()).await;
                     }
                     Err(_) => {
                         error!(
@@ -556,7 +624,6 @@ fn map_json_value_to_clickhouse_value(
 
 #[cfg(test)]
 mod tests {
-
     use crate::framework::data_model::schema::Nested;
 
     use super::*;

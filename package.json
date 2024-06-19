@@ -9,9 +9,9 @@
     "format": "prettier --write './apps/**/*.{ts,tsx}'"
   },
   "devDependencies": {
-    "eslint": "^7.32.0",
-    "@repo/ts-config": "workspace:*",
     "@repo/eslint-config-custom": "workspace:*",
+    "@repo/ts-config": "workspace:*",
+    "eslint": "^7.32.0",
     "husky": "^8.0.3",
     "lint-staged": "^15.2.2",
     "prettier": "^3.2.5",
@@ -22,5 +22,8 @@
   "lint-staged": {
     "*.rs": "rustfmt --edition 2021",
     "**/*": "prettier --write --ignore-unknown"
+  },
+  "dependencies": {
+    "packages": "link:/Users/aditya/Documents/moose/packages"
   }
 }

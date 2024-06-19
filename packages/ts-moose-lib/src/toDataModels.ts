@@ -27,7 +27,6 @@ const convertSourceFile = (
       if (isInterfaceDeclaration(declaration)) {
         const name = declaration.name.text;
         const t = checker.getTypeAtLocation(declaration);
-
         const columns: Column[] = toColumns(t, checker);
         output.models.push({
           name,

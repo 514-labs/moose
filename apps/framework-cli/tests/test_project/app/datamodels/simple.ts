@@ -15,14 +15,8 @@ enum IterationEnum {
 }
 
 export interface MyModel {
-  name: Key<string>;
-  age: number;
-  // abc: MyEnum;
-  flag: boolean;
-  "test-key": string;
-  arr: string[];
-  opt?: string;
-  enum3: StringedEnum;
-  enum2: IterationEnum;
-  enum1: NumEnum;
+  example: Key<number>
+  name: {
+    test:string
+  }
 }

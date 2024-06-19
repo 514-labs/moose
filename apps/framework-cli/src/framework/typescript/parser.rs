@@ -66,6 +66,7 @@ pub fn extract_data_model_from_file(
         .spawn()?
         .wait()
         .map_err(|err| TypescriptParsingError::TypescriptCompilerError(Some(err)))?;
+
     if !ts_return_code.success() {
         return Err(TypescriptParsingError::TypescriptCompilerError(None));
     }
@@ -187,7 +188,6 @@ mod tests {
         let result = extract_data_model_from_file(&test_file, &TEST_PROJECT);
 
         assert!(result.is_ok());
-        println!("{:?}", result.unwrap().models)
     }
 
     #[test]

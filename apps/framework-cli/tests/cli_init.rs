@@ -4,6 +4,7 @@ use predicates::prelude::*; // Used for writing assertions
 use std::process::Command;
 
 #[test]
+#[serial_test::serial(init)]
 fn cannot_run_cli_init_without_args() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("moose-cli")?;
 
@@ -16,6 +17,7 @@ fn cannot_run_cli_init_without_args() -> Result<(), Box<dyn std::error::Error>> 
 }
 
 #[test]
+#[serial_test::serial(init)]
 fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
     let temp = assert_fs::TempDir::new().unwrap();
     std::fs::remove_dir(&temp)?;

@@ -102,14 +102,5 @@ FROM (
 ${grouping}
 ORDER BY total_count DESC`;
 
-  /*
-
-  const sqlQuery = sql`SELECT toStartOfInterval(timestamp, interval ${stepNum} second) as timestamp,
-  ${cols}
-  FROM ${ConsumptionHelpers.table(queryForm.metricName)} ${filterQuery}
-    ${grouping}
-    ORDER BY timestamp ASC WITH FILL FROM toStartOfInterval(fromUnixTimestamp(${parseInt(from)}), interval ${stepNum} second) TO fromUnixTimestamp(${parseInt(to)}) STEP ${stepNum}
-`;
-*/
   return client.query(sqlQuery);
 }

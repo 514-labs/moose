@@ -1,11 +1,8 @@
 import { ReactNode } from "react";
 import { VariantProps } from "class-variance-authority";
-import { cn } from "@514labs/design-system-components/utils";
-import {
-  Button,
-  buttonVariants,
-} from "@514labs/design-system-components/components";
-import { Text } from "@514labs/design-system-components/typography";
+import { cn } from "../lib/utils";
+import { Button, buttonVariants } from "../components";
+import { Text } from "./typography/standard";
 
 export const CTAText = ({
   className,

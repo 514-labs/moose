@@ -62,7 +62,6 @@ export default function MetricSelectForm({
         size="default"
         className="mt-2 rounded-xl  w-full justify-between"
         onClick={() => {
-          console.log("what", form.getValues());
           form.setValue(`list.${index}.filter`, [
             ...form.getValues().list[index].filter,
             { property: null, value: null, operator: null },
@@ -84,7 +83,6 @@ export default function MetricSelectForm({
         size="default"
         className="mt-2 rounded-xl  w-full justify-between"
         onClick={() => {
-          console.log("what", form.getValues());
           form.setValue(`list.${index}.grouping`, [
             ...form.getValues().list[index].grouping,
             { property: null },

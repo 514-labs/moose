@@ -38,7 +38,7 @@ export default function Chart({ data }: Props) {
 
   const chartRef = useRef();
 
-  const margin = { top: 30, right: 30, bottom: 70, left: 60 },
+  const margin = { top: 16, right: 16, bottom: 50, left: 30 },
     chartWidth = width - margin.left - margin.right,
     chartHeight = height - margin.top - margin.bottom;
 
@@ -64,23 +64,6 @@ export default function Chart({ data }: Props) {
       .call(d3.axisBottom(x));
 
     svg.append("g").attr("class", "y-axis").call(d3.axisLeft(y));
-
-    svg
-      .append("text")
-      .attr("class", "x-label")
-      .attr("transform", `translate(${chartWidth / 2},${chartHeight + 40})`)
-      .style("text-anchor", "middle")
-      .text("Time (minutes)");
-
-    svg
-      .append("text")
-      .attr("class", "y-label")
-      .attr("transform", "rotate(-90)")
-      .attr("y", 0 - margin.left)
-      .attr("x", 0 - chartHeight / 2)
-      .attr("dy", "1em")
-      .style("text-anchor", "middle")
-      .text("Heart Rate");
   }, [chartHeight, chartWidth, height, width]);
 
   useEffect(() => {

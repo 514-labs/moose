@@ -92,11 +92,4 @@ export async function getMetricTimeSeries({ query }: MetricQuery) {
       parseInt(point[1]),
     ]),
   }));
-
-  /*
-  return data.map((d: any) => ({
-    hits: parseInt(d.hits),
-    timestamp: new Date(d.timestamp),
-  }));
-  */
 }

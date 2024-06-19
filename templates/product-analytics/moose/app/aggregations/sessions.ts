@@ -1,5 +1,4 @@
 // This is query is meant to summarize data that is recorded on an individual session basis.
-
 export default {
   select: `
     SELECT 
@@ -11,7 +10,7 @@ export default {
       anyState(hostname) AS host,
       groupArray(href) AS user_journey,
       anyLastSimpleState(href) AS last_page 
-    FROM PageViewProcessed_0_0
+    FROM PageViewProcessed
     WHERE hostname != 'development' 
     GROUP BY session_id`,
   orderBy: "first_hit",

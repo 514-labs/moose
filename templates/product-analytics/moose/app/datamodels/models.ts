@@ -22,7 +22,7 @@ export interface PageViewProcessed {
   href: string;
   hostname: string;
   pathname: string;
-  referrer: number;
+  referrer: string;
   device_manufacturer: string;
   browser_type: string;
   browser_version: string;

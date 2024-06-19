@@ -19,8 +19,6 @@ export default async function handle(
   const end = endTime ? new Date(endTime) : new Date();
   const start = startTime ? new Date(startTime) : subtractOneHour(end);
 
-  console.log("start", start, "end", end);
-
   const pattern = `%${logSubstring}%`;
 
   return client.query(

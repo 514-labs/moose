@@ -6,7 +6,6 @@ import { Combobox } from "../createable-select";
 import { getMetricCommonProperties } from "@/data-api";
 import { FormField } from "../ui/form";
 import { FieldValues, UseFormReturn } from "react-hook-form";
-import { createMultiSelectOptions } from "@/lib/utils";
 
 interface MetricComboBoxProps {
   form: UseFormReturn<FieldValues, any, undefined>;
@@ -43,18 +42,18 @@ export default function MetricComboBox({
         propertyName: property,
         filter: filterEncoded,
       }),
-    enabled: isOpen,
+    enabled: isOpen && property != null,
     initialData: [],
   });
 
-  console.log("optionsData", optionsData);
+  if (optionsLoading) return <div>Loading...</div>;
+  if (isOptionsError) return <div>Error</div>;
 
   const commonOptions = optionsData.map((option) => ({
     label: `(${option.count}) ${option.value}`,
     val: option.value != null ? option.value : "",
   }));
 
-  console.log("commonOptions", commonOptions);
   return (
     <FormField
       control={form.control}
@@ -63,18 +62,12 @@ export default function MetricComboBox({
         return (
           <div className="w-24">
             <Combobox
-              mode="multiple"
               options={commonOptions}
               onOpenChange={(value) => setIsOpen(value)}
               placeholder="Select option"
               selected={field.value ?? ""} // string or array
-              onSelect={(value) => {
-                console.log(value);
-                return field.onChange(value);
-              }}
-              onCreate={(value) => {
-                field.onChange(value);
-              }}
+              onSelect={field.onChange}
+              onCreate={field.onChange}
             />
           </div>
         );

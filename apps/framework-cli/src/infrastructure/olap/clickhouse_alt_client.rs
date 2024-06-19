@@ -11,10 +11,10 @@ use clickhouse_rs::types::{FromSql, FromSqlResult, Options, ValueRef};
 use clickhouse_rs::ClientHandle;
 use futures::stream::BoxStream;
 use futures::StreamExt;
+use itertools::Either;
 use serde::__private::from_utf8_lossy;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
-use swc_common::pass::Either;
 
 use crate::framework::core::code_loader::FrameworkObjectVersions;
 use crate::framework::data_model::schema::{DataModel, EnumValue};

@@ -47,8 +47,8 @@ jobs:
           generateReleaseNotes: true
           commit: ${{ github.sha }}
 
-  package-and-publish-lib-ts-package:
-    name: Package and Publish Lib TS Package
+  package-and-publish-independant-ts-package:
+    name: Package and Publish Independant TS Package
     runs-on: ubuntu-20.04
     needs:
       - version
@@ -75,6 +75,14 @@ jobs:
       - name: Publish the NPM Moose CLI package
         shell: bash
         run: ./packages/ts-moose-lib/scripts/release-lib.sh ${{ needs.version.outputs.version }}
+
+      - name: Publish the NPM Moose design-system package
+        shell: bash
+        run: ./packages/design-system-base/scripts/release.sh ${{ needs.version.outputs.version }}
+
+      - name: Publish the NPM Moose event-capture package
+        shell: bash
+        run: ./packages/event-capture/scripts/release.sh ${{ needs.version.outputs.version }}
 
   package-and-publish-templates:
     name: Package and Publish Templates
@@ -241,14 +249,6 @@ jobs:
       - name: Publish the NPM Moose create app package
         shell: bash
         run: ./apps/create-moose-app/scripts/release.sh ${{ needs.version.outputs.version }}
-
-      - name: Publish the NPM Moose event-capture package
-        shell: bash
-        run: ./packages/event-capture/scripts/release.sh ${{ needs.version.outputs.version }}
-
-      - name: Publish the NPM Moose design-system package
-        shell: bash
-        run: ./packages/design-system-base/scripts/release.sh ${{ needs.version.outputs.version }}
 
       # TODO - convert to use 1password for the secret
       - name: Notify Sentry release

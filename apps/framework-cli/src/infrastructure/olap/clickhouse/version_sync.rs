@@ -188,6 +188,14 @@ lazy_static! {
 }
 
 impl VersionSync {
+    pub fn source_topic_name(&self) -> String {
+        format!(
+            "{}_{}",
+            self.source_data_model.name.clone(),
+            self.source_version.replace('.', "_")
+        )
+    }
+
     pub fn generate_migration_function(
         old_columns: &[ClickHouseColumn],
         new_columns: &[ClickHouseColumn],

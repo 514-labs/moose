@@ -59,6 +59,10 @@ impl FrameworkObjectVersions {
             previous_version_models: HashMap::new(),
         }
     }
+
+    pub fn all_versions(&self) -> impl Iterator<Item = &SchemaVersion> {
+        std::iter::once(&self.current_models).chain(self.previous_version_models.values())
+    }
 }
 
 #[derive(Debug, Clone)]

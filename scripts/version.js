@@ -26,7 +26,7 @@ execSync("git fetch --tags");
 const tags = execSync(`git tag --points-at ${commit}`).toString().trim();
 
 if (tags.length > 0) {
-  console.log(tags);
+  console.log(`VERSION=${tags}`);
   process.exit(0);
 }
 

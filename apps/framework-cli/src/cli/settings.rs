@@ -68,14 +68,6 @@ pub fn setup_user_directory() -> Result<(), std::io::Error> {
 
 // TODO: Turn this part of the code into a routine
 pub fn read_settings() -> Result<Settings, ConfigError> {
-    show_message!(
-        MessageType::Info,
-        Message {
-            action: "Init".to_string(),
-            details: "Loading config...".to_string(),
-        }
-    );
-
     let config_file_location: PathBuf = config_path();
 
     let s = Config::builder()

@@ -77,6 +77,8 @@ pub enum Commands {
         #[arg(short, long)]
         filter: Option<String>,
     },
+    /// View Moose processes
+    Ps {},
 }
 
 #[derive(Debug, Args)]

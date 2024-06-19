@@ -4,6 +4,8 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 use std::path::PathBuf;
 
+use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
+
 use super::config::DataModelConfig;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
@@ -17,17 +19,24 @@ pub struct DataModel {
 }
 
 impl DataModel {
-    pub fn to_table(&self, version: &str) -> Table {
+    // TODO this probably should be on the Table object itself which can be built from
+    // multiplle sources. The Aim will be to have DB Blocks provision some tables as well.
+    pub fn to_table(&self) -> Table {
         Table {
             table_type: TableType::Table,
-            name: format!("{}_{}", self.name, version.replace('.', "_")),
+            name: format!("{}_{}", self.name, self.version.replace('.', "_")),
             columns: self.columns.clone(),
             order_by: self.config.storage.order_by_fields.clone(),
+            version: self.version.clone(),
+            source_primitive: PrimitiveSignature {
+                name: self.name.clone(),
+                primitive_type: PrimitiveTypes::DataModel,
+            },
         }
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 /// An internal framework representation for an enum.
 /// Avoiding the use of the `Enum` keyword to avoid conflicts with Prisma's Enum type
 pub struct DataEnum {
@@ -41,13 +50,13 @@ pub struct Nested {
     pub columns: Vec<Column>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct EnumMember {
     pub name: String,
     pub value: EnumValue,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub enum EnumValue {
     Int(u8),
     String(String),
@@ -66,6 +75,17 @@ pub struct Table {
     pub name: String,
     pub columns: Vec<Column>,
     pub order_by: Vec<String>,
+
+    pub version: String,
+    pub source_primitive: PrimitiveSignature,
+}
+
+impl Table {
+    // This is only to be used in the context of the new core
+    // currently name includes the version, here we are separating that out.
+    pub fn id(&self) -> String {
+        format!("{}_{}", self.name, self.version.replace('.', "_"))
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]

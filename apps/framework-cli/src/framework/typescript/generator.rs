@@ -277,13 +277,12 @@ pub fn std_table_to_typescript_interface(
 }
 
 fn collect_ts_objects(
-    version: &str,
     framework_objects: &SchemaVersion,
 ) -> Result<Vec<TypescriptObjects>, TypescriptGeneratorError> {
     let mut ts_objects: Vec<TypescriptObjects> = Vec::new();
 
     for model in framework_objects.get_all_models() {
-        let interface = std_table_to_typescript_interface(model.to_table(version), &model.name)?;
+        let interface = std_table_to_typescript_interface(model.to_table(), &model.name)?;
         ts_objects.push(TypescriptObjects::new(interface));
     }
 
@@ -318,10 +317,7 @@ pub fn generate_sdk(
     //! # Returns
     //! - `Result<PathBuf, std::io::Error>` - A result containing the path where the SDK was generated.
 
-    let current_version_ts_objects = collect_ts_objects(
-        &framework_object_versions.current_version,
-        &framework_object_versions.current_models,
-    )?;
+    let current_version_ts_objects = collect_ts_objects(&framework_object_versions.current_models)?;
 
     let enums: HashSet<TSEnum> = collect_enums(&framework_object_versions.current_models);
 
@@ -364,7 +360,7 @@ pub fn generate_sdk(
         let version_dir = sdk_dir.join(version);
         fs::create_dir_all(&version_dir)?;
 
-        let ts_objects = collect_ts_objects(version, models)?;
+        let ts_objects = collect_ts_objects(models)?;
         let version_enums = collect_enums(models);
 
         if !version_enums.is_empty() {

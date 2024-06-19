@@ -21,4 +21,5 @@
 /// └──────────────┘                     └──────────────┘
 ///
 pub mod code_loader;
+pub mod infrastructure_map;
 pub mod primitive_map;

@@ -220,7 +220,7 @@ pub fn framework_object_mapper(
 ) -> Result<FrameworkObject, MappingError> {
     let clickhouse_table = if s.config.storage.enabled {
         Some(olap::clickhouse::mapper::std_table_to_clickhouse_table(
-            s.to_table(version),
+            s.to_table(),
         )?)
     } else {
         None

@@ -131,7 +131,6 @@ mod tests {
     use lazy_static::lazy_static;
     use std::path::PathBuf;
     use std::process::Command;
-    use std::sync::Mutex;
 
     fn pnpm_moose_lib(cmd_action: fn(&mut Command) -> &mut Command) {
         let mut cmd = Command::new("pnpm");
@@ -145,7 +144,6 @@ mod tests {
     }
 
     lazy_static! {
-        static ref TS_COMPILER_SERIAL_RUN: Mutex<()> = Mutex::new(());
         static ref TEST_PROJECT: Project = {
             pnpm_moose_lib(|cmd| cmd.arg("i").arg("--frozen-lockfile"));
 
@@ -195,9 +193,8 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(tspc)]
     fn test_ts_mapper() {
-        let _lock = TS_COMPILER_SERIAL_RUN.lock();
-
         let test_file = TEST_PROJECT.data_models_dir().join("simple.ts");
 
         let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
@@ -207,9 +204,8 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(tspc)]
     fn test_parse_typescript_file() {
-        let _lock = TS_COMPILER_SERIAL_RUN.lock();
-
         let test_file = TEST_PROJECT.data_models_dir().join("simple.ts");
 
         let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
@@ -218,9 +214,8 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(tspc)]
     fn test_parse_import_typescript_file() {
-        let _lock = TS_COMPILER_SERIAL_RUN.lock();
-
         let test_file = TEST_PROJECT.data_models_dir().join("import.ts");
 
         let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
@@ -228,9 +223,8 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(tspc)]
     fn test_parse_extend_typescript_file() {
-        let _lock = TS_COMPILER_SERIAL_RUN.lock();
-
         let test_file = TEST_PROJECT.data_models_dir().join("extend.m.ts");
 
         let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
@@ -238,9 +232,8 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(tspc)]
     fn test_ts_syntax_error() {
-        let _lock = TS_COMPILER_SERIAL_RUN.lock();
-
         let test_file = TEST_PROJECT.data_models_dir().join("syntax_error.ts");
 
         // The TS compiler prints this, which is forwarded to the user's console
@@ -254,9 +247,8 @@ mod tests {
     }
 
     #[test]
+    #[serial_test::serial(tspc)]
     fn test_ts_missing_type() {
-        let _lock = TS_COMPILER_SERIAL_RUN.lock();
-
         let test_file = TEST_PROJECT.data_models_dir().join("type_missing.ts");
 
         let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");

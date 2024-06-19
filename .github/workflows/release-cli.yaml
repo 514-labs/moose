@@ -136,13 +136,13 @@ jobs:
             }
           - {
               NAME: darwin-x64,
-              OS: macos-12,
+              OS: macos-12-large,
               TOOLCHAIN: stable,
               TARGET: x86_64-apple-darwin,
             }
           - {
               NAME: darwin-arm64,
-              OS: macos-12,
+              OS: macos-12-large,
               TOOLCHAIN: stable,
               TARGET: aarch64-apple-darwin,
             }
@@ -264,7 +264,7 @@ jobs:
 
   build-and-publish-console:
     name: Moose Console
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-20.04-8core
     needs: version
     steps:
       - name: Checkout

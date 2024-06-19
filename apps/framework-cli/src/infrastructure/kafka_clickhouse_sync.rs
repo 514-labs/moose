@@ -135,7 +135,7 @@ impl SyncingProcessesRegistry {
                         kafka_config.clone(),
                         clickhouse_config.clone(),
                         output_topic,
-                        vs.source_data_model.columns.clone(),
+                        vs.dest_data_model.columns.clone(),
                         vs.dest_table.name.clone(),
                         vs.dest_table.columns.clone(),
                     ))

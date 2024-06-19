@@ -6,7 +6,7 @@ export default {
       minSimpleState(timestamp) AS first_hit,
       maxSimpleState(timestamp) AS latest_hit,
       maxSimpleState(timestamp) - minSimpleState(timestamp) AS duration,
-      count() AS hits,
+      countState() AS hits,
       anyState(hostname) AS host,
       groupArray(href) AS user_journey,
       anyLastSimpleState(href) AS last_page 

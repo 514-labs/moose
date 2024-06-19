@@ -29,20 +29,3 @@ export interface PageViewProcessed {
   os: string;
   os_version: string;
 }
-
-export interface MooseActivityAugmented {
-  id: Key<string>;
-  project: string;
-  activityType: string;
-  sequenceId: string;
-  timestamp: Date;
-  cliVersion: string;
-  isMooseDeveloper?: boolean;
-  machineId: string;
-  hashedIp?: string;
-  cityName?: string;
-  countryCode?: string;
-  companyName?: string;
-  companyType?: string;
-  companyDomain?: string;
-}

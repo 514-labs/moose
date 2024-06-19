@@ -55,6 +55,6 @@ export default async function handle(
       ? join_queries({ prefix: "GROUP BY", values: groupingSql })
       : sql``;
 
-  const sqlQuery = sql`SELECT ${selectQuery} FROM ${ConsumptionHelpers.table(queryForm.metricName)} ${filterQuery} ${groupingQuery} LIMIT 20`;
+  const sqlQuery = sql`SELECT ${selectQuery} FROM ${ConsumptionHelpers.table(queryForm.metricName)} ${filterQuery} ${groupingQuery} LIMIT 100`;
   return client.query(sqlQuery);
 }

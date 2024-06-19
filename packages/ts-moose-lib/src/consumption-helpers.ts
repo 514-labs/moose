@@ -20,7 +20,19 @@ export const mapToClickHouseType = (value: Value) => {
   // But the column type of query result only return Bool, so we only support Bool type for safety.
   if (typeof value === "boolean") return "Bool";
   if (value instanceof Date) return "DateTime";
+  if (Array.isArray(value)) {
+    const [type, _] = value;
+    return type;
+  }
   return "String";
+};
+
+export const getValueFromParameter = (value: any) => {
+  if (Array.isArray(value)) {
+    const [type, val] = value;
+    if (type === "Identifier") return val;
+  }
+  return value;
 };
 
 export function createClickhouseParameter(
@@ -36,7 +48,7 @@ export function createClickhouseParameter(
 /**
  * Values supported by SQL engine.
  */
-export type Value = string | number | boolean | Date;
+export type Value = string | number | boolean | Date | [string, string];
 
 /**
  * Supported value or SQL instance.
@@ -132,7 +144,10 @@ export class MooseClient {
       .join("");
 
     const query_params = sql.values.reduce(
-      (acc: Record<string, unknown>, v, i) => ({ ...acc, [`p${i}`]: v }),
+      (acc: Record<string, unknown>, v, i) => ({
+        ...acc,
+        [`p${i}`]: getValueFromParameter(v),
+      }),
       {},
     );
 
@@ -142,4 +157,32 @@ export class MooseClient {
       format: "JSONEachRow",
     });
   }
+}
+
+export const ConsumptionHelpers = {
+  column: (value: string) => ["Identifier", value] as [string, string],
+  table: (value: string) => ["Identifier", value] as [string, string],
+};
+
+export function join_queries({
+  values,
+  separator = ",",
+  prefix = "",
+  suffix = "",
+}: {
+  values: readonly RawValue[];
+  separator?: string;
+  prefix?: string;
+  suffix?: string;
+}) {
+  if (values.length === 0) {
+    throw new TypeError(
+      "Expected `join([])` to be called with an array of multiple elements, but got an empty array",
+    );
+  }
+
+  return new Sql(
+    [prefix, ...Array(values.length - 1).fill(separator), suffix],
+    values,
+  );
 }

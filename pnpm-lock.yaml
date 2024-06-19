@@ -249,7 +249,7 @@ importers:
     dependencies:
       "@514labs/moose-lib":
         specifier: latest
-        version: 0.3.412
+        version: 0.3.413
       "@clickhouse/client-web":
         specifier: ^1.0.1
         version: 1.1.0
@@ -654,9 +654,6 @@ importers:
       "@514labs/event-capture":
         specifier: workspace:*
         version: link:../event-capture
-      gsap:
-        specifier: file:gsap-bonus.tgz
-        version: file:packages/design-system-base/gsap-bonus.tgz
       tailwind-merge:
         specifier: ^2.2.2
         version: 2.3.0
@@ -983,10 +980,10 @@ packages:
       "@514labs/moose-cli-linux-x64": 0.3.392
     dev: true
 
-  /@514labs/moose-lib@0.3.412:
+  /@514labs/moose-lib@0.3.413:
     resolution:
       {
-        integrity: sha512-IBxlNHvLW1nXF0PTxa46k0ksU4PeK+yb2KSosWUI2asg4D3gGlNd6LCRXioB0n53l0MgRBgJMhdkiGD0vnG3pA==,
+        integrity: sha512-Mw4Zy4JxhBBTSRvVfjCCVspttVb3sQyEqBJFrYaJjUD7i89ByggLCVpSoy1kpgfs9Rd3eXV98DJUAMk5dscYWQ==,
       }
     hasBin: true
     dependencies:
@@ -19412,16 +19409,6 @@ packages:
       {
         integrity: sha512-F/gcKtbqBb6ozpphFq8GLhZeB5KtterViGvNUJFgXCjvFaGvF47ySaWP+zW/D0af2OMjKxmdgzUyby/LsplDIA==,
         tarball: file:apps/moose-console/gsap-bonus.tgz,
-      }
-    name: gsap
-    version: 3.12.2
-    dev: false
-
-  file:packages/design-system-base/gsap-bonus.tgz:
-    resolution:
-      {
-        integrity: sha512-F/gcKtbqBb6ozpphFq8GLhZeB5KtterViGvNUJFgXCjvFaGvF47ySaWP+zW/D0af2OMjKxmdgzUyby/LsplDIA==,
-        tarball: file:packages/design-system-base/gsap-bonus.tgz,
       }
     name: gsap
     version: 3.12.2

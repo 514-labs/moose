@@ -2,7 +2,7 @@
   "name": "moose",
   "version": "0.0",
   "scripts": {
-    "dev": "moose-cli dev"
+    "dev": "npx moose-cli dev"
   },
   "dependencies": {
     "@514labs/moose-lib": "^0.0.0",

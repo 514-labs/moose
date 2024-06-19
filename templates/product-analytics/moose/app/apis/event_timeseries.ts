@@ -1,4 +1,4 @@
-import { ConsumptionUtil, ConsumptionHelpers } from "@514labs/moose-lib";
+import { ConsumptionUtil } from "@514labs/moose-lib";
 
 export interface QueryParams {
   step: string;

@@ -151,6 +151,9 @@ export class MooseClient {
       {},
     );
 
+    console.log("query", query);
+    console.log("query_params", query_params);
+
     return this.client.query({
       query,
       query_params,

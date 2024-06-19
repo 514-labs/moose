@@ -1,12 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import ReportLayout from "../report-layout";
-import {
-  getTableQueryData,
-  getChartQueryData,
-  getTableData,
-  getChartData,
-} from "@/insights/table-query";
+import { getTableData, getChartData } from "@/insights/table-query";
 import { DataTable } from "@/components/ui/data-table/data-table";
 import { createColumns } from "@/components/ui/data-table/columns";
 import TimeSelector from "@/components/time-selector";
@@ -15,7 +10,6 @@ import TimeSeriesForm from "@/components/time-series-form";
 import HistogramChart from "@/components/histogram-chart";
 import { ModelMeta, getModelMeta } from "@/insights/model-meta";
 import { TimeUnit } from "@/lib/time-utils";
-import { eventConfigFromNames } from "@/app/events";
 import { MetricForm } from "@/lib/form-types";
 
 function defaultBreakdown(breakdown: string[]) {

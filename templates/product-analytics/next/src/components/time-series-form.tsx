@@ -1,5 +1,5 @@
 import { eventTables } from "@/app/events";
-import MultiSelectForm from "./multi-select-form";
+import MultiSelectForm from "./query-form/metric-select-form";
 import { ModelMeta } from "@/insights/model-meta";
 import { MetricForm } from "@/lib/form-types";
 import MetricSelectForm from "./metric-form";
@@ -27,11 +27,6 @@ export default function TimeSeriesForm({
   return (
     <div>
       <MetricSelectForm options={list} setForm={setForm} name="Metrics" />
-      <MultiSelectForm
-        options={breakdownList}
-        setForm={setBreakdown}
-        name="Breakdown"
-      />
     </div>
   );
 }

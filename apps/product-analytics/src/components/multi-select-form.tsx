@@ -54,10 +54,10 @@ export default function MultiSelectForm({
           <Plus />
         </Button>
         <div className="p-2">
-          {fields.map((field, index) => (
+          {fields.map((_field, index) => (
             <FormField
               control={form.control}
-              key={field.id}
+              key={`list.${index}`}
               name={`list.${index}`}
               render={({ field }) => (
                 <FormItem className="my-2">

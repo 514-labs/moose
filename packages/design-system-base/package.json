@@ -26,7 +26,6 @@
       "require": "./lib/animation-helpers.js",
       "types": "./types/design-system.d.ts",
       "default": "./lib/animation-helpers.js"
-    },
-    "./utils": "./lib/utils.ts"
+    }
   }
 }

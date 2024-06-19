@@ -25,8 +25,8 @@ const printVersion = (major, minor, patch) => {
 execSync("git fetch --tags");
 const tags = execSync(`git tag --points-at ${commit}`).toString().trim();
 
-if (tags.length > 0) {
-  console.log(tags);
+if (tags.length > 0 && tags.startsWith("v")) {
+  console.log(`VERSION=${tags.slice(1)}`);
   process.exit(0);
 }
 

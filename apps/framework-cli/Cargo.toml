@@ -55,10 +55,6 @@ futures = "0.3"
 toml_edit = "0.22.9"
 flate2 = "1.0"
 tar = "0.4"
-swc_ecma_parser = "0.143.6"
-swc_common = { version = "0.33.18", features = ["tty-emitter"] }
-swc = "0.273.15"
-swc_ecma_ast = "0.112.5"
 pathdiff = "0.2.1"
 rustpython-parser = "0.3.1"
 opentelemetry-otlp = { version = "0.16.0", default-features = false, features = ["http-json", "logs", "tokio"] }

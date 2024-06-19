@@ -25,7 +25,7 @@ impl Topic {
         Topic {
             name: data_model.name.clone(),
             version: data_model.version.clone(),
-            // TODO configure this from data model
+            // TODO configure this from DataModelConfig
             retention_period: Duration::from_secs(60 * 60 * 24 * 7),
             source_primitive: PrimitiveSignature {
                 name: data_model.name.clone(),

@@ -59,12 +59,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
+      - uses: pnpm/action-setup@v4
 
       - name: Install node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
@@ -176,7 +174,7 @@ jobs:
           use-cross: ${{ matrix.build.OS == 'ubuntu-20.04' }} # use `cross` for Linux builds
 
       - name: Install node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
@@ -223,9 +221,7 @@ jobs:
           SENTRY_AUTH_TOKEN: "op://drqe7p6legi6ug2ijq2fnrkmjq/Sentry/credential"
           SENTRY_ORG: "op://drqe7p6legi6ug2ijq2fnrkmjq/Sentry/org"
 
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
+      - uses: pnpm/action-setup@v4
 
       - name: Login NPM
         shell: bash
@@ -233,7 +229,7 @@ jobs:
           pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
 
       - name: Install node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"

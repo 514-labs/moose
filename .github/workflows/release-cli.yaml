@@ -211,7 +211,7 @@ jobs:
       - version
       - build-and-publish-binaries
       - build-and-publish-console
-      - package-and-publish-lib-ts-package
+      - package-and-publish-independant-ts-package
     runs-on: ubuntu-20.04
     if: ${{ !inputs.dry-run }}
     steps:

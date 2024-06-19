@@ -1,4 +1,7 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
 use walkdir::WalkDir;
 
 use crate::{
@@ -12,8 +15,8 @@ use crate::{
 #[derive(Debug)]
 pub struct PrimitiveMap {
     // This probably should not be a top level item and should be nested under the datamodels
-    enums: Vec<DataEnum>,
-    datamodels: HashMap<PathBuf, DataModel>,
+    enums: HashSet<DataEnum>,
+    datamodels: HashMap<PathBuf, Vec<DataModel>>,
     // TODO add flows
     // TODO add dbblocks
     // TODO add consumption apis
@@ -31,7 +34,7 @@ impl PrimitiveMap {
     // Currently limited to the current version - will need to layout previous versions in the future
     pub fn load(project: &Project) -> Result<PrimitiveMap, PrimitiveMapLoadingError> {
         let mut primitive_map = PrimitiveMap {
-            enums: Vec::new(),
+            enums: HashSet::new(),
             datamodels: HashMap::new(),
         };
 
@@ -40,20 +43,30 @@ impl PrimitiveMap {
             let entry = res_entry?;
 
             if entry.path().starts_with(&data_models_dir) && entry.file_type().is_file() {
+                // TODO This doesn't load the configuration - we need to add that
                 let file_objects =
                     parse_data_model_file(entry.path(), project.cur_version(), project)?;
                 for model in file_objects.models {
-                    primitive_map
-                        .datamodels
-                        .insert(entry.path().to_path_buf(), model);
+                    if let Some(existing_models) = primitive_map.datamodels.get_mut(entry.path()) {
+                        existing_models.push(model);
+                        continue;
+                    } else {
+                        primitive_map
+                            .datamodels
+                            .insert(entry.path().to_path_buf(), vec![model]);
+                    }
                 }
                 for enu in file_objects.enums {
-                    primitive_map.enums.push(enu);
+                    primitive_map.enums.insert(enu);
                 }
             }
         }
 
         Ok(primitive_map)
+    }
+
+    pub fn data_models_iter(&self) -> impl Iterator<Item = &DataModel> {
+        self.datamodels.values().flatten()
     }
 }
 

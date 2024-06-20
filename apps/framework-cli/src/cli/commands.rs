@@ -36,21 +36,9 @@ pub enum Commands {
         #[arg(short, long)]
         docker: bool,
     },
-    // Link {
-    //     /// Name of your client application or service (ex. `my-blog`)
-    //     name: String,
-
-    //     /// Language of your app or service
-    //     #[arg(default_value_t = SupportedLanguages::Typescript, value_enum)]
-    //     language: SupportedLanguages,
-
-    //     /// Location of your app or service
-    //     #[arg(default_value = ".")]
-    //     location: String,
-
-    //     /// Name of the project to link to. Pulls the list of projects from the config file
-    //     project: String,
-    // },
+    /// Displays the changes that will be applied to the infrastructure during the next deployment
+    /// to production, consdering the current state of the project
+    Plan {},
     /// Starts a local development environment to build your data-intensive app or service
     Dev {},
     /// Start a remote environment for use in cloud deployments

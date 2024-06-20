@@ -41,11 +41,25 @@ impl Default for Telemetry {
 }
 
 #[derive(Deserialize, Debug)]
+pub struct Features {
+    pub core_v2: bool,
+}
+
+impl Default for Features {
+    fn default() -> Self {
+        Features { core_v2: false }
+    }
+}
+
+#[derive(Deserialize, Debug)]
 pub struct Settings {
     #[serde(default)]
     pub logger: LoggerSettings,
     #[serde(default)]
     pub telemetry: Telemetry,
+
+    #[serde(default)]
+    pub features: Features,
 }
 
 fn config_path() -> PathBuf {

@@ -94,6 +94,8 @@ use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 use crate::framework::core::code_loader::{
     load_framework_objects, FrameworkObject, FrameworkObjectVersions, SchemaVersion,
 };
+use crate::framework::core::infrastructure_map::{InfraChange, InfrastructureMap};
+use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::framework::registry::model::ProcessRegistries;
 use crate::infrastructure::olap::clickhouse::{
@@ -106,7 +108,10 @@ use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
-use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
+use crate::infrastructure::olap::clickhouse_alt_client::{
+    get_pool, retrieve_infrastructure_map, store_current_state, store_infrastructure_map,
+    StateStorageError,
+};
 use crate::infrastructure::stream::redpanda;
 use crate::project::Project;
 
@@ -334,8 +339,48 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     Ok(())
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum PlanningError {
+    #[error("Failed to communicate with state storage")]
+    StateStorage(#[from] StateStorageError),
+
+    #[error("Failed to load primitive map")]
+    PrimitiveMapLoading(#[from] crate::framework::core::primitive_map::PrimitiveMapLoadingError),
+
+    #[error("Failed to connect to state storage")]
+    Clickhouse(#[from] clickhouse_rs::errors::Error),
+}
+
+// TODO - this probably should be somewhere else but not sure where.
+
+pub struct InfraPlanResult {
+    pub current_infra_map: Option<InfrastructureMap>,
+    pub target_infra_map: InfrastructureMap,
+    pub changes: Vec<InfraChange>,
+}
+
+async fn plan_changes(project: &Project) -> Result<InfraPlanResult, PlanningError> {
+    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+    let primitive_map = PrimitiveMap::load(&project)?;
+    let target_infra_map = InfrastructureMap::new(primitive_map);
+
+    let current_infra_map =
+        retrieve_infrastructure_map(&mut client, &project.clickhouse_config).await?;
+
+    let changes = match current_infra_map {
+        Some(current_infra_map) => current_infra_map.diff(&target_infra_map),
+        None => target_infra_map.init(),
+    };
+
+    Ok(InfraPlanResult {
+        current_infra_map,
+        target_infra_map,
+        changes: changes,
+    })
+}
+
 // Starts the webserver in production mode
-pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> {
+pub async fn start_production_mode(project: Arc<Project>, v2_core: bool) -> anyhow::Result<()> {
     show_message!(
         MessageType::Success,
         Message {
@@ -343,6 +388,16 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
             details: "production mode".to_string(),
         }
     );
+
+    if v2_core {
+        plan_changes(&project).await?;
+        // TODO add interpreter for making the different changes
+        // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
+
+        // Storing the result of the changes in the table
+        store_infrastructure_map(&mut client, &project.clickhouse_config, &target_infra_map)
+            .await?;
+    }
 
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
@@ -380,6 +435,22 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     web_server.start(route_table, project).await;
+
+    Ok(())
+}
+
+pub async fn plan(project: &Project) -> anyhow::Result<()> {
+    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+    let primitive_map = PrimitiveMap::load(&project)?;
+    let target_infra_map = InfrastructureMap::new(primitive_map);
+
+    let current_infra_map =
+        retrieve_infrastructure_map(&mut client, &project.clickhouse_config).await?;
+
+    let _ = match current_infra_map {
+        Some(current_infra_map) => current_infra_map.diff(&target_infra_map),
+        None => target_infra_map.init(),
+    };
 
     Ok(())
 }

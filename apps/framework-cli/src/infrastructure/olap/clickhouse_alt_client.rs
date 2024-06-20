@@ -17,6 +17,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
 use crate::framework::core::code_loader::FrameworkObjectVersions;
+use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::framework::data_model::schema::{DataModel, EnumValue};
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::model::{ClickHouseColumnType, ClickHouseTable};
@@ -236,6 +237,7 @@ ORDER BY timestamp"#,
     );
     client.execute(sql).await
 }
+
 pub async fn store_current_state(
     client: &mut ClientHandle,
     framework_object_versions: &FrameworkObjectVersions,
@@ -333,5 +335,65 @@ impl From<(&FrameworkObjectVersions, &HashSet<String>)> for ApplicationState {
             models,
             aggregations: aggregations.clone(),
         }
+    }
+}
+
+pub async fn store_infrastructure_map(
+    client: &mut ClientHandle,
+    click_house_config: &ClickHouseConfig,
+    infrastructure_map: &InfrastructureMap,
+) -> Result<(), StateStorageError> {
+    let data = clickhouse_rs::Block::new().column(
+        "infra_map",
+        vec![serde_json::to_string(infrastructure_map)?],
+    );
+    client
+        .insert(
+            format!("{}._MOOSE_STATE_V2", click_house_config.db_name),
+            data,
+        )
+        .await?;
+    Ok(())
+}
+
+async fn create_infrastructure_map_table(
+    client: &mut ClientHandle,
+    click_house_config: &ClickHouseConfig,
+) -> Result<(), clickhouse_rs::errors::Error> {
+    let sql = format!(
+        r#"CREATE TABLE IF NOT EXISTS {}._MOOSE_STATE_V2 (
+            timestamp DateTime('UTC') DEFAULT now(),
+            infra_map String
+        ) ENGINE = MergeTree
+        PRIMARY KEY timestamp
+        ORDER BY timestamp"#,
+        click_house_config.db_name
+    );
+    client.execute(sql).await
+}
+
+pub async fn retrieve_infrastructure_map(
+    client: &mut ClientHandle,
+    click_house_config: &ClickHouseConfig,
+) -> Result<Option<InfrastructureMap>, StateStorageError> {
+    create_infrastructure_map_table(client, click_house_config).await?;
+
+    let block = client
+        .query(format!(
+            "SELECT infra_map from {}._MOOSE_STATE ORDER BY timestamp DESC LIMIT 1",
+            click_house_config.db_name
+        ))
+        .fetch_all()
+        .await?;
+
+    let inframap_string = block
+        .rows()
+        .map(|row| row.get(0).unwrap())
+        .collect::<Vec<String>>();
+
+    match inframap_string.len() {
+        0 => Ok(None),
+        1 => Ok(serde_json::from_str(inframap_string.first().unwrap())?),
+        len => panic!("LIMIT 1 but got {} rows: {:?}", len, inframap_string),
     }
 }

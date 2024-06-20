@@ -1,4 +1,4 @@
-use hyper::http::Method;
+use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, time::Duration};
 
 use crate::framework::data_model::{
@@ -8,7 +8,7 @@ use crate::framework::data_model::{
 
 use super::primitive_map::PrimitiveMap;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Topic {
     pub version: String,
     pub name: String,
@@ -37,13 +37,21 @@ impl Topic {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum APIType {
     INGRESS,
     EGRESS,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum Method {
+    GET,
+    POST,
+    PUT,
+    DELETE,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PrimitiveTypes {
     DataModel,
     Function,
@@ -51,13 +59,13 @@ pub enum PrimitiveTypes {
     ConsumptionAPI,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PrimitiveSignature {
     pub name: String,
     pub primitive_type: PrimitiveTypes,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ApiEndpoint {
     pub name: String,
     pub api_type: APIType,
@@ -104,7 +112,7 @@ impl ApiEndpoint {
 //     pub source_primitive: PrimitiveSignature,
 // }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TopicToTableSyncProcess {
     source_topic_id: String,
     destination_table_id: String,
@@ -152,7 +160,7 @@ pub enum InfraChange {
     TopicToTableSyncProcess(Change<TopicToTableSyncProcess>),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfrastructureMap {
     // primitive_map: PrimitiveMap,
     pub topics: HashMap<String, Topic>,
@@ -310,6 +318,38 @@ impl InfrastructureMap {
                     topic_to_table_sync_process.clone(),
                 )));
             }
+        }
+
+        changes
+    }
+
+    /**
+     * Generates all the changes that need to be made to the infrastructure in the case of the
+     * infreastructure not having anything in place. ie everything needs to be created.
+     */
+    pub fn init(&self) -> Vec<InfraChange> {
+        let mut changes = vec![];
+
+        for (_, topic) in &self.topics {
+            changes.push(InfraChange::Topic(Change::<Topic>::Added(topic.clone())));
+        }
+
+        for (_, api_endpoint) in &self.api_endpoints {
+            changes.push(InfraChange::ApiEndpoint(Change::<ApiEndpoint>::Added(
+                api_endpoint.clone(),
+            )));
+        }
+
+        for (_, table) in &self.tables {
+            changes.push(InfraChange::Table(Change::<Table>::Added(table.clone())));
+        }
+
+        for (_, topic_to_table_sync_process) in &self.topic_to_table_sync_processes {
+            changes.push(InfraChange::TopicToTableSyncProcess(Change::<
+                TopicToTableSyncProcess,
+            >::Added(
+                topic_to_table_sync_process.clone(),
+            )));
         }
 
         changes

@@ -43,9 +43,9 @@ impl Default for TypescriptProject {
             ]),
             dev_dependencies: HashMap::from([
                 ("@514labs/moose-cli".to_string(), "latest".to_string()),
-                ("typescript".to_string(), "^5.4.0".to_string()),
+                ("typescript".to_string(), "~5.4.0".to_string()),
                 ("@types/node".to_string(), "^20.12.12".to_string()),
-                ("ts-patch".to_string(), "^3.2.0".to_string()),
+                ("ts-patch".to_string(), "~3.2.0".to_string()),
             ]),
         }
     }

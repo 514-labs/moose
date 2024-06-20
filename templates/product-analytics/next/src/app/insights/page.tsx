@@ -1,93 +1,80 @@
 "use client";
-import { useEffect, useState } from "react";
-import ReportLayout from "../report-layout";
-import { getTableQueryData, getChartQueryData } from "@/insights/table-query";
-import { DataTable } from "@/components/ui/data-table/data-table";
-import { createColumns } from "@/components/ui/data-table/columns";
+
+import Chart from "@/components/chart";
+import QueryForm, { QueryFormData } from "@/components/query-form/query-form";
 import TimeSelector from "@/components/time-selector";
+import { createColumns } from "@/components/ui/data-table/columns";
+import { DataTable } from "@/components/ui/data-table/data-table";
+import { getMetric, getMetricList, getMetricTimeSeries } from "@/data-api";
 import { DateRange } from "@/insights/time-query";
-import TimeSeriesForm from "@/components/time-series-form";
-import HistogramChart from "@/components/histogram-chart";
-import { ModelMeta, getModelMeta } from "@/insights/model-meta";
-import { TimeUnit } from "@/lib/time-utils";
-import { eventConfigFromNames } from "@/app/events";
-import { MetricForm } from "@/lib/form-types";
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { SortingState } from "@tanstack/react-table";
 
-function defaultBreakdown(breakdown: string[]) {
-  return breakdown.filter((b) => b != null).length == 0 ? [] : breakdown;
-}
+export default function Page() {
+  const { isLoading, isError, data, error } = useQuery({
+    queryKey: [],
+    queryFn: getMetricList,
+    initialData: [],
+  });
+  const [orderBy, setOrderBy] = useState<SortingState>([]);
+  const [selectedRange, setSelectedRange] = useState(DateRange["3D"]);
+  const [formState, setFormState] = useState<QueryFormData[]>([]);
+  const { data: metricData } = useQuery({
+    queryKey: ["query", formState, selectedRange, orderBy],
+    queryFn: () =>
+      getMetric({
+        query: formState[0],
+        range: selectedRange,
+        orderBy: orderBy,
+      }),
+    initialData: {},
+  });
 
-export default function InsightsPage() {
-  const [formState, setFormState] = useState<MetricForm[]>([]);
-  const [dateRange, setDateRange] = useState(DateRange.Today);
-  const [breakdown, setBreakdown] = useState<string[]>([]);
-  const [interval, setInterval] = useState<TimeUnit>(TimeUnit.HOUR);
-  const [data, setData] = useState([{}]);
-  const [timeSeries, setTimeSeries] = useState<
-    object & { timestamp: string }[]
-  >([]);
-  const [modelInfo, setModelMeta] = useState<ModelMeta[]>([]);
-  const defaultedBreakdown = defaultBreakdown(breakdown);
+  const { data: chartData } = useQuery({
+    queryKey: ["chart", formState, selectedRange],
+    queryFn: () =>
+      getMetricTimeSeries({ query: formState[0], range: selectedRange }),
+    initialData: {},
+  });
 
-  useEffect(() => {
-    const defaultedBreakdown = defaultBreakdown(breakdown);
+  if (isLoading) return <div>Loading...</div>;
+  if (isError) return <div>Error: {error.message}</div>;
 
-    const queriedEvents = eventConfigFromNames(formState);
-    getTableQueryData(queriedEvents, dateRange, defaultedBreakdown).then(
-      (val) => setData(val),
-    );
-    getChartQueryData(
-      queriedEvents,
-      dateRange,
-      interval,
-      defaultedBreakdown,
-    ).then((val) => setTimeSeries(val));
-  }, [formState, dateRange, breakdown, interval]);
+  const hasTable = metricData && metricData.length > 0;
+  const hasChart = chartData && chartData.length > 0;
 
-  useEffect(() => {
-    const queriedEvents = eventConfigFromNames(formState);
-    if (modelInfo) {
-      getModelMeta(queriedEvents).then((val) => setModelMeta(val));
-    }
-  }, [formState]);
-
-  const chart = (
-    <HistogramChart
-      timeAccessor={(obj: object & { timestamp: string }) =>
-        new Date(obj?.timestamp)
-      }
-      yAccessor="count"
-      fillAccessor={(d: { [key: string]: any }) => {
-        return defaultedBreakdown.map((b) => d[b]).join(", ");
-      }}
-      interval={interval}
-      toolbar={
-        <TimeSelector
-          interval={interval}
-          setInterval={setInterval}
-          selectedRange={dateRange}
-          setDateRange={setDateRange}
-        />
-      }
-      data={timeSeries}
-    />
-  );
-  const table = data?.[0] && (
-    <DataTable columns={createColumns(data[0])} data={data} />
-  );
   return (
-    <div>
-      <ReportLayout
-        table={table}
-        chart={chart}
-        filterCard={
-          <TimeSeriesForm
-            breakdownOptions={modelInfo}
-            setBreakdown={setBreakdown}
+    <section className="flex-1 w-screen">
+      <div className="w-full h-full grid grid-cols-3 grid-rows-3 gap-2 absolute">
+        <div className="col-span-1 row-span-3">
+          <QueryForm
+            setOrderBy={setOrderBy}
             setForm={setFormState}
+            name="Metric"
+            options={data}
           />
-        }
-      />
-    </div>
+        </div>
+        <div className="row-span-1 col-span-2">
+          <div className="w-fit ml-auto">
+            <TimeSelector
+              selectedRange={selectedRange}
+              setDateRange={setSelectedRange}
+            />
+          </div>
+          {hasChart && <Chart data={chartData} />}
+        </div>
+        <div className="col-span-2 row-span-2 overflow-auto">
+          {hasTable && (
+            <DataTable
+              orderBy={orderBy}
+              setOrderBy={setOrderBy}
+              columns={createColumns(metricData[0])}
+              data={metricData}
+            />
+          )}
+        </div>
+      </div>
+    </section>
   );
 }

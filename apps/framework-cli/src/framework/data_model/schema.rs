@@ -62,14 +62,14 @@ pub enum EnumValue {
     String(String),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TableType {
     Table,
     View,
     Unsupported,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Table {
     pub table_type: TableType,
     pub name: String,

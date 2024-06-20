@@ -8,13 +8,10 @@ use crate::framework::data_model::{
 
 use super::primitive_map::PrimitiveMap;
 
-type TopicId = String;
-type APIId = String;
-
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct Topic {
     pub version: String,
-    pub name: TopicId,
+    pub name: String,
 
     pub retention_period: Duration,
     pub source_primitive: PrimitiveSignature,
@@ -34,19 +31,19 @@ impl Topic {
         }
     }
 
-    pub fn id(&self) -> TopicId {
+    pub fn id(&self) -> String {
         // TODO have a proper version object that standardizes transformations
         format!("{}_{}", self.name, self.version.replace('.', "_"))
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum APIType {
     INGRESS,
     EGRESS,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PrimitiveTypes {
     DataModel,
     Function,
@@ -54,15 +51,15 @@ pub enum PrimitiveTypes {
     ConsumptionAPI,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct PrimitiveSignature {
     pub name: String,
     pub primitive_type: PrimitiveTypes,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ApiEndpoint {
-    pub name: APIId,
+    pub name: String,
     pub api_type: APIType,
     pub path: String,
     pub method: Method,
@@ -88,7 +85,7 @@ impl ApiEndpoint {
         }
     }
 
-    pub fn id(&self) -> APIId {
+    pub fn id(&self) -> String {
         // TODO have a proper version object that standardizes transformations
         format!(
             "{:?}_{}_{}",
@@ -107,7 +104,7 @@ impl ApiEndpoint {
 //     pub source_primitive: PrimitiveSignature,
 // }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct TopicToTableSyncProcess {
     source_topic_id: String,
     destination_table_id: String,
@@ -140,11 +137,53 @@ impl TopicToTableSyncProcess {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
+pub enum TopicChange {
+    Added(Topic),
+    Removed(Topic),
+    Updated { before: Topic, after: Topic },
+}
+
+#[derive(Debug, Clone)]
+pub enum ApiEndpointChange {
+    Added(ApiEndpoint),
+    Removed(ApiEndpoint),
+    Updated {
+        before: ApiEndpoint,
+        after: ApiEndpoint,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum TableChange {
+    Added(Table),
+    Removed(Table),
+    Updated { before: Table, after: Table },
+}
+
+#[derive(Debug, Clone)]
+pub enum TopicToTableSyncProcessChange {
+    Added(TopicToTableSyncProcess),
+    Removed(TopicToTableSyncProcess),
+    Updated {
+        before: TopicToTableSyncProcess,
+        after: TopicToTableSyncProcess,
+    },
+}
+
+#[derive(Debug, Clone)]
+pub enum InfraChange {
+    Topic(TopicChange),
+    ApiEndpoint(ApiEndpointChange),
+    Table(TableChange),
+    TopicToTableSyncProcess(TopicToTableSyncProcessChange),
+}
+
+#[derive(Debug, Clone)]
 pub struct InfrastructureMap {
     // primitive_map: PrimitiveMap,
-    pub topics: HashMap<TopicId, Topic>,
-    pub api_endpoints: HashMap<APIId, ApiEndpoint>,
+    pub topics: HashMap<String, Topic>,
+    pub api_endpoints: HashMap<String, ApiEndpoint>,
     pub tables: HashMap<String, Table>,
 
     pub topic_to_table_sync_processes: HashMap<String, TopicToTableSyncProcess>,
@@ -184,14 +223,131 @@ impl InfrastructureMap {
             tables,
         }
     }
+
+    // The current implementation is simple in which it goes over some of the
+    // changes several times. Something could be done to optimize this.
+    // There is probably a way to make this also more generic so that we don't have very
+    // similar code for each type of change.
+    pub fn diff(&self, target_map: &InfrastructureMap) -> Vec<InfraChange> {
+        let mut changes = vec![];
+
+        // =================================================================
+        //                              Topics
+        // =================================================================
+
+        for (id, topic) in &self.topics {
+            if let Some(target_topic) = target_map.topics.get(id) {
+                if topic != target_topic {
+                    changes.push(InfraChange::Topic(TopicChange::Updated {
+                        before: topic.clone(),
+                        after: target_topic.clone(),
+                    }));
+                }
+            } else {
+                changes.push(InfraChange::Topic(TopicChange::Removed(topic.clone())));
+            }
+        }
+
+        for (id, topic) in &target_map.topics {
+            if !self.topics.contains_key(id) {
+                changes.push(InfraChange::Topic(TopicChange::Added(topic.clone())));
+            }
+        }
+
+        // =================================================================
+        //                              API Endpoints
+        // =================================================================
+
+        for (id, api_endpoint) in &self.api_endpoints {
+            if let Some(target_api_endpoint) = target_map.api_endpoints.get(id) {
+                if api_endpoint != target_api_endpoint {
+                    changes.push(InfraChange::ApiEndpoint(ApiEndpointChange::Updated {
+                        before: api_endpoint.clone(),
+                        after: target_api_endpoint.clone(),
+                    }));
+                }
+            } else {
+                changes.push(InfraChange::ApiEndpoint(ApiEndpointChange::Removed(
+                    api_endpoint.clone(),
+                )));
+            }
+        }
+
+        for (id, api_endpoint) in &target_map.api_endpoints {
+            if !self.api_endpoints.contains_key(id) {
+                changes.push(InfraChange::ApiEndpoint(ApiEndpointChange::Added(
+                    api_endpoint.clone(),
+                )));
+            }
+        }
+
+        // =================================================================
+        //                              Tables
+        // =================================================================
+
+        for (id, table) in &self.tables {
+            if let Some(target_table) = target_map.tables.get(id) {
+                if table != target_table {
+                    changes.push(InfraChange::Table(TableChange::Updated {
+                        before: table.clone(),
+                        after: target_table.clone(),
+                    }));
+                }
+            } else {
+                changes.push(InfraChange::Table(TableChange::Removed(table.clone())));
+            }
+        }
+
+        for (id, table) in &target_map.tables {
+            if !self.tables.contains_key(id) {
+                changes.push(InfraChange::Table(TableChange::Added(table.clone())));
+            }
+        }
+
+        // =================================================================
+        //                              Topic to Table Sync Processes
+        // =================================================================
+
+        for (id, topic_to_table_sync_process) in &self.topic_to_table_sync_processes {
+            if let Some(target_topic_to_table_sync_process) =
+                target_map.topic_to_table_sync_processes.get(id)
+            {
+                if topic_to_table_sync_process != target_topic_to_table_sync_process {
+                    changes.push(InfraChange::TopicToTableSyncProcess(
+                        TopicToTableSyncProcessChange::Updated {
+                            before: topic_to_table_sync_process.clone(),
+                            after: target_topic_to_table_sync_process.clone(),
+                        },
+                    ));
+                }
+            } else {
+                changes.push(InfraChange::TopicToTableSyncProcess(
+                    TopicToTableSyncProcessChange::Removed(topic_to_table_sync_process.clone()),
+                ));
+            }
+        }
+
+        for (id, topic_to_table_sync_process) in &target_map.topic_to_table_sync_processes {
+            if !self.topic_to_table_sync_processes.contains_key(id) {
+                changes.push(InfraChange::TopicToTableSyncProcess(
+                    TopicToTableSyncProcessChange::Added(topic_to_table_sync_process.clone()),
+                ));
+            }
+        }
+
+        changes
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::path::Path;
+    use std::path::{Path, PathBuf};
 
     use crate::{
-        framework::{core::primitive_map::PrimitiveMap, languages::SupportedLanguages},
+        framework::{
+            core::primitive_map::PrimitiveMap, data_model::schema::DataModel,
+            languages::SupportedLanguages,
+        },
         project::Project,
     };
 
@@ -209,5 +365,46 @@ mod tests {
 
         let infra_map = super::InfrastructureMap::new(primitive_map.unwrap());
         println!("{:?}", infra_map);
+    }
+
+    #[test]
+    #[ignore]
+    fn test_infra_diff_map() {
+        let project = Project::new(
+            Path::new("/Users/nicolas/code/514/test"),
+            "test".to_string(),
+            SupportedLanguages::Typescript,
+        );
+        let primitive_map = PrimitiveMap::load(&project).unwrap();
+        let mut new_target_primitive_map = primitive_map.clone();
+
+        let new_data_model = DataModel {
+            name: "test".to_string(),
+            version: "1.0.0".to_string(),
+            config: Default::default(),
+            columns: vec![],
+            file_path: PathBuf::new(),
+        };
+        // Making some changes to the map
+        new_target_primitive_map
+            .datamodels
+            .insert(PathBuf::new(), vec![new_data_model]);
+        let to_change = PathBuf::from("/Users/nicolas/code/514/test/app/datamodels/models.ts");
+        let to_be_changed = new_target_primitive_map
+            .datamodels
+            .get_mut(&to_change)
+            .unwrap();
+        to_be_changed[0].columns = vec![];
+        to_be_changed.pop();
+
+        println!("Base Primitve Map: {:?} \n", primitive_map);
+        println!("Target Primitive Map {:?} \n", new_target_primitive_map);
+
+        let infra_map = super::InfrastructureMap::new(primitive_map);
+        let new_infra_map = super::InfrastructureMap::new(new_target_primitive_map);
+
+        let diffs = infra_map.diff(&new_infra_map);
+
+        print!("Diffs: {:?}", diffs);
     }
 }

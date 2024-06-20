@@ -12,22 +12,22 @@ use crate::{
     project::Project,
 };
 
-#[derive(Debug)]
-pub struct PrimitiveMap {
-    // This probably should not be a top level item and should be nested under the datamodels
-    enums: HashSet<DataEnum>,
-    datamodels: HashMap<PathBuf, Vec<DataModel>>,
-    // TODO add flows
-    // TODO add dbblocks
-    // TODO add consumption apis
-}
-
 #[derive(Debug, thiserror::Error)]
 pub enum PrimitiveMapLoadingError {
     #[error("Failure walking the tree")]
     WalkDir(#[from] walkdir::Error),
     #[error("Failed to parse the data model file")]
     DataModelParsing(#[from] crate::framework::data_model::parser::DataModelParsingError),
+}
+
+#[derive(Debug, Clone)]
+pub struct PrimitiveMap {
+    // This probably should not be a top level item and should be nested under the datamodels
+    enums: HashSet<DataEnum>,
+    pub datamodels: HashMap<PathBuf, Vec<DataModel>>,
+    // TODO add flows
+    // TODO add dbblocks
+    // TODO add consumption apis
 }
 
 impl PrimitiveMap {

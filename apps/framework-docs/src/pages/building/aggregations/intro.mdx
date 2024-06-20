@@ -1,29 +1,18 @@
 # Introduction
 
-Aggregations are reusable queries that let you compute derived data tables from your existing data. They operate directly on your database, enabling you to calculate, summarize, combine, and derive new data from across your database tables. The results are saved as dedicated tables, optimizing performance with pre-computed results ready for consumption.
+Aggregations allow you to derive new, meaningful datasets from existing database tables. By summarizing, combining, filtering, and grouping data across your table rows and columns, aggregations optimize query performance and provide real-time insights. Defined as SQL `SELECT` queries, they operate directly on your database. These queries are executed whenever new data is appended to your tables, and the results are stored as dedicated tables. This ensures your aggregation data is always ready for immediate use in your Moose application or other external applications consuming data from Moose.
 
-## When to Use Aggregations
+## Purpose
 
-Aggregations are particularly useful when you need to:
-
-- Summarize data for quick insights
-- Compute new metrics derived from existing data
-- Combine or filter data from multiple tables
-- Optimize query performance by reducing repeated computations
-- Ensure real-time updates to your aggregated data
+The primary purpose of Aggregations is to facilitate pre-computing results for your most common queries and data table transformations. They let you ensure that your transformations are continuously updated and readily available for high-performance querying and analysis. Aggregations are ideal for scenarios where you need to summarize, join, filter, and group data across multiple tables, and save those results for future use without having to recompute them every time you need them.
 
 ## How Aggregations Work
 
-As a developer, you write a SQL `SELECT` query to perform transformations on columns from your existing database tables. This query can:
+As a developer, you write a SQL `SELECT` query to perform transformations on your existing database tables. This query can:
 
-- Summarize columns
-- Compute new columns derived from other columns
-- Combine or filter data from multiple tables
+- Summarize column data using aggregation functions like `SUM`, `AVG`, `COUNT`, etc.
+- Group data by one or more columns to create summary statistics.
+- Compute new columns derived from other columns in the table.
+- Combine or filter data from multiple tables using `JOIN` and `WHERE` clauses.
 
-The results of these queries are saved to a new table, which can then be used for further data derivations like other aggregations, insights, metrics, reports, and charts.
-
-The SQL `SELECT` query is defined as a string and exported from a TypeScript file. When saved inside the `/aggregations` folder of your Moose project, Moose creates a materialized view in your database using the provided query. Moose currently supports Clickhouse for the database layer, which automatically updates the result set of your aggregation query in real-time as new data is added to your source table(s). This approach delivers several advantages, including:
-
-- Optimized query execution, resulting in faster data retrieval and reduced database load.
-- Always up-to-date data, ensuring better accuracy and quicker insights for downstream consumers.
-- More reusable data assets, simplifying database management and enhancing scalability as your data consumption needs grow.
+The SQL `SELECT` query is defined as a string and exported from a TypeScript file. When saved inside the `/aggregations` folder of your Moose project, Moose creates a materialized view in your database using the provided query. Moose currently supports Clickhouse for the database layer, which automatically updates the result set of your aggregation query in real-time as new data is added to your source table(s).

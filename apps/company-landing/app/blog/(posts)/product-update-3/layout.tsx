@@ -6,6 +6,7 @@ import {
   HalfWidthContentContainer,
   Section,
 } from "@514labs/design-system-components/components/containers";
+import FooterSection from "../../../sections/FooterSection";
 
 export default function MdxLayout({
   children,
@@ -18,7 +19,7 @@ export default function MdxLayout({
 }) {
   // Create any shared layout or styles here
   return (
-    <Section>
+    <Section className="px-6 w-full relative mx-auto xl:max-w-screen-xl">
       <Grid>
         <FullWidthContentContainer>{breadcrumbs}</FullWidthContentContainer>
         <HalfWidthContentContainer>
@@ -26,6 +27,7 @@ export default function MdxLayout({
         </HalfWidthContentContainer>
         <HalfWidthContentContainer>{children}</HalfWidthContentContainer>
       </Grid>
+      <FooterSection />
     </Section>
   );
 }

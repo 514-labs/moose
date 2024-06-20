@@ -75,6 +75,7 @@ fn convert_to_output_table(
         .map(|tuple| {
             let mut map = HashMap::new();
             for model in &tuple.1 {
+                // Map of data model to ingest point, table, and view
                 map.insert(
                     model.data_model.name.clone(),
                     vec![
@@ -89,8 +90,8 @@ fn convert_to_output_table(
         .unwrap_or_else(HashMap::new)
 }
 
-fn sort_and_limit(table_data: HashMap<String, Vec<String>>, limit: &u16) -> Vec<Vec<String>> {
-    let mut table_array: Vec<Vec<String>> = table_data
+fn sort_and_limit(output_table: HashMap<String, Vec<String>>, limit: &u16) -> Vec<Vec<String>> {
+    let mut table_array: Vec<Vec<String>> = output_table
         .into_iter()
         .map(|(key, mut values)| {
             let mut array = vec![key];
@@ -135,15 +136,23 @@ fn remove_suffix(table_name: &str) -> String {
 }
 
 fn augment_output_table(
-    output_table_data: &mut HashMap<String, Vec<String>>,
+    output_table: &mut HashMap<String, Vec<String>>,
     system_tables: &HashMap<String, ClickHouseSystemTable>,
 ) {
-    for (key, value) in output_table_data.iter_mut() {
-        if let Some(system_table) = system_tables.get(key) {
-            if system_table.engine == "MergeTree" {
-                value[1].clone_from(&system_table.name);
-            } else if system_table.engine == "View" {
-                value[2].clone_from(&system_table.name);
+    for (data_model, metadata) in output_table.iter_mut() {
+        if let Some(system_table) = system_tables.get(data_model) {
+            match system_table.engine.as_str() {
+                "MergeTree" => {
+                    if let Some(v) = metadata.get_mut(1) {
+                        v.clone_from(&system_table.name);
+                    }
+                }
+                "View" => {
+                    if let Some(v) = metadata.get_mut(2) {
+                        v.clone_from(&system_table.name);
+                    }
+                }
+                _ => {}
             }
         }
     }

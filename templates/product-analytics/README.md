@@ -1,4 +1,5 @@
 # Product Analytics Template
+
 ## Introduction
 Adding live analytics to apps can be complex, costly, and time-consuming. That's why we created a specific solution using MooseJS to make adding analytics to your app easier, faster and cheaper. This ready-made solution provides all the tools needed to quickly understand and leverage user data for driving your product strategy.
 
@@ -29,11 +30,11 @@ cd moose && npx @514labs/moose-cli@latest dev
 Running this sequence of commands will spin up all the backend infrastructure powering your backend data service (running on port 4000) and a developer console (typically running on port 3001) that you can access to explore pre-configured data models and flows, focusing on handling PageView events.
 
 Here is the default PageView event data model you are provided in your ``/datamodels`` folder.
-```prisma
-// models.prisma
+```typescript
+// models.ts
 
-model PageViewEvent {
-    eventId    String   @id
+interface PageViewRaw {
+    eventId    Key<string>
     timestamp  DateTime
     session_id String
     user_agent String
@@ -74,9 +75,9 @@ To track custom events effectively, start by defining a new data model based on 
 
 #### Example: Button Click Event
 For a button click event, you might create a data model named ButtonClickEvent with properties that capture both the context and user interaction details:
-``` prisma
-model ButtonClickEvent {
-    eventId    String   @id
+``` typescript
+interface ButtonClickRaw {
+    eventId    Key<string>
     timestamp  DateTime
     session_id String
     user_agent String

@@ -1,8 +1,12 @@
 ### Introducing a New and Improved Product Analytics Template
 
-In my last two posts, I introduced the new primitives we added to the MooseJS framework: Aggregations and Consumption APIs. These features make extracting data from your database as easy as ingesting it.
+TL;DR:
 
-This post is the first in a series of blogs that will take you through how we developed these new primitives by enhancing our Product Analytics Template. We built the plane (the Moose framework) while flying it (using Moose for our own use cases), which taught us a ton about refining the core capabilities and development experience of our own product.
+- We wanted to measure a time series of user interactions on our website.
+- We didn't trust the data from off-the-shelf product analytics, so we decided to build our own simple product analytics using Moose.
+- You can too, [checkout the Github repo](https://github.com/514-labs/moose/tree/main/templates/product-analytics)
+
+This post is the first in a series of blogs that will take you through how we developed new Moose framework primitives by using Moose to build our own Product Analytics application. We built the plane (the Moose framework) while flying it (using Moose for our own use cases), which taught us a ton about refining the core capabilities and development experience of our own product.
 
 Without further ado: the new and improved Product Analytics Template, complete with all four Moose primitives (data models, flows, aggregations, and consumption APIs), is here and ready for you to use!
 
@@ -322,6 +326,8 @@ Want a shortcut? Clone the template with this terminal command:
 npx create-moose-app <YOUR_APP_NAME> --template product-analytics
 ```
 
+If you want to catch up on how we got here, I introduced the two newest primitives we added to the MooseJS framework: [Aggregations](https://fiveonefour.com/blog/product-update-2) and [Consumption APIs](https://fiveonefour.com/blog/product-update-3) in prevoius posts These features make extracting data from your database as easy as ingesting it.
+
 [Check out the Moose documentation](https://docs.moosejs.com) for more information on how to use Aggregations and Consumption APIs in your own projects.
 
 Stay tuned for part 2!
@@ -334,5 +340,3 @@ export const metadata = {
   description:
     "We revamped our Product Analytics Template with the new Moose primitives. Learn how we transformed our analytics dashboard and made data fetching a breeze with Aggregations and Consumption APIs.",
 };
-
-;

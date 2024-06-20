@@ -12,7 +12,7 @@ use crate::{
 
 use super::{RoutineFailure, RoutineSuccess};
 
-pub async fn list_primitives(
+pub async fn list_all(
     project: Arc<Project>,
     version: &Option<String>,
     limit: &u16,
@@ -23,13 +23,13 @@ pub async fn list_primitives(
 
     let current_state = get_current_state(&project).await?;
 
-    let mut output_table_data = convert_to_table_data(&current_state, &target_version);
+    let mut output_table = convert_to_output_table(&current_state, &target_version);
 
     let system_tables = get_system_tables(&project, &target_version).await;
 
-    augment_output_table_data(&mut output_table_data, &system_tables);
+    augment_output_table(&mut output_table, &system_tables);
 
-    let output_table_array = sort_and_limit_table(output_table_data, limit);
+    let output_table_array = sort_and_limit(output_table, limit);
 
     show_table(
         vec![
@@ -64,7 +64,7 @@ async fn get_current_state(project: &Project) -> Result<ApplicationState, Routin
         })
 }
 
-fn convert_to_table_data(
+fn convert_to_output_table(
     current_state: &ApplicationState,
     target_version: &str,
 ) -> HashMap<String, Vec<String>> {
@@ -89,7 +89,7 @@ fn convert_to_table_data(
         .unwrap_or_else(HashMap::new)
 }
 
-fn sort_and_limit_table(table_data: HashMap<String, Vec<String>>, limit: &u16) -> Vec<Vec<String>> {
+fn sort_and_limit(table_data: HashMap<String, Vec<String>>, limit: &u16) -> Vec<Vec<String>> {
     let mut table_array: Vec<Vec<String>> = table_data
         .into_iter()
         .map(|(key, mut values)| {
@@ -134,7 +134,7 @@ fn remove_suffix(table_name: &str) -> String {
     }
 }
 
-fn augment_output_table_data(
+fn augment_output_table(
     output_table_data: &mut HashMap<String, Vec<String>>,
     system_tables: &HashMap<String, ClickHouseSystemTable>,
 ) {

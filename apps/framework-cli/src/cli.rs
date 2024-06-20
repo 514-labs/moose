@@ -21,7 +21,7 @@ use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
-use routines::ls::list_primitives;
+use routines::ls::list_all;
 use routines::ps::show_processes;
 use settings::{read_settings, Settings};
 
@@ -561,7 +561,7 @@ async fn top_command_handler(
                 &settings
             );
 
-            list_primitives(project_arc, version, limit).await
+            list_all(project_arc, version, limit).await
         }
     }
 }

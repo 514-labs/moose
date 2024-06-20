@@ -3,6 +3,7 @@ import ts, {
   isTypeReferenceNode,
   SymbolFlags,
   TypeChecker,
+  TypeFlags,
 } from "typescript";
 import { enumConvert, isEnum } from "./enumConvert";
 import { Column, DataType, UnknownType } from "./dataModelTypes";
@@ -53,7 +54,8 @@ const tsTypeToDataType = (
                     typeName,
                   )[1],
                 }
-              : nonNull.isClassOrInterface()
+              : nonNull.isClassOrInterface() ||
+                  (nonNull.flags & TypeFlags.Object) !== 0
                 ? { name: t.symbol.name, columns: toColumns(nonNull, checker) }
                 : throwUnknownType(t, fieldName, typeName);
 

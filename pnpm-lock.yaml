@@ -249,7 +249,7 @@ importers:
     dependencies:
       "@514labs/moose-lib":
         specifier: latest
-        version: 0.3.417
+        version: 0.3.427
       "@clickhouse/client-web":
         specifier: ^1.0.1
         version: 1.1.0
@@ -980,10 +980,10 @@ packages:
       "@514labs/moose-cli-linux-x64": 0.3.392
     dev: true
 
-  /@514labs/moose-lib@0.3.417:
+  /@514labs/moose-lib@0.3.427:
     resolution:
       {
-        integrity: sha512-5bN967TyF6IZmpgbWHmuFEJ+oFsbXRjesh70HmD99OO/Z0D94Ycdn7ls5KxBAiZmwDl4hPRl3WUe+Ex1+Bp2Xg==,
+        integrity: sha512-TdEpBN5OHFJjT3S0jn9l/CQmnHqPcwQEdUGcG82A+hSVHP1TXw23+pz8P7uLyVJXV8N+Q//YFTsasoBtto+d8A==,
       }
     hasBin: true
     dependencies:

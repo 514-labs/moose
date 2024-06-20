@@ -4,9 +4,9 @@ export default {
   host,
   toStartOfMinute(first_hit) AS minute,
   uniq(session_id) as visits,
-  sum(hits) AS total_hits,
+  countMerge(hits) AS total_hits,
   avg(duration) AS avg_session_length,
-  100 * countIf(hits = 1) / count() AS bounce_rate
+100 * count(is_bounce) / countMerge(hits) AS bounce_rate
 FROM sessions
 GROUP BY minute, host
 ORDER BY minute ASC`,

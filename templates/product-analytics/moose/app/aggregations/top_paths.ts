@@ -11,7 +11,7 @@ interface Aggregation {
 export default {
   select: `SELECT 
   user_journey,
-  count() as visits
+  countMerge() as visits
 FROM sessions
 GROUP BY user_journey
 ORDER BY visits DESC`,

@@ -1,7 +1,7 @@
 export default {
   select: `
 SELECT 
-count() as bounce_count,
+countMerge() as bounce_count,
 last_page
 FROM sessions
 WHERE duration > 0

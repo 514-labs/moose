@@ -3,7 +3,7 @@ export default {
     SELECT
         hostname,
         pathname,
-        count(pathname) AS hits
+        countMerge(pathname) AS hits
     FROM PageViewProcessed_0_0
     WHERE hostname != 'development'
     GROUP BY hostname, pathname

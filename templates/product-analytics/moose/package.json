@@ -5,7 +5,7 @@
     "dev": "npx moose-cli dev"
   },
   "dependencies": {
-    "@514labs/moose-lib": "^0.0.0",
+    "@514labs/moose-lib": "0.3.427",
     "@clickhouse/client-web": "^1.0.1",
     "fastq": "^1.17.1",
     "kafkajs": "^2.2.4"

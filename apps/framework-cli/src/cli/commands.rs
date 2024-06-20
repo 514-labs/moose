@@ -81,7 +81,7 @@ pub enum Commands {
     Ps {},
     /// View Moose primitives & infrastructure
     Ls {
-        /// Limit output to a specific amount
+        /// Limit output to a specific number of data models
         #[arg(short, long, default_value = "10")]
         limit: u16,
 

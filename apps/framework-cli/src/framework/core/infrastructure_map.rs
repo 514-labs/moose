@@ -138,45 +138,18 @@ impl TopicToTableSyncProcess {
 }
 
 #[derive(Debug, Clone)]
-pub enum TopicChange {
-    Added(Topic),
-    Removed(Topic),
-    Updated { before: Topic, after: Topic },
-}
-
-#[derive(Debug, Clone)]
-pub enum ApiEndpointChange {
-    Added(ApiEndpoint),
-    Removed(ApiEndpoint),
-    Updated {
-        before: ApiEndpoint,
-        after: ApiEndpoint,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub enum TableChange {
-    Added(Table),
-    Removed(Table),
-    Updated { before: Table, after: Table },
-}
-
-#[derive(Debug, Clone)]
-pub enum TopicToTableSyncProcessChange {
-    Added(TopicToTableSyncProcess),
-    Removed(TopicToTableSyncProcess),
-    Updated {
-        before: TopicToTableSyncProcess,
-        after: TopicToTableSyncProcess,
-    },
+pub enum Change<T> {
+    Added(T),
+    Removed(T),
+    Updated { before: T, after: T },
 }
 
 #[derive(Debug, Clone)]
 pub enum InfraChange {
-    Topic(TopicChange),
-    ApiEndpoint(ApiEndpointChange),
-    Table(TableChange),
-    TopicToTableSyncProcess(TopicToTableSyncProcessChange),
+    Topic(Change<Topic>),
+    ApiEndpoint(Change<ApiEndpoint>),
+    Table(Change<Table>),
+    TopicToTableSyncProcess(Change<TopicToTableSyncProcess>),
 }
 
 #[derive(Debug, Clone)]
@@ -238,19 +211,19 @@ impl InfrastructureMap {
         for (id, topic) in &self.topics {
             if let Some(target_topic) = target_map.topics.get(id) {
                 if topic != target_topic {
-                    changes.push(InfraChange::Topic(TopicChange::Updated {
+                    changes.push(InfraChange::Topic(Change::<Topic>::Updated {
                         before: topic.clone(),
                         after: target_topic.clone(),
                     }));
                 }
             } else {
-                changes.push(InfraChange::Topic(TopicChange::Removed(topic.clone())));
+                changes.push(InfraChange::Topic(Change::<Topic>::Removed(topic.clone())));
             }
         }
 
         for (id, topic) in &target_map.topics {
             if !self.topics.contains_key(id) {
-                changes.push(InfraChange::Topic(TopicChange::Added(topic.clone())));
+                changes.push(InfraChange::Topic(Change::<Topic>::Added(topic.clone())));
             }
         }
 
@@ -261,13 +234,13 @@ impl InfrastructureMap {
         for (id, api_endpoint) in &self.api_endpoints {
             if let Some(target_api_endpoint) = target_map.api_endpoints.get(id) {
                 if api_endpoint != target_api_endpoint {
-                    changes.push(InfraChange::ApiEndpoint(ApiEndpointChange::Updated {
+                    changes.push(InfraChange::ApiEndpoint(Change::<ApiEndpoint>::Updated {
                         before: api_endpoint.clone(),
                         after: target_api_endpoint.clone(),
                     }));
                 }
             } else {
-                changes.push(InfraChange::ApiEndpoint(ApiEndpointChange::Removed(
+                changes.push(InfraChange::ApiEndpoint(Change::<ApiEndpoint>::Removed(
                     api_endpoint.clone(),
                 )));
             }
@@ -275,7 +248,7 @@ impl InfrastructureMap {
 
         for (id, api_endpoint) in &target_map.api_endpoints {
             if !self.api_endpoints.contains_key(id) {
-                changes.push(InfraChange::ApiEndpoint(ApiEndpointChange::Added(
+                changes.push(InfraChange::ApiEndpoint(Change::<ApiEndpoint>::Added(
                     api_endpoint.clone(),
                 )));
             }
@@ -288,19 +261,19 @@ impl InfrastructureMap {
         for (id, table) in &self.tables {
             if let Some(target_table) = target_map.tables.get(id) {
                 if table != target_table {
-                    changes.push(InfraChange::Table(TableChange::Updated {
+                    changes.push(InfraChange::Table(Change::<Table>::Updated {
                         before: table.clone(),
                         after: target_table.clone(),
                     }));
                 }
             } else {
-                changes.push(InfraChange::Table(TableChange::Removed(table.clone())));
+                changes.push(InfraChange::Table(Change::<Table>::Removed(table.clone())));
             }
         }
 
         for (id, table) in &target_map.tables {
             if !self.tables.contains_key(id) {
-                changes.push(InfraChange::Table(TableChange::Added(table.clone())));
+                changes.push(InfraChange::Table(Change::<Table>::Added(table.clone())));
             }
         }
 
@@ -313,25 +286,29 @@ impl InfrastructureMap {
                 target_map.topic_to_table_sync_processes.get(id)
             {
                 if topic_to_table_sync_process != target_topic_to_table_sync_process {
-                    changes.push(InfraChange::TopicToTableSyncProcess(
-                        TopicToTableSyncProcessChange::Updated {
-                            before: topic_to_table_sync_process.clone(),
-                            after: target_topic_to_table_sync_process.clone(),
-                        },
-                    ));
+                    changes.push(InfraChange::TopicToTableSyncProcess(Change::<
+                        TopicToTableSyncProcess,
+                    >::Updated {
+                        before: topic_to_table_sync_process.clone(),
+                        after: target_topic_to_table_sync_process.clone(),
+                    }));
                 }
             } else {
-                changes.push(InfraChange::TopicToTableSyncProcess(
-                    TopicToTableSyncProcessChange::Removed(topic_to_table_sync_process.clone()),
-                ));
+                changes.push(InfraChange::TopicToTableSyncProcess(Change::<
+                    TopicToTableSyncProcess,
+                >::Removed(
+                    topic_to_table_sync_process.clone(),
+                )));
             }
         }
 
         for (id, topic_to_table_sync_process) in &target_map.topic_to_table_sync_processes {
             if !self.topic_to_table_sync_processes.contains_key(id) {
-                changes.push(InfraChange::TopicToTableSyncProcess(
-                    TopicToTableSyncProcessChange::Added(topic_to_table_sync_process.clone()),
-                ));
+                changes.push(InfraChange::TopicToTableSyncProcess(Change::<
+                    TopicToTableSyncProcess,
+                >::Added(
+                    topic_to_table_sync_process.clone(),
+                )));
             }
         }
 

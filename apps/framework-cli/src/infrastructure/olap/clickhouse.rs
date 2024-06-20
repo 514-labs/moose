@@ -171,6 +171,28 @@ pub async fn fetch_all_tables(
     Ok(tables)
 }
 
+pub async fn fetch_tables_with_version(
+    configured_client: &ConfiguredDBClient,
+    version: &str,
+) -> Result<Vec<ClickHouseSystemTable>, clickhouse::error::Error> {
+    let client = &configured_client.client;
+    let db_name = &configured_client.config.db_name;
+
+    let query = "SELECT uuid, database, name, dependencies_table, engine FROM system.tables WHERE database = ? AND name LIKE ?";
+
+    let tables = client
+        .query(query)
+        .bind(db_name)
+        .bind(version)
+        .fetch_all::<ClickHouseSystemTableRow>()
+        .await?
+        .into_iter()
+        .map(|row| row.to_table())
+        .collect();
+
+    Ok(tables)
+}
+
 pub async fn delete_table_or_view(
     table_or_view_name: &str,
     configured_client: &ConfiguredDBClient,

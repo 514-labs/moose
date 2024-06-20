@@ -257,6 +257,14 @@ pub async fn store_current_state(
     Ok(())
 }
 
+pub async fn get_state(
+    click_house_config: &ClickHouseConfig,
+) -> Result<Option<ApplicationState>, StateStorageError> {
+    let pool = get_pool(click_house_config);
+    let mut client = pool.get_handle().await?;
+    retrieve_current_state(&mut client, click_house_config).await
+}
+
 pub async fn retrieve_current_state(
     client: &mut ClientHandle,
     click_house_config: &ClickHouseConfig,

@@ -21,6 +21,7 @@ use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
+use routines::ls::list_primitives;
 use routines::ps::show_processes;
 use settings::{read_settings, Settings};
 
@@ -546,12 +547,21 @@ async fn top_command_handler(
                 &settings
             );
 
-            show_processes(project_arc);
+            show_processes(project_arc)
+        }
+        Commands::Ls { version, limit } => {
+            info!("Running ls command");
 
-            Ok(RoutineSuccess::success(Message::new(
-                "".to_string(),
-                "".to_string(),
-            )))
+            let project = load_project()?;
+            let project_arc = Arc::new(project);
+
+            crate::utilities::capture::capture!(
+                ActivityType::LsCommand,
+                project_arc.name().clone(),
+                &settings
+            );
+
+            list_primitives(project_arc, version, limit).await
         }
     }
 }

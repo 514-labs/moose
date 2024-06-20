@@ -5,7 +5,12 @@ use std::{
 
 use log::error;
 
-use crate::{cli::display::show_table, project::Project};
+use crate::{
+    cli::display::{show_table, Message},
+    project::Project,
+};
+
+use super::{RoutineFailure, RoutineSuccess};
 
 pub struct MooseProcess {
     pub name: String,
@@ -25,7 +30,7 @@ impl MooseProcess {
     }
 }
 
-pub fn show_processes(project: Arc<Project>) {
+pub fn show_processes(project: Arc<Project>) -> Result<RoutineSuccess, RoutineFailure> {
     let processes = vec![
         get_webserver_process(&project),
         get_clickhouse_process(&project),
@@ -48,6 +53,11 @@ pub fn show_processes(project: Arc<Project>) {
         ],
         data,
     );
+
+    Ok(RoutineSuccess::success(Message::new(
+        "".to_string(),
+        "".to_string(),
+    )))
 }
 
 fn get_webserver_process(project: &Arc<Project>) -> Option<MooseProcess> {

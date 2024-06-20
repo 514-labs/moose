@@ -304,7 +304,7 @@ pub async fn set_up_topic_and_tables_and_route(
         // In the case where the previous version of the data model and the new version of the data model are the same
         // we just need to use pointers to the old table and topic
         (Some(previous_fo), Some(current_table), Some(previous_table))
-            if previous_fo.data_model == fo.data_model =>
+            if previous_fo.data_model.columns == fo.data_model.columns =>
         {
             info!(
                 "Data model {} has not changed, using previous version table {} and topic {}",

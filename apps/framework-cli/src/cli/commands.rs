@@ -79,6 +79,16 @@ pub enum Commands {
     },
     /// View Moose processes
     Ps {},
+    /// View Moose primitives & infrastructure
+    Ls {
+        /// Limit output to a specific number of data models
+        #[arg(short, long, default_value = "10")]
+        limit: u16,
+
+        /// View a specific version (default: latest)
+        #[arg(short, long)]
+        version: Option<String>,
+    },
 }
 
 #[derive(Debug, Args)]

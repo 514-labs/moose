@@ -38,6 +38,8 @@ pub enum ActivityType {
     InitTemplateCommand,
     #[serde(rename = "logsCommand")]
     LogsCommand,
+    #[serde(rename = "lsCommand")]
+    LsCommand,
     #[serde(rename = "prodCommand")]
     ProdCommand,
     #[serde(rename = "psCommand")]

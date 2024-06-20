@@ -123,6 +123,7 @@ pub mod docker_packager;
 pub mod flow;
 pub mod initialize;
 pub mod logs;
+pub mod ls;
 pub mod migrate;
 pub mod ps;
 pub mod stop;

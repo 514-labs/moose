@@ -25,4 +25,7 @@ export interface MyModel {
   enum3: StringedEnum;
   enum2: IterationEnum;
   enum1: NumEnum;
+  logs: {
+    info: string;
+  }
 }

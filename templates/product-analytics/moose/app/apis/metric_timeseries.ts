@@ -10,37 +10,12 @@ import {
   createFilter,
   decodeQuery,
 } from "../helpers/types";
+import { getDefaultFrom, getDefaultTo } from "../helpers/utils";
 export interface QueryParams {
   query: string;
   step: string;
   from: string;
   to: string;
-}
-
-function getDefaultFrom() {
-  const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  return Math.floor(oneWeekAgo.getTime() / 1000).toString();
-}
-
-function getDefaultTo() {
-  const now = new Date();
-  return Math.floor(now.getTime() / 1000).toString();
-}
-
-function buildSelect(form: QueryFormData) {
-  if (form.grouping.length === 0) {
-    return sql`count(*) as hits`;
-  }
-
-  const groupingCols = form.grouping.map(
-    (group) => sql`${ConsumptionHelpers.column(group.property)}`,
-  );
-
-  return join_queries({
-    values: groupingCols,
-    suffix: ", count(*) as hits",
-    separator: ", ",
-  });
 }
 
 export default async function handle(
@@ -52,8 +27,6 @@ export default async function handle(
   }: QueryParams,
   { client, sql }: ConsumptionUtil,
 ) {
-  const stepNum = parseInt(step);
-
   const queryForm = decodeQuery(query);
 
   if (!queryForm.metricName) throw new Error("Metric name is required");
@@ -97,7 +70,7 @@ FROM (
   ${filterQuery}
   GROUP BY ${groupListSql} timestamp
   ORDER BY ${groupListSql} timestamp ASC
-  WITH FILL FROM toStartOfInterval(fromUnixTimestamp(${parseInt(from)}), interval 3600 second) TO fromUnixTimestamp(${parseInt(to)}) STEP 3600
+  WITH FILL FROM toStartOfInterval(fromUnixTimestamp(${parseInt(from)}), interval ${parseInt(step)} second) TO fromUnixTimestamp(${parseInt(to)}) STEP ${parseInt(step)}
 )
 ${grouping}
 ORDER BY total_count DESC`;

@@ -17,12 +17,14 @@ interface MetricSelectProps {
   index: number;
   options: { label: string; val: string }[];
   remove: UseFieldArrayRemove;
+  setOrderBy: (orderBy: { id: string; desc: boolean }[]) => void;
 }
 export default function MetricSelectForm({
   form,
   index,
   options,
   remove,
+  setOrderBy,
 }: MetricSelectProps) {
   return (
     <div className="border-2 rounded-xl w-full p-2">
@@ -42,6 +44,7 @@ export default function MetricSelectForm({
                 onChange={(_) => {
                   form.setValue(`list.${index}.filter`, []);
                   form.setValue(`list.${index}.grouping`, []);
+                  setOrderBy([]);
                 }}
               />
             </div>

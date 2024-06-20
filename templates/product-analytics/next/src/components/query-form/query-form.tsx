@@ -17,11 +17,13 @@ interface MultiSelectProps {
   setForm: (form: QueryFormData) => void;
   options: MultiSelectList;
   name: string;
+  setOrderBy: (orderBy: { id: string; desc: boolean }[]) => void;
 }
 export default function QueryForm({
   setForm,
   options,
   name,
+  setOrderBy,
 }: MultiSelectProps) {
   const form = useForm({ mode: "onChange" });
   const { handleSubmit, watch } = form;
@@ -61,6 +63,7 @@ export default function QueryForm({
           {fields.map((_field, index) => {
             return (
               <MetricSelectForm
+                setOrderBy={setOrderBy}
                 key={index}
                 form={form}
                 index={index}

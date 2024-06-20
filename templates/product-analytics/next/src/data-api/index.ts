@@ -1,5 +1,6 @@
 import { MetricList } from "@/app/types";
 import { QueryFormData } from "@/components/query-form/query-form";
+import { DateRange, getRangeDate } from "@/insights/time-query";
 
 export async function getMetricList() {
   const response = await fetch("http://localhost:4000/consumption/metric_list");
@@ -33,14 +34,28 @@ export async function getMetricAttributes(metricName: string) {
 
 export interface MetricQuery {
   query: QueryFormData;
+  range: DateRange;
+  orderBy: { id: string; desc: boolean }[];
 }
 
-export async function getMetric({ query }: MetricQuery) {
+export async function getMetric({ query, range, orderBy }: MetricQuery) {
   const encodedQuery = encodeURIComponent(JSON.stringify(query));
-
-  const response = await fetch(
-    "http://localhost:4000/consumption/metric_query?query=" + encodedQuery,
-  );
+  const url = new URL("http://localhost:4000/consumption/metric_query");
+  const params = new URLSearchParams();
+  if (query) {
+    params.append("query", encodedQuery);
+  }
+  if (range) {
+    const { from, to } = getRangeDate(range);
+    params.append("from", from.toString());
+    params.append("to", to.toString());
+  }
+  if (orderBy?.length > 0) {
+    params.append("orderBy", orderBy[0].id);
+    params.append("desc", orderBy[0].desc.toString());
+  }
+  url.search = params.toString();
+  const response = await fetch(url.toString());
 
   if (!response.ok) {
     throw new Error("Network response was not ok");
@@ -71,14 +86,24 @@ export async function getMetricCommonProperties({
 
 export interface MetricQuery {
   query: QueryFormData;
+  range: DateRange;
 }
 
-export async function getMetricTimeSeries({ query }: MetricQuery) {
+export async function getMetricTimeSeries({ query, range }: MetricQuery) {
   const encodedQuery = encodeURIComponent(JSON.stringify(query));
 
-  const response = await fetch(
-    "http://localhost:4000/consumption/metric_timeseries?query=" + encodedQuery,
-  );
+  const url = new URL("http://localhost:4000/consumption/metric_timeseries");
+  const params = new URLSearchParams();
+  if (query) {
+    params.append("query", encodedQuery);
+  }
+  if (range) {
+    const { from, to } = getRangeDate(range);
+    params.append("from", from.toString());
+    params.append("to", to.toString());
+  }
+  url.search = params.toString();
+  const response = await fetch(url.toString());
 
   if (!response.ok) {
     throw new Error("Network response was not ok");

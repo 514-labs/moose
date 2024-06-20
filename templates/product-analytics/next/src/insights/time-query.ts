@@ -1,5 +1,3 @@
-import { TimeUnit, timeUnitToSeconds } from "@/lib/time-utils";
-
 export enum DateRange {
   "1H" = "1H",
   "Today" = "1D",
@@ -7,6 +5,7 @@ export enum DateRange {
   "7D" = "7D",
   "30D" = "30D",
 }
+
 export const rangeToNum = {
   [DateRange["1H"]]: 1,
   [DateRange.Today]: 1 * 24,
@@ -15,13 +14,9 @@ export const rangeToNum = {
   [DateRange["30D"]]: 1 * 24 * 30,
 };
 
-export function timeToClickHouseInterval(timeUnit: TimeUnit) {
-  switch (timeUnit) {
-    case TimeUnit.DAY:
-      return "toStartOfDay";
-    case TimeUnit.HOUR:
-      return "toStartOfHour";
-    case TimeUnit.MINUTE:
-      return "toStartOfMinute";
-  }
+// returns from and to date in UTC SECONDS
+export function getRangeDate(range: DateRange) {
+  const to = Math.floor(Date.now() / 1000);
+  const from = to - rangeToNum[range] * 60 * 60;
+  return { from, to };
 }

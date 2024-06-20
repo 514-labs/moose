@@ -4,6 +4,7 @@ import {
   flexRender,
   getCoreRowModel,
   useReactTable,
+  SortingState,
 } from "@tanstack/react-table";
 import {
   Table,
@@ -17,9 +18,13 @@ import { ColumnResizer } from "./column-resizer";
 import { useState } from "react";
 
 export const DataTable = <TValue,>({
+  setOrderBy,
+  orderBy,
   columns,
   data,
 }: {
+  setOrderBy: any;
+  orderBy: SortingState;
   columns: ColumnDef<any, TValue>[];
   data: any[];
 }) => {
@@ -32,7 +37,10 @@ export const DataTable = <TValue,>({
     columnResizeMode: "onChange",
     getCoreRowModel: getCoreRowModel(),
     onColumnSizingChange: setColSizing,
+    manualSorting: true,
+    onSortingChange: setOrderBy,
     state: {
+      sorting: orderBy,
       columnSizing: colSizing,
     },
   });

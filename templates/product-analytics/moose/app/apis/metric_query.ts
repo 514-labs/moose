@@ -8,6 +8,10 @@ import { QueryFormData, createFilter, decodeQuery } from "../helpers/types";
 
 export interface QueryParams {
   query: string;
+  from: string;
+  to: string;
+  orderBy: string;
+  desc: string;
 }
 
 function buildSelect(form: QueryFormData) {
@@ -26,15 +30,30 @@ function buildSelect(form: QueryFormData) {
   });
 }
 
+function orderBySql(orderBy: string | undefined, desc: string | undefined) {
+  if (!orderBy || !desc) return sql``;
+  switch (desc) {
+    case "true":
+      return sql`ORDER BY ${ConsumptionHelpers.column(orderBy)} DESC`;
+    case "false":
+    default:
+      return sql`ORDER BY ${ConsumptionHelpers.column(orderBy)} ASC`;
+  }
+}
+
 export default async function handle(
-  { query }: QueryParams,
+  { query, from, to, orderBy, desc }: QueryParams,
   { client, sql }: ConsumptionUtil,
 ) {
   const queryForm = decodeQuery(query);
 
   if (!queryForm.metricName) throw new Error("Metric name is required");
+  const timeFilters = [
+    { property: "timestamp", operator: ">=", value: parseInt(from) },
+    { property: "timestamp", operator: "<", value: parseInt(to) },
+  ];
 
-  const filterSql = queryForm.filter.map(createFilter);
+  const filterSql = [...timeFilters, ...queryForm.filter].map(createFilter);
   const filterQuery =
     filterSql.length > 0
       ? join_queries({
@@ -55,6 +74,14 @@ export default async function handle(
       ? join_queries({ prefix: "GROUP BY", values: groupingSql })
       : sql``;
 
-  const sqlQuery = sql`SELECT ${selectQuery} FROM ${ConsumptionHelpers.table(queryForm.metricName)} ${filterQuery} ${groupingQuery} LIMIT 100`;
-  return client.query(sqlQuery);
+  return client.query(
+    sql`SELECT
+    ${selectQuery}
+    FROM
+    ${ConsumptionHelpers.table(queryForm.metricName)}
+    ${filterQuery}
+    ${groupingQuery}
+    ${orderBySql(orderBy, desc)}
+    LIMIT 100`,
+  );
 }

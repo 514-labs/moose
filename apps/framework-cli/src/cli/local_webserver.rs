@@ -32,7 +32,7 @@ use rdkafka::util::Timeout;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -71,6 +71,7 @@ impl Default for LocalWebserverConfig {
 async fn create_client(
     req: Request<hyper::body::Incoming>,
     host: String,
+    consumption_apis: &RwLock<HashSet<String>>,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
     // local only for now
     let url = format!("http://{}:{}", host, 4001).parse::<hyper::Uri>()?;
@@ -82,6 +83,23 @@ async fn create_client(
     let cleaned_path = path.strip_prefix("/consumption").unwrap_or(&path);
 
     debug!("Creating client for route: {:?}", cleaned_path);
+    {
+        let consumption_apis = consumption_apis.read().await;
+        if !consumption_apis.contains(cleaned_path.strip_prefix('/').unwrap_or(cleaned_path)) {
+            let response = format!(
+                "Consumption API not found. Available consumption paths: {}",
+                consumption_apis
+                    .iter()
+                    .map(|p| p.as_str())
+                    .collect::<Vec<&str>>()
+                    .join(", ")
+            );
+            return Ok(Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Full::new(Bytes::from(response)))
+                .unwrap());
+        }
+    }
 
     let stream = TcpStream::connect(address).await?;
     let io = TokioIo::new(stream);
@@ -116,6 +134,7 @@ async fn create_client(
 struct RouteService {
     host: String,
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
+    consumption_apis: &'static RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
     console_config: ConsoleConfig,
     current_version: String,
@@ -131,6 +150,7 @@ impl Service<Request<Incoming>> for RouteService {
             req,
             self.current_version.clone(),
             self.route_table,
+            self.consumption_apis,
             self.configured_producer.clone(),
             self.console_config.clone(),
             self.host.clone(),
@@ -341,6 +361,7 @@ async fn router(
     req: Request<hyper::body::Incoming>,
     current_version: String,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
+    consumption_apis: &RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
     console_config: ConsoleConfig,
     host: String,
@@ -379,15 +400,17 @@ async fn router(
             ingest_route(req, route, configured_producer, route_table, console_config).await
         }
 
-        (&hyper::Method::GET, ["consumption", _rt]) => match create_client(req, host).await {
-            Ok(response) => Ok(response),
-            Err(e) => {
-                debug!("Error: {:?}", e);
-                Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(Full::new(Bytes::from("Error")))
+        (&hyper::Method::GET, ["consumption", _rt]) => {
+            match create_client(req, host, consumption_apis).await {
+                Ok(response) => Ok(response),
+                Err(e) => {
+                    debug!("Error: {:?}", e);
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Full::new(Bytes::from("Error")))
+                }
             }
-        },
+        }
         (&hyper::Method::GET, ["health"]) => health_route(),
 
         (&hyper::Method::OPTIONS, _) => options_route(),
@@ -419,6 +442,7 @@ impl Webserver {
     pub async fn start(
         &self,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
+        consumption_apis: &'static RwLock<HashSet<String>>,
         project: Arc<Project>,
     ) {
         //! Starts the local webserver
@@ -455,6 +479,7 @@ impl Webserver {
         let route_service = RouteService {
             host: self.host.clone(),
             route_table,
+            consumption_apis,
             current_version: project.cur_version().to_string(),
             configured_producer: producer,
             console_config: project.console_config.clone(),

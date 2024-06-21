@@ -79,7 +79,8 @@
 //! - Organize routines better in the file hiearchy
 //!
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -288,6 +289,8 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
 
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
+    let consumption_apis: &'static RwLock<HashSet<String>> =
+        Box::leak(Box::new(RwLock::new(HashSet::new())));
 
     let mut syncing_processes_registry = SyncingProcessesRegistry::new(
         project.redpanda_config.clone(),
@@ -309,7 +312,12 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
 
     let mut consumption_process_registry =
         ConsumptionProcessRegistry::new(project.clickhouse_config.clone());
-    process_consumption_changes(&project, &mut consumption_process_registry).await?;
+    process_consumption_changes(
+        &project,
+        &mut consumption_process_registry,
+        consumption_apis.write().await.deref_mut(),
+    )
+    .await?;
 
     let project_registries = ProcessRegistries::new(
         flows_process_registry,
@@ -322,6 +330,7 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
         project.clone(),
         framework_object_versions,
         route_table,
+        consumption_apis,
         syncing_processes_registry,
         project_registries,
     )?;
@@ -329,7 +338,9 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     info!("Starting web server...");
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(server_config.host.clone(), server_config.port);
-    web_server.start(route_table, project).await;
+    web_server
+        .start(route_table, consumption_apis, project)
+        .await;
 
     Ok(())
 }
@@ -354,6 +365,8 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
 
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
+    let consumption_apis: &'static RwLock<HashSet<String>> =
+        Box::leak(Box::new(RwLock::new(HashSet::new())));
 
     let mut syncing_processes_registry = SyncingProcessesRegistry::new(
         project.redpanda_config.clone(),
@@ -374,12 +387,19 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
 
     let mut consumption_process_registry =
         ConsumptionProcessRegistry::new(project.clickhouse_config.clone());
-    process_consumption_changes(&project, &mut consumption_process_registry).await?;
+    process_consumption_changes(
+        &project,
+        &mut consumption_process_registry,
+        consumption_apis.write().await.deref_mut(),
+    )
+    .await?;
 
     info!("Starting web server...");
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(server_config.host.clone(), server_config.port);
-    web_server.start(route_table, project).await;
+    web_server
+        .start(route_table, consumption_apis, project)
+        .await;
 
     Ok(())
 }

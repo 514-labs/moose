@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::ops::DerefMut;
 use std::sync::mpsc::TryRecvError;
 use std::sync::Arc;
 use std::{
@@ -296,6 +297,7 @@ async fn watch(
     project: Arc<Project>,
     framework_object_versions: &mut FrameworkObjectVersions,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
+    consumption_apis: &RwLock<HashSet<String>>,
     syncing_process_registry: &mut SyncingProcessesRegistry,
     project_registries: &mut ProcessRegistries,
 ) -> Result<(), anyhow::Error> {
@@ -363,7 +365,8 @@ async fn watch(
                                 format!("Processing error occurred: {}", e),
                             )
                         })?;
-                    } else if !bucketed_events.flows.is_empty() {
+                    }
+                    if !bucketed_events.flows.is_empty() {
                         with_spinner_async(
                             &format!(
                                 "Processing {} Flow(s) changes from file watcher",
@@ -373,7 +376,8 @@ async fn watch(
                             !project.is_production,
                         )
                         .await?;
-                    } else if !bucketed_events.aggregations.is_empty() {
+                    }
+                    if !bucketed_events.aggregations.is_empty() {
                         with_spinner_async(
                             &format!(
                                 "Processing {} Aggregation(s) changes from file watcher",
@@ -386,7 +390,8 @@ async fn watch(
                             !project.is_production,
                         )
                         .await?;
-                    } else if !bucketed_events.consumption.is_empty() {
+                    }
+                    if !bucketed_events.consumption.is_empty() {
                         with_spinner_async(
                             &format!(
                                 "Processing {} Consumption(s) changes from file watcher",
@@ -395,6 +400,7 @@ async fn watch(
                             process_consumption_changes(
                                 &project,
                                 &mut project_registries.consumption,
+                                consumption_apis.write().await.deref_mut(),
                             ),
                             !project.is_production,
                         )
@@ -453,7 +459,24 @@ pub async fn process_aggregations_changes(
 pub async fn process_consumption_changes(
     project: &Project,
     consumption_process_registry: &mut ConsumptionProcessRegistry,
+    paths: &mut HashSet<String>,
 ) -> anyhow::Result<()> {
+    paths.clear();
+    walkdir::WalkDir::new(project.consumption_dir())
+        .into_iter()
+        .for_each(|f| {
+            if let Ok(f) = f {
+                if f.file_type().is_file() && f.path().extension() == Some("ts".as_ref()) {
+                    if let Ok(path) = f.path().strip_prefix(project.consumption_dir()) {
+                        let mut path = path.to_path_buf();
+                        path.set_extension("");
+                        paths.insert(path.to_string_lossy().to_string());
+                    }
+                }
+            }
+        });
+
+    debug!("Consumption API paths: {:?}", paths);
     consumption_process_registry.stop().await?;
     consumption_process_registry.start(Consumption {
         dir: project.consumption_dir(),
@@ -474,6 +497,7 @@ impl FileWatcher {
         project: Arc<Project>,
         framework_object_versions: FrameworkObjectVersions,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
+        consumption_apis: &'static RwLock<HashSet<String>>,
         syncing_process_registry: SyncingProcessesRegistry,
         project_registries: ProcessRegistries,
     ) -> Result<(), Error> {
@@ -493,6 +517,7 @@ impl FileWatcher {
                 project,
                 &mut framework_object_versions,
                 route_table,
+                consumption_apis,
                 &mut syncing_process_registry,
                 &mut project_registry,
             )

@@ -340,7 +340,7 @@ impl From<(&FrameworkObjectVersions, &HashSet<String>)> for ApplicationState {
 
 pub async fn store_infrastructure_map(
     client: &mut ClientHandle,
-    click_house_config: &ClickHouseConfig,
+    clickhouse_config: &ClickHouseConfig,
     infrastructure_map: &InfrastructureMap,
 ) -> Result<(), StateStorageError> {
     let data = clickhouse_rs::Block::new().column(
@@ -349,7 +349,7 @@ pub async fn store_infrastructure_map(
     );
     client
         .insert(
-            format!("{}._MOOSE_STATE_V2", click_house_config.db_name),
+            format!("{}._MOOSE_STATE_V2", clickhouse_config.db_name),
             data,
         )
         .await?;
@@ -380,7 +380,7 @@ pub async fn retrieve_infrastructure_map(
 
     let block = client
         .query(format!(
-            "SELECT infra_map from {}._MOOSE_STATE ORDER BY timestamp DESC LIMIT 1",
+            "SELECT infra_map from {}._MOOSE_STATE_V2 ORDER BY timestamp DESC LIMIT 1",
             click_house_config.db_name
         ))
         .fetch_all()

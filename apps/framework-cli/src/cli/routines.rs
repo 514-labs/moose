@@ -83,6 +83,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use clickhouse_rs::ClientHandle;
 use log::{debug, error, info};
 use tokio::sync::RwLock;
 
@@ -94,7 +95,7 @@ use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 use crate::framework::core::code_loader::{
     load_framework_objects, FrameworkObject, FrameworkObjectVersions, SchemaVersion,
 };
-use crate::framework::core::infrastructure_map::{InfraChange, InfrastructureMap};
+use crate::framework::core::infrastructure_map::{Change, InfraChange, InfrastructureMap};
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::framework::registry::model::ProcessRegistries;
@@ -115,7 +116,7 @@ use crate::infrastructure::olap::clickhouse_alt_client::{
 use crate::infrastructure::stream::redpanda;
 use crate::project::Project;
 
-use super::display::with_spinner_async;
+use super::display::{infra_added, infra_removed, infra_updated, with_spinner_async};
 use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
@@ -359,15 +360,16 @@ pub struct InfraPlanResult {
     pub changes: Vec<InfraChange>,
 }
 
-async fn plan_changes(project: &Project) -> Result<InfraPlanResult, PlanningError> {
-    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+async fn plan_changes(
+    client: &mut ClientHandle,
+    project: &Project,
+) -> Result<InfraPlanResult, PlanningError> {
     let primitive_map = PrimitiveMap::load(&project)?;
     let target_infra_map = InfrastructureMap::new(primitive_map);
 
-    let current_infra_map =
-        retrieve_infrastructure_map(&mut client, &project.clickhouse_config).await?;
+    let current_infra_map = retrieve_infrastructure_map(client, &project.clickhouse_config).await?;
 
-    let changes = match current_infra_map {
+    let changes = match &current_infra_map {
         Some(current_infra_map) => current_infra_map.diff(&target_infra_map),
         None => target_infra_map.init(),
     };
@@ -390,13 +392,19 @@ pub async fn start_production_mode(project: Arc<Project>, v2_core: bool) -> anyh
     );
 
     if v2_core {
-        plan_changes(&project).await?;
+        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+
+        let plan_result = plan_changes(&mut client, &project).await?;
         // TODO add interpreter for making the different changes
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
 
         // Storing the result of the changes in the table
-        store_infrastructure_map(&mut client, &project.clickhouse_config, &target_infra_map)
-            .await?;
+        store_infrastructure_map(
+            &mut client,
+            &project.clickhouse_config,
+            &plan_result.target_infra_map,
+        )
+        .await?;
     }
 
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
@@ -441,16 +449,57 @@ pub async fn start_production_mode(project: Arc<Project>, v2_core: bool) -> anyh
 
 pub async fn plan(project: &Project) -> anyhow::Result<()> {
     let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
-    let primitive_map = PrimitiveMap::load(&project)?;
-    let target_infra_map = InfrastructureMap::new(primitive_map);
 
-    let current_infra_map =
-        retrieve_infrastructure_map(&mut client, &project.clickhouse_config).await?;
+    let plan_results = plan_changes(&mut client, project).await?;
 
-    let _ = match current_infra_map {
-        Some(current_infra_map) => current_infra_map.diff(&target_infra_map),
-        None => target_infra_map.init(),
-    };
+    plan_results.changes.iter().for_each(|change| match change {
+        InfraChange::Topic(Change::Added(infra)) => {
+            infra_added(&infra.expanded_display());
+        }
+        InfraChange::Topic(Change::Removed(infra)) => {
+            infra_removed(&infra.short_display());
+        }
+        InfraChange::Topic(Change::Updated { before, after: _ }) => {
+            infra_updated(&before.expanded_display());
+        }
+        InfraChange::ApiEndpoint(Change::Added(infra)) => {
+            infra_added(&infra.expanded_display());
+        }
+        InfraChange::ApiEndpoint(Change::Removed(infra)) => {
+            infra_removed(&infra.short_display());
+        }
+        InfraChange::ApiEndpoint(Change::Updated { before, after: _ }) => {
+            infra_updated(&before.expanded_display());
+        }
+        InfraChange::Table(Change::Added(infra)) => {
+            infra_added(&infra.expanded_display());
+        }
+        InfraChange::Table(Change::Removed(infra)) => {
+            infra_removed(&infra.short_display());
+        }
+        InfraChange::Table(Change::Updated { before, after: _ }) => {
+            infra_updated(&before.expanded_display());
+        }
+        InfraChange::TopicToTableSyncProcess(Change::Added(infra)) => {
+            infra_added(&infra.expanded_display());
+        }
+        InfraChange::TopicToTableSyncProcess(Change::Removed(infra)) => {
+            infra_removed(&infra.short_display());
+        }
+        InfraChange::TopicToTableSyncProcess(Change::Updated { before, after: _ }) => {
+            infra_updated(&before.expanded_display());
+        }
+    });
+
+    if plan_results.changes.is_empty() {
+        show_message!(
+            MessageType::Info,
+            Message {
+                action: "No".to_string(),
+                details: "changes detected".to_string(),
+            }
+        );
+    }
 
     Ok(())
 }

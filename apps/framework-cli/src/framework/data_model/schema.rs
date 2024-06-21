@@ -86,6 +86,24 @@ impl Table {
     pub fn id(&self) -> String {
         format!("{}_{}", self.name, self.version.replace('.', "_"))
     }
+
+    pub fn expanded_display(&self) -> String {
+        format!(
+            "Table: {} Version {} - {} - {}",
+            self.name,
+            self.version,
+            self.columns
+                .iter()
+                .map(|c| format!("{}: {}", c.name, c.data_type))
+                .collect::<Vec<String>>()
+                .join(", "),
+            self.order_by.join(",")
+        )
+    }
+
+    pub fn short_display(&self) -> String {
+        format!("Table: {} Version {}", self.name, self.version)
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]

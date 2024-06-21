@@ -12,8 +12,8 @@ use super::primitive_map::PrimitiveMap;
 pub struct Topic {
     pub version: String,
     pub name: String,
-
     pub retention_period: Duration,
+
     pub source_primitive: PrimitiveSignature,
 }
 
@@ -34,6 +34,19 @@ impl Topic {
     pub fn id(&self) -> String {
         // TODO have a proper version object that standardizes transformations
         format!("{}_{}", self.name, self.version.replace('.', "_"))
+    }
+
+    pub fn expanded_display(&self) -> String {
+        format!(
+            "Topic: {} - Version: {} - Retention Period: {}s",
+            self.name,
+            self.version,
+            self.retention_period.as_secs()
+        )
+    }
+
+    pub fn short_display(&self) -> String {
+        format!("Topic: {} - Version: {}", self.name, self.version)
     }
 }
 
@@ -102,6 +115,17 @@ impl ApiEndpoint {
             self.version.replace('.', "_")
         )
     }
+
+    pub fn expanded_display(&self) -> String {
+        format!(
+            "API Endpoint: {} - Version: {} - Path: {} - Method: {:?} - Format: {:?}",
+            self.name, self.version, self.path, self.method, self.format
+        )
+    }
+
+    pub fn short_display(&self) -> String {
+        format!("API Endpoint: {} - Version: {}", self.name, self.version)
+    }
 }
 
 // pub struct TopicSyncProcess {
@@ -141,6 +165,20 @@ impl TopicToTableSyncProcess {
             self.source_topic_id,
             self.destination_table_id,
             self.version.replace('.', "_")
+        )
+    }
+
+    pub fn expanded_display(&self) -> String {
+        format!(
+            "Topic to Table Sync Process: {} -> {}",
+            self.source_topic_id, self.destination_table_id
+        )
+    }
+
+    pub fn short_display(&self) -> String {
+        format!(
+            "Topic to Table Sync Process: {} -> {}",
+            self.source_topic_id, self.destination_table_id
         )
     }
 }

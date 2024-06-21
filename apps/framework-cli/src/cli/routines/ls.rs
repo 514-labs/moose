@@ -3,8 +3,6 @@ use std::{
     sync::Arc,
 };
 
-use regex::Regex;
-
 use crate::{
     cli::display::{show_table, Message},
     infrastructure::{
@@ -189,13 +187,13 @@ async fn add_tables_views(
 }
 
 async fn get_topics(project: &Project) -> HashSet<String> {
-    let regex_filter = Regex::new(r"_\d+_\d+$").unwrap();
+    let topic_blacklist = HashSet::<String>::from_iter(vec!["__consumer_offsets".to_string()]);
     HashSet::<String>::from_iter(
         redpanda::fetch_topics(&project.redpanda_config)
             .await
             .unwrap()
             .into_iter()
-            .filter(|topic| regex_filter.is_match(topic)),
+            .filter(|topic| !topic_blacklist.contains(topic)),
     )
 }
 

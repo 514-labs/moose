@@ -33,21 +33,25 @@ impl PythonSerializers {
 pub enum PythonProgram {
     FlowRunner { args: Vec<String> },
     AggregationsRunner { args: Vec<String> },
+    ConsumptionRunner { args: Vec<String> },
 }
 
 pub static FLOW_RUNNER: &str = include_str!("scripts/flow_runner.py");
 pub static AGGREGATIONS_RUNNER: &str = include_str!("scripts/aggregations_runner.py");
+pub static CONSUMPTION_RUNNER: &str = include_str!("scripts/consumption_runner.py");
 
 /// Executes a Python program in a subprocess
 pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Error> {
     let get_args = match program.clone() {
         PythonProgram::FlowRunner { args } => args,
         PythonProgram::AggregationsRunner { args } => args,
+        PythonProgram::ConsumptionRunner { args } => args,
     };
 
     let program_string = match program {
         PythonProgram::FlowRunner { .. } => FLOW_RUNNER,
         PythonProgram::AggregationsRunner { .. } => AGGREGATIONS_RUNNER,
+        PythonProgram::ConsumptionRunner { .. } => CONSUMPTION_RUNNER,
     };
 
     Command::new("python3")

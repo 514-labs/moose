@@ -83,9 +83,7 @@ lazy_static! {
         Arc::new(RwLock::new(CommandTerminal::new()));
 }
 
-// TODO improve this to show the full config of the objects
-
-pub fn infra_added(obj: &str) {
+pub fn infra_added(message: &str) {
     let command_terminal = TERM.write().unwrap();
     let padder = 14;
 
@@ -94,12 +92,12 @@ pub fn infra_added(obj: &str) {
         .write_line(&format!(
             "{} {}",
             style(pad_str("+", padder, console::Alignment::Right, Some("..."))).green(),
-            obj
+            message
         ))
         .expect("failed to write message to terminal");
 }
 
-pub fn infra_removed(id: &str) {
+pub fn infra_removed(message: &str) {
     let command_terminal = TERM.write().unwrap();
     let padder = 14;
 
@@ -108,12 +106,12 @@ pub fn infra_removed(id: &str) {
         .write_line(&format!(
             "{} {}",
             style(pad_str("-", padder, console::Alignment::Right, Some("..."))).red(),
-            id
+            message
         ))
         .expect("failed to write message to terminal");
 }
 
-pub fn infra_updated(id: &str) {
+pub fn infra_updated(message: &str) {
     let command_terminal = TERM.write().unwrap();
     let padder = 14;
 
@@ -122,7 +120,7 @@ pub fn infra_updated(id: &str) {
         .write_line(&format!(
             "{} {}",
             style(pad_str("~", padder, console::Alignment::Right, Some("..."))).yellow(),
-            id
+            message
         ))
         .expect("failed to write message to terminal");
 }

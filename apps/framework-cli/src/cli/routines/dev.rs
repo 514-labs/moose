@@ -10,10 +10,7 @@ use crate::{cli::display::Message, project::Project};
 use log::debug;
 
 use super::{
-    validate::{
-        validate_clickhouse_run, validate_console_run, validate_redpanda_cluster,
-        validate_redpanda_run,
-    },
+    validate::{validate_clickhouse_run, validate_redpanda_cluster, validate_redpanda_run},
     RoutineFailure, RoutineSuccess,
 };
 
@@ -27,7 +24,6 @@ pub fn run_local_infrastructure(project: &Project) -> Result<RoutineSuccess, Rou
 
     validate_clickhouse_run()?.show();
     validate_redpanda_run()?.show();
-    validate_console_run()?.show();
     validate_redpanda_cluster(project.name())?.show();
 
     Ok(RoutineSuccess::success(Message::new(

@@ -28,7 +28,6 @@ pub const SAMPLE_FLOWS_SOURCE: &str = "UserActivity";
 pub const SAMPLE_FLOWS_DEST: &str = "ParsedActivity";
 
 pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb-1";
-pub const CONSOLE_CONTAINER_NAME: &str = "console-1";
 pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";
 
 pub const REDPANDA_HOSTS: [&str; 2] = ["redpanda", "localhost"];

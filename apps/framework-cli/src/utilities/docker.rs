@@ -7,7 +7,7 @@ use serde_json::{from_slice, from_str};
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::project::Project;
-use crate::utilities::constants::{CLI_VERSION, REDPANDA_CONTAINER_NAME};
+use crate::utilities::constants::REDPANDA_CONTAINER_NAME;
 
 static COMPOSE_FILE: &str = include_str!("docker-compose.yml");
 
@@ -145,18 +145,6 @@ fn compose_command(project: &Project) -> Command {
 }
 
 pub fn start_containers(project: &Project) -> anyhow::Result<()> {
-    let console_version = if cfg!(debug_assertions) {
-        "latest"
-    } else {
-        CLI_VERSION
-    };
-
-    let console_pull_policy = if console_version == "latest" {
-        "always"
-    } else {
-        "missing"
-    };
-
     project.create_internal_redpanda_volume()?;
     project.create_internal_clickhouse_volume()?;
 
@@ -170,16 +158,10 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
             project.clickhouse_config.password.clone(),
         )
         .env(
-            "CONSOLE_HOST_PORT",
-            project.console_config.host_port.to_string(),
-        )
-        .env(
             "CLICKHOUSE_HOST_PORT",
             project.clickhouse_config.host_port.to_string(),
         )
         .env("CLICKHOUSE_VERSION", "24.1.3") // https://github.com/ClickHouse/ClickHouse/issues/60020
-        .env("CONSOLE_VERSION", console_version)
-        .env("CONSOLE_PULL_POLICY", console_pull_policy)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;

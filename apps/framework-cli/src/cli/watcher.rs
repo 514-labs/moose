@@ -27,7 +27,6 @@ use crate::framework::data_model::{is_schema_file, DuplicateModelError};
 use crate::framework::flows::loader::get_all_current_flows;
 use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::framework::registry::model::ProcessRegistries;
-use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::stream::redpanda;
 use crate::project::AggregationSet;
@@ -300,7 +299,6 @@ async fn watch(
     project_registries: &mut ProcessRegistries,
 ) -> Result<(), anyhow::Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
-    let configured_producer = redpanda::create_producer(project.redpanda_config.clone());
 
     let (tx, rx) = std::sync::mpsc::channel();
 
@@ -402,14 +400,6 @@ async fn watch(
                     }
 
                     let _ = verify_flows_against_datamodels(&project, framework_object_versions);
-
-                    let _ = post_current_state_to_console(
-                        project.clone(),
-                        &configured_client,
-                        &configured_producer,
-                        framework_object_versions,
-                    )
-                    .await;
                 }
             }
             Err(error) => {

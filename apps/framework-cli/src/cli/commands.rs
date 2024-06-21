@@ -36,7 +36,7 @@ pub enum Commands {
         #[arg(short, long)]
         docker: bool,
     },
-    /// Displays the changes that will be applied to the infrastructure during the next deployment
+    /// [Not Ready] Displays the changes that will be applied to the infrastructure during the next deployment
     /// to production, consdering the current state of the project
     Plan {},
     /// Starts a local development environment to build your data-intensive app or service

@@ -227,7 +227,9 @@ impl fmt::Display for ClickHouseValue {
             ClickHouseColumnType::Bytes => todo!("Bytes not implemented yet"),
             ClickHouseColumnType::Array(_) => write!(f, "[{}]", &self.value),
             ClickHouseColumnType::Enum(_) => write!(f, "{}", &self.value),
-            ClickHouseColumnType::Nested(_) => write!(f, "{}", &self.value),
+            ClickHouseColumnType::Nested(_) => {
+                write!(f, "{}", &self.value)
+            }
         }
     }
 }

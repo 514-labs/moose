@@ -61,6 +61,7 @@ impl ClickHouseClient {
         match res {
             Ok(res) => Ok(res),
             Err(e) => {
+                println!("CLIENT: {}", e);
                 if e.is_connect() {
                     if retries > 0 {
                         sleep(Duration::from_millis(backoff_millis)).await;
@@ -149,6 +150,7 @@ impl ClickHouseClient {
         let uri = self.uri(format!("/?{}", query))?;
 
         let body = Self::build_body(columns, records);
+        println!("BODY {:?}", body);
 
         debug!("Inserting into clickhouse with values: {}", body);
 
@@ -165,11 +167,13 @@ impl ClickHouseClient {
         let res = self.request(req, MAX_RETRIES, BACKOFF_START_MILLIS).await?;
 
         let status = res.status();
+        println!("REQ: {}", query);
 
         if status != 200 {
             let body = res.collect().await?.to_bytes().to_vec();
             let body_str = String::from_utf8(body)?;
-
+            println!("HERE");
+            println!("QUERY: {}", insert_query);
             error!(
                 "Failed to insert into clickhouse: Res {} - {}",
                 &status, body_str

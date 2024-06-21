@@ -40,15 +40,9 @@ impl Default for Telemetry {
     }
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct Features {
     pub core_v2: bool,
-}
-
-impl Default for Features {
-    fn default() -> Self {
-        Features { core_v2: false }
-    }
 }
 
 #[derive(Deserialize, Debug)]

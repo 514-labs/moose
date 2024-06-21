@@ -368,21 +368,21 @@ impl InfrastructureMap {
     pub fn init(&self) -> Vec<InfraChange> {
         let mut changes = vec![];
 
-        for (_, topic) in &self.topics {
+        for topic in self.topics.values() {
             changes.push(InfraChange::Topic(Change::<Topic>::Added(topic.clone())));
         }
 
-        for (_, api_endpoint) in &self.api_endpoints {
+        for api_endpoint in self.api_endpoints.values() {
             changes.push(InfraChange::ApiEndpoint(Change::<ApiEndpoint>::Added(
                 api_endpoint.clone(),
             )));
         }
 
-        for (_, table) in &self.tables {
+        for table in self.tables.values() {
             changes.push(InfraChange::Table(Change::<Table>::Added(table.clone())));
         }
 
-        for (_, topic_to_table_sync_process) in &self.topic_to_table_sync_processes {
+        for topic_to_table_sync_process in self.topic_to_table_sync_processes.values() {
             changes.push(InfraChange::TopicToTableSyncProcess(Change::<
                 TopicToTableSyncProcess,
             >::Added(

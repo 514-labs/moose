@@ -249,7 +249,7 @@ importers:
     dependencies:
       "@514labs/moose-lib":
         specifier: latest
-        version: 0.3.432
+        version: 0.3.436
       "@clickhouse/client-web":
         specifier: ^1.0.1
         version: 1.0.2
@@ -267,10 +267,10 @@ importers:
         specifier: ^20.12.12
         version: 20.12.12
       ts-patch:
-        specifier: ^3.2.0
+        specifier: ~3.2.0
         version: 3.2.0
       typescript:
-        specifier: ^5.4.0
+        specifier: ~5.4.0
         version: 5.4.5
 
   apps/framework-landing:
@@ -980,10 +980,10 @@ packages:
       "@514labs/moose-cli-linux-x64": 0.3.392
     dev: true
 
-  /@514labs/moose-lib@0.3.432:
+  /@514labs/moose-lib@0.3.436:
     resolution:
       {
-        integrity: sha512-X9/YY1jdzPetTPWNd8bfIs16Fh6/b/unLEPtve7kOp0ynMG5zMl6nGiiR8OCh2tR36/xNbSqv/bs4nOmESScUg==,
+        integrity: sha512-dhs6PGev6Q3g/R2hR+22H9bN1/rPnpIkFIjRyTuAxzQ42O8vmHD6VaDtIyrJDcS7bnphnhlo7GQ4rClcLl1udQ==,
       }
     hasBin: true
     dependencies:

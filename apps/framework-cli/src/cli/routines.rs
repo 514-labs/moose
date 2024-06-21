@@ -355,7 +355,7 @@ pub enum PlanningError {
 // TODO - this probably should be somewhere else but not sure where.
 
 pub struct InfraPlanResult {
-    pub current_infra_map: Option<InfrastructureMap>,
+    // pub current_infra_map: Option<InfrastructureMap>,
     pub target_infra_map: InfrastructureMap,
     pub changes: Vec<InfraChange>,
 }
@@ -375,7 +375,7 @@ async fn plan_changes(
     };
 
     Ok(InfraPlanResult {
-        current_infra_map,
+        // current_infra_map,
         target_infra_map,
         changes,
     })

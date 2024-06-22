@@ -112,8 +112,6 @@ use crate::infrastructure::olap::clickhouse_alt_client::{
     get_pool, retrieve_infrastructure_map, store_current_state, store_infrastructure_map,
     StateStorageError,
 };
-use crate::infrastructure::stream::redpanda;
-use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
 use crate::project::Project;
 
 use super::display::{infra_added, infra_removed, infra_updated, with_spinner_async};

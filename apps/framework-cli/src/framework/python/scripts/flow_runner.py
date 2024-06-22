@@ -18,6 +18,7 @@ parser = argparse.ArgumentParser(description='Run a flow')
 
 parser.add_argument('source_topic', type=str, help='The source topic for the flow')
 parser.add_argument('target_topic', type=str, help='The target topic for the flow')
+parser.add_argument('target_topic_config', type=str, help='The streaming server config for target topic')
 parser.add_argument('flow_file_path', type=str, help='The file of the flow to run')
 parser.add_argument('broker', type=str, help='The broker to use for the flow')
 # The following arguments are optional
@@ -30,6 +31,7 @@ args = parser.parse_args()
 
 source_topic = args.source_topic
 target_topic = args.target_topic
+target_topic_config = args.target_topic_config
 flow_file_path = args.flow_file_path
 broker = args.broker
 sasl_mechanism = args.sasl_mechanism
@@ -56,6 +58,22 @@ def log(msg):
 def error(msg):
     raise Exception(f"{log_prefix}: {msg}")
 
+
+# message.max.bytes is a broker setting that applies to all topics.
+# max.message.bytes is a per-topic setting.
+# 
+# In general, max.message.bytes should be less than or equal to message.max.bytes.
+# If max.message.bytes is larger than message.max.bytes, the broker will still reject
+# any message that is larger than message.max.bytes, even if it's sent to a topic
+# where max.message.bytes is larger. So we take the minimum of the two values,
+# or default to 1MB if either value is not set. 1MB is the server's default.
+def get_max_message_size(config_json: str) -> int:
+    config = json.loads(config_json)
+    
+    max_message_bytes = int(config.get("max.message.bytes", 1024 * 1024))
+    message_max_bytes = int(config.get("message.max.bytes", 1024 * 1024))
+
+    return min(max_message_bytes, message_max_bytes)
 
 
 sys.path.append(args.flow_file_path)
@@ -90,6 +108,7 @@ def parse_input(json_input):
     return run_input_type(**json_input)
 
 flow_id = f'flow-{source_topic} -> {target_topic}'
+max_message_size = get_max_message_size(target_topic_config)
 
 if sasl_config['mechanism'] is not None:
     consumer = KafkaConsumer(
@@ -122,27 +141,51 @@ if sasl_config['mechanism'] is not None:
         sasl_plain_username=sasl_config['username'],
         sasl_plain_password=sasl_config['password'],
         sasl_mechanism=sasl_config['mechanism'],
-        security_protocol=args.security_protocol
+        security_protocol=args.security_protocol,
+        max_request_size=max_message_size
     )
 else:
     producer = KafkaProducer(
         bootstrap_servers=broker,
-        max_in_flight_requests_per_connection=1
+        max_in_flight_requests_per_connection=1,
+        max_request_size=max_message_size
     )
+
 
 consumer.subscribe([source_topic])
 
-# Print each message that is consumed
-for message in consumer:
-    # Parse the message into the input type
-    input_data = parse_input(message.value)
+while True:
+    msg_pack = consumer.poll(timeout_ms=1000)
+    transformed_messages = []
+    
+    total_messages = sum(len(messages) for messages in msg_pack.values())
+    if total_messages > 0:
+        log(f"Received a batch of {total_messages} messages")
 
-    # Run the flow
-    output_data = flow_run(input_data)
+    for tp, messages in msg_pack.items():
+        for message in messages:
+            # Parse the message into the input type
+            input_data = parse_input(message.value)
 
-    # Send the output to the target topic
-    producer.send(target_topic, json.dumps(output_data, cls=EnhancedJSONEncoder).encode('utf-8'))
+            # Run the flow
+            output_data = flow_run(input_data)
 
+            # Handle flow function returning an array or a single object
+            output_data_list = output_data if isinstance(output_data, list) else [output_data]
 
+            for item in output_data_list:
+                # Ignore flow function returning null
+                if item is not None: 
+                    transformed_message = json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8')
+                    transformed_messages.append(transformed_message)
 
+    # send() is asynchronous. When called it adds the record to a buffer of pending record sends 
+    # and immediately returns. This allows the producer to batch together individual records
+    if len(transformed_messages) > 0:
+        for transformed_message in transformed_messages:
+            producer.send(target_topic, transformed_message)
 
+        log(f"Sent {len(transformed_messages)} transformed messages")
+
+        # Ensure all messages are sent
+        producer.flush()

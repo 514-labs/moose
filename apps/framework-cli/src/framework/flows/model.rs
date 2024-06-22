@@ -58,6 +58,7 @@ impl Flow {
                 redpanda_config,
                 &self.source_topic,
                 &self.target_topic,
+                &self.target_topic_config_json(),
                 &self.executable,
             )?),
             _ => Err(FlowError::UnsupportedFlowType {

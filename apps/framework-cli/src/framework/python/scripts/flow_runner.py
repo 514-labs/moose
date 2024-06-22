@@ -151,7 +151,6 @@ else:
         max_request_size=max_message_size
     )
 
-
 consumer.subscribe([source_topic])
 
 # This is batched under-the-hood

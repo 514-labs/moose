@@ -27,8 +27,6 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::infrastructure::stream::redpanda::{create_producer, send_with_back_pressure};
 
 use super::olap::clickhouse::errors::ClickhouseError;
-use super::olap::clickhouse::mapper::std_column_to_clickhouse_column;
-use super::olap::clickhouse::mapper::std_field_type_to_clickhouse_type_mapper;
 use super::olap::clickhouse::model::ClickHouseColumn;
 use super::olap::clickhouse::model::ClickHouseRecord;
 use super::olap::clickhouse::model::ClickHouseRuntimeEnum;
@@ -424,9 +422,7 @@ fn mapper_json_to_clickhouse_record(
                     }
                     None => {
                         // Clickhouse doesn't like NULLABLE arrays so we are inserting an empty array instead.
-                        if let ColumnType::Array(inner_type) = &column.data_type {
-                            let clickhouse_inner_type =
-                                std_field_type_to_clickhouse_type_mapper(*inner_type.clone())?;
+                        if let ColumnType::Array(_inner_type) = &column.data_type {
                             record.insert(key, ClickHouseValue::new_array(Vec::new()));
                         }
                         // Other values are ignored and the client will insert NULL instead
@@ -518,7 +514,7 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
-        ColumnType::Enum(x) => {
+        ColumnType::Enum(_) => {
             // In this context what could be coming in could be a string or a number depending on
             // how the enum was defined at the source.
             if let Some(value_str) = value.as_str() {
@@ -538,9 +534,6 @@ fn map_json_value_to_clickhouse_value(
         }
         ColumnType::Array(inner_column_type) => {
             if let Some(arr) = value.as_array() {
-                let array_type =
-                    std_field_type_to_clickhouse_type_mapper(*inner_column_type.clone())?;
-
                 let mut array_values = Vec::new();
                 for value in arr.iter() {
                     let clickhouse_value =
@@ -575,26 +568,27 @@ fn map_json_value_to_clickhouse_value(
 
             if let Some(obj) = value.as_object() {
                 // Needs a null if the column isn't present
-                let column_values = inner_nested
-                    .columns
-                    .iter()
-                    .map(|col| {
-                        let col_name = &col.name;
-                        let val = obj.get(col_name);
-                        match val {
-                            Some(val) => (
-                                std_column_to_clickhouse_column(col.clone()).unwrap(),
+                let mut values: Vec<ClickHouseValue> = Vec::new();
+                let _ = inner_nested.columns.iter().map(|col| {
+                    let col_name = &col.name;
+                    let val = obj.get(col_name);
+                    match val {
+                        Some(val) => (
+                            //std_column_to_clickhouse_column(col.clone()).unwrap(),
+                            values.push(
                                 map_json_value_to_clickhouse_value(&col.data_type, val).unwrap(),
                             ),
-                            None => (
-                                std_column_to_clickhouse_column(col.clone()).unwrap(),
-                                ClickHouseValue::new_null(),
-                            ),
-                        }
-                    })
-                    .collect();
+                            map_json_value_to_clickhouse_value(&col.data_type, val).unwrap(),
+                        ),
+                        None => (
+                            //std_column_to_clickhouse_column(col.clone()).unwrap(),
+                            values.push(ClickHouseValue::new_null()),
+                            ClickHouseValue::new_null(),
+                        ),
+                    }
+                });
 
-                Ok(ClickHouseValue::new_tuple(column_values))
+                Ok(ClickHouseValue::new_tuple(values))
             } else {
                 Err(MappingError::TypeMismatch {
                     column_type: column_type.clone(),

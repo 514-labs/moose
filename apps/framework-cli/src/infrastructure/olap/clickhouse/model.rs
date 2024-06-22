@@ -162,9 +162,8 @@ impl ClickHouseValue {
         }
     }
 
-    pub fn new_tuple(members: Vec<(ClickHouseColumn, ClickHouseValue)>) -> ClickHouseValue {
-        let (cols, vals): (Vec<ClickHouseColumn>, Vec<ClickHouseValue>) =
-            members.iter().cloned().unzip();
+    pub fn new_tuple(members: Vec<ClickHouseValue>) -> ClickHouseValue {
+        let vals: Vec<ClickHouseValue> = members;
 
         return ClickHouseValue::Nested(vals);
     }

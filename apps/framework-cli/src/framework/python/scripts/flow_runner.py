@@ -168,7 +168,6 @@ for message in consumer:
     for item in output_data_list:
         # Ignore flow function returning null
         if item is not None:
-            transformed_message = json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8')
             # send() is asynchronous. When called it adds the record to a buffer of pending record sends 
             # and immediately returns. This allows the producer to batch together individual records
-            producer.send(target_topic, transformed_message)
+            producer.send(target_topic, json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))

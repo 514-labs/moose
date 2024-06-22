@@ -164,8 +164,7 @@ impl ClickHouseValue {
 
     pub fn new_tuple(members: Vec<ClickHouseValue>) -> ClickHouseValue {
         let vals: Vec<ClickHouseValue> = members;
-
-        return ClickHouseValue::Nested(vals);
+        ClickHouseValue::Nested(vals);
     }
 
     pub fn clickhouse_to_string(&self) -> String {

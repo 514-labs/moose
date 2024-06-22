@@ -51,10 +51,8 @@ async fn flush(
     let mut interval = time::interval(Duration::from_secs(MAX_FLUSH_INTERVAL_SECONDS));
 
     let client = ClickHouseClient::new(&clickhouse_config).unwrap();
-    //println!("CLIENT: {}", client);
 
     let mut i: usize = 0;
-    //println!("COLUMNS: {}", columns.len());
 
     loop {
         interval.tick().await;
@@ -71,10 +69,6 @@ async fn flush(
                     debug!("Inserted {} records", chunk.len());
                 }
                 Err(e) => {
-                    //println!("HASHMAP: {}", serde_json::to_string(&data).unwrap())
-                    println!("{}", e);
-                    //println!("CHUNK: {}", chunk);
-                    //println!("TEST: {}", chunk);
                     error!("Error inserting records to {}: {:?}", table, e);
                     debug!("Failed batch {:?}", chunk);
                 }

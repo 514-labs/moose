@@ -154,38 +154,21 @@ else:
 
 consumer.subscribe([source_topic])
 
-while True:
-    msg_pack = consumer.poll(timeout_ms=1000)
-    transformed_messages = []
-    
-    total_messages = sum(len(messages) for messages in msg_pack.values())
-    if total_messages > 0:
-        log(f"Received a batch of {total_messages} messages")
+# This is batched under-the-hood
+for message in consumer:
+    # Parse the message into the input type
+    input_data = parse_input(message.value)
 
-    for tp, messages in msg_pack.items():
-        for message in messages:
-            # Parse the message into the input type
-            input_data = parse_input(message.value)
+    # Run the flow
+    output_data = flow_run(input_data)
 
-            # Run the flow
-            output_data = flow_run(input_data)
+    # Handle flow function returning an array or a single object
+    output_data_list = output_data if isinstance(output_data, list) else [output_data]
 
-            # Handle flow function returning an array or a single object
-            output_data_list = output_data if isinstance(output_data, list) else [output_data]
-
-            for item in output_data_list:
-                # Ignore flow function returning null
-                if item is not None: 
-                    transformed_message = json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8')
-                    transformed_messages.append(transformed_message)
-
-    # send() is asynchronous. When called it adds the record to a buffer of pending record sends 
-    # and immediately returns. This allows the producer to batch together individual records
-    if len(transformed_messages) > 0:
-        for transformed_message in transformed_messages:
+    for item in output_data_list:
+        # Ignore flow function returning null
+        if item is not None:
+            transformed_message = json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8')
+            # send() is asynchronous. When called it adds the record to a buffer of pending record sends 
+            # and immediately returns. This allows the producer to batch together individual records
             producer.send(target_topic, transformed_message)
-
-        log(f"Sent {len(transformed_messages)} transformed messages")
-
-        # Ensure all messages are sent
-        producer.flush()

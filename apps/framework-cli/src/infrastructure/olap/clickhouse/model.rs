@@ -109,82 +109,69 @@ pub enum ClickHouseRuntimeEnum {
 }
 
 #[derive(Debug, Clone)]
-pub struct ClickHouseValue {
-    pub value_type: ClickHouseColumnType,
-
-    // This is a string right now because that's the value we send over the wire with the HTTP protocol
-    // if we used the RowBinary // https://clickhouse.yandex/docs/en/query_language/syntax/#syntax-identifiers
-    // or another format, we could optimize
-    pub value: String,
+pub enum ClickHouseValue {
+    String(String),
+    Boolean(String),
+    ClickhouseInt(String),
+    ClickhouseFloat(String),
+    Decimal,
+    DateTime(String),
+    Json,
+    Bytes,
+    Array(Vec<ClickHouseValue>),
+    Enum(String),
+    Nested(Vec<ClickHouseValue>),
 }
+
+// #[derive(Debug, Clone)]
+// pub struct ClickHouseValue {
+//     pub value_type: ClickHouseColumnType,
+
+//     // This is a string right now because that's the value we send over the wire with the HTTP protocol
+//     // if we used the RowBinary // https://clickhouse.yandex/docs/en/query_language/syntax/#syntax-identifiers
+//     // or another format, we could optimize
+//     pub value: String,
+// }
 
 const NULL: &str = "NULL";
 
 // TODO - add support for Decimal, Json, Bytes
 impl ClickHouseValue {
     pub fn new_null(col_type: ClickHouseColumnType) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: col_type,
-            value: NULL.to_string(),
-        }
+        ClickHouseValue::String(NULL.to_string())
     }
 
     pub fn new_string(value: String) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::String,
-            value,
-        }
+        ClickHouseValue::String(value)
     }
 
     pub fn new_boolean(value: bool) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::Boolean,
-            value: format!("{}", value),
-        }
+        ClickHouseValue::Boolean(format!("{}", value))
     }
 
     pub fn new_int_64(value: i64) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int64),
-            value: format!("{}", value),
-        }
+        ClickHouseValue::ClickhouseInt(format!("{}", value))
     }
 
     pub fn new_float_64(value: f64) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::ClickhouseFloat(ClickHouseFloat::Float64),
-            value: format!("{}", value),
-        }
+        ClickHouseValue::ClickhouseInt(format!("{}", value))
     }
 
     pub fn new_date_time(value: DateTime<FixedOffset>) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::DateTime,
-            value: value.to_utc().to_rfc3339().to_string(),
-        }
+        ClickHouseValue::DateTime(value.to_utc().to_rfc3339().to_string())
     }
 
     pub fn new_array(
         value: Vec<ClickHouseValue>,
         array_type: ClickHouseColumnType,
     ) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::Array(Box::new(array_type)),
-            value: value
-                .iter()
-                .map(|v| format!("{}", v))
-                .collect::<Vec<String>>()
-                .join(","),
-        }
+        ClickHouseValue::Array(value)
     }
 
     pub fn new_enum(value: ClickHouseRuntimeEnum, enum_type: DataEnum) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::Enum(enum_type),
-            value: match value {
-                ClickHouseRuntimeEnum::ClickHouseInt(v) => format!("{}", v),
-                ClickHouseRuntimeEnum::ClickHouseString(v) => format!("'{}'", v),
-            },
+        match value {
+            ClickHouseRuntimeEnum::ClickHouseInt(v) => ClickHouseValue::Enum(format!("{}", v)),
+            ClickHouseRuntimeEnum::ClickHouseString(v) => ClickHouseValue::Enum(format!("'{}'", v)),
         }
     }
 
@@ -192,12 +179,43 @@ impl ClickHouseValue {
         let (cols, vals): (Vec<ClickHouseColumn>, Vec<ClickHouseValue>) =
             members.iter().cloned().unzip();
 
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::Nested(cols),
-            value: format!(
+        return ClickHouseValue::Nested(vals);
+        // value_type: ClickHouseColumnType::Nested(cols),
+        // value: format!(
+        //     "[({})]",
+        //     vals.iter()
+        //        .map(|v| format!("{}", v.value))
+        //         .collect::<Vec<String>>()
+        //         .join(",")
+        //),
+    }
+
+    pub fn clickhouse_to_string(&self) -> String {
+        match &self {
+            ClickHouseValue::String(v) => format!(
+                "\'{}\'",
+                v.replace('\\', "\\\\").replace('\'', "\\\'").clone()
+            ),
+            //),
+            ClickHouseValue::Boolean(v) => v.clone(),
+            ClickHouseValue::ClickhouseInt(v) => v.clone(),
+            ClickHouseValue::ClickhouseFloat(v) => v.clone(),
+            ClickHouseValue::Decimal => String::from(""),
+            ClickHouseValue::DateTime(v) => v.clone(),
+            ClickHouseValue::Json => String::from(""),
+            ClickHouseValue::Bytes => String::from(""),
+            ClickHouseValue::Array(v) => format!(
                 "[({})]",
-                vals.iter()
-                    .map(|v| v.value.to_string())
+                v.iter()
+                    .map(|v| v.clickhouse_to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            ),
+            ClickHouseValue::Enum(v) => v.clone(),
+            ClickHouseValue::Nested(v) => format!(
+                "[({})]",
+                v.iter()
+                    .map(|v| v.clickhouse_to_string())
                     .collect::<Vec<String>>()
                     .join(",")
             ),
@@ -205,34 +223,38 @@ impl ClickHouseValue {
     }
 }
 
-impl fmt::Display for ClickHouseValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.value_type {
-            // Need to escape the content of the strings for special characters
-            ClickHouseColumnType::String => write!(
-                f,
-                "'{}'",
-                &self.value.replace('\\', "\\\\").replace('\'', "\\\'")
-            ),
-            ClickHouseColumnType::Boolean => write!(f, "{}", &self.value),
-            ClickHouseColumnType::ClickhouseInt(_) => {
-                write!(f, "{}", &self.value)
-            }
-            ClickHouseColumnType::ClickhouseFloat(_) => {
-                write!(f, "{}", &self.value)
-            }
-            ClickHouseColumnType::DateTime => write!(f, "'{}'", &self.value),
-            ClickHouseColumnType::Decimal => todo!("Decimal not implemented yet"),
-            ClickHouseColumnType::Json => todo!("Json not implemented yet"),
-            ClickHouseColumnType::Bytes => todo!("Bytes not implemented yet"),
-            ClickHouseColumnType::Array(_) => write!(f, "[{}]", &self.value),
-            ClickHouseColumnType::Enum(_) => write!(f, "{}", &self.value),
-            ClickHouseColumnType::Nested(_) => {
-                write!(f, "{}", &self.value)
-            }
-        }
-    }
-}
+// impl fmt::Display for ClickHouseValue {
+//     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+//         println!("FUNCTION IS CALLED");
+//         match self.value_type {
+//             ClickHouseColumnType::String => println!("TYPE: STRING"),
+//             ClickHouseColumnType::Nested(_) => println!("TYPE: NESTED"),
+//             _ => println!("OTHER")
+//         }
+//         match self.value_type {
+//             // Need to escape the content of the strings for special characters
+//             ClickHouseColumnType::String => write!(
+//                 f,
+//                 "'{}'",
+//                 &self.value.replace('\\', "\\\\").replace('\'', "\\\'")
+//             ),
+//             ClickHouseColumnType::Boolean => write!(f, "{}", &self.value),
+//             ClickHouseColumnType::ClickhouseInt(_) => {
+//                 write!(f, "{}", &self.value)
+//             }
+//             ClickHouseColumnType::ClickhouseFloat(_) => {
+//                 write!(f, "{}", &self.value)
+//             }
+//             ClickHouseColumnType::DateTime => write!(f, "'{}'", &self.value),
+//             ClickHouseColumnType::Decimal => todo!("Decimal not implemented yet"),
+//             ClickHouseColumnType::Json => todo!("Json not implemented yet"),
+//             ClickHouseColumnType::Bytes => todo!("Bytes not implemented yet"),
+//             ClickHouseColumnType::Array(_) => write!(f, "[{}]", &self.value),
+//             ClickHouseColumnType::Enum(_) => write!(f, "{}", &self.value),
+//             ClickHouseColumnType::Nested(_) => write!(f, "{}", &self.value),
+//         }
+//     }
+// }
 
 #[derive(Debug, Clone)]
 pub struct ClickHouseRecord {

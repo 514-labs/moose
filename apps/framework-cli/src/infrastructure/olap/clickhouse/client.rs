@@ -118,7 +118,7 @@ impl ClickHouseClient {
                 columns
                     .iter()
                     .map(|column| match record.get(column) {
-                        Some(value) => format!("{}", value),
+                        Some(value) => value.clickhouse_to_string(),
                         None => "NULL".to_string(),
                     })
                     .collect::<Vec<String>>()

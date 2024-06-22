@@ -574,14 +574,12 @@ fn map_json_value_to_clickhouse_value(
                     let val = obj.get(col_name);
                     match val {
                         Some(val) => (
-                            //std_column_to_clickhouse_column(col.clone()).unwrap(),
                             values.push(
                                 map_json_value_to_clickhouse_value(&col.data_type, val).unwrap(),
                             ),
                             map_json_value_to_clickhouse_value(&col.data_type, val).unwrap(),
                         ),
                         None => (
-                            //std_column_to_clickhouse_column(col.clone()).unwrap(),
                             values.push(ClickHouseValue::new_null()),
                             ClickHouseValue::new_null(),
                         ),
@@ -739,6 +737,6 @@ mod tests {
         // INSERT INTO TimLiveTest VALUES ('T', [('A','B',[('a',[('d','e','f')],'c')],NULL)])
         // where TimLiveTest is the table name and contains our nested object and a order by Key
 
-        assert_eq!(values.clickhouse_to_string(), values_string);
+        assert_eq!(values.unwrap().clickhouse_to_string(), values_string);
     }
 }

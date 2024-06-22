@@ -144,7 +144,7 @@ impl ClickHouseValue {
     }
 
     pub fn new_float_64(value: f64) -> ClickHouseValue {
-        ClickHouseValue::ClickhouseInt(format!("{}", value))
+        ClickHouseValue::ClickhouseFloat(format!("{}", value))
     }
 
     pub fn new_date_time(value: DateTime<FixedOffset>) -> ClickHouseValue {
@@ -176,10 +176,10 @@ impl ClickHouseValue {
             ClickHouseValue::Boolean(v) => v.clone(),
             ClickHouseValue::ClickhouseInt(v) => v.clone(),
             ClickHouseValue::ClickhouseFloat(v) => v.clone(),
-            ClickHouseValue::Decimal => panic!("Decimals are not a supported data type"),
+            //ClickHouseValue::Decimal =>
             ClickHouseValue::DateTime(v) => v.clone(),
-            ClickHouseValue::Json => panic!("JSON is not a supported data type"),
-            ClickHouseValue::Bytes => panic!("Bytes are not a supported data type"),
+            //ClickHouseValue::Json =>
+            //ClickHouseValue::Bytes =>
             ClickHouseValue::Array(v) => format!(
                 "[{}]",
                 v.iter()
@@ -195,6 +195,7 @@ impl ClickHouseValue {
                     .collect::<Vec<String>>()
                     .join(",")
             ),
+            _ => String::from(""),
         }
     }
 }

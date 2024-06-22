@@ -1,6 +1,5 @@
 use crate::infrastructure::olap::clickhouse::client::ClickHouseClient;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseRecord;
-use std::collections::HashMap;
 use std::time::Duration;
 
 use log::{debug, error};
@@ -51,8 +50,6 @@ async fn flush(
     let mut interval = time::interval(Duration::from_secs(MAX_FLUSH_INTERVAL_SECONDS));
 
     let client = ClickHouseClient::new(&clickhouse_config).unwrap();
-
-    let mut i: usize = 0;
 
     loop {
         interval.tick().await;

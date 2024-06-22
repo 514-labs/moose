@@ -427,10 +427,7 @@ fn mapper_json_to_clickhouse_record(
                         if let ColumnType::Array(inner_type) = &column.data_type {
                             let clickhouse_inner_type =
                                 std_field_type_to_clickhouse_type_mapper(*inner_type.clone())?;
-                            record.insert(
-                                key,
-                                ClickHouseValue::new_array(Vec::new(), clickhouse_inner_type),
-                            );
+                            record.insert(key, ClickHouseValue::new_array(Vec::new()));
                         }
                         // Other values are ignored and the client will insert NULL instead
                     }
@@ -527,12 +524,10 @@ fn map_json_value_to_clickhouse_value(
             if let Some(value_str) = value.as_str() {
                 Ok(ClickHouseValue::new_enum(
                     ClickHouseRuntimeEnum::ClickHouseString(value_str.to_string()),
-                    x.clone(),
                 ))
             } else if let Some(value_int) = value.as_i64() {
                 Ok(ClickHouseValue::new_enum(
                     ClickHouseRuntimeEnum::ClickHouseInt(value_int as u8),
-                    x.clone(),
                 ))
             } else {
                 Err(MappingError::TypeMismatch {
@@ -553,7 +548,7 @@ fn map_json_value_to_clickhouse_value(
                     array_values.push(clickhouse_value);
                 }
 
-                Ok(ClickHouseValue::new_array(array_values, array_type))
+                Ok(ClickHouseValue::new_array(array_values))
             } else {
                 Err(MappingError::TypeMismatch {
                     column_type: column_type.clone(),
@@ -593,10 +588,7 @@ fn map_json_value_to_clickhouse_value(
                             ),
                             None => (
                                 std_column_to_clickhouse_column(col.clone()).unwrap(),
-                                ClickHouseValue::new_null(
-                                    std_field_type_to_clickhouse_type_mapper(col.data_type.clone())
-                                        .unwrap(),
-                                ),
+                                ClickHouseValue::new_null(),
                             ),
                         }
                     })

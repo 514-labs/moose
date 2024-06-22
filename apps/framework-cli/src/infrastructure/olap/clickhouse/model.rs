@@ -127,7 +127,7 @@ const NULL: &str = "NULL";
 
 // TODO - add support for Decimal, Json, Bytes
 impl ClickHouseValue {
-    pub fn new_null(col_type: ClickHouseColumnType) -> ClickHouseValue {
+    pub fn new_null() -> ClickHouseValue {
         ClickHouseValue::String(NULL.to_string())
     }
 
@@ -151,14 +151,11 @@ impl ClickHouseValue {
         ClickHouseValue::DateTime(value.to_utc().to_rfc3339().to_string())
     }
 
-    pub fn new_array(
-        value: Vec<ClickHouseValue>,
-        array_type: ClickHouseColumnType,
-    ) -> ClickHouseValue {
+    pub fn new_array(value: Vec<ClickHouseValue>) -> ClickHouseValue {
         ClickHouseValue::Array(value)
     }
 
-    pub fn new_enum(value: ClickHouseRuntimeEnum, enum_type: DataEnum) -> ClickHouseValue {
+    pub fn new_enum(value: ClickHouseRuntimeEnum) -> ClickHouseValue {
         match value {
             ClickHouseRuntimeEnum::ClickHouseInt(v) => ClickHouseValue::Enum(format!("{}", v)),
             ClickHouseRuntimeEnum::ClickHouseString(v) => ClickHouseValue::Enum(format!("'{}'", v)),
@@ -181,10 +178,10 @@ impl ClickHouseValue {
             ClickHouseValue::Boolean(v) => v.clone(),
             ClickHouseValue::ClickhouseInt(v) => v.clone(),
             ClickHouseValue::ClickhouseFloat(v) => v.clone(),
-            ClickHouseValue::Decimal => String::from(""),
+            ClickHouseValue::Decimal => panic!("Decimals are not a supported data type"),
             ClickHouseValue::DateTime(v) => v.clone(),
-            ClickHouseValue::Json => String::from(""),
-            ClickHouseValue::Bytes => String::from(""),
+            ClickHouseValue::Json => panic!("JSON is not a supported data type"),
+            ClickHouseValue::Bytes => panic!("Bytes are not a supported data type"),
             ClickHouseValue::Array(v) => format!(
                 "[{}]",
                 v.iter()

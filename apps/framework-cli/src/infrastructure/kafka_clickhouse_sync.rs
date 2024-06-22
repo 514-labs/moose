@@ -739,6 +739,6 @@ mod tests {
         // INSERT INTO TimLiveTest VALUES ('T', [('A','B',[('a',[('d','e','f')],'c')],NULL)])
         // where TimLiveTest is the table name and contains our nested object and a order by Key
 
-        assert_eq!(values.unwrap().to_string(), values_string);
+        assert_eq!(values.unwrap().clickhouse_to_string(), values_string);
     }
 }

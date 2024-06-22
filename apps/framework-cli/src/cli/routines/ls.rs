@@ -1,18 +1,24 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use crate::{
     cli::display::{show_table, Message},
-    infrastructure::olap::{
-        self,
-        clickhouse::model::ClickHouseSystemTable,
-        clickhouse_alt_client::{get_state, ApplicationState},
+    infrastructure::{
+        olap::{
+            self,
+            clickhouse::model::ClickHouseSystemTable,
+            clickhouse_alt_client::{get_state, ApplicationState},
+        },
+        stream::redpanda,
     },
     project::Project,
 };
 
 use super::{RoutineFailure, RoutineSuccess};
 
-pub async fn list_all(
+pub async fn list_db(
     project: Arc<Project>,
     version: &Option<String>,
     limit: &u16,
@@ -23,11 +29,9 @@ pub async fn list_all(
 
     let current_state = get_current_state(&project).await?;
 
-    let mut output_table = convert_to_output_table(&current_state, &target_version);
+    let mut output_table = map_models_to_resources(&current_state, &target_version);
 
-    let system_tables = get_system_tables(&project, &target_version).await;
-
-    augment_output_table(&mut output_table, &system_tables);
+    add_tables_views(&project, &target_version, &mut output_table).await;
 
     let output_table_array = sort_and_limit(output_table, limit);
 
@@ -39,6 +43,27 @@ pub async fn list_all(
             "View".to_string(),
         ],
         output_table_array,
+    );
+
+    Ok(RoutineSuccess::success(Message::new(
+        "".to_string(),
+        "".to_string(),
+    )))
+}
+
+pub async fn list_streaming(
+    project: Arc<Project>,
+    limit: &u16,
+) -> Result<RoutineSuccess, RoutineFailure> {
+    let topics = get_topics(&project).await;
+
+    let grouped_topics = group_topics_by_prefix(topics);
+
+    let flattened_topics = format_topics(grouped_topics, limit);
+
+    show_table(
+        vec!["Data Model".to_string(), "Topic".to_string()],
+        flattened_topics,
     );
 
     Ok(RoutineSuccess::success(Message::new(
@@ -64,7 +89,7 @@ async fn get_current_state(project: &Project) -> Result<ApplicationState, Routin
         })
 }
 
-fn convert_to_output_table(
+fn map_models_to_resources(
     current_state: &ApplicationState,
     target_version: &str,
 ) -> HashMap<String, Vec<String>> {
@@ -135,10 +160,13 @@ fn remove_suffix(table_name: &str) -> String {
     }
 }
 
-fn augment_output_table(
+async fn add_tables_views(
+    project: &Project,
+    target_version: &str,
     output_table: &mut HashMap<String, Vec<String>>,
-    system_tables: &HashMap<String, ClickHouseSystemTable>,
 ) {
+    let system_tables = get_system_tables(project, target_version).await;
+
     for (data_model, metadata) in output_table.iter_mut() {
         if let Some(system_table) = system_tables.get(data_model) {
             match system_table.engine.as_str() {
@@ -156,4 +184,48 @@ fn augment_output_table(
             }
         }
     }
+}
+
+async fn get_topics(project: &Project) -> HashSet<String> {
+    let topic_blacklist = HashSet::<String>::from_iter(vec!["__consumer_offsets".to_string()]);
+    HashSet::<String>::from_iter(
+        redpanda::fetch_topics(&project.redpanda_config)
+            .await
+            .unwrap()
+            .into_iter()
+            .filter(|topic| !topic_blacklist.contains(topic)),
+    )
+}
+
+fn group_topics_by_prefix(topics: HashSet<String>) -> HashMap<String, Vec<String>> {
+    topics.into_iter().fold(HashMap::new(), |mut group, topic| {
+        let mut parts = topic.splitn(2, '_');
+        if let Some(key) = parts.next() {
+            group.entry(key.to_string()).or_default().push(topic);
+        }
+        group
+    })
+}
+
+fn format_topics(grouped_topics: HashMap<String, Vec<String>>, limit: &u16) -> Vec<Vec<String>> {
+    let sorted_limited_data_models = sort_and_limit(grouped_topics, limit);
+
+    sorted_limited_data_models
+        .into_iter()
+        .filter_map(|inner_array| {
+            if inner_array.is_empty() {
+                None
+            } else {
+                let data_model = inner_array.first().cloned().unwrap_or_default();
+                let topics = if inner_array.len() > 1 {
+                    let mut topics_slice = inner_array[1..].to_vec();
+                    topics_slice.sort();
+                    topics_slice.join("\n")
+                } else {
+                    String::new()
+                };
+                Some(vec![data_model, topics])
+            }
+        })
+        .collect()
 }

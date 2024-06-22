@@ -73,9 +73,13 @@ pub enum Commands {
         #[arg(short, long, default_value = "10")]
         limit: u16,
 
-        /// View a specific version (default: latest)
+        /// View a specific version of data models & database infrastructure (default: latest)
         #[arg(short, long)]
         version: Option<String>,
+
+        /// View streaming topics
+        #[arg(short, long, default_value = "false")]
+        streaming: bool,
     },
 }
 

@@ -21,7 +21,7 @@ use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
-use routines::ls::list_all;
+use routines::ls::{list_db, list_streaming};
 use routines::plan;
 use routines::ps::show_processes;
 use settings::{read_settings, Settings};
@@ -575,7 +575,11 @@ async fn top_command_handler(
 
             show_processes(project_arc)
         }
-        Commands::Ls { version, limit } => {
+        Commands::Ls {
+            version,
+            limit,
+            streaming,
+        } => {
             info!("Running ls command");
 
             let project = load_project()?;
@@ -587,7 +591,11 @@ async fn top_command_handler(
                 &settings
             );
 
-            list_all(project_arc, version, limit).await
+            if *streaming {
+                list_streaming(project_arc, limit).await
+            } else {
+                list_db(project_arc, version, limit).await
+            }
         }
     }
 }

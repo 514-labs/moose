@@ -22,6 +22,7 @@ use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
 use routines::ls::list_all;
+use routines::plan;
 use routines::ps::show_processes;
 use settings::{read_settings, Settings};
 
@@ -378,11 +379,36 @@ async fn top_command_handler(
 
             check_project_name(&project_arc.name())?;
 
-            routines::start_production_mode(project_arc).await.unwrap();
+            routines::start_production_mode(project_arc, settings.features.core_v2)
+                .await
+                .unwrap();
 
             Ok(RoutineSuccess::success(Message::new(
                 "Ran".to_string(),
                 "production infrastructure".to_string(),
+            )))
+        }
+        Commands::Plan {} => {
+            info!("Running plan command");
+            let project = load_project()?;
+
+            crate::utilities::capture::capture!(
+                ActivityType::PlanCommand,
+                project.name().clone(),
+                &settings
+            );
+
+            check_project_name(&project.name())?;
+            plan(&project).await.map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Plan".to_string(),
+                    details: format!("Failed to plan changes: {:?}", e),
+                })
+            })?;
+
+            Ok(RoutineSuccess::success(Message::new(
+                "Plan".to_string(),
+                "Successfuly planned changes to the infrastructure".to_string(),
             )))
         }
         Commands::BumpVersion { new_version } => {

@@ -62,14 +62,14 @@ pub enum EnumValue {
     String(String),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum TableType {
     Table,
     View,
     Unsupported,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Table {
     pub table_type: TableType,
     pub name: String,
@@ -85,6 +85,24 @@ impl Table {
     // currently name includes the version, here we are separating that out.
     pub fn id(&self) -> String {
         format!("{}_{}", self.name, self.version.replace('.', "_"))
+    }
+
+    pub fn expanded_display(&self) -> String {
+        format!(
+            "Table: {} Version {} - {} - {}",
+            self.name,
+            self.version,
+            self.columns
+                .iter()
+                .map(|c| format!("{}: {}", c.name, c.data_type))
+                .collect::<Vec<String>>()
+                .join(", "),
+            self.order_by.join(",")
+        )
+    }
+
+    pub fn short_display(&self) -> String {
+        format!("Table: {} Version {}", self.name, self.version)
     }
 }
 

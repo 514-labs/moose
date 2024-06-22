@@ -1,4 +1,5 @@
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
+use console::{pad_str, style};
 use lazy_static::lazy_static;
 use spinners::{Spinner, Spinners};
 use std::sync::{Arc, RwLock};
@@ -80,6 +81,48 @@ impl Message {
 lazy_static! {
     pub static ref TERM: Arc<RwLock<CommandTerminal>> =
         Arc::new(RwLock::new(CommandTerminal::new()));
+}
+
+pub fn infra_added(message: &str) {
+    let command_terminal = TERM.write().unwrap();
+    let padder = 14;
+
+    command_terminal
+        .term
+        .write_line(&format!(
+            "{} {}",
+            style(pad_str("+", padder, console::Alignment::Right, Some("..."))).green(),
+            message
+        ))
+        .expect("failed to write message to terminal");
+}
+
+pub fn infra_removed(message: &str) {
+    let command_terminal = TERM.write().unwrap();
+    let padder = 14;
+
+    command_terminal
+        .term
+        .write_line(&format!(
+            "{} {}",
+            style(pad_str("-", padder, console::Alignment::Right, Some("..."))).red(),
+            message
+        ))
+        .expect("failed to write message to terminal");
+}
+
+pub fn infra_updated(message: &str) {
+    let command_terminal = TERM.write().unwrap();
+    let padder = 14;
+
+    command_terminal
+        .term
+        .write_line(&format!(
+            "{} {}",
+            style(pad_str("~", padder, console::Alignment::Right, Some("..."))).yellow(),
+            message
+        ))
+        .expect("failed to write message to terminal");
 }
 
 macro_rules! show_message {

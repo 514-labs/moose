@@ -83,6 +83,7 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use clickhouse_rs::ClientHandle;
 use log::{debug, error, info};
 use tokio::sync::RwLock;
 
@@ -94,6 +95,8 @@ use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 use crate::framework::core::code_loader::{
     load_framework_objects, FrameworkObject, FrameworkObjectVersions, SchemaVersion,
 };
+use crate::framework::core::infrastructure_map::{Change, InfraChange, InfrastructureMap};
+use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::framework::registry::model::ProcessRegistries;
 use crate::infrastructure::olap::clickhouse::{
@@ -106,11 +109,14 @@ use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
-use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
+use crate::infrastructure::olap::clickhouse_alt_client::{
+    get_pool, retrieve_infrastructure_map, store_current_state, store_infrastructure_map,
+    StateStorageError,
+};
 use crate::infrastructure::stream::redpanda;
 use crate::project::Project;
 
-use super::display::with_spinner_async;
+use super::display::{infra_added, infra_removed, infra_updated, with_spinner_async};
 use super::local_webserver::Webserver;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
@@ -334,8 +340,49 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     Ok(())
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum PlanningError {
+    #[error("Failed to communicate with state storage")]
+    StateStorage(#[from] StateStorageError),
+
+    #[error("Failed to load primitive map")]
+    PrimitiveMapLoading(#[from] crate::framework::core::primitive_map::PrimitiveMapLoadingError),
+
+    #[error("Failed to connect to state storage")]
+    Clickhouse(#[from] clickhouse_rs::errors::Error),
+}
+
+// TODO - this probably should be somewhere else but not sure where.
+
+pub struct InfraPlanResult {
+    // pub current_infra_map: Option<InfrastructureMap>,
+    pub target_infra_map: InfrastructureMap,
+    pub changes: Vec<InfraChange>,
+}
+
+async fn plan_changes(
+    client: &mut ClientHandle,
+    project: &Project,
+) -> Result<InfraPlanResult, PlanningError> {
+    let primitive_map = PrimitiveMap::load(project)?;
+    let target_infra_map = InfrastructureMap::new(primitive_map);
+
+    let current_infra_map = retrieve_infrastructure_map(client, &project.clickhouse_config).await?;
+
+    let changes = match &current_infra_map {
+        Some(current_infra_map) => current_infra_map.diff(&target_infra_map),
+        None => target_infra_map.init(),
+    };
+
+    Ok(InfraPlanResult {
+        // current_infra_map,
+        target_infra_map,
+        changes,
+    })
+}
+
 // Starts the webserver in production mode
-pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> {
+pub async fn start_production_mode(project: Arc<Project>, v2_core: bool) -> anyhow::Result<()> {
     show_message!(
         MessageType::Success,
         Message {
@@ -343,6 +390,22 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
             details: "production mode".to_string(),
         }
     );
+
+    if v2_core {
+        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+
+        let plan_result = plan_changes(&mut client, &project).await?;
+        // TODO add interpreter for making the different changes
+        // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
+
+        // Storing the result of the changes in the table
+        store_infrastructure_map(
+            &mut client,
+            &project.clickhouse_config,
+            &plan_result.target_infra_map,
+        )
+        .await?;
+    }
 
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
@@ -380,6 +443,63 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     web_server.start(route_table, project).await;
+
+    Ok(())
+}
+
+pub async fn plan(project: &Project) -> anyhow::Result<()> {
+    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+
+    let plan_results = plan_changes(&mut client, project).await?;
+
+    plan_results.changes.iter().for_each(|change| match change {
+        InfraChange::Topic(Change::Added(infra)) => {
+            infra_added(&infra.expanded_display());
+        }
+        InfraChange::Topic(Change::Removed(infra)) => {
+            infra_removed(&infra.short_display());
+        }
+        InfraChange::Topic(Change::Updated { before, after: _ }) => {
+            infra_updated(&before.expanded_display());
+        }
+        InfraChange::ApiEndpoint(Change::Added(infra)) => {
+            infra_added(&infra.expanded_display());
+        }
+        InfraChange::ApiEndpoint(Change::Removed(infra)) => {
+            infra_removed(&infra.short_display());
+        }
+        InfraChange::ApiEndpoint(Change::Updated { before, after: _ }) => {
+            infra_updated(&before.expanded_display());
+        }
+        InfraChange::Table(Change::Added(infra)) => {
+            infra_added(&infra.expanded_display());
+        }
+        InfraChange::Table(Change::Removed(infra)) => {
+            infra_removed(&infra.short_display());
+        }
+        InfraChange::Table(Change::Updated { before, after: _ }) => {
+            infra_updated(&before.expanded_display());
+        }
+        InfraChange::TopicToTableSyncProcess(Change::Added(infra)) => {
+            infra_added(&infra.expanded_display());
+        }
+        InfraChange::TopicToTableSyncProcess(Change::Removed(infra)) => {
+            infra_removed(&infra.short_display());
+        }
+        InfraChange::TopicToTableSyncProcess(Change::Updated { before, after: _ }) => {
+            infra_updated(&before.expanded_display());
+        }
+    });
+
+    if plan_results.changes.is_empty() {
+        show_message!(
+            MessageType::Info,
+            Message {
+                action: "No".to_string(),
+                details: "changes detected".to_string(),
+            }
+        );
+    }
 
     Ok(())
 }

@@ -21,6 +21,8 @@ pub enum ActivityType {
     #[serde(rename = "buildCommand")]
     BuildCommand,
     #[serde(rename = "bumpVersionCommand")]
+    PlanCommand,
+    #[serde(rename = "planCommand")]
     BumpVersionCommand,
     #[serde(rename = "cleanCommand")]
     CleanCommand,

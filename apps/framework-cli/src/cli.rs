@@ -389,7 +389,7 @@ async fn top_command_handler(
             )))
         }
         Commands::Plan {} => {
-            info!("Running prod command");
+            info!("Running plan command");
             let project = load_project()?;
 
             crate::utilities::capture::capture!(

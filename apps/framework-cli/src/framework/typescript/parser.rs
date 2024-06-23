@@ -110,7 +110,7 @@ pub fn extract_data_model_from_file(
                 if let Some(dm) = data_model.as_object_mut() {
                     dm.insert("version".to_string(), version.into());
                     dm.insert(
-                        "file_path".to_string(),
+                        "abs_file_path".to_string(),
                         path.to_string_lossy().to_string().into(),
                     );
                 }

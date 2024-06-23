@@ -6,13 +6,13 @@ use std::path::Path;
 use std::{fmt, path::PathBuf};
 
 use crate::framework::core::code_loader::{FrameworkObjectVersions, SchemaVersion};
-use crate::framework::data_model::schema::{DataEnum, EnumValue};
 use crate::framework::typescript;
 use crate::{
-    framework::data_model::schema::{ColumnType, Table},
     project::Project,
     utilities::{package_managers, system},
 };
+
+use crate::framework::core::infrastructure::table::{ColumnType, DataEnum, EnumValue, Table};
 
 use super::templates::TypescriptRenderingError;
 

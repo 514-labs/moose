@@ -161,7 +161,7 @@ async fn process_data_models_changes(
     for (_, fo) in deleted_objects {
         if let Some(table) = &fo.table {
             drop_table(&project.clickhouse_config.db_name, table, configured_client).await?;
-            syncing_process_registry.stop(&fo.topic, &table.name);
+            syncing_process_registry.stop_topic_to_table(&fo.topic, &table.name);
         }
 
         route_table.remove(&schema_file_path_to_ingest_route(
@@ -186,7 +186,7 @@ async fn process_data_models_changes(
     for (_, fo) in changed_objects.iter().chain(new_objects.iter()) {
         if let Some(table) = &fo.table {
             create_or_replace_tables(table, configured_client, project.is_production).await?;
-            syncing_process_registry.start(
+            syncing_process_registry.start_topic_to_table(
                 fo.topic.clone(),
                 fo.data_model.columns.clone(),
                 table.name.clone(),
@@ -204,7 +204,6 @@ async fn process_data_models_changes(
         route_table.insert(
             ingest_route,
             RouteMeta {
-                original_file_path: fo.original_file_path.clone(),
                 topic_name: fo.topic.clone(),
                 format: fo.data_model.config.ingestion.format.clone(),
             },

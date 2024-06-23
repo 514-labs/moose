@@ -105,7 +105,6 @@ use crate::infrastructure::olap::clickhouse::{
 
 use crate::cli::routines::flow::verify_flows_against_datamodels;
 use crate::framework::controller::{create_or_replace_version_sync, process_objects, RouteMeta};
-use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
@@ -113,7 +112,6 @@ use crate::infrastructure::olap::clickhouse_alt_client::{
     get_pool, retrieve_infrastructure_map, store_current_state, store_infrastructure_map,
     StateStorageError,
 };
-use crate::infrastructure::stream::redpanda;
 use crate::project::Project;
 
 use super::display::{infra_added, infra_removed, infra_updated, with_spinner_async};
@@ -596,7 +594,6 @@ pub async fn initialize_project_state(
     let old_versions = project.old_versions_sorted();
 
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
-    let producer = redpanda::create_producer(project.redpanda_config.clone());
 
     info!("<DCM> Checking for old version directories...");
 
@@ -636,14 +633,6 @@ pub async fn initialize_project_state(
                 &configured_client,
                 route_table,
                 &framework_object_versions.current_version,
-            )
-            .await;
-
-            let _ = post_current_state_to_console(
-                project.clone(),
-                &configured_client,
-                &producer,
-                &framework_object_versions,
             )
             .await;
 

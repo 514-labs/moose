@@ -40,7 +40,6 @@ use crate::framework::typescript::templates::{
 use crate::framework::typescript::templates::{
     VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
 };
-use crate::infrastructure::console::ConsoleConfig;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
@@ -90,7 +89,6 @@ pub struct Project {
     pub redpanda_config: RedpandaConfig,
     pub clickhouse_config: ClickHouseConfig,
     pub http_server_config: LocalWebserverConfig,
-    pub console_config: ConsoleConfig,
 
     // This part of the configuration for the project is dynamic and not saved
     // to disk. It is loaded from the language specific configuration file or the currently
@@ -152,7 +150,6 @@ impl Project {
                 redpanda_config: RedpandaConfig::default(),
                 clickhouse_config: ClickHouseConfig::default(),
                 http_server_config: LocalWebserverConfig::default(),
-                console_config: ConsoleConfig::default(),
                 language_project_config: LanguageProjectConfig::Typescript(TypescriptProject::new(
                     name,
                 )),
@@ -165,7 +162,6 @@ impl Project {
                 redpanda_config: RedpandaConfig::default(),
                 clickhouse_config: ClickHouseConfig::default(),
                 http_server_config: LocalWebserverConfig::default(),
-                console_config: ConsoleConfig::default(),
                 language_project_config: LanguageProjectConfig::Python(PythonProject::new(name)),
                 supported_old_versions: HashMap::new(),
             },

@@ -245,7 +245,6 @@ impl Project {
         let readme_file_path = self.project_location.join("README.md");
         let apis_file_path = self.consumption_dir().join(API_FILE);
 
-        // Write README and APIs sample template
         self.write_file(
             &readme_file_path,
             README_PREFIX.to_owned() + include_str!("../../../README.md"),
@@ -254,7 +253,7 @@ impl Project {
 
         match self.language {
             SupportedLanguages::Typescript => {
-                let base_model_file_path = self.data_models_dir().join("models");
+                let base_model_file_path = self.data_models_dir().join("models.ts");
                 let flow_file_path = self
                     .flows_dir()
                     .join(SAMPLE_FLOWS_SOURCE)
@@ -274,7 +273,7 @@ impl Project {
                 )?;
             }
             SupportedLanguages::Python => {
-                let base_model_file_path = self.data_models_dir().join("models");
+                let base_model_file_path = self.data_models_dir().join("models.py");
                 let flow_file_path = self
                     .flows_dir()
                     .join(SAMPLE_FLOWS_SOURCE)

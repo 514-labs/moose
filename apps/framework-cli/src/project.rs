@@ -21,7 +21,7 @@ use std::fmt::Debug;
 use std::path::Path;
 use std::path::PathBuf;
 
-use config::{Config, ConfigError, Environment, File};
+use config::{Config, ConfigError, Environment, File, FileFormat};
 use log::debug;
 use python_project::PythonProject;
 use serde::Deserialize;
@@ -62,6 +62,7 @@ use crate::utilities::constants::{
 };
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
+use crate::utilities::git::GitConfig;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to create or delete project files")]
@@ -89,6 +90,7 @@ pub struct Project {
     pub redpanda_config: RedpandaConfig,
     pub clickhouse_config: ClickHouseConfig,
     pub http_server_config: LocalWebserverConfig,
+    pub git_config: GitConfig,
 
     // This part of the configuration for the project is dynamic and not saved
     // to disk. It is loaded from the language specific configuration file or the currently
@@ -142,29 +144,23 @@ impl Project {
 
         debug!("Package.json file location: {:?}", location);
 
-        match language {
-            SupportedLanguages::Typescript => Project {
-                language: SupportedLanguages::Typescript,
-                is_production: false,
-                project_location: location.clone(),
-                redpanda_config: RedpandaConfig::default(),
-                clickhouse_config: ClickHouseConfig::default(),
-                http_server_config: LocalWebserverConfig::default(),
-                language_project_config: LanguageProjectConfig::Typescript(TypescriptProject::new(
-                    name,
-                )),
-                supported_old_versions: HashMap::new(),
-            },
-            SupportedLanguages::Python => Project {
-                language: SupportedLanguages::Python,
-                is_production: false,
-                project_location: location.clone(),
-                redpanda_config: RedpandaConfig::default(),
-                clickhouse_config: ClickHouseConfig::default(),
-                http_server_config: LocalWebserverConfig::default(),
-                language_project_config: LanguageProjectConfig::Python(PythonProject::new(name)),
-                supported_old_versions: HashMap::new(),
-            },
+        let language_project_config = match language {
+            SupportedLanguages::Typescript => {
+                LanguageProjectConfig::Typescript(TypescriptProject::new(name))
+            }
+            SupportedLanguages::Python => LanguageProjectConfig::Python(PythonProject::new(name)),
+        };
+
+        Project {
+            language,
+            is_production: false,
+            project_location: location.clone(),
+            redpanda_config: RedpandaConfig::default(),
+            clickhouse_config: ClickHouseConfig::default(),
+            http_server_config: LocalWebserverConfig::default(),
+            language_project_config,
+            supported_old_versions: HashMap::new(),
+            git_config: GitConfig::default(),
         }
     }
 
@@ -173,16 +169,13 @@ impl Project {
     }
 
     pub fn load(directory: &PathBuf) -> Result<Project, ConfigError> {
-        let mut project_file = directory.clone();
-        project_file.push(PROJECT_CONFIG_FILE);
+        let project_file = directory.join(PROJECT_CONFIG_FILE);
 
         let mut project_config: Project = Config::builder()
-            // TODO: consider putting the defaults into a source (e.g. include_str a toml file)
-            .set_default(
-                "clickhouse_config.native_port",
-                ClickHouseConfig::default().native_port,
-            )
-            .unwrap() // key in set_default is a static string, this never fails
+            .add_source(File::from_str(
+                include_str!("default_config.toml"),
+                FileFormat::Toml,
+            ))
             .add_source(File::from(project_file).required(true))
             .add_source(
                 Environment::with_prefix("MOOSE")

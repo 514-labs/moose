@@ -116,6 +116,7 @@ use crate::project::Project;
 
 use super::display::{infra_added, infra_removed, infra_updated, with_spinner_async};
 use super::local_webserver::Webserver;
+use super::settings::Features;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
 
@@ -263,7 +264,10 @@ impl RoutineController {
 }
 
 // Starts the file watcher and the webserver
-pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()> {
+pub async fn start_development_mode(
+    project: Arc<Project>,
+    features: Features,
+) -> anyhow::Result<()> {
     show_message!(
         MessageType::Info,
         Message {
@@ -307,8 +311,11 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     // will need to get refactored out.
     process_flows_changes(&project, &mut flows_process_registry).await?;
 
-    let mut aggregations_process_registry =
-        AggregationProcessRegistry::new(project.language, project.clickhouse_config.clone());
+    let mut aggregations_process_registry = AggregationProcessRegistry::new(
+        project.language,
+        project.clickhouse_config.clone(),
+        features,
+    );
     process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
 
     let mut consumption_process_registry =
@@ -380,7 +387,10 @@ async fn plan_changes(
 }
 
 // Starts the webserver in production mode
-pub async fn start_production_mode(project: Arc<Project>, v2_core: bool) -> anyhow::Result<()> {
+pub async fn start_production_mode(
+    project: Arc<Project>,
+    features: Features,
+) -> anyhow::Result<()> {
     show_message!(
         MessageType::Success,
         Message {
@@ -389,7 +399,7 @@ pub async fn start_production_mode(project: Arc<Project>, v2_core: bool) -> anyh
         }
     );
 
-    if v2_core {
+    if features.core_v2 {
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
 
         let plan_result = plan_changes(&mut client, &project).await?;
@@ -429,8 +439,11 @@ pub async fn start_production_mode(project: Arc<Project>, v2_core: bool) -> anyh
     // will need to get refactored out.
     process_flows_changes(&project, &mut flows_process_registry).await?;
 
-    let mut aggregations_process_registry =
-        AggregationProcessRegistry::new(project.language, project.clickhouse_config.clone());
+    let mut aggregations_process_registry = AggregationProcessRegistry::new(
+        project.language,
+        project.clickhouse_config.clone(),
+        features,
+    );
     process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
 
     let mut consumption_process_registry =

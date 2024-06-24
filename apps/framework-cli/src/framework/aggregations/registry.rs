@@ -4,7 +4,7 @@ use log::info;
 use tokio::process::Child;
 
 use crate::{
-    framework::languages::SupportedLanguages,
+    cli::settings::Features, framework::languages::SupportedLanguages,
     infrastructure::olap::clickhouse::config::ClickHouseConfig,
 };
 
@@ -14,14 +14,21 @@ pub struct AggregationProcessRegistry {
     registry: HashMap<String, Child>,
     language: SupportedLanguages,
     clickhouse_config: ClickHouseConfig,
+    #[allow(dead_code)]
+    features: Features,
 }
 
 impl AggregationProcessRegistry {
-    pub fn new(language: SupportedLanguages, clickhouse_config: ClickHouseConfig) -> Self {
+    pub fn new(
+        language: SupportedLanguages,
+        clickhouse_config: ClickHouseConfig,
+        features: Features,
+    ) -> Self {
         Self {
             registry: HashMap::new(),
             language,
             clickhouse_config,
+            features,
         }
     }
 

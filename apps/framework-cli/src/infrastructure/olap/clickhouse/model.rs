@@ -121,6 +121,7 @@ pub enum ClickHouseValue {
     Array(Vec<ClickHouseValue>),
     Enum(String),
     Nested(Vec<ClickHouseValue>),
+    Null(String),
 }
 
 const NULL: &str = "NULL";
@@ -128,7 +129,7 @@ const NULL: &str = "NULL";
 // TODO - add support for Decimal, Json, Bytes
 impl ClickHouseValue {
     pub fn new_null() -> ClickHouseValue {
-        ClickHouseValue::String(NULL.to_string())
+        ClickHouseValue::Null(NULL.to_string())
     }
 
     pub fn new_string(value: String) -> ClickHouseValue {
@@ -176,10 +177,7 @@ impl ClickHouseValue {
             ClickHouseValue::Boolean(v) => v.clone(),
             ClickHouseValue::ClickhouseInt(v) => v.clone(),
             ClickHouseValue::ClickhouseFloat(v) => v.clone(),
-            //ClickHouseValue::Decimal =>
             ClickHouseValue::DateTime(v) => v.clone(),
-            //ClickHouseValue::Json =>
-            //ClickHouseValue::Bytes =>
             ClickHouseValue::Array(v) => format!(
                 "[{}]",
                 v.iter()
@@ -195,6 +193,7 @@ impl ClickHouseValue {
                     .collect::<Vec<String>>()
                     .join(",")
             ),
+            ClickHouseValue::Null(v) => v.clone(),
             _ => String::from(""),
         }
     }

@@ -569,9 +569,11 @@ fn map_json_value_to_clickhouse_value(
             if let Some(obj) = value.as_object() {
                 // Needs a null if the column isn't present
                 let mut values: Vec<ClickHouseValue> = Vec::new();
-                let _ = inner_nested.columns.iter().map(|col| {
+
+                for col in inner_nested.columns.iter() {
                     let col_name = &col.name;
                     let val = obj.get(col_name);
+
                     match val {
                         Some(val) => (
                             values.push(
@@ -583,8 +585,8 @@ fn map_json_value_to_clickhouse_value(
                             values.push(ClickHouseValue::new_null()),
                             ClickHouseValue::new_null(),
                         ),
-                    }
-                });
+                    };
+                }
 
                 Ok(ClickHouseValue::new_tuple(values))
             } else {
@@ -732,22 +734,11 @@ mod tests {
             &example_json_value,
         );
 
-        match values.unwrap() {
-            ClickHouseValue::Nested(v) => println!(
-                "{}",
-                v.iter()
-                    .map(|v| String::from("v"))
-                    .collect::<Vec<String>>()
-                    .join(",")
-            ),
-            _ => println!("OTHER"),
-        }
-
-        let values_string = "[(A,B,[(a,[(d,e,f)],c)],NULL)]".to_string();
+        let values_string = "[('A','B',[('a',[('d','e','f')],'c')],NULL)]".to_string();
         // Note the corresponding insert statement would be
         // INSERT INTO TimLiveTest VALUES ('T', [('A','B',[('a',[('d','e','f')],'c')],NULL)])
         // where TimLiveTest is the table name and contains our nested object and a order by Key
 
-        assert_eq!("HI", values_string);
+        assert_eq!(values.unwrap().clickhouse_to_string(), values_string);
     }
 }

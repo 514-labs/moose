@@ -12,6 +12,7 @@ use clickhouse_rs::ClientHandle;
 use futures::stream::BoxStream;
 use futures::StreamExt;
 use itertools::Either;
+use log::info;
 use serde::__private::from_utf8_lossy;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -212,13 +213,16 @@ pub async fn select_all_as_json<'a>(
     } else {
         format!("ORDER BY {}", key_columns.join(", "))
     };
+    let query = &format!(
+        "select * from {}.{} {} offset {}",
+        db_name, table.name, order_by, offset
+    );
+    info!("Initial data load query: {}", query);
     let stream = client
-        .query(&format!(
-            "select * from {}.{} {} offset {}",
-            db_name, table.name, order_by, offset
-        ))
+        .query(query)
         .stream()
         .map(move |row| row_to_json(&row?, &enum_mapping));
+    info!("Got initial data load stream.");
     Ok(Box::pin(stream))
 }
 

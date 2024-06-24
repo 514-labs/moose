@@ -555,6 +555,12 @@
 
     payload = _maskSuspiciousAttributes(payload);
     payload = Object.assign({}, JSON.parse(payload), globalAttributes);
+
+    // Fetch the user's IP address
+    const ipResponse = await fetch("https://api.ipify.org?format=json");
+    const ipData = await ipResponse.json();
+    const userIp = ipData.ip; // Assuming the API returns a JSON object with an "ip" field
+
     fetch(url, {
       method: "POST",
       mode: "no-cors",
@@ -569,6 +575,7 @@
         session_id: _getSessionId(),
         locale,
         location: country,
+        ip: userIp,
         ...payload,
       }),
     });

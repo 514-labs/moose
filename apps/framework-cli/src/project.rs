@@ -241,81 +241,80 @@ impl Project {
     }
 
     pub fn create_base_app_files(&self) -> Result<(), std::io::Error> {
+        // Common file paths
         let readme_file_path = self.project_location.join("README.md");
-        let base_model_file_path = match self.language {
-            SupportedLanguages::Typescript => self.data_models_dir().join("models.ts"),
-            SupportedLanguages::Python => self.data_models_dir().join("models.py"),
-        };
-
-        let flow_file_name = match self.language {
-            SupportedLanguages::Typescript => TS_FLOW_FILE,
-            SupportedLanguages::Python => PY_FLOW_FILE,
-        };
-
-        let agg_file_name: &str = match self.language {
-            SupportedLanguages::Typescript => TS_AGGREGATIONS_FILE,
-            SupportedLanguages::Python => PY_AGGREGATIONS_FILE,
-        };
-
-        let flow_file_dir = self
-            .flows_dir()
-            .join(SAMPLE_FLOWS_SOURCE)
-            .join(SAMPLE_FLOWS_DEST);
-
-        let flow_file_path = flow_file_dir.join(flow_file_name);
-        let aggregations_file_path = self.aggregations_dir().join(agg_file_name);
         let apis_file_path = self.consumption_dir().join(API_FILE);
 
-        let mut readme_file = std::fs::File::create(readme_file_path)?;
-        let mut base_model_file = std::fs::File::create(base_model_file_path)?;
-        let mut flow_file = std::fs::File::create(flow_file_path)?;
-        let mut aggregations_file = std::fs::File::create(aggregations_file_path)?;
-        let mut apis_file = std::fs::File::create(apis_file_path)?;
-
-        let mut readme = include_str!("../../../README.md").to_string();
-        readme.insert_str(0, README_PREFIX);
-
-        readme_file.write_all(readme.as_bytes())?;
+        // Write README and APIs sample template
+        self.write_file(
+            &readme_file_path,
+            README_PREFIX.to_owned() + include_str!("../../../README.md"),
+        )?;
+        self.write_file(&apis_file_path, BASE_APIS_SAMPLE_TEMPLATE.to_string())?;
 
         match self.language {
             SupportedLanguages::Typescript => {
-                base_model_file.write_all(TS_BASE_MODEL_TEMPLATE.as_bytes())?;
+                let base_model_file_path = self.data_models_dir().join("models");
+                let flow_file_path = self
+                    .flows_dir()
+                    .join(SAMPLE_FLOWS_SOURCE)
+                    .join(SAMPLE_FLOWS_DEST)
+                    .join(TS_FLOW_FILE);
+                let aggregations_file_path = self.aggregations_dir().join(TS_AGGREGATIONS_FILE);
 
-                // Unclear whether the replace is still needed here?!
-                flow_file.write_all(
-                    TS_BASE_FLOW_SAMPLE_TEMPLATE
-                        .to_string()
-                        .replace("{{project_name}}", &self.name())
-                        .as_bytes(),
+                // Write TypeScript specific templates
+                self.write_file(&base_model_file_path, TS_BASE_MODEL_TEMPLATE.to_string())?;
+                self.write_file(
+                    &flow_file_path,
+                    TS_BASE_FLOW_SAMPLE_TEMPLATE.replace("{{project_name}}", &self.name()),
                 )?;
-
-                aggregations_file.write_all(TS_BASE_AGGREGATION_SAMPLE_TEMPLATE.as_bytes())?;
+                self.write_file(
+                    &aggregations_file_path,
+                    TS_BASE_AGGREGATION_SAMPLE_TEMPLATE.to_string(),
+                )?;
             }
             SupportedLanguages::Python => {
-                base_model_file.write_all(PYTHON_BASE_MODEL_TEMPLATE.as_bytes())?;
+                let base_model_file_path = self.data_models_dir().join("models");
+                let flow_file_path = self
+                    .flows_dir()
+                    .join(SAMPLE_FLOWS_SOURCE)
+                    .join(SAMPLE_FLOWS_DEST)
+                    .join(PY_FLOW_FILE);
+                let aggregations_file_path = self.aggregations_dir().join(PY_AGGREGATIONS_FILE);
 
-                // Create __init__.py file in the app directory tree
-                std::fs::File::create(self.app_dir().join("__init__.py"))?;
-
-                std::fs::File::create(self.data_models_dir().join("__init__.py"))?;
-                std::fs::File::create(self.aggregations_dir().join("__init__.py"))?;
-                std::fs::File::create(self.consumption_dir().join("__init__.py"))?;
-                std::fs::File::create(self.flows_dir().join("__init__.py"))?;
-                std::fs::File::create(
-                    flow_file_dir
-                        .parent()
-                        .unwrap_or(&flow_file_dir)
-                        .join("__init__.py"),
+                // Write Python specific templates
+                self.write_file(
+                    &base_model_file_path,
+                    PYTHON_BASE_MODEL_TEMPLATE.to_string(),
                 )?;
-                std::fs::File::create(flow_file_dir.join("__init__.py"))?;
+                self.write_file(&flow_file_path, PYTHON_BASE_FLOW_TEMPLATE.to_string())?;
+                self.write_file(
+                    &aggregations_file_path,
+                    PTYHON_BASE_AGG_SAMPLE_TEMPLATE.to_string(),
+                )?;
 
-                flow_file.write_all(PYTHON_BASE_FLOW_TEMPLATE.as_bytes())?;
-                aggregations_file.write_all(PTYHON_BASE_AGG_SAMPLE_TEMPLATE.as_bytes())?;
+                // Create __init__.py in necessary directories for Python
+                for dir in &[
+                    self.app_dir(),
+                    self.data_models_dir(),
+                    self.aggregations_dir(),
+                    self.consumption_dir(),
+                    self.flows_dir(),
+                    self.flows_dir()
+                        .join(SAMPLE_FLOWS_SOURCE)
+                        .join(SAMPLE_FLOWS_DEST),
+                ] {
+                    std::fs::File::create(dir.join("__init__.py"))?;
+                }
             }
         }
 
-        apis_file.write_all(BASE_APIS_SAMPLE_TEMPLATE.as_bytes())?;
+        Ok(())
+    }
 
+    fn write_file(&self, path: &PathBuf, content: String) -> Result<(), std::io::Error> {
+        let mut file = std::fs::File::create(path)?;
+        file.write_all(content.as_bytes())?;
         Ok(())
     }
 

@@ -111,6 +111,7 @@ async fn top_command_handler(
             location,
             template,
             no_fail_already_exists,
+            empty,
         } => {
             info!(
                 "Running init command with name: {}, language: {}, location: {:?}, template: {:?}",
@@ -159,7 +160,7 @@ async fn top_command_handler(
 
                     debug!("Project: {:?}", project_arc);
 
-                    initialize_project(&project_arc)?.show();
+                    initialize_project(&project_arc, empty)?.show();
 
                     project_arc
                         .write_to_disk()

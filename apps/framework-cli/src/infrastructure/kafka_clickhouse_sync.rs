@@ -576,10 +576,8 @@ fn map_json_value_to_clickhouse_value(
 
                     match val {
                         Some(val) => (
-                            values.push(
-                                map_json_value_to_clickhouse_value(&col.data_type, val).unwrap(),
-                            ),
-                            map_json_value_to_clickhouse_value(&col.data_type, val).unwrap(),
+                            values.push(map_json_value_to_clickhouse_value(&col.data_type, val)?),
+                            map_json_value_to_clickhouse_value(&col.data_type, val)?,
                         ),
                         None => (
                             values.push(ClickHouseValue::new_null()),

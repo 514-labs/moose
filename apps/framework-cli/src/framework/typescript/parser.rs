@@ -255,7 +255,6 @@ mod tests {
         assert!(result.is_err());
         // The TS compiler prints this, which is forwarded to the user's console
         // app/datamodels/type_missing.ts(2,5): error TS7008: Member 'foo' implicitly has an 'any' type.
-        //println!("ERROR {}", result.err().unwrap().to_string());
 
         assert_eq!(
             result.err().unwrap().to_string(),

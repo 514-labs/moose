@@ -11,12 +11,14 @@ pub fn run(
     redpanda_config: RedpandaConfig,
     source_topic: &str,
     target_topic: &str,
+    target_topic_config: &str,
     flow_path: &Path,
 ) -> Result<Child, std::io::Error> {
     let mut flow_process = executor::run_python_program(executor::PythonProgram::FlowRunner {
         args: vec![
             source_topic.to_string(),
             target_topic.to_string(),
+            target_topic_config.to_string(),
             flow_path.parent().unwrap().to_str().unwrap().to_string(),
             redpanda_config.broker,
         ],
@@ -34,6 +36,8 @@ pub fn run(
     let mut stdout_reader = tokio::io::BufReader::new(stdout).lines();
     let mut stderr_reader = tokio::io::BufReader::new(stderr).lines();
 
+    // TODO: Why aren't these log lines streamed to the logger? Only shows
+    // in the log file when moose is killed
     tokio::spawn(async move {
         while let Ok(Some(line)) = stdout_reader.next_line().await {
             log::info!("{}", line);
@@ -72,11 +76,19 @@ mod tests {
         let redpanda_config = RedpandaConfig::default();
         let source_topic = "UserActivity_0_0";
         let target_topic = "ParsedActivity_0_0";
+        let target_topic_config = "{}";
         let flow_path = Path::new(
             "/Users/timdelisle/Dev/igloo-stack/apps/framework-cli/tests/python/flows/valid",
         );
 
-        let child = run(redpanda_config, source_topic, target_topic, flow_path).unwrap();
+        let child = run(
+            redpanda_config,
+            source_topic,
+            target_topic,
+            target_topic_config,
+            flow_path,
+        )
+        .unwrap();
 
         let output = child.wait_with_output().await.unwrap();
 
@@ -91,11 +103,19 @@ mod tests {
         let redpanda_config = RedpandaConfig::default();
         let source_topic = "source";
         let target_topic = "target";
+        let target_topic_config = "{}";
         let flow_path = Path::new(
             "/Users/timdelisle/Dev/igloo-stack/apps/framework-cli/tests/python/flows/invalid",
         );
 
-        let child = run(redpanda_config, source_topic, target_topic, flow_path).unwrap();
+        let child = run(
+            redpanda_config,
+            source_topic,
+            target_topic,
+            target_topic_config,
+            flow_path,
+        )
+        .unwrap();
 
         let output = child.wait_with_output().await.unwrap();
 

@@ -1,6 +1,6 @@
 {
   "name": "internal-app",
-  "version": "0.4",
+  "version": "0.5",
   "scripts": {
     "dev": "moose-cli dev",
     "build": "moose-cli --version && moose-cli build --docker"

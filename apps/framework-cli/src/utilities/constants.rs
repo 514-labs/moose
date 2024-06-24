@@ -33,7 +33,7 @@ pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";
 pub const REDPANDA_HOSTS: [&str; 2] = ["redpanda", "localhost"];
 
 pub const APP_DIR: &str = "app";
-pub const APP_DIR_LAYOUT: [&str; 2] = [SCHEMAS_DIR, FLOWS_DIR];
+pub const APP_DIR_LAYOUT: [&str; 4] = [SCHEMAS_DIR, FLOWS_DIR, AGGREGATIONS_DIR, CONSUMPTION_DIR];
 
 pub const GITIGNORE: &str = ".gitignore";
 

@@ -12,7 +12,7 @@ use clickhouse_rs::ClientHandle;
 use futures::stream::BoxStream;
 use futures::StreamExt;
 use itertools::Either;
-use log::info;
+use log::{info, warn};
 use serde::__private::from_utf8_lossy;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
@@ -28,6 +28,12 @@ pub fn get_pool(click_house_config: &ClickHouseConfig) -> clickhouse_rs::Pool {
         "tcp://{}:{}",
         click_house_config.host, click_house_config.native_port
     );
+
+    if click_house_config.use_ssl && click_house_config.native_port == 9000 {
+        warn!(
+            "The default secure native port is 9440 instead of 9000. You may get a timeout error."
+        )
+    }
 
     clickhouse_rs::Pool::new(
         Options::from_str(&address)
@@ -217,12 +223,12 @@ pub async fn select_all_as_json<'a>(
         "select * from {}.{} {} offset {}",
         db_name, table.name, order_by, offset
     );
-    info!("Initial data load query: {}", query);
+    info!("<DCM> Initial data load query: {}", query);
     let stream = client
         .query(query)
         .stream()
         .map(move |row| row_to_json(&row?, &enum_mapping));
-    info!("Got initial data load stream.");
+    info!("<DCM> Got initial data load stream.");
     Ok(Box::pin(stream))
 }
 

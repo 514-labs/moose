@@ -46,6 +46,7 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 
 use crate::utilities::constants::API_FILE;
+use crate::utilities::constants::BLOCKS_DIR;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA;
@@ -377,6 +378,17 @@ impl Project {
 
         debug!("Aggregations dir: {:?}", aggregations_dir);
         aggregations_dir
+    }
+
+    pub fn blocks_dir(&self) -> PathBuf {
+        let blocks_dir = self.app_dir().join(BLOCKS_DIR);
+
+        if !blocks_dir.exists() {
+            std::fs::create_dir_all(&blocks_dir).expect("Failed to create blocks directory");
+        }
+
+        debug!("Blocks dir: {:?}", blocks_dir);
+        blocks_dir
     }
 
     pub fn consumption_dir(&self) -> PathBuf {

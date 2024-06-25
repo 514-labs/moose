@@ -9,12 +9,14 @@ use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use super::ts_node;
 
 const AGGREGATION_RUNNER_WRAPPER: &str = include_str!("ts_scripts/aggregation.ts");
+const BLOCKS_RUNNER_WRAPPER: &str = include_str!("ts_scripts/blocks.ts");
 
 // TODO: Abstract away ClickhouseConfig to support other databases
 // TODO: Bubble up compilation errors to the user
 pub fn run(
     clickhouse_config: ClickHouseConfig,
     aggregations_path: &Path,
+    is_blocks: bool,
 ) -> Result<Child, AggregationError> {
     let host_port = clickhouse_config.host_port.to_string();
     let use_ssl = clickhouse_config.use_ssl.to_string();
@@ -28,7 +30,11 @@ pub fn run(
         &use_ssl,
     ];
 
-    let mut aggregation_process = ts_node::run(AGGREGATION_RUNNER_WRAPPER, &args)?;
+    let mut aggregation_process = if is_blocks {
+        ts_node::run(BLOCKS_RUNNER_WRAPPER, &args)?
+    } else {
+        ts_node::run(AGGREGATION_RUNNER_WRAPPER, &args)?
+    };
 
     let stdout = aggregation_process
         .stdout

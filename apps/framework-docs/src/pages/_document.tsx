@@ -8,6 +8,7 @@ export default function Document() {
       <Script
         src="https://analytics.514.dev/script.js"
         data-host="https://moosefood.514.dev"
+        data-event="PageViewEvent/0.5"
       />
       <body>
         <Main />

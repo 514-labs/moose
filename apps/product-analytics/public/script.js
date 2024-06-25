@@ -436,6 +436,8 @@
     proxy = document.currentScript.getAttribute("data-proxy");
     token = document.currentScript.getAttribute("data-token");
     domain = document.currentScript.getAttribute("data-domain");
+    page_event = document.currentScript.getAttribute("data-event");
+
     DATASOURCE =
       document.currentScript.getAttribute("data-datasource") || DATASOURCE;
   }
@@ -595,7 +597,7 @@
 
     // Wait a bit for SPA routers
     setTimeout(() => {
-      _sendEvent("PageViewEvent/0.0", {
+      _sendEvent(page_event, {
         referrer: document.referrer,
         href: window.location.href,
       });

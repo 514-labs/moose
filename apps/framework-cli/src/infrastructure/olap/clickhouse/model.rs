@@ -177,7 +177,7 @@ impl ClickHouseValue {
             ClickHouseValue::Boolean(v) => v.clone(),
             ClickHouseValue::ClickhouseInt(v) => v.clone(),
             ClickHouseValue::ClickhouseFloat(v) => v.clone(),
-            ClickHouseValue::DateTime(v) => v.clone(),
+            ClickHouseValue::DateTime(v) => format!("'{}'", v),
             ClickHouseValue::Array(v) => format!(
                 "[{}]",
                 v.iter()

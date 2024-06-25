@@ -301,6 +301,47 @@ pub async fn set_up_topic_and_tables_and_route(
         &fo.table,
         &previous_fo_opt.and_then(|previous_fo| previous_fo.table.clone()),
     ) {
+        // This is in the case where the user deactivates the storage for a data model
+        (Some(previous_fo), None, _) if previous_fo.data_model.columns == fo.data_model.columns => {
+            info!(
+                "Data model {} has not changed, Storage is deactivated, using previous version table {} and topic {}",
+                fo.data_model.name,
+                previous_fo
+                    .table
+                    .clone()
+                    .map(|table| { table.name })
+                    .unwrap_or("None".to_string()),
+                previous_fo.topic
+            );
+
+            // In this case no need for a topic on the current table since it is all the same as the previous table.
+            match redpanda::delete_topics(&project.redpanda_config, vec![topic]).await {
+                Ok(_) => info!("Topics deleted successfully"),
+                Err(e) => warn!("Failed to delete topics: {}", e),
+            }
+
+            // In the case where we use a view here, we need to use the previous topic that was set
+            // That topic may be the topic of n - 2 version of the data model. Right now the Route object
+            // is where this is kept.
+            // this is a gross way to find the previous ingest route
+            let previous_version = previous_version.as_ref().unwrap().0.as_str();
+            let old_base_path = project.old_version_location(previous_version)?;
+            let old_ingest_route = schema_file_path_to_ingest_route(
+                &old_base_path,
+                &previous_fo.original_file_path,
+                fo.data_model.name.clone(),
+                previous_version,
+            );
+
+            route_table
+                .get(&old_ingest_route)
+                .unwrap()
+                // this might be chained multiple times,
+                // so we cannot just use the previous.table.name
+                .topic_name
+                .clone()
+        }
+
         // In the case where the previous version of the data model and the new version of the data model are the same
         // we just need to use pointers to the old table and topic
         (Some(previous_fo), Some(current_table), Some(previous_table))
@@ -322,15 +363,13 @@ pub async fn set_up_topic_and_tables_and_route(
                 Err(e) => warn!("Failed to delete topics: {}", e),
             }
 
-            if fo.data_model.config.storage.enabled {
-                create_or_replace_table_alias(
-                    current_table,
-                    previous_table,
-                    configured_client,
-                    project.is_production,
-                )
-                .await?;
-            }
+            create_or_replace_table_alias(
+                current_table,
+                previous_table,
+                configured_client,
+                project.is_production,
+            )
+            .await?;
 
             // In the case where we use a view here, we need to use the previous topic that was set
             // That topic may be the topic of n - 2 version of the data model. Right now the Route object

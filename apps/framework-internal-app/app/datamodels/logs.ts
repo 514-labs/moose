@@ -5,7 +5,7 @@ export const LogsConfig: DataModelConfig<Logs> = {
     format: IngestionFormat.JSON,
   },
   storage: {
-    enabled: true,
+    enabled: false,
     order_by_fields: ["resourceLogs"],
   },
 };

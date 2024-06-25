@@ -1,4 +1,5 @@
 pub mod aggregation;
+pub mod consumption;
 pub mod executor;
 pub mod flow;
 pub mod parser;

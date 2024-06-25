@@ -196,8 +196,6 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
                 .with_batch_exporter(otel_exporter, opentelemetry_sdk::runtime::Tokio)
                 .build();
 
-            //panic!("{}", String::from(session_id.as_str()));
-
             let logger: Box<dyn log::Log> = Box::new(TargetToKvLogger {
                 inner: OpenTelemetryLogBridge::new(&logger_provider),
             });

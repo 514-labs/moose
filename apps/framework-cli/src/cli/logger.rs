@@ -129,7 +129,7 @@ impl Default for LoggerSettings {
 }
 
 // TODO ensure that the log file rotates after a certain size
-pub fn setup_logging(settings: &LoggerSettings) -> Result<(), fern::InitError> {
+pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), fern::InitError> {
     let session_id = CONTEXT.get(CTX_SESSION_ID).unwrap();
 
     let base_config = fern::Dispatch::new().level(settings.level.to_log_level());
@@ -191,6 +191,7 @@ pub fn setup_logging(settings: &LoggerSettings) -> Result<(), fern::InitError> {
                 .with_config(Config::default().with_resource(Resource::new(vec![
                     KeyValue::new(SERVICE_NAME, "moose-cli"),
                     KeyValue::new("session_id", session_id.as_str()),
+                    KeyValue::new("machine_id", String::from(machine_id)),
                 ])))
                 .with_batch_exporter(otel_exporter, opentelemetry_sdk::runtime::Tokio)
                 .build();

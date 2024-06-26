@@ -13,8 +13,30 @@ export default function run(source: Logs): ParsedLogs[] {
           severityNumber: logRecord.severityNumber,
           severityLevel: logRecord.severityText,
           source: logRecord.attributes[0].value.stringValue,
-          sessionId: resourceLog.resource.attributes[0].key,
-          serviceName: resourceLog.resource.attributes[1].key,
+          sessionId: resourceLog.resource.attributes
+            .filter((v) => {
+              return v.key === "session_id";
+            })
+            .map((obj) => {
+              return obj.value.stringValue;
+            })
+            .join(""),
+          serviceName: resourceLog.resource.attributes
+            .filter((v) => {
+              return v.key !== "machine_id" && v.key !== "session_id";
+            })
+            .map((obj) => {
+              return obj.value.stringValue;
+            })
+            .join(""),
+          machineId: resourceLog.resource.attributes
+            .filter((v) => {
+              return v.key === "machine_id";
+            })
+            .map((obj) => {
+              return obj.value.stringValue;
+            })
+            .join(""),
         });
       }
     }

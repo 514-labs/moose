@@ -619,7 +619,7 @@ pub async fn cli_run() {
     init_config_file().unwrap();
 
     let config = read_settings().unwrap();
-    setup_logging(&config.logger).expect("Failed to setup logging");
+    setup_logging(&config.logger, &config.telemetry.machine_id).expect("Failed to setup logging");
 
     info!("CLI Configuration loaded and logging setup: {:?}", config);
 

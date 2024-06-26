@@ -76,4 +76,5 @@ export interface ParsedLogs {
   source: string;
   sessionId: string;
   serviceName: string;
+  machineId: string;
 }

@@ -181,9 +181,9 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
                 .with_protocol(Protocol::HttpJson)
                 .with_http_client(HyperClient::new_with_timeout(
                     client,
-                    Duration::from_millis(100),
+                    Duration::from_millis(5000),
                 ))
-                .with_timeout(Duration::from_millis(100))
+                .with_timeout(Duration::from_millis(5000))
                 .build_log_exporter()
                 .unwrap();
 

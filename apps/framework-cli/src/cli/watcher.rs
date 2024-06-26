@@ -447,7 +447,11 @@ pub async fn process_aggregations_changes(
 ) -> anyhow::Result<()> {
     aggregations_process_registry.stop().await?;
     aggregations_process_registry.start(Aggregation {
-        dir: project.aggregations_dir(),
+        dir: if aggregations_process_registry.is_blocks_enabled() {
+            project.blocks_dir()
+        } else {
+            project.aggregations_dir()
+        },
     })?;
 
     Ok(())

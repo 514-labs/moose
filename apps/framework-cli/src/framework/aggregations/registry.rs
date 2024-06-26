@@ -14,7 +14,6 @@ pub struct AggregationProcessRegistry {
     registry: HashMap<String, Child>,
     language: SupportedLanguages,
     clickhouse_config: ClickHouseConfig,
-    #[allow(dead_code)]
     features: Features,
 }
 
@@ -34,7 +33,11 @@ impl AggregationProcessRegistry {
 
     pub fn start(&mut self, aggregation: Aggregation) -> Result<(), AggregationError> {
         info!("Starting aggregation {:?}...", aggregation);
-        let child = aggregation.start(self.language, self.clickhouse_config.clone())?;
+        let child = aggregation.start(
+            self.language,
+            self.clickhouse_config.clone(),
+            self.features.blocks,
+        )?;
 
         self.registry.insert(aggregation.id(), child);
 
@@ -51,5 +54,9 @@ impl AggregationProcessRegistry {
         self.registry.clear();
 
         Ok(())
+    }
+
+    pub fn is_blocks_enabled(&self) -> bool {
+        self.features.blocks
     }
 }

@@ -88,11 +88,7 @@ const main = async () => {
   for (const path of blocksFiles) {
     console.log(`Adding to queue: ${path}`);
 
-    const blocksImport = await import(path);
-    const blocks: Blocks = {
-      setup: blocksImport.setup,
-      teardown: blocksImport.teardown,
-    };
+    const blocks = (await import(path)).default as Blocks;
 
     queue.push({
       chClient,

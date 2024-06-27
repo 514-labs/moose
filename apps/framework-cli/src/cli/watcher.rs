@@ -331,18 +331,6 @@ async fn watch(
                 let bucketed_events = EventBuckets::new(events);
 
                 if bucketed_events.non_empty() {
-                    {
-                        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
-                        let aggregations = project.get_aggregations();
-                        store_current_state(
-                            &mut client,
-                            framework_object_versions,
-                            &aggregations,
-                            &project.clickhouse_config,
-                        )
-                        .await?
-                    }
-
                     if !bucketed_events.data_models.is_empty() {
                         with_spinner_async(
                             &format!(
@@ -406,6 +394,18 @@ async fn watch(
                             !project.is_production,
                         )
                         .await?;
+                    }
+
+                    {
+                        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+                        let aggregations = project.get_aggregations();
+                        store_current_state(
+                            &mut client,
+                            framework_object_versions,
+                            &aggregations,
+                            &project.clickhouse_config,
+                        )
+                        .await?
                     }
 
                     let _ = verify_flows_against_datamodels(&project, framework_object_versions);

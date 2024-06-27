@@ -16,9 +16,10 @@ console = "0.15.7"
 thiserror = "1.0.59"
 hyper = { version = "1", features = ["full"] }
 hyper-tls = "0.6.0"
+notify-debouncer-full = { version = "0.3.1", default-features = false }
 notify = { version = "6.1.1", default-features = false, features = [
     "macos_kqueue",
-] }
+]}
 toml = "0.5.8"
 serde = { version = "1.0", features = ["derive"] }
 config = { version = "0.13.1", features = ["toml"] }

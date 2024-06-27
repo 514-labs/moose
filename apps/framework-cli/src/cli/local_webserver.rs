@@ -10,7 +10,6 @@ use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 
-use crate::infrastructure::console::ConsoleConfig;
 use crate::project::Project;
 use bytes::Buf;
 use http_body_util::BodyExt;
@@ -140,7 +139,6 @@ struct RouteService {
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
     consumption_apis: &'static RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
-    console_config: ConsoleConfig,
     current_version: String,
     is_prod: bool,
 }
@@ -157,7 +155,6 @@ impl Service<Request<Incoming>> for RouteService {
             self.route_table,
             self.consumption_apis,
             self.configured_producer.clone(),
-            self.console_config.clone(),
             self.host.clone(),
             self.is_prod,
         ))
@@ -187,17 +184,6 @@ fn health_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     Ok(response)
 }
 
-fn is_curl<B>(req: &Request<B>) -> bool {
-    req.headers().get("User-Agent").map_or_else(
-        || false,
-        |user_agent| {
-            user_agent
-                .to_str()
-                .map_or_else(|_| false, |s| s.starts_with("curl"))
-        },
-    )
-}
-
 fn bad_json_response(e: serde_json::Error) -> Response<Full<Bytes>> {
     show_message!(
         MessageType::Error,
@@ -213,11 +199,7 @@ fn bad_json_response(e: serde_json::Error) -> Response<Full<Bytes>> {
         .unwrap()
 }
 
-fn success_response(
-    console_config: &ConsoleConfig,
-    is_curl: bool,
-    uri: String,
-) -> Response<Full<Bytes>> {
+fn success_response(uri: String) -> Response<Full<Bytes>> {
     show_message!(
         MessageType::Success,
         Message {
@@ -225,16 +207,8 @@ fn success_response(
             details: uri.clone(),
         }
     );
-    let response_bytes = if is_curl {
-        Bytes::from(format!(
-            "Success! Go to http://localhost:{} to view your data!",
-            console_config.host_port
-        ))
-    } else {
-        Bytes::from("SUCCESS")
-    };
 
-    Response::new(Full::new(response_bytes))
+    Response::new(Full::new(Bytes::from("SUCCESS")))
 }
 
 fn internal_server_error_response() -> Response<Full<Bytes>> {
@@ -265,14 +239,12 @@ async fn send_payload_to_topic(
 }
 
 async fn handle_json_req(
-    console_config: &ConsoleConfig,
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
     req: Request<Incoming>,
 ) -> Response<Full<Bytes>> {
     // TODO probably a refactor to be done here with the array json but it doesn't seem to be
     // straighforward to do it in a generic way.
-    let is_curl = is_curl(&req);
     let url = req.uri().to_string();
     let body = req.collect().await.unwrap().aggregate();
     let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body.reader());
@@ -291,18 +263,16 @@ async fn handle_json_req(
         return internal_server_error_response();
     }
 
-    success_response(console_config, is_curl, url)
+    success_response(url)
 }
 
 async fn handle_json_array_body(
-    console_config: &ConsoleConfig,
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
     req: Request<Incoming>,
 ) -> Response<Full<Bytes>> {
     // TODO probably a refactor to be done here with the json but it doesn't seem to be
     // straighforward to do it in a generic way.
-    let is_curl = is_curl(&req);
     let url = req.uri().to_string();
     let body = req.collect().await.unwrap().aggregate().reader();
     let parsed: Result<Vec<Value>, serde_json::Error> = serde_json::from_reader(body);
@@ -320,7 +290,7 @@ async fn handle_json_array_body(
         return internal_server_error_response();
     }
 
-    success_response(console_config, is_curl, url)
+    success_response(url)
 }
 
 async fn ingest_route(
@@ -328,7 +298,6 @@ async fn ingest_route(
     route: PathBuf,
     configured_producer: ConfiguredProducer,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
-    console_config: ConsoleConfig,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     show_message!(
         MessageType::Info,
@@ -340,37 +309,27 @@ async fn ingest_route(
 
     match route_table.read().await.get(&route) {
         Some(route_meta) => match route_meta.format {
-            EndpointIngestionFormat::Json => Ok(handle_json_req(
-                &console_config,
-                &configured_producer,
-                &route_meta.topic_name,
-                req,
-            )
-            .await),
-            EndpointIngestionFormat::JsonArray => Ok(handle_json_array_body(
-                &console_config,
-                &configured_producer,
-                &route_meta.topic_name,
-                req,
-            )
-            .await),
+            EndpointIngestionFormat::Json => {
+                Ok(handle_json_req(&configured_producer, &route_meta.topic_name, req).await)
+            }
+            EndpointIngestionFormat::JsonArray => {
+                Ok(handle_json_array_body(&configured_producer, &route_meta.topic_name, req).await)
+            }
         },
         None => Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Full::new(Bytes::from(
-                "Please visit /console to view your routes",
+                "Please run `moose ls` to view your routes",
             ))),
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 async fn router(
     req: Request<hyper::body::Incoming>,
     current_version: String,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     consumption_apis: &RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
-    console_config: ConsoleConfig,
     host: String,
     is_prod: bool,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
@@ -400,12 +359,11 @@ async fn router(
                 route.join(current_version),
                 configured_producer,
                 route_table,
-                console_config,
             )
             .await
         }
         (&hyper::Method::POST, ["ingest", _, _]) => {
-            ingest_route(req, route, configured_producer, route_table, console_config).await
+            ingest_route(req, route, configured_producer, route_table).await
         }
 
         (&hyper::Method::GET, ["consumption", _rt]) => {
@@ -474,7 +432,7 @@ impl Webserver {
             MessageType::Highlight,
             Message {
                 action: "Next Steps".to_string(),
-                details: format!("\n\n💻 Open Developer Console\n\tGo to 👉 http://{}:{} 👈 for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: http://{}:{}/ingest\n", project.http_server_config.host.clone(), project.console_config.host_port, project.http_server_config.host.clone(), socket.port()),
+                details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: http://{}:{}/ingest\n", project.http_server_config.host.clone(), socket.port()),
             }
         );
         }
@@ -490,7 +448,6 @@ impl Webserver {
             consumption_apis,
             current_version: project.cur_version().to_string(),
             configured_producer: producer,
-            console_config: project.console_config.clone(),
             is_prod: project.is_production,
         };
 

@@ -21,7 +21,8 @@ use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
-use routines::ls::list_all;
+use routines::ls::{list_db, list_streaming};
+use routines::plan;
 use routines::ps::show_processes;
 use settings::{read_settings, Settings};
 
@@ -110,6 +111,7 @@ async fn top_command_handler(
             location,
             template,
             no_fail_already_exists,
+            empty,
         } => {
             info!(
                 "Running init command with name: {}, language: {}, location: {:?}, template: {:?}",
@@ -158,7 +160,7 @@ async fn top_command_handler(
 
                     debug!("Project: {:?}", project_arc);
 
-                    initialize_project(&project_arc)?.show();
+                    initialize_project(&project_arc, empty)?.show();
 
                     project_arc
                         .write_to_disk()
@@ -272,7 +274,7 @@ async fn top_command_handler(
             check_project_name(&project_arc.name())?;
             run_local_infrastructure(&project_arc)?.show();
 
-            routines::start_development_mode(project_arc)
+            routines::start_development_mode(project_arc, settings.features)
                 .await
                 .map_err(|e| {
                     RoutineFailure::error(Message {
@@ -378,11 +380,36 @@ async fn top_command_handler(
 
             check_project_name(&project_arc.name())?;
 
-            routines::start_production_mode(project_arc).await.unwrap();
+            routines::start_production_mode(project_arc, settings.features)
+                .await
+                .unwrap();
 
             Ok(RoutineSuccess::success(Message::new(
                 "Ran".to_string(),
                 "production infrastructure".to_string(),
+            )))
+        }
+        Commands::Plan {} => {
+            info!("Running plan command");
+            let project = load_project()?;
+
+            crate::utilities::capture::capture!(
+                ActivityType::PlanCommand,
+                project.name().clone(),
+                &settings
+            );
+
+            check_project_name(&project.name())?;
+            plan(&project).await.map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Plan".to_string(),
+                    details: format!("Failed to plan changes: {:?}", e),
+                })
+            })?;
+
+            Ok(RoutineSuccess::success(Message::new(
+                "Plan".to_string(),
+                "Successfuly planned changes to the infrastructure".to_string(),
             )))
         }
         Commands::BumpVersion { new_version } => {
@@ -549,7 +576,11 @@ async fn top_command_handler(
 
             show_processes(project_arc)
         }
-        Commands::Ls { version, limit } => {
+        Commands::Ls {
+            version,
+            limit,
+            streaming,
+        } => {
             info!("Running ls command");
 
             let project = load_project()?;
@@ -561,7 +592,11 @@ async fn top_command_handler(
                 &settings
             );
 
-            list_all(project_arc, version, limit).await
+            if *streaming {
+                list_streaming(project_arc, limit).await
+            } else {
+                list_db(project_arc, version, limit).await
+            }
         }
     }
 }
@@ -584,7 +619,7 @@ pub async fn cli_run() {
     init_config_file().unwrap();
 
     let config = read_settings().unwrap();
-    setup_logging(&config.logger).expect("Failed to setup logging");
+    setup_logging(&config.logger, &config.telemetry.machine_id).expect("Failed to setup logging");
 
     info!("CLI Configuration loaded and logging setup: {:?}", config);
 

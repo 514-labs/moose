@@ -30,27 +30,19 @@ pub enum Commands {
         /// By default, the init command fails if the location directory exists, to prevent accidental reruns. This flag disables the check.
         #[arg(long)]
         no_fail_already_exists: bool,
+
+        /// Create basic Moose project without examples
+        #[arg(short, long, default_value = "false")]
+        empty: bool,
     },
     /// Builds your moose project
     Build {
         #[arg(short, long)]
         docker: bool,
     },
-    // Link {
-    //     /// Name of your client application or service (ex. `my-blog`)
-    //     name: String,
-
-    //     /// Language of your app or service
-    //     #[arg(default_value_t = SupportedLanguages::Typescript, value_enum)]
-    //     language: SupportedLanguages,
-
-    //     /// Location of your app or service
-    //     #[arg(default_value = ".")]
-    //     location: String,
-
-    //     /// Name of the project to link to. Pulls the list of projects from the config file
-    //     project: String,
-    // },
+    /// [Not Ready] Displays the changes that will be applied to the infrastructure during the next deployment
+    /// to production, consdering the current state of the project
+    Plan {},
     /// Starts a local development environment to build your data-intensive app or service
     Dev {},
     /// Start a remote environment for use in cloud deployments
@@ -85,9 +77,13 @@ pub enum Commands {
         #[arg(short, long, default_value = "10")]
         limit: u16,
 
-        /// View a specific version (default: latest)
+        /// View a specific version of data models & database infrastructure (default: latest)
         #[arg(short, long)]
         version: Option<String>,
+
+        /// View streaming topics
+        #[arg(short, long, default_value = "false")]
+        streaming: bool,
     },
 }
 

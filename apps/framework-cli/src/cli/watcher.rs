@@ -1,16 +1,15 @@
+use log::{debug, info, warn};
+use notify::{Event, RecursiveMode, Watcher};
+use notify_debouncer_full::new_debouncer;
 use std::collections::HashSet;
 use std::ops::DerefMut;
-use std::sync::mpsc::TryRecvError;
 use std::sync::Arc;
+use std::time::Duration;
 use std::{
     collections::HashMap,
     io::{Error, ErrorKind},
     path::PathBuf,
 };
-
-use anyhow::bail;
-use log::{debug, info, warn};
-use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::RwLock;
 
 use crate::framework::consumption::model::Consumption;
@@ -28,8 +27,8 @@ use crate::framework::data_model::{is_schema_file, DuplicateModelError};
 use crate::framework::flows::loader::get_all_current_flows;
 use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::framework::registry::model::ProcessRegistries;
-use crate::infrastructure::console::post_current_state_to_console;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
+use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
 use crate::infrastructure::stream::redpanda;
 use crate::project::AggregationSet;
 use crate::utilities::constants::{AGGREGATIONS_DIR, CONSUMPTION_DIR, FLOWS_DIR, SCHEMAS_DIR};
@@ -302,46 +301,48 @@ async fn watch(
     project_registries: &mut ProcessRegistries,
 ) -> Result<(), anyhow::Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
-    let configured_producer = redpanda::create_producer(project.redpanda_config.clone());
 
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, mut rx) = tokio::sync::mpsc::channel(32);
 
-    let mut watcher = RecommendedWatcher::new(tx, Config::default()).map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to create file watcher: {}", e),
-        )
+    let mut debouncer = new_debouncer(Duration::from_secs(2), None, move |res| {
+        let _ = tx
+            .blocking_send(res)
+            .map_err(|e| log::error!("Failed to watcher send debounced event: {:?}", e));
     })?;
 
-    watcher
+    debouncer
+        .watcher()
         .watch(project.app_dir().as_ref(), RecursiveMode::Recursive)
         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to watch file: {}", e)))?;
 
-    loop {
-        // FIXME: we're blocking a thread in tokio
-        let res = rx.recv().unwrap();
+    while let Some(res) = rx.recv().await {
         match res {
-            Ok(event) => {
-                let mut events = vec![event];
-                loop {
-                    match rx.try_recv() {
-                        // pull all events and process them in one go
-                        Ok(Ok(event)) => events.push(event),
-                        Ok(Err(e)) => {
-                            warn!("File watcher event caused a failure: {}", e);
-                            break;
-                        }
-                        Err(TryRecvError::Empty) => break,
-                        Err(TryRecvError::Disconnected) => {
-                            warn!("File watcher channel disconnected");
-                            break;
-                        }
-                    }
+            Ok(debounced_events) => {
+                let events = debounced_events
+                    .into_iter()
+                    .filter(|event| !event.kind.is_access() && !event.kind.is_other())
+                    .map(|debounced_event| debounced_event.event)
+                    .collect::<Vec<_>>();
+
+                if events.is_empty() {
+                    continue;
                 }
 
                 let bucketed_events = EventBuckets::new(events);
 
                 if bucketed_events.non_empty() {
+                    {
+                        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+                        let aggregations = project.get_aggregations();
+                        store_current_state(
+                            &mut client,
+                            framework_object_versions,
+                            &aggregations,
+                            &project.clickhouse_config,
+                        )
+                        .await?
+                    }
+
                     if !bucketed_events.data_models.is_empty() {
                         with_spinner_async(
                             &format!(
@@ -408,21 +409,17 @@ async fn watch(
                     }
 
                     let _ = verify_flows_against_datamodels(&project, framework_object_versions);
-
-                    let _ = post_current_state_to_console(
-                        project.clone(),
-                        &configured_client,
-                        &configured_producer,
-                        framework_object_versions,
-                    )
-                    .await;
                 }
             }
-            Err(error) => {
-                bail!("File watcher event caused a failure: {}", error);
+            Err(errors) => {
+                for error in errors {
+                    log::error!("Watcher Error: {:?}", error);
+                }
             }
         }
     }
+
+    Ok(())
 }
 
 /**
@@ -450,7 +447,11 @@ pub async fn process_aggregations_changes(
 ) -> anyhow::Result<()> {
     aggregations_process_registry.stop().await?;
     aggregations_process_registry.start(Aggregation {
-        dir: project.aggregations_dir(),
+        dir: if aggregations_process_registry.is_blocks_enabled() {
+            project.blocks_dir()
+        } else {
+            project.aggregations_dir()
+        },
     })?;
 
     Ok(())

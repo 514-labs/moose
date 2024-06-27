@@ -137,6 +137,12 @@ a single object, or an array of objects. This structured approach ensures
 clarity in your data processing tasks, enabling Moose to efficiently handle and
 automate data flows.
 
+#### Splitting Data Into Multiple Entries
+
+To create multiple entries you can return a array of the destination data model.
+For example using the code above you can return an array with a type of `ParsedActivity[]`.
+MooseJS would convert each object inside of the array into a seperate database entry.
+
 # Validate Your Flow
 
 To test and confirm your flow's logic:

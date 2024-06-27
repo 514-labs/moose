@@ -28,5 +28,6 @@ export type DataModelConfig<T> = Partial<{
   };
 }>;
 
+export * from "./blocks";
 export * from "./commons";
 export * from "./consumption-helpers";

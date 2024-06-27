@@ -39,14 +39,3 @@ services:
       nofile:
         soft: 20000
         hard: 40000
-  console:
-    image: docker.io/514labs/moose-console:${CONSOLE_VERSION:-latest}
-    pull_policy: ${CONSOLE_PULL_POLICY:-missing}
-    environment:
-      - CLICKHOUSE_DB=${DB_NAME:-local}
-      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-panda}
-      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-pandapass}
-      - CLICKHOUSE_HOST=clickhousedb
-      - CLICKHOUSE_PORT=8123
-    ports:
-      - "${CONSOLE_HOST_PORT:-3001}:3000"

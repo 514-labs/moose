@@ -90,7 +90,7 @@ WORKDIR /application
 COPY ./app ./app
 COPY ./package.json ./package.json
 
-// https://stackoverflow.com/questions/70096208/dockerfile-copy-folder-if-it-exists-conditional-copy/70096420#70096420
+# https://stackoverflow.com/questions/70096208/dockerfile-copy-folder-if-it-exists-conditional-copy/70096420#70096420
 COPY ./project.tom[l] ./project.toml
 COPY ./moose.config.tom[l] ./moose.config.toml
 COPY ./versions .moose/versions

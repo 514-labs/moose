@@ -53,12 +53,13 @@ use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS;
 use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
+use crate::utilities::constants::PROJECT_CONFIG_FILE;
 use crate::utilities::constants::PY_AGGREGATIONS_FILE;
 use crate::utilities::constants::PY_FLOW_FILE;
 use crate::utilities::constants::README_PREFIX;
 use crate::utilities::constants::TS_AGGREGATIONS_FILE;
 use crate::utilities::constants::{
-    AGGREGATIONS_DIR, CONSUMPTION_DIR, FLOWS_DIR, PROJECT_CONFIG_FILE, SAMPLE_FLOWS_DEST,
+    AGGREGATIONS_DIR, CONSUMPTION_DIR, FLOWS_DIR, OLD_PROJECT_CONFIG_FILE, SAMPLE_FLOWS_DEST,
     SAMPLE_FLOWS_SOURCE, TS_FLOW_FILE,
 };
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
@@ -175,7 +176,13 @@ impl Project {
 
     pub fn load(directory: &PathBuf) -> Result<Project, ConfigError> {
         let mut project_file = directory.clone();
-        project_file.push(PROJECT_CONFIG_FILE);
+
+        // Prioritize the new project file name
+        if directory.clone().join(PROJECT_CONFIG_FILE).exists() {
+            project_file.push(PROJECT_CONFIG_FILE);
+        } else {
+            project_file.push(OLD_PROJECT_CONFIG_FILE);
+        }
 
         let mut project_config: Project = Config::builder()
             // TODO: consider putting the defaults into a source (e.g. include_str a toml file)
@@ -216,8 +223,9 @@ impl Project {
     }
 
     pub fn write_to_disk(&self) -> Result<(), ProjectFileError> {
-        // Write to disk what is common to all project types, the project.toml
+        // Write to disk what is common to all project types, the moose.config.toml
         let project_file = self.project_location.join(PROJECT_CONFIG_FILE);
+
         let toml_project = toml::to_string(&self)?;
 
         std::fs::write(project_file, toml_project)?;

@@ -40,7 +40,7 @@ and the inside of your app folder should look like the following:
   <FileTree.Folder name="dcm-walkthrough" defaultOpen>
     <FileTree.File name="README.md" />
     <FileTree.File name="package.json" />
-    <FileTree.File name="project.toml" />
+    <FileTree.File name="moose.config.toml" />
     <FileTree.Folder name="app" defaultOpen>
       <FileTree.Folder name="datamodels" defaultOpen>
         <FileTree.File name="models.ts" />
@@ -125,9 +125,9 @@ Let's see this in action.
   </Tabs.Tab>
 </Tabs>
 
-It will bump the version in your package.json file and add a pointer between the git commit and the previous version to the project.toml file.
+It will bump the version in your package.json file and add a pointer between the git commit and the previous version to the moose.config.toml file.
 
-```toml filename="./project.toml"
+```toml filename="./moose.config.toml"
 [supported_old_versions]
 "0.0" = "263297f"
 ```

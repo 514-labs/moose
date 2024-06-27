@@ -24,6 +24,8 @@ import { Text } from "@514labs/design-system-components/typography";
 import React from "react";
 import { UsecasesSection } from "./sections/home/UsecasesSection";
 import { LooseMooseSection } from "./sections/home/LooseMooseSection";
+import Diagram from "./spline";
+import DiagramSection from "./sections/home/DiagramSection";
 
 export const CTAText = ({
   className,
@@ -102,6 +104,7 @@ export default function Home() {
       <WhyMooseSection />
 
       {/* <HowItWorksSection /> */}
+      <DiagramSection />
 
       <TemplateHeaderSection />
       <TemplatesSection />

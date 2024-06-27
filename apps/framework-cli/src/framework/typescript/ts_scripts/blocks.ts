@@ -39,11 +39,10 @@ const clickhouseConfig = {
 const createBlocks = async (chClient: ClickHouseClient, blocks: Blocks) => {
   for (const query of blocks.setup) {
     try {
+      console.log(`Creating block using query ${query}`);
       await chClient.command({ query });
-      console.log(`Created block using query ${query}`);
     } catch (err) {
       console.error(`Failed to create a block: ${err}`);
-
       if (err && JSON.stringify(err).includes(`UNKNOWN_TABLE`)) {
         throw new DependencyError(err.toString());
       }
@@ -54,8 +53,8 @@ const createBlocks = async (chClient: ClickHouseClient, blocks: Blocks) => {
 const deleteBlocks = async (chClient: ClickHouseClient, blocks: Blocks) => {
   for (const query of blocks.teardown) {
     try {
+      console.log(`Deleting block using query ${query}`);
       await chClient.command({ query });
-      console.log(`Deleted block using query ${query}`);
     } catch (err) {
       console.error(`Failed to delete block: ${err}`);
     }

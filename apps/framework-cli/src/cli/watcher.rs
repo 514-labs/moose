@@ -31,7 +31,9 @@ use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
 use crate::infrastructure::stream::redpanda;
 use crate::project::AggregationSet;
-use crate::utilities::constants::{AGGREGATIONS_DIR, CONSUMPTION_DIR, FLOWS_DIR, SCHEMAS_DIR};
+use crate::utilities::constants::{
+    AGGREGATIONS_DIR, BLOCKS_DIR, CONSUMPTION_DIR, FLOWS_DIR, SCHEMAS_DIR,
+};
 use crate::{
     framework::controller::RouteMeta,
     infrastructure::olap::{self, clickhouse::ConfiguredDBClient},
@@ -255,6 +257,11 @@ impl EventBuckets {
                 } else if event.paths.iter().any(|path: &PathBuf| {
                     path.iter()
                         .any(|component| component.eq_ignore_ascii_case(AGGREGATIONS_DIR))
+                }) {
+                    aggregations.push(event);
+                } else if event.paths.iter().any(|path: &PathBuf| {
+                    path.iter()
+                        .any(|component| component.eq_ignore_ascii_case(BLOCKS_DIR))
                 }) {
                     aggregations.push(event);
                 } else if event.paths.iter().any(|path: &PathBuf| {

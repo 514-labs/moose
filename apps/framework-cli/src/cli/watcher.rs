@@ -255,13 +255,10 @@ impl EventBuckets {
                 }) {
                     flows.push(event);
                 } else if event.paths.iter().any(|path: &PathBuf| {
-                    path.iter()
-                        .any(|component| component.eq_ignore_ascii_case(AGGREGATIONS_DIR))
-                }) {
-                    aggregations.push(event);
-                } else if event.paths.iter().any(|path: &PathBuf| {
-                    path.iter()
-                        .any(|component| component.eq_ignore_ascii_case(BLOCKS_DIR))
+                    path.iter().any(|component| {
+                        component.eq_ignore_ascii_case(AGGREGATIONS_DIR)
+                            || component.eq_ignore_ascii_case(BLOCKS_DIR)
+                    })
                 }) {
                     aggregations.push(event);
                 } else if event.paths.iter().any(|path: &PathBuf| {

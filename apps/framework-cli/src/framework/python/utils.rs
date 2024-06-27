@@ -1,4 +1,4 @@
-use crate::framework::data_model::schema::{Column, ColumnDefaults, ColumnType};
+use crate::framework::core::infrastructure::table::{Column, ColumnDefaults, ColumnType};
 
 use super::parser::PythonParserError;
 

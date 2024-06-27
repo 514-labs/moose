@@ -25,7 +25,6 @@ use crate::project::Project;
 
 #[derive(Debug, Clone)]
 pub struct RouteMeta {
-    pub original_file_path: PathBuf,
     pub topic_name: String,
     pub format: EndpointIngestionFormat,
 }
@@ -417,7 +416,6 @@ pub async fn set_up_topic_and_tables_and_route(
     route_table.insert(
         ingest_route.clone(),
         RouteMeta {
-            original_file_path: fo.original_file_path.clone(),
             topic_name,
             format: fo.data_model.config.ingestion.format.clone(),
         },

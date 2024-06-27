@@ -6,6 +6,10 @@ use crate::cli::routines::Routine;
 use crate::cli::routines::RunMode;
 use crate::framework::controller::RouteMeta;
 
+use crate::framework::core::infrastructure::api_endpoint::APIType;
+use crate::framework::core::infrastructure_map::ApiChange;
+use crate::framework::core::infrastructure_map::Change;
+
 use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
@@ -40,6 +44,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
+use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -386,7 +391,7 @@ async fn router(
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug)]
 pub struct Webserver {
     host: String,
     port: u16,
@@ -405,6 +410,67 @@ impl Webserver {
             .unwrap()
     }
 
+    pub async fn spawn_api_update_listener(
+        &self,
+        route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
+    ) -> mpsc::Sender<ApiChange> {
+        log::info!("Spawning API update listener");
+
+        let (tx, mut rx) = mpsc::channel::<ApiChange>(32);
+
+        tokio::spawn(async move {
+            while let Some(api_change) = rx.recv().await {
+                let mut route_table = route_table.write().await;
+                match api_change {
+                    ApiChange::ApiEndpoint(Change::Added(api_endpoint)) => {
+                        log::info!("Adding route: {:?}", api_endpoint.path);
+                        match api_endpoint.api_type {
+                            APIType::INGRESS { target_topic } => {
+                                route_table.insert(
+                                    api_endpoint.path.clone(),
+                                    RouteMeta {
+                                        format: api_endpoint.format.clone(),
+                                        topic_name: target_topic,
+                                    },
+                                );
+                            }
+                            APIType::EGRESS => {
+                                log::warn!("Egress API not supported yet")
+                            }
+                        }
+                    }
+                    ApiChange::ApiEndpoint(Change::Removed(api_endpoint)) => {
+                        log::info!("Removing route: {:?}", api_endpoint.path);
+                        route_table.remove(&api_endpoint.path);
+                    }
+                    ApiChange::ApiEndpoint(Change::Updated { before, after }) => {
+                        match &after.api_type {
+                            APIType::INGRESS { target_topic } => {
+                                log::info!("Replacing route: {:?} with {:?}", before, after);
+
+                                route_table.remove(&before.path);
+                                route_table.insert(
+                                    after.path.clone(),
+                                    RouteMeta {
+                                        format: after.format.clone(),
+                                        topic_name: target_topic.clone(),
+                                    },
+                                );
+                            }
+                            APIType::EGRESS => {
+                                log::warn!("Egress API not supported yet")
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        tx
+    }
+
+    // TODO - when we retire the the old core, we should remove routeTable from the start method and using only
+    // the channel to update the routes
     pub async fn start(
         &self,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
@@ -416,7 +482,6 @@ impl Webserver {
 
         // We create a TcpListener and bind it to {project.http_server_config.host} on port {project.http_server_config.port}
         let listener = TcpListener::bind(socket).await.unwrap();
-
         let producer = redpanda::create_producer(project.redpanda_config.clone());
 
         show_message!(
@@ -429,12 +494,12 @@ impl Webserver {
 
         if !project.is_production {
             show_message!(
-            MessageType::Highlight,
-            Message {
-                action: "Next Steps".to_string(),
-                details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: http://{}:{}/ingest\n", project.http_server_config.host.clone(), socket.port()),
-            }
-        );
+                MessageType::Highlight,
+                Message {
+                    action: "Next Steps".to_string(),
+                    details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: http://{}:{}/ingest\n", project.http_server_config.host.clone(), socket.port()),
+                }
+            );
         }
 
         let mut sigterm =

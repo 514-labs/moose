@@ -1,13 +1,10 @@
 /// Deprecated - to be removed when we remove old version of the internal app.
 use std::path::{Path, PathBuf};
 
-use crate::{
-    framework::data_model::parser::FileObjects,
-    framework::data_model::schema::{
-        is_enum_type, Column, ColumnDefaults, ColumnType, DataEnum, DataModel, EnumMember,
-        EnumValue,
-    },
+use crate::framework::core::infrastructure::table::{
+    is_enum_type, Column, ColumnDefaults, ColumnType, DataEnum, EnumMember, EnumValue,
 };
+use crate::{framework::data_model::parser::FileObjects, framework::data_model::schema::DataModel};
 use diagnostics::{Diagnostics, FileId};
 use schema_ast::ast::{Attribute, Field, WithName};
 use schema_ast::{
@@ -116,7 +113,7 @@ fn prisma_model_to_datamodel(
         columns: columns?,
         name: schema_name,
         config: Default::default(),
-        file_path: file_path.to_path_buf(),
+        abs_file_path: file_path.to_path_buf(),
         version: version.to_string(),
     })
 }

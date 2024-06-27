@@ -8,7 +8,7 @@ use crate::cli::display::{Message, MessageType};
 use crate::framework::core::code_loader::{
     load_framework_objects, FrameworkObject, FrameworkObjectVersions,
 };
-use crate::framework::data_model::schema::ColumnType;
+use crate::framework::core::infrastructure::table::ColumnType;
 use crate::framework::typescript::templates::BASE_FLOW_TEMPLATE;
 use crate::project::Project;
 use crate::utilities::constants::TS_FLOW_FILE;

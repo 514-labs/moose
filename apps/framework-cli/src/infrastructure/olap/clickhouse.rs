@@ -1,9 +1,14 @@
 use clickhouse::Client;
 use crypto_hash::{hex_digest, Algorithm};
+use errors::ClickhouseError;
 use log::{debug, info};
+use mapper::std_table_to_clickhouse_table;
+use queries::{create_table_query, drop_table_query, ClickhouseEngine};
 use serde::{Deserialize, Serialize};
 
+use crate::framework::core::infrastructure_map::{Change, OlapChange};
 use crate::infrastructure::olap::clickhouse::model::{ClickHouseSystemTableRow, ClickHouseTable};
+use crate::project::Project;
 
 use self::config::ClickHouseConfig;
 use self::model::ClickHouseSystemTable;
@@ -17,71 +22,80 @@ pub mod model;
 pub mod queries;
 pub mod version_sync;
 
-#[cfg(test)]
-mod tests {
-    use crate::infrastructure::olap::clickhouse::model::{
-        ClickHouseColumn, ClickHouseColumnType, ClickHouseInt,
-    };
-    use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
+pub type QueryString = String;
 
-    #[test]
-    fn test_version_sync_function_generation() {
-        let columns = vec![
-            ClickHouseColumn {
-                name: "eventId".to_string(),
-                column_type: ClickHouseColumnType::String,
-                required: true,
-                unique: false,
-                primary_key: true,
-                default: None,
-            },
-            ClickHouseColumn {
-                name: "timestamp".to_string(),
-                column_type: ClickHouseColumnType::DateTime,
-                required: true,
-                unique: false,
-                primary_key: false,
-                default: None,
-            },
-            ClickHouseColumn {
-                name: "userId".to_string(),
-                column_type: ClickHouseColumnType::String,
-                required: true,
-                unique: false,
-                primary_key: false,
-                default: None,
-            },
-            ClickHouseColumn {
-                name: "activity".to_string(),
-                column_type: ClickHouseColumnType::String,
-                required: true,
-                unique: false,
-                primary_key: false,
-                default: None,
-            },
-        ];
-        assert_eq!(
-            VersionSync::generate_migration_function(&columns[0..3], &columns),
-            "(eventId, timestamp, userId) -> (eventId, timestamp, userId, 'activity')"
-        );
+#[derive(Debug, thiserror::Error)]
+pub enum ClickhouseChangesError {
+    #[error("Error interacting with Clickhouse")]
+    Clickhouse(#[from] ClickhouseError),
 
-        let mut no_timestamp = columns.clone();
-        no_timestamp.remove(1);
-        assert_eq!(
-            VersionSync::generate_migration_function(&no_timestamp, &columns),
-            "(eventId, userId, activity) -> (eventId, '2024-02-20T23:14:57.788Z', userId, activity)"
-        );
+    #[error("Error interacting with Clickhouse")]
+    ClickhouseClient(#[from] clickhouse::error::Error),
 
-        let mut int_user_id = columns.clone();
-        int_user_id[2].column_type = ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int32);
-        assert_eq!(
-            VersionSync::generate_migration_function(&columns, &int_user_id),
-            "(eventId, timestamp, userId, activity) -> (eventId, timestamp, 0, activity)"
-        );
-    }
+    #[error("Not Supported {0}")]
+    NotSupported(String),
 }
 
-pub type QueryString = String;
+pub async fn execute_changes(
+    project: &Project,
+    changes: &[OlapChange],
+) -> Result<(), ClickhouseChangesError> {
+    // TODO refactor this to use the client we want to standardise on in the long term
+    // This is currently using the same functions we are using in the current implementation
+    let configured_client = create_client(project.clickhouse_config.clone());
+    check_ready(&configured_client).await?;
+
+    let db_name = &project.clickhouse_config.db_name;
+
+    for change in changes.iter() {
+        match change {
+            OlapChange::Table(Change::Added(table)) => {
+                log::info!("Creating table: {:?}", table.id());
+
+                let clickhouse_table = std_table_to_clickhouse_table(table)?;
+                let create_data_table_query =
+                    create_table_query(db_name, clickhouse_table, ClickhouseEngine::MergeTree)?;
+                run_query(&create_data_table_query, &configured_client).await?;
+            }
+            OlapChange::Table(Change::Removed(table)) => {
+                log::info!("Removing table: {:?}", table.id());
+
+                let clickhouse_table = std_table_to_clickhouse_table(table)?;
+                let drop_query = drop_table_query(db_name, clickhouse_table)?;
+                run_query(&drop_query, &configured_client).await?;
+            }
+            OlapChange::Table(Change::Updated { before, after }) => {
+                // In dev - we drop and re-create the table
+                if !project.is_production {
+                    log::info!(
+                        "Replacing table: {:?} and replacing it with {:?}",
+                        before,
+                        after
+                    );
+                    let table_to_drop = std_table_to_clickhouse_table(before)?;
+                    let drop_query = drop_table_query(db_name, table_to_drop)?;
+                    run_query(&drop_query, &configured_client).await?;
+
+                    let table_to_create = std_table_to_clickhouse_table(after)?;
+                    let create_data_table_query =
+                        create_table_query(db_name, table_to_create, ClickhouseEngine::MergeTree)?;
+                    run_query(&create_data_table_query, &configured_client).await?;
+                } else {
+                    // In production - ideally we would run an alter statement if possible. Current functionlity is that
+                    // this should not happen - so we error out. This is to prevent accidental data loss
+                    // We should complain at the planning level an actually never get here.
+
+                    return Err(ClickhouseChangesError::NotSupported(format!(
+                        "Table update to {} are not supported in production",
+                        after.id()
+                    )));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
 
 pub struct ConfiguredDBClient {
     pub client: Client,
@@ -335,4 +349,68 @@ pub fn table_schema_to_hash(
 struct TableDetail {
     pub engine: String,
     pub total_rows: Option<u64>,
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::infrastructure::olap::clickhouse::model::{
+        ClickHouseColumn, ClickHouseColumnType, ClickHouseInt,
+    };
+    use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
+
+    #[test]
+    fn test_version_sync_function_generation() {
+        let columns = vec![
+            ClickHouseColumn {
+                name: "eventId".to_string(),
+                column_type: ClickHouseColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: true,
+                default: None,
+            },
+            ClickHouseColumn {
+                name: "timestamp".to_string(),
+                column_type: ClickHouseColumnType::DateTime,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            ClickHouseColumn {
+                name: "userId".to_string(),
+                column_type: ClickHouseColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            ClickHouseColumn {
+                name: "activity".to_string(),
+                column_type: ClickHouseColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+        ];
+        assert_eq!(
+            VersionSync::generate_migration_function(&columns[0..3], &columns),
+            "(eventId, timestamp, userId) -> (eventId, timestamp, userId, 'activity')"
+        );
+
+        let mut no_timestamp = columns.clone();
+        no_timestamp.remove(1);
+        assert_eq!(
+            VersionSync::generate_migration_function(&no_timestamp, &columns),
+            "(eventId, userId, activity) -> (eventId, '2024-02-20T23:14:57.788Z', userId, activity)"
+        );
+
+        let mut int_user_id = columns.clone();
+        int_user_id[2].column_type = ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int32);
+        assert_eq!(
+            VersionSync::generate_migration_function(&columns, &int_user_id),
+            "(eventId, timestamp, userId, activity) -> (eventId, timestamp, 0, activity)"
+        );
+    }
 }

@@ -15,8 +15,8 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 use crate::framework::core::code_loader::FrameworkObjectVersions;
-use crate::framework::data_model::schema::Column;
-use crate::framework::data_model::schema::ColumnType;
+use crate::framework::core::infrastructure::table::Column;
+use crate::framework::core::infrastructure::table::ColumnType;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::inserter::Inserter;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
@@ -163,7 +163,7 @@ impl SyncingProcessesRegistry {
         Ok(())
     }
 
-    pub fn start(
+    pub fn start_topic_to_table(
         &mut self,
         source_topic_name: String,
         source_topic_columns: Vec<Column>,
@@ -193,7 +193,7 @@ impl SyncingProcessesRegistry {
         self.insert_table_sync(syncing_process);
     }
 
-    pub fn stop(&mut self, topic_name: &str, table_name: &str) {
+    pub fn stop_topic_to_table(&mut self, topic_name: &str, table_name: &str) {
         let key = Self::format_key_str(topic_name, table_name);
         if let Some(process) = self.to_table_registry.remove(&key) {
             process.abort();
@@ -608,7 +608,7 @@ fn map_json_value_to_clickhouse_value(
 
 #[cfg(test)]
 mod tests {
-    use crate::framework::data_model::schema::Nested;
+    use crate::framework::core::infrastructure::table::Nested;
 
     use super::*;
 

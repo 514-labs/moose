@@ -2,11 +2,14 @@ use serde::Deserialize;
 use std::path::Path;
 
 use crate::{
-    framework::{core::code_loader::MappingError, prisma, python, typescript},
+    framework::{
+        core::{code_loader::MappingError, infrastructure::table::DataEnum},
+        prisma, python, typescript,
+    },
     project::Project,
 };
 
-use super::schema::{DataEnum, DataModel};
+use super::schema::DataModel;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to parse the data model file")]

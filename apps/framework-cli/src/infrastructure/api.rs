@@ -9,7 +9,7 @@ pub enum ApiChangeError {
 }
 
 pub async fn execute_changes(
-    api_changes: Vec<ApiChange>,
+    api_changes: &[ApiChange],
     api_changes_channel: Sender<ApiChange>,
 ) -> Result<(), ApiChangeError> {
     for api_change in api_changes.iter() {

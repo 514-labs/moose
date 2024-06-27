@@ -12,6 +12,7 @@ use std::{
 };
 use tokio::sync::RwLock;
 
+use crate::framework;
 use crate::framework::consumption::model::Consumption;
 use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 
@@ -23,12 +24,15 @@ use crate::framework::controller::{
 use crate::framework::core::code_loader::{
     get_framework_objects_from_schema_file, FrameworkObjectVersions,
 };
+use crate::framework::core::infrastructure_map::ApiChange;
 use crate::framework::data_model::{is_schema_file, DuplicateModelError};
 use crate::framework::flows::loader::get_all_current_flows;
 use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::framework::registry::model::ProcessRegistries;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
-use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
+use crate::infrastructure::olap::clickhouse_alt_client::{
+    get_pool, store_current_state, store_infrastructure_map,
+};
 use crate::infrastructure::stream::redpanda;
 use crate::project::AggregationSet;
 use crate::utilities::constants::{
@@ -40,8 +44,9 @@ use crate::{
     project::Project,
 };
 
-use super::display::{with_spinner_async, Message, MessageType};
+use super::display::{self, with_spinner_async, Message, MessageType};
 use super::routines::flow::verify_flows_against_datamodels;
+use super::settings::Features;
 
 async fn process_data_models_changes(
     project: Arc<Project>,
@@ -286,28 +291,27 @@ impl EventBuckets {
             consumption,
         }
     }
-
-    pub fn non_empty(&self) -> bool {
-        !self.flows.is_empty()
-            || !self.data_models.is_empty()
-            || !self.aggregations.is_empty()
-            || !self.consumption.is_empty()
-    }
 }
 
+// TODO Remove when route table is removed
+#[allow(clippy::too_many_arguments)]
 async fn watch(
     project: Arc<Project>,
+    features: Features,
     framework_object_versions: &mut FrameworkObjectVersions,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
+    route_update_channel: tokio::sync::mpsc::Sender<ApiChange>,
     consumption_apis: &RwLock<HashSet<String>>,
     syncing_process_registry: &mut SyncingProcessesRegistry,
     project_registries: &mut ProcessRegistries,
 ) -> Result<(), anyhow::Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
 
+    let mut clickhouse_client_v2 = get_pool(&project.clickhouse_config).get_handle().await?;
+
     let (tx, mut rx) = tokio::sync::mpsc::channel(32);
 
-    let mut debouncer = new_debouncer(Duration::from_secs(2), None, move |res| {
+    let mut debouncer = new_debouncer(Duration::from_secs(1), None, move |res| {
         let _ = tx
             .blocking_send(res)
             .map_err(|e| log::error!("Failed to watcher send debounced event: {:?}", e));
@@ -333,86 +337,125 @@ async fn watch(
 
                 let bucketed_events = EventBuckets::new(events);
 
-                if bucketed_events.non_empty() {
-                    if !bucketed_events.data_models.is_empty() {
-                        with_spinner_async(
-                            &format!(
-                                "Processing {} Data Model(s) changes from file watcher",
-                                bucketed_events.data_models.len()
-                            ),
-                            process_data_models_changes(
-                                project.clone(),
-                                bucketed_events.data_models,
-                                framework_object_versions,
-                                route_table,
-                                &configured_client,
-                                syncing_process_registry,
-                            ),
-                            !project.is_production,
-                        )
-                        .await
-                        .map_err(|e| {
-                            Error::new(
-                                ErrorKind::Other,
-                                format!("Processing error occurred: {}", e),
+                if features.core_v2 {
+                    with_spinner_async(
+                        "Processing Infrastructure changes from file watcher",
+                        async {
+                            let plan_result = framework::core::plan::plan_changes(
+                                &mut clickhouse_client_v2,
+                                &project,
                             )
-                        })?;
-                    }
-                    if !bucketed_events.flows.is_empty() {
-                        with_spinner_async(
-                            &format!(
-                                "Processing {} Flow(s) changes from file watcher",
-                                bucketed_events.flows.len()
-                            ),
-                            process_flows_changes(&project, &mut project_registries.flows),
-                            !project.is_production,
-                        )
-                        .await?;
-                    }
-                    if !bucketed_events.aggregations.is_empty() {
-                        with_spinner_async(
-                            &format!(
-                                "Processing {} Aggregation(s) changes from file watcher",
-                                bucketed_events.aggregations.len()
-                            ),
-                            process_aggregations_changes(
-                                &project,
-                                &mut project_registries.aggregations,
-                            ),
-                            !project.is_production,
-                        )
-                        .await?;
-                    }
-                    if !bucketed_events.consumption.is_empty() {
-                        with_spinner_async(
-                            &format!(
-                                "Processing {} Consumption(s) changes from file watcher",
-                                bucketed_events.consumption.len()
-                            ),
-                            process_consumption_changes(
-                                &project,
-                                &mut project_registries.consumption,
-                                consumption_apis.write().await.deref_mut(),
-                            ),
-                            !project.is_production,
-                        )
-                        .await?;
-                    }
+                            .await?;
 
-                    {
-                        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
-                        let aggregations = project.get_aggregations();
-                        store_current_state(
-                            &mut client,
-                            framework_object_versions,
-                            &aggregations,
-                            &project.clickhouse_config,
-                        )
-                        .await?
-                    }
+                            log::info!("Plan Changes: {:?}", plan_result.changes);
 
-                    let _ = verify_flows_against_datamodels(&project, framework_object_versions);
+                            display::show_changes(&plan_result);
+                            framework::core::execute::execute_online_change(
+                                &project,
+                                &plan_result,
+                                route_update_channel.clone(),
+                                syncing_process_registry,
+                            )
+                            .await?;
+
+                            store_infrastructure_map(
+                                &mut clickhouse_client_v2,
+                                &project.clickhouse_config,
+                                &plan_result.target_infra_map,
+                            )
+                            .await?;
+
+                            Ok(())
+                        },
+                        !project.is_production,
+                    )
+                    .await
+                    .map_err(|e: anyhow::Error| {
+                        Error::new(
+                            ErrorKind::Other,
+                            format!("Processing error occurred: {}", e),
+                        )
+                    })?;
                 }
+
+                if !bucketed_events.data_models.is_empty() && !features.core_v2 {
+                    with_spinner_async(
+                        &format!(
+                            "Processing {} Data Model(s) changes from file watcher",
+                            bucketed_events.data_models.len()
+                        ),
+                        process_data_models_changes(
+                            project.clone(),
+                            bucketed_events.data_models,
+                            framework_object_versions,
+                            route_table,
+                            &configured_client,
+                            syncing_process_registry,
+                        ),
+                        !project.is_production,
+                    )
+                    .await
+                    .map_err(|e| {
+                        Error::new(
+                            ErrorKind::Other,
+                            format!("Processing error occurred: {}", e),
+                        )
+                    })?;
+                }
+                if !bucketed_events.flows.is_empty() {
+                    with_spinner_async(
+                        &format!(
+                            "Processing {} Flow(s) changes from file watcher",
+                            bucketed_events.flows.len()
+                        ),
+                        process_flows_changes(&project, &mut project_registries.flows),
+                        !project.is_production,
+                    )
+                    .await?;
+                }
+                if !bucketed_events.aggregations.is_empty() {
+                    with_spinner_async(
+                        &format!(
+                            "Processing {} Aggregation(s) changes from file watcher",
+                            bucketed_events.aggregations.len()
+                        ),
+                        process_aggregations_changes(
+                            &project,
+                            &mut project_registries.aggregations,
+                        ),
+                        !project.is_production,
+                    )
+                    .await?;
+                }
+                if !bucketed_events.consumption.is_empty() {
+                    with_spinner_async(
+                        &format!(
+                            "Processing {} Consumption(s) changes from file watcher",
+                            bucketed_events.consumption.len()
+                        ),
+                        process_consumption_changes(
+                            &project,
+                            &mut project_registries.consumption,
+                            consumption_apis.write().await.deref_mut(),
+                        ),
+                        !project.is_production,
+                    )
+                    .await?;
+                }
+
+                {
+                    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+                    let aggregations = project.get_aggregations();
+                    store_current_state(
+                        &mut client,
+                        framework_object_versions,
+                        &aggregations,
+                        &project.clickhouse_config,
+                    )
+                    .await?
+                }
+
+                let _ = verify_flows_against_datamodels(&project, framework_object_versions);
             }
             Err(errors) => {
                 for error in errors {
@@ -496,11 +539,15 @@ impl FileWatcher {
         Self {}
     }
 
+    // TODO Remove when route table is removed
+    #[allow(clippy::too_many_arguments)]
     pub fn start(
         &self,
         project: Arc<Project>,
+        features: &Features,
         framework_object_versions: FrameworkObjectVersions,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
+        route_update_channel: tokio::sync::mpsc::Sender<ApiChange>,
         consumption_apis: &'static RwLock<HashSet<String>>,
         syncing_process_registry: SyncingProcessesRegistry,
         project_registries: ProcessRegistries,
@@ -515,12 +562,15 @@ impl FileWatcher {
         let mut framework_object_versions = framework_object_versions;
         let mut syncing_process_registry = syncing_process_registry;
         let mut project_registry = project_registries;
+        let features = features.clone();
 
         tokio::spawn(async move {
             if let Err(error) = watch(
                 project,
+                features.clone(),
                 &mut framework_object_versions,
                 route_table,
+                route_update_channel,
                 consumption_apis,
                 &mut syncing_process_registry,
                 &mut project_registry,

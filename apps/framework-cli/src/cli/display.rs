@@ -5,6 +5,11 @@ use spinners::{Spinner, Spinners};
 use std::sync::{Arc, RwLock};
 use tokio::macros::support::Future;
 
+use crate::framework::core::{
+    infrastructure_map::{ApiChange, Change, OlapChange, ProcessChange, StreamingChange},
+    plan::InfraPlan,
+};
+
 /// # Display Module
 /// Standardizes the way we display messages to the user in the CLI. This module
 /// provides a macro that takes a message type and a message struct and displays
@@ -260,6 +265,79 @@ pub fn show_table(headers: Vec<String>, rows: Vec<Vec<String>>) {
             details: format!("\n{}", table),
         }
     );
+}
+
+pub fn show_changes(infra_plan: &InfraPlan) {
+    TERM.write()
+        .unwrap()
+        .term
+        .write_line("")
+        .expect("failed to write message to terminal");
+    // TODO there is probably a better way to do the following through
+    // https://crates.io/crates/enum_dispatch or something similar
+    infra_plan
+        .changes
+        .streaming_engine_changes
+        .iter()
+        .for_each(|change| match change {
+            StreamingChange::Topic(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            StreamingChange::Topic(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            StreamingChange::Topic(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+        });
+
+    infra_plan
+        .changes
+        .olap_changes
+        .iter()
+        .for_each(|change| match change {
+            OlapChange::Table(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            OlapChange::Table(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            OlapChange::Table(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+        });
+
+    infra_plan
+        .changes
+        .sync_processes_changes
+        .iter()
+        .for_each(|change| match change {
+            ProcessChange::TopicToTableSyncProcess(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            ProcessChange::TopicToTableSyncProcess(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            ProcessChange::TopicToTableSyncProcess(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+        });
+
+    infra_plan
+        .changes
+        .api_changes
+        .iter()
+        .for_each(|change| match change {
+            ApiChange::ApiEndpoint(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            ApiChange::ApiEndpoint(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            ApiChange::ApiEndpoint(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+        });
 }
 
 #[cfg(test)]

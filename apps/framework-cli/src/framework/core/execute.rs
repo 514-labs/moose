@@ -27,11 +27,11 @@ pub enum ExecutionError {
     SyncProcessesChange(#[from] sync_processes::SyncProcessChangesError),
 }
 
-pub async fn execute_prod(
+pub async fn execute_initial_infra_change(
     project: &Project,
     plan: &InfraPlan,
     api_changes_channel: Sender<ApiChange>,
-) -> Result<(), ExecutionError> {
+) -> Result<SyncingProcessesRegistry, ExecutionError> {
     // This probably can be paralelized through Tokio Spawn
     olap::execute_changes(project, &plan.changes.olap_changes).await?;
     stream::execute_changes(project, &plan.changes.streaming_engine_changes).await?;
@@ -39,18 +39,40 @@ pub async fn execute_prod(
     // In prod, the webserver is part of the current process that gets spawned. As succh
     // it is initialized from 0 and we don't need to apply diffs to it.
     api::execute_changes(
-        plan.target_infra_map.init_api_endpoints(),
+        &plan.target_infra_map.init_api_endpoints(),
         api_changes_channel,
     )
     .await?;
 
-    let syncing_processes_registry = SyncingProcessesRegistry::new(
+    let mut syncing_processes_registry = SyncingProcessesRegistry::new(
         project.redpanda_config.clone(),
         project.clickhouse_config.clone(),
     );
     sync_processes::execute_changes(
-        syncing_processes_registry,
+        &mut syncing_processes_registry,
         &plan.target_infra_map.init_topic_to_table_sync_processes(),
+    )?;
+
+    Ok(syncing_processes_registry)
+}
+
+pub async fn execute_online_change(
+    project: &Project,
+    plan: &InfraPlan,
+    api_changes_channel: Sender<ApiChange>,
+    sync_processes_registry: &mut SyncingProcessesRegistry,
+) -> Result<(), ExecutionError> {
+    // This probably can be paralelized through Tokio Spawn
+    olap::execute_changes(project, &plan.changes.olap_changes).await?;
+    stream::execute_changes(project, &plan.changes.streaming_engine_changes).await?;
+
+    // In prod, the webserver is part of the current process that gets spawned. As succh
+    // it is initialized from 0 and we don't need to apply diffs to it.
+    api::execute_changes(&plan.changes.api_changes, api_changes_channel).await?;
+
+    sync_processes::execute_changes(
+        sync_processes_registry,
+        &plan.changes.sync_processes_changes,
     )?;
 
     Ok(())

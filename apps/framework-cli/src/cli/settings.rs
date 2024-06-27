@@ -40,7 +40,7 @@ impl Default for Telemetry {
     }
 }
 
-#[derive(Deserialize, Debug, Default)]
+#[derive(Deserialize, Debug, Default, Clone)]
 pub struct Features {
     #[serde(default)]
     pub core_v2: bool,

@@ -90,11 +90,16 @@ async fn create_client(
     debug!("Creating client for route: {:?}", cleaned_path);
     {
         let consumption_apis = consumption_apis.read().await;
-        if !consumption_apis.contains(cleaned_path.strip_prefix('/').unwrap_or(cleaned_path)) {
+        let consumption_name = req
+            .uri()
+            .path()
+            .strip_prefix("/consumption/")
+            .unwrap_or(cleaned_path);
+        if !consumption_apis.contains(consumption_name) {
             if !is_prod {
                 println!(
                     "Consumption API {} not found. Available consumption paths: {}",
-                    cleaned_path,
+                    consumption_name,
                     consumption_apis
                         .iter()
                         .map(|p| p.as_str())
@@ -249,7 +254,7 @@ async fn handle_json_req(
     req: Request<Incoming>,
 ) -> Response<Full<Bytes>> {
     // TODO probably a refactor to be done here with the array json but it doesn't seem to be
-    // straighforward to do it in a generic way.
+    // straightforward to do it in a generic way.
     let url = req.uri().to_string();
     let body = req.collect().await.unwrap().aggregate();
     let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body.reader());

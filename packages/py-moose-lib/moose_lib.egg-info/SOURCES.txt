@@ -1,8 +1,0 @@
-README.md
-setup.py
-moose-lib/__init__.py
-moose-lib/main.py
-moose_lib.egg-info/PKG-INFO
-moose_lib.egg-info/SOURCES.txt
-moose_lib.egg-info/dependency_links.txt
-moose_lib.egg-info/top_level.txt

@@ -1,6 +1,7 @@
 import { createClient } from "@clickhouse/client-web";
 import fs from "node:fs";
 import path from "node:path";
+import http from "http";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
@@ -58,4 +59,20 @@ export const getClickhouseClient = ({
     password: password,
     database: database,
   });
+};
+
+type CliLogData = {
+  message_type?: "Info" | "Success" | "Error" | "Highlight";
+  action: string;
+  message: string;
+};
+export const cliLog: (log: CliLogData) => void = (log) => {
+  const req = http.request({
+    port: 4000,
+    method: "POST",
+    path: "/logs",
+  }); // no callback, fire and forget
+
+  req.write(JSON.stringify({ message_type: "Info", ...log }));
+  req.end();
 };

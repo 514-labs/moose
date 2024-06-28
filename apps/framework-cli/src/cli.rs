@@ -1,5 +1,5 @@
 #[macro_use]
-mod display;
+pub(crate) mod display;
 
 mod commands;
 pub mod local_webserver;

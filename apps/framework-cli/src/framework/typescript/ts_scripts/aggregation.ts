@@ -1,7 +1,12 @@
 import process from "node:process";
 import { ClickHouseClient } from "@clickhouse/client-web";
 import fastq, { queueAsPromised } from "fastq";
-import { getFileName, walkDir, getClickhouseClient } from "@514labs/moose-lib";
+import {
+  getFileName,
+  walkDir,
+  getClickhouseClient,
+  cliLog,
+} from "@514labs/moose-lib";
 
 interface MvQuery {
   select: string;
@@ -64,8 +69,10 @@ const createAggregation = async (chClient: ClickHouseClient, path: string) => {
         `;
     await chClient.command({ query: mvQuery });
     console.log(`Created aggregation ${fileName}. Query: ${mvQuery}`);
+    cliLog({ action: "Created", message: `aggregation ${fileName}` });
   } catch (err) {
     console.error(`Failed to create aggregation ${fileName}: ${err}`);
+    cliLog({ action: "Failed", message: `to create aggregation ${fileName}` });
 
     if (err && JSON.stringify(err).includes(`UNKNOWN_TABLE`)) {
       throw new DependencyError(err.toString());
@@ -81,6 +88,7 @@ const deleteAggregation = async (chClient: ClickHouseClient, path: string) => {
       query: `DROP VIEW IF EXISTS ${fileName}`,
     });
     console.log(`Deleted aggregation ${fileName}`);
+    cliLog({ action: "Deleted", message: `aggregation ${fileName}` });
   } catch (err) {
     console.error(`Failed to delete aggregation ${fileName}: ${err}`);
   }

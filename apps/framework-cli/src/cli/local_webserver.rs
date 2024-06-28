@@ -14,6 +14,7 @@ use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 
+use crate::framework::typescript::ts_node::CliMessage;
 use crate::project::Project;
 use bytes::Buf;
 use http_body_util::BodyExt;
@@ -194,6 +195,26 @@ fn health_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     Ok(response)
 }
 
+async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
+    let body = to_reader(req).await;
+    let parsed: Result<CliMessage, serde_json::Error> = serde_json::from_reader(body);
+    match parsed {
+        Ok(cli_message) => {
+            let message = Message {
+                action: cli_message.action,
+                details: cli_message.message,
+            };
+            show_message!(cli_message.message_type, message);
+        }
+        Err(e) => println!("Received unknown message: {:?}", e),
+    }
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .body(Full::new(Bytes::from("")))
+        .unwrap()
+}
+
 fn bad_json_response(e: serde_json::Error) -> Response<Full<Bytes>> {
     show_message!(
         MessageType::Error,
@@ -248,6 +269,10 @@ async fn send_payload_to_topic(
         .await
 }
 
+async fn to_reader(req: Request<Incoming>) -> bytes::buf::Reader<impl Buf + Sized> {
+    req.collect().await.unwrap().aggregate().reader()
+}
+
 async fn handle_json_req(
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
@@ -256,8 +281,8 @@ async fn handle_json_req(
     // TODO probably a refactor to be done here with the array json but it doesn't seem to be
     // straightforward to do it in a generic way.
     let url = req.uri().to_string();
-    let body = req.collect().await.unwrap().aggregate();
-    let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body.reader());
+    let body = to_reader(req).await;
+    let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body);
     // TODO add check that the payload has the proper schema
 
     if let Err(e) = parsed {
@@ -282,9 +307,9 @@ async fn handle_json_array_body(
     req: Request<Incoming>,
 ) -> Response<Full<Bytes>> {
     // TODO probably a refactor to be done here with the json but it doesn't seem to be
-    // straighforward to do it in a generic way.
+    // straightforward to do it in a generic way.
     let url = req.uri().to_string();
-    let body = req.collect().await.unwrap().aggregate().reader();
+    let body = to_reader(req).await;
     let parsed: Result<Vec<Value>, serde_json::Error> = serde_json::from_reader(body);
     if let Err(e) = parsed {
         return bad_json_response(e);
@@ -389,6 +414,7 @@ async fn router(
         }
         (&hyper::Method::GET, ["health"]) => health_route(),
 
+        (&hyper::Method::POST, ["logs"]) if !is_prod => Ok(log_route(req).await),
         (&hyper::Method::OPTIONS, _) => options_route(),
         _ => Response::builder()
             .status(StatusCode::NOT_FOUND)

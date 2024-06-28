@@ -1,6 +1,7 @@
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
 use console::{pad_str, style};
 use lazy_static::lazy_static;
+use serde::Deserialize;
 use spinners::{Spinner, Spinners};
 use std::sync::{Arc, RwLock};
 use tokio::macros::support::Future;
@@ -59,7 +60,7 @@ impl CommandTerminal {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Deserialize, Debug, Clone, Copy)]
 pub enum MessageType {
     Info,
     Success,

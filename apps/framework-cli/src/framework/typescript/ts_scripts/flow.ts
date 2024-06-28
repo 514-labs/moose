@@ -1,6 +1,7 @@
 import { Consumer, Kafka, KafkaMessage, Producer, SASLOptions } from "kafkajs";
 import { Buffer } from "node:buffer";
 import process from "node:process";
+import { cliLog } from "@514labs/moose-lib";
 
 const SOURCE_TOPIC = process.argv[1];
 const TARGET_TOPIC = process.argv[2];
@@ -211,6 +212,10 @@ const startConsumer = async (
   await consumer.run({
     eachBatchAutoResolve: true,
     eachBatch: async ({ batch }) => {
+      cliLog({
+        action: "Received",
+        message: `${logPrefix} ${batch.messages.length} message(s)`,
+      });
       const messages = (
         await Promise.all(
           batch.messages.map((message) => handleMessage(flowFunction, message)),

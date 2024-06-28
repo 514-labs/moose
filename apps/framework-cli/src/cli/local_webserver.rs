@@ -256,7 +256,7 @@ async fn send_payload_to_topic(
 ) -> Result<(i32, i64), (KafkaError, OwnedMessage)> {
     let payload = serde_json::to_vec(&payload).unwrap();
 
-    log::debug!("Sending payload {:?} to topic: {}", payload, topic_name);
+    debug!("Sending payload {:?} to topic: {}", payload, topic_name);
 
     configured_producer
         .producer
@@ -316,9 +316,24 @@ async fn handle_json_array_body(
     }
 
     let mut res_arr = Vec::new();
-    for payload in parsed.ok().unwrap() {
-        let res = send_payload_to_topic(configured_producer, topic_name, payload).await;
-        res_arr.push(res)
+    let mut temp_res = Vec::new();
+    for (count, payload) in parsed.ok().unwrap().into_iter().enumerate() {
+        temp_res.push(send_payload_to_topic(
+            configured_producer,
+            topic_name,
+            payload,
+        ));
+        // ideally we want to use redpanda::send_with_back_pressure
+        // but it does not report the error back
+        if count % 1024 == 1023 {
+            for future in temp_res {
+                res_arr.push(future.await)
+            }
+            temp_res = Vec::new();
+        }
+    }
+    for future in temp_res {
+        res_arr.push(future.await)
     }
 
     if res_arr.iter().any(|res| res.is_err()) {

@@ -28,6 +28,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
+use crate::cli::settings::Features;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::python::templates::PTYHON_BASE_AGG_SAMPLE_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_FLOW_TEMPLATE;
@@ -35,7 +36,8 @@ use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::BASE_APIS_SAMPLE_TEMPLATE;
 use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
-    TS_BASE_AGGREGATION_SAMPLE_TEMPLATE, TS_BASE_FLOW_SAMPLE_TEMPLATE,
+    TS_BASE_AGGREGATION_SAMPLE_TEMPLATE, TS_BASE_BLOCKS_SAMPLE_TEMPLATE,
+    TS_BASE_FLOW_SAMPLE_TEMPLATE,
 };
 use crate::framework::typescript::templates::{
     VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
@@ -249,10 +251,15 @@ impl Project {
         Ok(())
     }
 
-    pub fn create_base_app_files(&self) -> Result<(), std::io::Error> {
+    pub fn create_base_app_files(&self, features: &Features) -> Result<(), std::io::Error> {
         // Common file paths
         let readme_file_path = self.project_location.join("README.md");
         let apis_file_path = self.consumption_dir().join(API_FILE);
+        let aggregations_dir = if features.blocks {
+            self.blocks_dir()
+        } else {
+            self.aggregations_dir()
+        };
 
         self.write_file(
             &readme_file_path,
@@ -268,7 +275,7 @@ impl Project {
                     .join(SAMPLE_FLOWS_SOURCE)
                     .join(SAMPLE_FLOWS_DEST)
                     .join(TS_FLOW_FILE);
-                let aggregations_file_path = self.aggregations_dir().join(TS_AGGREGATIONS_FILE);
+                let aggregations_file_path = aggregations_dir.join(TS_AGGREGATIONS_FILE);
 
                 // Write TypeScript specific templates
                 self.write_file(&base_model_file_path, TS_BASE_MODEL_TEMPLATE.to_string())?;
@@ -276,10 +283,17 @@ impl Project {
                     &flow_file_path,
                     TS_BASE_FLOW_SAMPLE_TEMPLATE.replace("{{project_name}}", &self.name()),
                 )?;
-                self.write_file(
-                    &aggregations_file_path,
-                    TS_BASE_AGGREGATION_SAMPLE_TEMPLATE.to_string(),
-                )?;
+                if features.blocks {
+                    self.write_file(
+                        &aggregations_file_path,
+                        TS_BASE_BLOCKS_SAMPLE_TEMPLATE.to_string(),
+                    )?;
+                } else {
+                    self.write_file(
+                        &aggregations_file_path,
+                        TS_BASE_AGGREGATION_SAMPLE_TEMPLATE.to_string(),
+                    )?;
+                }
             }
             SupportedLanguages::Python => {
                 let base_model_file_path = self.data_models_dir().join("models.py");
@@ -288,7 +302,7 @@ impl Project {
                     .join(SAMPLE_FLOWS_SOURCE)
                     .join(SAMPLE_FLOWS_DEST)
                     .join(PY_FLOW_FILE);
-                let aggregations_file_path = self.aggregations_dir().join(PY_AGGREGATIONS_FILE);
+                let aggregations_file_path = aggregations_dir.join(PY_AGGREGATIONS_FILE);
 
                 // Write Python specific templates
                 self.write_file(
@@ -296,6 +310,7 @@ impl Project {
                     PYTHON_BASE_MODEL_TEMPLATE.to_string(),
                 )?;
                 self.write_file(&flow_file_path, PYTHON_BASE_FLOW_TEMPLATE.to_string())?;
+                // TODO: Add sample blocks to python
                 self.write_file(
                     &aggregations_file_path,
                     PTYHON_BASE_AGG_SAMPLE_TEMPLATE.to_string(),
@@ -305,7 +320,7 @@ impl Project {
                 for dir in &[
                     self.app_dir(),
                     self.data_models_dir(),
-                    self.aggregations_dir(),
+                    aggregations_dir,
                     self.consumption_dir(),
                     self.flows_dir(),
                     self.flows_dir()

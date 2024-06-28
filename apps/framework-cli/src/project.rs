@@ -265,9 +265,7 @@ impl Project {
                 let base_model_file_path = self.data_models_dir().join("models.ts");
                 let flow_file_path = self
                     .flows_dir()
-                    .join(SAMPLE_FLOWS_SOURCE)
-                    .join(SAMPLE_FLOWS_DEST)
-                    .join(TS_FLOW_FILE);
+                    .join(format!("{}__{}.ts", SAMPLE_FLOWS_SOURCE, SAMPLE_FLOWS_DEST));
                 let aggregations_file_path = self.aggregations_dir().join(TS_AGGREGATIONS_FILE);
 
                 // Write TypeScript specific templates

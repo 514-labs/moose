@@ -1,6 +1,7 @@
 use itertools::sorted;
-use log::{info, warn};
+use log::{debug, info, warn};
 use regex::{Captures, Regex};
+use std::path::PathBuf;
 use std::{fs, path::Path};
 
 use crate::{
@@ -11,7 +12,8 @@ use crate::{
 
 use super::model::{Flow, FlowError};
 
-const MIGRATION_REGEX: &str = r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-9_]+)__)?([0-9_]+)";
+const MIGRATION_REGEX: &str =
+    r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-9_]+)__)?([0-9_]+)$";
 
 /**
  * This function gets the flows as defined by the user for the
@@ -20,6 +22,44 @@ const MIGRATION_REGEX: &str = r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-
 pub async fn get_all_current_flows(project: &Project) -> Result<Vec<Flow>, FlowError> {
     let flows_path = project.flows_dir();
     get_all_flows(&project.redpanda_config, &flows_path).await
+}
+
+async fn create_flow_object(
+    config: &RedpandaConfig,
+    topics: &[String],
+    source_data_model: String,
+    target_data_model: String,
+    path: PathBuf,
+) -> Result<Option<Flow>, FlowError> {
+    let source_topic = match get_latest_topic(&topics, &source_data_model) {
+        Some(topic) => topic,
+        None => {
+            warn!(
+                "No source topic found in Kafka for data model {}",
+                source_data_model
+            );
+            return Ok(None);
+        }
+    };
+
+    let target_topic = match get_latest_topic(&topics, &target_data_model) {
+        Some(topic) => topic,
+        None => {
+            warn!(
+                "No target topic found in Kafka for data model {}",
+                target_data_model
+            );
+            return Ok(None);
+        }
+    };
+    let target_topic_config = describe_topic_config(config, &target_topic).await?;
+
+    return Ok(Some(Flow {
+        source_topic: source_topic.clone(),
+        target_topic: target_topic.clone(),
+        target_topic_config: target_topic_config.clone(),
+        executable: path,
+    }));
 }
 
 /**
@@ -47,53 +87,61 @@ async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>
         let source = source?;
 
         // We check if the file is a migration flow
-        if source.metadata()?.is_file() && !source.file_name().to_str().unwrap().ends_with("sql") {
-            let potential_migration_file_name = &source.file_name().to_string_lossy().to_string();
-            let Some(caps) = migration_regex.captures(potential_migration_file_name) else {
-                // This is a file but not a migration flow, so we can skip it
-                // and continue to the next iteration
-                continue;
-            };
+        if source.metadata()?.is_file() {
+            if !source.file_name().to_str().unwrap().ends_with("sql") {
+                let potential_flow_file_name = &source
+                    .path()
+                    .with_extension("")
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string();
+                match migration_regex.captures(potential_flow_file_name) {
+                    None => {
+                        let split: Vec<&str> = potential_flow_file_name.split("__").collect();
+                        if split.len() == 2 {
+                            let source_data_model = split[0];
+                            let target_data_model = split[1];
 
-            let mut flow = build_migration_flow(caps, &source.path());
-            let target_topic_config = describe_topic_config(config, &flow.target_topic).await?;
-            flow.target_topic_config = target_topic_config;
-            flows.push(flow);
+                            let flow = create_flow_object(
+                                config,
+                                &topics,
+                                source_data_model.to_string(),
+                                target_data_model.to_string(),
+                                source.path().to_path_buf(),
+                            )
+                            .await?;
+                            flow.into_iter().for_each(|f| flows.push(f));
+                        } else {
+                            debug!(
+                                "Fragments of file {:?} does not match the convention",
+                                source.path()
+                            );
+                        }
+                    }
+                    Some(caps) => {
+                        let mut flow = build_migration_flow(caps, &source.path());
+                        let target_topic_config =
+                            describe_topic_config(config, &flow.target_topic).await?;
+                        flow.target_topic_config = target_topic_config;
+                        flows.push(flow);
+                    }
+                }
+            }
 
-            // In this case we are currently parsing a migration flow
+            // In this case we are currently processing a single file
             // As such we can skip the following steps which are specific
-            // to the data model flows
+            // to the old naming convention, i.e. nested directory flows
             continue;
         }
 
         let source_data_model = source.file_name().to_string_lossy().to_string();
-        let source_topic = match get_latest_topic(&topics, &source_data_model) {
-            Some(topic) => topic,
-            None => {
-                warn!(
-                    "No source topic found in Kafka for data model {}",
-                    source_data_model
-                );
-                continue;
-            }
-        };
 
         let target = fs::read_dir(source.path())?;
 
         for target in target {
             let target = target?;
             let target_data_model = target.file_name().to_string_lossy().to_string();
-            let target_topic = match get_latest_topic(&topics, &target_data_model) {
-                Some(topic) => topic,
-                None => {
-                    warn!(
-                        "No target topic found in Kafka for data model {}",
-                        target_data_model
-                    );
-                    continue;
-                }
-            };
-            let target_topic_config = describe_topic_config(config, &target_topic).await?;
 
             for flow_file in fs::read_dir(target.path())? {
                 let flow_file = flow_file?;
@@ -102,13 +150,15 @@ async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>
                 if flow_file.metadata()?.is_file()
                     && (file_name.starts_with(TS_FLOW_FILE) || file_name.starts_with(PY_FLOW_FILE))
                 {
-                    let flow = Flow {
-                        source_topic: source_topic.clone(),
-                        target_topic: target_topic.clone(),
-                        target_topic_config: target_topic_config.clone(),
-                        executable: flow_file.path().to_path_buf(),
-                    };
-                    flows.push(flow);
+                    let flow = create_flow_object(
+                        config,
+                        &topics,
+                        source_data_model.clone(),
+                        target_data_model.clone(),
+                        flow_file.path().to_path_buf(),
+                    )
+                    .await?;
+                    flow.into_iter().for_each(|f| flows.push(f));
 
                     // There can only be one flow file per target
                     continue;

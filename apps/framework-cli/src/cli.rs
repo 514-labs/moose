@@ -30,7 +30,7 @@ use crate::cli::routines::aggregation::create_aggregation_file;
 use crate::cli::routines::consumption::create_consumption_file;
 
 use crate::cli::routines::dev::copy_old_schema;
-use crate::cli::routines::flow::{create_flow_directory, create_flow_file};
+use crate::cli::routines::flow::create_flow_file;
 use crate::cli::routines::initialize::initialize_project;
 use crate::cli::routines::logs::{follow_logs, show_logs};
 use crate::cli::routines::migrate::generate_migration;
@@ -484,12 +484,6 @@ async fn top_command_handler(
                     );
 
                     check_project_name(&project_arc.name())?;
-                    create_flow_directory(
-                        &project_arc,
-                        init.source.clone(),
-                        init.destination.clone(),
-                    )?
-                    .show();
                     create_flow_file(&project_arc, init.source.clone(), init.destination.clone())
                         .await
                 }

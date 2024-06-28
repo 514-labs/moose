@@ -95,6 +95,9 @@ async fn create_client(
             .path()
             .strip_prefix("/consumption/")
             .unwrap_or(cleaned_path);
+        debug!("Consumption_name: {:?}", consumption_name);
+        debug!("Consumption_apis: {:?}", consumption_apis);
+
         if !consumption_apis.contains(consumption_name) {
             if !is_prod {
                 println!(

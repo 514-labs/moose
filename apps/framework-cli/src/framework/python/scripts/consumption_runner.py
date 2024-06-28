@@ -3,12 +3,14 @@ from dataclasses import dataclass
 from clickhouse_connect import get_client
 from string import Formatter
 from importlib import import_module
+from moose_lib import MooseClient
 from clickhouse_connect.driver.client import Client
 import argparse
 import os
 import sys
 import json
 import datetime
+
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -46,22 +48,6 @@ class DateTimeEncoder(json.JSONEncoder):
             return obj.isoformat()
         return super().default(obj)
 
-class MooseClient:
-    def __init__(self, ch_client):
-        self.ch_client = ch_client
-
-    def query(self, input, variables):
-        fieldnames = [fname for _, fname, _, _ in Formatter().parse(input) if fname]
-
-        # Create a dictionary with keys as fieldnames and values as the corresponding string format
-        params = {fname: f'{{p{i}: String}}' for i, fname in enumerate(fieldnames)}
-
-        values = {f'p{i}': variables[fname][0] if isinstance(variables[fname], list) and len(variables[fname]) == 1 else variables[fname] for i, fname in enumerate(fieldnames) if fname in variables}
-        clickhouse_query = input.format_map(params)
-       
-        val = self.ch_client.query(clickhouse_query, values)
-        return val.result_rows
-
 def handler_with_client(ch_client):
     class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         def do_GET(self):
@@ -71,8 +57,6 @@ def handler_with_client(ch_client):
                 module_name = module_name[len('consumption/'):]
             try:
                 module = import_module(module_name)
-
-                # get the flow definition
 
                 print(module_name)
                 

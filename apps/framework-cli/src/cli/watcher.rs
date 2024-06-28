@@ -470,7 +470,10 @@ pub async fn process_consumption_changes(
         .into_iter()
         .for_each(|f| {
             if let Ok(f) = f {
-                if f.file_type().is_file() && f.path().extension() == Some("ts".as_ref()) {
+                if f.file_type().is_file()
+                    && (f.path().extension() == Some("ts".as_ref())
+                        || f.path().extension() == Some("py".as_ref()))
+                {
                     if let Ok(path) = f.path().strip_prefix(project.consumption_dir()) {
                         let mut path = path.to_path_buf();
                         path.set_extension("");

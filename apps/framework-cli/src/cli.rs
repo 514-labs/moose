@@ -274,7 +274,7 @@ async fn top_command_handler(
             check_project_name(&project_arc.name())?;
             run_local_infrastructure(&project_arc)?.show();
 
-            routines::start_development_mode(project_arc, settings.features)
+            routines::start_development_mode(project_arc, &settings.features)
                 .await
                 .map_err(|e| {
                     RoutineFailure::error(Message {

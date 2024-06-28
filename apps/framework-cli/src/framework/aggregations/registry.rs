@@ -21,13 +21,13 @@ impl AggregationProcessRegistry {
     pub fn new(
         language: SupportedLanguages,
         clickhouse_config: ClickHouseConfig,
-        features: Features,
+        features: &Features,
     ) -> Self {
         Self {
             registry: HashMap::new(),
             language,
             clickhouse_config,
-            features,
+            features: features.clone(),
         }
     }
 

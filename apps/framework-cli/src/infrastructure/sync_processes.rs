@@ -14,7 +14,7 @@ pub enum SyncProcessChangesError {
 /// This method dispatches the execution of the changes to the right streaming engine.
 /// When we have multiple streams (Redpanda, RabbitMQ ...) this is where it goes.
 pub fn execute_changes(
-    mut registry: SyncingProcessesRegistry,
+    registry: &mut SyncingProcessesRegistry,
     changes: &[ProcessChange],
 ) -> Result<(), SyncProcessChangesError> {
     for change in changes.iter() {

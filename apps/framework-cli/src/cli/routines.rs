@@ -95,10 +95,7 @@ use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 use crate::framework::core::code_loader::{
     load_framework_objects, FrameworkObject, FrameworkObjectVersions, SchemaVersion,
 };
-use crate::framework::core::execute::execute_prod;
-use crate::framework::core::infrastructure_map::{
-    ApiChange, Change, OlapChange, ProcessChange, StreamingChange,
-};
+use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::plan::plan_changes;
 use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::framework::registry::model::ProcessRegistries;
@@ -116,7 +113,7 @@ use crate::infrastructure::olap::clickhouse_alt_client::{
 };
 use crate::project::Project;
 
-use super::display::{infra_added, infra_removed, infra_updated, with_spinner_async};
+use super::display::{self, with_spinner_async};
 use super::local_webserver::Webserver;
 use super::settings::Features;
 use super::watcher::FileWatcher;
@@ -268,7 +265,7 @@ impl RoutineController {
 // Starts the file watcher and the webserver
 pub async fn start_development_mode(
     project: Arc<Project>,
-    features: Features,
+    features: &Features,
 ) -> anyhow::Result<()> {
     show_message!(
         MessageType::Info,
@@ -278,11 +275,52 @@ pub async fn start_development_mode(
         }
     );
 
+    let server_config = project.http_server_config.clone();
+    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("<DCM> Initializing project state");
     let (framework_object_versions, version_syncs) =
-        initialize_project_state(&features, project.clone(), &mut route_table).await?;
+        initialize_project_state(features, project.clone(), &mut route_table).await?;
+
+    let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
+        Box::leak(Box::new(RwLock::new(route_table)));
+
+    let consumption_apis: &'static RwLock<HashSet<String>> =
+        Box::leak(Box::new(RwLock::new(HashSet::new())));
+
+    let route_update_channel = web_server.spawn_api_update_listener(route_table).await;
+
+    let syncing_processes_registry = if features.core_v2 {
+        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+
+        let plan_result = plan_changes(&mut client, &project).await?;
+        let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
+        let syncing_registry =
+            execute_initial_infra_change(&project, &plan_result, api_changes_channel).await?;
+        // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
+
+        // Storing the result of the changes in the table
+        store_infrastructure_map(
+            &mut client,
+            &project.clickhouse_config,
+            &plan_result.target_infra_map,
+        )
+        .await?;
+
+        syncing_registry
+    } else {
+        let mut syncing_processes_registry = SyncingProcessesRegistry::new(
+            project.redpanda_config.clone(),
+            project.clickhouse_config.clone(),
+        );
+
+        let _ = syncing_processes_registry
+            .start_all(&framework_object_versions, &version_syncs)
+            .await;
+
+        syncing_processes_registry
+    };
 
     {
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
@@ -295,20 +333,6 @@ pub async fn start_development_mode(
         )
         .await?
     }
-
-    let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
-        Box::leak(Box::new(RwLock::new(route_table)));
-    let consumption_apis: &'static RwLock<HashSet<String>> =
-        Box::leak(Box::new(RwLock::new(HashSet::new())));
-
-    let mut syncing_processes_registry = SyncingProcessesRegistry::new(
-        project.redpanda_config.clone(),
-        project.clickhouse_config.clone(),
-    );
-
-    let _ = syncing_processes_registry
-        .start_all(&framework_object_versions, &version_syncs)
-        .await;
 
     let mut flows_process_registry = FlowProcessRegistry::new(project.redpanda_config.clone());
     // Once the below function is optimized to act on events, this
@@ -340,16 +364,16 @@ pub async fn start_development_mode(
     let file_watcher = FileWatcher::new();
     file_watcher.start(
         project.clone(),
+        features,
         framework_object_versions,
-        route_table,
+        route_table,          // Deprecated way of updating the routes,
+        route_update_channel, // The new way of updating the routes
         consumption_apis,
         syncing_processes_registry,
         project_registries,
     )?;
 
     info!("Starting web server...");
-    let server_config = project.http_server_config.clone();
-    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     web_server
         .start(route_table, consumption_apis, project)
         .await;
@@ -390,7 +414,7 @@ pub async fn start_production_mode(
 
         let plan_result = plan_changes(&mut client, &project).await?;
         let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
-        execute_prod(&project, &plan_result, api_changes_channel).await?;
+        execute_initial_infra_change(&project, &plan_result, api_changes_channel).await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
 
         // Storing the result of the changes in the table
@@ -418,7 +442,7 @@ pub async fn start_production_mode(
     let mut aggregations_process_registry = AggregationProcessRegistry::new(
         project.language,
         project.clickhouse_config.clone(),
-        features,
+        &features,
     );
     process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
 
@@ -445,72 +469,7 @@ pub async fn plan(project: &Project) -> anyhow::Result<()> {
 
     let plan_results = plan_changes(&mut client, project).await?;
 
-    // TODO there is probably a better way to do the following through
-    // https://crates.io/crates/enum_dispatch or something similar
-
-    plan_results
-        .changes
-        .streaming_engine_changes
-        .iter()
-        .for_each(|change| match change {
-            StreamingChange::Topic(Change::Added(infra)) => {
-                infra_added(&infra.expanded_display());
-            }
-            StreamingChange::Topic(Change::Removed(infra)) => {
-                infra_removed(&infra.short_display());
-            }
-            StreamingChange::Topic(Change::Updated { before, after: _ }) => {
-                infra_updated(&before.expanded_display());
-            }
-        });
-
-    plan_results
-        .changes
-        .olap_changes
-        .iter()
-        .for_each(|change| match change {
-            OlapChange::Table(Change::Added(infra)) => {
-                infra_added(&infra.expanded_display());
-            }
-            OlapChange::Table(Change::Removed(infra)) => {
-                infra_removed(&infra.short_display());
-            }
-            OlapChange::Table(Change::Updated { before, after: _ }) => {
-                infra_updated(&before.expanded_display());
-            }
-        });
-
-    plan_results
-        .changes
-        .sync_processes_changes
-        .iter()
-        .for_each(|change| match change {
-            ProcessChange::TopicToTableSyncProcess(Change::Added(infra)) => {
-                infra_added(&infra.expanded_display());
-            }
-            ProcessChange::TopicToTableSyncProcess(Change::Removed(infra)) => {
-                infra_removed(&infra.short_display());
-            }
-            ProcessChange::TopicToTableSyncProcess(Change::Updated { before, after: _ }) => {
-                infra_updated(&before.expanded_display());
-            }
-        });
-
-    plan_results
-        .changes
-        .api_changes
-        .iter()
-        .for_each(|change| match change {
-            ApiChange::ApiEndpoint(Change::Added(infra)) => {
-                infra_added(&infra.expanded_display());
-            }
-            ApiChange::ApiEndpoint(Change::Removed(infra)) => {
-                infra_removed(&infra.short_display());
-            }
-            ApiChange::ApiEndpoint(Change::Updated { before, after: _ }) => {
-                infra_updated(&before.expanded_display());
-            }
-        });
+    display::show_changes(&plan_results);
 
     if plan_results.changes.is_empty() {
         show_message!(

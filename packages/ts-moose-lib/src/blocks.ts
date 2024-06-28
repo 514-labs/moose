@@ -1,4 +1,4 @@
-interface AggregationBlock {
+interface AggregationCreateOptions {
   name: string;
   destinationTable: string;
   select: string;
@@ -31,20 +31,32 @@ export enum ClickHouseEngines {
   GraphiteMergeTree = "GraphiteMergeTree",
 }
 
+/**
+ * Drops an existing aggregation if it exists.
+ */
 export function dropAggregation(name: string): string {
   return `DROP VIEW IF EXISTS ${name}`.trim();
 }
 
+/**
+ * Drops an existing table if it exists.
+ */
 export function dropTable(name: string): string {
   return `DROP TABLE IF EXISTS ${name}`.trim();
 }
 
-export function createAggregation(aggregation: AggregationBlock): string {
-  return `CREATE MATERIALIZED VIEW IF NOT EXISTS ${aggregation.name} 
-        TO ${aggregation.destinationTable}
-        AS ${aggregation.select}`.trim();
+/**
+ * Creates a materialized view for aggregation purposes.
+ */
+export function createAggregation(options: AggregationCreateOptions): string {
+  return `CREATE MATERIALIZED VIEW IF NOT EXISTS ${options.name} 
+        TO ${options.destinationTable}
+        AS ${options.select}`.trim();
 }
 
+/**
+ * Creates a new table.
+ */
 export function createTable(options: TableCreateOptions): string {
   const columnDefinitions = Object.entries(options.columns)
     .map(([name, type]) => `${name} ${type}`)
@@ -64,6 +76,9 @@ export function createTable(options: TableCreateOptions): string {
   `.trim();
 }
 
+/**
+ * Populates a table with data.
+ */
 export function populateTable(options: PopulateTableOptions): string {
   return `INSERT INTO ${options.destinationTable}
           ${options.select}`.trim();

@@ -1,5 +1,0 @@
-[git_config]
-main_branch_name = "main"
-
-[clickhouse_config]
-native_port = 9000

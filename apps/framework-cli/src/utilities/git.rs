@@ -13,15 +13,20 @@ use crate::project::Project;
 
 use super::constants::{CLI_USER_DIRECTORY, GITIGNORE};
 
+fn default_branch() -> String {
+    "main".to_string()
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct GitConfig {
+    #[serde(default = "default_branch")]
     pub main_branch_name: String,
 }
 
 impl Default for GitConfig {
     fn default() -> GitConfig {
         GitConfig {
-            main_branch_name: "main".to_string(),
+            main_branch_name: default_branch(),
         }
     }
 }

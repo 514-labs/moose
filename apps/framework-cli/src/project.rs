@@ -21,7 +21,7 @@ use std::fmt::Debug;
 use std::path::Path;
 use std::path::PathBuf;
 
-use config::{Config, ConfigError, Environment, File, FileFormat};
+use config::{Config, ConfigError, Environment, File};
 use log::debug;
 use python_project::PythonProject;
 use serde::Deserialize;
@@ -92,6 +92,7 @@ pub struct Project {
     pub redpanda_config: RedpandaConfig,
     pub clickhouse_config: ClickHouseConfig,
     pub http_server_config: LocalWebserverConfig,
+    #[serde(default)]
     pub git_config: GitConfig,
 
     // This part of the configuration for the project is dynamic and not saved
@@ -181,10 +182,6 @@ impl Project {
         }
 
         let mut project_config: Project = Config::builder()
-            .add_source(File::from_str(
-                include_str!("default_config.toml"),
-                FileFormat::Toml,
-            ))
             .add_source(File::from(project_file).required(true))
             .add_source(
                 Environment::with_prefix("MOOSE")

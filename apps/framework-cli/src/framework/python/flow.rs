@@ -8,7 +8,7 @@ use tokio::io::AsyncBufReadExt;
 use super::executor;
 
 pub fn run(
-    redpanda_config: RedpandaConfig,
+    redpanda_config: &RedpandaConfig,
     source_topic: &str,
     target_topic: &str,
     target_topic_config: &str,
@@ -20,7 +20,7 @@ pub fn run(
             target_topic.to_string(),
             target_topic_config.to_string(),
             flow_path.parent().unwrap().to_str().unwrap().to_string(),
-            redpanda_config.broker,
+            redpanda_config.broker.clone(),
         ],
     })?;
 
@@ -82,7 +82,7 @@ mod tests {
         );
 
         let child = run(
-            redpanda_config,
+            &redpanda_config,
             source_topic,
             target_topic,
             target_topic_config,
@@ -109,7 +109,7 @@ mod tests {
         );
 
         let child = run(
-            redpanda_config,
+            &redpanda_config,
             source_topic,
             target_topic,
             target_topic_config,

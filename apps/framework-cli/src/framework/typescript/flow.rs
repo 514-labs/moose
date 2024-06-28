@@ -14,7 +14,7 @@ const FLOW_RUNNER_WRAPPER: &str = include_str!("ts_scripts/flow.ts");
 // TODO: compilation errors are not proxied to the user in dev mode. We need to fix it
 // so that they can have some feedback when they mess up the typescript
 pub fn run(
-    redpanda_config: RedpandaConfig,
+    redpanda_config: &RedpandaConfig,
     source_topic: &str,
     target_topic: &str,
     target_topic_config: &str,

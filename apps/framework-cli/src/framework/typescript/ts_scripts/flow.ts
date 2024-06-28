@@ -117,6 +117,16 @@ const startProducer = async (): Promise<void> => {
   log("Producer is running...");
 };
 
+const stopProducer = async (): Promise<void> => {
+  await producer.disconnect();
+  log("Producer is shutting down...");
+};
+
+const stopConsumer = async (): Promise<void> => {
+  await consumer.disconnect();
+  log("Consumer is shutting down...");
+};
+
 const handleMessage = async (
   flowFn: FlowFunction,
   message: KafkaMessage,
@@ -285,5 +295,12 @@ const startFlow = async (
     }
   }
 };
+
+process.on("SIGTERM", async () => {
+  log("Received SIGTERM, shutting down...");
+  await stopConsumer();
+  await stopProducer();
+  process.exit(0);
+});
 
 startFlow(SOURCE_TOPIC, TARGET_TOPIC, TARGET_TOPIC_CONFIG);

@@ -1,11 +1,11 @@
-use std::{collections::HashMap, path::PathBuf};
-
-use tokio::process::Child;
+use std::path::PathBuf;
 
 use crate::{
-    framework::{python, typescript},
-    infrastructure::stream::redpanda::RedpandaConfig,
-    utilities::system::KillProcessError,
+    framework::data_model::model::DataModel,
+    utilities::{
+        constants::{PYTHON_FILE_EXTENSION, SQL_FILE_EXTENSION, TYPESCRIPT_FILE_EXTENSION},
+        system::KillProcessError,
+    },
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -26,49 +26,39 @@ pub enum FlowError {
 
 #[derive(Debug, Clone)]
 pub struct Flow {
-    pub source_topic: String,
-    pub target_topic: String,
-    pub target_topic_config: HashMap<String, String>,
-    pub executable: PathBuf,
-}
+    // The name used here is the name of the file that contains the function
+    // since we have the current assumption that there is 1 function per file
+    // we can use the file name as the name of the function.
+    // We don't currently do checks accross flows for unicities but we should
+    pub name: String,
 
-pub fn flow_id(source_topic: &str, target_topic: &str) -> String {
-    format!("{}_{}", source_topic, target_topic)
+    pub source_data_model: DataModel,
+    pub target_data_model: DataModel,
+
+    pub executable: PathBuf,
+
+    pub version: String,
 }
 
 impl Flow {
+    // Should the version of the data models be included in the id?
     pub fn id(&self) -> String {
-        flow_id(&self.source_topic, &self.target_topic)
+        format!(
+            "{}_{}_{}_{}",
+            self.name, self.source_data_model.name, self.target_data_model.name, self.version
+        )
     }
 
-    pub fn target_topic_config_json(&self) -> String {
-        serde_json::to_string(&self.target_topic_config).unwrap()
+    pub fn is_ts_flow(&self) -> bool {
+        self.executable.extension().unwrap().to_str().unwrap() == TYPESCRIPT_FILE_EXTENSION
     }
 
-    pub fn start(&self, redpanda_config: RedpandaConfig) -> Result<Child, FlowError> {
-        match &self.executable.extension() {
-            Some(ext) if ext.to_str().unwrap() == "ts" => Ok(typescript::flow::run(
-                redpanda_config,
-                &self.source_topic,
-                &self.target_topic,
-                &self.target_topic_config_json(),
-                &self.executable,
-            )?),
-            Some(ext) if ext.to_str().unwrap() == "py" => Ok(python::flow::run(
-                redpanda_config,
-                &self.source_topic,
-                &self.target_topic,
-                &self.target_topic_config_json(),
-                &self.executable,
-            )?),
-            _ => Err(FlowError::UnsupportedFlowType {
-                file_name: self
-                    .executable
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string(),
-            }),
-        }
+    pub fn is_py_flow(&self) -> bool {
+        self.executable.extension().unwrap().to_str().unwrap() == PYTHON_FILE_EXTENSION
+    }
+
+    pub fn is_flow_migration(&self) -> bool {
+        self.source_data_model.version != self.target_data_model.version
+            && self.executable.extension().unwrap().to_str().unwrap() != SQL_FILE_EXTENSION
     }
 }

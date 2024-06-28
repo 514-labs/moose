@@ -33,7 +33,7 @@ pub async fn plan_changes(
     client: &mut ClientHandle,
     project: &Project,
 ) -> Result<InfraPlan, PlanningError> {
-    let primitive_map = PrimitiveMap::load(project)?;
+    let primitive_map = PrimitiveMap::load(project).await?;
     let target_infra_map = InfrastructureMap::new(primitive_map);
 
     let current_infra_map = retrieve_infrastructure_map(client, &project.clickhouse_config).await?;

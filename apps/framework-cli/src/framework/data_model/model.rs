@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 use crate::framework::core::infrastructure::table::{Column, Table, TableType};
@@ -31,5 +32,44 @@ impl DataModel {
                 primitive_type: PrimitiveTypes::DataModel,
             },
         }
+    }
+
+    pub fn id(&self) -> String {
+        DataModel::model_id(&self.name, &self.version)
+    }
+
+    pub fn model_id(name: &str, version: &str) -> String {
+        format!("{}_{}", name, version)
+    }
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct DataModelSet {
+    models: HashMap<String, DataModel>,
+}
+
+impl DataModelSet {
+    pub fn new() -> Self {
+        DataModelSet {
+            models: HashMap::new(),
+        }
+    }
+
+    pub fn add(&mut self, model: DataModel) {
+        self.models.insert(model.id(), model);
+    }
+
+    pub fn get(&self, name: &str, version: &str) -> Option<&DataModel> {
+        let id = DataModel::model_id(name, version);
+        self.models.get(&id)
+    }
+
+    pub fn remove(&mut self, name: &str, version: &str) -> Option<DataModel> {
+        let id = DataModel::model_id(name, version);
+        self.models.remove(&id)
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item = &DataModel> {
+        self.models.values()
     }
 }

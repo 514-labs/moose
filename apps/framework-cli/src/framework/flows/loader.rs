@@ -31,7 +31,7 @@ async fn create_flow_object(
     target_data_model: String,
     path: PathBuf,
 ) -> Result<Option<Flow>, FlowError> {
-    let source_topic = match get_latest_topic(&topics, &source_data_model) {
+    let source_topic = match get_latest_topic(topics, &source_data_model) {
         Some(topic) => topic,
         None => {
             warn!(
@@ -42,7 +42,7 @@ async fn create_flow_object(
         }
     };
 
-    let target_topic = match get_latest_topic(&topics, &target_data_model) {
+    let target_topic = match get_latest_topic(topics, &target_data_model) {
         Some(topic) => topic,
         None => {
             warn!(
@@ -54,12 +54,12 @@ async fn create_flow_object(
     };
     let target_topic_config = describe_topic_config(config, &target_topic).await?;
 
-    return Ok(Some(Flow {
+    Ok(Some(Flow {
         source_topic: source_topic.clone(),
         target_topic: target_topic.clone(),
         target_topic_config: target_topic_config.clone(),
         executable: path,
-    }));
+    }))
 }
 
 /**

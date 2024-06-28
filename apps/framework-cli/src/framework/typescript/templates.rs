@@ -71,10 +71,7 @@ pub static TS_BASE_BLOCKS_SAMPLE_TEMPLATE: &str = r#"
 
 import {
   createAggregation,
-  createTable,
   dropAggregation,
-  dropTable,
-  populateTable,
   Blocks,
   ClickHouseEngines,
 } from "@514labs/moose-lib";
@@ -92,27 +89,31 @@ GROUP BY toStartOfDay(timestamp)
 
 export default {
   teardown: [
-    dropAggregation(MATERIALIZED_VIEW),
-    dropTable(DESTINATION_TABLE),
+    ...dropAggregation({
+      viewName: MATERIALIZED_VIEW,
+      tableName: DESTINATION_TABLE,
+    }),
   ],
   setup: [
-    createTable({
-      name: DESTINATION_TABLE,
-      columns: {
-        date: "Date",
-        dailyActiveUsers: "AggregateFunction(uniq, String)"
+    ...createAggregation({
+      tableCreateOptions: {
+        name: DESTINATION_TABLE,
+        columns: {
+          date: "Date",
+          dailyActiveUsers: "AggregateFunction(uniq, String)",
+        },
+        engine: ClickHouseEngines.AggregatingMergeTree,
+        orderBy: "date",
       },
-      engine: ClickHouseEngines.AggregatingMergeTree,
-      orderBy: "date"
-    }),
-    createAggregation({
-      name: MATERIALIZED_VIEW,
-      destinationTable: DESTINATION_TABLE,
-      select: SELECT_QUERY
-    }),
-    populateTable({
-      destinationTable: DESTINATION_TABLE,
-      select: SELECT_QUERY
+      materializedViewCreateOptions: {
+        name: MATERIALIZED_VIEW,
+        destinationTable: DESTINATION_TABLE,
+        select: SELECT_QUERY,
+      },
+      poulateTableOptions: {
+        destinationTable: DESTINATION_TABLE,
+        select: SELECT_QUERY,
+      },
     }),
   ],
 } as Blocks;

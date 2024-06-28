@@ -1,4 +1,15 @@
 interface AggregationCreateOptions {
+  tableCreateOptions: TableCreateOptions;
+  materializedViewCreateOptions: MaterializedViewCreateOptions;
+  poulateTableOptions: PopulateTableOptions;
+}
+
+interface AggregationDropOptions {
+  viewName: string;
+  tableName: string;
+}
+
+interface MaterializedViewCreateOptions {
   name: string;
   destinationTable: string;
   select: string;
@@ -32,10 +43,10 @@ export enum ClickHouseEngines {
 }
 
 /**
- * Drops an existing aggregation if it exists.
+ * Drops an aggregation's view & underlying table.
  */
-export function dropAggregation(name: string): string {
-  return `DROP VIEW IF EXISTS ${name}`.trim();
+export function dropAggregation(options: AggregationDropOptions): string[] {
+  return [dropView(options.viewName), dropTable(options.tableName)];
 }
 
 /**
@@ -46,16 +57,36 @@ export function dropTable(name: string): string {
 }
 
 /**
- * Creates a materialized view for aggregation purposes.
+ * Drops an existing view if it exists.
  */
-export function createAggregation(options: AggregationCreateOptions): string {
+export function dropView(name: string): string {
+  return `DROP VIEW IF EXISTS ${name}`.trim();
+}
+
+/**
+ * Creates an aggregation which includes a table, materialized view, and initial data load.
+ */
+export function createAggregation(options: AggregationCreateOptions): string[] {
+  return [
+    createTable(options.tableCreateOptions),
+    createMaterializedView(options.materializedViewCreateOptions),
+    populateTable(options.poulateTableOptions),
+  ];
+}
+
+/**
+ * Creates a materialized view.
+ */
+export function createMaterializedView(
+  options: MaterializedViewCreateOptions,
+): string {
   return `CREATE MATERIALIZED VIEW IF NOT EXISTS ${options.name} 
         TO ${options.destinationTable}
         AS ${options.select}`.trim();
 }
 
 /**
- * Creates a new table.
+ * Creates a new table with default MergeTree engine.
  */
 export function createTable(options: TableCreateOptions): string {
   const columnDefinitions = Object.entries(options.columns)

@@ -1,7 +1,9 @@
 use super::{Routine, RoutineFailure, RoutineSuccess};
 use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
-use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
+use crate::utilities::constants::{
+    APP_DIR, CLI_INTERNAL_VERSIONS_DIR, OLD_PROJECT_CONFIG_FILE, PACKAGE_JSON, PROJECT_CONFIG_FILE,
+};
 use crate::utilities::{constants, docker, system};
 use crate::{cli::display::Message, project::Project};
 use log::{error, info};
@@ -87,7 +89,10 @@ WORKDIR /application
 # Copy the application files to the container
 COPY ./app ./app
 COPY ./package.json ./package.json
-COPY ./project.toml ./project.toml
+
+# https://stackoverflow.com/questions/70096208/dockerfile-copy-folder-if-it-exists-conditional-copy/70096420#70096420
+COPY ./project.tom[l] ./project.toml
+COPY ./moose.config.tom[l] ./moose.config.toml
 COPY ./versions .moose/versions
 
 # We should get compatible with other package managers 
@@ -255,9 +260,18 @@ impl Routine for BuildDockerfile {
 
         // Copy app & etc to packager directory
         let project_root_path = self.project.project_location.clone();
-        let items_to_copy = vec!["app", "package.json", "project.toml"];
+        let items_to_copy = vec![
+            APP_DIR,
+            PACKAGE_JSON,
+            PROJECT_CONFIG_FILE,
+            OLD_PROJECT_CONFIG_FILE,
+        ];
 
         for item in items_to_copy {
+            if !project_root_path.join(item).exists() {
+                continue;
+            }
+
             let copy_result = system::copy_directory(
                 &project_root_path.join(item),
                 &internal_dir.join("packager"),

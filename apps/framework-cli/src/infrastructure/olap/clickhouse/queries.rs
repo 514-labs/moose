@@ -1,7 +1,7 @@
 use handlebars::Handlebars;
 use serde_json::{json, Value};
 
-use crate::framework::data_model::schema::EnumValue;
+use crate::framework::core::infrastructure::table::EnumValue;
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
 };
@@ -277,7 +277,7 @@ fn builds_field_context(columns: &[ClickHouseColumn]) -> Result<Vec<Value>, Clic
 mod tests {
     use std::vec;
 
-    use crate::framework::data_model::schema::{DataEnum, EnumMember};
+    use crate::framework::core::infrastructure::table::{DataEnum, EnumMember};
 
     use super::*;
 

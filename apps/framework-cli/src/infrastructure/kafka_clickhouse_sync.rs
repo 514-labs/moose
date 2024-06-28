@@ -15,8 +15,8 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 use crate::framework::core::code_loader::FrameworkObjectVersions;
-use crate::framework::data_model::schema::Column;
-use crate::framework::data_model::schema::ColumnType;
+use crate::framework::core::infrastructure::table::Column;
+use crate::framework::core::infrastructure::table::ColumnType;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::inserter::Inserter;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
@@ -27,8 +27,6 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::infrastructure::stream::redpanda::{create_producer, send_with_back_pressure};
 
 use super::olap::clickhouse::errors::ClickhouseError;
-use super::olap::clickhouse::mapper::std_column_to_clickhouse_column;
-use super::olap::clickhouse::mapper::std_field_type_to_clickhouse_type_mapper;
 use super::olap::clickhouse::model::ClickHouseColumn;
 use super::olap::clickhouse::model::ClickHouseRecord;
 use super::olap::clickhouse::model::ClickHouseRuntimeEnum;
@@ -165,7 +163,7 @@ impl SyncingProcessesRegistry {
         Ok(())
     }
 
-    pub fn start(
+    pub fn start_topic_to_table(
         &mut self,
         source_topic_name: String,
         source_topic_columns: Vec<Column>,
@@ -195,7 +193,7 @@ impl SyncingProcessesRegistry {
         self.insert_table_sync(syncing_process);
     }
 
-    pub fn stop(&mut self, topic_name: &str, table_name: &str) {
+    pub fn stop_topic_to_table(&mut self, topic_name: &str, table_name: &str) {
         let key = Self::format_key_str(topic_name, table_name);
         if let Some(process) = self.to_table_registry.remove(&key) {
             process.abort();
@@ -424,13 +422,8 @@ fn mapper_json_to_clickhouse_record(
                     }
                     None => {
                         // Clickhouse doesn't like NULLABLE arrays so we are inserting an empty array instead.
-                        if let ColumnType::Array(inner_type) = &column.data_type {
-                            let clickhouse_inner_type =
-                                std_field_type_to_clickhouse_type_mapper(*inner_type.clone())?;
-                            record.insert(
-                                key,
-                                ClickHouseValue::new_array(Vec::new(), clickhouse_inner_type),
-                            );
+                        if let ColumnType::Array(_inner_type) = &column.data_type {
+                            record.insert(key, ClickHouseValue::new_array(Vec::new()));
                         }
                         // Other values are ignored and the client will insert NULL instead
                     }
@@ -521,18 +514,16 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
-        ColumnType::Enum(x) => {
+        ColumnType::Enum(_) => {
             // In this context what could be coming in could be a string or a number depending on
             // how the enum was defined at the source.
             if let Some(value_str) = value.as_str() {
                 Ok(ClickHouseValue::new_enum(
                     ClickHouseRuntimeEnum::ClickHouseString(value_str.to_string()),
-                    x.clone(),
                 ))
             } else if let Some(value_int) = value.as_i64() {
                 Ok(ClickHouseValue::new_enum(
                     ClickHouseRuntimeEnum::ClickHouseInt(value_int as u8),
-                    x.clone(),
                 ))
             } else {
                 Err(MappingError::TypeMismatch {
@@ -543,9 +534,6 @@ fn map_json_value_to_clickhouse_value(
         }
         ColumnType::Array(inner_column_type) => {
             if let Some(arr) = value.as_array() {
-                let array_type =
-                    std_field_type_to_clickhouse_type_mapper(*inner_column_type.clone())?;
-
                 let mut array_values = Vec::new();
                 for value in arr.iter() {
                     let clickhouse_value =
@@ -553,7 +541,7 @@ fn map_json_value_to_clickhouse_value(
                     array_values.push(clickhouse_value);
                 }
 
-                Ok(ClickHouseValue::new_array(array_values, array_type))
+                Ok(ClickHouseValue::new_array(array_values))
             } else {
                 Err(MappingError::TypeMismatch {
                     column_type: column_type.clone(),
@@ -580,29 +568,25 @@ fn map_json_value_to_clickhouse_value(
 
             if let Some(obj) = value.as_object() {
                 // Needs a null if the column isn't present
-                let column_values = inner_nested
-                    .columns
-                    .iter()
-                    .map(|col| {
-                        let col_name = &col.name;
-                        let val = obj.get(col_name);
-                        match val {
-                            Some(val) => (
-                                std_column_to_clickhouse_column(col.clone()).unwrap(),
-                                map_json_value_to_clickhouse_value(&col.data_type, val).unwrap(),
-                            ),
-                            None => (
-                                std_column_to_clickhouse_column(col.clone()).unwrap(),
-                                ClickHouseValue::new_null(
-                                    std_field_type_to_clickhouse_type_mapper(col.data_type.clone())
-                                        .unwrap(),
-                                ),
-                            ),
-                        }
-                    })
-                    .collect();
+                let mut values: Vec<ClickHouseValue> = Vec::new();
 
-                Ok(ClickHouseValue::new_tuple(column_values))
+                for col in inner_nested.columns.iter() {
+                    let col_name = &col.name;
+                    let val = obj.get(col_name);
+
+                    match val {
+                        Some(val) => (
+                            values.push(map_json_value_to_clickhouse_value(&col.data_type, val)?),
+                            map_json_value_to_clickhouse_value(&col.data_type, val)?,
+                        ),
+                        None => (
+                            values.push(ClickHouseValue::new_null()),
+                            ClickHouseValue::new_null(),
+                        ),
+                    };
+                }
+
+                Ok(ClickHouseValue::new_tuple(values))
             } else {
                 Err(MappingError::TypeMismatch {
                     column_type: column_type.clone(),
@@ -624,7 +608,7 @@ fn map_json_value_to_clickhouse_value(
 
 #[cfg(test)]
 mod tests {
-    use crate::framework::data_model::schema::Nested;
+    use crate::framework::core::infrastructure::table::Nested;
 
     use super::*;
 
@@ -748,11 +732,11 @@ mod tests {
             &example_json_value,
         );
 
-        let values_string = "[(A,B,[(a,[(d,e,f)],c)],NULL)]".to_string();
+        let values_string = "[('A','B',[('a',[('d','e','f')],'c')],NULL)]".to_string();
         // Note the corresponding insert statement would be
         // INSERT INTO TimLiveTest VALUES ('T', [('A','B',[('a',[('d','e','f')],'c')],NULL)])
         // where TimLiveTest is the table name and contains our nested object and a order by Key
 
-        assert_eq!(values.unwrap().to_string(), values_string);
+        assert_eq!(values.unwrap().clickhouse_to_string(), values_string);
     }
 }

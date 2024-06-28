@@ -4,7 +4,10 @@ use crate::{cli::display::Message, project::Project};
 use super::flow::create_flow_directory;
 use super::{RoutineFailure, RoutineSuccess};
 
-pub fn initialize_project(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
+pub fn initialize_project(
+    project: &Project,
+    empty: &bool,
+) -> Result<RoutineSuccess, RoutineFailure> {
     project.setup_app_dir().map_err(|err| {
         RoutineFailure::new(
             Message::new(
@@ -15,22 +18,24 @@ pub fn initialize_project(project: &Project) -> Result<RoutineSuccess, RoutineFa
         )
     })?;
 
-    create_flow_directory(
-        project,
-        SAMPLE_FLOWS_SOURCE.to_string(),
-        SAMPLE_FLOWS_DEST.to_string(),
-    )?
-    .show();
+    if !empty {
+        create_flow_directory(
+            project,
+            SAMPLE_FLOWS_SOURCE.to_string(),
+            SAMPLE_FLOWS_DEST.to_string(),
+        )?
+        .show();
 
-    project.create_base_app_files().map_err(|err| {
-        RoutineFailure::new(
-            Message::new(
-                "Failed".to_string(),
-                "to create 'app' files, Check permissions or contact us".to_string(),
-            ),
-            err,
-        )
-    })?;
+        project.create_base_app_files().map_err(|err| {
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    "to create 'app' files, Check permissions or contact us".to_string(),
+                ),
+                err,
+            )
+        })?;
+    }
 
     project.create_vscode_files().map_err(|err| {
         RoutineFailure::new(

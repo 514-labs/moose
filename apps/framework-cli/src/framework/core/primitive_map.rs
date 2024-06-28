@@ -5,12 +5,11 @@ use std::{
 use walkdir::WalkDir;
 
 use crate::{
-    framework::data_model::{
-        parser::parse_data_model_file,
-        schema::{DataEnum, DataModel},
-    },
+    framework::data_model::{parser::parse_data_model_file, schema::DataModel},
     project::Project,
 };
+
+use super::infrastructure::table::DataEnum;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PrimitiveMapLoadingError {

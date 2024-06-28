@@ -3,7 +3,8 @@ use std::path::PathBuf;
 use tokio::process::Child;
 
 use crate::{
-    framework::typescript, infrastructure::olap::clickhouse::config::ClickHouseConfig,
+    framework::{languages::SupportedLanguages, python, typescript},
+    infrastructure::olap::clickhouse::config::ClickHouseConfig,
     utilities::system::KillProcessError,
 };
 
@@ -27,7 +28,16 @@ impl Consumption {
         "onlyone".to_string()
     }
 
-    pub fn start(&self, clickhouse_config: ClickHouseConfig) -> Result<Child, ConsumptionError> {
-        typescript::consumption::run(clickhouse_config, &self.dir)
+    pub fn start(
+        &self,
+        language: SupportedLanguages,
+        clickhouse_config: ClickHouseConfig,
+    ) -> Result<Child, ConsumptionError> {
+        match language {
+            SupportedLanguages::Python => python::consumption::run(clickhouse_config, &self.dir),
+            SupportedLanguages::Typescript => {
+                typescript::consumption::run(clickhouse_config, &self.dir)
+            }
+        }
     }
 }

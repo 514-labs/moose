@@ -15,6 +15,57 @@ use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
 
+use crate::framework::core::infrastructure_map::{Change, StreamingChange};
+use crate::project::Project;
+
+#[derive(Debug, thiserror::Error)]
+pub enum RedpandaChangesError {
+    #[error("Not Supported {0}")]
+    NotSupported(String),
+
+    #[error("Anyhow Error")]
+    Other(#[from] anyhow::Error),
+}
+
+pub async fn execute_changes(
+    project: &Project,
+    changes: &[StreamingChange],
+) -> Result<(), RedpandaChangesError> {
+    // TODO: we need to take into account all the current state of the topic,
+    // ie the retention period and bytes sizes. But we will need to change the
+    // interfaces of create method to do that properly. We will do it once we have
+    // move to the new core.
+
+    for change in changes.iter() {
+        match change {
+            StreamingChange::Topic(Change::Added(topic)) => {
+                log::info!("Creating topic: {:?}", topic.id());
+                create_topics(&project.redpanda_config, vec![topic.id()]).await?;
+            }
+
+            StreamingChange::Topic(Change::Removed(topic)) => {
+                log::info!("Deleting topic: {:?}", topic.id());
+                delete_topics(&project.redpanda_config, vec![topic.id()]).await?;
+            }
+
+            StreamingChange::Topic(Change::Updated { before, after }) => {
+                if !project.is_production {
+                    log::info!("Replacing topic: {:?} with: {:?}", before, after);
+                    delete_topics(&project.redpanda_config, vec![before.id()]).await?;
+                    create_topics(&project.redpanda_config, vec![after.id()]).await?;
+                } else {
+                    return Err(RedpandaChangesError::NotSupported(format!(
+                        "Updating topic {} is not supported in production mode",
+                        before.id()
+                    )));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
 // TODO: We need to configure the application based on the current project directory structure to
 // ensure that we catch changes made outside of development mode
 
@@ -64,7 +115,7 @@ pub async fn create_topics(config: &RedpandaConfig, topics: Vec<String>) -> anyh
 pub async fn delete_topics(
     config: &RedpandaConfig,
     topics: Vec<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), anyhow::Error> {
     info!("Deleting topics: {:?}", topics);
 
     let admin_client: AdminClient<_> = config_client(config)

@@ -37,9 +37,9 @@ impl Default for TypescriptProject {
             ]),
             dependencies: HashMap::from([
                 ("@514labs/moose-lib".to_string(), "latest".to_string()),
-                ("@clickhouse/client-web".to_string(), "^1.0.1".to_string()),
-                ("fastq".to_string(), "^1.17.1".to_string()),
-                ("kafkajs".to_string(), "^2.2.4".to_string()),
+                ("@clickhouse/client-web".to_string(), "1.1.0".to_string()),
+                ("fastq".to_string(), "1.17.1".to_string()),
+                ("kafkajs".to_string(), "2.2.4".to_string()),
             ]),
             dev_dependencies: HashMap::from([
                 ("@514labs/moose-cli".to_string(), "latest".to_string()),

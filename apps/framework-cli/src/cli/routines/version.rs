@@ -7,7 +7,9 @@ use crate::cli::display::Message;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::framework::languages::SupportedLanguages;
 use crate::project::Project;
-use crate::utilities::constants::{PACKAGE_JSON, PROJECT_CONFIG_FILE, SETUP_PY};
+use crate::utilities::constants::{
+    OLD_PROJECT_CONFIG_FILE, PACKAGE_JSON, PROJECT_CONFIG_FILE, SETUP_PY,
+};
 use crate::utilities::git::current_commit_hash;
 
 pub fn bump_version(
@@ -18,7 +20,10 @@ pub fn bump_version(
         RoutineFailure::new(
             Message::new(
                 "Failed".to_string(),
-                format!("to update {}", PROJECT_CONFIG_FILE),
+                format!(
+                    "to update {} or {}",
+                    OLD_PROJECT_CONFIG_FILE, PROJECT_CONFIG_FILE
+                ),
             ),
             err,
         )
@@ -79,7 +84,12 @@ fn bump_package_json_version(current_version: &str, new_version: &str) -> anyhow
 fn add_current_version_to_config(project: &Project, current_version: &str) -> anyhow::Result<()> {
     let commit = current_commit_hash(project)?;
 
-    let contents = fs::read_to_string(PROJECT_CONFIG_FILE)?;
+    let contents = if project.project_location.join(PROJECT_CONFIG_FILE).exists() {
+        fs::read_to_string(PROJECT_CONFIG_FILE)?
+    } else {
+        fs::read_to_string(OLD_PROJECT_CONFIG_FILE)?
+    };
+
     let mut doc = contents.parse::<DocumentMut>()?;
 
     match doc.get_mut("supported_old_versions") {
@@ -95,6 +105,11 @@ fn add_current_version_to_config(project: &Project, current_version: &str) -> an
         }
     }
 
-    fs::write(PROJECT_CONFIG_FILE, doc.to_string())?;
+    if project.project_location.join(PROJECT_CONFIG_FILE).exists() {
+        fs::write(PROJECT_CONFIG_FILE, doc.to_string())?;
+    } else {
+        fs::write(OLD_PROJECT_CONFIG_FILE, doc.to_string())?;
+    }
+
     Ok(())
 }

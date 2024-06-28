@@ -79,11 +79,11 @@
 //! - Organize routines better in the file hiearchy
 //!
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use clickhouse_rs::ClientHandle;
 use log::{debug, error, info};
 use tokio::sync::RwLock;
 
@@ -95,8 +95,11 @@ use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 use crate::framework::core::code_loader::{
     load_framework_objects, FrameworkObject, FrameworkObjectVersions, SchemaVersion,
 };
-use crate::framework::core::infrastructure_map::{Change, InfraChange, InfrastructureMap};
-use crate::framework::core::primitive_map::PrimitiveMap;
+use crate::framework::core::execute::execute_prod;
+use crate::framework::core::infrastructure_map::{
+    ApiChange, Change, OlapChange, ProcessChange, StreamingChange,
+};
+use crate::framework::core::plan::plan_changes;
 use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::framework::registry::model::ProcessRegistries;
 use crate::infrastructure::olap::clickhouse::{
@@ -109,13 +112,13 @@ use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
 use crate::infrastructure::olap::clickhouse_alt_client::{
-    get_pool, retrieve_infrastructure_map, store_current_state, store_infrastructure_map,
-    StateStorageError,
+    get_pool, store_current_state, store_infrastructure_map,
 };
 use crate::project::Project;
 
 use super::display::{infra_added, infra_removed, infra_updated, with_spinner_async};
 use super::local_webserver::Webserver;
+use super::settings::Features;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
 
@@ -263,7 +266,10 @@ impl RoutineController {
 }
 
 // Starts the file watcher and the webserver
-pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()> {
+pub async fn start_development_mode(
+    project: Arc<Project>,
+    features: Features,
+) -> anyhow::Result<()> {
     show_message!(
         MessageType::Info,
         Message {
@@ -276,7 +282,7 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
 
     info!("<DCM> Initializing project state");
     let (framework_object_versions, version_syncs) =
-        initialize_project_state(project.clone(), &mut route_table).await?;
+        initialize_project_state(&features, project.clone(), &mut route_table).await?;
 
     {
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
@@ -292,6 +298,8 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
 
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
+    let consumption_apis: &'static RwLock<HashSet<String>> =
+        Box::leak(Box::new(RwLock::new(HashSet::new())));
 
     let mut syncing_processes_registry = SyncingProcessesRegistry::new(
         project.redpanda_config.clone(),
@@ -307,13 +315,21 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     // will need to get refactored out.
     process_flows_changes(&project, &mut flows_process_registry).await?;
 
-    let mut aggregations_process_registry =
-        AggregationProcessRegistry::new(project.language, project.clickhouse_config.clone());
+    let mut aggregations_process_registry = AggregationProcessRegistry::new(
+        project.language,
+        project.clickhouse_config.clone(),
+        features,
+    );
     process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
 
     let mut consumption_process_registry =
-        ConsumptionProcessRegistry::new(project.clickhouse_config.clone());
-    process_consumption_changes(&project, &mut consumption_process_registry).await?;
+        ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());
+    process_consumption_changes(
+        &project,
+        &mut consumption_process_registry,
+        consumption_apis.write().await.deref_mut(),
+    )
+    .await?;
 
     let project_registries = ProcessRegistries::new(
         flows_process_registry,
@@ -326,6 +342,7 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
         project.clone(),
         framework_object_versions,
         route_table,
+        consumption_apis,
         syncing_processes_registry,
         project_registries,
     )?;
@@ -333,54 +350,18 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
     info!("Starting web server...");
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(server_config.host.clone(), server_config.port);
-    web_server.start(route_table, project).await;
+    web_server
+        .start(route_table, consumption_apis, project)
+        .await;
 
     Ok(())
 }
 
-#[derive(Debug, thiserror::Error)]
-pub enum PlanningError {
-    #[error("Failed to communicate with state storage")]
-    StateStorage(#[from] StateStorageError),
-
-    #[error("Failed to load primitive map")]
-    PrimitiveMapLoading(#[from] crate::framework::core::primitive_map::PrimitiveMapLoadingError),
-
-    #[error("Failed to connect to state storage")]
-    Clickhouse(#[from] clickhouse_rs::errors::Error),
-}
-
-// TODO - this probably should be somewhere else but not sure where.
-
-pub struct InfraPlanResult {
-    // pub current_infra_map: Option<InfrastructureMap>,
-    pub target_infra_map: InfrastructureMap,
-    pub changes: Vec<InfraChange>,
-}
-
-async fn plan_changes(
-    client: &mut ClientHandle,
-    project: &Project,
-) -> Result<InfraPlanResult, PlanningError> {
-    let primitive_map = PrimitiveMap::load(project)?;
-    let target_infra_map = InfrastructureMap::new(primitive_map);
-
-    let current_infra_map = retrieve_infrastructure_map(client, &project.clickhouse_config).await?;
-
-    let changes = match &current_infra_map {
-        Some(current_infra_map) => current_infra_map.diff(&target_infra_map),
-        None => target_infra_map.init(),
-    };
-
-    Ok(InfraPlanResult {
-        // current_infra_map,
-        target_infra_map,
-        changes,
-    })
-}
-
 // Starts the webserver in production mode
-pub async fn start_production_mode(project: Arc<Project>, v2_core: bool) -> anyhow::Result<()> {
+pub async fn start_production_mode(
+    project: Arc<Project>,
+    features: Features,
+) -> anyhow::Result<()> {
     show_message!(
         MessageType::Success,
         Message {
@@ -389,11 +370,27 @@ pub async fn start_production_mode(project: Arc<Project>, v2_core: bool) -> anyh
         }
     );
 
-    if v2_core {
+    let server_config = project.http_server_config.clone();
+    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
+
+    let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
+    info!("<DCM> Initializing project state");
+    let (framework_object_versions, version_syncs) =
+        initialize_project_state(&features, project.clone(), &mut route_table).await?;
+
+    debug!("Route table: {:?}", route_table);
+    let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
+        Box::leak(Box::new(RwLock::new(route_table)));
+
+    let consumption_apis: &'static RwLock<HashSet<String>> =
+        Box::leak(Box::new(RwLock::new(HashSet::new())));
+
+    if features.core_v2 {
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
 
         let plan_result = plan_changes(&mut client, &project).await?;
-        // TODO add interpreter for making the different changes
+        let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
+        execute_prod(&project, &plan_result, api_changes_channel).await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
 
         // Storing the result of the changes in the table
@@ -403,44 +400,42 @@ pub async fn start_production_mode(project: Arc<Project>, v2_core: bool) -> anyh
             &plan_result.target_infra_map,
         )
         .await?;
+    } else {
+        let mut syncing_processes_registry = SyncingProcessesRegistry::new(
+            project.redpanda_config.clone(),
+            project.clickhouse_config.clone(),
+        );
+        let _ = syncing_processes_registry
+            .start_all(&framework_object_versions, &version_syncs)
+            .await;
     }
-
-    let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
-
-    info!("<DCM> Initializing project state");
-    let (framework_object_versions, version_syncs) =
-        initialize_project_state(project.clone(), &mut route_table).await?;
-
-    debug!("Route table: {:?}", route_table);
-
-    let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
-        Box::leak(Box::new(RwLock::new(route_table)));
-
-    let mut syncing_processes_registry = SyncingProcessesRegistry::new(
-        project.redpanda_config.clone(),
-        project.clickhouse_config.clone(),
-    );
-    let _ = syncing_processes_registry
-        .start_all(&framework_object_versions, &version_syncs)
-        .await;
 
     let mut flows_process_registry = FlowProcessRegistry::new(project.redpanda_config.clone());
     // Once the below function is optimized to act on events, this
     // will need to get refactored out.
     process_flows_changes(&project, &mut flows_process_registry).await?;
 
-    let mut aggregations_process_registry =
-        AggregationProcessRegistry::new(project.language, project.clickhouse_config.clone());
+    let mut aggregations_process_registry = AggregationProcessRegistry::new(
+        project.language,
+        project.clickhouse_config.clone(),
+        features,
+    );
     process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
 
     let mut consumption_process_registry =
-        ConsumptionProcessRegistry::new(project.clickhouse_config.clone());
-    process_consumption_changes(&project, &mut consumption_process_registry).await?;
+        ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());
+    process_consumption_changes(
+        &project,
+        &mut consumption_process_registry,
+        consumption_apis.write().await.deref_mut(),
+    )
+    .await?;
 
     info!("Starting web server...");
-    let server_config = project.http_server_config.clone();
-    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
-    web_server.start(route_table, project).await;
+
+    web_server
+        .start(route_table, consumption_apis, project)
+        .await;
 
     Ok(())
 }
@@ -450,44 +445,72 @@ pub async fn plan(project: &Project) -> anyhow::Result<()> {
 
     let plan_results = plan_changes(&mut client, project).await?;
 
-    plan_results.changes.iter().for_each(|change| match change {
-        InfraChange::Topic(Change::Added(infra)) => {
-            infra_added(&infra.expanded_display());
-        }
-        InfraChange::Topic(Change::Removed(infra)) => {
-            infra_removed(&infra.short_display());
-        }
-        InfraChange::Topic(Change::Updated { before, after: _ }) => {
-            infra_updated(&before.expanded_display());
-        }
-        InfraChange::ApiEndpoint(Change::Added(infra)) => {
-            infra_added(&infra.expanded_display());
-        }
-        InfraChange::ApiEndpoint(Change::Removed(infra)) => {
-            infra_removed(&infra.short_display());
-        }
-        InfraChange::ApiEndpoint(Change::Updated { before, after: _ }) => {
-            infra_updated(&before.expanded_display());
-        }
-        InfraChange::Table(Change::Added(infra)) => {
-            infra_added(&infra.expanded_display());
-        }
-        InfraChange::Table(Change::Removed(infra)) => {
-            infra_removed(&infra.short_display());
-        }
-        InfraChange::Table(Change::Updated { before, after: _ }) => {
-            infra_updated(&before.expanded_display());
-        }
-        InfraChange::TopicToTableSyncProcess(Change::Added(infra)) => {
-            infra_added(&infra.expanded_display());
-        }
-        InfraChange::TopicToTableSyncProcess(Change::Removed(infra)) => {
-            infra_removed(&infra.short_display());
-        }
-        InfraChange::TopicToTableSyncProcess(Change::Updated { before, after: _ }) => {
-            infra_updated(&before.expanded_display());
-        }
-    });
+    // TODO there is probably a better way to do the following through
+    // https://crates.io/crates/enum_dispatch or something similar
+
+    plan_results
+        .changes
+        .streaming_engine_changes
+        .iter()
+        .for_each(|change| match change {
+            StreamingChange::Topic(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            StreamingChange::Topic(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            StreamingChange::Topic(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+        });
+
+    plan_results
+        .changes
+        .olap_changes
+        .iter()
+        .for_each(|change| match change {
+            OlapChange::Table(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            OlapChange::Table(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            OlapChange::Table(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+        });
+
+    plan_results
+        .changes
+        .sync_processes_changes
+        .iter()
+        .for_each(|change| match change {
+            ProcessChange::TopicToTableSyncProcess(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            ProcessChange::TopicToTableSyncProcess(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            ProcessChange::TopicToTableSyncProcess(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+        });
+
+    plan_results
+        .changes
+        .api_changes
+        .iter()
+        .for_each(|change| match change {
+            ApiChange::ApiEndpoint(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            ApiChange::ApiEndpoint(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            ApiChange::ApiEndpoint(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+        });
 
     if plan_results.changes.is_empty() {
         show_message!(
@@ -588,6 +611,7 @@ async fn check_for_model_changes(
 // 1. one that gathers the curnent state of the project from the files
 // 2. another one that changes the routes based on the current state
 pub async fn initialize_project_state(
+    features: &Features,
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> anyhow::Result<(FrameworkObjectVersions, Vec<VersionSync>)> {
@@ -612,40 +636,48 @@ pub async fn initialize_project_state(
                     .get_mut(&version)
                     .unwrap();
 
-                process_objects(
-                    &schema_version.models,
-                    &previous_version,
-                    project.clone(),
-                    &schema_version.base_path,
-                    &configured_client,
-                    route_table,
-                    &version,
-                )
-                .await?;
+                // When using the core v2, this functionality is somewhere else
+                if !features.core_v2 {
+                    process_objects(
+                        &schema_version.models,
+                        &previous_version,
+                        project.clone(),
+                        &schema_version.base_path,
+                        &configured_client,
+                        route_table,
+                        &version,
+                    )
+                    .await?;
+                }
                 previous_version = Some((version, schema_version.models.clone()));
             }
 
-            let result = process_objects(
-                &framework_object_versions.current_models.models,
-                &previous_version,
-                project.clone(),
-                &framework_object_versions.current_models.base_path,
-                &configured_client,
-                route_table,
-                &framework_object_versions.current_version,
-            )
-            .await;
+            // When using the core v2, this functionality is somewhere else
+            if !features.core_v2 {
+                let result = process_objects(
+                    &framework_object_versions.current_models.models,
+                    &previous_version,
+                    project.clone(),
+                    &framework_object_versions.current_models.base_path,
+                    &configured_client,
+                    route_table,
+                    &framework_object_versions.current_version,
+                )
+                .await;
 
-            match result {
-                Ok(_) => {
-                    info!("<DCM> Schema directory crawl completed successfully");
-                    Ok(())
+                match result {
+                    Ok(_) => {
+                        info!("<DCM> Schema directory crawl completed successfully");
+                        Ok(())
+                    }
+                    Err(e) => {
+                        debug!("<DCM> Schema directory crawl failed");
+                        debug!("<DCM> Error: {:?}", e);
+                        Err(e)
+                    }
                 }
-                Err(e) => {
-                    debug!("<DCM> Schema directory crawl failed");
-                    debug!("<DCM> Error: {:?}", e);
-                    Err(e)
-                }
+            } else {
+                Ok(())
             }
         },
         !project.is_production,

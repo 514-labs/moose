@@ -111,6 +111,7 @@ async fn top_command_handler(
             location,
             template,
             no_fail_already_exists,
+            empty,
         } => {
             info!(
                 "Running init command with name: {}, language: {}, location: {:?}, template: {:?}",
@@ -159,7 +160,7 @@ async fn top_command_handler(
 
                     debug!("Project: {:?}", project_arc);
 
-                    initialize_project(&project_arc)?.show();
+                    initialize_project(&project_arc, empty)?.show();
 
                     project_arc
                         .write_to_disk()
@@ -273,7 +274,7 @@ async fn top_command_handler(
             check_project_name(&project_arc.name())?;
             run_local_infrastructure(&project_arc)?.show();
 
-            routines::start_development_mode(project_arc)
+            routines::start_development_mode(project_arc, settings.features)
                 .await
                 .map_err(|e| {
                     RoutineFailure::error(Message {
@@ -379,7 +380,7 @@ async fn top_command_handler(
 
             check_project_name(&project_arc.name())?;
 
-            routines::start_production_mode(project_arc, settings.features.core_v2)
+            routines::start_production_mode(project_arc, settings.features)
                 .await
                 .unwrap();
 
@@ -618,7 +619,7 @@ pub async fn cli_run() {
     init_config_file().unwrap();
 
     let config = read_settings().unwrap();
-    setup_logging(&config.logger).expect("Failed to setup logging");
+    setup_logging(&config.logger, &config.telemetry.machine_id).expect("Failed to setup logging");
 
     info!("CLI Configuration loaded and logging setup: {:?}", config);
 

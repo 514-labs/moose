@@ -28,10 +28,11 @@ impl Aggregation {
         &self,
         language: SupportedLanguages,
         clickhouse_config: ClickHouseConfig,
+        is_blocks: bool,
     ) -> Result<Child, AggregationError> {
         match language {
             SupportedLanguages::Typescript => {
-                typescript::aggregation::run(clickhouse_config, &self.dir)
+                typescript::aggregation::run(clickhouse_config, &self.dir, is_blocks)
             }
             SupportedLanguages::Python => python::aggregation::run(clickhouse_config, &self.dir),
         }

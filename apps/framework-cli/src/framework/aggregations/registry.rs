@@ -4,7 +4,7 @@ use log::info;
 use tokio::process::Child;
 
 use crate::{
-    framework::languages::SupportedLanguages,
+    cli::settings::Features, framework::languages::SupportedLanguages,
     infrastructure::olap::clickhouse::config::ClickHouseConfig,
 };
 
@@ -14,20 +14,30 @@ pub struct AggregationProcessRegistry {
     registry: HashMap<String, Child>,
     language: SupportedLanguages,
     clickhouse_config: ClickHouseConfig,
+    features: Features,
 }
 
 impl AggregationProcessRegistry {
-    pub fn new(language: SupportedLanguages, clickhouse_config: ClickHouseConfig) -> Self {
+    pub fn new(
+        language: SupportedLanguages,
+        clickhouse_config: ClickHouseConfig,
+        features: Features,
+    ) -> Self {
         Self {
             registry: HashMap::new(),
             language,
             clickhouse_config,
+            features,
         }
     }
 
     pub fn start(&mut self, aggregation: Aggregation) -> Result<(), AggregationError> {
         info!("Starting aggregation {:?}...", aggregation);
-        let child = aggregation.start(self.language, self.clickhouse_config.clone())?;
+        let child = aggregation.start(
+            self.language,
+            self.clickhouse_config.clone(),
+            self.features.blocks,
+        )?;
 
         self.registry.insert(aggregation.id(), child);
 
@@ -44,5 +54,9 @@ impl AggregationProcessRegistry {
         self.registry.clear();
 
         Ok(())
+    }
+
+    pub fn is_blocks_enabled(&self) -> bool {
+        self.features.blocks
     }
 }

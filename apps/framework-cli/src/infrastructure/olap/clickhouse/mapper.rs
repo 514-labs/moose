@@ -1,4 +1,4 @@
-use crate::framework::data_model::schema::{Column, ColumnType, Table, TableType};
+use crate::framework::core::infrastructure::table::{Column, ColumnType, Table, TableType};
 
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
@@ -68,24 +68,32 @@ pub fn std_field_type_to_clickhouse_type_mapper(
     }
 }
 
-pub fn std_table_to_clickhouse_table(table: Table) -> Result<ClickHouseTable, ClickhouseError> {
-    let mut columns = Vec::new();
-    for column in table.columns {
+pub fn std_columns_to_clickhouse_columns(
+    columns: &Vec<Column>,
+) -> Result<Vec<ClickHouseColumn>, ClickhouseError> {
+    let mut clickhouse_columns: Vec<ClickHouseColumn> = Vec::new();
+    for column in columns {
         let clickhouse_column = ClickHouseColumn {
-            name: sanitize_column_name(column.name),
-            column_type: std_field_type_to_clickhouse_type_mapper(column.data_type)?,
+            name: sanitize_column_name(column.name.clone()),
+            column_type: std_field_type_to_clickhouse_type_mapper(column.data_type.clone())?,
             required: column.required,
             unique: column.unique,
             primary_key: column.primary_key,
             default: None, // TODO: Implement the default mapper
         };
-        columns.push(clickhouse_column);
+        clickhouse_columns.push(clickhouse_column);
     }
 
+    Ok(clickhouse_columns)
+}
+
+pub fn std_table_to_clickhouse_table(table: &Table) -> Result<ClickHouseTable, ClickhouseError> {
+    let columns = std_columns_to_clickhouse_columns(&table.columns)?;
     Ok(ClickHouseTable {
-        name: table.name,
+        name: table.name.clone(),
+        version: table.version.clone(),
         columns,
-        table_type: clickhouse_table_type_mapper(table.table_type),
-        order_by: table.order_by,
+        table_type: clickhouse_table_type_mapper(table.table_type.clone()),
+        order_by: table.order_by.clone(),
     })
 }

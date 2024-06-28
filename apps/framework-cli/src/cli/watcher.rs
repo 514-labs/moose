@@ -1,15 +1,15 @@
+use log::{debug, info, warn};
+use notify::{Event, RecursiveMode, Watcher};
+use notify_debouncer_full::new_debouncer;
 use std::collections::HashSet;
-use std::sync::mpsc::TryRecvError;
+use std::ops::DerefMut;
 use std::sync::Arc;
+use std::time::Duration;
 use std::{
     collections::HashMap,
     io::{Error, ErrorKind},
     path::PathBuf,
 };
-
-use anyhow::bail;
-use log::{debug, info, warn};
-use notify::{Config, Event, RecommendedWatcher, RecursiveMode, Watcher};
 use tokio::sync::RwLock;
 
 use crate::framework::consumption::model::Consumption;
@@ -28,9 +28,12 @@ use crate::framework::flows::loader::get_all_current_flows;
 use crate::framework::flows::registry::FlowProcessRegistry;
 use crate::framework::registry::model::ProcessRegistries;
 use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
+use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
 use crate::infrastructure::stream::redpanda;
 use crate::project::AggregationSet;
-use crate::utilities::constants::{AGGREGATIONS_DIR, CONSUMPTION_DIR, FLOWS_DIR, SCHEMAS_DIR};
+use crate::utilities::constants::{
+    AGGREGATIONS_DIR, BLOCKS_DIR, CONSUMPTION_DIR, FLOWS_DIR, SCHEMAS_DIR,
+};
 use crate::{
     framework::controller::RouteMeta,
     infrastructure::olap::{self, clickhouse::ConfiguredDBClient},
@@ -158,7 +161,7 @@ async fn process_data_models_changes(
     for (_, fo) in deleted_objects {
         if let Some(table) = &fo.table {
             drop_table(&project.clickhouse_config.db_name, table, configured_client).await?;
-            syncing_process_registry.stop(&fo.topic, &table.name);
+            syncing_process_registry.stop_topic_to_table(&fo.topic, &table.name);
         }
 
         route_table.remove(&schema_file_path_to_ingest_route(
@@ -183,7 +186,7 @@ async fn process_data_models_changes(
     for (_, fo) in changed_objects.iter().chain(new_objects.iter()) {
         if let Some(table) = &fo.table {
             create_or_replace_tables(table, configured_client, project.is_production).await?;
-            syncing_process_registry.start(
+            syncing_process_registry.start_topic_to_table(
                 fo.topic.clone(),
                 fo.data_model.columns.clone(),
                 table.name.clone(),
@@ -201,7 +204,6 @@ async fn process_data_models_changes(
         route_table.insert(
             ingest_route,
             RouteMeta {
-                original_file_path: fo.original_file_path.clone(),
                 topic_name: fo.topic.clone(),
                 format: fo.data_model.config.ingestion.format.clone(),
             },
@@ -252,8 +254,10 @@ impl EventBuckets {
                 }) {
                     flows.push(event);
                 } else if event.paths.iter().any(|path: &PathBuf| {
-                    path.iter()
-                        .any(|component| component.eq_ignore_ascii_case(AGGREGATIONS_DIR))
+                    path.iter().any(|component| {
+                        component.eq_ignore_ascii_case(AGGREGATIONS_DIR)
+                            || component.eq_ignore_ascii_case(BLOCKS_DIR)
+                    })
                 }) {
                     aggregations.push(event);
                 } else if event.paths.iter().any(|path: &PathBuf| {
@@ -295,44 +299,36 @@ async fn watch(
     project: Arc<Project>,
     framework_object_versions: &mut FrameworkObjectVersions,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
+    consumption_apis: &RwLock<HashSet<String>>,
     syncing_process_registry: &mut SyncingProcessesRegistry,
     project_registries: &mut ProcessRegistries,
 ) -> Result<(), anyhow::Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
 
-    let (tx, rx) = std::sync::mpsc::channel();
+    let (tx, mut rx) = tokio::sync::mpsc::channel(32);
 
-    let mut watcher = RecommendedWatcher::new(tx, Config::default()).map_err(|e| {
-        Error::new(
-            ErrorKind::Other,
-            format!("Failed to create file watcher: {}", e),
-        )
+    let mut debouncer = new_debouncer(Duration::from_secs(2), None, move |res| {
+        let _ = tx
+            .blocking_send(res)
+            .map_err(|e| log::error!("Failed to watcher send debounced event: {:?}", e));
     })?;
 
-    watcher
+    debouncer
+        .watcher()
         .watch(project.app_dir().as_ref(), RecursiveMode::Recursive)
         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to watch file: {}", e)))?;
 
-    loop {
-        // FIXME: we're blocking a thread in tokio
-        let res = rx.recv().unwrap();
+    while let Some(res) = rx.recv().await {
         match res {
-            Ok(event) => {
-                let mut events = vec![event];
-                loop {
-                    match rx.try_recv() {
-                        // pull all events and process them in one go
-                        Ok(Ok(event)) => events.push(event),
-                        Ok(Err(e)) => {
-                            warn!("File watcher event caused a failure: {}", e);
-                            break;
-                        }
-                        Err(TryRecvError::Empty) => break,
-                        Err(TryRecvError::Disconnected) => {
-                            warn!("File watcher channel disconnected");
-                            break;
-                        }
-                    }
+            Ok(debounced_events) => {
+                let events = debounced_events
+                    .into_iter()
+                    .filter(|event| !event.kind.is_access() && !event.kind.is_other())
+                    .map(|debounced_event| debounced_event.event)
+                    .collect::<Vec<_>>();
+
+                if events.is_empty() {
+                    continue;
                 }
 
                 let bucketed_events = EventBuckets::new(events);
@@ -361,7 +357,8 @@ async fn watch(
                                 format!("Processing error occurred: {}", e),
                             )
                         })?;
-                    } else if !bucketed_events.flows.is_empty() {
+                    }
+                    if !bucketed_events.flows.is_empty() {
                         with_spinner_async(
                             &format!(
                                 "Processing {} Flow(s) changes from file watcher",
@@ -371,7 +368,8 @@ async fn watch(
                             !project.is_production,
                         )
                         .await?;
-                    } else if !bucketed_events.aggregations.is_empty() {
+                    }
+                    if !bucketed_events.aggregations.is_empty() {
                         with_spinner_async(
                             &format!(
                                 "Processing {} Aggregation(s) changes from file watcher",
@@ -384,7 +382,8 @@ async fn watch(
                             !project.is_production,
                         )
                         .await?;
-                    } else if !bucketed_events.consumption.is_empty() {
+                    }
+                    if !bucketed_events.consumption.is_empty() {
                         with_spinner_async(
                             &format!(
                                 "Processing {} Consumption(s) changes from file watcher",
@@ -393,20 +392,37 @@ async fn watch(
                             process_consumption_changes(
                                 &project,
                                 &mut project_registries.consumption,
+                                consumption_apis.write().await.deref_mut(),
                             ),
                             !project.is_production,
                         )
                         .await?;
                     }
 
+                    {
+                        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+                        let aggregations = project.get_aggregations();
+                        store_current_state(
+                            &mut client,
+                            framework_object_versions,
+                            &aggregations,
+                            &project.clickhouse_config,
+                        )
+                        .await?
+                    }
+
                     let _ = verify_flows_against_datamodels(&project, framework_object_versions);
                 }
             }
-            Err(error) => {
-                bail!("File watcher event caused a failure: {}", error);
+            Err(errors) => {
+                for error in errors {
+                    log::error!("Watcher Error: {:?}", error);
+                }
             }
         }
     }
+
+    Ok(())
 }
 
 /**
@@ -434,7 +450,11 @@ pub async fn process_aggregations_changes(
 ) -> anyhow::Result<()> {
     aggregations_process_registry.stop().await?;
     aggregations_process_registry.start(Aggregation {
-        dir: project.aggregations_dir(),
+        dir: if aggregations_process_registry.is_blocks_enabled() {
+            project.blocks_dir()
+        } else {
+            project.aggregations_dir()
+        },
     })?;
 
     Ok(())
@@ -443,7 +463,24 @@ pub async fn process_aggregations_changes(
 pub async fn process_consumption_changes(
     project: &Project,
     consumption_process_registry: &mut ConsumptionProcessRegistry,
+    paths: &mut HashSet<String>,
 ) -> anyhow::Result<()> {
+    paths.clear();
+    walkdir::WalkDir::new(project.consumption_dir())
+        .into_iter()
+        .for_each(|f| {
+            if let Ok(f) = f {
+                if f.file_type().is_file() && f.path().extension() == Some("ts".as_ref()) {
+                    if let Ok(path) = f.path().strip_prefix(project.consumption_dir()) {
+                        let mut path = path.to_path_buf();
+                        path.set_extension("");
+                        paths.insert(path.to_string_lossy().to_string());
+                    }
+                }
+            }
+        });
+
+    debug!("Consumption API paths: {:?}", paths);
     consumption_process_registry.stop().await?;
     consumption_process_registry.start(Consumption {
         dir: project.consumption_dir(),
@@ -464,6 +501,7 @@ impl FileWatcher {
         project: Arc<Project>,
         framework_object_versions: FrameworkObjectVersions,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
+        consumption_apis: &'static RwLock<HashSet<String>>,
         syncing_process_registry: SyncingProcessesRegistry,
         project_registries: ProcessRegistries,
     ) -> Result<(), Error> {
@@ -483,6 +521,7 @@ impl FileWatcher {
                 project,
                 &mut framework_object_versions,
                 route_table,
+                consumption_apis,
                 &mut syncing_process_registry,
                 &mut project_registry,
             )

@@ -6,7 +6,8 @@ pub const CLI_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const PACKAGE_JSON: &str = "package.json";
 pub const SETUP_PY: &str = "setup.py";
-pub const PROJECT_CONFIG_FILE: &str = "project.toml";
+pub const OLD_PROJECT_CONFIG_FILE: &str = "project.toml";
+pub const PROJECT_CONFIG_FILE: &str = "moose.config.toml";
 pub const PROJECT_NAME_ALLOW_PATTERN: &str = r"^[a-zA-Z0-9_-]+$";
 
 pub const CLI_CONFIG_FILE: &str = "config.toml";
@@ -22,6 +23,7 @@ pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS: &str = "clickhouse/configs
 pub const SCHEMAS_DIR: &str = "datamodels";
 pub const FLOWS_DIR: &str = "flows";
 pub const AGGREGATIONS_DIR: &str = "aggregations";
+pub const BLOCKS_DIR: &str = "blocks";
 pub const CONSUMPTION_DIR: &str = "apis";
 pub const VSCODE_DIR: &str = ".vscode";
 pub const SAMPLE_FLOWS_SOURCE: &str = "UserActivity";
@@ -33,7 +35,7 @@ pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";
 pub const REDPANDA_HOSTS: [&str; 2] = ["redpanda", "localhost"];
 
 pub const APP_DIR: &str = "app";
-pub const APP_DIR_LAYOUT: [&str; 2] = [SCHEMAS_DIR, FLOWS_DIR];
+pub const APP_DIR_LAYOUT: [&str; 4] = [SCHEMAS_DIR, FLOWS_DIR, AGGREGATIONS_DIR, CONSUMPTION_DIR];
 
 pub const GITIGNORE: &str = ".gitignore";
 

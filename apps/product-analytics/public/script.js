@@ -436,6 +436,8 @@
     proxy = document.currentScript.getAttribute("data-proxy");
     token = document.currentScript.getAttribute("data-token");
     domain = document.currentScript.getAttribute("data-domain");
+    page_event = document.currentScript.getAttribute("data-event");
+
     DATASOURCE =
       document.currentScript.getAttribute("data-datasource") || DATASOURCE;
   }
@@ -555,6 +557,12 @@
 
     payload = _maskSuspiciousAttributes(payload);
     payload = Object.assign({}, JSON.parse(payload), globalAttributes);
+
+    // Fetch the user's IP address
+    const ipResponse = await fetch("https://api.ipify.org?format=json");
+    const ipData = await ipResponse.json();
+    const userIp = ipData.ip; // Assuming the API returns a JSON object with an "ip" field
+
     fetch(url, {
       method: "POST",
       mode: "no-cors",
@@ -569,6 +577,7 @@
         session_id: _getSessionId(),
         locale,
         location: country,
+        ip: userIp,
         ...payload,
       }),
     });
@@ -588,7 +597,7 @@
 
     // Wait a bit for SPA routers
     setTimeout(() => {
-      _sendEvent("PageViewEvent/0.0", {
+      _sendEvent(page_event, {
         referrer: document.referrer,
         href: window.location.href,
       });

@@ -30,6 +30,10 @@ pub enum Commands {
         /// By default, the init command fails if the location directory exists, to prevent accidental reruns. This flag disables the check.
         #[arg(long)]
         no_fail_already_exists: bool,
+
+        /// Create basic Moose project without examples
+        #[arg(short, long, default_value = "false")]
+        empty: bool,
     },
     /// Builds your moose project
     Build {

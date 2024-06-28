@@ -1,0 +1,4 @@
+/build
+/dist
+/moose_lib.egg-info
+.venv

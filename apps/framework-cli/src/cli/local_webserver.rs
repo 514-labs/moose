@@ -6,6 +6,10 @@ use crate::cli::routines::Routine;
 use crate::cli::routines::RunMode;
 use crate::framework::controller::RouteMeta;
 
+use crate::framework::core::infrastructure::api_endpoint::APIType;
+use crate::framework::core::infrastructure_map::ApiChange;
+use crate::framework::core::infrastructure_map::Change;
+
 use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
@@ -31,7 +35,7 @@ use rdkafka::util::Timeout;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -40,6 +44,7 @@ use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
+use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -70,6 +75,8 @@ impl Default for LocalWebserverConfig {
 async fn create_client(
     req: Request<hyper::body::Incoming>,
     host: String,
+    consumption_apis: &RwLock<HashSet<String>>,
+    is_prod: bool,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
     // local only for now
     let url = format!("http://{}:{}", host, 4001).parse::<hyper::Uri>()?;
@@ -81,6 +88,31 @@ async fn create_client(
     let cleaned_path = path.strip_prefix("/consumption").unwrap_or(&path);
 
     debug!("Creating client for route: {:?}", cleaned_path);
+    {
+        let consumption_apis = consumption_apis.read().await;
+        let consumption_name = req
+            .uri()
+            .path()
+            .strip_prefix("/consumption/")
+            .unwrap_or(cleaned_path);
+        if !consumption_apis.contains(consumption_name) {
+            if !is_prod {
+                println!(
+                    "Consumption API {} not found. Available consumption paths: {}",
+                    consumption_name,
+                    consumption_apis
+                        .iter()
+                        .map(|p| p.as_str())
+                        .collect::<Vec<&str>>()
+                        .join(", ")
+                );
+            }
+            return Ok(Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Full::new(Bytes::from("Consumption API not found.")))
+                .unwrap());
+        }
+    }
 
     let stream = TcpStream::connect(address).await?;
     let io = TokioIo::new(stream);
@@ -115,8 +147,10 @@ async fn create_client(
 struct RouteService {
     host: String,
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
+    consumption_apis: &'static RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
     current_version: String,
+    is_prod: bool,
 }
 
 impl Service<Request<Incoming>> for RouteService {
@@ -129,8 +163,10 @@ impl Service<Request<Incoming>> for RouteService {
             req,
             self.current_version.clone(),
             self.route_table,
+            self.consumption_apis,
             self.configured_producer.clone(),
             self.host.clone(),
+            self.is_prod,
         ))
     }
 }
@@ -218,7 +254,7 @@ async fn handle_json_req(
     req: Request<Incoming>,
 ) -> Response<Full<Bytes>> {
     // TODO probably a refactor to be done here with the array json but it doesn't seem to be
-    // straighforward to do it in a generic way.
+    // straightforward to do it in a generic way.
     let url = req.uri().to_string();
     let body = req.collect().await.unwrap().aggregate();
     let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body.reader());
@@ -302,8 +338,10 @@ async fn router(
     req: Request<hyper::body::Incoming>,
     current_version: String,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
+    consumption_apis: &RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
     host: String,
+    is_prod: bool,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     debug!(
         "HTTP Request Received: {:?}, with Route Table {:?}",
@@ -338,15 +376,17 @@ async fn router(
             ingest_route(req, route, configured_producer, route_table).await
         }
 
-        (&hyper::Method::GET, ["consumption", _rt]) => match create_client(req, host).await {
-            Ok(response) => Ok(response),
-            Err(e) => {
-                debug!("Error: {:?}", e);
-                Response::builder()
-                    .status(StatusCode::INTERNAL_SERVER_ERROR)
-                    .body(Full::new(Bytes::from("Error")))
+        (&hyper::Method::GET, ["consumption", _rt]) => {
+            match create_client(req, host, consumption_apis, is_prod).await {
+                Ok(response) => Ok(response),
+                Err(e) => {
+                    debug!("Error: {:?}", e);
+                    Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Full::new(Bytes::from("Error")))
+                }
             }
-        },
+        }
         (&hyper::Method::GET, ["health"]) => health_route(),
 
         (&hyper::Method::OPTIONS, _) => options_route(),
@@ -356,7 +396,7 @@ async fn router(
     }
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Debug)]
 pub struct Webserver {
     host: String,
     port: u16,
@@ -375,9 +415,71 @@ impl Webserver {
             .unwrap()
     }
 
+    pub async fn spawn_api_update_listener(
+        &self,
+        route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
+    ) -> mpsc::Sender<ApiChange> {
+        log::info!("Spawning API update listener");
+
+        let (tx, mut rx) = mpsc::channel::<ApiChange>(32);
+
+        tokio::spawn(async move {
+            while let Some(api_change) = rx.recv().await {
+                let mut route_table = route_table.write().await;
+                match api_change {
+                    ApiChange::ApiEndpoint(Change::Added(api_endpoint)) => {
+                        log::info!("Adding route: {:?}", api_endpoint.path);
+                        match api_endpoint.api_type {
+                            APIType::INGRESS { target_topic } => {
+                                route_table.insert(
+                                    api_endpoint.path.clone(),
+                                    RouteMeta {
+                                        format: api_endpoint.format.clone(),
+                                        topic_name: target_topic,
+                                    },
+                                );
+                            }
+                            APIType::EGRESS => {
+                                log::warn!("Egress API not supported yet")
+                            }
+                        }
+                    }
+                    ApiChange::ApiEndpoint(Change::Removed(api_endpoint)) => {
+                        log::info!("Removing route: {:?}", api_endpoint.path);
+                        route_table.remove(&api_endpoint.path);
+                    }
+                    ApiChange::ApiEndpoint(Change::Updated { before, after }) => {
+                        match &after.api_type {
+                            APIType::INGRESS { target_topic } => {
+                                log::info!("Replacing route: {:?} with {:?}", before, after);
+
+                                route_table.remove(&before.path);
+                                route_table.insert(
+                                    after.path.clone(),
+                                    RouteMeta {
+                                        format: after.format.clone(),
+                                        topic_name: target_topic.clone(),
+                                    },
+                                );
+                            }
+                            APIType::EGRESS => {
+                                log::warn!("Egress API not supported yet")
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        tx
+    }
+
+    // TODO - when we retire the the old core, we should remove routeTable from the start method and using only
+    // the channel to update the routes
     pub async fn start(
         &self,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
+        consumption_apis: &'static RwLock<HashSet<String>>,
         project: Arc<Project>,
     ) {
         //! Starts the local webserver
@@ -385,7 +487,6 @@ impl Webserver {
 
         // We create a TcpListener and bind it to {project.http_server_config.host} on port {project.http_server_config.port}
         let listener = TcpListener::bind(socket).await.unwrap();
-
         let producer = redpanda::create_producer(project.redpanda_config.clone());
 
         show_message!(
@@ -398,12 +499,12 @@ impl Webserver {
 
         if !project.is_production {
             show_message!(
-            MessageType::Highlight,
-            Message {
-                action: "Next Steps".to_string(),
-                details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: http://{}:{}/ingest\n", project.http_server_config.host.clone(), socket.port()),
-            }
-        );
+                MessageType::Highlight,
+                Message {
+                    action: "Next Steps".to_string(),
+                    details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: http://{}:{}/ingest\n", project.http_server_config.host.clone(), socket.port()),
+                }
+            );
         }
 
         let mut sigterm =
@@ -414,8 +515,10 @@ impl Webserver {
         let route_service = RouteService {
             host: self.host.clone(),
             route_table,
+            consumption_apis,
             current_version: project.cur_version().to_string(),
             configured_producer: producer,
+            is_prod: project.is_production,
         };
 
         loop {

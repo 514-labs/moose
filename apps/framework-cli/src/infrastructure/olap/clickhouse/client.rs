@@ -117,7 +117,7 @@ impl ClickHouseClient {
                 columns
                     .iter()
                     .map(|column| match record.get(column) {
-                        Some(value) => format!("{}", value),
+                        Some(value) => value.clickhouse_to_string(),
                         None => "NULL".to_string(),
                     })
                     .collect::<Vec<String>>()
@@ -169,7 +169,6 @@ impl ClickHouseClient {
         if status != 200 {
             let body = res.collect().await?.to_bytes().to_vec();
             let body_str = String::from_utf8(body)?;
-
             error!(
                 "Failed to insert into clickhouse: Res {} - {}",
                 &status, body_str

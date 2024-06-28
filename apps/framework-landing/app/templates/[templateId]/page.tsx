@@ -181,7 +181,7 @@ export default function TemplatePage({
                 description:
                   "Paste the following HTML in your application <head> tag.",
                 command:
-                  '<script data-host="<YOUR_MOOSE_URL>" src="<YOUR_DASHBOARD_URL>/script.js">',
+                  '<script data-host="<YOUR_MOOSE_URL>" data-event="PageViewEvent/0.0" src="<YOUR_DASHBOARD_URL>/script.js">',
               },
               {
                 title: "Step 2",

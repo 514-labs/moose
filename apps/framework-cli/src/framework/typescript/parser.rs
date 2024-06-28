@@ -110,7 +110,7 @@ pub fn extract_data_model_from_file(
                 if let Some(dm) = data_model.as_object_mut() {
                     dm.insert("version".to_string(), version.into());
                     dm.insert(
-                        "file_path".to_string(),
+                        "abs_file_path".to_string(),
                         path.to_string_lossy().to_string().into(),
                     );
                 }
@@ -255,6 +255,7 @@ mod tests {
         assert!(result.is_err());
         // The TS compiler prints this, which is forwarded to the user's console
         // app/datamodels/type_missing.ts(2,5): error TS7008: Member 'foo' implicitly has an 'any' type.
+
         assert_eq!(
             result.err().unwrap().to_string(),
             "Failed to parse the typescript file"

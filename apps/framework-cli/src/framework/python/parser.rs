@@ -17,11 +17,12 @@ use rustpython_parser::{
 };
 
 use crate::{
-    framework::data_model::{
-        parser::FileObjects,
-        schema::{Column, ColumnType, DataEnum as FrameworkEnum, DataModel, Nested},
-    },
+    framework::data_model::{parser::FileObjects, schema::DataModel},
     project::python_project::PythonProject,
+};
+
+use crate::framework::core::infrastructure::table::{
+    Column, ColumnType, DataEnum as FrameworkEnum, Nested,
 };
 
 use crate::framework::python::utils::ColumnBuilder;
@@ -201,7 +202,7 @@ fn python_class_to_framework_datamodel(
         .collect::<Result<Vec<Column>, PythonParserError>>()?;
 
     Ok(DataModel {
-        file_path,
+        abs_file_path: file_path,
         version: version.to_string(),
         columns,
         name: class_name,

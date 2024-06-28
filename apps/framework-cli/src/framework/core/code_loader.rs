@@ -16,12 +16,14 @@ use crate::{
         config::ModelConfigurationError,
         is_schema_file,
         parser::{parse_data_model_file, DataModelParsingError},
-        schema::{ColumnType, DataEnum, DataModel},
+        schema::DataModel,
         DuplicateModelError,
     },
     infrastructure::olap::{self, clickhouse::model::ClickHouseTable},
     project::{AggregationSet, Project},
 };
+
+use super::infrastructure::table::{ColumnType, DataEnum};
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
@@ -219,8 +221,9 @@ pub fn framework_object_mapper(
     version: &str,
 ) -> Result<FrameworkObject, MappingError> {
     let clickhouse_table = if s.config.storage.enabled {
+        let table = s.to_table();
         Some(olap::clickhouse::mapper::std_table_to_clickhouse_table(
-            s.to_table(),
+            &table,
         )?)
     } else {
         None

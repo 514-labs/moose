@@ -149,7 +149,7 @@ const MooseLayersAccordion = () => {
                     {layer.details.map((detail, index) => {
                       return (
                         <HalfWidthContentContainer
-                          className="w-full flex flex-col items-center justify-center text-left border rounded-xl p-5"
+                          className="w-full flex flex-col items-center justify-center text-left border border-muted-foreground rounded-xl p-5"
                           key={index}
                         >
                           <Text className="my-0 self-stretch justify-start">

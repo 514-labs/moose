@@ -86,7 +86,7 @@ export const WhatIsMooseFor = () => {
               <Fragment key={index}>
                 <ThirdWidthContentContainer
                   key={index}
-                  className="flex flex-col xl:justify-start xl:order-4 border rounded-xl p-5"
+                  className="flex flex-col xl:justify-start xl:order-4 border border-muted-foreground rounded-xl p-5"
                 >
                   <div className="relative aspect-square my-0">
                     <Suspense fallback={<div>Loading...</div>}>
@@ -98,7 +98,7 @@ export const WhatIsMooseFor = () => {
                     </Suspense>
                   </div>
 
-                  <Text className="flex flex-row items-center justify-start border rounded-full px-5 py-2.5 w-fit">
+                  <Text className="flex flex-row items-center justify-start border border-primary rounded-full px-5 py-2.5 w-fit">
                     {usecase.badge}
                   </Text>
                   <div className="my-5">

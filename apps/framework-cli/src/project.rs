@@ -28,6 +28,7 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
+use crate::cli::settings::Features;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::python::templates::PTYHON_BASE_AGG_SAMPLE_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_FLOW_TEMPLATE;
@@ -35,7 +36,8 @@ use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::BASE_APIS_SAMPLE_TEMPLATE;
 use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
-    TS_BASE_AGGREGATION_SAMPLE_TEMPLATE, TS_BASE_FLOW_SAMPLE_TEMPLATE,
+    TS_BASE_AGGREGATION_SAMPLE_TEMPLATE, TS_BASE_BLOCKS_SAMPLE_TEMPLATE,
+    TS_BASE_FLOW_SAMPLE_TEMPLATE,
 };
 use crate::framework::typescript::templates::{
     VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
@@ -63,6 +65,7 @@ use crate::utilities::constants::{
 };
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
+use crate::utilities::git::GitConfig;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to create or delete project files")]
@@ -90,6 +93,8 @@ pub struct Project {
     pub redpanda_config: RedpandaConfig,
     pub clickhouse_config: ClickHouseConfig,
     pub http_server_config: LocalWebserverConfig,
+    #[serde(default)]
+    pub git_config: GitConfig,
 
     // This part of the configuration for the project is dynamic and not saved
     // to disk. It is loaded from the language specific configuration file or the currently
@@ -143,29 +148,23 @@ impl Project {
 
         debug!("Package.json file location: {:?}", location);
 
-        match language {
-            SupportedLanguages::Typescript => Project {
-                language: SupportedLanguages::Typescript,
-                is_production: false,
-                project_location: location.clone(),
-                redpanda_config: RedpandaConfig::default(),
-                clickhouse_config: ClickHouseConfig::default(),
-                http_server_config: LocalWebserverConfig::default(),
-                language_project_config: LanguageProjectConfig::Typescript(TypescriptProject::new(
-                    name,
-                )),
-                supported_old_versions: HashMap::new(),
-            },
-            SupportedLanguages::Python => Project {
-                language: SupportedLanguages::Python,
-                is_production: false,
-                project_location: location.clone(),
-                redpanda_config: RedpandaConfig::default(),
-                clickhouse_config: ClickHouseConfig::default(),
-                http_server_config: LocalWebserverConfig::default(),
-                language_project_config: LanguageProjectConfig::Python(PythonProject::new(name)),
-                supported_old_versions: HashMap::new(),
-            },
+        let language_project_config = match language {
+            SupportedLanguages::Typescript => {
+                LanguageProjectConfig::Typescript(TypescriptProject::new(name))
+            }
+            SupportedLanguages::Python => LanguageProjectConfig::Python(PythonProject::new(name)),
+        };
+
+        Project {
+            language,
+            is_production: false,
+            project_location: location.clone(),
+            redpanda_config: RedpandaConfig::default(),
+            clickhouse_config: ClickHouseConfig::default(),
+            http_server_config: LocalWebserverConfig::default(),
+            language_project_config,
+            supported_old_versions: HashMap::new(),
+            git_config: GitConfig::default(),
         }
     }
 
@@ -184,12 +183,6 @@ impl Project {
         }
 
         let mut project_config: Project = Config::builder()
-            // TODO: consider putting the defaults into a source (e.g. include_str a toml file)
-            .set_default(
-                "clickhouse_config.native_port",
-                ClickHouseConfig::default().native_port,
-            )
-            .unwrap() // key in set_default is a static string, this never fails
             .add_source(File::from(project_file).required(true))
             .add_source(
                 Environment::with_prefix("MOOSE")
@@ -248,10 +241,15 @@ impl Project {
         Ok(())
     }
 
-    pub fn create_base_app_files(&self) -> Result<(), std::io::Error> {
+    pub fn create_base_app_files(&self, features: &Features) -> Result<(), std::io::Error> {
         // Common file paths
         let readme_file_path = self.project_location.join("README.md");
         let apis_file_path = self.consumption_dir().join(API_FILE);
+        let aggregations_dir = if features.blocks {
+            self.blocks_dir()
+        } else {
+            self.aggregations_dir()
+        };
 
         self.write_file(
             &readme_file_path,
@@ -265,7 +263,7 @@ impl Project {
                 let flow_file_path = self
                     .flows_dir()
                     .join(format!("{}__{}.ts", SAMPLE_FLOWS_SOURCE, SAMPLE_FLOWS_DEST));
-                let aggregations_file_path = self.aggregations_dir().join(TS_AGGREGATIONS_FILE);
+                let aggregations_file_path = aggregations_dir.join(TS_AGGREGATIONS_FILE);
 
                 // Write TypeScript specific templates
                 self.write_file(&base_model_file_path, TS_BASE_MODEL_TEMPLATE.to_string())?;
@@ -273,17 +271,24 @@ impl Project {
                     &flow_file_path,
                     TS_BASE_FLOW_SAMPLE_TEMPLATE.replace("{{project_name}}", &self.name()),
                 )?;
-                self.write_file(
-                    &aggregations_file_path,
-                    TS_BASE_AGGREGATION_SAMPLE_TEMPLATE.to_string(),
-                )?;
+                if features.blocks {
+                    self.write_file(
+                        &aggregations_file_path,
+                        TS_BASE_BLOCKS_SAMPLE_TEMPLATE.to_string(),
+                    )?;
+                } else {
+                    self.write_file(
+                        &aggregations_file_path,
+                        TS_BASE_AGGREGATION_SAMPLE_TEMPLATE.to_string(),
+                    )?;
+                }
             }
             SupportedLanguages::Python => {
                 let base_model_file_path = self.data_models_dir().join("models.py");
                 let flow_file_path = self
                     .flows_dir()
                     .join(format!("{}__{}.py", SAMPLE_FLOWS_SOURCE, SAMPLE_FLOWS_DEST));
-                let aggregations_file_path = self.aggregations_dir().join(PY_AGGREGATIONS_FILE);
+                let aggregations_file_path = aggregations_dir.join(PY_AGGREGATIONS_FILE);
 
                 // Write Python specific templates
                 self.write_file(
@@ -291,6 +296,7 @@ impl Project {
                     PYTHON_BASE_MODEL_TEMPLATE.to_string(),
                 )?;
                 self.write_file(&flow_file_path, PYTHON_BASE_FLOW_TEMPLATE.to_string())?;
+                // TODO: Add sample blocks to python
                 self.write_file(
                     &aggregations_file_path,
                     PTYHON_BASE_AGG_SAMPLE_TEMPLATE.to_string(),
@@ -300,7 +306,7 @@ impl Project {
                 for dir in &[
                     self.app_dir(),
                     self.data_models_dir(),
-                    self.aggregations_dir(),
+                    aggregations_dir,
                     self.consumption_dir(),
                     self.flows_dir(),
                 ] {

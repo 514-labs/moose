@@ -3,13 +3,33 @@ use std::sync::Arc;
 
 use crate::framework::languages::SupportedLanguages;
 use git2::{
-    Error, ErrorClass, ErrorCode, ObjectType, Repository, RepositoryInitOptions, Signature,
+    BranchType, Error, ErrorClass, ErrorCode, ObjectType, Repository, RepositoryInitOptions,
+    Signature,
 };
 use log::warn;
+use serde::{Deserialize, Serialize};
 
 use crate::project::Project;
 
 use super::constants::{CLI_USER_DIRECTORY, GITIGNORE};
+
+fn default_branch() -> String {
+    "main".to_string()
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GitConfig {
+    #[serde(default = "default_branch")]
+    pub main_branch_name: String,
+}
+
+impl Default for GitConfig {
+    fn default() -> GitConfig {
+        GitConfig {
+            main_branch_name: default_branch(),
+        }
+    }
+}
 
 pub fn is_git_repo(dir_path: &Path) -> Result<bool, Error> {
     match Repository::discover(dir_path) {
@@ -162,7 +182,8 @@ fn recursive_dump_tree_content(
 
 pub fn current_commit_hash(project: &Project) -> Result<String, Error> {
     let repo = Repository::discover(project.project_location.clone())?;
-    let head = repo.head()?;
+    let branch = repo.find_branch(&project.git_config.main_branch_name, BranchType::Local)?;
+    let head = branch.get();
     let mut hash = head.target().unwrap().to_string();
     hash.truncate(7);
     Ok(hash)

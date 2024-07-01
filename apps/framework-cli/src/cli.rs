@@ -160,7 +160,7 @@ async fn top_command_handler(
 
                     debug!("Project: {:?}", project_arc);
 
-                    initialize_project(&project_arc, empty)?.show();
+                    initialize_project(&project_arc, empty, &settings.features)?.show();
 
                     project_arc
                         .write_to_disk()

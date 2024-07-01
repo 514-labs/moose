@@ -65,6 +65,59 @@ export default {
 
 "#;
 
+pub static TS_BASE_BLOCKS_SAMPLE_TEMPLATE: &str = r#"
+// Here is a sample aggregation query that calculates the number of daily active users
+// based on the number of unique users who complete a sign-in activity each day.
+
+import {
+  createAggregation,
+  createTable,
+  dropAggregation,
+  dropTable,
+  populateTable,
+  Blocks,
+  ClickHouseEngines,
+} from "@514labs/moose-lib";
+
+const DESTINATION_TABLE = "DailyActiveUsers";
+const MATERIALIZED_VIEW = "DailyActiveUsers_mv";
+const SELECT_QUERY = `
+SELECT 
+    toStartOfDay(timestamp) as date,
+    uniqState(userId) as dailyActiveUsers
+FROM ParsedActivity_0_0 
+WHERE activity = 'Login' 
+GROUP BY toStartOfDay(timestamp) 
+`;
+
+export default {
+  teardown: [
+    dropAggregation(MATERIALIZED_VIEW),
+    dropTable(DESTINATION_TABLE),
+  ],
+  setup: [
+    createTable({
+      name: DESTINATION_TABLE,
+      columns: {
+        date: "Date",
+        dailyActiveUsers: "AggregateFunction(uniq, String)"
+      },
+      engine: ClickHouseEngines.AggregatingMergeTree,
+      orderBy: "date"
+    }),
+    createAggregation({
+      name: MATERIALIZED_VIEW,
+      destinationTable: DESTINATION_TABLE,
+      select: SELECT_QUERY
+    }),
+    populateTable({
+      destinationTable: DESTINATION_TABLE,
+      select: SELECT_QUERY
+    }),
+  ],
+} as Blocks;
+"#;
+
 pub static BASE_APIS_SAMPLE_TEMPLATE: &str = r#"
 // Here is a sample api configuration that creates an API which serves the daily active users materialized view
 import { ConsumptionUtil } from "@514labs/moose-lib";

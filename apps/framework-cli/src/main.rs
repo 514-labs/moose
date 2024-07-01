@@ -1,6 +1,7 @@
 mod cli;
 pub mod framework;
 pub mod infrastructure;
+pub mod metrics;
 pub mod project;
 pub mod utilities;
 

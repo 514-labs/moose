@@ -7,7 +7,7 @@ mod logger;
 mod routines;
 pub mod settings;
 mod watcher;
-
+use super::metrics::Metrics;
 use std::cmp::Ordering;
 use std::path::Path;
 use std::process::exit;
@@ -103,6 +103,7 @@ fn check_project_name(name: &str) -> Result<(), RoutineFailure> {
 async fn top_command_handler(
     settings: Settings,
     commands: &Commands,
+    metrics: Arc<Metrics>,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     match commands {
         Commands::Init {
@@ -274,7 +275,7 @@ async fn top_command_handler(
             check_project_name(&project_arc.name())?;
             run_local_infrastructure(&project_arc)?.show();
 
-            routines::start_development_mode(project_arc, &settings.features)
+            routines::start_development_mode(project_arc, settings.features, metrics)
                 .await
                 .map_err(|e| {
                     RoutineFailure::error(Message {
@@ -380,7 +381,7 @@ async fn top_command_handler(
 
             check_project_name(&project_arc.name())?;
 
-            routines::start_production_mode(project_arc, settings.features)
+            routines::start_production_mode(project_arc, settings.features, metrics)
                 .await
                 .unwrap();
 
@@ -625,7 +626,17 @@ pub async fn cli_run() {
 
     let cli = Cli::parse();
 
-    match top_command_handler(config, &cli.command).await {
+    let (tx, rx) = tokio::sync::mpsc::channel(10);
+
+    let metrics = Metrics { tx: tx };
+
+    let arc_metrics = Arc::new(metrics);
+
+    //let metrics_send = metrics.copy();
+
+    arc_metrics.clone().controller(rx).await;
+
+    match top_command_handler(config, &cli.command, arc_metrics).await {
         Ok(s) => {
             show_message!(s.message_type, s.message);
             exit(0);

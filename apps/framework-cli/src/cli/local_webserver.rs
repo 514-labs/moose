@@ -10,6 +10,7 @@ use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure_map::ApiChange;
 use crate::framework::core::infrastructure_map::Change;
 
+use super::super::metrics::{Data, Metrics, Statistics};
 use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
@@ -29,6 +30,13 @@ use hyper_util::rt::TokioIo;
 use hyper_util::{rt::TokioExecutor, server::conn::auto};
 use log::debug;
 use log::error;
+use prometheus_client::encoding::text::encode;
+use prometheus_client::encoding::{EncodeLabelSet, EncodeLabelValue};
+use prometheus_client::metrics::counter::{Atomic, Counter};
+use prometheus_client::metrics::family::Family;
+use prometheus_client::metrics::histogram::exponential_buckets;
+use prometheus_client::metrics::histogram::Histogram;
+use prometheus_client::registry::Registry;
 use rdkafka::error::KafkaError;
 use rdkafka::message::OwnedMessage;
 use rdkafka::producer::future_producer::OwnedDeliveryResult;
@@ -39,11 +47,13 @@ use serde::Serialize;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
+use std::io::Write;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
+use std::time::Instant;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
@@ -153,6 +163,7 @@ struct RouteService {
     configured_producer: ConfiguredProducer,
     current_version: String,
     is_prod: bool,
+    metrics: Arc<Metrics>,
 }
 
 impl Service<Request<Incoming>> for RouteService {
@@ -169,6 +180,7 @@ impl Service<Request<Incoming>> for RouteService {
             self.configured_producer.clone(),
             self.host.clone(),
             self.is_prod,
+            self.metrics.clone(),
         ))
     }
 }
@@ -214,6 +226,13 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from("")))
         .unwrap()
+async fn metrics_route(metrics: Arc<Metrics>) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    println!("GOT DATA: {}", metrics.receive_data().await.latency);
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .body(Full::new(Bytes::from(metrics.receive_data().await.latency)))
+        .unwrap();
+    Ok(response)
 }
 
 fn bad_json_response(e: serde_json::Error) -> Response<Full<Bytes>> {
@@ -278,6 +297,8 @@ async fn handle_json_req(
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
     req: Request<Incoming>,
+    timer: std::time::Instant,
+    metrics: Arc<Metrics>,
 ) -> Response<Full<Bytes>> {
     // TODO probably a refactor to be done here with the array json but it doesn't seem to be
     // straightforward to do it in a generic way.
@@ -298,6 +319,23 @@ async fn handle_json_req(
         );
         return internal_server_error_response();
     }
+
+    let mut registry = <Registry>::default();
+
+    let elapsed = timer.elapsed();
+    let histogram = Histogram::new([0.0, 1.0, 2.0, 100.0].into_iter());
+    histogram.observe(elapsed.as_secs_f64());
+    registry.register("latency", "latency time", histogram.clone());
+
+    let mut buffer = String::new();
+    encode(&mut buffer, &registry).unwrap();
+    println!("HISTOGRAM {} -- {}", elapsed.as_secs_f64(), &buffer);
+    metrics
+        .send_data(Data::Latency(Statistics {
+            count: "".to_string(),
+            latency: buffer,
+        }))
+        .await;
 
     success_response(url)
 }
@@ -321,6 +359,8 @@ async fn handle_json_array_body(
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
     req: Request<Incoming>,
+    timer: std::time::Instant,
+    metrics: Arc<Metrics>,
 ) -> Response<Full<Bytes>> {
     // TODO probably a refactor to be done here with the json but it doesn't seem to be
     // straightforward to do it in a generic way.
@@ -361,6 +401,23 @@ async fn handle_json_array_body(
         return internal_server_error_response();
     }
 
+    let mut registry = <Registry>::default();
+
+    let elapsed = timer.elapsed();
+    let histogram = Histogram::new([0.0, 1.0, 2.0, 100.0].into_iter());
+    histogram.observe(elapsed.as_secs_f64());
+    registry.register("latency", "latency time", histogram.clone());
+
+    let mut buffer = String::new();
+    encode(&mut buffer, &registry).unwrap();
+    println!("HISTOGRAM {} -- {}", elapsed.as_secs_f64(), &buffer);
+    metrics
+        .send_data(Data::Latency(Statistics {
+            count: "".to_string(),
+            latency: buffer,
+        }))
+        .await;
+
     success_response(url)
 }
 
@@ -369,7 +426,12 @@ async fn ingest_route(
     route: PathBuf,
     configured_producer: ConfiguredProducer,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
+    timer: std::time::Instant,
+    metrics: Arc<Metrics>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    // let summary = Summary::new();
+    // summary.set_quantile(RepeatedField{vec![0.99, 0.90, 0.50]});
+
     show_message!(
         MessageType::Info,
         Message {
@@ -380,12 +442,22 @@ async fn ingest_route(
 
     match route_table.read().await.get(&route) {
         Some(route_meta) => match route_meta.format {
-            EndpointIngestionFormat::Json => {
-                Ok(handle_json_req(&configured_producer, &route_meta.topic_name, req).await)
-            }
-            EndpointIngestionFormat::JsonArray => {
-                Ok(handle_json_array_body(&configured_producer, &route_meta.topic_name, req).await)
-            }
+            EndpointIngestionFormat::Json => Ok(handle_json_req(
+                &configured_producer,
+                &route_meta.topic_name,
+                req,
+                timer,
+                metrics,
+            )
+            .await),
+            EndpointIngestionFormat::JsonArray => Ok(handle_json_array_body(
+                &configured_producer,
+                &route_meta.topic_name,
+                req,
+                timer,
+                metrics,
+            )
+            .await),
         },
         None => Response::builder()
             .status(StatusCode::NOT_FOUND)
@@ -403,7 +475,10 @@ async fn router(
     configured_producer: ConfiguredProducer,
     host: String,
     is_prod: bool,
+    metrics: Arc<Metrics>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    // Start timer
+    let now = Instant::now();
     debug!(
         "HTTP Request Received: {:?}, with Route Table {:?}",
         req, route_table
@@ -430,11 +505,13 @@ async fn router(
                 route.join(current_version),
                 configured_producer,
                 route_table,
+                now,
+                metrics,
             )
             .await
         }
         (&hyper::Method::POST, ["ingest", _, _]) => {
-            ingest_route(req, route, configured_producer, route_table).await
+            ingest_route(req, route, configured_producer, route_table, now, metrics).await
         }
 
         (&hyper::Method::GET, ["consumption", _rt]) => {
@@ -449,6 +526,7 @@ async fn router(
             }
         }
         (&hyper::Method::GET, ["health"]) => health_route(),
+        (&hyper::Method::GET, ["metrics"]) => metrics_route(metrics).await,
 
         (&hyper::Method::POST, ["logs"]) if !is_prod => Ok(log_route(req).await),
         (&hyper::Method::OPTIONS, _) => options_route(),
@@ -456,6 +534,7 @@ async fn router(
             .status(StatusCode::NOT_FOUND)
             .body(Full::new(Bytes::from("no match"))),
     }
+    // Timer stop
 }
 
 #[derive(Debug)]
@@ -543,8 +622,25 @@ impl Webserver {
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
         consumption_apis: &'static RwLock<HashSet<String>>,
         project: Arc<Project>,
+        metrics: Arc<Metrics>,
     ) {
-        //! Starts the local webserver
+        #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
+        struct Labels {
+            // Use your own enum types to represent label values.
+            method: Method,
+            // Or just a plain string.
+            path: String,
+        };
+
+        #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelValue)]
+        enum Method {
+            GET,
+            PUT,
+        };
+
+        let http_requests = Family::<Labels, Counter>::default();
+
+        // Starts the local webserver
         let socket = self.socket().await;
 
         // We create a TcpListener and bind it to {project.http_server_config.host} on port {project.http_server_config.port}
@@ -581,7 +677,10 @@ impl Webserver {
             current_version: project.cur_version().to_string(),
             configured_producer: producer,
             is_prod: project.is_production,
+            metrics: metrics.clone(),
         };
+
+        let mut registry = <Registry>::default();
 
         loop {
             tokio::select! {
@@ -616,6 +715,33 @@ impl Webserver {
                     });
                 }
             }
+
+            registry.register(
+                // With the metric name.
+                "http_requests",
+                // And the metric help text.
+                "Number of HTTP requests received",
+                http_requests.clone(),
+            );
+
+            http_requests
+                .get_or_create(&Labels {
+                    method: Method::GET,
+                    path: "/metrics".to_string(),
+                })
+                .inc();
+
+            let mut buffer = String::new();
+            encode(&mut buffer, &registry).unwrap();
+
+            metrics
+                .send_data(Data::Count(Statistics {
+                    count: buffer.to_string(),
+                    latency: "".to_string(),
+                }))
+                .await;
+            //assert_eq!(expected, buffer);
+            //println!("{:?} \n ----------", buffer);
         }
     }
 }

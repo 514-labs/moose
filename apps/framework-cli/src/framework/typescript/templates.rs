@@ -105,15 +105,8 @@ export default {
         engine: ClickHouseEngines.AggregatingMergeTree,
         orderBy: "date",
       },
-      materializedViewCreateOptions: {
-        name: MATERIALIZED_VIEW,
-        destinationTable: DESTINATION_TABLE,
-        select: SELECT_QUERY,
-      },
-      populateTableOptions: {
-        destinationTable: DESTINATION_TABLE,
-        select: SELECT_QUERY,
-      },
+      materializedViewName: MATERIALIZED_VIEW,
+      select: SELECT_QUERY,
     }),
   ],
 } as Blocks;

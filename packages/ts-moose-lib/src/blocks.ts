@@ -1,7 +1,7 @@
 interface AggregationCreateOptions {
   tableCreateOptions: TableCreateOptions;
-  materializedViewCreateOptions: MaterializedViewCreateOptions;
-  populateTableOptions: PopulateTableOptions;
+  materializedViewName: string;
+  select: string;
 }
 
 interface AggregationDropOptions {
@@ -69,8 +69,15 @@ export function dropView(name: string): string {
 export function createAggregation(options: AggregationCreateOptions): string[] {
   return [
     createTable(options.tableCreateOptions),
-    createMaterializedView(options.materializedViewCreateOptions),
-    populateTable(options.populateTableOptions),
+    createMaterializedView({
+      name: options.materializedViewName,
+      destinationTable: options.tableCreateOptions.name,
+      select: options.select,
+    }),
+    populateTable({
+      destinationTable: options.tableCreateOptions.name,
+      select: options.select,
+    }),
   ];
 }
 

@@ -11,7 +11,12 @@ import {
 } from "@514labs/design-system-components/components/containers";
 
 import { Heading, Text } from "@514labs/design-system-components/typography";
-import React from "react";
+import React, { useState } from "react";
+
+import { sendTrackEvent } from "../../../lib/sendTrackEvent";
+import { TrackingVerb } from "@514labs/event-capture/withTrack";
+
+import { TrackableAccordionTrigger } from "../../trackable-components";
 
 const content = {
   title: "Purpose built for data focused applications",
@@ -76,14 +81,17 @@ const UsecasesAccordion = () => {
               value={`item-${index}`}
               className="last:border-none"
             >
-              <AccordionTrigger>
+              <TrackableAccordionTrigger
+                name="Use Case Accordion"
+                subject={usecase.title}
+              >
                 <div className="flex flex-col text-start justify-start">
                   <Text className="my-0">{usecase.title}</Text>
                   <Text className="my-0 text-muted-foreground">
                     {usecase.description}
                   </Text>
                 </div>
-              </AccordionTrigger>
+              </TrackableAccordionTrigger>
               <AccordionContent>
                 <ul className="border rounded-xl px-5">
                   {usecase.details.map((detail, index) => {

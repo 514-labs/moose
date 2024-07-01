@@ -31,7 +31,8 @@ use log::debug;
 use log::error;
 use rdkafka::error::KafkaError;
 use rdkafka::message::OwnedMessage;
-use rdkafka::producer::FutureRecord;
+use rdkafka::producer::future_producer::OwnedDeliveryResult;
+use rdkafka::producer::{DeliveryFuture, FutureRecord};
 use rdkafka::util::Timeout;
 use serde::Deserialize;
 use serde::Serialize;
@@ -301,32 +302,38 @@ async fn handle_json_req(
     success_response(url)
 }
 
+async fn wait_for_batch_complete(
+    res_arr: &mut Vec<Result<OwnedDeliveryResult, KafkaError>>,
+    temp_res: Vec<Result<DeliveryFuture, KafkaError>>,
+) {
+    for future_res in temp_res {
+        match future_res {
+            Ok(future) => match future.await {
+                Ok(res) => res_arr.push(Ok(res)),
+                Err(_) => res_arr.push(Err(KafkaError::Canceled)),
+            },
+            Err(e) => res_arr.push(Err(e)),
+        }
+    }
+}
+
 async fn handle_json_array_body(
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
     req: Request<Incoming>,
 ) -> Response<Full<Bytes>> {
-    let start_time = std::time::Instant::now();
     // TODO probably a refactor to be done here with the json but it doesn't seem to be
     // straightforward to do it in a generic way.
     let url = req.uri().to_string();
     let body = to_reader(req).await;
-    let json_parse_start_time = std::time::Instant::now();
+
     let parsed: Result<Vec<Value>, serde_json::Error> = serde_json::from_reader(body);
     if let Err(e) = parsed {
         return bad_json_response(e);
     }
 
-    let json_parse_duration = json_parse_start_time.elapsed();
-    println!(
-        "json_parse took: {} seconds",
-        json_parse_duration.as_secs_f64()
-    );
-
-    let mut res_arr = Vec::new();
-    let mut temp_res = Vec::new();
-
-    let send_payload_start_time = std::time::Instant::now();
+    let mut res_arr: Vec<Result<OwnedDeliveryResult, KafkaError>> = Vec::new();
+    let mut temp_res: Vec<Result<DeliveryFuture, KafkaError>> = Vec::new();
 
     for (count, payload) in parsed.ok().unwrap().into_iter().enumerate() {
         let payload = serde_json::to_vec(&payload).unwrap();
@@ -344,42 +351,16 @@ async fn handle_json_array_body(
         // ideally we want to use redpanda::send_with_back_pressure
         // but it does not report the error back
         if count % 1024 == 1023 {
-            for future_res in temp_res {
-                match future_res {
-                    Ok(future) => match future.await {
-                        Ok(res) => res_arr.push(Ok(res)),
-                        Err(_) => res_arr.push(Err(KafkaError::Canceled)),
-                    },
-                    Err(e) => res_arr.push(Err(e)),
-                }
-            }
+            wait_for_batch_complete(&mut res_arr, temp_res).await;
             temp_res = Vec::new();
         }
     }
-    for future_res in temp_res {
-        match future_res {
-            Ok(future) => match future.await {
-                Ok(res) => res_arr.push(Ok(res)),
-                Err(_) => res_arr.push(Err(KafkaError::Canceled)),
-            },
-            Err(e) => res_arr.push(Err(e)),
-        }
-    }
-
-    let send_payload_duration = send_payload_start_time.elapsed();
-    println!(
-        "send_payload took: {} seconds",
-        send_payload_duration.as_secs_f64()
-    );
+    wait_for_batch_complete(&mut res_arr, temp_res).await;
 
     if res_arr.iter().any(|res| res.is_err()) {
         return internal_server_error_response();
     }
-    let duration = start_time.elapsed();
-    println!(
-        "handle_json_array_body took: {} seconds",
-        duration.as_secs_f64()
-    );
+
     success_response(url)
 }
 

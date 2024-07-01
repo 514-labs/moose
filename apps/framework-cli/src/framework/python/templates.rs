@@ -90,6 +90,64 @@ GROUP BY toStartOfDay(timestamp)
 agg = Aggregation(select=sql, order_by="date")
 "#;
 
+pub static PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE: &str = r#"
+from dataclasses import dataclass
+from typing import List
+
+# Here is a sample aggregation query that calculates the number of daily active users
+# based on the number of unique users who complete a sign-in activity each day.
+
+@dataclass
+class Blocks:
+    setup: List[str]
+    teardown: List[str]
+
+destination_table = "DailyActiveUsers"
+
+materialized_view = "DailyActiveUsers_mv"
+
+select_sql = """
+SELECT 
+toStartOfDay(timestamp) as date,
+uniqState(userId) as dailyActiveUsers
+FROM ParsedActivity_0_0
+WHERE activity = 'Login' 
+GROUP BY toStartOfDay(timestamp)
+"""
+
+teardown_queries = [
+    f"""
+    DROP VIEW IF EXISTS {materialized_view}
+    """,
+    f"""
+    DROP TABLE IF EXISTS {destination_table}
+    """
+]
+
+setup_queries = [
+    f"""
+    CREATE TABLE IF NOT EXISTS {destination_table}
+    (
+        date Date,
+        dailyActiveUsers AggregateFunction(uniq, String)
+    )
+    ENGINE = AggregatingMergeTree()
+    ORDER BY date
+    """,
+    f"""
+    CREATE MATERIALIZED VIEW IF NOT EXISTS {materialized_view}
+    TO {destination_table}
+    AS {select_sql}
+    """,
+    f"""
+    INSERT INTO {destination_table}
+    {select_sql}
+    """
+]
+
+block = Blocks(setup=setup_queries, teardown=teardown_queries)
+"#;
+
 pub fn render_setup_py(project: PythonProject) -> Result<String, PythonRenderingError> {
     let reg = Handlebars::new();
 

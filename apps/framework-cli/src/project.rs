@@ -31,6 +31,7 @@ use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::cli::settings::Features;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::python::templates::PTYHON_BASE_AGG_SAMPLE_TEMPLATE;
+use crate::framework::python::templates::PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_FLOW_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::BASE_APIS_SAMPLE_TEMPLATE;
@@ -270,10 +271,7 @@ impl Project {
 
                 // Write TypeScript specific templates
                 self.write_file(&base_model_file_path, TS_BASE_MODEL_TEMPLATE.to_string())?;
-                self.write_file(
-                    &flow_file_path,
-                    TS_BASE_FLOW_SAMPLE_TEMPLATE.replace("{{project_name}}", &self.name()),
-                )?;
+                self.write_file(&flow_file_path, TS_BASE_FLOW_SAMPLE_TEMPLATE.to_string())?;
                 if features.blocks {
                     self.write_file(
                         &aggregations_file_path,
@@ -301,11 +299,17 @@ impl Project {
                     PYTHON_BASE_MODEL_TEMPLATE.to_string(),
                 )?;
                 self.write_file(&flow_file_path, PYTHON_BASE_FLOW_TEMPLATE.to_string())?;
-                // TODO: Add sample blocks to python
-                self.write_file(
-                    &aggregations_file_path,
-                    PTYHON_BASE_AGG_SAMPLE_TEMPLATE.to_string(),
-                )?;
+                if features.blocks {
+                    self.write_file(
+                        &aggregations_file_path,
+                        PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE.to_string(),
+                    )?;
+                } else {
+                    self.write_file(
+                        &aggregations_file_path,
+                        PTYHON_BASE_AGG_SAMPLE_TEMPLATE.to_string(),
+                    )?;
+                }
 
                 // Create __init__.py in necessary directories for Python
                 for dir in &[

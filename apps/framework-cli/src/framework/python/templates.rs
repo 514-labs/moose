@@ -99,8 +99,8 @@ from typing import List
 
 @dataclass
 class Blocks:
-    setup: List[str]
     teardown: List[str]
+    setup: List[str]
 
 destination_table = "DailyActiveUsers"
 
@@ -145,7 +145,7 @@ setup_queries = [
     """
 ]
 
-block = Blocks(setup=setup_queries, teardown=teardown_queries)
+block = Blocks(teardown=teardown_queries, setup=setup_queries)
 "#;
 
 pub fn render_setup_py(project: PythonProject) -> Result<String, PythonRenderingError> {

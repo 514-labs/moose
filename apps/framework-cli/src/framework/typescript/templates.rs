@@ -110,7 +110,7 @@ export default {
         destinationTable: DESTINATION_TABLE,
         select: SELECT_QUERY,
       },
-      poulateTableOptions: {
+      populateTableOptions: {
         destinationTable: DESTINATION_TABLE,
         select: SELECT_QUERY,
       },

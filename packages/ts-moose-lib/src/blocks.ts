@@ -1,7 +1,7 @@
 interface AggregationCreateOptions {
   tableCreateOptions: TableCreateOptions;
   materializedViewCreateOptions: MaterializedViewCreateOptions;
-  poulateTableOptions: PopulateTableOptions;
+  populateTableOptions: PopulateTableOptions;
 }
 
 interface AggregationDropOptions {
@@ -70,7 +70,7 @@ export function createAggregation(options: AggregationCreateOptions): string[] {
   return [
     createTable(options.tableCreateOptions),
     createMaterializedView(options.materializedViewCreateOptions),
-    populateTable(options.poulateTableOptions),
+    populateTable(options.populateTableOptions),
   ];
 }
 

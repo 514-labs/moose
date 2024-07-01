@@ -15,7 +15,8 @@
     "next-env.d.ts",
     "**/*.ts",
     "**/*.tsx",
-    ".next/types/**/*.ts"
+    ".next/types/**/*.ts",
+    "../../packages/event-capture/events/sendTrackEvent.ts"
   ],
   "exclude": ["node_modules"]
 }

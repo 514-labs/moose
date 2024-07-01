@@ -24,6 +24,8 @@ import { Text } from "@514labs/design-system-components/typography";
 import React from "react";
 import { UsecasesSection } from "./sections/home/UsecasesSection";
 import { LooseMooseSection } from "./sections/home/LooseMooseSection";
+import { WhatIsMoose } from "./sections/home/WhatIsMooseV2";
+import { WhatIsMooseFor } from "./sections/home/WhatIsMooseFor";
 
 export const CTAText = ({
   className,
@@ -96,10 +98,12 @@ export default function Home() {
     <main>
       <HeroSection />
       <DemoSection />
+      <WhatIsMooseFor />
       <FeaturesSection />
-      <UsecasesSection />
-      <MooseStackSection />
-      <WhyMooseSection />
+      {/* <UsecasesSection /> */}
+      <WhatIsMoose />
+      {/* <MooseStackSection /> */}
+      {/* <WhyMooseSection /> */}
 
       {/* <HowItWorksSection /> */}
 

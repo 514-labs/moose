@@ -55,8 +55,9 @@ export const HeroSection = () => {
               {content.ctas.map((cta, index) => (
                 <Link key={index} href={cta.href}>
                   <TrackCtaButton
-                    name={cta.label}
-                    subject={cta.label}
+                    name={`Hero CTA ${cta.label}`}
+                    subject={content.tagLine}
+                    targetUrl={cta.href}
                     variant={cta.variant as "default" | "outline"}
                   >
                     {cta.label}

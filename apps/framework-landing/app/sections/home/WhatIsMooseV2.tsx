@@ -1,3 +1,4 @@
+"use client";
 import {
   Accordion,
   AccordionContent,
@@ -18,11 +19,12 @@ import {
   Text,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 
 import { TrackingVerb } from "@514labs/event-capture/withTrack";
 
 import { TrackableAccordionTrigger } from "../../trackable-components";
+import Diagram from "../../spline";
 
 const content = {
   title: "Concentrate on your data. Moose handles the stack.",
@@ -36,6 +38,7 @@ const content = {
   layers: [
     {
       title: "Data Application Logic",
+      label: "TOP-LAYER",
       description:
         "Build data aware LLM + RAG applications to surface insights for your users",
       details: [
@@ -61,6 +64,7 @@ const content = {
       title: "Moose Defined Infrastructure",
       description:
         "Understand users and business operations across technologies and products",
+      layer: "MIDDLE-LAYER",
       details: [
         {
           title: "Ingestion Endpoints",
@@ -94,6 +98,7 @@ const content = {
       title: "Foundational Infrastructure",
       description:
         "Moose uses modern, open-source solutions in an industry-standard data stack, managing the connections to ensure reliable data transmission across systems",
+      layer: "BOTTOM-LAYER",
       details: [
         {
           title: "Webserver",
@@ -125,13 +130,20 @@ const content = {
   },
 };
 
-const MooseLayersAccordion = () => {
+const MooseLayersAccordion = ({ spline }: { spline: any }) => {
   return (
     <div>
       <Accordion type="single" collapsible>
         {content.layers.map((layer, index) => {
           return (
-            <AccordionItem key={index} value={`item-${index}`}>
+            <AccordionItem
+              key={index}
+              value={`item-${index}`}
+              onValueChange={() => console.log("open change")}
+              onClick={() => {
+                spline.current.emitEvent("mouseDown", layer.layer);
+              }}
+            >
               <TrackableAccordionTrigger
                 name="Moose Layer Accordion"
                 subject={layer.title}
@@ -173,6 +185,7 @@ const MooseLayersAccordion = () => {
 };
 
 export const WhatIsMoose = () => {
+  const spline = useRef();
   return (
     <>
       <Section className="mx-auto xl:max-w-screen-xl">
@@ -185,11 +198,13 @@ export const WhatIsMoose = () => {
           </FullWidthContentContainer>
         </Grid>
       </Section>
+      <div></div>
       <Section className="w-full relative mx-auto xl:my-10 xl:max-w-screen-xl 2xl:my-0">
         <Grid className="gap-5">
           <ThirdWidthContentContainer>
-            Image goes here
+            <Diagram spline={spline} />
           </ThirdWidthContentContainer>
+
           <TwoThirdsWidthContentContainer className="flex flex-col xl:justify-start gap-5">
             <FullWidthContentContainer>
               <Text className="my-0">{content.top.title}</Text>
@@ -197,7 +212,7 @@ export const WhatIsMoose = () => {
                 {content.bottom.description}
               </Text>
             </FullWidthContentContainer>
-            <MooseLayersAccordion />
+            <MooseLayersAccordion spline={spline} />
             <FullWidthContentContainer my-5>
               <Text className="my-0">{content.top.title}</Text>
               <Text className="my-0 text-muted-foreground">

@@ -627,7 +627,7 @@ pub async fn cli_run() {
     let cli = Cli::parse();
 
     let (tx, rx) = tokio::sync::mpsc::channel(10);
-    let metrics = Metrics { tx: tx };
+    let metrics = Metrics { tx };
     let arc_metrics = Arc::new(metrics);
     arc_metrics.clone().controller(rx).await;
 

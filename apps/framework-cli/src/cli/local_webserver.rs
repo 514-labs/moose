@@ -52,6 +52,16 @@ use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
+pub struct MetricsDetails {
+    timer: Instant,
+    metrics_method: Method,
+}
+
+pub struct RouterRequest {
+    req: Request<hyper::body::Incoming>,
+    route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LocalWebserverConfig {
     pub host: String,
@@ -83,9 +93,8 @@ async fn create_client(
     consumption_apis: &RwLock<HashSet<String>>,
     is_prod: bool,
     metrics: Arc<Metrics>,
-    timer: Instant,
     route: PathBuf,
-    metrics_method: Method,
+    metrics_details: MetricsDetails,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
     // local only for now
     let url = format!("http://{}:{}", host, 4001).parse::<hyper::Uri>()?;
@@ -146,8 +155,8 @@ async fn create_client(
     metrics
         .send_data(Data::IngestHistogram((
             route.clone(),
-            timer.elapsed(),
-            metrics_method,
+            metrics_details.timer.elapsed(),
+            metrics_details.metrics_method,
         )))
         .await;
 
@@ -178,23 +187,24 @@ impl Service<Request<Incoming>> for RouteService {
 
     fn call(&self, req: Request<Incoming>) -> Self::Future {
         Box::pin(router(
-            req,
             self.current_version.clone(),
-            self.route_table,
             self.consumption_apis,
             self.configured_producer.clone(),
             self.host.clone(),
             self.is_prod,
             self.metrics.clone(),
+            RouterRequest {
+                req,
+                route_table: self.route_table,
+            },
         ))
     }
 }
 
 async fn options_route(
     metrics: Arc<Metrics>,
-    timer: Instant,
     route: PathBuf,
-    metrics_method: Method,
+    metrics_details: MetricsDetails,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
@@ -210,8 +220,8 @@ async fn options_route(
     metrics
         .send_data(Data::IngestHistogram((
             route.clone(),
-            timer.elapsed(),
-            metrics_method,
+            metrics_details.timer.elapsed(),
+            metrics_details.metrics_method,
         )))
         .await;
 
@@ -220,9 +230,8 @@ async fn options_route(
 
 async fn health_route(
     metrics: Arc<Metrics>,
-    timer: Instant,
     route: PathBuf,
-    metrics_method: Method,
+    metrics_details: MetricsDetails,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
@@ -232,8 +241,8 @@ async fn health_route(
     metrics
         .send_data(Data::IngestHistogram((
             route.clone(),
-            timer.elapsed(),
-            metrics_method,
+            metrics_details.timer.elapsed(),
+            metrics_details.metrics_method,
         )))
         .await;
     Ok(response)
@@ -243,8 +252,7 @@ async fn log_route(
     req: Request<Incoming>,
     metrics: Arc<Metrics>,
     route: PathBuf,
-    metrics_method: Method,
-    timer: Instant,
+    metrics_details: MetricsDetails,
 ) -> Response<Full<Bytes>> {
     let body = to_reader(req).await;
     let parsed: Result<CliMessage, serde_json::Error> = serde_json::from_reader(body);
@@ -262,8 +270,8 @@ async fn log_route(
     metrics
         .send_data(Data::IngestHistogram((
             route.clone(),
-            timer.elapsed(),
-            metrics_method,
+            metrics_details.timer.elapsed(),
+            metrics_details.metrics_method,
         )))
         .await;
 
@@ -275,9 +283,8 @@ async fn log_route(
 
 async fn metrics_route(
     metrics: Arc<Metrics>,
-    timer: Instant,
     route: PathBuf,
-    metrics_method: Method,
+    metrics_details: MetricsDetails,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
@@ -287,8 +294,8 @@ async fn metrics_route(
     metrics
         .send_data(Data::IngestHistogram((
             route.clone(),
-            timer.elapsed(),
-            metrics_method,
+            metrics_details.timer.elapsed(),
+            metrics_details.metrics_method,
         )))
         .await;
 
@@ -448,9 +455,8 @@ async fn ingest_route(
     route: PathBuf,
     configured_producer: ConfiguredProducer,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
-    timer: std::time::Instant,
     metrics: Arc<Metrics>,
-    metrics_method: Method,
+    metrics_details: MetricsDetails,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     show_message!(
         MessageType::Info,
@@ -463,8 +469,8 @@ async fn ingest_route(
     metrics
         .send_data(Data::IngestHistogram((
             route.clone(),
-            timer.elapsed(),
-            metrics_method,
+            metrics_details.timer.elapsed(),
+            metrics_details.metrics_method,
         )))
         .await;
 
@@ -486,16 +492,19 @@ async fn ingest_route(
 }
 
 async fn router(
-    req: Request<hyper::body::Incoming>,
     current_version: String,
-    route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     consumption_apis: &RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
     host: String,
     is_prod: bool,
     metrics: Arc<Metrics>,
+    request: RouterRequest,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let now = Instant::now();
+
+    let req = request.req;
+    let route_table = request.route_table;
+
     debug!(
         "HTTP Request Received: {:?}, with Route Table {:?}",
         req, route_table
@@ -513,16 +522,16 @@ async fn router(
         route, route_table
     );
 
-    let metrics_method = match req.method() {
-        &hyper::Method::POST => Method::POST,
-        &hyper::Method::GET => Method::GET,
-        &hyper::Method::PUT => Method::PUT,
-        &hyper::Method::DELETE => Method::DELETE,
-        &hyper::Method::HEAD => Method::HEAD,
-        &hyper::Method::OPTIONS => Method::OPTIONS,
-        &hyper::Method::CONNECT => Method::CONNECT,
-        &hyper::Method::TRACE => Method::TRACE,
-        &hyper::Method::PATCH => Method::PATCH,
+    let metrics_method = match *req.method() {
+        hyper::Method::POST => Method::POST,
+        hyper::Method::GET => Method::GET,
+        hyper::Method::PUT => Method::PUT,
+        hyper::Method::DELETE => Method::DELETE,
+        hyper::Method::HEAD => Method::HEAD,
+        hyper::Method::OPTIONS => Method::OPTIONS,
+        hyper::Method::CONNECT => Method::CONNECT,
+        hyper::Method::TRACE => Method::TRACE,
+        hyper::Method::PATCH => Method::PATCH,
         _ => Method::OTHER,
     };
 
@@ -535,9 +544,11 @@ async fn router(
                 route.join(current_version),
                 configured_producer,
                 route_table,
-                now,
                 metrics,
-                metrics_method,
+                MetricsDetails {
+                    timer: now,
+                    metrics_method,
+                },
             )
             .await
         }
@@ -547,9 +558,11 @@ async fn router(
                 route,
                 configured_producer,
                 route_table,
-                now,
                 metrics,
-                metrics_method,
+                MetricsDetails {
+                    timer: now,
+                    metrics_method,
+                },
             )
             .await
         }
@@ -561,9 +574,11 @@ async fn router(
                 consumption_apis,
                 is_prod,
                 metrics,
-                now,
                 route.to_path_buf(),
-                metrics_method,
+                MetricsDetails {
+                    timer: now,
+                    metrics_method,
+                },
             )
             .await
             {
@@ -576,17 +591,50 @@ async fn router(
                 }
             }
         }
-        (&hyper::Method::POST, ["logs"]) if !is_prod => {
-            Ok(log_route(req, metrics, route, metrics_method, now).await)
-        }
+        (&hyper::Method::POST, ["logs"]) if !is_prod => Ok(log_route(
+            req,
+            metrics,
+            route,
+            MetricsDetails {
+                timer: now,
+                metrics_method,
+            },
+        )
+        .await),
         (&hyper::Method::GET, ["health"]) => {
-            health_route(metrics, now, route, metrics_method).await
+            health_route(
+                metrics,
+                route,
+                MetricsDetails {
+                    timer: now,
+                    metrics_method,
+                },
+            )
+            .await
         }
         (&hyper::Method::GET, ["metrics"]) => {
-            metrics_route(metrics, now, route, metrics_method).await
+            metrics_route(
+                metrics,
+                route,
+                MetricsDetails {
+                    timer: now,
+                    metrics_method,
+                },
+            )
+            .await
         }
 
-        (&hyper::Method::OPTIONS, _) => options_route(metrics, now, route, metrics_method).await,
+        (&hyper::Method::OPTIONS, _) => {
+            options_route(
+                metrics,
+                route,
+                MetricsDetails {
+                    timer: now,
+                    metrics_method,
+                },
+            )
+            .await
+        }
         _ => {
             metrics
                 .send_data(Data::IngestHistogram((

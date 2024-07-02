@@ -86,7 +86,7 @@ impl Metrics {
                     Data::IngestHistogram((path, duration, method)) => data
                         .histogram_family
                         .get_or_create(&Labels {
-                            method: method,
+                            method,
                             path: path.into_os_string().to_str().unwrap().to_string(),
                         })
                         .observe(duration.as_secs_f64()),
@@ -98,6 +98,6 @@ impl Metrics {
 
 pub async fn formatted_registry(data: &Option<&Registry>) -> String {
     let mut buffer = String::new();
-    let _ = encode(&mut buffer, &data.as_ref().unwrap());
+    let _ = encode(&mut buffer, data.as_ref().unwrap());
     buffer
 }

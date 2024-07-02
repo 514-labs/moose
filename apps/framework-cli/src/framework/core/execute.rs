@@ -53,12 +53,7 @@ pub async fn execute_initial_infra_change(
         project.redpanda_config.clone(),
         project.clickhouse_config.clone(),
     );
-    let mut process_registries = ProcessRegistries::new(
-        project.redpanda_config.clone(),
-        project.language,
-        project.clickhouse_config.clone(),
-        features,
-    );
+    let mut process_registries = ProcessRegistries::new(project, features);
 
     processes::execute_changes(
         &mut syncing_processes_registry,

@@ -1,10 +1,8 @@
 use crate::cli::settings::Features;
-use crate::framework::aggregations::registry::AggregationProcessRegistry;
 use crate::framework::consumption::registry::ConsumptionProcessRegistry;
-use crate::framework::languages::SupportedLanguages;
-use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
-use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use crate::project::Project;
 
+use super::aggregations_registry::AggregationProcessRegistry;
 use super::functions_registry::FunctionProcessRegistry;
 
 pub struct ProcessRegistries {
@@ -14,16 +12,21 @@ pub struct ProcessRegistries {
 }
 
 impl ProcessRegistries {
-    pub fn new(
-        kafka_config: RedpandaConfig,
-        language: SupportedLanguages,
-        clickhouse_config: ClickHouseConfig,
-        features: &Features,
-    ) -> Self {
-        let flows = FunctionProcessRegistry::new(kafka_config.clone());
-        let aggregations =
-            AggregationProcessRegistry::new(language, clickhouse_config.clone(), features);
-        let consumption = ConsumptionProcessRegistry::new(language, clickhouse_config);
+    pub fn new(project: &Project, features: &Features) -> Self {
+        let flows = FunctionProcessRegistry::new(project.redpanda_config.clone());
+        let aggs_dir = if features.blocks {
+            project.blocks_dir()
+        } else {
+            project.aggregations_dir()
+        };
+        let aggregations = AggregationProcessRegistry::new(
+            project.language,
+            aggs_dir,
+            project.clickhouse_config.clone(),
+            features,
+        );
+        let consumption =
+            ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());
 
         Self {
             flows,

@@ -1,10 +1,14 @@
 use kafka_clickhouse_sync::SyncingProcessesRegistry;
 use process_registry::ProcessRegistries;
 
-use crate::framework::core::infrastructure_map::{Change, ProcessChange};
+use crate::framework::{
+    aggregations::model::AggregationError,
+    core::infrastructure_map::{Change, ProcessChange},
+};
 
 use super::olap::clickhouse::{errors::ClickhouseError, mapper::std_columns_to_clickhouse_columns};
 
+pub mod aggregations_registry;
 pub mod functions_registry;
 pub mod kafka_clickhouse_sync;
 pub mod process_registry;
@@ -16,6 +20,9 @@ pub enum SyncProcessChangesError {
 
     #[error("Failed in the function registry")]
     FunctionRegistry(#[from] functions_registry::FunctionRegistryError),
+
+    #[error("Failed in the aggregation registry")]
+    OlapProcess(#[from] AggregationError),
 }
 
 /// This method dispatches the execution of the changes to the right streaming engine.
@@ -66,6 +73,19 @@ pub async fn execute_changes(
                 log::info!("Updating Function process: {:?}", before.id());
                 process_registry.flows.stop(before).await?;
                 process_registry.flows.start(after)?;
+            }
+            ProcessChange::OlapProcess(Change::Added(olap_process)) => {
+                log::info!("Starting Aggregation process: {:?}", olap_process.id());
+                process_registry.aggregations.start(olap_process)?;
+            }
+            ProcessChange::OlapProcess(Change::Removed(olap_process)) => {
+                log::info!("Stopping Aggregation process: {:?}", olap_process.id());
+                process_registry.aggregations.stop(olap_process).await?;
+            }
+            ProcessChange::OlapProcess(Change::Updated { before, after }) => {
+                log::info!("Updating Aggregation process: {:?}", before.id());
+                process_registry.aggregations.stop(before).await?;
+                process_registry.aggregations.start(after)?;
             }
         }
     }

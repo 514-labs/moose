@@ -90,7 +90,6 @@ use tokio::sync::RwLock;
 use crate::cli::watcher::{
     process_aggregations_changes, process_consumption_changes, process_flows_changes,
 };
-use crate::framework::aggregations::registry::AggregationProcessRegistry;
 use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 use crate::framework::core::code_loader::{
     load_framework_objects, FrameworkObject, FrameworkObjectVersions, SchemaVersion,
@@ -108,6 +107,7 @@ use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_sync
 use crate::infrastructure::olap::clickhouse_alt_client::{
     get_pool, store_current_state, store_infrastructure_map,
 };
+use crate::infrastructure::processes::aggregations_registry::AggregationProcessRegistry;
 use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
@@ -337,12 +337,19 @@ pub async fn start_development_mode(
         )
         .await?;
 
+        let aggs_dir = if features.blocks {
+            project.blocks_dir()
+        } else {
+            project.aggregations_dir()
+        };
+
         let mut aggregations_process_registry = AggregationProcessRegistry::new(
             project.language,
+            aggs_dir,
             project.clickhouse_config.clone(),
             features,
         );
-        process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
+        process_aggregations_changes(&mut aggregations_process_registry).await?;
 
         let mut consumption_process_registry =
             ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());
@@ -460,13 +467,18 @@ pub async fn start_production_mode(
             &topics,
         )
         .await?;
-
+        let aggs_dir = if features.blocks {
+            project.blocks_dir()
+        } else {
+            project.aggregations_dir()
+        };
         let mut aggregations_process_registry = AggregationProcessRegistry::new(
             project.language,
+            aggs_dir,
             project.clickhouse_config.clone(),
             &features,
         );
-        process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
+        process_aggregations_changes(&mut aggregations_process_registry).await?;
 
         let mut consumption_process_registry =
             ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());

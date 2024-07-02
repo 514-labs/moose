@@ -5,8 +5,9 @@ use tokio::process::Child;
 
 use crate::{
     framework::{
-        core::infrastructure::function_process::FunctionProcess, flows::model::Flow, python,
-        typescript,
+        core::infrastructure::{function_process::FunctionProcess, topic::Topic},
+        flows::model::Flow,
+        python, typescript,
     },
     infrastructure::stream::redpanda::RedpandaConfig,
     utilities::system::{kill_child, KillProcessError},
@@ -81,7 +82,14 @@ impl FunctionProcessRegistry {
         topics: &[String],
     ) -> Result<(), FunctionRegistryError> {
         for flow in flows {
-            self.start(&FunctionProcess::from_functon(flow, topics))?;
+            if flow.is_flow_migration() {
+                let (source_topic, target_topic) = Topic::from_migration_function(flow);
+                let function_process =
+                    FunctionProcess::from_migration_functon(flow, &source_topic, &target_topic);
+                self.start(&function_process)?;
+            } else {
+                self.start(&FunctionProcess::from_functon(flow, topics))?;
+            }
         }
 
         Ok(())

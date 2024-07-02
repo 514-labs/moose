@@ -120,16 +120,20 @@ impl InfrastructureMap {
             // Unless for Flow migrations where we will have to create new topics.
 
             if function.is_flow_migration() {
-                let (source_topic, target_topic) = Topic::from_function(function);
+                let (source_topic, target_topic) = Topic::from_migration_function(function);
+
+                let function_process =
+                    FunctionProcess::from_migration_functon(function, &source_topic, &target_topic);
 
                 topics.insert(source_topic.id(), source_topic);
                 topics.insert(target_topic.id(), target_topic);
+                function_processes.insert(function_process.id(), function_process);
+            } else {
+                let topics: Vec<String> = topics.values().map(|t| t.id()).collect();
+
+                let function_process = FunctionProcess::from_functon(function, &topics);
+                function_processes.insert(function_process.id(), function_process);
             }
-
-            let topics: Vec<String> = topics.values().map(|t| t.id()).collect();
-
-            let function_process = FunctionProcess::from_functon(function, &topics);
-            function_processes.insert(function_process.id(), function_process);
         }
 
         InfrastructureMap {

@@ -10,7 +10,7 @@ use crate::{
     utilities::constants::{PYTHON_FILE_EXTENSION, TYPESCRIPT_FILE_EXTENSION},
 };
 
-use super::table::Column;
+use super::{table::Column, topic::Topic};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FunctionProcess {
@@ -50,6 +50,35 @@ impl FunctionProcess {
             // Leaving it as is for compatibility with the current code.
             target_topic: get_latest_topic(topics, &function.target_data_model.name)
                 .unwrap_or_else(|| function.target_data_model.name.clone()),
+
+            target_columns: function.target_data_model.columns.clone(),
+            target_topic_config: HashMap::from([
+                ("max.message.bytes".to_string(), (1024 * 1024).to_string()),
+                ("message.max.bytes".to_string(), (1024 * 1024).to_string()),
+            ]),
+
+            executable: function.executable.clone(),
+
+            version: function.version.clone(),
+            source_primitive: PrimitiveSignature {
+                name: function.name.clone(),
+                primitive_type: PrimitiveTypes::Function,
+            },
+        }
+    }
+
+    pub fn from_migration_functon(
+        function: &Flow,
+        source_topic: &Topic,
+        target_topic: &Topic,
+    ) -> Self {
+        FunctionProcess {
+            name: function.name.clone(),
+
+            source_topic: source_topic.name.clone(),
+            source_columns: function.source_data_model.columns.clone(),
+
+            target_topic: target_topic.name.clone(),
 
             target_columns: function.target_data_model.columns.clone(),
             target_topic_config: HashMap::from([

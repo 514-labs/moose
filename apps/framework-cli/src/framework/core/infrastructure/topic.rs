@@ -35,9 +35,15 @@ impl Topic {
         }
     }
 
-    pub fn from_function(function: &Flow) -> (Topic, Topic) {
+    pub fn from_migration_function(function: &Flow) -> (Topic, Topic) {
         let source_topic = Topic {
-            name: function.source_data_model.name.clone(),
+            name: format!(
+                "{}_{}_{}_{}_input",
+                function.source_data_model.name,
+                function.source_data_model.version.replace('.', "_"),
+                function.target_data_model.name,
+                function.target_data_model.version.replace('.', "_")
+            ),
             version: function.version.clone(),
             retention_period: Topic::default_duration(),
             columns: function.source_data_model.columns.clone(),
@@ -48,7 +54,13 @@ impl Topic {
         };
 
         let target_topic = Topic {
-            name: function.target_data_model.name.clone(),
+            name: format!(
+                "{}_{}_{}_{}_output",
+                function.source_data_model.name,
+                function.source_data_model.version.replace('.', "_"),
+                function.target_data_model.name,
+                function.target_data_model.version.replace('.', "_")
+            ),
             version: function.version.clone(),
             retention_period: Topic::default_duration(),
             columns: function.target_data_model.columns.clone(),

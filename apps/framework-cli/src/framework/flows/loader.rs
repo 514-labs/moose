@@ -139,12 +139,13 @@ fn build_migration_flow(
 ) -> Flow {
     info!("Flows Data Captures for migrations {:?}", caps);
     let source_model_name = caps.get(1).unwrap().as_str();
-    let source_version = caps.get(2).unwrap().as_str();
-    let source_data_model = data_models.get(source_model_name, source_version).unwrap();
+    let source_version = caps.get(2).unwrap().as_str().replace('_', ".");
+
+    let source_data_model = data_models.get(source_model_name, &source_version).unwrap();
 
     let target_model_name = caps.get(4).map(|m| m.as_str()).unwrap_or(source_model_name);
-    let target_version = caps.get(5).unwrap().as_str();
-    let target_data_model = data_models.get(target_model_name, target_version).unwrap();
+    let target_version = caps.get(5).unwrap().as_str().replace('_', ".");
+    let target_data_model = data_models.get(target_model_name, &target_version).unwrap();
 
     Flow {
         name: file_name.to_string(),

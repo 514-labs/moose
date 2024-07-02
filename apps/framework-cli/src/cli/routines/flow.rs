@@ -11,7 +11,6 @@ use crate::framework::core::code_loader::{
 use crate::framework::core::infrastructure::table::ColumnType;
 use crate::framework::typescript::templates::BASE_FLOW_TEMPLATE;
 use crate::project::Project;
-use crate::utilities::constants::TS_FLOW_FILE;
 
 use super::{RoutineFailure, RoutineSuccess};
 
@@ -29,9 +28,7 @@ impl FlowFileBuilder {
 
         let flow_file_path = project
             .flows_dir()
-            .join(source)
-            .join(destination)
-            .join(TS_FLOW_FILE);
+            .join(format!("{}__{}.ts", source, destination));
 
         Self {
             flow_file_path,
@@ -122,11 +119,11 @@ impl FlowFileBuilder {
 
             model_relative_path.to_string_lossy().to_string()
         } else {
-            "../../../datamodels/models".to_string()
+            "../datamodels/models".to_string()
         }
     }
 
-    pub fn write(&self) -> Result<(), RoutineFailure> {
+    pub fn write(&self) -> Result<RoutineSuccess, RoutineFailure> {
         let mut flow_file = fs::File::create(self.flow_file_path.as_path()).map_err(|err| {
             RoutineFailure::new(
                 Message::new(
@@ -149,41 +146,13 @@ impl FlowFileBuilder {
                 )
             });
 
-        show_message!(
-            MessageType::Success,
-            Message {
+        Ok(RoutineSuccess {
+            message_type: MessageType::Success,
+            message: Message {
                 action: "Created".to_string(),
                 details: "flow".to_string(),
-            }
-        );
-
-        Ok(())
-    }
-}
-
-pub fn create_flow_directory(
-    project: &Project,
-    source: String,
-    destination: String,
-) -> Result<RoutineSuccess, RoutineFailure> {
-    let flows_dir = project.flows_dir();
-    let source_destination_dir = flows_dir.join(source.clone()).join(destination.clone());
-
-    match fs::create_dir_all(source_destination_dir.clone()) {
-        Ok(_) => Ok(RoutineSuccess::success(Message::new(
-            "Created".to_string(),
-            "flow directory".to_string(),
-        ))),
-        Err(err) => Err(RoutineFailure::new(
-            Message::new(
-                "Failed".to_string(),
-                format!(
-                    "to create flow directory {}",
-                    source_destination_dir.display()
-                ),
-            ),
-            err,
-        )),
+            },
+        })
     }
 }
 
@@ -202,7 +171,7 @@ pub async fn create_flow_file(
         }
     };
 
-    FlowFileBuilder::new(project, &source, &destination)
+    let success = FlowFileBuilder::new(project, &source, &destination)
         .imports(&source, &destination, models)
         .return_object(&destination, models)
         .write()?;
@@ -213,10 +182,7 @@ pub async fn create_flow_file(
         verify_datamodels_with_framework_objects(models, &source, &destination);
     }
 
-    Ok(RoutineSuccess::success(Message::new(
-        "".to_string(),
-        "".to_string(),
-    )))
+    Ok(success)
 }
 
 pub fn verify_flows_against_datamodels(

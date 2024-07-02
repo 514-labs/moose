@@ -58,7 +58,6 @@ use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::PROJECT_CONFIG_FILE;
 use crate::utilities::constants::PY_AGGREGATIONS_FILE;
-use crate::utilities::constants::PY_FLOW_FILE;
 use crate::utilities::constants::README_PREFIX;
 use crate::utilities::constants::TS_AGGREGATIONS_FILE;
 use crate::utilities::constants::{
@@ -264,9 +263,7 @@ impl Project {
                 let base_model_file_path = self.data_models_dir().join("models.ts");
                 let flow_file_path = self
                     .flows_dir()
-                    .join(SAMPLE_FLOWS_SOURCE)
-                    .join(SAMPLE_FLOWS_DEST)
-                    .join(TS_FLOW_FILE);
+                    .join(format!("{}__{}.ts", SAMPLE_FLOWS_SOURCE, SAMPLE_FLOWS_DEST));
                 let aggregations_file_path = aggregations_dir.join(TS_AGGREGATIONS_FILE);
 
                 // Write TypeScript specific templates
@@ -288,9 +285,7 @@ impl Project {
                 let base_model_file_path = self.data_models_dir().join("models.py");
                 let flow_file_path = self
                     .flows_dir()
-                    .join(SAMPLE_FLOWS_SOURCE)
-                    .join(SAMPLE_FLOWS_DEST)
-                    .join(PY_FLOW_FILE);
+                    .join(format!("{}__{}.py", SAMPLE_FLOWS_SOURCE, SAMPLE_FLOWS_DEST));
                 let aggregations_file_path = aggregations_dir.join(PY_AGGREGATIONS_FILE);
 
                 // Write Python specific templates
@@ -318,9 +313,6 @@ impl Project {
                     aggregations_dir,
                     self.consumption_dir(),
                     self.flows_dir(),
-                    self.flows_dir()
-                        .join(SAMPLE_FLOWS_SOURCE)
-                        .join(SAMPLE_FLOWS_DEST),
                 ] {
                     std::fs::File::create(dir.join("__init__.py"))?;
                 }

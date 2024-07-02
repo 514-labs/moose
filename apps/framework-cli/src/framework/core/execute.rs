@@ -1,11 +1,15 @@
 use tokio::sync::mpsc::Sender;
 
 use crate::{
+    cli::settings::Features,
     infrastructure::{
         api,
-        kafka_clickhouse_sync::SyncingProcessesRegistry,
         olap::{self, OlapChangesError},
-        stream, sync_processes,
+        processes::{
+            self, kafka_clickhouse_sync::SyncingProcessesRegistry,
+            process_registry::ProcessRegistries,
+        },
+        stream,
     },
     project::Project,
 };
@@ -24,14 +28,15 @@ pub enum ExecutionError {
     ApiChange(#[from] api::ApiChangeError),
 
     #[error("Failed to communicate with Sync Processes")]
-    SyncProcessesChange(#[from] sync_processes::SyncProcessChangesError),
+    SyncProcessesChange(#[from] processes::SyncProcessChangesError),
 }
 
 pub async fn execute_initial_infra_change(
     project: &Project,
+    features: &Features, // We should get rid of this when we moved away from aggregations
     plan: &InfraPlan,
     api_changes_channel: Sender<ApiChange>,
-) -> Result<SyncingProcessesRegistry, ExecutionError> {
+) -> Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError> {
     // This probably can be paralelized through Tokio Spawn
     olap::execute_changes(project, &plan.changes.olap_changes).await?;
     stream::execute_changes(project, &plan.changes.streaming_engine_changes).await?;
@@ -48,12 +53,21 @@ pub async fn execute_initial_infra_change(
         project.redpanda_config.clone(),
         project.clickhouse_config.clone(),
     );
-    sync_processes::execute_changes(
-        &mut syncing_processes_registry,
-        &plan.target_infra_map.init_topic_to_table_sync_processes(),
-    )?;
+    let mut process_registries = ProcessRegistries::new(
+        project.redpanda_config.clone(),
+        project.language,
+        project.clickhouse_config.clone(),
+        features,
+    );
 
-    Ok(syncing_processes_registry)
+    processes::execute_changes(
+        &mut syncing_processes_registry,
+        &mut process_registries,
+        &plan.target_infra_map.init_processes(),
+    )
+    .await?;
+
+    Ok((syncing_processes_registry, process_registries))
 }
 
 pub async fn execute_online_change(
@@ -61,6 +75,7 @@ pub async fn execute_online_change(
     plan: &InfraPlan,
     api_changes_channel: Sender<ApiChange>,
     sync_processes_registry: &mut SyncingProcessesRegistry,
+    process_registries: &mut ProcessRegistries,
 ) -> Result<(), ExecutionError> {
     // This probably can be paralelized through Tokio Spawn
     olap::execute_changes(project, &plan.changes.olap_changes).await?;
@@ -70,10 +85,12 @@ pub async fn execute_online_change(
     // it is initialized from 0 and we don't need to apply diffs to it.
     api::execute_changes(&plan.changes.api_changes, api_changes_channel).await?;
 
-    sync_processes::execute_changes(
+    processes::execute_changes(
         sync_processes_registry,
-        &plan.changes.sync_processes_changes,
-    )?;
+        process_registries,
+        &plan.changes.processes_changes,
+    )
+    .await?;
 
     Ok(())
 }

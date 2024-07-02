@@ -97,20 +97,21 @@ use crate::framework::core::code_loader::{
 };
 use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::plan::plan_changes;
-use crate::framework::flows::registry::FlowProcessRegistry;
-use crate::framework::registry::model::ProcessRegistries;
 use crate::infrastructure::olap::clickhouse::{
     fetch_table_names, fetch_table_schema, table_schema_to_hash,
 };
 
 use crate::cli::routines::flow::verify_flows_against_datamodels;
 use crate::framework::controller::{create_or_replace_version_sync, process_objects, RouteMeta};
-use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
 use crate::infrastructure::olap::clickhouse_alt_client::{
     get_pool, store_current_state, store_infrastructure_map,
 };
+use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
+use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
+use crate::infrastructure::processes::process_registry::ProcessRegistries;
+use crate::infrastructure::stream::redpanda::fetch_topics;
 use crate::project::Project;
 
 use super::display::{self, with_spinner_async};
@@ -291,13 +292,15 @@ pub async fn start_development_mode(
 
     let route_update_channel = web_server.spawn_api_update_listener(route_table).await;
 
-    let syncing_processes_registry = if features.core_v2 {
+    let (syncing_processes_registry, process_registry) = if features.core_v2 {
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
 
         let plan_result = plan_changes(&mut client, &project).await?;
+        log::info!("Plan Changes: {:?}", plan_result.changes);
         let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
-        let syncing_registry =
-            execute_initial_infra_change(&project, &plan_result, api_changes_channel).await?;
+        let (syncing_registry, process_registry) =
+            execute_initial_infra_change(&project, features, &plan_result, api_changes_channel)
+                .await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
 
         // Storing the result of the changes in the table
@@ -308,7 +311,7 @@ pub async fn start_development_mode(
         )
         .await?;
 
-        syncing_registry
+        (syncing_registry, process_registry)
     } else {
         let mut syncing_processes_registry = SyncingProcessesRegistry::new(
             project.redpanda_config.clone(),
@@ -319,7 +322,44 @@ pub async fn start_development_mode(
             .start_all(&framework_object_versions, &version_syncs)
             .await;
 
-        syncing_processes_registry
+        let topics = fetch_topics(&project.redpanda_config).await?;
+
+        let mut flows_process_registry =
+            FunctionProcessRegistry::new(project.redpanda_config.clone());
+        // Once the below function is optimized to act on events, this
+        // will need to get refactored out.
+
+        process_flows_changes(
+            &project,
+            &framework_object_versions.get_data_model_set(),
+            &mut flows_process_registry,
+            &topics,
+        )
+        .await?;
+
+        let mut aggregations_process_registry = AggregationProcessRegistry::new(
+            project.language,
+            project.clickhouse_config.clone(),
+            features,
+        );
+        process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
+
+        let mut consumption_process_registry =
+            ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());
+        process_consumption_changes(
+            &project,
+            &mut consumption_process_registry,
+            consumption_apis.write().await.deref_mut(),
+        )
+        .await?;
+
+        let project_registries = ProcessRegistries {
+            flows: flows_process_registry,
+            aggregations: aggregations_process_registry,
+            consumption: consumption_process_registry,
+        };
+
+        (syncing_processes_registry, project_registries)
     };
 
     {
@@ -334,33 +374,6 @@ pub async fn start_development_mode(
         .await?
     }
 
-    let mut flows_process_registry = FlowProcessRegistry::new(project.redpanda_config.clone());
-    // Once the below function is optimized to act on events, this
-    // will need to get refactored out.
-    process_flows_changes(&project, &mut flows_process_registry).await?;
-
-    let mut aggregations_process_registry = AggregationProcessRegistry::new(
-        project.language,
-        project.clickhouse_config.clone(),
-        features,
-    );
-    process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
-
-    let mut consumption_process_registry =
-        ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());
-    process_consumption_changes(
-        &project,
-        &mut consumption_process_registry,
-        consumption_apis.write().await.deref_mut(),
-    )
-    .await?;
-
-    let project_registries = ProcessRegistries::new(
-        flows_process_registry,
-        aggregations_process_registry,
-        consumption_process_registry,
-    );
-
     let file_watcher = FileWatcher::new();
     file_watcher.start(
         project.clone(),
@@ -370,7 +383,7 @@ pub async fn start_development_mode(
         route_update_channel, // The new way of updating the routes
         consumption_apis,
         syncing_processes_registry,
-        project_registries,
+        process_registry,
     )?;
 
     info!("Starting web server...");
@@ -413,8 +426,10 @@ pub async fn start_production_mode(
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
 
         let plan_result = plan_changes(&mut client, &project).await?;
+        log::info!("Plan Changes: {:?}", plan_result.changes);
         let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
-        execute_initial_infra_change(&project, &plan_result, api_changes_channel).await?;
+        execute_initial_infra_change(&project, &features, &plan_result, api_changes_channel)
+            .await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
 
         // Storing the result of the changes in the table
@@ -425,6 +440,7 @@ pub async fn start_production_mode(
         )
         .await?;
     } else {
+        let topics = fetch_topics(&project.redpanda_config).await?;
         let mut syncing_processes_registry = SyncingProcessesRegistry::new(
             project.redpanda_config.clone(),
             project.clickhouse_config.clone(),
@@ -432,28 +448,35 @@ pub async fn start_production_mode(
         let _ = syncing_processes_registry
             .start_all(&framework_object_versions, &version_syncs)
             .await;
+
+        let mut flows_process_registry =
+            FunctionProcessRegistry::new(project.redpanda_config.clone());
+        // Once the below function is optimized to act on events, this
+        // will need to get refactored out.
+        process_flows_changes(
+            &project,
+            &framework_object_versions.get_data_model_set(),
+            &mut flows_process_registry,
+            &topics,
+        )
+        .await?;
+
+        let mut aggregations_process_registry = AggregationProcessRegistry::new(
+            project.language,
+            project.clickhouse_config.clone(),
+            &features,
+        );
+        process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
+
+        let mut consumption_process_registry =
+            ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());
+        process_consumption_changes(
+            &project,
+            &mut consumption_process_registry,
+            consumption_apis.write().await.deref_mut(),
+        )
+        .await?;
     }
-
-    let mut flows_process_registry = FlowProcessRegistry::new(project.redpanda_config.clone());
-    // Once the below function is optimized to act on events, this
-    // will need to get refactored out.
-    process_flows_changes(&project, &mut flows_process_registry).await?;
-
-    let mut aggregations_process_registry = AggregationProcessRegistry::new(
-        project.language,
-        project.clickhouse_config.clone(),
-        &features,
-    );
-    process_aggregations_changes(&project, &mut aggregations_process_registry).await?;
-
-    let mut consumption_process_registry =
-        ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());
-    process_consumption_changes(
-        &project,
-        &mut consumption_process_registry,
-        consumption_apis.write().await.deref_mut(),
-    )
-    .await?;
 
     info!("Starting web server...");
 

@@ -6,7 +6,7 @@ services:
       - "19092:19092"
       - "9644:9644"
     volumes:
-      - ./redpanda:/tmp/panda_house
+      - ./redpanda:/var/lib/redpanda/data
     command:
       - redpanda
       - start

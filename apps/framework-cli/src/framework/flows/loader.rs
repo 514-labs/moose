@@ -1,11 +1,9 @@
-use itertools::sorted;
 use log::{debug, info, warn};
 use regex::{Captures, Regex};
-use std::path::PathBuf;
 use std::{fs, path::Path};
 
 use crate::{
-    infrastructure::stream::redpanda::{describe_topic_config, fetch_topics, RedpandaConfig},
+    framework::data_model::model::DataModelSet,
     project::Project,
     utilities::constants::{PY_FLOW_FILE, TS_FLOW_FILE},
 };
@@ -19,47 +17,12 @@ const MIGRATION_REGEX: &str =
  * This function gets the flows as defined by the user for the
  * current version of the moose application.
  */
-pub async fn get_all_current_flows(project: &Project) -> Result<Vec<Flow>, FlowError> {
+pub async fn get_all_current_flows(
+    project: &Project,
+    data_models: &DataModelSet,
+) -> Result<Vec<Flow>, FlowError> {
     let flows_path = project.flows_dir();
-    get_all_flows(&project.redpanda_config, &flows_path).await
-}
-
-async fn create_flow_object(
-    config: &RedpandaConfig,
-    topics: &[String],
-    source_data_model: String,
-    target_data_model: String,
-    path: PathBuf,
-) -> Result<Option<Flow>, FlowError> {
-    let source_topic = match get_latest_topic(topics, &source_data_model) {
-        Some(topic) => topic,
-        None => {
-            warn!(
-                "No source topic found in Kafka for data model {}",
-                source_data_model
-            );
-            return Ok(None);
-        }
-    };
-
-    let target_topic = match get_latest_topic(topics, &target_data_model) {
-        Some(topic) => topic,
-        None => {
-            warn!(
-                "No target topic found in Kafka for data model {}",
-                target_data_model
-            );
-            return Ok(None);
-        }
-    };
-    let target_topic_config = describe_topic_config(config, &target_topic).await?;
-
-    Ok(Some(Flow {
-        source_topic: source_topic.clone(),
-        target_topic: target_topic.clone(),
-        target_topic_config: target_topic_config.clone(),
-        executable: path,
-    }))
+    get_all_flows(data_models, project.cur_version(), &flows_path).await
 }
 
 /**
@@ -75,9 +38,11 @@ async fn create_flow_object(
  * TODO - handle historical versions. For now this only collects the latest/current version
  * of flows using the latest available topics for each data model.
  */
-async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>, FlowError> {
-    let topics = fetch_topics(config).await?;
-
+async fn get_all_flows(
+    data_models: &DataModelSet,
+    current_version: &str,
+    path: &Path,
+) -> Result<Vec<Flow>, FlowError> {
     // This should not fail since the regex is hardcoded
     let migration_regex = Regex::new(MIGRATION_REGEX).unwrap();
 
@@ -96,22 +61,46 @@ async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>
                     .unwrap()
                     .to_string_lossy()
                     .to_string();
+
                 match migration_regex.captures(potential_flow_file_name) {
                     None => {
                         let split: Vec<&str> = potential_flow_file_name.split("__").collect();
                         if split.len() == 2 {
-                            let source_data_model = split[0];
-                            let target_data_model = split[1];
+                            let source_data_model_name = split[0];
+                            let target_data_model_name = split[1];
 
-                            let flow = create_flow_object(
-                                config,
-                                &topics,
-                                source_data_model.to_string(),
-                                target_data_model.to_string(),
-                                source.path().to_path_buf(),
-                            )
-                            .await?;
-                            flow.into_iter().for_each(|f| flows.push(f));
+                            let source_data_model = if let Some(source_data_model) =
+                                data_models.get(&source_data_model_name, current_version)
+                            {
+                                source_data_model
+                            } else {
+                                warn!(
+                                    "Data model {} not found in the data model set",
+                                    source_data_model_name
+                                );
+                                continue;
+                            };
+
+                            let target_data_model = if let Some(target_data_model) =
+                                data_models.get(&target_data_model_name, current_version)
+                            {
+                                target_data_model
+                            } else {
+                                warn!(
+                                    "Data model {} not found in the data model set",
+                                    target_data_model_name
+                                );
+                                continue;
+                            };
+
+                            let flow = Flow {
+                                name: potential_flow_file_name.clone(),
+                                source_data_model: source_data_model.clone(),
+                                target_data_model: target_data_model.clone(),
+                                executable: source.path(),
+                                version: current_version.to_string(),
+                            };
+                            flows.push(flow);
                         } else {
                             debug!(
                                 "Fragments of file {:?} does not match the convention",
@@ -120,28 +109,51 @@ async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>
                         }
                     }
                     Some(caps) => {
-                        let mut flow = build_migration_flow(caps, &source.path());
-                        let target_topic_config =
-                            describe_topic_config(config, &flow.target_topic).await?;
-                        flow.target_topic_config = target_topic_config;
+                        let flow = build_migration_flow(
+                            &source.file_name().to_string_lossy(),
+                            data_models,
+                            current_version,
+                            caps,
+                            &source.path(),
+                        );
                         flows.push(flow);
                     }
                 }
             }
-
             // In this case we are currently processing a single file
             // As such we can skip the following steps which are specific
             // to the old naming convention, i.e. nested directory flows
             continue;
         }
 
-        let source_data_model = source.file_name().to_string_lossy().to_string();
+        let source_data_model_name = source.file_name().to_string_lossy().to_string();
+        let source_data_model = match data_models.get(&source_data_model_name, current_version) {
+            Some(model) => model,
+            None => {
+                warn!(
+                    "Data model {} not found in the data model set",
+                    source_data_model_name
+                );
+                continue;
+            }
+        };
 
         let target = fs::read_dir(source.path())?;
 
         for target in target {
             let target = target?;
-            let target_data_model = target.file_name().to_string_lossy().to_string();
+            let target_data_model_name = target.file_name().to_string_lossy().to_string();
+            let target_data_model = match data_models.get(&target_data_model_name, current_version)
+            {
+                Some(model) => model,
+                None => {
+                    warn!(
+                        "Data model {} not found in the data model set",
+                        target_data_model_name
+                    );
+                    continue;
+                }
+            };
 
             for flow_file in fs::read_dir(target.path())? {
                 let flow_file = flow_file?;
@@ -150,15 +162,14 @@ async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>
                 if flow_file.metadata()?.is_file()
                     && (file_name.starts_with(TS_FLOW_FILE) || file_name.starts_with(PY_FLOW_FILE))
                 {
-                    let flow = create_flow_object(
-                        config,
-                        &topics,
-                        source_data_model.clone(),
-                        target_data_model.clone(),
-                        flow_file.path().to_path_buf(),
-                    )
-                    .await?;
-                    flow.into_iter().for_each(|f| flows.push(f));
+                    let flow = Flow {
+                        name: file_name.clone(),
+                        source_data_model: source_data_model.clone(),
+                        target_data_model: target_data_model.clone(),
+                        executable: flow_file.path().to_path_buf(),
+                        version: current_version.to_string(),
+                    };
+                    flows.push(flow);
 
                     // There can only be one flow file per target
                     continue;
@@ -170,37 +181,28 @@ async fn get_all_flows(config: &RedpandaConfig, path: &Path) -> Result<Vec<Flow>
     Ok(flows)
 }
 
-/**
- * This function retrieves the latest topic for a given data model
- * This should be eventually retired for proper DCM management for flows.
- */
-fn get_latest_topic(topics: &[String], data_model: &str) -> Option<String> {
-    // Ths algorithm is not super efficient. We probably should have a
-    // good way to retrieve the topics for a given data model from the state
-    sorted(
-        topics
-            .iter()
-            .filter(|&topic| topic.starts_with(data_model))
-            .collect::<Vec<&String>>(),
-    )
-    .last()
-    .map(|topic| topic.to_string())
-}
-
-fn build_migration_flow(caps: Captures, executable: &Path) -> Flow {
+fn build_migration_flow(
+    file_name: &str,
+    data_models: &DataModelSet,
+    current_version: &str,
+    caps: Captures,
+    executable: &Path,
+) -> Flow {
     info!("Flows Data Captures for migrations {:?}", caps);
-    let source_model = caps.get(1).unwrap().as_str();
-    let target_model = caps.get(4).map(|m| m.as_str()).unwrap_or(source_model);
-    let source_version = caps.get(2).unwrap().as_str();
-    let target_version = caps.get(5).unwrap().as_str();
+    let source_model_name = caps.get(1).unwrap().as_str();
+    let source_version = caps.get(2).unwrap().as_str().replace('_', ".");
 
-    let source_table = format!("{}_{}", source_model, source_version);
-    let target_table = format!("{}_{}", target_model, target_version);
+    let source_data_model = data_models.get(source_model_name, &source_version).unwrap();
+
+    let target_model_name = caps.get(4).map(|m| m.as_str()).unwrap_or(source_model_name);
+    let target_version = caps.get(5).unwrap().as_str().replace('_', ".");
+    let target_data_model = data_models.get(target_model_name, &target_version).unwrap();
 
     Flow {
-        source_topic: format!("{}_{}_input", source_table, target_table),
-        target_topic: format!("{}_{}_output", source_table, target_table),
-        target_topic_config: std::collections::HashMap::new(),
+        name: file_name.to_string(),
+        source_data_model: source_data_model.clone(),
+        target_data_model: target_data_model.clone(),
         executable: executable.to_path_buf(),
+        version: current_version.to_string(),
     }
 }

@@ -310,7 +310,7 @@ pub fn show_changes(infra_plan: &InfraPlan) {
 
     infra_plan
         .changes
-        .sync_processes_changes
+        .processes_changes
         .iter()
         .for_each(|change| match change {
             ProcessChange::TopicToTableSyncProcess(Change::Added(infra)) => {
@@ -320,6 +320,15 @@ pub fn show_changes(infra_plan: &InfraPlan) {
                 infra_removed(&infra.short_display());
             }
             ProcessChange::TopicToTableSyncProcess(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+            ProcessChange::FunctionProcess(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            ProcessChange::FunctionProcess(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            ProcessChange::FunctionProcess(Change::Updated { before, after: _ }) => {
                 infra_updated(&before.expanded_display());
             }
         });

@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::framework::{
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
-    data_model::{config::EndpointIngestionFormat, schema::DataModel},
+    data_model::{config::EndpointIngestionFormat, model::DataModel},
 };
 
 use super::{topic::Topic, DataLineage, InfrastructureSignature};

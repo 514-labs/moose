@@ -50,6 +50,10 @@ pub const VSCODE_SETTINGS_FILE: &str = "settings.json";
 
 pub const CTX_SESSION_ID: &str = "session_id";
 
+pub const PYTHON_FILE_EXTENSION: &str = "py";
+pub const TYPESCRIPT_FILE_EXTENSION: &str = "ts";
+pub const SQL_FILE_EXTENSION: &str = "sql";
+
 lazy_static! {
     pub static ref CONTEXT: HashMap<String, String> = {
         let mut map = HashMap::new();

@@ -34,7 +34,9 @@ impl Aggregation {
             SupportedLanguages::Typescript => {
                 typescript::aggregation::run(clickhouse_config, &self.dir, is_blocks)
             }
-            SupportedLanguages::Python => python::aggregation::run(clickhouse_config, &self.dir),
+            SupportedLanguages::Python => {
+                python::aggregation::run(clickhouse_config, &self.dir, is_blocks)
+            }
         }
     }
 }

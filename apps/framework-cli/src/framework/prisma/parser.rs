@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::framework::core::infrastructure::table::{
     is_enum_type, Column, ColumnDefaults, ColumnType, DataEnum, EnumMember, EnumValue,
 };
-use crate::{framework::data_model::parser::FileObjects, framework::data_model::schema::DataModel};
+use crate::{framework::data_model::model::DataModel, framework::data_model::parser::FileObjects};
 use diagnostics::{Diagnostics, FileId};
 use schema_ast::ast::{Attribute, Field, WithName};
 use schema_ast::{

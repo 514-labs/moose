@@ -9,7 +9,6 @@ pub mod flows;
 pub mod languages;
 pub mod prisma;
 pub mod python;
-pub mod registry;
 pub mod sdk;
 pub mod typescript;
 

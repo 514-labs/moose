@@ -11,6 +11,7 @@ use super::executor;
 pub fn run(
     clickhouse_config: ClickHouseConfig,
     aggregations_path: &Path,
+    is_blocks: bool,
 ) -> Result<Child, AggregationError> {
     let args = vec![
         aggregations_path.to_str().unwrap().to_string(),
@@ -22,8 +23,11 @@ pub fn run(
         clickhouse_config.use_ssl.to_string(),
     ];
 
-    let mut aggregation_process =
-        executor::run_python_program(executor::PythonProgram::AggregationsRunner { args })?;
+    let mut aggregation_process = if is_blocks {
+        executor::run_python_program(executor::PythonProgram::BlocksRunner { args })?
+    } else {
+        executor::run_python_program(executor::PythonProgram::AggregationsRunner { args })?
+    };
 
     let stdout = aggregation_process
         .stdout

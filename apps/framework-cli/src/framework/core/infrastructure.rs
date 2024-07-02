@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 pub mod api_endpoint;
+pub mod function_process;
 pub mod table;
 pub mod topic;
 pub mod topic_to_table_sync_process;

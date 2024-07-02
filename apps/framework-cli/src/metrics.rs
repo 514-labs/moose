@@ -1,11 +1,14 @@
-use std::sync::Arc;
-use tokio::sync::{mpsc, oneshot};
+use prometheus_client::metrics::family::Family;
+use prometheus_client::{
+    encoding::{text::encode, EncodeLabelSet, EncodeLabelValue},
+    metrics::histogram::Histogram,
+    registry::Registry,
+};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
 pub enum Data {
-    Send(Statistics),
-    Count(Statistics),
-    Latency(Statistics),
-    Receive(tokio::sync::oneshot::Sender<Statistics>),
+    Receive(tokio::sync::oneshot::Sender<String>),
+    IngestHistogram((PathBuf, Duration, Method)),
 }
 
 #[derive(Clone)]
@@ -14,34 +17,37 @@ pub struct Metrics {
 }
 
 pub struct Statistics {
-    pub count: String,
-    pub latency: String,
+    pub histogram_family: Family<Labels, Histogram>,
+    pub registry: Option<Registry>,
 }
 
-impl Statistics {
-    fn clone(&self) -> Statistics {
-        let output = Statistics {
-            count: (&self.count).clone(),
-            latency: (&self.latency).clone(),
-        };
-        output
-    }
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
+pub struct Labels {
+    method: Method,
+    path: String,
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelValue)]
+pub enum Method {
+    GET,
+    POST,
+    PUT,
+    DELETE,
+    HEAD,
+    OPTIONS,
+    CONNECT,
+    PATCH,
+    TRACE,
+    OTHER,
 }
 
 impl Metrics {
     pub async fn send_data(&self, data: Data) {
-        let data_to_send = match data {
-            Data::Send(v) => v,
-            _ => Statistics {
-                count: "none".to_string(),
-                latency: "none".to_string(),
-            },
-        };
-        self.tx.send(Data::Send(data_to_send)).await;
+        let _ = self.tx.send(data).await;
     }
 
-    pub async fn receive_data(&self) -> Statistics {
-        let (resp_tx, resp_rx) = tokio::sync::oneshot::channel::<Statistics>();
+    pub async fn receive_data(&self) -> String {
+        let (resp_tx, resp_rx) = tokio::sync::oneshot::channel::<String>();
         self.tx.send(Data::Receive(resp_tx)).await.unwrap();
 
         let res = resp_rx.await;
@@ -51,32 +57,47 @@ impl Metrics {
 
     pub async fn controller(self: Arc<Metrics>, mut rx: tokio::sync::mpsc::Receiver<Data>) {
         let mut data = Statistics {
-            count: "TEST".to_string(),
-            latency: "TEST".to_string(),
+            histogram_family: Family::<Labels, Histogram>::new_with_constructor(|| {
+                Histogram::new(
+                    [
+                        0.001, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0, 120.0,
+                        240.0,
+                    ]
+                    .into_iter(),
+                )
+            }),
+            registry: Some(Registry::default()),
         };
+        let mut new_registry = data.registry.unwrap();
+        new_registry.register(
+            "latency",
+            "Latency of HTTP requests",
+            data.histogram_family.clone(),
+        );
+
+        data.registry = Some(new_registry);
+
         tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
                 match message {
-                    Data::Send(v) => data = v,
                     Data::Receive(v) => {
-                        let _ = v.send(data.clone());
+                        let _ = v.send(formatted_registry(&data.registry.as_ref()).await);
                     }
-                    Data::Count(v) => {
-                        data.count = v.count;
-                    }
-                    Data::Latency(v) => {
-                        data.latency = v.latency;
-                    }
+                    Data::IngestHistogram((path, duration, method)) => data
+                        .histogram_family
+                        .get_or_create(&Labels {
+                            method: method,
+                            path: path.into_os_string().to_str().unwrap().to_string(),
+                        })
+                        .observe(duration.as_secs_f64()),
                 };
-                println!("Inputted: {}", data.latency);
             }
         });
     }
+}
 
-    pub fn copy(&self) -> Metrics {
-        let new_struct = Metrics {
-            tx: self.tx.clone(),
-        };
-        new_struct
-    }
+pub async fn formatted_registry(data: &Option<&Registry>) -> String {
+    let mut buffer = String::new();
+    encode(&mut buffer, &data.as_ref().unwrap()).unwrap();
+    buffer
 }

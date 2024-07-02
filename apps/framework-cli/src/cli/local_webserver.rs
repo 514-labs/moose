@@ -30,13 +30,6 @@ use hyper_util::rt::TokioIo;
 use hyper_util::{rt::TokioExecutor, server::conn::auto};
 use log::debug;
 use log::error;
-use prometheus_client::encoding::text::encode;
-use prometheus_client::encoding::{EncodeLabelSet, EncodeLabelValue};
-use prometheus_client::metrics::counter::{Atomic, Counter};
-use prometheus_client::metrics::family::Family;
-use prometheus_client::metrics::histogram::exponential_buckets;
-use prometheus_client::metrics::histogram::Histogram;
-use prometheus_client::registry::Registry;
 use rdkafka::error::KafkaError;
 use rdkafka::message::OwnedMessage;
 use rdkafka::producer::future_producer::OwnedDeliveryResult;
@@ -47,7 +40,6 @@ use serde::Serialize;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::future::Future;
-use std::io::Write;
 use std::net::SocketAddr;
 use std::path::PathBuf;
 use std::pin::Pin;
@@ -89,6 +81,10 @@ async fn create_client(
     host: String,
     consumption_apis: &RwLock<HashSet<String>>,
     is_prod: bool,
+    metrics: Arc<Metrics>,
+    timer: Instant,
+    route: PathBuf,
+    metrics_method: Method,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
     // local only for now
     let url = format!("http://{}:{}", host, 4001).parse::<hyper::Uri>()?;
@@ -146,6 +142,14 @@ async fn create_client(
     let res = sender.send_request(req).await?;
     let body = res.collect().await.unwrap().to_bytes().to_vec();
 
+    metrics
+        .send_data(Data::IngestHistogram((
+            route.clone(),
+            timer.elapsed(),
+            metrics_method,
+        )))
+        .await;
+
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Access-Control-Allow-Origin", "*")
@@ -185,7 +189,12 @@ impl Service<Request<Incoming>> for RouteService {
     }
 }
 
-fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+async fn options_route(
+    metrics: Arc<Metrics>,
+    timer: Instant,
+    route: PathBuf,
+    metrics_method: Method,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
         .header("Access-Control-Allow-Origin", "*")
@@ -197,14 +206,35 @@ fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
         .body(Full::new(Bytes::from("Success")))
         .unwrap();
 
+    metrics
+        .send_data(Data::IngestHistogram((
+            route.clone(),
+            timer.elapsed(),
+            metrics_method,
+        )))
+        .await;
+
     Ok(response)
 }
 
-fn health_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+async fn health_route(
+    metrics: Arc<Metrics>,
+    timer: Instant,
+    route: PathBuf,
+    metrics_method: Method,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from("Success")))
         .unwrap();
+
+    metrics
+        .send_data(Data::IngestHistogram((
+            route.clone(),
+            timer.elapsed(),
+            metrics_method,
+        )))
+        .await;
     Ok(response)
 }
 
@@ -228,10 +258,25 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
         .unwrap()
 async fn metrics_route(metrics: Arc<Metrics>) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     println!("GOT DATA: {}", metrics.receive_data().await.latency);
+async fn metrics_route(
+    metrics: Arc<Metrics>,
+    timer: Instant,
+    route: PathBuf,
+    metrics_method: Method,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
-        .body(Full::new(Bytes::from(metrics.receive_data().await.latency)))
+        .body(Full::new(Bytes::from(metrics.clone().receive_data().await)))
         .unwrap();
+
+    metrics
+        .send_data(Data::IngestHistogram((
+            route.clone(),
+            timer.elapsed(),
+            metrics_method,
+        )))
+        .await;
+
     Ok(response)
 }
 
@@ -297,8 +342,6 @@ async fn handle_json_req(
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
     req: Request<Incoming>,
-    timer: std::time::Instant,
-    metrics: Arc<Metrics>,
 ) -> Response<Full<Bytes>> {
     // TODO probably a refactor to be done here with the array json but it doesn't seem to be
     // straightforward to do it in a generic way.
@@ -319,23 +362,6 @@ async fn handle_json_req(
         );
         return internal_server_error_response();
     }
-
-    let mut registry = <Registry>::default();
-
-    let elapsed = timer.elapsed();
-    let histogram = Histogram::new([0.0, 1.0, 2.0, 100.0].into_iter());
-    histogram.observe(elapsed.as_secs_f64());
-    registry.register("latency", "latency time", histogram.clone());
-
-    let mut buffer = String::new();
-    encode(&mut buffer, &registry).unwrap();
-    println!("HISTOGRAM {} -- {}", elapsed.as_secs_f64(), &buffer);
-    metrics
-        .send_data(Data::Latency(Statistics {
-            count: "".to_string(),
-            latency: buffer,
-        }))
-        .await;
 
     success_response(url)
 }
@@ -359,8 +385,6 @@ async fn handle_json_array_body(
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
     req: Request<Incoming>,
-    timer: std::time::Instant,
-    metrics: Arc<Metrics>,
 ) -> Response<Full<Bytes>> {
     // TODO probably a refactor to be done here with the json but it doesn't seem to be
     // straightforward to do it in a generic way.
@@ -401,23 +425,6 @@ async fn handle_json_array_body(
         return internal_server_error_response();
     }
 
-    let mut registry = <Registry>::default();
-
-    let elapsed = timer.elapsed();
-    let histogram = Histogram::new([0.0, 1.0, 2.0, 100.0].into_iter());
-    histogram.observe(elapsed.as_secs_f64());
-    registry.register("latency", "latency time", histogram.clone());
-
-    let mut buffer = String::new();
-    encode(&mut buffer, &registry).unwrap();
-    println!("HISTOGRAM {} -- {}", elapsed.as_secs_f64(), &buffer);
-    metrics
-        .send_data(Data::Latency(Statistics {
-            count: "".to_string(),
-            latency: buffer,
-        }))
-        .await;
-
     success_response(url)
 }
 
@@ -428,10 +435,8 @@ async fn ingest_route(
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     timer: std::time::Instant,
     metrics: Arc<Metrics>,
+    metrics_method: Method,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
-    // let summary = Summary::new();
-    // summary.set_quantile(RepeatedField{vec![0.99, 0.90, 0.50]});
-
     show_message!(
         MessageType::Info,
         Message {
@@ -440,24 +445,22 @@ async fn ingest_route(
         }
     );
 
+    metrics
+        .send_data(Data::IngestHistogram((
+            route.clone(),
+            timer.elapsed(),
+            metrics_method,
+        )))
+        .await;
+
     match route_table.read().await.get(&route) {
         Some(route_meta) => match route_meta.format {
-            EndpointIngestionFormat::Json => Ok(handle_json_req(
-                &configured_producer,
-                &route_meta.topic_name,
-                req,
-                timer,
-                metrics,
-            )
-            .await),
-            EndpointIngestionFormat::JsonArray => Ok(handle_json_array_body(
-                &configured_producer,
-                &route_meta.topic_name,
-                req,
-                timer,
-                metrics,
-            )
-            .await),
+            EndpointIngestionFormat::Json => {
+                Ok(handle_json_req(&configured_producer, &route_meta.topic_name, req).await)
+            }
+            EndpointIngestionFormat::JsonArray => {
+                Ok(handle_json_array_body(&configured_producer, &route_meta.topic_name, req).await)
+            }
         },
         None => Response::builder()
             .status(StatusCode::NOT_FOUND)
@@ -477,7 +480,6 @@ async fn router(
     is_prod: bool,
     metrics: Arc<Metrics>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
-    // Start timer
     let now = Instant::now();
     debug!(
         "HTTP Request Received: {:?}, with Route Table {:?}",
@@ -496,6 +498,19 @@ async fn router(
         route, route_table
     );
 
+    let metrics_method = match req.method() {
+        &hyper::Method::POST => Method::POST,
+        &hyper::Method::GET => Method::GET,
+        &hyper::Method::PUT => Method::PUT,
+        &hyper::Method::DELETE => Method::DELETE,
+        &hyper::Method::HEAD => Method::HEAD,
+        &hyper::Method::OPTIONS => Method::OPTIONS,
+        &hyper::Method::CONNECT => Method::CONNECT,
+        &hyper::Method::TRACE => Method::TRACE,
+        &hyper::Method::PATCH => Method::PATCH,
+        _ => Method::OTHER,
+    };
+
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
     match (req.method(), &route_split[..]) {
         (&hyper::Method::POST, ["ingest", _]) => {
@@ -507,15 +522,25 @@ async fn router(
                 route_table,
                 now,
                 metrics,
+                metrics_method,
             )
             .await
         }
         (&hyper::Method::POST, ["ingest", _, _]) => {
-            ingest_route(req, route, configured_producer, route_table, now, metrics).await
+            ingest_route(
+                req,
+                route,
+                configured_producer,
+                route_table,
+                now,
+                metrics,
+                metrics_method,
+            )
+            .await
         }
 
         (&hyper::Method::GET, ["consumption", _rt]) => {
-            match create_client(req, host, consumption_apis, is_prod).await {
+            match create_client(req, host, metrics, now, route, metrics_method).await {
                 Ok(response) => Ok(response),
                 Err(e) => {
                     debug!("Error: {:?}", e);
@@ -525,16 +550,29 @@ async fn router(
                 }
             }
         }
-        (&hyper::Method::GET, ["health"]) => health_route(),
-        (&hyper::Method::GET, ["metrics"]) => metrics_route(metrics).await,
-
         (&hyper::Method::POST, ["logs"]) if !is_prod => Ok(log_route(req).await),
-        (&hyper::Method::OPTIONS, _) => options_route(),
-        _ => Response::builder()
-            .status(StatusCode::NOT_FOUND)
             .body(Full::new(Bytes::from("no match"))),
+        (&hyper::Method::GET, ["health"]) => {
+            health_route(metrics, now, route, metrics_method).await
+        }
+        (&hyper::Method::GET, ["metrics"]) => {
+            metrics_route(metrics, now, route, metrics_method).await
+        }
+
+        (&hyper::Method::OPTIONS, _) => options_route(metrics, now, route, metrics_method).await,
+        _ => {
+            metrics
+                .send_data(Data::IngestHistogram((
+                    route.clone(),
+                    now.elapsed(),
+                    metrics_method,
+                )))
+                .await;
+            Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Full::new(Bytes::from("no match")))
+        }
     }
-    // Timer stop
 }
 
 #[derive(Debug)]
@@ -624,26 +662,7 @@ impl Webserver {
         project: Arc<Project>,
         metrics: Arc<Metrics>,
     ) {
-        #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
-        struct Labels {
-            // Use your own enum types to represent label values.
-            method: Method,
-            // Or just a plain string.
-            path: String,
-        };
-
-        #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelValue)]
-        enum Method {
-            GET,
-            PUT,
-        };
-
-        let http_requests = Family::<Labels, Counter>::default();
-
-        // Starts the local webserver
         let socket = self.socket().await;
-
-        // We create a TcpListener and bind it to {project.http_server_config.host} on port {project.http_server_config.port}
         let listener = TcpListener::bind(socket).await.unwrap();
         let producer = redpanda::create_producer(project.redpanda_config.clone());
 
@@ -670,6 +689,11 @@ impl Webserver {
         let mut sigint =
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()).unwrap();
 
+        // let ingest_histogram: HashMap<PathBuf, Histogram> = route_table.read().await.iter().map(|r| (r.0.clone(), Histogram::new([0.05, 0.1, 0.15, 0.2, 0.25, 1.0].into_iter()))).collect();
+        // for (path, histogram) in &ingest_histogram {
+        //     println!("{} -- {:?}", path.to_str().unwrap(), histogram);
+        // }
+
         let route_service = RouteService {
             host: self.host.clone(),
             route_table,
@@ -679,8 +703,6 @@ impl Webserver {
             is_prod: project.is_production,
             metrics: metrics.clone(),
         };
-
-        let mut registry = <Registry>::default();
 
         loop {
             tokio::select! {
@@ -696,15 +718,11 @@ impl Webserver {
                 }
                 listener_result = listener.accept() => {
                     let (stream, _) = listener_result.unwrap();
-                    // Use an adapter to access something implementing `tokio::io` traits as if they implement
-                    // `hyper::rt` IO traits.
                     let io = TokioIo::new(stream);
 
                     let route_service = route_service.clone();
 
-                    // Spawn a tokio task to serve multiple connections concurrently
                     tokio::task::spawn(async move {
-                        // Run this server for... forever!
                         if let Err(e) = auto::Builder::new(TokioExecutor::new()).serve_connection(
                                 io,
                                 route_service,
@@ -715,33 +733,6 @@ impl Webserver {
                     });
                 }
             }
-
-            registry.register(
-                // With the metric name.
-                "http_requests",
-                // And the metric help text.
-                "Number of HTTP requests received",
-                http_requests.clone(),
-            );
-
-            http_requests
-                .get_or_create(&Labels {
-                    method: Method::GET,
-                    path: "/metrics".to_string(),
-                })
-                .inc();
-
-            let mut buffer = String::new();
-            encode(&mut buffer, &registry).unwrap();
-
-            metrics
-                .send_data(Data::Count(Statistics {
-                    count: buffer.to_string(),
-                    latency: "".to_string(),
-                }))
-                .await;
-            //assert_eq!(expected, buffer);
-            //println!("{:?} \n ----------", buffer);
         }
     }
 }

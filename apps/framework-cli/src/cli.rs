@@ -679,10 +679,8 @@ mod tests {
 
         let config = read_settings().unwrap();
 
-        let (tx, rx) = tokio::sync::mpsc::channel(10);
-
+        let (tx, _rx) = tokio::sync::mpsc::channel(10);
         let metrics = Metrics { tx: tx };
-
         let arc_metrics = Arc::new(metrics);
 
         top_command_handler(config, &cli.command, arc_metrics).await

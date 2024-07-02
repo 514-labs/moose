@@ -98,6 +98,6 @@ impl Metrics {
 
 pub async fn formatted_registry(data: &Option<&Registry>) -> String {
     let mut buffer = String::new();
-    encode(&mut buffer, &data.as_ref().unwrap()).unwrap();
+    encode(&mut buffer, &data.as_ref().unwrap());
     buffer
 }

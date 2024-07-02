@@ -115,7 +115,7 @@ use crate::infrastructure::stream::redpanda::fetch_topics;
 use crate::project::Project;
 
 use super::super::metrics::Metrics;
-use super::display::{infra_added, infra_removed, infra_updated, with_spinner_async};
+use super::display::{self, with_spinner_async};
 use super::local_webserver::Webserver;
 use super::settings::Features;
 use super::watcher::FileWatcher;
@@ -392,7 +392,7 @@ pub async fn start_development_mode(
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     web_server
-        .start(route_table, project, metrics.clone())
+        .start(route_table, consumption_apis, project, metrics.clone())
         .await;
 
     Ok(())
@@ -487,7 +487,7 @@ pub async fn start_production_mode(
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     web_server
-        .start(route_table, project, metrics.clone())
+        .start(route_table, consumption_apis, project, metrics.clone())
         .await;
 
     Ok(())

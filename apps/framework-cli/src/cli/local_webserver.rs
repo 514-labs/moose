@@ -9,8 +9,9 @@ use crate::framework::controller::RouteMeta;
 use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure_map::ApiChange;
 use crate::framework::core::infrastructure_map::Change;
+use crate::metrics::Method;
 
-use super::super::metrics::{Data, Metrics, Statistics};
+use super::super::metrics::{Data, Metrics};
 use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
@@ -238,7 +239,13 @@ async fn health_route(
     Ok(response)
 }
 
-async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
+async fn log_route(
+    req: Request<Incoming>,
+    metrics: Arc<Metrics>,
+    route: PathBuf,
+    metrics_method: Method,
+    timer: Instant,
+) -> Response<Full<Bytes>> {
     let body = to_reader(req).await;
     let parsed: Result<CliMessage, serde_json::Error> = serde_json::from_reader(body);
     match parsed {
@@ -252,12 +259,20 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
         Err(e) => println!("Received unknown message: {:?}", e),
     }
 
+    metrics
+        .send_data(Data::IngestHistogram((
+            route.clone(),
+            timer.elapsed(),
+            metrics_method,
+        )))
+        .await;
+
     Response::builder()
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from("")))
         .unwrap()
-async fn metrics_route(metrics: Arc<Metrics>) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
-    println!("GOT DATA: {}", metrics.receive_data().await.latency);
+}
+
 async fn metrics_route(
     metrics: Arc<Metrics>,
     timer: Instant,
@@ -540,7 +555,18 @@ async fn router(
         }
 
         (&hyper::Method::GET, ["consumption", _rt]) => {
-            match create_client(req, host, metrics, now, route, metrics_method).await {
+            match create_client(
+                req,
+                host,
+                consumption_apis,
+                is_prod,
+                metrics,
+                now,
+                route.to_path_buf(),
+                metrics_method,
+            )
+            .await
+            {
                 Ok(response) => Ok(response),
                 Err(e) => {
                     debug!("Error: {:?}", e);
@@ -550,8 +576,9 @@ async fn router(
                 }
             }
         }
-        (&hyper::Method::POST, ["logs"]) if !is_prod => Ok(log_route(req).await),
-            .body(Full::new(Bytes::from("no match"))),
+        (&hyper::Method::POST, ["logs"]) if !is_prod => {
+            Ok(log_route(req, metrics, route, metrics_method, now).await)
+        }
         (&hyper::Method::GET, ["health"]) => {
             health_route(metrics, now, route, metrics_method).await
         }

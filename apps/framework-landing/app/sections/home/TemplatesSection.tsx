@@ -86,7 +86,7 @@ export const TemplatesSection = () => {
             <Fragment key={index}>
               <ThirdWidthContentContainer
                 key={index}
-                className="flex flex-col xl:justify-start xl:order-4 border border-muted-foreground rounded-xl p-5"
+                className="flex flex-col xl:justify-start xl:order-4 border border-muted-foreground rounded-3xl p-5"
               >
                 <div className="relative aspect-square my-0">
                   <Suspense fallback={<div>Loading...</div>}>

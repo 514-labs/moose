@@ -3,7 +3,6 @@ import {
   Accordion,
   AccordionContent,
   AccordionItem,
-  AccordionTrigger,
 } from "@514labs/design-system-components/components";
 import {
   Grid,
@@ -147,6 +146,7 @@ const MooseLayersAccordion = ({ spline }: { spline: any }) => {
               <TrackableAccordionTrigger
                 name="Moose Layer Accordion"
                 subject={layer.title}
+                className="hover:bg-muted-foreground/20 h"
               >
                 <Text className="my-0">{layer.title}</Text>
               </TrackableAccordionTrigger>
@@ -157,17 +157,17 @@ const MooseLayersAccordion = ({ spline }: { spline: any }) => {
                       {layer.description}
                     </Text>
                   </FullWidthContentContainer>
-                  <Grid className="gap-5">
+                  <Grid className="gap-x-2">
                     {layer.details.map((detail, index) => {
                       return (
                         <HalfWidthContentContainer
-                          className="w-full flex flex-col items-center justify-center text-left border border-muted-foreground rounded-xl p-5"
+                          className="w-full flex flex-col items-center justify-center text-left border border-muted-foreground rounded-3xl p-5"
                           key={index}
                         >
-                          <Text className="my-0 self-stretch justify-start">
+                          <Text className="my-0 justify-start self-start">
                             {detail.title}
                           </Text>
-                          <Text className="my-0 text-muted-foreground self-stretch ">
+                          <Text className="my-0 text-muted-foreground self-start">
                             {detail.description}
                           </Text>
                         </HalfWidthContentContainer>
@@ -200,21 +200,21 @@ export const WhatIsMoose = () => {
       </Section>
       <div></div>
       <Section className="w-full relative mx-auto xl:my-10 xl:max-w-screen-xl 2xl:my-0">
-        <Grid className="gap-5">
+        <Grid>
           <ThirdWidthContentContainer>
             <Diagram spline={spline} />
           </ThirdWidthContentContainer>
 
           <TwoThirdsWidthContentContainer className="flex flex-col xl:justify-start gap-5">
-            <FullWidthContentContainer>
+            <FullWidthContentContainer className="px-4">
               <Text className="my-0">{content.top.title}</Text>
               <Text className="my-0 text-muted-foreground">
                 {content.bottom.description}
               </Text>
             </FullWidthContentContainer>
             <MooseLayersAccordion spline={spline} />
-            <FullWidthContentContainer my-5>
-              <Text className="my-0">{content.top.title}</Text>
+            <FullWidthContentContainer className="px-4">
+              <Text className="my-0">{content.bottom.title}</Text>
               <Text className="my-0 text-muted-foreground">
                 {content.bottom.description}
               </Text>

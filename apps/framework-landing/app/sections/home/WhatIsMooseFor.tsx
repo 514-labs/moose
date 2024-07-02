@@ -1,13 +1,6 @@
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@514labs/design-system-components/components";
-import {
   FullWidthContentContainer,
   Grid,
-  HalfWidthContentContainer,
   ThirdWidthContentContainer,
   Section,
 } from "@514labs/design-system-components/components/containers";
@@ -17,11 +10,11 @@ import {
   Text,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
-import React, { useState } from "react";
+import React from "react";
 import { Fragment, Suspense } from "react";
 
-import { TrackableAccordionTrigger } from "../../trackable-components";
 import { TemplateImg } from "../../sections/home/TemplateImg";
+import { Badge } from "@514labs/design-system-components/components";
 
 const content = {
   title: "Build big and small data features and products",
@@ -54,18 +47,6 @@ const content = {
   ],
 };
 
-const Badge = (label: string) => {
-  return (
-    <div className="relative rounded-[30px] box-border w-full flex flex-col items-center justify-center py-spacing-reduced px-[1.25rem] text-left text-[1rem] text-color-primary font-five-body border-[1px] border-solid border-color-primary">
-      <div className="w-[8rem] relative h-[1.375rem]">
-        <div className="absolute top-[0rem] left-[0rem] flex flex-row items-center justify-start">
-          <Text className="relative">{label}</Text>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 export const WhatIsMooseFor = () => {
   return (
     <>
@@ -86,7 +67,7 @@ export const WhatIsMooseFor = () => {
               <Fragment key={index}>
                 <ThirdWidthContentContainer
                   key={index}
-                  className="flex flex-col xl:justify-start xl:order-4 border border-muted-foreground rounded-xl p-5"
+                  className="flex flex-col xl:justify-start xl:order-4 border border-muted-foreground rounded-3xl p-5"
                 >
                   <div className="relative aspect-square my-0">
                     <Suspense fallback={<div>Loading...</div>}>
@@ -98,9 +79,13 @@ export const WhatIsMooseFor = () => {
                     </Suspense>
                   </div>
 
-                  <Text className="flex flex-row items-center justify-start border border-primary rounded-full px-5 py-2.5 w-fit">
+                  {/* <Text className="flex flex-row items-center justify-start border border-primary rounded-full px-5 py-2.5 w-fit">
                     {usecase.badge}
                   </Text>
+                   */}
+                  <Badge className="w-fit p-2" variant={"outline"}>
+                    {usecase.badge}
+                  </Badge>
                   <div className="my-5">
                     <Text className="my-0">{usecase.title}</Text>
                     <Text className="my-0 text-muted-foreground xl:grow">

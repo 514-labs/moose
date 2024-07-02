@@ -2,7 +2,6 @@ import {
   Accordion,
   AccordionContent,
   AccordionItem,
-  AccordionTrigger,
 } from "@514labs/design-system-components/components";
 import {
   Grid,
@@ -11,10 +10,7 @@ import {
 } from "@514labs/design-system-components/components/containers";
 
 import { Heading, Text } from "@514labs/design-system-components/typography";
-import React, { useState } from "react";
-
-import { sendTrackEvent } from "../../../lib/sendTrackEvent";
-import { TrackingVerb } from "@514labs/event-capture/withTrack";
+import React from "react";
 
 import { TrackableAccordionTrigger } from "../../trackable-components";
 

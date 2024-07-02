@@ -9,7 +9,7 @@ use crate::{
     project::Project,
 };
 
-use super::schema::DataModel;
+use super::model::DataModel;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to parse the data model file")]

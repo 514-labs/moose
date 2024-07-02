@@ -17,7 +17,7 @@ use rustpython_parser::{
 };
 
 use crate::{
-    framework::data_model::{parser::FileObjects, schema::DataModel},
+    framework::data_model::{model::DataModel, parser::FileObjects},
     project::python_project::PythonProject,
 };
 

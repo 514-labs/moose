@@ -18,19 +18,16 @@ use crate::framework::core::code_loader::FrameworkObjectVersions;
 use crate::framework::core::infrastructure::table::Column;
 use crate::framework::core::infrastructure::table::ColumnType;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
+use crate::infrastructure::olap::clickhouse::errors::ClickhouseError;
 use crate::infrastructure::olap::clickhouse::inserter::Inserter;
-use crate::infrastructure::olap::clickhouse::model::ClickHouseValue;
-use crate::infrastructure::olap::clickhouse::version_sync::VersionSyncType;
+use crate::infrastructure::olap::clickhouse::model::{
+    ClickHouseColumn, ClickHouseRecord, ClickHouseRuntimeEnum, ClickHouseValue,
+};
+use crate::infrastructure::olap::clickhouse::version_sync::{VersionSync, VersionSyncType};
 use crate::infrastructure::stream::redpanda::create_subscriber;
 use crate::infrastructure::stream::redpanda::fetch_topics;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::infrastructure::stream::redpanda::{create_producer, send_with_back_pressure};
-
-use super::olap::clickhouse::errors::ClickhouseError;
-use super::olap::clickhouse::model::ClickHouseColumn;
-use super::olap::clickhouse::model::ClickHouseRecord;
-use super::olap::clickhouse::model::ClickHouseRuntimeEnum;
-use super::olap::clickhouse::version_sync::VersionSync;
 
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
 const FLOW_SYNC_GROUP_ID: &str = "version_sync_flow_sync";

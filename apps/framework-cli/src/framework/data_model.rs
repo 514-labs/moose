@@ -1,6 +1,6 @@
 pub mod config;
+pub mod model;
 pub mod parser;
-pub mod schema;
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};

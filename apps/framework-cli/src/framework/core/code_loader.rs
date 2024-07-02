@@ -15,8 +15,8 @@ use crate::{
         self,
         config::ModelConfigurationError,
         is_schema_file,
+        model::{DataModel, DataModelSet},
         parser::{parse_data_model_file, DataModelParsingError},
-        schema::DataModel,
         DuplicateModelError,
     },
     infrastructure::olap::{self, clickhouse::model::ClickHouseTable},
@@ -64,6 +64,16 @@ impl FrameworkObjectVersions {
 
     pub fn all_versions(&self) -> impl Iterator<Item = &SchemaVersion> {
         std::iter::once(&self.current_models).chain(self.previous_version_models.values())
+    }
+
+    pub fn get_data_model_set(&self) -> DataModelSet {
+        let mut data_model_set = DataModelSet::new();
+        for version in self.all_versions() {
+            for model in version.models.values() {
+                data_model_set.add(model.data_model.clone());
+            }
+        }
+        data_model_set
     }
 }
 

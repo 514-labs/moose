@@ -20,7 +20,7 @@ use serde_json::{json, Map, Value};
 use crate::framework::core::code_loader::FrameworkObjectVersions;
 use crate::framework::core::infrastructure::table::EnumValue;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
-use crate::framework::data_model::schema::DataModel;
+use crate::framework::data_model::model::DataModel;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::model::{ClickHouseColumnType, ClickHouseTable};
 

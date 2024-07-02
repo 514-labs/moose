@@ -1,6 +1,6 @@
 use log::{debug, info, warn};
-use notify::{Event, RecursiveMode, Watcher};
-use notify_debouncer_full::new_debouncer;
+use notify::RecursiveMode;
+use notify_debouncer_mini::{new_debouncer, DebouncedEvent};
 use std::collections::HashSet;
 use std::ops::DerefMut;
 use std::sync::Arc;
@@ -25,15 +25,17 @@ use crate::framework::core::code_loader::{
     get_framework_objects_from_schema_file, FrameworkObjectVersions,
 };
 use crate::framework::core::infrastructure_map::ApiChange;
+use crate::framework::data_model::model::DataModelSet;
 use crate::framework::data_model::{is_schema_file, DuplicateModelError};
 use crate::framework::flows::loader::get_all_current_flows;
-use crate::framework::flows::registry::FlowProcessRegistry;
-use crate::framework::registry::model::ProcessRegistries;
-use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
+
 use crate::infrastructure::olap::clickhouse_alt_client::{
     get_pool, store_current_state, store_infrastructure_map,
 };
-use crate::infrastructure::stream::redpanda;
+use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
+use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
+use crate::infrastructure::processes::process_registry::ProcessRegistries;
+use crate::infrastructure::stream::redpanda::{self, fetch_topics};
 use crate::project::AggregationSet;
 use crate::utilities::constants::{
     AGGREGATIONS_DIR, BLOCKS_DIR, CONSUMPTION_DIR, FLOWS_DIR, SCHEMAS_DIR,
@@ -50,7 +52,7 @@ use super::settings::Features;
 
 async fn process_data_models_changes(
     project: Arc<Project>,
-    events: Vec<notify::Event>,
+    events: Vec<DebouncedEvent>,
     framework_object_versions: &mut FrameworkObjectVersions,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     configured_client: &ConfiguredDBClient,
@@ -65,7 +67,7 @@ async fn process_data_models_changes(
 
     let paths = events
         .into_iter()
-        .flat_map(|e| e.paths)
+        .map(|e| e.path)
         .filter(|p| is_schema_file(p) && p.starts_with(&schema_files))
         .collect::<HashSet<PathBuf>>();
 
@@ -236,14 +238,14 @@ async fn process_data_models_changes(
 }
 
 struct EventBuckets {
-    flows: Vec<Event>,
-    aggregations: Vec<Event>,
-    data_models: Vec<Event>,
-    consumption: Vec<Event>,
+    flows: Vec<DebouncedEvent>,
+    aggregations: Vec<DebouncedEvent>,
+    data_models: Vec<DebouncedEvent>,
+    consumption: Vec<DebouncedEvent>,
 }
 
 impl EventBuckets {
-    pub fn new(events: Vec<Event>) -> Self {
+    pub fn new(events: Vec<DebouncedEvent>) -> Self {
         info!("Events: {:?}", events);
 
         let mut flows = Vec::new();
@@ -252,30 +254,29 @@ impl EventBuckets {
         let mut consumption = Vec::new();
 
         for event in events {
-            if event.kind.is_create() || event.kind.is_modify() || event.kind.is_remove() {
-                if event.paths.iter().any(|path: &PathBuf| {
-                    path.iter()
-                        .any(|component| component.eq_ignore_ascii_case(FLOWS_DIR))
-                }) {
-                    flows.push(event);
-                } else if event.paths.iter().any(|path: &PathBuf| {
-                    path.iter().any(|component| {
-                        component.eq_ignore_ascii_case(AGGREGATIONS_DIR)
-                            || component.eq_ignore_ascii_case(BLOCKS_DIR)
-                    })
-                }) {
-                    aggregations.push(event);
-                } else if event.paths.iter().any(|path: &PathBuf| {
-                    path.iter()
-                        .any(|component| component.eq_ignore_ascii_case(SCHEMAS_DIR))
-                }) {
-                    data_models.push(event);
-                } else if event.paths.iter().any(|path: &PathBuf| {
-                    path.iter()
-                        .any(|component| component.eq_ignore_ascii_case(CONSUMPTION_DIR))
-                }) {
-                    consumption.push(event);
-                }
+            if event
+                .path
+                .iter()
+                .any(|component| component.eq_ignore_ascii_case(FLOWS_DIR))
+            {
+                flows.push(event);
+            } else if event.path.iter().any(|component| {
+                component.eq_ignore_ascii_case(AGGREGATIONS_DIR)
+                    || component.eq_ignore_ascii_case(BLOCKS_DIR)
+            }) {
+                aggregations.push(event);
+            } else if event
+                .path
+                .iter()
+                .any(|component| component.eq_ignore_ascii_case(SCHEMAS_DIR))
+            {
+                data_models.push(event);
+            } else if event
+                .path
+                .iter()
+                .any(|component| component.eq_ignore_ascii_case(CONSUMPTION_DIR))
+            {
+                consumption.push(event);
             }
         }
 
@@ -311,7 +312,7 @@ async fn watch(
 
     let (tx, mut rx) = tokio::sync::mpsc::channel(32);
 
-    let mut debouncer = new_debouncer(Duration::from_secs(1), None, move |res| {
+    let mut debouncer = new_debouncer(Duration::from_secs(1), move |res| {
         let _ = tx
             .blocking_send(res)
             .map_err(|e| log::error!("Failed to watcher send debounced event: {:?}", e));
@@ -325,17 +326,11 @@ async fn watch(
     while let Some(res) = rx.recv().await {
         match res {
             Ok(debounced_events) => {
-                let events = debounced_events
-                    .into_iter()
-                    .filter(|event| !event.kind.is_access() && !event.kind.is_other())
-                    .map(|debounced_event| debounced_event.event)
-                    .collect::<Vec<_>>();
-
-                if events.is_empty() {
+                if debounced_events.is_empty() {
                     continue;
                 }
 
-                let bucketed_events = EventBuckets::new(events);
+                let bucketed_events = EventBuckets::new(debounced_events);
 
                 if features.core_v2 {
                     with_spinner_async(
@@ -355,6 +350,7 @@ async fn watch(
                                 &plan_result,
                                 route_update_channel.clone(),
                                 syncing_process_registry,
+                                project_registries,
                             )
                             .await?;
 
@@ -402,13 +398,20 @@ async fn watch(
                         )
                     })?;
                 }
-                if !bucketed_events.flows.is_empty() {
+                if !bucketed_events.flows.is_empty() && !features.core_v2 {
+                    let topics = fetch_topics(&project.redpanda_config).await?;
+
                     with_spinner_async(
                         &format!(
                             "Processing {} Flow(s) changes from file watcher",
                             bucketed_events.flows.len()
                         ),
-                        process_flows_changes(&project, &mut project_registries.flows),
+                        process_flows_changes(
+                            &project,
+                            &framework_object_versions.get_data_model_set(),
+                            &mut project_registries.flows,
+                            &topics,
+                        ),
                         !project.is_production,
                     )
                     .await?;
@@ -457,10 +460,8 @@ async fn watch(
 
                 let _ = verify_flows_against_datamodels(&project, framework_object_versions);
             }
-            Err(errors) => {
-                for error in errors {
-                    log::error!("Watcher Error: {:?}", error);
-                }
+            Err(error) => {
+                log::error!("Watcher Error: {:?}", error);
             }
         }
     }
@@ -478,11 +479,13 @@ async fn watch(
  */
 pub async fn process_flows_changes(
     project: &Project,
-    flows_process_registry: &mut FlowProcessRegistry,
+    data_models_set: &DataModelSet,
+    flows_process_registry: &mut FunctionProcessRegistry,
+    topics: &[String],
 ) -> anyhow::Result<()> {
-    let flows = get_all_current_flows(project).await?;
+    let flows = get_all_current_flows(project, data_models_set).await?;
     flows_process_registry.stop_all().await?;
-    flows_process_registry.start_all(&flows)?;
+    flows_process_registry.start_all(&flows, topics)?;
 
     Ok(())
 }

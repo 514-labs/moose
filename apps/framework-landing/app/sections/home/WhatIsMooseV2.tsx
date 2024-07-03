@@ -244,12 +244,12 @@ export const WhatIsMoose = () => {
                 </Text>
               </FullWidthContentContainer>
               <MooseLayersAccordion spline={spline} />
-              <FullWidthContentContainer className="p-4">
+              {/* <FullWidthContentContainer className="p-4">
                 <Text className="my-0">{content.bottom.title}</Text>
                 <Text className="my-0 text-muted-foreground">
                   {content.bottom.description}
                 </Text>
-              </FullWidthContentContainer>
+              </FullWidthContentContainer> */}
             </div>
           </TwoThirdsWidthContentContainer>
         </Grid>

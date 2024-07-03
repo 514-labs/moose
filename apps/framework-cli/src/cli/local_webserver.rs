@@ -52,11 +52,6 @@ use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
-pub struct MetricsDetails {
-    timer: Instant,
-    metrics_method: Method,
-}
-
 pub struct RouterRequest {
     req: Request<hyper::body::Incoming>,
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
@@ -92,9 +87,6 @@ async fn create_client(
     host: String,
     consumption_apis: &RwLock<HashSet<String>>,
     is_prod: bool,
-    metrics: Arc<Metrics>,
-    route: PathBuf,
-    metrics_details: MetricsDetails,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
     // local only for now
     let url = format!("http://{}:{}", host, 4001).parse::<hyper::Uri>()?;
@@ -152,14 +144,6 @@ async fn create_client(
     let res = sender.send_request(req).await?;
     let body = res.collect().await.unwrap().to_bytes().to_vec();
 
-    metrics
-        .send_data(MetricsMessage::HTTPLatency((
-            route.clone(),
-            metrics_details.timer.elapsed(),
-            metrics_details.metrics_method,
-        )))
-        .await;
-
     Ok(Response::builder()
         .status(StatusCode::OK)
         .header("Access-Control-Allow-Origin", "*")
@@ -201,11 +185,7 @@ impl Service<Request<Incoming>> for RouteService {
     }
 }
 
-async fn options_route(
-    metrics: Arc<Metrics>,
-    route: PathBuf,
-    metrics_details: MetricsDetails,
-) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+async fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
         .header("Access-Control-Allow-Origin", "*")
@@ -217,43 +197,18 @@ async fn options_route(
         .body(Full::new(Bytes::from("Success")))
         .unwrap();
 
-    metrics
-        .send_data(MetricsMessage::HTTPLatency((
-            route.clone(),
-            metrics_details.timer.elapsed(),
-            metrics_details.metrics_method,
-        )))
-        .await;
-
     Ok(response)
 }
 
-async fn health_route(
-    metrics: Arc<Metrics>,
-    route: PathBuf,
-    metrics_details: MetricsDetails,
-) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+async fn health_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from("Success")))
         .unwrap();
-
-    metrics
-        .send_data(MetricsMessage::HTTPLatency((
-            route.clone(),
-            metrics_details.timer.elapsed(),
-            metrics_details.metrics_method,
-        )))
-        .await;
     Ok(response)
 }
 
-async fn log_route(
-    req: Request<Incoming>,
-    metrics: Arc<Metrics>,
-    route: PathBuf,
-    metrics_details: MetricsDetails,
-) -> Response<Full<Bytes>> {
+async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
     let body = to_reader(req).await;
     let parsed: Result<CliMessage, serde_json::Error> = serde_json::from_reader(body);
     match parsed {
@@ -267,37 +222,17 @@ async fn log_route(
         Err(e) => println!("Received unknown message: {:?}", e),
     }
 
-    metrics
-        .send_data(MetricsMessage::HTTPLatency((
-            route.clone(),
-            metrics_details.timer.elapsed(),
-            metrics_details.metrics_method,
-        )))
-        .await;
-
     Response::builder()
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from("")))
         .unwrap()
 }
 
-async fn metrics_route(
-    metrics: Arc<Metrics>,
-    route: PathBuf,
-    metrics_details: MetricsDetails,
-) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+async fn metrics_route(metrics: Arc<Metrics>) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from(metrics.clone().receive_data().await)))
         .unwrap();
-
-    metrics
-        .send_data(MetricsMessage::HTTPLatency((
-            route.clone(),
-            metrics_details.timer.elapsed(),
-            metrics_details.metrics_method,
-        )))
-        .await;
 
     Ok(response)
 }
@@ -455,8 +390,6 @@ async fn ingest_route(
     route: PathBuf,
     configured_producer: ConfiguredProducer,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
-    metrics: Arc<Metrics>,
-    metrics_details: MetricsDetails,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     show_message!(
         MessageType::Info,
@@ -465,14 +398,6 @@ async fn ingest_route(
             details: route.to_str().unwrap().to_string().to_string(),
         }
     );
-
-    metrics
-        .send_data(MetricsMessage::HTTPLatency((
-            route.clone(),
-            metrics_details.timer.elapsed(),
-            metrics_details.metrics_method,
-        )))
-        .await;
 
     match route_table.read().await.get(&route) {
         Some(route_meta) => match route_meta.format {
@@ -538,8 +463,10 @@ async fn router(
         _ => Method::OTHER,
     };
 
+    let metrics_path = route.clone();
+
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
-    match (req.method(), &route_split[..]) {
+    let res = match (req.method(), &route_split[..]) {
         (&hyper::Method::POST, ["ingest", _]) => {
             ingest_route(
                 req,
@@ -547,44 +474,15 @@ async fn router(
                 route.join(current_version),
                 configured_producer,
                 route_table,
-                metrics,
-                MetricsDetails {
-                    timer: now,
-                    metrics_method,
-                },
             )
             .await
         }
         (&hyper::Method::POST, ["ingest", _, _]) => {
-            ingest_route(
-                req,
-                route,
-                configured_producer,
-                route_table,
-                metrics,
-                MetricsDetails {
-                    timer: now,
-                    metrics_method,
-                },
-            )
-            .await
+            ingest_route(req, route, configured_producer, route_table).await
         }
 
         (&hyper::Method::GET, ["consumption", _rt]) => {
-            match create_client(
-                req,
-                host,
-                consumption_apis,
-                is_prod,
-                metrics,
-                route.to_path_buf(),
-                MetricsDetails {
-                    timer: now,
-                    metrics_method,
-                },
-            )
-            .await
-            {
+            match create_client(req, host, consumption_apis, is_prod).await {
                 Ok(response) => Ok(response),
                 Err(e) => {
                     debug!("Error: {:?}", e);
@@ -594,63 +492,23 @@ async fn router(
                 }
             }
         }
-        (&hyper::Method::POST, ["logs"]) if !is_prod => Ok(log_route(
-            req,
-            metrics,
-            route,
-            MetricsDetails {
-                timer: now,
-                metrics_method,
-            },
-        )
-        .await),
-        (&hyper::Method::GET, ["health"]) => {
-            health_route(
-                metrics,
-                route,
-                MetricsDetails {
-                    timer: now,
-                    metrics_method,
-                },
-            )
-            .await
-        }
-        (&hyper::Method::GET, ["metrics"]) => {
-            metrics_route(
-                metrics,
-                route,
-                MetricsDetails {
-                    timer: now,
-                    metrics_method,
-                },
-            )
-            .await
-        }
+        (&hyper::Method::POST, ["logs"]) if !is_prod => Ok(log_route(req).await),
+        (&hyper::Method::GET, ["health"]) => health_route().await,
+        (&hyper::Method::GET, ["metrics"]) => metrics_route(metrics.clone()).await,
 
-        (&hyper::Method::OPTIONS, _) => {
-            options_route(
-                metrics,
-                route,
-                MetricsDetails {
-                    timer: now,
-                    metrics_method,
-                },
-            )
-            .await
-        }
-        _ => {
-            metrics
-                .send_data(MetricsMessage::HTTPLatency((
-                    route.clone(),
-                    now.elapsed(),
-                    metrics_method,
-                )))
-                .await;
-            Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Full::new(Bytes::from("no match")))
-        }
-    }
+        (&hyper::Method::OPTIONS, _) => options_route().await,
+        _ => Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Full::new(Bytes::from("no match"))),
+    };
+    metrics
+        .send_data(MetricsMessage::HTTPLatency((
+            metrics_path,
+            now.elapsed(),
+            metrics_method,
+        )))
+        .await;
+    res
 }
 
 #[derive(Debug)]

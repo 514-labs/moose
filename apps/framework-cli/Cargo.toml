@@ -68,6 +68,7 @@ opentelemetry = "0.23.0"
 opentelemetry-appender-log ="0.4.0"
 walkdir = "2"
 comfy-table = "7.1.1"
+prometheus-client = "0.22.2"
 
 [dev-dependencies]
 clickhouse = { version = "0.11.5", features = ["uuid", "test-util"] }

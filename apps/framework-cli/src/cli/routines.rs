@@ -114,6 +114,7 @@ use crate::infrastructure::processes::process_registry::ProcessRegistries;
 use crate::infrastructure::stream::redpanda::fetch_topics;
 use crate::project::Project;
 
+use super::super::metrics::Metrics;
 use super::display::{self, with_spinner_async};
 use super::local_webserver::Webserver;
 use super::settings::Features;
@@ -267,6 +268,7 @@ impl RoutineController {
 pub async fn start_development_mode(
     project: Arc<Project>,
     features: &Features,
+    metrics: Arc<Metrics>,
 ) -> anyhow::Result<()> {
     show_message!(
         MessageType::Info,
@@ -395,7 +397,7 @@ pub async fn start_development_mode(
 
     info!("Starting web server...");
     web_server
-        .start(route_table, consumption_apis, project)
+        .start(route_table, consumption_apis, project, metrics)
         .await;
 
     Ok(())
@@ -405,6 +407,7 @@ pub async fn start_development_mode(
 pub async fn start_production_mode(
     project: Arc<Project>,
     features: Features,
+    metrics: Arc<Metrics>,
 ) -> anyhow::Result<()> {
     show_message!(
         MessageType::Success,
@@ -491,9 +494,8 @@ pub async fn start_production_mode(
     }
 
     info!("Starting web server...");
-
     web_server
-        .start(route_table, consumption_apis, project)
+        .start(route_table, consumption_apis, project, metrics)
         .await;
 
     Ok(())

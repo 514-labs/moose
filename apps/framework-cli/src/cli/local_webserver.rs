@@ -10,6 +10,7 @@ use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure_map::ApiChange;
 use crate::framework::core::infrastructure_map::Change;
 
+use super::super::metrics::{Metrics, MetricsMessage};
 use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
@@ -44,10 +45,16 @@ use std::path::PathBuf;
 use std::pin::Pin;
 use std::sync::Arc;
 use std::time::Duration;
+use std::time::Instant;
 use tokio::net::TcpListener;
 use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::sync::RwLock;
+
+pub struct RouterRequest {
+    req: Request<hyper::body::Incoming>,
+    route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
+}
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LocalWebserverConfig {
@@ -153,6 +160,7 @@ struct RouteService {
     configured_producer: ConfiguredProducer,
     current_version: String,
     is_prod: bool,
+    metrics: Arc<Metrics>,
 }
 
 impl Service<Request<Incoming>> for RouteService {
@@ -162,13 +170,16 @@ impl Service<Request<Incoming>> for RouteService {
 
     fn call(&self, req: Request<Incoming>) -> Self::Future {
         Box::pin(router(
-            req,
             self.current_version.clone(),
-            self.route_table,
             self.consumption_apis,
             self.configured_producer.clone(),
             self.host.clone(),
             self.is_prod,
+            self.metrics.clone(),
+            RouterRequest {
+                req,
+                route_table: self.route_table,
+            },
         ))
     }
 }
@@ -214,6 +225,20 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from("")))
         .unwrap()
+}
+
+async fn metrics_route(metrics: Arc<Metrics>) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    let response = Response::builder()
+        .status(StatusCode::OK)
+        .body(Full::new(Bytes::from(
+            match metrics.get_prometheus_metrics_string().await {
+                Ok(data) => data,
+                Err(e) => format!("Unable to retrieve metrics: {}", e),
+            },
+        )))
+        .unwrap();
+
+    Ok(response)
 }
 
 fn bad_json_response(e: serde_json::Error) -> Response<Full<Bytes>> {
@@ -396,14 +421,19 @@ async fn ingest_route(
 }
 
 async fn router(
-    req: Request<hyper::body::Incoming>,
     current_version: String,
-    route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     consumption_apis: &RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
     host: String,
     is_prod: bool,
+    metrics: Arc<Metrics>,
+    request: RouterRequest,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    let now = Instant::now();
+
+    let req = request.req;
+    let route_table = request.route_table;
+
     debug!(
         "HTTP Request Received: {:?}, with Route Table {:?}",
         req, route_table
@@ -421,8 +451,12 @@ async fn router(
         route, route_table
     );
 
+    let metrics_method = req.method().to_string();
+
+    let metrics_path = route.clone();
+
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
-    match (req.method(), &route_split[..]) {
+    let res = match (req.method(), &route_split[..]) {
         (&hyper::Method::POST, ["ingest", _]) => {
             ingest_route(
                 req,
@@ -448,14 +482,23 @@ async fn router(
                 }
             }
         }
-        (&hyper::Method::GET, ["health"]) => health_route(),
-
         (&hyper::Method::POST, ["logs"]) if !is_prod => Ok(log_route(req).await),
+        (&hyper::Method::GET, ["health"]) => health_route(),
+        (&hyper::Method::GET, ["metrics"]) => metrics_route(metrics.clone()).await,
+
         (&hyper::Method::OPTIONS, _) => options_route(),
         _ => Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Full::new(Bytes::from("no match"))),
-    }
+    };
+    metrics
+        .send_metric(MetricsMessage::HTTPLatency((
+            metrics_path,
+            now.elapsed(),
+            metrics_method,
+        )))
+        .await;
+    res
 }
 
 #[derive(Debug)]
@@ -543,6 +586,7 @@ impl Webserver {
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
         consumption_apis: &'static RwLock<HashSet<String>>,
         project: Arc<Project>,
+        metrics: Arc<Metrics>,
     ) {
         //! Starts the local webserver
         let socket = self.socket().await;
@@ -581,6 +625,7 @@ impl Webserver {
             current_version: project.cur_version().to_string(),
             configured_producer: producer,
             is_prod: project.is_production,
+            metrics,
         };
 
         loop {
@@ -597,15 +642,11 @@ impl Webserver {
                 }
                 listener_result = listener.accept() => {
                     let (stream, _) = listener_result.unwrap();
-                    // Use an adapter to access something implementing `tokio::io` traits as if they implement
-                    // `hyper::rt` IO traits.
                     let io = TokioIo::new(stream);
 
                     let route_service = route_service.clone();
 
-                    // Spawn a tokio task to serve multiple connections concurrently
                     tokio::task::spawn(async move {
-                        // Run this server for... forever!
                         if let Err(e) = auto::Builder::new(TokioExecutor::new()).serve_connection(
                                 io,
                                 route_service,

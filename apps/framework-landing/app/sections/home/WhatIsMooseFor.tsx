@@ -66,7 +66,7 @@ export const WhatIsntMooseFor = () => {
               </Suspense>
             </div>
           </HalfWidthContentContainer>
-          <HalfWidthContentContainer className="flex flex-col gap-5 align-bottom p-10">
+          <HalfWidthContentContainer className="flex flex-col gap-2 align-bottom p-5">
             <Badge className="w-fit p-2" variant={"outline"}>
               {notMooseContent.badge}
             </Badge>
@@ -109,7 +109,7 @@ export const WhatIsMooseFor = () => {
                       />
                     </Suspense>
                   </div>
-                  <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-2">
                     <Badge className="w-fit p-2" variant={"default"}>
                       {usecase.badge}
                     </Badge>

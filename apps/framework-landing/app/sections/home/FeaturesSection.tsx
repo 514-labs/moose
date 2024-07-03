@@ -28,13 +28,13 @@ export const FeaturesSection = () => {
       {
         title: "Git-Based Workflows",
         description:
-          "Plug in to your existing workflows for versioning and code collaboration",
+          "Plug in to your existing workflows for version control and code collaboration",
         icon: <Share2 strokeWidth={1} />,
       },
       {
         title: "Migrations",
         description:
-          "Built in version control for your endpoints so integrations with sources and consumers don’t break",
+          "Synchronize versions of your data as schemas change with automated migrations so your data stays up-to-date",
         icon: <Network strokeWidth={1} />,
       },
       {
@@ -44,7 +44,7 @@ export const FeaturesSection = () => {
         icon: <Terminal strokeWidth={1} />,
       },
       {
-        title: "Containers",
+        title: "Deploy with Docker",
         description:
           "Package your application for deployment in any environment from the CLI",
         icon: <Box strokeWidth={1} />,

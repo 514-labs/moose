@@ -21,7 +21,7 @@ const mooseContent = {
     {
       title: "Data-intensive apps",
       description:
-        "Build an OLAP-centric backend to serve real-time leaderboards, charts, and metrics in your apps",
+        "Build an analytics backend to power real-time leaderboards, charts, and metrics in your OLTP apps",
       badge: "Moose + OLTP",
       imageSrcLight: "/images/diagrams/img-diagram-data-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-data-dark.svg",
@@ -29,8 +29,8 @@ const mooseContent = {
     {
       title: "Enterprise data products",
       description:
-        "Leverage Moose to build data services powering BI, AI/ML pipelines, and notebooks",
-      badge: "Moose",
+        "Build a data warehouse to serve BI tools, AI/ML pipelines, and data exploration notebooks",
+      badge: "Moose + BI",
       imageSrcLight: "/images/diagrams/img-diagram-ent-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-ent-dark.svg",
     },
@@ -38,10 +38,10 @@ const mooseContent = {
 };
 
 const notMooseContent = {
-  title: "When to not use Moose",
+  title: "When not to use Moose",
   subtitle: "Transactional Apps",
   description:
-    "If you’re building apps with high transactional workloads and CRUD operations, you’ll be better served by OLTP focused frameworks",
+    "If you’re building apps with only high transactional workloads and CRUD operations, you’ll be better served by the decades of great OLTP focused frameworks out there",
   badge: "OLTP",
   imageSrcLight: "/images/diagrams/img-diagram-standard-light.svg",
   imageSrcDark: "/images/diagrams/img-diagram-standard-dark.svg",
@@ -55,8 +55,8 @@ export const WhatIsntMooseFor = () => {
           <Heading>{notMooseContent.title}</Heading>
         </FullWidthContentContainer>
         <Grid className="items-center">
-          <HalfWidthContentContainer className="p-10">
-            <div className="relative aspect-square my-0">
+          <HalfWidthContentContainer>
+            <div className="relative aspect-square my-0 p-5">
               <Suspense fallback={<div>Loading...</div>}>
                 <TemplateImg
                   srcDark={notMooseContent.imageSrcDark}
@@ -92,7 +92,7 @@ export const WhatIsMooseFor = () => {
         <FullWidthContentContainer>
           <Heading>{mooseContent.title}</Heading>
         </FullWidthContentContainer>
-        <Grid className="gap-y-5 justify-center">
+        <Grid className="justify-center gapx-5">
           {mooseContent.usecases.map((usecase, index) => {
             return (
               <Fragment key={index}>

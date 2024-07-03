@@ -24,13 +24,14 @@ import { TrackableAccordionTrigger } from "../../trackable-components";
 import Diagram from "../../spline";
 
 const content = {
-  title: "Build your features and products. Moose handles the stack.",
+  title:
+    "Don't reinvent the wheel. Build your unique features and products while Moose handles the stack.",
   description:
     "Moose automatically manages the infrastructure, so you can focus on innovating with your data",
   top: {
     title: "Analytics or User Facing Applications",
     description:
-      "Deliver structured data and insights to user facing applications, AI/ML models, analyst notebooks, or enterprise BI software",
+      "Serve insights to user facing applications, AI/ML models, analyst notebooks, or BI tools",
   },
   layers: [
     {
@@ -73,7 +74,7 @@ const content = {
         },
         {
           title: "Processes",
-          description: "Executes transformation functions",
+          description: "Executes transformation functions on incoming data",
         },
         {
           title: "Tables",
@@ -121,7 +122,7 @@ const content = {
     },
   ],
   bottom: {
-    title: "Raw Data Source",
+    title: "Raw Data Sources",
     description:
       "Ingest data from applications, databases, blob storage, IoT devices, and more",
   },
@@ -133,6 +134,7 @@ const MooseLayersAccordion = ({ spline }: { spline: any }) => {
     <div>
       <Accordion
         type="single"
+        className="my-4"
         collapsible
         onValueChange={(val) => {
           const outerWrap = spline.current?.findObjectByName("OUTER-WRAP");
@@ -171,7 +173,7 @@ const MooseLayersAccordion = ({ spline }: { spline: any }) => {
                     {layer.details.map((detail, index) => {
                       return (
                         <HalfWidthContentContainer
-                          className="w-full flex flex-col items-center justify-stretch text-left border border-muted-foreground rounded-3xl p-5"
+                          className="w-full flex flex-col items-center justify-stretch text-left border rounded-3xl p-5"
                           key={index}
                         >
                           <Text className="my-0 justify-start self-start">
@@ -238,11 +240,11 @@ export const WhatIsMoose = () => {
               <FullWidthContentContainer className="px-4">
                 <Text className="my-0">{content.top.title}</Text>
                 <Text className="my-0 text-muted-foreground">
-                  {content.bottom.description}
+                  {content.top.description}
                 </Text>
               </FullWidthContentContainer>
               <MooseLayersAccordion spline={spline} />
-              <FullWidthContentContainer className="px-4">
+              <FullWidthContentContainer className="p-4">
                 <Text className="my-0">{content.bottom.title}</Text>
                 <Text className="my-0 text-muted-foreground">
                   {content.bottom.description}

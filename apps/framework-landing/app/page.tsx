@@ -21,7 +21,6 @@ import {
 
 import { Text } from "@514labs/design-system-components/typography";
 import React from "react";
-import { UsecasesSection } from "./sections/home/UsecasesSection";
 import { LooseMooseSection } from "./sections/home/LooseMooseSection";
 import { WhatIsMoose } from "./sections/home/WhatIsMooseV2";
 import {

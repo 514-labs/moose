@@ -1,14 +1,12 @@
 import {
   FullWidthContentContainer,
   Grid,
-  ThirdWidthContentContainer,
   Section,
   HalfWidthContentContainer,
 } from "@514labs/design-system-components/components/containers";
 
 import {
   Heading,
-  Text,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
 import React from "react";

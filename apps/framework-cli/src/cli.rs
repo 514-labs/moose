@@ -206,7 +206,7 @@ async fn top_command_handler(
 
                     let install_string = match language {
                         SupportedLanguages::Typescript => "npm install",
-                        SupportedLanguages::Python => "pip install",
+                        SupportedLanguages::Python => "pip install .",
                     };
 
                     Ok(RoutineSuccess::highlight(Message::new(

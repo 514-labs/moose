@@ -3,6 +3,7 @@ use std::collections::HashMap;
 
 use super::infrastructure::api_endpoint::ApiEndpoint;
 use super::infrastructure::function_process::FunctionProcess;
+use super::infrastructure::olap_process::OlapProcess;
 use super::infrastructure::table::Table;
 use super::infrastructure::topic::Topic;
 use super::infrastructure::topic_to_table_sync_process::TopicToTableSyncProcess;
@@ -57,6 +58,7 @@ pub enum ApiChange {
 pub enum ProcessChange {
     TopicToTableSyncProcess(Change<TopicToTableSyncProcess>),
     FunctionProcess(Change<FunctionProcess>),
+    OlapProcess(Change<OlapProcess>),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -85,6 +87,9 @@ pub struct InfrastructureMap {
 
     pub topic_to_table_sync_processes: HashMap<String, TopicToTableSyncProcess>,
     pub function_processes: HashMap<String, FunctionProcess>,
+
+    // TODO change to a hashmap of processes when we have several
+    pub block_db_processes: OlapProcess,
 }
 
 impl InfrastructureMap {
@@ -136,6 +141,9 @@ impl InfrastructureMap {
             }
         }
 
+        // TODO update here when we have several aggregation processes
+        let block_db_processes = OlapProcess::from_aggregation(&primitive_map.aggregation);
+
         InfrastructureMap {
             // primitive_map,
             topics,
@@ -143,6 +151,7 @@ impl InfrastructureMap {
             topic_to_table_sync_processes,
             tables,
             function_processes,
+            block_db_processes,
         }
     }
 
@@ -326,6 +335,22 @@ impl InfrastructureMap {
             }
         }
 
+        // =================================================================
+        //                             Aggregation Processes
+        // =================================================================
+
+        // Until we refactor to have multiple processes, we will consider that we need to restart
+        // the process all the times and the aggregations changes all the time.
+        // Once we do the other refactor, we will be able to compare the changes and only restart
+        // the process if there are changes
+
+        changes.processes_changes.push(ProcessChange::OlapProcess(
+            Change::<OlapProcess>::Updated {
+                before: OlapProcess {},
+                after: OlapProcess {},
+            },
+        ));
+
         changes
     }
 
@@ -392,6 +417,11 @@ impl InfrastructureMap {
             .collect();
 
         topic_to_table_process_changes.append(&mut function_process_changes);
+
+        // TODO Change this when we have multiple processes for aggregations
+        topic_to_table_process_changes.push(ProcessChange::OlapProcess(
+            Change::<OlapProcess>::Added(OlapProcess {}),
+        ));
 
         topic_to_table_process_changes
     }

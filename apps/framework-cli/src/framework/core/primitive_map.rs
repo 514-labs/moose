@@ -2,6 +2,7 @@ use walkdir::WalkDir;
 
 use crate::{
     framework::{
+        aggregations::model::Aggregation,
         data_model::{
             model::{DataModel, DataModelSet},
             parser::parse_data_model_file,
@@ -25,8 +26,12 @@ pub enum PrimitiveMapLoadingError {
 #[derive(Debug, Clone, Default)]
 pub struct PrimitiveMap {
     pub datamodels: DataModelSet,
-    pub functions: Vec<Flow>, // TODO add dbblocks
-                              // TODO add consumption apis
+    pub functions: Vec<Flow>,
+
+    // We are currently not loading aggregations 1 by 1 in the CLI, we should load them individually to be able
+    // to start/stop them individually. Right now we are starting all of them at once through the language specific
+    // aggregation runner. We are loading aggregations as 1 unique aggregation as a default.
+    pub aggregation: Aggregation, // TODO add consumption apis
 }
 
 impl PrimitiveMap {

@@ -16,14 +16,13 @@ use crate::framework;
 use crate::framework::consumption::model::Consumption;
 use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 
-use crate::framework::aggregations::model::Aggregation;
-use crate::framework::aggregations::registry::AggregationProcessRegistry;
 use crate::framework::controller::{
     create_or_replace_tables, drop_table, schema_file_path_to_ingest_route,
 };
 use crate::framework::core::code_loader::{
     get_framework_objects_from_schema_file, FrameworkObjectVersions,
 };
+use crate::framework::core::infrastructure::olap_process::OlapProcess;
 use crate::framework::core::infrastructure_map::ApiChange;
 use crate::framework::data_model::model::DataModelSet;
 use crate::framework::data_model::{is_schema_file, DuplicateModelError};
@@ -32,6 +31,7 @@ use crate::framework::flows::loader::get_all_current_flows;
 use crate::infrastructure::olap::clickhouse_alt_client::{
     get_pool, store_current_state, store_infrastructure_map,
 };
+use crate::infrastructure::processes::aggregations_registry::AggregationProcessRegistry;
 use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
@@ -422,10 +422,7 @@ async fn watch(
                             "Processing {} Aggregation(s) changes from file watcher",
                             bucketed_events.aggregations.len()
                         ),
-                        process_aggregations_changes(
-                            &project,
-                            &mut project_registries.aggregations,
-                        ),
+                        process_aggregations_changes(&mut project_registries.aggregations),
                         !project.is_production,
                     )
                     .await?;
@@ -491,17 +488,10 @@ pub async fn process_flows_changes(
 }
 
 pub async fn process_aggregations_changes(
-    project: &Project,
     aggregations_process_registry: &mut AggregationProcessRegistry,
 ) -> anyhow::Result<()> {
-    aggregations_process_registry.stop().await?;
-    aggregations_process_registry.start(Aggregation {
-        dir: if aggregations_process_registry.is_blocks_enabled() {
-            project.blocks_dir()
-        } else {
-            project.aggregations_dir()
-        },
-    })?;
+    aggregations_process_registry.stop(&OlapProcess {}).await?;
+    aggregations_process_registry.start(&OlapProcess {})?;
 
     Ok(())
 }

@@ -13,7 +13,7 @@ export default function Diagram({ spline, height }: DiagramProps) {
     spline.current = splineApp;
   }
   return (
-    <div style={{ height: height }}>
+    <div style={{ height: height }} className="pointer-events-none">
       <SplineNext
         scene="https://prod.spline.design/RJScsp86rZc2qKSB/scene.splinecode"
         onLoad={onLoad}

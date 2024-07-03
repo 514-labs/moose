@@ -18,7 +18,7 @@ import {
   Text,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { TrackableAccordionTrigger } from "../../trackable-components";
 import Diagram from "../../spline";
@@ -128,18 +128,30 @@ const content = {
 };
 
 const MooseLayersAccordion = ({ spline }: { spline: any }) => {
+  const [expanded, setExpanded] = useState<boolean>(false);
   return (
     <div>
-      <Accordion type="single" collapsible>
+      <Accordion
+        type="single"
+        collapsible
+        onValueChange={(val) => {
+          const outerWrap = spline.current?.findObjectByName("OUTER-WRAP");
+          if (!val) {
+            setExpanded(false);
+            outerWrap?.emitEventReverse("mouseDown");
+          }
+          if (!expanded) {
+            setExpanded(true);
+            outerWrap?.emitEvent("mouseDown");
+          }
+        }}
+      >
         {content.layers.map((layer, index) => {
           return (
             <AccordionItem
               key={index}
               value={`item-${index}`}
-              onValueChange={() => console.log("open change")}
-              onClick={() => {
-                spline.current.emitEvent("mouseDown", layer.layer);
-              }}
+              onClick={() => {}}
             >
               <TrackableAccordionTrigger
                 name="Moose Layer Accordion"
@@ -184,6 +196,24 @@ const MooseLayersAccordion = ({ spline }: { spline: any }) => {
 
 export const WhatIsMoose = () => {
   const spline = useRef();
+  const [splineHeight, setSplineHeight] = useState(0);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!ref.current) {
+      return;
+    }
+    const resizeObserver = new ResizeObserver(() => {
+      if (ref.current && ref.current.offsetHeight !== splineHeight) {
+        setSplineHeight(ref.current.offsetHeight);
+      }
+    });
+    resizeObserver.observe(ref.current);
+    return function cleanup() {
+      resizeObserver.disconnect();
+    };
+  }, [ref.current]);
+
   return (
     <>
       <Section className="mx-auto xl:max-w-screen-xl">
@@ -200,23 +230,25 @@ export const WhatIsMoose = () => {
       <Section className="w-full relative mx-auto xl:my-10 xl:max-w-screen-xl 2xl:my-0">
         <Grid>
           <ThirdWidthContentContainer>
-            <Diagram spline={spline} />
+            <Diagram height={splineHeight} spline={spline} />
           </ThirdWidthContentContainer>
 
-          <TwoThirdsWidthContentContainer className="flex flex-col xl:justify-start gap-5">
-            <FullWidthContentContainer className="px-4">
-              <Text className="my-0">{content.top.title}</Text>
-              <Text className="my-0 text-muted-foreground">
-                {content.bottom.description}
-              </Text>
-            </FullWidthContentContainer>
-            <MooseLayersAccordion spline={spline} />
-            <FullWidthContentContainer className="px-4">
-              <Text className="my-0">{content.bottom.title}</Text>
-              <Text className="my-0 text-muted-foreground">
-                {content.bottom.description}
-              </Text>
-            </FullWidthContentContainer>
+          <TwoThirdsWidthContentContainer className="flex flex-col xl:justify-start gap-5 h-fit">
+            <div ref={ref}>
+              <FullWidthContentContainer className="px-4">
+                <Text className="my-0">{content.top.title}</Text>
+                <Text className="my-0 text-muted-foreground">
+                  {content.bottom.description}
+                </Text>
+              </FullWidthContentContainer>
+              <MooseLayersAccordion spline={spline} />
+              <FullWidthContentContainer className="px-4">
+                <Text className="my-0">{content.bottom.title}</Text>
+                <Text className="my-0 text-muted-foreground">
+                  {content.bottom.description}
+                </Text>
+              </FullWidthContentContainer>
+            </div>
           </TwoThirdsWidthContentContainer>
         </Grid>
       </Section>

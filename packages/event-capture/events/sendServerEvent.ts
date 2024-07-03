@@ -3,6 +3,7 @@ import { cookies, headers } from "next/headers";
 import Mixpanel from "mixpanel";
 import { NextRequest, userAgent } from "next/server";
 import { get } from "http";
+import mixpanel from "mixpanel";
 
 export type PageViewEventProperties = {
   eventId: string;
@@ -127,7 +128,6 @@ export const sendTrackEvent = async (
     location,
     ...properties,
   };
-  console.log("Track Event:\n", payload);
 
   const env = process.env.NODE_ENV;
 
@@ -147,17 +147,20 @@ export const sendTrackEvent = async (
   } catch (error) {
     console.error(error);
   }
+
+  const mixpanel = Mixpanel.init("be8ca317356e20c587297d52f93f3f9e");
+  await mixpanelAsyncTrack(
+    "TrackEvent",
+    { host, env, referrer, ip, ...properties },
+    mixpanel,
+  );
 };
 
 export const sendServerEvent = async (eventName: string, event: any) => {
-  //const mixpanel = Mixpanel.init("be8ca317356e20c587297d52f93f3f9e");
+  const mixpanel = Mixpanel.init("be8ca317356e20c587297d52f93f3f9e");
   const headersList = headers();
-  const host = headersList.get("host") || "";
-  const referrer = headersList.get("referer") || "";
-
-  const pathname = headersList.get("pathname") || "";
-  const session_id = cookies().get("session-id")?.value || "unknown";
-  const user_agent = headersList.get("user-agent") || "";
+  const host = headersList.get("host");
+  const referrer = headersList.get("referer");
 
   const ip = IP();
 
@@ -165,22 +168,5 @@ export const sendServerEvent = async (eventName: string, event: any) => {
 
   const mixpanelEvent = { host, env, referrer, ip, ...event };
 
-  // const mooseTrackEvent: CommonProperties & TrackEventProperties = {
-  //   timestamp: new Date(),
-  //   session_id,
-  //   user_agent,
-  //   host,
-  //   pathname,
-  //   referrer,
-  //   ip,
-  //   eventName,
-  //   ...event,
-  // }
-
-  // cookies().getAll().map(({name, value}) => console.log(name + ": " + value))
-  // headersList.forEach((value, name) => console.log(name + ": " + value))
-
-  // console.log(mooseTrackEvent)
-
-  //await mixpanelAsyncTrack(eventName, mixpanelEvent, mixpanel);
+  await mixpanelAsyncTrack(eventName, mixpanelEvent, mixpanel);
 };

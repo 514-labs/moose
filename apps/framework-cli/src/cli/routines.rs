@@ -390,7 +390,7 @@ pub async fn start_development_mode(
 
     info!("Starting web server...");
     web_server
-        .start(route_table, consumption_apis, project, metrics.clone())
+        .start(route_table, consumption_apis, project, metrics)
         .await;
 
     Ok(())
@@ -483,7 +483,7 @@ pub async fn start_production_mode(
 
     info!("Starting web server...");
     web_server
-        .start(route_table, consumption_apis, project, metrics.clone())
+        .start(route_table, consumption_apis, project, metrics)
         .await;
 
     Ok(())

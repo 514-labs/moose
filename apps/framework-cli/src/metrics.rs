@@ -41,11 +41,13 @@ impl Metrics {
         (metrics, rx)
     }
 
-    pub async fn send_data(&self, data: MetricsMessage) {
+    pub async fn send_metric(&self, data: MetricsMessage) {
         let _ = self.tx.send(data).await;
     }
 
-    pub async fn receive_data(&self) -> Result<std::string::String, MetricsErrors> {
+    pub async fn get_prometheus_metrics_string(
+        &self,
+    ) -> Result<std::string::String, MetricsErrors> {
         let (resp_tx, resp_rx) = tokio::sync::oneshot::channel::<String>();
         let _ = self
             .tx
@@ -56,7 +58,7 @@ impl Metrics {
     }
 
     pub async fn start_listening_to_metrics(
-        self: Arc<Metrics>,
+        self: &Arc<Metrics>,
         mut rx: tokio::sync::mpsc::Receiver<MetricsMessage>,
     ) {
         let mut data = Statistics {

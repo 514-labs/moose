@@ -184,7 +184,7 @@ impl Service<Request<Incoming>> for RouteService {
     }
 }
 
-async fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
         .header("Access-Control-Allow-Origin", "*")
@@ -199,7 +199,7 @@ async fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     Ok(response)
 }
 
-async fn health_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+fn health_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from("Success")))
@@ -231,7 +231,7 @@ async fn metrics_route(metrics: Arc<Metrics>) -> Result<Response<Full<Bytes>>, h
     let response = Response::builder()
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from(
-            match metrics.clone().receive_data().await {
+            match metrics.get_prometheus_metrics_string().await {
                 Ok(data) => data,
                 Err(e) => format!("Unable to retrieve metrics: {}", e),
             },
@@ -483,16 +483,16 @@ async fn router(
             }
         }
         (&hyper::Method::POST, ["logs"]) if !is_prod => Ok(log_route(req).await),
-        (&hyper::Method::GET, ["health"]) => health_route().await,
+        (&hyper::Method::GET, ["health"]) => health_route(),
         (&hyper::Method::GET, ["metrics"]) => metrics_route(metrics.clone()).await,
 
-        (&hyper::Method::OPTIONS, _) => options_route().await,
+        (&hyper::Method::OPTIONS, _) => options_route(),
         _ => Response::builder()
             .status(StatusCode::NOT_FOUND)
             .body(Full::new(Bytes::from("no match"))),
     };
     metrics
-        .send_data(MetricsMessage::HTTPLatency((
+        .send_metric(MetricsMessage::HTTPLatency((
             metrics_path,
             now.elapsed(),
             metrics_method,

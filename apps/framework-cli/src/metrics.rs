@@ -1,6 +1,6 @@
 use prometheus_client::metrics::family::Family;
 use prometheus_client::{
-    encoding::{text::encode, EncodeLabelSet, EncodeLabelValue},
+    encoding::{text::encode, EncodeLabelSet},
     metrics::histogram::Histogram,
     registry::Registry,
 };
@@ -8,7 +8,7 @@ use std::{path::PathBuf, sync::Arc, time::Duration};
 
 pub enum MetricsMessage {
     GetMetricsRegistryAsString(tokio::sync::oneshot::Sender<String>),
-    HTTPLatency((PathBuf, Duration, Method)),
+    HTTPLatency((PathBuf, Duration, String)),
 }
 
 #[derive(Clone)]
@@ -23,39 +23,32 @@ pub struct Statistics {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
 pub struct Labels {
-    method: Method,
+    method: String,
     path: String,
 }
 
-#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelValue)]
-pub enum Method {
-    GET,
-    POST,
-    PUT,
-    DELETE,
-    HEAD,
-    OPTIONS,
-    CONNECT,
-    PATCH,
-    TRACE,
-    OTHER,
-}
-
 impl Metrics {
+    pub fn new() -> (Metrics, tokio::sync::mpsc::Receiver<MetricsMessage>) {
+        let (tx, rx) = tokio::sync::mpsc::channel(32);
+        let metrics = Metrics { tx: tx };
+        (metrics, rx)
+    }
+
     pub async fn send_data(&self, data: MetricsMessage) {
         let _ = self.tx.send(data).await;
     }
 
-    pub async fn receive_data(&self) -> String {
+    pub async fn receive_data(&self) -> Result<String, tokio::sync::oneshot::error::RecvError> {
         let (resp_tx, resp_rx) = tokio::sync::oneshot::channel::<String>();
-        self.tx
+        let _ = self
+            .tx
             .send(MetricsMessage::GetMetricsRegistryAsString(resp_tx))
-            .await
-            .unwrap();
+            .await;
 
-        let res = resp_rx.await;
-
-        res.unwrap()
+        match resp_rx.await {
+            Ok(resp) => Ok(resp),
+            Err(err) => Err(err),
+        }
     }
 
     pub async fn start_listening_to_metrics(

@@ -9,7 +9,6 @@ use crate::framework::controller::RouteMeta;
 use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure_map::ApiChange;
 use crate::framework::core::infrastructure_map::Change;
-use crate::metrics::Method;
 
 use super::super::metrics::{Metrics, MetricsMessage};
 use crate::framework::data_model::config::EndpointIngestionFormat;
@@ -231,7 +230,12 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
 async fn metrics_route(metrics: Arc<Metrics>) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
-        .body(Full::new(Bytes::from(metrics.clone().receive_data().await)))
+        .body(Full::new(Bytes::from(
+            match metrics.clone().receive_data().await {
+                Ok(data) => data,
+                Err(e) => format!("Unable to retrieve metrics: {}", e),
+            },
+        )))
         .unwrap();
 
     Ok(response)
@@ -447,21 +451,7 @@ async fn router(
         route, route_table
     );
 
-    let metrics_method = match *req.method() {
-        hyper::Method::POST => Method::POST,
-        hyper::Method::GET => Method::GET,
-        hyper::Method::PUT => Method::PUT,
-        hyper::Method::DELETE => Method::DELETE,
-        hyper::Method::HEAD => Method::HEAD,
-        hyper::Method::OPTIONS => Method::OPTIONS,
-        hyper::Method::CONNECT => Method::CONNECT,
-        hyper::Method::TRACE => Method::TRACE,
-        hyper::Method::PATCH => Method::PATCH,
-        //hyper::Method::EXTENSION(_) => Method::OTHER,
-        // hyper::Method::ExtensionInline() => Method::OTHER,
-        // hyper::Method::ExtensionAllocated(_) => Method::OTHER,
-        _ => Method::OTHER,
-    };
+    let metrics_method = req.method().to_string();
 
     let metrics_path = route.clone();
 
@@ -635,7 +625,7 @@ impl Webserver {
             current_version: project.cur_version().to_string(),
             configured_producer: producer,
             is_prod: project.is_production,
-            metrics: metrics.clone(),
+            metrics,
         };
 
         loop {

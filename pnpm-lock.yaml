@@ -298,10 +298,10 @@ importers:
         version: 1.0.2(@types/react@18.3.1)(react@18.3.1)
       "@splinetool/react-spline":
         specifier: ^4.0.0
-        version: 4.0.0(@splinetool/runtime@1.8.3)(next@14.2.4)(react-dom@18.3.1)(react@18.3.1)
+        version: 4.0.0(@splinetool/runtime@1.8.7)(next@14.2.4)(react-dom@18.3.1)(react@18.3.1)
       "@splinetool/runtime":
-        specifier: ^1.8.0
-        version: 1.8.3
+        specifier: ^1.8.7
+        version: 1.8.7
       class-variance-authority:
         specifier: ^0.7.0
         version: 0.7.0
@@ -5610,7 +5610,7 @@ packages:
       tslib: 2.6.2
     dev: false
 
-  /@splinetool/react-spline@4.0.0(@splinetool/runtime@1.8.3)(next@14.2.4)(react-dom@18.3.1)(react@18.3.1):
+  /@splinetool/react-spline@4.0.0(@splinetool/runtime@1.8.7)(next@14.2.4)(react-dom@18.3.1)(react@18.3.1):
     resolution:
       {
         integrity: sha512-FqrV7/K2q998Y0t83QUauQxsifKWAg9CFZoSb64qRuH7IfHkDs5/OgU1ACkg0aTgsEPtFlH+kATQ+8X6MrizHQ==,
@@ -5624,7 +5624,7 @@ packages:
       next:
         optional: true
     dependencies:
-      "@splinetool/runtime": 1.8.3
+      "@splinetool/runtime": 1.8.7
       blurhash: 2.0.5
       lodash.debounce: 4.0.8
       next: 14.2.4(@babel/core@7.24.5)(react-dom@18.3.1)(react@18.3.1)
@@ -5634,10 +5634,10 @@ packages:
       thumbhash: 0.1.1
     dev: false
 
-  /@splinetool/runtime@1.8.3:
+  /@splinetool/runtime@1.8.7:
     resolution:
       {
-        integrity: sha512-VriIaQczy7stnrn3mQMQMNwMijfvKLRLIEkqEAemSxL+EARNYODAIXyqJAxpFjQ3TwPh0ZpiSb7+bdE0o686fA==,
+        integrity: sha512-HfwDbmHiudHhJ+ZVmC6dNIQ7ZCyA3Fj/gAYCM579CFz2fxe2/IrSNauhsPZqKQBuyYQCt9ad2g27UQPW0beJyQ==,
       }
     dependencies:
       on-change: 4.0.2

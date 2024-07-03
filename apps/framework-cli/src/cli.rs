@@ -43,6 +43,7 @@ use crate::cli::{
     settings::{init_config_file, setup_user_directory},
 };
 use crate::framework::core::code_loader::load_framework_objects;
+use crate::framework::languages::SupportedLanguages;
 use crate::framework::sdk::ingest::generate_sdk;
 use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
 use crate::project::Project;
@@ -203,9 +204,14 @@ async fn top_command_handler(
                         );
                     }
 
+                    let install_string = match language {
+                        SupportedLanguages::Typescript => "npm install",
+                        SupportedLanguages::Python => "pip install",
+                    };
+
                     Ok(RoutineSuccess::highlight(Message::new(
                         "Get Started".to_string(),
-                        format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n🛠️  Start dev server: \n\t$ npx @514labs/moose-cli@latest dev\n\n", dir_path.to_string_lossy()),
+                        format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n   Install Dependencies:\n\t$ {} \n\n🛠️ Start dev server: \n\t$ npx @514labs/moose-cli@latest dev\n\n", dir_path.to_string_lossy(), install_string),
                     )))
                 }
             }

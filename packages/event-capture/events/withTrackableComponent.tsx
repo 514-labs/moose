@@ -1,13 +1,6 @@
 "use client";
 import React from "react";
-import {
-  TrackEvent,
-  PageViewEventProperties,
-  sendServerEvent,
-  sendTrackEvent,
-  setTrackEventProperties,
-} from "./sendServerEvent";
-import { usePathname } from "next/navigation";
+import { sendTrackEvent } from "./sendServerEvent";
 
 export enum TrackingVerb {
   copy = "copy",

@@ -1,9 +1,7 @@
 "use server";
 import { cookies, headers } from "next/headers";
 import Mixpanel from "mixpanel";
-import { NextRequest, userAgent } from "next/server";
-import { get } from "http";
-import mixpanel from "mixpanel";
+import { NextRequest } from "next/server";
 
 export type PageViewEventProperties = {
   eventId: string;
@@ -49,19 +47,6 @@ async function mixpanelAsyncTrack(
         resolve("success");
       }
     });
-  });
-}
-
-async function mooseAsyncTrack(env: string, payload: TrackEvent) {
-  const host =
-    env == "development" ? "localhost:4000" : "https://moosefood.514.dev";
-
-  const response = await fetch(`${host}/ingest/TrackEvent`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(payload),
   });
 }
 

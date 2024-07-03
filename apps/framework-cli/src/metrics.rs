@@ -6,14 +6,14 @@ use prometheus_client::{
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
-pub enum Data {
-    Receive(tokio::sync::oneshot::Sender<String>),
-    IngestHistogram((PathBuf, Duration, Method)),
+pub enum MetricsMessage {
+    GetMetricsRegistryAsString(tokio::sync::oneshot::Sender<String>),
+    HTTPLatency((PathBuf, Duration, Method)),
 }
 
 #[derive(Clone)]
 pub struct Metrics {
-    pub tx: tokio::sync::mpsc::Sender<Data>,
+    pub tx: tokio::sync::mpsc::Sender<MetricsMessage>,
 }
 
 pub struct Statistics {
@@ -42,20 +42,26 @@ pub enum Method {
 }
 
 impl Metrics {
-    pub async fn send_data(&self, data: Data) {
+    pub async fn send_data(&self, data: MetricsMessage) {
         let _ = self.tx.send(data).await;
     }
 
     pub async fn receive_data(&self) -> String {
         let (resp_tx, resp_rx) = tokio::sync::oneshot::channel::<String>();
-        self.tx.send(Data::Receive(resp_tx)).await.unwrap();
+        self.tx
+            .send(MetricsMessage::GetMetricsRegistryAsString(resp_tx))
+            .await
+            .unwrap();
 
         let res = resp_rx.await;
 
         res.unwrap()
     }
 
-    pub async fn controller(self: Arc<Metrics>, mut rx: tokio::sync::mpsc::Receiver<Data>) {
+    pub async fn start_listening_to_metrics(
+        self: Arc<Metrics>,
+        mut rx: tokio::sync::mpsc::Receiver<MetricsMessage>,
+    ) {
         let mut data = Statistics {
             histogram_family: Family::<Labels, Histogram>::new_with_constructor(|| {
                 Histogram::new(
@@ -80,10 +86,10 @@ impl Metrics {
         tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
                 match message {
-                    Data::Receive(v) => {
+                    MetricsMessage::GetMetricsRegistryAsString(v) => {
                         let _ = v.send(formatted_registry(&data.registry.as_ref()).await);
                     }
-                    Data::IngestHistogram((path, duration, method)) => data
+                    MetricsMessage::HTTPLatency((path, duration, method)) => data
                         .histogram_family
                         .get_or_create(&Labels {
                             method,

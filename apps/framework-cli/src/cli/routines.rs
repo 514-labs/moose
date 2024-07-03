@@ -389,8 +389,6 @@ pub async fn start_development_mode(
     )?;
 
     info!("Starting web server...");
-    let server_config = project.http_server_config.clone();
-    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     web_server
         .start(route_table, consumption_apis, project, metrics.clone())
         .await;
@@ -484,8 +482,6 @@ pub async fn start_production_mode(
     }
 
     info!("Starting web server...");
-    let server_config = project.http_server_config.clone();
-    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     web_server
         .start(route_table, consumption_apis, project, metrics.clone())
         .await;

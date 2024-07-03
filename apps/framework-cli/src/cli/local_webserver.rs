@@ -11,7 +11,7 @@ use crate::framework::core::infrastructure_map::ApiChange;
 use crate::framework::core::infrastructure_map::Change;
 use crate::metrics::Method;
 
-use super::super::metrics::{Data, Metrics};
+use super::super::metrics::{Metrics, MetricsMessage};
 use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
@@ -153,7 +153,7 @@ async fn create_client(
     let body = res.collect().await.unwrap().to_bytes().to_vec();
 
     metrics
-        .send_data(Data::IngestHistogram((
+        .send_data(MetricsMessage::HTTPLatency((
             route.clone(),
             metrics_details.timer.elapsed(),
             metrics_details.metrics_method,
@@ -218,7 +218,7 @@ async fn options_route(
         .unwrap();
 
     metrics
-        .send_data(Data::IngestHistogram((
+        .send_data(MetricsMessage::HTTPLatency((
             route.clone(),
             metrics_details.timer.elapsed(),
             metrics_details.metrics_method,
@@ -239,7 +239,7 @@ async fn health_route(
         .unwrap();
 
     metrics
-        .send_data(Data::IngestHistogram((
+        .send_data(MetricsMessage::HTTPLatency((
             route.clone(),
             metrics_details.timer.elapsed(),
             metrics_details.metrics_method,
@@ -268,7 +268,7 @@ async fn log_route(
     }
 
     metrics
-        .send_data(Data::IngestHistogram((
+        .send_data(MetricsMessage::HTTPLatency((
             route.clone(),
             metrics_details.timer.elapsed(),
             metrics_details.metrics_method,
@@ -292,7 +292,7 @@ async fn metrics_route(
         .unwrap();
 
     metrics
-        .send_data(Data::IngestHistogram((
+        .send_data(MetricsMessage::HTTPLatency((
             route.clone(),
             metrics_details.timer.elapsed(),
             metrics_details.metrics_method,
@@ -467,7 +467,7 @@ async fn ingest_route(
     );
 
     metrics
-        .send_data(Data::IngestHistogram((
+        .send_data(MetricsMessage::HTTPLatency((
             route.clone(),
             metrics_details.timer.elapsed(),
             metrics_details.metrics_method,
@@ -532,6 +532,9 @@ async fn router(
         hyper::Method::CONNECT => Method::CONNECT,
         hyper::Method::TRACE => Method::TRACE,
         hyper::Method::PATCH => Method::PATCH,
+        //hyper::Method::EXTENSION(_) => Method::OTHER,
+        // hyper::Method::ExtensionInline() => Method::OTHER,
+        // hyper::Method::ExtensionAllocated(_) => Method::OTHER,
         _ => Method::OTHER,
     };
 
@@ -637,7 +640,7 @@ async fn router(
         }
         _ => {
             metrics
-                .send_data(Data::IngestHistogram((
+                .send_data(MetricsMessage::HTTPLatency((
                     route.clone(),
                     now.elapsed(),
                     metrics_method,
@@ -737,7 +740,10 @@ impl Webserver {
         project: Arc<Project>,
         metrics: Arc<Metrics>,
     ) {
+        //! Starts the local webserver
         let socket = self.socket().await;
+
+        // We create a TcpListener and bind it to {project.http_server_config.host} on port {project.http_server_config.port}
         let listener = TcpListener::bind(socket).await.unwrap();
         let producer = redpanda::create_producer(project.redpanda_config.clone());
 

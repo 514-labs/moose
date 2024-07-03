@@ -7,46 +7,46 @@ import {
 import { Heading, Text } from "@514labs/design-system-components/typography";
 import React from "react";
 
-import { Box, Database, Layers, Network, Share2, Trello } from "lucide-react";
+import { Box, Database, Layers, Network, Share2, Terminal } from "lucide-react";
 
 export const FeaturesSection = () => {
   const content = {
-    title: "Everything you need to build data-driven experiences",
+    title: "Your tools, your workflows",
     features: [
       {
-        title: "Data Models",
+        title: "Python and TypeScript",
         description:
-          "Define data models in your language, Moose derives the infrastructure for you",
+          "Write your code in your native language, using your favorite IDE plug-ins and AI assistants",
         icon: <Layers strokeWidth={1} />,
       },
       {
-        title: "Flows",
+        title: "Local Dev Server",
         description:
-          "Write simple functions to transform and augment your data on the fly",
-        icon: <Share2 strokeWidth={1} />,
+          "Run your entire application on your machine and see the impact of code changes in real-time",
+        icon: <Database strokeWidth={1} />,
       },
       {
-        title: "Aggregations",
+        title: "Git-Based Workflows",
         description:
-          "Pivot, filter and group your data for repeatable insights and metrics",
-        icon: <Network strokeWidth={1} />,
+          "Plug in to your existing workflows for versioning and code collaboration",
+        icon: <Share2 strokeWidth={1} />,
       },
       {
         title: "Migrations",
         description:
-          "Moose helps manage migrations for your end-to-end data stack",
-        icon: <Database strokeWidth={1} />,
+          "Built in version control for your endpoints so integrations with sources and consumers don’t break",
+        icon: <Network strokeWidth={1} />,
       },
       {
-        title: "Templates",
+        title: "Powerful CLI",
         description:
-          "Get up and running in seconds with pre-built application templates",
-        icon: <Trello strokeWidth={1} />,
+          "Execute commands in your terminal to automate parts of setting up and building your application ",
+        icon: <Terminal strokeWidth={1} />,
       },
       {
-        title: "Packaging",
+        title: "Containers",
         description:
-          "Easily package your application for deployment in any environment",
+          "Package your application for deployment in any environment from the CLI",
         icon: <Box strokeWidth={1} />,
       },
       // {

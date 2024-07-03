@@ -20,26 +20,24 @@ import {
 } from "@514labs/design-system-components/typography";
 import React, { useRef, useState } from "react";
 
-import { TrackingVerb } from "@514labs/event-capture/withTrack";
-
 import { TrackableAccordionTrigger } from "../../trackable-components";
 import Diagram from "../../spline";
 
 const content = {
-  title: "Concentrate on your data. Moose handles the stack.",
+  title: "Build your features and products. Moose handles the stack.",
   description:
-    "Moose automatically manages the infrastructure, so you can focus on innovating with your data.",
+    "Moose automatically manages the infrastructure, so you can focus on innovating with your data",
   top: {
     title: "Analytics or User Facing Applications",
     description:
-      "Deliver structured data and insights to user facing applications, AI/ML models, analyst notebooks, or enterprise BI software.",
+      "Deliver structured data and insights to user facing applications, AI/ML models, analyst notebooks, or enterprise BI software",
   },
   layers: [
     {
       title: "Data Application Logic",
       label: "TOP-LAYER",
       description:
-        "Build data aware LLM + RAG applications to surface insights for your users",
+        "Develop application logic for modeling, processing, aggregating, and consuming data using Moose primitives",
       details: [
         {
           title: "Models",
@@ -62,7 +60,7 @@ const content = {
     {
       title: "Moose Defined Infrastructure",
       description:
-        "Understand users and business operations across technologies and products",
+        "Moose automatically configures and manages the systems needed for data processing, storage, and access, based on your data application logic",
       layer: "MIDDLE-LAYER",
       details: [
         {
@@ -75,7 +73,7 @@ const content = {
         },
         {
           title: "Processes",
-          description: "Executes transformation functions ",
+          description: "Executes transformation functions",
         },
         {
           title: "Tables",
@@ -84,11 +82,11 @@ const content = {
         },
         {
           title: "Views",
-          description: "Stores aggregated data for reuse & performance.",
+          description: "Stores aggregated data for reuse & performance",
         },
         {
           title: "Consumption Endpoints",
-          description: "Executes route handlers to serve data to client apps.",
+          description: "Executes route handlers to serve data to client apps",
         },
       ],
     },
@@ -157,11 +155,11 @@ const MooseLayersAccordion = ({ spline }: { spline: any }) => {
                       {layer.description}
                     </Text>
                   </FullWidthContentContainer>
-                  <Grid className="gap-x-2">
+                  <Grid className="gap-10">
                     {layer.details.map((detail, index) => {
                       return (
                         <HalfWidthContentContainer
-                          className="w-full flex flex-col items-center justify-center text-left border border-muted-foreground rounded-3xl p-5"
+                          className="w-full flex flex-col items-center justify-stretch text-left border border-muted-foreground rounded-3xl p-5"
                           key={index}
                         >
                           <Text className="my-0 justify-start self-start">

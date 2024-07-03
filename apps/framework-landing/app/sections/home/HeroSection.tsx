@@ -15,7 +15,7 @@ import Link from "next/link";
 
 export const HeroSection = () => {
   const content = {
-    tagLine: "Build your own data products in minutes",
+    tagLine: "Prototype & scale data-intensive apps in minutes",
     description:
       "An open source developer framework for your data & analytics stack",
     ctas: [

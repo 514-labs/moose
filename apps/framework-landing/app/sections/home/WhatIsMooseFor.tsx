@@ -3,6 +3,7 @@ import {
   Grid,
   ThirdWidthContentContainer,
   Section,
+  HalfWidthContentContainer,
 } from "@514labs/design-system-components/components/containers";
 
 import {
@@ -16,30 +17,21 @@ import { Fragment, Suspense } from "react";
 import { TemplateImg } from "../../sections/home/TemplateImg";
 import { Badge } from "@514labs/design-system-components/components";
 
-const content = {
-  title: "Build big and small data features and products",
-  description:
-    "Moose helps you turn big and small data into features and products for your users and your peers",
+const mooseContent = {
+  title: "When to use Moose",
   usecases: [
     {
-      title: "Standard Apps",
-      description: "COPY HERE",
-      badge: "OLTP Frameworks",
-      imageSrcLight: "/images/diagrams/img-diagram-standard-light.svg",
-      imageSrcDark: "/images/diagrams/img-diagram-standard-dark.svg",
-    },
-    {
-      title: "Data Intensive Features",
+      title: "Data-intensive apps",
       description:
-        "Extend your user facing applications with dynamic leaderboards, charts, and data feeds",
-      badge: "OLTP Frameworks & Moose",
+        "Build an OLAP-centric backend to serve real-time leaderboards, charts, and metrics in your apps",
+      badge: "Moose + OLTP",
       imageSrcLight: "/images/diagrams/img-diagram-data-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-data-dark.svg",
     },
     {
-      title: "Data as a Product",
+      title: "Enterprise data products",
       description:
-        "Make it easy for others to derive value from the data your team owns",
+        "Leverage Moose to build data services powering BI, AI/ML pipelines, and notebooks",
       badge: "Moose",
       imageSrcLight: "/images/diagrams/img-diagram-ent-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-ent-dark.svg",
@@ -47,29 +39,70 @@ const content = {
   ],
 };
 
+const notMooseContent = {
+  title: "When to not use Moose",
+  subtitle: "Transactional Apps",
+  description:
+    "If you’re building apps with high transactional workloads and CRUD operations, you’ll be better served by OLTP focused frameworks",
+  badge: "OLTP",
+  imageSrcLight: "/images/diagrams/img-diagram-standard-light.svg",
+  imageSrcDark: "/images/diagrams/img-diagram-standard-dark.svg",
+};
+
+export const WhatIsntMooseFor = () => {
+  return (
+    <>
+      <Section className="mx-auto xl:max-w-screen-xl">
+        <FullWidthContentContainer>
+          <Heading>{notMooseContent.title}</Heading>
+        </FullWidthContentContainer>
+        <Grid className="items-center">
+          <HalfWidthContentContainer className="p-10">
+            <div className="relative aspect-square my-0">
+              <Suspense fallback={<div>Loading...</div>}>
+                <TemplateImg
+                  srcDark={notMooseContent.imageSrcDark}
+                  srcLight={notMooseContent.imageSrcLight}
+                  alt={notMooseContent.subtitle}
+                />
+              </Suspense>
+            </div>
+          </HalfWidthContentContainer>
+          <HalfWidthContentContainer className="flex flex-col gap-5 align-bottom p-10">
+            <Badge className="w-fit p-2" variant={"outline"}>
+              {notMooseContent.badge}
+            </Badge>
+            <Heading level={HeadingLevel.l2} className="my-0">
+              {notMooseContent.subtitle}
+            </Heading>
+            <Heading
+              level={HeadingLevel.l4}
+              className="my-0 text-muted-foreground"
+            >
+              {notMooseContent.description}
+            </Heading>
+          </HalfWidthContentContainer>
+        </Grid>
+      </Section>
+    </>
+  );
+};
 export const WhatIsMooseFor = () => {
   return (
     <>
       <Section className="mx-auto xl:max-w-screen-xl">
-        <Grid className="mb-12 2xl:mb-20">
-          <FullWidthContentContainer>
-            <Heading>{content.title}</Heading>
-            <Heading level={HeadingLevel.l3} className="text-muted-foreground">
-              {content.description}
-            </Heading>
-          </FullWidthContentContainer>
-        </Grid>
-      </Section>
-      <Section className="w-full relative mx-auto xl:my-10 xl:max-w-screen-xl 2xl:my-0">
+        <FullWidthContentContainer>
+          <Heading>{mooseContent.title}</Heading>
+        </FullWidthContentContainer>
         <Grid className="gap-y-5 justify-center">
-          {content.usecases.map((usecase, index) => {
+          {mooseContent.usecases.map((usecase, index) => {
             return (
               <Fragment key={index}>
-                <ThirdWidthContentContainer
+                <HalfWidthContentContainer
                   key={index}
-                  className="flex flex-col xl:justify-start xl:order-4 border border-muted-foreground rounded-3xl p-5"
+                  className="flex flex-col xl:justify-start xl:order-4 p-5"
                 >
-                  <div className="relative aspect-square my-0">
+                  <div className="relative aspect-square my-0 px-10">
                     <Suspense fallback={<div>Loading...</div>}>
                       <TemplateImg
                         srcDark={usecase.imageSrcDark}
@@ -78,21 +111,21 @@ export const WhatIsMooseFor = () => {
                       />
                     </Suspense>
                   </div>
-
-                  {/* <Text className="flex flex-row items-center justify-start border border-primary rounded-full px-5 py-2.5 w-fit">
-                    {usecase.badge}
-                  </Text>
-                   */}
-                  <Badge className="w-fit p-2" variant={"outline"}>
-                    {usecase.badge}
-                  </Badge>
-                  <div className="my-5">
-                    <Text className="my-0">{usecase.title}</Text>
-                    <Text className="my-0 text-muted-foreground xl:grow">
+                  <div className="flex flex-col gap-5">
+                    <Badge className="w-fit p-2" variant={"default"}>
+                      {usecase.badge}
+                    </Badge>
+                    <Heading level={HeadingLevel.l2} className="my-0">
+                      {usecase.title}
+                    </Heading>
+                    <Heading
+                      level={HeadingLevel.l4}
+                      className="my-0 text-muted-foreground xl:grow"
+                    >
                       {usecase.description}
-                    </Text>
+                    </Heading>
                   </div>
-                </ThirdWidthContentContainer>
+                </HalfWidthContentContainer>
               </Fragment>
             );
           })}

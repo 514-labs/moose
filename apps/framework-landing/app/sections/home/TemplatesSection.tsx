@@ -27,7 +27,7 @@ const content = {
       imageSrcLight: "/images/diagrams/img-diagram-PA-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-PA-dark.svg",
       description:
-        "Capture clickstream events from your users and analyze how they interact with your product to optimize your product development",
+        "Capture clickstream events from your users and analyze their interactions with your product",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -39,7 +39,7 @@ const content = {
       imageSrcLight: "/images/diagrams/img-diagram-LLM-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-LLM-dark.svg",
       description:
-        "Build LLM applications that connect to your data consumption API to surface insights for your users",
+        "Build natural language interfaces on top of your data by exposing data APIs to a LLM",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -51,7 +51,7 @@ const content = {
       imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
       description:
-        "Integrate data across business domains into a data warehouse and integrate your favorite BI tools to build rich experiences on top of the data",
+        "Integrate enterprise data sources into a central warehouse and connect to your BI tool of choice",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -86,7 +86,7 @@ export const TemplatesSection = () => {
             <Fragment key={index}>
               <ThirdWidthContentContainer
                 key={index}
-                className="flex flex-col xl:justify-start xl:order-4 border border-muted-foreground rounded-xl p-5"
+                className="flex flex-col xl:justify-start xl:order-4 p-5"
               >
                 <div className="relative aspect-square my-0">
                   <Suspense fallback={<div>Loading...</div>}>

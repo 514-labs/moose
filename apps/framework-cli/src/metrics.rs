@@ -6,6 +6,13 @@ use prometheus_client::{
 };
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
+#[derive(Debug, thiserror::Error)]
+#[non_exhaustive]
+pub enum MetricsErrors {
+    #[error("Failed to get metrics data")]
+    OneShotError(#[from] tokio::sync::oneshot::error::RecvError),
+}
+
 pub enum MetricsMessage {
     GetMetricsRegistryAsString(tokio::sync::oneshot::Sender<String>),
     HTTPLatency((PathBuf, Duration, String)),
@@ -38,17 +45,14 @@ impl Metrics {
         let _ = self.tx.send(data).await;
     }
 
-    pub async fn receive_data(&self) -> Result<String, tokio::sync::oneshot::error::RecvError> {
+    pub async fn receive_data(&self) -> Result<std::string::String, MetricsErrors> {
         let (resp_tx, resp_rx) = tokio::sync::oneshot::channel::<String>();
         let _ = self
             .tx
             .send(MetricsMessage::GetMetricsRegistryAsString(resp_tx))
             .await;
 
-        match resp_rx.await {
-            Ok(resp) => Ok(resp),
-            Err(err) => Err(err),
-        }
+        Ok(resp_rx.await?)
     }
 
     pub async fn start_listening_to_metrics(

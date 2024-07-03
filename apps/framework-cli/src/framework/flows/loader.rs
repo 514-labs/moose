@@ -70,7 +70,7 @@ async fn get_all_flows(
                             let target_data_model_name = split[1];
 
                             let source_data_model = if let Some(source_data_model) =
-                                data_models.get(&source_data_model_name, current_version)
+                                data_models.get(source_data_model_name, current_version)
                             {
                                 source_data_model
                             } else {
@@ -82,7 +82,7 @@ async fn get_all_flows(
                             };
 
                             let target_data_model = if let Some(target_data_model) =
-                                data_models.get(&target_data_model_name, current_version)
+                                data_models.get(target_data_model_name, current_version)
                             {
                                 target_data_model
                             } else {

@@ -678,7 +678,7 @@ mod tests {
 
         let config = read_settings().unwrap();
 
-        let (metrics, rx) = Metrics::new();
+        let (metrics, _rx) = Metrics::new();
         let arc_metrics = Arc::new(metrics);
 
         top_command_handler(config, &cli.command, arc_metrics).await

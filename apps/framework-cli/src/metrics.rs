@@ -30,7 +30,7 @@ pub struct Labels {
 impl Metrics {
     pub fn new() -> (Metrics, tokio::sync::mpsc::Receiver<MetricsMessage>) {
         let (tx, rx) = tokio::sync::mpsc::channel(32);
-        let metrics = Metrics { tx: tx };
+        let metrics = Metrics { tx };
         (metrics, rx)
     }
 

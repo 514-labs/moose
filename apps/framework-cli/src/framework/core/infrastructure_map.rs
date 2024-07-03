@@ -418,6 +418,11 @@ impl InfrastructureMap {
 
         topic_to_table_process_changes.append(&mut function_process_changes);
 
+        // TODO Change this when we have multiple processes for aggregations
+        topic_to_table_process_changes.push(ProcessChange::OlapProcess(
+            Change::<OlapProcess>::Added(OlapProcess {}),
+        ));
+
         topic_to_table_process_changes
     }
 }

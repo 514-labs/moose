@@ -50,7 +50,7 @@ const notMooseContent = {
 export const WhatIsntMooseFor = () => {
   return (
     <>
-      <Section className="mx-auto xl:max-w-screen-xl border-t border-muted-foreground">
+      <Section className="mx-auto xl:max-w-screen-xl border-t">
         <FullWidthContentContainer className="mt-24 lg:mt-24 2xl:mt-36 mb-12 2xl:mb-20">
           <Heading>{notMooseContent.title}</Heading>
         </FullWidthContentContainer>

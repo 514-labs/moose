@@ -103,8 +103,8 @@ export default function TemplatePage({
       {
         slug: "product-analytics",
         title: "Product Analytics",
-        imageSrcLight: "/images/templates/IMG_TEMPLATE_PA_LIGHT.svg",
-        imageSrcDark: "/images/templates/IMG_TEMPLATE_PA_DARK.svg",
+        imageSrcLight: "/images/diagrams/img-diagram-PA-light.svg",
+        imageSrcDark: "/images/diagrams/img-diagram-PA-dark.svg",
         cta: {
           action: "cta-product-analytics-install",
           label: "Create Template Command",
@@ -219,8 +219,8 @@ export default function TemplatePage({
       {
         slug: "llm-application",
         title: "LLM Application",
-        imageSrcLight: "/images/templates/IMG_TEMPLATE_LLM_LIGHT.svg",
-        imageSrcDark: "/images/templates/IMG_TEMPLATE_LLM_DARK.svg",
+        imageSrcLight: "/images/diagrams/img-diagram-LLM-light.svg",
+        imageSrcDark: "/images/diagrams/img-diagram-LLM-dark.svg",
         description:
           "Build natural language interfaces on top of your data by exposing data APIs to a LLM",
         usage: [],
@@ -228,8 +228,8 @@ export default function TemplatePage({
       {
         slug: "data-warehouse",
         title: "Data Warehouse",
-        imageSrcLight: "/images/templates/IMG_TEMPLATE_DW_LIGHT.svg",
-        imageSrcDark: "/images/templates/IMG_TEMPLATE_DW_DARK.svg",
+        imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
+        imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
         description:
           "Integrate enterprise data sources into a central warehouse and connect to your BI tool of choice",
         usage: [],

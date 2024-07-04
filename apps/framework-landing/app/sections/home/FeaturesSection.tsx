@@ -7,7 +7,7 @@ import {
 import { Heading, Text } from "@514labs/design-system-components/typography";
 import React from "react";
 
-import { Box, Database, Layers, Network, Share2, Terminal } from "lucide-react";
+import { Box, Database, Network, Share2, Terminal, Code2 } from "lucide-react";
 
 export const FeaturesSection = () => {
   const content = {
@@ -17,7 +17,7 @@ export const FeaturesSection = () => {
         title: "Python and TypeScript",
         description:
           "Write your code in your native language, using your favorite IDE plug-ins and AI assistants",
-        icon: <Layers strokeWidth={1} />,
+        icon: <Code2 strokeWidth={1} />,
       },
       {
         title: "Local Dev Server",

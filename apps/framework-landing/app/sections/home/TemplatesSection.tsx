@@ -39,7 +39,7 @@ const content = {
       imageSrcLight: "/images/diagrams/img-diagram-LLM-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-LLM-dark.svg",
       description:
-        "Build natural language interfaces on top of your data by exposing data APIs to a LLM",
+        "Build natural language interfaces by exposing data APIs to an LLM",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",

@@ -111,7 +111,7 @@ export default function TemplatePage({
           text: "npx create-moose-app your-analytics-app --template product-analytics",
         },
         description:
-          "Capture user journeys and derive actionable insights to optimize your product development.",
+          "Capture clickstream events from your users and analyze their interactions with your product",
         features: {
           title: "Features",
           items: [
@@ -222,7 +222,7 @@ export default function TemplatePage({
         imageSrcLight: "/images/templates/IMG_TEMPLATE_LLM_LIGHT.svg",
         imageSrcDark: "/images/templates/IMG_TEMPLATE_LLM_DARK.svg",
         description:
-          "Optimize AI automations powered by RAG on your own data to create innovative end user experiences.",
+          "Build natural language interfaces on top of your data by exposing data APIs to a LLM",
         usage: [],
       },
       {
@@ -231,7 +231,7 @@ export default function TemplatePage({
         imageSrcLight: "/images/templates/IMG_TEMPLATE_DW_LIGHT.svg",
         imageSrcDark: "/images/templates/IMG_TEMPLATE_DW_DARK.svg",
         description:
-          "Integrate data across business domains into a data warehouse with discoverable, consumable data products.",
+          "Integrate enterprise data sources into a central warehouse and connect to your BI tool of choice",
         usage: [],
       },
     ],

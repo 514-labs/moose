@@ -24,8 +24,7 @@ import { TrackableAccordionTrigger } from "../../trackable-components";
 import Diagram from "../../spline";
 
 const content = {
-  title:
-    "Don't reinvent the wheel. Build your unique features and products while Moose handles the stack.",
+  title: "Focus on your features and products. Moose handles the rest.",
   description:
     "Moose automatically manages the infrastructure, so you can focus on innovating with your data",
   top: {

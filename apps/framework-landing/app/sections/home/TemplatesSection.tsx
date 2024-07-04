@@ -35,7 +35,7 @@ const content = {
       },
     },
     {
-      title: "LLM Application",
+      title: "LLM Tools",
       imageSrcLight: "/images/diagrams/img-diagram-LLM-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-LLM-dark.svg",
       description:

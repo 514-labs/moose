@@ -21,8 +21,8 @@ const mooseContent = {
     {
       title: "Data-intensive apps",
       description:
-        "Build an analytics backend to power real-time leaderboards, charts, and metrics in your OLTP apps",
-      badge: "Moose + OLTP",
+        "Build an analytics backend to power real-time leaderboards, charts, and metrics in your products",
+      badge: "Moose + OLTP Frameworks",
       imageSrcLight: "/images/diagrams/img-diagram-data-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-data-dark.svg",
     },
@@ -30,7 +30,7 @@ const mooseContent = {
       title: "Enterprise data products",
       description:
         "Build a data warehouse to serve BI tools, AI/ML pipelines, and data exploration notebooks",
-      badge: "Moose + BI",
+      badge: "Moose",
       imageSrcLight: "/images/diagrams/img-diagram-PA-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-PA-dark.svg",
     },
@@ -42,7 +42,7 @@ const notMooseContent = {
   subtitle: "Transactional Apps",
   description:
     "If you’re building apps with only high transactional workloads and CRUD operations, you’ll be better served by the decades of great OLTP focused frameworks out there",
-  badge: "OLTP",
+  badge: "OLTP Frameworks",
   imageSrcLight: "/images/diagrams/img-diagram-standard-light.svg",
   imageSrcDark: "/images/diagrams/img-diagram-standard-dark.svg",
 };

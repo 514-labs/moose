@@ -16,31 +16,31 @@ export const FeaturesSection = () => {
       {
         title: "Python and TypeScript",
         description:
-          "Write your code in your native language, using your favorite IDE plug-ins and AI assistants",
+          "Write code in your native language with your favorite IDE plug-ins and AI assistants",
         icon: <Code2 strokeWidth={1} />,
       },
       {
         title: "Local Dev Server",
         description:
-          "Run your entire application on your machine and see the impact of code changes in real-time",
+          "Run your application locally and see the impact of code changes in real-time",
         icon: <Database strokeWidth={1} />,
       },
       {
         title: "Git-Based Workflows",
         description:
-          "Plug in to your existing workflows for version control and code collaboration",
+          "Integrate with existing version control and code collaboration workflows",
         icon: <Share2 strokeWidth={1} />,
       },
       {
         title: "Migrations",
         description:
-          "Synchronize versions of your data as schemas change with automated migrations so your data stays up-to-date",
+          "Keep versions your data synchronized through automated schema migrations",
         icon: <Network strokeWidth={1} />,
       },
       {
         title: "Powerful CLI",
         description:
-          "Execute commands in your terminal to automate parts of setting up and building your application ",
+          "Use terminal commands to automate setup and build processes",
         icon: <Terminal strokeWidth={1} />,
       },
       {

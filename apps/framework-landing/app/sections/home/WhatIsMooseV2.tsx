@@ -24,9 +24,10 @@ import { TrackableAccordionTrigger } from "../../trackable-components";
 import Diagram from "../../spline";
 
 const content = {
-  title: "Focus on your features and products. Moose handles the rest.",
+  title: "What is Moose?",
+  title1: "Focus on your features and products. Moose handles the rest.",
   description:
-    "Moose automatically configures and manages your data stack infrastructure as you build your application so you don't have to",
+    "Moose manages the infrastructure as you build your app so you don't have to",
   top: {
     title: "Analytics or User Facing Applications",
     description:
@@ -34,7 +35,7 @@ const content = {
   },
   layers: [
     {
-      title: "Data Application Logic",
+      title: "Moose Primitives",
       label: "TOP-LAYER",
       description:
         "Develop application logic for modeling, processing, aggregating, and consuming data using Moose primitives",

@@ -31,8 +31,8 @@ const mooseContent = {
       description:
         "Build a data warehouse to serve BI tools, AI/ML pipelines, and data exploration notebooks",
       badge: "Moose + BI",
-      imageSrcLight: "/images/diagrams/img-diagram-ent-light.svg",
-      imageSrcDark: "/images/diagrams/img-diagram-ent-dark.svg",
+      imageSrcLight: "/images/diagrams/img-diagram-PA-light.svg",
+      imageSrcDark: "/images/diagrams/img-diagram-PA-dark.svg",
     },
   ],
 };
@@ -50,8 +50,8 @@ const notMooseContent = {
 export const WhatIsntMooseFor = () => {
   return (
     <>
-      <Section className="mx-auto xl:max-w-screen-xl border-t">
-        <FullWidthContentContainer className="my-12 2xl:mb-20">
+      <Section className="mx-auto xl:max-w-screen-xl border-t border-muted-foreground">
+        <FullWidthContentContainer className="mt-24 lg:mt-24 2xl:mt-36 mb-12 2xl:mb-20">
           <Heading>{notMooseContent.title}</Heading>
         </FullWidthContentContainer>
         <Grid className="items-center">

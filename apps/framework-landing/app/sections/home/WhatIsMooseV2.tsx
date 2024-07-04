@@ -26,7 +26,7 @@ import Diagram from "../../spline";
 const content = {
   title: "Focus on your features and products. Moose handles the rest.",
   description:
-    "Moose automatically manages the infrastructure, so you can focus on innovating with your data",
+    "Moose automatically configures and manages your data stack infrastructure as you build your application so you don't have to",
   top: {
     title: "Analytics or User Facing Applications",
     description:
@@ -60,7 +60,7 @@ const content = {
     {
       title: "Moose Defined Infrastructure",
       description:
-        "Moose automatically configures and manages the systems needed for data processing, storage, and access, based on your data application logic",
+        "Moose automatically configures and manages the system artifacts needed for data processing, storage, and consumption, based on your data application logic",
       layer: "MIDDLE-LAYER",
       details: [
         {

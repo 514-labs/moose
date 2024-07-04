@@ -18,7 +18,7 @@ import {
   Text,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
-import React, { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 
 import { TrackableAccordionTrigger } from "../../trackable-components";
 import Diagram from "../../spline";

@@ -197,24 +197,6 @@ const MooseLayersAccordion = ({ spline }: { spline: any }) => {
 
 export const WhatIsMoose = () => {
   const spline = useRef();
-  const [splineHeight, setSplineHeight] = useState(0);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!ref.current) {
-      return;
-    }
-    const resizeObserver = new ResizeObserver(() => {
-      if (ref.current && ref.current.offsetHeight !== splineHeight) {
-        setSplineHeight(ref.current.offsetHeight);
-      }
-    });
-    resizeObserver.observe(ref.current);
-    return function cleanup() {
-      resizeObserver.disconnect();
-    };
-  }, [ref.current]);
-
   return (
     <>
       <Section className="mx-auto xl:max-w-screen-xl">
@@ -230,26 +212,24 @@ export const WhatIsMoose = () => {
       <div></div>
       <Section className="w-full relative mx-auto xl:my-10 xl:max-w-screen-xl 2xl:my-0">
         <Grid>
-          <ThirdWidthContentContainer>
-            <Diagram height={splineHeight} spline={spline} />
+          <ThirdWidthContentContainer className="overflow-hidden relative">
+            <Diagram spline={spline} />
           </ThirdWidthContentContainer>
 
           <TwoThirdsWidthContentContainer className="flex flex-col xl:justify-start gap-5 h-fit">
-            <div ref={ref}>
-              <FullWidthContentContainer className="px-4">
-                <Text className="my-0">{content.top.title}</Text>
-                <Text className="my-0 text-muted-foreground">
-                  {content.top.description}
-                </Text>
-              </FullWidthContentContainer>
-              <MooseLayersAccordion spline={spline} />
-              {/* <FullWidthContentContainer className="p-4">
+            <FullWidthContentContainer className="px-4">
+              <Text className="my-0">{content.top.title}</Text>
+              <Text className="my-0 text-muted-foreground">
+                {content.top.description}
+              </Text>
+            </FullWidthContentContainer>
+            <MooseLayersAccordion spline={spline} />
+            {/* <FullWidthContentContainer className="p-4">
                 <Text className="my-0">{content.bottom.title}</Text>
                 <Text className="my-0 text-muted-foreground">
                   {content.bottom.description}
                 </Text>
               </FullWidthContentContainer> */}
-            </div>
           </TwoThirdsWidthContentContainer>
         </Grid>
       </Section>

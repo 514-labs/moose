@@ -5,26 +5,23 @@ const SplineNext = lazy(() => import("@splinetool/react-spline"));
 
 interface DiagramProps {
   spline: any;
-  height: number;
 }
-export default function Diagram({ spline, height }: DiagramProps) {
+export default function Diagram({ spline }: DiagramProps) {
   function onLoad(splineApp: any) {
     // save the app in a ref for later use
     spline.current = splineApp;
   }
   return (
-    <div style={{ height: height }} className="pointer-events-none">
-      <SplineNext
-        scene="https://prod.spline.design/RJScsp86rZc2qKSB/scene.splinecode"
-        onLoad={onLoad}
-      />
+    <div style={{ height: "100%" }} className="overflow-hidden relative">
+      <div
+        className="pointer-events-none"
+        style={{ position: "absolute", height: 1000 }}
+      >
+        <SplineNext
+          scene="https://prod.spline.design/RlcBcTeooeYSYXae/scene.splinecode"
+          onLoad={onLoad}
+        />
+      </div>
     </div>
   );
 }
-
-/*
-<SplineNext
-scene="https://prod.spline.design/RJScsp86rZc2qKSB/scene.splinecode"
-onLoad={onLoad}
-/>
-*/

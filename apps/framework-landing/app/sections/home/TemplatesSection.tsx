@@ -50,8 +50,7 @@ const content = {
       title: "Data Warehouse",
       imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
-      description:
-        "Integrate enterprise data into a central warehouse and connect to your BI tool",
+      description: "Centralize enterprise data and integrate with your BI tool",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",

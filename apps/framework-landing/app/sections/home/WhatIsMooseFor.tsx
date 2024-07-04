@@ -30,7 +30,7 @@ const mooseContent = {
       title: "Enterprise data products",
       description:
         "Build a data warehouse to serve BI tools, AI/ML pipelines, and data exploration notebooks",
-      badge: "Moose",
+      badge: "Moose Only",
       imageSrcLight: "/images/diagrams/img-diagram-ent-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-ent-dark.svg",
     },

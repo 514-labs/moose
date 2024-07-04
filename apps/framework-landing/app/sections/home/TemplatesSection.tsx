@@ -27,7 +27,7 @@ const content = {
       imageSrcLight: "/images/diagrams/img-diagram-PA-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-PA-dark.svg",
       description:
-        "Capture clickstream events from your users and analyze their interactions with your product",
+        "Capture clickstream events and analyze user journeys in real-time",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -51,7 +51,7 @@ const content = {
       imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
       description:
-        "Integrate enterprise data sources into a central warehouse and connect to your BI tool of choice",
+        "Integrate enterprise data into a central warehouse and connect to your BI tool",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",

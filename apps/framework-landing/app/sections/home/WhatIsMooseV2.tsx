@@ -24,8 +24,7 @@ import { TrackableAccordionTrigger } from "../../trackable-components";
 import Diagram from "../../spline";
 
 const content = {
-  title: "What is Moose?",
-  title1: "Focus on your features and products. Moose handles the rest.",
+  title: "Focus on your features and products. Moose handles the rest.",
   description:
     "Moose manages the infrastructure as you build your app so you don't have to",
   top: {
@@ -218,12 +217,12 @@ export const WhatIsMoose = () => {
           </ThirdWidthContentContainer>
 
           <TwoThirdsWidthContentContainer className="flex flex-col xl:justify-start gap-5 h-fit">
-            <FullWidthContentContainer className="px-4">
+            {/* <FullWidthContentContainer className="px-4">
               <Text className="my-0">{content.top.title}</Text>
               <Text className="my-0 text-muted-foreground">
                 {content.top.description}
               </Text>
-            </FullWidthContentContainer>
+            </FullWidthContentContainer> */}
             <MooseLayersAccordion spline={spline} />
             {/* <FullWidthContentContainer className="p-4">
                 <Text className="my-0">{content.bottom.title}</Text>

@@ -31,8 +31,8 @@ const mooseContent = {
       description:
         "Build a data warehouse to serve BI tools, AI/ML pipelines, and data exploration notebooks",
       badge: "Moose",
-      imageSrcLight: "/images/diagrams/img-diagram-PA-light.svg",
-      imageSrcDark: "/images/diagrams/img-diagram-PA-dark.svg",
+      imageSrcLight: "/images/diagrams/img-diagram-ent-light.svg",
+      imageSrcDark: "/images/diagrams/img-diagram-ent-dark.svg",
     },
   ],
 };

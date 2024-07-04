@@ -50,13 +50,13 @@ const notMooseContent = {
 export const WhatIsntMooseFor = () => {
   return (
     <>
-      <Section className="mx-auto xl:max-w-screen-xl">
-        <FullWidthContentContainer>
+      <Section className="mx-auto xl:max-w-screen-xl border-t">
+        <FullWidthContentContainer className="my-12 2xl:mb-20">
           <Heading>{notMooseContent.title}</Heading>
         </FullWidthContentContainer>
         <Grid className="items-center">
           <HalfWidthContentContainer>
-            <div className="relative aspect-square my-0 p-5">
+            <div className="relative aspect-[2/1] my-10 p-5">
               <Suspense fallback={<div>Loading...</div>}>
                 <TemplateImg
                   srcDark={notMooseContent.imageSrcDark}
@@ -66,7 +66,7 @@ export const WhatIsntMooseFor = () => {
               </Suspense>
             </div>
           </HalfWidthContentContainer>
-          <HalfWidthContentContainer className="flex flex-col gap-2 align-bottom p-5">
+          <HalfWidthContentContainer className="flex flex-col gap-2 align-bottom">
             <Badge className="w-fit p-2" variant={"outline"}>
               {notMooseContent.badge}
             </Badge>
@@ -89,18 +89,18 @@ export const WhatIsMooseFor = () => {
   return (
     <>
       <Section className="mx-auto xl:max-w-screen-xl">
-        <FullWidthContentContainer>
+        <FullWidthContentContainer className="mb-12 2xl:mb-20">
           <Heading>{mooseContent.title}</Heading>
         </FullWidthContentContainer>
-        <Grid className="justify-center gapx-5">
+        <Grid className="justify-center">
           {mooseContent.usecases.map((usecase, index) => {
             return (
               <Fragment key={index}>
                 <HalfWidthContentContainer
                   key={index}
-                  className="flex flex-col xl:justify-start xl:order-4 p-5"
+                  className="flex flex-col xl:justify-start xl:order-4"
                 >
-                  <div className="relative aspect-square my-0 px-10">
+                  <div className="relative aspect-[2/1] my-10">
                     <Suspense fallback={<div>Loading...</div>}>
                       <TemplateImg
                         srcDark={usecase.imageSrcDark}

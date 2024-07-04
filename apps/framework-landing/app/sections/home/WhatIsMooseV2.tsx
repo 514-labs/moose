@@ -157,7 +157,7 @@ const MooseLayersAccordion = ({ spline }: { spline: any }) => {
               <TrackableAccordionTrigger
                 name="Moose Layer Accordion"
                 subject={layer.title}
-                className="hover:bg-muted-foreground/20 h"
+                className="hover:bg-muted-foreground/20"
               >
                 <Text className="my-0">{layer.title}</Text>
               </TrackableAccordionTrigger>

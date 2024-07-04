@@ -59,7 +59,7 @@ const content = {
       ],
     },
     {
-      title: "Moose Defined Infrastructure",
+      title: "Moose Configured Components",
       description:
         "Moose automatically configures and manages the system artifacts needed for data processing, storage, and consumption, based on your data application logic",
       layer: "MIDDLE-LAYER",
@@ -93,9 +93,9 @@ const content = {
     },
 
     {
-      title: "Foundational Infrastructure",
+      title: "Moose Provisioned Infra",
       description:
-        "Moose uses modern, open-source solutions in an industry-standard data stack, managing the connections to ensure reliable data transmission across systems",
+        "Moose provisions the core infrastructure systems for your data stack and manages their connections to ensure your data flows end-to-end",
       layer: "BOTTOM-LAYER",
       details: [
         {

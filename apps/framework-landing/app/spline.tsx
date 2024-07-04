@@ -18,7 +18,7 @@ export default function Diagram({ spline }: DiagramProps) {
         style={{ position: "absolute", height: 1000 }}
       >
         <SplineNext
-          scene="https://prod.spline.design/RlcBcTeooeYSYXae/scene.splinecode"
+          scene="https://prod.spline.design/wZ5u1Z2dz6HEwgz0/scene.splinecode"
           onLoad={onLoad}
         />
       </div>

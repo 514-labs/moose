@@ -195,7 +195,9 @@ pub static VSCODE_EXTENSIONS_TEMPLATE: &str = r#"
     "recommendations": [
         "frigus02.vscode-sql-tagged-template-literals-syntax-only",
         "mtxr.sqltools",
-        "ultram4rine.sqltools-clickhouse-driver"
+        "ultram4rine.sqltools-clickhouse-driver",
+        "jeppeandersen.vscode-kafka",
+        "rangav.vscode-thunder-client"
     ]
 }
 "#;

@@ -3,13 +3,14 @@ from dataclasses import dataclass
 from clickhouse_connect import get_client
 from string import Formatter
 from importlib import import_module
-from moose_lib import MooseClient
+from moose_lib import MooseClient, sigterm_handler
 from clickhouse_connect.driver.client import Client
 import argparse
 import os
 import sys
 import json
 import datetime
+import signal
 
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -107,8 +108,7 @@ async def main():
     httpd.serve_forever()
 
 
-
-
+signal.signal(signal.SIGTERM, sigterm_handler)
 
 
 asyncio.run(main())

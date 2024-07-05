@@ -1,11 +1,14 @@
 import asyncio
 from dataclasses import dataclass
 from clickhouse_connect import get_client
+from moose_lib import sigterm_handler
 from importlib import import_module
 import argparse
 import os
 import sys
+import signal
 
+signal.signal(signal.SIGTERM, sigterm_handler)
 
 parser = argparse.ArgumentParser(description='Run an aggregation')
 parser.add_argument('aggregation_dir_path', type=str,

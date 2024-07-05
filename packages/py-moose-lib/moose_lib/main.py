@@ -1,5 +1,6 @@
 from string import Formatter
 from typing import List, Union
+import sys
 
 
 class MooseClient:
@@ -54,3 +55,7 @@ class Sql:
                 self.strings[pos] = raw_string
 
             i += 1
+            
+def sigterm_handler(): 
+    print("SIGTERM received")
+    sys.exit(0)

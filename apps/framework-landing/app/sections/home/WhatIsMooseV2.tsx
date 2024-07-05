@@ -211,9 +211,9 @@ export const WhatIsMoose = () => {
         </Grid>
       </Section>
       <div></div>
-      <Section className="w-full h-fit relative mx-auto xl:my-10 xl:max-w-screen-xl 2xl:my-0">
+      <Section className="w-full relative mx-auto xl:my-10 xl:max-w-screen-xl 2xl:my-0">
         <Grid>
-          <ThirdWidthContentContainer className="overflow-hidden relative">
+          <ThirdWidthContentContainer>
             <Diagram spline={spline} />
           </ThirdWidthContentContainer>
 

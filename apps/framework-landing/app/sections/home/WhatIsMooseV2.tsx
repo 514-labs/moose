@@ -18,7 +18,7 @@ import {
   Text,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
-import React, { useRef, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 
 import { TrackableAccordionTrigger } from "../../trackable-components";
 import Diagram from "../../spline";
@@ -198,9 +198,18 @@ const MooseLayersAccordion = ({ spline }: { spline: any }) => {
 };
 
 export const WhatIsMoose = () => {
+  const [mounted, setMounted] = useState(false);
   const { resolvedTheme } = useTheme();
-  const inverted = resolvedTheme === "light" ? "invert" : `invert-0`;
   const spline = useRef();
+
+  // useEffect only runs on the client, so now we can safely show the UI
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) {
+    return null;
+  }
   return (
     <>
       <Section className="mx-auto xl:max-w-screen-xl">
@@ -216,7 +225,9 @@ export const WhatIsMoose = () => {
       <div></div>
       <Section className="w-full relative mx-auto xl:my-10 xl:max-w-screen-xl 2xl:my-0">
         <Grid>
-          <ThirdWidthContentContainer className={`hidden md:block ${inverted}`}>
+          <ThirdWidthContentContainer
+            className={`hidden md:block ${resolvedTheme === "dark" ? "invert-0" : `invert`}`}
+          >
             <Diagram spline={spline} />
           </ThirdWidthContentContainer>
 

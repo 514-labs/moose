@@ -134,7 +134,7 @@ const MooseLayersAccordion = ({ spline }: { spline: any }) => {
     <div>
       <Accordion
         type="single"
-        className="my-4"
+        className="py-10"
         collapsible
         onValueChange={(val) => {
           const outerWrap = spline.current?.findObjectByName("OUTER-WRAP");

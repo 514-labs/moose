@@ -22,6 +22,7 @@ import React, { useRef, useState } from "react";
 
 import { TrackableAccordionTrigger } from "../../trackable-components";
 import Diagram from "../../spline";
+import { useTheme } from "next-themes";
 
 const content = {
   title: "How Moose works",
@@ -197,6 +198,8 @@ const MooseLayersAccordion = ({ spline }: { spline: any }) => {
 };
 
 export const WhatIsMoose = () => {
+  const { resolvedTheme } = useTheme();
+  const inverted = resolvedTheme === "light" ? "invert" : `invert-0`;
   const spline = useRef();
   return (
     <>
@@ -213,7 +216,7 @@ export const WhatIsMoose = () => {
       <div></div>
       <Section className="w-full relative mx-auto xl:my-10 xl:max-w-screen-xl 2xl:my-0">
         <Grid>
-          <ThirdWidthContentContainer className="hidden md:block">
+          <ThirdWidthContentContainer className={`hidden md:block ${inverted}`}>
             <Diagram spline={spline} />
           </ThirdWidthContentContainer>
 

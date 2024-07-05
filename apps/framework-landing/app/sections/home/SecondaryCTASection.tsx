@@ -14,7 +14,7 @@ import React from "react";
 
 export const SecondaryCTASection = () => {
   const content = {
-    title: "Up and running in minutes, no vendor, no lock-in",
+    title: "Up and running in minutes, no vendor lock-in",
     description: "Build your own data-driven experiences in minutes with Moose",
     ctas: [
       {

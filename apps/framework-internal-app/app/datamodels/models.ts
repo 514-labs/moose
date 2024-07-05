@@ -72,6 +72,13 @@ export interface PageViewProcessed {
   companyDomain?: string;
 }
 
+export interface TrackEvent extends PageViewEvent {
+  action: string;
+  name: string;
+  subject: string;
+  targetUrl?: string;
+}
+
 export interface ParsedActivity {
   eventId: Key<string>;
   timestamp: Date;

@@ -7,55 +7,63 @@ import {
 import { Heading, Text } from "@514labs/design-system-components/typography";
 import React from "react";
 
+import { Box, Database, Network, Share2, Terminal, Code2 } from "lucide-react";
+
 export const FeaturesSection = () => {
   const content = {
-    title: "Everything you need to build data-driven experiences",
+    title: "Your tools, your workflows",
     features: [
       {
-        title: "Data models",
+        title: "Python and TypeScript",
         description:
-          "Define data models in your language, Moose derives the infrastructure for you",
+          "Write code in your native language with your favorite IDE plug-ins and AI assistants",
+        icon: <Code2 strokeWidth={1} />,
       },
       {
-        title: "Flows",
+        title: "Local Dev Server",
         description:
-          "Write simple functions to transform and augment your data on the fly",
+          "Run your application locally and see the impact of code changes in real-time",
+        icon: <Database strokeWidth={1} />,
       },
       {
-        title: "Aggregations & metrics",
+        title: "Git-Based Workflows",
         description:
-          "Pivot, filter and group your data for repeatable insights and metrics",
+          "Integrate with existing version control and code collaboration workflows",
+        icon: <Share2 strokeWidth={1} />,
       },
       {
         title: "Migrations",
         description:
-          "Moose helps manage migrations for your end-to-end data  stack",
+          "Keep versions your data synchronized through automated schema migrations",
+        icon: <Network strokeWidth={1} />,
       },
       {
-        title: "Templates",
+        title: "Powerful CLI",
         description:
-          "Get up and running in seconds with pre-built application templates",
+          "Use terminal commands to automate setup and build processes",
+        icon: <Terminal strokeWidth={1} />,
       },
       {
-        title: "Packaging",
+        title: "Deploy with Docker",
         description:
-          "Easily package your application for deployment in any environment",
+          "Package your application for deployment in any environment from the CLI",
+        icon: <Box strokeWidth={1} />,
       },
-      {
-        title: "UI Components (coming soon)",
-        description:
-          "Embed insightful react components in your framework of choice",
-      },
-      {
-        title: "Connectors & SDKs (coming soon)",
-        description:
-          "Connectors and auto generated SDKs get data in and out of moose",
-      },
-      {
-        title: "Orchestration (coming soon)",
-        description:
-          "Configurable orchestration to make sure data gets where it needs to go reliably",
-      },
+      // {
+      //   title: "UI Components (coming soon)",
+      //   description:
+      //     "Embed insightful react components in your framework of choice",
+      // },
+      // {
+      //   title: "Connectors & SDKs (coming soon)",
+      //   description:
+      //     "Connectors and auto generated SDKs get data in and out of moose",
+      // },
+      // {
+      //   title: "Orchestration (coming soon)",
+      //   description:
+      //     "Configurable orchestration to make sure data gets where it needs to go reliably",
+      // },
     ],
   };
 
@@ -67,10 +75,14 @@ export const FeaturesSection = () => {
             <Heading> {content.title} </Heading>
           </HalfWidthContentContainer>
         </Grid>
-        <Grid>
+        <Grid className="gap-y-10">
           {content.features.map((feature, index) => {
             return (
-              <ThirdWidthContentContainer key={index}>
+              <ThirdWidthContentContainer
+                key={index}
+                className="flex flex-col gap-2"
+              >
+                {feature.icon}
                 <Text className="my-0">{feature.title}</Text>
                 <Text className="my-0 text-muted-foreground">
                   {feature.description}

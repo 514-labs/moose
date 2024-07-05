@@ -62,6 +62,25 @@ export const ThirdWidthContentContainer = ({
   );
 };
 
+export const TwoThirdsWidthContentContainer = ({
+  children,
+  className,
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) => {
+  return (
+    <div
+      className={cn(
+        "col-span-12 sm:col-span-6 lg:col-span-8 xl:col-span-8",
+        className,
+      )}
+    >
+      {children}
+    </div>
+  );
+};
+
 // Sections are full width and stretch in the vertical direction to accomodate their children
 // Sections govern the gutter for the pages
 export const Section = ({

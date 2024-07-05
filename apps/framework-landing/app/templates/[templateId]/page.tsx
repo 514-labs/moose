@@ -103,15 +103,15 @@ export default function TemplatePage({
       {
         slug: "product-analytics",
         title: "Product Analytics",
-        imageSrcLight: "/images/templates/IMG_TEMPLATE_PA_LIGHT.svg",
-        imageSrcDark: "/images/templates/IMG_TEMPLATE_PA_DARK.svg",
+        imageSrcLight: "/images/diagrams/img-diagram-PA-light.svg",
+        imageSrcDark: "/images/diagrams/img-diagram-PA-dark.svg",
         cta: {
           action: "cta-product-analytics-install",
           label: "Create Template Command",
           text: "npx create-moose-app your-analytics-app --template product-analytics",
         },
         description:
-          "Capture user journeys and derive actionable insights to optimize your product development.",
+          "Capture clickstream events from your users and analyze their interactions with your product",
         features: {
           title: "Features",
           items: [
@@ -219,19 +219,19 @@ export default function TemplatePage({
       {
         slug: "llm-application",
         title: "LLM Application",
-        imageSrcLight: "/images/templates/IMG_TEMPLATE_LLM_LIGHT.svg",
-        imageSrcDark: "/images/templates/IMG_TEMPLATE_LLM_DARK.svg",
+        imageSrcLight: "/images/diagrams/img-diagram-LLM-light.svg",
+        imageSrcDark: "/images/diagrams/img-diagram-LLM-dark.svg",
         description:
-          "Optimize AI automations powered by RAG on your own data to create innovative end user experiences.",
+          "Build natural language interfaces on top of your data by exposing data APIs to a LLM",
         usage: [],
       },
       {
         slug: "data-warehouse",
         title: "Data Warehouse",
-        imageSrcLight: "/images/templates/IMG_TEMPLATE_DW_LIGHT.svg",
-        imageSrcDark: "/images/templates/IMG_TEMPLATE_DW_DARK.svg",
+        imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
+        imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
         description:
-          "Integrate data across business domains into a data warehouse with discoverable, consumable data products.",
+          "Integrate enterprise data sources into a central warehouse and connect to your BI tool of choice",
         usage: [],
       },
     ],

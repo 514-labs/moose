@@ -1,12 +1,13 @@
 "use client";
 import React from "react";
-import { sendServerEvent } from "./sendServerEvent";
+import { sendTrackEvent } from "./sendServerEvent";
 
 export enum TrackingVerb {
   copy = "copy",
   clicked = "clicked",
   submit = "submit",
   selected = "selected",
+  changed = "changed",
 }
 
 function combineCallbacks(oldProps: any, newProps: any) {
@@ -43,10 +44,16 @@ export function withTrack<T>({
       children?: React.ReactNode;
       name: string;
       subject: string;
+      targetUrl?: string;
     },
   ) => {
     const trackEvent = () =>
-      sendServerEvent(props.name, { action, subject: props.subject } as any);
+      sendTrackEvent(window.location.pathname, {
+        name: props.name,
+        action,
+        subject: props.subject,
+        targetUrl: props.targetUrl,
+      });
 
     const newProps = injectProps(trackEvent);
 
@@ -61,6 +68,9 @@ export function withTrack<T>({
             <div className="text-wrap min-h-full h-fit z-10 min-w-full w-max border-red-100 border-2 text-foreground flex flex-col te w-full text-xs opacity-0">
               <span>
                 <span className="font-bold">Event:</span> {props.name}
+              </span>
+              <span>
+                <span className="font-bold">Component:</span> {Component.name}
               </span>
               <span className="text-wrap">
                 <span className="font-bold">Subject:</span> {props.subject}

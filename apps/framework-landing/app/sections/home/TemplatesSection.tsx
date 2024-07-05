@@ -24,10 +24,10 @@ const content = {
   templates: [
     {
       title: "Product Analytics",
-      imageSrcLight: "/images/templates/IMG_TEMPLATE_PA_LIGHT.svg",
-      imageSrcDark: "/images/templates/IMG_TEMPLATE_PA_DARK.svg",
+      imageSrcLight: "/images/diagrams/img-diagram-PA-light.svg",
+      imageSrcDark: "/images/diagrams/img-diagram-PA-dark.svg",
       description:
-        "Capture user journeys and derive actionable insights to optimize your product development",
+        "Capture clickstream events and analyze user journeys in real-time",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -35,11 +35,11 @@ const content = {
       },
     },
     {
-      title: "LLM Application",
-      imageSrcLight: "/images/templates/IMG_TEMPLATE_LLM_LIGHT.svg",
-      imageSrcDark: "/images/templates/IMG_TEMPLATE_LLM_DARK.svg",
+      title: "LLM Tools",
+      imageSrcLight: "/images/diagrams/img-diagram-LLM-light.svg",
+      imageSrcDark: "/images/diagrams/img-diagram-LLM-dark.svg",
       description:
-        "Optimize AI automations powered by RAG on your own data to create innovative end user experiences",
+        "Build natural language interfaces by exposing data APIs to an LLM",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -48,10 +48,9 @@ const content = {
     },
     {
       title: "Data Warehouse",
-      imageSrcLight: "/images/templates/IMG_TEMPLATE_DW_LIGHT.svg",
-      imageSrcDark: "/images/templates/IMG_TEMPLATE_DW_DARK.svg",
-      description:
-        "Integrate data across business domains into a data warehouse with discoverable, consumable data products",
+      imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
+      imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
+      description: "Centralize enterprise data and integrate with your BI tool",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -86,7 +85,7 @@ export const TemplatesSection = () => {
             <Fragment key={index}>
               <ThirdWidthContentContainer
                 key={index}
-                className="flex flex-col xl:justify-start xl:order-4"
+                className="flex flex-col xl:justify-start xl:order-4 p-5"
               >
                 <div className="relative aspect-square my-0">
                   <Suspense fallback={<div>Loading...</div>}>
@@ -110,6 +109,7 @@ export const TemplatesSection = () => {
                       subject={template.cta.subject}
                       className="grow"
                       variant={"outline"}
+                      targetUrl={template.cta.href}
                     >
                       {template.cta.label}
                     </TrackCtaButton>

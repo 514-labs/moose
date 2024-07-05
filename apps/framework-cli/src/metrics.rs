@@ -24,6 +24,7 @@ pub struct Metrics {
 }
 
 pub struct Statistics {
+    pub total_latency_histogram: Histogram,
     pub histogram_family: Family<Labels, Histogram>,
     pub registry: Option<Registry>,
 }
@@ -62,6 +63,13 @@ impl Metrics {
         mut rx: tokio::sync::mpsc::Receiver<MetricsMessage>,
     ) {
         let mut data = Statistics {
+            total_latency_histogram: Histogram::new(
+                [
+                    0.001, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0, 120.0,
+                    240.0,
+                ]
+                .into_iter(),
+            ),
             histogram_family: Family::<Labels, Histogram>::new_with_constructor(|| {
                 Histogram::new(
                     [
@@ -74,6 +82,11 @@ impl Metrics {
             registry: Some(Registry::default()),
         };
         let mut new_registry = data.registry.unwrap();
+        new_registry.register(
+            "total_latency",
+            "Total latency of HTTP requests",
+            data.total_latency_histogram.clone(),
+        );
         new_registry.register(
             "latency",
             "Latency of HTTP requests",
@@ -88,13 +101,15 @@ impl Metrics {
                     MetricsMessage::GetMetricsRegistryAsString(v) => {
                         let _ = v.send(formatted_registry(&data.registry.as_ref()).await);
                     }
-                    MetricsMessage::HTTPLatency((path, duration, method)) => data
-                        .histogram_family
-                        .get_or_create(&Labels {
-                            method,
-                            path: path.into_os_string().to_str().unwrap().to_string(),
-                        })
-                        .observe(duration.as_secs_f64()),
+                    MetricsMessage::HTTPLatency((path, duration, method)) => {
+                        data.histogram_family
+                            .get_or_create(&Labels {
+                                method,
+                                path: path.into_os_string().to_str().unwrap().to_string(),
+                            })
+                            .observe(duration.as_secs_f64());
+                        data.total_latency_histogram.observe(duration.as_secs_f64())
+                    }
                 };
             }
         });

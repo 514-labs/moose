@@ -29,7 +29,7 @@ pub struct Flow {
     // The name used here is the name of the file that contains the function
     // since we have the current assumption that there is 1 function per file
     // we can use the file name as the name of the function.
-    // We don't currently do checks accross flows for unicities but we should
+    // We don't currently do checks across flows for unicities but we should
     pub name: String,
 
     pub source_data_model: DataModel,

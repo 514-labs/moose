@@ -1,4 +1,4 @@
-use log::{info, warn};
+use log::{debug, info, warn};
 use regex::{Captures, Regex};
 use std::{fs, path::Path};
 
@@ -10,7 +10,8 @@ use crate::{
 
 use super::model::{Flow, FlowError};
 
-const MIGRATION_REGEX: &str = r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-9_]+)__)?([0-9_]+)";
+const MIGRATION_REGEX: &str =
+    r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-9_]+)__)?([0-9_]+)$";
 
 /**
  * This function gets the flows as defined by the user for the
@@ -22,6 +23,25 @@ pub async fn get_all_current_flows(
 ) -> Result<Vec<Flow>, FlowError> {
     let flows_path = project.flows_dir();
     get_all_flows(data_models, project.cur_version(), &flows_path).await
+}
+
+pub fn parse_flow(file_name_no_extension: &str) -> Option<(&str, &str)> {
+    let split: Vec<&str> = file_name_no_extension.split("__").collect();
+    if split.len() == 2 {
+        let source_data_model_name = split[0];
+        let target_data_model_name = split[1];
+        Some((source_data_model_name, target_data_model_name))
+    } else {
+        None
+    }
+}
+
+pub fn extension_supported_in_flow(path: &Path) -> bool {
+    path.extension().is_some_and(|extension_os_str| {
+        extension_os_str
+            .to_str()
+            .is_some_and(|extension| extension == "ts" || extension == "py")
+    })
 }
 
 /**
@@ -51,27 +71,75 @@ async fn get_all_flows(
         let source = source?;
 
         // We check if the file is a migration flow
-        if source.metadata()?.is_file() && !source.file_name().to_str().unwrap().ends_with("sql") {
-            let potential_migration_file_name = &source.file_name().to_string_lossy().to_string();
-            let Some(caps) = migration_regex.captures(potential_migration_file_name) else {
-                // This is a file but not a migration flow, so we can skip it
-                // and continue to the next iteration
-                continue;
-            };
+        if source.metadata()?.is_file() {
+            if extension_supported_in_flow(&source.path()) {
+                let potential_flow_file_name = &source
+                    .path()
+                    .with_extension("")
+                    .file_name()
+                    .unwrap()
+                    .to_string_lossy()
+                    .to_string();
 
-            let flow = build_migration_flow(
-                &source.file_name().to_string_lossy(),
-                data_models,
-                current_version,
-                caps,
-                &source.path(),
-            );
+                match migration_regex.captures(potential_flow_file_name) {
+                    None => {
+                        if let Some((source_data_model_name, target_data_model_name)) =
+                            parse_flow(potential_flow_file_name)
+                        {
+                            let source_data_model = if let Some(source_data_model) =
+                                data_models.get(source_data_model_name, current_version)
+                            {
+                                source_data_model
+                            } else {
+                                warn!(
+                                    "Data model {} not found in the data model set",
+                                    source_data_model_name
+                                );
+                                continue;
+                            };
 
-            flows.push(flow);
+                            let target_data_model = if let Some(target_data_model) =
+                                data_models.get(target_data_model_name, current_version)
+                            {
+                                target_data_model
+                            } else {
+                                warn!(
+                                    "Data model {} not found in the data model set",
+                                    target_data_model_name
+                                );
+                                continue;
+                            };
 
-            // In this case we are currently parsing a migration flow
+                            let flow = Flow {
+                                name: potential_flow_file_name.clone(),
+                                source_data_model: source_data_model.clone(),
+                                target_data_model: target_data_model.clone(),
+                                executable: source.path(),
+                                version: current_version.to_string(),
+                            };
+                            flows.push(flow);
+                        } else {
+                            debug!(
+                                "Fragments of file {:?} does not match the convention",
+                                source.path()
+                            );
+                        }
+                    }
+                    Some(caps) => {
+                        let flow = build_migration_flow(
+                            &source.file_name().to_string_lossy(),
+                            data_models,
+                            current_version,
+                            caps,
+                            &source.path(),
+                        );
+                        flows.push(flow);
+                    }
+                }
+            }
+            // In this case we are currently processing a single file
             // As such we can skip the following steps which are specific
-            // to the data model flows
+            // to the old naming convention, i.e. nested directory flows
             continue;
         }
 

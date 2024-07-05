@@ -113,7 +113,7 @@ impl FunctionProcess {
 
     pub fn expanded_display(&self) -> String {
         format!(
-            "Function: from topic {} to topic {} - Version: {}",
+            "Reloading Function: from topic {} to topic {} - Version: {}",
             self.source_topic, self.target_topic, self.version
         )
     }

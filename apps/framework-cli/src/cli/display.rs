@@ -340,6 +340,18 @@ pub fn show_changes(infra_plan: &InfraPlan) {
             ProcessChange::OlapProcess(Change::Updated { before, after: _ }) => {
                 infra_updated(&before.expanded_display());
             }
+            ProcessChange::ConsumptionApiWebServer(Change::Added(_)) => {
+                infra_added("Starting Consumption WebServer...");
+            }
+            ProcessChange::ConsumptionApiWebServer(Change::Removed(_)) => {
+                infra_removed("Stoping Consumption WebServer...");
+            }
+            ProcessChange::ConsumptionApiWebServer(Change::Updated {
+                before: _,
+                after: _,
+            }) => {
+                infra_updated("Reloading Consumption WebServer...");
+            }
         });
 
     infra_plan

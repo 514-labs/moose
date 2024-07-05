@@ -1,8 +1,8 @@
 use crate::cli::settings::Features;
-use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 use crate::project::Project;
 
 use super::aggregations_registry::AggregationProcessRegistry;
+use super::consumption_registry::ConsumptionProcessRegistry;
 use super::functions_registry::FunctionProcessRegistry;
 
 pub struct ProcessRegistries {
@@ -25,8 +25,11 @@ impl ProcessRegistries {
             project.clickhouse_config.clone(),
             features,
         );
-        let consumption =
-            ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());
+        let consumption = ConsumptionProcessRegistry::new(
+            project.language,
+            project.clickhouse_config.clone(),
+            project.consumption_dir(),
+        );
 
         Self {
             flows,

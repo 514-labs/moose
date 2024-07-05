@@ -1,3 +1,4 @@
+use consumption_registry::ConsumptionError;
 use kafka_clickhouse_sync::SyncingProcessesRegistry;
 use process_registry::ProcessRegistries;
 
@@ -9,6 +10,7 @@ use crate::framework::{
 use super::olap::clickhouse::{errors::ClickhouseError, mapper::std_columns_to_clickhouse_columns};
 
 pub mod aggregations_registry;
+pub mod consumption_registry;
 pub mod functions_registry;
 pub mod kafka_clickhouse_sync;
 pub mod process_registry;
@@ -23,6 +25,9 @@ pub enum SyncProcessChangesError {
 
     #[error("Failed in the aggregation registry")]
     OlapProcess(#[from] AggregationError),
+
+    #[error("Failed in the consumption registry")]
+    ConsumptionProcess(#[from] ConsumptionError),
 }
 
 /// This method dispatches the execution of the changes to the right streaming engine.
@@ -86,6 +91,22 @@ pub async fn execute_changes(
                 log::info!("Updating Aggregation process: {:?}", before.id());
                 process_registry.aggregations.stop(before).await?;
                 process_registry.aggregations.start(after)?;
+            }
+            ProcessChange::ConsumptionApiWebServer(Change::Added(_)) => {
+                log::info!("Starting Consumption webserver process");
+                process_registry.consumption.start()?;
+            }
+            ProcessChange::ConsumptionApiWebServer(Change::Removed(_)) => {
+                log::info!("Stoping Consumption webserver process");
+                process_registry.consumption.stop().await?;
+            }
+            ProcessChange::ConsumptionApiWebServer(Change::Updated {
+                before: _,
+                after: _,
+            }) => {
+                log::info!("Re-Starting Consumption webserver process");
+                process_registry.consumption.stop().await?;
+                process_registry.consumption.start()?;
             }
         }
     }

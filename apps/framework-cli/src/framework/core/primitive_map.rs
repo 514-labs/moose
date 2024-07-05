@@ -3,6 +3,7 @@ use walkdir::WalkDir;
 use crate::{
     framework::{
         aggregations::model::Aggregation,
+        consumption::model::Consumption,
         data_model::{
             model::{DataModel, DataModelSet},
             parser::parse_data_model_file,
@@ -31,7 +32,14 @@ pub struct PrimitiveMap {
     // We are currently not loading aggregations 1 by 1 in the CLI, we should load them individually to be able
     // to start/stop them individually. Right now we are starting all of them at once through the language specific
     // aggregation runner. We are loading aggregations as 1 unique aggregation as a default.
-    pub aggregation: Aggregation, // TODO add consumption apis
+    pub aggregation: Aggregation,
+
+    // We are currrently not loading indiviual consumption endpoints in the CLI and we probably will not need to
+    // Since this is a local webserver without side effects, keepting track of what is up and running is not necessary
+    // it just needs to be restarted when something in its dependency tree changes.
+    // We might want to try and load the full map of consumption endpoints in the future to be able to display thgat
+    // to the user.
+    pub consumption: Consumption,
 }
 
 impl PrimitiveMap {

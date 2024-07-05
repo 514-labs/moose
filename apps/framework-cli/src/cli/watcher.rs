@@ -13,8 +13,6 @@ use std::{
 use tokio::sync::RwLock;
 
 use crate::framework;
-use crate::framework::consumption::model::Consumption;
-use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 
 use crate::framework::controller::{
     create_or_replace_tables, drop_table, schema_file_path_to_ingest_route,
@@ -32,6 +30,7 @@ use crate::infrastructure::olap::clickhouse_alt_client::{
     get_pool, store_current_state, store_infrastructure_map,
 };
 use crate::infrastructure::processes::aggregations_registry::AggregationProcessRegistry;
+use crate::infrastructure::processes::consumption_registry::ConsumptionProcessRegistry;
 use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
@@ -340,28 +339,41 @@ async fn watch(
                                 &mut clickhouse_client_v2,
                                 &project,
                             )
-                            .await?;
+                            .await;
 
-                            log::info!("Plan Changes: {:?}", plan_result.changes);
+                            match plan_result {
+                                Ok(plan_result) => {
+                                    log::info!("Plan Changes: {:?}", plan_result.changes);
 
-                            display::show_changes(&plan_result);
-                            framework::core::execute::execute_online_change(
-                                &project,
-                                &plan_result,
-                                route_update_channel.clone(),
-                                syncing_process_registry,
-                                project_registries,
-                            )
-                            .await?;
+                                    display::show_changes(&plan_result);
+                                    framework::core::execute::execute_online_change(
+                                        &project,
+                                        &plan_result,
+                                        route_update_channel.clone(),
+                                        syncing_process_registry,
+                                        project_registries,
+                                    )
+                                    .await?;
 
-                            store_infrastructure_map(
-                                &mut clickhouse_client_v2,
-                                &project.clickhouse_config,
-                                &plan_result.target_infra_map,
-                            )
-                            .await?;
+                                    store_infrastructure_map(
+                                        &mut clickhouse_client_v2,
+                                        &project.clickhouse_config,
+                                        &plan_result.target_infra_map,
+                                    )
+                                    .await?;
 
-                            Ok(())
+                                    Ok(())
+                                }
+                                Err(e) => {
+                                    show_message!(MessageType::Error, {
+                                        Message {
+                                            action: "\nFailed".to_string(),
+                                            details: format!("\n {}", e),
+                                        }
+                                    });
+                                    Ok(())
+                                }
+                            }
                         },
                         !project.is_production,
                     )
@@ -416,7 +428,7 @@ async fn watch(
                     )
                     .await?;
                 }
-                if !bucketed_events.aggregations.is_empty() {
+                if !bucketed_events.aggregations.is_empty() && !features.core_v2 {
                     with_spinner_async(
                         &format!(
                             "Processing {} Aggregation(s) changes from file watcher",
@@ -427,7 +439,7 @@ async fn watch(
                     )
                     .await?;
                 }
-                if !bucketed_events.consumption.is_empty() {
+                if !bucketed_events.consumption.is_empty() && !features.core_v2 {
                     with_spinner_async(
                         &format!(
                             "Processing {} Consumption(s) changes from file watcher",
@@ -443,7 +455,7 @@ async fn watch(
                     .await?;
                 }
 
-                {
+                if !features.core_v2 {
                     let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
                     let aggregations = project.get_aggregations();
                     store_current_state(
@@ -518,9 +530,7 @@ pub async fn process_consumption_changes(
 
     debug!("Consumption API paths: {:?}", paths);
     consumption_process_registry.stop().await?;
-    consumption_process_registry.start(Consumption {
-        dir: project.consumption_dir(),
-    })?;
+    consumption_process_registry.start()?;
 
     Ok(())
 }

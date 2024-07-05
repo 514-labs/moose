@@ -388,7 +388,7 @@ impl Project {
             let flows_dir = self.app_dir().join("flows");
             if flows_dir.exists() {
                 STREAMING_FUNCTION_RENAME_WARNING.call_once(|| {
-                    println!("Flows has been renamed to functions. Please rename the directory.");
+                    println!("❗️Action Required: 'Flows' are now called 'Functions.' Please rename the directory.");
                 });
                 return flows_dir;
             }

@@ -20,6 +20,7 @@ pub mod typescript_project;
 use std::fmt::Debug;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Once;
 
 use config::{Config, ConfigError, Environment, File};
 use log::debug;
@@ -130,6 +131,8 @@ impl Default for LanguageProjectConfig {
         LanguageProjectConfig::Typescript(TypescriptProject::default())
     }
 }
+
+static STREAMING_FUNCTION_RENAME_WARNING: Once = Once::new();
 
 impl Project {
     pub fn default_production() -> bool {
@@ -384,7 +387,9 @@ impl Project {
         if !functions_dir.exists() {
             let flows_dir = self.app_dir().join("flows");
             if flows_dir.exists() {
-                println!("Flows has been renamed to functions. Please rename the directory.");
+                STREAMING_FUNCTION_RENAME_WARNING.call_once(|| {
+                    println!("Flows has been renamed to functions. Please rename the directory.");
+                });
                 return flows_dir;
             }
 

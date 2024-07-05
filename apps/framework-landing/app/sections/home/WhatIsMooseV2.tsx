@@ -169,11 +169,11 @@ const MooseLayersAccordion = ({ spline }: { spline: any }) => {
                       {layer.description}
                     </Text>
                   </FullWidthContentContainer>
-                  <Grid className="gap-10">
+                  <Grid className="gap-y-10">
                     {layer.details.map((detail, index) => {
                       return (
                         <HalfWidthContentContainer
-                          className="w-full flex flex-col items-center justify-stretch text-left border rounded-3xl p-5"
+                          className="flex flex-col items-center justify-stretch text-left border rounded-3xl p-5"
                           key={index}
                         >
                           <Text className="my-0 justify-start self-start">

@@ -9,30 +9,30 @@ use crate::framework::core::code_loader::{
     load_framework_objects, FrameworkObject, FrameworkObjectVersions,
 };
 use crate::framework::core::infrastructure::table::ColumnType;
-use crate::framework::typescript::templates::BASE_FLOW_TEMPLATE;
+use crate::framework::typescript::templates::BASE_STREAMING_FUNCTION_TEMPLATE;
 use crate::project::Project;
 
 use super::{RoutineFailure, RoutineSuccess};
 
-pub struct FlowFileBuilder {
-    flow_file_path: PathBuf,
-    flow_file_template: String,
+pub struct StreamingFunctionFileBuilder {
+    function_file_path: PathBuf,
+    function_file_template: String,
 }
 
-impl FlowFileBuilder {
+impl StreamingFunctionFileBuilder {
     pub fn new(project: &Project, source: &str, destination: &str) -> Self {
-        let flow_file_template = BASE_FLOW_TEMPLATE
+        let function_file_template = BASE_STREAMING_FUNCTION_TEMPLATE
             .to_string()
             .replace("{{source}}", source)
             .replace("{{destination}}", destination);
 
-        let flow_file_path = project
-            .flows_dir()
+        let function_file_path = project
+            .streaming_func_dir()
             .join(format!("{}__{}.ts", source, destination));
 
         Self {
-            flow_file_path,
-            flow_file_template,
+            function_file_path,
+            function_file_template,
         }
     }
 
@@ -58,12 +58,12 @@ impl FlowFileBuilder {
                 });
             destination_object.push_str("  }");
 
-            self.flow_file_template = self
-                .flow_file_template
+            self.function_file_template = self
+                .function_file_template
                 .replace("{{destination_object}}", &destination_object);
         } else {
-            self.flow_file_template = self
-                .flow_file_template
+            self.function_file_template = self
+                .function_file_template
                 .replace("{{destination_object}}", "null");
         }
 
@@ -97,8 +97,8 @@ impl FlowFileBuilder {
             )
         };
 
-        self.flow_file_template = self
-            .flow_file_template
+        self.function_file_template = self
+            .function_file_template
             .replace("{{source_import}}", &source_import)
             .replace("{{destination_import}}", &destination_import);
 
@@ -112,9 +112,11 @@ impl FlowFileBuilder {
     ) -> String {
         if models.contains_key(target_model) {
             let model_path = models.get(target_model).unwrap().original_file_path.clone();
-            let mut model_relative_path =
-                diff_paths(model_path.clone(), self.flow_file_path.parent().unwrap())
-                    .unwrap_or(model_path.clone());
+            let mut model_relative_path = diff_paths(
+                model_path.clone(),
+                self.function_file_path.parent().unwrap(),
+            )
+            .unwrap_or(model_path.clone());
             model_relative_path.set_extension("");
 
             model_relative_path.to_string_lossy().to_string()
@@ -124,23 +126,30 @@ impl FlowFileBuilder {
     }
 
     pub fn write(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let mut flow_file = fs::File::create(self.flow_file_path.as_path()).map_err(|err| {
-            RoutineFailure::new(
-                Message::new(
-                    "Failed".to_string(),
-                    format!("to create flow file in {}", self.flow_file_path.display()),
-                ),
-                err,
-            )
-        })?;
+        let mut function_file =
+            fs::File::create(self.function_file_path.as_path()).map_err(|err| {
+                RoutineFailure::new(
+                    Message::new(
+                        "Failed".to_string(),
+                        format!(
+                            "to create streaming function file in {}",
+                            self.function_file_path.display()
+                        ),
+                    ),
+                    err,
+                )
+            })?;
 
-        let _ = flow_file
-            .write_all(self.flow_file_template.as_bytes())
+        let _ = function_file
+            .write_all(self.function_file_template.as_bytes())
             .map_err(|err| {
                 RoutineFailure::new(
                     Message::new(
                         "Failed".to_string(),
-                        format!("to write to flow file in {}", self.flow_file_path.display()),
+                        format!(
+                            "to write to streaming function file in {}",
+                            self.function_file_path.display()
+                        ),
                     ),
                     err,
                 )
@@ -150,13 +159,13 @@ impl FlowFileBuilder {
             message_type: MessageType::Success,
             message: Message {
                 action: "Created".to_string(),
-                details: "flow".to_string(),
+                details: "streaming function".to_string(),
             },
         })
     }
 }
 
-pub async fn create_flow_file(
+pub async fn create_streaming_function_file(
     project: &Project,
     source: String,
     destination: String,
@@ -166,12 +175,15 @@ pub async fn create_flow_file(
     let (models, error_occurred) = match &framework_objects {
         Ok(framework_objects) => (&framework_objects.current_models.models, false),
         Err(err) => {
-            debug!("Failed to crawl schema while creating flow: {:?}", err);
+            debug!(
+                "Failed to crawl schema while creating streaming function: {:?}",
+                err
+            );
             (&empty_map, true)
         }
     };
 
-    let success = FlowFileBuilder::new(project, &source, &destination)
+    let success = StreamingFunctionFileBuilder::new(project, &source, &destination)
         .imports(&source, &destination, models)
         .return_object(&destination, models)
         .write()?;
@@ -185,21 +197,21 @@ pub async fn create_flow_file(
     Ok(success)
 }
 
-pub fn verify_flows_against_datamodels(
+pub fn verify_streaming_functions_against_datamodels(
     project: &Project,
     framework_object_versions: &FrameworkObjectVersions,
 ) -> anyhow::Result<()> {
-    let flows = project.get_flows();
-    let flows_dir = project.flows_dir();
+    let functions = project.get_functions();
+    let functions_dir = project.streaming_func_dir();
 
-    let mut flows_with_missing_models = Vec::<String>::new();
-    for (source, destinations) in flows {
+    let mut functions_with_missing_models = Vec::<String>::new();
+    for (source, destinations) in functions {
         if !framework_object_versions
             .current_models
             .models
             .contains_key(&source)
         {
-            flows_with_missing_models.push(format!("{}/{}", flows_dir.display(), source));
+            functions_with_missing_models.push(format!("{}/{}", functions_dir.display(), source));
         }
 
         destinations.iter().for_each(|destination| {
@@ -208,9 +220,9 @@ pub fn verify_flows_against_datamodels(
                 .models
                 .contains_key(destination)
             {
-                flows_with_missing_models.push(format!(
+                functions_with_missing_models.push(format!(
                     "{}/{}/{}",
-                    flows_dir.display(),
+                    functions_dir.display(),
                     source,
                     destination
                 ));
@@ -218,24 +230,26 @@ pub fn verify_flows_against_datamodels(
         });
     }
 
-    if !flows_with_missing_models.is_empty() {
-        flows_with_missing_models.sort();
+    if !functions_with_missing_models.is_empty() {
+        functions_with_missing_models.sort();
         show_message!(
             MessageType::Error,
             Message {
-                action: "Flow".to_string(),
-                details: "These flow sources/destinations have missing data models. Add the data models or rename the flow directories".to_string(),
+                action: "Function".to_string(),
+                details: "These functions sources/destinations have missing data models. Add the data models or rename the streaming functions".to_string(),
             }
         );
-        flows_with_missing_models.iter().for_each(|flow_path| {
-            show_message!(
-                MessageType::Error,
-                Message {
-                    action: "".to_string(),
-                    details: flow_path.to_string(),
-                }
-            );
-        });
+        functions_with_missing_models
+            .iter()
+            .for_each(|function_path| {
+                show_message!(
+                    MessageType::Error,
+                    Message {
+                        action: "".to_string(),
+                        details: function_path.to_string(),
+                    }
+                );
+            });
     }
 
     Ok(())

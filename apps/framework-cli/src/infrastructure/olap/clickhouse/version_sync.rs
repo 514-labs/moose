@@ -28,7 +28,7 @@ pub fn version_to_string(v: &[i32]) -> String {
         .join(".")
 }
 
-// to be removed when we move to all TS flow version syncs
+// to be removed when we move to all TS streaming function version syncs
 pub fn generate_sql_version_syncs(
     db_name: &str,
     framework_object_versions: &FrameworkObjectVersions,
@@ -82,9 +82,9 @@ pub fn get_all_version_syncs(
     project: &Project,
     framework_object_versions: &FrameworkObjectVersions,
 ) -> anyhow::Result<Vec<VersionSync>> {
-    let flows_dir = project.flows_dir();
+    let functions_dir = project.streaming_func_dir();
     let mut version_syncs = vec![];
-    for entry in std::fs::read_dir(flows_dir)? {
+    for entry in std::fs::read_dir(functions_dir)? {
         let entry = entry?;
         let path = entry.path();
         if !path.is_dir() {
@@ -274,7 +274,7 @@ impl VersionSync {
         match &self.sync_type {
             VersionSyncType::Sql(migration_function) => migration_function,
             VersionSyncType::Ts(_) => {
-                panic!("Retrieving SQL migration function from a flow version sync.")
+                panic!("Retrieving SQL migration function from a streaming function version sync.")
             }
         }
     }

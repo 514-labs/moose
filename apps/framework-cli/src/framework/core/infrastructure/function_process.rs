@@ -5,7 +5,7 @@ use std::{collections::HashMap, path::PathBuf};
 use crate::{
     framework::{
         core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
-        flows::model::Flow,
+        streaming::model::StreamingFunction,
     },
     utilities::constants::{PYTHON_FILE_EXTENSION, TYPESCRIPT_FILE_EXTENSION},
 };
@@ -17,7 +17,7 @@ pub struct FunctionProcess {
     // The name used here is the name of the file that contains the function
     // since we have the current assumption that there is 1 function per file
     // we can use the file name as the name of the function.
-    // We don't currently do checks accross flows for unicities but we should
+    // We don't currently do checks across functions for unicities but we should
     pub name: String,
 
     pub source_topic: String,
@@ -34,7 +34,7 @@ pub struct FunctionProcess {
 }
 
 impl FunctionProcess {
-    pub fn from_functon(function: &Flow, topics: &[String]) -> Self {
+    pub fn from_functon(function: &StreamingFunction, topics: &[String]) -> Self {
         FunctionProcess {
             name: function.name.clone(),
 
@@ -68,7 +68,7 @@ impl FunctionProcess {
     }
 
     pub fn from_migration_functon(
-        function: &Flow,
+        function: &StreamingFunction,
         source_topic: &Topic,
         target_topic: &Topic,
     ) -> Self {
@@ -129,7 +129,7 @@ impl FunctionProcess {
 
 /**
  * This function retrieves the latest topic for a given data model
- * This should be eventually retired for proper DCM management for flows.
+ * This should be eventually retired for proper DCM management for functions.
  */
 fn get_latest_topic(topics: &[String], data_model: &str) -> Option<String> {
     // Ths algorithm is not super efficient. We probably should have a

@@ -14,25 +14,25 @@ class EnhancedJSONEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-parser = argparse.ArgumentParser(description='Run a flow')
+parser = argparse.ArgumentParser(description='Run a streaming function')
 
-parser.add_argument('source_topic', type=str, help='The source topic for the flow')
-parser.add_argument('target_topic', type=str, help='The target topic for the flow')
+parser.add_argument('source_topic', type=str, help='The source topic for the streaming function')
+parser.add_argument('target_topic', type=str, help='The target topic for the streaming function')
 parser.add_argument('target_topic_config', type=str, help='The streaming server config for target topic')
-parser.add_argument('flow_file_path', type=str, help='The file of the flow to run')
-parser.add_argument('broker', type=str, help='The broker to use for the flow')
+parser.add_argument('function_file_path', type=str, help='The file of the streaming function to run')
+parser.add_argument('broker', type=str, help='The broker to use for the streaming function')
 # The following arguments are optional
-parser.add_argument('--sasl_username', type=str, help='The SASL username to use for the flow')
-parser.add_argument('--sasl_password', type=str, help='The SASL password to use for the flow')
-parser.add_argument('--sasl_mechanism', type=str, help='The SASL mechanism to use for the flow')
-parser.add_argument('--security_protocol', type=str, help='The security protocol to use for the flow')
+parser.add_argument('--sasl_username', type=str, help='The SASL username to use for the streaming function')
+parser.add_argument('--sasl_password', type=str, help='The SASL password to use for the streaming function')
+parser.add_argument('--sasl_mechanism', type=str, help='The SASL mechanism to use for the streaming function')
+parser.add_argument('--security_protocol', type=str, help='The security protocol to use for the streaming function')
 
 args = parser.parse_args()
 
 source_topic = args.source_topic
 target_topic = args.target_topic
 target_topic_config = args.target_topic_config
-flow_file_path = args.flow_file_path
+function_file_path = args.function_file_path
 broker = args.broker
 sasl_mechanism = args.sasl_mechanism
 
@@ -76,14 +76,15 @@ def get_max_message_size(config_json: str) -> int:
     return min(max_message_bytes, message_max_bytes)
 
 
-sys.path.append(args.flow_file_path)
-log(f"Importing flow from {flow_file_path}")
+sys.path.append(args.function_file_path)
+log(f"Importing streaming function from {function_file_path}")
 
 try:
-    flow = import_module('flow', package=flow_file_path)
+    # todo: check the flat naming
+    flow = import_module('flow', package=function_file_path)
     flow_def = flow.Flow
 except Exception as e:
-    error(f"Error importing flow: {e} in file {flow_file_path}")
+    error(f"Error importing flow: {e} in file {function_file_path}")
 
 # Get all the named flows in the flow file and make sure the flow is of type Flow
 flows = [f for f in dir(flow) if isinstance(getattr(flow, f), flow_def)]

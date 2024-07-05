@@ -6,14 +6,14 @@ import { cliLog } from "@514labs/moose-lib";
 const SOURCE_TOPIC = process.argv[1];
 const TARGET_TOPIC = process.argv[2];
 const TARGET_TOPIC_CONFIG = process.argv[3];
-const FLOW_FILE_PATH = process.argv[4];
+const FUNCTION_FILE_PATH = process.argv[4];
 const BROKER = process.argv[5];
 const SASL_USERNAME = process.argv[6];
 const SASL_PASSWORD = process.argv[7];
 const SASL_MECHANISM = process.argv[8];
 const SECURITY_PROTOCOL = process.argv[9];
 
-type FlowFunction = (data: unknown) => unknown | Promise<unknown>;
+type StreamingFunction = (data: unknown) => unknown | Promise<unknown>;
 type SlimKafkaMessage = { value: string };
 
 const logPrefix = `${SOURCE_TOPIC} -> ${TARGET_TOPIC}`;
@@ -29,7 +29,7 @@ const warn = (message: string): void => {
   console.warn(`${logPrefix}: ${message}`);
 };
 
-log("Initializing flow...");
+log("Initializing streaming function...");
 if (SOURCE_TOPIC === undefined) {
   error("Missing source topic");
   process.exit(1);
@@ -40,8 +40,8 @@ if (TARGET_TOPIC === undefined) {
   process.exit(1);
 }
 
-if (FLOW_FILE_PATH === undefined) {
-  error("Missing flow file path");
+if (FUNCTION_FILE_PATH === undefined) {
+  error("Missing streaming function file path");
   process.exit(1);
 }
 
@@ -69,7 +69,7 @@ if (SECURITY_PROTOCOL === undefined) {
   warn("No argument: SECURITY_PROTOCOL");
 }
 
-log(`Flow configuration loaded with file ${FLOW_FILE_PATH}`);
+log(`Streaming function configuration loaded with file ${FUNCTION_FILE_PATH}`);
 
 const getSaslConfig = (): SASLOptions | undefined => {
   const mechanism = SASL_MECHANISM ? SASL_MECHANISM.toLowerCase() : "";
@@ -100,17 +100,17 @@ const jsonDateReviver = (key: string, value: unknown): unknown => {
 };
 
 const kafka = new Kafka({
-  clientId: "flow-consumer",
+  clientId: "streaming-function-consumer",
   brokers: [BROKER],
   ssl: SECURITY_PROTOCOL === "SASL_SSL",
   sasl: getSaslConfig(),
 });
 
-const flowIdentifier = `flow-${SOURCE_TOPIC}-${TARGET_TOPIC}`;
+const streamingFuncId = `flow-${SOURCE_TOPIC}-${TARGET_TOPIC}`;
 const consumer: Consumer = kafka.consumer({
-  groupId: flowIdentifier,
+  groupId: streamingFuncId,
 });
-const producer: Producer = kafka.producer({ transactionalId: flowIdentifier });
+const producer: Producer = kafka.producer({ transactionalId: streamingFuncId });
 
 const startProducer = async (): Promise<void> => {
   await producer.connect();
@@ -128,7 +128,7 @@ const stopConsumer = async (): Promise<void> => {
 };
 
 const handleMessage = async (
-  flowFn: FlowFunction,
+  streamingFunction: StreamingFunction,
   message: KafkaMessage,
 ): Promise<SlimKafkaMessage[] | null> => {
   if (message.value === undefined || message.value === null) {
@@ -137,7 +137,7 @@ const handleMessage = async (
   }
 
   try {
-    const transformedData = await flowFn(
+    const transformedData = await streamingFunction(
       JSON.parse(message.value.toString(), jsonDateReviver),
     );
 
@@ -207,13 +207,13 @@ const startConsumer = async (
   await consumer.connect();
 
   log(
-    `Starting consumer group '${flowIdentifier}' with source topic: ${sourceTopic} and target topic: ${targetTopic}`,
+    `Starting consumer group '${streamingFuncId}' with source topic: ${sourceTopic} and target topic: ${targetTopic}`,
   );
 
-  const flowModuleImport = await import(
-    FLOW_FILE_PATH.substring(0, FLOW_FILE_PATH.length - 3)
+  const streamingFunctionImport = await import(
+    FUNCTION_FILE_PATH.substring(0, FUNCTION_FILE_PATH.length - 3)
   );
-  const flowFunction: FlowFunction = flowModuleImport.default;
+  const streamingFunction: StreamingFunction = streamingFunctionImport.default;
 
   await consumer.subscribe({
     topics: [sourceTopic],
@@ -228,7 +228,9 @@ const startConsumer = async (
       });
       const messages = (
         await Promise.all(
-          batch.messages.map((message) => handleMessage(flowFunction, message)),
+          batch.messages.map((message) =>
+            handleMessage(streamingFunction, message),
+          ),
         )
       ).flat();
 
@@ -266,7 +268,7 @@ const getMaxMessageSize = (config: Record<string, unknown>): number => {
   return Math.min(maxMessageBytes, messageMaxBytes);
 };
 
-const startFlow = async (
+const startStreaming = async (
   sourceTopic: string,
   targetTopic: string,
   targetTopicConfigJson: string,
@@ -303,4 +305,4 @@ process.on("SIGTERM", async () => {
   process.exit(0);
 });
 
-startFlow(SOURCE_TOPIC, TARGET_TOPIC, TARGET_TOPIC_CONFIG);
+startStreaming(SOURCE_TOPIC, TARGET_TOPIC, TARGET_TOPIC_CONFIG);

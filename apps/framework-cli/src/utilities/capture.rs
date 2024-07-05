@@ -32,8 +32,8 @@ pub enum ActivityType {
     DevCommand,
     #[serde(rename = "dockerCommand")]
     DockerCommand,
-    #[serde(rename = "flowInitCommand")]
-    FlowInitCommand,
+    #[serde(rename = "funcInitCommand")]
+    FuncInitCommand,
     #[serde(rename = "initCommand")]
     InitCommand,
     #[serde(rename = "initTemplateCommand")]

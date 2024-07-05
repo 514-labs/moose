@@ -122,9 +122,9 @@ impl InfrastructureMap {
         for function in primitive_map.functions.iter() {
             // Currently we are not creating 1 per function source and target.
             // We reuse the topics that were created from the data models.
-            // Unless for Flow migrations where we will have to create new topics.
+            // Unless for streaming function migrations where we will have to create new topics.
 
-            if function.is_flow_migration() {
+            if function.is_migration() {
                 let (source_topic, target_topic) = Topic::from_migration_function(function);
 
                 let function_process =

@@ -8,24 +8,24 @@ use crate::{
     utilities::constants::{PY_FLOW_FILE, TS_FLOW_FILE},
 };
 
-use super::model::{Flow, FlowError};
+use super::model::{FunctionError, StreamingFunction};
 
 const MIGRATION_REGEX: &str =
     r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-9_]+)__)?([0-9_]+)$";
 
 /**
- * This function gets the flows as defined by the user for the
+ * This function gets the streaming functions as defined by the user for the
  * current version of the moose application.
  */
-pub async fn get_all_current_flows(
+pub async fn get_all_current_streaming_functions(
     project: &Project,
     data_models: &DataModelSet,
-) -> Result<Vec<Flow>, FlowError> {
-    let flows_path = project.flows_dir();
-    get_all_flows(data_models, project.cur_version(), &flows_path).await
+) -> Result<Vec<StreamingFunction>, FunctionError> {
+    let functions_path = project.streaming_func_dir();
+    get_all_streaming_functions(data_models, project.cur_version(), &functions_path).await
 }
 
-pub fn parse_flow(file_name_no_extension: &str) -> Option<(&str, &str)> {
+pub fn parse_streaming_function(file_name_no_extension: &str) -> Option<(&str, &str)> {
     let split: Vec<&str> = file_name_no_extension.split("__").collect();
     if split.len() == 2 {
         let source_data_model_name = split[0];
@@ -36,7 +36,7 @@ pub fn parse_flow(file_name_no_extension: &str) -> Option<(&str, &str)> {
     }
 }
 
-pub fn extension_supported_in_flow(path: &Path) -> bool {
+pub fn extension_supported_in_streaming_function(path: &Path) -> bool {
     path.extension().is_some_and(|extension_os_str| {
         extension_os_str
             .to_str()
@@ -45,35 +45,35 @@ pub fn extension_supported_in_flow(path: &Path) -> bool {
 }
 
 /**
- * This function should be pointed at the root of the 'flows' directory.
- * Whether this is an old version of the moose app flows (inside the version directory)
+ * This function should be pointed at the root of the 'functions' directory.
+ * Whether this is an old version of the moose app function (inside the version directory)
  * or the current version of the application.
  *
  * It will assume that all the first children of the directory are the data models
  * sources and the the second children are the data model targets.
  *
- * This also retrieves the migration flows.
+ * This also retrieves the migration streaming functions.
  *
  * TODO - handle historical versions. For now this only collects the latest/current version
- * of flows using the latest available topics for each data model.
+ * of streaming functions using the latest available topics for each data model.
  */
-async fn get_all_flows(
+async fn get_all_streaming_functions(
     data_models: &DataModelSet,
     current_version: &str,
     path: &Path,
-) -> Result<Vec<Flow>, FlowError> {
+) -> Result<Vec<StreamingFunction>, FunctionError> {
     // This should not fail since the regex is hardcoded
     let migration_regex = Regex::new(MIGRATION_REGEX).unwrap();
 
-    let mut flows = vec![];
+    let mut functions = vec![];
 
     for source in fs::read_dir(path)? {
         let source = source?;
 
-        // We check if the file is a migration flow
+        // We check if the file is a migration streaming function
         if source.metadata()?.is_file() {
-            if extension_supported_in_flow(&source.path()) {
-                let potential_flow_file_name = &source
+            if extension_supported_in_streaming_function(&source.path()) {
+                let potential_function_file_name = &source
                     .path()
                     .with_extension("")
                     .file_name()
@@ -81,10 +81,10 @@ async fn get_all_flows(
                     .to_string_lossy()
                     .to_string();
 
-                match migration_regex.captures(potential_flow_file_name) {
+                match migration_regex.captures(potential_function_file_name) {
                     None => {
                         if let Some((source_data_model_name, target_data_model_name)) =
-                            parse_flow(potential_flow_file_name)
+                            parse_streaming_function(potential_function_file_name)
                         {
                             let source_data_model = if let Some(source_data_model) =
                                 data_models.get(source_data_model_name, current_version)
@@ -110,14 +110,14 @@ async fn get_all_flows(
                                 continue;
                             };
 
-                            let flow = Flow {
-                                name: potential_flow_file_name.clone(),
+                            let function = StreamingFunction {
+                                name: potential_function_file_name.clone(),
                                 source_data_model: source_data_model.clone(),
                                 target_data_model: target_data_model.clone(),
                                 executable: source.path(),
                                 version: current_version.to_string(),
                             };
-                            flows.push(flow);
+                            functions.push(function);
                         } else {
                             debug!(
                                 "Fragments of file {:?} does not match the convention",
@@ -126,20 +126,20 @@ async fn get_all_flows(
                         }
                     }
                     Some(caps) => {
-                        let flow = build_migration_flow(
+                        let func = build_migration_function(
                             &source.file_name().to_string_lossy(),
                             data_models,
                             current_version,
                             caps,
                             &source.path(),
                         );
-                        flows.push(flow);
+                        functions.push(func);
                     }
                 }
             }
             // In this case we are currently processing a single file
             // As such we can skip the following steps which are specific
-            // to the old naming convention, i.e. nested directory flows
+            // to the old naming convention, i.e. nested directories
             continue;
         }
 
@@ -172,40 +172,43 @@ async fn get_all_flows(
                 }
             };
 
-            for flow_file in fs::read_dir(target.path())? {
-                let flow_file = flow_file?;
-                let file_name = flow_file.file_name().to_string_lossy().to_string();
+            for function_file in fs::read_dir(target.path())? {
+                let function_file = function_file?;
+                let file_name = function_file.file_name().to_string_lossy().to_string();
 
-                if flow_file.metadata()?.is_file()
+                if function_file.metadata()?.is_file()
                     && (file_name.starts_with(TS_FLOW_FILE) || file_name.starts_with(PY_FLOW_FILE))
                 {
-                    let flow = Flow {
+                    let func = StreamingFunction {
                         name: file_name.clone(),
                         source_data_model: source_data_model.clone(),
                         target_data_model: target_data_model.clone(),
-                        executable: flow_file.path().to_path_buf(),
+                        executable: function_file.path().to_path_buf(),
                         version: current_version.to_string(),
                     };
-                    flows.push(flow);
+                    functions.push(func);
 
-                    // There can only be one flow file per target
+                    // There can only be one streaming function file per target
                     continue;
                 }
             }
         }
     }
 
-    Ok(flows)
+    Ok(functions)
 }
 
-fn build_migration_flow(
+fn build_migration_function(
     file_name: &str,
     data_models: &DataModelSet,
     current_version: &str,
     caps: Captures,
     executable: &Path,
-) -> Flow {
-    info!("Flows Data Captures for migrations {:?}", caps);
+) -> StreamingFunction {
+    info!(
+        "Streaming function regex captures for migrations {:?}",
+        caps
+    );
     let source_model_name = caps.get(1).unwrap().as_str();
     let source_version = caps.get(2).unwrap().as_str().replace('_', ".");
 
@@ -215,7 +218,7 @@ fn build_migration_flow(
     let target_version = caps.get(5).unwrap().as_str().replace('_', ".");
     let target_data_model = data_models.get(target_model_name, &target_version).unwrap();
 
-    Flow {
+    StreamingFunction {
         name: file_name.to_string(),
         source_data_model: source_data_model.clone(),
         target_data_model: target_data_model.clone(),

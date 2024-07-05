@@ -10,12 +10,12 @@ use crate::{
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
-pub enum FlowError {
-    #[error("Failed to load flow files")]
+pub enum FunctionError {
+    #[error("Failed to load streaming function files")]
     IoError(#[from] std::io::Error),
 
-    #[error("The flow {file_name} is not supported.")]
-    UnsupportedFlowType { file_name: String },
+    #[error("The streaming function {file_name} is not supported.")]
+    UnsupportedFunctionType { file_name: String },
 
     #[error("Could not fetch the list of topics from Kafka")]
     KafkaError(#[from] rdkafka::error::KafkaError),
@@ -25,11 +25,11 @@ pub enum FlowError {
 }
 
 #[derive(Debug, Clone)]
-pub struct Flow {
+pub struct StreamingFunction {
     // The name used here is the name of the file that contains the function
     // since we have the current assumption that there is 1 function per file
     // we can use the file name as the name of the function.
-    // We don't currently do checks across flows for unicities but we should
+    // We don't currently do checks across streaming functions for unicities but we should
     pub name: String,
 
     pub source_data_model: DataModel,
@@ -40,7 +40,7 @@ pub struct Flow {
     pub version: String,
 }
 
-impl Flow {
+impl StreamingFunction {
     // Should the version of the data models be included in the id?
     pub fn id(&self) -> String {
         format!(
@@ -49,15 +49,15 @@ impl Flow {
         )
     }
 
-    pub fn is_ts_flow(&self) -> bool {
+    pub fn is_ts(&self) -> bool {
         self.executable.extension().unwrap().to_str().unwrap() == TYPESCRIPT_FILE_EXTENSION
     }
 
-    pub fn is_py_flow(&self) -> bool {
+    pub fn is_py(&self) -> bool {
         self.executable.extension().unwrap().to_str().unwrap() == PYTHON_FILE_EXTENSION
     }
 
-    pub fn is_flow_migration(&self) -> bool {
+    pub fn is_migration(&self) -> bool {
         self.source_data_model.version != self.target_data_model.version
             && self.executable.extension().unwrap().to_str().unwrap() != SQL_FILE_EXTENSION
     }

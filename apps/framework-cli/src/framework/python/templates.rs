@@ -44,7 +44,7 @@ setup(
 )
 "#;
 
-pub static PYTHON_BASE_FLOW_TEMPLATE: &str = r#"
+pub static PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE: &str = r#"
 from datetime import datetime
 from app.datamodels.models import UserActivity, ParsedActivity
 from dataclasses import dataclass

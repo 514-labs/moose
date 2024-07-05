@@ -42,9 +42,9 @@ pub async fn generate_migration(project: &Project) -> Result<RoutineSuccess, Rou
         previous_version,
     );
 
-    let flow_dir = project.flows_dir();
+    let function_dir = project.streaming_func_dir();
     for vs in new_vs_list {
-        let file_path = flow_dir.join(format!(
+        let file_path = function_dir.join(format!(
             "{}_migrate__{}__{}.sql",
             vs.model_name,
             vs.source_version.replace('.', "_"),

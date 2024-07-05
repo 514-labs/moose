@@ -5,11 +5,11 @@ pub mod consumption;
 pub mod controller;
 pub mod core;
 pub mod data_model;
-pub mod flows;
 pub mod languages;
 pub mod prisma;
 pub mod python;
 pub mod sdk;
+pub mod streaming;
 pub mod typescript;
 
 pub enum Insights {
@@ -20,7 +20,7 @@ pub enum Insights {
 
 pub enum TopLevelObjects {
     Ingestion,
-    Flow,
+    StreamingFunction,
     DataModel,
     Insights(Insights),
 }
@@ -28,7 +28,7 @@ pub enum TopLevelObjects {
 #[derive(Debug, Subcommand)]
 pub enum AddableObjects {
     IngestPoint,
-    Flow,
+    StreamingFunction,
     DataModel,
     Metric,
     Dashboard,

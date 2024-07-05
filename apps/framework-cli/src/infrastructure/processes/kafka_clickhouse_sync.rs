@@ -30,7 +30,7 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::infrastructure::stream::redpanda::{create_producer, send_with_back_pressure};
 
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
-const FLOW_SYNC_GROUP_ID: &str = "version_sync_flow_sync";
+const VERSION_SYNC_GROUP_ID: &str = "version_sync_flow_sync";
 
 struct TableSyncingProcess {
     process: JoinHandle<anyhow::Result<()>>,
@@ -275,7 +275,7 @@ async fn sync_kafka_to_kafka(
     source_topic_name: String,
     target_topic_name: String,
 ) {
-    let subscriber = create_subscriber(&kafka_config, FLOW_SYNC_GROUP_ID, &source_topic_name);
+    let subscriber = create_subscriber(&kafka_config, VERSION_SYNC_GROUP_ID, &source_topic_name);
     let producer = create_producer(kafka_config.clone());
 
     // there is no concurrency on this queue, the mutex is to satisfy the borrow checker

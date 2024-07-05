@@ -7,7 +7,7 @@ use crate::{
             model::{DataModel, DataModelSet},
             parser::parse_data_model_file,
         },
-        flows::{loader::get_all_current_flows, model::Flow},
+        streaming::{loader::get_all_current_streaming_functions, model::StreamingFunction},
     },
     project::Project,
 };
@@ -19,14 +19,14 @@ pub enum PrimitiveMapLoadingError {
     #[error("Failed to parse the data model file")]
     DataModelParsing(#[from] crate::framework::data_model::parser::DataModelParsingError),
 
-    #[error("Failed to load flows")]
-    FlowsLoading(#[from] crate::framework::flows::model::FlowError),
+    #[error("Failed to load functions")]
+    FunctionsLoading(#[from] crate::framework::streaming::model::FunctionError),
 }
 
 #[derive(Debug, Clone, Default)]
 pub struct PrimitiveMap {
     pub datamodels: DataModelSet,
-    pub functions: Vec<Flow>,
+    pub functions: Vec<StreamingFunction>,
 
     // We are currently not loading aggregations 1 by 1 in the CLI, we should load them individually to be able
     // to start/stop them individually. Right now we are starting all of them at once through the language specific
@@ -54,12 +54,13 @@ impl PrimitiveMap {
             }
         }
 
-        primitive_map.functions = get_all_current_flows(project, &primitive_map.datamodels)
-            .await?
-            .iter()
-            .filter(|flow| flow.executable.extension().unwrap() == "ts")
-            .cloned()
-            .collect();
+        primitive_map.functions =
+            get_all_current_streaming_functions(project, &primitive_map.datamodels)
+                .await?
+                .iter()
+                .filter(|func| func.executable.extension().unwrap() == "ts")
+                .cloned()
+                .collect();
 
         Ok(primitive_map)
     }

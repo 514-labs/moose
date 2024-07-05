@@ -12,26 +12,32 @@ pub fn run(
     source_topic: &str,
     target_topic: &str,
     target_topic_config: &str,
-    flow_path: &Path,
+    function_path: &Path,
 ) -> Result<Child, std::io::Error> {
-    let mut flow_process = executor::run_python_program(executor::PythonProgram::FlowRunner {
-        args: vec![
-            source_topic.to_string(),
-            target_topic.to_string(),
-            target_topic_config.to_string(),
-            flow_path.parent().unwrap().to_str().unwrap().to_string(),
-            redpanda_config.broker.clone(),
-        ],
-    })?;
+    let mut streaming_function_process =
+        executor::run_python_program(executor::PythonProgram::StreamingFunctionRunner {
+            args: vec![
+                source_topic.to_string(),
+                target_topic.to_string(),
+                target_topic_config.to_string(),
+                function_path
+                    .parent()
+                    .unwrap()
+                    .to_str()
+                    .unwrap()
+                    .to_string(),
+                redpanda_config.broker.clone(),
+            ],
+        })?;
 
-    let stdout = flow_process
+    let stdout = streaming_function_process
         .stdout
         .take()
-        .expect("Flow process did not have a handle to stdout");
-    let stderr = flow_process
+        .expect("Streaming process did not have a handle to stdout");
+    let stderr = streaming_function_process
         .stderr
         .take()
-        .expect("Flow process did not have a handle to stderr");
+        .expect("Streaming process did not have a handle to stderr");
 
     let mut stdout_reader = tokio::io::BufReader::new(stdout).lines();
     let mut stderr_reader = tokio::io::BufReader::new(stderr).lines();
@@ -50,7 +56,7 @@ pub fn run(
         }
     });
 
-    Ok(flow_process)
+    Ok(streaming_function_process)
 }
 
 // tests
@@ -63,7 +69,7 @@ mod tests {
     #[tokio::test]
     #[ignore]
     async fn test_run() {
-        // Use these tests by configuring a timeout in the flow runner
+        // Use these tests by configuring a timeout in the streaming function runner
         //  consumer = KafkaConsumer(
         //     source_topic,
         //     client_id= "python_flow_consumer",

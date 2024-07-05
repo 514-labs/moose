@@ -12,14 +12,14 @@ pub enum TypescriptRenderingError {
     HandlebarError(#[from] handlebars::RenderError),
 }
 
-pub static TS_BASE_FLOW_SAMPLE_TEMPLATE: &str = r#"
-// Example flow function: Converts local timestamps in UserActivity data to UTC.
+pub static TS_BASE_STREAMING_FUNCTION_SAMPLE_TEMPLATE: &str = r#"
+// Example streaming function: Converts local timestamps in UserActivity data to UTC.
 
 // Imports: Source (UserActivity) and Destination (ParsedActivity) data models.
 import { ParsedActivity, UserActivity } from "../datamodels/models";
 
 // The 'run' function transforms UserActivity data to ParsedActivity format.
-// For more details on how Moose flows work, see: https://docs.moosejs.com
+// For more details on how Moose streaming functions work, see: https://docs.moosejs.com
 export default function run(source: UserActivity): ParsedActivity {
   // Convert local timestamp to UTC and return new ParsedActivity object.
   return {
@@ -32,13 +32,13 @@ export default function run(source: UserActivity): ParsedActivity {
 
 "#;
 
-pub static BASE_FLOW_TEMPLATE: &str = r#"
+pub static BASE_STREAMING_FUNCTION_TEMPLATE: &str = r#"
 // Add your models & start the development server to import these types
 {{source_import}}
 {{destination_import}}
 
 // The 'run' function transforms {{source}} data to {{destination}} format.
-// For more details on how Moose flows work, see: https://docs.moosejs.com
+// For more details on how Moose streaming functions work, see: https://docs.moosejs.com
 export default function run(source: {{source}}): {{destination}} | null {
   return {{destination_object}};
 }

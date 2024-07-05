@@ -88,7 +88,7 @@ use log::{debug, error, info};
 use tokio::sync::RwLock;
 
 use crate::cli::watcher::{
-    process_aggregations_changes, process_consumption_changes, process_flows_changes,
+    process_aggregations_changes, process_consumption_changes, process_streaming_func_changes,
 };
 use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 use crate::framework::core::code_loader::{
@@ -100,7 +100,7 @@ use crate::infrastructure::olap::clickhouse::{
     fetch_table_names, fetch_table_schema, table_schema_to_hash,
 };
 
-use crate::cli::routines::flow::verify_flows_against_datamodels;
+use crate::cli::routines::streaming::verify_streaming_functions_against_datamodels;
 use crate::framework::controller::{create_or_replace_version_sync, process_objects, RouteMeta};
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
@@ -126,13 +126,13 @@ pub mod clean;
 pub mod consumption;
 pub mod dev;
 pub mod docker_packager;
-pub mod flow;
 pub mod initialize;
 pub mod logs;
 pub mod ls;
 pub mod migrate;
 pub mod ps;
 pub mod stop;
+pub mod streaming;
 pub mod templates;
 mod util;
 pub mod validate;
@@ -326,15 +326,15 @@ pub async fn start_development_mode(
 
         let topics = fetch_topics(&project.redpanda_config).await?;
 
-        let mut flows_process_registry =
+        let mut function_process_registry =
             FunctionProcessRegistry::new(project.redpanda_config.clone());
         // Once the below function is optimized to act on events, this
         // will need to get refactored out.
 
-        process_flows_changes(
+        process_streaming_func_changes(
             &project,
             &framework_object_versions.get_data_model_set(),
-            &mut flows_process_registry,
+            &mut function_process_registry,
             &topics,
         )
         .await?;
@@ -363,7 +363,7 @@ pub async fn start_development_mode(
         .await?;
 
         let project_registries = ProcessRegistries {
-            flows: flows_process_registry,
+            functions: function_process_registry,
             aggregations: aggregations_process_registry,
             consumption: consumption_process_registry,
         };
@@ -459,14 +459,14 @@ pub async fn start_production_mode(
             .start_all(&framework_object_versions, &version_syncs)
             .await;
 
-        let mut flows_process_registry =
+        let mut function_process_registry =
             FunctionProcessRegistry::new(project.redpanda_config.clone());
         // Once the below function is optimized to act on events, this
         // will need to get refactored out.
-        process_flows_changes(
+        process_streaming_func_changes(
             &project,
             &framework_object_versions.get_data_model_set(),
-            &mut flows_process_registry,
+            &mut function_process_registry,
             &topics,
         )
         .await?;
@@ -695,7 +695,7 @@ pub async fn initialize_project_state(
     )
     .await?;
 
-    let _ = verify_flows_against_datamodels(&project, &framework_object_versions);
+    let _ = verify_streaming_functions_against_datamodels(&project, &framework_object_versions);
 
     Ok((framework_object_versions, version_syncs))
 }

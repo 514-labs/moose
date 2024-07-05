@@ -21,13 +21,13 @@ pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS: &str = "clickhouse/confi
 pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS: &str = "clickhouse/configs/users";
 
 pub const SCHEMAS_DIR: &str = "datamodels";
-pub const FLOWS_DIR: &str = "flows";
+pub const FUNCTIONS_DIR: &str = "functions";
 pub const AGGREGATIONS_DIR: &str = "aggregations";
 pub const BLOCKS_DIR: &str = "blocks";
 pub const CONSUMPTION_DIR: &str = "apis";
 pub const VSCODE_DIR: &str = ".vscode";
-pub const SAMPLE_FLOWS_SOURCE: &str = "UserActivity";
-pub const SAMPLE_FLOWS_DEST: &str = "ParsedActivity";
+pub const SAMPLE_STREAMING_FUNCTION_SOURCE: &str = "UserActivity";
+pub const SAMPLE_STREAMING_FUNCTION_DEST: &str = "ParsedActivity";
 
 pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb-1";
 pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";
@@ -35,12 +35,20 @@ pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";
 pub const REDPANDA_HOSTS: [&str; 2] = ["redpanda", "localhost"];
 
 pub const APP_DIR: &str = "app";
-pub const APP_DIR_LAYOUT: [&str; 4] = [SCHEMAS_DIR, FLOWS_DIR, AGGREGATIONS_DIR, CONSUMPTION_DIR];
+pub const APP_DIR_LAYOUT: [&str; 4] = [
+    SCHEMAS_DIR,
+    FUNCTIONS_DIR,
+    AGGREGATIONS_DIR,
+    CONSUMPTION_DIR,
+];
 
 pub const GITIGNORE: &str = ".gitignore";
 
+// These two constants are for the old convention of nested directories
+// we will not be renaming them
 pub const TS_FLOW_FILE: &str = "flow.ts";
 pub const PY_FLOW_FILE: &str = "flow.py";
+
 pub const TS_AGGREGATIONS_FILE: &str = "DailyActiveUsers.ts";
 pub const PY_AGGREGATIONS_FILE: &str = "DailyActiveUsers.py";
 pub const API_FILE: &str = "dailyActiveUsers.ts";

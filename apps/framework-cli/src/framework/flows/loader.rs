@@ -25,6 +25,25 @@ pub async fn get_all_current_flows(
     get_all_flows(data_models, project.cur_version(), &flows_path).await
 }
 
+pub fn parse_flow(file_name_no_extension: &str) -> Option<(&str, &str)> {
+    let split: Vec<&str> = file_name_no_extension.split("__").collect();
+    if split.len() == 2 {
+        let source_data_model_name = split[0];
+        let target_data_model_name = split[1];
+        Some((source_data_model_name, target_data_model_name))
+    } else {
+        None
+    }
+}
+
+pub fn extension_supported_in_flow(path: &Path) -> bool {
+    path.extension().is_some_and(|extension_os_str| {
+        extension_os_str
+            .to_str()
+            .is_some_and(|extension| extension == "ts" || extension == "py")
+    })
+}
+
 /**
  * This function should be pointed at the root of the 'flows' directory.
  * Whether this is an old version of the moose app flows (inside the version directory)
@@ -53,7 +72,7 @@ async fn get_all_flows(
 
         // We check if the file is a migration flow
         if source.metadata()?.is_file() {
-            if !source.file_name().to_str().unwrap().ends_with("sql") {
+            if extension_supported_in_flow(&source.path()) {
                 let potential_flow_file_name = &source
                     .path()
                     .with_extension("")
@@ -64,11 +83,9 @@ async fn get_all_flows(
 
                 match migration_regex.captures(potential_flow_file_name) {
                     None => {
-                        let split: Vec<&str> = potential_flow_file_name.split("__").collect();
-                        if split.len() == 2 {
-                            let source_data_model_name = split[0];
-                            let target_data_model_name = split[1];
-
+                        if let Some((source_data_model_name, target_data_model_name)) =
+                            parse_flow(potential_flow_file_name)
+                        {
                             let source_data_model = if let Some(source_data_model) =
                                 data_models.get(source_data_model_name, current_version)
                             {

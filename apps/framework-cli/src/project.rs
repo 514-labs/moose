@@ -29,6 +29,7 @@ use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::cli::settings::Features;
+use crate::framework::flows::loader::{extension_supported_in_flow, parse_flow};
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::python::templates::PTYHON_BASE_AGG_SAMPLE_TEMPLATE;
 use crate::framework::python::templates::PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE;
@@ -516,8 +517,28 @@ impl Project {
         let mut flows_map = HashMap::new();
 
         if let Ok(entries) = std::fs::read_dir(self.flows_dir()) {
+            // flatten here means ignoring the Err case
             for entry in entries.flatten() {
-                if let Some((input_model, output_models)) = self.process_flow_input(&entry) {
+                if entry.file_type().is_ok_and(|t| t.is_file())
+                    && extension_supported_in_flow(&entry.path())
+                {
+                    parse_flow(
+                        entry
+                            .path()
+                            .with_extension("")
+                            .file_name()
+                            .unwrap()
+                            .to_string_lossy()
+                            .as_ref(),
+                    )
+                    .iter()
+                    .for_each(|(input, output)| {
+                        flows_map
+                            .entry(input.to_string())
+                            .or_insert_with(Vec::new)
+                            .push(output.to_string())
+                    });
+                } else if let Some((input_model, output_models)) = self.process_flow_input(&entry) {
                     flows_map.insert(input_model, output_models);
                 }
             }

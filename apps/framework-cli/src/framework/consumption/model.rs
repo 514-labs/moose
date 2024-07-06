@@ -1,43 +1,10 @@
-use std::path::PathBuf;
+// TODO enable single api change detection for the user
 
-use tokio::process::Child;
-
-use crate::{
-    framework::{languages::SupportedLanguages, python, typescript},
-    infrastructure::olap::clickhouse::config::ClickHouseConfig,
-    utilities::system::KillProcessError,
-};
-
-#[derive(Debug, thiserror::Error)]
-#[non_exhaustive]
-pub enum ConsumptionError {
-    #[error("Failed to start/stop the consumption process")]
-    IoError(#[from] std::io::Error),
-
-    #[error("Kill process Error")]
-    KillProcessError(#[from] KillProcessError),
-}
-
-#[derive(Debug, Clone)]
-pub struct Consumption {
-    pub dir: PathBuf,
-}
+#[derive(Debug, Clone, Default)]
+pub struct Consumption {}
 
 impl Consumption {
     pub fn id(&self) -> String {
         "onlyone".to_string()
-    }
-
-    pub fn start(
-        &self,
-        language: SupportedLanguages,
-        clickhouse_config: ClickHouseConfig,
-    ) -> Result<Child, ConsumptionError> {
-        match language {
-            SupportedLanguages::Python => python::consumption::run(clickhouse_config, &self.dir),
-            SupportedLanguages::Typescript => {
-                typescript::consumption::run(clickhouse_config, &self.dir)
-            }
-        }
     }
 }

@@ -3,8 +3,8 @@ use std::path::Path;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 
-use crate::framework::consumption::model::ConsumptionError;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
+use crate::infrastructure::processes::consumption_registry::ConsumptionError;
 
 use super::ts_node;
 

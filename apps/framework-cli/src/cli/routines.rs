@@ -90,7 +90,6 @@ use tokio::sync::RwLock;
 use crate::cli::watcher::{
     process_aggregations_changes, process_consumption_changes, process_flows_changes,
 };
-use crate::framework::consumption::registry::ConsumptionProcessRegistry;
 use crate::framework::core::code_loader::{
     load_framework_objects, FrameworkObject, FrameworkObjectVersions, SchemaVersion,
 };
@@ -108,6 +107,7 @@ use crate::infrastructure::olap::clickhouse_alt_client::{
     get_pool, store_current_state, store_infrastructure_map,
 };
 use crate::infrastructure::processes::aggregations_registry::AggregationProcessRegistry;
+use crate::infrastructure::processes::consumption_registry::ConsumptionProcessRegistry;
 use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
@@ -353,8 +353,11 @@ pub async fn start_development_mode(
         );
         process_aggregations_changes(&mut aggregations_process_registry).await?;
 
-        let mut consumption_process_registry =
-            ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());
+        let mut consumption_process_registry = ConsumptionProcessRegistry::new(
+            project.language,
+            project.clickhouse_config.clone(),
+            project.consumption_dir(),
+        );
         process_consumption_changes(
             &project,
             &mut consumption_process_registry,
@@ -483,8 +486,11 @@ pub async fn start_production_mode(
         );
         process_aggregations_changes(&mut aggregations_process_registry).await?;
 
-        let mut consumption_process_registry =
-            ConsumptionProcessRegistry::new(project.language, project.clickhouse_config.clone());
+        let mut consumption_process_registry = ConsumptionProcessRegistry::new(
+            project.language,
+            project.clickhouse_config.clone(),
+            project.consumption_dir(),
+        );
         process_consumption_changes(
             &project,
             &mut consumption_process_registry,

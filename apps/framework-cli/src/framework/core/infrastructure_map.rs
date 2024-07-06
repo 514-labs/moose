@@ -2,6 +2,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 use super::infrastructure::api_endpoint::ApiEndpoint;
+use super::infrastructure::consumption_webserver::ConsumptionApiWebServer;
 use super::infrastructure::function_process::FunctionProcess;
 use super::infrastructure::olap_process::OlapProcess;
 use super::infrastructure::table::Table;
@@ -59,6 +60,7 @@ pub enum ProcessChange {
     TopicToTableSyncProcess(Change<TopicToTableSyncProcess>),
     FunctionProcess(Change<FunctionProcess>),
     OlapProcess(Change<OlapProcess>),
+    ConsumptionApiWebServer(Change<ConsumptionApiWebServer>),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -90,6 +92,10 @@ pub struct InfrastructureMap {
 
     // TODO change to a hashmap of processes when we have several
     pub block_db_processes: OlapProcess,
+
+    // Not sure if we will want to change that or not in the future to be able to tell
+    // the new consumption endpoints that were added or removed.
+    pub consumption_api_web_server: ConsumptionApiWebServer,
 }
 
 impl InfrastructureMap {
@@ -144,6 +150,9 @@ impl InfrastructureMap {
         // TODO update here when we have several aggregation processes
         let block_db_processes = OlapProcess::from_aggregation(&primitive_map.aggregation);
 
+        // We are currently not
+        let consumption_api_web_server = ConsumptionApiWebServer {};
+
         InfrastructureMap {
             // primitive_map,
             topics,
@@ -152,6 +161,7 @@ impl InfrastructureMap {
             tables,
             function_processes,
             block_db_processes,
+            consumption_api_web_server,
         }
     }
 
@@ -351,6 +361,24 @@ impl InfrastructureMap {
             },
         ));
 
+        // =================================================================
+        //                          Consumption Process
+        // =================================================================
+
+        // We are currently not tracking individual consumption endpoints, so we will just restart
+        // the consumption web server when something changed. we might want to change that in the future
+        // to be able to only make changes when something in the dependency tree of a consumption api has
+        // changed.
+
+        changes
+            .processes_changes
+            .push(ProcessChange::ConsumptionApiWebServer(Change::<
+                ConsumptionApiWebServer,
+            >::Updated {
+                before: ConsumptionApiWebServer {},
+                after: ConsumptionApiWebServer {},
+            }));
+
         changes
     }
 
@@ -422,6 +450,12 @@ impl InfrastructureMap {
         topic_to_table_process_changes.push(ProcessChange::OlapProcess(
             Change::<OlapProcess>::Added(OlapProcess {}),
         ));
+
+        topic_to_table_process_changes.push(ProcessChange::ConsumptionApiWebServer(Change::<
+            ConsumptionApiWebServer,
+        >::Added(
+            ConsumptionApiWebServer {},
+        )));
 
         topic_to_table_process_changes
     }

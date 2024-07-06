@@ -361,8 +361,6 @@ async fn watch(
                                         &plan_result.target_infra_map,
                                     )
                                     .await?;
-
-                                    Ok(())
                                 }
                                 Err(e) => {
                                     show_message!(MessageType::Error, {
@@ -371,9 +369,9 @@ async fn watch(
                                             details: format!("\n {}", e),
                                         }
                                     });
-                                    Ok(())
                                 }
                             }
+                            Ok(())
                         },
                         !project.is_production,
                     )

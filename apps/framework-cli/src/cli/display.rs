@@ -346,10 +346,7 @@ pub fn show_changes(infra_plan: &InfraPlan) {
             ProcessChange::ConsumptionApiWebServer(Change::Removed(_)) => {
                 infra_removed("Stoping Consumption WebServer...");
             }
-            ProcessChange::ConsumptionApiWebServer(Change::Updated {
-                before: _,
-                after: _,
-            }) => {
+            ProcessChange::ConsumptionApiWebServer(Change::Updated { .. }) => {
                 infra_updated("Reloading Consumption WebServer...");
             }
         });

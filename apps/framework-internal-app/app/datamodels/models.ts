@@ -1,4 +1,4 @@
-type Key<T extends string | number> = T;
+import { Key, IngestionFormat } from "@514labs/moose-lib";
 
 export const MooseActivityConfig = {
   storage: {
@@ -88,6 +88,20 @@ export interface ParsedActivity {
 
 export interface UserActivity {
   eventId: Key<string>;
+  timestamp: Date;
+  userId: string;
+  activity: string;
+  description: string;
+}
+
+export const UserActivityBatchConfig = {
+  ingestion: {
+    format: IngestionFormat.JSON_ARRAY,
+  },
+};
+
+export interface UserActivityBatch {
+  id: Key<string>;
   timestamp: Date;
   userId: string;
   activity: string;

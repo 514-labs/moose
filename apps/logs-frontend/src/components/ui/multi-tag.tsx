@@ -6,17 +6,17 @@ import { Dispatch, SetStateAction, forwardRef, useState } from "react";
 
 type InputTagsProps = InputProps & {
   value: string[];
-  onChange: Dispatch<SetStateAction<string[]>>;
+  setValue: Dispatch<SetStateAction<string[]>>;
 };
 
 export const InputTags = forwardRef<HTMLInputElement, InputTagsProps>(
-  ({ value, onChange, ...props }, ref) => {
+  ({ value, setValue, ...props }, ref) => {
     const [pendingDataPoint, setPendingDataPoint] = useState("");
 
     const addPendingDataPoint = () => {
       if (pendingDataPoint) {
         const newDataPoints = new Set([...value, pendingDataPoint]);
-        onChange(Array.from(newDataPoints));
+        setValue(Array.from(newDataPoints));
         setPendingDataPoint("");
       }
     };
@@ -57,7 +57,7 @@ export const InputTags = forwardRef<HTMLInputElement, InputTagsProps>(
                 type="button"
                 className="w-3 ml-2"
                 onClick={() => {
-                  onChange(value.filter((i) => i !== item));
+                  setValue(value.filter((i) => i !== item));
                 }}
               >
                 <XIcon className="w-3" />

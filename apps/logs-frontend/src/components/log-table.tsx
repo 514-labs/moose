@@ -1,19 +1,31 @@
 "use client";
 
-import { ParsedLogsResponse, fetchLogs, logColumns } from "@/lib/data-fetch";
+import {
+  ParsedLogsResponse,
+  fetchLogs,
+  createLogColumns,
+} from "@/lib/data-fetch";
 import { useInfiniteQuery, keepPreviousData } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { InfiniteTable } from "./ui/infinite-table";
 
-export default function LogTable() {
-  const fetchSize = 10;
-  const [sorting, setSorting] = useState<SortingState>([]);
+interface Props {
+  source: string | undefined;
+  search: string;
+}
+export default function LogTable({ source, search }: Props) {
+  const fetchSize = 40;
+  const [sorting, setSorting] = useState<SortingState>([
+    { id: "date", desc: true },
+  ]);
   const { data, fetchNextPage, isFetching, isLoading } =
     useInfiniteQuery<ParsedLogsResponse>({
       queryKey: [
-        "people",
+        "",
         sorting, //refetch when sorting changes
+        source, //refetch when source changes
+        search,
       ],
       queryFn: async ({ pageParam = 0 }) => {
         const start = (pageParam as number) * fetchSize;
@@ -21,6 +33,8 @@ export default function LogTable() {
           limit: fetchSize,
           offset: start,
           sorting,
+          source,
+          search,
         });
         return fetchedData;
       },
@@ -39,6 +53,8 @@ export default function LogTable() {
   const totalFetched = flatData.length;
 
   if (!data) return null;
+
+  const logColumns = createLogColumns({ selectedSource: source });
 
   return (
     <InfiniteTable

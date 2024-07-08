@@ -12,6 +12,13 @@ export enum SeverityLevel {
   DEBUG = "DEBUG",
 }
 
+export const severityLevels = [
+  SeverityLevel.INFO,
+  SeverityLevel.WARN,
+  SeverityLevel.ERROR,
+  SeverityLevel.DEBUG,
+];
+
 export const severityLevelColors = {
   [SeverityLevel.INFO]: "bg-blue-200",
   [SeverityLevel.WARN]: "bg-yellow-200",

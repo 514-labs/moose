@@ -1,4 +1,5 @@
 import { ColumnDef, SortingState } from "@tanstack/react-table";
+import { SeverityLevel } from "./utils";
 
 export interface ParsedLogs {
   date: string;
@@ -25,12 +26,14 @@ export async function fetchLogs({
   sorting,
   source,
   search,
+  severity,
 }: {
   limit: number;
   offset: number;
   sorting: SortingState;
   search: string;
   source?: string;
+  severity: SeverityLevel[];
 }) {
   const url = new URL("http://localhost:4000/consumption/log_query");
   url.searchParams.append("limit", limit.toString());
@@ -41,6 +44,8 @@ export async function fetchLogs({
   }
   if (source) url.searchParams.append("source", source);
   if (search) url.searchParams.append("search", search);
+  if (severity.length > 0)
+    url.searchParams.append("severity", severity.join(","));
 
   const response = await fetch(url.toString());
   const parsedLogs = await response.json();
@@ -67,22 +72,11 @@ export function createLogColumns({
       accessorKey: "source",
       header: "Source",
       minSize: 300,
-      /*
-      cell(props) {
-        return (
-          <span className="text-blue-500 underline">
-            {selectedSource
-              ? props.row.original.source.replace(selectedSource, "")
-              : props.row.original.source}
-          </span>
-        );
-      },
-      */
     },
     {
       accessorKey: "message",
       header: "Message",
-      minSize: 800,
+      size: 500,
     },
   ];
 }

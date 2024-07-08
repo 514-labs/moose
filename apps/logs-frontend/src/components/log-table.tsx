@@ -9,12 +9,14 @@ import { useInfiniteQuery, keepPreviousData } from "@tanstack/react-query";
 import { SortingState } from "@tanstack/react-table";
 import { useMemo, useState } from "react";
 import { InfiniteTable } from "./ui/infinite-table";
+import { SeverityLevel } from "@/lib/utils";
 
 interface Props {
   source: string | undefined;
   search: string;
+  severity: SeverityLevel[];
 }
-export default function LogTable({ source, search }: Props) {
+export default function LogTable({ source, search, severity }: Props) {
   const fetchSize = 40;
   const [sorting, setSorting] = useState<SortingState>([
     { id: "date", desc: true },
@@ -26,6 +28,7 @@ export default function LogTable({ source, search }: Props) {
         sorting, //refetch when sorting changes
         source, //refetch when source changes
         search,
+        severity,
       ],
       queryFn: async ({ pageParam = 0 }) => {
         const start = (pageParam as number) * fetchSize;
@@ -35,6 +38,7 @@ export default function LogTable({ source, search }: Props) {
           sorting,
           source,
           search,
+          severity,
         });
         return fetchedData;
       },

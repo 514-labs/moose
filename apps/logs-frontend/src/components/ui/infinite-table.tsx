@@ -112,7 +112,7 @@ export function InfiniteTable<T>({
 
   return (
     <div
-      className="container w-full"
+      className="w-full"
       onScroll={(e) => fetchMoreOnBottomReached(e.target as HTMLDivElement)}
       ref={tableContainerRef}
       style={{

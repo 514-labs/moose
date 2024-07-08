@@ -13,6 +13,7 @@ interface QueryParams {
   sortDir?: string;
   sortCol?: string;
   source?: string;
+  severity?: string;
 }
 
 function orderBySql(orderBy: string | undefined, desc: string | undefined) {
@@ -34,6 +35,7 @@ export default async function handle(
     sortCol,
     source,
     search,
+    severity,
   }: QueryParams,
   { client, sql }: ConsumptionUtil,
 ) {
@@ -41,12 +43,18 @@ export default async function handle(
   const offsetInt = parseInt(offset);
   const sort = orderBySql(sortCol, sortDir);
 
+  console.log(severity);
   const values: Sql[] = [];
   if (search) {
     values.push(sql`length(multiMatchAllIndices(message, patterns)) > 0`);
   }
   if (source) {
     values.push(sql`source LIKE ${`%${source}%`}`);
+  }
+
+  if (severity) {
+    console.log(severity);
+    values.push(sql`has(splitByString(',', ${severity}), severityLevel)`);
   }
 
   const whereFilter =

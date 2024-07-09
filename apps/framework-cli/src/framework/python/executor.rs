@@ -31,13 +31,13 @@ impl PythonSerializers {
 
 #[derive(Debug, Clone)]
 pub enum PythonProgram {
-    FlowRunner { args: Vec<String> },
+    StreamingFunctionRunner { args: Vec<String> },
     AggregationsRunner { args: Vec<String> },
     BlocksRunner { args: Vec<String> },
     ConsumptionRunner { args: Vec<String> },
 }
 
-pub static FLOW_RUNNER: &str = include_str!("scripts/flow_runner.py");
+pub static STREAMING_FUNCTION_RUNNER: &str = include_str!("scripts/streaming_function_runner.py");
 pub static AGGREGATIONS_RUNNER: &str = include_str!("scripts/aggregations_runner.py");
 pub static BLOCKS_RUNNER: &str = include_str!("scripts/blocks_runner.py");
 pub static CONSUMPTION_RUNNER: &str = include_str!("scripts/consumption_runner.py");
@@ -45,14 +45,14 @@ pub static CONSUMPTION_RUNNER: &str = include_str!("scripts/consumption_runner.p
 /// Executes a Python program in a subprocess
 pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Error> {
     let get_args = match program.clone() {
-        PythonProgram::FlowRunner { args } => args,
+        PythonProgram::StreamingFunctionRunner { args } => args,
         PythonProgram::AggregationsRunner { args } => args,
         PythonProgram::BlocksRunner { args } => args,
         PythonProgram::ConsumptionRunner { args } => args,
     };
 
     let program_string = match program {
-        PythonProgram::FlowRunner { .. } => FLOW_RUNNER,
+        PythonProgram::StreamingFunctionRunner { .. } => STREAMING_FUNCTION_RUNNER,
         PythonProgram::AggregationsRunner { .. } => AGGREGATIONS_RUNNER,
         PythonProgram::BlocksRunner { .. } => BLOCKS_RUNNER,
         PythonProgram::ConsumptionRunner { .. } => CONSUMPTION_RUNNER,
@@ -89,7 +89,7 @@ mod tests {
             "/Users/timdelisle/Dev/igloo-stack/apps/framework-cli/tests/python/flows/valid",
         );
 
-        let program = PythonProgram::FlowRunner {
+        let program = PythonProgram::StreamingFunctionRunner {
             args: vec![
                 source_topic.to_string(),
                 target_topic.to_string(),

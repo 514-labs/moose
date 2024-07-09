@@ -4,7 +4,7 @@ use std::time::Duration;
 use crate::framework::{
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
     data_model::model::DataModel,
-    flows::model::Flow,
+    streaming::model::StreamingFunction,
 };
 
 use super::table::Column;
@@ -35,7 +35,7 @@ impl Topic {
         }
     }
 
-    pub fn from_migration_function(function: &Flow) -> (Topic, Topic) {
+    pub fn from_migration_function(function: &StreamingFunction) -> (Topic, Topic) {
         let source_topic = Topic {
             name: format!(
                 "{}_{}_{}_{}_input",

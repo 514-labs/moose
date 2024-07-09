@@ -45,7 +45,7 @@ and the inside of your app folder should look like the following:
       <FileTree.Folder name="datamodels" defaultOpen>
         <FileTree.File name="models.ts" />
       </FileTree.Folder>
-      <FileTree.Folder name="flows" defaultOpen>
+      <FileTree.Folder name="functions" defaultOpen>
         <FileTree.File name="UserActivity__ParsedActivity.ts" />
       </FileTree.Folder>
     </FileTree.Folder>
@@ -130,9 +130,9 @@ It will bump the version in your package.json file and add a pointer between the
 
 5. `$ npx @514labs/moose-cli@latest generate migrations`
 
-This command will generate a SQL mapping file in the flows directory:
+This command will generate a SQL mapping file in the functions directory:
 
-```sql filename="./app/flows/UserActivity_migrate__0_0__0_1.sql"
+```sql filename="./app/functions/UserActivity_migrate__0_0__0_1.sql"
 (eventId, timestamp, userId, activity) -> (eventId, timestamp, userId)
 ```
 

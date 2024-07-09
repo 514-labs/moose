@@ -14,7 +14,9 @@ use std::process::exit;
 use std::sync::Arc;
 
 use clap::Parser;
-use commands::{AggregationCommands, Commands, ConsumptionCommands, FlowCommands, GenerateCommand};
+use commands::{
+    AggregationCommands, Commands, ConsumptionCommands, FunctionCommands, GenerateCommand,
+};
 use config::ConfigError;
 use display::with_spinner_async;
 use home::home_dir;
@@ -30,10 +32,10 @@ use crate::cli::routines::aggregation::create_aggregation_file;
 use crate::cli::routines::consumption::create_consumption_file;
 
 use crate::cli::routines::dev::copy_old_schema;
-use crate::cli::routines::flow::create_flow_file;
 use crate::cli::routines::initialize::initialize_project;
 use crate::cli::routines::logs::{follow_logs, show_logs};
 use crate::cli::routines::migrate::generate_migration;
+use crate::cli::routines::streaming::create_streaming_function_file;
 use crate::cli::routines::templates;
 use crate::cli::routines::version::bump_version;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
@@ -475,24 +477,28 @@ async fn top_command_handler(
                 "Project".to_string(),
             )))
         }
-        Commands::Flow(flow) => {
-            info!("Running flow command");
+        Commands::Function(function_args) => {
+            info!("Running function command");
 
-            let flow_cmd = flow.command.as_ref().unwrap();
-            match flow_cmd {
-                FlowCommands::Init(init) => {
+            let func_cmd = function_args.command.as_ref().unwrap();
+            match func_cmd {
+                FunctionCommands::Init(init) => {
                     let project = load_project()?;
                     let project_arc = Arc::new(project);
 
                     crate::utilities::capture::capture!(
-                        ActivityType::FlowInitCommand,
+                        ActivityType::FuncInitCommand,
                         project_arc.name().clone(),
                         &settings
                     );
 
                     check_project_name(&project_arc.name())?;
-                    create_flow_file(&project_arc, init.source.clone(), init.destination.clone())
-                        .await
+                    create_streaming_function_file(
+                        &project_arc,
+                        init.source.clone(),
+                        init.destination.clone(),
+                    )
+                    .await
                 }
             }
         }

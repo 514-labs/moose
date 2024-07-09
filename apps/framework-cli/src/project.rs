@@ -20,6 +20,7 @@ pub mod typescript_project;
 use std::fmt::Debug;
 use std::path::Path;
 use std::path::PathBuf;
+use std::sync::Once;
 
 use config::{Config, ConfigError, Environment, File};
 use log::debug;
@@ -29,17 +30,19 @@ use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::cli::settings::Features;
-use crate::framework::flows::loader::{extension_supported_in_flow, parse_flow};
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::python::templates::PTYHON_BASE_AGG_SAMPLE_TEMPLATE;
 use crate::framework::python::templates::PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE;
-use crate::framework::python::templates::PYTHON_BASE_FLOW_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
+use crate::framework::python::templates::PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE;
+use crate::framework::streaming::loader::{
+    extension_supported_in_streaming_function, parse_streaming_function,
+};
 use crate::framework::typescript::templates::BASE_APIS_SAMPLE_TEMPLATE;
 use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
     TS_BASE_AGGREGATION_SAMPLE_TEMPLATE, TS_BASE_BLOCKS_SAMPLE_TEMPLATE,
-    TS_BASE_FLOW_SAMPLE_TEMPLATE,
+    TS_BASE_STREAMING_FUNCTION_SAMPLE_TEMPLATE,
 };
 use crate::framework::typescript::templates::{
     VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
@@ -62,8 +65,8 @@ use crate::utilities::constants::PY_AGGREGATIONS_FILE;
 use crate::utilities::constants::README_PREFIX;
 use crate::utilities::constants::TS_AGGREGATIONS_FILE;
 use crate::utilities::constants::{
-    AGGREGATIONS_DIR, CONSUMPTION_DIR, FLOWS_DIR, OLD_PROJECT_CONFIG_FILE, SAMPLE_FLOWS_DEST,
-    SAMPLE_FLOWS_SOURCE, TS_FLOW_FILE,
+    AGGREGATIONS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, OLD_PROJECT_CONFIG_FILE,
+    SAMPLE_STREAMING_FUNCTION_DEST, SAMPLE_STREAMING_FUNCTION_SOURCE, TS_FLOW_FILE,
 };
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
@@ -128,6 +131,8 @@ impl Default for LanguageProjectConfig {
         LanguageProjectConfig::Typescript(TypescriptProject::default())
     }
 }
+
+static STREAMING_FUNCTION_RENAME_WARNING: Once = Once::new();
 
 impl Project {
     pub fn default_production() -> bool {
@@ -262,14 +267,18 @@ impl Project {
         match self.language {
             SupportedLanguages::Typescript => {
                 let base_model_file_path = self.data_models_dir().join("models.ts");
-                let flow_file_path = self
-                    .flows_dir()
-                    .join(format!("{}__{}.ts", SAMPLE_FLOWS_SOURCE, SAMPLE_FLOWS_DEST));
+                let function_file_path = self.streaming_func_dir().join(format!(
+                    "{}__{}.ts",
+                    SAMPLE_STREAMING_FUNCTION_SOURCE, SAMPLE_STREAMING_FUNCTION_DEST
+                ));
                 let aggregations_file_path = aggregations_dir.join(TS_AGGREGATIONS_FILE);
 
                 // Write TypeScript specific templates
                 self.write_file(&base_model_file_path, TS_BASE_MODEL_TEMPLATE.to_string())?;
-                self.write_file(&flow_file_path, TS_BASE_FLOW_SAMPLE_TEMPLATE.to_string())?;
+                self.write_file(
+                    &function_file_path,
+                    TS_BASE_STREAMING_FUNCTION_SAMPLE_TEMPLATE.to_string(),
+                )?;
                 if features.blocks {
                     self.write_file(
                         &aggregations_file_path,
@@ -284,9 +293,10 @@ impl Project {
             }
             SupportedLanguages::Python => {
                 let base_model_file_path = self.data_models_dir().join("models.py");
-                let flow_file_path = self
-                    .flows_dir()
-                    .join(format!("{}__{}.py", SAMPLE_FLOWS_SOURCE, SAMPLE_FLOWS_DEST));
+                let function_file_path = self.streaming_func_dir().join(format!(
+                    "{}__{}.py",
+                    SAMPLE_STREAMING_FUNCTION_SOURCE, SAMPLE_STREAMING_FUNCTION_DEST
+                ));
                 let aggregations_file_path = aggregations_dir.join(PY_AGGREGATIONS_FILE);
 
                 // Write Python specific templates
@@ -294,7 +304,10 @@ impl Project {
                     &base_model_file_path,
                     PYTHON_BASE_MODEL_TEMPLATE.to_string(),
                 )?;
-                self.write_file(&flow_file_path, PYTHON_BASE_FLOW_TEMPLATE.to_string())?;
+                self.write_file(
+                    &function_file_path,
+                    PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE.to_string(),
+                )?;
                 if features.blocks {
                     self.write_file(
                         &aggregations_file_path,
@@ -313,7 +326,7 @@ impl Project {
                     self.data_models_dir(),
                     aggregations_dir,
                     self.consumption_dir(),
-                    self.flows_dir(),
+                    self.streaming_func_dir(),
                 ] {
                     std::fs::File::create(dir.join("__init__.py"))?;
                 }
@@ -368,15 +381,23 @@ impl Project {
         schemas_dir
     }
 
-    pub fn flows_dir(&self) -> PathBuf {
-        let flows_dir = self.app_dir().join(FLOWS_DIR);
+    pub fn streaming_func_dir(&self) -> PathBuf {
+        let functions_dir = self.app_dir().join(FUNCTIONS_DIR);
 
-        if !flows_dir.exists() {
-            std::fs::create_dir_all(&flows_dir).expect("Failed to create flows directory");
+        if !functions_dir.exists() {
+            let flows_dir = self.app_dir().join("flows");
+            if flows_dir.exists() {
+                STREAMING_FUNCTION_RENAME_WARNING.call_once(|| {
+                    println!("❗️Action Required: 'Flows' are now called 'Functions.' Please rename the directory.");
+                });
+                return flows_dir;
+            }
+
+            std::fs::create_dir_all(&functions_dir).expect("Failed to create functions directory");
         }
 
-        debug!("Flows dir: {:?}", flows_dir);
-        flows_dir
+        debug!("Functions dir: {:?}", functions_dir);
+        functions_dir
     }
 
     pub fn aggregations_dir(&self) -> PathBuf {
@@ -513,16 +534,16 @@ impl Project {
             .collect::<Vec<String>>()
     }
 
-    pub fn get_flows(&self) -> HashMap<String, Vec<String>> {
-        let mut flows_map = HashMap::new();
+    pub fn get_functions(&self) -> HashMap<String, Vec<String>> {
+        let mut functions_map = HashMap::new();
 
-        if let Ok(entries) = std::fs::read_dir(self.flows_dir()) {
+        if let Ok(entries) = std::fs::read_dir(self.streaming_func_dir()) {
             // flatten here means ignoring the Err case
             for entry in entries.flatten() {
                 if entry.file_type().is_ok_and(|t| t.is_file())
-                    && extension_supported_in_flow(&entry.path())
+                    && extension_supported_in_streaming_function(&entry.path())
                 {
-                    parse_flow(
+                    parse_streaming_function(
                         entry
                             .path()
                             .with_extension("")
@@ -533,18 +554,20 @@ impl Project {
                     )
                     .iter()
                     .for_each(|(input, output)| {
-                        flows_map
+                        functions_map
                             .entry(input.to_string())
                             .or_insert_with(Vec::new)
                             .push(output.to_string())
                     });
-                } else if let Some((input_model, output_models)) = self.process_flow_input(&entry) {
-                    flows_map.insert(input_model, output_models);
+                } else if let Some((input_model, output_models)) =
+                    self.process_function_input(&entry)
+                {
+                    functions_map.insert(input_model, output_models);
                 }
             }
         }
 
-        flows_map
+        functions_map
     }
 
     pub fn get_aggregations(&self) -> HashSet<String> {
@@ -559,13 +582,13 @@ impl Project {
         }
     }
 
-    fn process_flow_input(&self, entry: &std::fs::DirEntry) -> Option<(String, Vec<String>)> {
+    fn process_function_input(&self, entry: &std::fs::DirEntry) -> Option<(String, Vec<String>)> {
         let input_model = entry.file_name().to_string_lossy().into_owned();
         let mut output_models = Vec::new();
 
         if let Ok(output_entries) = std::fs::read_dir(entry.path()) {
             for output_entry in output_entries.flatten() {
-                if let Some(output_model) = self.process_flow_output(&output_entry) {
+                if let Some(output_model) = self.process_function_output(&output_entry) {
                     output_models.push(output_model);
                 }
             }
@@ -578,11 +601,11 @@ impl Project {
         }
     }
 
-    fn process_flow_output(&self, entry: &std::fs::DirEntry) -> Option<String> {
+    fn process_function_output(&self, entry: &std::fs::DirEntry) -> Option<String> {
         if let Ok(file_type) = entry.file_type() {
             if file_type.is_dir() {
-                let flow_path = entry.path().join(TS_FLOW_FILE);
-                if flow_path.exists() {
+                let function_path = entry.path().join(TS_FLOW_FILE);
+                if function_path.exists() {
                     return Some(entry.file_name().to_string_lossy().into_owned());
                 }
             }

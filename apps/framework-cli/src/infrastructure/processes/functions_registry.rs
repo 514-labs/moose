@@ -6,8 +6,9 @@ use tokio::process::Child;
 use crate::{
     framework::{
         core::infrastructure::{function_process::FunctionProcess, topic::Topic},
-        flows::model::Flow,
-        python, typescript,
+        python,
+        streaming::model::StreamingFunction,
+        typescript,
     },
     infrastructure::stream::redpanda::RedpandaConfig,
     utilities::system::{kill_child, KillProcessError},
@@ -43,7 +44,7 @@ impl FunctionProcessRegistry {
         function_process: &FunctionProcess,
     ) -> Result<(), FunctionRegistryError> {
         let child = if function_process.is_py_function_process() {
-            Ok(python::flow::run(
+            Ok(python::streaming::run(
                 &self.kafka_config,
                 &function_process.source_topic,
                 &function_process.target_topic,
@@ -51,7 +52,7 @@ impl FunctionProcessRegistry {
                 &function_process.executable,
             )?)
         } else if function_process.is_ts_function_process() {
-            Ok(typescript::flow::run(
+            Ok(typescript::streaming::run(
                 &self.kafka_config,
                 &function_process.source_topic,
                 &function_process.target_topic,
@@ -74,21 +75,25 @@ impl FunctionProcessRegistry {
         Ok(())
     }
 
-    // This is a legacy method that takes in directly a flow to accomodate the current way
-    // of spinning up flows
+    // This is a legacy method that takes in directly a streaming function
+    // to accommodate the current way of spinning up streaming functions
     pub fn start_all(
         &mut self,
-        flows: &[Flow],
+        functions: &[StreamingFunction],
         topics: &[String],
     ) -> Result<(), FunctionRegistryError> {
-        for flow in flows {
-            if flow.is_flow_migration() {
-                let (source_topic, target_topic) = Topic::from_migration_function(flow);
-                let function_process =
-                    FunctionProcess::from_migration_functon(flow, &source_topic, &target_topic);
+        for streaming_function in functions {
+            if streaming_function.is_migration() {
+                let (source_topic, target_topic) =
+                    Topic::from_migration_function(streaming_function);
+                let function_process = FunctionProcess::from_migration_functon(
+                    streaming_function,
+                    &source_topic,
+                    &target_topic,
+                );
                 self.start(&function_process)?;
             } else {
-                self.start(&FunctionProcess::from_functon(flow, topics))?;
+                self.start(&FunctionProcess::from_functon(streaming_function, topics))?;
             }
         }
 

@@ -24,7 +24,7 @@ use crate::framework::core::infrastructure::olap_process::OlapProcess;
 use crate::framework::core::infrastructure_map::ApiChange;
 use crate::framework::data_model::model::DataModelSet;
 use crate::framework::data_model::{is_schema_file, DuplicateModelError};
-use crate::framework::flows::loader::get_all_current_flows;
+use crate::framework::streaming::loader::get_all_current_streaming_functions;
 
 use crate::infrastructure::olap::clickhouse_alt_client::{
     get_pool, store_current_state, store_infrastructure_map,
@@ -37,7 +37,7 @@ use crate::infrastructure::processes::process_registry::ProcessRegistries;
 use crate::infrastructure::stream::redpanda::{self, fetch_topics};
 use crate::project::AggregationSet;
 use crate::utilities::constants::{
-    AGGREGATIONS_DIR, BLOCKS_DIR, CONSUMPTION_DIR, FLOWS_DIR, SCHEMAS_DIR,
+    AGGREGATIONS_DIR, BLOCKS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, SCHEMAS_DIR,
 };
 use crate::{
     framework::controller::RouteMeta,
@@ -46,7 +46,7 @@ use crate::{
 };
 
 use super::display::{self, with_spinner_async, Message, MessageType};
-use super::routines::flow::verify_flows_against_datamodels;
+use super::routines::streaming::verify_streaming_functions_against_datamodels;
 use super::settings::Features;
 
 async fn process_data_models_changes(
@@ -237,7 +237,7 @@ async fn process_data_models_changes(
 }
 
 struct EventBuckets {
-    flows: Vec<DebouncedEvent>,
+    functions: Vec<DebouncedEvent>,
     aggregations: Vec<DebouncedEvent>,
     data_models: Vec<DebouncedEvent>,
     consumption: Vec<DebouncedEvent>,
@@ -247,7 +247,7 @@ impl EventBuckets {
     pub fn new(events: Vec<DebouncedEvent>) -> Self {
         info!("Events: {:?}", events);
 
-        let mut flows = Vec::new();
+        let mut functions = Vec::new();
         let mut aggregations = Vec::new();
         let mut data_models = Vec::new();
         let mut consumption = Vec::new();
@@ -256,9 +256,9 @@ impl EventBuckets {
             if event
                 .path
                 .iter()
-                .any(|component| component.eq_ignore_ascii_case(FLOWS_DIR))
+                .any(|component| component.eq_ignore_ascii_case(FUNCTIONS_DIR))
             {
-                flows.push(event);
+                functions.push(event);
             } else if event.path.iter().any(|component| {
                 component.eq_ignore_ascii_case(AGGREGATIONS_DIR)
                     || component.eq_ignore_ascii_case(BLOCKS_DIR)
@@ -279,13 +279,13 @@ impl EventBuckets {
             }
         }
 
-        info!("Flows: {:?}", flows);
+        info!("Functions: {:?}", functions);
         info!("Aggregations: {:?}", aggregations);
         info!("Data Models: {:?}", data_models);
         info!("Consumption: {:?}", consumption);
 
         Self {
-            flows,
+            functions,
             aggregations,
             data_models,
             consumption,
@@ -408,18 +408,18 @@ async fn watch(
                         )
                     })?;
                 }
-                if !bucketed_events.flows.is_empty() && !features.core_v2 {
+                if !bucketed_events.functions.is_empty() && !features.core_v2 {
                     let topics = fetch_topics(&project.redpanda_config).await?;
 
                     with_spinner_async(
                         &format!(
-                            "Processing {} Flow(s) changes from file watcher",
-                            bucketed_events.flows.len()
+                            "Processing {} Streaming Function(s) changes from file watcher",
+                            bucketed_events.functions.len()
                         ),
-                        process_flows_changes(
+                        process_streaming_func_changes(
                             &project,
                             &framework_object_versions.get_data_model_set(),
-                            &mut project_registries.flows,
+                            &mut project_registries.functions,
                             &topics,
                         ),
                         !project.is_production,
@@ -465,7 +465,10 @@ async fn watch(
                     .await?
                 }
 
-                let _ = verify_flows_against_datamodels(&project, framework_object_versions);
+                let _ = verify_streaming_functions_against_datamodels(
+                    &project,
+                    framework_object_versions,
+                );
             }
             Err(error) => {
                 log::error!("Watcher Error: {:?}", error);
@@ -477,22 +480,22 @@ async fn watch(
 }
 
 /**
- * Process to start/stop/restart the flows based on changes on local files
+ * Process to start/stop/restart the streaming functions based on changes on local files
  *
- * This does not resolve dependencies between files. It just reloads the flow files.
+ * This does not resolve dependencies between files. It just reloads the function files.
  *
- * This is currently very dumb and restarts all the flows for all the changes.
+ * This is currently very dumb and restarts all the function for all the changes.
  * This can be definitely optimized.
  */
-pub async fn process_flows_changes(
+pub async fn process_streaming_func_changes(
     project: &Project,
     data_models_set: &DataModelSet,
-    flows_process_registry: &mut FunctionProcessRegistry,
+    function_process_registry: &mut FunctionProcessRegistry,
     topics: &[String],
 ) -> anyhow::Result<()> {
-    let flows = get_all_current_flows(project, data_models_set).await?;
-    flows_process_registry.stop_all().await?;
-    flows_process_registry.start_all(&flows, topics)?;
+    let functions = get_all_current_streaming_functions(project, data_models_set).await?;
+    function_process_registry.stop_all().await?;
+    function_process_registry.start_all(&functions, topics)?;
 
     Ok(())
 }

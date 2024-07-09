@@ -54,7 +54,7 @@ pub enum Commands {
     /// Clears all temporary data and stops development infrastructure
     Clean {},
     /// Transforms upstream data into materialized datasets for analysis
-    Flow(FlowArgs),
+    Function(FunctionArgs),
     /// Defines aggregate table views of upstream data models
     Aggregation(AggregationArgs),
     /// Defines consumption APIs
@@ -114,20 +114,20 @@ pub enum GenerateCommand {
 
 #[derive(Debug, Args)]
 #[command(arg_required_else_help = true)]
-pub struct FlowArgs {
+pub struct FunctionArgs {
     #[command(subcommand)]
-    pub command: Option<FlowCommands>,
+    pub command: Option<FunctionCommands>,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum FlowCommands {
-    /// Structures the project's directory & files for a new flow
+pub enum FunctionCommands {
+    /// Structures the project's directory & files for a new streaming function
     #[command(arg_required_else_help = true)]
-    Init(FlowInitArgs),
+    Init(FuncInitArgs),
 }
 
 #[derive(Debug, Args)]
-pub struct FlowInitArgs {
+pub struct FuncInitArgs {
     /// Name of your source data model
     #[arg(short, long, required = true)]
     pub source: String,

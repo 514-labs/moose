@@ -6,14 +6,14 @@ use super::consumption_registry::ConsumptionProcessRegistry;
 use super::functions_registry::FunctionProcessRegistry;
 
 pub struct ProcessRegistries {
-    pub flows: FunctionProcessRegistry,
+    pub functions: FunctionProcessRegistry,
     pub aggregations: AggregationProcessRegistry,
     pub consumption: ConsumptionProcessRegistry,
 }
 
 impl ProcessRegistries {
     pub fn new(project: &Project, features: &Features) -> Self {
-        let flows = FunctionProcessRegistry::new(project.redpanda_config.clone());
+        let functions = FunctionProcessRegistry::new(project.redpanda_config.clone());
         let aggs_dir = if features.blocks {
             project.blocks_dir()
         } else {
@@ -32,7 +32,7 @@ impl ProcessRegistries {
         );
 
         Self {
-            flows,
+            functions,
             aggregations,
             consumption,
         }

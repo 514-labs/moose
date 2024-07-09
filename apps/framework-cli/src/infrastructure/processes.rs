@@ -68,16 +68,16 @@ pub async fn execute_changes(
             }
             ProcessChange::FunctionProcess(Change::Added(function_process)) => {
                 log::info!("Starting Function process: {:?}", function_process.id());
-                process_registry.flows.start(function_process)?;
+                process_registry.functions.start(function_process)?;
             }
             ProcessChange::FunctionProcess(Change::Removed(function_process)) => {
                 log::info!("Stoping Function process: {:?}", function_process.id());
-                process_registry.flows.stop(function_process).await?;
+                process_registry.functions.stop(function_process).await?;
             }
             ProcessChange::FunctionProcess(Change::Updated { before, after }) => {
                 log::info!("Updating Function process: {:?}", before.id());
-                process_registry.flows.stop(before).await?;
-                process_registry.flows.start(after)?;
+                process_registry.functions.stop(before).await?;
+                process_registry.functions.start(after)?;
             }
             ProcessChange::OlapProcess(Change::Added(olap_process)) => {
                 log::info!("Starting Aggregation process: {:?}", olap_process.id());

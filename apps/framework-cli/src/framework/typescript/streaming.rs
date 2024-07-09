@@ -7,7 +7,7 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
 use super::ts_node;
 
-const FLOW_RUNNER_WRAPPER: &str = include_str!("ts_scripts/flow.ts");
+const FUNCTION_RUNNER_WRAPPER: &str = include_str!("ts_scripts/streaming-function.ts");
 
 // TODO: we currently refer repanda configuration here. If we want to be able to
 // abstract this to other type of streaming engine, we will need to be able to abstract this away.
@@ -18,19 +18,19 @@ pub fn run(
     source_topic: &str,
     target_topic: &str,
     target_topic_config: &str,
-    flow_path: &Path,
+    streaming_function_file: &Path,
     // TODO Remove the anyhow type here
 ) -> Result<Child, std::io::Error> {
     let mut args = vec![
         source_topic,
         target_topic,
         target_topic_config,
-        flow_path.to_str().unwrap(),
+        streaming_function_file.to_str().unwrap(),
         &redpanda_config.broker,
     ];
 
     info!(
-        "Starting a flow with the following public arguments: {:#?}",
+        "Starting a streaming function with the following public arguments: {:#?}",
         args
     );
 
@@ -50,17 +50,17 @@ pub fn run(
         args.push(redpanda_config.security_protocol.as_ref().unwrap());
     }
 
-    let mut flow_process = ts_node::run(FLOW_RUNNER_WRAPPER, &args)?;
+    let mut streaming_function_process = ts_node::run(FUNCTION_RUNNER_WRAPPER, &args)?;
 
-    let stdout = flow_process
+    let stdout = streaming_function_process
         .stdout
         .take()
-        .expect("Flow process did not have a handle to stdout");
+        .expect("Streaming process did not have a handle to stdout");
 
-    let stderr = flow_process
+    let stderr = streaming_function_process
         .stderr
         .take()
-        .expect("Flow process did not have a handle to stderr");
+        .expect("Streaming process did not have a handle to stderr");
 
     let mut stdout_reader = BufReader::new(stdout).lines();
     let mut stderr_reader = BufReader::new(stderr).lines();
@@ -77,5 +77,5 @@ pub fn run(
         }
     });
 
-    Ok(flow_process)
+    Ok(streaming_function_process)
 }

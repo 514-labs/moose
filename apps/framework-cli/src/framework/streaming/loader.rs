@@ -1,14 +1,14 @@
-use log::{debug, info, warn};
-use regex::{Captures, Regex};
-use std::{fs, path::Path};
-
+use super::model::{FunctionError, StreamingFunction};
+use crate::utilities::constants::PYTHON_INIT_FILE;
 use crate::{
     framework::data_model::model::DataModelSet,
     project::Project,
     utilities::constants::{PY_FLOW_FILE, TS_FLOW_FILE},
 };
-
-use super::model::{FunctionError, StreamingFunction};
+use log::{debug, info, warn};
+use regex::{Captures, Regex};
+use std::ffi::OsStr;
+use std::{fs, path::Path};
 
 const MIGRATION_REGEX: &str =
     r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-9_]+)__)?([0-9_]+)$";
@@ -72,7 +72,9 @@ async fn get_all_streaming_functions(
 
         // We check if the file is a migration streaming function
         if source.metadata()?.is_file() {
-            if extension_supported_in_streaming_function(&source.path()) {
+            if extension_supported_in_streaming_function(&source.path())
+                && source.path().file_name() != Some(OsStr::new(PYTHON_INIT_FILE))
+            {
                 let potential_function_file_name = &source
                     .path()
                     .with_extension("")

@@ -52,7 +52,6 @@ use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, versi
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 
-use crate::utilities::constants::API_FILE;
 use crate::utilities::constants::BLOCKS_DIR;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS;
@@ -68,6 +67,7 @@ use crate::utilities::constants::{
     AGGREGATIONS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, OLD_PROJECT_CONFIG_FILE,
     SAMPLE_STREAMING_FUNCTION_DEST, SAMPLE_STREAMING_FUNCTION_SOURCE, TS_FLOW_FILE,
 };
+use crate::utilities::constants::{API_FILE, PYTHON_INIT_FILE};
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 use crate::utilities::git::GitConfig;
@@ -328,7 +328,7 @@ impl Project {
                     self.consumption_dir(),
                     self.streaming_func_dir(),
                 ] {
-                    std::fs::File::create(dir.join("__init__.py"))?;
+                    std::fs::File::create(dir.join(PYTHON_INIT_FILE))?;
                 }
             }
         }

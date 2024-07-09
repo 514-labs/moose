@@ -75,7 +75,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
-    #[ignore]
+    // #[ignore]
     async fn test_run() {
         // Use these tests by configuring a timeout in the streaming function runner
         //  consumer = KafkaConsumer(
@@ -91,9 +91,7 @@ mod tests {
         let source_topic = "UserActivity_0_0";
         let target_topic = "ParsedActivity_0_0";
         let target_topic_config = "{}";
-        let flow_path = Path::new(
-            "/Users/timdelisle/Dev/igloo-stack/apps/framework-cli/tests/python/flows/valid",
-        );
+        let flow_path = Path::new("tests/python/flows/valid/flow.py");
 
         let child = run(
             &redpanda_config,
@@ -112,15 +110,13 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    // #[ignore]
     async fn test_run_with_invalid_flow_file() {
         let redpanda_config = RedpandaConfig::default();
         let source_topic = "source";
         let target_topic = "target";
         let target_topic_config = "{}";
-        let flow_path = Path::new(
-            "/Users/timdelisle/Dev/igloo-stack/apps/framework-cli/tests/python/flows/invalid",
-        );
+        let flow_path = Path::new("tests/python/flows/invalid/flow.py");
 
         let child = run(
             &redpanda_config,

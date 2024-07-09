@@ -7,7 +7,6 @@ export const ColumnResizer = ({ header }: { header: Header<any, unknown> }) => {
     <div
       {...{
         onMouseDown: (e: any) => {
-          console.log(header.getResizeHandler(e));
           header.getResizeHandler(e);
         },
         onTouchStart: header.getResizeHandler(),

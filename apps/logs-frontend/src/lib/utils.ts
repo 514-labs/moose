@@ -30,6 +30,6 @@ export function getApiRoute() {
   if (process.env.NODE_ENV === "development") {
     return "http://localhost:4000";
   } else {
-    return process.env.API_ROUTE;
+    return "https://moosefood.514.dev";
   }
 }

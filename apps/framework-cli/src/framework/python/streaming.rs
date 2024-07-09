@@ -54,13 +54,13 @@ pub fn run(
 
     tokio::spawn(async move {
         while let Ok(Some(line)) = stdout_reader.next_line().await {
-            log::info!("{}", line);
+            println!("{}", line);
         }
     });
 
     tokio::spawn(async move {
         while let Ok(Some(line)) = stderr_reader.next_line().await {
-            log::error!("{}", line);
+            println!("{}", line);
         }
     });
 

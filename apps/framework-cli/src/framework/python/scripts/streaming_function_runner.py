@@ -5,6 +5,9 @@ from importlib import import_module
 import json
 import sys
 from kafka import KafkaConsumer, KafkaProducer
+
+print("ahhhhhhhhhh")
+
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, datetime):
@@ -82,7 +85,6 @@ sys.path.append(args.function_file_dir)
 log(f"Importing streaming function {function_file_name} from {function_file_dir}")
 
 try:
-    # todo: check the flat naming
     flow = import_module(function_file_name, package=function_file_dir)
     flow_def = flow.Flow
 except Exception as e:

@@ -11,6 +11,7 @@
   "dependencies": {
     "@clickhouse/client": "^0.3.0",
     "@hookform/resolvers": "^3.3.4",
+    "next-auth": "^4.24.7",
     "@observablehq/plot": "^0.6.13",
     "@radix-ui/react-label": "^2.0.2",
     "@radix-ui/react-select": "^2.0.0",

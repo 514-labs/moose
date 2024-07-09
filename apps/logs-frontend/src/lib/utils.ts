@@ -25,3 +25,11 @@ export const severityLevelColors = {
   [SeverityLevel.ERROR]: "bg-red-200",
   [SeverityLevel.DEBUG]: "bg-green-200",
 };
+
+export function getApiRoute() {
+  if (process.env.NODE_ENV === "development") {
+    return "http://localhost:4000";
+  } else {
+    return process.env.API_ROUTE;
+  }
+}

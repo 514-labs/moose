@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import { NavTabs } from "./nav-tabs";
+import NextAuthProvider from "./next-auth-provider";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -28,7 +29,7 @@ export default function RootLayout({
         </nav>
         <div className="text-6xl m-4">Product Analytics</div>
         <NavTabs />
-        {children}
+        <NextAuthProvider>{children}</NextAuthProvider>
       </body>
     </html>
   );

@@ -4,7 +4,7 @@ import LogHierarchy from "@/components/log-hierarchy";
 import LogTable from "@/components/log-table";
 import { SeverityLevel } from "@/lib/utils";
 import { useState } from "react";
-import { useSession, signIn, signOut } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 
 export default function Home() {
   const [selectedSource, setSelectedSource] = useState<string | undefined>();

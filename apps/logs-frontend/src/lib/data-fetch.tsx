@@ -1,5 +1,5 @@
 import { ColumnDef, SortingState } from "@tanstack/react-table";
-import { SeverityLevel } from "./utils";
+import { SeverityLevel, getApiRoute } from "./utils";
 
 export interface ParsedLogs {
   date: string;
@@ -35,7 +35,7 @@ export async function fetchLogs({
   source?: string;
   severity: SeverityLevel[];
 }) {
-  const url = new URL("http://localhost:4000/consumption/log_query");
+  const url = new URL(`${getApiRoute()}/consumption/log_query`);
   url.searchParams.append("limit", limit.toString());
   url.searchParams.append("offset", offset.toString());
   if (sorting.length > 0) {
@@ -176,7 +176,7 @@ export async function fetchLogHierarchy({
   source?: string;
   severity: SeverityLevel[];
 }) {
-  const url = new URL("http://localhost:4000/consumption/log_hierarchy");
+  const url = new URL(`${getApiRoute()}/consumption/log_hierarchy`);
   if (source) url.searchParams.append("source", source);
   if (search) url.searchParams.append("search", search);
   if (severity.length > 0)

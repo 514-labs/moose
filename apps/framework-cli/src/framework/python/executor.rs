@@ -59,6 +59,7 @@ pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Erro
     };
 
     Command::new("python3")
+        .arg("-u")
         .arg("-c")
         .arg(program_string)
         .args(get_args)

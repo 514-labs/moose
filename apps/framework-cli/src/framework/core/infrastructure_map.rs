@@ -133,8 +133,11 @@ impl InfrastructureMap {
             if function.is_migration() {
                 let (source_topic, target_topic) = Topic::from_migration_function(function);
 
-                let function_process =
-                    FunctionProcess::from_migration_functon(function, &source_topic, &target_topic);
+                let function_process = FunctionProcess::from_migration_function(
+                    function,
+                    &source_topic,
+                    &target_topic,
+                );
 
                 topics.insert(source_topic.id(), source_topic);
                 topics.insert(target_topic.id(), target_topic);
@@ -142,7 +145,7 @@ impl InfrastructureMap {
             } else {
                 let topics: Vec<String> = topics.values().map(|t| t.id()).collect();
 
-                let function_process = FunctionProcess::from_functon(function, &topics);
+                let function_process = FunctionProcess::from_function(function, &topics);
                 function_processes.insert(function_process.id(), function_process);
             }
         }

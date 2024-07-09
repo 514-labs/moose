@@ -62,6 +62,8 @@ pub const PYTHON_FILE_EXTENSION: &str = "py";
 pub const TYPESCRIPT_FILE_EXTENSION: &str = "ts";
 pub const SQL_FILE_EXTENSION: &str = "sql";
 
+pub const PYTHON_INIT_FILE: &str = "__init__.py";
+
 lazy_static! {
     pub static ref CONTEXT: HashMap<String, String> = {
         let mut map = HashMap::new();

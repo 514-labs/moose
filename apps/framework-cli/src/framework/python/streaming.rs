@@ -14,18 +14,28 @@ pub fn run(
     target_topic_config: &str,
     function_path: &Path,
 ) -> Result<Child, std::io::Error> {
+    let dir = function_path
+        .parent()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+    let module_name = function_path
+        .with_extension("")
+        .file_name()
+        .unwrap()
+        .to_str()
+        .unwrap()
+        .to_string();
+
     let mut streaming_function_process =
         executor::run_python_program(executor::PythonProgram::StreamingFunctionRunner {
             args: vec![
                 source_topic.to_string(),
                 target_topic.to_string(),
                 target_topic_config.to_string(),
-                function_path
-                    .parent()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
+                dir,
+                module_name,
                 redpanda_config.broker.clone(),
             ],
         })?;
@@ -42,8 +52,6 @@ pub fn run(
     let mut stdout_reader = tokio::io::BufReader::new(stdout).lines();
     let mut stderr_reader = tokio::io::BufReader::new(stderr).lines();
 
-    // TODO: Why aren't these log lines streamed to the logger? Only shows
-    // in the log file when moose is killed
     tokio::spawn(async move {
         while let Ok(Some(line)) = stdout_reader.next_line().await {
             log::info!("{}", line);

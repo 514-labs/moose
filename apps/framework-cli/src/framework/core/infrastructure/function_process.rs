@@ -34,7 +34,7 @@ pub struct FunctionProcess {
 }
 
 impl FunctionProcess {
-    pub fn from_functon(function: &StreamingFunction, topics: &[String]) -> Self {
+    pub fn from_function(function: &StreamingFunction, topics: &[String]) -> Self {
         FunctionProcess {
             name: function.name.clone(),
 
@@ -67,7 +67,7 @@ impl FunctionProcess {
         }
     }
 
-    pub fn from_migration_functon(
+    pub fn from_migration_function(
         function: &StreamingFunction,
         source_topic: &Topic,
         target_topic: &Topic,

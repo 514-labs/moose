@@ -86,14 +86,14 @@ impl FunctionProcessRegistry {
             if streaming_function.is_migration() {
                 let (source_topic, target_topic) =
                     Topic::from_migration_function(streaming_function);
-                let function_process = FunctionProcess::from_migration_functon(
+                let function_process = FunctionProcess::from_migration_function(
                     streaming_function,
                     &source_topic,
                     &target_topic,
                 );
                 self.start(&function_process)?;
             } else {
-                self.start(&FunctionProcess::from_functon(streaming_function, topics))?;
+                self.start(&FunctionProcess::from_function(streaming_function, topics))?;
             }
         }
 

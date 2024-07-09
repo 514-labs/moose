@@ -83,54 +83,118 @@ export function createLogColumns({
 
 // Create a nested tree structure from a flat list of items
 // using categories as the hierarchy, matching the above example
-interface CategoryItem {
+interface RawCategoryItem {
   categories: string[];
-  occurences: number;
+  info: string;
+  warn: string;
+  error: string;
+  debug: string;
 }
 
-interface CategoryNode {
+interface CategoryItem {
+  categories: string[];
+  metrics: {
+    info: number;
+    warn: number;
+    error: number;
+    debug: number;
+  };
+}
+
+export interface CategoryNode {
   id: string;
   name: string;
   children: CategoryNode[];
+  metrics: {
+    info: number;
+    warn: number;
+    error: number;
+    debug: number;
+  };
+}
+
+function addMetrics(
+  one: CategoryNode["metrics"],
+  two: CategoryNode["metrics"],
+) {
+  return {
+    info: one.info + two.info,
+    debug: one.debug + two.debug,
+    warn: one.debug + two.debug,
+    error: one.debug + two.debug,
+  };
 }
 
 const addCategoryToTree = (
   tree: CategoryNode[],
   categories: string[],
-  parentId: string = "", // Add a new parameter for parentId
+  parentId: string = "", // Keep the new parameter for parentId
+  metrics: CategoryItem["metrics"] = { info: 0, warn: 0, error: 0, debug: 0 }, // Add a parameter for occurrences
 ): CategoryNode[] => {
   if (categories.length === 0) return tree;
 
   const [firstCategory, ...restCategories] = categories;
-  const nodeId = parentId ? `${parentId}::${firstCategory}` : firstCategory; // Construct nodeId using parentId
+  const nodeId = parentId ? `${parentId}::${firstCategory}` : firstCategory; // Keep constructing nodeId using parentId
   const existingNode = tree.find((n) => n.name === firstCategory);
 
-  const updatedTree = existingNode
-    ? tree
-    : [...tree, { id: nodeId, name: firstCategory, children: [] }]; // Use nodeId for new nodes
+  // Update or create the node with the new occurrences count
+  const updatedNode = existingNode
+    ? { ...existingNode, metrics: addMetrics(existingNode.metrics, metrics) }
+    : { id: nodeId, name: firstCategory, children: [], metrics };
 
-  const updatedNode = {
-    ...(existingNode ?? { id: nodeId, name: firstCategory, children: [] }),
-    children: addCategoryToTree(
-      existingNode ? existingNode.children : [],
-      restCategories,
-      nodeId,
-    ), // Pass nodeId as parentId for recursive calls
-  };
+  const updatedTree = existingNode ? tree : [...tree, updatedNode]; // Add updatedNode to the tree if it's new
 
-  return updatedTree.map((n) => (n.name === firstCategory ? updatedNode : n));
+  // Recursively update or add children with the correct occurrences count
+  updatedNode.children = addCategoryToTree(
+    existingNode ? existingNode.children : [],
+    restCategories,
+    nodeId,
+    metrics, // Pass occurrences through recursive calls
+  );
+
+  // Only map over the tree if the node existed, otherwise, just return the updated tree
+  return existingNode
+    ? tree.map((n) => (n.name === firstCategory ? updatedNode : n))
+    : updatedTree;
 };
 
 function rollUpCategories(items: CategoryItem[]): CategoryNode[] {
+  // Adjust the initial call to include occurrences if needed
   return items.reduce(
-    (tree: CategoryNode[], item) => addCategoryToTree(tree, item.categories),
+    (tree: CategoryNode[], item) =>
+      addCategoryToTree(tree, item.categories, "", item.metrics), // Start with 1 occurrence for each top-level category
     [],
   );
 }
 
-export async function fetchLogHierarchy() {
+export async function fetchLogHierarchy({
+  source,
+  search,
+  severity,
+}: {
+  search: string;
+  source?: string;
+  severity: SeverityLevel[];
+}) {
   const url = new URL("http://localhost:4000/consumption/log_hierarchy");
+  if (source) url.searchParams.append("source", source);
+  if (search) url.searchParams.append("search", search);
+  if (severity.length > 0)
+    url.searchParams.append("severity", severity.join(","));
+
   const response = await fetch(url.toString());
-  const occurences = (await response.json()) as CategoryItem[];
-  return rollUpCategories(occurences);
+  const occurences = (await response.json()) as RawCategoryItem[];
+  const processed = occurences.map((occ) => {
+    const { categories, ...metrics } = occ;
+    return {
+      categories,
+      metrics: {
+        info: parseInt(metrics.info),
+        debug: parseInt(metrics.debug),
+        warn: parseInt(metrics.warn),
+        error: parseInt(metrics.error),
+      },
+    };
+  });
+  return rollUpCategories(processed);
 }

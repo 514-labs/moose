@@ -37,13 +37,47 @@ export default async function handle(
     search,
     severity,
   }: QueryParams,
-  { client, sql }: ConsumptionUtil,
+  { client }: ConsumptionUtil,
 ) {
-  const limitInt = parseInt(limit);
-  const offsetInt = parseInt(offset);
+  const logSql = createFilterLogSql({
+    sortDir,
+    sortCol,
+    source,
+    search,
+    severity,
+  });
+
+  const response = client.query(
+    sql`${logSql} LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`,
+  );
+
+  const data = (await (await response).json()) as ParsedLogs &
+    { totalRowCount: number }[];
+  return {
+    data: data,
+    meta: {
+      totalRowCount: data?.[0]?.totalRowCount ?? 0,
+    },
+  };
+}
+
+interface LogQuery {
+  search: string;
+  sortDir?: string;
+  sortCol?: string;
+  source?: string;
+  severity?: string;
+}
+
+export function createFilterLogSql({
+  sortDir = "DESC",
+  sortCol,
+  source,
+  search,
+  severity,
+}: LogQuery) {
   const sort = orderBySql(sortCol, sortDir);
 
-  console.log(severity);
   const values: Sql[] = [];
   if (search) {
     values.push(sql`length(multiMatchAllIndices(message, patterns)) > 0`);
@@ -53,7 +87,6 @@ export default async function handle(
   }
 
   if (severity) {
-    console.log(severity);
     values.push(sql`has(splitByString(',', ${severity}), severityLevel)`);
   }
 
@@ -69,17 +102,5 @@ export default async function handle(
   const pattern = `(?i)${search}`;
 
   const searchPattern = search ? sql`WITH [${pattern}] as patterns` : sql``;
-
-  const response = client.query(
-    sql`${searchPattern} SELECT *, COUNT(*) OVER() AS totalRowCount FROM ParsedLogs_0_5 ${whereFilter} ${sort} LIMIT ${limitInt} OFFSET ${offsetInt}`,
-  );
-
-  const data = (await (await response).json()) as ParsedLogs &
-    { totalRowCount: number }[];
-  return {
-    data: data,
-    meta: {
-      totalRowCount: data?.[0]?.totalRowCount ?? 0,
-    },
-  };
+  return sql`${searchPattern} SELECT *, COUNT(*) OVER() AS totalRowCount FROM ParsedLogs_0_5 ${whereFilter} ${sort}`;
 }

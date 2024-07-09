@@ -1,15 +1,12 @@
 "use client";
 import React from "react";
-import {
-  Tree,
-  TreeViewElement,
-  File,
-  Folder,
-  CollapseButton,
-} from "./tree-view";
+import { Tree, File, Folder, CollapseButton } from "./tree-view";
+import { CategoryNode } from "@/lib/data-fetch";
+import { SeverityLevel, severityLevelColors } from "@/lib/utils";
+import { Badge } from "./badge";
 
 type TOCProps = {
-  toc: TreeViewElement[];
+  toc: CategoryNode[];
   selectedId: string | undefined;
   setSelectedId: React.Dispatch<React.SetStateAction<string | undefined>>;
 };
@@ -35,7 +32,7 @@ export default function Hierarchy({
 }
 
 type TreeItemProps = {
-  elements: TreeViewElement[];
+  elements: CategoryNode[];
 };
 
 export const TreeItem = ({ elements }: TreeItemProps) => {
@@ -49,6 +46,7 @@ export const TreeItem = ({ elements }: TreeItemProps) => {
               value={element.id}
               isSelectable={true}
               className="px-px pr-1"
+              inline={<MetricChips metrics={element.metrics} />}
             >
               <TreeItem
                 key={element.id}
@@ -59,6 +57,7 @@ export const TreeItem = ({ elements }: TreeItemProps) => {
           ) : (
             <File key={element.id} value={element.id} isSelectable={true}>
               <span>{element?.name}</span>
+              <MetricChips metrics={element.metrics} />
             </File>
           )}
         </li>
@@ -66,3 +65,19 @@ export const TreeItem = ({ elements }: TreeItemProps) => {
     </ul>
   );
 };
+
+function MetricChip({ name, count }: { name: SeverityLevel; count: number }) {
+  if (count === 0) return null;
+  return <Badge className={severityLevelColors[name]}>{count}</Badge>;
+}
+
+function MetricChips({ metrics }: { metrics: CategoryNode["metrics"] }) {
+  return (
+    <div className="ml-auto">
+      <MetricChip name={SeverityLevel.ERROR} count={metrics.error} />
+      <MetricChip name={SeverityLevel.WARN} count={metrics.warn} />
+      <MetricChip name={SeverityLevel.DEBUG} count={metrics.debug} />
+      <MetricChip name={SeverityLevel.INFO} count={metrics.info} />
+    </div>
+  );
+}

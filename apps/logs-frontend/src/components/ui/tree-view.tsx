@@ -206,6 +206,7 @@ interface FolderComponentProps
 
 type FolderProps = {
   expendedItems?: string[];
+  inline: React.ReactNode;
   element: string;
   isSelectable?: boolean;
   isSelect?: boolean;
@@ -223,6 +224,7 @@ const Folder = forwardRef<
       isSelectable = true,
       isSelect,
       children,
+      inline,
       ...props
     },
     ref,
@@ -249,7 +251,7 @@ const Folder = forwardRef<
       >
         <AccordionPrimitive.Trigger
           className={cn(
-            `flex items-center gap-1 text-sm rounded-md`,
+            `flex items-center gap-1 text-sm rounded-md w-full`,
             className,
             {
               "bg-muted rounded-md": isSelected && isSelectable,
@@ -267,6 +269,7 @@ const Folder = forwardRef<
             ? openIcon ?? <FolderOpenIcon className="h-4 w-4" />
             : closeIcon ?? <FolderIcon className="h-4 w-4" />}
           <span>{element}</span>
+          {inline}
         </AccordionPrimitive.Trigger>
         <AccordionPrimitive.Content className="text-sm data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down relative overflow-hidden h-full">
           {element && indicator && <TreeIndicator aria-hidden="true" />}
@@ -324,7 +327,7 @@ const File = forwardRef<
           disabled={!isSelectable}
           aria-label="File"
           className={cn(
-            "flex items-center gap-1 cursor-pointer text-sm pr-1 rtl:pl-1 rtl:pr-0 rounded-md  duration-200 ease-in-out",
+            "flex items-center gap-1 w-full cursor-pointer text-sm pr-1 rtl:pl-1 rtl:pr-0 rounded-md  duration-200 ease-in-out",
             {
               "bg-muted": isSelected && isSelectable,
             },

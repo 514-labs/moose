@@ -118,7 +118,7 @@ export function InfiniteTable<T>({
       style={{
         overflow: "auto", //our scrollable table container
         position: "relative", //needed for sticky header
-        height: "600px", //should be a fixed height
+        height: "900px", //should be a fixed height
       }}
     >
       {/* Even though we're still using sematic table tags, we must use CSS grid and flexbox for dynamic row heights */}

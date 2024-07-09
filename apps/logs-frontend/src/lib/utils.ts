@@ -13,9 +13,9 @@ export enum SeverityLevel {
 }
 
 export const severityLevels = [
-  SeverityLevel.INFO,
-  SeverityLevel.WARN,
   SeverityLevel.ERROR,
+  SeverityLevel.WARN,
+  SeverityLevel.INFO,
   SeverityLevel.DEBUG,
 ];
 

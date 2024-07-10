@@ -99,10 +99,10 @@ export default function Home() {
     <main>
       <HeroSection />
       <DemoSection />
-      <FeaturesSection />
       <WhatIsMooseFor />
       <WhatIsntMooseFor />
       <WhatIsMoose />
+      <FeaturesSection />
       <TemplateHeaderSection />
       <TemplatesSection />
       <SecondaryCTASection />

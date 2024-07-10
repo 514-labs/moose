@@ -18,7 +18,7 @@ import { TemplateImg } from "./TemplateImg";
 import React from "react";
 
 const content = {
-  title: "Templates",
+  title: "Composable Templates",
   description:
     "Full-stack data & analytics application templates to get you started quickly",
   templates: [

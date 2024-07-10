@@ -33,7 +33,7 @@ Start your Moose development server by executing the following commands in your 
 cd moose && npx @514labs/moose-cli@latest dev
 ```
 
-Running this sequence of commands will spin up all the backend infrastructure powering your backend data service (running on port 4000) and a developer console (typically running on port 3001) that you can access to explore pre-configured data models and flows, focusing on handling PageView events.
+Running this sequence of commands will spin up all the backend infrastructure powering your backend data service (running on port 4000).
 
 Here is the default PageView event data model you are provided in your `/datamodels` folder.
 

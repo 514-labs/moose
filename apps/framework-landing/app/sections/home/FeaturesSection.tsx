@@ -17,7 +17,7 @@ export const FeaturesSection = () => {
   const content = {
     title: "Your tools, your workflows",
     subtitle:
-      "We designed Moose to deliver the same dev-friendly experience as our favorite web frameworks",
+      "Moose brings the ergonomics of web development frameworks to the data & analytics stack",
     features: [
       {
         title: "Python and TypeScript",

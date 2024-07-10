@@ -222,7 +222,6 @@ export const WhatIsMoose = () => {
           </FullWidthContentContainer>
         </Grid>
       </Section>
-      <div></div>
       <Section className="w-full relative mx-auto xl:my-10 xl:max-w-screen-xl 2xl:my-0">
         <Grid>
           <ThirdWidthContentContainer

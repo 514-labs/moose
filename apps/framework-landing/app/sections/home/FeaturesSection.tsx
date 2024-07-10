@@ -4,7 +4,11 @@ import {
   ThirdWidthContentContainer,
   HalfWidthContentContainer,
 } from "@514labs/design-system-components/components/containers";
-import { Heading, Text } from "@514labs/design-system-components/typography";
+import {
+  Heading,
+  Text,
+  HeadingLevel,
+} from "@514labs/design-system-components/typography";
 import React from "react";
 
 import { Box, Database, Network, Share2, Terminal, Code2 } from "lucide-react";
@@ -12,6 +16,8 @@ import { Box, Database, Network, Share2, Terminal, Code2 } from "lucide-react";
 export const FeaturesSection = () => {
   const content = {
     title: "Your tools, your workflows",
+    subtitle:
+      "We designed Moose to deliver the same dev-friendly experience as our favorite web frameworks",
     features: [
       {
         title: "Python and TypeScript",
@@ -73,6 +79,9 @@ export const FeaturesSection = () => {
         <Grid className="mb-12 2xl:mb-20">
           <HalfWidthContentContainer>
             <Heading> {content.title} </Heading>
+            <Heading level={HeadingLevel.l3} className="text-muted-foreground">
+              {content.subtitle}
+            </Heading>
           </HalfWidthContentContainer>
         </Grid>
         <Grid className="gap-y-10">

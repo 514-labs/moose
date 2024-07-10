@@ -12,7 +12,7 @@ export default function Diagram({ spline }: DiagramProps) {
     spline.current = splineApp;
   }
   return (
-    <div style={{ height: "100%" }} className="relative">
+    <div style={{ height: "100%" }} className="relative overflow-hidden">
       <div
         className="pointer-events-none"
         style={{ position: "absolute", height: 1000 }}

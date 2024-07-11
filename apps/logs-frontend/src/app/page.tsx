@@ -10,10 +10,13 @@ import { StackedBar } from "@/components/ui/bar-chart";
 export default function Home() {
   const [selectedSource, setSelectedSource] = useState<string | undefined>();
   const [search, setSearch] = useState<string>("");
+  const [machineId, setMachineId] = useState<string>("");
+
   const [severity, setSeverity] = useState<SeverityLevel[]>([
     SeverityLevel.ERROR,
     SeverityLevel.WARN,
   ]);
+
   const { data: session } = useSession();
   if (process.env.NODE_ENV != "development" && !session) {
     return (
@@ -37,6 +40,7 @@ export default function Home() {
       </div>
       <div className="col-span-4 w-full h-screen">
         <FilterBar
+          setMachineId={setMachineId}
           setSeverity={setSeverity}
           severity={severity}
           setSearch={setSearch}

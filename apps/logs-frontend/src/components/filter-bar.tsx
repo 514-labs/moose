@@ -9,10 +9,12 @@ import {
 import { Input } from "./ui/input";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { Dispatch, SetStateAction } from "react";
+import { Combobox } from "./ui/creatable-select";
 
 interface Props {
   setSearch: (search: string) => void;
   setSeverity: Dispatch<SetStateAction<SeverityLevel[]>>;
+  setMachineId: (id: string) => void;
   severity: SeverityLevel[];
 }
 export default function FilterBar({ setSearch, setSeverity, severity }: Props) {
@@ -21,6 +23,17 @@ export default function FilterBar({ setSearch, setSeverity, severity }: Props) {
       <Input
         placeholder="Search..."
         onChange={(e) => setSearch(e.target.value)}
+      />
+      <Combobox
+        options={[
+          { val: "Select", label: "blah" },
+          { val: "othero", label: "blahtwo" },
+        ]}
+        onOpenChange={(value) => console.log("open change")}
+        placeholder="Select Machine"
+        selected={""} // string or array
+        onSelect={(select) => console.log("select", select)}
+        onCreate={(create) => console.log(create, "create")}
       />
       <ToggleGroup
         variant="outline"

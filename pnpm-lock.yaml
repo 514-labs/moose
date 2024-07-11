@@ -253,6 +253,12 @@ importers:
       "@clickhouse/client-web":
         specifier: 1.1.0
         version: 1.1.0
+      async:
+        specifier: ^3.2.5
+        version: 3.2.5
+      csv-parse:
+        specifier: ^5.5.5
+        version: 5.5.6
       fastq:
         specifier: 1.17.1
         version: 1.17.1
@@ -263,6 +269,9 @@ importers:
       "@514labs/moose-cli":
         specifier: 0.3.473
         version: 0.3.473
+      "@types/async":
+        specifier: ^3.2.24
+        version: 3.2.24
       "@types/node":
         specifier: ^20.12.12
         version: 20.12.12
@@ -6675,6 +6684,13 @@ packages:
       }
     dev: true
 
+  /@types/async@3.2.24:
+    resolution:
+      {
+        integrity: sha512-8iHVLHsCCOBKjCF2KwFe0p9Z3rfM9mL+sSP8btyR5vTjJRAqpBYD28/ZLgXPf0pjG1VxOvtCV/BgXkQbpSe8Hw==,
+      }
+    dev: true
+
   /@types/babel__core@7.20.5:
     resolution:
       {
@@ -8422,6 +8438,13 @@ packages:
       retry: 0.13.1
     dev: false
 
+  /async@3.2.5:
+    resolution:
+      {
+        integrity: sha512-baNZyqaaLhyLVKm/DlvdW051MSgO6b8eVfIezl9E5PqWxFgzLm/wQntEW4zOytVburDEr0JlALEpdOFwvErLsg==,
+      }
+    dev: false
+
   /asynckit@0.4.0:
     resolution:
       {
@@ -9248,6 +9271,13 @@ packages:
       {
         integrity: sha512-M1uQkMl8rQK/szD0LNhtqxIPLpimGm8sOBwU7lLnCpSbTyY3yeU1Vc7l4KT5zT4s/yOxHH5O7tIuuLOCnLADRw==,
       }
+
+  /csv-parse@5.5.6:
+    resolution:
+      {
+        integrity: sha512-uNpm30m/AGSkLxxy7d9yRXpJQFrZzVWLFBkS+6ngPcZkw/5k3L/jjFuj7tVnEpRn+QgmiXr21nDlhCiUK4ij2A==,
+      }
+    dev: false
 
   /custom-media-element@1.2.3:
     resolution:

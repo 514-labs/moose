@@ -1,4 +1,4 @@
-import { DataModelConfig, IngestionFormat } from "@514labs/moose-lib";
+import { Key, DataModelConfig, IngestionFormat } from "@514labs/moose-lib";
 
 export const LogsConfig: DataModelConfig<Logs> = {
   ingestion: {
@@ -69,7 +69,7 @@ export const ParsedLogsConfig: DataModelConfig<ParsedLogs> = {
 };
 
 export interface ParsedLogs {
-  date: Date;
+  date: string;
   message: string;
   severityNumber: number;
   severityLevel: string;

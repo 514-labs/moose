@@ -191,7 +191,7 @@ async fn top_command_handler(
             // TODO: refactor this to be extracted in different functions
             match template {
                 Some(template) => {
-                    let _ = templates::generate_template(template, CLI_VERSION, dir_path).await;
+                    templates::generate_template(template, CLI_VERSION, dir_path).await?;
 
                     let project = Project::new(dir_path, name.clone(), *language);
                     let project_arc = Arc::new(project);

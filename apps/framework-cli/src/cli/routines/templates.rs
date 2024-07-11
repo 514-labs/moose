@@ -86,7 +86,7 @@ pub async fn generate_template(
     template_name: &str,
     template_version: &str,
     target_dir: &Path,
-) -> Result<RoutineSuccess, RoutineFailure> {
+) -> Result<(), RoutineFailure> {
     // In dev we don't have a version, so we use the latest
     let version = if template_version == "0.0.1" {
         "latest".to_string()
@@ -103,13 +103,7 @@ pub async fn generate_template(
                     details: "template".to_string(),
                 }
             );
-            Ok(RoutineSuccess::info(Message::new(
-                "Next steps".to_string(),
-                format!(
-                    "Run these commands to start Moose: cd {}/moose && npx @514labs/moose-cli@latest dev",
-                    target_dir.to_string_lossy()
-                ),
-            )))
+            Ok(())
         }
         Err(e) => Err(RoutineFailure::error(Message {
             action: "Template".to_string(),

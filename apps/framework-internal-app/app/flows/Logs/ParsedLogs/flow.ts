@@ -8,7 +8,7 @@ export default function run(source: Logs): ParsedLogs[] {
       for (const logRecord of scopeLog.logRecords) {
         let d = new Date(Number(logRecord.observedTimeUnixNano) / 1000000);
         returnArray.push({
-          date: d.toLocaleString(),
+          date: d,
           message: logRecord.body.value.stringValue,
           severityNumber: logRecord.severityNumber,
           severityLevel: logRecord.severityText,

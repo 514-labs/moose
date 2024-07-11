@@ -69,7 +69,7 @@ export const ParsedLogsConfig: DataModelConfig<ParsedLogs> = {
 };
 
 export interface ParsedLogs {
-  date: string;
+  date: Date;
   message: string;
   severityNumber: number;
   severityLevel: string;

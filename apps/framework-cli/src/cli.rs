@@ -24,6 +24,7 @@ use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
 use routines::ls::{list_db, list_streaming};
+use routines::metrics_console::run_console;
 use routines::plan;
 use routines::ps::show_processes;
 use settings::{read_settings, Settings};
@@ -605,6 +606,8 @@ async fn top_command_handler(
                 list_db(project_arc, version, limit).await
             }
         }
+
+        Commands::Metrics {} => run_console().await,
     }
 }
 

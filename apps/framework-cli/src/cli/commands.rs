@@ -50,7 +50,9 @@ pub enum Commands {
     /// Generates missing migration files
     Generate(GenerateArgs),
     /// Bumps the version of the project
-    BumpVersion { new_version: Option<String> },
+    BumpVersion {
+        new_version: Option<String>,
+    },
     /// Clears all temporary data and stops development infrastructure
     Clean {},
     /// Transforms upstream data into materialized datasets for analysis
@@ -85,6 +87,8 @@ pub enum Commands {
         #[arg(short, long, default_value = "false")]
         streaming: bool,
     },
+
+    Metrics {},
 }
 
 #[derive(Debug, Args)]

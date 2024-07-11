@@ -9,7 +9,6 @@ pub struct App {
     pub total_requests: f64,
     pub summary: Vec<(f64, f64, String)>,
     pub starting_row: usize,
-    pub selected_row: usize,
 }
 
 impl Default for App {
@@ -20,7 +19,6 @@ impl Default for App {
             total_requests: 0.0,
             summary: vec![],
             starting_row: 0,
-            selected_row: 0,
         }
     }
 }
@@ -50,13 +48,11 @@ impl App {
     pub fn down(&mut self) {
         if self.starting_row < (self.summary.len() - 1) {
             self.starting_row += 1;
-            self.selected_row = 0;
         }
     }
     pub fn up(&mut self) {
         if self.starting_row > 0 {
             self.starting_row -= 1;
-            self.selected_row = 0;
         }
     }
 }

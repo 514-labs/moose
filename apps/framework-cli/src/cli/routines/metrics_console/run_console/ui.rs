@@ -59,7 +59,6 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
     let widths = [Constraint::Min(1), Constraint::Min(1), Constraint::Min(1)];
     let mut table_state = TableState::default();
-    *table_state.offset_mut() = app.selected_row;
     table_state.select(Some(app.starting_row));
 
     let table = Table::new(rows, widths)

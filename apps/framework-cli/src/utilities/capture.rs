@@ -2,7 +2,6 @@
 //!
 //! This module leverages moose to instrument moose. It includes a macro to easily capture data anywhere in the codebase.
 //!
-use chrono::serde::ts_seconds;
 use lazy_static::lazy_static;
 
 // Create a lazy static instance of the client
@@ -22,6 +21,8 @@ pub enum ActivityType {
     #[serde(rename = "buildCommand")]
     BuildCommand,
     #[serde(rename = "bumpVersionCommand")]
+    PlanCommand,
+    #[serde(rename = "planCommand")]
     BumpVersionCommand,
     #[serde(rename = "cleanCommand")]
     CleanCommand,
@@ -31,16 +32,20 @@ pub enum ActivityType {
     DevCommand,
     #[serde(rename = "dockerCommand")]
     DockerCommand,
-    #[serde(rename = "flowInitCommand")]
-    FlowInitCommand,
+    #[serde(rename = "funcInitCommand")]
+    FuncInitCommand,
     #[serde(rename = "initCommand")]
     InitCommand,
     #[serde(rename = "initTemplateCommand")]
     InitTemplateCommand,
     #[serde(rename = "logsCommand")]
     LogsCommand,
+    #[serde(rename = "lsCommand")]
+    LsCommand,
     #[serde(rename = "prodCommand")]
     ProdCommand,
+    #[serde(rename = "psCommand")]
+    PsCommand,
     #[serde(rename = "stopCommand")]
     StopCommand,
 }
@@ -53,7 +58,6 @@ pub struct MooseActivity {
     pub activity_type: ActivityType,
     #[serde(rename = "sequenceId")]
     pub sequence_id: String,
-    #[serde(with = "ts_seconds")]
     pub timestamp: DateTime<Utc>,
     #[serde(rename = "cliVersion")]
     pub cli_version: String,
@@ -61,6 +65,8 @@ pub struct MooseActivity {
     pub is_moose_developer: bool,
     #[serde(rename = "machineId")]
     pub machine_id: String,
+
+    pub ip: Option<String>,
 }
 
 macro_rules! capture {
@@ -76,7 +82,9 @@ macro_rules! capture {
 
         // Ignore our deployments & internal testing
         if $settings.telemetry.enabled {
-            let event = json!(MooseActivity {
+            let client = Client::new();
+
+            let mut event = MooseActivity {
                 id: Uuid::new_v4(),
                 project: $project_name,
                 activity_type: $activity_type,
@@ -85,16 +93,34 @@ macro_rules! capture {
                 cli_version: constants::CLI_VERSION.to_string(),
                 is_moose_developer: $settings.telemetry.is_moose_developer,
                 machine_id: $settings.telemetry.machine_id.clone(),
-            });
+                ip: None,
+            };
+            tokio::task::spawn(async move {
+                match client
+                    .get("https://api64.ipify.org?format=text")
+                    .send()
+                    .await
+                {
+                    Ok(response) => {
+                        event.ip = Some(response.text().await.unwrap());
+                    }
+                    Err(e) => {
+                        log::warn!("Failed to get IP address for telemetry: {:?}", e);
+                    }
+                }
+                let event = json!(event);
 
-            // Sending this data can fail for a variety of reasons, so we don't want to
-            // block user & no need to handle the result
-            let client = Client::new();
-            let request = client
-                .post("https://moosefood.514.dev/ingest/MooseActivity")
-                .json(&event)
-                .timeout(Duration::from_secs(2));
-            let _ = request.send().await;
+                // Sending this data can fail for a variety of reasons, so we don't want to
+                // block user & no need to handle the result
+                // The API version is pinned on purpose to avoid breaking changes. We
+                // can deliberately update this when the schema changes.
+                let request = client
+                    .post("https://moosefood.514.dev/ingest/MooseActivity/0.4")
+                    .json(&event)
+                    .timeout(Duration::from_secs(2));
+
+                let _ = request.send().await;
+            });
         }
     };
 }

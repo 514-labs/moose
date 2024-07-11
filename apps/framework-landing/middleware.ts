@@ -1,5 +1,5 @@
-import { NextRequest, NextResponse } from "next/server";
 import { headers } from "next/headers";
+import { NextRequest, NextResponse } from "next/server";
 
 export const config = {
   matcher: [
@@ -47,9 +47,7 @@ export async function middleware(request: NextRequest) {
     );
 
     if (!response.ok) {
-      throw new Error(
-        `Failed to send event: ${response.status}, ${response.url}`,
-      );
+      throw new Error("Failed to send event");
     }
   } catch (error) {
     console.error(error);

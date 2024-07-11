@@ -1,6 +1,6 @@
 use super::errors::ClickhouseError;
 use super::queries::{create_table_query, drop_table_query};
-use crate::framework::data_model::schema::DataEnum;
+use crate::framework::core::infrastructure::table::DataEnum;
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
@@ -22,6 +22,12 @@ impl fmt::Display for ClickHouseTableType {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
+pub struct ClickHouseNested {
+    name: String,
+    columns: Vec<ClickHouseColumn>,
+}
+
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClickHouseColumnType {
     String,
     Boolean,
@@ -33,6 +39,7 @@ pub enum ClickHouseColumnType {
     Bytes,
     Array(Box<ClickHouseColumnType>),
     Enum(DataEnum),
+    Nested(Vec<ClickHouseColumn>),
 }
 
 impl fmt::Display for ClickHouseColumnType {
@@ -75,12 +82,12 @@ impl fmt::Display for ClickHouseFloat {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub enum ClickHouseColumnDefaults {
     Now,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ClickHouseColumn {
     pub name: String,
     pub column_type: ClickHouseColumnType,
@@ -102,108 +109,92 @@ pub enum ClickHouseRuntimeEnum {
 }
 
 #[derive(Debug, Clone)]
-pub struct ClickHouseValue {
-    pub value_type: ClickHouseColumnType,
-
-    // This is a string right now because that's the value we send over the wire with the HTTP protocol
-    // if we used the RowBinary // https://clickhouse.yandex/docs/en/query_language/syntax/#syntax-identifiers
-    // or another format, we could optimize
-    value: String,
+pub enum ClickHouseValue {
+    String(String),
+    Boolean(String),
+    ClickhouseInt(String),
+    ClickhouseFloat(String),
+    Decimal,
+    DateTime(String),
+    Json,
+    Bytes,
+    Array(Vec<ClickHouseValue>),
+    Enum(String),
+    Nested(Vec<ClickHouseValue>),
+    Null,
 }
 
 const NULL: &str = "NULL";
 
-// TODO - add support for Decimal, Json, Bytes, Enum
+// TODO - add support for Decimal, Json, Bytes
 impl ClickHouseValue {
     pub fn new_null() -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::String,
-            value: NULL.to_string(),
-        }
+        ClickHouseValue::Null
     }
 
     pub fn new_string(value: String) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::String,
-            value,
-        }
+        ClickHouseValue::String(value)
     }
 
     pub fn new_boolean(value: bool) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::Boolean,
-            value: format!("{}", value),
-        }
+        ClickHouseValue::Boolean(format!("{}", value))
     }
 
     pub fn new_int_64(value: i64) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int64),
-            value: format!("{}", value),
-        }
+        ClickHouseValue::ClickhouseInt(format!("{}", value))
     }
 
     pub fn new_float_64(value: f64) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::ClickhouseFloat(ClickHouseFloat::Float64),
-            value: format!("{}", value),
-        }
+        ClickHouseValue::ClickhouseFloat(format!("{}", value))
     }
 
     pub fn new_date_time(value: DateTime<FixedOffset>) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::DateTime,
-            value: value.to_utc().to_rfc3339().to_string(),
+        ClickHouseValue::DateTime(value.to_utc().to_rfc3339().to_string())
+    }
+
+    pub fn new_array(value: Vec<ClickHouseValue>) -> ClickHouseValue {
+        ClickHouseValue::Array(value)
+    }
+
+    pub fn new_enum(value: ClickHouseRuntimeEnum) -> ClickHouseValue {
+        match value {
+            ClickHouseRuntimeEnum::ClickHouseInt(v) => ClickHouseValue::Enum(format!("{}", v)),
+            ClickHouseRuntimeEnum::ClickHouseString(v) => ClickHouseValue::Enum(format!("'{}'", v)),
         }
     }
 
-    pub fn new_array(
-        value: Vec<ClickHouseValue>,
-        array_type: ClickHouseColumnType,
-    ) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::Array(Box::new(array_type)),
-            value: value
-                .iter()
-                .map(|v| format!("{}", v))
-                .collect::<Vec<String>>()
-                .join(","),
-        }
+    pub fn new_tuple(members: Vec<ClickHouseValue>) -> ClickHouseValue {
+        let vals: Vec<ClickHouseValue> = members;
+        ClickHouseValue::Nested(vals)
     }
 
-    pub fn new_enum(value: ClickHouseRuntimeEnum, enum_type: DataEnum) -> ClickHouseValue {
-        ClickHouseValue {
-            value_type: ClickHouseColumnType::Enum(enum_type),
-            value: match value {
-                ClickHouseRuntimeEnum::ClickHouseInt(v) => format!("{}", v),
-                ClickHouseRuntimeEnum::ClickHouseString(v) => format!("'{}'", v),
-            },
-        }
-    }
-}
-
-impl fmt::Display for ClickHouseValue {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        match self.value_type {
-            // Need to escape the content of the strings for special characters
-            ClickHouseColumnType::String => write!(
-                f,
-                "'{}'",
-                &self.value.replace('\\', "\\\\").replace('\'', "\\\'")
+    pub fn clickhouse_to_string(&self) -> String {
+        match &self {
+            ClickHouseValue::String(v) => format!(
+                "\'{}\'",
+                v.replace('\\', "\\\\").replace('\'', "\\\'").clone()
             ),
-            ClickHouseColumnType::Boolean => write!(f, "{}", &self.value),
-            ClickHouseColumnType::ClickhouseInt(_) => {
-                write!(f, "{}", &self.value)
-            }
-            ClickHouseColumnType::ClickhouseFloat(_) => {
-                write!(f, "{}", &self.value)
-            }
-            ClickHouseColumnType::DateTime => write!(f, "'{}'", &self.value),
-            ClickHouseColumnType::Decimal => todo!(),
-            ClickHouseColumnType::Json => todo!(),
-            ClickHouseColumnType::Bytes => todo!(),
-            ClickHouseColumnType::Array(_) => write!(f, "[{}]", &self.value),
-            ClickHouseColumnType::Enum(_) => write!(f, "{}", &self.value),
+            ClickHouseValue::Boolean(v) => v.clone(),
+            ClickHouseValue::ClickhouseInt(v) => v.clone(),
+            ClickHouseValue::ClickhouseFloat(v) => v.clone(),
+            ClickHouseValue::DateTime(v) => format!("'{}'", v),
+            ClickHouseValue::Array(v) => format!(
+                "[{}]",
+                v.iter()
+                    .map(|v| v.clickhouse_to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            ),
+            ClickHouseValue::Enum(v) => v.clone(),
+            ClickHouseValue::Nested(v) => format!(
+                "[({})]",
+                v.iter()
+                    .map(|v| v.clickhouse_to_string())
+                    .collect::<Vec<String>>()
+                    .join(",")
+            ),
+            ClickHouseValue::Null => NULL.to_string(),
+            _ => String::from(""),
         }
     }
 }
@@ -268,33 +259,20 @@ pub struct ClickHouseSystemTable {
 
 #[derive(Debug, Clone)]
 pub struct ClickHouseTable {
-    pub db_name: String,
     pub name: String,
+    pub version: String,
     pub columns: Vec<ClickHouseColumn>,
     pub table_type: ClickHouseTableType,
+    pub order_by: Vec<String>,
 }
 
 impl ClickHouseTable {
-    pub fn new(
-        db_name: String,
-        name: String,
-        columns: Vec<ClickHouseColumn>,
-        table_type: ClickHouseTableType,
-    ) -> ClickHouseTable {
-        ClickHouseTable {
-            db_name,
-            name,
-            columns,
-            table_type,
-        }
+    pub fn create_data_table_query(&self, db_name: &str) -> Result<String, ClickhouseError> {
+        create_table_query(db_name, self.clone(), ClickhouseEngine::MergeTree)
     }
 
-    pub fn create_data_table_query(&self) -> Result<String, ClickhouseError> {
-        create_table_query(self.clone(), ClickhouseEngine::MergeTree)
-    }
-
-    pub fn drop_data_table_query(&self) -> Result<String, ClickhouseError> {
-        drop_table_query(self.clone())
+    pub fn drop_data_table_query(&self, db_name: &str) -> Result<String, ClickhouseError> {
+        drop_table_query(db_name, self.clone())
     }
 }
 

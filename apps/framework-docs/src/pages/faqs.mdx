@@ -1,0 +1,11 @@
+# FAQs
+
+---
+
+### Why is Docker is not working after making changes to some fields?
+
+Terminate the Docker containers and restart Docker manually. If you have problems restarting run `npm run dev` twice.
+
+### Can you change the data model while ingesting data?
+
+Making changes to the data model while ingesting data will cause the your application to crash because MooseJS updates everything in realtime.

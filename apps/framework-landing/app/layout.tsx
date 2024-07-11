@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
-import "@514labs/design-system/globals.css";
+import "@514labs/design-system-base/globals.css";
 import localFont from "next/font/local";
-import { ThemeProvider } from "@514labs/design-system/components";
-import { cn } from "@514labs/design-system/utils";
-import { Nav } from "@514labs/design-system/trackable-components";
+import { ThemeProvider } from "@514labs/design-system-components/components";
+import { cn } from "@514labs/design-system-components/utils";
+import { Nav } from "@514labs/design-system-components/trackable-components";
 import Script from "next/script";
+import { GoogleTagManager } from "@next/third-parties/google";
 
 const monoFont = localFont({
   src: "./ABCMonumentGroteskMonoVariable.woff2",
@@ -46,7 +47,9 @@ export default async function RootLayout({
       <Script
         src="https://analytics.514.dev/script.js"
         data-host="https://moosefood.514.dev"
+        data-event="PageViewEvent/0.5"
       />
+      <GoogleTagManager gtmId="GTM-MV3LQHHX" />
       <body
         className={cn(
           "min-h-screen bg-background font-sans antialiased",

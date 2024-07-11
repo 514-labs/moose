@@ -2,9 +2,13 @@ import {
   Grid,
   HalfWidthContentContainer,
   Section,
-} from "@514labs/design-system/components/containers";
-import { Display, Heading, Text } from "@514labs/design-system/typography";
-import { CTABar } from "@514labs/design-system/components";
+} from "@514labs/design-system-components/components/containers";
+import {
+  Display,
+  Heading,
+  Text,
+} from "@514labs/design-system-components/typography";
+import { CTABar } from "@514labs/design-system-components/components";
 import FooterSection from "../sections/FooterSection";
 import Link from "next/link";
 import { TrackCtaButton } from "../trackable-components";

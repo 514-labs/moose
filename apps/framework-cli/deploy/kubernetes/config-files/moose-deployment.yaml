@@ -36,7 +36,7 @@ spec:
                 secretKeyRef:
                   name: sn-moose-redpanda-config--broker
                   key: sk-moose-redpanda-config--broker
-            - name: MOOSE_REDPANDA_CONFIG___MESSAGE_TIMEOUT_MS
+            - name: MOOSE_REDPANDA_CONFIG__MESSAGE_TIMEOUT_MS
               valueFrom:
                 secretKeyRef:
                   name: sn-moose-redpanda-config--message-timeout-ms

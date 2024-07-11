@@ -79,37 +79,45 @@
 //! - Organize routines better in the file hiearchy
 //!
 
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
+use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use log::{debug, error, info};
 use tokio::sync::RwLock;
 
-use crate::cli::routines::aggregation::start_aggregation_process;
-use crate::cli::routines::consumption::start_consumption_process;
-
+use crate::cli::watcher::{
+    process_aggregations_changes, process_consumption_changes, process_streaming_func_changes,
+};
+use crate::framework::core::code_loader::{
+    load_framework_objects, FrameworkObject, FrameworkObjectVersions, SchemaVersion,
+};
+use crate::framework::core::execute::execute_initial_infra_change;
+use crate::framework::core::plan::plan_changes;
 use crate::infrastructure::olap::clickhouse::{
     fetch_table_names, fetch_table_schema, table_schema_to_hash,
 };
 
-use crate::cli::routines::flow::{start_flow_process, verify_flows_against_datamodels};
-use crate::framework::controller::{
-    create_or_replace_version_sync, get_all_framework_objects, process_objects, FrameworkObject,
-    FrameworkObjectVersions, RouteMeta, SchemaVersion,
-};
-use crate::framework::typescript;
-use crate::infrastructure::console::post_current_state_to_console;
-use crate::infrastructure::kafka_clickhouse_sync::SyncingProcessesRegistry;
+use crate::cli::routines::streaming::verify_streaming_functions_against_datamodels;
+use crate::framework::controller::{create_or_replace_version_sync, process_objects, RouteMeta};
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
-use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_current_state};
-use crate::infrastructure::stream::redpanda;
-use crate::project::{Project, PROJECT};
-use crate::utilities::package_managers;
+use crate::infrastructure::olap::clickhouse_alt_client::{
+    get_pool, store_current_state, store_infrastructure_map,
+};
+use crate::infrastructure::processes::aggregations_registry::AggregationProcessRegistry;
+use crate::infrastructure::processes::consumption_registry::ConsumptionProcessRegistry;
+use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
+use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
+use crate::infrastructure::processes::process_registry::ProcessRegistries;
+use crate::infrastructure::stream::redpanda::fetch_topics;
+use crate::project::Project;
 
-use super::display::{with_spinner, with_spinner_async};
+use super::super::metrics::Metrics;
+use super::display::{self, with_spinner_async};
 use super::local_webserver::Webserver;
+use super::settings::Features;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
 
@@ -118,17 +126,20 @@ pub mod clean;
 pub mod consumption;
 pub mod dev;
 pub mod docker_packager;
-pub mod flow;
 pub mod initialize;
 pub mod logs;
+pub mod ls;
 pub mod migrate;
+pub mod ps;
 pub mod stop;
+pub mod streaming;
 pub mod templates;
 mod util;
 pub mod validate;
 pub mod version;
 
 #[derive(Debug, Clone)]
+#[must_use = "The message should be displayed."]
 pub struct RoutineSuccess {
     pub message: Message,
     pub message_type: MessageType,
@@ -156,6 +167,10 @@ impl RoutineSuccess {
             message,
             message_type: MessageType::Highlight,
         }
+    }
+
+    pub fn show(&self) {
+        show_message!(self.message_type, self.message);
     }
 }
 
@@ -250,7 +265,11 @@ impl RoutineController {
 }
 
 // Starts the file watcher and the webserver
-pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()> {
+pub async fn start_development_mode(
+    project: Arc<Project>,
+    features: &Features,
+    metrics: Arc<Metrics>,
+) -> anyhow::Result<()> {
     show_message!(
         MessageType::Info,
         Message {
@@ -259,50 +278,140 @@ pub async fn start_development_mode(project: Arc<Project>) -> anyhow::Result<()>
         }
     );
 
+    let server_config = project.http_server_config.clone();
+    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
     let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
 
     info!("<DCM> Initializing project state");
     let (framework_object_versions, version_syncs) =
-        initialize_project_state(project.clone(), &mut route_table).await?;
+        initialize_project_state(features, project.clone(), &mut route_table).await?;
+
+    let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
+        Box::leak(Box::new(RwLock::new(route_table)));
+
+    let consumption_apis: &'static RwLock<HashSet<String>> =
+        Box::leak(Box::new(RwLock::new(HashSet::new())));
+
+    let route_update_channel = web_server.spawn_api_update_listener(route_table).await;
+
+    let (syncing_processes_registry, process_registry) = if features.core_v2 {
+        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+
+        let plan_result = plan_changes(&mut client, &project).await?;
+        log::info!("Plan Changes: {:?}", plan_result.changes);
+        let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
+        let (syncing_registry, process_registry) =
+            execute_initial_infra_change(&project, features, &plan_result, api_changes_channel)
+                .await?;
+        // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
+
+        // Storing the result of the changes in the table
+        store_infrastructure_map(
+            &mut client,
+            &project.clickhouse_config,
+            &plan_result.target_infra_map,
+        )
+        .await?;
+
+        (syncing_registry, process_registry)
+    } else {
+        let mut syncing_processes_registry = SyncingProcessesRegistry::new(
+            project.redpanda_config.clone(),
+            project.clickhouse_config.clone(),
+        );
+
+        let _ = syncing_processes_registry
+            .start_all(&framework_object_versions, &version_syncs)
+            .await;
+
+        let topics = fetch_topics(&project.redpanda_config).await?;
+
+        let mut function_process_registry =
+            FunctionProcessRegistry::new(project.redpanda_config.clone());
+        // Once the below function is optimized to act on events, this
+        // will need to get refactored out.
+
+        process_streaming_func_changes(
+            &project,
+            &framework_object_versions.get_data_model_set(),
+            &mut function_process_registry,
+            &topics,
+        )
+        .await?;
+
+        let aggs_dir = if features.blocks {
+            project.blocks_dir()
+        } else {
+            project.aggregations_dir()
+        };
+
+        let mut aggregations_process_registry = AggregationProcessRegistry::new(
+            project.language,
+            aggs_dir,
+            project.clickhouse_config.clone(),
+            features,
+        );
+        process_aggregations_changes(&mut aggregations_process_registry).await?;
+
+        let mut consumption_process_registry = ConsumptionProcessRegistry::new(
+            project.language,
+            project.clickhouse_config.clone(),
+            project.consumption_dir(),
+        );
+        process_consumption_changes(
+            &project,
+            &mut consumption_process_registry,
+            consumption_apis.write().await.deref_mut(),
+        )
+        .await?;
+
+        let project_registries = ProcessRegistries {
+            functions: function_process_registry,
+            aggregations: aggregations_process_registry,
+            consumption: consumption_process_registry,
+        };
+
+        (syncing_processes_registry, project_registries)
+    };
 
     {
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+        let aggregations = project.get_aggregations();
         store_current_state(
             &mut client,
             &framework_object_versions,
+            &aggregations,
             &project.clickhouse_config,
         )
         .await?
     }
 
-    let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
-        Box::leak(Box::new(RwLock::new(route_table)));
-
-    let mut syncing_processes_registry = SyncingProcessesRegistry::new(
-        project.redpanda_config.clone(),
-        project.clickhouse_config.clone(),
-    );
-
-    syncing_processes_registry.start_all(&framework_object_versions, &version_syncs);
-
     let file_watcher = FileWatcher::new();
     file_watcher.start(
         project.clone(),
+        features,
         framework_object_versions,
-        route_table,
+        route_table,          // Deprecated way of updating the routes,
+        route_update_channel, // The new way of updating the routes
+        consumption_apis,
         syncing_processes_registry,
+        process_registry,
     )?;
 
     info!("Starting web server...");
-    let server_config = project.http_server_config.clone();
-    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
-    web_server.start(route_table, project).await;
+    web_server
+        .start(route_table, consumption_apis, project, metrics)
+        .await;
 
     Ok(())
 }
 
 // Starts the webserver in production mode
-pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> {
+pub async fn start_production_mode(
+    project: Arc<Project>,
+    features: Features,
+    metrics: Arc<Metrics>,
+) -> anyhow::Result<()> {
     show_message!(
         MessageType::Success,
         Message {
@@ -311,77 +420,111 @@ pub async fn start_production_mode(project: Arc<Project>) -> anyhow::Result<()> 
         }
     );
 
-    let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
+    let server_config = project.http_server_config.clone();
+    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
 
+    let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
     info!("<DCM> Initializing project state");
     let (framework_object_versions, version_syncs) =
-        initialize_project_state(project.clone(), &mut route_table).await?;
+        initialize_project_state(&features, project.clone(), &mut route_table).await?;
 
     debug!("Route table: {:?}", route_table);
-
     let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
         Box::leak(Box::new(RwLock::new(route_table)));
 
-    let mut syncing_processes_registry = SyncingProcessesRegistry::new(
-        project.redpanda_config.clone(),
-        project.clickhouse_config.clone(),
-    );
-    syncing_processes_registry.start_all(&framework_object_versions, &version_syncs);
+    let consumption_apis: &'static RwLock<HashSet<String>> =
+        Box::leak(Box::new(RwLock::new(HashSet::new())));
 
-    start_flow_process(&project)?;
-    start_aggregation_process(&project)?;
-    start_consumption_process(&project)?;
+    if features.core_v2 {
+        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+
+        let plan_result = plan_changes(&mut client, &project).await?;
+        log::info!("Plan Changes: {:?}", plan_result.changes);
+        let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
+        execute_initial_infra_change(&project, &features, &plan_result, api_changes_channel)
+            .await?;
+        // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
+
+        // Storing the result of the changes in the table
+        store_infrastructure_map(
+            &mut client,
+            &project.clickhouse_config,
+            &plan_result.target_infra_map,
+        )
+        .await?;
+    } else {
+        let topics = fetch_topics(&project.redpanda_config).await?;
+        let mut syncing_processes_registry = SyncingProcessesRegistry::new(
+            project.redpanda_config.clone(),
+            project.clickhouse_config.clone(),
+        );
+        let _ = syncing_processes_registry
+            .start_all(&framework_object_versions, &version_syncs)
+            .await;
+
+        let mut function_process_registry =
+            FunctionProcessRegistry::new(project.redpanda_config.clone());
+        // Once the below function is optimized to act on events, this
+        // will need to get refactored out.
+        process_streaming_func_changes(
+            &project,
+            &framework_object_versions.get_data_model_set(),
+            &mut function_process_registry,
+            &topics,
+        )
+        .await?;
+        let aggs_dir = if features.blocks {
+            project.blocks_dir()
+        } else {
+            project.aggregations_dir()
+        };
+        let mut aggregations_process_registry = AggregationProcessRegistry::new(
+            project.language,
+            aggs_dir,
+            project.clickhouse_config.clone(),
+            &features,
+        );
+        process_aggregations_changes(&mut aggregations_process_registry).await?;
+
+        let mut consumption_process_registry = ConsumptionProcessRegistry::new(
+            project.language,
+            project.clickhouse_config.clone(),
+            project.consumption_dir(),
+        );
+        process_consumption_changes(
+            &project,
+            &mut consumption_process_registry,
+            consumption_apis.write().await.deref_mut(),
+        )
+        .await?;
+    }
 
     info!("Starting web server...");
-    let server_config = project.http_server_config.clone();
-    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
-    web_server.start(route_table, project).await;
+    web_server
+        .start(route_table, consumption_apis, project, metrics)
+        .await;
 
     Ok(())
 }
 
-fn crawl_schema(
-    project: &Project,
-    old_versions: &[String],
-) -> anyhow::Result<FrameworkObjectVersions> {
-    info!("<DCM> Checking for old version directories...");
+pub async fn plan(project: &Project) -> anyhow::Result<()> {
+    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
 
-    let mut framework_object_versions =
-        FrameworkObjectVersions::new(project.version().to_string(), project.schemas_dir().clone());
+    let plan_results = plan_changes(&mut client, project).await?;
 
-    for version in old_versions.iter() {
-        let path = project.old_version_location(version)?;
+    display::show_changes(&plan_results);
 
-        debug!("<DCM> Processing old version directory: {:?}", path);
-
-        let mut framework_objects = HashMap::new();
-        get_all_framework_objects(&mut framework_objects, &path, version)?;
-
-        let schema_version = SchemaVersion {
-            base_path: path,
-            models: framework_objects,
-        };
-
-        framework_object_versions
-            .previous_version_models
-            .insert(version.clone(), schema_version);
+    if plan_results.changes.is_empty() {
+        show_message!(
+            MessageType::Info,
+            Message {
+                action: "No".to_string(),
+                details: "changes detected".to_string(),
+            }
+        );
     }
 
-    let schema_dir = project.schemas_dir();
-
-    info!("<DCM> Starting schema directory crawl...");
-    with_spinner("Processing schema file", || {
-        let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
-        get_all_framework_objects(&mut framework_objects, &schema_dir, project.version())?;
-
-        framework_object_versions.current_models = SchemaVersion {
-            base_path: schema_dir.clone(),
-            models: framework_objects.clone(),
-        };
-        anyhow::Ok(())
-    })?;
-
-    Ok(framework_object_versions)
+    Ok(())
 }
 
 async fn check_for_model_changes(
@@ -466,83 +609,81 @@ async fn check_for_model_changes(
     }
 }
 
-async fn initialize_project_state(
+// TODO - this function should be split in 2
+// 1. one that gathers the curnent state of the project from the files
+// 2. another one that changes the routes based on the current state
+pub async fn initialize_project_state(
+    features: &Features,
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> anyhow::Result<(FrameworkObjectVersions, Vec<VersionSync>)> {
     let old_versions = project.old_versions_sorted();
 
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
-    let producer = redpanda::create_producer(project.redpanda_config.clone());
 
     info!("<DCM> Checking for old version directories...");
 
-    let mut framework_object_versions = crawl_schema(&project, &old_versions)?;
+    let mut framework_object_versions = load_framework_objects(&project).await?;
 
     check_for_model_changes(project.clone(), framework_object_versions.clone()).await;
 
-    with_spinner_async("Processing versions", async {
-        // TODO: enforce linearity, if 1.1 is linked to 2.0, 1.2 cannot be added
-        let mut previous_version: Option<(String, HashMap<String, FrameworkObject>)> = None;
-        for version in old_versions {
-            let schema_version: &mut SchemaVersion = framework_object_versions
-                .previous_version_models
-                .get_mut(&version)
-                .unwrap();
+    with_spinner_async(
+        "Processing versions",
+        async {
+            // TODO: enforce linearity, if 1.1 is linked to 2.0, 1.2 cannot be added
+            let mut previous_version: Option<(String, HashMap<String, FrameworkObject>)> = None;
+            for version in old_versions {
+                let schema_version: &mut SchemaVersion = framework_object_versions
+                    .previous_version_models
+                    .get_mut(&version)
+                    .unwrap();
 
-            process_objects(
-                &schema_version.models,
-                &previous_version,
-                project.clone(),
-                &schema_version.base_path,
-                &configured_client,
-                route_table,
-                &version,
-            )
-            .await?;
-            previous_version = Some((version, schema_version.models.clone()));
-        }
+                // When using the core v2, this functionality is somewhere else
+                if !features.core_v2 {
+                    process_objects(
+                        &schema_version.models,
+                        &previous_version,
+                        project.clone(),
+                        &schema_version.base_path,
+                        &configured_client,
+                        route_table,
+                        &version,
+                    )
+                    .await?;
+                }
+                previous_version = Some((version, schema_version.models.clone()));
+            }
 
-        let result = process_objects(
-            &framework_object_versions.current_models.models,
-            &previous_version,
-            project.clone(),
-            &framework_object_versions.current_models.base_path,
-            &configured_client,
-            route_table,
-            &framework_object_versions.current_version,
-        )
-        .await;
+            // When using the core v2, this functionality is somewhere else
+            if !features.core_v2 {
+                let result = process_objects(
+                    &framework_object_versions.current_models.models,
+                    &previous_version,
+                    project.clone(),
+                    &framework_object_versions.current_models.base_path,
+                    &configured_client,
+                    route_table,
+                    &framework_object_versions.current_version,
+                )
+                .await;
 
-        // TODO: add old versions to SDK
-        if !PROJECT.lock().unwrap().is_production {
-            let sdk_location =
-                typescript::generator::generate_sdk(&project, &framework_object_versions)?;
-            let package_manager = package_managers::PackageManager::Npm;
-            package_managers::install_packages(&sdk_location, &package_manager)?;
-            package_managers::run_build(&sdk_location, &package_manager)?;
-            package_managers::link_sdk(&sdk_location, None, &package_manager)?;
-        }
-        let _ = post_current_state_to_console(
-            project.clone(),
-            &configured_client,
-            &producer,
-            &framework_object_versions,
-        )
-        .await;
-
-        match result {
-            Ok(_) => {
-                info!("<DCM> Schema directory crawl completed successfully");
+                match result {
+                    Ok(_) => {
+                        info!("<DCM> Schema directory crawl completed successfully");
+                        Ok(())
+                    }
+                    Err(e) => {
+                        debug!("<DCM> Schema directory crawl failed");
+                        debug!("<DCM> Error: {:?}", e);
+                        Err(e)
+                    }
+                }
+            } else {
                 Ok(())
             }
-            Err(e) => {
-                debug!("<DCM> Schema directory crawl failed");
-                debug!("<DCM> Error: {:?}", e);
-                Err(e)
-            }
-        }
-    })
+        },
+        !project.is_production,
+    )
     .await?;
 
     info!("<DCM> Crawling version syncs");
@@ -556,10 +697,11 @@ async fn initialize_project_state(
             }
             Ok(version_syncs)
         },
+        !project.is_production,
     )
     .await?;
 
-    let _ = verify_flows_against_datamodels(&project, &framework_object_versions);
+    let _ = verify_streaming_functions_against_datamodels(&project, &framework_object_versions);
 
     Ok((framework_object_versions, version_syncs))
 }

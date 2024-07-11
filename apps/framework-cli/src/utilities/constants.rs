@@ -5,7 +5,9 @@ use uuid::Uuid;
 pub const CLI_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 pub const PACKAGE_JSON: &str = "package.json";
-pub const PROJECT_CONFIG_FILE: &str = "project.toml";
+pub const SETUP_PY: &str = "setup.py";
+pub const OLD_PROJECT_CONFIG_FILE: &str = "project.toml";
+pub const PROJECT_CONFIG_FILE: &str = "moose.config.toml";
 pub const PROJECT_NAME_ALLOW_PATTERN: &str = r"^[a-zA-Z0-9_-]+$";
 
 pub const CLI_CONFIG_FILE: &str = "config.toml";
@@ -19,43 +21,48 @@ pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS: &str = "clickhouse/confi
 pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS: &str = "clickhouse/configs/users";
 
 pub const SCHEMAS_DIR: &str = "datamodels";
-pub const FLOWS_DIR: &str = "flows";
+pub const FUNCTIONS_DIR: &str = "functions";
 pub const AGGREGATIONS_DIR: &str = "aggregations";
-pub const APIS_DIR: &str = "apis";
+pub const BLOCKS_DIR: &str = "blocks";
+pub const CONSUMPTION_DIR: &str = "apis";
 pub const VSCODE_DIR: &str = ".vscode";
-pub const SAMPLE_FLOWS_SOURCE: &str = "UserActivity";
-pub const SAMPLE_FLOWS_DEST: &str = "ParsedActivity";
+pub const SAMPLE_STREAMING_FUNCTION_SOURCE: &str = "UserActivity";
+pub const SAMPLE_STREAMING_FUNCTION_DEST: &str = "ParsedActivity";
 
 pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb-1";
-pub const CONSOLE_CONTAINER_NAME: &str = "console-1";
 pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";
-pub const FLOWS_CONTAINER_NAME: &str = "flows-1";
-pub const AGGREGATIONS_CONTAINER_NAME: &str = "aggregations-1";
-pub const CONSUMPTION_CONTAINER_NAME: &str = "consumption-1";
 
 pub const REDPANDA_HOSTS: [&str; 2] = ["redpanda", "localhost"];
 
 pub const APP_DIR: &str = "app";
-pub const APP_DIR_LAYOUT: [&str; 2] = [SCHEMAS_DIR, FLOWS_DIR];
+pub const APP_DIR_LAYOUT: [&str; 4] = [
+    SCHEMAS_DIR,
+    FUNCTIONS_DIR,
+    AGGREGATIONS_DIR,
+    CONSUMPTION_DIR,
+];
 
 pub const GITIGNORE: &str = ".gitignore";
 
-pub const DENO_DIR: &str = "deno";
-pub const DENO_TRANSFORM: &str = "transform.ts";
-pub const DENO_AGGREGATIONS: &str = "aggregations.ts";
-pub const DENO_CONSUMPTION_API: &str = "consumption-api.ts";
+// These two constants are for the old convention of nested directories
+// we will not be renaming them
+pub const TS_FLOW_FILE: &str = "flow.ts";
+pub const PY_FLOW_FILE: &str = "flow.py";
 
-pub const CONSUMPTION_HELPERS: &str = "consumption-helpers.ts";
-pub const TS_HELPER_FILE: &str = "ts-helpers.ts";
-
-pub const FLOW_FILE: &str = "flow.ts";
-pub const AGGREGATIONS_FILE: &str = "DailyActiveUsers.ts";
+pub const TS_AGGREGATIONS_FILE: &str = "DailyActiveUsers.ts";
+pub const PY_AGGREGATIONS_FILE: &str = "DailyActiveUsers.py";
 pub const API_FILE: &str = "dailyActiveUsers.ts";
 
 pub const VSCODE_EXT_FILE: &str = "extensions.json";
 pub const VSCODE_SETTINGS_FILE: &str = "settings.json";
 
 pub const CTX_SESSION_ID: &str = "session_id";
+
+pub const PYTHON_FILE_EXTENSION: &str = "py";
+pub const TYPESCRIPT_FILE_EXTENSION: &str = "ts";
+pub const SQL_FILE_EXTENSION: &str = "sql";
+
+pub const PYTHON_INIT_FILE: &str = "__init__.py";
 
 lazy_static! {
     pub static ref CONTEXT: HashMap<String, String> = {
@@ -70,5 +77,3 @@ This is a [MooseJs](https://www.moosejs.com/) project bootstrapped with the
 [`Moose CLI`](https://github.com/514-labs/moose/tree/main/apps/framework-cli).
 
 "#;
-
-pub const TS_INTERFACE_GENERATE_EXT: &str = ".generated.ts";

@@ -1,0 +1,80 @@
+### Introducing Aggregations
+
+In my previous post, I teased some exciting new primitives coming to Moose. If you missed it, you should totally [check it out](https://www.fiveonefour.com/blog/product-update-1). I even dropped some easter eggs for how to experiment with these new features in development mode.
+
+What I didn’t promise in that post was that the functionality would be officially ready to use in production. Well, now it is, thanks to the amazing work from Jonathan!
+
+**That's right: [Aggregations](https://docs.moosejs.com/building/aggregations/intro) are officially live in alpha!**
+
+#### What are Aggregations? 📊
+
+Aggregations are queries that compute derived data or summary statistics from your existing database tables. The result set of the query is pre-computed and saved as a dedicated table in your database, allowing you to integrate it into other parts of your application. What this ultimately gives you is the ability to optimize how your most frequently used metrics, time series, and other derived insights are calculated and stored for fast and efficient data access.
+
+```ts filename="aggregations/DailyActiveUsers.ts" copy
+interface Aggregation {
+  select: string;
+  orderBy: string;
+}
+
+export default {
+  select: ` 
+    SELECT 
+        uniqState(userId) as dailyActiveUsers,
+        toStartOfDay(timestamp) as date
+    FROM ParsedActivity
+    WHERE activity = 'Login' 
+    GROUP BY toStartOfDay(timestamp)
+    `,
+  orderBy: "date",
+} satisfies Aggregation as Aggregation;
+```
+
+#### How do Aggregations work?
+
+Here's the TL;DR: Aggregations are SQL `SELECT` queries defined as a string and exported from a `.ts` file inside the `/aggregations` folder of your Moose project. Moose handles infrastructure and database setup so you don’t have to. The best part? You can be assured that your Aggregation queries are executed in real-time so your resulting data is always fresh.
+
+##### _It sounds magical…_
+
+We’re not here to hide what’s behind the curtain. Moose leverages Clickhouse for the database storage layer, using Clickhouse’s Materialized View functionality. These pre-computed queries are saved as tables in your database and automatically updated whenever new data is added to the source table(s). If you’d like to dive deeper into Clickhouse Materialized Views, I highly recommend [giving this awesome blog post from the Clickhouse team](https://clickhouse.com/blog/using-materialized-views-in-clickhouse) a read.
+
+#### Take it for a spin 🎢
+
+##### Setup your file and folder structure
+
+First, create a TypeScript file named after the intended target table within the `/aggregations` folder of your Moose project. Running this CLI command will generate the necessary boilerplate for you:
+
+```bash
+moose aggregation init <target-table-name>
+```
+
+##### Define your Aggregation
+
+Inside that file, define an object containing two keys:
+
+- `select`: A valid SQL `SELECT` query for aggregating data.
+- `orderBy`: The column from the `SELECT` query used by Clickhouse to sort the data.
+
+Recall I mentioned that the current Moose stack leverages Clickhouse for the database layer, which means that **your SQL statement should use Clickhouse’s SQL dialect.**
+
+You should [check out this list of aggregate functions available in Clickhouse](https://clickhouse.com/docs/en/sql-reference/aggregate-functions/reference). We want to make sure you can leverage the full potential of these capabilities to build powerful applications with Moose. We're pumped to see how you unleash your innovative spirit!
+
+##### Save and watch the magic happen 🪄
+
+When you save this file, Moose will automatically create a new table named after your file and populate it with the result of your `SELECT` statement. This table can be used for other queries, so you can create aggregations on aggregations, or build Consumption APIs that fetch data from your aggregation tables.
+
+#### Wait...Consumption APIs??? 🤔
+
+Oh yeah, that was casual. Consumption APIs are here too. I’ll introduce you to Consumption APIs and show you how to use them to create powerful, flexible endpoints to serve insights from your data in my next post. Stay tuned!
+
+Until then, happy aggregating! 🎉
+
+**P.S.** If you're new to Moose, or want to dig deeper into Aggregations, check out our [documentation](https://docs.moosejs.com) for more details on how to get started.
+
+export const metadata = {
+  title: "Introducing Aggregations",
+  publishedAt: "2024-05-22T18:00:30Z",
+  categories: ["Announcements, Product"],
+  author: "Olivia",
+  description:
+    "Introducing Aggregations, a new feature in Moose that allows you to create reusable queries that compute derived data or summary statistics from your raw data. Learn how to get started building with them!",
+};

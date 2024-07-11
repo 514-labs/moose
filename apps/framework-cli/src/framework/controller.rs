@@ -9,6 +9,8 @@ use futures::StreamExt;
 use log::{debug, error, info, warn};
 use rdkafka::producer::DeliveryFuture;
 
+use super::core::code_loader::FrameworkObject;
+use super::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
 use crate::infrastructure::olap::clickhouse::queries::create_alias_for_table;
@@ -20,187 +22,11 @@ use crate::infrastructure::stream::redpanda::{
     send_with_back_pressure, wait_for_delivery, RedpandaConfig,
 };
 use crate::project::Project;
-use crate::project::PROJECT;
-#[cfg(test)]
-use crate::utilities::constants::SCHEMAS_DIR;
-
-use super::data_model;
-use super::data_model::config::EndpointIngestionFormat;
-use super::data_model::config::ModelConfigurationError;
-use super::data_model::is_schema_file;
-use super::data_model::parser::{parse_data_model_file, DataModelParsingError};
-use super::data_model::schema::ColumnType;
-use super::data_model::schema::DataEnum;
-use super::data_model::schema::DataModel;
-use super::data_model::DuplicateModelError;
-
-#[derive(Debug, Clone)]
-pub struct FrameworkObject {
-    pub data_model: DataModel,
-    pub table: Option<ClickHouseTable>,
-    pub topic: String,
-    pub original_file_path: PathBuf,
-}
-
-#[derive(Debug, thiserror::Error)]
-#[error("Failed to build internal framework object representation")]
-#[non_exhaustive]
-pub enum MappingError {
-    ClickhouseError(#[from] crate::infrastructure::olap::clickhouse::errors::ClickhouseError),
-    TypescriptError(#[from] super::typescript::generator::TypescriptGeneratorError),
-}
-
-pub fn framework_object_mapper(
-    s: DataModel,
-    original_file_path: &Path,
-    version: &str,
-) -> Result<FrameworkObject, MappingError> {
-    let clickhouse_table = if s.config.storage.enabled {
-        Some(olap::clickhouse::mapper::std_table_to_clickhouse_table(
-            s.to_table(version),
-        )?)
-    } else {
-        None
-    };
-
-    let topic = format!("{}_{}", s.name.clone(), version.replace('.', "_"));
-
-    Ok(FrameworkObject {
-        data_model: s.clone(),
-        table: clickhouse_table,
-        topic,
-        original_file_path: original_file_path.to_path_buf(),
-    })
-}
-
-#[derive(Debug, Clone)]
-pub struct SchemaVersion {
-    pub base_path: PathBuf,
-    pub models: HashMap<String, FrameworkObject>,
-}
-
-impl SchemaVersion {
-    pub fn get_all_enums(&self) -> Vec<DataEnum> {
-        let mut enums = Vec::new();
-        for model in self.models.values() {
-            for column in &model.data_model.columns {
-                if let ColumnType::Enum(data_enum) = &column.data_type {
-                    enums.push(data_enum.clone());
-                }
-            }
-        }
-        enums
-    }
-
-    pub fn get_all_models(&self) -> Vec<DataModel> {
-        self.models
-            .values()
-            .map(|model| model.data_model.clone())
-            .collect()
-    }
-}
-
-// TODO: save this object somewhere so that we can clean up removed models
-// TODO abstract this with an iterator and some helper functions to make the internal state hidden.
-// That would enable us to do things like .next() and .peek() on the iterator that are now not possible
-#[derive(Debug, Clone)]
-pub struct FrameworkObjectVersions {
-    pub current_version: String,
-    pub current_models: SchemaVersion,
-    pub previous_version_models: HashMap<String, SchemaVersion>,
-}
-
-impl FrameworkObjectVersions {
-    pub fn new(current_version: String, current_schema_directory: PathBuf) -> Self {
-        FrameworkObjectVersions {
-            current_version,
-            current_models: SchemaVersion {
-                base_path: current_schema_directory,
-                models: HashMap::new(),
-            },
-            previous_version_models: HashMap::new(),
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct RouteMeta {
-    pub original_file_path: PathBuf,
     pub topic_name: String,
     pub format: EndpointIngestionFormat,
-}
-
-pub fn get_all_framework_objects(
-    framework_objects: &mut HashMap<String, FrameworkObject>,
-    schema_dir: &Path,
-    version: &str,
-) -> anyhow::Result<()> {
-    if schema_dir.is_dir() {
-        for entry in std::fs::read_dir(schema_dir)? {
-            let entry = entry?;
-            let path = entry.path();
-            if path.is_dir() {
-                debug!("<DCM> Processing directory: {:?}", path);
-                get_all_framework_objects(framework_objects, &path, version)?;
-            } else if is_schema_file(&path) {
-                debug!("<DCM> Processing file: {:?}", path);
-                let objects = get_framework_objects_from_schema_file(&path, version)?;
-                for fo in objects {
-                    DuplicateModelError::try_insert(framework_objects, fo, &path)?;
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
-#[derive(Debug, thiserror::Error)]
-#[error("Failed to get the Data Model configuration")]
-#[non_exhaustive]
-pub enum DataModelError {
-    Configuration(#[from] ModelConfigurationError),
-    Parsing(#[from] DataModelParsingError),
-    Mapping(#[from] MappingError),
-
-    #[error("{message}")]
-    Other {
-        message: String,
-    },
-}
-
-pub fn get_framework_objects_from_schema_file(
-    path: &Path,
-    version: &str,
-) -> Result<Vec<FrameworkObject>, DataModelError> {
-    let framework_objects = parse_data_model_file(path)?;
-    let mut indexed_models = HashMap::new();
-
-    for model in framework_objects.models {
-        indexed_models.insert(model.name.clone().trim().to_lowercase(), model);
-    }
-
-    let data_models_configs = data_model::config::get(path)?;
-    for (config_variable_name, config) in data_models_configs.iter() {
-        let sanitized_config_name = config_variable_name.trim().to_lowercase();
-        match sanitized_config_name.strip_suffix("config") {
-            Some(config_name_without_suffix) => {
-                let data_model_opt = indexed_models.get_mut(config_name_without_suffix);
-                if let Some(data_model) = data_model_opt {
-                    data_model.config = config.clone();
-                }
-            }
-            None => {
-                return Err(DataModelError::Other { message: format!("Config name exports have to be of the format <dataModelName>Config so that they can be correlated to the proper datamodel. \n {} is not respecting this pattern", config_variable_name) })
-            }
-        }
-    }
-
-    let mut to_return = Vec::new();
-    for model in indexed_models.into_values() {
-        to_return.push(framework_object_mapper(model, path, version)?);
-    }
-
-    Ok(to_return)
 }
 
 pub async fn create_or_replace_version_sync(
@@ -211,7 +37,7 @@ pub async fn create_or_replace_version_sync(
     let drop_function_query = version_sync.drop_function_query();
     olap::clickhouse::run_query(&drop_function_query, configured_client).await?;
 
-    if !PROJECT.lock().unwrap().is_production {
+    if !project.is_production {
         let drop_trigger_query = version_sync.drop_trigger_query();
         olap::clickhouse::run_query(&drop_trigger_query, configured_client).await?;
     }
@@ -247,8 +73,13 @@ pub async fn initial_data_load(
             // TODO: we should probably have a lazy_static pool, after we actually use the global project instance
             let pool = olap::clickhouse_alt_client::get_pool(&configured_client.config);
             let mut client = pool.get_handle().await?;
-            let mut stream =
-                olap::clickhouse_alt_client::select_all_as_json(table, &mut client, offset).await?;
+            let mut stream = olap::clickhouse_alt_client::select_all_as_json(
+                &configured_client.config.db_name,
+                table,
+                &mut client,
+                offset,
+            )
+            .await?;
 
             let producer = redpanda::create_idempotent_producer(config);
 
@@ -329,11 +160,12 @@ pub async fn create_ts_version_sync_topics(
 }
 
 pub(crate) async fn drop_table(
+    db_name: &str,
     table: &ClickHouseTable,
     configured_client: &ConfiguredDBClient,
 ) -> anyhow::Result<()> {
     info!("<DCM> Dropping tables for: {:?}", table.name);
-    let drop_data_table_query = table.drop_data_table_query()?;
+    let drop_data_table_query = table.drop_data_table_query(db_name)?;
     olap::clickhouse::run_query(&drop_data_table_query, configured_client).await?;
 
     Ok(())
@@ -345,12 +177,14 @@ pub async fn create_or_replace_table_alias(
     table: &ClickHouseTable,
     previous_version: &ClickHouseTable,
     configured_client: &ConfiguredDBClient,
+    is_production: bool,
 ) -> anyhow::Result<()> {
-    if !PROJECT.lock().unwrap().is_production {
-        drop_table(table, configured_client).await?;
+    if !is_production {
+        drop_table(&configured_client.config.db_name, table, configured_client).await?;
     }
 
-    let query = create_alias_query_from_table(previous_version, table)?;
+    let query =
+        create_alias_query_from_table(&configured_client.config.db_name, previous_version, table)?;
     olap::clickhouse::run_query(&query, configured_client).await?;
 
     Ok(())
@@ -366,8 +200,12 @@ pub async fn create_or_replace_latest_table_alias(
             fo.data_model.name, table.name
         );
 
-        match olap::clickhouse::get_engine(&table.db_name, &fo.data_model.name, configured_client)
-            .await?
+        match olap::clickhouse::get_engine(
+            &configured_client.config.db_name,
+            &fo.data_model.name,
+            configured_client,
+        )
+        .await?
         {
             None => {}
             Some(v) if v == "View" => {
@@ -383,7 +221,11 @@ pub async fn create_or_replace_latest_table_alias(
             }
         };
 
-        let query = create_alias_for_table(&fo.data_model.name, table)?;
+        let query = create_alias_for_table(
+            &configured_client.config.db_name,
+            &fo.data_model.name,
+            table,
+        )?;
         olap::clickhouse::run_query(&query, configured_client).await?;
     }
 
@@ -393,9 +235,11 @@ pub async fn create_or_replace_latest_table_alias(
 pub(crate) async fn create_or_replace_tables(
     table: &ClickHouseTable,
     configured_client: &ConfiguredDBClient,
+    is_production: bool,
 ) -> anyhow::Result<()> {
     info!("<DCM> Creating table: {:?}", table.name);
-    let create_data_table_query = table.create_data_table_query()?;
+    let create_data_table_query =
+        table.create_data_table_query(&configured_client.config.db_name)?;
 
     olap::clickhouse::check_ready(configured_client)
         .await
@@ -407,8 +251,8 @@ pub(crate) async fn create_or_replace_tables(
         })?;
 
     // Clickhouse doesn't support dropping a view if it doesn't exist, so we need to drop it first in case the schema has changed
-    if !PROJECT.lock().unwrap().is_production {
-        drop_table(table, configured_client).await?;
+    if !is_production {
+        drop_table(&configured_client.config.db_name, table, configured_client).await?;
     }
 
     olap::clickhouse::run_query(&create_data_table_query, configured_client).await?;
@@ -456,23 +300,96 @@ pub async fn set_up_topic_and_tables_and_route(
         &fo.table,
         &previous_fo_opt.and_then(|previous_fo| previous_fo.table.clone()),
     ) {
-        // In the case where the previous version of the data model and the new version of the data model are the same
-        // we just need to use pointers to the old table and topic
-        (Some(previous_fo), Some(current_table), Some(previous_table))
-            if previous_fo.data_model == fo.data_model =>
-        {
+        // This is in the case where the user deactivates the storage for a data model
+        (Some(previous_fo), None, _) if previous_fo.data_model.columns == fo.data_model.columns => {
+            info!(
+                "Data model {} has not changed, Storage is deactivated, using previous version table {} and topic {}",
+                fo.data_model.name,
+                previous_fo
+                    .table
+                    .clone()
+                    .map(|table| { table.name })
+                    .unwrap_or("None".to_string()),
+                previous_fo.topic
+            );
+
             // In this case no need for a topic on the current table since it is all the same as the previous table.
             match redpanda::delete_topics(&project.redpanda_config, vec![topic]).await {
                 Ok(_) => info!("Topics deleted successfully"),
                 Err(e) => warn!("Failed to delete topics: {}", e),
             }
 
-            if fo.data_model.config.storage.enabled {
-                create_or_replace_table_alias(current_table, previous_table, configured_client)
-                    .await?;
+            // In the case where we use a view here, we need to use the previous topic that was set
+            // That topic may be the topic of n - 2 version of the data model. Right now the Route object
+            // is where this is kept.
+            // this is a gross way to find the previous ingest route
+            let previous_version = previous_version.as_ref().unwrap().0.as_str();
+            let old_base_path = project.old_version_location(previous_version)?;
+            let old_ingest_route = schema_file_path_to_ingest_route(
+                &old_base_path,
+                &previous_fo.original_file_path,
+                fo.data_model.name.clone(),
+                previous_version,
+            );
+
+            route_table
+                .get(&old_ingest_route)
+                .unwrap()
+                // this might be chained multiple times,
+                // so we cannot just use the previous.table.name
+                .topic_name
+                .clone()
+        }
+
+        // In the case where the previous version of the data model and the new version of the data model are the same
+        // we just need to use pointers to the old table and topic
+        (Some(previous_fo), Some(current_table), Some(previous_table))
+            if previous_fo.data_model.columns == fo.data_model.columns =>
+        {
+            info!(
+                "Data model {} has not changed, using previous version table {} and topic {}",
+                fo.data_model.name,
+                previous_fo
+                    .table
+                    .clone()
+                    .map(|table| { table.name })
+                    .unwrap_or("None".to_string()),
+                previous_fo.topic
+            );
+            // In this case no need for a topic on the current table since it is all the same as the previous table.
+            match redpanda::delete_topics(&project.redpanda_config, vec![topic]).await {
+                Ok(_) => info!("Topics deleted successfully"),
+                Err(e) => warn!("Failed to delete topics: {}", e),
             }
 
-            previous_fo.topic.clone()
+            create_or_replace_table_alias(
+                current_table,
+                previous_table,
+                configured_client,
+                project.is_production,
+            )
+            .await?;
+
+            // In the case where we use a view here, we need to use the previous topic that was set
+            // That topic may be the topic of n - 2 version of the data model. Right now the Route object
+            // is where this is kept.
+            // this is a gross way to find the previous ingest route
+            let previous_version = previous_version.as_ref().unwrap().0.as_str();
+            let old_base_path = project.old_version_location(previous_version)?;
+            let old_ingest_route = schema_file_path_to_ingest_route(
+                &old_base_path,
+                &previous_fo.original_file_path,
+                fo.data_model.name.clone(),
+                previous_version,
+            );
+
+            route_table
+                .get(&old_ingest_route)
+                .unwrap()
+                // this might be chained multiple times,
+                // so we cannot just use the previous.table.name
+                .topic_name
+                .clone()
         }
         _ => {
             match redpanda::create_topics(&project.redpanda_config, vec![topic]).await {
@@ -483,7 +400,7 @@ pub async fn set_up_topic_and_tables_and_route(
             if let Some(table) = &fo.table {
                 debug!("Creating table: {:?}", table.name);
 
-                create_or_replace_tables(table, configured_client).await?;
+                create_or_replace_tables(table, configured_client, project.is_production).await?;
 
                 debug!("Table created: {:?}", table.name);
             }
@@ -499,7 +416,6 @@ pub async fn set_up_topic_and_tables_and_route(
     route_table.insert(
         ingest_route.clone(),
         RouteMeta {
-            original_file_path: fo.original_file_path.clone(),
             topic_name,
             format: fo.data_model.config.ingestion.format.clone(),
         },
@@ -518,7 +434,7 @@ pub async fn process_objects(
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     version: &str,
 ) -> anyhow::Result<()> {
-    let is_latest = version == project.version();
+    let is_latest = version == project.cur_version();
 
     for (_, fo) in framework_objects.iter() {
         let ingest_route = schema_file_path_to_ingest_route(
@@ -540,21 +456,4 @@ pub async fn process_objects(
         .await?;
     }
     Ok(())
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_get_all_framework_objects() {
-        use super::*;
-        let manifest_location = env!("CARGO_MANIFEST_DIR");
-        let schema_dir = PathBuf::from(manifest_location)
-            .join("tests/test_project")
-            .join(SCHEMAS_DIR);
-
-        let mut framework_objects = HashMap::new();
-        let result = get_all_framework_objects(&mut framework_objects, &schema_dir, "0.0");
-        assert!(result.is_ok());
-        assert_eq!(framework_objects.len(), 2);
-    }
 }

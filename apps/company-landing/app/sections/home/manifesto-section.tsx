@@ -2,13 +2,13 @@ import {
   HoverCard,
   HoverCardContent,
   HoverCardTrigger,
-} from "@514labs/design-system/components";
+} from "@514labs/design-system-components/components";
 import {
   Grid,
   HalfWidthContentContainer,
   Section,
-} from "@514labs/design-system/components/containers";
-import { SmallText, Text } from "@514labs/design-system/typography";
+} from "@514labs/design-system-components/components/containers";
+import { SmallText, Text } from "@514labs/design-system-components/typography";
 import Image from "next/image";
 
 export const ManifestoSection = () => {

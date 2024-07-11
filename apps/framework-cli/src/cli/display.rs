@@ -1,7 +1,15 @@
+use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
+use console::{pad_str, style};
 use lazy_static::lazy_static;
+use serde::Deserialize;
 use spinners::{Spinner, Spinners};
 use std::sync::{Arc, RwLock};
 use tokio::macros::support::Future;
+
+use crate::framework::core::{
+    infrastructure_map::{ApiChange, Change, OlapChange, ProcessChange, StreamingChange},
+    plan::InfraPlan,
+};
 
 /// # Display Module
 /// Standardizes the way we display messages to the user in the CLI. This module
@@ -57,7 +65,7 @@ impl CommandTerminal {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Deserialize, Debug, Clone, Copy)]
 pub enum MessageType {
     Info,
     Success,
@@ -79,6 +87,48 @@ impl Message {
 lazy_static! {
     pub static ref TERM: Arc<RwLock<CommandTerminal>> =
         Arc::new(RwLock::new(CommandTerminal::new()));
+}
+
+pub fn infra_added(message: &str) {
+    let command_terminal = TERM.write().unwrap();
+    let padder = 14;
+
+    command_terminal
+        .term
+        .write_line(&format!(
+            "{} {}",
+            style(pad_str("+", padder, console::Alignment::Right, Some("..."))).green(),
+            message
+        ))
+        .expect("failed to write message to terminal");
+}
+
+pub fn infra_removed(message: &str) {
+    let command_terminal = TERM.write().unwrap();
+    let padder = 14;
+
+    command_terminal
+        .term
+        .write_line(&format!(
+            "{} {}",
+            style(pad_str("-", padder, console::Alignment::Right, Some("..."))).red(),
+            message
+        ))
+        .expect("failed to write message to terminal");
+}
+
+pub fn infra_updated(message: &str) {
+    let command_terminal = TERM.write().unwrap();
+    let padder = 14;
+
+    command_terminal
+        .term
+        .write_line(&format!(
+            "{} {}",
+            style(pad_str("~", padder, console::Alignment::Right, Some("..."))).yellow(),
+            message
+        ))
+        .expect("failed to write message to terminal");
 }
 
 macro_rules! show_message {
@@ -169,24 +219,153 @@ macro_rules! show_message {
     };
 }
 
-pub fn with_spinner<F, R>(message: &str, f: F) -> R
+pub fn with_spinner<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: FnOnce() -> R,
 {
-    let mut sp = Spinner::new(Spinners::Dots9, message.into());
+    if !activate {
+        return f();
+    }
+
+    let mut sp = Spinner::with_stream(Spinners::Dots9, message.into(), spinners::Stream::Stdout);
     let res = f();
     sp.stop_with_newline();
     res
 }
 
-pub async fn with_spinner_async<F, R>(message: &str, f: F) -> R
+pub async fn with_spinner_async<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: Future<Output = R>,
 {
-    let mut sp = Spinner::new(Spinners::Dots9, message.into());
+    if !activate {
+        return f.await;
+    }
+
+    let mut sp = Spinner::with_stream(Spinners::Dots9, message.into(), spinners::Stream::Stdout);
     let res = f.await;
     sp.stop_with_newline();
     res
+}
+
+pub fn show_table(headers: Vec<String>, rows: Vec<Vec<String>>) {
+    let mut table = Table::new();
+    table
+        .load_preset(UTF8_FULL)
+        .apply_modifier(UTF8_ROUND_CORNERS);
+    table.set_content_arrangement(ContentArrangement::Dynamic);
+    table.set_header(headers.into_iter().map(|s| s.to_string()));
+
+    for row in rows {
+        table.add_row(row);
+    }
+
+    show_message!(
+        MessageType::Info,
+        Message {
+            action: "".to_string(),
+            details: format!("\n{}", table),
+        }
+    );
+}
+
+pub fn show_changes(infra_plan: &InfraPlan) {
+    TERM.write()
+        .unwrap()
+        .term
+        .write_line("")
+        .expect("failed to write message to terminal");
+    // TODO there is probably a better way to do the following through
+    // https://crates.io/crates/enum_dispatch or something similar
+    infra_plan
+        .changes
+        .streaming_engine_changes
+        .iter()
+        .for_each(|change| match change {
+            StreamingChange::Topic(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            StreamingChange::Topic(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            StreamingChange::Topic(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+        });
+
+    infra_plan
+        .changes
+        .olap_changes
+        .iter()
+        .for_each(|change| match change {
+            OlapChange::Table(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            OlapChange::Table(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            OlapChange::Table(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+        });
+
+    infra_plan
+        .changes
+        .processes_changes
+        .iter()
+        .for_each(|change| match change {
+            ProcessChange::TopicToTableSyncProcess(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            ProcessChange::TopicToTableSyncProcess(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            ProcessChange::TopicToTableSyncProcess(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+            ProcessChange::FunctionProcess(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            ProcessChange::FunctionProcess(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            ProcessChange::FunctionProcess(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+            ProcessChange::OlapProcess(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            ProcessChange::OlapProcess(Change::Removed(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            ProcessChange::OlapProcess(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+            ProcessChange::ConsumptionApiWebServer(Change::Added(_)) => {
+                infra_added("Starting Consumption WebServer...");
+            }
+            ProcessChange::ConsumptionApiWebServer(Change::Removed(_)) => {
+                infra_removed("Stoping Consumption WebServer...");
+            }
+            ProcessChange::ConsumptionApiWebServer(Change::Updated { .. }) => {
+                infra_updated("Reloading Consumption WebServer...");
+            }
+        });
+
+    infra_plan
+        .changes
+        .api_changes
+        .iter()
+        .for_each(|change| match change {
+            ApiChange::ApiEndpoint(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            ApiChange::ApiEndpoint(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            ApiChange::ApiEndpoint(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
+        });
 }
 
 #[cfg(test)]
@@ -199,10 +378,14 @@ mod tests {
         use std::thread;
         use std::time::Duration;
 
-        let _ = with_spinner("Test delay for one second", || {
-            thread::sleep(Duration::from_secs(1));
-            Ok(())
-        })
+        let _ = with_spinner(
+            "Test delay for one second",
+            || {
+                thread::sleep(Duration::from_secs(1));
+                Ok(())
+            },
+            true,
+        )
         .map_err(|err: std::io::Error| {
             RoutineFailure::new(
                 Message::new("Failed".to_string(), "to execute a delay".to_string()),
@@ -224,10 +407,14 @@ mod tests {
         use crate::cli::routines::RoutineFailure;
         use tokio::time::{sleep, Duration};
 
-        let result = with_spinner_async("Test delay", async {
-            sleep(Duration::from_secs(15)).await;
-            Ok(())
-        })
+        let result = with_spinner_async(
+            "Test delay",
+            async {
+                sleep(Duration::from_secs(15)).await;
+                Ok(())
+            },
+            true,
+        )
         .await
         .map_err(|err: std::io::Error| {
             RoutineFailure::new(

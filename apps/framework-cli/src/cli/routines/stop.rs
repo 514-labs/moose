@@ -18,17 +18,21 @@ impl StopLocalInfrastructure {
 impl Routine for StopLocalInfrastructure {
     fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure> {
         ensure_docker_running()?;
-        with_spinner("Stopping local infrastructure", || {
-            docker::stop_containers(&self.project).map_err(|err| {
-                RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        "to stop local infrastructure".to_string(),
-                    ),
-                    err,
-                )
-            })
-        })?;
+        with_spinner(
+            "Stopping local infrastructure",
+            || {
+                docker::stop_containers(&self.project).map_err(|err| {
+                    RoutineFailure::new(
+                        Message::new(
+                            "Failed".to_string(),
+                            "to stop local infrastructure".to_string(),
+                        ),
+                        err,
+                    )
+                })
+            },
+            !self.project.is_production,
+        )?;
 
         Ok(RoutineSuccess::success(Message::new(
             "Successfully".to_string(),

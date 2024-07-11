@@ -1,13 +1,10 @@
-use std::collections::HashMap;
-use std::io::Read;
-use std::{
-    io::BufReader,
-    path::Path,
-    process::{Command, Stdio},
-};
+use std::collections::{HashMap, HashSet};
+use std::path::Path;
 
 use serde_json::Value;
+use tokio::io::AsyncReadExt;
 
+use super::ts_node::run;
 use crate::framework::data_model::config::{ConfigIdentifier, DataModelConfig};
 
 const MODULE_EXPORT_SERIALIZER: &str = include_str!("ts_scripts/moduleExportSerializer.ts");
@@ -24,39 +21,25 @@ pub enum ExportCollectorError {
     },
 }
 
-fn collect_std_to_string<R: Read>(container: R) -> Result<String, ExportCollectorError> {
-    let mut reader = BufReader::new(container);
-    let mut result = String::new();
-    reader.read_to_string(&mut result)?;
-    Ok(result)
-}
-
-fn collect_exports(file: &Path) -> Result<Value, ExportCollectorError> {
-    let file_path_str = &file.to_str().ok_or(ExportCollectorError::Other {
+async fn collect_exports(file: &Path) -> Result<Value, ExportCollectorError> {
+    let file_path_str = file.to_str().ok_or(ExportCollectorError::Other {
         message: "Did not get a proper file path to load exports from".to_string(),
     })?;
 
-    let process = Command::new("npx")
-        .arg("--yes")
-        .arg("ts-node")
-        .arg("--skipProject")
-        .arg("-e")
-        .arg(MODULE_EXPORT_SERIALIZER)
-        .arg("--")
-        .arg(file_path_str)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .expect("Failed start data model config process");
+    let args = vec![file_path_str];
+    let process = run(MODULE_EXPORT_SERIALIZER, &args)?;
 
-    let stdout = process
+    let mut stdout = process
         .stdout
         .expect("Data model config process did not have a handle to stdout");
-    let stderr = process
+
+    let mut stderr = process
         .stderr
         .expect("Data model config process did not have a handle to stderr");
 
-    let raw_string_stderr = collect_std_to_string(stderr)?;
+    let mut raw_string_stderr: String = String::new();
+    stderr.read_to_string(&mut raw_string_stderr).await?;
+
     if !raw_string_stderr.is_empty() {
         Err(ExportCollectorError::Other {
             message: format!(
@@ -65,21 +48,26 @@ fn collect_exports(file: &Path) -> Result<Value, ExportCollectorError> {
             ),
         })
     } else {
-        let raw_string_stdout = collect_std_to_string(stdout)?;
+        let mut raw_string_stdout: String = String::new();
+        stdout.read_to_string(&mut raw_string_stdout).await?;
 
         Ok(serde_json::from_str(&raw_string_stdout)?)
     }
 }
 
-pub fn get_data_model_configs(
+pub async fn get_data_model_configs(
     file: &Path,
+    enums: HashSet<&str>,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ExportCollectorError> {
-    let exports = collect_exports(file)?;
+    let exports = collect_exports(file).await?;
 
     match exports {
         Value::Object(map) => {
             let mut result = HashMap::new();
             for (key, value) in map {
+                if enums.contains(key.as_str()) {
+                    continue;
+                }
                 if let Ok(model_config) = serde_json::from_value(value) {
                     result.insert(key, model_config);
                 }

@@ -1,6 +1,8 @@
 //! # CLI Commands
 //! A module for all the commands that can be run from the CLI
 
+use std::path::PathBuf;
+
 use clap::{Args, Subcommand};
 
 use crate::framework::languages::SupportedLanguages;
@@ -28,27 +30,19 @@ pub enum Commands {
         /// By default, the init command fails if the location directory exists, to prevent accidental reruns. This flag disables the check.
         #[arg(long)]
         no_fail_already_exists: bool,
+
+        /// Create basic Moose project without examples
+        #[arg(short, long, default_value = "false")]
+        empty: bool,
     },
     /// Builds your moose project
     Build {
         #[arg(short, long)]
         docker: bool,
     },
-    // Link {
-    //     /// Name of your client application or service (ex. `my-blog`)
-    //     name: String,
-
-    //     /// Language of your app or service
-    //     #[arg(default_value_t = SupportedLanguages::Typescript, value_enum)]
-    //     language: SupportedLanguages,
-
-    //     /// Location of your app or service
-    //     #[arg(default_value = ".")]
-    //     location: String,
-
-    //     /// Name of the project to link to. Pulls the list of projects from the config file
-    //     project: String,
-    // },
+    /// [Not Ready] Displays the changes that will be applied to the infrastructure during the next deployment
+    /// to production, consdering the current state of the project
+    Plan {},
     /// Starts a local development environment to build your data-intensive app or service
     Dev {},
     /// Start a remote environment for use in cloud deployments
@@ -60,7 +54,7 @@ pub enum Commands {
     /// Clears all temporary data and stops development infrastructure
     Clean {},
     /// Transforms upstream data into materialized datasets for analysis
-    Flow(FlowArgs),
+    Function(FunctionArgs),
     /// Defines aggregate table views of upstream data models
     Aggregation(AggregationArgs),
     /// Defines consumption APIs
@@ -75,6 +69,22 @@ pub enum Commands {
         #[arg(short, long)]
         filter: Option<String>,
     },
+    /// View Moose processes
+    Ps {},
+    /// View Moose primitives & infrastructure
+    Ls {
+        /// Limit output to a specific number of data models
+        #[arg(short, long, default_value = "10")]
+        limit: u16,
+
+        /// View a specific version of data models & database infrastructure (default: latest)
+        #[arg(short, long)]
+        version: Option<String>,
+
+        /// View streaming topics
+        #[arg(short, long, default_value = "false")]
+        streaming: bool,
+    },
 }
 
 #[derive(Debug, Args)]
@@ -86,24 +96,38 @@ pub struct GenerateArgs {
 #[derive(Debug, Subcommand)]
 pub enum GenerateCommand {
     Migrations {},
+    Sdk {
+        /// Language of the SDK to be generated
+        #[arg(default_value_t = SupportedLanguages::Typescript, value_enum, short, long)]
+        language: SupportedLanguages,
+        /// Where the SDK files should be written to
+        #[arg(default_value = "./sdk", short, long)]
+        destination: PathBuf,
+        /// The location of the Moose project
+        #[arg(default_value = ".", short, long)]
+        project_location: PathBuf,
+        /// Whether or not to generate a full fledged package or just the source files in the language of choice
+        #[arg(default_value = "false", short = 'f', long)]
+        full_package: bool,
+    },
 }
 
 #[derive(Debug, Args)]
 #[command(arg_required_else_help = true)]
-pub struct FlowArgs {
+pub struct FunctionArgs {
     #[command(subcommand)]
-    pub command: Option<FlowCommands>,
+    pub command: Option<FunctionCommands>,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum FlowCommands {
-    /// Structures the project's directory & files for a new flow
+pub enum FunctionCommands {
+    /// Structures the project's directory & files for a new streaming function
     #[command(arg_required_else_help = true)]
-    Init(FlowInitArgs),
+    Init(FuncInitArgs),
 }
 
 #[derive(Debug, Args)]
-pub struct FlowInitArgs {
+pub struct FuncInitArgs {
     /// Name of your source data model
     #[arg(short, long, required = true)]
     pub source: String,

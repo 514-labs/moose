@@ -1,9 +1,9 @@
+use std::collections::HashSet;
 use std::num::TryFromIntError;
 use std::path::PathBuf;
 use std::str::FromStr;
 use std::time::Duration;
 
-use crate::framework::controller::FrameworkObjectVersions;
 use chrono::{DateTime, Days, NaiveDate};
 use clickhouse_rs::errors::FromSqlError;
 use clickhouse_rs::types::{ColumnType, Row};
@@ -11,12 +11,16 @@ use clickhouse_rs::types::{FromSql, FromSqlResult, Options, ValueRef};
 use clickhouse_rs::ClientHandle;
 use futures::stream::BoxStream;
 use futures::StreamExt;
+use itertools::Either;
+use log::{info, warn};
 use serde::__private::from_utf8_lossy;
 use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
-use swc_common::pass::Either;
 
-use crate::framework::data_model::schema::{DataModel, EnumValue};
+use crate::framework::core::code_loader::FrameworkObjectVersions;
+use crate::framework::core::infrastructure::table::EnumValue;
+use crate::framework::core::infrastructure_map::InfrastructureMap;
+use crate::framework::data_model::model::DataModel;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::model::{ClickHouseColumnType, ClickHouseTable};
 
@@ -25,6 +29,12 @@ pub fn get_pool(click_house_config: &ClickHouseConfig) -> clickhouse_rs::Pool {
         "tcp://{}:{}",
         click_house_config.host, click_house_config.native_port
     );
+
+    if click_house_config.use_ssl && click_house_config.native_port == 9000 {
+        warn!(
+            "The default secure native port is 9440 instead of 9000. You may get a timeout error."
+        )
+    }
 
     clickhouse_rs::Pool::new(
         Options::from_str(&address)
@@ -161,6 +171,10 @@ fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
         | ClickHouseColumnType::Json
         | ClickHouseColumnType::Bytes => None,
         ClickHouseColumnType::Array(t) => column_type_to_enum_mapping(t.as_ref()),
+        ClickHouseColumnType::Nested(_) => {
+            // Not entire sure I understand what this method does... do we just ignore the nested type?
+            todo!("Implement the nested type mapper")
+        }
         ClickHouseColumnType::Enum(values) => values.values.first().and_then(|m| match m.value {
             EnumValue::Int(_) => None,
             EnumValue::String(_) => Some(
@@ -178,6 +192,7 @@ fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
 }
 
 pub async fn select_all_as_json<'a>(
+    db_name: &str,
     table: &'a ClickHouseTable,
     client: &'a mut ClientHandle,
     offset: i64,
@@ -205,13 +220,16 @@ pub async fn select_all_as_json<'a>(
     } else {
         format!("ORDER BY {}", key_columns.join(", "))
     };
+    let query = &format!(
+        "select * from {}.{} {} offset {}",
+        db_name, table.name, order_by, offset
+    );
+    info!("<DCM> Initial data load query: {}", query);
     let stream = client
-        .query(&format!(
-            "select * from {}.{} {} offset {}",
-            table.db_name, table.name, order_by, offset
-        ))
+        .query(query)
         .stream()
         .map(move |row| row_to_json(&row?, &enum_mapping));
+    info!("<DCM> Got initial data load stream.");
     Ok(Box::pin(stream))
 }
 
@@ -230,23 +248,34 @@ ORDER BY timestamp"#,
     );
     client.execute(sql).await
 }
+
 pub async fn store_current_state(
     client: &mut ClientHandle,
     framework_object_versions: &FrameworkObjectVersions,
+    aggregations: &HashSet<String>,
     click_house_config: &ClickHouseConfig,
 ) -> Result<(), StateStorageError> {
     create_state_table(client, click_house_config).await?;
 
     let data = clickhouse_rs::Block::new().column(
         "state",
-        vec![serde_json::to_string(&ApplicationState::from(
+        vec![serde_json::to_string(&ApplicationState::from((
             framework_object_versions,
-        ))?],
+            aggregations,
+        )))?],
     );
     client
         .insert(format!("{}._MOOSE_STATE", click_house_config.db_name), data)
         .await?;
     Ok(())
+}
+
+pub async fn get_state(
+    click_house_config: &ClickHouseConfig,
+) -> Result<Option<ApplicationState>, StateStorageError> {
+    let pool = get_pool(click_house_config);
+    let mut client = pool.get_handle().await?;
+    retrieve_current_state(&mut client, click_house_config).await
 }
 
 pub async fn retrieve_current_state(
@@ -284,6 +313,7 @@ pub enum StateStorageError {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApplicationState {
     pub models: Vec<(String, Vec<Model>)>,
+    pub aggregations: HashSet<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Model {
@@ -291,8 +321,8 @@ pub struct Model {
     pub original_file_path: PathBuf,
 }
 
-impl From<&FrameworkObjectVersions> for ApplicationState {
-    fn from(versions: &FrameworkObjectVersions) -> Self {
+impl From<(&FrameworkObjectVersions, &HashSet<String>)> for ApplicationState {
+    fn from((versions, aggregations): (&FrameworkObjectVersions, &HashSet<String>)) -> Self {
         let models = versions
             .previous_version_models
             .iter()
@@ -312,6 +342,69 @@ impl From<&FrameworkObjectVersions> for ApplicationState {
                 (version.clone(), models)
             })
             .collect();
-        ApplicationState { models }
+        ApplicationState {
+            models,
+            aggregations: aggregations.clone(),
+        }
+    }
+}
+
+pub async fn store_infrastructure_map(
+    client: &mut ClientHandle,
+    clickhouse_config: &ClickHouseConfig,
+    infrastructure_map: &InfrastructureMap,
+) -> Result<(), StateStorageError> {
+    let data = clickhouse_rs::Block::new().column(
+        "infra_map",
+        vec![serde_json::to_string(infrastructure_map)?],
+    );
+    client
+        .insert(
+            format!("{}._MOOSE_STATE_V2", clickhouse_config.db_name),
+            data,
+        )
+        .await?;
+    Ok(())
+}
+
+async fn create_infrastructure_map_table(
+    client: &mut ClientHandle,
+    click_house_config: &ClickHouseConfig,
+) -> Result<(), clickhouse_rs::errors::Error> {
+    let sql = format!(
+        r#"CREATE TABLE IF NOT EXISTS {}._MOOSE_STATE_V2 (
+            timestamp DateTime('UTC') DEFAULT now(),
+            infra_map String
+        ) ENGINE = MergeTree
+        PRIMARY KEY timestamp
+        ORDER BY timestamp"#,
+        click_house_config.db_name
+    );
+    client.execute(sql).await
+}
+
+pub async fn retrieve_infrastructure_map(
+    client: &mut ClientHandle,
+    click_house_config: &ClickHouseConfig,
+) -> Result<Option<InfrastructureMap>, StateStorageError> {
+    create_infrastructure_map_table(client, click_house_config).await?;
+
+    let block = client
+        .query(format!(
+            "SELECT infra_map from {}._MOOSE_STATE_V2 ORDER BY timestamp DESC LIMIT 1",
+            click_house_config.db_name
+        ))
+        .fetch_all()
+        .await?;
+
+    let inframap_string = block
+        .rows()
+        .map(|row| row.get(0).unwrap())
+        .collect::<Vec<String>>();
+
+    match inframap_string.len() {
+        0 => Ok(None),
+        1 => Ok(serde_json::from_str(inframap_string.first().unwrap())?),
+        len => panic!("LIMIT 1 but got {} rows: {:?}", len, inframap_string),
     }
 }

@@ -12,30 +12,34 @@ The following is the basic structure of a MooseJS project:
     <FileTree.Folder name="datamodels" defaultOpen>
       <FileTree.File name="models.ts" />
     </FileTree.Folder>
-    <FileTree.Folder name="flows" defaultOpen>
-      <FileTree.Folder name="sourceModel" defaultOpen>
-        <FileTree.Folder name="destinationModel" defaultOpen>
-          <FileTree.File name="flow.ts" />
-        </FileTree.Folder>
-      </FileTree.Folder>
+    <FileTree.Folder name="functions" defaultOpen>
+      <FileTree.File name="sourceModel__destinationModel.ts" />
+    </FileTree.Folder>
+    <FileTree.Folder name="aggregations" defaultOpen>
+      <FileTree.File name="aggregation.ts" />
+    </FileTree.Folder>
+    <FileTree.Folder name="apis" defaultOpen>
+      <FileTree.File name="data-api.ts" />
     </FileTree.Folder>
   </FileTree.Folder>
   <FileTree.File name="package.json" />
-  <FileTree.File name="project.toml" />
+  <FileTree.File name="moose.config.toml" />
 </FileTree>
 
 ## Top-level Folders and Files
 
-|              |                                                                                                      |
-| ------------ | ---------------------------------------------------------------------------------------------------- |
-| app          | The main folder for your application.                                                                |
-| .moose       | Moose internals. You shouldn't ever have to touch anything in here.                                  |
-| package.json | The default [npm package manifest file](https://docs.npmjs.com/cli/v10/configuring-npm/package-json) |
-| project.toml | Configuration file specific to Moose for your application.                                           |
+|                   |                                                                                                      |
+| ----------------- | ---------------------------------------------------------------------------------------------------- |
+| app               | The main folder for your application.                                                                |
+| .moose            | Moose internals. You shouldn't ever have to touch anything in here.                                  |
+| package.json      | The default [npm package manifest file](https://docs.npmjs.com/cli/v10/configuring-npm/package-json) |
+| moose.config.toml | Configuration file specific to Moose for your application.                                           |
 
 ## App folders
 
-|            |                                                                                                                                                                   |
-| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| datamodels | The folder where you define your [Data Models](../building/data-models/intro).                                                                                    |
-| flows      | The folder where you define your [Flows](../building/flows/intro) - note that the hierarchy of folders here dictates the routing and orchestration of your flows. |
+|              |                                                                                                                                                                                                             |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| datamodels   | The folder where you define your [Data Models](../building/data-models/intro).                                                                                                                              |
+| functions    | The folder where you define your [Streaming Functions](../building/streaming-functions/intro) - note that the hierarchy of folders here dictates the routing and orchestration of your streaming functions. |
+| aggregations | The folder where you define your [Aggregations](../building/aggregations/intro)                                                                                                                             |
+| apis         | The folder where you define your [Consumption APIs](../building/consumption-apis/intro)                                                                                                                     |

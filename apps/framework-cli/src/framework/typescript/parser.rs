@@ -1,318 +1,186 @@
-use crate::{
-    framework::data_model::schema::{is_enum_type, ColumnType, EnumMember, EnumValue},
-    project::PROJECT,
-};
-use log::debug;
-use std::path::{Path, PathBuf};
-use swc_common::{self, sync::Lrc, SourceMap};
-use swc_ecma_ast::{
-    Decl, ExportDecl, Expr, Lit, Module, ModuleDecl, ModuleItem, Stmt, TsEnumDecl, TsEnumMemberId,
-    TsInterfaceDecl, TsKeywordTypeKind, TsPropertySignature, TsType, TsTypeAnn, TsTypeRef,
-};
-use swc_ecma_parser::{lexer::Lexer, Capturing, Parser, StringInput, Syntax};
+use std::fs;
+use std::io::ErrorKind::NotFound;
+use std::path::Path;
+use std::process::Command;
+
+use serde_json::{json, Value};
 
 use crate::framework::data_model::parser::FileObjects;
-use crate::framework::data_model::schema::{Column, DataEnum, DataModel};
+use crate::project::Project;
 
-#[derive(Debug, Clone, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 #[error("Failed to parse the typescript file")]
 #[non_exhaustive]
 pub enum TypescriptParsingError {
-    FileNotFound {
-        path: PathBuf,
-    },
+    #[error("Failure setting up the file structure")]
+    FileSystemError(#[from] std::io::Error),
+    TypescriptCompilerError(Option<std::io::Error>),
     #[error("Typescript Parser - Unsupported data type: {type_name}")]
     UnsupportedDataTypeError {
         type_name: String,
     },
-    #[error("Typescript Parser - Invalid typescript file, please refer to the documentation for an example of a valid typescript file")]
-    InvalidTypescriptFile,
-    #[error("Typescript Parser - {message}")]
+
+    #[error("Invalid output from compiler plugin. Possible incompatible versions between moose-lib and moose-cli")]
+    DeserializationError(#[from] serde_json::Error),
+
     OtherError {
         message: String,
     },
 }
 
-pub fn extract_data_model_from_file(path: &Path) -> Result<FileObjects, TypescriptParsingError> {
-    let ast = parse_ts_module(path)?;
-    extract_data_models_from_ast(ast)
-}
+pub fn extract_data_model_from_file(
+    path: &Path,
+    project: &Project,
+    version: &str,
+) -> Result<FileObjects, TypescriptParsingError> {
+    let internal = project.internal_dir().unwrap();
+    let output_dir = internal.join("serialized_datamodels");
 
-fn parse_ts_module(path: &Path) -> Result<Module, TypescriptParsingError> {
-    //! Parse a typescript file as a module and return the AST for that module
-    let cm: Lrc<SourceMap> = Default::default();
-
-    let fm = cm
-        .load_file(Path::new(path))
-        .expect("failed to load test.ts");
-
-    let lexer = Lexer::new(
-        Syntax::Typescript(Default::default()),
-        Default::default(),
-        StringInput::from(&*fm),
-        None,
-    );
-
-    let capturing = Capturing::new(lexer);
-
-    let mut parser = Parser::new_from(capturing);
-
-    parser
-        .parse_module()
-        .map_err(|_| TypescriptParsingError::InvalidTypescriptFile)
-}
-
-fn extract_data_models_from_ast(ast: Module) -> Result<FileObjects, TypescriptParsingError> {
-    let mut enums = Vec::new();
-    let mut ts_declarations = Vec::new();
-
-    // collect all interface and enum declarations
-    for item in ast.body.iter() {
-        match item {
-            ModuleItem::ModuleDecl(ModuleDecl::ExportDecl(ExportDecl { decl, .. }))
-            | ModuleItem::Stmt(Stmt::Decl(decl)) => {
-                match decl {
-                    Decl::TsInterface(decl) => {
-                        ts_declarations.push(decl);
-                    }
-                    Decl::TsEnum(decl) => {
-                        let new_enum = enum_to_data_enum(*decl.clone())?;
-                        enums.push(new_enum);
-                    }
-                    // We ignore all other declarations
-                    _ => continue,
-                }
-            }
-            // We ignore all other top module items
-            _ => continue,
-        }
-    }
-
-    let parsed_models = ts_declarations
-        .into_iter()
-        .map(|m| interface_to_model(m, &enums))
-        .collect::<Result<Vec<DataModel>, TypescriptParsingError>>()?;
-
-    Ok(FileObjects::new(parsed_models, enums))
-}
-
-fn enum_to_data_enum(enum_decl: TsEnumDecl) -> Result<DataEnum, TypescriptParsingError> {
-    let name = enum_decl.id.sym.to_string();
-    let mut values = Vec::new();
-
-    let mut has_string_enums: bool = false;
-    let mut auto_increment_enum_index: u8 = 0;
-
-    for member in enum_decl.members {
-        let name = match &member.id {
-            TsEnumMemberId::Ident(ident) => ident.sym.to_string(),
-            TsEnumMemberId::Str(str) => str.value.to_string(),
-        };
-
-        let value = match member.init {
-            Some(init) => match *init {
-                Expr::Lit(Lit::Str(str)) => {
-                    if auto_increment_enum_index != 0 {
-                        return Err(TypescriptParsingError::OtherError {
-                            message: "We do not allow to mix String enums with Number based enums, please choose one".to_string(),
-                        });
-                    } else {
-                        has_string_enums = true;
-                        EnumValue::String(str.value.to_string())
-                    }
-                }
-                Expr::Lit(Lit::Num(num)) => {
-                    if has_string_enums {
-                        return Err(TypescriptParsingError::OtherError {
-                            message: "We do not allow to mix String enums with Number based enums, please choose one".to_string(),
-                        });
-                    } else {
-                        auto_increment_enum_index = num.value as u8 + 1;
-                        EnumValue::Int(num.value as u8)
-                    }
-                }
-                _ => {
-                    return Err(TypescriptParsingError::OtherError {
-                        message: "We do not allow dynamic assignment to enums".to_string(),
-                    });
-                }
+    fs::write(
+        internal.join("tsconfig.json"),
+        json!({
+            "compilerOptions":{
+                "outDir": "dist", // relative path, so .moose/dist
+                "plugins": [{
+                    "transform": "../node_modules/@514labs/moose-lib/dist/toDataModels.js"
+                }],
+                "strict":true
             },
-            None => {
-                if has_string_enums {
-                    return Err(TypescriptParsingError::OtherError {
-                        message: "We do not allow to mix String enums with Number based enums, please choose one".to_string(),
-                    });
-                } else {
-                    let enum_value = EnumValue::Int(auto_increment_enum_index);
-                    auto_increment_enum_index += 1;
-                    enum_value
-                }
-            }
-        };
-
-        values.push(EnumMember { name, value });
-    }
-
-    Ok(DataEnum { name, values })
-}
-
-fn interface_to_model(
-    interface: &TsInterfaceDecl,
-    enums: &[DataEnum],
-) -> Result<DataModel, TypescriptParsingError> {
-    let schema_name = interface.id.sym.to_string();
-
-    let columns: Result<Vec<Column>, TypescriptParsingError> = interface
-        .body
-        .body
-        .iter()
-        .filter_map(|field| match field {
-            swc_ecma_ast::TsTypeElement::TsPropertySignature(prop) => {
-                Some(parse_property_signature(prop, enums))
-            }
-            _ => None,
+            "include":[path]
         })
-        .collect();
-
-    let project = PROJECT.lock().unwrap();
-    Ok(DataModel {
-        db_name: project.clickhouse_config.db_name.to_string(),
-        columns: columns?,
-        name: schema_name,
-        config: Default::default(),
-    })
-}
-
-fn parse_property_signature(
-    prop: &TsPropertySignature,
-    enums: &[DataEnum],
-) -> Result<Column, TypescriptParsingError> {
-    let mut primary_key = false;
-    let unique = false;
-    let default = None;
-
-    // match the key's sym if it's an ident
-    let name = match *prop.key.clone() {
-        Expr::Ident(ident) => ident.sym.to_string(),
-        Expr::Lit(Lit::Str(str)) => str.value.to_string(),
-        _ => {
-            return Err(TypescriptParsingError::UnsupportedDataTypeError {
-                type_name: format!("{:?}", *prop.key.clone()),
-            })
-        }
-    };
-
-    // match the type of the value and return the right column type
-    let TsTypeAnn { type_ann, .. } = *prop
-        .type_ann
-        .clone()
-        .ok_or(TypescriptParsingError::InvalidTypescriptFile {})?;
-
-    let data_type = parse_type_ann(type_ann, enums, &mut primary_key)?;
-
-    debug!(
-        "name: {}, data_type: {:?}, primary_key: {:?}",
-        name, data_type, primary_key
-    );
-
-    Ok(Column {
-        name,
-        data_type,
-        required: !prop.optional,
-        unique,
-        primary_key,
-        default,
-    })
-}
-
-fn parse_type_ann(
-    type_ann: Box<TsType>,
-    enums: &[DataEnum],
-    primary_key: &mut bool,
-) -> Result<ColumnType, TypescriptParsingError> {
-    match *type_ann {
-        TsType::TsKeywordType(keyword) => ts_parse_keyword_type(keyword),
-        TsType::TsArrayType(array_type) => {
-            let inner_type =
-                parse_type_ann(Box::new(*array_type.elem_type.clone()), enums, primary_key)?;
-            Ok(ColumnType::Array(Box::new(inner_type)))
-        }
-        TsType::TsTypeRef(type_ref) => parse_type_ref(type_ref, enums, primary_key),
-        _ => Err(TypescriptParsingError::UnsupportedDataTypeError {
-            type_name: format!("{:?}", type_ann),
-        }),
-    }
-}
-
-fn ts_parse_keyword_type(
-    keyword: swc_ecma_ast::TsKeywordType,
-) -> Result<ColumnType, TypescriptParsingError> {
-    match keyword.kind {
-        TsKeywordTypeKind::TsStringKeyword => Ok(ColumnType::String),
-        TsKeywordTypeKind::TsBooleanKeyword => Ok(ColumnType::Boolean),
-        TsKeywordTypeKind::TsNumberKeyword => Ok(ColumnType::Float),
-        _ => Err(TypescriptParsingError::UnsupportedDataTypeError {
-            type_name: format!("{:?}", keyword.kind),
-        }),
-    }
-}
-
-fn parse_type_ref(
-    type_ref: TsTypeRef,
-    enums: &[DataEnum],
-    primary_key: &mut bool,
-) -> Result<ColumnType, TypescriptParsingError> {
-    let type_ref_name = match type_ref.type_name {
-        swc_ecma_ast::TsEntityName::Ident(ident) => Ok(ident.sym.to_string()),
-        _ => Err(TypescriptParsingError::UnsupportedDataTypeError {
-            type_name: format!("{:?}", type_ref.type_name),
-        }),
-    }?;
-
-    if type_ref_name == "Key" {
-        *primary_key = true;
-
-        match type_ref.type_params {
-            Some(params) => {
-                if let Some(param) = params.params.first() {
-                    return parse_type_ann(param.clone(), enums, primary_key);
-                } else {
-                    return Err(TypescriptParsingError::UnsupportedDataTypeError {
-                        type_name: "no type for key".to_string(),
-                    });
-                }
+        .to_string(),
+    )?;
+    fs::remove_dir_all(&output_dir).or_else(
+        |e| {
+            if e.kind() == NotFound {
+                Ok(())
+            } else {
+                Err(e)
             }
-            None => {
-                return Err(TypescriptParsingError::UnsupportedDataTypeError {
-                    type_name: "no type for key".to_string(),
+        },
+    )?;
+    let ts_return_code = Command::new("npx")
+        .arg("tspc")
+        .arg("--project")
+        .arg(".moose/tsconfig.json")
+        .current_dir(&project.project_location)
+        .spawn()?
+        .wait()
+        .map_err(|err| TypescriptParsingError::TypescriptCompilerError(Some(err)))?;
+    if !ts_return_code.success() {
+        return Err(TypescriptParsingError::TypescriptCompilerError(None));
+    }
+    let output = fs::read(
+        output_dir.join(
+            path.file_name()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .replace(".ts", ".json"),
+        ),
+    )
+    .map_err(|e| TypescriptParsingError::OtherError {
+        message: format!("Unable to read output of compiler: {}", e),
+    })?;
+
+    let mut output_json = serde_json::from_slice::<Value>(&output)
+        .map_err(|_| TypescriptParsingError::TypescriptCompilerError(None))?;
+    if let Some(error_type) = output_json.get("error_type") {
+        if let Some(error_type) = error_type.as_str() {
+            if error_type == "unknown_type" {
+                let type_name = output_json
+                    .get("type")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                return Err(TypescriptParsingError::UnsupportedDataTypeError { type_name });
+            } else if error_type == "unsupported_enum" {
+                return Err(TypescriptParsingError::OtherError {
+                    message: "We do not allow to mix String enums with Number based enums, please choose one".to_string()
                 });
             }
         }
     }
 
-    if type_ref_name == "Date" {
-        Ok(ColumnType::DateTime)
-    } else if is_enum_type(&type_ref_name, enums) {
-        Ok(ColumnType::Enum(
-            enums
-                .iter()
-                .find(|e| e.name == type_ref_name)
-                .unwrap()
-                .clone(),
-        ))
-    } else {
-        Err(TypescriptParsingError::UnsupportedDataTypeError {
-            type_name: type_ref_name,
-        })
+    // There is probably a better way to do this by communicating to the underlying
+    // process. But for now, we will just add the version and file path to the output
+    if let Some(data_models) = output_json.get_mut("models") {
+        if let Some(data_models) = data_models.as_array_mut() {
+            for data_model in data_models {
+                if let Some(dm) = data_model.as_object_mut() {
+                    dm.insert("version".to_string(), version.into());
+                    dm.insert(
+                        "abs_file_path".to_string(),
+                        path.to_string_lossy().to_string().into(),
+                    );
+                }
+            }
+        }
     }
+
+    Ok(serde_json::from_value(output_json)?)
 }
 
 #[cfg(test)]
 mod tests {
-
+    use crate::framework::languages::SupportedLanguages;
     use crate::framework::{
         data_model::parser::parse_data_model_file, typescript::parser::extract_data_model_from_file,
     };
+    use crate::project::Project;
+    use lazy_static::lazy_static;
+    use std::path::PathBuf;
+    use std::process::Command;
+
+    fn pnpm_moose_lib(cmd_action: fn(&mut Command) -> &mut Command) {
+        let mut cmd = Command::new("pnpm");
+        cmd_action(&mut cmd)
+            .arg("--filter=moose-lib")
+            .current_dir("../../")
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+    }
+
+    lazy_static! {
+        static ref TEST_PROJECT: Project = {
+            pnpm_moose_lib(|cmd| cmd.arg("i").arg("--frozen-lockfile"));
+
+            pnpm_moose_lib(|cmd| cmd.arg("run").arg("build"));
+
+            Command::new("npm")
+                .arg("i")
+                .current_dir("./tests/test_project")
+                .spawn()
+                .unwrap()
+                .wait()
+                .unwrap();
+
+            Command::new("rm")
+                .arg("-rf")
+                .arg("./tests/test_project/node_modules/@514labs/moose-lib/dist/")
+                .spawn()
+                .unwrap()
+                .wait()
+                .unwrap();
+
+            Command::new("cp")
+                .arg("-r")
+                .arg("../../packages/ts-moose-lib/dist/")
+                .arg("./tests/test_project/node_modules/@514labs/moose-lib/dist/")
+                .spawn()
+                .unwrap()
+                .wait()
+                .unwrap();
+
+            Project::new(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/test_project"),
+                "testing".to_string(),
+                SupportedLanguages::Typescript,
+            )
+        };
+    }
 
     #[test]
     fn test_parse_schema_file() {
@@ -320,48 +188,77 @@ mod tests {
 
         let test_file = current_dir.join("tests/psl/simple.prisma");
 
-        let result = parse_data_model_file(&test_file);
+        let result = parse_data_model_file(&test_file, "", &TEST_PROJECT);
         assert!(result.is_ok());
     }
 
     #[test]
+    #[serial_test::serial(tspc)]
     fn test_ts_mapper() {
-        let current_dir = std::env::current_dir().unwrap();
+        let test_file = TEST_PROJECT.data_models_dir().join("simple.ts");
 
-        let test_file = current_dir.join("tests/ts/simple.ts");
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
 
-        let result = extract_data_model_from_file(&test_file);
         assert!(result.is_ok());
+        println!("{:?}", result.unwrap().models)
     }
 
     #[test]
+    #[serial_test::serial(tspc)]
     fn test_parse_typescript_file() {
-        let current_dir = std::env::current_dir().unwrap();
+        let test_file = TEST_PROJECT.data_models_dir().join("simple.ts");
 
-        let test_file = current_dir.join("tests/ts/simple.ts");
-
-        let result = extract_data_model_from_file(&test_file);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
 
         assert!(result.is_ok());
     }
 
     #[test]
+    #[serial_test::serial(tspc)]
     fn test_parse_import_typescript_file() {
-        let current_dir = std::env::current_dir().unwrap();
+        let test_file = TEST_PROJECT.data_models_dir().join("import.ts");
 
-        let test_file = current_dir.join("tests/ts/import.ts");
-
-        let result = extract_data_model_from_file(&test_file);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
         assert!(result.is_ok());
     }
 
     #[test]
+    #[serial_test::serial(tspc)]
     fn test_parse_extend_typescript_file() {
-        let current_dir = std::env::current_dir().unwrap();
+        let test_file = TEST_PROJECT.data_models_dir().join("extend.m.ts");
 
-        let test_file = current_dir.join("tests/ts/extend.m.ts");
-
-        let result = extract_data_model_from_file(&test_file);
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
         assert!(result.is_ok());
+    }
+
+    #[test]
+    #[serial_test::serial(tspc)]
+    fn test_ts_syntax_error() {
+        let test_file = TEST_PROJECT.data_models_dir().join("syntax_error.ts");
+
+        // The TS compiler prints this, which is forwarded to the user's console
+        // app/datamodels/syntax_error.ts(7,23): error TS1005: ',' expected.
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
+        assert!(result.is_err());
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            "Failed to parse the typescript file"
+        );
+    }
+
+    #[test]
+    #[serial_test::serial(tspc)]
+    fn test_ts_missing_type() {
+        let test_file = TEST_PROJECT.data_models_dir().join("type_missing.ts");
+
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
+        assert!(result.is_err());
+        // The TS compiler prints this, which is forwarded to the user's console
+        // app/datamodels/type_missing.ts(2,5): error TS7008: Member 'foo' implicitly has an 'any' type.
+
+        assert_eq!(
+            result.err().unwrap().to_string(),
+            "Failed to parse the typescript file"
+        );
     }
 }

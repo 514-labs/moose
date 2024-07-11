@@ -1,5 +1,5 @@
 #[macro_use]
-mod display;
+pub(crate) mod display;
 
 mod commands;
 pub mod local_webserver;
@@ -7,36 +7,46 @@ mod logger;
 mod routines;
 pub mod settings;
 mod watcher;
-
+use super::metrics::Metrics;
 use std::cmp::Ordering;
 use std::path::Path;
 use std::process::exit;
 use std::sync::Arc;
 
 use clap::Parser;
-use commands::{AggregationCommands, Commands, ConsumptionCommands, FlowCommands, GenerateCommand};
+use commands::{
+    AggregationCommands, Commands, ConsumptionCommands, FunctionCommands, GenerateCommand,
+};
 use config::ConfigError;
+use display::with_spinner_async;
 use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
+use routines::ls::{list_db, list_streaming};
+use routines::plan;
+use routines::ps::show_processes;
 use settings::{read_settings, Settings};
 
 use crate::cli::routines::aggregation::create_aggregation_file;
 use crate::cli::routines::consumption::create_consumption_file;
 
-use crate::cli::routines::dev::{copy_old_schema, create_deno_files};
-use crate::cli::routines::flow::{create_flow_directory, create_flow_file};
+use crate::cli::routines::dev::copy_old_schema;
 use crate::cli::routines::initialize::initialize_project;
 use crate::cli::routines::logs::{follow_logs, show_logs};
+use crate::cli::routines::migrate::generate_migration;
+use crate::cli::routines::streaming::create_streaming_function_file;
 use crate::cli::routines::templates;
-use crate::cli::routines::version::BumpVersion;
+use crate::cli::routines::version::bump_version;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::cli::{
     display::{Message, MessageType},
     routines::{dev::run_local_infrastructure, RoutineController, RunMode},
     settings::{init_config_file, setup_user_directory},
 };
+use crate::framework::core::code_loader::load_framework_objects;
+use crate::framework::languages::SupportedLanguages;
+use crate::framework::sdk::ingest::generate_sdk;
 use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
 use crate::project::Project;
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
@@ -44,7 +54,6 @@ use crate::utilities::git::is_git_repo;
 
 use self::routines::{
     clean::CleanProject, docker_packager::BuildDockerfile, docker_packager::CreateDockerfile,
-    migrate::GenerateMigration,
 };
 
 #[derive(Parser)]
@@ -132,6 +141,7 @@ fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>) {
 async fn top_command_handler(
     settings: Settings,
     commands: &Commands,
+    metrics: Arc<Metrics>,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     match commands {
         Commands::Init {
@@ -140,6 +150,7 @@ async fn top_command_handler(
             location,
             template,
             no_fail_already_exists,
+            empty,
         } => {
             info!(
                 "Running init command with name: {}, language: {}, location: {:?}, template: {:?}",
@@ -198,7 +209,7 @@ async fn top_command_handler(
 
                     debug!("Project: {:?}", project_arc);
 
-                    initialize_project(&project_arc)?;
+                    initialize_project(&project_arc, empty, &settings.features)?.show();
 
                     project_arc
                         .write_to_disk()
@@ -206,9 +217,14 @@ async fn top_command_handler(
 
                     maybe_create_git_repo(dir_path, project_arc);
 
+                    let install_string = match language {
+                        SupportedLanguages::Typescript => "npm install",
+                        SupportedLanguages::Python => "pip install .",
+                    };
+
                     Ok(RoutineSuccess::highlight(Message::new(
                         "Get Started".to_string(),
-                        format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n🛠️  Start dev server: \n\t$ npx @514labs/moose-cli@latest dev\n\n", dir_path.to_string_lossy()),
+                        format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n   Install Dependencies:\n\t$ {} \n\n🛠️ Start dev server: \n\t$ npx @514labs/moose-cli@latest dev\n\n", dir_path.to_string_lossy(), install_string),
                     )))
                 }
             }
@@ -236,7 +252,7 @@ async fn top_command_handler(
                 })
             })?;
 
-            copy_old_schema(&project_arc)?;
+            copy_old_schema(&project_arc)?.show();
 
             // docker flag is true then build docker images
             if *docker {
@@ -264,9 +280,8 @@ async fn top_command_handler(
         Commands::Dev {} => {
             info!("Running dev command");
 
-            let project = load_project()?;
-
-            project.set_enviroment(false);
+            let mut project = load_project()?;
+            project.set_is_production_env(false);
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(
@@ -276,9 +291,9 @@ async fn top_command_handler(
             );
 
             check_project_name(&project_arc.name())?;
-            run_local_infrastructure(&project_arc)?;
+            run_local_infrastructure(&project_arc)?.show();
 
-            routines::start_development_mode(project_arc)
+            routines::start_development_mode(project_arc, &settings.features, metrics)
                 .await
                 .map_err(|e| {
                     RoutineFailure::error(Message {
@@ -292,26 +307,76 @@ async fn top_command_handler(
                 "local infrastructure".to_string(),
             )))
         }
-        Commands::Generate(generate) => match generate.command {
+        Commands::Generate(generate) => match &generate.command {
             Some(GenerateCommand::Migrations {}) => {
                 info!("Running generate migration command");
                 let project = load_project()?;
                 let project_arc = Arc::new(project);
 
                 check_project_name(&project_arc.name())?;
-
-                let mut controller = RoutineController::new();
-                let run_mode = RunMode::Explicit {};
-
-                copy_old_schema(&project_arc)?;
-
-                // TODO get rid of the routines and use functions instead
-                controller.add_routine(Box::new(GenerateMigration::new(project_arc)));
-                controller.run_routines(run_mode);
+                copy_old_schema(&project_arc)?.show();
+                generate_migration(&project_arc).await?.show();
 
                 Ok(RoutineSuccess::success(Message::new(
                     "Generated".to_string(),
                     "migrations".to_string(),
+                )))
+            }
+            Some(GenerateCommand::Sdk {
+                language,
+                destination,
+                project_location,
+                full_package: packaged,
+            }) => {
+                let canonical_location = project_location.canonicalize().map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Generate".to_string(),
+                        details: format!("Failed to canonicalize path: {:?}", e),
+                    })
+                })?;
+
+                let project = Project::load(&canonical_location).map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Generate".to_string(),
+                        details: format!("Failed to load project: {:?}", e),
+                    })
+                })?;
+
+                with_spinner_async(
+                    "Generating SDK",
+                    async {
+                        let framework_object_versions =
+                            load_framework_objects(&project).await.map_err(|e| {
+                                RoutineFailure::error(Message {
+                                    action: "Generate".to_string(),
+                                    details: format!(
+                                        "Failed to load initial project state: {:?}",
+                                        e
+                                    ),
+                                })
+                            })?;
+
+                        generate_sdk(
+                            language,
+                            &project,
+                            &framework_object_versions,
+                            destination,
+                            packaged,
+                        )
+                        .map_err(|e| {
+                            RoutineFailure::error(Message {
+                                action: "Generate".to_string(),
+                                details: format!("Failed to generate SDK: {:?}", e),
+                            })
+                        })
+                    },
+                    true,
+                )
+                .await?;
+
+                Ok(RoutineSuccess::success(Message::new(
+                    "Generated".to_string(),
+                    "SDK".to_string(),
                 )))
             }
             None => Err(RoutineFailure::error(Message {
@@ -321,9 +386,9 @@ async fn top_command_handler(
         },
         Commands::Prod {} => {
             info!("Running prod command");
-            let project = load_project()?;
+            let mut project = load_project()?;
 
-            project.set_enviroment(true);
+            project.set_is_production_env(true);
             let project_arc = Arc::new(project);
 
             crate::utilities::capture::capture!(
@@ -333,13 +398,37 @@ async fn top_command_handler(
             );
 
             check_project_name(&project_arc.name())?;
-            create_deno_files(&project_arc)?;
 
-            routines::start_production_mode(project_arc).await.unwrap();
+            routines::start_production_mode(project_arc, settings.features, metrics)
+                .await
+                .unwrap();
 
             Ok(RoutineSuccess::success(Message::new(
                 "Ran".to_string(),
                 "production infrastructure".to_string(),
+            )))
+        }
+        Commands::Plan {} => {
+            info!("Running plan command");
+            let project = load_project()?;
+
+            crate::utilities::capture::capture!(
+                ActivityType::PlanCommand,
+                project.name().clone(),
+                &settings
+            );
+
+            check_project_name(&project.name())?;
+            plan(&project).await.map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Plan".to_string(),
+                    details: format!("Failed to plan changes: {:?}", e),
+                })
+            })?;
+
+            Ok(RoutineSuccess::success(Message::new(
+                "Plan".to_string(),
+                "Successfuly planned changes to the infrastructure".to_string(),
             )))
         }
         Commands::BumpVersion { new_version } => {
@@ -353,12 +442,10 @@ async fn top_command_handler(
             );
 
             check_project_name(&project_arc.name())?;
-            let mut controller = RoutineController::new();
-            let run_mode = RunMode::Explicit {};
 
             let new_version = match new_version {
                 None => {
-                    let current = parse_version(project_arc.version());
+                    let current = parse_version(project_arc.cur_version());
                     let bump_location = if current.len() > 1 { 1 } else { 0 };
 
                     let new_version = current
@@ -375,14 +462,7 @@ async fn top_command_handler(
                 Some(new_version) => new_version.clone(),
             };
 
-            // TODO get rid of the routines and use functions instead
-            controller.add_routine(Box::new(BumpVersion::new(project_arc.clone(), new_version)));
-            controller.run_routines(run_mode);
-
-            Ok(RoutineSuccess::success(Message::new(
-                "Bumped".to_string(),
-                "Version".to_string(),
-            )))
+            bump_version(&project_arc, new_version)
         }
         Commands::Clean {} => {
             let run_mode = RunMode::Explicit {};
@@ -407,33 +487,28 @@ async fn top_command_handler(
                 "Project".to_string(),
             )))
         }
-        Commands::Flow(flow) => {
-            info!("Running flow command");
+        Commands::Function(function_args) => {
+            info!("Running function command");
 
-            let flow_cmd = flow.command.as_ref().unwrap();
-            match flow_cmd {
-                FlowCommands::Init(init) => {
+            let func_cmd = function_args.command.as_ref().unwrap();
+            match func_cmd {
+                FunctionCommands::Init(init) => {
                     let project = load_project()?;
                     let project_arc = Arc::new(project);
 
                     crate::utilities::capture::capture!(
-                        ActivityType::FlowInitCommand,
+                        ActivityType::FuncInitCommand,
                         project_arc.name().clone(),
                         &settings
                     );
 
                     check_project_name(&project_arc.name())?;
-                    create_flow_directory(
+                    create_streaming_function_file(
                         &project_arc,
                         init.source.clone(),
                         init.destination.clone(),
-                    )?;
-                    create_flow_file(&project_arc, init.source.clone(), init.destination.clone())?;
-
-                    Ok(RoutineSuccess::success(Message::new(
-                        "".to_string(),
-                        "".to_string(),
-                    )))
+                    )
+                    .await
                 }
             }
         }
@@ -453,12 +528,7 @@ async fn top_command_handler(
                     );
 
                     check_project_name(&project_arc.name())?;
-                    create_aggregation_file(&project_arc, name.to_string())?;
-
-                    Ok(RoutineSuccess::success(Message::new(
-                        "Created".to_string(),
-                        "Aggregation".to_string(),
-                    )))
+                    create_aggregation_file(&project_arc, name.to_string()).await
                 }
             }
         }
@@ -478,7 +548,7 @@ async fn top_command_handler(
                     );
 
                     check_project_name(&project_arc.name())?;
-                    create_consumption_file(&project_arc, name.to_string())?;
+                    create_consumption_file(&project_arc, name.to_string())?.show();
 
                     Ok(RoutineSuccess::success(Message::new(
                         "Created".to_string(),
@@ -509,6 +579,42 @@ async fn top_command_handler(
                 show_logs(log_file_path, filter_value)
             }
         }
+        Commands::Ps {} => {
+            info!("Running ps command");
+
+            let project = load_project()?;
+            let project_arc = Arc::new(project);
+
+            crate::utilities::capture::capture!(
+                ActivityType::PsCommand,
+                project_arc.name().clone(),
+                &settings
+            );
+
+            show_processes(project_arc)
+        }
+        Commands::Ls {
+            version,
+            limit,
+            streaming,
+        } => {
+            info!("Running ls command");
+
+            let project = load_project()?;
+            let project_arc = Arc::new(project);
+
+            crate::utilities::capture::capture!(
+                ActivityType::LsCommand,
+                project_arc.name().clone(),
+                &settings
+            );
+
+            if *streaming {
+                list_streaming(project_arc, limit).await
+            } else {
+                list_db(project_arc, version, limit).await
+            }
+        }
     }
 }
 
@@ -530,13 +636,17 @@ pub async fn cli_run() {
     init_config_file().unwrap();
 
     let config = read_settings().unwrap();
-    setup_logging(&config.logger).expect("Failed to setup logging");
+    setup_logging(&config.logger, &config.telemetry.machine_id).expect("Failed to setup logging");
 
     info!("CLI Configuration loaded and logging setup: {:?}", config);
 
     let cli = Cli::parse();
 
-    match top_command_handler(config, &cli.command).await {
+    let (metrics, rx) = Metrics::new();
+    let arc_metrics = Arc::new(metrics);
+    arc_metrics.start_listening_to_metrics(rx).await;
+
+    match top_command_handler(config, &cli.command, arc_metrics).await {
         Ok(s) => {
             show_message!(s.message_type, s.message);
             exit(0);
@@ -546,4 +656,83 @@ pub async fn cli_run() {
             exit(1);
         }
     };
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn set_test_temp_dir() {
+        let test_dir = "tests/tmp";
+        // check that the directory isn't already set to test_dir
+        let current_dir = std::env::current_dir().unwrap();
+        if current_dir.ends_with(test_dir) {
+            return;
+        }
+        std::env::set_current_dir(test_dir).unwrap();
+    }
+
+    fn get_test_project_dir() -> std::path::PathBuf {
+        set_test_temp_dir();
+        let current_dir = std::env::current_dir().unwrap();
+        current_dir.join("test_project")
+    }
+
+    fn set_test_project_dir() {
+        let test_project_dir = get_test_project_dir();
+        std::env::set_current_dir(test_project_dir).unwrap();
+    }
+
+    async fn run_project_init(project_type: &str) -> Result<RoutineSuccess, RoutineFailure> {
+        let cli = Cli::parse_from([
+            "moose",
+            "init",
+            "test_project",
+            project_type,
+            "--no-fail-already-exists",
+        ]);
+
+        let config = read_settings().unwrap();
+
+        let (metrics, _rx) = Metrics::new();
+        let arc_metrics = Arc::new(metrics);
+
+        top_command_handler(config, &cli.command, arc_metrics).await
+    }
+
+    #[tokio::test]
+    #[ignore] // Ignoring this test until we have a better way of creating temp directories
+    async fn cli_python_init() {
+        let og_directory = std::env::current_dir().unwrap();
+        // Set current working directory to the tmp test directory
+        set_test_temp_dir();
+        let result = run_project_init("python").await;
+        std::env::set_current_dir(og_directory).unwrap();
+        assert!(result.is_ok());
+    }
+
+    #[tokio::test]
+    #[ignore] // Ignoring this test until we have a better way of creating temp directories
+    async fn test_project_has_py_data_model() {
+        let og_directory = std::env::current_dir().unwrap();
+
+        set_test_temp_dir();
+        let _ = run_project_init("python").await.unwrap();
+        set_test_project_dir();
+
+        let project = Project::load_from_current_dir().unwrap();
+
+        let data_model_path = project.app_dir().join("datamodels");
+
+        // Make sure all the data models are .py files
+        let data_model_files = std::fs::read_dir(data_model_path).unwrap();
+
+        std::env::set_current_dir(og_directory).unwrap();
+        for file in data_model_files {
+            let file = file.unwrap();
+            let file_name = file.file_name();
+            let file_name = file_name.to_str().unwrap();
+            assert!(file_name.ends_with(".py"));
+        }
+    }
 }

@@ -8,6 +8,7 @@ license = "MIT"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+itertools = "0.13.0"
 openssl = { version = "0.10", features = ["vendored"] }
 clap = { version = "4.3.17", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
@@ -15,9 +16,10 @@ console = "0.15.7"
 thiserror = "1.0.59"
 hyper = { version = "1", features = ["full"] }
 hyper-tls = "0.6.0"
+notify-debouncer-mini = { version = "0.4.1", default-features = false }
 notify = { version = "6.1.1", default-features = false, features = [
     "macos_kqueue",
-] }
+]}
 toml = "0.5.8"
 serde = { version = "1.0", features = ["derive"] }
 config = { version = "0.13.1", features = ["toml"] }
@@ -29,8 +31,6 @@ schema-ast = { git = "https://github.com/prisma/prisma-engines.git" }
 diagnostics = { git = "https://github.com/prisma/prisma-engines.git" }
 # datamodel-renderer = { git = "https://github.com/prisma/prisma-engines.git"}
 handlebars = "5.1"
-# TODO Remove the following
-tinytemplate = "1.1"
 rdkafka = { version = "0.36", features = ["ssl"] }
 convert_case = "0.6.0"
 log = "0.4"
@@ -56,10 +56,19 @@ futures = "0.3"
 toml_edit = "0.22.9"
 flate2 = "1.0"
 tar = "0.4"
-swc_ecma_parser = "0.143.6"
-swc_common = { version = "0.33.18", features = ["tty-emitter"] }
-swc = "0.273.15"
-swc_ecma_ast = "0.112.5"
+pathdiff = "0.2.1"
+rustpython-parser = "0.3.1"
+opentelemetry-otlp = { version = "0.16.0", default-features = false, features = ["http-json", "logs", "tokio"] }
+opentelemetry-http = {version = "0.12.0", features = ["hyper", "tokio"] }
+hyper_tls_0_5 = { version = "0.5", package = "hyper-tls" }
+hyper_0_14 = { version = "0.14", package = "hyper", features = ["full"] }
+opentelemetry_sdk = { version = "0.23.0",features = ["logs", "logs_level_enabled", "rt-tokio"] }
+opentelemetry-semantic-conventions = "0.15.0"
+opentelemetry = "0.23.0"
+opentelemetry-appender-log ="0.4.0"
+walkdir = "2"
+comfy-table = "7.1.1"
+prometheus-client = "0.22.2"
 
 [dev-dependencies]
 clickhouse = { version = "0.11.5", features = ["uuid", "test-util"] }
@@ -67,8 +76,10 @@ assert_cmd = "2.0.12"
 assert_fs = "1.0.13"
 predicates = "3.0.4"
 reqwest = { version = "0.12", features = ["blocking", "json"] }
+serial_test = "3.1.1"
 
 [profile.dev]
 panic = "abort"
+
 [profile.release]
 panic = "abort"

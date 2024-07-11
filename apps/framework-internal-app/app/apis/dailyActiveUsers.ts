@@ -1,3 +1,4 @@
+// @ts-nocheck
 interface QueryParams {
   limit: string;
   minDailyActiveUsers: string;

@@ -70,17 +70,31 @@ Starts Moose in production mode. This command is automatically invoked from a pa
 moose prod
 ```
 
-### Flow
+### Function
 
-#### Flow Init
+#### Function Init
 
-Generates a new Flow for you, including creating and structuring the necessary directories and files based on your specified data models. Learn more in the [Flows docs](../building/flows/setup).
+Generates a new Streaming Function for you, including creating and structuring the necessary files
+based on your specified data models. Learn more in the [Streaming Function docs](../building/streaming-functions/setup).
 
 ```txt filename="Terminal" copy
-moose flow init --source <YourSourceDataModel> --destination <YourDestinationDataModel>
+moose function init --source <YourSourceDataModel> --destination <YourDestinationDataModel>
 ```
 
 ### Generate
+
+#### Generate SDK
+
+Generates an ingest sdk for the specified project.
+
+```txt filename="Terminal" copy
+moose generate sdk -l <Language> -d <Directory> -p <ProjectLocation>
+```
+
+- `-l, --language`: Language of the SDK. We currently only support `Typescript`.
+- `-d, --destination`: Directory to generate the SDK in.
+- `-p, --project`: Location of the project to generate the SDK for.
+- `-f, --full-package`: Whether or not to generate a full fledged package or just the source files in the language of choice.
 
 #### Generate Migrations
 
@@ -92,7 +106,7 @@ moose generate migrations
 
 ### Bump Version
 
-Bumps the `version` field in `package.json`, and adds an entry of the current version and commit hash to `[supported_old_versions]` section in `project.toml`. Learn more in the [Data Change Management docs](../building/dcm/intro).
+Bumps the `version` field in `package.json`, and adds an entry of the current version and commit hash to `[supported_old_versions]` section in `moose.config.toml`. Learn more in the [Data Change Management docs](../building/dcm/intro).
 
 ```txt filename="Terminal" copy
 moose bump-version <new_version>
@@ -115,3 +129,23 @@ View logs to help debug how data moves through Moose.
 ```txt filename="Terminal" copy
 moose logs <--tail> <--filter <search_string>>
 ```
+
+### Processes
+
+View processes created by Moose, such as its underlying streaming platform & database with local access credentials.
+
+```txt filename="Terminal" copy
+moose ps
+```
+
+### List
+
+View Moose primitives & infrastructure.
+
+```txt filename="Terminal" copy
+moose ls -v <version> -l <limit> -s
+```
+
+- `-v, --version`: View a specific version of data models & database infrastructure. Defaults to latest version.
+- `-l, --limit`: Limit output to a specific number of data models. Defaults to 10.
+- `-s, --streaming`: View streaming topics per data model.

@@ -11,6 +11,7 @@
   "dependencies": {
     "@clickhouse/client": "^0.3.0",
     "@hookform/resolvers": "^3.3.4",
+    "next-auth": "^4.24.7",
     "@observablehq/plot": "^0.6.13",
     "@radix-ui/react-label": "^2.0.2",
     "@radix-ui/react-select": "^2.0.0",
@@ -22,7 +23,7 @@
     "d3": "^7.9.0",
     "lodash": "^4.17.21",
     "lucide-react": "^0.344.0",
-    "next": "14.1.1",
+    "next": "14.2.4",
     "react": "^18",
     "react-dom": "^18",
     "react-hook-form": "^7.51.0",

@@ -1,5 +1,7 @@
 {
-    "data-models": "Primitive: Data Models",
-    "flows": "Primitive: Flows",
-    "dcm": "Data Change Management"
+  "data-models": "Primitive: Data Models",
+  "streaming-functions": "Primitive: Streaming Functions",
+  "aggregations": "Primitive: Aggregations",
+  "consumption-apis": "Primitive: Consumption APIs",
+  "dcm": "Data Change Management"
 }

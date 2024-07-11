@@ -1,5 +1,5 @@
-use crate::framework::controller::{FrameworkObject, FrameworkObjectVersions};
-use crate::framework::data_model::schema::DataModel;
+use crate::framework::core::code_loader::{FrameworkObject, FrameworkObjectVersions};
+use crate::framework::data_model::model::DataModel;
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
 };
@@ -28,8 +28,9 @@ pub fn version_to_string(v: &[i32]) -> String {
         .join(".")
 }
 
-// to be removed when we move to all TS flow version syncs
+// to be removed when we move to all TS streaming function version syncs
 pub fn generate_sql_version_syncs(
+    db_name: &str,
     framework_object_versions: &FrameworkObjectVersions,
     version_sync_list: &[VersionSync],
     previous_version: &str,
@@ -54,11 +55,12 @@ pub fn generate_sql_version_syncs(
                 if let Some(new_table) = &fo.table {
                     if old_model.data_model.columns != fo.data_model.columns {
                         res.push(VersionSync {
-                            db_name: old_table.db_name.clone(),
+                            db_name: db_name.to_string(),
                             model_name: old_model.data_model.name.clone(),
                             source_version: previous_version.to_string(),
                             source_data_model: old_model.data_model.clone(),
                             source_table: old_table.clone(),
+                            dest_data_model: fo.data_model.clone(),
                             dest_version: framework_object_versions.current_version.clone(),
                             dest_table: new_table.clone(),
                             sync_type: VersionSyncType::Sql(
@@ -80,9 +82,9 @@ pub fn get_all_version_syncs(
     project: &Project,
     framework_object_versions: &FrameworkObjectVersions,
 ) -> anyhow::Result<Vec<VersionSync>> {
-    let flows_dir = project.flows_dir();
+    let functions_dir = project.streaming_func_dir();
     let mut version_syncs = vec![];
-    for entry in std::fs::read_dir(flows_dir)? {
+    for entry in std::fs::read_dir(functions_dir)? {
         let entry = entry?;
         let path = entry.path();
         if !path.is_dir() {
@@ -122,11 +124,12 @@ pub fn get_all_version_syncs(
                                 if let Some(from_table) = &from_table_fo.table {
                                     if let Some(to_table) = &to_table_fo.table {
                                         let version_sync = VersionSync {
-                                            db_name: from_table.db_name.clone(),
+                                            db_name: project.clickhouse_config.db_name.clone(),
                                             model_name: from_table_fo.data_model.name.clone(),
                                             source_version: from_version.clone(),
                                             source_table: from_table.clone(),
                                             source_data_model: from_table_fo.data_model.clone(),
+                                            dest_data_model: to_table_fo.data_model.clone(),
                                             dest_version: to_version.clone(),
                                             dest_table: to_table.clone(),
                                             sync_type,
@@ -174,6 +177,7 @@ pub struct VersionSync {
     pub source_version: String,
     pub source_table: ClickHouseTable,
     pub source_data_model: DataModel,
+    pub dest_data_model: DataModel,
     pub dest_version: String,
     pub dest_table: ClickHouseTable,
     pub sync_type: VersionSyncType,
@@ -187,6 +191,14 @@ lazy_static! {
 }
 
 impl VersionSync {
+    pub fn source_topic_name(&self) -> String {
+        format!(
+            "{}_{}",
+            self.source_data_model.name.clone(),
+            self.source_version.replace('.', "_")
+        )
+    }
+
     pub fn generate_migration_function(
         old_columns: &[ClickHouseColumn],
         new_columns: &[ClickHouseColumn],
@@ -218,6 +230,9 @@ impl VersionSync {
                     ClickHouseColumnType::DateTime => "'2024-02-20T23:14:57.788Z'".to_string(),
                     ClickHouseColumnType::Json => format!("'{{\"{}\": null}}'", c.name),
                     ClickHouseColumnType::Bytes => "0.0".to_string(),
+                    ClickHouseColumnType::Nested(_) => {
+                        todo!("Implement the nested type mapper")
+                    }
                     ClickHouseColumnType::Enum(data_enum) => {
                         format!("'{}'", data_enum.values[0].name)
                     }
@@ -259,7 +274,7 @@ impl VersionSync {
         match &self.sync_type {
             VersionSyncType::Sql(migration_function) => migration_function,
             VersionSyncType::Ts(_) => {
-                panic!("Retrieving SQL migration function from a flow version sync.")
+                panic!("Retrieving SQL migration function from a streaming function version sync.")
             }
         }
     }

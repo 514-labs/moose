@@ -1,8 +1,9 @@
 use config::{Config, ConfigError, Environment, File};
 use home::home_dir;
+use log::warn;
 use serde::Deserialize;
 use std::path::PathBuf;
-use toml::Value;
+use toml_edit::{table, value, DocumentMut, Item};
 use uuid::Uuid;
 
 use super::display::{Message, MessageType};
@@ -19,19 +20,6 @@ use crate::utilities::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
 ///
 
 const ENVIRONMENT_VARIABLE_PREFIX: &str = "MOOSE";
-
-#[derive(Deserialize, Debug)]
-pub struct Features {
-    pub coming_soon_wall: bool,
-}
-
-impl Default for Features {
-    fn default() -> Self {
-        Features {
-            coming_soon_wall: true,
-        }
-    }
-}
 
 #[derive(Deserialize, Debug)]
 pub struct Telemetry {
@@ -52,14 +40,24 @@ impl Default for Telemetry {
     }
 }
 
+#[derive(Deserialize, Debug, Default, Clone)]
+pub struct Features {
+    #[serde(default)]
+    pub core_v2: bool,
+
+    #[serde(default)]
+    pub blocks: bool,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct Settings {
     #[serde(default)]
     pub logger: LoggerSettings,
     #[serde(default)]
-    pub features: Features,
-    #[serde(default)]
     pub telemetry: Telemetry,
+
+    #[serde(default)]
+    pub features: Features,
 }
 
 fn config_path() -> PathBuf {
@@ -82,14 +80,6 @@ pub fn setup_user_directory() -> Result<(), std::io::Error> {
 
 // TODO: Turn this part of the code into a routine
 pub fn read_settings() -> Result<Settings, ConfigError> {
-    show_message!(
-        MessageType::Info,
-        Message {
-            action: "Init".to_string(),
-            details: "Loading config...".to_string(),
-        }
-    );
-
     let config_file_location: PathBuf = config_path();
 
     let s = Config::builder()
@@ -112,13 +102,6 @@ pub fn init_config_file() -> Result<(), std::io::Error> {
     let path = config_path();
     if !path.exists() {
         let contents_toml = r#"
-# Feature flags to hide ongoing feature work on the CLI
-[features]
-
-# Coming soon wall on all the CLI commands as we build the MVP.
-# if you want to try features as they are built, set this to false
-coming_soon_wall=false
-
 # Helps gather insights, identify issues, & improve the user experience
 [telemetry]
 
@@ -133,23 +116,25 @@ machine_id="{{uuid}}"
         )?;
     } else {
         let data = std::fs::read_to_string(&path)?;
-        match data.parse::<Value>() {
+        match data.parse::<DocumentMut>() {
             Ok(mut toml) => {
-                let telemetry = toml
-                    .as_table_mut()
-                    .unwrap()
-                    .entry("telemetry")
-                    .or_insert_with(|| Value::Table(toml::map::Map::new()));
+                let table = match toml.get_mut("telemetry") {
+                    Some(Item::Table(table)) => table,
+                    Some(_) => {
+                        warn!("telemetry in config is not a table.");
+                        return Ok(());
+                    }
+                    None => {
+                        toml["telemetry"] = table();
+                        toml["telemetry"].as_table_mut().unwrap()
+                    }
+                };
 
-                if let Some(telemetry) = telemetry.as_table_mut() {
-                    telemetry.entry("enabled").or_insert(Value::Boolean(true));
-                    telemetry
-                        .entry("is_moose_developer")
-                        .or_insert(Value::Boolean(false));
-                    telemetry
-                        .entry("machine_id")
-                        .or_insert(Value::String(Uuid::new_v4().to_string()));
-                }
+                table.entry("enabled").or_insert(value(true));
+                table.entry("is_moose_developer").or_insert(value(false));
+                table
+                    .entry("machine_id")
+                    .or_insert_with(|| value(Uuid::new_v4().to_string()));
 
                 std::fs::write(path, toml.to_string())?;
             }

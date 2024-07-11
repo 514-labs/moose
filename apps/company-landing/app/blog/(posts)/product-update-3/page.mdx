@@ -1,0 +1,128 @@
+### Hello, Consumption APIs!
+
+In my last post [Introducing Aggregations](https://www.fiveonefour.com/blog/product-update-2), I left a cliffhanger about Consumption APIs being ready to use too. I’m sorry for teasing you all like that. I just thought it was a better idea to let Aggregations have a moment to shine before shoving all the new and exciting things you can do with Consumption APIs down your throats immediately after. That would have been _a lot_ for a single post.
+
+#### A quick refresher on Aggregations…
+
+Shamelessly plugging the [aforementioned post](https://www.fiveonefour.com/blog/product-update-2) to get you up to speed, but here’s an attempted 1-sentence summary of what you missed: **Aggregations generate a table filled with data derived from transforming and combining your existing database tables.**
+
+That was a bit of a mouthful. I’ll just walk through our same trusty example to better illustrate the key concepts:
+
+```ts
+// aggregations/DailyActiveUsers.ts
+
+interface Aggregation {
+  select: string;
+  orderBy: string;
+}
+
+export default {
+  select: ` 
+    SELECT 
+        uniqState(userId) as dailyActiveUsers,
+        toStartOfDay(timestamp) as date
+    FROM ParsedActivity
+    WHERE activity = 'Login' 
+    GROUP BY toStartOfDay(timestamp)
+    `,
+  orderBy: "date",
+} satisfies Aggregation as Aggregation;
+```
+
+In this Aggregation, we created a new table called `DailyActiveUsers` (peep the filename) which stores the results of our `SELECT` query on the `ParsedActivity` table that calculates–_yep you guessed it_ – the number of daily active users. In our example, we define the daily active user metric as the number of unique users (`userId`) who completed a `Login` activity for each day.
+
+Now, it’s nice to have `DailyActiveUsers` as a queryable asset in our database, but how do we make it super easy to get this metric out of there so that our analysts, dashboards, and stakeholders can all consume this data?
+
+#### This is where Consumption APIs come in handy.
+
+This new primitive helps you quickly convert your data into API endpoints that your data consumers can leverage to pull insights from your Moose application database. Huge shoutout to George for all the incredible work in bringing this new primitive to life!
+
+##### Why we built it:
+
+We noticed a common pain point: different cross-functional teams reporting different numbers for the same KPI. It’s a symptom of each function having their own tools to compute the metric and not sharing their data sources and calculation methods with each other. This inconsistency erodes trust and undermines the whole reporting process we all know as the pillar of “data-driven” strategy.
+
+We built Consumption APIs to try and solve this. Our thesis for how to achieve consistent reporting– drawing inspiration from [Airbnb’s Minerva project](https://medium.com/airbnb-engineering/how-airbnb-achieved-metric-consistency-at-scale-f23cc53dea70)—is simple: provide all your downstream data consumers with a single source of truth for both the data source and the computation logic. The downside to previous attempts at solving this problem is that it requires spinning up and learning specialized systems that some call metric stores or semantic layers. F&\*k that. We’ve been solving this problem for ages by building easy-to-use APIs in our languages of choice, so we decided to let you do that.
+
+##### …Mini rant over. Here’s how you use Consumption APIs
+
+The TL;DR is you define key insights derived from your data in your Moose database– including raw data tables, flow output tables, and aggregation tables—and build an API layer on top of it.
+
+You achieve this by writing a parameterized SQL query as a template string wrapped inside a standard Typescript function. No need to learn a specialized tool or system to get consistent metrics and KPIs to your downstream data consumers.
+
+You’ll save this async function in a `.ts` file within the `/apis` directory of your project, making sure that it is the default export. When you do this, Moose creates an API endpoint that runs this function whenever a `GET` request is made, injecting query parameters from the request URL into your SQL query. Sounds similar to building APIs for web applications, right?
+
+#### Decide for yourself how well we did 😉
+
+Here’s how to get started with Consumption APIs:
+
+##### Initialize your API endpoint:
+
+In your CLI, run: `moose-cli consumption init <your-endpoint-name>`. This command creates a new file named `<your-endpoint-name>.ts` in the `/apis` folder of your Moose project.
+
+##### Implement your function:
+
+Open the newly created file and define your API using an async function. Moose will provide helper functions to simplify building and running dynamic SQL queries.
+
+```ts
+// api/dailyActiveUsers.ts
+
+interface QueryParams {
+  limit: string;
+  minDailyActiveUsers: string;
+}
+
+export default async function handle(
+  { limit = "10", minDailyActiveUsers = "0" }: QueryParams,
+  { client, sql },
+) {
+  return client.query(
+    sql`SELECT 
+      date,
+      dailyActiveUsers
+  FROM DailyActiveUsers
+  WHERE dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
+  LIMIT ${parseInt(limit)}`,
+  );
+}
+```
+
+Pst.. did you notice how in this example, the API handler queries data from the `DailyActiveUsers` aggregation created in the previous step?
+
+##### Working with query parameters:
+
+First, define your parameters in the QueryParams interface, then inject them into your SQL query template string. Since URL query parameters come in as strings, you'll need to first assign them the string data type in QueryParams and then convert them to the right type in your function (like using `parseInt` for `limit` and `minDailyActiveUsers`). This keeps your parameters correctly typed.
+
+We're working on making this smoother, so soon you'll be able to define your data types directly in the `QueryParams` interface, and Moose will handle the rest. For now, we just need to get the basics right.
+
+##### Execute your query:
+
+Use the provided client to run your parameterized query. This client handles database connections, query execution, SQL injection prevention, and type casting from Typescript to Clickhouse types. For more details on how Moose handles type casting, [check out our docs](https://docs.moosejs.com/building/data-models/model-data#supported-types)
+
+##### Test your API:
+
+Make an HTTP `GET` request to your local Moose developer server at: `https://localhost:4000/consumption/<your-endpoint-name>`
+
+P.s. don’t forget to include necessary query parameters for your function arguments. For example, `https://localhost:4000/consumption/dailyActiveUsers?limit=5&minDailyActiveUsers=10`.
+
+#### You’re a real one for making it here
+
+The two examples above are provided to you in the starter code in the project that Moose generates for you when you run `npx create-moose-app`, so you can get working with these new primitives straight away and take them to the next level in your own applications!
+
+New to Moose land and curious to learn more about the amazing data intensive applications you can build with our data engineering framework? [Head to our docs](https://docs.moosejs.com) to get to know us better, and consider [joining our slack community](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg) to help me and my team build this thing into something even better.
+
+#### Since you stuck around, here’s your weekly spoiler
+
+We’re working on more exciting examples to show how these new primitives can make your analytics applications even more powerful. We’re wrapping up the final touches on a new and improved version of [our Product Analytics template](https://www.moosejs.com/templates/product-analytics), so you can get up and running and put your own amazing spin on your own Product Analytics platform much more easily. Stay tuned for next week’s post to learn all about it!
+
+Ok for real that is all for this week. Until next time, happy building! 🚀
+
+export const metadata = {
+  title: "Hello, Consumption APIs",
+  publishedAt: "2024-05-30T18:00:30Z",
+  categories: ["Announcements, Product"],
+  author: "Olivia",
+  description:
+    "Learn how to use Consumption APIs to quickly convert your data into API endpoints that your data consumers can leverage to pull insights from your Moose database.",
+};
+
+;

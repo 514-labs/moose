@@ -8,8 +8,8 @@ Elastic Kubernetes Service (EKS).
 
 <Callout type="warning" emoji="ℹ️">
   Note at this time, we recommend that you only launch a single instance of
-  moose in one cluster. We're currently developing for multi-instance
-  concurrent usage.
+  moose in one cluster. We're currently developing for multi-instance concurrent
+  usage.
 </Callout>
 
     Essentially you'll need to create a moose-deployment YAML file. Here is an example:
@@ -133,7 +133,7 @@ spec:
                 secretKeyRef:
                   name: sn-moose-redpanda-config--broker
                   key: sk-moose-redpanda-config--broker
-            - name: MOOSE_REDPANDA_CONFIG___MESSAGE_TIMEOUT_MS
+            - name: MOOSE_REDPANDA_CONFIG__MESSAGE_TIMEOUT_MS
               valueFrom:
                 secretKeyRef:
                   name: sn-moose-redpanda-config--message-timeout-ms

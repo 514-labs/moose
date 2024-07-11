@@ -7,8 +7,12 @@ import {
   Section,
   FullWidthContentContainer,
   HalfWidthContentContainer,
-} from "@514labs/design-system/components/containers";
-import { Display, Heading, Text } from "@514labs/design-system/typography";
+} from "@514labs/design-system-components/components/containers";
+import {
+  Display,
+  Heading,
+  Text,
+} from "@514labs/design-system-components/typography";
 
 export default function TemplatesPage() {
   const content = {

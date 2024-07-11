@@ -3,15 +3,18 @@ import {
   FullWidthContentContainer,
   Grid,
   Section,
-} from "@514labs/design-system/components/containers";
+} from "@514labs/design-system-components/components/containers";
 import { CTABar } from "../../page";
-import { Heading, HeadingLevel } from "@514labs/design-system/typography";
+import {
+  Heading,
+  HeadingLevel,
+} from "@514labs/design-system-components/typography";
 import { TrackCtaButton } from "../../trackable-components";
 import React from "react";
 
 export const SecondaryCTASection = () => {
   const content = {
-    title: "Up and running in minutes, no vendor, no lock-in",
+    title: "Up and running in minutes, no vendor lock-in",
     description: "Build your own data-driven experiences in minutes with Moose",
     ctas: [
       {

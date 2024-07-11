@@ -24,6 +24,12 @@ export default function TimeSeriesChart({
   domain,
   percent,
 }: Props) {
+  if (!data)
+    return (
+      <div className="flex items-center justify-center h-full text-center">
+        No Data in Time Range{" "}
+      </div>
+    );
   const newData = data.map((d) => ({ ...d, time: timeAccessor(d) }));
 
   const barColor = interpolatePlasma(0.3);

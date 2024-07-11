@@ -1,0 +1,40 @@
+import { FileTree } from "nextra/components";
+
+# Primitives Overview
+
+MooseJS provides a set of primitives that you use to build your application. These primitives are the building blocks of your application and are designed to work together to facilitate the movement, transformation, and consumption of data throughout your application.
+
+## Data Models
+
+Data Models are blueprints that define the structure, organization, and relationships of data within your Moose application. Data Models serve as blueprints for how your data is stored, accessed, and manipulated within your application so that you are able to align your data with your unique business requirements and processes.
+
+In Moose, you define your data model schemas in your regular programming language. When you save your schema inside the `/datamodels` folder of your project, Moose spins up an API endpoint, a streaming topic, and a database table to ingest, route, buffer, and save data for that schema into your analytics database.
+
+## Streaming Functions
+
+Streaming Functions are pipelines that move or map data from one Data Model to another.
+They are ideal for transforming, augmenting, and routing data between different parts of your application.
+Defined as functions in your regular programming language, Streaming Functions take a Data Model as an input parameter type and return a Data Model.
+
+When you save a Streaming Function inside the `/functions` folder,
+Moose sets up a listener for the streaming topic created for your source Data Model.
+Moose executes your function on the new data samples as they are ingested in real-time.
+The result of this function execution is then published to the destination Data Model's streaming topic.
+This lets you chain together multiple Streaming Functions to create complex data processing pipelines.
+
+## Aggregations
+
+Aggregations create reusable subsets of data from existing database tables using SQL SELECT queries to summarize, join, filter, and group data.
+These queries generate new database tables that are continuously updated as new data is added,
+ensuring optimized query performance and up-to-date data transformations.
+Unlike Streaming Functions, which operate in memory and run every time new data samples are ingested,
+Aggregation queries run once to set up a materialized view in your database,
+applying transformations to the full set of data already landed in your tables and keeping the query results in the database.
+
+This distinction makes Aggregations ideal for scenarios where you need to pre-compute results for common queries, making data easier to retrieve and analyze. Aggregations ensure that your data transformations are always current and readily available for high-performance querying and analysis, and they can be utilized by other parts of your application, including other Aggregations and Consumption APIs.
+
+## Consumption APIs
+
+Consumption APIs are HTTP endpoints that let you define and execute functions to dynamically fetch and process data from your database tables based on query parameters provided by the client. APIs are defined as functions in your regular programming language that take query parameters as input and return a query result or post-processed query result set.
+
+You can leverage APIs to integrate complex data processing tasks, including machine learning or statistical model predictions, and real-time data exploration into your applications. Moose automatically creates and manages these endpoints as you save your functions inside the /apis folder of your project. When your client applications make a request to the API endpoint, Moose executes your function and returns the result to the client.

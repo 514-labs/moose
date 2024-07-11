@@ -3,13 +3,33 @@ use std::sync::Arc;
 
 use crate::framework::languages::SupportedLanguages;
 use git2::{
-    Error, ErrorClass, ErrorCode, ObjectType, Repository, RepositoryInitOptions, Signature,
+    BranchType, Error, ErrorClass, ErrorCode, ObjectType, Repository, RepositoryInitOptions,
+    Signature,
 };
 use log::warn;
+use serde::{Deserialize, Serialize};
 
 use crate::project::Project;
 
 use super::constants::{CLI_USER_DIRECTORY, GITIGNORE};
+
+fn default_branch() -> String {
+    "main".to_string()
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct GitConfig {
+    #[serde(default = "default_branch")]
+    pub main_branch_name: String,
+}
+
+impl Default for GitConfig {
+    fn default() -> GitConfig {
+        GitConfig {
+            main_branch_name: default_branch(),
+        }
+    }
+}
 
 pub fn is_git_repo(dir_path: &Path) -> Result<bool, Error> {
     match Repository::discover(dir_path) {
@@ -26,8 +46,50 @@ pub fn create_init_commit(project: Arc<Project>, dir_path: &Path) {
     let mut git_ignore_entries = vec![CLI_USER_DIRECTORY];
     git_ignore_entries.append(&mut match project.language {
         SupportedLanguages::Typescript => {
-            vec!["node_modules", "dist", "coverage", "*.generated.ts"]
+            vec!["node_modules", "dist", "coverage"]
         }
+        SupportedLanguages::Python => vec![
+            "__pycache__",
+            "*.pyc",
+            "*.pyo",
+            "*.pyd",
+            ".Python",
+            "env",
+            ".venv",
+            "venv",
+            "ENV",
+            "env.bak",
+            ".spyderproject",
+            ".ropeproject",
+            ".idea",
+            "*.ipynb_checkpoints",
+            ".pytest_cache",
+            ".mypy_cache",
+            ".hypothesis",
+            ".coverage",
+            "cover",
+            "*.cover",
+            ".DS_Store",
+            ".cache",
+            "*.so",
+            "*.egg",
+            "*.egg-info",
+            "dist",
+            "build",
+            "develop-eggs",
+            "downloads",
+            "eggs",
+            "lib",
+            "lib64",
+            "parts",
+            "sdist",
+            "var",
+            "wheels",
+            "*.egg-info/",
+            ".installed.cfg",
+            "*.egg",
+            "MANIFEST",
+        ],
     });
     let mut git_ignore = git_ignore_entries.join("\n");
     git_ignore.push_str("\n\n");
@@ -65,7 +127,7 @@ pub fn dump_old_version_schema(
 ) -> Result<(), Error> {
     let repo = Repository::discover(project.project_location.clone())?;
 
-    let schema_dir = project.schemas_dir();
+    let schema_dir = project.data_models_dir();
     let schema_relative_path_from_repo_root = schema_dir
         .strip_prefix(repo.path().parent().unwrap())
         .unwrap();
@@ -120,7 +182,8 @@ fn recursive_dump_tree_content(
 
 pub fn current_commit_hash(project: &Project) -> Result<String, Error> {
     let repo = Repository::discover(project.project_location.clone())?;
-    let head = repo.head()?;
+    let branch = repo.find_branch(&project.git_config.main_branch_name, BranchType::Local)?;
+    let head = branch.get();
     let mut hash = head.target().unwrap().to_string();
     hash.truncate(7);
     Ok(hash)

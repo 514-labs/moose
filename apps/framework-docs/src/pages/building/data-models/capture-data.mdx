@@ -2,18 +2,24 @@ import { Callout, Tabs } from "nextra/components";
 
 # Ingest Data
 
-Once you've defined a Data Model, MooseJS makes it easy to ingest source data from upstream sources that aligns to the schema of your Data Model. There are two main ways to ingest data:
+Once you've defined a Data Model, MooseJS makes it easy to ingest source data from upstream sources
+that aligns to the schema of your Data Model. There are two main ways to ingest data:
 
 1. Pushing data to the Ingestion API Endpoint that MooseJS automatically creates for each Data Model
-2. Instrumenting an upstream application using an SDK that MooseJS automatically creates for each Data Model - this SDK makes it easy to capture data to send to the API Endpoint automatically
+2. Instrumenting an upstream application using an SDK that MooseJS automatically creates for each Data Model -
+   this SDK makes it easy to capture data to send to the API Endpoint automatically
 
 ## Ingesting via API Endpoints
 
-As you define data models in your service, MooseJS will automatically generate ingestion points for you to send data to. Ingestion points are HTTP endpoints that you can send data to. The default port is `4000`. The standard endpoint for each data model is:
+As you define data models in your service, MooseJS will automatically generate ingestion points for you
+to send data to. Ingestion points are HTTP endpoints that you can send data to. The default port is `4000`.
+The standard endpoint for each data model is:
 
 `http://localhost:4000/ingest/<DataModelName>`
 
-Following is some example code for testing the API endpoints for a Data Model called `UserActivity`. In the Moose developer console, when you view your Data Model, go to the `Setup` tab, and you'll find sample code for utilizing the API Endpoints for your specific models.
+Following is some example code for testing the API endpoints for a Data Model called `UserActivity`. In
+the Moose developer console, when you view your Data Model, go to the `Setup` tab, and you'll find sample
+code for utilizing the API Endpoints for your specific models.
 
 <Tabs items={['curl', 'javascript', 'python']}>
   <Tabs.Tab>
@@ -65,37 +71,33 @@ Following is some example code for testing the API endpoints for a Data Model ca
   and let us know.
 </Callout>
 
-To facilitate the ingestion process, Moose automatically generates a TypeScript SDK for every data model defined in your project. The SDK provides instant type safety and schema validation, offering real-time feedback on the data you intend to send to Moose during development.
+To facilitate the ingestion process, Moose can generate automatically a TypeScript SDK for every data model
+defined in your project. The SDK provides instant type safety and schema validation, offering real-time
+feedback on the data you intend to send to Moose during development.
 
-While Moose also provides HTTP endpoints for data ingestion (see above), we recommend utilizing the SDK for more robust data integrity enforcement and reduced runtime errors. We're actively expanding support to include more programming languages and welcome your input on which ones to prioritize.
+While Moose also provides HTTP endpoints for data ingestion (see above), we recommend utilizing the SDK for
+more robust data integrity enforcement and reduced runtime errors. We're actively expanding support to
+include more programming languages and welcome your input on which ones to prioritize.
 
 ### Getting Started with the SDK
 
-Ensure your Moose application’s development server is running. If it’s not, run `moose dev` and/or [refer to the documentation on starting the development server](https://docs.moosejs.com/getting-started/new-project).
+From within your moose project you can generate the SDK for your project by running the following command:
 
-Then follow these steps to prepare your development environment for SDK usage:
+```txt filename="Terminal" copy
+moose sdk generate
+```
 
-### Linking the SDK Globally
+This will generate a new directory in your project called `sdk` that contains the SDK for your project.
 
-Before using the SDK to send data to Moose from your other applications, it needs to be linked to your global Node.js modules.
-
-1. _Navigate to the SDK Directory_: From your Moose project’s root directory, execute the following command `cd .moose/<YOUR_PROJECT_NAME>-sdk`
-2. _Execute the Link Command_: Use the appropriate command for your node package manager to create a global symlink. Run the following command in your terminal from the SDK directory: for npm: `npm link`; for pnpm `pnpm link -g`.
-
-### Integrating the SDK with Your Application
-
-Once you've linked the SDK to your global node modules, integrate it into your applications as follows:
-
-1. _Navigate to Your Application_: Go to the root directory of the application where you want to use the SDK, ensuring the `package.json` file is present.
-2. _Link the SDK_: Use the command corresponding to your package manager to create a symlink in your application's node_modules that points to the SDK. Replace `<YOUR_MOOSE_PROJECT_NAME>` with the name of your Moose project: for npm: `npm link <YOUR_MOOSE_PROJECT_NAME>-sdk`; for pnpm `pnpm link -g <YOUR_MOOSE_PROJECT_NAME>-sdk`.
-
-### Understanding the Linking Process
-
-Creating a global symlink in your `node_modules` directory mimics installing the SDK globally. When you link the SDK to an application, it forms a local `node_modules` symlink tied to this global one. This setup lets Node.js see the SDK as a direct dependency, ensuring updates spread instantly to all linked applications. During development, it ensures the SDK remains in sync with the latest data model versions in your Moose project, enabling accurate validation of captured data against the updated schemas.
+You can use this command outside of a project and you can specify the directory you wish the directory to
+be created in. You can use this functionality for generating the SDK in the project that will call the moose
+api for example.
 
 ### Using the SDK to Send Data
 
-To capture data with your data models, import the respective send method from your Moose SDK into your application code. Each data model has a corresponding method that facilitates the transmission of data to the appropriate destination table in your database. The method name follows the format `send<DATA_MODEL_NAME>`.
+To capture data with your data models, import the respective send method from your Moose SDK into your
+application code. Each data model has a corresponding method that facilitates the transmission of data to
+the appropriate destination table in your database. The method name follows the format `send<DATA_MODEL_NAME>`.
 
 For example, if you're sending data for a UserActivity data model, your code snippet will look like this:
 

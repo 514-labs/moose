@@ -5,12 +5,15 @@ use serde::{Deserialize, Serialize};
 pub enum SupportedLanguages {
     #[value(name = "ts")]
     Typescript,
+    #[value(name = "python")]
+    Python,
 }
 
 impl std::fmt::Display for SupportedLanguages {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
             SupportedLanguages::Typescript => "ts",
+            SupportedLanguages::Python => "python",
         };
 
         s.fmt(f)
@@ -23,6 +26,7 @@ impl std::str::FromStr for SupportedLanguages {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "ts" => Ok(SupportedLanguages::Typescript),
+            "python" => Ok(SupportedLanguages::Python),
             _ => Err(format!("{} is not a supported language", s)),
         }
     }

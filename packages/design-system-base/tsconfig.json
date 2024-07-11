@@ -1,0 +1,14 @@
+{
+  "extends": "@repo/ts-config/react-library.json",
+
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "declarationMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@ui/*": ["./*"]
+    }
+  },
+  "exclude": ["node_modules"]
+}

@@ -3,7 +3,7 @@ language = "Typescript"
 [redpanda_config]
 broker = "localhost:19092"
 message_timeout_ms = 1000
-retention_ms = 30000
+retention_ms = 21600000
 
 [clickhouse_config]
 db_name = "local"
@@ -26,3 +26,6 @@ host_port = 3001
 "0.0" = "1fe7b86"
 "0.1" = "005108e"
 "0.2" = "969a0b7"
+"0.3" = "22d9fcb"
+"0.4" = "78ef1df"
+"0.5" = "02ed1a87"

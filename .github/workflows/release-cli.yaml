@@ -47,6 +47,43 @@ jobs:
           generateReleaseNotes: true
           commit: ${{ github.sha }}
 
+  package-and-publish-independant-ts-package:
+    name: Package and Publish Independant TS Package
+    runs-on: ubuntu-20.04
+    needs:
+      - version
+    permissions:
+      contents: "read"
+      id-token: "write"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - name: Install node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "pnpm"
+
+      - name: Login NPM
+        shell: bash
+        run: |
+          pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish the NPM Moose CLI package
+        shell: bash
+        run: ./packages/ts-moose-lib/scripts/release-lib.sh ${{ needs.version.outputs.version }}
+
+      - name: Publish the NPM Moose design-system package
+        shell: bash
+        run: ./packages/design-system-base/scripts/release.sh ${{ needs.version.outputs.version }}
+
+      - name: Publish the NPM Moose event-capture package
+        shell: bash
+        run: ./packages/event-capture/scripts/release.sh ${{ needs.version.outputs.version }}
+
   package-and-publish-templates:
     name: Package and Publish Templates
     runs-on: ubuntu-20.04
@@ -107,13 +144,13 @@ jobs:
             }
           - {
               NAME: darwin-x64,
-              OS: macos-11,
+              OS: macos-12-large,
               TOOLCHAIN: stable,
               TARGET: x86_64-apple-darwin,
             }
           - {
               NAME: darwin-arm64,
-              OS: macos-11,
+              OS: macos-12-large,
               TOOLCHAIN: stable,
               TARGET: aarch64-apple-darwin,
             }
@@ -145,7 +182,7 @@ jobs:
           use-cross: ${{ matrix.build.OS == 'ubuntu-20.04' }} # use `cross` for Linux builds
 
       - name: Install node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           registry-url: "https://registry.npmjs.org"
@@ -173,7 +210,7 @@ jobs:
     needs:
       - version
       - build-and-publish-binaries
-      - build-and-publish-console
+      - package-and-publish-independant-ts-package
     runs-on: ubuntu-20.04
     if: ${{ !inputs.dry-run }}
     steps:
@@ -191,17 +228,15 @@ jobs:
           SENTRY_AUTH_TOKEN: "op://drqe7p6legi6ug2ijq2fnrkmjq/Sentry/credential"
           SENTRY_ORG: "op://drqe7p6legi6ug2ijq2fnrkmjq/Sentry/org"
 
-      - uses: pnpm/action-setup@v2
-        with:
-          version: 8
+      - uses: pnpm/action-setup@v4
 
-      - name: Login GSAP
+      - name: Login NPM
         shell: bash
         run: |
           pnpm config set //registry.npmjs.org/:_authToken ${{ secrets.NPM_TOKEN }}
 
       - name: Install node
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
           node-version: "20"
           cache: "pnpm"
@@ -214,14 +249,6 @@ jobs:
         shell: bash
         run: ./apps/create-moose-app/scripts/release.sh ${{ needs.version.outputs.version }}
 
-      - name: Publish the NPM Moose event-capture package
-        shell: bash
-        run: ./packages/event-capture/scripts/release.sh ${{ needs.version.outputs.version }}
-
-      - name: Publish the NPM Moose design-system package
-        shell: bash
-        run: ./packages/design-system/scripts/release.sh ${{ needs.version.outputs.version }}
-
       # TODO - convert to use 1password for the secret
       - name: Notify Sentry release
         uses: getsentry/action-release@v1
@@ -230,62 +257,6 @@ jobs:
           SENTRY_AUTH_TOKEN: ${{ steps.op-load-secret.outputs.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ steps.op-load-secret.outputs.SENTRY_ORG }}
           SENTRY_PROJECT: "framework-cli"
-        with:
-          environment: production
-          version: ${{ needs.version.outputs.version }}
-
-  build-and-publish-console:
-    name: Moose Console
-    runs-on: ubuntu-20.04
-    needs: version
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - uses: 1password/load-secrets-action@v1
-        id: op-load-secret
-        with:
-          export-env: false
-        env:
-          OP_SERVICE_ACCOUNT_TOKEN: ${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}
-          DOCKER_HUB_ACCESS_KEY: "op://drqe7p6legi6ug2ijq2fnrkmjq/Docker Hub - Bot/Access Token"
-          SENTRY_AUTH_TOKEN: "op://drqe7p6legi6ug2ijq2fnrkmjq/Sentry/credential"
-          SENTRY_ORG: "op://drqe7p6legi6ug2ijq2fnrkmjq/Sentry/org"
-
-      - name: Login to Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: 514iceman
-          password: ${{ steps.op-load-secret.outputs.DOCKER_HUB_ACCESS_KEY }}
-
-      # TODO - convert to use 1password for the secret
-      - name: Build and push
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          platforms: linux/amd64,linux/arm64
-          file: ./apps/moose-console/Dockerfile
-          push: ${{ !inputs.dry-run }}
-          tags: 514labs/moose-console:latest, 514labs/moose-console:0.0.0, 514labs/moose-console:${{ needs.version.outputs.version }}
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-          build-args: |
-            TURBO_TOKEN=${{ secrets.TURBO_TOKEN }}
-            TURBO_TEAM=${{ vars.TURBO_TEAM }}
-            SENTRY_AUTH_TOKEN=${{ steps.op-load-secret.outputs.SENTRY_AUTH_TOKEN }}
-            RELEASE_VERSION=${{ needs.version.outputs.version }}
-
-      # TODO - convert to use 1password for the secret
-      - name: Notify Sentry release
-        uses: getsentry/action-release@v1
-        if: ${{ !inputs.dry-run }}
-        env:
-          SENTRY_AUTH_TOKEN: ${{ steps.op-load-secret.outputs.SENTRY_AUTH_TOKEN }}
-          SENTRY_ORG: ${{ steps.op-load-secret.outputs.SENTRY_ORG }}
-          SENTRY_PROJECT: "framework-console"
         with:
           environment: production
           version: ${{ needs.version.outputs.version }}

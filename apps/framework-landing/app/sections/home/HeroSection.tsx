@@ -3,19 +3,19 @@ import {
   Section,
   Grid,
   FullWidthContentContainer,
-} from "@514labs/design-system/components/containers";
+} from "@514labs/design-system-components/components/containers";
 import {
   Heading,
   Display,
   HeadingLevel,
-} from "@514labs/design-system/typography";
+} from "@514labs/design-system-components/typography";
 import { TrackCtaButton } from "../../trackable-components";
 import React from "react";
 import Link from "next/link";
 
 export const HeroSection = () => {
   const content = {
-    tagLine: "Build your own data products in minutes",
+    tagLine: "Prototype & scale data-intensive apps in minutes",
     description:
       "An open source developer framework for your data & analytics stack",
     ctas: [
@@ -55,8 +55,9 @@ export const HeroSection = () => {
               {content.ctas.map((cta, index) => (
                 <Link key={index} href={cta.href}>
                   <TrackCtaButton
-                    name={cta.label}
-                    subject={cta.label}
+                    name={`Hero CTA ${cta.label}`}
+                    subject={content.tagLine}
+                    targetUrl={cta.href}
                     variant={cta.variant as "default" | "outline"}
                   >
                     {cta.label}

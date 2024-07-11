@@ -14,8 +14,8 @@
 //! infrastructure.
 //!
 
-pub mod console;
+pub mod api;
 pub mod ingest;
-pub mod kafka_clickhouse_sync;
 pub mod olap;
+pub mod processes;
 pub mod stream;

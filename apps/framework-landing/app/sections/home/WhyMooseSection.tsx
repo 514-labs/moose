@@ -3,8 +3,8 @@ import {
   Grid,
   ThirdWidthContentContainer,
   HalfWidthContentContainer,
-} from "@514labs/design-system/components/containers";
-import { Heading, Text } from "@514labs/design-system/typography";
+} from "@514labs/design-system-components/components/containers";
+import { Heading, Text } from "@514labs/design-system-components/typography";
 import React from "react";
 
 export const WhyMooseSection = () => {

@@ -1,14 +1,11 @@
+/// Deprecated - to be removed when we remove old version of the internal app.
 use std::path::{Path, PathBuf};
 
-use crate::{
-    framework::data_model::parser::FileObjects,
-    framework::data_model::schema::{
-        is_enum_type, Column, ColumnDefaults, ColumnType, DataEnum, DataModel, EnumMember,
-        EnumValue,
-    },
-    project::PROJECT,
+use crate::framework::core::infrastructure::table::{
+    is_enum_type, Column, ColumnDefaults, ColumnType, DataEnum, EnumMember, EnumValue,
 };
-use diagnostics::Diagnostics;
+use crate::{framework::data_model::model::DataModel, framework::data_model::parser::FileObjects};
+use diagnostics::{Diagnostics, FileId};
 use schema_ast::ast::{Attribute, Field, WithName};
 use schema_ast::{
     ast::{Enum, Model, SchemaAst, Top},
@@ -59,14 +56,21 @@ impl FieldAttributes {
     }
 }
 
-pub fn extract_data_model_from_file(path: &Path) -> Result<FileObjects, PrismaParsingError> {
+pub fn extract_data_model_from_file(
+    path: &Path,
+    version: &str,
+) -> Result<FileObjects, PrismaParsingError> {
     let schema_file = std::fs::read_to_string(path)
         .map_err(|_| PrismaParsingError::FileNotFound { path: path.into() })?;
-    let ast = parse_schema(&schema_file, &mut Diagnostics::default());
-    prisma_ast_to_internal_ast(ast)
+    let ast = parse_schema(&schema_file, &mut Diagnostics::default(), FileId::ZERO);
+    prisma_ast_to_internal_ast(path.to_path_buf(), version, ast)
 }
 
-fn prisma_ast_to_internal_ast(ast: SchemaAst) -> Result<FileObjects, PrismaParsingError> {
+fn prisma_ast_to_internal_ast(
+    file_path: PathBuf,
+    version: &str,
+    ast: SchemaAst,
+) -> Result<FileObjects, PrismaParsingError> {
     let mut models = Vec::new();
     let mut enums = Vec::new();
 
@@ -86,13 +90,15 @@ fn prisma_ast_to_internal_ast(ast: SchemaAst) -> Result<FileObjects, PrismaParsi
 
     let parsed_models = models
         .into_iter()
-        .map(|m| prisma_model_to_datamodel(m, &enums))
+        .map(|m| prisma_model_to_datamodel(&file_path, version, m, &enums))
         .collect::<Result<Vec<DataModel>, PrismaParsingError>>()?;
 
     Ok(FileObjects::new(parsed_models, enums))
 }
 
 fn prisma_model_to_datamodel(
+    file_path: &Path,
+    version: &str,
     m: &Model,
     enums: &[DataEnum],
 ) -> Result<DataModel, PrismaParsingError> {
@@ -103,12 +109,12 @@ fn prisma_model_to_datamodel(
         .map(|(_id, f)| field_to_column(f, enums))
         .collect();
 
-    let project = PROJECT.lock().unwrap();
     Ok(DataModel {
-        db_name: project.clickhouse_config.db_name.to_string(),
         columns: columns?,
         name: schema_name,
         config: Default::default(),
+        abs_file_path: file_path.to_path_buf(),
+        version: version.to_string(),
     })
 }
 

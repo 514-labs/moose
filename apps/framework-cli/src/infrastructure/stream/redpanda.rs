@@ -1,4 +1,5 @@
 use log::{error, info, warn};
+use rdkafka::admin::ResourceSpecifier;
 use rdkafka::config::RDKafkaLogLevel;
 use rdkafka::consumer::stream_consumer::StreamConsumer;
 use rdkafka::consumer::Consumer;
@@ -11,10 +12,65 @@ use rdkafka::{
     ClientConfig,
 };
 use serde::{Deserialize, Serialize};
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
 
-// TODO: We need to configure the application based on the current project directory structure to ensure that we catch changes made outside of development mode
+use crate::framework::core::infrastructure_map::{Change, StreamingChange};
+use crate::project::Project;
+
+#[derive(Debug, thiserror::Error)]
+pub enum RedpandaChangesError {
+    #[error("Not Supported {0}")]
+    NotSupported(String),
+
+    #[error("Anyhow Error")]
+    Other(#[from] anyhow::Error),
+}
+
+pub async fn execute_changes(
+    project: &Project,
+    changes: &[StreamingChange],
+) -> Result<(), RedpandaChangesError> {
+    // TODO: we need to take into account all the current state of the topic,
+    // ie the retention period and bytes sizes. But we will need to change the
+    // interfaces of create method to do that properly. We will do it once we have
+    // move to the new core.
+
+    for change in changes.iter() {
+        match change {
+            StreamingChange::Topic(Change::Added(topic)) => {
+                log::info!("Creating topic: {:?}", topic.id());
+                create_topics(&project.redpanda_config, vec![topic.id()]).await?;
+            }
+
+            StreamingChange::Topic(Change::Removed(topic)) => {
+                log::info!("Deleting topic: {:?}", topic.id());
+                delete_topics(&project.redpanda_config, vec![topic.id()]).await?;
+            }
+
+            StreamingChange::Topic(Change::Updated { before, after }) => {
+                if !project.is_production {
+                    log::info!("Replacing topic: {:?} with: {:?}", before, after);
+                    delete_topics(&project.redpanda_config, vec![before.id()]).await?;
+                    create_topics(&project.redpanda_config, vec![after.id()]).await?;
+                } else {
+                    return Err(RedpandaChangesError::NotSupported(format!(
+                        "Updating topic {} is not supported in production mode",
+                        before.id()
+                    )));
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+// TODO: We need to configure the application based on the current project directory structure to
+// ensure that we catch changes made outside of development mode
+
+// TODO: We need to make this a proper client so that we don't have
+// to reinstantiate the client every time we want to use it
 
 pub async fn create_topics(config: &RedpandaConfig, topics: Vec<String>) -> anyhow::Result<()> {
     info!("Creating topics: {:?}", topics);
@@ -59,7 +115,7 @@ pub async fn create_topics(config: &RedpandaConfig, topics: Vec<String>) -> anyh
 pub async fn delete_topics(
     config: &RedpandaConfig,
     topics: Vec<String>,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), anyhow::Error> {
     info!("Deleting topics: {:?}", topics);
 
     let admin_client: AdminClient<_> = config_client(config)
@@ -85,6 +141,48 @@ pub async fn delete_topics(
     }
 
     Ok(())
+}
+
+pub async fn describe_topic_config(
+    config: &RedpandaConfig,
+    topic_name: &str,
+) -> Result<HashMap<String, String>, rdkafka::error::KafkaError> {
+    info!("Describing config for topic: {}", topic_name);
+
+    let admin_client: AdminClient<_> = config_client(config)
+        .create()
+        .expect("Redpanda Admin Client creation failed");
+
+    let options = AdminOptions::new().operation_timeout(Some(std::time::Duration::from_secs(5)));
+
+    let result = admin_client
+        .describe_configs(&[ResourceSpecifier::Topic(topic_name)], &options)
+        .await?;
+
+    match result.into_iter().next() {
+        Some(Ok(config_resource)) => {
+            let config_map: HashMap<String, String> = config_resource
+                .entry_map()
+                .into_iter()
+                .filter_map(|(config_name, config_entry)| {
+                    config_entry
+                        .value
+                        .as_ref()
+                        .map(|value| (config_name.to_string(), value.to_string()))
+                })
+                .collect();
+
+            Ok(config_map)
+        }
+        Some(Err(err)) => {
+            error!("Failed to describe topic config: {}", err);
+            Ok(HashMap::new())
+        }
+        None => {
+            error!("No response from describe_configs");
+            Ok(HashMap::new())
+        }
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

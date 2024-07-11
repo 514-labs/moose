@@ -4,8 +4,7 @@ import { VariantProps } from "class-variance-authority";
 import { DemoSection } from "./sections/home/DemoSection";
 import { FooterSection } from "./sections/FooterSection";
 import { HeroSection } from "./sections/home/HeroSection";
-import { WhyMooseSection } from "./sections/home/WhyMooseSection";
-import { MooseStackSection } from "./sections/home/MooseStackSection";
+
 import {
   TemplateHeaderSection,
   TemplatesSection,
@@ -13,14 +12,21 @@ import {
 import { FeaturesSection } from "./sections/home/FeaturesSection";
 
 import { SecondaryCTASection } from "./sections/home/SecondaryCTASection";
-import { cn } from "@514labs/design-system/utils";
+import { cn } from "@514labs/design-system-components/utils";
 
-import { Button, buttonVariants } from "@514labs/design-system/components";
+import {
+  Button,
+  buttonVariants,
+} from "@514labs/design-system-components/components";
 
-import { Text } from "@514labs/design-system/typography";
+import { Text } from "@514labs/design-system-components/typography";
 import React from "react";
-import { UsecasesSection } from "./sections/home/UsecasesSection";
 import { LooseMooseSection } from "./sections/home/LooseMooseSection";
+import { WhatIsMoose } from "./sections/home/WhatIsMooseV2";
+import {
+  WhatIsMooseFor,
+  WhatIsntMooseFor,
+} from "./sections/home/WhatIsMooseFor";
 
 export const CTAText = ({
   className,
@@ -93,13 +99,10 @@ export default function Home() {
     <main>
       <HeroSection />
       <DemoSection />
+      <WhatIsMooseFor />
+      <WhatIsntMooseFor />
+      <WhatIsMoose />
       <FeaturesSection />
-      <UsecasesSection />
-      <MooseStackSection />
-      <WhyMooseSection />
-
-      {/* <HowItWorksSection /> */}
-
       <TemplateHeaderSection />
       <TemplatesSection />
       <SecondaryCTASection />

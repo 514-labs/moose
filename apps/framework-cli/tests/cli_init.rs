@@ -4,6 +4,7 @@ use predicates::prelude::*; // Used for writing assertions
 use std::process::Command;
 
 #[test]
+#[serial_test::serial(init)]
 fn cannot_run_cli_init_without_args() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("moose-cli")?;
 
@@ -16,6 +17,7 @@ fn cannot_run_cli_init_without_args() -> Result<(), Box<dyn std::error::Error>> 
 }
 
 #[test]
+#[serial_test::serial(init)]
 fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
     let temp = assert_fs::TempDir::new().unwrap();
     std::fs::remove_dir(&temp)?;
@@ -25,7 +27,7 @@ fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
     temp.child("package.json")
         .assert(predicate::path::missing());
     temp.child("app").assert(predicate::path::missing());
-    temp.child("project.toml")
+    temp.child("moose.config.toml")
         .assert(predicate::path::missing());
 
     let mut cmd = Command::cargo_bin("moose-cli")?;
@@ -38,7 +40,8 @@ fn can_run_cli_init() -> Result<(), Box<dyn std::error::Error>> {
     // app is more stable
     temp.child("package.json").assert(predicate::path::exists());
     temp.child("app").assert(predicate::path::exists());
-    temp.child("project.toml").assert(predicate::path::exists());
+    temp.child("moose.config.toml")
+        .assert(predicate::path::exists());
 
     Ok(())
 }

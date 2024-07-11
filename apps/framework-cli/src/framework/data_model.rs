@@ -1,6 +1,6 @@
 pub mod config;
+pub mod model;
 pub mod parser;
-pub mod schema;
 
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -9,9 +9,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-use crate::framework::controller::FrameworkObject;
-use crate::utilities::constants::TS_INTERFACE_GENERATE_EXT;
 use crate::utilities::system::file_name_contains;
+
+use super::core::code_loader::FrameworkObject;
 
 #[derive(Debug, Clone)]
 pub struct DuplicateModelError {
@@ -54,7 +54,10 @@ impl std::error::Error for DuplicateModelError {}
 
 pub fn is_schema_file(path: &Path) -> bool {
     path.extension()
-        .map(|extension| extension == "prisma" || extension == "ts")
+        .map(|extension| extension == "prisma" || extension == "ts" || extension == "py")
         .unwrap_or(false)
-        && !file_name_contains(path, TS_INTERFACE_GENERATE_EXT)
+        // TODO: There's logic that looks at version history which may have
+        // .generated.ts files. Those files need to be ignored. We don't have
+        // .generated.ts files anymore, so we can remove this when we can deprecate older versions
+        && !file_name_contains(path, ".generated.ts")
 }

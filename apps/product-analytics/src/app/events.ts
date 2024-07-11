@@ -13,19 +13,7 @@ export const pageViewEvent = {
   modelName: "PageViewEvent",
 };
 
-const virtualEvents = [
-  {
-    eventName: "Session Start",
-    tableName: "virtual_session",
-    modelName: "Session",
-  },
-];
-
-export const eventTables: EventTable[] = [
-  pageViewEvent,
-  ...virtualEvents,
-  ...customEvents,
-];
+export const eventTables: EventTable[] = [pageViewEvent, ...customEvents];
 
 export const eventNameMap = eventTables.reduce(
   (acc, cur) => ({

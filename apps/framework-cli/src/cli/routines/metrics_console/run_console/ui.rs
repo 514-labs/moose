@@ -64,7 +64,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         .column_spacing(1)
         .style(Style::new().green())
         .header(
-            Row::new(vec!["Path", "Latency", "Requests"])
+            Row::new(vec!["Path", "Latency", "Number of Requests"])
                 .style(Style::new().bold())
                 .bottom_margin(1)
                 .underlined(),

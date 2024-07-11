@@ -3,6 +3,8 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import Provider from "./provider";
 import NextAuthProvider from "./next-auth-provider";
+import { ThemeProvider } from "@514labs/design-system-components/components";
+import { ThemeToggle } from "@514labs/design-system-components/components";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,7 +22,17 @@ export default function RootLayout({
     <html lang="en">
       <NextAuthProvider>
         <Provider>
-          <body className={inter.className}>{children}</body>
+          <body className={inter.className}>
+            <ThemeToggle />
+            <ThemeProvider
+              attribute="class"
+              defaultTheme="dark"
+              enableSystem
+              disableTransitionOnChange
+            >
+              {children}
+            </ThemeProvider>
+          </body>
         </Provider>
       </NextAuthProvider>
     </html>

@@ -1,4 +1,4 @@
-import { Key, DataModelConfig, IngestionFormat } from "@514labs/moose-lib";
+import { DataModelConfig, IngestionFormat } from "@514labs/moose-lib";
 
 export const LogsConfig: DataModelConfig<Logs> = {
   ingestion: {

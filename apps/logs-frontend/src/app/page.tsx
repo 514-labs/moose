@@ -5,6 +5,7 @@ import LogTable from "@/components/log-table";
 import { SeverityLevel } from "@/lib/utils";
 import { useState } from "react";
 import { useSession, signIn } from "next-auth/react";
+import { StackedBar } from "@/components/ui/bar-chart";
 
 export default function Home() {
   const [selectedSource, setSelectedSource] = useState<string | undefined>();
@@ -14,7 +15,7 @@ export default function Home() {
     SeverityLevel.WARN,
   ]);
   const { data: session } = useSession();
-  if (!session) {
+  if (process.env.NODE_ENV != "development" && !session) {
     return (
       <>
         <p>Not signed in</p>
@@ -40,6 +41,7 @@ export default function Home() {
           severity={severity}
           setSearch={setSearch}
         />
+        <StackedBar />
         <LogTable severity={severity} search={search} source={selectedSource} />
       </div>
     </main>

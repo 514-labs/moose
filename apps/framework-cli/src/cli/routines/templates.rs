@@ -7,7 +7,7 @@ use flate2::read::GzDecoder;
 use futures::StreamExt;
 use tar::Archive;
 
-use super::{RoutineFailure, RoutineSuccess};
+use super::RoutineFailure;
 use crate::cli::display::{Message, MessageType};
 use crate::cli::settings::user_directory;
 

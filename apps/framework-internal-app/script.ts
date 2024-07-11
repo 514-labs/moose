@@ -10,15 +10,21 @@ const csvParser = parse({
 });
 
 async function sendParsedLogs(parsedLogs: ParsedLogs) {
-  parsedLogs.date = new Date();
+  const centralTimeString = parsedLogs.date;
+  // Create a Date object from the central time string
+  const centralDate = new Date(centralTimeString + " -0500"); // -0500 is the offset for Central Time Zone
+  // Convert the Date object to UTC
+  const utcDate = new Date(
+    centralDate.getTime() + centralDate.getTimezoneOffset() * 60000,
+  );
 
-  return fetch(`http://localhost:4000/ingest/ParsedLogs/0.5`, {
+  return fetch(`http://localhost:4000/ingest/ParsedLogs/0.6`, {
     method: "POST",
     mode: "no-cors",
     headers: {
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(parsedLogs),
+    body: JSON.stringify({ ...parsedLogs, date: utcDate }),
   });
 }
 

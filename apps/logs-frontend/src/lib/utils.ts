@@ -20,10 +20,10 @@ export const severityLevels = [
 ];
 
 export const severityLevelColors = {
-  [SeverityLevel.INFO]: "bg-blue-200",
-  [SeverityLevel.WARN]: "bg-yellow-200",
-  [SeverityLevel.ERROR]: "bg-red-200",
-  [SeverityLevel.DEBUG]: "bg-green-200",
+  [SeverityLevel.INFO]: "bg-blue-300",
+  [SeverityLevel.WARN]: "bg-yellow-300",
+  [SeverityLevel.ERROR]: "bg-red-300",
+  [SeverityLevel.DEBUG]: "bg-green-300",
 };
 
 export function getApiRoute() {

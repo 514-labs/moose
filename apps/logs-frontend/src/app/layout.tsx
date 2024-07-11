@@ -23,13 +23,8 @@ export default function RootLayout({
       <NextAuthProvider>
         <Provider>
           <body className={inter.className}>
-            <ThemeToggle />
-            <ThemeProvider
-              attribute="class"
-              defaultTheme="dark"
-              enableSystem
-              disableTransitionOnChange
-            >
+            <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+              <ThemeToggle />
               {children}
             </ThemeProvider>
           </body>

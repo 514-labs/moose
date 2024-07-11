@@ -19,21 +19,10 @@ interface Props {
 }
 export default function FilterBar({ setSearch, setSeverity, severity }: Props) {
   return (
-    <div className="flex flex-row items-center justify-between bg-gray-100 p-2 gap-2">
+    <div className="flex flex-row items-center justify-between bg-accent p-2 gap-2">
       <Input
         placeholder="Search..."
         onChange={(e) => setSearch(e.target.value)}
-      />
-      <Combobox
-        options={[
-          { val: "Select", label: "blah" },
-          { val: "othero", label: "blahtwo" },
-        ]}
-        onOpenChange={(value) => console.log("open change")}
-        placeholder="Select Machine"
-        selected={""} // string or array
-        onSelect={(select) => console.log("select", select)}
-        onCreate={(create) => console.log(create, "create")}
       />
       <ToggleGroup
         variant="outline"
@@ -49,7 +38,7 @@ export default function FilterBar({ setSearch, setSeverity, severity }: Props) {
             value={level}
           >
             <div
-              className={`flex justify-center rounded-lg items-center w-full h-full ${
+              className={`flex justify-center rounded-lg text-foreground items-center w-full h-full ${
                 severity.find((sev) => sev == level)
                   ? severityLevelColors[level]
                   : ""

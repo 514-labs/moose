@@ -6,5 +6,5 @@ export default async function handle(
   {}: QueryParams,
   { client, sql }: ConsumptionUtil,
 ) {
-  return client.query(sql`SELECT distinct machineId FROM ParsedLogs_0_5`);
+  return client.query(sql`SELECT distinct machineId FROM ParsedLogs_0_6`);
 }

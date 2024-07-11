@@ -5,7 +5,7 @@ import LogTable from "@/components/log-table";
 import { SeverityLevel } from "@/lib/utils";
 import { useState } from "react";
 import { useSession, signIn } from "next-auth/react";
-import { StackedBar } from "@/components/ui/bar-chart";
+import StackedBar from "@/components/ui/bar-chart";
 
 export default function Home() {
   const [selectedSource, setSelectedSource] = useState<string | undefined>();
@@ -45,7 +45,11 @@ export default function Home() {
           severity={severity}
           setSearch={setSearch}
         />
-        <StackedBar />
+        <StackedBar
+          severity={severity}
+          search={search}
+          source={selectedSource}
+        />
         <LogTable severity={severity} search={search} source={selectedSource} />
       </div>
     </main>

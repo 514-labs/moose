@@ -130,7 +130,7 @@ export function InfiniteTable<T>({
             top: 0,
             zIndex: 1,
           }}
-          className="bg-slate-800 text-white w-full"
+          className="bg-accent text-foreground w-full"
         >
           {table.getHeaderGroups().map((headerGroup) => (
             <tr key={headerGroup.id} style={{ display: "flex", width: "100%" }}>
@@ -181,17 +181,13 @@ export function InfiniteTable<T>({
                 data-index={virtualRow.index} //needed for dynamic row height measurement
                 ref={(node) => rowVirtualizer.measureElement(node)} //measure dynamic row height
                 key={row.id}
-                className={
-                  severityLevelColors[
-                    row.getValue("severityLevel") as SeverityLevel
-                  ]
-                }
+                className="bg-muted border-1 border-red-200 text-align"
                 style={{
                   display: "flex",
                   position: "absolute",
                   transform: `translateY(${virtualRow.start}px)`, //this should always be a `style` as it changes on scroll
                   width: "100%",
-                  height: 30,
+                  height: 40,
                 }}
               >
                 {row.getVisibleCells().map((cell) => {

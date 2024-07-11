@@ -1,5 +1,5 @@
 import { ColumnDef, SortingState } from "@tanstack/react-table";
-import { SeverityLevel, getApiRoute } from "./utils";
+import { SeverityLevel, getApiRoute, severityLevelColors } from "./utils";
 
 export interface ParsedLogs {
   date: string;
@@ -63,6 +63,16 @@ export function createLogColumns({
       accessorKey: "severityLevel",
       header: "Severity",
       maxSize: 80,
+      cell: (row) => {
+        const sevLevel = row.cell.row.original.severityLevel;
+        return (
+          <div
+            className={`h-fit p-1 rounded-lg ${severityLevelColors[sevLevel as SeverityLevel]}`}
+          >
+            {sevLevel}
+          </div>
+        );
+      },
     },
     {
       accessorKey: "machineId",
@@ -197,4 +207,33 @@ export async function fetchLogHierarchy({
     };
   });
   return rollUpCategories(processed);
+}
+
+export interface LogTimeSeries {
+  date: string;
+  info: number;
+  error: number;
+  warn: number;
+  debug: number;
+}
+
+export async function fetchLogTimeseries({
+  source,
+  search,
+  severity,
+}: {
+  search: string;
+  source?: string;
+  severity: SeverityLevel[];
+}) {
+  console.log("fetchLogTimeseries");
+  const url = new URL(`${getApiRoute()}/consumption/log_timeseries`);
+  if (source) url.searchParams.append("source", source);
+  if (search) url.searchParams.append("search", search);
+  if (severity.length > 0)
+    url.searchParams.append("severity", severity.join(","));
+
+  const response = await fetch(url.toString());
+  const parsedLogs = await response.json();
+  return parsedLogs as LogTimeSeries[];
 }

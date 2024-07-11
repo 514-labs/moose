@@ -1,4 +1,4 @@
-import { Key, DataModelConfig, IngestionFormat } from "@514labs/moose-lib";
+import { DataModelConfig, IngestionFormat } from "@514labs/moose-lib";
 
 export const LogsConfig: DataModelConfig<Logs> = {
   ingestion: {
@@ -10,52 +10,54 @@ export const LogsConfig: DataModelConfig<Logs> = {
   },
 };
 
-interface Attribute {
-  key: string;
-  value: {
-    stringValue: string;
-  };
-}
-
-interface LogRecord {
-  timeUnixNano: string;
-  observedTimeUnixNano: string;
-  severityNumber: number;
-  severityText: string;
-  body: {
-    value: {
-      stringValue: string;
-    };
-  };
-  attributes: Attribute[];
-  droppedAttributesCount: number;
-  flags: number;
-  traceId: string;
-  spanId: string;
-}
-
-interface ScopeLog {
-  scope: {
-    name: string;
-    version: string;
-    attributes: Attribute[];
-    droppedAttributesCount: number;
-  };
-  logRecords: LogRecord[];
-  schemaUrl: string;
-}
-
-interface ResourceLog {
-  resource: {
-    attributes: Attribute[];
-    droppedAttributesCount: number;
-  };
-  scopeLogs: ScopeLog[];
-  schemaUrl: string;
-}
-
 export interface Logs {
-  resourceLogs: ResourceLog[];
+  resourceLogs: {
+    resource: {
+      attributes: {
+        key: string;
+        value: {
+          stringValue: string;
+        };
+      }[];
+      droppedAttributesCount: number;
+    };
+    scopeLogs: {
+      scope: {
+        name: string;
+        version: string;
+        attributes: {
+          key: string;
+          value: {
+            stringValue: string;
+          };
+        }[];
+        droppedAttributesCount: number;
+      };
+      logRecords: {
+        timeUnixNano: string;
+        observedTimeUnixNano: string;
+        severityNumber: number;
+        severityText: string;
+        body: {
+          value: {
+            stringValue: string;
+          };
+        };
+        attributes: {
+          key: string;
+          value: {
+            stringValue: string;
+          };
+        }[];
+        droppedAttributesCount: number;
+        flags: number;
+        traceId: string;
+        spanId: string;
+      }[];
+      schemaUrl: string;
+    }[];
+    schemaUrl: string;
+  }[];
 }
 
 export const ParsedLogsConfig: DataModelConfig<ParsedLogs> = {
@@ -69,7 +71,7 @@ export const ParsedLogsConfig: DataModelConfig<ParsedLogs> = {
 };
 
 export interface ParsedLogs {
-  date: string;
+  date: Date;
   message: string;
   severityNumber: number;
   severityLevel: string;

@@ -61,3 +61,5 @@ template-packages
 run-prod.sh
 
 __pycache__/
+
+Session.vim

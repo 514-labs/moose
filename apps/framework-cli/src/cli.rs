@@ -104,6 +104,41 @@ fn check_project_name(name: &str) -> Result<(), RoutineFailure> {
     Ok(())
 }
 
+fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>) {
+    let is_git_repo = is_git_repo(dir_path).expect("Failed to check if directory is a git repo");
+
+    if !is_git_repo {
+        crate::utilities::git::create_init_commit(project_arc, dir_path);
+        show_message!(
+            MessageType::Info,
+            Message {
+                action: "Init".to_string(),
+                details: "Created a new git repository".to_string(),
+            }
+        );
+    }
+
+    {
+        show_message!(
+            MessageType::Success,
+            Message {
+                action: "Success!".to_string(),
+                details: format!("Created project at {} 🚀", dir_path.to_string_lossy()),
+            }
+        );
+    }
+
+    {
+        show_message!(
+            MessageType::Info,
+            Message {
+                action: "".to_string(),
+                details: "\n".to_string(),
+            }
+        );
+    }
+}
+
 async fn top_command_handler(
     settings: Settings,
     commands: &Commands,
@@ -157,7 +192,17 @@ async fn top_command_handler(
             // TODO: refactor this to be extracted in different functions
             match template {
                 Some(template) => {
-                    templates::generate_template(template, CLI_VERSION, dir_path).await
+                    templates::generate_template(template, CLI_VERSION, dir_path).await?;
+
+                    let project = Project::new(dir_path, name.clone(), *language);
+                    let project_arc = Arc::new(project);
+
+                    maybe_create_git_repo(dir_path, project_arc);
+
+                    Ok(RoutineSuccess::highlight(Message::new(
+                        "Get Started".to_string(),
+                        format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n🛠️  Start dev server: \n\t$ npx @514labs/moose-cli@latest dev\n\n", dir_path.to_string_lossy()),
+                    )))
                 }
                 None => {
                     let project = Project::new(dir_path, name.clone(), *language);
@@ -171,42 +216,7 @@ async fn top_command_handler(
                         .write_to_disk()
                         .expect("Failed to write project to file");
 
-                    let is_git_repo =
-                        is_git_repo(dir_path).expect("Failed to check if directory is a git repo");
-
-                    if !is_git_repo {
-                        crate::utilities::git::create_init_commit(project_arc, dir_path);
-                        show_message!(
-                            MessageType::Info,
-                            Message {
-                                action: "Init".to_string(),
-                                details: "Created a new git repository".to_string(),
-                            }
-                        );
-                    }
-
-                    {
-                        show_message!(
-                            MessageType::Success,
-                            Message {
-                                action: "Success!".to_string(),
-                                details: format!(
-                                    "Created project at {} 🚀",
-                                    dir_path.to_string_lossy()
-                                ),
-                            }
-                        );
-                    }
-
-                    {
-                        show_message!(
-                            MessageType::Info,
-                            Message {
-                                action: "".to_string(),
-                                details: "\n".to_string(),
-                            }
-                        );
-                    }
+                    maybe_create_git_repo(dir_path, project_arc);
 
                     let install_string = match language {
                         SupportedLanguages::Typescript => "npm install",

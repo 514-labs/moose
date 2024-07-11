@@ -58,3 +58,6 @@ console.db
 .vscode/launch.json
 gha-creds-*.json
 template-packages
+
+Session.vim
+

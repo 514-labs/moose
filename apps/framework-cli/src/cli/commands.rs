@@ -85,6 +85,9 @@ pub enum Commands {
         #[arg(short, long, default_value = "false")]
         streaming: bool,
     },
+
+    /// Opens metrics console for viewing live metrics from your moose app
+    Metrics {},
 }
 
 #[derive(Debug, Args)]

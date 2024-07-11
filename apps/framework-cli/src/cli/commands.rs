@@ -50,9 +50,7 @@ pub enum Commands {
     /// Generates missing migration files
     Generate(GenerateArgs),
     /// Bumps the version of the project
-    BumpVersion {
-        new_version: Option<String>,
-    },
+    BumpVersion { new_version: Option<String> },
     /// Clears all temporary data and stops development infrastructure
     Clean {},
     /// Transforms upstream data into materialized datasets for analysis
@@ -88,6 +86,7 @@ pub enum Commands {
         streaming: bool,
     },
 
+    /// Opens metrics console for viewing live metrics from your moose app
     Metrics {},
 }
 

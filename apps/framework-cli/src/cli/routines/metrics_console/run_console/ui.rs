@@ -48,8 +48,11 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         rows.push(
             Row::new(vec![
                 format!("{}", x.2.to_string()),
-                format!("{:.6} ms", ((x.0 / x.1) * 1000.0).to_string()),
-                format!("{:.6}", x.1.to_string()),
+                format!(
+                    "{}",
+                    ((((x.0 / x.1) * 1000.0) * 1000.0).round() / 1000.0).to_string()
+                ),
+                format!("{}", (((x.1 * 1000.0).round()) / 1000.0).to_string()),
             ])
             .not_bold(),
         )
@@ -64,7 +67,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         .column_spacing(1)
         .style(Style::new().green())
         .header(
-            Row::new(vec!["Path", "Latency", "Number of Requests"])
+            Row::new(vec!["Path", "Latency (ms)", "Number of Requests"])
                 .style(Style::new().bold())
                 .bottom_margin(1)
                 .underlined(),
@@ -88,7 +91,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         .borders(Borders::TOP)
         .green();
     let average_lat = Block::new()
-        .title(format!("Average Latency: \n {:.6}", app.average))
+        .title(format!(
+            "Average Latency: \n {}",
+            (app.average * 1000.0).round() / 1000.0
+        ))
         .title_alignment(Alignment::Center)
         .bold()
         .white()

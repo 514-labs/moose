@@ -8,7 +8,7 @@ use ratatui::{prelude::*, widgets::*};
 
 use crate::cli::routines::metrics_console::run_console::app::App;
 
-const INFO_TEXT: &str = "(q) quit | (↑) move up | (↓) move down";
+const INFO_TEXT: &str = "(q) quit | (↑) move up | (↓) move down | (enter) view endpoint details";
 
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame) {

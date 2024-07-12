@@ -3,7 +3,7 @@ use reqwest;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-pub async fn client() -> Result<(f64, f64, Vec<(f64, f64, String)>)> {
+pub async fn getting_metrics_data() -> Result<(f64, f64, Vec<(f64, f64, String)>)> {
     let body = reqwest::get("http://localhost:4000/metrics")
         .await
         .unwrap()

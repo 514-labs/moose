@@ -14,6 +14,13 @@ use app::App;
 use event::Event;
 use handler::handle_key_events;
 
+type Sender = tokio::sync::mpsc::Sender<(f64, f64, Vec<(f64, f64, String)>)>;
+type Receiver = tokio::sync::mpsc::Receiver<(f64, f64, Vec<(f64, f64, String)>)>;
+struct ConsoleChannel {
+    sender: Sender,
+    receiver: Receiver,
+}
+
 pub async fn run_console() -> app::AppResult<()> {
     // Create an application.
     let mut app = App::new();
@@ -25,12 +32,19 @@ pub async fn run_console() -> app::AppResult<()> {
     let mut tui = tui::Tui::new(terminal, events);
     tui.init()?;
 
-    let (tx, mut rx) = tokio::sync::mpsc::channel::<(f64, f64, Vec<(f64, f64, String)>)>(10);
+    let (tx, rx) = tokio::sync::mpsc::channel::<(f64, f64, Vec<(f64, f64, String)>)>(10);
+    let mut channel = ConsoleChannel {
+        sender: tx,
+        receiver: rx,
+    };
 
     tokio::spawn(async move {
         loop {
-            let (average, total_requests, summary) = client::client().await.unwrap();
-            let _ = tx.send((average, total_requests, summary)).await;
+            let (average, total_requests, summary) = client::getting_metrics_data().await.unwrap();
+            let _ = channel
+                .sender
+                .send((average, total_requests, summary))
+                .await;
             tokio::time::sleep(time::Duration::from_millis(1000)).await;
         }
     });
@@ -38,7 +52,7 @@ pub async fn run_console() -> app::AppResult<()> {
     // Start the main loop.
     while app.running {
         tokio::select! {
-            received = rx.recv() => {
+            received = channel.receiver.recv() => {
                 if let Some(v) = received {
                     app.req_per_sec(v.1);
                     app.set_metrics(v.0, v.1, v.2);

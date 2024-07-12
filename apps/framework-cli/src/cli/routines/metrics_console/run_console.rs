@@ -39,12 +39,9 @@ pub async fn run_console() -> app::AppResult<()> {
     while app.running {
         tokio::select! {
             received = rx.recv() => {
-                match received {
-                    Some(v) => {
-                        app.req_per_sec(v.1);
-                        app.set_metrics(v.0, v.1, v.2);},
-                    None => {
-                    }
+                if let Some(v) = received {
+                    app.req_per_sec(v.1);
+                    app.set_metrics(v.0, v.1, v.2);
                 };
             }
             // Handle events.

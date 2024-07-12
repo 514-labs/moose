@@ -582,9 +582,9 @@ fn map_json_value_to_clickhouse_value(
                         Some(Value::Null) => {
                             if col.required {
                                 log::error!("Required column {} has a null value", col_name);
-                            } else {
-                                values.push(ClickHouseValue::new_null());
                             }
+                            // We are adding the value anyway to match the number of arguments that clickhouse expects
+                            values.push(ClickHouseValue::new_null());
                         }
                         Some(val) => {
                             values.push(map_json_value_to_clickhouse_value(&col.data_type, val)?);

@@ -41,20 +41,23 @@ pub async fn run_console() -> app::AppResult<()> {
         tokio::select! {
             received = rx.recv() => {
                 if let Some(v) = received {
-                    app.req_per_sec(v.total_requests);
+                    app.req_per_sec(v.total_requests, &v.paths_data_vec);
                     app.set_metrics(v);
                 };
             }
             // Handle events.
             event = tui.events.next() => { match event?{
                     Event::Tick => app.tick(),
-                    Event::Key(key_event) => handle_key_events(key_event, &mut app)?,
+                    Event::Key(key_event) => handle_key_events(key_event, &mut app).await?,
                 }
             }
         }
 
         // Render the user interface.
         tui.draw(&mut app)?;
+        // if app.state != "main" {
+        //     app.set_path_data(app.state.clone()).await;
+        // }
     }
 
     // Exit the user interface.

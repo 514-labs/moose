@@ -1,7 +1,7 @@
 use crate::cli::routines::metrics_console::run_console::app::{App, AppResult};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
+pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     match key_event.code {
         KeyCode::Char('q') => {
             app.quit();
@@ -18,6 +18,17 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
 
         KeyCode::Up => {
             app.up();
+        }
+
+        KeyCode::Enter => {
+            app.set_state(app.summary[app.starting_row].path.to_string());
+        }
+        KeyCode::Esc => {
+            if app.state == "main" {
+                app.quit();
+            } else {
+                app.set_state("main".to_string());
+            }
         }
         _ => {}
     }

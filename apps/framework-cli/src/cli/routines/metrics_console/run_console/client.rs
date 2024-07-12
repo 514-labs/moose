@@ -3,7 +3,18 @@ use reqwest;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
-pub async fn getting_metrics_data() -> Result<(f64, f64, Vec<(f64, f64, String)>)> {
+pub struct PathMetricsData {
+    pub latency_sum: f64,
+    pub request_count: f64,
+    pub path: String,
+}
+pub struct ParsedMetricsData {
+    pub average_latency: f64,
+    pub total_requests: f64,
+    pub paths_data_vec: Vec<PathMetricsData>,
+}
+
+pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
     let body = reqwest::get("http://localhost:4000/metrics")
         .await
         .unwrap()
@@ -21,7 +32,7 @@ pub async fn getting_metrics_data() -> Result<(f64, f64, Vec<(f64, f64, String)>
 
     let mut average_latency: f64 = 0.0;
     let mut total_requests: f64 = 0.0;
-    let mut paths_latency_average_vec: Vec<(f64, f64, String)> = vec![];
+    let mut paths_data_vec: Vec<PathMetricsData> = vec![];
 
     let mut i = 0;
     while i < metrics_vec.len() {
@@ -59,14 +70,20 @@ pub async fn getting_metrics_data() -> Result<(f64, f64, Vec<(f64, f64, String)>
                 prometheus_parse::Value::Untyped(v) => *v,
                 _ => 0.0,
             };
-            paths_latency_average_vec.push((
-                sum_value,
-                count_value,
-                (metrics_vec[j].labels["path"]).to_string(),
-            ));
+            paths_data_vec.push(PathMetricsData {
+                latency_sum: sum_value,
+                request_count: count_value,
+                path: (metrics_vec[j].labels["path"]).to_string(),
+            });
         }
         j += 1;
     }
 
-    Ok((average_latency, total_requests, paths_latency_average_vec))
+    let parsed_data = ParsedMetricsData {
+        average_latency,
+        total_requests,
+        paths_data_vec,
+    };
+
+    Ok(parsed_data)
 }

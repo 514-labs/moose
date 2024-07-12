@@ -12,16 +12,6 @@ const INFO_TEXT: &str = "(q) quit | (↑) move up | (↓) move down";
 
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame) {
-    let mut summary_text = String::new();
-
-    for path in &app.summary {
-        summary_text += format!(
-            "Path: {} \n \t - Average Latency: {} \n \t - Number of Requests: {} \n\n",
-            path.2, path.0, path.1
-        )
-        .as_str();
-    }
-
     let outer_layout = Layout::default()
         .direction(Direction::Vertical)
         .constraints(vec![
@@ -51,12 +41,16 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     for x in &app.summary {
         rows.push(
             Row::new(vec![
-                format!("{}", x.2.to_string()),
+                format!("{}", x.path.to_string()),
                 format!(
                     "{}",
-                    ((((x.0 / x.1) * 1000.0) * 1000.0).round() / 1000.0).to_string()
+                    ((((x.latency_sum / x.request_count) * 1000.0) * 1000.0).round() / 1000.0)
+                        .to_string()
                 ),
-                format!("{}", (((x.1 * 1000.0).round()) / 1000.0).to_string()),
+                format!(
+                    "{}",
+                    (((x.request_count * 1000.0).round()) / 1000.0).to_string()
+                ),
             ])
             .not_bold(),
         )

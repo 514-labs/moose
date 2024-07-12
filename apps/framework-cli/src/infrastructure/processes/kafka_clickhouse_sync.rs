@@ -407,13 +407,20 @@ fn mapper_json_to_clickhouse_record(
                 log::debug!("Value found for key {}: {:?}", key, value);
 
                 match value {
+                    Some(Value::Null) => {
+                        if column.required {
+                            log::error!("Required column {} has a null value", key);
+                        } else {
+                            record.insert(key, ClickHouseValue::new_null());
+                        }
+                    }
                     Some(value) => {
                         match map_json_value_to_clickhouse_value(&column.data_type, value) {
                             Ok(clickhouse_value) => {
                                 record.insert(key, clickhouse_value);
                             }
                             Err(e) => {
-                                log::debug!("Error mapping JSON value to ClickHouse value: {}", e)
+                                log::debug!("For column {} with type {}, Error mapping JSON value to ClickHouse value: {}", column.name, &column.data_type, e)
                             }
                         };
                     }
@@ -572,14 +579,20 @@ fn map_json_value_to_clickhouse_value(
                     let val = obj.get(col_name);
 
                     match val {
-                        Some(val) => (
-                            values.push(map_json_value_to_clickhouse_value(&col.data_type, val)?),
-                            map_json_value_to_clickhouse_value(&col.data_type, val)?,
-                        ),
-                        None => (
-                            values.push(ClickHouseValue::new_null()),
-                            ClickHouseValue::new_null(),
-                        ),
+                        Some(Value::Null) => {
+                            if col.required {
+                                log::error!("Required column {} has a null value", col_name);
+                            } else {
+                                values.push(ClickHouseValue::new_null());
+                            }
+                        }
+                        Some(val) => {
+                            values.push(map_json_value_to_clickhouse_value(&col.data_type, val)?);
+                            map_json_value_to_clickhouse_value(&col.data_type, val)?;
+                        }
+                        None => {
+                            values.push(ClickHouseValue::new_null());
+                        }
                     };
                 }
 

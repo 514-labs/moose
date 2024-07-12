@@ -39,7 +39,11 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 
     let inner_layout = Layout::default()
         .direction(Direction::Horizontal)
-        .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
+        .constraints(vec![
+            Constraint::Percentage(33),
+            Constraint::Percentage(33),
+            Constraint::Percentage(33),
+        ])
         .split(paragraph_layout[0]);
 
     let mut rows: Vec<Row> = vec![];
@@ -107,9 +111,19 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         .bold()
         .white();
 
+    let req_per_sec = Block::new()
+        .title(format!(
+            "Requests Per Second: \n\n {}",
+            app.requests_per_sec
+        ))
+        .title_alignment(Alignment::Center)
+        .bold()
+        .white();
+
     frame.render_widget(block, outer_layout[0]);
     frame.render_widget(average_lat, inner_layout[0]);
     frame.render_widget(total_req, inner_layout[1]);
+    frame.render_widget(req_per_sec, inner_layout[2]);
     frame.render_widget(info_footer, outer_layout[3]);
     frame.render_stateful_widget(table, outer_layout[2], &mut table_state);
 }

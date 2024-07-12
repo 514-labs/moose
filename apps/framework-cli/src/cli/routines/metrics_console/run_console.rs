@@ -1,6 +1,7 @@
 use ratatui::backend::CrosstermBackend;
 use ratatui::Terminal;
 use std::io;
+use std::time;
 
 mod app;
 mod client;
@@ -24,18 +25,38 @@ pub async fn run_console() -> app::AppResult<()> {
     let mut tui = tui::Tui::new(terminal, events);
     tui.init()?;
 
+    let (tx, mut rx) = tokio::sync::mpsc::channel::<(f64, f64, Vec<(f64, f64, String)>)>(10);
+
+    tokio::spawn(async move {
+        loop {
+            let (average, total_requests, summary) = client::client().await.unwrap();
+            let _ = tx.send((average, total_requests, summary)).await;
+            tokio::time::sleep(time::Duration::from_millis(1000)).await;
+        }
+    });
+
     // Start the main loop.
     while app.running {
-        let (average, total_requests, summary) = client::client().await.unwrap();
-        app.set_metrics(average, total_requests, summary);
+        tokio::select! {
+            received = rx.recv() => {
+                match received {
+                    Some(v) => {
+                        app.req_per_sec(v.1);
+                        app.set_metrics(v.0, v.1, v.2);},
+                    None => {
+                    }
+                };
+            }
+            // Handle events.
+            event = tui.events.next() => { match event?{
+                    Event::Tick => app.tick(),
+                    Event::Key(key_event) => handle_key_events(key_event, &mut app)?,
+                }
+            }
+        }
 
         // Render the user interface.
         tui.draw(&mut app)?;
-        // Handle events.
-        match tui.events.next().await? {
-            Event::Tick => app.tick(),
-            Event::Key(key_event) => handle_key_events(key_event, &mut app)?,
-        }
     }
 
     // Exit the user interface.

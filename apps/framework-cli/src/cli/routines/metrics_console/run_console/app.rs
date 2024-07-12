@@ -6,6 +6,7 @@ pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 pub struct App {
     pub running: bool,
     pub average: f64,
+    pub requests_per_sec: f64,
     pub total_requests: f64,
     pub summary: Vec<(f64, f64, String)>,
     pub starting_row: usize,
@@ -16,6 +17,7 @@ impl Default for App {
         Self {
             running: true,
             average: 0.0,
+            requests_per_sec: 0.0,
             total_requests: 0.0,
             summary: vec![],
             starting_row: 0,
@@ -46,7 +48,7 @@ impl App {
     }
 
     pub fn down(&mut self) {
-        if self.starting_row < (self.summary.len() - 1) {
+        if (self.starting_row + 1) < self.summary.len() {
             self.starting_row += 1;
         }
     }
@@ -54,5 +56,9 @@ impl App {
         if self.starting_row > 0 {
             self.starting_row -= 1;
         }
+    }
+
+    pub fn req_per_sec(&mut self, new_total_requests: f64) {
+        self.requests_per_sec = new_total_requests - self.total_requests;
     }
 }

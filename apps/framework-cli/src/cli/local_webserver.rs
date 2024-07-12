@@ -491,13 +491,24 @@ async fn router(
             .status(StatusCode::NOT_FOUND)
             .body(Full::new(Bytes::from("no match"))),
     };
-    metrics
-        .send_metric(MetricsMessage::HTTPLatency((
-            metrics_path,
-            now.elapsed(),
-            metrics_method,
-        )))
-        .await;
+
+    if metrics_path
+        .clone()
+        .into_os_string()
+        .to_str()
+        .unwrap()
+        .to_string()
+        != "metrics"
+    {
+        metrics
+            .send_metric(MetricsMessage::HTTPLatency((
+                metrics_path,
+                now.elapsed(),
+                metrics_method,
+            )))
+            .await;
+    }
+
     res
 }
 

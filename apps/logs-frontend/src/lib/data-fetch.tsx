@@ -67,7 +67,7 @@ export function createLogColumns({
         const sevLevel = row.cell.row.original.severityLevel;
         return (
           <div
-            className={`h-fit p-1 rounded-lg ${severityLevelColors[sevLevel as SeverityLevel]}`}
+            className={`h-fit p-[3px] rounded-lg ${severityLevelColors[sevLevel as SeverityLevel]}`}
           >
             {sevLevel}
           </div>

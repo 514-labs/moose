@@ -73,7 +73,7 @@ function MetricChip({ name, count }: { name: SeverityLevel; count: number }) {
 
 function MetricChips({ metrics }: { metrics: CategoryNode["metrics"] }) {
   return (
-    <div className="ml-auto">
+    <div className="ml-auto flex gap-x-1">
       <MetricChip name={SeverityLevel.ERROR} count={metrics.error} />
       <MetricChip name={SeverityLevel.WARN} count={metrics.warn} />
       <MetricChip name={SeverityLevel.DEBUG} count={metrics.debug} />

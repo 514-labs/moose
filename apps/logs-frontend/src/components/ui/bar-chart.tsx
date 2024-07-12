@@ -85,8 +85,10 @@ export default function StackedBar({ source, search, severity }: Props) {
                 />
               }
             />
-            <Bar dataKey={"warn"} stackId={"a"} fill={"#bfdbfe"} />
-            <Bar dataKey={"error"} stackId={"a"} fill={`#fecaca`} />
+            <Bar dataKey={"error"} stackId={"a"} fill={`#fca5a5`} />
+            <Bar dataKey={"warn"} stackId={"a"} fill={"#fde047"} />
+            <Bar dataKey={"info"} stackId={"a"} fill={"#93c5fd"} />
+            <Bar dataKey={"debug"} stackId={"a"} fill={"#86efac"} />
           </BarChart>
         </ChartContainer>
       </CardContent>

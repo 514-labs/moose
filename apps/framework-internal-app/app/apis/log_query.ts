@@ -6,15 +6,6 @@ import {
   Sql,
 } from "@514labs/moose-lib";
 import { ParsedLogs } from "../datamodels/logs";
-interface QueryParams {
-  limit: string;
-  offset: string;
-  search: string;
-  sortDir?: string;
-  sortCol?: string;
-  source?: string;
-  severity?: string;
-}
 
 function orderBySql(orderBy: string | undefined, desc: string | undefined) {
   if (!orderBy || !desc) return sql``;
@@ -25,6 +16,16 @@ function orderBySql(orderBy: string | undefined, desc: string | undefined) {
     default:
       return sql`ORDER BY ${ConsumptionHelpers.column(orderBy)} ASC`;
   }
+}
+
+interface QueryParams {
+  limit: string;
+  offset: string;
+  search: string;
+  sortDir?: string;
+  sortCol?: string;
+  source?: string;
+  severity?: string;
 }
 
 export default async function handle(
@@ -39,6 +40,7 @@ export default async function handle(
   }: QueryParams,
   { client }: ConsumptionUtil,
 ) {
+  // Create SQL Query
   const logSql = createFilterLogSql({
     sortDir,
     sortCol,
@@ -47,10 +49,12 @@ export default async function handle(
     severity,
   });
 
+  // Fetch from prefconfigured clickhouse DB
   const response = client.query(
     sql`${logSql} LIMIT ${parseInt(limit)} OFFSET ${parseInt(offset)}`,
   );
 
+  // POST process the data for better FE consumption
   const data = (await (await response).json()) as ParsedLogs &
     { totalRowCount: number }[];
   return {

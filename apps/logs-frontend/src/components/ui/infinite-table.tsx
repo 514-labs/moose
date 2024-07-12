@@ -187,7 +187,7 @@ export function InfiniteTable<T>({
                   position: "absolute",
                   transform: `translateY(${virtualRow.start}px)`, //this should always be a `style` as it changes on scroll
                   width: "100%",
-                  height: 40,
+                  height: 37,
                 }}
               >
                 {row.getVisibleCells().map((cell) => {

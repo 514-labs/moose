@@ -110,8 +110,8 @@ export const ManifestoSection = () => {
           </Text>
 
           <Text>
-            —Tim, Nico, Alex, Chris, Dan, Carlos, Olivia, Jonathan and the
-            Georges
+            —Tim, Nico, Alex, Chris, Dan, Carlos, Olivia, Jonathan, the
+            Georges and Joj
           </Text>
         </HalfWidthContentContainer>
       </Grid>

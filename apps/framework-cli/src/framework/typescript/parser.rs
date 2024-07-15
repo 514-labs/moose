@@ -98,6 +98,15 @@ pub fn extract_data_model_from_file(
                 return Err(TypescriptParsingError::OtherError {
                     message: "We do not allow to mix String enums with Number based enums, please choose one".to_string()
                 });
+            } else if error_type == "unsupported_feature" {
+                let feature = output_json
+                    .get("feature_name")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                return Err(TypescriptParsingError::OtherError {
+                    message: format!("Unsupported feature: {}", feature),
+                });
             }
         }
     }
@@ -124,6 +133,7 @@ pub fn extract_data_model_from_file(
 #[cfg(test)]
 mod tests {
     use crate::framework::languages::SupportedLanguages;
+    use crate::framework::typescript::parser::TypescriptParsingError;
     use crate::framework::{
         data_model::parser::parse_data_model_file, typescript::parser::extract_data_model_from_file,
     };
@@ -260,5 +270,23 @@ mod tests {
             result.err().unwrap().to_string(),
             "Failed to parse the typescript file"
         );
+    }
+
+    #[test]
+    #[serial_test::serial(tspc)]
+    fn test_ts_index_type() {
+        let test_file = TEST_PROJECT.data_models_dir().join("index_type.ts");
+
+        let result = extract_data_model_from_file(&test_file, &TEST_PROJECT, "");
+        assert!(result.is_err());
+
+        let error = result.err().unwrap();
+
+        assert_eq!(error.to_string(), "Failed to parse the typescript file");
+        if let TypescriptParsingError::OtherError { message } = error {
+            assert_eq!(message, "Unsupported feature: index type");
+        } else {
+            assert!(false)
+        };
     }
 }

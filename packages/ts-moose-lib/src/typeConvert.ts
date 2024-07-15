@@ -6,7 +6,12 @@ import ts, {
   TypeFlags,
 } from "typescript";
 import { enumConvert, isEnum } from "./enumConvert";
-import { Column, DataType, UnknownType } from "./dataModelTypes";
+import {
+  Column,
+  DataType,
+  UnknownType,
+  UnsupportedFeature,
+} from "./dataModelTypes";
 
 const dateType = (checker: TypeChecker) =>
   checker
@@ -75,6 +80,11 @@ const hasKeyWrapping = (typeNode: ts.TypeNode | undefined) => {
 };
 
 export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
+  if (checker.getIndexInfosOfType(t).length !== 0) {
+    console.log(checker.getIndexInfosOfType(t));
+    throw new UnsupportedFeature("index type");
+  }
+
   return checker.getPropertiesOfType(t).map((prop) => {
     const node = prop.getDeclarations()![0] as ts.PropertyDeclaration;
     const type = checker.getTypeOfSymbolAtLocation(prop, node);

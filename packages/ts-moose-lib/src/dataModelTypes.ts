@@ -33,9 +33,17 @@ export class UnknownType extends Error {
 }
 
 export class UnsupportedEnum extends Error {
-  enum_name: string;
-  constructor(enum_name: string) {
+  enumName: string;
+  constructor(enumName: string) {
     super();
-    this.enum_name = enum_name;
+    this.enumName = enumName;
+  }
+}
+
+export class UnsupportedFeature extends Error {
+  featureName: string;
+  constructor(featureName: string) {
+    super();
+    this.featureName = featureName;
   }
 }

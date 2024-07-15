@@ -8,6 +8,7 @@ import {
   DataModel,
   UnknownType,
   UnsupportedEnum,
+  UnsupportedFeature,
 } from "./dataModelTypes";
 import { enumConvert } from "./enumConvert";
 
@@ -76,7 +77,12 @@ export default function (
           } else if (e instanceof UnsupportedEnum) {
             output = {
               error_type: "unsupported_enum",
-              type_name: e.enum_name,
+              type_name: e.enumName,
+            };
+          } else if (e instanceof UnsupportedFeature) {
+            output = {
+              error_type: "unsupported_feature",
+              feature_name: e.featureName,
             };
           } else {
             throw e;

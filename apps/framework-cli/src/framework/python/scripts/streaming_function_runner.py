@@ -1,6 +1,6 @@
 import argparse
 import dataclasses
-from datetime import datetime
+from datetime import datetime, timezone
 from importlib import import_module
 import json
 import sys
@@ -8,6 +8,8 @@ from kafka import KafkaConsumer, KafkaProducer
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, datetime):
+            if o.tzinfo is None:
+                o = o.replace(tzinfo=timezone.utc)
             return o.isoformat()
         if dataclasses.is_dataclass(o):
             return dataclasses.asdict(o)

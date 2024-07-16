@@ -41,19 +41,38 @@ pub fn render(app: &mut App, frame: &mut Frame) {
 
         for x in &app.summary {
             rows.push(
-                Row::new(vec![
-                    format!("{}", x.path.to_string()),
-                    format!(
-                        "{}",
-                        ((((x.latency_sum / x.request_count) * 1000.0) * 1000.0).round() / 1000.0)
-                            .to_string()
-                    ),
-                    format!(
-                        "{}",
-                        (((x.request_count * 1000.0).round()) / 1000.0).to_string()
-                    ),
-                ])
-                .not_bold(),
+                if *app.path_requests_per_sec.get(&x.path).unwrap_or(&0.0) > 0.0 {
+                    Row::new(vec![
+                        format!("{}", x.path.to_string()),
+                        format!(
+                            "{}",
+                            ((((x.latency_sum / x.request_count) * 1000.0) * 1000.0).round()
+                                / 1000.0)
+                                .to_string()
+                        ),
+                        format!(
+                            "{}",
+                            (((x.request_count * 1000.0).round()) / 1000.0).to_string()
+                        ),
+                    ])
+                    .bold()
+                    .white()
+                } else {
+                    Row::new(vec![
+                        format!("{}", x.path.to_string()),
+                        format!(
+                            "{}",
+                            ((((x.latency_sum / x.request_count) * 1000.0) * 1000.0).round()
+                                / 1000.0)
+                                .to_string()
+                        ),
+                        format!(
+                            "{}",
+                            (((x.request_count * 1000.0).round()) / 1000.0).to_string()
+                        ),
+                    ])
+                    .not_bold()
+                },
             )
         }
         let widths = [Constraint::Min(1), Constraint::Min(1), Constraint::Min(1)];
@@ -132,6 +151,15 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             ])
             .split(frame.size());
 
+        let body_layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(vec![
+                Constraint::Percentage(40),
+                Constraint::Percentage(50),
+                Constraint::Fill(10),
+            ])
+            .split(outer_layout[2]);
+
         let title = Block::new()
             .title(app.state.clone())
             .title_alignment(Alignment::Center)
@@ -166,7 +194,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         let path_req_per_sec_block = Block::new()
             .title(format!(
                 "Requests Per Second: {}",
-                (app.path_requests_per_sec)
+                (app.path_requests_per_sec.get(&app.state).unwrap_or(&0.0))
             ))
             .title_alignment(Alignment::Center)
             .bold()
@@ -204,7 +232,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 chart_data_vec.push(
                     Bar::default()
                         .value(each.count as u64)
-                        .label((each.less_than.to_string() + " ms").into()),
+                        .label((each.less_than.to_string() + " s").into()),
                 );
             } else {
                 chart_data_vec.push(
@@ -229,6 +257,97 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             .bar_style(Style::default().fg(Color::Green))
             .value_style(Style::default().black().on_green().bold());
 
-        frame.render_widget(bar_chart, outer_layout[2]);
+        let scale_layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(vec![
+                Constraint::Percentage(2),
+                Constraint::Percentage(46),
+                Constraint::Percentage(3),
+                Constraint::Percentage(46),
+                Constraint::Percentage(2),
+            ])
+            .split(body_layout[2]);
+
+        let chart: Sparkline;
+        let mut top_paragraph: Paragraph = Paragraph::new("<-0");
+        let mut middle_paragraph: Paragraph = Paragraph::new("<-0");
+        let mut bottom_paragraph: Paragraph = Paragraph::new("<-0");
+
+        if !app.requests_per_sec_vec.contains_key(&app.state) {
+            chart = Sparkline::default()
+                .block(
+                    Block::new()
+                        .borders(Borders::LEFT | Borders::RIGHT)
+                        .title(format!(
+                            "Requests Per Second Over the Past {} sec",
+                            (app.viewport.width as f64 * 0.48) as usize
+                        )),
+                )
+                .data(&[0])
+                .style(Style::default().fg(Color::Green));
+        } else {
+            chart = Sparkline::default()
+                .block(
+                    Block::new()
+                        .borders(Borders::LEFT | Borders::RIGHT)
+                        .title(format!(
+                            "Requests Per Second Over the Past {} sec",
+                            (app.viewport.width as f64 * 0.48) as usize
+                        )),
+                )
+                .data(
+                    &app.requests_per_sec_vec.get(&app.state).unwrap()[app
+                        .requests_per_sec_vec
+                        .get(&app.state)
+                        .unwrap()
+                        .len()
+                        - (app.viewport.width as f64 * 0.48) as usize..],
+                )
+                .style(Style::default().fg(Color::Green));
+
+            top_paragraph = Paragraph::new(
+                Line::from(format!(
+                    "<-{}",
+                    &app.requests_per_sec_vec.get(&app.state).unwrap()[app
+                        .requests_per_sec_vec
+                        .get(&app.state)
+                        .unwrap()
+                        .len()
+                        - (app.viewport.width as f64 * 0.48) as usize..]
+                        .iter()
+                        .max()
+                        .unwrap_or(&0)
+                ))
+                .green(),
+            )
+            .left_aligned();
+
+            middle_paragraph = Paragraph::new(
+                Line::from(format!(
+                    "<-{}",
+                    *app.requests_per_sec_vec.get(&app.state).unwrap()[app
+                        .requests_per_sec_vec
+                        .get(&app.state)
+                        .unwrap()
+                        .len()
+                        - (app.viewport.width as f64 * 0.48) as usize..]
+                        .iter()
+                        .max()
+                        .unwrap_or(&0)
+                        / 2
+                ))
+                .green(),
+            )
+            .left_aligned();
+
+            bottom_paragraph = Paragraph::new(Line::from("<-0").green()).left_aligned();
+        }
+
+        frame.render_widget(chart, body_layout[1]);
+        frame.render_widget(top_paragraph, scale_layout[0]);
+        frame.render_widget(middle_paragraph, scale_layout[2]);
+        frame.render_widget(bottom_paragraph, scale_layout[4]);
+
+        frame.render_widget(bar_chart, body_layout[0]);
     }
 }

@@ -26,9 +26,15 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
         KeyCode::Esc => {
             if app.state == "main" {
                 app.quit();
+            } else if app.view != "main" {
+                app.view = "main".to_string();
             } else {
                 app.set_state("main".to_string());
             }
+        }
+
+        KeyCode::Char('g') => {
+            app.view = "graphs".to_string();
         }
         _ => {}
     }

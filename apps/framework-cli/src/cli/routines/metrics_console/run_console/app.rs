@@ -75,6 +75,7 @@ impl App {
     pub fn req_per_sec(&mut self, new_total_requests: f64, path_metrics: &Vec<PathMetricsData>) {
         self.requests_per_sec = new_total_requests - self.total_requests;
 
+        // Initializes variables and vec for each path in summary to keep unwraps in ui.rs safe
         for path in &self.summary {
             if !self.path_requests_per_sec.contains_key(&path.path) {
                 self.path_requests_per_sec

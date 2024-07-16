@@ -170,6 +170,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             .green();
 
         let average_latency_block = Block::new()
+            // This unwrap is safe because we know the key exists
             .title(format!(
                 "Average Latency: {}",
                 (((app.summary.get(app.starting_row).unwrap().latency_sum
@@ -184,6 +185,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             .white();
 
         let request_count_block = Block::new()
+            // This unwrap is safe because we know the key exists
             .title(format!(
                 "Number of Requests: {}",
                 (app.summary.get(app.starting_row).unwrap().request_count)
@@ -194,6 +196,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             .white();
 
         let path_req_per_sec_block = Block::new()
+            // This unwrap is safe because we know the key exists
             .title(format!(
                 "Requests Per Second: {}",
                 (app.path_requests_per_sec.get(&app.state).unwrap_or(&0.0))
@@ -288,6 +291,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 .data(&[0])
                 .style(Style::default().fg(Color::Green));
         } else {
+            // This unwrap is safe because we know the key exists
             chart = Sparkline::default()
                 .block(
                     Block::new()
@@ -298,24 +302,27 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                         )),
                 )
                 .data(
-                    &app.requests_per_sec_vec.get(&app.state).unwrap()[app
-                        .requests_per_sec_vec
-                        .get(&app.state)
-                        .unwrap()
-                        .len()
-                        - (app.viewport.width as f64 * 0.48) as usize..],
+                    &app.requests_per_sec_vec.get(&app.state).unwrap()
+                        [app // This unwrap is safe because we know the key exists
+                            .requests_per_sec_vec
+                            .get(&app.state)
+                            .unwrap()
+                            .len()
+                            - (app.viewport.width as f64 * 0.48) as usize..],
                 )
                 .style(Style::default().fg(Color::Green));
 
+            // This unwrap is safe because we know the key exists
             top_paragraph = Paragraph::new(
                 Line::from(format!(
                     "<-{}",
-                    &app.requests_per_sec_vec.get(&app.state).unwrap()[app
-                        .requests_per_sec_vec
-                        .get(&app.state)
-                        .unwrap()
-                        .len()
-                        - (app.viewport.width as f64 * 0.48) as usize..]
+                    &app.requests_per_sec_vec.get(&app.state).unwrap()
+                        [app // This unwrap is safe because we know the key exists
+                            .requests_per_sec_vec
+                            .get(&app.state)
+                            .unwrap()
+                            .len()
+                            - (app.viewport.width as f64 * 0.48) as usize..]
                         .iter()
                         .max()
                         .unwrap_or(&0)
@@ -324,15 +331,17 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             )
             .left_aligned();
 
+            // This unwrap is safe because we know the key exists
             middle_paragraph = Paragraph::new(
                 Line::from(format!(
                     "<-{}",
-                    *app.requests_per_sec_vec.get(&app.state).unwrap()[app
-                        .requests_per_sec_vec
-                        .get(&app.state)
-                        .unwrap()
-                        .len()
-                        - (app.viewport.width as f64 * 0.48) as usize..]
+                    *app.requests_per_sec_vec.get(&app.state).unwrap()
+                        [app // This unwrap is safe because we know the key exists
+                            .requests_per_sec_vec
+                            .get(&app.state)
+                            .unwrap()
+                            .len()
+                            - (app.viewport.width as f64 * 0.48) as usize..]
                         .iter()
                         .max()
                         .unwrap_or(&0)

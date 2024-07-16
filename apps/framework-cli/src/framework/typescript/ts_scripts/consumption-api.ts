@@ -88,6 +88,14 @@ const startApiService = async () => {
   console.log("Starting API service");
   const server = http.createServer(apiHandler);
 
+  process.on("SIGTERM", async () => {
+    console.log("Received SIGTERM, shutting down...");
+    server.close(() => {
+      console.log("Consumption webserver shutdown...");
+      process.exit(0);
+    });
+  });
+
   server.listen(4001, () => {
     console.log("Server running on port 4001");
   });

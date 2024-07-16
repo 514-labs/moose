@@ -55,9 +55,6 @@ pub async fn run_console() -> app::AppResult<()> {
 
         // Render the user interface.
         tui.draw(&mut app)?;
-        // if app.state != "main" {
-        //     app.set_path_data(app.state.clone()).await;
-        // }
     }
 
     // Exit the user interface.

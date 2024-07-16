@@ -9,7 +9,6 @@ pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 pub struct App {
     pub viewport: Rect,
     pub state: String,
-    pub view: String,
     pub running: bool,
     pub average: f64,
     pub requests_per_sec: f64,
@@ -26,7 +25,6 @@ impl Default for App {
         Self {
             viewport: Rect::new(0, 0, 0, 0),
             state: "main".to_string(),
-            view: "main".to_string(),
             running: true,
             average: 0.0,
             requests_per_sec: 0.0,

@@ -57,42 +57,41 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                     ])
                     .bold()
                     .magenta()
+                } else if x.path.contains("ingest/") || x.path.contains("consumption/") {
+                    Row::new(vec![
+                        format!("{}", x.path.to_string()),
+                        format!(
+                            "{}",
+                            ((((x.latency_sum / x.request_count) * 1000.0) * 1000.0).round()
+                                / 1000.0)
+                                .to_string()
+                        ),
+                        format!(
+                            "{}",
+                            (((x.request_count * 1000.0).round()) / 1000.0).to_string()
+                        ),
+                    ])
+                    .not_bold()
                 } else {
-                    if x.path.contains("ingest/") || x.path.contains("consumption/") {
-                        Row::new(vec![
-                            format!("{}", x.path.to_string()),
-                            format!(
-                                "{}",
-                                ((((x.latency_sum / x.request_count) * 1000.0) * 1000.0).round()
-                                    / 1000.0)
-                                    .to_string()
-                            ),
-                            format!(
-                                "{}",
-                                (((x.request_count * 1000.0).round()) / 1000.0).to_string()
-                            ),
-                        ])
-                        .not_bold()
-                    } else {
-                        Row::new(vec![
-                            format!("{}", x.path.to_string()),
-                            format!(
-                                "{}",
-                                ((((x.latency_sum / x.request_count) * 1000.0) * 1000.0).round()
-                                    / 1000.0)
-                                    .to_string()
-                            ),
-                            format!(
-                                "{}",
-                                (((x.request_count * 1000.0).round()) / 1000.0).to_string()
-                            ),
-                        ])
-                        .cyan()
-                        .not_bold()
-                    }
+                    Row::new(vec![
+                        format!("{}", x.path.to_string()),
+                        format!(
+                            "{}",
+                            ((((x.latency_sum / x.request_count) * 1000.0) * 1000.0).round()
+                                / 1000.0)
+                                .to_string()
+                        ),
+                        format!(
+                            "{}",
+                            (((x.request_count * 1000.0).round()) / 1000.0).to_string()
+                        ),
+                    ])
+                    .cyan()
+                    .not_bold()
                 },
             )
         }
+
         let widths = [Constraint::Min(1), Constraint::Min(1), Constraint::Min(1)];
         let mut table_state = TableState::default();
         table_state.select(Some(app.starting_row));

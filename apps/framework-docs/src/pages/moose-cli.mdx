@@ -49,9 +49,10 @@ moose init <name> --language <language> <--location <location>> <--no-fail-alrea
 Builds your moose project. Syncs model changes, performs cleanup and prepares your project for use and deployment.
 
 When the `--docker` flag is used, the Moose build command also packages your project into local Docker containers.
+You can also use optional flags to specify which architecture to build for.
 
 ```txt filename="Terminal" copy
-moose build <--docker>
+moose build <--docker> <--amd64 | --arm64>
 ```
 
 ### Dev

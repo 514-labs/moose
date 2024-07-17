@@ -6,9 +6,14 @@ use std::{collections::HashMap, error};
 
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 
+pub enum State {
+    Main(),
+    PathDetails(String),
+}
+
 pub struct App {
     pub viewport: Rect,
-    pub state: String,
+    pub state: State,
     pub running: bool,
     pub average: f64,
     pub requests_per_sec: f64,
@@ -24,7 +29,7 @@ impl Default for App {
     fn default() -> Self {
         Self {
             viewport: Rect::new(0, 0, 0, 0),
-            state: "main".to_string(),
+            state: State::Main(),
             running: true,
             average: 0.0,
             requests_per_sec: 0.0,
@@ -108,7 +113,7 @@ impl App {
         }
     }
 
-    pub fn set_state(&mut self, state: String) {
+    pub fn set_state(&mut self, state: State) {
         self.state = state;
     }
 }

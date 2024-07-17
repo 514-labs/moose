@@ -5,88 +5,90 @@ use ratatui::{
     style::{Color, Style, Stylize},
     Frame,
 };
-
 use ratatui::{prelude::*, widgets::*};
 
-use crate::cli::routines::metrics_console::run_console::app::App;
+use crate::cli::routines::metrics_console::run_console::app::{App, State};
 
 const INFO_TEXT: &str = "(q) quit | (↑) move up | (↓) move down | (enter) view endpoint details";
 
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame) {
-    if app.state == "main" {
-        let outer_layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints(vec![
-                Constraint::Max(2),
-                Constraint::Max(2),
-                Constraint::Fill(80),
-                Constraint::Max(3),
-            ])
-            .split(frame.size());
+    match &app.state {
+        State::Main() => {
+            let outer_layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(vec![
+                    Constraint::Max(2),
+                    Constraint::Max(2),
+                    Constraint::Fill(80),
+                    Constraint::Max(3),
+                ])
+                .split(frame.size());
 
-        let paragraph_layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints(vec![Constraint::Max(30)])
-            .split(outer_layout[1]);
+            let paragraph_layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(vec![Constraint::Max(30)])
+                .split(outer_layout[1]);
 
-        let inner_layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints(vec![
-                Constraint::Percentage(33),
-                Constraint::Percentage(33),
-                Constraint::Percentage(33),
-            ])
-            .split(paragraph_layout[0]);
+            let inner_layout = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(vec![
+                    Constraint::Percentage(33),
+                    Constraint::Percentage(33),
+                    Constraint::Percentage(33),
+                ])
+                .split(paragraph_layout[0]);
 
-        render_main_page_details(frame, &outer_layout);
-        render_overview_metrics(app, frame, &inner_layout);
-        render_table(app, frame, outer_layout[2]);
-    } else {
-        let outer_layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints(vec![
-                Constraint::Max(2),
-                Constraint::Max(2),
-                Constraint::Fill(93),
-                Constraint::Max(3),
-            ])
-            .split(frame.size());
+            render_main_page_details(frame, &outer_layout);
+            render_overview_metrics(app, frame, &inner_layout);
+            render_table(app, frame, outer_layout[2]);
+        }
+        State::PathDetails(state) => {
+            let outer_layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(vec![
+                    Constraint::Max(2),
+                    Constraint::Max(2),
+                    Constraint::Fill(93),
+                    Constraint::Max(3),
+                ])
+                .split(frame.size());
 
-        let body_layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints(vec![
-                Constraint::Percentage(40),
-                Constraint::Percentage(50),
-                Constraint::Fill(10),
-            ])
-            .split(outer_layout[2]);
+            let body_layout = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(vec![
+                    Constraint::Percentage(40),
+                    Constraint::Percentage(50),
+                    Constraint::Fill(10),
+                ])
+                .split(outer_layout[2]);
 
-        let data_layout = Layout::default()
-            .direction(Direction::Horizontal)
-            .constraints(vec![
-                Constraint::Percentage(33),
-                Constraint::Percentage(33),
-                Constraint::Percentage(33),
-            ])
-            .split(outer_layout[1]);
+            let data_layout = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(vec![
+                    Constraint::Percentage(33),
+                    Constraint::Percentage(33),
+                    Constraint::Percentage(33),
+                ])
+                .split(outer_layout[1]);
 
-        render_path_overview_data(app, frame, &data_layout);
-        render_path_page_details(app, frame, &outer_layout);
+            render_path_overview_data(&*app, frame, &data_layout, state);
+            render_path_page_details(frame, &outer_layout, state.clone());
 
-        let scale_layout = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints(vec![
-                Constraint::Percentage(2),
-                Constraint::Percentage(46),
-                Constraint::Percentage(3),
-                Constraint::Percentage(46),
-                Constraint::Percentage(2),
-            ])
-            .split(body_layout[2]);
+            let scale_layout = Layout::default()
+                .direction(Direction::Vertical)
+                .constraints(vec![
+                    Constraint::Percentage(2),
+                    Constraint::Percentage(46),
+                    Constraint::Percentage(3),
+                    Constraint::Percentage(46),
+                    Constraint::Percentage(2),
+                ])
+                .split(body_layout[2]);
 
-        render_sparkline_chart(app, frame, &body_layout, &scale_layout);
-        render_bar_chart(app, frame, &body_layout);
+            render_sparkline_chart(&*app, frame, &body_layout, &scale_layout, state);
+            render_bar_chart(app, frame, &body_layout);
+        }
     }
 }
 
@@ -153,7 +155,7 @@ fn render_table(app: &mut App, frame: &mut Frame, layout: Rect) {
 fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
     let average_lat = Block::new()
         .title(format!(
-            "Average Latency: \n {}",
+            "Average Latency: \n {} ms",
             (app.average * 1000.0).round() / 1000.0
         ))
         .title_alignment(Alignment::Center)
@@ -203,11 +205,11 @@ fn render_main_page_details(frame: &mut Frame, layout: &Rc<[Rect]>) {
     frame.render_widget(info_footer, layout[3]);
 }
 
-fn render_path_overview_data(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
+fn render_path_overview_data(app: &App, frame: &mut Frame, layout: &Rc<[Rect]>, state: &String) {
     let average_latency_block = Block::new()
         // This unwrap is safe because we know the key exists
         .title(format!(
-            "Average Latency: {}",
+            "Average Latency: {}ms ",
             (((app.summary.get(app.starting_row).unwrap().latency_sum
                 / app.summary.get(app.starting_row).unwrap().request_count)
                 * 1000000.0)
@@ -234,7 +236,7 @@ fn render_path_overview_data(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect
         // This unwrap is safe because we know the key exists
         .title(format!(
             "Requests Per Second: {}",
-            (app.path_requests_per_sec.get(&app.state).unwrap_or(&0.0))
+            (app.path_requests_per_sec.get(state).unwrap_or(&0.0))
         ))
         .title_alignment(Alignment::Center)
         .bold()
@@ -246,9 +248,9 @@ fn render_path_overview_data(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect
     frame.render_widget(path_req_per_sec_block, layout[2]);
 }
 
-fn render_path_page_details(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
+fn render_path_page_details(frame: &mut Frame, layout: &Rc<[Rect]>, state: String) {
     let title = Block::new()
-        .title(app.state.clone())
+        .title(state)
         .title_alignment(Alignment::Center)
         .bold()
         .borders(Borders::TOP)
@@ -303,16 +305,17 @@ fn render_bar_chart(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
     frame.render_widget(bar_chart, layout[0]);
 }
 fn render_sparkline_chart(
-    app: &mut App,
+    app: &App,
     frame: &mut Frame,
     chart_layout: &Rc<[Rect]>,
     scale_layout: &Rc<[Rect]>,
+    state: &String,
 ) {
     let chart: Sparkline;
     let mut top_paragraph: Paragraph = Paragraph::new("<-0");
     let mut middle_paragraph: Paragraph = Paragraph::new("<-0");
     let mut bottom_paragraph: Paragraph = Paragraph::new("<-0");
-    if !app.requests_per_sec_vec.contains_key(&app.state) {
+    if !app.requests_per_sec_vec.contains_key(state) {
         chart = Sparkline::default()
             .block(
                 Block::new()
@@ -336,10 +339,10 @@ fn render_sparkline_chart(
                     )),
             )
             .data(
-                &app.requests_per_sec_vec.get(&app.state).unwrap()
+                &app.requests_per_sec_vec.get(state).unwrap()
                     [app // This unwrap is safe because we know the key exists
                         .requests_per_sec_vec
-                        .get(&app.state)
+                        .get(state)
                         .unwrap()
                         .len()
                         - (app.viewport.width as f64 * 0.48) as usize..],
@@ -350,10 +353,10 @@ fn render_sparkline_chart(
         top_paragraph = Paragraph::new(
             Line::from(format!(
                 "<-{}",
-                &app.requests_per_sec_vec.get(&app.state).unwrap()
+                &app.requests_per_sec_vec.get(state).unwrap()
                     [app // This unwrap is safe because we know the key exists
                         .requests_per_sec_vec
-                        .get(&app.state)
+                        .get(state)
                         .unwrap()
                         .len()
                         - (app.viewport.width as f64 * 0.48) as usize..]
@@ -369,10 +372,10 @@ fn render_sparkline_chart(
         middle_paragraph = Paragraph::new(
             Line::from(format!(
                 "<-{}",
-                *app.requests_per_sec_vec.get(&app.state).unwrap()
+                *app.requests_per_sec_vec.get(state).unwrap()
                     [app // This unwrap is safe because we know the key exists
                         .requests_per_sec_vec
-                        .get(&app.state)
+                        .get(state)
                         .unwrap()
                         .len()
                         - (app.viewport.width as f64 * 0.48) as usize..]

@@ -20,6 +20,7 @@ use crate::project::Project;
 use bytes::Buf;
 use http_body_util::BodyExt;
 use http_body_util::Full;
+use hyper::body::Body;
 use hyper::body::Bytes;
 use hyper::body::Incoming;
 use hyper::service::Service;
@@ -86,6 +87,8 @@ async fn create_client(
     host: String,
     consumption_apis: &RwLock<HashSet<String>>,
     is_prod: bool,
+    metrics: Arc<Metrics>,
+    route: PathBuf,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
     // local only for now
     let url = format!("http://{}:{}", host, 4001).parse::<hyper::Uri>()?;
@@ -142,6 +145,12 @@ async fn create_client(
 
     let res = sender.send_request(req).await?;
     let body = res.collect().await.unwrap().to_bytes().to_vec();
+    metrics
+        .send_metric(MetricsMessage::GetNumberOfBytesOut(
+            route,
+            body.len() as u64,
+        ))
+        .await;
 
     Ok(Response::builder()
         .status(StatusCode::OK)
@@ -303,12 +312,22 @@ async fn handle_json_req(
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
     req: Request<Incoming>,
+    metrics: Arc<Metrics>,
+    route: PathBuf,
 ) -> Response<Full<Bytes>> {
     // TODO probably a refactor to be done here with the array json but it doesn't seem to be
     // straightforward to do it in a generic way.
     let url = req.uri().to_string();
     let body = to_reader(req).await;
     let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body);
+    let number_of_bytes = req.body().size_hint().exact().unwrap();
+
+    metrics
+        .send_metric(MetricsMessage::GetNumberOfBytesIn(
+            route,
+            number_of_bytes as u64,
+        ))
+        .await;
     // TODO add check that the payload has the proper schema
 
     if let Err(e) = parsed {
@@ -346,13 +365,23 @@ async fn handle_json_array_body(
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
     req: Request<Incoming>,
+    metrics: Arc<Metrics>,
+    route: PathBuf,
 ) -> Response<Full<Bytes>> {
     // TODO probably a refactor to be done here with the json but it doesn't seem to be
     // straightforward to do it in a generic way.
     let url = req.uri().to_string();
+    let number_of_bytes = req.body().size_hint().exact().unwrap();
     let body = to_reader(req).await;
 
     let parsed: Result<Vec<Value>, serde_json::Error> = serde_json::from_reader(body);
+
+    metrics
+        .send_metric(MetricsMessage::GetNumberOfBytesIn(
+            route,
+            number_of_bytes as u64,
+        ))
+        .await;
     if let Err(e) = parsed {
         return bad_json_response(e);
     }
@@ -394,6 +423,7 @@ async fn ingest_route(
     route: PathBuf,
     configured_producer: ConfiguredProducer,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
+    metrics: Arc<Metrics>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     show_message!(
         MessageType::Info,
@@ -405,12 +435,22 @@ async fn ingest_route(
 
     match route_table.read().await.get(&route) {
         Some(route_meta) => match route_meta.format {
-            EndpointIngestionFormat::Json => {
-                Ok(handle_json_req(&configured_producer, &route_meta.topic_name, req).await)
-            }
-            EndpointIngestionFormat::JsonArray => {
-                Ok(handle_json_array_body(&configured_producer, &route_meta.topic_name, req).await)
-            }
+            EndpointIngestionFormat::Json => Ok(handle_json_req(
+                &configured_producer,
+                &route_meta.topic_name,
+                req,
+                metrics,
+                route,
+            )
+            .await),
+            EndpointIngestionFormat::JsonArray => Ok(handle_json_array_body(
+                &configured_producer,
+                &route_meta.topic_name,
+                req,
+                metrics,
+                route,
+            )
+            .await),
         },
         None => Response::builder()
             .status(StatusCode::NOT_FOUND)
@@ -464,15 +504,24 @@ async fn router(
                 route.join(current_version),
                 configured_producer,
                 route_table,
+                metrics.clone(),
             )
             .await
         }
         (&hyper::Method::POST, ["ingest", _, _]) => {
-            ingest_route(req, route, configured_producer, route_table).await
+            ingest_route(
+                req,
+                route,
+                configured_producer,
+                route_table,
+                metrics.clone(),
+            )
+            .await
         }
 
         (&hyper::Method::GET, ["consumption", _rt]) => {
-            match create_client(req, host, consumption_apis, is_prod).await {
+            match create_client(req, host, consumption_apis, is_prod, metrics.clone(), route).await
+            {
                 Ok(response) => Ok(response),
                 Err(e) => {
                     debug!("Error: {:?}", e);

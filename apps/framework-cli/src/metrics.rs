@@ -1,3 +1,4 @@
+use prometheus_client::metrics::counter::Counter;
 use prometheus_client::metrics::family::Family;
 use prometheus_client::{
     encoding::{text::encode, EncodeLabelSet},
@@ -16,6 +17,8 @@ pub enum MetricsErrors {
 pub enum MetricsMessage {
     GetMetricsRegistryAsString(tokio::sync::oneshot::Sender<String>),
     HTTPLatency((PathBuf, Duration, String)),
+    GetNumberOfBytesIn(PathBuf, u64),
+    GetNumberOfBytesOut(PathBuf, u64),
 }
 
 #[derive(Clone)]
@@ -25,13 +28,20 @@ pub struct Metrics {
 
 pub struct Statistics {
     pub total_latency_histogram: Histogram,
-    pub histogram_family: Family<Labels, Histogram>,
+    pub histogram_family: Family<HistogramLabels, Histogram>,
+    pub bytes_in_family: Family<CounterLabels, Counter>,
+    pub bytes_out_family: Family<CounterLabels, Counter>,
     pub registry: Option<Registry>,
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
-pub struct Labels {
+pub struct HistogramLabels {
     method: String,
+    path: String,
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
+pub struct CounterLabels {
     path: String,
 }
 
@@ -70,7 +80,7 @@ impl Metrics {
                 ]
                 .into_iter(),
             ),
-            histogram_family: Family::<Labels, Histogram>::new_with_constructor(|| {
+            histogram_family: Family::<HistogramLabels, Histogram>::new_with_constructor(|| {
                 Histogram::new(
                     [
                         0.001, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0, 120.0,
@@ -78,6 +88,12 @@ impl Metrics {
                     ]
                     .into_iter(),
                 )
+            }),
+            bytes_in_family: Family::<CounterLabels, Counter>::new_with_constructor(|| {
+                Counter::default()
+            }),
+            bytes_out_family: Family::<CounterLabels, Counter>::new_with_constructor(|| {
+                Counter::default()
             }),
             registry: Some(Registry::default()),
         };
@@ -92,6 +108,16 @@ impl Metrics {
             "Latency of HTTP requests",
             data.histogram_family.clone(),
         );
+        new_registry.register(
+            "bytes_in",
+            "Bytes received through ingest endpoints",
+            data.bytes_in_family.clone(),
+        );
+        new_registry.register(
+            "bytes_out",
+            "Bytes sent out through consumption endpoints",
+            data.bytes_out_family.clone(),
+        );
 
         data.registry = Some(new_registry);
 
@@ -103,12 +129,35 @@ impl Metrics {
                     }
                     MetricsMessage::HTTPLatency((path, duration, method)) => {
                         data.histogram_family
-                            .get_or_create(&Labels {
+                            .get_or_create(&HistogramLabels {
                                 method,
                                 path: path.into_os_string().to_str().unwrap().to_string(),
                             })
                             .observe(duration.as_secs_f64());
                         data.total_latency_histogram.observe(duration.as_secs_f64())
+                    }
+                    MetricsMessage::GetNumberOfBytesIn(path, number_of_bytes) => {
+                        data.bytes_in_family
+                            .get_or_create(&CounterLabels {
+                                path: path.clone().into_os_string().to_str().unwrap().to_string(),
+                            })
+                            .inc_by(number_of_bytes);
+                        println!(
+                            "bytes in {}",
+                            data.bytes_in_family
+                                .get_or_create(&CounterLabels {
+                                    path: "ingest/Logs/0.0".to_string()
+                                })
+                                .get()
+                        );
+                    }
+                    MetricsMessage::GetNumberOfBytesOut(path, number_of_bytes) => {
+                        data.bytes_out_family
+                            .get_or_create(&CounterLabels {
+                                path: path.clone().into_os_string().to_str().unwrap().to_string(),
+                            })
+                            .inc_by(number_of_bytes);
+                        println!("{} bytes out {}", number_of_bytes, path.to_str().unwrap());
                     }
                 };
             }

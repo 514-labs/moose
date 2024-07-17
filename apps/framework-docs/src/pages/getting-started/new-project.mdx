@@ -1,4 +1,4 @@
-import { Callout, Tabs } from "nextra/components";
+import { Callout, Tabs, Steps } from "nextra/components";
 
 ## Requirements
 
@@ -11,52 +11,140 @@ You will need the following dependencies installed on your machine before you ca
 
 ---
 
-## Quick Start
+## Create Moose App
 
-The easiest way to get started with a new MooseJS application is to use `create-moose-app`. This will automatically create a project folder for you, and initialize a skeleton MooseJS app with the entire project structure you need to get started.
+In your terminal, run:
 
-```txt filename="Terminal" copy
-npx create-moose-app my-moose-app
+```bash filename="Terminal" copy
+npx create-moose-app@latest my-moose-app
 ```
 
-Explore the docs to learn more about [your project structure](https://docs.moosejs.com/getting-started/project-structure) or the [architecture of your new app](https://docs.moosejs.com/getting-started/architecture).
+This will automatically create a new project folder and initialize a skeleton Moose app with the entire project structure you need to get started.
 
-## Run your Moose app locally
+### Install Dependencies
 
-One of Moose's most powerful features is its ability to run a dev server on your local machine. As you're developing, Moose can run a local version of your entire end-to-end app, watch your project folder for any code changes, and automatically update your locally running app as you save changes. This lets you see and test changes in real time, before you push to production, just like if you were developing a web app.
+Navigate to your project directory and install project dependencies:
 
-Let's try it out, by using the Moose CLI command `Dev` to start the local dev server. First, go to your project directory:
-
-```txt filename="Terminal" copy
-    cd my-moose-app
+```bash filename="Terminal" copy
+cd my-moose-app && npm install
 ```
+
+---
+
+## Start Local Dev Server
 
 <Callout>
-  Note you must have Docker installed and RUNNING locally to run Dev. Please
-  make sure you start Docker first.
+  Make sure Docker is running before you start your dev server. This is required
+  because the local instances of Clickhouse and Redpanda are running inside
+  containers.
 </Callout>
 
-There are a couple of different ways you can utilize the Moose CLI:
+Start your local development server to run your entire app,
 
-<Tabs items={["Project-level Install", "Global Install"]}>
+```bash filename="Terminal" copy
+npx moose-cli dev
+```
+
+This server operates all the infrastructure powering your application: a web server with API endpoints to ingest & consume data, a Redpanda platform to buffer data, and a Clickhouse database to store and query data for insights. The local dev server configures these components based on your code and updates them in real time as your application code changes.
+
+### Inspect Infrastructure
+
+Check that the infrastructure is setup according to the default starter code in your project by running:
+
+```bash filename="Terminal" copy
+npx moose-cli ls
+```
+
+You should see the following table in your terminal:
+
+![moose-ls](/moose-ls.png)
+
+---
+
+## Open project in IDE
+
+### VSCode Users: Install Recommended Extensions
+
+```bash filename="Terminal" copy
+code .
+```
+
+Opening your project in VSCode will prompt a recommendation to install the [SQLTools](https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools) and [SQLTools ClickHouse Driver](https://marketplace.visualstudio.com/items?itemName=ultram4rine.sqltools-clickhouse-driver) extensions. Installing these allows Moose to auto-configure them for your local ClickHouse database, letting you explore and query your data immediately.
+
+### Explore Data Models
+
+In your IDE file explorer, navigate to the `/app` folder of your project and open the `datamodels` directory. You should see a file named `models.ts` . Open the file and inspect the data models:
+
+```ts filename="/datamodels/models.ts" copy
+export interface UserActivity {
+	...
+}
+
+export interface ParsedActivity {
+	...
+}
+```
+
+---
+
+## Ingest Data
+
+Let's send some sample data to the `UserActivity` data model via the `/ingest/UserActivity/0.0` endpoint that Moose created for us. Run the following command:
+
+```bash filename="Terminal" copy
+curl -X POST \\
+-H "Content-Type: application/json" \\
+-d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \\
+<http://localhost:4000/ingest/UserActivity>
+
+```
+
+You should see a bunch of messages in the CLI confirming that Moose received the data. Let's double-check that the new data landed in our `UserActivity_0_0` table in our database.
+
+In your SQL explorer, execute the following query:
+
+```sql filename="DB Explorer" copy
+SELECT * FROM local.UserActivity
+```
+
+<Tabs items={['Using the SQLTools VSCode Extension', 'Using Your Own Database Explorer']}>
   <Tabs.Tab>
-    Alternatively, the Moose CLI comes packaged with your Moose application. You
-    can install the dependency locally and then run the Moose CLI within your
-    project with.
+    #### Using the SQLTools VSCode Extension:
+    Click the SQLTools database icon in your extensions tab. You should see the Clickhouse icon followed by the connection details for the database running on your local dev server: `panda@localhost:18123/local`. 
+    
+    
+    ![SQL Tools Setup](/sqltools.png)
 
-    ```txt filename="Terminal" copy
-    npm install && npm run dev
-    ```
+    To create and run a new query, click the `New SQL File` icon. This will open a blank `.sql` file where you can execute your queries.
 
   </Tabs.Tab>
-  <Tabs.Tab>
-    Finally, you can install the Moose CLI globally using NPM. This will get you
-    a cleaner command interface, and better performance on the CLI. You can then
-    run the Moose CLI anywhere.
+<Tabs.Tab>
+  ### Using a Database Explorer:
+  The following steps will guide you through configuring your preferred database explorer tool, such as DBeaver or DataGrip, to connect to the Clickhouse database instance that Moose will spin up for you on your local dev server.
 
-    ```txt filename="Terminal" copy
-    npm install -g @514labs/moose-cli && moose dev
-    ```
+- Open your database explorer and navigate to the section for adding a new database connection.
+- Enter the connection details as follows:
 
-  </Tabs.Tab>
+```text filename="moose.project.toml" copy
+[clickhouse config]
+  db_name = "local"
+  user = "panda"
+  password = "pandapass"
+  host = "localhost"
+  host_port = 18123
+```
+
+- Test and save the connection. You should now see the `local` database in your database explorer tool.
+
+{" "}
+<Callout type="info">
+  You can find all the infrastructure configuration details in the
+  moose.project.toml file in your project's root directory
+</Callout>
+
+Now you can explore and query the your data from your database explorer tool. Create a new query and paste the `SELECT` statement above to see the data you ingested earlier.
+
+</Tabs.Tab>
 </Tabs>
+## Next steps
+Explore the docs to learn more about [your project structure](https://docs.moosejs.com/getting-started/project-structure) or the [architecture of your new app](https://docs.moosejs.com/getting-started/architecture).

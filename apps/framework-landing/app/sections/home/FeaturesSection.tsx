@@ -2,7 +2,7 @@ import {
   Section,
   Grid,
   ThirdWidthContentContainer,
-  HalfWidthContentContainer,
+  FullWidthContentContainer,
 } from "@514labs/design-system-components/components/containers";
 import {
   Heading,
@@ -77,12 +77,12 @@ export const FeaturesSection = () => {
     <>
       <Section className="mx-auto xl:max-w-screen-xl">
         <Grid className="mb-12 2xl:mb-20">
-          <HalfWidthContentContainer>
+          <FullWidthContentContainer>
             <Heading> {content.title} </Heading>
             <Heading level={HeadingLevel.l3} className="text-muted-foreground">
               {content.subtitle}
             </Heading>
-          </HalfWidthContentContainer>
+          </FullWidthContentContainer>
         </Grid>
         <Grid className="gap-y-10">
           {content.features.map((feature, index) => {

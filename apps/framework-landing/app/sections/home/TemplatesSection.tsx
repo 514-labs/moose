@@ -4,7 +4,7 @@ import { Fragment, Suspense } from "react";
 import { CTABar } from "../../page";
 import {
   Section,
-  HalfWidthContentContainer,
+  FullWidthContentContainer,
   ThirdWidthContentContainer,
   Grid,
 } from "@514labs/design-system-components/components/containers";
@@ -64,13 +64,13 @@ export const TemplateHeaderSection = () => {
   return (
     <Section className="w-full relative mx-auto xl:max-w-screen-xl">
       <Grid>
-        <HalfWidthContentContainer>
+        <FullWidthContentContainer>
           <Heading> {content.title} </Heading>
-          <Heading className="text-muted-foreground" level={HeadingLevel.l2}>
+          <Heading className="text-muted-foreground" level={HeadingLevel.l3}>
             {" "}
             {content.description}{" "}
           </Heading>
-        </HalfWidthContentContainer>
+        </FullWidthContentContainer>
       </Grid>
     </Section>
   );

@@ -1,4 +1,4 @@
-use prometheus_parse::{self};
+use prometheus_parse::{self, HistogramCount, Sample};
 use reqwest;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
@@ -12,6 +12,7 @@ pub struct ParsedMetricsData {
     pub average_latency: f64,
     pub total_requests: f64,
     pub paths_data_vec: Vec<PathMetricsData>,
+    pub histogram_vec: Vec<Sample>,
 }
 
 pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
@@ -83,7 +84,30 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
         average_latency,
         total_requests,
         paths_data_vec,
+        histogram_vec: metrics_vec,
     };
 
     Ok(parsed_data)
+}
+
+pub fn parsing_histogram_data(
+    path: String,
+    metrics_vec: Vec<prometheus_parse::Sample>,
+) -> Option<Vec<HistogramCount>> {
+    let mut i = 0;
+
+    while i < metrics_vec.len() {
+        let labels = &metrics_vec[i].labels.clone();
+        let paths = labels.get("path");
+
+        let unwrapped_path = paths.unwrap_or_default();
+        if *unwrapped_path == path && !unwrapped_path.is_empty() {
+            if let prometheus_parse::Value::Histogram(v) = &metrics_vec[i].value {
+                return Some(v.to_owned());
+            }
+        }
+
+        i += 1;
+    }
+    None
 }

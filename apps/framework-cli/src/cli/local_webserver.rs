@@ -492,18 +492,13 @@ async fn router(
             .body(Full::new(Bytes::from("no match"))),
     };
 
-    if metrics_path
-        .clone()
-        .into_os_string()
-        .to_str()
-        .unwrap()
-        .contains("ingest/")
+    if metrics_path.to_str().unwrap().starts_with("ingest/")
         || metrics_path
             .clone()
             .into_os_string()
             .to_str()
             .unwrap()
-            .contains("consumption/")
+            .starts_with("consumption/")
     {
         metrics
             .send_metric(MetricsMessage::HTTPLatency((

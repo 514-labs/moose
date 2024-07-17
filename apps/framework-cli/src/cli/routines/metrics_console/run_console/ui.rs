@@ -207,11 +207,10 @@ fn render_main_page_details(frame: &mut Frame, layout: &Rc<[Rect]>) {
 
 fn render_path_overview_data(app: &App, frame: &mut Frame, layout: &Rc<[Rect]>, state: &String) {
     let average_latency_block = Block::new()
-        // This unwrap is safe because we know the key exists
         .title(format!(
             "Average Latency: {}ms ",
-            (((app.summary.get(app.starting_row).unwrap().latency_sum
-                / app.summary.get(app.starting_row).unwrap().request_count)
+            (((app.summary[app.starting_row].latency_sum
+                / app.summary[app.starting_row].request_count)
                 * 1000000.0)
                 .round())
                 / 1000.0
@@ -222,10 +221,9 @@ fn render_path_overview_data(app: &App, frame: &mut Frame, layout: &Rc<[Rect]>, 
         .white();
 
     let request_count_block = Block::new()
-        // This unwrap is safe because we know the key exists
         .title(format!(
             "Number of Requests: {}",
-            (app.summary.get(app.starting_row).unwrap().request_count)
+            (app.summary[app.starting_row].request_count)
         ))
         .title_alignment(Alignment::Center)
         .bold()
@@ -233,7 +231,6 @@ fn render_path_overview_data(app: &App, frame: &mut Frame, layout: &Rc<[Rect]>, 
         .white();
 
     let path_req_per_sec_block = Block::new()
-        // This unwrap is safe because we know the key exists
         .title(format!(
             "Requests Per Second: {}",
             (app.path_requests_per_sec.get(state).unwrap_or(&0.0))
@@ -338,51 +335,56 @@ fn render_sparkline_chart(
                         (app.viewport.width as f64 * 0.48) as usize
                     )),
             )
-            .data(
-                &app.requests_per_sec_vec.get(state).unwrap()
-                    [app // This unwrap is safe because we know the key exists
+            .data(match &app.requests_per_sec_vec.get(state) {
+                Some(v) => {
+                    &v[app // This unwrap is safe because we know the key exists
                         .requests_per_sec_vec
                         .get(state)
-                        .unwrap()
+                        .unwrap_or(&vec![0; 0])
                         .len()
-                        - (app.viewport.width as f64 * 0.48) as usize..],
-            )
+                        - (app.viewport.width as f64 * 0.48) as usize..]
+                }
+                None => &[],
+            })
             .style(Style::default().fg(Color::Green));
 
-        // This unwrap is safe because we know the key exists
         top_paragraph = Paragraph::new(
             Line::from(format!(
                 "<-{}",
-                &app.requests_per_sec_vec.get(state).unwrap()
-                    [app // This unwrap is safe because we know the key exists
+                match &app.requests_per_sec_vec.get(state) {
+                    Some(v) => v[app
                         .requests_per_sec_vec
                         .get(state)
-                        .unwrap()
+                        .unwrap_or(&vec![0; 0])
                         .len()
                         - (app.viewport.width as f64 * 0.48) as usize..]
-                    .iter()
-                    .max()
-                    .unwrap_or(&0)
+                        .iter()
+                        .max()
+                        .unwrap_or(&0),
+                    None => &0,
+                }
             ))
             .green(),
         )
         .left_aligned();
 
-        // This unwrap is safe because we know the key exists
         middle_paragraph = Paragraph::new(
             Line::from(format!(
                 "<-{}",
-                *app.requests_per_sec_vec.get(state).unwrap()
-                    [app // This unwrap is safe because we know the key exists
-                        .requests_per_sec_vec
-                        .get(state)
-                        .unwrap()
-                        .len()
-                        - (app.viewport.width as f64 * 0.48) as usize..]
-                    .iter()
-                    .max()
-                    .unwrap_or(&0)
-                    / 2
+                match &app.requests_per_sec_vec.get(state) {
+                    Some(v) =>
+                        v[app
+                            .requests_per_sec_vec
+                            .get(state)
+                            .unwrap_or(&vec![0; 0])
+                            .len()
+                            - (app.viewport.width as f64 * 0.48) as usize..]
+                            .iter()
+                            .max()
+                            .unwrap_or(&0)
+                            / 2,
+                    None => 0,
+                }
             ))
             .green(),
         )

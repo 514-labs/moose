@@ -91,9 +91,7 @@ impl App {
                 self.requests_per_sec_vec
                     .insert(path.path.clone(), vec![0; 150]);
             }
-        }
 
-        for path in &self.summary {
             for item in path_metrics {
                 if item.path == path.path {
                     self.path_requests_per_sec

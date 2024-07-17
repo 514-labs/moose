@@ -22,9 +22,11 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
         }
 
         KeyCode::Enter => {
-            app.set_state(State::PathDetails(
-                app.summary[app.starting_row].path.to_string(),
-            ));
+            if !app.summary.is_empty() {
+                app.set_state(State::PathDetails(
+                    app.summary[app.starting_row].path.to_string(),
+                ));
+            }
         }
         KeyCode::Esc => match app.state {
             State::Main() => {

@@ -9,15 +9,17 @@ import {
 import { Input } from "./ui/input";
 import { ToggleGroup, ToggleGroupItem } from "./ui/toggle-group";
 import { Dispatch, SetStateAction } from "react";
+import { Combobox } from "./ui/creatable-select";
 
 interface Props {
   setSearch: (search: string) => void;
   setSeverity: Dispatch<SetStateAction<SeverityLevel[]>>;
+  setMachineId: (id: string) => void;
   severity: SeverityLevel[];
 }
 export default function FilterBar({ setSearch, setSeverity, severity }: Props) {
   return (
-    <div className="flex flex-row items-center justify-between bg-gray-100 p-2 gap-2">
+    <div className="flex flex-row items-center justify-between bg-accent p-2 gap-2">
       <Input
         placeholder="Search..."
         onChange={(e) => setSearch(e.target.value)}
@@ -36,7 +38,7 @@ export default function FilterBar({ setSearch, setSeverity, severity }: Props) {
             value={level}
           >
             <div
-              className={`flex justify-center rounded-lg items-center w-full h-full ${
+              className={`flex justify-center rounded-lg text-foreground items-center w-full h-full ${
                 severity.find((sev) => sev == level)
                   ? severityLevelColors[level]
                   : ""

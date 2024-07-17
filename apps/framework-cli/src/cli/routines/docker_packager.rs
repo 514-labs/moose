@@ -197,11 +197,17 @@ impl Routine for CreateDockerfile {
 
 pub struct BuildDockerfile {
     project: Arc<Project>,
+    is_amd64: bool,
+    is_arm64: bool,
 }
 
 impl BuildDockerfile {
-    pub fn new(project: Arc<Project>) -> Self {
-        Self { project }
+    pub fn new(project: Arc<Project>, is_amd64: bool, is_arm64: bool) -> Self {
+        Self {
+            project,
+            is_amd64,
+            is_arm64,
+        }
     }
 }
 
@@ -300,55 +306,61 @@ impl Routine for BuildDockerfile {
             cli_version = "0.3.343";
         }
 
-        info!("Creating docker linux/amd64 image");
-        let buildx_result = with_spinner(
-            "Creating docker linux/amd64 image",
-            || {
-                docker::buildx(
-                    &internal_dir.join("packager"),
-                    cli_version,
-                    "linux/amd64",
-                    "x86_64-unknown-linux-gnu",
-                )
-            },
-            !self.project.is_production,
-        );
-        match buildx_result {
-            Ok(_) => {
-                info!("Docker image created");
-            }
-            Err(err) => {
-                error!("Failed to create docker image: {}", err);
-                return Err(RoutineFailure::new(
-                    Message::new("Failed".to_string(), "to create docker image".to_string()),
-                    err,
-                ));
+        let build_all = self.is_amd64 == self.is_arm64;
+
+        if build_all || self.is_amd64 {
+            info!("Creating docker linux/amd64 image");
+            let buildx_result = with_spinner(
+                "Creating docker linux/amd64 image",
+                || {
+                    docker::buildx(
+                        &internal_dir.join("packager"),
+                        cli_version,
+                        "linux/amd64",
+                        "x86_64-unknown-linux-gnu",
+                    )
+                },
+                !self.project.is_production,
+            );
+            match buildx_result {
+                Ok(_) => {
+                    info!("Docker image created");
+                }
+                Err(err) => {
+                    error!("Failed to create docker image: {}", err);
+                    return Err(RoutineFailure::new(
+                        Message::new("Failed".to_string(), "to create docker image".to_string()),
+                        err,
+                    ));
+                }
             }
         }
 
-        info!("Creating docker linux/arm64 image");
-        let buildx_result = with_spinner(
-            "Creating docker linux/arm64 image",
-            || {
-                docker::buildx(
-                    &internal_dir.join("packager"),
-                    cli_version,
-                    "linux/arm64",
-                    "aarch64-unknown-linux-gnu",
-                )
-            },
-            !self.project.is_production,
-        );
-        match buildx_result {
-            Ok(_) => {
-                info!("Docker image created");
-            }
-            Err(err) => {
-                error!("Failed to create docker image: {}", err);
-                return Err(RoutineFailure::new(
-                    Message::new("Failed".to_string(), "to create docker image".to_string()),
-                    err,
-                ));
+        if build_all || self.is_arm64 {
+            info!("Creating docker linux/arm64 image");
+            let buildx_result = with_spinner(
+                "Creating docker linux/arm64 image",
+                || {
+                    docker::buildx(
+                        &internal_dir.join("packager"),
+                        cli_version,
+                        "linux/arm64",
+                        "aarch64-unknown-linux-gnu",
+                    )
+                },
+                !self.project.is_production,
+            );
+            match buildx_result {
+                Ok(_) => {
+                    info!("Docker image created");
+                }
+                Err(err) => {
+                    error!("Failed to create docker image: {}", err);
+                    return Err(RoutineFailure::new(
+                        Message::new("Failed".to_string(), "to create docker image".to_string()),
+                        err,
+                    ));
+                }
             }
         }
 

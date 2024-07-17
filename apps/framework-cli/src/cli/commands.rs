@@ -39,6 +39,12 @@ pub enum Commands {
     Build {
         #[arg(short, long)]
         docker: bool,
+        /// Build for amd64 architecture
+        #[arg(long)]
+        amd64: bool,
+        /// Build for arm64 architecture
+        #[arg(long)]
+        arm64: bool,
     },
     /// [Not Ready] Displays the changes that will be applied to the infrastructure during the next deployment
     /// to production, consdering the current state of the project

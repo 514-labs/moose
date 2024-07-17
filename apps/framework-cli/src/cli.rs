@@ -230,7 +230,11 @@ async fn top_command_handler(
                 }
             }
         }
-        Commands::Build { docker } => {
+        Commands::Build {
+            docker,
+            amd64,
+            arm64,
+        } => {
             let run_mode = RunMode::Explicit {};
             info!("Running build command");
             let project: Project = load_project()?;
@@ -264,7 +268,11 @@ async fn top_command_handler(
                 );
                 // TODO get rid of the routines and use functions instead
                 controller.add_routine(Box::new(CreateDockerfile::new(project_arc.clone())));
-                controller.add_routine(Box::new(BuildDockerfile::new(project_arc.clone())));
+                controller.add_routine(Box::new(BuildDockerfile::new(
+                    project_arc.clone(),
+                    *amd64,
+                    *arm64,
+                )));
                 controller.run_routines(run_mode);
 
                 Ok(RoutineSuccess::success(Message::new(

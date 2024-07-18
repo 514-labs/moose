@@ -294,7 +294,7 @@ fn render_path_overview_data(
         .borders(Borders::NONE)
         .white();
 
-    if (state.starts_with("ingest")) {
+    if state.starts_with("ingest") {
         let bytes_in_per_sec_block = Block::new()
             .title(format!("Data In: {}", {
                 let bytes = (*app
@@ -445,7 +445,7 @@ fn render_sparkline_chart(
             )
             .data(match &app.requests_per_sec_vec.get(state) {
                 Some(v) => {
-                    &v.get(
+                    v.get(
                         ((app // This unwrap is safe because we know the key exists
                             .requests_per_sec_vec
                             .get(state)

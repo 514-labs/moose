@@ -323,10 +323,7 @@ async fn handle_json_req(
     let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body);
 
     metrics
-        .send_metric(MetricsMessage::GetNumberOfBytesIn(
-            route,
-            number_of_bytes as u64,
-        ))
+        .send_metric(MetricsMessage::GetNumberOfBytesIn(route, number_of_bytes))
         .await;
     // TODO add check that the payload has the proper schema
 
@@ -377,10 +374,7 @@ async fn handle_json_array_body(
     let parsed: Result<Vec<Value>, serde_json::Error> = serde_json::from_reader(body);
 
     metrics
-        .send_metric(MetricsMessage::GetNumberOfBytesIn(
-            route,
-            number_of_bytes as u64,
-        ))
+        .send_metric(MetricsMessage::GetNumberOfBytesIn(route, number_of_bytes))
         .await;
     if let Err(e) = parsed {
         return bad_json_response(e);

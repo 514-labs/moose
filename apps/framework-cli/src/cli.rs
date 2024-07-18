@@ -15,7 +15,8 @@ use std::sync::Arc;
 
 use clap::Parser;
 use commands::{
-    AggregationCommands, Commands, ConsumptionCommands, FunctionCommands, GenerateCommand,
+    AggregationCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
+    GenerateCommand,
 };
 use config::ConfigError;
 use display::with_spinner_async;
@@ -524,6 +525,19 @@ async fn top_command_handler(
                         init.destination.clone(),
                     )
                     .await
+                }
+            }
+        }
+        Commands::DataModel(data_model_args) => {
+            info!("Running function command");
+            let dm_cmd = data_model_args.command.as_ref().unwrap();
+            match dm_cmd {
+                DataModelCommands::Init(_init) => {
+                    debug!("Running datamodel init command");
+                    Ok(RoutineSuccess::success(Message::new(
+                        "DataModel".to_string(),
+                        "Initialized".to_string(),
+                    )))
                 }
             }
         }

@@ -56,7 +56,9 @@ pub enum Commands {
     /// Generates missing migration files
     Generate(GenerateArgs),
     /// Bumps the version of the project
-    BumpVersion { new_version: Option<String> },
+    BumpVersion {
+        new_version: Option<String>,
+    },
     /// Clears all temporary data and stops development infrastructure
     Clean {},
     /// Transforms upstream data into materialized datasets for analysis
@@ -105,6 +107,7 @@ pub enum Commands {
         #[arg(long)]
         version: Option<String>,
     },
+    DataModel(DataModelArgs),
 }
 
 #[derive(Debug, Args)]
@@ -189,4 +192,29 @@ pub enum ConsumptionCommands {
         /// Name of your api
         name: String,
     },
+}
+
+#[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
+pub struct DataModelArgs {
+    #[command(subcommand)]
+    pub command: Option<DataModelCommands>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum DataModelCommands {
+    /// Structures the project's directory & files for a new streaming function
+    #[command(arg_required_else_help = true)]
+    Init(DataModelInitArgs),
+}
+
+#[derive(Debug, Args)]
+pub struct DataModelInitArgs {
+    /// Name of your  data model
+    #[arg(short, long, required = true)]
+    pub name: String,
+
+    /// Name of your sample file
+    #[arg(short, long)]
+    pub sample: Option<String>,
 }

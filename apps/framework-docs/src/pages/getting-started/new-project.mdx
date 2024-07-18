@@ -123,6 +123,10 @@ In your SQL explorer, execute the following query:
 SELECT * FROM local.UserActivity
 ```
 
+### Query Data
+
+Follow the steps below to get started with querying your data using either the SQLTools VSCode extension or your preferred database explorer tool.
+
 <Tabs items={['Using the SQLTools VSCode Extension', 'Using Your Own Database Explorer']}>
   <Tabs.Tab>
     #### Using the SQLTools VSCode Extension:
@@ -131,11 +135,11 @@ SELECT * FROM local.UserActivity
     
     ![SQL Tools Setup](/sqltools.png)
 
-    To create and run a new query, click the `New SQL File` icon. This will open a blank `.sql` file where you can execute your queries.
+    To create and run a new query, click the `New SQL File` icon.
 
   </Tabs.Tab>
 <Tabs.Tab>
-  ### Using a Database Explorer:
+  #### Using a Database Explorer:
   The following steps will guide you through configuring your preferred database explorer tool, such as DBeaver or DataGrip, to connect to the Clickhouse database instance that Moose will spin up for you on your local dev server.
 
 - Open your database explorer and navigate to the section for adding a new database connection.
@@ -152,20 +156,38 @@ SELECT * FROM local.UserActivity
 
 - Test and save the connection. You should now see the `local` database in your database explorer tool.
 
-{" "}
-
 <Callout type="info">
   You can find all the infrastructure configuration details in the
   moose.project.toml file in your project's root directory
 </Callout>
 
-Now you can explore and query the your data from your database explorer tool. Create a new query and paste the `SELECT` statement above to see the data you ingested earlier.
-
 </Tabs.Tab>
 </Tabs>
 
-## Next steps
+Execute the following query:
 
-After ingesting the data, you might have noticed the CLI message: `Received UserActivity_0_0 -> ParsedActivity_0_0 1 message(s).` This indicates that Moose successfully parsed the data from the UserActivity model to the ParsedActivity model, using the transformation function defined in the `UserActivity__ParsedActivity.ts` file in the `/functions/` folder.
+```sql filename="DB Explorer" copy
+SELECT * FROM local.UserActivity
+```
 
-To learn more about how Moose's Streaming functions primitive works and how to define and execute custom transformation functions, check out the functions documentation.
+You should see the data you ingested in the `UserActivity` table.
+
+## Next Steps
+
+Congrats! You've successfully set up a Moose project, ingested data, and confirmed that it landed in your database. You're now ready to dive deeper and explore all the exciting capabilities that Moose has to offer. Here are some suggested next steps to further leverage Moose's powerful features:
+
+#### Learn Other Moose Primitives
+
+After ingesting the data, you might have noticed the CLI message: `Received UserActivity_0_0 -> ParsedActivity_0_0 1 message(s).` This indicates that Moose successfully transformed the data from the `UserActivity` model to the `ParsedActivity` model. Moose did this by executing the transformation function defined in the `UserActivity__ParsedActivity.ts` file in the `/functions/` folder on the `UserActivity` data sample you ingested. You can learn more about how to define execute custom transformation functions on your data by checking out the [Streaming Functions documentation](/building/streaming-functions/setup).
+
+Streaming functions are one of the three remaining Moose primitives left for you to explore. For a quick overview on how to get started with Streaming Functions and the other primitives, refer to the [Quick Reference section](/quick-reference).
+
+#### Add a New Data Model
+
+Define and save a new data model in the `/datamodels/models.ts` file to automatically create ingestion points and tables in your database for the new model. Check out the data models documentation to learn about other ways to take advantage of Moose's data modeling capabilities, including the types of data models you can define and how to leverage Moose's auto-generated SDKs to ingest data from your other applications into Moose.
+
+Check out the [Data Models documentation](/building/data-models/intro) to for a deeper dive.
+
+#### Understand your Project Structure
+
+Explore the docs to learn more about [your project structure](/getting-started/project-structure) or the [architecture of your new app](/getting-started/architecture).

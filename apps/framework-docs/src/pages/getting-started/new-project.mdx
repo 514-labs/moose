@@ -1,13 +1,19 @@
 import { Callout, Tabs, Steps } from "nextra/components";
 
-## Requirements
+## Prerequisites
 
-You will need the following dependencies installed on your machine before you can use MooseJS:
+Before using MooseJS, ensure you have the following dependencies installed on your machine:
 
 - [Git](https://git-scm.com/)
 - [NodeJS](https://nodejs.org/en/)
 - [Docker](https://www.docker.com/)
 - macOS or Linux (Windows is not supported at this time, but may work using WSL Windows Subsystem for Linux)
+
+To check if these dependencies are installed, run the following command in your terminal:
+
+```bash filename="Terminal" copy
+git --version && node --version && docker --version
+```
 
 ---
 
@@ -61,7 +67,7 @@ You should see the following table in your terminal:
 
 ---
 
-## Open project in IDE
+## Open Project in IDE
 
 ### VSCode Users: Install Recommended Extensions
 
@@ -76,14 +82,24 @@ Opening your project in VSCode will prompt a recommendation to install the [SQLT
 In your IDE file explorer, navigate to the `/app` folder of your project and open the `datamodels` directory. You should see a file named `models.ts` . Open the file and inspect the data models:
 
 ```ts filename="/datamodels/models.ts" copy
+import { Key } from "@514labs/moose-lib";
+
 export interface UserActivity {
-	...
+  eventId: Key<string>;
+  timestamp: string;
+  userId: string;
+  activity: string;
 }
 
 export interface ParsedActivity {
-	...
+  eventId: Key<string>;
+  timestamp: Date;
+  userId: string;
+  activity: string;
 }
 ```
+
+The file contains schema definitions for two data models: `UserActivity` and `ParsedActivity`. Each model defines the structure of the data that will be ingested into the Clickhouse database. Recall from the `moose-ls` output that Moose has automatically created ingestion points and tables in your database for these data models.
 
 ---
 
@@ -92,10 +108,10 @@ export interface ParsedActivity {
 Let's send some sample data to the `UserActivity` data model via the `/ingest/UserActivity/0.0` endpoint that Moose created for us. Run the following command:
 
 ```bash filename="Terminal" copy
-curl -X POST \\
--H "Content-Type: application/json" \\
--d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \\
-<http://localhost:4000/ingest/UserActivity>
+curl -X POST \
+-H "Content-Type: application/json" \
+-d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \
+http://localhost:4000/ingest/UserActivity
 
 ```
 
@@ -137,6 +153,7 @@ SELECT * FROM local.UserActivity
 - Test and save the connection. You should now see the `local` database in your database explorer tool.
 
 {" "}
+
 <Callout type="info">
   You can find all the infrastructure configuration details in the
   moose.project.toml file in your project's root directory
@@ -146,5 +163,9 @@ Now you can explore and query the your data from your database explorer tool. Cr
 
 </Tabs.Tab>
 </Tabs>
+
 ## Next steps
-Explore the docs to learn more about [your project structure](https://docs.moosejs.com/getting-started/project-structure) or the [architecture of your new app](https://docs.moosejs.com/getting-started/architecture).
+
+After ingesting the data, you might have noticed the CLI message: `Received UserActivity_0_0 -> ParsedActivity_0_0 1 message(s).` This indicates that Moose successfully parsed the data from the UserActivity model to the ParsedActivity model, using the transformation function defined in the `UserActivity__ParsedActivity.ts` file in the `/functions/` folder.
+
+To learn more about how Moose's Streaming functions primitive works and how to define and execute custom transformation functions, check out the functions documentation.

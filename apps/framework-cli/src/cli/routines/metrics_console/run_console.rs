@@ -53,8 +53,6 @@ pub async fn run_console() -> app::AppResult<()> {
             }
         }
 
-        //println!("BYTES: {:#?}", app.parsed_bytes_data.path_bytes_in_per_sec_vec);
-
         // Render the user interface.
         tui.draw(&mut app)?;
     }

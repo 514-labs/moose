@@ -20,6 +20,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 .constraints(vec![
                     Constraint::Max(2),
                     Constraint::Max(2),
+                    Constraint::Max(2),
                     Constraint::Fill(80),
                     Constraint::Max(3),
                 ])
@@ -38,10 +39,19 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                     Constraint::Percentage(33),
                 ])
                 .split(paragraph_layout[0]);
+            let bytes_overview_layout = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(vec![
+                    Constraint::Percentage(33),
+                    Constraint::Percentage(33),
+                    Constraint::Percentage(33),
+                ])
+                .split(outer_layout[2]);
 
             render_main_page_details(frame, &outer_layout);
             render_overview_metrics(app, frame, &inner_layout);
-            render_table(app, frame, outer_layout[2]);
+            render_overview_bytes_data(app, frame, &bytes_overview_layout);
+            render_table(app, frame, outer_layout[3]);
         }
         State::PathDetails(state) => {
             let outer_layout = Layout::default()
@@ -49,7 +59,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 .constraints(vec![
                     Constraint::Max(2),
                     Constraint::Max(2),
-                    Constraint::Fill(93),
+                    Constraint::Max(2),
+                    Constraint::Fill(91),
                     Constraint::Max(3),
                 ])
                 .split(frame.size());
@@ -61,18 +72,19 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                     Constraint::Percentage(50),
                     Constraint::Fill(10),
                 ])
-                .split(outer_layout[2]);
+                .split(outer_layout[3]);
 
-            let data_layout = Layout::default()
+            let top_row_data_layout = Layout::default()
                 .direction(Direction::Horizontal)
-                .constraints(vec![
-                    Constraint::Percentage(33),
-                    Constraint::Percentage(33),
-                    Constraint::Percentage(33),
-                ])
+                .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
                 .split(outer_layout[1]);
 
-            render_path_overview_data(&*app, frame, &data_layout, state);
+            let bottom_row_data = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
+                .split(outer_layout[2]);
+
+            render_path_overview_data(&*app, frame, &top_row_data_layout, &bottom_row_data, state);
             render_path_page_details(frame, &outer_layout, state.clone());
 
             let scale_layout = Layout::default()
@@ -155,7 +167,7 @@ fn render_table(app: &mut App, frame: &mut Frame, layout: Rect) {
 fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
     let average_lat = Block::new()
         .title(format!(
-            "Average Latency: \n {} ms",
+            "Average Latency: {} ms",
             (app.average * 1000.0).round() / 1000.0
         ))
         .title_alignment(Alignment::Center)
@@ -163,18 +175,15 @@ fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>
         .white()
         .padding(Padding::top(50));
     let total_req = Block::new()
-        .title(format!(
-            "Total Number of Requests: \n\n {}",
-            app.total_requests
-        ))
+        .title(format!("Total Number of Requests: {}", app.total_requests))
         .title_alignment(Alignment::Center)
         .bold()
         .white();
 
     let req_per_sec = Block::new()
         .title(format!(
-            "Requests Per Second: \n\n {}",
-            app.requests_per_sec
+            "Requests Per Second: {}",
+            app.main_bytes_data.bytes_out_per_sec
         ))
         .title_alignment(Alignment::Center)
         .bold()
@@ -183,6 +192,29 @@ fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>
     frame.render_widget(average_lat, layout[0]);
     frame.render_widget(total_req, layout[1]);
     frame.render_widget(req_per_sec, layout[2]);
+}
+
+fn render_overview_bytes_data(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
+    let bytes_in_per_sec = Block::new()
+        .title(format!(
+            "Data In: {}",
+            format_bytes(app.main_bytes_data.bytes_in_per_sec as f64)
+        ))
+        .title_alignment(Alignment::Center)
+        .bold()
+        .white();
+
+    let bytes_out_per_sec = Block::new()
+        .title(format!(
+            "Data Out: {}",
+            format_bytes(app.main_bytes_data.bytes_out_per_sec as f64)
+        ))
+        .title_alignment(Alignment::Center)
+        .bold()
+        .white();
+
+    frame.render_widget(bytes_in_per_sec, layout[0]);
+    frame.render_widget(bytes_out_per_sec, layout[2]);
 }
 
 fn render_main_page_details(frame: &mut Frame, layout: &Rc<[Rect]>) {
@@ -202,10 +234,16 @@ fn render_main_page_details(frame: &mut Frame, layout: &Rc<[Rect]>) {
         .green();
 
     frame.render_widget(block, layout[0]);
-    frame.render_widget(info_footer, layout[3]);
+    frame.render_widget(info_footer, layout[4]);
 }
 
-fn render_path_overview_data(app: &App, frame: &mut Frame, layout: &Rc<[Rect]>, state: &String) {
+fn render_path_overview_data(
+    app: &App,
+    frame: &mut Frame,
+    top_layout: &Rc<[Rect]>,
+    bottom_layout: &Rc<[Rect]>,
+    state: &String,
+) {
     let average_latency_block = Block::new()
         .title(format!(
             "Average Latency: {}ms ",
@@ -240,9 +278,44 @@ fn render_path_overview_data(app: &App, frame: &mut Frame, layout: &Rc<[Rect]>, 
         .borders(Borders::NONE)
         .white();
 
-    frame.render_widget(average_latency_block, layout[0]);
-    frame.render_widget(request_count_block, layout[1]);
-    frame.render_widget(path_req_per_sec_block, layout[2]);
+    if state.starts_with("ingest") {
+        let bytes_in_per_sec_block = Block::new()
+            .title(format!(
+                "Data In: {}",
+                format_bytes(
+                    (*app
+                        .parsed_bytes_data
+                        .path_bytes_in_per_sec_vec
+                        .get(state)
+                        .unwrap_or(&0)) as f64
+                )
+            ))
+            .title_alignment(Alignment::Center)
+            .bold()
+            .borders(Borders::NONE)
+            .white();
+        frame.render_widget(bytes_in_per_sec_block, bottom_layout[1]);
+    } else {
+        let bytes_in_per_sec_block = Block::new()
+            .title(format!(
+                "Data Out: {}",
+                format_bytes(
+                    *app.parsed_bytes_data
+                        .path_bytes_out_per_sec_vec
+                        .get(state)
+                        .unwrap_or(&0) as f64
+                )
+            ))
+            .title_alignment(Alignment::Center)
+            .bold()
+            .borders(Borders::NONE)
+            .white();
+        frame.render_widget(bytes_in_per_sec_block, bottom_layout[1]);
+    }
+
+    frame.render_widget(average_latency_block, top_layout[0]);
+    frame.render_widget(request_count_block, top_layout[1]);
+    frame.render_widget(path_req_per_sec_block, bottom_layout[0]);
 }
 
 fn render_path_page_details(frame: &mut Frame, layout: &Rc<[Rect]>, state: String) {
@@ -262,7 +335,7 @@ fn render_path_page_details(frame: &mut Frame, layout: &Rc<[Rect]>, state: Strin
         );
 
     frame.render_widget(title, layout[0]);
-    frame.render_widget(info_footer, layout[3]);
+    frame.render_widget(info_footer, layout[4]);
 }
 
 fn render_bar_chart(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
@@ -290,7 +363,7 @@ fn render_bar_chart(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
     let bar_chart = BarChart::default()
         .block(
             Block::bordered()
-                .title("Number of Requests With Latency Under _ ms")
+                .title("Number of Requests With Latency Under _ s")
                 .bold(),
         )
         .data(bar_group)
@@ -317,10 +390,13 @@ fn render_sparkline_chart(
             .block(
                 Block::new()
                     .borders(Borders::LEFT | Borders::RIGHT)
-                    .title(format!(
-                        "Requests Per Second Over the Past {} sec",
-                        (app.viewport.width as f64 * 0.48) as usize
-                    )),
+                    .title(format!("Requests Per Second Over the Past {} sec", {
+                        if (app.viewport.width as f64 * 0.48) > 150.0 {
+                            150
+                        } else {
+                            (app.viewport.width as f64 * 0.48) as usize
+                        }
+                    })),
             )
             .data(&[0])
             .style(Style::default().fg(Color::Green));
@@ -330,19 +406,26 @@ fn render_sparkline_chart(
             .block(
                 Block::new()
                     .borders(Borders::LEFT | Borders::RIGHT)
-                    .title(format!(
-                        "Requests Per Second Over the Past {} sec",
-                        (app.viewport.width as f64 * 0.48) as usize
-                    )),
+                    .title(format!("Requests Per Second Over the Past {} sec", {
+                        if (app.viewport.width as f64 * 0.48) > 150.0 {
+                            150
+                        } else {
+                            (app.viewport.width as f64 * 0.48) as usize
+                        }
+                    })),
             )
             .data(match &app.requests_per_sec_vec.get(state) {
                 Some(v) => {
-                    &v[app // This unwrap is safe because we know the key exists
-                        .requests_per_sec_vec
-                        .get(state)
-                        .unwrap_or(&vec![0; 0])
-                        .len()
-                        - (app.viewport.width as f64 * 0.48) as usize..]
+                    v.get(
+                        ((app // This unwrap is safe because we know the key exists
+                            .requests_per_sec_vec
+                            .get(state)
+                            .unwrap_or(&vec![0; 0])
+                            .len() as f64)
+                            - (app.viewport.width as f64 * 0.48))
+                            as usize..,
+                    )
+                    .unwrap_or(&v[0..])
                 }
                 None => &[],
             })
@@ -352,12 +435,16 @@ fn render_sparkline_chart(
             Line::from(format!(
                 "<-{}",
                 match &app.requests_per_sec_vec.get(state) {
-                    Some(v) => v[app
-                        .requests_per_sec_vec
-                        .get(state)
-                        .unwrap_or(&vec![0; 0])
-                        .len()
-                        - (app.viewport.width as f64 * 0.48) as usize..]
+                    Some(v) => v
+                        .get(
+                            (app.requests_per_sec_vec
+                                .get(state)
+                                .unwrap_or(&vec![0; 0])
+                                .len() as f64
+                                - (app.viewport.width as f64 * 0.48))
+                                as usize..
+                        )
+                        .unwrap_or(&v[0..])
                         .iter()
                         .max()
                         .unwrap_or(&0),
@@ -373,15 +460,18 @@ fn render_sparkline_chart(
                 "<-{}",
                 match &app.requests_per_sec_vec.get(state) {
                     Some(v) =>
-                        v[app
-                            .requests_per_sec_vec
-                            .get(state)
-                            .unwrap_or(&vec![0; 0])
-                            .len()
-                            - (app.viewport.width as f64 * 0.48) as usize..]
-                            .iter()
-                            .max()
-                            .unwrap_or(&0)
+                        v.get(
+                            (app.requests_per_sec_vec
+                                .get(state)
+                                .unwrap_or(&vec![0; 0])
+                                .len() as f64
+                                - (app.viewport.width as f64 * 0.48))
+                                as usize..
+                        )
+                        .unwrap_or(&v[0..])
+                        .iter()
+                        .max()
+                        .unwrap_or(&0)
                             / 2,
                     None => 0,
                 }
@@ -397,4 +487,16 @@ fn render_sparkline_chart(
     frame.render_widget(top_paragraph, scale_layout[0]);
     frame.render_widget(middle_paragraph, scale_layout[2]);
     frame.render_widget(bottom_paragraph, scale_layout[4]);
+}
+
+fn format_bytes(bytes: f64) -> String {
+    if (bytes / 1000000000.0) > 1.0 {
+        format!("{:.3} GB/s", (bytes / 1000000000.0))
+    } else if (bytes / 1000000.0) > 1.0 {
+        format!("{:.3} MB/s", (bytes / 1000000.0))
+    } else if (bytes / 1000.0) > 1.0 {
+        format!("{:.3} KB/s", (bytes / 1000.0))
+    } else {
+        format!("{:3} B/s", bytes)
+    }
 }

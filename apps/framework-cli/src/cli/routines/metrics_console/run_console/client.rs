@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use prometheus_parse::{self, HistogramCount, Sample};
 use reqwest;
 
@@ -8,10 +10,14 @@ pub struct PathMetricsData {
     pub request_count: f64,
     pub path: String,
 }
+
 pub struct ParsedMetricsData {
     pub average_latency: f64,
     pub total_requests: f64,
     pub paths_data_vec: Vec<PathMetricsData>,
+    pub paths_bytes_hashmap: HashMap<String, u64>,
+    pub total_bytes_in: u64,
+    pub total_bytes_out: u64,
     pub histogram_vec: Vec<Sample>,
 }
 
@@ -34,6 +40,9 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
     let mut average_latency: f64 = 0.0;
     let mut total_requests: f64 = 0.0;
     let mut paths_data_vec: Vec<PathMetricsData> = vec![];
+    let mut total_bytes_in: u64 = 0;
+    let mut total_bytes_out: u64 = 0;
+    let mut paths_bytes_hashmap: HashMap<String, u64> = HashMap::new();
 
     let mut i = 0;
     while i < metrics_vec.len() {
@@ -59,6 +68,7 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
     }
 
     let mut j = 0;
+
     while j < metrics_vec.len() {
         if metrics_vec[j].metric == "latency_sum" {
             let sum_value = match &metrics_vec[j].value {
@@ -76,6 +86,20 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
                 request_count: count_value,
                 path: (metrics_vec[j].labels["path"]).to_string(),
             });
+        } else if metrics_vec[j].metric.starts_with("bytes") {
+            let value: f64 = match &metrics_vec[j].value {
+                prometheus_parse::Value::Counter(v) => *v,
+                prometheus_parse::Value::Untyped(v) => *v,
+                _ => 0.0,
+            };
+
+            paths_bytes_hashmap.insert((metrics_vec[j].labels["path"]).to_string(), value as u64);
+
+            if metrics_vec[j].labels["path"].starts_with("ingest/") {
+                total_bytes_in += value as u64;
+            } else {
+                total_bytes_out += value as u64;
+            }
         }
         j += 1;
     }
@@ -84,6 +108,9 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
         average_latency,
         total_requests,
         paths_data_vec,
+        paths_bytes_hashmap,
+        total_bytes_in,
+        total_bytes_out,
         histogram_vec: metrics_vec,
     };
 

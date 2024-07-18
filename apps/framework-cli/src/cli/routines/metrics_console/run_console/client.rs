@@ -3,15 +3,25 @@ use reqwest;
 
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
+pub struct PathBytesData {
+    pub path: String,
+    pub bytes_data: u64,
+}
+
 pub struct PathMetricsData {
     pub latency_sum: f64,
     pub request_count: f64,
     pub path: String,
 }
+
 pub struct ParsedMetricsData {
     pub average_latency: f64,
     pub total_requests: f64,
     pub paths_data_vec: Vec<PathMetricsData>,
+    pub paths_bytes_in_vec: Vec<PathBytesData>,
+    pub paths_bytes_out_vec: Vec<PathBytesData>,
+    pub total_bytes_in: u64,
+    pub total_bytes_out: u64,
     pub histogram_vec: Vec<Sample>,
 }
 
@@ -34,6 +44,10 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
     let mut average_latency: f64 = 0.0;
     let mut total_requests: f64 = 0.0;
     let mut paths_data_vec: Vec<PathMetricsData> = vec![];
+    let mut paths_bytes_in_vec: Vec<PathBytesData> = vec![];
+    let mut paths_bytes_out_vec: Vec<PathBytesData> = vec![];
+    let mut total_bytes_in: u64 = 0;
+    let mut total_bytes_out: u64 = 0;
 
     let mut i = 0;
     while i < metrics_vec.len() {
@@ -59,6 +73,7 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
     }
 
     let mut j = 0;
+
     while j < metrics_vec.len() {
         if metrics_vec[j].metric == "latency_sum" {
             let sum_value = match &metrics_vec[j].value {
@@ -76,6 +91,32 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
                 request_count: count_value,
                 path: (metrics_vec[j].labels["path"]).to_string(),
             });
+        } else if metrics_vec[j].metric == "bytes_in_total" {
+            let value: f64 = match &metrics_vec[j].value {
+                prometheus_parse::Value::Counter(v) => *v,
+                prometheus_parse::Value::Untyped(v) => *v,
+                _ => 0.0,
+            };
+
+            total_bytes_in += value as u64;
+
+            paths_bytes_in_vec.push(PathBytesData {
+                path: (metrics_vec[j].labels["path"]).to_string(),
+                bytes_data: value as u64,
+            });
+        } else if metrics_vec[j].metric == "bytes_out_total" {
+            let value: f64 = match &metrics_vec[j].value {
+                prometheus_parse::Value::Counter(v) => *v,
+                prometheus_parse::Value::Untyped(v) => *v,
+                _ => 0.0,
+            };
+
+            total_bytes_out += value as u64;
+
+            paths_bytes_out_vec.push(PathBytesData {
+                path: (metrics_vec[j].labels["path"]).to_string(),
+                bytes_data: value as u64,
+            });
         }
         j += 1;
     }
@@ -84,6 +125,10 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
         average_latency,
         total_requests,
         paths_data_vec,
+        paths_bytes_in_vec,
+        paths_bytes_out_vec,
+        total_bytes_in,
+        total_bytes_out,
         histogram_vec: metrics_vec,
     };
 

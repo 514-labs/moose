@@ -318,9 +318,9 @@ async fn handle_json_req(
     // TODO probably a refactor to be done here with the array json but it doesn't seem to be
     // straightforward to do it in a generic way.
     let url = req.uri().to_string();
+    let number_of_bytes = req.body().size_hint().exact().unwrap();
     let body = to_reader(req).await;
     let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body);
-    let number_of_bytes = req.body().size_hint().exact().unwrap();
 
     metrics
         .send_metric(MetricsMessage::GetNumberOfBytesIn(

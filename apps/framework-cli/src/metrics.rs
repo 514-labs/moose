@@ -142,14 +142,6 @@ impl Metrics {
                                 path: path.clone().into_os_string().to_str().unwrap().to_string(),
                             })
                             .inc_by(number_of_bytes);
-                        println!(
-                            "bytes in {}",
-                            data.bytes_in_family
-                                .get_or_create(&CounterLabels {
-                                    path: "ingest/Logs/0.0".to_string()
-                                })
-                                .get()
-                        );
                     }
                     MetricsMessage::GetNumberOfBytesOut(path, number_of_bytes) => {
                         data.bytes_out_family
@@ -157,7 +149,6 @@ impl Metrics {
                                 path: path.clone().into_os_string().to_str().unwrap().to_string(),
                             })
                             .inc_by(number_of_bytes);
-                        println!("{} bytes out {}", number_of_bytes, path.to_str().unwrap());
                     }
                 };
             }

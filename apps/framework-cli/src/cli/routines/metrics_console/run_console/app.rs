@@ -1,7 +1,7 @@
 use prometheus_parse::HistogramCount;
 use ratatui::layout::Rect;
 
-use super::client::{parsing_histogram_data, ParsedMetricsData, PathMetricsData};
+use super::client::{parsing_histogram_data, ParsedMetricsData, PathBytesData, PathMetricsData};
 use std::{collections::HashMap, error};
 
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
@@ -9,6 +9,20 @@ pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 pub enum State {
     Main(),
     PathDetails(String),
+}
+
+pub struct PathBytesParsedData {
+    pub previous_bytes_in: Vec<PathBytesData>,
+    pub previous_bytes_out: Vec<PathBytesData>,
+    pub path_bytes_in_per_sec_vec: HashMap<String, u64>,
+    pub path_bytes_out_per_sec_vec: HashMap<String, u64>,
+}
+
+pub struct MainBytesParsedData {
+    pub total_bytes_in: u64,
+    pub total_bytes_out: u64,
+    pub bytes_in_per_sec: u64,
+    pub bytes_out_per_sec: u64,
 }
 
 pub struct App {
@@ -23,6 +37,8 @@ pub struct App {
     pub path_detailed_data: Option<Vec<HistogramCount>>,
     pub path_requests_per_sec: HashMap<String, f64>,
     pub requests_per_sec_vec: HashMap<String, Vec<u64>>,
+    pub parsed_bytes_data: PathBytesParsedData,
+    pub main_bytes_data: MainBytesParsedData,
 }
 
 impl Default for App {
@@ -39,6 +55,18 @@ impl Default for App {
             path_detailed_data: vec![].into(),
             path_requests_per_sec: HashMap::new(),
             requests_per_sec_vec: HashMap::new(),
+            parsed_bytes_data: PathBytesParsedData {
+                previous_bytes_in: vec![],
+                previous_bytes_out: vec![],
+                path_bytes_in_per_sec_vec: HashMap::new(),
+                path_bytes_out_per_sec_vec: HashMap::new(),
+            },
+            main_bytes_data: MainBytesParsedData {
+                total_bytes_in: 0,
+                total_bytes_out: 0,
+                bytes_in_per_sec: 0,
+                bytes_out_per_sec: 0,
+            },
         }
     }
 }
@@ -64,6 +92,12 @@ impl App {
                 parsed_data.histogram_vec,
             )
         }
+
+        self.parsed_bytes_data.previous_bytes_in = parsed_data.paths_bytes_in_vec;
+        self.parsed_bytes_data.previous_bytes_out = parsed_data.paths_bytes_out_vec;
+
+        self.main_bytes_data.total_bytes_in = parsed_data.total_bytes_in;
+        self.main_bytes_data.total_bytes_out = parsed_data.total_bytes_out;
     }
 
     pub fn down(&mut self) {
@@ -77,8 +111,20 @@ impl App {
         }
     }
 
-    pub fn req_per_sec(&mut self, new_total_requests: f64, path_metrics: &Vec<PathMetricsData>) {
+    pub fn per_sec_metrics(
+        &mut self,
+        new_total_requests: f64,
+        path_metrics: &Vec<PathMetricsData>,
+        path_bytes_in: &Vec<PathBytesData>,
+        path_bytes_out: &Vec<PathBytesData>,
+        total_bytes_in: &u64,
+        total_bytes_out: &u64,
+    ) {
         self.requests_per_sec = new_total_requests - self.total_requests;
+        self.main_bytes_data.bytes_in_per_sec =
+            total_bytes_in - self.main_bytes_data.total_bytes_in;
+        self.main_bytes_data.bytes_out_per_sec =
+            total_bytes_out - self.main_bytes_data.total_bytes_out;
 
         // Initializes variables and vec for each path in summary to keep unwraps in ui.rs safe
         for path in &self.summary {
@@ -90,6 +136,26 @@ impl App {
             if !self.requests_per_sec_vec.contains_key(&path.path) {
                 self.requests_per_sec_vec
                     .insert(path.path.clone(), vec![0; 150]);
+            }
+
+            if !self
+                .parsed_bytes_data
+                .path_bytes_in_per_sec_vec
+                .contains_key(&path.path)
+            {
+                self.parsed_bytes_data
+                    .path_bytes_in_per_sec_vec
+                    .insert(path.path.clone(), 0);
+            }
+
+            if !self
+                .parsed_bytes_data
+                .path_bytes_out_per_sec_vec
+                .contains_key(&path.path)
+            {
+                self.parsed_bytes_data
+                    .path_bytes_out_per_sec_vec
+                    .insert(path.path.clone(), 0);
             }
 
             for item in path_metrics {
@@ -107,6 +173,25 @@ impl App {
                     .get_mut(&path.path)
                     .unwrap()
                     .remove(0);
+            }
+        }
+        for path in &self.parsed_bytes_data.previous_bytes_in {
+            for item in path_bytes_in {
+                if item.path == path.path {
+                    self.parsed_bytes_data
+                        .path_bytes_in_per_sec_vec
+                        .insert(path.path.clone(), item.bytes_data - path.bytes_data);
+                }
+            }
+        }
+
+        for path in &self.parsed_bytes_data.previous_bytes_out {
+            for item in path_bytes_out {
+                if item.path == path.path {
+                    self.parsed_bytes_data
+                        .path_bytes_out_per_sec_vec
+                        .insert(path.path.clone(), item.bytes_data - path.bytes_data);
+                }
             }
         }
     }

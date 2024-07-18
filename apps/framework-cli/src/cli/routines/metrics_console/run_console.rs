@@ -41,7 +41,7 @@ pub async fn run_console() -> app::AppResult<()> {
         tokio::select! {
             received = rx.recv() => {
                 if let Some(v) = received {
-                    app.per_sec_metrics(v.total_requests, &v.paths_data_vec, &v.paths_bytes_in_vec, &v.paths_bytes_out_vec, &v.total_bytes_in, &v.total_bytes_out);
+                    app.per_sec_metrics(v.total_requests, &v.paths_data_vec, &v.paths_bytes_hashmap, &v.total_bytes_in, &v.total_bytes_out);
                     app.set_metrics(v);
                 };
             }

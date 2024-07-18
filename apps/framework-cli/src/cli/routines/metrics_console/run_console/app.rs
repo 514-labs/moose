@@ -1,7 +1,7 @@
 use prometheus_parse::HistogramCount;
 use ratatui::layout::Rect;
 
-use super::client::{parsing_histogram_data, ParsedMetricsData, PathBytesData, PathMetricsData};
+use super::client::{parsing_histogram_data, ParsedMetricsData, PathMetricsData};
 use std::{collections::HashMap, error};
 
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
@@ -12,8 +12,7 @@ pub enum State {
 }
 
 pub struct PathBytesParsedData {
-    pub previous_bytes_in: Vec<PathBytesData>,
-    pub previous_bytes_out: Vec<PathBytesData>,
+    pub previous_bytes: HashMap<String, u64>,
     pub path_bytes_in_per_sec_vec: HashMap<String, u64>,
     pub path_bytes_out_per_sec_vec: HashMap<String, u64>,
 }
@@ -56,8 +55,7 @@ impl Default for App {
             path_requests_per_sec: HashMap::new(),
             requests_per_sec_vec: HashMap::new(),
             parsed_bytes_data: PathBytesParsedData {
-                previous_bytes_in: vec![],
-                previous_bytes_out: vec![],
+                previous_bytes: HashMap::new(),
                 path_bytes_in_per_sec_vec: HashMap::new(),
                 path_bytes_out_per_sec_vec: HashMap::new(),
             },
@@ -93,8 +91,7 @@ impl App {
             )
         }
 
-        self.parsed_bytes_data.previous_bytes_in = parsed_data.paths_bytes_in_vec;
-        self.parsed_bytes_data.previous_bytes_out = parsed_data.paths_bytes_out_vec;
+        self.parsed_bytes_data.previous_bytes = parsed_data.paths_bytes_hashmap;
 
         self.main_bytes_data.total_bytes_in = parsed_data.total_bytes_in;
         self.main_bytes_data.total_bytes_out = parsed_data.total_bytes_out;
@@ -115,8 +112,7 @@ impl App {
         &mut self,
         new_total_requests: f64,
         path_metrics: &Vec<PathMetricsData>,
-        path_bytes_in: &Vec<PathBytesData>,
-        path_bytes_out: &Vec<PathBytesData>,
+        path_bytes_hashmap: &HashMap<String, u64>,
         total_bytes_in: &u64,
         total_bytes_out: &u64,
     ) {
@@ -175,25 +171,37 @@ impl App {
                     .remove(0);
             }
         }
-        for path in &self.parsed_bytes_data.previous_bytes_in {
-            for item in path_bytes_in {
-                if item.path == path.path {
-                    self.parsed_bytes_data
-                        .path_bytes_in_per_sec_vec
-                        .insert(path.path.clone(), item.bytes_data - path.bytes_data);
+        for path in &self.parsed_bytes_data.previous_bytes {
+            match path_bytes_hashmap.get(path.0) {
+                Some(value) => {
+                    if path.0.starts_with("ingest/") {
+                        self.parsed_bytes_data
+                            .path_bytes_in_per_sec_vec
+                            .insert(path.0.clone(), *value - path.1);
+                    } else {
+                        self.parsed_bytes_data
+                            .path_bytes_out_per_sec_vec
+                            .insert(path.0.clone(), *value - path.1);
+                    }
                 }
+                None => {}
             }
+            // if item.path == path.path {
+            //     self.parsed_bytes_data
+            //         .path_bytes_in_per_sec_vec
+            //         .insert(path.path.clone(), item.bytes_data - path.bytes_data);
+            // }
         }
 
-        for path in &self.parsed_bytes_data.previous_bytes_out {
-            for item in path_bytes_out {
-                if item.path == path.path {
-                    self.parsed_bytes_data
-                        .path_bytes_out_per_sec_vec
-                        .insert(path.path.clone(), item.bytes_data - path.bytes_data);
-                }
-            }
-        }
+        // for path in &self.parsed_bytes_data.previous_bytes_out {
+        //     for item in path_bytes_out {
+        //         if item.path == path.path {
+        //             self.parsed_bytes_data
+        //                 .path_bytes_out_per_sec_vec
+        //                 .insert(path.path.clone(), item.bytes_data - path.bytes_data);
+        //         }
+        //     }
+        // }
     }
 
     pub fn set_state(&mut self, state: State) {

@@ -1,5 +1,8 @@
 import asyncio
+import dataclasses
 from dataclasses import dataclass
+from datetime import datetime, timezone
+
 from clickhouse_connect import get_client
 from string import Formatter
 from importlib import import_module
@@ -8,7 +11,6 @@ import argparse
 import os
 import sys
 import json
-import datetime
 
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
@@ -40,47 +42,61 @@ consumption_dir_path = args.consumption_dir_path
 
 sys.path.append(consumption_dir_path)
 
-class DateTimeEncoder(json.JSONEncoder):
-    def default(self, obj):
-        if isinstance(obj, datetime.datetime):
-            return obj.isoformat()
-        return super().default(obj)
+
+# TODO: move this to python moose lib
+class EnhancedJSONEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, datetime):
+            if o.tzinfo is None:
+                o = o.replace(tzinfo=timezone.utc)
+            return o.isoformat()
+        if dataclasses.is_dataclass(o):
+            return dataclasses.asdict(o)
+        return super().default(o)
+
 
 class MooseClient:
-    def __init__(self, ch_client):
+    def __init__(self, ch_client: Client):
         self.ch_client = ch_client
 
     def query(self, input, variables):
-        fieldnames = [fname for _, fname, _, _ in Formatter().parse(input) if fname]
+        params = {}
+        values = {}
 
-        # Create a dictionary with keys as fieldnames and values as the corresponding string format
-        params = {fname: f'{{p{i}: String}}' for i, fname in enumerate(fieldnames)}
+        for i, (_, variable_name, _, _) in enumerate(Formatter().parse(input)):
+            if variable_name:
+                value = variables[variable_name]
+                if isinstance(value, list) and len(value) == 1:
+                    # handling passing the value of the query string dict directly to variables
+                    value = value[0]
 
-        values = {f'p{i}': variables[fname][0] if isinstance(variables[fname], list) and len(variables[fname]) == 1 else variables[fname] for i, fname in enumerate(fieldnames) if fname in variables}
+                t = 'String' if isinstance(value, str) else \
+                    'Int64' if isinstance(value, int) else \
+                    'Float64' if isinstance(value, float) else "String"  # unknown type
+
+                params[variable_name] = f'{{p{i}: {t}}}'
+                values[f'p{i}'] = value
         clickhouse_query = input.format_map(params)
        
         val = self.ch_client.query(clickhouse_query, values)
-        return val.result_rows
+
+        return list(val.named_results())
+
 
 def handler_with_client(ch_client):
     class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         def do_GET(self):
             parsed_path = urlparse(self.path)
             module_name = parsed_path.path.lstrip('/')
-            if module_name.startswith('consumption/'):
-                module_name = module_name[len('consumption/'):]
             try:
                 module = import_module(module_name)
-
                 # get the flow definition
-
                 print(module_name)
                 
                 query_params = parse_qs(parsed_path.query)
 
-
                 response = module.run(ch_client, query_params)
-                response_message = bytes(json.dumps(response.message, cls=DateTimeEncoder), 'utf-8')
+                response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
                 self.send_response(200)
                 self.end_headers()
                 self.wfile.write(response_message)
@@ -98,6 +114,7 @@ class DependencyError(Exception):
 def get_file_name(path):
     return os.path.splitext(os.path.basename(path))[0]
 
+
 def walk_dir(dir, file_extension):
     file_list = []
 
@@ -108,7 +125,8 @@ def walk_dir(dir, file_extension):
 
     return file_list
 
-async def main():
+
+def main():
     print(f"Connecting to Clickhouse at {interface}://{host}:{port}")
 
     ch_client = get_client(interface=interface, host=host,
@@ -123,8 +141,4 @@ async def main():
     httpd.serve_forever()
 
 
-
-
-
-
-asyncio.run(main())
+main()

@@ -146,7 +146,7 @@ async fn create_client(
     let res = sender.send_request(req).await?;
     let body = res.collect().await.unwrap().to_bytes().to_vec();
     metrics
-        .send_metric(MetricsMessage::GetNumberOfBytesOut(
+        .send_metric(MetricsMessage::PutNumberOfBytesOut(
             route,
             body.len() as u64,
         ))
@@ -323,7 +323,7 @@ async fn handle_json_req(
     let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body);
 
     metrics
-        .send_metric(MetricsMessage::GetNumberOfBytesIn(route, number_of_bytes))
+        .send_metric(MetricsMessage::PutNumberOfBytesIn(route, number_of_bytes))
         .await;
     // TODO add check that the payload has the proper schema
 
@@ -374,7 +374,7 @@ async fn handle_json_array_body(
     let parsed: Result<Vec<Value>, serde_json::Error> = serde_json::from_reader(body);
 
     metrics
-        .send_metric(MetricsMessage::GetNumberOfBytesIn(route, number_of_bytes))
+        .send_metric(MetricsMessage::PutNumberOfBytesIn(route, number_of_bytes))
         .await;
     if let Err(e) = parsed {
         return bad_json_response(e);

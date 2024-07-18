@@ -196,35 +196,19 @@ fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>
 
 fn render_overview_bytes_data(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
     let bytes_in_per_sec = Block::new()
-        .title(format!("Data In: {}", {
-            let bytes = app.main_bytes_data.bytes_in_per_sec as f64;
-            if (bytes / 1000000000.0) > 1.0 {
-                format!("{:.3} GB/s", (bytes / 1000000000.0))
-            } else if (bytes / 1000000.0) > 1.0 {
-                format!("{:.3} MB/s", (bytes / 1000000.0))
-            } else if (bytes / 1000.0) > 1.0 {
-                format!("{:.3} KB/s", (bytes / 1000.0))
-            } else {
-                format!("{:3} B/s", bytes)
-            }
-        }))
+        .title(format!(
+            "Data In: {}",
+            format_bytes(app.main_bytes_data.bytes_in_per_sec as f64)
+        ))
         .title_alignment(Alignment::Center)
         .bold()
         .white();
 
     let bytes_out_per_sec = Block::new()
-        .title(format!("Data Out: {}", {
-            let bytes = app.main_bytes_data.bytes_out_per_sec as f64;
-            if (bytes / 1000000000.0) > 1.0 {
-                format!("{:.3} GB/s", (bytes / 1000000000.0))
-            } else if (bytes / 1000000.0) > 1.0 {
-                format!("{:.3} MB/s", (bytes / 1000000.0))
-            } else if (bytes / 1000.0) > 1.0 {
-                format!("{:.3} KB/s", (bytes / 1000.0))
-            } else {
-                format!("{:3} B/s", bytes)
-            }
-        }))
+        .title(format!(
+            "Data Out: {}",
+            format_bytes(app.main_bytes_data.bytes_out_per_sec as f64)
+        ))
         .title_alignment(Alignment::Center)
         .bold()
         .white();
@@ -296,22 +280,16 @@ fn render_path_overview_data(
 
     if state.starts_with("ingest") {
         let bytes_in_per_sec_block = Block::new()
-            .title(format!("Data In: {}", {
-                let bytes = (*app
-                    .parsed_bytes_data
-                    .path_bytes_in_per_sec_vec
-                    .get(state)
-                    .unwrap_or(&0)) as f64;
-                if (bytes / 1000000000.0) > 1.0 {
-                    format!("{:.3} GB/s", (bytes / 1000000000.0))
-                } else if (bytes / 1000000.0) > 1.0 {
-                    format!("{:.3} MB/s", (bytes / 1000000.0))
-                } else if (bytes / 1000.0) > 1.0 {
-                    format!("{:.3} KB/s", (bytes / 1000.0))
-                } else {
-                    format!("{:3} B/s", bytes)
-                }
-            }))
+            .title(format!(
+                "Data In: {}",
+                format_bytes(
+                    (*app
+                        .parsed_bytes_data
+                        .path_bytes_in_per_sec_vec
+                        .get(state)
+                        .unwrap_or(&0)) as f64
+                )
+            ))
             .title_alignment(Alignment::Center)
             .bold()
             .borders(Borders::NONE)
@@ -319,22 +297,15 @@ fn render_path_overview_data(
         frame.render_widget(bytes_in_per_sec_block, bottom_layout[1]);
     } else {
         let bytes_in_per_sec_block = Block::new()
-            .title(format!("Data Out: {}", {
-                let bytes = (*app
-                    .parsed_bytes_data
-                    .path_bytes_out_per_sec_vec
-                    .get(state)
-                    .unwrap_or(&0)) as f64;
-                if (bytes / 1000000000.0) > 1.0 {
-                    format!("{:.3} GB/s", (bytes / 1000000000.0))
-                } else if (bytes / 1000000.0) > 1.0 {
-                    format!("{:.3} MB/s", (bytes / 1000000.0))
-                } else if (bytes / 1000.0) > 1.0 {
-                    format!("{:.3} KB/s", (bytes / 1000.0))
-                } else {
-                    format!("{:3} B/s", bytes)
-                }
-            }))
+            .title(format!(
+                "Data Out: {}",
+                format_bytes(
+                    *app.parsed_bytes_data
+                        .path_bytes_out_per_sec_vec
+                        .get(state)
+                        .unwrap_or(&0) as f64
+                )
+            ))
             .title_alignment(Alignment::Center)
             .bold()
             .borders(Borders::NONE)
@@ -516,4 +487,16 @@ fn render_sparkline_chart(
     frame.render_widget(top_paragraph, scale_layout[0]);
     frame.render_widget(middle_paragraph, scale_layout[2]);
     frame.render_widget(bottom_paragraph, scale_layout[4]);
+}
+
+fn format_bytes(bytes: f64) -> String {
+    if (bytes / 1000000000.0) > 1.0 {
+        return format!("{:.3} GB/s", (bytes / 1000000000.0));
+    } else if (bytes / 1000000.0) > 1.0 {
+        return format!("{:.3} MB/s", (bytes / 1000000.0));
+    } else if (bytes / 1000.0) > 1.0 {
+        return format!("{:.3} KB/s", (bytes / 1000.0));
+    } else {
+        return format!("{:3} B/s", bytes);
+    }
 }

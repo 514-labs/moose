@@ -17,8 +17,8 @@ pub enum MetricsErrors {
 pub enum MetricsMessage {
     GetMetricsRegistryAsString(tokio::sync::oneshot::Sender<String>),
     HTTPLatency((PathBuf, Duration, String)),
-    GetNumberOfBytesIn(PathBuf, u64),
-    GetNumberOfBytesOut(PathBuf, u64),
+    PutNumberOfBytesIn(PathBuf, u64),
+    PutNumberOfBytesOut(PathBuf, u64),
 }
 
 #[derive(Clone)]
@@ -136,14 +136,14 @@ impl Metrics {
                             .observe(duration.as_secs_f64());
                         data.total_latency_histogram.observe(duration.as_secs_f64())
                     }
-                    MetricsMessage::GetNumberOfBytesIn(path, number_of_bytes) => {
+                    MetricsMessage::PutNumberOfBytesIn(path, number_of_bytes) => {
                         data.bytes_in_family
                             .get_or_create(&CounterLabels {
                                 path: path.clone().into_os_string().to_str().unwrap().to_string(),
                             })
                             .inc_by(number_of_bytes);
                     }
-                    MetricsMessage::GetNumberOfBytesOut(path, number_of_bytes) => {
+                    MetricsMessage::PutNumberOfBytesOut(path, number_of_bytes) => {
                         data.bytes_out_family
                             .get_or_create(&CounterLabels {
                                 path: path.clone().into_os_string().to_str().unwrap().to_string(),

@@ -491,12 +491,12 @@ fn render_sparkline_chart(
 
 fn format_bytes(bytes: f64) -> String {
     if (bytes / 1000000000.0) > 1.0 {
-        return format!("{:.3} GB/s", (bytes / 1000000000.0));
+        format!("{:.3} GB/s", (bytes / 1000000000.0))
     } else if (bytes / 1000000.0) > 1.0 {
-        return format!("{:.3} MB/s", (bytes / 1000000.0));
+        format!("{:.3} MB/s", (bytes / 1000000.0))
     } else if (bytes / 1000.0) > 1.0 {
-        return format!("{:.3} KB/s", (bytes / 1000.0));
+        format!("{:.3} KB/s", (bytes / 1000.0))
     } else {
-        return format!("{:3} B/s", bytes);
+        format!("{:3} B/s", bytes)
     }
 }

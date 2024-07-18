@@ -184,24 +184,19 @@ impl App {
                             .insert(path.0.clone(), *value - path.1);
                     }
                 }
-                None => {}
+                None => {
+                    if path.0.starts_with("ingest/") {
+                        self.parsed_bytes_data
+                            .path_bytes_in_per_sec_vec
+                            .insert(path.0.clone(), 0);
+                    } else {
+                        self.parsed_bytes_data
+                            .path_bytes_out_per_sec_vec
+                            .insert(path.0.clone(), 0);
+                    }
+                }
             }
-            // if item.path == path.path {
-            //     self.parsed_bytes_data
-            //         .path_bytes_in_per_sec_vec
-            //         .insert(path.path.clone(), item.bytes_data - path.bytes_data);
-            // }
         }
-
-        // for path in &self.parsed_bytes_data.previous_bytes_out {
-        //     for item in path_bytes_out {
-        //         if item.path == path.path {
-        //             self.parsed_bytes_data
-        //                 .path_bytes_out_per_sec_vec
-        //                 .insert(path.path.clone(), item.bytes_data - path.bytes_data);
-        //         }
-        //     }
-        // }
     }
 
     pub fn set_state(&mut self, state: State) {

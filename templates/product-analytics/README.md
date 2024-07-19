@@ -35,12 +35,12 @@ cd moose && npx @514labs/moose-cli@latest dev
 
 Running this sequence of commands will spin up all the backend infrastructure powering your backend data service (running on port 4000).
 
-Here is the default PageView event data model you are provided in your `/datamodels` folder.
+Here is the default `PageViewEvent` data model you are provided in your `/datamodels` folder.
 
 ```typescript
 // models.ts
 
-interface PageViewRaw {
+interface PageViewEvent {
     eventId    Key<string>
     timestamp  DateTime
     session_id String
@@ -98,7 +98,7 @@ To track custom events effectively, start by defining a new data model based on 
 For a button click event, you might create a data model named ButtonClickEvent with properties that capture both the context and user interaction details:
 
 ```typescript
-interface ButtonClickRaw {
+interface ButtonClickEvent {
     eventId    Key<string>
     timestamp  DateTime
     session_id String

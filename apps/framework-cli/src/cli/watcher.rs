@@ -35,6 +35,7 @@ use crate::infrastructure::processes::functions_registry::FunctionProcessRegistr
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
 use crate::infrastructure::stream::redpanda::{self, fetch_topics};
+use crate::metrics::Metrics;
 use crate::project::AggregationSet;
 use crate::utilities::constants::{
     AGGREGATIONS_DIR, BLOCKS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, SCHEMAS_DIR,
@@ -56,6 +57,7 @@ async fn process_data_models_changes(
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     configured_client: &ConfiguredDBClient,
     syncing_process_registry: &mut SyncingProcessesRegistry,
+    metrics: Arc<Metrics>,
 ) -> anyhow::Result<()> {
     debug!(
         "File Watcher Event Received: {:?}, with Route Table {:?}",
@@ -197,6 +199,7 @@ async fn process_data_models_changes(
                 fo.data_model.columns.clone(),
                 table.name.clone(),
                 table.columns.clone(),
+                metrics.clone(),
             );
         }
 
@@ -304,6 +307,7 @@ async fn watch(
     consumption_apis: &RwLock<HashSet<String>>,
     syncing_process_registry: &mut SyncingProcessesRegistry,
     project_registries: &mut ProcessRegistries,
+    metrics: Arc<Metrics>,
 ) -> Result<(), anyhow::Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
 
@@ -352,6 +356,7 @@ async fn watch(
                                         route_update_channel.clone(),
                                         syncing_process_registry,
                                         project_registries,
+                                        metrics.clone(),
                                     )
                                     .await?;
 
@@ -397,6 +402,7 @@ async fn watch(
                             route_table,
                             &configured_client,
                             syncing_process_registry,
+                            metrics.clone(),
                         ),
                         !project.is_production,
                     )
@@ -555,6 +561,7 @@ impl FileWatcher {
         consumption_apis: &'static RwLock<HashSet<String>>,
         syncing_process_registry: SyncingProcessesRegistry,
         project_registries: ProcessRegistries,
+        metrics: Arc<Metrics>,
     ) -> Result<(), Error> {
         show_message!(MessageType::Info, {
             Message {
@@ -578,6 +585,7 @@ impl FileWatcher {
                 consumption_apis,
                 &mut syncing_process_registry,
                 &mut project_registry,
+                metrics,
             )
             .await
             {

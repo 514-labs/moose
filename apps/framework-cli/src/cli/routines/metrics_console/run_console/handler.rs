@@ -2,6 +2,8 @@ use crate::cli::routines::metrics_console::run_console::app::State;
 use crate::cli::routines::metrics_console::run_console::app::{App, AppResult};
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
+use super::app::TableState;
+
 pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     match key_event.code {
         KeyCode::Char('q') => {
@@ -13,18 +15,36 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
             }
         }
 
-        KeyCode::Down => {
-            app.down();
-        }
+        KeyCode::Down => match app.table_state {
+            TableState::Endpoint => {
+                app.endpoint_down();
+            }
+            TableState::Kafka => {
+                app.kafka_down();
+            }
+        },
 
-        KeyCode::Up => {
-            app.up();
-        }
+        KeyCode::Up => match app.table_state {
+            TableState::Endpoint => {
+                app.endpoint_up();
+            }
+            TableState::Kafka => {
+                app.kafka_up();
+            }
+        },
+        KeyCode::Tab => match app.table_state {
+            TableState::Endpoint => {
+                app.table_state = TableState::Kafka;
+            }
+            TableState::Kafka => {
+                app.table_state = TableState::Endpoint;
+            }
+        },
 
         KeyCode::Enter => {
-            if !app.summary.is_empty() {
+            if !app.summary.is_empty() && matches!(app.table_state, TableState::Endpoint) {
                 app.set_state(State::PathDetails(
-                    app.summary[app.starting_row].path.to_string(),
+                    app.summary[app.endpoint_starting_row].path.to_string(),
                 ));
             }
         }

@@ -24,7 +24,13 @@ pub struct MainBytesParsedData {
     pub bytes_out_per_sec: u64,
 }
 
+pub enum TableState {
+    Endpoint,
+    Kafka,
+}
+
 pub struct App {
+    pub table_state: TableState,
     pub viewport: Rect,
     pub state: State,
     pub running: bool,
@@ -32,17 +38,22 @@ pub struct App {
     pub requests_per_sec: f64,
     pub total_requests: f64,
     pub summary: Vec<PathMetricsData>,
-    pub starting_row: usize,
+    pub endpoint_starting_row: usize,
+    pub kafka_starting_row: usize,
     pub path_detailed_data: Option<Vec<HistogramCount>>,
     pub path_requests_per_sec: HashMap<String, f64>,
     pub requests_per_sec_vec: HashMap<String, Vec<u64>>,
     pub parsed_bytes_data: PathBytesParsedData,
     pub main_bytes_data: MainBytesParsedData,
+    pub kafka_messages_in_total: HashMap<String, (String, f64)>,
+    pub kafka_messages_out_total: Vec<(String, String, f64)>,
+    pub kafka_messages_out_per_sec: HashMap<String, (String, f64)>,
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
+            table_state: TableState::Endpoint,
             viewport: Rect::new(0, 0, 0, 0),
             state: State::Main(),
             running: true,
@@ -50,7 +61,8 @@ impl Default for App {
             requests_per_sec: 0.0,
             total_requests: 0.0,
             summary: vec![],
-            starting_row: 0,
+            endpoint_starting_row: 0,
+            kafka_starting_row: 0,
             path_detailed_data: vec![].into(),
             path_requests_per_sec: HashMap::new(),
             requests_per_sec_vec: HashMap::new(),
@@ -65,6 +77,9 @@ impl Default for App {
                 bytes_in_per_sec: 0,
                 bytes_out_per_sec: 0,
             },
+            kafka_messages_in_total: HashMap::new(),
+            kafka_messages_out_total: vec![],
+            kafka_messages_out_per_sec: HashMap::new(),
         }
     }
 }
@@ -86,7 +101,7 @@ impl App {
         self.summary = parsed_data.paths_data_vec;
         if !self.summary.is_empty() {
             self.path_detailed_data = parsing_histogram_data(
-                self.summary[self.starting_row].path.clone(),
+                self.summary[self.endpoint_starting_row].path.clone(),
                 parsed_data.histogram_vec,
             )
         }
@@ -95,16 +110,29 @@ impl App {
 
         self.main_bytes_data.total_bytes_in = parsed_data.total_bytes_in;
         self.main_bytes_data.total_bytes_out = parsed_data.total_bytes_out;
+        self.kafka_messages_in_total = parsed_data.kafka_messages_in_total;
+        self.kafka_messages_out_total = parsed_data.kafka_messages_out_total;
     }
 
-    pub fn down(&mut self) {
-        if (self.starting_row + 1) < self.summary.len() {
-            self.starting_row += 1;
+    pub fn endpoint_down(&mut self) {
+        if (self.endpoint_starting_row + 1) < self.summary.len() {
+            self.endpoint_starting_row += 1;
         }
     }
-    pub fn up(&mut self) {
-        if self.starting_row > 0 {
-            self.starting_row -= 1;
+    pub fn endpoint_up(&mut self) {
+        if self.endpoint_starting_row > 0 {
+            self.endpoint_starting_row -= 1;
+        }
+    }
+
+    pub fn kafka_down(&mut self) {
+        if (self.kafka_starting_row + 1) < self.kafka_messages_out_total.len() {
+            self.kafka_starting_row += 1;
+        }
+    }
+    pub fn kafka_up(&mut self) {
+        if self.kafka_starting_row > 0 {
+            self.kafka_starting_row -= 1;
         }
     }
 
@@ -115,6 +143,7 @@ impl App {
         path_bytes_hashmap: &HashMap<String, u64>,
         total_bytes_in: &u64,
         total_bytes_out: &u64,
+        kafka_messages_in_total: &Vec<(String, String, f64)>,
     ) {
         self.requests_per_sec = new_total_requests - self.total_requests;
         self.main_bytes_data.bytes_in_per_sec =
@@ -193,6 +222,15 @@ impl App {
                         self.parsed_bytes_data
                             .path_bytes_out_per_sec_vec
                             .insert(path.0.clone(), 0);
+                    }
+                }
+            }
+
+            for item in kafka_messages_in_total {
+                for prev_item in &self.kafka_messages_out_total {
+                    if item.0 == prev_item.0 && item.1 == prev_item.1 {
+                        self.kafka_messages_out_per_sec
+                            .insert(item.0.clone(), (item.1.clone(), item.2 - prev_item.2));
                     }
                 }
             }

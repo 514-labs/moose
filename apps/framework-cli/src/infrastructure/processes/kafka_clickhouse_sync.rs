@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use std::collections::{HashMap, VecDeque};
 use std::future::Future;
 use std::pin::Pin;
+use std::sync::Arc;
 
 use log::debug;
 use log::error;
@@ -28,6 +29,7 @@ use crate::infrastructure::stream::redpanda::create_subscriber;
 use crate::infrastructure::stream::redpanda::fetch_topics;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::infrastructure::stream::redpanda::{create_producer, send_with_back_pressure};
+use crate::metrics::{Metrics, MetricsMessage};
 
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
 const VERSION_SYNC_GROUP_ID: &str = "version_sync_flow_sync";
@@ -83,6 +85,7 @@ impl SyncingProcessesRegistry {
         &mut self,
         framework_object_versions: &FrameworkObjectVersions,
         version_syncs: &[VersionSync],
+        metrics: Arc<Metrics>,
     ) -> Result<(), rdkafka::error::KafkaError> {
         info!("<DCM> Starting all syncing processes");
 
@@ -118,6 +121,7 @@ impl SyncingProcessesRegistry {
                         .map(spawn_sync_process(
                             kafka_config.clone(),
                             clickhouse_config.clone(),
+                            metrics.clone(),
                         ))
                 });
 
@@ -133,6 +137,7 @@ impl SyncingProcessesRegistry {
                         vs.dest_data_model.columns.clone(),
                         vs.dest_table.name.clone(),
                         vs.dest_table.columns.clone(),
+                        metrics.clone(),
                     ))
                 } else {
                     None
@@ -153,6 +158,7 @@ impl SyncingProcessesRegistry {
                     kafka_config.clone(),
                     source_topic,
                     input_topic,
+                    metrics.clone(),
                 ));
             }
         });
@@ -166,6 +172,7 @@ impl SyncingProcessesRegistry {
         source_topic_columns: Vec<Column>,
         target_table_name: String,
         target_table_columns: Vec<ClickHouseColumn>,
+        metrics: Arc<Metrics>,
     ) {
         info!(
             "<DCM> Starting syncing process for topic: {} and table: {}",
@@ -185,6 +192,7 @@ impl SyncingProcessesRegistry {
             source_topic_columns,
             target_table_name,
             target_table_columns,
+            metrics,
         );
 
         self.insert_table_sync(syncing_process);
@@ -204,6 +212,7 @@ type FnSyncProcess =
 fn spawn_sync_process(
     kafka_config: RedpandaConfig,
     clickhouse_config: ClickHouseConfig,
+    metrics: Arc<Metrics>,
 ) -> FnSyncProcess {
     Box::new(
         move |(
@@ -223,6 +232,7 @@ fn spawn_sync_process(
                 source_topic_columns,
                 target_table_name,
                 target_table_columns,
+                metrics.clone(),
             )
         },
     )
@@ -235,6 +245,7 @@ fn spawn_sync_process_core(
     source_topic_columns: Vec<Column>,
     target_table_name: String,
     target_table_columns: Vec<ClickHouseColumn>,
+    metrics: Arc<Metrics>,
 ) -> TableSyncingProcess {
     let syncing_process = tokio::spawn(sync_kafka_to_clickhouse(
         kafka_config,
@@ -243,6 +254,7 @@ fn spawn_sync_process_core(
         source_topic_columns,
         target_table_name.clone(),
         target_table_columns,
+        metrics,
     ));
 
     TableSyncingProcess {
@@ -256,11 +268,13 @@ fn spawn_kafka_to_kafka_process(
     kafka_config: RedpandaConfig,
     source_topic_name: String,
     target_topic_name: String,
+    metrics: Arc<Metrics>,
 ) -> TopicToTopicSyncingProcess {
     let syncing_process = tokio::spawn(sync_kafka_to_kafka(
         kafka_config,
         source_topic_name.clone(),
         target_topic_name.clone(),
+        metrics,
     ));
 
     TopicToTopicSyncingProcess {
@@ -274,6 +288,7 @@ async fn sync_kafka_to_kafka(
     kafka_config: RedpandaConfig,
     source_topic_name: String,
     target_topic_name: String,
+    metrics: Arc<Metrics>,
 ) {
     let subscriber = create_subscriber(&kafka_config, VERSION_SYNC_GROUP_ID, &source_topic_name);
     let producer = create_producer(kafka_config.clone());
@@ -282,19 +297,24 @@ async fn sync_kafka_to_kafka(
     let queue: Mutex<VecDeque<DeliveryFuture>> = Mutex::new(VecDeque::new());
     let target_topic_name = &target_topic_name;
 
-    iterate_subscriber(subscriber, source_topic_name, |payload| {
-        let producer: &FutureProducer = &producer.producer;
-        let queue = &queue;
-        Box::pin(async move {
-            send_with_back_pressure(
-                &mut *queue.lock().await,
-                producer,
-                target_topic_name,
-                payload,
-            )
-            .await
-        })
-    })
+    iterate_subscriber(
+        subscriber,
+        source_topic_name,
+        |payload| {
+            let producer: &FutureProducer = &producer.producer;
+            let queue = &queue;
+            Box::pin(async move {
+                send_with_back_pressure(
+                    &mut *queue.lock().await,
+                    producer,
+                    target_topic_name,
+                    payload,
+                )
+                .await
+            })
+        },
+        metrics,
+    )
     .await
 }
 
@@ -305,6 +325,7 @@ async fn sync_kafka_to_clickhouse(
     source_topic_columns: Vec<Column>,
     target_table_name: String,
     target_table_columns: Vec<ClickHouseColumn>,
+    metrics: Arc<Metrics>,
 ) -> anyhow::Result<()> {
     let subscriber = create_subscriber(&kafka_config, TABLE_SYNC_GROUP_ID, &source_topic_name);
 
@@ -325,31 +346,40 @@ async fn sync_kafka_to_clickhouse(
 
     // This should also not be broken, otherwise, the subscriber will stop receiving messages
 
-    iterate_subscriber(subscriber, source_topic_name, |payload_str| {
-        // allow the async block to move the borrows
-        let inserter = &inserter;
-        let source_topic_columns = &source_topic_columns;
+    iterate_subscriber(
+        subscriber,
+        source_topic_name,
+        |payload_str| {
+            // allow the async block to move the borrows
+            let inserter = &inserter;
+            let source_topic_columns = &source_topic_columns;
 
-        Box::pin(async move {
-            if let Ok(json_value) = serde_json::from_str(payload_str.as_str()) {
-                if let Ok(clickhouse_record) =
-                    mapper_json_to_clickhouse_record(source_topic_columns, json_value)
-                {
-                    let res = inserter.insert(clickhouse_record).await;
+            Box::pin(async move {
+                if let Ok(json_value) = serde_json::from_str(payload_str.as_str()) {
+                    if let Ok(clickhouse_record) =
+                        mapper_json_to_clickhouse_record(source_topic_columns, json_value)
+                    {
+                        let res = inserter.insert(clickhouse_record).await;
 
-                    if let Err(e) = res {
-                        error!("Error adding records to the queue to be inserted: {}", e);
+                        if let Err(e) = res {
+                            error!("Error adding records to the queue to be inserted: {}", e);
+                        }
                     }
                 }
-            }
-        })
-    })
+            })
+        },
+        metrics,
+    )
     .await;
     Ok(())
 }
 
-async fn iterate_subscriber<'a, F>(subscriber: StreamConsumer, source_topic_name: String, action: F)
-where
+async fn iterate_subscriber<'a, F>(
+    subscriber: StreamConsumer,
+    source_topic_name: String,
+    action: F,
+    metrics: Arc<Metrics>,
+) where
     // we shouldn't need the boxing, but i can't make the borrow checker happy
     F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>>,
 {
@@ -366,6 +396,12 @@ where
                             "Received message from {}: {}",
                             source_topic_name, payload_str
                         );
+                        metrics
+                            .send_metric(MetricsMessage::PutNumberOfMessagesOut(
+                                "clickhouse_sync".to_string(),
+                                source_topic_name.clone(),
+                            ))
+                            .await;
 
                         action(payload_str.to_string()).await;
                     }

@@ -9,6 +9,9 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
 <Tabs items={["Data Models", "Streaming Functions", "Aggregations", "Consumption APIs"]}>
 
     <Tabs.Tab>
+        ## Overview
+        Data models define how incoming data should be structured, organized, and stored in your application. When you create or update a Data Model in your `/datamodels` folder, Moose integrates the schema into your project by generating an `/ingest` API endpoint, a streaming topic, and a database table. When you post data to the API, the framework handles ingesting, routing, buffering, and storing the data in your OLAP database.
+
         ## Creating a Model
 
         To create a data model you need to open the `models.ts` file in your project's `datamodels` directory
@@ -76,7 +79,7 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
 
         ## Test Your Model
 
-        When you create a model, MooseJS automatically creates an ingestion point to facilitate immediate data
+        When you create a model, Moose automatically creates an ingestion point to facilitate immediate data
         testing. Send a sample payload to this endpoint using:
 
         <Tabs items={["Single Data Sample", "Batch Sample"]}>
@@ -84,7 +87,7 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
             ``` bash
             curl -X POST \
               -H "Content-Type: application/json" \
-              -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activityType":"click"}' \
+              -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity":"click"}' \
               http://localhost:4000/ingest/UserActivity
             ```
             </Tabs.Tab>
@@ -94,7 +97,7 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
             do
               curl -X POST \
                 -H "Content-Type: application/json" \
-                -d '{"eventId": "$i", "timestamp": "2024-01-01 00:00:00", "userId": "1234", "activityType":"click"}' \
+                -d '{"eventId": "$i", "timestamp": "2024-01-01 00:00:00", "userId": "1234", "activity":"click"}' \
                 http://localhost:4000/ingest/UserActivity
             done
             ```
@@ -117,7 +120,7 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
             ``` bash
         curl -X POST \
             -H "Content-Type: application/json" \
-            -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activityType": "click"}' \
+            -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \
             http://localhost:4000/ingest/UserActivity
         ```
         </Tabs.Tab>
@@ -132,7 +135,7 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
             eventId: '1234567890',
             timestamp: '2019-01-01 00:00:01',
             userId: '123456',
-            activityType: 'click'
+            activity: 'click'
           })
         })
         ```
@@ -145,13 +148,13 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
               'eventId': '1234567890',
               'timestamp': '2019-01-01 00:00:01',
               'userId': '123456',
-              'activityType': 'click'
+              'activity': 'click'
             })
             ```
 
         </Tabs.Tab>
 
-        You can also ingest data using the MooseJS SDK. To learn more about the different ways to ingest data refer to the [Ingesting Data](/building/data-models/capture-data) page.
+        You can also ingest data using the Moose SDK. To learn more about the different ways to ingest data refer to the [Ingesting Data](/building/data-models/capture-data) page.
         </Tabs>
 
         ---
@@ -159,6 +162,9 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
         For more information refer to the [Data Models Usage](/building/data-models/model-data) page.
     </Tabs.Tab>
     <Tabs.Tab>
+        ## Overview
+        Streaming Functions let you create custom functions to process incoming records of data in stream. They are suited for tasks like transforming, augmenting, or reacting to data before it reaches the database. These functions use a source Data Model as input and a destination Data Model as output, instructing Moose on which streaming topics to listen to and where to publish the results. Moose will automatically run your function on new records for the specified source Data Model. You can chain multiple Streaming Functions for complex, multi-step data processing workflows.
+
         ## Create a Streaming Function in CLI
 
         Initiate your streaming function setup in Moose with the `moose function init` CLI command.
@@ -279,6 +285,9 @@ This is a quick guide on using MooseJS with all the basic code in one place. For
         For more information refer to the [Aggregations](/building/aggregations/creating-aggregations) page.
     </Tabs.Tab>
     <Tabs.Tab>
+        ## Overview
+        Consumption APIs are HTTP endpoints that retrieve and process data from your database based on client query parameters. As a developer, you create functions to handle these parameters and fetch or process data. When saved in the /apis folder of your project, Moose auto-generates and manages the /consumption HTTP endpoints, which run on the same web server as the /ingest APIs for your project’s data models. Upon client requests, Moose executes the function and sends the return values back to the client.
+
         ## Initialize Your API Endpoint
 
         To create a new API endpoint, run this command in your CLI:

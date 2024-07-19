@@ -46,11 +46,11 @@ const content = {
           description: "Define a schema for raw data sources to ingest",
         },
         {
-          title: "Flows",
+          title: "Streaming Functions",
           description: "Write functions to augment & transform data",
         },
         {
-          title: "Blocks",
+          title: "Database Blocks",
           description: "Create views to slice, aggregate, and join tables",
         },
         {
@@ -212,14 +212,14 @@ export const WhatIsMoose = () => {
   }
   return (
     <>
-      <Section className="mx-auto xl:max-w-screen-xl">
-        <Grid className="mb-12 2xl:mb-20">
-          <HalfWidthContentContainer>
+      <Section className="mx-auto xl:max-w-screen-xl border-t">
+        <Grid className="mt-24 lg:mt-24 2xl:mt-36 mb-12 2xl:mb-20">
+          <FullWidthContentContainer>
             <Heading>{content.title}</Heading>
             <Heading level={HeadingLevel.l3} className="text-muted-foreground">
               {content.description}
             </Heading>
-          </HalfWidthContentContainer>
+          </FullWidthContentContainer>
         </Grid>
       </Section>
       <Section className="w-full relative mx-auto xl:my-10 xl:max-w-screen-xl 2xl:my-0">

@@ -1,0 +1,23 @@
+{
+  "status": "ready",
+  "originalFilePath": "videos/moose-landing.mp4",
+  "provider": "mux",
+  "providerMetadata": {
+    "mux": {
+      "uploadId": "7c2HMunYBhZkQFsTNwYlMAYxKeEfEiFKv2K100abbH3s",
+      "assetId": "vQFVQ01wqlN8FxpaIXs4F1c1pWa01TPT02D68eXKiK4MSQ",
+      "playbackId": "YOPI4wtnd2g96v7X9DSGpTa5ruvO6KrzOACbMK7P4Jg"
+    }
+  },
+  "createdAt": 1721253751874,
+  "updatedAt": 1721253931132,
+  "size": 69108961,
+  "sources": [
+    {
+      "src": "https://stream.mux.com/YOPI4wtnd2g96v7X9DSGpTa5ruvO6KrzOACbMK7P4Jg.m3u8",
+      "type": "application/x-mpegURL"
+    }
+  ],
+  "poster": "https://image.mux.com/YOPI4wtnd2g96v7X9DSGpTa5ruvO6KrzOACbMK7P4Jg/thumbnail.webp",
+  "blurDataURL": "data:image/webp;base64,UklGRkgAAABXRUJQVlA4IDwAAABwAQCdASoQAAoAAQAcJaQC7AFAAAD+/YsIZ9b4cTAzlsfC3SWY6vQrBqW/HZ9e2H2vm64KNiocAFkAAAA="
+}

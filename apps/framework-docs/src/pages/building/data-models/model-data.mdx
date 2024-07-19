@@ -62,15 +62,18 @@ Here is the status of MooseJS support for various data types in Data Models:
 ## Inspecting Your Model
 
 Once you've created your model, you can inspect it along with the infrastructure that MooseJS automatically
-generated for you by navigating to the console at http://localhost:3001.
+generated for you by running `moose ls` in your terminal.
 
-Here you fill find a list of all your Data Models. You can click into any Data Model to see details about it,
-to get information about the APIs/SDKs for that Data Model, and to directly query the data currently stored in
-the Data Model (technically, the data stored in the database table associated with that Data Model).
+```bash
+npx @514labs/moose-cli ls
+```
 
-![Data Model Console](/DataModelConsole.jpeg)
+Here you will find a list of all your Data Models along with their respective ingestion points and table names in the OLAP database.
+You can use a database explorer to query the data stored in the database table for each data model.
 
-## Test Your Model
+![moose-ls](/moose-ls.png)
+
+## Ingest Data via API
 
 When you create a model, MooseJS automatically creates an ingestion point to facilitate immediate data
 testing. Send a sample payload to this endpoint using:
@@ -99,7 +102,7 @@ testing. Send a sample payload to this endpoint using:
 
 ## Next steps
 
-You're all set to start sending data into your Moose application from upstream sources, and consuming
+You're all set to start sending data into your Moose application from your raw data sources, and consuming
 into downstream sources. Check out the next two sections of the docs for more details on Ingesting and
 Consuming Data. To understand the impact of changes to your Data Model, refer to the
 [Data Change Management](/building/dcm/intro) section of the docs.

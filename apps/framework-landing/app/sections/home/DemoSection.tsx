@@ -1,4 +1,4 @@
-import getStarted from "/videos/Demo-video.mp4";
+import getStarted from "/videos/get-started2.mp4";
 import { Section } from "@514labs/design-system-components/components/containers";
 import dynamic from "next/dynamic";
 const Video = dynamic(() => import("next-video"), { ssr: false });
@@ -17,7 +17,8 @@ export const DemoSection = () => {
         ></Image>
         <Video
           src={getStarted}
-          className="aspect-video rounded-sm overflow-hidden"
+          className="aspect-video overflow-hidden rounded-sm"
+          theme="microvideo"
         />
       </div>
     </Section>

@@ -112,10 +112,10 @@ impl Metrics {
                 Counter::default()
             }),
             messages_in_family: Family::<MessagesInCounterLabels, Counter>::new_with_constructor(
-                || {Counter::default()}
+                || Counter::default(),
             ),
             messages_out_family: Family::<MessagesOutCounterLabels, Counter>::new_with_constructor(
-                || {Counter::default()}
+                || Counter::default(),
             ),
             registry: Some(Registry::default()),
         };

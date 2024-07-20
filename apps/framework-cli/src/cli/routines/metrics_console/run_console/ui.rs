@@ -325,7 +325,7 @@ fn render_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout: Rect) 
             table_state.select(Some(app.kafka_starting_row));
 
             let table = Table::new(rows, widths)
-                .widths(&widths)
+                .widths(widths)
                 .column_spacing(1)
                 .style(Style::new().green())
                 .header(
@@ -380,7 +380,7 @@ fn render_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout: Rect) 
             ];
 
             let table = Table::new(rows, widths)
-                .widths(&widths)
+                .widths(widths)
                 .column_spacing(1)
                 .style(Style::new().white())
                 .header(
@@ -402,12 +402,8 @@ fn render_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout: Rect) 
 fn table_equals_path(path: String, table: String) -> bool {
     let mut path_vec: Vec<&str> = path.split(['/', '.']).collect();
     path_vec.remove(0);
-    let table_vec: Vec<&str> = table.split("_").collect();
-    if table_vec == path_vec {
-        return true;
-    } else {
-        return false;
-    }
+    let table_vec: Vec<&str> = table.split('_').collect();
+    table_vec == path_vec
 }
 
 fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {

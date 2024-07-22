@@ -2,6 +2,7 @@ import { Consumer, Kafka, KafkaMessage, Producer, SASLOptions } from "kafkajs";
 import { Buffer } from "node:buffer";
 import process from "node:process";
 import { cliLog } from "@514labs/moose-lib";
+import http from "http";
 
 const SOURCE_TOPIC = process.argv[1];
 const TARGET_TOPIC = process.argv[2];
@@ -12,6 +13,22 @@ const SASL_USERNAME = process.argv[6];
 const SASL_PASSWORD = process.argv[7];
 const SASL_MECHANISM = process.argv[8];
 const SECURITY_PROTOCOL = process.argv[9];
+
+type CliLogData = {
+  message_type?: "Info" | "Success" | "Error" | "Highlight";
+  action: string;
+  message: string;
+};
+export const metricsLog: (log: CliLogData) => void = (log) => {
+  const req = http.request({
+    port: 4000,
+    method: "POST",
+    path: "/metrics-logs",
+  }); // no callback, fire and forget
+
+  req.write(JSON.stringify({ message_type: "Info", ...log }));
+  req.end();
+};
 
 type StreamingFunction = (data: unknown) => unknown | Promise<unknown>;
 type SlimKafkaMessage = { value: string };

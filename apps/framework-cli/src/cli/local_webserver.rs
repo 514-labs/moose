@@ -236,6 +236,26 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
         .unwrap()
 }
 
+async fn metrics_log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
+    let body = to_reader(req).await;
+    let parsed: Result<CliMessage, serde_json::Error> = serde_json::from_reader(body);
+    match parsed {
+        Ok(cli_message) => {
+            let message = Message {
+                action: cli_message.action,
+                details: cli_message.message,
+            };
+            print!("{:#?} --- {:#?}", cli_message.message_type, message);
+        }
+        Err(e) => println!("Received unknown message: {:?}", e),
+    }
+
+    Response::builder()
+        .status(StatusCode::OK)
+        .body(Full::new(Bytes::from("")))
+        .unwrap()
+}
+
 async fn metrics_route(metrics: Arc<Metrics>) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
@@ -566,6 +586,7 @@ async fn router(
             }
         }
         (&hyper::Method::POST, ["logs"]) if !is_prod => Ok(log_route(req).await),
+        (&hyper::Method::POST, ["metrics-logs"]) => Ok(metrics_log_route(req).await),
         (&hyper::Method::GET, ["health"]) => health_route(),
         (&hyper::Method::GET, ["metrics"]) => metrics_route(metrics.clone()).await,
 

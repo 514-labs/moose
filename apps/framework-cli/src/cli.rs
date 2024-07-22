@@ -24,6 +24,7 @@ use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
+use routines::datamodel::read_json_file;
 use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
 use routines::plan;
@@ -532,8 +533,13 @@ async fn top_command_handler(
             info!("Running function command");
             let dm_cmd = data_model_args.command.as_ref().unwrap();
             match dm_cmd {
-                DataModelCommands::Init(_init) => {
+                DataModelCommands::Init(args) => {
                     debug!("Running datamodel init command");
+                    let interface = read_json_file(args.name.clone(), args.sample.clone());
+                    std::fs::write(
+                        format!("./app/datamodels/{}.ts", args.name),
+                        interface.unwrap().as_bytes(),
+                    );
                     Ok(RoutineSuccess::success(Message::new(
                         "DataModel".to_string(),
                         "Initialized".to_string(),

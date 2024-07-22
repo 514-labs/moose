@@ -216,5 +216,5 @@ pub struct DataModelInitArgs {
 
     /// Name of your sample file
     #[arg(short, long)]
-    pub sample: Option<String>,
+    pub sample: String,
 }

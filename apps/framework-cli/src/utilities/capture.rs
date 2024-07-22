@@ -30,6 +30,8 @@ pub enum ActivityType {
     ConsumptionInitCommand,
     #[serde(rename = "devCommand")]
     DevCommand,
+    #[serde(rename = "dataModelCommand")]
+    DataModelCommand,
     #[serde(rename = "dockerCommand")]
     DockerCommand,
     #[serde(rename = "funcInitCommand")]

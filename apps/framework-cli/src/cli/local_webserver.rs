@@ -288,10 +288,19 @@ async fn send_payload_to_topic(
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
     payload: Value,
+    metrics: Arc<Metrics>,
+    route: PathBuf,
 ) -> Result<(i32, i64), (KafkaError, OwnedMessage)> {
     let payload = serde_json::to_vec(&payload).unwrap();
 
     debug!("Sending payload {:?} to topic: {}", payload, topic_name);
+
+    metrics
+        .send_metric(MetricsMessage::PutNumberOfMessagesIn(
+            route.to_str().unwrap().to_string(),
+            topic_name.to_string(),
+        ))
+        .await;
 
     configured_producer
         .producer
@@ -323,7 +332,10 @@ async fn handle_json_req(
     let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body);
 
     metrics
-        .send_metric(MetricsMessage::PutNumberOfBytesIn(route, number_of_bytes))
+        .send_metric(MetricsMessage::PutNumberOfBytesIn(
+            route.clone(),
+            number_of_bytes,
+        ))
         .await;
     // TODO add check that the payload has the proper schema
 
@@ -331,7 +343,14 @@ async fn handle_json_req(
         return bad_json_response(e);
     }
 
-    let res = send_payload_to_topic(configured_producer, topic_name, parsed.ok().unwrap()).await;
+    let res = send_payload_to_topic(
+        configured_producer,
+        topic_name,
+        parsed.ok().unwrap(),
+        metrics,
+        route,
+    )
+    .await;
     if let Err((kafka_error, _)) = res {
         debug!(
             "Failed to deliver message to {} with error: {}",
@@ -346,11 +365,22 @@ async fn handle_json_req(
 async fn wait_for_batch_complete(
     res_arr: &mut Vec<Result<OwnedDeliveryResult, KafkaError>>,
     temp_res: Vec<Result<DeliveryFuture, KafkaError>>,
+    topic_name: &str,
+    metrics: Arc<Metrics>,
+    route: PathBuf,
 ) {
     for future_res in temp_res {
         match future_res {
             Ok(future) => match future.await {
-                Ok(res) => res_arr.push(Ok(res)),
+                Ok(res) => {
+                    metrics
+                        .send_metric(MetricsMessage::PutNumberOfMessagesIn(
+                            route.to_str().unwrap().to_string(),
+                            topic_name.to_string(),
+                        ))
+                        .await;
+                    res_arr.push(Ok(res))
+                }
                 Err(_) => res_arr.push(Err(KafkaError::Canceled)),
             },
             Err(e) => res_arr.push(Err(e)),
@@ -374,7 +404,10 @@ async fn handle_json_array_body(
     let parsed: Result<Vec<Value>, serde_json::Error> = serde_json::from_reader(body);
 
     metrics
-        .send_metric(MetricsMessage::PutNumberOfBytesIn(route, number_of_bytes))
+        .send_metric(MetricsMessage::PutNumberOfBytesIn(
+            route.clone(),
+            number_of_bytes,
+        ))
         .await;
     if let Err(e) = parsed {
         return bad_json_response(e);
@@ -399,11 +432,18 @@ async fn handle_json_array_body(
         // ideally we want to use redpanda::send_with_back_pressure
         // but it does not report the error back
         if count % 1024 == 1023 {
-            wait_for_batch_complete(&mut res_arr, temp_res).await;
+            wait_for_batch_complete(
+                &mut res_arr,
+                temp_res,
+                topic_name,
+                metrics.clone(),
+                route.clone(),
+            )
+            .await;
             temp_res = Vec::new();
         }
     }
-    wait_for_batch_complete(&mut res_arr, temp_res).await;
+    wait_for_batch_complete(&mut res_arr, temp_res, topic_name, metrics, route).await;
 
     if res_arr.iter().any(|res| res.is_err()) {
         return internal_server_error_response();

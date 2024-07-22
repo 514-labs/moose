@@ -19,6 +19,8 @@ pub enum MetricsMessage {
     HTTPLatency((PathBuf, Duration, String)),
     PutNumberOfBytesIn(PathBuf, u64),
     PutNumberOfBytesOut(PathBuf, u64),
+    PutNumberOfMessagesIn(String, String),
+    PutNumberOfMessagesOut(String, String),
 }
 
 #[derive(Clone)]
@@ -29,8 +31,10 @@ pub struct Metrics {
 pub struct Statistics {
     pub total_latency_histogram: Histogram,
     pub histogram_family: Family<HistogramLabels, Histogram>,
-    pub bytes_in_family: Family<CounterLabels, Counter>,
-    pub bytes_out_family: Family<CounterLabels, Counter>,
+    pub bytes_in_family: Family<BytesCounterLabels, Counter>,
+    pub bytes_out_family: Family<BytesCounterLabels, Counter>,
+    pub messages_in_family: Family<MessagesInCounterLabels, Counter>,
+    pub messages_out_family: Family<MessagesOutCounterLabels, Counter>,
     pub registry: Option<Registry>,
 }
 
@@ -41,8 +45,20 @@ pub struct HistogramLabels {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
-pub struct CounterLabels {
+pub struct BytesCounterLabels {
     path: String,
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
+pub struct MessagesInCounterLabels {
+    path: String,
+    topic: String,
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
+pub struct MessagesOutCounterLabels {
+    consumer_group: String,
+    topic: String,
 }
 
 impl Metrics {
@@ -89,12 +105,18 @@ impl Metrics {
                     .into_iter(),
                 )
             }),
-            bytes_in_family: Family::<CounterLabels, Counter>::new_with_constructor(|| {
+            bytes_in_family: Family::<BytesCounterLabels, Counter>::new_with_constructor(|| {
                 Counter::default()
             }),
-            bytes_out_family: Family::<CounterLabels, Counter>::new_with_constructor(|| {
+            bytes_out_family: Family::<BytesCounterLabels, Counter>::new_with_constructor(|| {
                 Counter::default()
             }),
+            messages_in_family: Family::<MessagesInCounterLabels, Counter>::new_with_constructor(
+                Counter::default,
+            ),
+            messages_out_family: Family::<MessagesOutCounterLabels, Counter>::new_with_constructor(
+                Counter::default,
+            ),
             registry: Some(Registry::default()),
         };
         let mut new_registry = data.registry.unwrap();
@@ -118,6 +140,16 @@ impl Metrics {
             "Bytes sent out through consumption endpoints",
             data.bytes_out_family.clone(),
         );
+        new_registry.register(
+            "messages_in",
+            "Messages sent to kafka stream",
+            data.messages_in_family.clone(),
+        );
+        new_registry.register(
+            "messages_out",
+            "Messages received from kafka stream",
+            data.messages_out_family.clone(),
+        );
 
         data.registry = Some(new_registry);
 
@@ -138,17 +170,30 @@ impl Metrics {
                     }
                     MetricsMessage::PutNumberOfBytesIn(path, number_of_bytes) => {
                         data.bytes_in_family
-                            .get_or_create(&CounterLabels {
+                            .get_or_create(&BytesCounterLabels {
                                 path: path.clone().into_os_string().to_str().unwrap().to_string(),
                             })
                             .inc_by(number_of_bytes);
                     }
                     MetricsMessage::PutNumberOfBytesOut(path, number_of_bytes) => {
                         data.bytes_out_family
-                            .get_or_create(&CounterLabels {
+                            .get_or_create(&BytesCounterLabels {
                                 path: path.clone().into_os_string().to_str().unwrap().to_string(),
                             })
                             .inc_by(number_of_bytes);
+                    }
+                    MetricsMessage::PutNumberOfMessagesIn(path, topic) => {
+                        data.messages_in_family
+                            .get_or_create(&MessagesInCounterLabels { path, topic })
+                            .inc();
+                    }
+                    MetricsMessage::PutNumberOfMessagesOut(consumer_group, topic) => {
+                        data.messages_out_family
+                            .get_or_create(&MessagesOutCounterLabels {
+                                consumer_group,
+                                topic,
+                            })
+                            .inc();
                     }
                 };
             }

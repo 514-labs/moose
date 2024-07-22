@@ -7,9 +7,10 @@ use ratatui::{
 };
 use ratatui::{prelude::*, widgets::*};
 
-use crate::cli::routines::metrics_console::run_console::app::{App, State};
+use crate::cli::routines::metrics_console::run_console::app::{App, State, TableState};
 
-const INFO_TEXT: &str = "(q) quit | (↑) move up | (↓) move down | (enter) view endpoint details";
+const INFO_TEXT: &str =
+    "(q) quit | (↑) move up | (↓) move down | (tab) switch table | (enter) view endpoint details";
 
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame) {
@@ -21,7 +22,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                     Constraint::Max(2),
                     Constraint::Max(2),
                     Constraint::Max(2),
-                    Constraint::Fill(80),
+                    Constraint::Fill(40),
+                    Constraint::Fill(40),
                     Constraint::Max(3),
                 ])
                 .split(frame.size());
@@ -51,7 +53,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             render_main_page_details(frame, &outer_layout);
             render_overview_metrics(app, frame, &inner_layout);
             render_overview_bytes_data(app, frame, &bytes_overview_layout);
-            render_table(app, frame, outer_layout[3]);
+            render_endpoint_table(app, frame, outer_layout[3]);
+            render_clickhouse_sync_table(app, frame, outer_layout[4])
         }
         State::PathDetails(state) => {
             let outer_layout = Layout::default()
@@ -104,7 +107,15 @@ pub fn render(app: &mut App, frame: &mut Frame) {
     }
 }
 
-fn render_table(app: &mut App, frame: &mut Frame, layout: Rect) {
+fn render_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) {
+    match &app.table_state {
+        TableState::Endpoint => render_active_endpoint_table(app, frame, layout),
+
+        _ => render_passive_endpoint_table(app, frame, layout),
+    }
+}
+
+fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) {
     let mut rows: Vec<Row> = vec![];
 
     for x in &app.summary {
@@ -121,6 +132,13 @@ fn render_table(app: &mut App, frame: &mut Frame, layout: Rect) {
                         "{}",
                         (((x.request_count * 1000.0).round()) / 1000.0).to_string()
                     ),
+                    format!(
+                        "{}",
+                        app.kafka_messages_in_total
+                            .get(&x.path)
+                            .unwrap_or(&("".to_string(), 0.0))
+                            .1
+                    ),
                 ])
                 .bold()
                 .magenta()
@@ -136,6 +154,13 @@ fn render_table(app: &mut App, frame: &mut Frame, layout: Rect) {
                         "{}",
                         (((x.request_count * 1000.0).round()) / 1000.0).to_string()
                     ),
+                    format!(
+                        "{}",
+                        app.kafka_messages_in_total
+                            .get(&x.path)
+                            .unwrap_or(&("".to_string(), 0.0))
+                            .1
+                    ),
                 ])
                 .green()
                 .not_bold()
@@ -143,25 +168,259 @@ fn render_table(app: &mut App, frame: &mut Frame, layout: Rect) {
         )
     }
 
-    let widths = [Constraint::Min(1), Constraint::Min(1), Constraint::Min(1)];
-    let mut table_state = TableState::default();
-    table_state.select(Some(app.starting_row));
+    let widths = [
+        Constraint::Fill(22),
+        Constraint::Fill(20),
+        Constraint::Fill(20),
+        Constraint::Fill(20),
+    ];
+    let mut table_state = ratatui::widgets::TableState::default();
+    table_state.select(Some(app.endpoint_starting_row));
 
     let table = Table::new(rows, widths)
         .widths(widths)
         .column_spacing(1)
         .style(Style::new().green())
         .header(
-            Row::new(vec!["Path", "Latency (ms)", "Number of Requests"])
-                .style(Style::new().bold())
-                .bottom_margin(1)
-                .underlined(),
+            Row::new(vec![
+                "Path",
+                "Latency (ms)",
+                "Number of Requests",
+                "Kafka Messages Sent",
+            ])
+            .style(Style::new().bold())
+            .bottom_margin(1)
+            .underlined(),
         )
         .block(Block::bordered().title("Endpoint Metrics Table").bold())
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
 
     frame.render_stateful_widget(table, layout, &mut table_state)
+}
+
+fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) {
+    let mut rows: Vec<Row> = vec![];
+
+    for x in &app.summary {
+        rows.push(
+            if *app.path_requests_per_sec.get(&x.path).unwrap_or(&0.0) > 0.0 {
+                Row::new(vec![
+                    format!("{}", x.path.to_string()),
+                    format!(
+                        "{}",
+                        ((((x.latency_sum / x.request_count) * 1000.0) * 1000.0).round() / 1000.0)
+                            .to_string()
+                    ),
+                    format!(
+                        "{}",
+                        (((x.request_count * 1000.0).round()) / 1000.0).to_string()
+                    ),
+                    format!(
+                        "{}",
+                        app.kafka_messages_in_total
+                            .get(&x.path)
+                            .unwrap_or(&("".to_string(), 0.0))
+                            .1
+                    ),
+                ])
+                .bold()
+                .magenta()
+            } else {
+                Row::new(vec![
+                    format!("{}", x.path.to_string()),
+                    format!(
+                        "{}",
+                        ((((x.latency_sum / x.request_count) * 1000.0) * 1000.0).round() / 1000.0)
+                            .to_string()
+                    ),
+                    format!(
+                        "{}",
+                        (((x.request_count * 1000.0).round()) / 1000.0).to_string()
+                    ),
+                    format!(
+                        "{}",
+                        app.kafka_messages_in_total
+                            .get(&x.path)
+                            .unwrap_or(&("".to_string(), 0.0))
+                            .1
+                    ),
+                ])
+                .white()
+                .not_bold()
+            },
+        )
+    }
+
+    let widths = [
+        Constraint::Fill(22),
+        Constraint::Fill(20),
+        Constraint::Fill(20),
+        Constraint::Fill(20),
+    ];
+    let mut table_state = ratatui::widgets::TableState::default();
+    table_state.select(Some(app.endpoint_starting_row));
+
+    let table = Table::new(rows, widths)
+        .widths(widths)
+        .column_spacing(1)
+        .style(Style::new().white())
+        .header(
+            Row::new(vec![
+                "Path",
+                "Latency (ms)",
+                "Number of Requests",
+                "Kafka Messages Sent",
+            ])
+            .style(Style::new().bold())
+            .bottom_margin(1)
+            .underlined(),
+        )
+        .block(Block::bordered().title("Endpoint Metrics Table").bold());
+
+    frame.render_widget(table, layout)
+}
+
+fn render_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout: Rect) {
+    match app.table_state {
+        TableState::Kafka => render_active_clickhouse_sync_table(app, frame, layout),
+        _ => render_passive_clickhouse_sync_table(app, frame, layout),
+    }
+}
+
+fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout: Rect) {
+    let mut rows: Vec<Row> = vec![];
+
+    let mut sorted_messages: Vec<_> = app.kafka_messages_out_total.iter().collect();
+    sorted_messages.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+
+    for item in &sorted_messages {
+        rows.push(
+            Row::new(vec![
+                format!("{}", item.0.to_string()),
+                format!("{}", item.2),
+                format!("{}", {
+                    let mut lag: Option<f64> = None;
+                    for value in &app.kafka_messages_in_total {
+                        if table_equals_path(value.0.clone(), item.0.clone()) {
+                            lag = Some(value.1 .1 - item.2);
+                            break;
+                        }
+                    }
+                    match lag {
+                        Some(value) => value.to_string(),
+                        None => "NA".to_string(),
+                    }
+                }),
+                format!(
+                    "{}",
+                    app.kafka_messages_out_per_sec
+                        .get(&item.0)
+                        .unwrap_or(&("".to_string(), 0.0))
+                        .1
+                ),
+            ])
+            .bold()
+            .white(),
+        )
+    }
+
+    let widths = [
+        Constraint::Percentage(25),
+        Constraint::Percentage(25),
+        Constraint::Percentage(25),
+        Constraint::Percentage(25),
+    ];
+
+    let table = Table::new(rows, widths)
+        .widths(widths)
+        .column_spacing(1)
+        .style(Style::new().white())
+        .header(
+            Row::new(vec!["Data Model", "Messages Read", "Lag", "Messages/sec"])
+                .style(Style::new().bold())
+                .bottom_margin(1),
+        )
+        .block(
+            Block::bordered()
+                .title("Kafka to Table Sync Process")
+                .bold(),
+        );
+
+    frame.render_widget(table, layout)
+}
+
+fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout: Rect) {
+    let mut rows: Vec<Row> = vec![];
+
+    let mut sorted_messages: Vec<_> = app.kafka_messages_out_total.iter().collect();
+    sorted_messages.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+
+    for item in &sorted_messages {
+        rows.push(
+            Row::new(vec![
+                format!("{}", item.0.to_string()),
+                format!("{}", item.2),
+                format!("{}", {
+                    let mut lag: Option<f64> = None;
+                    for value in &app.kafka_messages_in_total {
+                        if table_equals_path(value.0.clone(), item.0.clone()) {
+                            lag = Some(value.1 .1 - item.2);
+                            break;
+                        }
+                    }
+                    match lag {
+                        Some(value) => value.to_string(),
+                        None => "NA".to_string(),
+                    }
+                }),
+                format!(
+                    "{}",
+                    app.kafka_messages_out_per_sec
+                        .get(&item.0)
+                        .unwrap_or(&("".to_string(), 0.0))
+                        .1
+                ),
+            ])
+            .bold()
+            .green(),
+        )
+    }
+
+    let widths = [
+        Constraint::Percentage(25),
+        Constraint::Percentage(25),
+        Constraint::Percentage(25),
+        Constraint::Percentage(25),
+    ];
+    let mut table_state = ratatui::widgets::TableState::default();
+    table_state.select(Some(app.kafka_starting_row));
+
+    let table = Table::new(rows, widths)
+        .widths(widths)
+        .column_spacing(1)
+        .style(Style::new().green())
+        .header(
+            Row::new(vec!["Data Model", "Messages Read", "Lag", "Messages/sec"])
+                .style(Style::new().bold())
+                .bottom_margin(1),
+        )
+        .block(
+            Block::bordered()
+                .title("Kafka to Table Sync Process")
+                .bold(),
+        )
+        .highlight_style(Style::new().reversed())
+        .highlight_symbol(">>");
+
+    frame.render_stateful_widget(table, layout, &mut table_state)
+}
+
+fn table_equals_path(path: String, table: String) -> bool {
+    let mut path_vec: Vec<&str> = path.split(['/', '.']).collect();
+    path_vec.remove(0);
+    let table_vec: Vec<&str> = table.split('_').collect();
+    table_vec == path_vec
 }
 
 fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
@@ -181,10 +440,7 @@ fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>
         .white();
 
     let req_per_sec = Block::new()
-        .title(format!(
-            "Requests Per Second: {}",
-            app.main_bytes_data.bytes_out_per_sec
-        ))
+        .title(format!("Requests Per Second: {}", app.requests_per_sec))
         .title_alignment(Alignment::Center)
         .bold()
         .white();
@@ -234,7 +490,7 @@ fn render_main_page_details(frame: &mut Frame, layout: &Rc<[Rect]>) {
         .green();
 
     frame.render_widget(block, layout[0]);
-    frame.render_widget(info_footer, layout[4]);
+    frame.render_widget(info_footer, layout[5]);
 }
 
 fn render_path_overview_data(
@@ -247,8 +503,8 @@ fn render_path_overview_data(
     let average_latency_block = Block::new()
         .title(format!(
             "Average Latency: {}ms ",
-            (((app.summary[app.starting_row].latency_sum
-                / app.summary[app.starting_row].request_count)
+            (((app.summary[app.endpoint_starting_row].latency_sum
+                / app.summary[app.endpoint_starting_row].request_count)
                 * 1000000.0)
                 .round())
                 / 1000.0
@@ -261,7 +517,7 @@ fn render_path_overview_data(
     let request_count_block = Block::new()
         .title(format!(
             "Number of Requests: {}",
-            (app.summary[app.starting_row].request_count)
+            (app.summary[app.endpoint_starting_row].request_count)
         ))
         .title_alignment(Alignment::Center)
         .bold()

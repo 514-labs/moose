@@ -19,6 +19,8 @@ pub struct ParsedMetricsData {
     pub total_bytes_in: u64,
     pub total_bytes_out: u64,
     pub histogram_vec: Vec<Sample>,
+    pub kafka_messages_in_total: HashMap<String, (String, f64)>,
+    pub kafka_messages_out_total: Vec<(String, String, f64)>,
 }
 
 pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
@@ -43,6 +45,8 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
     let mut total_bytes_in: u64 = 0;
     let mut total_bytes_out: u64 = 0;
     let mut paths_bytes_hashmap: HashMap<String, u64> = HashMap::new();
+    let mut kafka_messages_in_total: HashMap<String, (String, f64)> = HashMap::new();
+    let mut kafka_messages_out_total: Vec<(String, String, f64)> = vec![];
 
     let mut i = 0;
     while i < metrics_vec.len() {
@@ -100,6 +104,28 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
             } else {
                 total_bytes_out += value as u64;
             }
+        } else if metrics_vec[j].metric == "messages_in_total" {
+            let value: f64 = match &metrics_vec[j].value {
+                prometheus_parse::Value::Counter(v) => *v,
+                prometheus_parse::Value::Untyped(v) => *v,
+                _ => 0.0,
+            };
+
+            let topic = metrics_vec[j].labels["topic"].to_string();
+            let path = metrics_vec[j].labels["path"].to_string();
+
+            kafka_messages_in_total.insert(path, (topic, value));
+        } else if metrics_vec[j].metric == "messages_out_total" {
+            let value: f64 = match &metrics_vec[j].value {
+                prometheus_parse::Value::Counter(v) => *v,
+                prometheus_parse::Value::Untyped(v) => *v,
+                _ => 0.0,
+            };
+
+            let consumer_group = metrics_vec[j].labels["consumer_group"].to_string();
+            let topic = metrics_vec[j].labels["topic"].to_string();
+
+            kafka_messages_out_total.push((topic, consumer_group, value));
         }
         j += 1;
     }
@@ -112,6 +138,8 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
         total_bytes_in,
         total_bytes_out,
         histogram_vec: metrics_vec,
+        kafka_messages_in_total,
+        kafka_messages_out_total,
     };
 
     Ok(parsed_data)

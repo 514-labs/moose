@@ -1,10 +1,15 @@
+use std::sync::Arc;
+
 use consumption_registry::ConsumptionError;
 use kafka_clickhouse_sync::SyncingProcessesRegistry;
 use process_registry::ProcessRegistries;
 
-use crate::framework::{
-    aggregations::model::AggregationError,
-    core::infrastructure_map::{Change, ProcessChange},
+use crate::{
+    framework::{
+        aggregations::model::AggregationError,
+        core::infrastructure_map::{Change, ProcessChange},
+    },
+    metrics::Metrics,
 };
 
 use super::olap::clickhouse::{errors::ClickhouseError, mapper::std_columns_to_clickhouse_columns};
@@ -36,6 +41,7 @@ pub async fn execute_changes(
     syncing_registry: &mut SyncingProcessesRegistry,
     process_registry: &mut ProcessRegistries,
     changes: &[ProcessChange],
+    metrics: Arc<Metrics>,
 ) -> Result<(), SyncProcessChangesError> {
     for change in changes.iter() {
         match change {
@@ -47,6 +53,7 @@ pub async fn execute_changes(
                     sync.columns.clone(),
                     sync.target_table_id.clone(),
                     target_table_columns,
+                    metrics.clone(),
                 );
             }
             ProcessChange::TopicToTableSyncProcess(Change::Removed(sync)) => {
@@ -64,6 +71,7 @@ pub async fn execute_changes(
                     after.columns.clone(),
                     after.target_table_id.clone(),
                     target_table_columns,
+                    metrics.clone(),
                 );
             }
             ProcessChange::FunctionProcess(Change::Added(function_process)) => {

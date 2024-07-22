@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
 use crate::{
@@ -11,6 +12,7 @@ use crate::{
         },
         stream,
     },
+    metrics::Metrics,
     project::Project,
 };
 
@@ -36,6 +38,7 @@ pub async fn execute_initial_infra_change(
     features: &Features, // We should get rid of this when we moved away from aggregations
     plan: &InfraPlan,
     api_changes_channel: Sender<ApiChange>,
+    metrics: Arc<Metrics>,
 ) -> Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError> {
     // This probably can be paralelized through Tokio Spawn
     olap::execute_changes(project, &plan.changes.olap_changes).await?;
@@ -59,6 +62,7 @@ pub async fn execute_initial_infra_change(
         &mut syncing_processes_registry,
         &mut process_registries,
         &plan.target_infra_map.init_processes(),
+        metrics,
     )
     .await?;
 
@@ -71,6 +75,7 @@ pub async fn execute_online_change(
     api_changes_channel: Sender<ApiChange>,
     sync_processes_registry: &mut SyncingProcessesRegistry,
     process_registries: &mut ProcessRegistries,
+    metrics: Arc<Metrics>,
 ) -> Result<(), ExecutionError> {
     // This probably can be paralelized through Tokio Spawn
     olap::execute_changes(project, &plan.changes.olap_changes).await?;
@@ -84,6 +89,7 @@ pub async fn execute_online_change(
         sync_processes_registry,
         process_registries,
         &plan.changes.processes_changes,
+        metrics,
     )
     .await?;
 

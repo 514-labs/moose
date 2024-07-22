@@ -301,9 +301,14 @@ pub async fn start_development_mode(
         let plan_result = plan_changes(&mut client, &project).await?;
         log::info!("Plan Changes: {:?}", plan_result.changes);
         let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
-        let (syncing_registry, process_registry) =
-            execute_initial_infra_change(&project, features, &plan_result, api_changes_channel)
-                .await?;
+        let (syncing_registry, process_registry) = execute_initial_infra_change(
+            &project,
+            features,
+            &plan_result,
+            api_changes_channel,
+            metrics.clone(),
+        )
+        .await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
 
         // Storing the result of the changes in the table
@@ -322,7 +327,7 @@ pub async fn start_development_mode(
         );
 
         let _ = syncing_processes_registry
-            .start_all(&framework_object_versions, &version_syncs)
+            .start_all(&framework_object_versions, &version_syncs, metrics.clone())
             .await;
 
         let topics = fetch_topics(&project.redpanda_config).await?;
@@ -397,6 +402,7 @@ pub async fn start_development_mode(
         consumption_apis,
         syncing_processes_registry,
         process_registry,
+        metrics.clone(),
     )?;
 
     info!("Starting web server...");
@@ -442,8 +448,14 @@ pub async fn start_production_mode(
         let plan_result = plan_changes(&mut client, &project).await?;
         log::info!("Plan Changes: {:?}", plan_result.changes);
         let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
-        execute_initial_infra_change(&project, &features, &plan_result, api_changes_channel)
-            .await?;
+        execute_initial_infra_change(
+            &project,
+            &features,
+            &plan_result,
+            api_changes_channel,
+            metrics.clone(),
+        )
+        .await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
 
         // Storing the result of the changes in the table
@@ -460,7 +472,7 @@ pub async fn start_production_mode(
             project.clickhouse_config.clone(),
         );
         let _ = syncing_processes_registry
-            .start_all(&framework_object_versions, &version_syncs)
+            .start_all(&framework_object_versions, &version_syncs, metrics.clone())
             .await;
 
         let mut function_process_registry =

@@ -7,7 +7,7 @@ command structures your project's directory and creates necessary files based on
 your specified data models.
 
 ```txt filename="Terminal" copy
-moose functions init --source <YourSourceDataModel> --destination <YourDestinationDataModel>
+moose function init --source <YourSourceDataModel> --destination <YourDestinationDataModel>
 ```
 
 This command takes two arguments: `--source` and `--destination`, which should
@@ -19,7 +19,7 @@ your streaming function. You can find a list of your existing data models in
 By way of example:
 
 ```txt filename="Terminal" copy
-moose functions init --source UserActivity --destination ParsedActivity
+moose function init --source UserActivity --destination ParsedActivity
 ```
 
 Represents a streaming function from a source data model `UserActivity` and

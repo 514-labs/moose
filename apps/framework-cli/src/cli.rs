@@ -223,9 +223,14 @@ async fn top_command_handler(
                         SupportedLanguages::Python => "pip install .",
                     };
 
+                    let run_dev_string = match language {
+                        SupportedLanguages::Typescript => "npm run dev",
+                        SupportedLanguages::Python => "npx @514labs/moose-cli@latest dev",
+                    };
+
                     Ok(RoutineSuccess::highlight(Message::new(
                         "Get Started".to_string(),
-                        format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n   Install Dependencies:\n\t$ {} \n\n🛠️ Start dev server: \n\t$ npx @514labs/moose-cli@latest dev\n\n", dir_path.to_string_lossy(), install_string),
+                        format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n   Install Dependencies:\n\t$ {} \n\n🛠️ Start dev server: \n\t$ {}\n\n", dir_path.to_string_lossy(), install_string, run_dev_string),
                     )))
                 }
             }

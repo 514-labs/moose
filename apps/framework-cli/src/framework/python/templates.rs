@@ -67,6 +67,27 @@ my_flow = Flow(
 )
 "#;
 
+pub static PTYHON_BASE_API_SAMPLE_TEMPLATE: &str = r#"
+def run(client, params):
+    minDailyActiveUsers = int(params.get('minDailyActiveUsers', [0])[0])
+    limit = int(params.get('limit', [10])[0])
+
+    return client.query(
+        '''SELECT
+            date,
+            uniqMerge(dailyActiveUsers) as dailyActiveUsers
+        FROM DailyActiveUsers
+        GROUP BY date
+        HAVING dailyActiveUsers >= {minDailyActiveUsers}
+        ORDER BY date
+        LIMIT {limit}''',
+        {
+            "minDailyActiveUsers": minDailyActiveUsers,
+            "limit": limit
+        }
+    )
+"#;
+
 pub static PTYHON_BASE_AGG_SAMPLE_TEMPLATE: &str = r#"
 from dataclasses import dataclass
 

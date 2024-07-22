@@ -6,6 +6,6 @@ setup(
     version='0.0',
     install_requires=[
         "kafka-python-ng==2.2.2",
-        "clickhouse_connect==0.7.12",
+        "clickhouse_connect==0.7.16",
     ],
 )

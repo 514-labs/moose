@@ -31,10 +31,12 @@ use serde::Serialize;
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::cli::settings::Features;
 use crate::framework::languages::SupportedLanguages;
-use crate::framework::python::templates::PTYHON_BASE_AGG_SAMPLE_TEMPLATE;
 use crate::framework::python::templates::PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE;
+use crate::framework::python::templates::{
+    PTYHON_BASE_AGG_SAMPLE_TEMPLATE, PTYHON_BASE_API_SAMPLE_TEMPLATE,
+};
 use crate::framework::streaming::loader::{
     extension_supported_in_streaming_function, parse_streaming_function,
 };
@@ -67,8 +69,8 @@ use crate::utilities::constants::{
     AGGREGATIONS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, OLD_PROJECT_CONFIG_FILE,
     SAMPLE_STREAMING_FUNCTION_DEST, SAMPLE_STREAMING_FUNCTION_SOURCE, TS_FLOW_FILE,
 };
-use crate::utilities::constants::{API_FILE, PYTHON_INIT_FILE};
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
+use crate::utilities::constants::{PYTHON_INIT_FILE, PY_API_FILE, TS_API_FILE};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 use crate::utilities::git::GitConfig;
 
@@ -251,7 +253,6 @@ impl Project {
     pub fn create_base_app_files(&self, features: &Features) -> Result<(), std::io::Error> {
         // Common file paths
         let readme_file_path = self.project_location.join("README.md");
-        let apis_file_path = self.consumption_dir().join(API_FILE);
         let aggregations_dir = if features.blocks {
             self.blocks_dir()
         } else {
@@ -262,10 +263,9 @@ impl Project {
             &readme_file_path,
             README_PREFIX.to_owned() + include_str!("../../../README.md"),
         )?;
-        self.write_file(&apis_file_path, BASE_APIS_SAMPLE_TEMPLATE.to_string())?;
-
         match self.language {
             SupportedLanguages::Typescript => {
+                let apis_file_path = self.consumption_dir().join(TS_API_FILE);
                 let base_model_file_path = self.data_models_dir().join("models.ts");
                 let function_file_path = self.streaming_func_dir().join(format!(
                     "{}__{}.ts",
@@ -274,6 +274,7 @@ impl Project {
                 let aggregations_file_path = aggregations_dir.join(TS_AGGREGATIONS_FILE);
 
                 // Write TypeScript specific templates
+                self.write_file(&apis_file_path, BASE_APIS_SAMPLE_TEMPLATE.to_string())?;
                 self.write_file(&base_model_file_path, TS_BASE_MODEL_TEMPLATE.to_string())?;
                 self.write_file(
                     &function_file_path,
@@ -292,6 +293,7 @@ impl Project {
                 }
             }
             SupportedLanguages::Python => {
+                let apis_file_path = self.consumption_dir().join(PY_API_FILE);
                 let base_model_file_path = self.data_models_dir().join("models.py");
                 let function_file_path = self.streaming_func_dir().join(format!(
                     "{}__{}.py",
@@ -300,6 +302,7 @@ impl Project {
                 let aggregations_file_path = aggregations_dir.join(PY_AGGREGATIONS_FILE);
 
                 // Write Python specific templates
+                self.write_file(&apis_file_path, PTYHON_BASE_API_SAMPLE_TEMPLATE.to_string())?;
                 self.write_file(
                     &base_model_file_path,
                     PYTHON_BASE_MODEL_TEMPLATE.to_string(),

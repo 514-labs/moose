@@ -51,7 +51,9 @@ pub const PY_FLOW_FILE: &str = "flow.py";
 
 pub const TS_AGGREGATIONS_FILE: &str = "DailyActiveUsers.ts";
 pub const PY_AGGREGATIONS_FILE: &str = "DailyActiveUsers.py";
-pub const API_FILE: &str = "dailyActiveUsers.ts";
+
+pub const TS_API_FILE: &str = "dailyActiveUsers.ts";
+pub const PY_API_FILE: &str = "dailyActiveUsers.py";
 
 pub const VSCODE_EXT_FILE: &str = "extensions.json";
 pub const VSCODE_SETTINGS_FILE: &str = "settings.json";

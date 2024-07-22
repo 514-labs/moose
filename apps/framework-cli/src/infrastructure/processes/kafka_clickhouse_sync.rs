@@ -297,8 +297,6 @@ async fn sync_kafka_to_kafka(
     let queue: Mutex<VecDeque<DeliveryFuture>> = Mutex::new(VecDeque::new());
     let target_topic_name = &target_topic_name;
 
-    println!("1: {:#?}", target_topic_name);
-
     iterate_subscriber(
         subscriber,
         source_topic_name,
@@ -331,8 +329,6 @@ async fn sync_kafka_to_clickhouse(
 ) -> anyhow::Result<()> {
     let subscriber: StreamConsumer =
         create_subscriber(&kafka_config, TABLE_SYNC_GROUP_ID, &source_topic_name);
-    println!("2: {:#?}", source_topic_name);
-    println!("2: {:#?}", target_table_name);
 
     let clickhouse_columns = target_table_columns
         .iter()
@@ -401,7 +397,6 @@ async fn iterate_subscriber<'a, F>(
                             "Received message from {}: {}",
                             source_topic_name, payload_str
                         );
-                        //println!("{}", subscriber);
                         metrics
                             .send_metric(MetricsMessage::PutNumberOfMessagesOut(
                                 "clickhouse_sync".to_string(),

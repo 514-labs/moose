@@ -301,6 +301,7 @@ pub async fn fetch_topics(
 
 pub fn create_subscriber(config: &RedpandaConfig, group_id: &str, topic: &str) -> StreamConsumer {
     let mut client_config = config_client(config);
+    println!("{}", group_id);
 
     client_config
         .set("session.timeout.ms", "6000")

@@ -11,7 +11,15 @@ import {
 } from "@514labs/design-system-components/typography";
 import React from "react";
 
-import { Box, Database, Network, Share2, Terminal, Code2 } from "lucide-react";
+import {
+  Box,
+  Database,
+  Network,
+  Share2,
+  Terminal,
+  Code2,
+  Server,
+} from "lucide-react";
 
 export const FeaturesSection = () => {
   const content = {
@@ -29,7 +37,7 @@ export const FeaturesSection = () => {
         title: "Local Dev Server",
         description:
           "Run your application locally and see the impact of code changes in real-time",
-        icon: <Database strokeWidth={1} />,
+        icon: <Server strokeWidth={1} />,
       },
       {
         title: "Git-Based Workflows",
@@ -89,11 +97,11 @@ export const FeaturesSection = () => {
             return (
               <ThirdWidthContentContainer
                 key={index}
-                className="flex flex-col gap-2"
+                className="flex flex-col gap-5 border p-5 rounded-3xl"
               >
                 {feature.icon}
                 <Text className="my-0">{feature.title}</Text>
-                <Text className="my-0 text-muted-foreground">
+                <Text className="my-0 text-muted-foreground text-[20px]">
                   {feature.description}
                 </Text>
               </ThirdWidthContentContainer>

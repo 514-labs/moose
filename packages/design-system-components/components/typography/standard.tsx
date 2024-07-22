@@ -161,6 +161,26 @@ export const Text = forwardRef<HTMLParagraphElement, TextProps>(
   },
 );
 
+export const GradientText = ({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) => {
+  return (
+    <span
+      className="inline-block text-transparent bg-clip-text"
+      style={{
+        backgroundImage:
+          "linear-gradient(150.33deg, #641BFF -290.53%, #1983FF 28.23%, #C8FF2C 106.53%)",
+      }}
+    >
+      {children}
+    </span>
+  );
+};
+
 export const CodeSnippet = ({
   children,
   className,

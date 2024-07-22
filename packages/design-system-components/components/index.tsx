@@ -8,3 +8,4 @@ export * from "./theme-toggle";
 export * from "./logo";
 export * from "./CTAs";
 export * from "./PlaceholderImage";
+export * from "./ui/tabs";

@@ -12,15 +12,7 @@ import {
 } from "@514labs/design-system-components/typography";
 import React from "react";
 
-import {
-  Box,
-  Database,
-  Network,
-  Share2,
-  Terminal,
-  Code2,
-  Server,
-} from "lucide-react";
+import { Box, Network, Share2, Terminal, Code2, Server } from "lucide-react";
 
 export const FeaturesSection = () => {
   const content = {

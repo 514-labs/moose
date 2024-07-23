@@ -22,7 +22,7 @@ import {
 import { Text } from "@514labs/design-system-components/typography";
 import React from "react";
 import { LooseMooseSection } from "./sections/home/LooseMooseSection";
-import { WhatIsMoose } from "./sections/home/WhatIsMooseV2";
+//import { WhatIsMoose } from "./sections/home/WhatIsMooseV2";
 import { WhatIsMooseFor } from "./sections/home/WhatIsMooseForV2";
 
 export const CTAText = ({

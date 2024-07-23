@@ -26,22 +26,22 @@ import React from "react";
 import { LooseMooseSection } from "../../sections/home/LooseMooseSection";
 import { TrackingVerb } from "@514labs/event-capture/withTrack";
 
-interface TemplateAccordionItem {
-  title: string;
-  steps: {
-    title: string;
-    description: string;
-    command?: string;
-    action?: {
-      label: string;
-      href: string;
-    };
-  }[];
-}
+// interface TemplateAccordionItem {
+//   title: string;
+//   steps: {
+//     title: string;
+//     description: string;
+//     command?: string;
+//     action?: {
+//       label: string;
+//       href: string;
+//     };
+//   }[];
+// }
 
-interface TemplateAccordionProps {
-  templateAccordionItems: TemplateAccordionItem[];
-}
+// interface TemplateAccordionProps {
+//   templateAccordionItems: TemplateAccordionItem[];
+// }
 
 // function TemplateAccordion({ templateAccordionItems }: TemplateAccordionProps) {
 //   return (

@@ -39,10 +39,7 @@ export const WhatIsMooseFor = () => {
     <>
       <Section className="mx-auto xl:max-w-screen-xl">
         <FullWidthContentContainer className="mb-12 2xl:mb-20">
-          <Heading level={HeadingLevel.l2}>
-            Moose is best suited for any data product that needs real-time
-            analytics
-          </Heading>
+          <Heading level={HeadingLevel.l2}>Build on big and small data</Heading>
         </FullWidthContentContainer>
         <Grid className="justify-center">
           <HalfWidthContentContainer className="flex flex-col xl:justify-start xl:order-4 border rounded-3xl p-5 gap-5">

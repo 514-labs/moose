@@ -98,7 +98,8 @@ export default async function handle(
       date,
       dailyActiveUsers
     FROM DailyActiveUsers
-    WHERE dailyActiveUsers >= \${parseInt(minDailyActiveUsers)}
+    WHERE 
+      dailyActiveUsers >= \${parseInt(minDailyActiveUsers)}
     LIMIT \${parseInt(limit)}\`,
   );
 }

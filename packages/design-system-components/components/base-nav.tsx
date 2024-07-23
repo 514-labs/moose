@@ -12,6 +12,7 @@ import { Button } from "./ui/button";
 import { Logo } from "./logo";
 import { Badge } from "./ui/badge";
 import { TrackLink } from "./trackable-components";
+import LanguageBadge from "./language-badge";
 
 gsap.registerPlugin(SplitText);
 
@@ -51,9 +52,7 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
                         subject="Alpha Badge"
                         href={"https://docs.moosejs.com"}
                       >
-                        <Badge className="ml-3 mt-1.5" variant={"outline"}>
-                          alpha
-                        </Badge>
+                        <LanguageBadge />
                       </TrackLink>
                     ) : null}
                   </div>

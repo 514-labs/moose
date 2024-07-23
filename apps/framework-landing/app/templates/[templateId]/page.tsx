@@ -2,13 +2,12 @@ import Link from "next/link";
 
 import { CTABar } from "../../page";
 import FooterSection from "../../sections/FooterSection";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-  Separator,
-} from "@514labs/design-system-components/components";
+// import {
+//   Accordion,
+//   AccordionContent,
+//   AccordionItem,
+//   AccordionTrigger
+// } from "@514labs/design-system-components/components";
 import {
   Grid,
   Section,
@@ -20,11 +19,7 @@ import {
   Heading,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
-import {
-  TrackCtaButton,
-  TrackableCodeSnippet,
-} from "../../trackable-components";
-import { CopyButton } from "./copy-button";
+import { TrackCtaButton } from "../../trackable-components";
 import { Suspense } from "react";
 import { TemplateImg } from "../../sections/home/TemplateImg";
 import React from "react";
@@ -48,50 +43,50 @@ interface TemplateAccordionProps {
   templateAccordionItems: TemplateAccordionItem[];
 }
 
-function TemplateAccordion({ templateAccordionItems }: TemplateAccordionProps) {
-  return (
-    <Accordion
-      type="single"
-      defaultValue="item-0"
-      collapsible
-      className="w-full"
-    >
-      {templateAccordionItems.map((item, index) => (
-        <AccordionItem value={`item-${index}`} key={index}>
-          <AccordionTrigger>
-            <Text>{item.title}</Text>
-          </AccordionTrigger>
-          <AccordionContent>
-            {item.steps.map((step, index) => (
-              <div key={index} className="py-5">
-                <Text className="text-muted-foreground">{step.title}</Text>
-                <Text>{step.description}</Text>
-                {step.command && (
-                  <TrackableCodeSnippet
-                    name={item.title}
-                    subject={step.command}
-                  >
-                    {step.command}
-                  </TrackableCodeSnippet>
-                )}
-                {step.action && (
-                  <Link href={step.action.href}>
-                    <TrackCtaButton
-                      name={item.title}
-                      subject={step.action.label}
-                    >
-                      {step.action.label}
-                    </TrackCtaButton>
-                  </Link>
-                )}
-              </div>
-            ))}
-          </AccordionContent>
-        </AccordionItem>
-      ))}
-    </Accordion>
-  );
-}
+// function TemplateAccordion({ templateAccordionItems }: TemplateAccordionProps) {
+//   return (
+//     <Accordion
+//       type="single"
+//       defaultValue="item-0"
+//       collapsible
+//       className="w-full"
+//     >
+//       {templateAccordionItems.map((item, index) => (
+//         <AccordionItem value={`item-${index}`} key={index}>
+//           <AccordionTrigger>
+//             <Text>{item.title}</Text>
+//           </AccordionTrigger>
+//           <AccordionContent>
+//             {item.steps.map((step, index) => (
+//               <div key={index} className="py-5">
+//                 <Text className="text-muted-foreground">{step.title}</Text>
+//                 <Text>{step.description}</Text>
+//                 {step.command && (
+//                   <TrackableCodeSnippet
+//                     name={item.title}
+//                     subject={step.command}
+//                   >
+//                     {step.command}
+//                   </TrackableCodeSnippet>
+//                 )}
+//                 {step.action && (
+//                   <Link href={step.action.href}>
+//                     <TrackCtaButton
+//                       name={item.title}
+//                       subject={step.action.label}
+//                     >
+//                       {step.action.label}
+//                     </TrackCtaButton>
+//                   </Link>
+//                 )}
+//               </div>
+//             ))}
+//           </AccordionContent>
+//         </AccordionItem>
+//       ))}
+//     </Accordion>
+//   );
+// }
 
 // The layout for specific tempaltes
 export default function TemplatePage({

@@ -28,7 +28,7 @@ export const HeroSection = () => {
       {
         href: "https://docs.moosejs.com/",
         action: "cta-early-access",
-        label: "Learn More",
+        label: "View Docs ",
         variant: "outline",
       },
     ],
@@ -38,20 +38,22 @@ export const HeroSection = () => {
     <>
       <Section className="w-full relative mx-auto xl:max-w-screen-xl pb-10">
         <Grid>
-          <FullWidthContentContainer className="pt-0">
+          <FullWidthContentContainer className="pt-0 items-center px-20 flex flex-col gap-5">
             <div>
               {/* <Heading> {content.tagLine} </Heading> */}
-              <Display className="my-0">{content.tagLine} </Display>
+              <Display className="my-0 text-center text-96">
+                {content.tagLine}{" "}
+              </Display>
 
               <Heading
-                level={HeadingLevel.l2}
-                className="text-muted-foreground"
+                level={HeadingLevel.l3}
+                className="text-muted-foreground text-center"
               >
                 {" "}
                 {content.description}{" "}
               </Heading>
             </div>
-            <CTABar className="mb-10">
+            <CTABar className="mb-10 align-center justify-center">
               {content.ctas.map((cta, index) => (
                 <Link key={index} href={cta.href}>
                   <TrackCtaButton

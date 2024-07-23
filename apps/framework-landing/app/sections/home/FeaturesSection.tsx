@@ -7,6 +7,7 @@ import {
 import {
   Heading,
   Text,
+  SmallText,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
 import React from "react";
@@ -30,7 +31,7 @@ export const FeaturesSection = () => {
       {
         title: "Python and TypeScript",
         description:
-          "Write code in your native language with your favorite IDE plug-ins and AI assistants",
+          "Write code in your native language with your favorite IDE plug-ins",
         icon: <Code2 strokeWidth={1} />,
       },
       {
@@ -86,7 +87,7 @@ export const FeaturesSection = () => {
       <Section className="mx-auto xl:max-w-screen-xl">
         <Grid className="mb-12 2xl:mb-20">
           <FullWidthContentContainer>
-            <Heading> {content.title} </Heading>
+            <Heading level={HeadingLevel.l2}> {content.title} </Heading>
             <Heading level={HeadingLevel.l3} className="text-muted-foreground">
               {content.subtitle}
             </Heading>
@@ -101,9 +102,9 @@ export const FeaturesSection = () => {
               >
                 {feature.icon}
                 <Text className="my-0">{feature.title}</Text>
-                <Text className="my-0 text-muted-foreground text-[20px]">
+                <SmallText className="my-0 text-muted-foreground text-[20px]">
                   {feature.description}
-                </Text>
+                </SmallText>
               </ThirdWidthContentContainer>
             );
           })}

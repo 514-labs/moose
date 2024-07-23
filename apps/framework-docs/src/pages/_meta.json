@@ -6,6 +6,7 @@
     }
   },
   "getting-started": "Getting Started",
+  "templates": "Template Guides",
   "building": "Developing your App",
   "deploying": "Deploying your App",
   "moose-cli": "Moose CLI",

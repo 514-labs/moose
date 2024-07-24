@@ -27,6 +27,7 @@ pub struct MainBytesParsedData {
 pub enum TableState {
     Endpoint,
     Kafka,
+    Flows,
 }
 
 pub struct App {
@@ -40,6 +41,7 @@ pub struct App {
     pub summary: Vec<PathMetricsData>,
     pub endpoint_starting_row: usize,
     pub kafka_starting_row: usize,
+    pub flows_table_starting_row: usize,
     pub path_detailed_data: Option<Vec<HistogramCount>>,
     pub path_requests_per_sec: HashMap<String, f64>,
     pub requests_per_sec_vec: HashMap<String, Vec<u64>>,
@@ -48,6 +50,8 @@ pub struct App {
     pub kafka_messages_in_total: HashMap<String, (String, f64)>,
     pub kafka_messages_out_total: Vec<(String, String, f64)>,
     pub kafka_messages_out_per_sec: HashMap<String, (String, f64)>,
+    pub flows_messages_in: HashMap<String, f64>,
+    pub flows_messages_out: HashMap<String, f64>,
 }
 
 impl Default for App {
@@ -63,6 +67,7 @@ impl Default for App {
             summary: vec![],
             endpoint_starting_row: 0,
             kafka_starting_row: 0,
+            flows_table_starting_row: 0,
             path_detailed_data: vec![].into(),
             path_requests_per_sec: HashMap::new(),
             requests_per_sec_vec: HashMap::new(),
@@ -80,6 +85,8 @@ impl Default for App {
             kafka_messages_in_total: HashMap::new(),
             kafka_messages_out_total: vec![],
             kafka_messages_out_per_sec: HashMap::new(),
+            flows_messages_in: HashMap::new(),
+            flows_messages_out: HashMap::new(),
         }
     }
 }
@@ -112,6 +119,8 @@ impl App {
         self.main_bytes_data.total_bytes_out = parsed_data.total_bytes_out;
         self.kafka_messages_in_total = parsed_data.kafka_messages_in_total;
         self.kafka_messages_out_total = parsed_data.kafka_messages_out_total;
+        self.flows_messages_in = parsed_data.flows_messages_in;
+        self.flows_messages_out = parsed_data.flows_messages_out;
     }
 
     pub fn endpoint_down(&mut self) {
@@ -133,6 +142,17 @@ impl App {
     pub fn kafka_up(&mut self) {
         if self.kafka_starting_row > 0 {
             self.kafka_starting_row -= 1;
+        }
+    }
+
+    pub fn flows_down(&mut self) {
+        if (self.flows_table_starting_row + 1) < self.flows_messages_in.len() {
+            self.flows_table_starting_row += 1;
+        }
+    }
+    pub fn flows_up(&mut self) {
+        if self.flows_table_starting_row > 0 {
+            self.flows_table_starting_row -= 1;
         }
     }
 

@@ -22,8 +22,9 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                     Constraint::Max(2),
                     Constraint::Max(2),
                     Constraint::Max(2),
-                    Constraint::Fill(40),
-                    Constraint::Fill(40),
+                    Constraint::Fill(30),
+                    Constraint::Fill(30),
+                    Constraint::Fill(30),
                     Constraint::Max(3),
                 ])
                 .split(frame.size());
@@ -54,7 +55,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             render_overview_metrics(app, frame, &inner_layout);
             render_overview_bytes_data(app, frame, &bytes_overview_layout);
             render_endpoint_table(app, frame, outer_layout[3]);
-            render_clickhouse_sync_table(app, frame, outer_layout[4])
+            render_clickhouse_sync_table(app, frame, outer_layout[4]);
+            render_flows_messages_table(app, frame, outer_layout[5]);
         }
         State::PathDetails(state) => {
             let outer_layout = Layout::default()
@@ -292,7 +294,7 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
     let mut rows: Vec<Row> = vec![];
 
     let mut sorted_messages: Vec<_> = app.kafka_messages_out_total.iter().collect();
-    sorted_messages.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+    sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
 
     for item in &sorted_messages {
         rows.push(
@@ -354,7 +356,7 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
     let mut rows: Vec<Row> = vec![];
 
     let mut sorted_messages: Vec<_> = app.kafka_messages_out_total.iter().collect();
-    sorted_messages.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+    sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
 
     for item in &sorted_messages {
         rows.push(
@@ -414,6 +416,107 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
         .highlight_symbol(">>");
 
     frame.render_stateful_widget(table, layout, &mut table_state)
+}
+
+fn render_flows_messages_table(app: &mut App, frame: &mut Frame, layout: Rect) {
+    match app.table_state {
+        TableState::Flows => {
+            render_active_flows_messages_table(app, frame, layout);
+        }
+        _ => {
+            render_passive_flows_messages_table(app, frame, layout);
+        }
+    }
+}
+
+fn render_active_flows_messages_table(app: &mut App, frame: &mut Frame, layout: Rect) {
+    let mut rows: Vec<Row> = vec![];
+
+    let mut sorted_messages: Vec<_> = app.flows_messages_in.iter().collect();
+    sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+
+    for item in &sorted_messages {
+        rows.push(
+            Row::new(vec![
+                format!("{}", item.0.to_string()),
+                format!("{}", item.1),
+                format!("{}", app.flows_messages_out.get(item.0).unwrap_or(&0.0)),
+            ])
+            .bold()
+            .green(),
+        )
+    }
+
+    let widths = [
+        Constraint::Percentage(33),
+        Constraint::Percentage(33),
+        Constraint::Percentage(33),
+    ];
+    let mut table_state = ratatui::widgets::TableState::default();
+    table_state.select(Some(app.flows_table_starting_row));
+
+    let table = Table::new(rows, widths)
+        .widths(widths)
+        .column_spacing(1)
+        .style(Style::new().green())
+        .header(
+            Row::new(vec!["Streaming Path", "Messages In", "Messages Out"])
+                .style(Style::new().bold())
+                .bottom_margin(1),
+        )
+        .block(
+            Block::bordered()
+                .title("STREAMING FUNCTIONS KAFKA MESSAGES")
+                .bold(),
+        )
+        .highlight_style(Style::new().reversed())
+        .highlight_symbol(">>");
+
+    frame.render_stateful_widget(table, layout, &mut table_state)
+}
+
+fn render_passive_flows_messages_table(app: &mut App, frame: &mut Frame, layout: Rect) {
+    let mut rows: Vec<Row> = vec![];
+
+    let mut sorted_messages: Vec<_> = app.flows_messages_in.iter().collect();
+    sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+
+    for item in &sorted_messages {
+        rows.push(
+            Row::new(vec![
+                format!("{}", item.0.to_string()),
+                format!("{}", item.1),
+                format!("{}", app.flows_messages_out.get(item.0).unwrap_or(&0.0)),
+            ])
+            .bold()
+            .white(),
+        )
+    }
+
+    let widths = [
+        Constraint::Percentage(33),
+        Constraint::Percentage(33),
+        Constraint::Percentage(33),
+    ];
+    let mut table_state = ratatui::widgets::TableState::default();
+    table_state.select(Some(app.kafka_starting_row));
+
+    let table = Table::new(rows, widths)
+        .widths(widths)
+        .column_spacing(1)
+        .style(Style::new().white())
+        .header(
+            Row::new(vec!["Streaming Path", "Messages In", "Messages Out"])
+                .style(Style::new().bold())
+                .bottom_margin(1),
+        )
+        .block(
+            Block::bordered()
+                .title("STREAMING FUNCTIONS KAFKA MESSAGES")
+                .bold(),
+        );
+
+    frame.render_widget(table, layout)
 }
 
 fn table_equals_path(path: String, table: String) -> bool {
@@ -490,7 +593,7 @@ fn render_main_page_details(frame: &mut Frame, layout: &Rc<[Rect]>) {
         .green();
 
     frame.render_widget(block, layout[0]);
-    frame.render_widget(info_footer, layout[5]);
+    frame.render_widget(info_footer, layout[6]);
 }
 
 fn render_path_overview_data(

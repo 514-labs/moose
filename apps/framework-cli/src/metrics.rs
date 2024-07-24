@@ -1,5 +1,6 @@
 use prometheus_client::metrics::counter::Counter;
 use prometheus_client::metrics::family::Family;
+use prometheus_client::metrics::gauge::Gauge;
 use prometheus_client::{
     encoding::{text::encode, EncodeLabelSet},
     metrics::histogram::Histogram,
@@ -21,6 +22,8 @@ pub enum MetricsMessage {
     PutNumberOfBytesOut(PathBuf, u64),
     PutNumberOfMessagesIn(String, String),
     PutNumberOfMessagesOut(String, String),
+    PutFlowsMessagesIn(String, u64),
+    PutFlowsMessagesOut(String, u64),
 }
 
 #[derive(Clone)]
@@ -35,6 +38,8 @@ pub struct Statistics {
     pub bytes_out_family: Family<BytesCounterLabels, Counter>,
     pub messages_in_family: Family<MessagesInCounterLabels, Counter>,
     pub messages_out_family: Family<MessagesOutCounterLabels, Counter>,
+    pub flows_messages_in_family: Family<FlowsMessagesCounterLabels, Gauge>,
+    pub flows_messages_out_family: Family<FlowsMessagesCounterLabels, Gauge>,
     pub registry: Option<Registry>,
 }
 
@@ -46,6 +51,11 @@ pub struct HistogramLabels {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
 pub struct BytesCounterLabels {
+    path: String,
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
+pub struct FlowsMessagesCounterLabels {
     path: String,
 }
 
@@ -117,6 +127,10 @@ impl Metrics {
             messages_out_family: Family::<MessagesOutCounterLabels, Counter>::new_with_constructor(
                 Counter::default,
             ),
+            flows_messages_in_family:
+                Family::<FlowsMessagesCounterLabels, Gauge>::new_with_constructor(Gauge::default),
+            flows_messages_out_family:
+                Family::<FlowsMessagesCounterLabels, Gauge>::new_with_constructor(Gauge::default),
             registry: Some(Registry::default()),
         };
         let mut new_registry = data.registry.unwrap();
@@ -149,6 +163,17 @@ impl Metrics {
             "messages_out",
             "Messages received from kafka stream",
             data.messages_out_family.clone(),
+        );
+
+        new_registry.register(
+            "flows_messages_in",
+            "Messages sent from one data model to another using kafka stream",
+            data.flows_messages_in_family.clone(),
+        );
+        new_registry.register(
+            "flows_messages_out",
+            "Messages received from one data model to another using kafka stream",
+            data.flows_messages_out_family.clone(),
         );
 
         data.registry = Some(new_registry);
@@ -194,6 +219,16 @@ impl Metrics {
                                 topic,
                             })
                             .inc();
+                    }
+                    MetricsMessage::PutFlowsMessagesIn(path, count) => {
+                        data.flows_messages_in_family
+                            .get_or_create(&FlowsMessagesCounterLabels { path })
+                            .set(count as i64);
+                    }
+                    MetricsMessage::PutFlowsMessagesOut(path, count) => {
+                        data.flows_messages_out_family
+                            .get_or_create(&FlowsMessagesCounterLabels { path })
+                            .set(count as i64);
                     }
                 };
             }

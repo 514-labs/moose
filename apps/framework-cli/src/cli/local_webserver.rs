@@ -58,6 +58,13 @@ pub struct RouterRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+pub struct FlowMessages {
+    count: u64,
+    path: String,
+    direction: String,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LocalWebserverConfig {
     pub host: String,
     pub port: u16,
@@ -236,16 +243,35 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
         .unwrap()
 }
 
-async fn metrics_log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
+async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Response<Full<Bytes>> {
     let body = to_reader(req).await;
-    let parsed: Result<CliMessage, serde_json::Error> = serde_json::from_reader(body);
+    let parsed: Result<FlowMessages, serde_json::Error> = serde_json::from_reader(body);
     match parsed {
         Ok(cli_message) => {
-            let message = Message {
-                action: cli_message.action,
-                details: cli_message.message,
+            let message = FlowMessages {
+                count: cli_message.count,
+                path: cli_message.path,
+                direction: cli_message.direction,
             };
-            print!("{:#?} --- {:#?}", cli_message.message_type, message);
+            match message.direction.as_str() {
+                "in" => {
+                    metrics
+                        .send_metric(MetricsMessage::PutFlowsMessagesIn(
+                            message.path,
+                            message.count,
+                        ))
+                        .await
+                }
+                "out" => {
+                    metrics
+                        .send_metric(MetricsMessage::PutFlowsMessagesOut(
+                            message.path,
+                            message.count,
+                        ))
+                        .await
+                }
+                _ => {}
+            }
         }
         Err(e) => println!("Received unknown message: {:?}", e),
     }
@@ -586,7 +612,9 @@ async fn router(
             }
         }
         (&hyper::Method::POST, ["logs"]) if !is_prod => Ok(log_route(req).await),
-        (&hyper::Method::POST, ["metrics-logs"]) => Ok(metrics_log_route(req).await),
+        (&hyper::Method::POST, ["metrics-logs"]) => {
+            Ok(metrics_log_route(req, metrics.clone()).await)
+        }
         (&hyper::Method::GET, ["health"]) => health_route(),
         (&hyper::Method::GET, ["metrics"]) => metrics_route(metrics.clone()).await,
 

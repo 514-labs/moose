@@ -5,6 +5,11 @@ from importlib import import_module
 import json
 import sys
 from kafka import KafkaConsumer, KafkaProducer
+import requests
+import threading
+import time
+import asyncio
+
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, datetime):
@@ -158,6 +163,21 @@ else:
 
 consumer.subscribe([source_topic])
 
+thread_running = True
+count_in = 0
+count_out = 0
+def send_message_metrics_in():
+    while True:
+        time.sleep(1)
+        requests.post("http://localhost:4000/metrics-logs", json={'count': count_in, 'path': f'{source_topic} -> {target_topic}', 'direction': 'in'})
+        requests.post("http://localhost:4000/metrics-logs", json={'count': count_out, 'path': f'{source_topic} -> {target_topic}', 'direction': 'out'})
+
+timer = threading.Thread(target=send_message_metrics_in)
+timer.daemon = True
+timer.start()
+
+
+
 # This is batched under-the-hood
 for message in consumer:
     # Parse the message into the input type
@@ -169,9 +189,20 @@ for message in consumer:
     # Handle flow function returning an array or a single object
     output_data_list = output_data if isinstance(output_data, list) else [output_data]
 
+    count_in += len(output_data_list)
+
+
+    requests.post("http://localhost:4000/logs", json={"message_type": "Success", 'action': 'Received',
+    'message': f'{source_topic} -> {target_topic} {len(output_data_list)} message(s)'})
+    
+    
+
     for item in output_data_list:
         # Ignore flow function returning null
         if item is not None:
             # send() is asynchronous. When called it adds the record to a buffer of pending record sends 
             # and immediately returns. This allows the producer to batch together individual records
             producer.send(target_topic, json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))
+            count_out+=1
+
+thread_running = False

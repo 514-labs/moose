@@ -15,9 +15,9 @@ const SASL_MECHANISM = process.argv[8];
 const SECURITY_PROTOCOL = process.argv[9];
 
 type CliLogData = {
-  message_type?: "Info" | "Success" | "Error" | "Highlight";
-  action: string;
-  message: string;
+  count: number;
+  path: string;
+  direction: "in" | "out";
 };
 export const metricsLog: (log: CliLogData) => void = (log) => {
   const req = http.request({
@@ -202,6 +202,7 @@ const sendMessages = async (
         chunkSize += messageSize;
       }
     }
+    count_out += chunks.length;
 
     // Send the last chunk
     if (chunks.length > 0) {
@@ -214,6 +215,39 @@ const sendMessages = async (
       error(e.message);
     }
   }
+};
+
+setTimeout(() => sendMessageMetricsOut(), 1000);
+
+// declare global {
+//   interface Window {
+//     count_in: number;
+//     count_out: number;
+//   }
+// }
+
+// window.count_in = 0;
+// window.count_out = 0;
+
+var count_in = 0;
+var count_out = 0;
+
+const sendMessageMetricsIn = () => {
+  metricsLog({
+    count: count_in,
+    path: logPrefix,
+    direction: "in",
+  });
+  setTimeout(() => sendMessageMetricsIn(), 1000);
+};
+
+const sendMessageMetricsOut = () => {
+  metricsLog({
+    count: count_out,
+    path: logPrefix,
+    direction: "out",
+  });
+  setTimeout(() => sendMessageMetricsOut(), 1000);
 };
 
 const startConsumer = async (
@@ -239,6 +273,8 @@ const startConsumer = async (
   await consumer.run({
     eachBatchAutoResolve: true,
     eachBatch: async ({ batch }) => {
+      count_in += batch.messages.length;
+
       cliLog({
         action: "Received",
         message: `${logPrefix} ${batch.messages.length} message(s)`,
@@ -250,6 +286,8 @@ const startConsumer = async (
           ),
         )
       ).flat();
+
+      log("---------------------------------------");
 
       const filteredMessages = messages.filter((msg) => msg !== null);
 
@@ -265,6 +303,8 @@ const startConsumer = async (
 
   log("Consumer is running...");
 };
+
+setTimeout(() => sendMessageMetricsIn(), 1000);
 
 /**
  * message.max.bytes is a broker setting that applies to all topics.

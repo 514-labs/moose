@@ -22,6 +22,9 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
             TableState::Kafka => {
                 app.kafka_down();
             }
+            TableState::Flows => {
+                app.flows_down();
+            }
         },
 
         KeyCode::Up => match app.table_state {
@@ -31,12 +34,18 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
             TableState::Kafka => {
                 app.kafka_up();
             }
+            TableState::Flows => {
+                app.flows_up();
+            }
         },
         KeyCode::Tab => match app.table_state {
             TableState::Endpoint => {
                 app.table_state = TableState::Kafka;
             }
             TableState::Kafka => {
+                app.table_state = TableState::Flows;
+            }
+            TableState::Flows => {
                 app.table_state = TableState::Endpoint;
             }
         },

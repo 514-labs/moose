@@ -1,6 +1,7 @@
 use clap::Subcommand;
 
 pub mod aggregations;
+pub mod bulk_import;
 pub mod consumption;
 pub mod controller;
 pub mod core;

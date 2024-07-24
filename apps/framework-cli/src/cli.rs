@@ -45,6 +45,7 @@ use crate::cli::{
     routines::{dev::run_local_infrastructure, RoutineController, RunMode},
     settings::{init_config_file, setup_user_directory},
 };
+use crate::framework::bulk_import::import_csv_file;
 use crate::framework::core::code_loader::load_framework_objects;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::sdk::ingest::generate_sdk;
@@ -631,6 +632,59 @@ async fn top_command_handler(
         }
 
         Commands::Metrics {} => run_console().await,
+        Commands::Import {
+            data_model_name,
+            file,
+            format,
+            destination,
+        } => {
+            let project = load_project()?;
+            let framework_object_versions =
+                load_framework_objects(&project).await.map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Import".to_string(),
+                        details: format!("Failed to load initial project state: {:?}", e),
+                    })
+                })?;
+
+            let data_model = framework_object_versions
+                .current_models
+                .models
+                .get(data_model_name)
+                .ok_or(RoutineFailure::error(Message::new(
+                    "Model".to_string(),
+                    "not found".to_string(),
+                )))?;
+
+            let format = format
+                .as_deref()
+                .or_else(|| file.extension().and_then(|ext| ext.to_str()))
+                .ok_or(RoutineFailure::error(Message::new(
+                    "Format".to_string(),
+                    "missing".to_string(),
+                )))?;
+
+            if format == "csv" {
+                import_csv_file(data_model, file, destination)
+                    .await
+                    .map_err(|e| {
+                        RoutineFailure::new(
+                            Message::new("Import".to_string(), "failed".to_string()),
+                            e,
+                        )
+                    })?;
+            } else {
+                return Err(RoutineFailure::error(Message::new(
+                    "Format".to_string(),
+                    "unknown".to_string(),
+                )));
+            }
+
+            Ok(RoutineSuccess::success(Message::new(
+                "Imported".to_string(),
+                "".to_string(),
+            )))
+        }
     }
 }
 

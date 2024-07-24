@@ -452,8 +452,13 @@ async fn handle_json_array_body(
     let number_of_bytes = req.body().size_hint().exact().unwrap();
     let body = to_reader(req).await;
 
+    debug!(
+        "starting to parse json array with length {} for {}",
+        number_of_bytes, topic_name
+    );
     let parsed: Result<Vec<Value>, serde_json::Error> = serde_json::from_reader(body);
 
+    debug!("parsed json array for {}", topic_name);
     metrics
         .send_metric(MetricsMessage::PutNumberOfBytesIn(
             route.clone(),

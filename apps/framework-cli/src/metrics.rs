@@ -1,5 +1,6 @@
 use prometheus_client::metrics::counter::Counter;
 use prometheus_client::metrics::family::Family;
+use prometheus_client::metrics::gauge::Gauge;
 use prometheus_client::{
     encoding::{text::encode, EncodeLabelSet},
     metrics::histogram::Histogram,
@@ -21,6 +22,8 @@ pub enum MetricsMessage {
     PutNumberOfBytesOut(PathBuf, u64),
     PutNumberOfMessagesIn(String, String),
     PutNumberOfMessagesOut(String, String),
+    PutStreamingFunctionMessagesIn(String, u64),
+    PutStreamingFunctionMessagesOut(String, u64),
 }
 
 #[derive(Clone)]
@@ -35,6 +38,8 @@ pub struct Statistics {
     pub bytes_out_family: Family<BytesCounterLabels, Counter>,
     pub messages_in_family: Family<MessagesInCounterLabels, Counter>,
     pub messages_out_family: Family<MessagesOutCounterLabels, Counter>,
+    pub streaming_functions_in_family: Family<StreamingFunctionMessagesCounterLabels, Gauge>,
+    pub streaming_functions_out_family: Family<StreamingFunctionMessagesCounterLabels, Gauge>,
     pub registry: Option<Registry>,
 }
 
@@ -46,6 +51,11 @@ pub struct HistogramLabels {
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
 pub struct BytesCounterLabels {
+    path: String,
+}
+
+#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
+pub struct StreamingFunctionMessagesCounterLabels {
     path: String,
 }
 
@@ -117,6 +127,14 @@ impl Metrics {
             messages_out_family: Family::<MessagesOutCounterLabels, Counter>::new_with_constructor(
                 Counter::default,
             ),
+            streaming_functions_in_family:
+                Family::<StreamingFunctionMessagesCounterLabels, Gauge>::new_with_constructor(
+                    Gauge::default,
+                ),
+            streaming_functions_out_family:
+                Family::<StreamingFunctionMessagesCounterLabels, Gauge>::new_with_constructor(
+                    Gauge::default,
+                ),
             registry: Some(Registry::default()),
         };
         let mut new_registry = data.registry.unwrap();
@@ -149,6 +167,17 @@ impl Metrics {
             "messages_out",
             "Messages received from kafka stream",
             data.messages_out_family.clone(),
+        );
+
+        new_registry.register(
+            "streaming_functions_in",
+            "Messages sent from one data model to another using kafka stream",
+            data.streaming_functions_in_family.clone(),
+        );
+        new_registry.register(
+            "streaming_functions_out",
+            "Messages received from one data model to another using kafka stream",
+            data.streaming_functions_out_family.clone(),
         );
 
         data.registry = Some(new_registry);
@@ -194,6 +223,16 @@ impl Metrics {
                                 topic,
                             })
                             .inc();
+                    }
+                    MetricsMessage::PutStreamingFunctionMessagesIn(path, count) => {
+                        data.streaming_functions_in_family
+                            .get_or_create(&StreamingFunctionMessagesCounterLabels { path })
+                            .set(count as i64);
+                    }
+                    MetricsMessage::PutStreamingFunctionMessagesOut(path, count) => {
+                        data.streaming_functions_out_family
+                            .get_or_create(&StreamingFunctionMessagesCounterLabels { path })
+                            .set(count as i64);
                     }
                 };
             }

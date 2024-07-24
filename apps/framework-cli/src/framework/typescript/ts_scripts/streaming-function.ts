@@ -2,6 +2,7 @@ import { Consumer, Kafka, KafkaMessage, Producer, SASLOptions } from "kafkajs";
 import { Buffer } from "node:buffer";
 import process from "node:process";
 import { cliLog } from "@514labs/moose-lib";
+import http from "http";
 
 const SOURCE_TOPIC = process.argv[1];
 const TARGET_TOPIC = process.argv[2];
@@ -12,6 +13,22 @@ const SASL_USERNAME = process.argv[6];
 const SASL_PASSWORD = process.argv[7];
 const SASL_MECHANISM = process.argv[8];
 const SECURITY_PROTOCOL = process.argv[9];
+
+type CliLogData = {
+  count: number;
+  path: string;
+  direction: "In" | "Out";
+};
+export const metricsLog: (log: CliLogData) => void = (log) => {
+  const req = http.request({
+    port: 4000,
+    method: "POST",
+    path: "/metrics-logs",
+  }); // no callback, fire and forget
+
+  req.write(JSON.stringify({ ...log }));
+  req.end();
+};
 
 type StreamingFunction = (data: unknown) => unknown | Promise<unknown>;
 type SlimKafkaMessage = { value: string };
@@ -185,6 +202,7 @@ const sendMessages = async (
         chunkSize += messageSize;
       }
     }
+    count_out += chunks.length;
 
     // Send the last chunk
     if (chunks.length > 0) {
@@ -197,6 +215,29 @@ const sendMessages = async (
       error(e.message);
     }
   }
+};
+
+setTimeout(() => sendMessageMetricsOut(), 1000);
+
+var count_in = 0;
+var count_out = 0;
+
+const sendMessageMetricsIn = () => {
+  metricsLog({
+    count: count_in,
+    path: logPrefix,
+    direction: "In",
+  });
+  setTimeout(() => sendMessageMetricsIn(), 1000);
+};
+
+const sendMessageMetricsOut = () => {
+  metricsLog({
+    count: count_out,
+    path: logPrefix,
+    direction: "Out",
+  });
+  setTimeout(() => sendMessageMetricsOut(), 1000);
 };
 
 const startConsumer = async (
@@ -222,6 +263,8 @@ const startConsumer = async (
   await consumer.run({
     eachBatchAutoResolve: true,
     eachBatch: async ({ batch }) => {
+      count_in += batch.messages.length;
+
       cliLog({
         action: "Received",
         message: `${logPrefix} ${batch.messages.length} message(s)`,
@@ -248,6 +291,8 @@ const startConsumer = async (
 
   log("Consumer is running...");
 };
+
+setTimeout(() => sendMessageMetricsIn(), 1000);
 
 /**
  * message.max.bytes is a broker setting that applies to all topics.

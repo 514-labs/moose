@@ -6,7 +6,7 @@ use super::app::TableState;
 
 pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     match key_event.code {
-        KeyCode::Char('q') => {
+        KeyCode::Char('q') | KeyCode::Char('Q') => {
             app.quit();
         }
         KeyCode::Char('c') | KeyCode::Char('C') => {
@@ -22,6 +22,9 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
             TableState::Kafka => {
                 app.kafka_down();
             }
+            TableState::StreamingFunction => {
+                app.streaming_functions_down();
+            }
         },
 
         KeyCode::Up => match app.table_state {
@@ -31,12 +34,18 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
             TableState::Kafka => {
                 app.kafka_up();
             }
+            TableState::StreamingFunction => {
+                app.streaming_functions_up();
+            }
         },
         KeyCode::Tab => match app.table_state {
             TableState::Endpoint => {
                 app.table_state = TableState::Kafka;
             }
             TableState::Kafka => {
+                app.table_state = TableState::StreamingFunction;
+            }
+            TableState::StreamingFunction => {
                 app.table_state = TableState::Endpoint;
             }
         },

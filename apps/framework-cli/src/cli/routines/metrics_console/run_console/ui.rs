@@ -10,7 +10,20 @@ use ratatui::{prelude::*, widgets::*};
 use crate::cli::routines::metrics_console::run_console::app::{App, State, TableState};
 
 const INFO_TEXT: &str =
-    "(q) quit | (↑) move up | (↓) move down | (tab) switch table | (enter) view endpoint details";
+    "(Q) QUIT | (↑) SCROLL UP | (↓) MOVE DOWN | (TAB) SWITCH TABLE | (ENTER) VIEW ENDPOINT DETAILS";
+
+const ENDPOINT_TABLE_COLUMNS: [&str; 4] = [
+    "PATH",
+    "LATENCY (ms)",
+    "# OF REQUESTS RECEIVED",
+    "# OF MESSAGES SENT TO KAFKA",
+];
+
+const KAFKA_CLICKHOUSE_SYNC_TABLE_COLUMNS: [&str; 4] =
+    ["DATA MODEL", "MESSAGES READ", "LAG", "MESSAGES/SEC"];
+const STREAMING_FUNCTIONS_KAFKA_TABLE_COLUMNS: [&str; 3] =
+    ["STREAMING PATH", "MESSAGES IN", "MESSAGES OUT"];
+const PATH_INFO_TEXT: &str = "(ESC) EXIT DETAILED VIEW | (Q) QUIT";
 
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame) {
@@ -20,10 +33,12 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 .direction(Direction::Vertical)
                 .constraints(vec![
                     Constraint::Max(2),
+                    Constraint::Max(3),
+                    Constraint::Max(3),
+                    Constraint::Fill(28),
                     Constraint::Max(2),
-                    Constraint::Max(2),
-                    Constraint::Fill(40),
-                    Constraint::Fill(40),
+                    Constraint::Fill(28),
+                    Constraint::Fill(28),
                     Constraint::Max(3),
                 ])
                 .split(frame.size());
@@ -43,39 +58,37 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 .split(paragraph_layout[0]);
             let bytes_overview_layout = Layout::default()
                 .direction(Direction::Horizontal)
-                .constraints(vec![
-                    Constraint::Percentage(33),
-                    Constraint::Percentage(33),
-                    Constraint::Percentage(33),
-                ])
+                .constraints(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
                 .split(outer_layout[2]);
 
             render_main_page_details(frame, &outer_layout);
             render_overview_metrics(app, frame, &inner_layout);
             render_overview_bytes_data(app, frame, &bytes_overview_layout);
             render_endpoint_table(app, frame, outer_layout[3]);
-            render_clickhouse_sync_table(app, frame, outer_layout[4])
+            render_clickhouse_sync_table(app, frame, outer_layout[5]);
+            render_streaming_functions_messages_table(app, frame, outer_layout[6]);
         }
         State::PathDetails(state) => {
             let outer_layout = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints(vec![
                     Constraint::Max(2),
-                    Constraint::Max(2),
-                    Constraint::Max(2),
-                    Constraint::Fill(91),
+                    Constraint::Min(3),
+                    Constraint::Min(3),
+                    Constraint::Fill(89),
                     Constraint::Max(3),
                 ])
                 .split(frame.size());
 
             let body_layout = Layout::default()
                 .direction(Direction::Horizontal)
-                .constraints(vec![
-                    Constraint::Percentage(40),
-                    Constraint::Percentage(50),
-                    Constraint::Fill(10),
-                ])
+                .constraints(vec![Constraint::Fill(44), Constraint::Percentage(56)])
                 .split(outer_layout[3]);
+
+            let chart_layout = Layout::default()
+                .direction(Direction::Horizontal)
+                .constraints(vec![Constraint::Percentage(10), Constraint::Percentage(90)])
+                .split(body_layout[1]);
 
             let top_row_data_layout = Layout::default()
                 .direction(Direction::Horizontal)
@@ -93,15 +106,15 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             let scale_layout = Layout::default()
                 .direction(Direction::Vertical)
                 .constraints(vec![
-                    Constraint::Percentage(2),
-                    Constraint::Percentage(46),
-                    Constraint::Percentage(3),
-                    Constraint::Percentage(46),
-                    Constraint::Percentage(2),
+                    Constraint::Min(2),
+                    Constraint::Percentage(47),
+                    Constraint::Min(2),
+                    Constraint::Percentage(47),
+                    Constraint::Min(2),
                 ])
-                .split(body_layout[2]);
+                .split(chart_layout[0]);
 
-            render_sparkline_chart(&*app, frame, &body_layout, &scale_layout, state);
+            render_sparkline_chart(&*app, frame, &chart_layout, &scale_layout, state);
             render_bar_chart(app, frame, &body_layout);
         }
     }
@@ -162,17 +175,17 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
                             .1
                     ),
                 ])
-                .green()
-                .not_bold()
+                .light_blue()
+                .bold()
             },
         )
     }
 
     let widths = [
         Constraint::Fill(22),
+        Constraint::Fill(15),
         Constraint::Fill(20),
-        Constraint::Fill(20),
-        Constraint::Fill(20),
+        Constraint::Fill(25),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
     table_state.select(Some(app.endpoint_starting_row));
@@ -180,19 +193,15 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
     let table = Table::new(rows, widths)
         .widths(widths)
         .column_spacing(1)
-        .style(Style::new().green())
+        .style(Style::new().light_blue())
         .header(
-            Row::new(vec![
-                "Path",
-                "Latency (ms)",
-                "Number of Requests",
-                "Kafka Messages Sent",
-            ])
-            .style(Style::new().bold())
-            .bottom_margin(1)
-            .underlined(),
+            Row::new(ENDPOINT_TABLE_COLUMNS)
+                .style(Style::new().bold())
+                .bottom_margin(1)
+                .underlined()
+                .top_margin(1),
         )
-        .block(Block::bordered().title("Endpoint Metrics Table").bold())
+        .block(Block::bordered().title("ENDPOINT METRICS TABLE").bold())
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
 
@@ -224,7 +233,7 @@ fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect)
                             .1
                     ),
                 ])
-                .bold()
+                .not_bold()
                 .magenta()
             } else {
                 Row::new(vec![
@@ -266,17 +275,13 @@ fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect)
         .column_spacing(1)
         .style(Style::new().white())
         .header(
-            Row::new(vec![
-                "Path",
-                "Latency (ms)",
-                "Number of Requests",
-                "Kafka Messages Sent",
-            ])
-            .style(Style::new().bold())
-            .bottom_margin(1)
-            .underlined(),
+            Row::new(ENDPOINT_TABLE_COLUMNS)
+                .style(Style::new().bold())
+                .bottom_margin(1)
+                .underlined()
+                .top_margin(1),
         )
-        .block(Block::bordered().title("Endpoint Metrics Table").bold());
+        .block(Block::bordered().title("ENDPOINT METRICS TABLE").bold());
 
     frame.render_widget(table, layout)
 }
@@ -292,7 +297,7 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
     let mut rows: Vec<Row> = vec![];
 
     let mut sorted_messages: Vec<_> = app.kafka_messages_out_total.iter().collect();
-    sorted_messages.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+    sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
 
     for item in &sorted_messages {
         rows.push(
@@ -320,7 +325,7 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
                         .1
                 ),
             ])
-            .bold()
+            .not_bold()
             .white(),
         )
     }
@@ -337,13 +342,15 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
         .column_spacing(1)
         .style(Style::new().white())
         .header(
-            Row::new(vec!["Data Model", "Messages Read", "Lag", "Messages/sec"])
+            Row::new(KAFKA_CLICKHOUSE_SYNC_TABLE_COLUMNS)
                 .style(Style::new().bold())
-                .bottom_margin(1),
+                .bottom_margin(1)
+                .underlined()
+                .top_margin(1),
         )
         .block(
             Block::bordered()
-                .title("Kafka to Table Sync Process")
+                .title("KAFKA TO TABLE SYNC PROCESS")
                 .bold(),
         );
 
@@ -354,7 +361,7 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
     let mut rows: Vec<Row> = vec![];
 
     let mut sorted_messages: Vec<_> = app.kafka_messages_out_total.iter().collect();
-    sorted_messages.sort_by(|a, b| b.2.partial_cmp(&a.2).unwrap_or(std::cmp::Ordering::Equal));
+    sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
 
     for item in &sorted_messages {
         rows.push(
@@ -383,7 +390,7 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
                 ),
             ])
             .bold()
-            .green(),
+            .light_blue(),
         )
     }
 
@@ -399,21 +406,142 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
     let table = Table::new(rows, widths)
         .widths(widths)
         .column_spacing(1)
-        .style(Style::new().green())
+        .style(Style::new().light_blue())
         .header(
-            Row::new(vec!["Data Model", "Messages Read", "Lag", "Messages/sec"])
+            Row::new(KAFKA_CLICKHOUSE_SYNC_TABLE_COLUMNS)
                 .style(Style::new().bold())
-                .bottom_margin(1),
+                .bottom_margin(1)
+                .underlined()
+                .top_margin(0),
         )
         .block(
             Block::bordered()
-                .title("Kafka to Table Sync Process")
+                .title("KAFKA TO TABLE SYNC PROCESS")
                 .bold(),
         )
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
 
     frame.render_stateful_widget(table, layout, &mut table_state)
+}
+
+fn render_streaming_functions_messages_table(app: &mut App, frame: &mut Frame, layout: Rect) {
+    match app.table_state {
+        TableState::StreamingFunction => {
+            render_active_streaming_functions_messages_table(app, frame, layout);
+        }
+        _ => {
+            render_passive_streaming_functions_messages_table(app, frame, layout);
+        }
+    }
+}
+
+fn render_active_streaming_functions_messages_table(
+    app: &mut App,
+    frame: &mut Frame,
+    layout: Rect,
+) {
+    let mut rows: Vec<Row> = vec![];
+
+    let mut sorted_messages: Vec<_> = app.streaming_functions_in.iter().collect();
+    sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+
+    for item in &sorted_messages {
+        rows.push(
+            Row::new(vec![
+                format!("{}", item.0.to_string()),
+                format!("{}", item.1),
+                format!(
+                    "{}",
+                    app.streaming_functions_out.get(item.0).unwrap_or(&0.0)
+                ),
+            ])
+            .bold()
+            .light_blue(),
+        )
+    }
+
+    let widths = [
+        Constraint::Percentage(46),
+        Constraint::Percentage(27),
+        Constraint::Percentage(27),
+    ];
+    let mut table_state = ratatui::widgets::TableState::default();
+    table_state.select(Some(app.streaming_functions_table_starting_row));
+
+    let table = Table::new(rows, widths)
+        .widths(widths)
+        .column_spacing(1)
+        .style(Style::new().light_blue())
+        .header(
+            Row::new(STREAMING_FUNCTIONS_KAFKA_TABLE_COLUMNS)
+                .style(Style::new().bold())
+                .bottom_margin(1)
+                .underlined()
+                .top_margin(1),
+        )
+        .block(
+            Block::bordered()
+                .title("STREAMING FUNCTIONS KAFKA MESSAGES")
+                .bold(),
+        )
+        .highlight_style(Style::new().reversed())
+        .highlight_symbol(">>");
+
+    frame.render_stateful_widget(table, layout, &mut table_state)
+}
+
+fn render_passive_streaming_functions_messages_table(
+    app: &mut App,
+    frame: &mut Frame,
+    layout: Rect,
+) {
+    let mut rows: Vec<Row> = vec![];
+
+    let mut sorted_messages: Vec<_> = app.streaming_functions_in.iter().collect();
+    sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
+
+    for item in &sorted_messages {
+        rows.push(
+            Row::new(vec![
+                format!("{}", item.0.to_string()),
+                format!("{}", item.1),
+                format!(
+                    "{}",
+                    app.streaming_functions_out.get(item.0).unwrap_or(&0.0)
+                ),
+            ])
+            .not_bold()
+            .white(),
+        )
+    }
+
+    let widths = [
+        Constraint::Percentage(46),
+        Constraint::Percentage(27),
+        Constraint::Percentage(27),
+    ];
+    let mut table_state = ratatui::widgets::TableState::default();
+    table_state.select(Some(app.kafka_starting_row));
+
+    let table = Table::new(rows, widths)
+        .widths(widths)
+        .column_spacing(1)
+        .style(Style::new().white())
+        .header(
+            Row::new(STREAMING_FUNCTIONS_KAFKA_TABLE_COLUMNS)
+                .style(Style::new().bold())
+                .bottom_margin(1)
+                .underlined()
+                .top_margin(1),
+        )
+        .block(
+            Block::bordered()
+                .title("STREAMING FUNCTIONS KAFKA MESSAGES")
+                .bold(),
+        );
+
+    frame.render_widget(table, layout)
 }
 
 fn table_equals_path(path: String, table: String) -> bool {
@@ -424,73 +552,104 @@ fn table_equals_path(path: String, table: String) -> bool {
 }
 
 fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
-    let average_lat = Block::new()
-        .title(format!(
-            "Average Latency: {} ms",
-            (app.average * 1000.0).round() / 1000.0
-        ))
+    let average_lat_block = Block::new()
+        .title("AVERAGE LATENCY")
         .title_alignment(Alignment::Center)
         .bold()
         .white()
-        .padding(Padding::top(50));
-    let total_req = Block::new()
-        .title(format!("Total Number of Requests: {}", app.total_requests))
+        .borders(Borders::ALL);
+
+    let average_latency_paragraph =
+        Paragraph::new(format!("{} ms", (app.average * 1000.0).round() / 1000.0))
+            .centered()
+            .block(average_lat_block)
+            .style(Style::new().white());
+
+    let total_req_block = Block::new()
+        .title("TOTAL # OF REQUESTS")
         .title_alignment(Alignment::Center)
+        .borders(Borders::ALL)
         .bold()
         .white();
 
-    let req_per_sec = Block::new()
-        .title(format!("Requests Per Second: {}", app.requests_per_sec))
+    let total_req_paragraph = Paragraph::new(app.total_requests.to_string())
+        .centered()
+        .block(total_req_block)
+        .style(Style::new().white());
+
+    let req_per_sec_block = Block::new()
+        .title("REQUESTS PER SECOND")
         .title_alignment(Alignment::Center)
         .bold()
+        .borders(Borders::ALL)
         .white();
+    let req_per_sec_paragraph = Paragraph::new(app.requests_per_sec.to_string())
+        .centered()
+        .block(req_per_sec_block)
+        .style(Style::new().white());
 
-    frame.render_widget(average_lat, layout[0]);
-    frame.render_widget(total_req, layout[1]);
-    frame.render_widget(req_per_sec, layout[2]);
+    frame.render_widget(average_latency_paragraph, layout[0]);
+    frame.render_widget(total_req_paragraph, layout[1]);
+    frame.render_widget(req_per_sec_paragraph, layout[2]);
 }
 
 fn render_overview_bytes_data(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
-    let bytes_in_per_sec = Block::new()
-        .title(format!(
-            "Data In: {}",
-            format_bytes(app.main_bytes_data.bytes_in_per_sec as f64)
-        ))
+    let bytes_in_per_sec_block = Block::new()
+        .title("DATA IN")
         .title_alignment(Alignment::Center)
         .bold()
+        .borders(Borders::ALL)
         .white();
 
-    let bytes_out_per_sec = Block::new()
-        .title(format!(
-            "Data Out: {}",
-            format_bytes(app.main_bytes_data.bytes_out_per_sec as f64)
-        ))
+    let bytes_out_per_sec_block = Block::new()
+        .title("DATA OUT")
         .title_alignment(Alignment::Center)
         .bold()
+        .borders(Borders::ALL)
         .white();
 
-    frame.render_widget(bytes_in_per_sec, layout[0]);
-    frame.render_widget(bytes_out_per_sec, layout[2]);
+    let bytes_in_per_sec_paragraph =
+        Paragraph::new(format_bytes(app.main_bytes_data.bytes_in_per_sec as f64))
+            .centered()
+            .block(bytes_in_per_sec_block)
+            .style(Style::new().white());
+
+    let bytes_out_per_sec_paragraph =
+        Paragraph::new(format_bytes(app.main_bytes_data.bytes_out_per_sec as f64))
+            .centered()
+            .block(bytes_out_per_sec_block)
+            .style(Style::new().white());
+
+    frame.render_widget(bytes_in_per_sec_paragraph, layout[0]);
+    frame.render_widget(bytes_out_per_sec_paragraph, layout[1]);
 }
 
 fn render_main_page_details(frame: &mut Frame, layout: &Rc<[Rect]>) {
-    let info_footer = Paragraph::new(Line::from(INFO_TEXT).green())
+    let info_footer = Paragraph::new(Line::from(INFO_TEXT).white())
         .centered()
         .block(
             Block::bordered()
-                .border_type(BorderType::Double)
-                .border_style(Style::new().fg(Color::Green)),
+                .border_type(BorderType::Plain)
+                .border_style(Style::new().fg(Color::White)),
         );
 
-    let block = Block::new()
-        .title("Metrics Console")
+    let endpoint_block = Block::new()
+        .title("ENDPOINT CONSOLE")
         .title_alignment(Alignment::Center)
         .bold()
         .borders(Borders::TOP)
-        .green();
+        .white();
 
-    frame.render_widget(block, layout[0]);
-    frame.render_widget(info_footer, layout[5]);
+    let kafka_block = Block::new()
+        .title("KAFKA METRICS")
+        .title_alignment(Alignment::Center)
+        .bold()
+        .borders(Borders::TOP)
+        .white();
+
+    frame.render_widget(endpoint_block, layout[0]);
+    frame.render_widget(kafka_block, layout[4]);
+    frame.render_widget(info_footer, layout[7]);
 }
 
 fn render_path_overview_data(
@@ -501,93 +660,115 @@ fn render_path_overview_data(
     state: &String,
 ) {
     let average_latency_block = Block::new()
-        .title(format!(
-            "Average Latency: {}ms ",
-            (((app.summary[app.endpoint_starting_row].latency_sum
-                / app.summary[app.endpoint_starting_row].request_count)
-                * 1000000.0)
-                .round())
-                / 1000.0
-        ))
+        .title("AVERAGE LATENCY")
         .title_alignment(Alignment::Center)
         .bold()
-        .borders(Borders::NONE)
+        .borders(Borders::ALL)
         .white();
+
+    let average_latency_paragraph = Paragraph::new(format!(
+        "{} ms",
+        (((app.summary[app.endpoint_starting_row].latency_sum
+            / app.summary[app.endpoint_starting_row].request_count)
+            * 1000000.0)
+            .round())
+            / 1000.0
+    ))
+    .centered()
+    .block(average_latency_block)
+    .style(Style::new().white());
 
     let request_count_block = Block::new()
-        .title(format!(
-            "Number of Requests: {}",
-            (app.summary[app.endpoint_starting_row].request_count)
-        ))
+        .title("# OF REQUESTS")
         .title_alignment(Alignment::Center)
         .bold()
-        .borders(Borders::NONE)
+        .borders(Borders::ALL)
         .white();
 
+    let request_count_paragraph = Paragraph::new(
+        app.summary[app.endpoint_starting_row]
+            .request_count
+            .to_string(),
+    )
+    .centered()
+    .block(request_count_block)
+    .style(Style::new().white());
+
     let path_req_per_sec_block = Block::new()
-        .title(format!(
-            "Requests Per Second: {}",
-            (app.path_requests_per_sec.get(state).unwrap_or(&0.0))
-        ))
+        .title("REQUESTS PER SECOND")
         .title_alignment(Alignment::Center)
         .bold()
-        .borders(Borders::NONE)
+        .borders(Borders::ALL)
         .white();
+    let path_req_per_sec_paragraph = Paragraph::new(
+        app.path_requests_per_sec
+            .get(state)
+            .unwrap_or(&0.0)
+            .to_string(),
+    )
+    .centered()
+    .block(path_req_per_sec_block)
+    .style(Style::new().white());
 
     if state.starts_with("ingest") {
         let bytes_in_per_sec_block = Block::new()
-            .title(format!(
-                "Data In: {}",
-                format_bytes(
-                    (*app
-                        .parsed_bytes_data
-                        .path_bytes_in_per_sec_vec
-                        .get(state)
-                        .unwrap_or(&0)) as f64
-                )
-            ))
+            .title("DATA IN")
             .title_alignment(Alignment::Center)
             .bold()
-            .borders(Borders::NONE)
+            .borders(Borders::ALL)
             .white();
-        frame.render_widget(bytes_in_per_sec_block, bottom_layout[1]);
+
+        let bytes_in_per_sec_paragraph = Paragraph::new(format_bytes(
+            (*app
+                .parsed_bytes_data
+                .path_bytes_in_per_sec_vec
+                .get(state)
+                .unwrap_or(&0)) as f64,
+        ))
+        .centered()
+        .block(bytes_in_per_sec_block)
+        .style(Style::new().white());
+
+        frame.render_widget(bytes_in_per_sec_paragraph, bottom_layout[1]);
     } else {
         let bytes_in_per_sec_block = Block::new()
-            .title(format!(
-                "Data Out: {}",
-                format_bytes(
-                    *app.parsed_bytes_data
-                        .path_bytes_out_per_sec_vec
-                        .get(state)
-                        .unwrap_or(&0) as f64
-                )
-            ))
+            .title("DATA OUT")
             .title_alignment(Alignment::Center)
             .bold()
-            .borders(Borders::NONE)
+            .borders(Borders::ALL)
             .white();
-        frame.render_widget(bytes_in_per_sec_block, bottom_layout[1]);
+
+        let bytes_in_per_sec_paragraph = Paragraph::new(format_bytes(
+            *app.parsed_bytes_data
+                .path_bytes_out_per_sec_vec
+                .get(state)
+                .unwrap_or(&0) as f64,
+        ))
+        .centered()
+        .block(bytes_in_per_sec_block)
+        .style(Style::new().white());
+        frame.render_widget(bytes_in_per_sec_paragraph, bottom_layout[1]);
     }
 
-    frame.render_widget(average_latency_block, top_layout[0]);
-    frame.render_widget(request_count_block, top_layout[1]);
-    frame.render_widget(path_req_per_sec_block, bottom_layout[0]);
+    frame.render_widget(average_latency_paragraph, top_layout[0]);
+    frame.render_widget(request_count_paragraph, top_layout[1]);
+    frame.render_widget(path_req_per_sec_paragraph, bottom_layout[0]);
 }
 
 fn render_path_page_details(frame: &mut Frame, layout: &Rc<[Rect]>, state: String) {
     let title = Block::new()
-        .title(state)
+        .title(state.to_uppercase())
         .title_alignment(Alignment::Center)
         .bold()
         .borders(Borders::TOP)
-        .green();
+        .white();
 
-    let info_footer = Paragraph::new(Line::from("(esc) exit detailed view | (q) quit").green())
+    let info_footer = Paragraph::new(Line::from(PATH_INFO_TEXT).white())
         .centered()
         .block(
             Block::bordered()
-                .border_type(BorderType::Double)
-                .border_style(Style::new().fg(Color::Green)),
+                .border_type(BorderType::Plain)
+                .border_style(Style::new().fg(Color::White)),
         );
 
     frame.render_widget(title, layout[0]);
@@ -603,7 +784,7 @@ fn render_bar_chart(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
             chart_data_vec.push(
                 Bar::default()
                     .value(each.count as u64)
-                    .label((each.less_than.to_string() + " s").into()),
+                    .label((each.less_than.to_string() + "s").into()),
             );
         } else {
             chart_data_vec.push(
@@ -619,14 +800,15 @@ fn render_bar_chart(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
     let bar_chart = BarChart::default()
         .block(
             Block::bordered()
-                .title("Number of Requests With Latency Under _ s")
-                .bold(),
+                .title("# OF REQUESTS WITH LATENCY UNDER _ SEC")
+                .bold()
+                .title_alignment(Alignment::Center),
         )
         .data(bar_group)
         .bar_width(1)
         .direction(Direction::Horizontal)
-        .bar_style(Style::default().fg(Color::Green))
-        .value_style(Style::default().black().on_green().bold());
+        .bar_style(Style::default().fg(Color::White))
+        .value_style(Style::default().black().on_white().bold());
 
     frame.render_widget(bar_chart, layout[0]);
 }
@@ -641,34 +823,36 @@ fn render_sparkline_chart(
     let mut top_paragraph: Paragraph = Paragraph::new("<-0");
     let mut middle_paragraph: Paragraph = Paragraph::new("<-0");
     let mut bottom_paragraph: Paragraph = Paragraph::new("<-0");
+
     if !app.requests_per_sec_vec.contains_key(state) {
         chart = Sparkline::default()
-            .block(
-                Block::new()
-                    .borders(Borders::LEFT | Borders::RIGHT)
-                    .title(format!("Requests Per Second Over the Past {} sec", {
-                        if (app.viewport.width as f64 * 0.48) > 150.0 {
-                            150
-                        } else {
-                            (app.viewport.width as f64 * 0.48) as usize
-                        }
-                    })),
-            )
+            .block(Block::new().borders(Borders::NONE).title(format!(
+                "REQUESTS PER SECOND OVER THE PAST {} SEC",
+                {
+                    if (app.viewport.width as f64 * 0.48) > 150.0 {
+                        150
+                    } else {
+                        (app.viewport.width as f64 * 0.48) as usize
+                    }
+                }
+            )))
             .data(&[0])
-            .style(Style::default().fg(Color::Green));
+            .style(Style::default().fg(Color::White));
     } else {
         // This unwrap is safe because we know the key exists
         chart = Sparkline::default()
             .block(
                 Block::new()
-                    .borders(Borders::LEFT | Borders::RIGHT)
-                    .title(format!("Requests Per Second Over the Past {} sec", {
+                    .borders(Borders::TOP | Borders::BOTTOM | Borders::RIGHT)
+                    .title(format!("REQUESTS PER SECOND OVER THE PAST {} SEC", {
                         if (app.viewport.width as f64 * 0.48) > 150.0 {
                             150
                         } else {
                             (app.viewport.width as f64 * 0.48) as usize
                         }
-                    })),
+                    }))
+                    .title_alignment(Alignment::Center)
+                    .bold(),
             )
             .data(match &app.requests_per_sec_vec.get(state) {
                 Some(v) => {
@@ -685,11 +869,11 @@ fn render_sparkline_chart(
                 }
                 None => &[],
             })
-            .style(Style::default().fg(Color::Green));
+            .style(Style::default().fg(Color::White));
 
         top_paragraph = Paragraph::new(
             Line::from(format!(
-                "<-{}",
+                "{}->",
                 match &app.requests_per_sec_vec.get(state) {
                     Some(v) => v
                         .get(
@@ -707,13 +891,14 @@ fn render_sparkline_chart(
                     None => &0,
                 }
             ))
-            .green(),
+            .white()
+            .centered(),
         )
-        .left_aligned();
+        .block(Block::new().borders(Borders::LEFT | Borders::TOP));
 
         middle_paragraph = Paragraph::new(
             Line::from(format!(
-                "<-{}",
+                "{}->",
                 match &app.requests_per_sec_vec.get(state) {
                     Some(v) =>
                         v.get(
@@ -732,17 +917,25 @@ fn render_sparkline_chart(
                     None => 0,
                 }
             ))
-            .green(),
+            .white(),
         )
-        .left_aligned();
+        .block(Block::new().borders(Borders::LEFT))
+        .centered();
 
-        bottom_paragraph = Paragraph::new(Line::from("<-0").green()).left_aligned();
+        bottom_paragraph = Paragraph::new(Line::from("0->").white())
+            .centered()
+            .block(Block::new().borders(Borders::BOTTOM | Borders::LEFT));
     }
+
+    let border_block_one = Block::new().borders(Borders::LEFT);
+    let border_block_two = Block::new().borders(Borders::LEFT);
 
     frame.render_widget(chart, chart_layout[1]);
     frame.render_widget(top_paragraph, scale_layout[0]);
     frame.render_widget(middle_paragraph, scale_layout[2]);
     frame.render_widget(bottom_paragraph, scale_layout[4]);
+    frame.render_widget(border_block_one, scale_layout[1]);
+    frame.render_widget(border_block_two, scale_layout[3]);
 }
 
 fn format_bytes(bytes: f64) -> String {

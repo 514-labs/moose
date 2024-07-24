@@ -6,7 +6,7 @@ use super::app::TableState;
 
 pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
     match key_event.code {
-        KeyCode::Char('q') => {
+        KeyCode::Char('q') | KeyCode::Char('Q') => {
             app.quit();
         }
         KeyCode::Char('c') | KeyCode::Char('C') => {

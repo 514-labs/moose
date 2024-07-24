@@ -10,7 +10,7 @@ use ratatui::{prelude::*, widgets::*};
 use crate::cli::routines::metrics_console::run_console::app::{App, State, TableState};
 
 const INFO_TEXT: &str =
-    "(q) quit | (↑) move up | (↓) move down | (tab) switch table | (enter) view endpoint details";
+    "(Q) QUIT | (↑) SCROLL UP | (↓) MOVE DOWN | (TAB) SWITCH TABLE | (ENTER) VIEW ENDPOINT DETAILS";
 
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame) {
@@ -185,16 +185,16 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
         .style(Style::new().green())
         .header(
             Row::new(vec![
-                "Path",
-                "Latency (ms)",
-                "Number of Requests",
-                "Kafka Messages Sent",
+                "PATH",
+                "LATENCY (ms)",
+                "NUMBER OF REQUESTS",
+                "KAFKA MESSAGES SENT",
             ])
             .style(Style::new().bold())
             .bottom_margin(1)
             .underlined(),
         )
-        .block(Block::bordered().title("Endpoint Metrics Table").bold())
+        .block(Block::bordered().title("ENDPOINT METRICS TABLE").bold())
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
 
@@ -269,16 +269,16 @@ fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect)
         .style(Style::new().white())
         .header(
             Row::new(vec![
-                "Path",
-                "Latency (ms)",
-                "Number of Requests",
-                "Kafka Messages Sent",
+                "PATH",
+                "LATENCY (ms)",
+                "NUMBER OF REQUESTS",
+                "KAFKA MESSAGES SENT",
             ])
             .style(Style::new().bold())
             .bottom_margin(1)
             .underlined(),
         )
-        .block(Block::bordered().title("Endpoint Metrics Table").bold());
+        .block(Block::bordered().title("ENDPOINT METRICS TABLE").bold());
 
     frame.render_widget(table, layout)
 }
@@ -339,13 +339,13 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
         .column_spacing(1)
         .style(Style::new().white())
         .header(
-            Row::new(vec!["Data Model", "Messages Read", "Lag", "Messages/sec"])
+            Row::new(vec!["DATE MODEL", "MESSAGES READ", "LAG", "MESSAGES/SEC"])
                 .style(Style::new().bold())
                 .bottom_margin(1),
         )
         .block(
             Block::bordered()
-                .title("Kafka to Table Sync Process")
+                .title("KAFKA TO TABLE SYNC PROCESS")
                 .bold(),
         );
 
@@ -403,13 +403,13 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
         .column_spacing(1)
         .style(Style::new().green())
         .header(
-            Row::new(vec!["Data Model", "Messages Read", "Lag", "Messages/sec"])
+            Row::new(vec!["DATA MODEL", "MESSAGES READ", "LAG", "MESSAGES/SEC"])
                 .style(Style::new().bold())
                 .bottom_margin(1),
         )
         .block(
             Block::bordered()
-                .title("Kafka to Table Sync Process")
+                .title("KAFKA TO TABLE SYNC PROCESS")
                 .bold(),
         )
         .highlight_style(Style::new().reversed())
@@ -460,7 +460,7 @@ fn render_active_flows_messages_table(app: &mut App, frame: &mut Frame, layout: 
         .column_spacing(1)
         .style(Style::new().green())
         .header(
-            Row::new(vec!["Streaming Path", "Messages In", "Messages Out"])
+            Row::new(vec!["STREAMING PATH", "MESSAGES IN", "MESSAGES OUT"])
                 .style(Style::new().bold())
                 .bottom_margin(1),
         )
@@ -506,7 +506,7 @@ fn render_passive_flows_messages_table(app: &mut App, frame: &mut Frame, layout:
         .column_spacing(1)
         .style(Style::new().white())
         .header(
-            Row::new(vec!["Streaming Path", "Messages In", "Messages Out"])
+            Row::new(vec!["STREAMING PATH", "MESSAGES IN", "MESSAGES OUT"])
                 .style(Style::new().bold())
                 .bottom_margin(1),
         )
@@ -529,7 +529,7 @@ fn table_equals_path(path: String, table: String) -> bool {
 fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
     let average_lat = Block::new()
         .title(format!(
-            "Average Latency: {} ms",
+            "AVERAGE LATENCY: {} ms",
             (app.average * 1000.0).round() / 1000.0
         ))
         .title_alignment(Alignment::Center)
@@ -537,13 +537,13 @@ fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>
         .white()
         .padding(Padding::top(50));
     let total_req = Block::new()
-        .title(format!("Total Number of Requests: {}", app.total_requests))
+        .title(format!("TOTAL NUMBER OF REQUESTS: {}", app.total_requests))
         .title_alignment(Alignment::Center)
         .bold()
         .white();
 
     let req_per_sec = Block::new()
-        .title(format!("Requests Per Second: {}", app.requests_per_sec))
+        .title(format!("REQUESTS PER SECOND: {}", app.requests_per_sec))
         .title_alignment(Alignment::Center)
         .bold()
         .white();
@@ -556,7 +556,7 @@ fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>
 fn render_overview_bytes_data(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
     let bytes_in_per_sec = Block::new()
         .title(format!(
-            "Data In: {}",
+            "DATA IN: {}",
             format_bytes(app.main_bytes_data.bytes_in_per_sec as f64)
         ))
         .title_alignment(Alignment::Center)
@@ -565,7 +565,7 @@ fn render_overview_bytes_data(app: &mut App, frame: &mut Frame, layout: &Rc<[Rec
 
     let bytes_out_per_sec = Block::new()
         .title(format!(
-            "Data Out: {}",
+            "DATA OUT: {}",
             format_bytes(app.main_bytes_data.bytes_out_per_sec as f64)
         ))
         .title_alignment(Alignment::Center)
@@ -586,7 +586,7 @@ fn render_main_page_details(frame: &mut Frame, layout: &Rc<[Rect]>) {
         );
 
     let block = Block::new()
-        .title("Metrics Console")
+        .title("METRICS CONSOLE")
         .title_alignment(Alignment::Center)
         .bold()
         .borders(Borders::TOP)
@@ -605,7 +605,7 @@ fn render_path_overview_data(
 ) {
     let average_latency_block = Block::new()
         .title(format!(
-            "Average Latency: {}ms ",
+            "AVERAGE LATENCY: {}ms ",
             (((app.summary[app.endpoint_starting_row].latency_sum
                 / app.summary[app.endpoint_starting_row].request_count)
                 * 1000000.0)
@@ -619,7 +619,7 @@ fn render_path_overview_data(
 
     let request_count_block = Block::new()
         .title(format!(
-            "Number of Requests: {}",
+            "NUMBER OF REQUESTS: {}",
             (app.summary[app.endpoint_starting_row].request_count)
         ))
         .title_alignment(Alignment::Center)
@@ -629,7 +629,7 @@ fn render_path_overview_data(
 
     let path_req_per_sec_block = Block::new()
         .title(format!(
-            "Requests Per Second: {}",
+            "REQUESTS PER SECOND: {}",
             (app.path_requests_per_sec.get(state).unwrap_or(&0.0))
         ))
         .title_alignment(Alignment::Center)
@@ -640,7 +640,7 @@ fn render_path_overview_data(
     if state.starts_with("ingest") {
         let bytes_in_per_sec_block = Block::new()
             .title(format!(
-                "Data In: {}",
+                "DATA IN: {}",
                 format_bytes(
                     (*app
                         .parsed_bytes_data
@@ -657,7 +657,7 @@ fn render_path_overview_data(
     } else {
         let bytes_in_per_sec_block = Block::new()
             .title(format!(
-                "Data Out: {}",
+                "DATA OUT: {}",
                 format_bytes(
                     *app.parsed_bytes_data
                         .path_bytes_out_per_sec_vec
@@ -679,13 +679,13 @@ fn render_path_overview_data(
 
 fn render_path_page_details(frame: &mut Frame, layout: &Rc<[Rect]>, state: String) {
     let title = Block::new()
-        .title(state)
+        .title(state.to_uppercase())
         .title_alignment(Alignment::Center)
         .bold()
         .borders(Borders::TOP)
         .green();
 
-    let info_footer = Paragraph::new(Line::from("(esc) exit detailed view | (q) quit").green())
+    let info_footer = Paragraph::new(Line::from("(ESC) EXIT DETAILED VIEW | (Q) QUIT").green())
         .centered()
         .block(
             Block::bordered()
@@ -706,7 +706,7 @@ fn render_bar_chart(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
             chart_data_vec.push(
                 Bar::default()
                     .value(each.count as u64)
-                    .label((each.less_than.to_string() + " s").into()),
+                    .label((each.less_than.to_string() + "s").into()),
             );
         } else {
             chart_data_vec.push(
@@ -722,7 +722,7 @@ fn render_bar_chart(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
     let bar_chart = BarChart::default()
         .block(
             Block::bordered()
-                .title("Number of Requests With Latency Under _ s")
+                .title("NUMBER OF REQUESTS WITH LATENCY UNDER _ SECONDS")
                 .bold(),
         )
         .data(bar_group)
@@ -749,7 +749,7 @@ fn render_sparkline_chart(
             .block(
                 Block::new()
                     .borders(Borders::LEFT | Borders::RIGHT)
-                    .title(format!("Requests Per Second Over the Past {} sec", {
+                    .title(format!("REQUESTS PER SECOND OVER THE PAST {} SEC", {
                         if (app.viewport.width as f64 * 0.48) > 150.0 {
                             150
                         } else {
@@ -765,7 +765,7 @@ fn render_sparkline_chart(
             .block(
                 Block::new()
                     .borders(Borders::LEFT | Borders::RIGHT)
-                    .title(format!("Requests Per Second Over the Past {} sec", {
+                    .title(format!("REQUESTS PER SECOND OVER THE PAST {} SEC", {
                         if (app.viewport.width as f64 * 0.48) > 150.0 {
                             150
                         } else {

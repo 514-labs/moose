@@ -59,7 +59,7 @@ pub async fn list_streaming(
 
     let grouped_topics = group_topics_by_prefix(topics);
 
-    let flattened_topics = format_topics(grouped_topics, limit);
+    let flattened_topics = format_topics(&project, grouped_topics, limit);
 
     show_table(
         vec!["Data Model".to_string(), "Topic".to_string()],
@@ -188,11 +188,18 @@ async fn add_tables_views(
 
 async fn get_topics(project: &Project) -> HashSet<String> {
     let topic_blacklist = HashSet::<String>::from_iter(vec!["__consumer_offsets".to_string()]);
+    let namespace_prefix = project.redpanda_config.get_namespace_prefix();
     HashSet::<String>::from_iter(
         redpanda::fetch_topics(&project.redpanda_config)
             .await
             .unwrap()
             .into_iter()
+            .map(|topic| {
+                topic
+                    .strip_prefix(&namespace_prefix)
+                    .unwrap_or(&topic)
+                    .to_string()
+            })
             .filter(|topic| !topic_blacklist.contains(topic)),
     )
 }
@@ -207,7 +214,11 @@ fn group_topics_by_prefix(topics: HashSet<String>) -> HashMap<String, Vec<String
     })
 }
 
-fn format_topics(grouped_topics: HashMap<String, Vec<String>>, limit: &u16) -> Vec<Vec<String>> {
+fn format_topics(
+    project: &Project,
+    grouped_topics: HashMap<String, Vec<String>>,
+    limit: &u16,
+) -> Vec<Vec<String>> {
     let sorted_limited_data_models = sort_and_limit(grouped_topics, limit);
 
     sorted_limited_data_models
@@ -220,7 +231,13 @@ fn format_topics(grouped_topics: HashMap<String, Vec<String>>, limit: &u16) -> V
                 let topics = if inner_array.len() > 1 {
                     let mut topics_slice = inner_array[1..].to_vec();
                     topics_slice.sort();
-                    topics_slice.join("\n")
+
+                    let topics_with_prefix: Vec<String> = topics_slice
+                        .iter()
+                        .map(|topic| project.redpanda_config.get_topic_with_namespace(topic))
+                        .collect();
+
+                    topics_with_prefix.join("\n")
                 } else {
                     String::new()
                 };

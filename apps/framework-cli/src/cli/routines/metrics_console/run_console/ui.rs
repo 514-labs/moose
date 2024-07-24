@@ -226,7 +226,7 @@ fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect)
                             .1
                     ),
                 ])
-                .bold()
+                .not_bold()
                 .magenta()
             } else {
                 Row::new(vec![
@@ -322,7 +322,7 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
                         .1
                 ),
             ])
-            .bold()
+            .not_bold()
             .white(),
         )
     }
@@ -488,7 +488,7 @@ fn render_passive_flows_messages_table(app: &mut App, frame: &mut Frame, layout:
                 format!("{}", item.1),
                 format!("{}", app.flows_messages_out.get(item.0).unwrap_or(&0.0)),
             ])
-            .bold()
+            .not_bold()
             .white(),
         )
     }
@@ -577,12 +577,12 @@ fn render_overview_bytes_data(app: &mut App, frame: &mut Frame, layout: &Rc<[Rec
 }
 
 fn render_main_page_details(frame: &mut Frame, layout: &Rc<[Rect]>) {
-    let info_footer = Paragraph::new(Line::from(INFO_TEXT).green())
+    let info_footer = Paragraph::new(Line::from(INFO_TEXT).white())
         .centered()
         .block(
             Block::bordered()
-                .border_type(BorderType::Double)
-                .border_style(Style::new().fg(Color::Green)),
+                .border_type(BorderType::Plain)
+                .border_style(Style::new().fg(Color::White)),
         );
 
     let block = Block::new()
@@ -590,7 +590,7 @@ fn render_main_page_details(frame: &mut Frame, layout: &Rc<[Rect]>) {
         .title_alignment(Alignment::Center)
         .bold()
         .borders(Borders::TOP)
-        .green();
+        .white();
 
     frame.render_widget(block, layout[0]);
     frame.render_widget(info_footer, layout[6]);
@@ -683,14 +683,14 @@ fn render_path_page_details(frame: &mut Frame, layout: &Rc<[Rect]>, state: Strin
         .title_alignment(Alignment::Center)
         .bold()
         .borders(Borders::TOP)
-        .green();
+        .white();
 
-    let info_footer = Paragraph::new(Line::from("(ESC) EXIT DETAILED VIEW | (Q) QUIT").green())
+    let info_footer = Paragraph::new(Line::from("(ESC) EXIT DETAILED VIEW | (Q) QUIT").white())
         .centered()
         .block(
             Block::bordered()
-                .border_type(BorderType::Double)
-                .border_style(Style::new().fg(Color::Green)),
+                .border_type(BorderType::Plain)
+                .border_style(Style::new().fg(Color::White)),
         );
 
     frame.render_widget(title, layout[0]);
@@ -728,8 +728,8 @@ fn render_bar_chart(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
         .data(bar_group)
         .bar_width(1)
         .direction(Direction::Horizontal)
-        .bar_style(Style::default().fg(Color::Green))
-        .value_style(Style::default().black().on_green().bold());
+        .bar_style(Style::default().fg(Color::White))
+        .value_style(Style::default().black().on_white().bold());
 
     frame.render_widget(bar_chart, layout[0]);
 }
@@ -758,7 +758,7 @@ fn render_sparkline_chart(
                     })),
             )
             .data(&[0])
-            .style(Style::default().fg(Color::Green));
+            .style(Style::default().fg(Color::White));
     } else {
         // This unwrap is safe because we know the key exists
         chart = Sparkline::default()
@@ -788,7 +788,7 @@ fn render_sparkline_chart(
                 }
                 None => &[],
             })
-            .style(Style::default().fg(Color::Green));
+            .style(Style::default().fg(Color::White));
 
         top_paragraph = Paragraph::new(
             Line::from(format!(
@@ -810,7 +810,7 @@ fn render_sparkline_chart(
                     None => &0,
                 }
             ))
-            .green(),
+            .white(),
         )
         .left_aligned();
 
@@ -835,11 +835,11 @@ fn render_sparkline_chart(
                     None => 0,
                 }
             ))
-            .green(),
+            .white(),
         )
         .left_aligned();
 
-        bottom_paragraph = Paragraph::new(Line::from("<-0").green()).left_aligned();
+        bottom_paragraph = Paragraph::new(Line::from("<-0").white()).left_aligned();
     }
 
     frame.render_widget(chart, chart_layout[1]);

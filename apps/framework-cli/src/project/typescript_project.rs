@@ -29,7 +29,7 @@ impl Default for TypescriptProject {
             name: "new_project".to_string(),
             version: "0.0".to_string(),
             // For local development of the CLI,
-            // change `moose-cli` to `<REPO_PATH>/apps/framework-cli/target/debug/moose-cli`
+            // change `moose-cli` to `<REPO_PATH>/target/debug/moose-cli`
             scripts: HashMap::from([
                 ("dev".to_string(), "moose-cli dev".to_string()),
                 ("moose".to_string(), "moose-cli".to_string()),

@@ -34,7 +34,7 @@ turbo build
 
 ### Debug
 
-To debug the CLI, create a `.vscode/launch.json` & change the inputs according to your needs. 
+To debug the CLI, create a `.vscode/launch.json` & change the inputs according to your needs.
 
 ```
 {
@@ -45,7 +45,7 @@ To debug the CLI, create a `.vscode/launch.json` & change the inputs according t
             "request": "launch",
             "name": "CLI (OSX)",
             "preLaunchTask": "CLI build",
-            "program": "${workspaceRoot}/apps/framework-cli/target/debug/moose-cli",
+            "program": "${workspaceRoot}/target/debug/moose-cli",
             "cwd": "${input:enterMooseDir}",
             "args": [
                 "${input:enterCommand}",

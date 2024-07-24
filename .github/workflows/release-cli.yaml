@@ -203,7 +203,7 @@ jobs:
           allowUpdates: "true"
           replacesArtifacts: "false"
           artifacts: |
-            ./apps/framework-cli/target/${{ matrix.build.TARGET }}/release/moose-cli-${{ matrix.build.TARGET }}
+            ./target/${{ matrix.build.TARGET }}/release/moose-cli-${{ matrix.build.TARGET }}
 
   publish-npm-base:
     name: Publish the base NPM package

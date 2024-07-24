@@ -10,7 +10,7 @@ import { Key, DataModelConfig, IngestionFormat } from "@514labs/moose-lib";
 // <modelName>Config
 export const UserActivityConfig: DataModelConfig<UserActivity> = {
   ingestion: {
-    format: "json",
+    format: IngestionFormat.JSON,
   },
   storage: {
     enabled: true,

@@ -1,7 +1,5 @@
-/// This is a temporary module to isolate some of the loading code
-/// logic away from the controller. This will be refactored into a
-/// more robust module in the future.
-///
+/// This is a temporary module should be deleted when we switch
+/// to core v2
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
@@ -12,18 +10,19 @@ use log::{debug, info};
 
 use crate::{
     framework::data_model::{
-        self,
-        config::ModelConfigurationError,
-        is_schema_file,
+        self, is_schema_file,
         model::{DataModel, DataModelSet},
-        parser::{parse_data_model_file, DataModelParsingError},
+        parser::parse_data_model_file,
         DuplicateModelError,
     },
     infrastructure::olap::{self, clickhouse::model::ClickHouseTable},
     project::{AggregationSet, Project},
 };
 
-use super::infrastructure::table::{ColumnType, DataEnum};
+use super::{
+    infrastructure::table::{ColumnType, DataEnum},
+    primitive_map::DataModelError,
+};
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
@@ -137,20 +136,6 @@ pub async fn get_all_framework_objects(
         }
     }
     Ok(())
-}
-
-#[derive(Debug, thiserror::Error)]
-#[error("Failed to get the Data Model configuration")]
-#[non_exhaustive]
-pub enum DataModelError {
-    Configuration(#[from] ModelConfigurationError),
-    Parsing(#[from] DataModelParsingError),
-    Mapping(#[from] MappingError),
-
-    #[error("{message}")]
-    Other {
-        message: String,
-    },
 }
 
 pub async fn get_framework_objects_from_schema_file(

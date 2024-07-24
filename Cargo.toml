@@ -1,0 +1,11 @@
+[workspace]
+resolver = "2"
+members = [
+    "apps/framework-cli",
+]
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"

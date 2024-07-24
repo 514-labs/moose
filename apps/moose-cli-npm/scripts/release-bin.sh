@@ -35,9 +35,9 @@ if [ $build_os = "windows-2022" ]; then
     current_bin="${current_bin}.exe"
 fi
 pwd
-ls "../framework-cli/target/${build_target}/release/${current_bin}"
-cp "../framework-cli/target/${build_target}/release/${current_bin}" "../framework-cli/target/${build_target}/release/${current_bin}-${build_target}"
-cp "../framework-cli/target/${build_target}/release/${current_bin}" "${node_pkg}/bin"
+ls "../../target/${build_target}/release/${current_bin}"
+cp "../../target/${build_target}/release/${current_bin}" "../../target/${build_target}/release/${current_bin}-${build_target}"
+cp "../../target/${build_target}/release/${current_bin}" "${node_pkg}/bin"
 # publish the package
 cd "${node_pkg}"
 npm publish --access public

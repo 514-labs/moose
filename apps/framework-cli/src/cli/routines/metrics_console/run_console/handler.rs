@@ -22,8 +22,8 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
             TableState::Kafka => {
                 app.kafka_down();
             }
-            TableState::Flows => {
-                app.flows_down();
+            TableState::StreamingFunction => {
+                app.streaming_functions_down();
             }
         },
 
@@ -34,8 +34,8 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
             TableState::Kafka => {
                 app.kafka_up();
             }
-            TableState::Flows => {
-                app.flows_up();
+            TableState::StreamingFunction => {
+                app.streaming_functions_up();
             }
         },
         KeyCode::Tab => match app.table_state {
@@ -43,9 +43,9 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
                 app.table_state = TableState::Kafka;
             }
             TableState::Kafka => {
-                app.table_state = TableState::Flows;
+                app.table_state = TableState::StreamingFunction;
             }
-            TableState::Flows => {
+            TableState::StreamingFunction => {
                 app.table_state = TableState::Endpoint;
             }
         },

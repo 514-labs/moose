@@ -12,6 +12,19 @@ use crate::cli::routines::metrics_console::run_console::app::{App, State, TableS
 const INFO_TEXT: &str =
     "(Q) QUIT | (↑) SCROLL UP | (↓) MOVE DOWN | (TAB) SWITCH TABLE | (ENTER) VIEW ENDPOINT DETAILS";
 
+const ENDPOINT_TABLE_COLUMNS: [&str; 4] = [
+    "PATH",
+    "LATENCY (ms)",
+    "# OF REQUESTS RECEIVED",
+    "# OF MESSAGES SENT TO KAFKA",
+];
+
+const KAFKA_CLICKHOUSE_SYNC_TABLE_COLUMNS: [&str; 4] =
+    ["DATA MODEL", "MESSAGES READ", "LAG", "MESSAGES/SEC"];
+const STREAMING_FUNCTIONS_KAFKA_TABLE_COLUMNS: [&str; 3] =
+    ["STREAMING PATH", "MESSAGES IN", "MESSAGES OUT"];
+const PATH_INFO_TEXT: &str = "(ESC) EXIT DETAILED VIEW | (Q) QUIT";
+
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame) {
     match &app.state {
@@ -22,9 +35,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                     Constraint::Max(2),
                     Constraint::Max(3),
                     Constraint::Max(3),
-                    Constraint::Fill(30),
-                    Constraint::Fill(30),
-                    Constraint::Fill(30),
+                    Constraint::Fill(28),
+                    Constraint::Max(2),
+                    Constraint::Fill(28),
+                    Constraint::Fill(28),
                     Constraint::Max(3),
                 ])
                 .split(frame.size());
@@ -51,8 +65,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             render_overview_metrics(app, frame, &inner_layout);
             render_overview_bytes_data(app, frame, &bytes_overview_layout);
             render_endpoint_table(app, frame, outer_layout[3]);
-            render_clickhouse_sync_table(app, frame, outer_layout[4]);
-            render_flows_messages_table(app, frame, outer_layout[5]);
+            render_clickhouse_sync_table(app, frame, outer_layout[5]);
+            render_streaming_functions_messages_table(app, frame, outer_layout[6]);
         }
         State::PathDetails(state) => {
             let outer_layout = Layout::default()
@@ -169,9 +183,9 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
 
     let widths = [
         Constraint::Fill(22),
+        Constraint::Fill(15),
         Constraint::Fill(20),
-        Constraint::Fill(20),
-        Constraint::Fill(20),
+        Constraint::Fill(25),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
     table_state.select(Some(app.endpoint_starting_row));
@@ -181,16 +195,11 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
         .column_spacing(1)
         .style(Style::new().light_blue())
         .header(
-            Row::new(vec![
-                "PATH",
-                "LATENCY (ms)",
-                "# OF REQUESTS",
-                "KAFKA MESSAGES SENT",
-            ])
-            .style(Style::new().bold())
-            .bottom_margin(1)
-            .underlined()
-            .top_margin(1),
+            Row::new(ENDPOINT_TABLE_COLUMNS)
+                .style(Style::new().bold())
+                .bottom_margin(1)
+                .underlined()
+                .top_margin(1),
         )
         .block(Block::bordered().title("ENDPOINT METRICS TABLE").bold())
         .highlight_style(Style::new().reversed())
@@ -266,16 +275,11 @@ fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect)
         .column_spacing(1)
         .style(Style::new().white())
         .header(
-            Row::new(vec![
-                "PATH",
-                "LATENCY (ms)",
-                "# OF REQUESTS",
-                "KAFKA MESSAGES SENT",
-            ])
-            .style(Style::new().bold())
-            .bottom_margin(1)
-            .underlined()
-            .top_margin(1),
+            Row::new(ENDPOINT_TABLE_COLUMNS)
+                .style(Style::new().bold())
+                .bottom_margin(1)
+                .underlined()
+                .top_margin(1),
         )
         .block(Block::bordered().title("ENDPOINT METRICS TABLE").bold());
 
@@ -338,7 +342,7 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
         .column_spacing(1)
         .style(Style::new().white())
         .header(
-            Row::new(vec!["DATE MODEL", "MESSAGES READ", "LAG", "MESSAGES/SEC"])
+            Row::new(KAFKA_CLICKHOUSE_SYNC_TABLE_COLUMNS)
                 .style(Style::new().bold())
                 .bottom_margin(1)
                 .underlined()
@@ -404,11 +408,11 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
         .column_spacing(1)
         .style(Style::new().light_blue())
         .header(
-            Row::new(vec!["DATA MODEL", "MESSAGES READ", "LAG", "MESSAGES/SEC"])
+            Row::new(KAFKA_CLICKHOUSE_SYNC_TABLE_COLUMNS)
                 .style(Style::new().bold())
                 .bottom_margin(1)
                 .underlined()
-                .top_margin(1),
+                .top_margin(0),
         )
         .block(
             Block::bordered()
@@ -421,21 +425,25 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
     frame.render_stateful_widget(table, layout, &mut table_state)
 }
 
-fn render_flows_messages_table(app: &mut App, frame: &mut Frame, layout: Rect) {
+fn render_streaming_functions_messages_table(app: &mut App, frame: &mut Frame, layout: Rect) {
     match app.table_state {
-        TableState::Flows => {
-            render_active_flows_messages_table(app, frame, layout);
+        TableState::StreamingFunction => {
+            render_active_streaming_functions_messages_table(app, frame, layout);
         }
         _ => {
-            render_passive_flows_messages_table(app, frame, layout);
+            render_passive_streaming_functions_messages_table(app, frame, layout);
         }
     }
 }
 
-fn render_active_flows_messages_table(app: &mut App, frame: &mut Frame, layout: Rect) {
+fn render_active_streaming_functions_messages_table(
+    app: &mut App,
+    frame: &mut Frame,
+    layout: Rect,
+) {
     let mut rows: Vec<Row> = vec![];
 
-    let mut sorted_messages: Vec<_> = app.flows_messages_in.iter().collect();
+    let mut sorted_messages: Vec<_> = app.streaming_functions_in.iter().collect();
     sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
 
     for item in &sorted_messages {
@@ -443,7 +451,10 @@ fn render_active_flows_messages_table(app: &mut App, frame: &mut Frame, layout: 
             Row::new(vec![
                 format!("{}", item.0.to_string()),
                 format!("{}", item.1),
-                format!("{}", app.flows_messages_out.get(item.0).unwrap_or(&0.0)),
+                format!(
+                    "{}",
+                    app.streaming_functions_out.get(item.0).unwrap_or(&0.0)
+                ),
             ])
             .bold()
             .light_blue(),
@@ -451,19 +462,19 @@ fn render_active_flows_messages_table(app: &mut App, frame: &mut Frame, layout: 
     }
 
     let widths = [
-        Constraint::Percentage(33),
-        Constraint::Percentage(33),
-        Constraint::Percentage(33),
+        Constraint::Percentage(46),
+        Constraint::Percentage(27),
+        Constraint::Percentage(27),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
-    table_state.select(Some(app.flows_table_starting_row));
+    table_state.select(Some(app.streaming_functions_table_starting_row));
 
     let table = Table::new(rows, widths)
         .widths(widths)
         .column_spacing(1)
         .style(Style::new().light_blue())
         .header(
-            Row::new(vec!["STREAMING PATH", "MESSAGES IN", "MESSAGES OUT"])
+            Row::new(STREAMING_FUNCTIONS_KAFKA_TABLE_COLUMNS)
                 .style(Style::new().bold())
                 .bottom_margin(1)
                 .underlined()
@@ -480,10 +491,14 @@ fn render_active_flows_messages_table(app: &mut App, frame: &mut Frame, layout: 
     frame.render_stateful_widget(table, layout, &mut table_state)
 }
 
-fn render_passive_flows_messages_table(app: &mut App, frame: &mut Frame, layout: Rect) {
+fn render_passive_streaming_functions_messages_table(
+    app: &mut App,
+    frame: &mut Frame,
+    layout: Rect,
+) {
     let mut rows: Vec<Row> = vec![];
 
-    let mut sorted_messages: Vec<_> = app.flows_messages_in.iter().collect();
+    let mut sorted_messages: Vec<_> = app.streaming_functions_in.iter().collect();
     sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
 
     for item in &sorted_messages {
@@ -491,7 +506,10 @@ fn render_passive_flows_messages_table(app: &mut App, frame: &mut Frame, layout:
             Row::new(vec![
                 format!("{}", item.0.to_string()),
                 format!("{}", item.1),
-                format!("{}", app.flows_messages_out.get(item.0).unwrap_or(&0.0)),
+                format!(
+                    "{}",
+                    app.streaming_functions_out.get(item.0).unwrap_or(&0.0)
+                ),
             ])
             .not_bold()
             .white(),
@@ -499,9 +517,9 @@ fn render_passive_flows_messages_table(app: &mut App, frame: &mut Frame, layout:
     }
 
     let widths = [
-        Constraint::Percentage(33),
-        Constraint::Percentage(33),
-        Constraint::Percentage(33),
+        Constraint::Percentage(46),
+        Constraint::Percentage(27),
+        Constraint::Percentage(27),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
     table_state.select(Some(app.kafka_starting_row));
@@ -511,7 +529,7 @@ fn render_passive_flows_messages_table(app: &mut App, frame: &mut Frame, layout:
         .column_spacing(1)
         .style(Style::new().white())
         .header(
-            Row::new(vec!["STREAMING PATH", "MESSAGES IN", "MESSAGES OUT"])
+            Row::new(STREAMING_FUNCTIONS_KAFKA_TABLE_COLUMNS)
                 .style(Style::new().bold())
                 .bottom_margin(1)
                 .underlined()
@@ -615,15 +633,23 @@ fn render_main_page_details(frame: &mut Frame, layout: &Rc<[Rect]>) {
                 .border_style(Style::new().fg(Color::White)),
         );
 
-    let block = Block::new()
-        .title("METRICS CONSOLE")
+    let endpoint_block = Block::new()
+        .title("ENDPOINT CONSOLE")
         .title_alignment(Alignment::Center)
         .bold()
         .borders(Borders::TOP)
         .white();
 
-    frame.render_widget(block, layout[0]);
-    frame.render_widget(info_footer, layout[6]);
+    let kafka_block = Block::new()
+        .title("KAFKA METRICS")
+        .title_alignment(Alignment::Center)
+        .bold()
+        .borders(Borders::TOP)
+        .white();
+
+    frame.render_widget(endpoint_block, layout[0]);
+    frame.render_widget(kafka_block, layout[4]);
+    frame.render_widget(info_footer, layout[7]);
 }
 
 fn render_path_overview_data(
@@ -737,7 +763,7 @@ fn render_path_page_details(frame: &mut Frame, layout: &Rc<[Rect]>, state: Strin
         .borders(Borders::TOP)
         .white();
 
-    let info_footer = Paragraph::new(Line::from("(ESC) EXIT DETAILED VIEW | (Q) QUIT").white())
+    let info_footer = Paragraph::new(Line::from(PATH_INFO_TEXT).white())
         .centered()
         .block(
             Block::bordered()

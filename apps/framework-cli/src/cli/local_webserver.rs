@@ -58,10 +58,16 @@ pub struct RouterRequest {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
+enum Direction {
+    In,
+    Out,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FlowMessages {
     count: u64,
     path: String,
-    direction: String,
+    direction: Direction,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -253,8 +259,8 @@ async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Res
                 path: cli_message.path,
                 direction: cli_message.direction,
             };
-            match message.direction.as_str() {
-                "in" => {
+            match message.direction {
+                Direction::In => {
                     metrics
                         .send_metric(MetricsMessage::PutFlowsMessagesIn(
                             message.path,
@@ -262,7 +268,7 @@ async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Res
                         ))
                         .await
                 }
-                "out" => {
+                Direction::Out => {
                     metrics
                         .send_metric(MetricsMessage::PutFlowsMessagesOut(
                             message.path,
@@ -270,7 +276,6 @@ async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Res
                         ))
                         .await
                 }
-                _ => {}
             }
         }
         Err(e) => println!("Received unknown message: {:?}", e),

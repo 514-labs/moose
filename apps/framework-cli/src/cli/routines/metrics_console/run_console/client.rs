@@ -21,8 +21,8 @@ pub struct ParsedMetricsData {
     pub histogram_vec: Vec<Sample>,
     pub kafka_messages_in_total: HashMap<String, (String, f64)>,
     pub kafka_messages_out_total: Vec<(String, String, f64)>,
-    pub flows_messages_in: HashMap<String, f64>,
-    pub flows_messages_out: HashMap<String, f64>,
+    pub streaming_functions_in: HashMap<String, f64>,
+    pub streaming_functions_out: HashMap<String, f64>,
 }
 
 pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
@@ -49,8 +49,8 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
     let mut paths_bytes_hashmap: HashMap<String, u64> = HashMap::new();
     let mut kafka_messages_in_total: HashMap<String, (String, f64)> = HashMap::new();
     let mut kafka_messages_out_total: Vec<(String, String, f64)> = vec![];
-    let mut flows_messages_in: HashMap<String, f64> = HashMap::new();
-    let mut flows_messages_out: HashMap<String, f64> = HashMap::new();
+    let mut streaming_functions_in: HashMap<String, f64> = HashMap::new();
+    let mut streaming_functions_out: HashMap<String, f64> = HashMap::new();
 
     let mut i = 0;
     while i < metrics_vec.len() {
@@ -130,20 +130,20 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
             let topic = metrics_vec[j].labels["topic"].to_string();
 
             kafka_messages_out_total.push((topic, consumer_group, value));
-        } else if &metrics_vec[j].metric == "flows_messages_in" {
+        } else if &metrics_vec[j].metric == "streaming_functions_in" {
             let value = match &metrics_vec[j].value {
                 prometheus_parse::Value::Gauge(v) => v,
                 prometheus_parse::Value::Untyped(v) => v,
                 _ => &0.0,
             };
-            flows_messages_in.insert(metrics_vec[j].labels["path"].to_string(), *value);
-        } else if &metrics_vec[j].metric == "flows_messages_out" {
+            streaming_functions_in.insert(metrics_vec[j].labels["path"].to_string(), *value);
+        } else if &metrics_vec[j].metric == "streaming_functions_out" {
             let value = match &metrics_vec[j].value {
                 prometheus_parse::Value::Gauge(v) => v,
                 prometheus_parse::Value::Untyped(v) => v,
                 _ => &0.0,
             };
-            flows_messages_out.insert(metrics_vec[j].labels["path"].to_string(), *value);
+            streaming_functions_out.insert(metrics_vec[j].labels["path"].to_string(), *value);
         }
 
         j += 1;
@@ -159,8 +159,8 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
         histogram_vec: metrics_vec,
         kafka_messages_in_total,
         kafka_messages_out_total,
-        flows_messages_in,
-        flows_messages_out,
+        streaming_functions_in,
+        streaming_functions_out,
     };
 
     Ok(parsed_data)

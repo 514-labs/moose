@@ -169,8 +169,8 @@ count_out = 0
 def send_message_metrics_in():
     while True:
         time.sleep(1)
-        requests.post("http://localhost:4000/metrics-logs", json={'count': count_in, 'path': f'{source_topic} -> {target_topic}', 'direction': 'in'})
-        requests.post("http://localhost:4000/metrics-logs", json={'count': count_out, 'path': f'{source_topic} -> {target_topic}', 'direction': 'out'})
+        requests.post("http://localhost:4000/metrics-logs", json={'count': count_in, 'path': f'{source_topic} -> {target_topic}', 'direction': 'In'})
+        requests.post("http://localhost:4000/metrics-logs", json={'count': count_out, 'path': f'{source_topic} -> {target_topic}', 'direction': 'Out'})
 
 timer = threading.Thread(target=send_message_metrics_in)
 timer.daemon = True
@@ -204,5 +204,3 @@ for message in consumer:
             # and immediately returns. This allows the producer to batch together individual records
             producer.send(target_topic, json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))
             count_out+=1
-
-thread_running = False

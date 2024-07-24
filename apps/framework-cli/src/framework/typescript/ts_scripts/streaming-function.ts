@@ -17,7 +17,7 @@ const SECURITY_PROTOCOL = process.argv[9];
 type CliLogData = {
   count: number;
   path: string;
-  direction: "in" | "out";
+  direction: "In" | "Out";
 };
 export const metricsLog: (log: CliLogData) => void = (log) => {
   const req = http.request({
@@ -26,7 +26,7 @@ export const metricsLog: (log: CliLogData) => void = (log) => {
     path: "/metrics-logs",
   }); // no callback, fire and forget
 
-  req.write(JSON.stringify({ message_type: "Info", ...log }));
+  req.write(JSON.stringify({ ...log }));
   req.end();
 };
 
@@ -226,7 +226,7 @@ const sendMessageMetricsIn = () => {
   metricsLog({
     count: count_in,
     path: logPrefix,
-    direction: "in",
+    direction: "In",
   });
   setTimeout(() => sendMessageMetricsIn(), 1000);
 };
@@ -235,7 +235,7 @@ const sendMessageMetricsOut = () => {
   metricsLog({
     count: count_out,
     path: logPrefix,
-    direction: "out",
+    direction: "Out",
   });
   setTimeout(() => sendMessageMetricsOut(), 1000);
 };

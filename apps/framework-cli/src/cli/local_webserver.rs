@@ -262,7 +262,7 @@ async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Res
             match message.direction {
                 Direction::In => {
                     metrics
-                        .send_metric(MetricsMessage::PutFlowsMessagesIn(
+                        .send_metric(MetricsMessage::PutStreamingFunctionMessagesOut(
                             message.path,
                             message.count,
                         ))
@@ -270,7 +270,7 @@ async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Res
                 }
                 Direction::Out => {
                     metrics
-                        .send_metric(MetricsMessage::PutFlowsMessagesOut(
+                        .send_metric(MetricsMessage::PutStreamingFunctionMessagesOut(
                             message.path,
                             message.count,
                         ))

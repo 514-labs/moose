@@ -22,8 +22,8 @@ pub enum MetricsMessage {
     PutNumberOfBytesOut(PathBuf, u64),
     PutNumberOfMessagesIn(String, String),
     PutNumberOfMessagesOut(String, String),
-    PutFlowsMessagesIn(String, u64),
-    PutFlowsMessagesOut(String, u64),
+    PutStreamingFunctionMessagesIn(String, u64),
+    PutStreamingFunctionMessagesOut(String, u64),
 }
 
 #[derive(Clone)]
@@ -38,8 +38,8 @@ pub struct Statistics {
     pub bytes_out_family: Family<BytesCounterLabels, Counter>,
     pub messages_in_family: Family<MessagesInCounterLabels, Counter>,
     pub messages_out_family: Family<MessagesOutCounterLabels, Counter>,
-    pub streaming_functions_in_family: Family<FlowsMessagesCounterLabels, Gauge>,
-    pub streaming_functions_out_family: Family<FlowsMessagesCounterLabels, Gauge>,
+    pub streaming_functions_in_family: Family<StreamingFunctionMessagesCounterLabels, Gauge>,
+    pub streaming_functions_out_family: Family<StreamingFunctionMessagesCounterLabels, Gauge>,
     pub registry: Option<Registry>,
 }
 
@@ -55,7 +55,7 @@ pub struct BytesCounterLabels {
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
-pub struct FlowsMessagesCounterLabels {
+pub struct StreamingFunctionMessagesCounterLabels {
     path: String,
 }
 
@@ -128,9 +128,13 @@ impl Metrics {
                 Counter::default,
             ),
             streaming_functions_in_family:
-                Family::<FlowsMessagesCounterLabels, Gauge>::new_with_constructor(Gauge::default),
+                Family::<StreamingFunctionMessagesCounterLabels, Gauge>::new_with_constructor(
+                    Gauge::default,
+                ),
             streaming_functions_out_family:
-                Family::<FlowsMessagesCounterLabels, Gauge>::new_with_constructor(Gauge::default),
+                Family::<StreamingFunctionMessagesCounterLabels, Gauge>::new_with_constructor(
+                    Gauge::default,
+                ),
             registry: Some(Registry::default()),
         };
         let mut new_registry = data.registry.unwrap();
@@ -220,14 +224,14 @@ impl Metrics {
                             })
                             .inc();
                     }
-                    MetricsMessage::PutFlowsMessagesIn(path, count) => {
+                    MetricsMessage::PutStreamingFunctionMessagesIn(path, count) => {
                         data.streaming_functions_in_family
-                            .get_or_create(&FlowsMessagesCounterLabels { path })
+                            .get_or_create(&StreamingFunctionMessagesCounterLabels { path })
                             .set(count as i64);
                     }
-                    MetricsMessage::PutFlowsMessagesOut(path, count) => {
+                    MetricsMessage::PutStreamingFunctionMessagesOut(path, count) => {
                         data.streaming_functions_out_family
-                            .get_or_create(&FlowsMessagesCounterLabels { path })
+                            .get_or_create(&StreamingFunctionMessagesCounterLabels { path })
                             .set(count as i64);
                     }
                 };

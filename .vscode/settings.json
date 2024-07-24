@@ -1,5 +1,4 @@
 {
-  "rust-analyzer.linkedProjects": ["apps/framework-cli/Cargo.toml"],
   "rust-analyzer.showUnlinkedFileNotification": false,
   "editor.formatOnSave": false,
   "[javascript]": {

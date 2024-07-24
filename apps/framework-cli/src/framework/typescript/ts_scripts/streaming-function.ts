@@ -219,16 +219,6 @@ const sendMessages = async (
 
 setTimeout(() => sendMessageMetricsOut(), 1000);
 
-// declare global {
-//   interface Window {
-//     count_in: number;
-//     count_out: number;
-//   }
-// }
-
-// window.count_in = 0;
-// window.count_out = 0;
-
 var count_in = 0;
 var count_out = 0;
 
@@ -286,8 +276,6 @@ const startConsumer = async (
           ),
         )
       ).flat();
-
-      log("---------------------------------------");
 
       const filteredMessages = messages.filter((msg) => msg !== null);
 

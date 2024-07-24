@@ -136,6 +136,7 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
                 prometheus_parse::Value::Untyped(v) => v,
                 _ => &0.0,
             };
+
             streaming_functions_in.insert(metrics_vec[j].labels["path"].to_string(), *value);
         } else if &metrics_vec[j].metric == "streaming_functions_out" {
             let value = match &metrics_vec[j].value {
@@ -143,6 +144,7 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
                 prometheus_parse::Value::Untyped(v) => v,
                 _ => &0.0,
             };
+
             streaming_functions_out.insert(metrics_vec[j].labels["path"].to_string(), *value);
         }
 

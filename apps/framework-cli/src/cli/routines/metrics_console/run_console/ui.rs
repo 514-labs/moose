@@ -10,7 +10,7 @@ use ratatui::{prelude::*, widgets::*};
 use crate::cli::routines::metrics_console::run_console::app::{App, State, TableState};
 
 const INFO_TEXT: &str =
-    "(Q) QUIT | (↑) SCROLL UP | (↓) MOVE DOWN | (TAB) SWITCH TABLE | (ENTER) VIEW ENDPOINT DETAILS";
+    "(Q) QUIT | (TAB) SWITCH TABLE | (↑) ROW UP | (↓) ROW DOWN | (ENTER) VIEW ENDPOINT DETAILS";
 
 const ENDPOINT_TABLE_COLUMNS: [&str; 4] = [
     "PATH",
@@ -59,7 +59,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 .constraints(vec![
                     Constraint::Percentage(33),
                     Constraint::Percentage(33),
-                    Constraint::Percentage(33),
+                    Constraint::Percentage(34),
                 ])
                 .split(paragraph_layout[0]);
             let bytes_overview_layout = Layout::default()
@@ -181,7 +181,7 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
                             .1
                     ),
                 ])
-                .light_blue()
+                .white()
                 .bold()
             },
         )
@@ -199,7 +199,7 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
     let table = Table::new(rows, widths)
         .widths(widths)
         .column_spacing(1)
-        .style(Style::new().light_blue())
+        .style(Style::new().white())
         .header(
             Row::new(ENDPOINT_TABLE_COLUMNS)
                 .style(Style::new().bold())
@@ -207,7 +207,13 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
                 .underlined()
                 .top_margin(1),
         )
-        .block(Block::bordered().title("ENDPOINT METRICS TABLE").bold())
+        .block(
+            Block::bordered()
+                .title("ENDPOINT METRICS TABLE")
+                .bold()
+                .border_style(Style::new().light_blue())
+                .title_style(Style::new().white()),
+        )
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
 
@@ -269,9 +275,9 @@ fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect)
 
     let widths = [
         Constraint::Fill(22),
+        Constraint::Fill(15),
         Constraint::Fill(20),
-        Constraint::Fill(20),
-        Constraint::Fill(20),
+        Constraint::Fill(25),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
     table_state.select(Some(app.endpoint_starting_row));
@@ -287,7 +293,13 @@ fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect)
                 .underlined()
                 .top_margin(1),
         )
-        .block(Block::bordered().title("ENDPOINT METRICS TABLE").bold());
+        .block(
+            Block::bordered()
+                .title("ENDPOINT METRICS TABLE")
+                .bold()
+                .title_style(Style::new().white())
+                .border_style(Style::new().dark_gray()),
+        );
 
     frame.render_widget(table, layout)
 }
@@ -362,7 +374,9 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
         .block(
             Block::bordered()
                 .title("KAFKA TO TABLE SYNC PROCESS")
-                .bold(),
+                .bold()
+                .title_style(Style::new().white())
+                .border_style(Style::new().dark_gray()),
         );
 
     frame.render_widget(table, layout)
@@ -405,7 +419,7 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
                 ),
             ])
             .bold()
-            .light_blue(),
+            .white(),
         )
     }
 
@@ -422,7 +436,7 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
     let table = Table::new(rows, widths)
         .widths(widths)
         .column_spacing(1)
-        .style(Style::new().light_blue())
+        .style(Style::new().white())
         .header(
             Row::new(KAFKA_CLICKHOUSE_SYNC_TABLE_COLUMNS)
                 .style(Style::new().bold())
@@ -433,7 +447,9 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
         .block(
             Block::bordered()
                 .title("KAFKA TO TABLE SYNC PROCESS")
-                .bold(),
+                .bold()
+                .border_style(Style::new().light_blue())
+                .title_style(Style::new().white()),
         )
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
@@ -493,7 +509,7 @@ fn render_active_streaming_functions_messages_table(
                 ),
             ])
             .bold()
-            .light_blue(),
+            .white(),
         )
     }
 
@@ -511,7 +527,7 @@ fn render_active_streaming_functions_messages_table(
     let table = Table::new(rows, widths)
         .widths(widths)
         .column_spacing(1)
-        .style(Style::new().light_blue())
+        .style(Style::new().white())
         .header(
             Row::new(STREAMING_FUNCTIONS_KAFKA_TABLE_COLUMNS)
                 .style(Style::new().bold())
@@ -522,7 +538,9 @@ fn render_active_streaming_functions_messages_table(
         .block(
             Block::bordered()
                 .title("STREAMING FUNCTIONS KAFKA MESSAGES")
-                .bold(),
+                .bold()
+                .border_style(Style::new().light_blue())
+                .title_style(Style::new().white()),
         )
         .highlight_style(Style::new().reversed())
         .highlight_symbol(">>");
@@ -600,7 +618,9 @@ fn render_passive_streaming_functions_messages_table(
         .block(
             Block::bordered()
                 .title("STREAMING FUNCTIONS KAFKA MESSAGES")
-                .bold(),
+                .bold()
+                .title_style(Style::new().white())
+                .border_style(Style::new().dark_gray()),
         );
 
     frame.render_widget(table, layout)
@@ -616,37 +636,43 @@ fn table_equals_path(path: String, table: String) -> bool {
 fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
     let average_lat_block = Block::new()
         .title("AVERAGE LATENCY")
-        .title_alignment(Alignment::Center)
+        .title_alignment(Alignment::Left)
         .bold()
-        .white()
+        .padding(Padding::horizontal(2))
+        .title_style(Style::new().white())
+        .border_style(Style::new().dark_gray())
         .borders(Borders::ALL);
 
     let average_latency_paragraph =
         Paragraph::new(format!("{} ms", (app.average * 1000.0).round() / 1000.0))
-            .centered()
+            .left_aligned()
             .block(average_lat_block)
             .style(Style::new().white());
 
     let total_req_block = Block::new()
         .title("TOTAL # OF REQUESTS")
-        .title_alignment(Alignment::Center)
+        .title_alignment(Alignment::Left)
         .borders(Borders::ALL)
         .bold()
-        .white();
+        .padding(Padding::horizontal(2))
+        .title_style(Style::new().white())
+        .border_style(Style::new().dark_gray());
 
     let total_req_paragraph = Paragraph::new(app.total_requests.to_string())
-        .centered()
+        .left_aligned()
         .block(total_req_block)
         .style(Style::new().white());
 
     let req_per_sec_block = Block::new()
         .title("REQUESTS PER SECOND")
-        .title_alignment(Alignment::Center)
+        .title_alignment(Alignment::Left)
         .bold()
+        .padding(Padding::horizontal(2))
         .borders(Borders::ALL)
-        .white();
+        .title_style(Style::new().white())
+        .border_style(Style::new().dark_gray());
     let req_per_sec_paragraph = Paragraph::new(app.requests_per_sec.to_string())
-        .centered()
+        .left_aligned()
         .block(req_per_sec_block)
         .style(Style::new().white());
 
@@ -658,27 +684,31 @@ fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>
 fn render_overview_bytes_data(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
     let bytes_in_per_sec_block = Block::new()
         .title("DATA IN")
-        .title_alignment(Alignment::Center)
+        .title_alignment(Alignment::Left)
         .bold()
+        .padding(Padding::horizontal(2))
         .borders(Borders::ALL)
-        .white();
+        .title_style(Style::new().white())
+        .border_style(Style::new().dark_gray());
 
     let bytes_out_per_sec_block = Block::new()
         .title("DATA OUT")
-        .title_alignment(Alignment::Center)
+        .title_alignment(Alignment::Left)
         .bold()
+        .padding(Padding::horizontal(2))
         .borders(Borders::ALL)
-        .white();
+        .title_style(Style::new().white())
+        .border_style(Style::new().dark_gray());
 
     let bytes_in_per_sec_paragraph =
         Paragraph::new(format_bytes(app.main_bytes_data.bytes_in_per_sec as f64))
-            .centered()
+            .left_aligned()
             .block(bytes_in_per_sec_block)
             .style(Style::new().white());
 
     let bytes_out_per_sec_paragraph =
         Paragraph::new(format_bytes(app.main_bytes_data.bytes_out_per_sec as f64))
-            .centered()
+            .left_aligned()
             .block(bytes_out_per_sec_block)
             .style(Style::new().white());
 
@@ -692,13 +722,14 @@ fn render_main_page_details(frame: &mut Frame, layout: &Rc<[Rect]>) {
         .block(
             Block::bordered()
                 .border_type(BorderType::Plain)
-                .border_style(Style::new().fg(Color::White)),
+                .border_style(Style::new().fg(Color::DarkGray)),
         );
 
     let endpoint_block = Block::new()
-        .title("ENDPOINT CONSOLE")
+        .title("ENDPOINT METRICS")
         .title_alignment(Alignment::Center)
         .bold()
+        .padding(Padding::horizontal(2))
         .borders(Borders::TOP)
         .white();
 
@@ -706,6 +737,7 @@ fn render_main_page_details(frame: &mut Frame, layout: &Rc<[Rect]>) {
         .title("KAFKA METRICS")
         .title_alignment(Alignment::Center)
         .bold()
+        .padding(Padding::horizontal(2))
         .borders(Borders::TOP)
         .white();
 
@@ -723,10 +755,12 @@ fn render_path_overview_data(
 ) {
     let average_latency_block = Block::new()
         .title("AVERAGE LATENCY")
-        .title_alignment(Alignment::Center)
+        .title_alignment(Alignment::Left)
         .bold()
+        .padding(Padding::horizontal(2))
         .borders(Borders::ALL)
-        .white();
+        .title_style(Style::new().white())
+        .border_style(Style::new().dark_gray());
 
     let average_latency_paragraph = Paragraph::new(format!(
         "{} ms",
@@ -736,49 +770,55 @@ fn render_path_overview_data(
             .round())
             / 1000.0
     ))
-    .centered()
+    .left_aligned()
     .block(average_latency_block)
     .style(Style::new().white());
 
     let request_count_block = Block::new()
         .title("# OF REQUESTS")
-        .title_alignment(Alignment::Center)
+        .title_alignment(Alignment::Left)
         .bold()
+        .padding(Padding::horizontal(2))
         .borders(Borders::ALL)
-        .white();
+        .title_style(Style::new().white())
+        .border_style(Style::new().dark_gray());
 
     let request_count_paragraph = Paragraph::new(
         app.summary[app.endpoint_starting_row]
             .request_count
             .to_string(),
     )
-    .centered()
+    .left_aligned()
     .block(request_count_block)
     .style(Style::new().white());
 
     let path_req_per_sec_block = Block::new()
         .title("REQUESTS PER SECOND")
-        .title_alignment(Alignment::Center)
+        .title_alignment(Alignment::Left)
         .bold()
+        .padding(Padding::horizontal(2))
         .borders(Borders::ALL)
-        .white();
+        .title_style(Style::new().white())
+        .border_style(Style::new().dark_gray());
     let path_req_per_sec_paragraph = Paragraph::new(
         app.path_requests_per_sec
             .get(state)
             .unwrap_or(&0.0)
             .to_string(),
     )
-    .centered()
+    .left_aligned()
     .block(path_req_per_sec_block)
     .style(Style::new().white());
 
     if state.starts_with("ingest") {
         let bytes_in_per_sec_block = Block::new()
             .title("DATA IN")
-            .title_alignment(Alignment::Center)
+            .title_alignment(Alignment::Left)
             .bold()
+            .padding(Padding::horizontal(2))
             .borders(Borders::ALL)
-            .white();
+            .title_style(Style::new().white())
+            .border_style(Style::new().dark_gray());
 
         let bytes_in_per_sec_paragraph = Paragraph::new(format_bytes(
             (*app
@@ -787,7 +827,7 @@ fn render_path_overview_data(
                 .get(state)
                 .unwrap_or(&0)) as f64,
         ))
-        .centered()
+        .left_aligned()
         .block(bytes_in_per_sec_block)
         .style(Style::new().white());
 
@@ -795,10 +835,12 @@ fn render_path_overview_data(
     } else {
         let bytes_in_per_sec_block = Block::new()
             .title("DATA OUT")
-            .title_alignment(Alignment::Center)
+            .title_alignment(Alignment::Left)
             .bold()
+            .padding(Padding::horizontal(2))
             .borders(Borders::ALL)
-            .white();
+            .title_style(Style::new().white())
+            .border_style(Style::new().dark_gray());
 
         let bytes_in_per_sec_paragraph = Paragraph::new(format_bytes(
             *app.parsed_bytes_data
@@ -806,7 +848,7 @@ fn render_path_overview_data(
                 .get(state)
                 .unwrap_or(&0) as f64,
         ))
-        .centered()
+        .left_aligned()
         .block(bytes_in_per_sec_block)
         .style(Style::new().white());
         frame.render_widget(bytes_in_per_sec_paragraph, bottom_layout[1]);
@@ -830,7 +872,7 @@ fn render_path_page_details(frame: &mut Frame, layout: &Rc<[Rect]>, state: Strin
         .block(
             Block::bordered()
                 .border_type(BorderType::Plain)
-                .border_style(Style::new().fg(Color::White)),
+                .border_style(Style::new().fg(Color::DarkGray)),
         );
 
     frame.render_widget(title, layout[0]);
@@ -864,13 +906,15 @@ fn render_bar_chart(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
             Block::bordered()
                 .title("# OF REQUESTS WITH LATENCY UNDER _ SEC")
                 .bold()
-                .title_alignment(Alignment::Center),
+                .title_alignment(Alignment::Left)
+                .title_style(Style::new().white())
+                .border_style(Style::new().dark_gray()),
         )
         .data(bar_group)
         .bar_width(1)
         .direction(Direction::Horizontal)
-        .bar_style(Style::default().fg(Color::White))
-        .value_style(Style::default().black().on_white().bold());
+        .bar_style(Style::default().fg(Color::DarkGray))
+        .value_style(Style::default().white().on_dark_gray().bold());
 
     frame.render_widget(bar_chart, layout[0]);
 }
@@ -882,9 +926,9 @@ fn render_sparkline_chart(
     state: &String,
 ) {
     let chart: Sparkline;
-    let mut top_paragraph: Paragraph = Paragraph::new("<-0");
-    let mut middle_paragraph: Paragraph = Paragraph::new("<-0");
-    let mut bottom_paragraph: Paragraph = Paragraph::new("<-0");
+    let mut top_paragraph: Paragraph = Paragraph::new("0->");
+    let mut middle_paragraph: Paragraph = Paragraph::new("0->");
+    let mut bottom_paragraph: Paragraph = Paragraph::new("0->");
 
     if !app.requests_per_sec_vec.contains_key(state) {
         chart = Sparkline::default()
@@ -913,8 +957,10 @@ fn render_sparkline_chart(
                             (app.viewport.width as f64 * 0.48) as usize
                         }
                     }))
-                    .title_alignment(Alignment::Center)
-                    .bold(),
+                    .title_alignment(Alignment::Left)
+                    .bold()
+                    .title_style(Style::new().white())
+                    .border_style(Style::new().dark_gray()),
             )
             .data(match &app.requests_per_sec_vec.get(state) {
                 Some(v) => {
@@ -931,7 +977,7 @@ fn render_sparkline_chart(
                 }
                 None => &[],
             })
-            .style(Style::default().fg(Color::White));
+            .style(Style::default().fg(Color::DarkGray));
 
         top_paragraph = Paragraph::new(
             Line::from(format!(
@@ -956,7 +1002,11 @@ fn render_sparkline_chart(
             .white()
             .centered(),
         )
-        .block(Block::new().borders(Borders::LEFT | Borders::TOP));
+        .block(
+            Block::new()
+                .borders(Borders::LEFT | Borders::TOP)
+                .border_style(Style::new().dark_gray()),
+        );
 
         middle_paragraph = Paragraph::new(
             Line::from(format!(
@@ -981,16 +1031,26 @@ fn render_sparkline_chart(
             ))
             .white(),
         )
-        .block(Block::new().borders(Borders::LEFT))
+        .block(
+            Block::new()
+                .borders(Borders::LEFT)
+                .border_style(Style::new().dark_gray()),
+        )
         .centered();
 
-        bottom_paragraph = Paragraph::new(Line::from("0->").white())
-            .centered()
-            .block(Block::new().borders(Borders::BOTTOM | Borders::LEFT));
+        bottom_paragraph = Paragraph::new(Line::from("0->").white()).centered().block(
+            Block::new()
+                .borders(Borders::BOTTOM | Borders::LEFT)
+                .border_style(Style::new().dark_gray()),
+        );
     }
 
-    let border_block_one = Block::new().borders(Borders::LEFT);
-    let border_block_two = Block::new().borders(Borders::LEFT);
+    let border_block_one = Block::new()
+        .borders(Borders::LEFT)
+        .border_style(Style::new().dark_gray());
+    let border_block_two = Block::new()
+        .borders(Borders::LEFT)
+        .border_style(Style::new().dark_gray());
 
     frame.render_widget(chart, chart_layout[1]);
     frame.render_widget(top_paragraph, scale_layout[0]);
@@ -1003,11 +1063,15 @@ fn render_sparkline_chart(
 fn format_bytes(bytes: f64) -> String {
     if (bytes / 1000000000.0) > 1.0 {
         format!("{:.3} GB/s", (bytes / 1000000000.0))
+            .trim()
+            .to_string()
     } else if (bytes / 1000000.0) > 1.0 {
         format!("{:.3} MB/s", (bytes / 1000000.0))
+            .trim()
+            .to_string()
     } else if (bytes / 1000.0) > 1.0 {
-        format!("{:.3} KB/s", (bytes / 1000.0))
+        format!("{:.3} KB/s", (bytes / 1000.0)).trim().to_string()
     } else {
-        format!("{:3} B/s", bytes)
+        format!("{:3} B/s", bytes).trim().to_string()
     }
 }

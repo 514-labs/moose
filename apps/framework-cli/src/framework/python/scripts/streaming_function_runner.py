@@ -8,7 +8,6 @@ from kafka import KafkaConsumer, KafkaProducer
 import requests
 import threading
 import time
-import asyncio
 
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
@@ -166,11 +165,12 @@ consumer.subscribe([source_topic])
 thread_running = True
 count_in = 0
 count_out = 0
+bytes_count = 0
 def send_message_metrics_in():
     while True:
         time.sleep(1)
-        requests.post("http://localhost:4000/metrics-logs", json={'count': count_in, 'path': f'{source_topic} -> {target_topic}', 'direction': 'In'})
-        requests.post("http://localhost:4000/metrics-logs", json={'count': count_out, 'path': f'{source_topic} -> {target_topic}', 'direction': 'Out'})
+        requests.post("http://localhost:4000/metrics-logs", json={'count': count_in, 'bytes': bytes_count, 'path': f'{source_topic} -> {target_topic}', 'direction': 'In'})
+        requests.post("http://localhost:4000/metrics-logs", json={'count': count_out, 'bytes': bytes_count, 'path': f'{source_topic} -> {target_topic}', 'direction': 'Out'})
 
 timer = threading.Thread(target=send_message_metrics_in)
 timer.daemon = True
@@ -202,5 +202,6 @@ for message in consumer:
         if item is not None:
             # send() is asynchronous. When called it adds the record to a buffer of pending record sends 
             # and immediately returns. This allows the producer to batch together individual records
+            bytes_count += len(json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))
             producer.send(target_topic, json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))
             count_out+=1

@@ -25,6 +25,7 @@ pub enum MetricsMessage {
     PutKafkaClickhouseSyncBytesOut(String, String, u64),
     PutStreamingFunctionMessagesIn(String, u64),
     PutStreamingFunctionMessagesOut(String, u64),
+    PutStreamingFunctionBytes(String, u64),
 }
 
 #[derive(Clone)]
@@ -42,6 +43,7 @@ pub struct Statistics {
     pub kafka_clickhouse_sync_bytes_out_family: Family<MessagesOutCounterLabels, Counter>,
     pub streaming_functions_in_family: Family<StreamingFunctionMessagesCounterLabels, Gauge>,
     pub streaming_functions_out_family: Family<StreamingFunctionMessagesCounterLabels, Gauge>,
+    pub streaming_functions_bytes_family: Family<StreamingFunctionMessagesCounterLabels, Gauge>,
     pub registry: Option<Registry>,
 }
 
@@ -139,6 +141,10 @@ impl Metrics {
                 Family::<StreamingFunctionMessagesCounterLabels, Gauge>::new_with_constructor(
                     Gauge::default,
                 ),
+            streaming_functions_bytes_family:
+                Family::<StreamingFunctionMessagesCounterLabels, Gauge>::new_with_constructor(
+                    Gauge::default,
+                ),
             registry: Some(Registry::default()),
         };
         let mut new_registry = data.registry.unwrap();
@@ -188,6 +194,11 @@ impl Metrics {
             "kafka_clickhouse_sync_bytes_out",
             "Bytes sent to clickhouse",
             data.kafka_clickhouse_sync_bytes_out_family.clone(),
+        );
+        new_registry.register(
+            "streaming_functions_bytes",
+            "Bytes sent from one data model to another using kafka stream",
+            data.streaming_functions_bytes_family.clone(),
         );
 
         data.registry = Some(new_registry);
@@ -255,6 +266,11 @@ impl Metrics {
                                 topic,
                             })
                             .inc_by(number_of_bytes);
+                    }
+                    MetricsMessage::PutStreamingFunctionBytes(path, count) => {
+                        data.streaming_functions_bytes_family
+                            .get_or_create(&StreamingFunctionMessagesCounterLabels { path })
+                            .set(count as i64);
                     }
                 };
             }

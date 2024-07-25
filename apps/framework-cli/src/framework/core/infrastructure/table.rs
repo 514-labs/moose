@@ -7,15 +7,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use crate::framework::core::infrastructure_map::PrimitiveSignature;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub enum TableType {
-    Table,
-    View,
-    Unsupported,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Table {
-    pub table_type: TableType,
     pub name: String,
     pub columns: Vec<Column>,
     pub order_by: Vec<String>,
@@ -50,7 +42,7 @@ impl Table {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct Column {
     pub name: String,
     pub data_type: ColumnType,
@@ -60,7 +52,7 @@ pub struct Column {
     pub default: Option<ColumnDefaults>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub enum ColumnDefaults {
     AutoIncrement,
     CUID,
@@ -68,7 +60,7 @@ pub enum ColumnDefaults {
     Now,
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub enum ColumnType {
     String,
     Boolean,
@@ -144,7 +136,7 @@ pub struct DataEnum {
     pub values: Vec<EnumMember>,
 }
 
-#[derive(Debug, Clone, Serialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Eq, PartialEq, Hash)]
 pub struct Nested {
     pub name: String,
     pub columns: Vec<Column>,

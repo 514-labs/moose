@@ -263,7 +263,6 @@ pub struct ClickHouseTable {
     pub name: String,
     pub version: String,
     pub columns: Vec<ClickHouseColumn>,
-    pub table_type: ClickHouseTableType,
     pub order_by: Vec<String>,
 }
 

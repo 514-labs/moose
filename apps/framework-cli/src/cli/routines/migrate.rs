@@ -1,8 +1,9 @@
 use crate::cli::display::Message;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::framework::core::code_loader::load_framework_objects;
+use crate::framework::versions::parse_version;
 use crate::infrastructure::olap::clickhouse::version_sync::{
-    generate_sql_version_syncs, get_all_version_syncs, parse_version,
+    generate_sql_version_syncs, get_all_version_syncs,
 };
 use crate::project::Project;
 

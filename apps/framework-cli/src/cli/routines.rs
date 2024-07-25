@@ -84,7 +84,7 @@ use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use log::{debug, error, info};
+use log::{debug, info};
 use tokio::sync::RwLock;
 
 use crate::cli::watcher::{
@@ -95,9 +95,6 @@ use crate::framework::core::code_loader::{
 };
 use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::plan::plan_changes;
-use crate::infrastructure::olap::clickhouse::{
-    fetch_table_names, fetch_table_schema, table_schema_to_hash,
-};
 
 use crate::cli::routines::streaming::verify_streaming_functions_against_datamodels;
 use crate::framework::controller::{create_or_replace_version_sync, process_objects, RouteMeta};
@@ -539,91 +536,6 @@ pub async fn plan(project: &Project) -> anyhow::Result<()> {
     Ok(())
 }
 
-async fn check_for_model_changes(
-    project: Arc<Project>,
-    framework_object_versions: FrameworkObjectVersions,
-) {
-    let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
-
-    let mut current_data_models = HashMap::new();
-    for fo in framework_object_versions.current_models.models.values() {
-        let mut data_elements = vec![];
-        for column in &fo.data_model.columns {
-            data_elements.push((column.name.clone(), column.data_type.to_string()));
-        }
-        data_elements.sort();
-        // Comments below left in for testing and debugging purposes
-        // println!("  current_schema: {:?}", data_elements.clone());
-        let hash_val = table_schema_to_hash(data_elements).unwrap();
-        // println!(
-        //     "current_data_models: {:?}-{:?}",
-        //     fo.data_model.name.clone(),
-        //     hash_val.clone()
-        // );
-        current_data_models.insert(fo.data_model.name.clone(), hash_val.clone());
-    }
-
-    // println!("");
-
-    let mut prev_data_models = HashMap::new();
-    for sv in framework_object_versions.previous_version_models.values() {
-        for fo in sv.models.values() {
-            let mut data_elements = vec![];
-            for column in &fo.data_model.columns {
-                data_elements.push((column.name.clone(), column.data_type.to_string()));
-            }
-            data_elements.sort();
-            // Comments below left in for testing and debugging purposes
-            // println!("  prev_schema: {:?}", data_elements.clone());
-            let hash_val = table_schema_to_hash(data_elements).unwrap();
-            // println!(
-            //     "prev_data_models: {:?}-{:?}",
-            //     fo.data_model.name.clone(),
-            //     hash_val.clone()
-            // );
-            prev_data_models.insert(fo.data_model.name.clone(), hash_val.clone());
-        }
-    }
-
-    olap::clickhouse::check_ready(&configured_client)
-        .await
-        .unwrap();
-
-    let mut db_data_models = HashMap::new();
-    let tables_result = fetch_table_names(&configured_client).await;
-    match tables_result {
-        Ok(tables) => {
-            for table in &tables {
-                let table_schema_result = fetch_table_schema(&configured_client, table).await;
-                match table_schema_result {
-                    Ok(table_schema) => {
-                        let hash_result = table_schema_to_hash(table_schema.clone());
-                        match hash_result {
-                            Ok(hash) => {
-                                // println!("  table_schema: {:?}", table_schema.clone());
-                                // println!("db_data_models: {:?}-{:?}", table.clone(), hash.clone());
-                                db_data_models.insert(table.clone(), hash.clone());
-                            }
-                            Err(e) => {
-                                error!("Failed to hash table schema for table {}: {}", table, e);
-                            }
-                        }
-                    }
-                    Err(e) => {
-                        error!("Failed to fetch table schema for table {}: {}", table, e);
-                    }
-                }
-            }
-        }
-        Err(e) => {
-            error!("Failed to fetch table names: {}", e);
-        }
-    }
-}
-
-// TODO - this function should be split in 2
-// 1. one that gathers the curnent state of the project from the files
-// 2. another one that changes the routes based on the current state
 pub async fn initialize_project_state(
     features: &Features,
     project: Arc<Project>,
@@ -636,8 +548,6 @@ pub async fn initialize_project_state(
     info!("<DCM> Checking for old version directories...");
 
     let mut framework_object_versions = load_framework_objects(&project).await?;
-
-    check_for_model_changes(project.clone(), framework_object_versions.clone()).await;
 
     with_spinner_async(
         "Processing versions",

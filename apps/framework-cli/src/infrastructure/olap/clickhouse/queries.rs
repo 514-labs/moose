@@ -31,6 +31,61 @@ fn create_alias_query(
     Ok(reg.render_template(CREATE_ALIAS_TEMPLATE, &context)?)
 }
 
+static CREATE_VIEW_TEMPLATE: &str = r#"
+CREATE VIEW IF NOT EXISTS {{db_name}}.{{view_name}} AS {{view_query}};
+"#;
+
+pub fn create_view_query(
+    db_name: &str,
+    view_name: &str,
+    view_query: &str,
+) -> Result<String, ClickhouseError> {
+    let reg = Handlebars::new();
+
+    let context = json!({
+        "db_name": db_name,
+        "alias_name": view_name,
+        "view_query": view_query,
+    });
+
+    Ok(reg.render_template(CREATE_VIEW_TEMPLATE, &context)?)
+}
+
+static DROP_VIEW_TEMPLATE: &str = r#"
+DROP VIEW {{db_name}}.{{view_name}};
+"#;
+
+pub fn drop_view_query(db_name: &str, view_name: &str) -> Result<String, ClickhouseError> {
+    let reg = Handlebars::new();
+
+    let context = json!({
+        "db_name": db_name,
+        "alias_name": view_name,
+    });
+
+    Ok(reg.render_template(DROP_VIEW_TEMPLATE, &context)?)
+}
+
+static UPDATE_VIEW_TEMPLATE: &str = r#"
+CREATE OR REPLACE VIEW {{db_name}}.{{view_name}} AS {{view_query}};
+"#;
+
+pub fn update_view_query(
+    db_name: &str,
+    view_name: &str,
+    view_query: &str,
+) -> Result<String, ClickhouseError> {
+    let reg = Handlebars::new();
+
+    let context = json!({
+        "db_name": db_name,
+        "alias_name": view_name,
+        "view_query": view_query,
+    });
+
+    Ok(reg.render_template(UPDATE_VIEW_TEMPLATE, &context)?)
+}
+
 // This is used when a new table doesn't have a different schema from the old table
 // so we use a view to alias the old table to the new table name
 pub fn create_alias_query_from_table(

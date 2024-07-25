@@ -10,7 +10,7 @@ use crate::framework::typescript::export_collectors::get_data_model_configs;
 
 pub type ConfigIdentifier = String;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub enum EndpointIngestionFormat {
     #[serde(alias = "JSON", alias = "json")]
     Json,
@@ -18,7 +18,7 @@ pub enum EndpointIngestionFormat {
     JsonArray,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct IngestionConfig {
     pub format: EndpointIngestionFormat,
 }
@@ -31,7 +31,7 @@ impl Default for IngestionConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct StorageConfig {
     #[serde(default = "_true")]
     pub enabled: bool,
@@ -51,7 +51,7 @@ impl Default for StorageConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default, Hash)]
 pub struct DataModelConfig {
     #[serde(default)]
     pub ingestion: IngestionConfig,

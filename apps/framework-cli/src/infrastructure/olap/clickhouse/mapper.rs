@@ -1,19 +1,11 @@
-use crate::framework::core::infrastructure::table::{Column, ColumnType, Table, TableType};
+use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
 
 use crate::infrastructure::olap::clickhouse::model::{
     ClickHouseColumn, ClickHouseColumnType, ClickHouseFloat, ClickHouseInt, ClickHouseTable,
-    ClickHouseTableType,
 };
 
 use super::errors::ClickhouseError;
 use super::model::sanitize_column_name;
-
-pub fn clickhouse_table_type_mapper(table_type: TableType) -> ClickHouseTableType {
-    match table_type {
-        TableType::Table => ClickHouseTableType::Table,
-        _ => ClickHouseTableType::Unsupported,
-    }
-}
 
 pub fn std_column_to_clickhouse_column(
     column: Column,
@@ -93,7 +85,6 @@ pub fn std_table_to_clickhouse_table(table: &Table) -> Result<ClickHouseTable, C
         name: table.name.clone(),
         version: table.version.clone(),
         columns,
-        table_type: clickhouse_table_type_mapper(table.table_type.clone()),
         order_by: table.order_by.clone(),
     })
 }

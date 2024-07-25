@@ -3,9 +3,13 @@ use crypto_hash::{hex_digest, Algorithm};
 use errors::ClickhouseError;
 use log::{debug, info};
 use mapper::std_table_to_clickhouse_table;
-use queries::{create_table_query, drop_table_query, ClickhouseEngine};
+use queries::{
+    create_table_query, create_view_query, drop_table_query, drop_view_query, update_view_query,
+    ClickhouseEngine,
+};
 use serde::{Deserialize, Serialize};
 
+use crate::framework::core::infrastructure::view::ViewType;
 use crate::framework::core::infrastructure_map::{Change, OlapChange};
 use crate::infrastructure::olap::clickhouse::model::{ClickHouseSystemTableRow, ClickHouseTable};
 use crate::project::Project;
@@ -91,6 +95,32 @@ pub async fn execute_changes(
                     )));
                 }
             }
+            OlapChange::View(Change::Added(view)) => match &view.view_type {
+                ViewType::TableAlias { source_table_name } => {
+                    let create_view_query = create_view_query(
+                        db_name,
+                        &view.id(),
+                        &format!("SELECT * FROM {}.{}", db_name, source_table_name),
+                    )?;
+                    run_query(&create_view_query, &configured_client).await?;
+                }
+            },
+            OlapChange::View(Change::Removed(view)) => match &view.view_type {
+                ViewType::TableAlias { .. } => {
+                    let delete_view_query = drop_view_query(db_name, &view.id())?;
+                    run_query(&delete_view_query, &configured_client).await?;
+                }
+            },
+            OlapChange::View(Change::Updated { before, after }) => match &after.view_type {
+                ViewType::TableAlias { source_table_name } => {
+                    let update_view_query = update_view_query(
+                        db_name,
+                        &before.id(),
+                        &format!("SELECT * FROM {}.{}", db_name, source_table_name),
+                    )?;
+                    run_query(&update_view_query, &configured_client).await?;
+                }
+            },
         }
     }
 

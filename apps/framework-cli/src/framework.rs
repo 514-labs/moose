@@ -12,6 +12,7 @@ pub mod python;
 pub mod sdk;
 pub mod streaming;
 pub mod typescript;
+pub mod versions;
 
 pub enum Insights {
     Metric,

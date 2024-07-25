@@ -8,6 +8,7 @@ use super::infrastructure::olap_process::OlapProcess;
 use super::infrastructure::table::Table;
 use super::infrastructure::topic::Topic;
 use super::infrastructure::topic_to_table_sync_process::TopicToTableSyncProcess;
+use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -43,6 +44,7 @@ pub enum InfraChange {
 #[derive(Debug, Clone)]
 pub enum OlapChange {
     Table(Change<Table>),
+    View(Change<View>),
 }
 
 #[derive(Debug, Clone)]
@@ -86,6 +88,7 @@ pub struct InfrastructureMap {
     pub topics: HashMap<String, Topic>,
     pub api_endpoints: HashMap<String, ApiEndpoint>,
     pub tables: HashMap<String, Table>,
+    pub views: HashMap<String, View>,
 
     pub topic_to_table_sync_processes: HashMap<String, TopicToTableSyncProcess>,
     pub function_processes: HashMap<String, FunctionProcess>,
@@ -101,28 +104,75 @@ pub struct InfrastructureMap {
 impl InfrastructureMap {
     pub fn new(primitive_map: PrimitiveMap) -> InfrastructureMap {
         let mut tables = HashMap::new();
+        let mut views = HashMap::new();
         let mut topics = HashMap::new();
         let mut api_endpoints = HashMap::new();
         let mut topic_to_table_sync_processes = HashMap::new();
         let mut function_processes = HashMap::new();
 
+        let mut data_models_that_have_not_changed_with_new_version = Vec::new();
+
         for data_model in primitive_map.data_models_iter() {
-            let topic = Topic::from_data_model(data_model);
-            let api_endpoint = ApiEndpoint::from_data_model(data_model, &topic);
+            if primitive_map
+                .datamodels
+                .has_data_model_changed_with_previous_version(&data_model.name, &data_model.version)
+            {
+                let topic = Topic::from_data_model(data_model);
+                let api_endpoint = ApiEndpoint::from_data_model(data_model, &topic);
 
-            if data_model.config.storage.enabled {
-                let table = data_model.to_table();
-                let topic_to_table_sync_process = TopicToTableSyncProcess::new(&topic, &table);
+                if data_model.config.storage.enabled {
+                    let table = data_model.to_table();
+                    let topic_to_table_sync_process = TopicToTableSyncProcess::new(&topic, &table);
 
-                tables.insert(table.id(), table);
-                topic_to_table_sync_processes.insert(
-                    topic_to_table_sync_process.id(),
-                    topic_to_table_sync_process,
-                );
+                    tables.insert(table.id(), table);
+                    topic_to_table_sync_processes.insert(
+                        topic_to_table_sync_process.id(),
+                        topic_to_table_sync_process,
+                    );
+                }
+
+                topics.insert(topic.id(), topic);
+                api_endpoints.insert(api_endpoint.id(), api_endpoint);
+            } else {
+                // We wait to have processed all the datamodels to process the ones that don't have changes
+                // That way we can refer to infrastructure that was created by those older versions.
+                data_models_that_have_not_changed_with_new_version.push(data_model);
             }
+        }
 
-            topics.insert(topic.id(), topic);
-            api_endpoints.insert(api_endpoint.id(), api_endpoint);
+        // We process the data models that have not changed with their registered versions.
+        // For the ones that require storage, we have views that points to the oldest table that has the data
+        // with the same schema. We also reused the same topic that was created for the previous version.
+        for data_model in data_models_that_have_not_changed_with_new_version {
+            match primitive_map
+                .datamodels
+                .find_earliest_similar_version(&data_model.name, &data_model.version)
+            {
+                Some(previous_version_model) => {
+                    // This will be already created with the previous data model.
+                    // That's why we don't add it to the map
+                    let previous_version_topic = Topic::from_data_model(previous_version_model);
+                    let api_endpoint =
+                        ApiEndpoint::from_data_model(data_model, &previous_version_topic);
+
+                    if data_model.config.storage.enabled
+                        && previous_version_model.config.storage.enabled
+                    {
+                        let view = View::alias_view(data_model, previous_version_model);
+                        views.insert(view.id(), view);
+                    }
+
+                    api_endpoints.insert(api_endpoint.id(), api_endpoint);
+                }
+                None => {
+                    log::error!(
+                        "Could not find previous version with no change for data model: {} {}",
+                        data_model.name,
+                        data_model.version
+                    );
+                    log::debug!("Data Models Dump: {:?}", primitive_map.datamodels);
+                }
+            }
         }
 
         for function in primitive_map.functions.iter() {
@@ -162,6 +212,7 @@ impl InfrastructureMap {
             api_endpoints,
             topic_to_table_sync_processes,
             tables,
+            views,
             function_processes,
             block_db_processes,
             consumption_api_web_server,
@@ -267,6 +318,35 @@ impl InfrastructureMap {
                 changes
                     .olap_changes
                     .push(OlapChange::Table(Change::<Table>::Added(table.clone())));
+            }
+        }
+
+        // =================================================================
+        //                              Views
+        // =================================================================
+
+        for (id, view) in &self.views {
+            if let Some(target_view) = target_map.views.get(id) {
+                if view != target_view {
+                    changes
+                        .olap_changes
+                        .push(OlapChange::View(Change::<View>::Updated {
+                            before: view.clone(),
+                            after: target_view.clone(),
+                        }));
+                }
+            } else {
+                changes
+                    .olap_changes
+                    .push(OlapChange::View(Change::<View>::Removed(view.clone())));
+            }
+        }
+
+        for (id, view) in &target_map.views {
+            if !self.tables.contains_key(id) {
+                changes
+                    .olap_changes
+                    .push(OlapChange::View(Change::<View>::Added(view.clone())));
             }
         }
 
@@ -519,8 +599,7 @@ mod tests {
 
         new_target_primitive_map
             .datamodels
-            .remove(data_model_name, data_model_version)
-            .unwrap();
+            .remove(data_model_name, data_model_version);
 
         println!("Base Primitve Map: {:?} \n", primitive_map);
         println!("Target Primitive Map {:?} \n", new_target_primitive_map);

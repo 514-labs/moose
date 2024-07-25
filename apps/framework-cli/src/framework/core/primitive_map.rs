@@ -17,7 +17,7 @@ use crate::{
         },
         streaming::{loader::get_all_current_streaming_functions, model::StreamingFunction},
     },
-    project::Project,
+    project::{Project, ProjectFileError},
 };
 
 use super::code_loader::MappingError;
@@ -28,6 +28,9 @@ pub enum PrimitiveMapLoadingError {
     WalkDir(#[from] walkdir::Error),
     #[error("Failed to parse the data model file")]
     DataModel(#[from] DataModelError),
+
+    #[error("Failed to load the project file")]
+    FileLoading(#[from] ProjectFileError),
 
     #[error("Failed to load functions")]
     FunctionsLoading(#[from] crate::framework::streaming::model::FunctionError),
@@ -70,20 +73,11 @@ impl PrimitiveMap {
     pub async fn load(project: &Project) -> Result<PrimitiveMap, PrimitiveMapLoadingError> {
         let mut primitive_map = PrimitiveMap::default();
 
-        let data_models_dir = project.data_models_dir();
-
-        for res_entry in WalkDir::new(project.app_dir()) {
-            let entry = res_entry?;
-
-            if entry.path().starts_with(&data_models_dir) && entry.file_type().is_file() {
-                for model in PrimitiveMap::load_data_model(project, entry.path()).await? {
-                    primitive_map.datamodels.add(model)
-                }
-            }
+        for version in project.versions() {
+            PrimitiveMap::load_versioned(project, &version, &mut primitive_map).await?;
         }
 
-        // TODO Add validation that aggregations and data model names do not overlap
-
+        // TODO add versioning for primitives other than data models.
         primitive_map.functions =
             get_all_current_streaming_functions(project, &primitive_map.datamodels)
                 .await?
@@ -96,13 +90,41 @@ impl PrimitiveMap {
     }
 
     /**
-     * Loads the data models from the given path and their configurations.
+     * Loads the PrimitiveMap with all the primitives for the given version.
+     * Right now this is only the data models.
+     */
+    async fn load_versioned(
+        project: &Project,
+        version: &str,
+        primitive_map: &mut PrimitiveMap,
+    ) -> Result<(), PrimitiveMapLoadingError> {
+        let data_models_root = project.versioned_data_model_dir(version)?;
+
+        for res_entry in WalkDir::new(data_models_root) {
+            let entry = res_entry?;
+
+            if entry.file_type().is_file() {
+                for model in
+                    PrimitiveMap::load_data_model(project, project.cur_version(), entry.path())
+                        .await?
+                {
+                    primitive_map.datamodels.add(model)
+                }
+            }
+        }
+
+        // TODO Add validation that aggregations and data model names do not overlap
+        Ok(())
+    }
+
+    /**
+     * Loads the data models from the given file path and with their configurations.
      */
     async fn load_data_model(
         project: &Project,
+        version: &str,
         path: &Path,
     ) -> Result<Vec<DataModel>, DataModelError> {
-        let version = project.cur_version();
         let file_objects = data_model::parser::parse_data_model_file(path, version, project)?;
         let mut indexed_models: HashMap<String, DataModel> = HashMap::new();
 

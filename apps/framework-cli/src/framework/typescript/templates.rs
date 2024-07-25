@@ -355,6 +355,8 @@ pub fn render_interface(
         })
         .collect();
 
+    println!("Referred types: {:?}", referred_types);
+
     let template_context = json!({
         "interfaces_to_import": referred_types,
         "enums": interface.enums(),

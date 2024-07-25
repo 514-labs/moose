@@ -532,12 +532,13 @@ async fn top_command_handler(
         Commands::DataModel(data_model_args) => {
             info!("Running function command");
             let dm_cmd = data_model_args.command.as_ref().unwrap();
+            let project = load_project()?;
             match dm_cmd {
                 DataModelCommands::Init(args) => {
                     debug!("Running datamodel init command");
                     let interface = read_json_file(args.name.clone(), args.sample.clone());
-                    std::fs::write(
-                        format!("./app/datamodels/{}.ts", args.name),
+                    let _ = std::fs::write(
+                        project.data_models_dir().join(format!("{}.ts", args.name)),
                         interface.unwrap().as_bytes(),
                     );
                     Ok(RoutineSuccess::success(Message::new(

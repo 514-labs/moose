@@ -1,104 +1,56 @@
 use log::debug;
-use serde_json::Value;
+use serde_json::{Map, Value};
 use std::collections::HashMap;
-use std::{collections::HashSet, fs, io::Write};
+use std::{collections::HashSet, fs};
 
-use crate::framework::typescript::generator::{
-    InterfaceField, InterfaceFieldType, TypescriptInterface,
-};
-use crate::framework::typescript::templates::{render_interface, TypescriptRenderingError};
-
-use super::{RoutineFailure, RoutineSuccess};
+#[derive(Debug, Clone)]
+enum CustomValue {
+    TypeArray(Vec<CustomValue>),
+    JsonArray(Vec<CustomValue>),
+    JsonObject(HashMap<String, CustomValue>),
+    JsonPrimitive(Value),
+}
 
 // function which reads a json file
 pub fn read_json_file(name: String, file_path: String) -> Result<String, std::io::Error> {
     let file = fs::read_to_string(file_path)?;
-    let map = parse_json_file(name, &file).unwrap();
-    debug!("{:?}", map);
-    Ok(map)
+    println!("done parsing");
+    let map = parse_json_file(&file).unwrap();
+    let ts_inter: String = render_typescript_interface(&name, &map);
+    debug!("{:?}", ts_inter);
+    Ok(ts_inter.to_string())
 }
 
-fn parse_json(json_data: &Value) -> HashMap<String, HashSet<InterfaceFieldType>> {
+fn parse_json(json_data: &Value) -> HashMap<String, CustomValue> {
     match json_data {
         Value::Object(map) => map.iter().fold(HashMap::new(), |mut acc, (key, val)| {
-            let entry = match val {
-                Value::Null => HashSet::from([InterfaceFieldType::Null]),
-                Value::String(_) => HashSet::from([InterfaceFieldType::String]),
-                Value::Number(_) => HashSet::from([InterfaceFieldType::Number]),
-                Value::Bool(_) => HashSet::from([InterfaceFieldType::Boolean]),
-                Value::Object(_) => {
-                    let nested_map = parse_json(val);
-                    HashSet::from([InterfaceFieldType::Object(Box::new(
-                        hashmap_to_typescript_interface(key.to_string(), nested_map),
-                    ))])
-                }
-                Value::Array(arr) => {
-                    let mut field_types = HashSet::new();
-                    for item in arr {
-                        let nested_map = parse_json(item);
-                        field_types.insert(InterfaceFieldType::Array(Box::new(
-                            InterfaceFieldType::Object(Box::new(hashmap_to_typescript_interface(
-                                key.to_string(),
-                                nested_map,
-                            ))),
-                        )));
-                    }
-                    field_types
-                }
-            };
-            acc.entry(key.clone())
-                .or_insert_with(HashSet::new)
-                .extend(entry);
-            acc
-        }),
-        Value::Array(array) => array.iter().fold(HashMap::new(), |mut acc, item| {
-            let item_map = parse_json(item);
-            for (key, val) in item_map {
-                acc.entry(key).or_insert_with(HashSet::new).extend(val);
-            }
+            let entry = parse_json_value(val);
+            acc.insert(key.clone(), entry);
             acc
         }),
         _ => HashMap::new(),
     }
 }
 
-fn merge_maps(
-    map1: &mut HashMap<String, HashSet<InterfaceFieldType>>,
-    map2: HashMap<String, HashSet<InterfaceFieldType>>,
-) {
-    for (key, val) in map2 {
-        map1.entry(key).or_insert_with(HashSet::new).extend(val);
+fn parse_array(array: &Value) -> Vec<CustomValue> {
+    match array {
+        Value::Array(items) => items.iter().map(parse_json_value).collect(),
+        _ => vec![],
     }
 }
 
-fn hashmap_to_typescript_interface(
-    name: String,
-    map: HashMap<String, HashSet<InterfaceFieldType>>,
-) -> TypescriptInterface {
-    let fields = map
-        .into_iter()
-        .map(|(key, types)| InterfaceField {
-            name: key,
-            comment: None,
-            is_optional: false,
-            field_type: InterfaceFieldType::from_types(types),
-        })
-        .collect();
-
-    TypescriptInterface { name, fields }
-}
-
-impl InterfaceFieldType {
-    fn from_types(types: HashSet<InterfaceFieldType>) -> Self {
-        if types.len() == 1 {
-            types.into_iter().next().unwrap()
-        } else {
-            InterfaceFieldType::String
-        }
+fn parse_json_value(json_data: &Value) -> CustomValue {
+    match json_data {
+        Value::Null => CustomValue::JsonPrimitive(Value::Null),
+        Value::String(_) => CustomValue::JsonPrimitive(Value::String("string".to_string())),
+        Value::Number(num) => CustomValue::JsonPrimitive(Value::Number(num.clone())),
+        Value::Bool(bool) => CustomValue::JsonPrimitive(Value::Bool(bool.clone())),
+        Value::Object(_) => CustomValue::JsonObject(parse_json(json_data)),
+        Value::Array(_) => CustomValue::JsonArray(parse_array(json_data)),
     }
 }
 
-fn parse_json_file(name: String, file_content: &str) -> Result<String, TypescriptRenderingError> {
+fn parse_json_file(file_content: &str) -> Result<HashMap<String, CustomValue>, serde_json::Error> {
     let json_array: Value = serde_json::from_str(file_content).unwrap();
     let mut schema = HashMap::new();
 
@@ -107,18 +59,161 @@ fn parse_json_file(name: String, file_content: &str) -> Result<String, Typescrip
         for obj in array {
             let parsed_map = parse_json(&obj);
             i += 1;
-            if (i % 1000 == 0) {
+            if (i % 50 == 0) {
                 println!("Processed {} records", i);
             }
-            merge_maps(&mut schema, parsed_map);
+            if (i == 3) {
+                println!("Processed {} records", i);
+                break;
+            }
+            schema = merge_maps(schema.clone(), parsed_map);
         }
     }
 
-    let cloned_schema = schema.clone();
-    println!("Schema: {:?}", cloned_schema);
-    let interface = hashmap_to_typescript_interface(name, cloned_schema);
+    println!("{:?}", schema);
 
-    let interface_res = render_interface(&interface);
+    Ok(schema)
+}
 
-    return interface_res;
+// function which merges two maps, if the key is already present in the first map, it merges the values
+// by appending it to an array
+
+fn merge_maps(
+    mut map1: HashMap<String, CustomValue>,
+    map2: HashMap<String, CustomValue>,
+) -> HashMap<String, CustomValue> {
+    for (key, value) in map2 {
+        if let Some(existing_value) = map1.get_mut(&key) {
+            match (existing_value, value) {
+                (CustomValue::TypeArray(ref mut existing), CustomValue::TypeArray(mut new)) => {
+                    existing.append(&mut new);
+                }
+                (CustomValue::JsonArray(ref mut existing), CustomValue::JsonArray(mut new)) => {
+                    for item in new.drain(..) {
+                        if !existing.contains(&item) {
+                            existing.push(item);
+                        }
+                    }
+                }
+                (CustomValue::JsonObject(ref mut existing), CustomValue::JsonObject(new)) => {
+                    let merged_obj = merge_maps(existing.clone(), new);
+                    *existing = merged_obj;
+                }
+                (existing, new) => {
+                    let mut arr = vec![existing.clone(), new];
+                    *existing = CustomValue::TypeArray(arr);
+                }
+            }
+        } else {
+            map1.insert(key, value);
+        }
+    }
+    map1
+}
+
+fn extract_types(value: &CustomValue) -> Vec<String> {
+    match value {
+        CustomValue::TypeArray(arr) => {
+            let mut types = HashSet::new();
+            for item in arr {
+                match item {
+                    CustomValue::JsonPrimitive(Value::String(_)) => {
+                        types.insert("string".to_string());
+                    }
+                    CustomValue::JsonPrimitive(Value::Number(_)) => {
+                        types.insert("number".to_string());
+                    }
+                    CustomValue::JsonPrimitive(Value::Null) => {
+                        types.insert("null".to_string());
+                    }
+                    CustomValue::JsonPrimitive(Value::Bool(_)) => {
+                        types.insert("boolean".to_string());
+                    }
+                    CustomValue::JsonPrimitive(Value::Array(_)) => {
+                        types.insert("Array".to_string());
+                    }
+                    CustomValue::JsonPrimitive(Value::Object(_)) => {
+                        types.insert("Object".to_string());
+                    }
+                    CustomValue::JsonObject(obj) => {
+                        types.insert(render_typescript_object(obj));
+                    }
+                    CustomValue::JsonArray(arr) => {
+                        types.insert(
+                            extract_types(&CustomValue::JsonArray(arr.clone())).join(" | "),
+                        );
+                    }
+                    _ => {
+                        types.insert("any".to_string());
+                    }
+                }
+            }
+            types.into_iter().collect()
+        }
+        CustomValue::JsonArray(arr) => {
+            let mut types = HashSet::new();
+            for item in arr {
+                match item {
+                    CustomValue::JsonPrimitive(Value::String(_)) => {
+                        types.insert("string[]".to_string());
+                    }
+                    CustomValue::JsonPrimitive(Value::Number(_)) => {
+                        types.insert("number[]".to_string());
+                    }
+                    CustomValue::JsonPrimitive(Value::Null) => {
+                        types.insert("null".to_string());
+                    }
+                    CustomValue::JsonPrimitive(Value::Bool(_)) => {
+                        types.insert("boolean[]".to_string());
+                    }
+                    CustomValue::JsonPrimitive(Value::Array(_)) => {
+                        types.insert("Array".to_string());
+                    }
+                    CustomValue::JsonPrimitive(Value::Object(_)) => {
+                        types.insert("Object".to_string());
+                    }
+                    CustomValue::JsonObject(obj) => {
+                        types.insert(render_typescript_object(obj));
+                    }
+                    _ => {
+                        types.insert("any".to_string());
+                    }
+                }
+            }
+            types.into_iter().collect()
+        }
+        CustomValue::JsonObject(map) => {
+            vec![render_typescript_object(map)]
+        }
+        CustomValue::JsonPrimitive(Value::Array(_)) => vec!["Array".to_string()],
+        CustomValue::JsonPrimitive(Value::Object(_)) => vec!["Object".to_string()],
+        CustomValue::JsonPrimitive(Value::String(_)) => vec!["string".to_string()],
+        CustomValue::JsonPrimitive(Value::Null) => vec!["null".to_string()],
+        CustomValue::JsonPrimitive(Value::Bool(_)) => vec!["boolean".to_string()],
+        CustomValue::JsonPrimitive(Value::Number(_)) => vec!["number".to_string()],
+    }
+}
+
+fn render_typescript_object(fields: &HashMap<String, CustomValue>) -> String {
+    let mut object = format!("{{\n");
+    for (field, value) in fields {
+        let types = extract_types(value);
+        let is_optional = types.contains(&"null".to_string());
+        let types_str: Vec<String> = types.into_iter().filter(|t| t != "null").collect();
+        let types_str = types_str.join(" | ");
+
+        let optional_marker = if is_optional { "?" } else { "" };
+        object.push_str(&format!("  {}{}: {};\n", field, optional_marker, types_str));
+    }
+    object.push_str("}\n");
+    object
+}
+
+fn render_typescript_interface(
+    interface_name: &str,
+    fields: &HashMap<String, CustomValue>,
+) -> String {
+    let mut interface = format!("export interface {} ", interface_name);
+    interface.push_str(&render_typescript_object(fields));
+    interface
 }

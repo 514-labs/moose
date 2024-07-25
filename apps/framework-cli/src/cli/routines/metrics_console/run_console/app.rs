@@ -304,6 +304,10 @@ impl App {
                     if *item.0 == *prev_item.0 {
                         self.kafka_bytes_out_per_sec
                             .insert(item.0.clone(), item.1 .1 - prev_item.1 .1);
+                    }
+                }
+            }
+
             for item in &streaming_functions_bytes {
                 for prev_item in &self.streaming_functions_bytes {
                     if *item.0 == *prev_item.0 {

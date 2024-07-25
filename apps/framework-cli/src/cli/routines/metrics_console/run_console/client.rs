@@ -159,9 +159,9 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
                 _ => &0.0,
             };
             streaming_functions_out.insert(metrics_vec[j].labels["path"].to_string(), *value);
-        } else if &metrics_vec[j].metric == "streaming_functions_bytes_total" {
+        } else if &metrics_vec[j].metric == "streaming_functions_bytes" {
             let value = match &metrics_vec[j].value {
-                prometheus_parse::Value::Counter(v) => v,
+                prometheus_parse::Value::Gauge(v) => v,
                 prometheus_parse::Value::Untyped(v) => v,
                 _ => &0.0,
             };

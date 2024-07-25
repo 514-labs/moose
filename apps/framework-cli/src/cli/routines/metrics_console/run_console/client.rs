@@ -21,6 +21,7 @@ pub struct ParsedMetricsData {
     pub histogram_vec: Vec<Sample>,
     pub kafka_messages_in_total: HashMap<String, (String, f64)>,
     pub kafka_messages_out_total: Vec<(String, String, f64)>,
+    pub kafka_bytes_out_total: HashMap<String, (String, u64)>,
     pub streaming_functions_in: HashMap<String, f64>,
     pub streaming_functions_out: HashMap<String, f64>,
 }
@@ -49,6 +50,7 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
     let mut paths_bytes_hashmap: HashMap<String, u64> = HashMap::new();
     let mut kafka_messages_in_total: HashMap<String, (String, f64)> = HashMap::new();
     let mut kafka_messages_out_total: Vec<(String, String, f64)> = vec![];
+    let mut kafka_bytes_out_total: HashMap<String, (String, u64)> = HashMap::new();
     let mut streaming_functions_in: HashMap<String, f64> = HashMap::new();
     let mut streaming_functions_out: HashMap<String, f64> = HashMap::new();
 
@@ -130,6 +132,17 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
             let topic = metrics_vec[j].labels["topic"].to_string();
 
             kafka_messages_out_total.push((topic, consumer_group, value));
+        } else if metrics_vec[j].metric == "kafka_clickhouse_sync_bytes_out_total" {
+            let value: f64 = match &metrics_vec[j].value {
+                prometheus_parse::Value::Counter(v) => *v,
+                prometheus_parse::Value::Untyped(v) => *v,
+                _ => 0.0,
+            };
+
+            let consumer_group = metrics_vec[j].labels["consumer_group"].to_string();
+            let topic = metrics_vec[j].labels["topic"].to_string();
+
+            kafka_bytes_out_total.insert(topic, (consumer_group, value as u64));
         } else if &metrics_vec[j].metric == "streaming_functions_in" {
             let value = match &metrics_vec[j].value {
                 prometheus_parse::Value::Gauge(v) => v,
@@ -159,6 +172,7 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
         histogram_vec: metrics_vec,
         kafka_messages_in_total,
         kafka_messages_out_total,
+        kafka_bytes_out_total,
         streaming_functions_in,
         streaming_functions_out,
     };

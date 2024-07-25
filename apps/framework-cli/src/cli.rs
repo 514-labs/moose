@@ -675,8 +675,8 @@ async fn top_command_handler(
                     })?;
             } else {
                 return Err(RoutineFailure::error(Message::new(
-                    "Format".to_string(),
-                    "unknown".to_string(),
+                    "Unknown Format".to_string(),
+                    "only 'csv' is supported currently".to_string(),
                 )));
             }
 

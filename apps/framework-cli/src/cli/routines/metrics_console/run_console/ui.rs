@@ -21,8 +21,13 @@ const ENDPOINT_TABLE_COLUMNS: [&str; 4] = [
 
 const KAFKA_CLICKHOUSE_SYNC_TABLE_COLUMNS: [&str; 4] =
     ["DATA MODEL", "MESSAGES READ", "LAG", "MESSAGES/SEC"];
-const STREAMING_FUNCTIONS_KAFKA_TABLE_COLUMNS: [&str; 3] =
-    ["STREAMING PATH", "MESSAGES IN", "MESSAGES OUT"];
+const STREAMING_FUNCTIONS_KAFKA_TABLE_COLUMNS: [&str; 5] = [
+    "STREAMING PATH",
+    "MSG IN",
+    "MSG IN/SEC",
+    "MSG OUT",
+    "MSG OUT/SEC",
+];
 const PATH_INFO_TEXT: &str = "(ESC) EXIT DETAILED VIEW | (Q) QUIT";
 
 /// Renders the user interface widgets.
@@ -453,7 +458,19 @@ fn render_active_streaming_functions_messages_table(
                 format!("{}", item.1),
                 format!(
                     "{}",
+                    app.streaming_functions_in_per_sec
+                        .get(item.0)
+                        .unwrap_or(&0.0)
+                ),
+                format!(
+                    "{}",
                     app.streaming_functions_out.get(item.0).unwrap_or(&0.0)
+                ),
+                format!(
+                    "{}",
+                    app.streaming_functions_out_per_sec
+                        .get(item.0)
+                        .unwrap_or(&0.0)
                 ),
             ])
             .bold()
@@ -463,8 +480,10 @@ fn render_active_streaming_functions_messages_table(
 
     let widths = [
         Constraint::Percentage(46),
-        Constraint::Percentage(27),
-        Constraint::Percentage(27),
+        Constraint::Percentage(13),
+        Constraint::Percentage(13),
+        Constraint::Percentage(13),
+        Constraint::Percentage(13),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
     table_state.select(Some(app.streaming_functions_table_starting_row));
@@ -508,7 +527,19 @@ fn render_passive_streaming_functions_messages_table(
                 format!("{}", item.1),
                 format!(
                     "{}",
+                    app.streaming_functions_in_per_sec
+                        .get(item.0)
+                        .unwrap_or(&0.0)
+                ),
+                format!(
+                    "{}",
                     app.streaming_functions_out.get(item.0).unwrap_or(&0.0)
+                ),
+                format!(
+                    "{}",
+                    app.streaming_functions_out_per_sec
+                        .get(item.0)
+                        .unwrap_or(&0.0)
                 ),
             ])
             .not_bold()
@@ -518,8 +549,10 @@ fn render_passive_streaming_functions_messages_table(
 
     let widths = [
         Constraint::Percentage(46),
-        Constraint::Percentage(27),
-        Constraint::Percentage(27),
+        Constraint::Percentage(13),
+        Constraint::Percentage(13),
+        Constraint::Percentage(13),
+        Constraint::Percentage(13),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
     table_state.select(Some(app.kafka_starting_row));

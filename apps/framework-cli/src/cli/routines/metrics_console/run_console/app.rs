@@ -11,6 +11,12 @@ pub enum State {
     PathDetails(String),
 }
 
+pub struct BytesMetricsData {
+    pub total_bytes_in: u64,
+    pub total_bytes_out: u64,
+    pub path_bytes_hashmap: HashMap<String, u64>,
+}
+
 pub struct PathBytesParsedData {
     pub previous_bytes: HashMap<String, u64>,
     pub path_bytes_in_per_sec_vec: HashMap<String, u64>,
@@ -52,6 +58,8 @@ pub struct App {
     pub kafka_messages_out_per_sec: HashMap<String, (String, f64)>,
     pub streaming_functions_in: HashMap<String, f64>,
     pub streaming_functions_out: HashMap<String, f64>,
+    pub streaming_functions_in_per_sec: HashMap<String, f64>,
+    pub streaming_functions_out_per_sec: HashMap<String, f64>,
 }
 
 impl Default for App {
@@ -87,6 +95,8 @@ impl Default for App {
             kafka_messages_out_per_sec: HashMap::new(),
             streaming_functions_in: HashMap::new(),
             streaming_functions_out: HashMap::new(),
+            streaming_functions_in_per_sec: HashMap::new(),
+            streaming_functions_out_per_sec: HashMap::new(),
         }
     }
 }
@@ -160,11 +170,15 @@ impl App {
         &mut self,
         new_total_requests: f64,
         path_metrics: &Vec<PathMetricsData>,
-        path_bytes_hashmap: &HashMap<String, u64>,
-        total_bytes_in: &u64,
-        total_bytes_out: &u64,
+        bytes_data: BytesMetricsData,
         kafka_messages_in_total: &Vec<(String, String, f64)>,
+        new_streaming_functions_messages_in: &HashMap<String, f64>,
+        new_streaming_functions_messages_out: &HashMap<String, f64>,
     ) {
+        let path_bytes_hashmap: HashMap<String, u64> = bytes_data.path_bytes_hashmap;
+        let total_bytes_in: u64 = bytes_data.total_bytes_in;
+        let total_bytes_out: u64 = bytes_data.total_bytes_out;
+
         self.requests_per_sec = new_total_requests - self.total_requests;
         self.main_bytes_data.bytes_in_per_sec =
             total_bytes_in - self.main_bytes_data.total_bytes_in;
@@ -251,6 +265,22 @@ impl App {
                     if item.0 == prev_item.0 && item.1 == prev_item.1 {
                         self.kafka_messages_out_per_sec
                             .insert(item.0.clone(), (item.1.clone(), item.2 - prev_item.2));
+                    }
+                }
+            }
+            for item in new_streaming_functions_messages_in {
+                for prev_item in &self.streaming_functions_in {
+                    if item.0 == prev_item.0 {
+                        self.streaming_functions_out_per_sec
+                            .insert(item.0.clone(), item.1 - prev_item.1);
+                    }
+                }
+            }
+            for item in new_streaming_functions_messages_out {
+                for prev_item in &self.streaming_functions_out {
+                    if item.0 == prev_item.0 {
+                        self.streaming_functions_in_per_sec
+                            .insert(item.0.clone(), item.1 - prev_item.1);
                     }
                 }
             }

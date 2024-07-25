@@ -1,7 +1,6 @@
 import { CTABar } from "../../page";
 import {
   Section,
-  Grid,
   FullWidthContentContainer,
 } from "@514labs/design-system-components/components/containers";
 import {

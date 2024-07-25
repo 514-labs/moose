@@ -34,8 +34,8 @@
 //! ## Routine
 //! The `Routine` trait defines the interface for a routine. It has three methods:
 //! - `run` - This method runs the routine and returns a result. It takes a `RunMode` as an argument. The `RunMode` enum defines
-//!  the different ways that a routine can be run. It can be run silently or explicitly. When run explicitly, it displays messages
-//! to the user. When run silently, it does not display any messages to the user.
+//!   the different ways that a routine can be run. It can be run silently or explicitly. When run explicitly, it displays messages
+//!   to the user. When run silently, it does not display any messages to the user.
 //! - `run_silent` - This method runs the routine and returns a result without displaying any messages to the user.
 //! - `run_explicit` - This method runs the routine and displays messages to the user.
 //!
@@ -60,12 +60,12 @@
 //! - `new` - This method creates a new `RoutineController`.
 //! - `add_routine` - This method adds a routine to the `RoutineController`.
 //! - `run_routines` - This method runs all of the routines in the `RoutineController` and returns a vector of results. It takes a
-//! `RunMode` as an argument. The `RunMode` enum defines the different ways that a routine can be run. It can be run silently or
-//! explicitly. When run explicitly, it displays messages to the user. When run silently, it does not display any messages to the user.
+//!   `RunMode` as an argument. The `RunMode` enum defines the different ways that a routine can be run. It can be run silently or
+//!   explicitly. When run explicitly, it displays messages to the user. When run silently, it does not display any messages to the user.
 //! - `run_silent_routines` - This method runs all of the routines in the `RoutineController` and returns a vector of results without
-//! displaying any messages to the user.
+//!   displaying any messages to the user.
 //! - `run_explicit_routines` - This method runs all of the routines in the `RoutineController` and returns a vector of results while
-//! displaying messages to the user.
+//!   displaying messages to the user.
 //!
 //! ## Start Development Mode
 //! The `start_development_mode` function is used to start the file watcher and the webserver. It takes a `ClickhouseConfig` and a

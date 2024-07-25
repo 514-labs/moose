@@ -21,6 +21,7 @@ impl fmt::Display for ClickHouseTableType {
     }
 }
 
+#[allow(unused)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct ClickHouseNested {
     name: String,

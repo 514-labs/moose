@@ -211,7 +211,7 @@ pub async fn get_framework_objects_from_schema_file(
 
     let mut to_return = Vec::new();
     for model in indexed_models.into_values() {
-        to_return.push(framework_object_mapper(model, path, version)?);
+        to_return.push(framework_object_mapper(project, model, path, version)?);
     }
 
     Ok(to_return)
@@ -226,6 +226,7 @@ pub enum MappingError {
 }
 
 pub fn framework_object_mapper(
+    project: &Project,
     s: DataModel,
     original_file_path: &Path,
     version: &str,
@@ -239,7 +240,13 @@ pub fn framework_object_mapper(
         None
     };
 
-    let topic = format!("{}_{}", s.name.clone(), version.replace('.', "_"));
+    let namespace = project.redpanda_config.get_namespace_prefix();
+    let topic = format!(
+        "{}{}_{}",
+        namespace,
+        s.name.clone(),
+        version.replace('.', "_")
+    );
 
     Ok(FrameworkObject {
         data_model: s.clone(),

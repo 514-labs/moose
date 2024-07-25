@@ -7,6 +7,7 @@ use crate::{
         core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
         streaming::model::StreamingFunction,
     },
+    infrastructure::stream::redpanda::RedpandaConfig,
     utilities::constants::{PYTHON_FILE_EXTENSION, TYPESCRIPT_FILE_EXTENSION},
 };
 
@@ -137,7 +138,9 @@ fn get_latest_topic(topics: &[String], data_model: &str) -> Option<String> {
     sorted(
         topics
             .iter()
-            .filter(|&topic| topic.starts_with(data_model))
+            .filter(|&topic| {
+                RedpandaConfig::get_topic_without_namespace(topic).starts_with(data_model)
+            })
             .collect::<Vec<&String>>(),
     )
     .last()

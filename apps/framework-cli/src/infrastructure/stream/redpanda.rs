@@ -185,6 +185,8 @@ pub async fn describe_topic_config(
     }
 }
 
+const NAMESPACE_SEPARATOR: &str = ".";
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RedpandaConfig {
     pub broker: String,
@@ -194,6 +196,28 @@ pub struct RedpandaConfig {
     pub sasl_password: Option<String>,
     pub sasl_mechanism: Option<String>,
     pub security_protocol: Option<String>,
+    pub namespace: Option<String>,
+}
+
+impl RedpandaConfig {
+    pub fn get_namespace_prefix(&self) -> String {
+        self.namespace
+            .as_ref()
+            .map(|ns| format!("{}{}", ns, NAMESPACE_SEPARATOR))
+            .unwrap_or_default()
+    }
+
+    pub fn get_topic_with_namespace(&self, topic: &String) -> String {
+        format!("{}{}", self.get_namespace_prefix(), topic)
+    }
+
+    pub fn get_topic_without_namespace(topic: &str) -> String {
+        if let Some(pos) = topic.find(NAMESPACE_SEPARATOR) {
+            topic[pos + 1..].to_string()
+        } else {
+            topic.to_owned()
+        }
+    }
 }
 
 impl Default for RedpandaConfig {
@@ -206,6 +230,7 @@ impl Default for RedpandaConfig {
             sasl_password: None,
             sasl_mechanism: None,
             security_protocol: None,
+            namespace: None,
         }
     }
 }

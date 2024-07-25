@@ -94,6 +94,17 @@ pub enum Commands {
 
     /// Opens metrics console for viewing live metrics from your moose app
     Metrics {},
+    Import {
+        data_model_name: String,
+        #[arg(short, long)]
+        file: PathBuf,
+        #[arg(long)]
+        format: Option<String>,
+        #[arg(long, default_value = "http://localhost:4000/ingest")]
+        destination: String,
+        #[arg(long)]
+        version: Option<String>,
+    },
 }
 
 #[derive(Debug, Args)]

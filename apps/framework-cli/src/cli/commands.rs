@@ -102,6 +102,8 @@ pub enum Commands {
         format: Option<String>,
         #[arg(long, default_value = "http://localhost:4000/ingest")]
         destination: String,
+        #[arg(long)]
+        version: Option<String>,
     },
 }
 

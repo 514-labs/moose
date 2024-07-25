@@ -637,6 +637,7 @@ async fn top_command_handler(
             file,
             format,
             destination,
+            version,
         } => {
             let project = load_project()?;
             let framework_object_versions =
@@ -647,14 +648,27 @@ async fn top_command_handler(
                     })
                 })?;
 
-            let data_model = framework_object_versions
-                .current_models
-                .models
-                .get(data_model_name)
-                .ok_or(RoutineFailure::error(Message::new(
-                    "Model".to_string(),
-                    "not found".to_string(),
-                )))?;
+            let data_model = match version {
+                None => &framework_object_versions.current_models,
+                Some(v) if v == &framework_object_versions.current_version => {
+                    &framework_object_versions.current_models
+                }
+                Some(v) => framework_object_versions
+                    .previous_version_models
+                    .get(v)
+                    .ok_or_else(|| {
+                        RoutineFailure::error(Message {
+                            action: "Unknown".to_string(),
+                            details: "version".to_string(),
+                        })
+                    })?,
+            }
+            .models
+            .get(data_model_name)
+            .ok_or(RoutineFailure::error(Message::new(
+                "Model".to_string(),
+                "not found".to_string(),
+            )))?;
 
             let format = format
                 .as_deref()

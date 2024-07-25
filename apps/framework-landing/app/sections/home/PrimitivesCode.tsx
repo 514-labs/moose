@@ -22,6 +22,7 @@ import {
 
 import { Repeat, ArrowRight, Folders, Table, GitFork } from "lucide-react";
 import { useState } from "react";
+import { Fragment } from "react";
 
 const content: {
   [key: string]: {
@@ -156,8 +157,8 @@ export const PrimitivesCode = () => {
   const tabs = ["models", "functions", "blocks", "apis"];
 
   return (
-    <>
-      <Section className="max-w-5xl mx-auto px-5 text-3xl my-16 sm:my-3">
+    <Fragment>
+      <Section className="2xl:max-w-6xl mx-auto flex flex-col items-center px-5 my-16 sm:my-64">
         <Heading
           level={HeadingLevel.l1}
           className="justify-center align-center text-center mb-24 sm:text-5xl"
@@ -179,10 +180,10 @@ export const PrimitivesCode = () => {
                 processed, aggregated, and consumed for your use case
               </Text>
               <Tabs value={activeTab} onValueChange={setActiveTab}>
-                <TabsList>
+                <TabsList className="mx-auto w-full justify-start">
                   {tabs.map((tab) => (
-                    <TabsTrigger key={tab} value={tab} className="py-0">
-                      <Text className="py-0 px-2">{content[tab]?.title}</Text>
+                    <TabsTrigger key={tab} value={tab} className="py-0 px-1">
+                      <Text className="py-0 px-2 ">{content[tab]?.title}</Text>
                     </TabsTrigger>
                   ))}
                 </TabsList>
@@ -237,6 +238,6 @@ export const PrimitivesCode = () => {
           </FullWidthContentContainer>
         </Grid>
       </Section>
-    </>
+    </Fragment>
   );
 };

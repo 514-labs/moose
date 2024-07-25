@@ -10,7 +10,7 @@ import {
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
 import { TrackCtaButton } from "../../trackable-components";
-import React from "react";
+import React, { Fragment } from "react";
 import Link from "next/link";
 
 export const HeroSection = () => {
@@ -35,39 +35,37 @@ export const HeroSection = () => {
   };
 
   return (
-    <>
-      <Section className="max-w-5xl mx-auto flex flex-col items-center px-5 my-16 sm:my-32">
-        <Grid>
-          <FullWidthContentContainer className="pt-0 items-center px-20 flex flex-col gap-5">
-            <div>
-              {/* <Heading> {content.tagLine} </Heading> */}
-              <Display className="my-0 text-center">{content.tagLine} </Display>
+    <Fragment>
+      <Section className="2xl:max-w-6xl mx-auto flex flex-col items-center px-5 my-16 sm:my-64">
+        <FullWidthContentContainer className="pt-0 items-center flex flex-col gap-5">
+          <div>
+            {/* <Heading> {content.tagLine} </Heading> */}
+            <Display className="my-0 text-center">{content.tagLine} </Display>
 
-              <Heading
-                level={HeadingLevel.l3}
-                className="text-muted-foreground text-center"
-              >
-                {" "}
-                {content.description}{" "}
-              </Heading>
-            </div>
-            <CTABar className="mb-10 align-center justify-center">
-              {content.ctas.map((cta, index) => (
-                <Link key={index} href={cta.href}>
-                  <TrackCtaButton
-                    name={`Hero CTA ${cta.label}`}
-                    subject={content.tagLine}
-                    targetUrl={cta.href}
-                    variant={cta.variant as "default" | "outline"}
-                  >
-                    {cta.label}
-                  </TrackCtaButton>
-                </Link>
-              ))}
-            </CTABar>
-          </FullWidthContentContainer>
-        </Grid>
+            <Heading
+              level={HeadingLevel.l3}
+              className="text-muted-foreground text-center"
+            >
+              {" "}
+              {content.description}{" "}
+            </Heading>
+          </div>
+          <CTABar className="mb-10 align-center justify-center">
+            {content.ctas.map((cta, index) => (
+              <Link key={index} href={cta.href}>
+                <TrackCtaButton
+                  name={`Hero CTA ${cta.label}`}
+                  subject={content.tagLine}
+                  targetUrl={cta.href}
+                  variant={cta.variant as "default" | "outline"}
+                >
+                  {cta.label}
+                </TrackCtaButton>
+              </Link>
+            ))}
+          </CTABar>
+        </FullWidthContentContainer>
       </Section>
-    </>
+    </Fragment>
   );
 };

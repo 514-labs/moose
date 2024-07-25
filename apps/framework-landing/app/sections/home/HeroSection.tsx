@@ -36,7 +36,7 @@ export const HeroSection = () => {
 
   return (
     <>
-      <Section className="w-full relative mx-auto xl:max-w-screen-xl pb-10">
+      <Section className="max-w-5xl mx-auto flex flex-col items-center px-5 my-16 sm:my-32">
         <Grid>
           <FullWidthContentContainer className="pt-0 items-center px-20 flex flex-col gap-5">
             <div>

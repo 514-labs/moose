@@ -156,81 +156,87 @@ export const PrimitivesCode = () => {
   const tabs = ["models", "functions", "blocks", "apis"];
 
   return (
-    <Section className="mx-auto xl:max-w-screen-xl px-0">
-      <Heading
-        level={HeadingLevel.l1}
-        className="justify-center align-center text-center mb-24"
-      >
-        Data modeling, processing, ingestion, orchestration, streaming, storage,
-        and APIs—unified.{" "}
-        <GradientText>All in pure TypeScript or Python.</GradientText>
-      </Heading>
-      <Grid className="flex flex-col">
-        <FullWidthContentContainer className="flex flex-row gap-0 space-between-0 p-5 border rounded-3xl h-[400spx]">
-          <HalfWidthContentContainer className="flex flex-col gap-5 justify-start w-1/2 pr-5">
+    <>
+      <Section className="max-w-5xl mx-auto px-5 text-3xl my-16 sm:my-3">
+        <Heading
+          level={HeadingLevel.l1}
+          className="justify-center align-center text-center mb-24 sm:text-5xl"
+        >
+          Data modeling, processing, ingestion, orchestration, streaming,
+          storage, and APIs—unified.{" "}
+          <GradientText>All in pure TypeScript or Python.</GradientText>
+        </Heading>
+      </Section>
+      <Section className="mx-auto xl:max-w-screen-xl sm:px-6 lg:px-8">
+        <Grid className="flex flex-col">
+          <FullWidthContentContainer className="flex flex-col lg:flex-row gap-5 p-4 sm:p-6 border rounded-3xl h-1/2">
+            <HalfWidthContentContainer className="flex flex-col gap-5 justify-start lg:w-1/2 w-full">
+              <Heading level={HeadingLevel.l3} className="mb-0">
+                Moose Primitives
+              </Heading>
+              <Text className="text-muted-foreground sm:text-base">
+                Define your unique application logic for how data is ingested,
+                processed, aggregated, and consumed for your use case
+              </Text>
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList>
+                  {tabs.map((tab) => (
+                    <TabsTrigger key={tab} value={tab} className="py-0">
+                      <Text className="py-0 px-2">{content[tab]?.title}</Text>
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+                {tabs.map((tab) => (
+                  <TabsContent key={tab} value={tab}>
+                    <Text className="text-muted-foreground">
+                      {content[tab]?.description}
+                    </Text>
+                  </TabsContent>
+                ))}
+              </Tabs>
+            </HalfWidthContentContainer>
+            <HalfWidthContentContainer className="lg:w-1/2 w-full">
+              <code>
+                <pre className="overflow-auto bg-primary/10 rounded-3xl h-64 lg:h-full w-full p-4 text-xs sm:text-sm">
+                  {content[activeTab]?.typescript}
+                </pre>
+              </code>
+            </HalfWidthContentContainer>
+          </FullWidthContentContainer>
+          <FullWidthContentContainer className="flex flex-col gap-2.5 border p-5 rounded-3xl justify-start text-left">
             <Heading level={HeadingLevel.l3} className="mb-0">
-              Moose Primitives
+              Moose Provisioned Infra
             </Heading>
             <Text className="text-muted-foreground">
-              Define your unique application logic for how data is ingested,
-              processed, aggregated, and consumed for your use case
+              Moose interprets the application logic in your primitives to
+              automatically manage and configure assets in your underlying
+              infrastructure
             </Text>
-            <Tabs value={activeTab} onValueChange={setActiveTab}>
-              <TabsList className="py-0 text-primary">
-                {tabs.map((tab) => (
-                  <TabsTrigger key={tab} value={tab} className="py-0">
-                    <Text className="py-0 px-2">{content[tab]?.title}</Text>
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-              {tabs.map((tab) => (
-                <TabsContent key={tab} value={tab}>
-                  <Text className="text-muted-foreground">
-                    {content[tab]?.description}
-                  </Text>
-                </TabsContent>
-              ))}
-            </Tabs>
-          </HalfWidthContentContainer>
-          <HalfWidthContentContainer className="w-1/2 mr-0">
-            <code>
-              <pre className="overflow-auto bg-primary/10 rounded-3xl h-full w-full px-5">
-                {content[activeTab]?.typescript}
-              </pre>
-            </code>
-          </HalfWidthContentContainer>
-        </FullWidthContentContainer>
-        <FullWidthContentContainer className="flex flex-col gap-2.5 border p-5 rounded-3xl">
-          <Heading level={HeadingLevel.l3} className="mb-0">
-            Moose Provisioned Infra
-          </Heading>
-          <Text className="text-muted-foreground">
-            Moose interprets the application logic in your primitives to
-            automatically manage and configure assets in your underlying
-            infrastructure
-          </Text>
-          <div className="w-full flex flex-row gap-x-2 space-x-0">
-            {infrastructure.map((infra) => (
-              <div
-                className={
-                  infra.primitive === activeTab
-                    ? "bg-primary/10 px-5 py-2.5 rounded-3xl shadow-sm w-1/6"
-                    : "px-5 py-2.5 w-1/6"
-                }
-                key={infra.title}
-              >
-                <div className="bg-primary/10 p-5 w-fit rounded-3xl">
-                  {infra.icon}
+            <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+              {infrastructure.map((infra) => (
+                <div
+                  className={`px-4 pt-4 rounded-2xl ${
+                    infra.primitive === activeTab
+                      ? "bg-primary/10 shadow-sm"
+                      : ""
+                  }`}
+                  key={infra.title}
+                >
+                  <div className="bg-primary/10 p-3 w-fit rounded-xl">
+                    {infra.icon}
+                  </div>
+                  <SmallText className="text-sm font-medium">
+                    {infra.title}
+                  </SmallText>
+                  <SmallText className="text-muted-foreground text-wrap">
+                    {infra.infra}
+                  </SmallText>
                 </div>
-                <SmallText className="text-md">{infra.title}</SmallText>
-                <SmallText className="text-muted-foreground text-wrap">
-                  {infra.infra}
-                </SmallText>
-              </div>
-            ))}
-          </div>
-        </FullWidthContentContainer>
-      </Grid>
-    </Section>
+              ))}
+            </div>
+          </FullWidthContentContainer>
+        </Grid>
+      </Section>
+    </>
   );
 };

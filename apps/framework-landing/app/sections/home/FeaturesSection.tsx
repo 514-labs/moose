@@ -18,7 +18,7 @@ export const FeaturesSection = () => {
   const content = {
     title: "Your tools, your workflows",
     subtitle:
-      "Moose brings our favorite web dev ergonomics to the data & analytics stack",
+      "Moose brings software developer ergonomics to the data & analytics stack",
     features: [
       {
         title: "Python and TypeScript",
@@ -39,9 +39,9 @@ export const FeaturesSection = () => {
         icon: <Share2 strokeWidth={1} />,
       },
       {
-        title: "Migrations",
+        title: "OLAP Migrations",
         description:
-          "Keep versions your data synchronized through automated schema migrations",
+          "Keep versions of your data synchronized through automated schema migrations",
         icon: <Network strokeWidth={1} />,
       },
       {

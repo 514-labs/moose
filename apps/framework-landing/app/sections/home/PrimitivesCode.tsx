@@ -33,7 +33,8 @@ const content: {
 } = {
   models: {
     title: "Models",
-    description: "Define a schema for raw data sources to ingest",
+    description:
+      "Codify the shape and structure of the data that is used in your application",
     filename: "/datamodels/models.ts",
     typescript: `
 export interface UserActivity {
@@ -45,7 +46,8 @@ export interface UserActivity {
   },
   functions: {
     title: "Functions",
-    description: "Add custom logic to augment & transform data in-stream",
+    description:
+      "Add custom logic to filter, enrich, and transform data in-stream",
     filename: "/functions/UserActivity__ParsedActivity.ts",
     typescript: `
 import { UserActivity, ParsedActivity } from "/datamodels/models";
@@ -61,7 +63,8 @@ export default function convertUtc(source: UserActivity): ParsedActivity {
   },
   blocks: {
     title: "Blocks",
-    description: "Create views to slice, aggregate, & join tables",
+    description:
+      "Create views to slice, aggregate, and join data across rows and tables",
     filename: "/blocks/dailyActiveUsers.ts",
     typescript: `
 import { createAggregation } from "@514labs/moose-lib";
@@ -81,7 +84,8 @@ export default createAggregation({
   },
   apis: {
     title: "APIs",
-    description: "Fetch & serve real-time insights to your apps",
+    description:
+      "Define parameterized endpoints to dynamically fetch and serve real-time insights to your apps",
     filename: "/apis/dailyActiveUsers.ts",
     typescript: `
 interface QueryParams {
@@ -109,37 +113,37 @@ export default async function handle(
 
 const infrastructure = [
   {
-    title: "Ingest API",
+    title: "Ingress Routes",
     infra: "Webserver",
     icon: <ArrowRight />,
     primitive: "models",
   },
   {
     title: "Topics",
-    infra: "Streaming",
+    infra: "Streams",
     icon: <Folders />,
     primitive: "models",
   },
   {
-    title: "Processes",
+    title: "Tasks",
     infra: "Orchestrator",
     icon: <Repeat />,
     primitive: "functions",
   },
   {
     title: "Tables",
-    infra: "OLAP Storage",
+    infra: "OLAP DB",
     icon: <Table />,
     primitive: "models",
   },
   {
     title: "Views",
-    infra: "OLAP Storage",
+    infra: "OLAP DB",
     icon: <GitFork />,
     primitive: "blocks",
   },
   {
-    title: "Consumption API",
+    title: "Egress Routes",
     infra: "Webserver",
     icon: <ArrowRight />,
     primitive: "apis",
@@ -154,23 +158,22 @@ export const PrimitivesCode = () => {
   return (
     <Section className="mx-auto xl:max-w-screen-xl px-0">
       <Heading
-        level={HeadingLevel.l2}
+        level={HeadingLevel.l1}
         className="justify-center align-center text-center mb-24"
       >
-        Moose provides the tools to manage your entire data lifecycle—from
-        ingestion to consumption and everything in between.
-        <br />
+        Data modeling, processing, ingestion, orchestration, streaming, storage,
+        and APIs—unified.{" "}
         <GradientText>All in pure TypeScript or Python.</GradientText>
       </Heading>
       <Grid className="flex flex-col">
-        <FullWidthContentContainer className="flex flex-row gap-0 space-between-0 p-5 border rounded-3xl h-[450px]">
+        <FullWidthContentContainer className="flex flex-row gap-0 space-between-0 p-5 border rounded-3xl h-[400spx]">
           <HalfWidthContentContainer className="flex flex-col gap-5 justify-start w-1/2 pr-5">
             <Heading level={HeadingLevel.l3} className="mb-0">
               Moose Primitives
             </Heading>
             <Text className="text-muted-foreground">
-              Define how data is ingested, processed, aggregated, and consumed
-              for your application
+              Define your unique application logic for how data is ingested,
+              processed, aggregated, and consumed for your use case
             </Text>
             <Tabs value={activeTab} onValueChange={setActiveTab}>
               <TabsList className="py-0 text-primary">
@@ -202,8 +205,9 @@ export const PrimitivesCode = () => {
             Moose Provisioned Infra
           </Heading>
           <Text className="text-muted-foreground">
-            Moose translates the implemented primitives and configures your
-            infrastructure for you as you develop
+            Moose interprets the application logic in your primitives to
+            automatically manage and configure assets in your underlying
+            infrastructure
           </Text>
           <div className="w-full flex flex-row gap-x-2 space-x-0">
             {infrastructure.map((infra) => (

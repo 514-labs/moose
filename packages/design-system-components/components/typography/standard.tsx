@@ -169,13 +169,7 @@ export const GradientText = ({
   children: ReactNode;
 }) => {
   return (
-    <span
-      className="text-transparent bg-clip-text"
-      style={{
-        backgroundImage:
-          "linear-gradient(150.33deg, #641BFF -290.53%, #1983FF 28.23%, #C8FF2C 106.53%)",
-      }}
-    >
+    <span className="text-transparent bg-clip-text bg-gradient-to-br from-[#3A36FF] via-[#00A4C8] via-90% to-[#C8FF2C]">
       {children}
     </span>
   );

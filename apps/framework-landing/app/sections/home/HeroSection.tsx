@@ -17,7 +17,7 @@ export const HeroSection = () => {
   const content = {
     tagLine: "Prototype & scale data-intensive apps in minutes",
     description:
-      "An open source developer framework for your data & analytics stack",
+      "Moose is an open source developer framework for your data & analytics stack",
     ctas: [
       {
         href: "https://docs.moosejs.com/getting-started/new-project",
@@ -41,9 +41,7 @@ export const HeroSection = () => {
           <FullWidthContentContainer className="pt-0 items-center px-20 flex flex-col gap-5">
             <div>
               {/* <Heading> {content.tagLine} </Heading> */}
-              <Display className="my-0 text-center text-96">
-                {content.tagLine}{" "}
-              </Display>
+              <Display className="my-0 text-center">{content.tagLine} </Display>
 
               <Heading
                 level={HeadingLevel.l3}

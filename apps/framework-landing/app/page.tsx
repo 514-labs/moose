@@ -5,10 +5,10 @@ import { DemoSection } from "./sections/home/DemoSection";
 import { FooterSection } from "./sections/FooterSection";
 import { HeroSection } from "./sections/home/HeroSection";
 import { PrimitivesCode } from "./sections/home/PrimitivesCode";
-import {
-  TemplateHeaderSection,
-  TemplatesSection,
-} from "./sections/home/TemplatesSection";
+// import {
+//   TemplateHeaderSection,
+//   TemplatesSection,
+// } from "./sections/home/TemplatesSection";
 import { FeaturesSection } from "./sections/home/FeaturesSection";
 
 import { SecondaryCTASection } from "./sections/home/SecondaryCTASection";
@@ -99,8 +99,6 @@ export default function Home() {
       <PrimitivesCode />
       <FeaturesSection />
       <WhatIsMooseFor />
-      <TemplateHeaderSection />
-      <TemplatesSection />
       <SecondaryCTASection />
       <FooterSection />
       <LooseMooseSection />

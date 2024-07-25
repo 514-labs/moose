@@ -35,28 +35,50 @@ const content = {
       },
     },
     {
-      title: "LLM Tools",
-      imageSrcLight: "/images/diagrams/img-diagram-LLM-light.svg",
-      imageSrcDark: "/images/diagrams/img-diagram-LLM-dark.svg",
-      description:
-        "Build natural language interfaces by exposing data APIs to an LLM",
+      title: "Observability",
+      imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
+      imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
+      description: "Coming Soon",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
-        href: "/templates/llm-application",
+        href: "/templates/observability",
       },
     },
     {
-      title: "Data Warehouse",
-      imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
-      imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
-      description: "Centralize enterprise data and integrate with your BI tool",
+      title: "Realtime Leaderboards",
+      imageSrcLight: "/images/diagrams/img-diagram-RL-light.svg",
+      imageSrcDark: "/images/diagrams/img-diagram-RL-dark.svg",
+      description: "Coming Soon",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
-        href: "/templates/data-warehouse",
+        href: "/templates/realtime-leaderboards",
       },
     },
+    // {
+    //   title: "LLM Tools",
+    //   imageSrcLight: "/images/diagrams/img-diagram-LLM-light.svg",
+    //   imageSrcDark: "/images/diagrams/img-diagram-LLM-dark.svg",
+    //   description:
+    //     "Build natural language interfaces by exposing data APIs to an LLM",
+    //   cta: {
+    //     subject: "cta-product-analytics-template-view",
+    //     label: "Learn More",
+    //     href: "/templates/llm-application",
+    //   },
+    // },
+    // {
+    //   title: "Data Warehouse",
+    //   imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
+    //   imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
+    //   description: "Centralize enterprise data and integrate with your BI tool",
+    //   cta: {
+    //     subject: "cta-product-analytics-template-view",
+    //     label: "Learn More",
+    //     href: "/templates/data-warehouse",
+    //   },
+    // },
   ],
 };
 
@@ -85,7 +107,7 @@ export const TemplatesSection = () => {
             <Fragment key={index}>
               <ThirdWidthContentContainer
                 key={index}
-                className="flex flex-col xl:justify-start xl:order-4 p-5"
+                className="flex flex-col xl:justify-start xl:order-4 p-5 border rounded-3xl"
               >
                 <div className="relative aspect-square my-0">
                   <Suspense fallback={<div>Loading...</div>}>
@@ -108,7 +130,6 @@ export const TemplatesSection = () => {
                       name="Learn More"
                       subject={template.cta.subject}
                       className="grow"
-                      variant={"outline"}
                       targetUrl={template.cta.href}
                     >
                       {template.cta.label}

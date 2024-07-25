@@ -38,14 +38,14 @@ export const WhatIsMooseFor = () => {
     <>
       <Section className="mx-auto xl:max-w-screen-xl">
         <FullWidthContentContainer className="mb-12 2xl:mb-20">
-          <Heading level={HeadingLevel.l2}>Build on big and small data</Heading>
+          <Heading level={HeadingLevel.l2}>When to use Moose</Heading>
         </FullWidthContentContainer>
         <Grid className="justify-center">
           <HalfWidthContentContainer className="flex flex-col xl:justify-start xl:order-4 border rounded-3xl p-5 gap-5">
             <Badge className="w-fit p-2" variant={"outline"}>
-              Moose + OLTP Frameworks
+              Moose + User-Facing App
             </Badge>
-            <Heading level={HeadingLevel.l4} className="my-0">
+            <Heading level={HeadingLevel.l3} className="my-0">
               Data Intensive Features
             </Heading>
             <Text className="text-muted-foreground mt-0">
@@ -56,13 +56,13 @@ export const WhatIsMooseFor = () => {
           </HalfWidthContentContainer>
           <HalfWidthContentContainer className="flex flex-col xl:justify-start xl:order-4 border rounded-3xl p-5 gap-5">
             <Badge className="w-fit p-2" variant={"outline"}>
-              Moose Only
+              Moose + Enterprise BI
             </Badge>
-            <Heading level={HeadingLevel.l4} className="my-0">
+            <Heading level={HeadingLevel.l3} className="my-0">
               Enterprise Data Products
             </Heading>
             <Text className="text-muted-foreground mt-0">
-              Build a data warehouse and APIs to serve{" "}
+              Pull data together from multiple sources and expose it to{" "}
               <GradientText>
                 {" "}
                 BI platforms, AI/ML pipelines, and notebooks

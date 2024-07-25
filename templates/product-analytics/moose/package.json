@@ -8,7 +8,8 @@
     "@514labs/moose-lib": "0.3.427",
     "@clickhouse/client-web": "^1.0.1",
     "fastq": "^1.17.1",
-    "kafkajs": "^2.2.4"
+    "kafkajs": "^2.2.4",
+    "ua-parser-js": "^1.0.38"
   },
   "devDependencies": {
     "@514labs/moose-cli": "latest",

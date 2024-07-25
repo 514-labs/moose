@@ -23,9 +23,12 @@ export interface PageViewProcessed {
   hostname: string;
   pathname: string;
   referrer: string;
-  device_manufacturer: string;
-  browser_type: string;
+  device_vendor: string;
+  device_type: string;
+  device_model: string;
+  browser_name: string;
   browser_version: string;
-  os: string;
+  browser_major: string;
+  os_name: string;
   os_version: string;
 }

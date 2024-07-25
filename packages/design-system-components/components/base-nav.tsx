@@ -12,7 +12,7 @@ import { Button } from "./ui/button";
 import { Logo } from "./logo";
 import { Badge } from "./ui/badge";
 import { TrackLink } from "./trackable-components";
-import LanguageBadge from "./language-badge";
+import { ProductBadge } from "./language-badge";
 
 gsap.registerPlugin(SplitText);
 
@@ -49,10 +49,13 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
                     {property !== "fiveonefour" ? (
                       <TrackLink
                         name={"Link"}
-                        subject="Alpha Badge"
+                        subject="Language Badge"
                         href={"https://docs.moosejs.com"}
                       >
-                        <LanguageBadge />
+                        <div className="flex flex-row">
+                          <ProductBadge name="" tag="JS" />
+                          <ProductBadge name="" tag="PY" />
+                        </div>
                       </TrackLink>
                     ) : null}
                   </div>

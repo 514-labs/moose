@@ -19,8 +19,8 @@ const ENDPOINT_TABLE_COLUMNS: [&str; 4] = [
     "# OF MESSAGES SENT TO KAFKA",
 ];
 
-const KAFKA_CLICKHOUSE_SYNC_TABLE_COLUMNS: [&str; 4] =
-    ["DATA MODEL", "MESSAGES READ", "LAG", "MESSAGES/SEC"];
+const KAFKA_CLICKHOUSE_SYNC_TABLE_COLUMNS: [&str; 5] =
+    ["DATA MODEL", "MSG READ", "LAG", "MSG/SEC", "BYTES/SEC"];
 const STREAMING_FUNCTIONS_KAFKA_TABLE_COLUMNS: [&str; 5] = [
     "STREAMING PATH",
     "MSG IN",
@@ -329,6 +329,10 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
                         .unwrap_or(&("".to_string(), 0.0))
                         .1
                 ),
+                format!(
+                    "{}",
+                    format_bytes(*app.kafka_bytes_out_per_sec.get(&item.0).unwrap_or(&0) as f64)
+                ),
             ])
             .not_bold()
             .white(),
@@ -337,9 +341,10 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
 
     let widths = [
         Constraint::Percentage(25),
-        Constraint::Percentage(25),
-        Constraint::Percentage(25),
-        Constraint::Percentage(25),
+        Constraint::Percentage(18),
+        Constraint::Percentage(18),
+        Constraint::Percentage(18),
+        Constraint::Percentage(18),
     ];
 
     let table = Table::new(rows, widths)
@@ -393,6 +398,10 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
                         .unwrap_or(&("".to_string(), 0.0))
                         .1
                 ),
+                format!(
+                    "{}",
+                    format_bytes(*app.kafka_bytes_out_per_sec.get(&item.0).unwrap_or(&0) as f64)
+                ),
             ])
             .bold()
             .light_blue(),
@@ -401,9 +410,10 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
 
     let widths = [
         Constraint::Percentage(25),
-        Constraint::Percentage(25),
-        Constraint::Percentage(25),
-        Constraint::Percentage(25),
+        Constraint::Percentage(18),
+        Constraint::Percentage(18),
+        Constraint::Percentage(18),
+        Constraint::Percentage(18),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
     table_state.select(Some(app.kafka_starting_row));

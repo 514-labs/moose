@@ -15,6 +15,7 @@ pub struct BytesMetricsData {
     pub total_bytes_in: u64,
     pub total_bytes_out: u64,
     pub path_bytes_hashmap: HashMap<String, u64>,
+    pub kafka_bytes_out_total: HashMap<String, (String, u64)>,
 }
 
 pub struct PathBytesParsedData {
@@ -56,6 +57,8 @@ pub struct App {
     pub kafka_messages_in_total: HashMap<String, (String, f64)>,
     pub kafka_messages_out_total: Vec<(String, String, f64)>,
     pub kafka_messages_out_per_sec: HashMap<String, (String, f64)>,
+    pub kafka_bytes_out_total: HashMap<String, (String, u64)>,
+    pub kafka_bytes_out_per_sec: HashMap<String, u64>,
     pub streaming_functions_in: HashMap<String, f64>,
     pub streaming_functions_out: HashMap<String, f64>,
     pub streaming_functions_in_per_sec: HashMap<String, f64>,
@@ -93,6 +96,8 @@ impl Default for App {
             kafka_messages_in_total: HashMap::new(),
             kafka_messages_out_total: vec![],
             kafka_messages_out_per_sec: HashMap::new(),
+            kafka_bytes_out_total: HashMap::new(),
+            kafka_bytes_out_per_sec: HashMap::new(),
             streaming_functions_in: HashMap::new(),
             streaming_functions_out: HashMap::new(),
             streaming_functions_in_per_sec: HashMap::new(),
@@ -129,6 +134,7 @@ impl App {
         self.main_bytes_data.total_bytes_out = parsed_data.total_bytes_out;
         self.kafka_messages_in_total = parsed_data.kafka_messages_in_total;
         self.kafka_messages_out_total = parsed_data.kafka_messages_out_total;
+        self.kafka_bytes_out_total = parsed_data.kafka_bytes_out_total;
         self.streaming_functions_in = parsed_data.streaming_functions_in;
         self.streaming_functions_out = parsed_data.streaming_functions_out;
     }
@@ -178,6 +184,7 @@ impl App {
         let path_bytes_hashmap: HashMap<String, u64> = bytes_data.path_bytes_hashmap;
         let total_bytes_in: u64 = bytes_data.total_bytes_in;
         let total_bytes_out: u64 = bytes_data.total_bytes_out;
+        let new_kafka_bytes_out = bytes_data.kafka_bytes_out_total;
 
         self.requests_per_sec = new_total_requests - self.total_requests;
         self.main_bytes_data.bytes_in_per_sec =
@@ -281,6 +288,15 @@ impl App {
                     if item.0 == prev_item.0 {
                         self.streaming_functions_in_per_sec
                             .insert(item.0.clone(), item.1 - prev_item.1);
+                    }
+                }
+            }
+
+            for item in &new_kafka_bytes_out {
+                for prev_item in &self.kafka_bytes_out_total {
+                    if *item.0 == *prev_item.0 {
+                        self.kafka_bytes_out_per_sec
+                            .insert(item.0.clone(), item.1 .1 - prev_item.1 .1);
                     }
                 }
             }

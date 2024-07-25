@@ -398,6 +398,13 @@ async fn iterate_subscriber<'a, F>(
                             source_topic_name, payload_str
                         );
                         metrics
+                            .send_metric(MetricsMessage::PutKafkaClickhouseSyncBytesOut(
+                                "clickhouse sync".to_string(),
+                                source_topic_name.clone(),
+                                payload.len() as u64,
+                            ))
+                            .await;
+                        metrics
                             .send_metric(MetricsMessage::PutNumberOfMessagesOut(
                                 "clickhouse_sync".to_string(),
                                 source_topic_name.clone(),

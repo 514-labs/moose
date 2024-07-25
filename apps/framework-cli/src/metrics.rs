@@ -22,6 +22,7 @@ pub enum MetricsMessage {
     PutNumberOfBytesOut(PathBuf, u64),
     PutNumberOfMessagesIn(String, String),
     PutNumberOfMessagesOut(String, String),
+    PutKafkaClickhouseSyncBytesOut(String, String, u64),
     PutStreamingFunctionMessagesIn(String, u64),
     PutStreamingFunctionMessagesOut(String, u64),
 }
@@ -38,6 +39,7 @@ pub struct Statistics {
     pub bytes_out_family: Family<BytesCounterLabels, Counter>,
     pub messages_in_family: Family<MessagesInCounterLabels, Counter>,
     pub messages_out_family: Family<MessagesOutCounterLabels, Counter>,
+    pub kafka_clickhouse_sync_bytes_out_family: Family<MessagesOutCounterLabels, Counter>,
     pub streaming_functions_in_family: Family<StreamingFunctionMessagesCounterLabels, Gauge>,
     pub streaming_functions_out_family: Family<StreamingFunctionMessagesCounterLabels, Gauge>,
     pub registry: Option<Registry>,
@@ -127,6 +129,8 @@ impl Metrics {
             messages_out_family: Family::<MessagesOutCounterLabels, Counter>::new_with_constructor(
                 Counter::default,
             ),
+            kafka_clickhouse_sync_bytes_out_family:
+                Family::<MessagesOutCounterLabels, Counter>::new_with_constructor(Counter::default),
             streaming_functions_in_family:
                 Family::<StreamingFunctionMessagesCounterLabels, Gauge>::new_with_constructor(
                     Gauge::default,
@@ -178,6 +182,12 @@ impl Metrics {
             "streaming_functions_out",
             "Messages received from one data model to another using kafka stream",
             data.streaming_functions_out_family.clone(),
+        );
+
+        new_registry.register(
+            "kafka_clickhouse_sync_bytes_out",
+            "Bytes sent to clickhouse",
+            data.kafka_clickhouse_sync_bytes_out_family.clone(),
         );
 
         data.registry = Some(new_registry);
@@ -233,6 +243,18 @@ impl Metrics {
                         data.streaming_functions_out_family
                             .get_or_create(&StreamingFunctionMessagesCounterLabels { path })
                             .set(count as i64);
+                    }
+                    MetricsMessage::PutKafkaClickhouseSyncBytesOut(
+                        consumer_group,
+                        topic,
+                        number_of_bytes,
+                    ) => {
+                        data.kafka_clickhouse_sync_bytes_out_family
+                            .get_or_create(&MessagesOutCounterLabels {
+                                consumer_group,
+                                topic,
+                            })
+                            .inc_by(number_of_bytes);
                     }
                 };
             }

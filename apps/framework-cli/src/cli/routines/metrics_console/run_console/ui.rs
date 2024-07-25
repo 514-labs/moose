@@ -59,7 +59,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 .constraints(vec![
                     Constraint::Percentage(33),
                     Constraint::Percentage(33),
-                    Constraint::Percentage(33),
+                    Constraint::Percentage(34),
                 ])
                 .split(paragraph_layout[0]);
             let bytes_overview_layout = Layout::default()

@@ -67,6 +67,7 @@ enum Direction {
 pub struct FlowMessages {
     count: u64,
     path: String,
+    bytes: u64,
     direction: Direction,
 }
 
@@ -256,6 +257,7 @@ async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Res
         Ok(cli_message) => {
             let message = FlowMessages {
                 count: cli_message.count,
+                bytes: cli_message.bytes,
                 path: cli_message.path,
                 direction: cli_message.direction,
             };
@@ -263,10 +265,16 @@ async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Res
                 Direction::In => {
                     metrics
                         .send_metric(MetricsMessage::PutStreamingFunctionMessagesIn(
-                            message.path,
+                            message.path.clone(),
                             message.count,
                         ))
-                        .await
+                        .await;
+                    metrics
+                        .send_metric(MetricsMessage::PutStreamingFunctionBytes(
+                            message.path,
+                            message.bytes,
+                        ))
+                        .await;
                 }
                 Direction::Out => {
                     metrics

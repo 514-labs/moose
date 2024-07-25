@@ -27,6 +27,7 @@ const STREAMING_FUNCTIONS_KAFKA_TABLE_COLUMNS: [&str; 5] = [
     "MSG IN/SEC",
     "MSG OUT",
     "MSG OUT/SEC",
+    "BYTES/SEC",
 ];
 const PATH_INFO_TEXT: &str = "(ESC) EXIT DETAILED VIEW | (Q) QUIT";
 
@@ -482,6 +483,14 @@ fn render_active_streaming_functions_messages_table(
                         .get(item.0)
                         .unwrap_or(&0.0)
                 ),
+                format!(
+                    "{}",
+                    format_bytes(
+                        *app.streaming_functions_bytes_per_sec
+                            .get(item.0)
+                            .unwrap_or(&0) as f64
+                    )
+                ),
             ])
             .bold()
             .light_blue(),
@@ -489,11 +498,12 @@ fn render_active_streaming_functions_messages_table(
     }
 
     let widths = [
-        Constraint::Percentage(46),
-        Constraint::Percentage(13),
-        Constraint::Percentage(13),
-        Constraint::Percentage(13),
-        Constraint::Percentage(13),
+        Constraint::Percentage(40),
+        Constraint::Percentage(12),
+        Constraint::Percentage(12),
+        Constraint::Percentage(12),
+        Constraint::Percentage(12),
+        Constraint::Percentage(12),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
     table_state.select(Some(app.streaming_functions_table_starting_row));
@@ -551,6 +561,14 @@ fn render_passive_streaming_functions_messages_table(
                         .get(item.0)
                         .unwrap_or(&0.0)
                 ),
+                format!(
+                    "{}",
+                    format_bytes(
+                        *app.streaming_functions_bytes_per_sec
+                            .get(item.0)
+                            .unwrap_or(&0) as f64
+                    )
+                ),
             ])
             .not_bold()
             .white(),
@@ -558,11 +576,12 @@ fn render_passive_streaming_functions_messages_table(
     }
 
     let widths = [
-        Constraint::Percentage(46),
-        Constraint::Percentage(13),
-        Constraint::Percentage(13),
-        Constraint::Percentage(13),
-        Constraint::Percentage(13),
+        Constraint::Percentage(40),
+        Constraint::Percentage(12),
+        Constraint::Percentage(12),
+        Constraint::Percentage(12),
+        Constraint::Percentage(12),
+        Constraint::Percentage(12),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
     table_state.select(Some(app.kafka_starting_row));

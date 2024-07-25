@@ -43,6 +43,7 @@ pub async fn run_console() -> app::AppResult<()> {
             received = rx.recv() => {
                 if let Some(v) = received {
                     app.per_sec_metrics(v.total_requests, &v.paths_data_vec, BytesMetricsData {path_bytes_hashmap: v.paths_bytes_hashmap.clone(), total_bytes_in: v.total_bytes_in, total_bytes_out: v.total_bytes_out, kafka_bytes_out_total: v.kafka_bytes_out_total.clone()}, &v.kafka_messages_out_total, &v.streaming_functions_in, &v.streaming_functions_out);
+                    app.per_sec_metrics(v.total_requests, &v.paths_data_vec, BytesMetricsData {path_bytes_hashmap: v.paths_bytes_hashmap.clone(), total_bytes_in: v.total_bytes_in, total_bytes_out: v.total_bytes_out, streaming_functions_bytes: v.streaming_functions_bytes.clone()}, &v.kafka_messages_out_total, &v.streaming_functions_in, &v.streaming_functions_out);
                     app.set_metrics(v);
                 };
             }

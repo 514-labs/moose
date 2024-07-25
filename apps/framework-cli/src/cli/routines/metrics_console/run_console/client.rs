@@ -24,6 +24,7 @@ pub struct ParsedMetricsData {
     pub kafka_bytes_out_total: HashMap<String, (String, u64)>,
     pub streaming_functions_in: HashMap<String, f64>,
     pub streaming_functions_out: HashMap<String, f64>,
+    pub streaming_functions_bytes: HashMap<String, u64>,
 }
 
 pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
@@ -53,6 +54,7 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
     let mut kafka_bytes_out_total: HashMap<String, (String, u64)> = HashMap::new();
     let mut streaming_functions_in: HashMap<String, f64> = HashMap::new();
     let mut streaming_functions_out: HashMap<String, f64> = HashMap::new();
+    let mut streaming_functions_bytes: HashMap<String, u64> = HashMap::new();
 
     let mut i = 0;
     while i < metrics_vec.len() {
@@ -157,6 +159,14 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
                 _ => &0.0,
             };
             streaming_functions_out.insert(metrics_vec[j].labels["path"].to_string(), *value);
+        } else if &metrics_vec[j].metric == "streaming_functions_bytes_total" {
+            let value = match &metrics_vec[j].value {
+                prometheus_parse::Value::Counter(v) => v,
+                prometheus_parse::Value::Untyped(v) => v,
+                _ => &0.0,
+            };
+            streaming_functions_bytes
+                .insert(metrics_vec[j].labels["path"].to_string(), *value as u64);
         }
 
         j += 1;
@@ -175,6 +185,7 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
         kafka_bytes_out_total,
         streaming_functions_in,
         streaming_functions_out,
+        streaming_functions_bytes,
     };
 
     Ok(parsed_data)

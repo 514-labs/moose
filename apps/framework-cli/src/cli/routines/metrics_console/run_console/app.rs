@@ -16,6 +16,7 @@ pub struct BytesMetricsData {
     pub total_bytes_out: u64,
     pub path_bytes_hashmap: HashMap<String, u64>,
     pub kafka_bytes_out_total: HashMap<String, (String, u64)>,
+    pub streaming_functions_bytes: HashMap<String, u64>,
 }
 
 pub struct PathBytesParsedData {
@@ -63,6 +64,8 @@ pub struct App {
     pub streaming_functions_out: HashMap<String, f64>,
     pub streaming_functions_in_per_sec: HashMap<String, f64>,
     pub streaming_functions_out_per_sec: HashMap<String, f64>,
+    pub streaming_functions_bytes: HashMap<String, u64>,
+    pub streaming_functions_bytes_per_sec: HashMap<String, u64>,
 }
 
 impl Default for App {
@@ -102,6 +105,8 @@ impl Default for App {
             streaming_functions_out: HashMap::new(),
             streaming_functions_in_per_sec: HashMap::new(),
             streaming_functions_out_per_sec: HashMap::new(),
+            streaming_functions_bytes: HashMap::new(),
+            streaming_functions_bytes_per_sec: HashMap::new(),
         }
     }
 }
@@ -137,6 +142,7 @@ impl App {
         self.kafka_bytes_out_total = parsed_data.kafka_bytes_out_total;
         self.streaming_functions_in = parsed_data.streaming_functions_in;
         self.streaming_functions_out = parsed_data.streaming_functions_out;
+        self.streaming_functions_bytes = parsed_data.streaming_functions_bytes;
     }
 
     pub fn endpoint_down(&mut self) {
@@ -185,6 +191,7 @@ impl App {
         let total_bytes_in: u64 = bytes_data.total_bytes_in;
         let total_bytes_out: u64 = bytes_data.total_bytes_out;
         let new_kafka_bytes_out = bytes_data.kafka_bytes_out_total;
+        let streaming_functions_bytes: HashMap<String, u64> = bytes_data.streaming_functions_bytes;
 
         self.requests_per_sec = new_total_requests - self.total_requests;
         self.main_bytes_data.bytes_in_per_sec =
@@ -297,6 +304,11 @@ impl App {
                     if *item.0 == *prev_item.0 {
                         self.kafka_bytes_out_per_sec
                             .insert(item.0.clone(), item.1 .1 - prev_item.1 .1);
+            for item in &streaming_functions_bytes {
+                for prev_item in &self.streaming_functions_bytes {
+                    if *item.0 == *prev_item.0 {
+                        self.streaming_functions_bytes_per_sec
+                            .insert(item.0.clone(), item.1 - prev_item.1);
                     }
                 }
             }

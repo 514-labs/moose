@@ -16,6 +16,7 @@ const SECURITY_PROTOCOL = process.argv[9];
 
 type CliLogData = {
   count: number;
+  bytes: number;
   path: string;
   direction: "In" | "Out";
 };
@@ -199,6 +200,9 @@ const sendMessages = async (
       } else {
         // Add the new message to the current chunk
         chunks.push(message);
+        chunks.forEach(
+          (chunk) => (bytes += Buffer.byteLength(chunk.value, "utf8")),
+        );
         chunkSize += messageSize;
       }
     }
@@ -221,11 +225,13 @@ setTimeout(() => sendMessageMetricsOut(), 1000);
 
 var count_in = 0;
 var count_out = 0;
+var bytes = 0;
 
 const sendMessageMetricsIn = () => {
   metricsLog({
     count: count_in,
     path: logPrefix,
+    bytes: bytes,
     direction: "In",
   });
   setTimeout(() => sendMessageMetricsIn(), 1000);
@@ -234,6 +240,7 @@ const sendMessageMetricsIn = () => {
 const sendMessageMetricsOut = () => {
   metricsLog({
     count: count_out,
+    bytes: bytes,
     path: logPrefix,
     direction: "Out",
   });

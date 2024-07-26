@@ -30,6 +30,9 @@ const STREAMING_FUNCTIONS_KAFKA_TABLE_COLUMNS: [&str; 6] = [
     "BYTES/SEC",
 ];
 const PATH_INFO_TEXT: &str = "(ESC) EXIT DETAILED VIEW | (Q) QUIT";
+const ENDPOINT_TABLE_TITLE: &str = "ENDPOINT METRICS TABLE";
+const KAFKA_CLICKHOUSE_SYNC_TABLE_TITLE: &str = "KAFKA TO TABLE SYNC PROCESS";
+const STREAMING_FUNCTIONS_KAFKA_TABLE_TITLE: &str = "KAFKA TO TABLE SYNC PROCESS";
 
 /// Renders the user interface widgets.
 pub fn render(app: &mut App, frame: &mut Frame) {
@@ -137,9 +140,15 @@ fn render_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) {
 fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) {
     let mut rows: Vec<Row> = vec![];
 
-    for x in &app.summary {
+    for x in &app.overview_data.summary {
         rows.push(
-            if *app.path_requests_per_sec.get(&x.path).unwrap_or(&0.0) > 0.0 {
+            if *app
+                .paths_data
+                .path_requests_per_sec
+                .get(&x.path)
+                .unwrap_or(&0.0)
+                > 0.0
+            {
                 Row::new(vec![
                     format!("{}", x.path.to_string()),
                     format!(
@@ -153,7 +162,8 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
                     ),
                     format!(
                         "{}",
-                        app.kafka_messages_in_total
+                        app.kafka_metrics
+                            .kafka_messages_in_total
                             .get(&x.path)
                             .unwrap_or(&("".to_string(), 0.0))
                             .1
@@ -175,7 +185,8 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
                     ),
                     format!(
                         "{}",
-                        app.kafka_messages_in_total
+                        app.kafka_metrics
+                            .kafka_messages_in_total
                             .get(&x.path)
                             .unwrap_or(&("".to_string(), 0.0))
                             .1
@@ -194,7 +205,7 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
         Constraint::Fill(25),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
-    table_state.select(Some(app.endpoint_starting_row));
+    table_state.select(Some(app.table_scroll_data.endpoint_starting_row));
 
     let table = Table::new(rows, widths)
         .widths(widths)
@@ -209,7 +220,7 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
         )
         .block(
             Block::bordered()
-                .title("ENDPOINT METRICS TABLE")
+                .title(ENDPOINT_TABLE_TITLE)
                 .bold()
                 .border_style(Style::new().light_blue())
                 .title_style(Style::new().white()),
@@ -223,9 +234,15 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
 fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) {
     let mut rows: Vec<Row> = vec![];
 
-    for x in &app.summary {
+    for x in &app.overview_data.summary {
         rows.push(
-            if *app.path_requests_per_sec.get(&x.path).unwrap_or(&0.0) > 0.0 {
+            if *app
+                .paths_data
+                .path_requests_per_sec
+                .get(&x.path)
+                .unwrap_or(&0.0)
+                > 0.0
+            {
                 Row::new(vec![
                     format!("{}", x.path.to_string()),
                     format!(
@@ -239,7 +256,8 @@ fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect)
                     ),
                     format!(
                         "{}",
-                        app.kafka_messages_in_total
+                        app.kafka_metrics
+                            .kafka_messages_in_total
                             .get(&x.path)
                             .unwrap_or(&("".to_string(), 0.0))
                             .1
@@ -261,7 +279,8 @@ fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect)
                     ),
                     format!(
                         "{}",
-                        app.kafka_messages_in_total
+                        app.kafka_metrics
+                            .kafka_messages_in_total
                             .get(&x.path)
                             .unwrap_or(&("".to_string(), 0.0))
                             .1
@@ -280,7 +299,7 @@ fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect)
         Constraint::Fill(25),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
-    table_state.select(Some(app.endpoint_starting_row));
+    table_state.select(Some(app.table_scroll_data.endpoint_starting_row));
 
     let table = Table::new(rows, widths)
         .widths(widths)
@@ -295,7 +314,7 @@ fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect)
         )
         .block(
             Block::bordered()
-                .title("ENDPOINT METRICS TABLE")
+                .title(ENDPOINT_TABLE_TITLE)
                 .bold()
                 .title_style(Style::new().white())
                 .border_style(Style::new().dark_gray()),
@@ -314,7 +333,7 @@ fn render_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout: Rect) 
 fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout: Rect) {
     let mut rows: Vec<Row> = vec![];
 
-    let mut sorted_messages: Vec<_> = app.kafka_messages_out_total.iter().collect();
+    let mut sorted_messages: Vec<_> = app.kafka_metrics.kafka_messages_out_total.iter().collect();
     sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
 
     for item in &sorted_messages {
@@ -324,7 +343,7 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
                 format!("{}", item.2),
                 format!("{}", {
                     let mut lag: Option<f64> = None;
-                    for value in &app.kafka_messages_in_total {
+                    for value in &app.kafka_metrics.kafka_messages_in_total {
                         if table_equals_path(value.0.clone(), item.0.clone()) {
                             lag = Some(value.1 .1 - item.2);
                             break;
@@ -337,14 +356,20 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
                 }),
                 format!(
                     "{}",
-                    app.kafka_messages_out_per_sec
+                    app.kafka_metrics
+                        .kafka_messages_out_per_sec
                         .get(&item.0)
                         .unwrap_or(&("".to_string(), 0.0))
                         .1
                 ),
                 format!(
                     "{}",
-                    format_bytes(*app.kafka_bytes_out_per_sec.get(&item.0).unwrap_or(&0) as f64)
+                    format_bytes(
+                        *app.kafka_metrics
+                            .kafka_bytes_out_per_sec
+                            .get(&item.0)
+                            .unwrap_or(&0) as f64
+                    )
                 ),
             ])
             .not_bold()
@@ -373,7 +398,7 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
         )
         .block(
             Block::bordered()
-                .title("KAFKA TO TABLE SYNC PROCESS")
+                .title(KAFKA_CLICKHOUSE_SYNC_TABLE_TITLE)
                 .bold()
                 .title_style(Style::new().white())
                 .border_style(Style::new().dark_gray()),
@@ -385,7 +410,7 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
 fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout: Rect) {
     let mut rows: Vec<Row> = vec![];
 
-    let mut sorted_messages: Vec<_> = app.kafka_messages_out_total.iter().collect();
+    let mut sorted_messages: Vec<_> = app.kafka_metrics.kafka_messages_out_total.iter().collect();
     sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
 
     for item in &sorted_messages {
@@ -395,7 +420,7 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
                 format!("{}", item.2),
                 format!("{}", {
                     let mut lag: Option<f64> = None;
-                    for value in &app.kafka_messages_in_total {
+                    for value in &app.kafka_metrics.kafka_messages_in_total {
                         if table_equals_path(value.0.clone(), item.0.clone()) {
                             lag = Some(value.1 .1 - item.2);
                             break;
@@ -408,14 +433,20 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
                 }),
                 format!(
                     "{}",
-                    app.kafka_messages_out_per_sec
+                    app.kafka_metrics
+                        .kafka_messages_out_per_sec
                         .get(&item.0)
                         .unwrap_or(&("".to_string(), 0.0))
                         .1
                 ),
                 format!(
                     "{}",
-                    format_bytes(*app.kafka_bytes_out_per_sec.get(&item.0).unwrap_or(&0) as f64)
+                    format_bytes(
+                        *app.kafka_metrics
+                            .kafka_bytes_out_per_sec
+                            .get(&item.0)
+                            .unwrap_or(&0) as f64
+                    )
                 ),
             ])
             .bold()
@@ -431,7 +462,7 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
         Constraint::Percentage(18),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
-    table_state.select(Some(app.kafka_starting_row));
+    table_state.select(Some(app.table_scroll_data.kafka_starting_row));
 
     let table = Table::new(rows, widths)
         .widths(widths)
@@ -446,7 +477,7 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
         )
         .block(
             Block::bordered()
-                .title("KAFKA TO TABLE SYNC PROCESS")
+                .title(KAFKA_CLICKHOUSE_SYNC_TABLE_TITLE)
                 .bold()
                 .border_style(Style::new().light_blue())
                 .title_style(Style::new().white()),
@@ -475,7 +506,11 @@ fn render_active_streaming_functions_messages_table(
 ) {
     let mut rows: Vec<Row> = vec![];
 
-    let mut sorted_messages: Vec<_> = app.streaming_functions_in.iter().collect();
+    let mut sorted_messages: Vec<_> = app
+        .streaming_functions_metrics
+        .streaming_functions_in
+        .iter()
+        .collect();
     sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
 
     for item in &sorted_messages {
@@ -485,24 +520,30 @@ fn render_active_streaming_functions_messages_table(
                 format!("{}", item.1),
                 format!(
                     "{}",
-                    app.streaming_functions_in_per_sec
+                    app.streaming_functions_metrics
+                        .streaming_functions_in_per_sec
                         .get(item.0)
                         .unwrap_or(&0.0)
                 ),
                 format!(
                     "{}",
-                    app.streaming_functions_out.get(item.0).unwrap_or(&0.0)
+                    app.streaming_functions_metrics
+                        .streaming_functions_out
+                        .get(item.0)
+                        .unwrap_or(&0.0)
                 ),
                 format!(
                     "{}",
-                    app.streaming_functions_out_per_sec
+                    app.streaming_functions_metrics
+                        .streaming_functions_out_per_sec
                         .get(item.0)
                         .unwrap_or(&0.0)
                 ),
                 format!(
                     "{}",
                     format_bytes(
-                        *app.streaming_functions_bytes_per_sec
+                        *app.streaming_functions_metrics
+                            .streaming_functions_bytes_per_sec
                             .get(item.0)
                             .unwrap_or(&0) as f64
                     )
@@ -522,7 +563,9 @@ fn render_active_streaming_functions_messages_table(
         Constraint::Percentage(12),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
-    table_state.select(Some(app.streaming_functions_table_starting_row));
+    table_state.select(Some(
+        app.table_scroll_data.streaming_functions_table_starting_row,
+    ));
 
     let table = Table::new(rows, widths)
         .widths(widths)
@@ -537,7 +580,7 @@ fn render_active_streaming_functions_messages_table(
         )
         .block(
             Block::bordered()
-                .title("STREAMING FUNCTIONS KAFKA MESSAGES")
+                .title(STREAMING_FUNCTIONS_KAFKA_TABLE_TITLE)
                 .bold()
                 .border_style(Style::new().light_blue())
                 .title_style(Style::new().white()),
@@ -555,7 +598,11 @@ fn render_passive_streaming_functions_messages_table(
 ) {
     let mut rows: Vec<Row> = vec![];
 
-    let mut sorted_messages: Vec<_> = app.streaming_functions_in.iter().collect();
+    let mut sorted_messages: Vec<_> = app
+        .streaming_functions_metrics
+        .streaming_functions_in
+        .iter()
+        .collect();
     sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
 
     for item in &sorted_messages {
@@ -565,24 +612,30 @@ fn render_passive_streaming_functions_messages_table(
                 format!("{}", item.1),
                 format!(
                     "{}",
-                    app.streaming_functions_in_per_sec
+                    app.streaming_functions_metrics
+                        .streaming_functions_in_per_sec
                         .get(item.0)
                         .unwrap_or(&0.0)
                 ),
                 format!(
                     "{}",
-                    app.streaming_functions_out.get(item.0).unwrap_or(&0.0)
+                    app.streaming_functions_metrics
+                        .streaming_functions_out
+                        .get(item.0)
+                        .unwrap_or(&0.0)
                 ),
                 format!(
                     "{}",
-                    app.streaming_functions_out_per_sec
+                    app.streaming_functions_metrics
+                        .streaming_functions_out_per_sec
                         .get(item.0)
                         .unwrap_or(&0.0)
                 ),
                 format!(
                     "{}",
                     format_bytes(
-                        *app.streaming_functions_bytes_per_sec
+                        *app.streaming_functions_metrics
+                            .streaming_functions_bytes_per_sec
                             .get(item.0)
                             .unwrap_or(&0) as f64
                     )
@@ -602,7 +655,7 @@ fn render_passive_streaming_functions_messages_table(
         Constraint::Percentage(12),
     ];
     let mut table_state = ratatui::widgets::TableState::default();
-    table_state.select(Some(app.kafka_starting_row));
+    table_state.select(Some(app.table_scroll_data.kafka_starting_row));
 
     let table = Table::new(rows, widths)
         .widths(widths)
@@ -617,7 +670,7 @@ fn render_passive_streaming_functions_messages_table(
         )
         .block(
             Block::bordered()
-                .title("STREAMING FUNCTIONS KAFKA MESSAGES")
+                .title(STREAMING_FUNCTIONS_KAFKA_TABLE_TITLE)
                 .bold()
                 .title_style(Style::new().white())
                 .border_style(Style::new().dark_gray()),
@@ -643,11 +696,13 @@ fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>
         .border_style(Style::new().dark_gray())
         .borders(Borders::ALL);
 
-    let average_latency_paragraph =
-        Paragraph::new(format!("{} ms", (app.average * 1000.0).round() / 1000.0))
-            .left_aligned()
-            .block(average_lat_block)
-            .style(Style::new().white());
+    let average_latency_paragraph = Paragraph::new(format!(
+        "{} ms",
+        (app.overview_data.average * 1000.0).round() / 1000.0
+    ))
+    .left_aligned()
+    .block(average_lat_block)
+    .style(Style::new().white());
 
     let total_req_block = Block::new()
         .title("TOTAL # OF REQUESTS")
@@ -658,7 +713,7 @@ fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>
         .title_style(Style::new().white())
         .border_style(Style::new().dark_gray());
 
-    let total_req_paragraph = Paragraph::new(app.total_requests.to_string())
+    let total_req_paragraph = Paragraph::new(app.overview_data.total_requests.to_string())
         .left_aligned()
         .block(total_req_block)
         .style(Style::new().white());
@@ -671,7 +726,7 @@ fn render_overview_metrics(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>
         .borders(Borders::ALL)
         .title_style(Style::new().white())
         .border_style(Style::new().dark_gray());
-    let req_per_sec_paragraph = Paragraph::new(app.requests_per_sec.to_string())
+    let req_per_sec_paragraph = Paragraph::new(app.overview_data.requests_per_sec.to_string())
         .left_aligned()
         .block(req_per_sec_block)
         .style(Style::new().white());
@@ -700,17 +755,19 @@ fn render_overview_bytes_data(app: &mut App, frame: &mut Frame, layout: &Rc<[Rec
         .title_style(Style::new().white())
         .border_style(Style::new().dark_gray());
 
-    let bytes_in_per_sec_paragraph =
-        Paragraph::new(format_bytes(app.main_bytes_data.bytes_in_per_sec as f64))
-            .left_aligned()
-            .block(bytes_in_per_sec_block)
-            .style(Style::new().white());
+    let bytes_in_per_sec_paragraph = Paragraph::new(format_bytes(
+        app.overview_data.main_bytes_data.bytes_in_per_sec as f64,
+    ))
+    .left_aligned()
+    .block(bytes_in_per_sec_block)
+    .style(Style::new().white());
 
-    let bytes_out_per_sec_paragraph =
-        Paragraph::new(format_bytes(app.main_bytes_data.bytes_out_per_sec as f64))
-            .left_aligned()
-            .block(bytes_out_per_sec_block)
-            .style(Style::new().white());
+    let bytes_out_per_sec_paragraph = Paragraph::new(format_bytes(
+        app.overview_data.main_bytes_data.bytes_out_per_sec as f64,
+    ))
+    .left_aligned()
+    .block(bytes_out_per_sec_block)
+    .style(Style::new().white());
 
     frame.render_widget(bytes_in_per_sec_paragraph, layout[0]);
     frame.render_widget(bytes_out_per_sec_paragraph, layout[1]);
@@ -764,8 +821,9 @@ fn render_path_overview_data(
 
     let average_latency_paragraph = Paragraph::new(format!(
         "{} ms",
-        (((app.summary[app.endpoint_starting_row].latency_sum
-            / app.summary[app.endpoint_starting_row].request_count)
+        (((app.overview_data.summary[app.table_scroll_data.endpoint_starting_row].latency_sum
+            / app.overview_data.summary[app.table_scroll_data.endpoint_starting_row]
+                .request_count)
             * 1000000.0)
             .round())
             / 1000.0
@@ -784,7 +842,7 @@ fn render_path_overview_data(
         .border_style(Style::new().dark_gray());
 
     let request_count_paragraph = Paragraph::new(
-        app.summary[app.endpoint_starting_row]
+        app.overview_data.summary[app.table_scroll_data.endpoint_starting_row]
             .request_count
             .to_string(),
     )
@@ -801,7 +859,8 @@ fn render_path_overview_data(
         .title_style(Style::new().white())
         .border_style(Style::new().dark_gray());
     let path_req_per_sec_paragraph = Paragraph::new(
-        app.path_requests_per_sec
+        app.paths_data
+            .path_requests_per_sec
             .get(state)
             .unwrap_or(&0.0)
             .to_string(),
@@ -822,6 +881,7 @@ fn render_path_overview_data(
 
         let bytes_in_per_sec_paragraph = Paragraph::new(format_bytes(
             (*app
+                .paths_data
                 .parsed_bytes_data
                 .path_bytes_in_per_sec_vec
                 .get(state)
@@ -843,7 +903,8 @@ fn render_path_overview_data(
             .border_style(Style::new().dark_gray());
 
         let bytes_in_per_sec_paragraph = Paragraph::new(format_bytes(
-            *app.parsed_bytes_data
+            *app.paths_data
+                .parsed_bytes_data
                 .path_bytes_out_per_sec_vec
                 .get(state)
                 .unwrap_or(&0) as f64,
@@ -881,7 +942,7 @@ fn render_path_page_details(frame: &mut Frame, layout: &Rc<[Rect]>, state: Strin
 
 fn render_bar_chart(app: &mut App, frame: &mut Frame, layout: &Rc<[Rect]>) {
     let mut chart_data_vec: Vec<Bar> = vec![];
-    let bucket_data = app.path_detailed_data.clone().unwrap();
+    let bucket_data = app.paths_data.path_detailed_data.clone().unwrap();
 
     for each in bucket_data {
         if each.count > 0.0 {
@@ -930,7 +991,7 @@ fn render_sparkline_chart(
     let mut middle_paragraph: Paragraph = Paragraph::new("0->");
     let mut bottom_paragraph: Paragraph = Paragraph::new("0->");
 
-    if !app.requests_per_sec_vec.contains_key(state) {
+    if !app.paths_data.requests_per_sec_vec.contains_key(state) {
         chart = Sparkline::default()
             .block(Block::new().borders(Borders::NONE).title(format!(
                 "REQUESTS PER SECOND OVER THE PAST {} SEC",
@@ -962,10 +1023,11 @@ fn render_sparkline_chart(
                     .title_style(Style::new().white())
                     .border_style(Style::new().dark_gray()),
             )
-            .data(match &app.requests_per_sec_vec.get(state) {
+            .data(match &app.paths_data.requests_per_sec_vec.get(state) {
                 Some(v) => {
                     v.get(
                         ((app // This unwrap is safe because we know the key exists
+                            .paths_data
                             .requests_per_sec_vec
                             .get(state)
                             .unwrap_or(&vec![0; 0])
@@ -982,10 +1044,11 @@ fn render_sparkline_chart(
         top_paragraph = Paragraph::new(
             Line::from(format!(
                 "{}->",
-                match &app.requests_per_sec_vec.get(state) {
+                match &app.paths_data.requests_per_sec_vec.get(state) {
                     Some(v) => v
                         .get(
-                            (app.requests_per_sec_vec
+                            (app.paths_data
+                                .requests_per_sec_vec
                                 .get(state)
                                 .unwrap_or(&vec![0; 0])
                                 .len() as f64
@@ -1011,10 +1074,11 @@ fn render_sparkline_chart(
         middle_paragraph = Paragraph::new(
             Line::from(format!(
                 "{}->",
-                match &app.requests_per_sec_vec.get(state) {
+                match &app.paths_data.requests_per_sec_vec.get(state) {
                     Some(v) =>
                         v.get(
-                            (app.requests_per_sec_vec
+                            (app.paths_data
+                                .requests_per_sec_vec
                                 .get(state)
                                 .unwrap_or(&vec![0; 0])
                                 .len() as f64

@@ -51,9 +51,13 @@ pub async fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<
         },
 
         KeyCode::Enter => {
-            if !app.summary.is_empty() && matches!(app.table_state, TableState::Endpoint) {
+            if !app.overview_data.summary.is_empty()
+                && matches!(app.table_state, TableState::Endpoint)
+            {
                 app.set_state(State::PathDetails(
-                    app.summary[app.endpoint_starting_row].path.to_string(),
+                    app.overview_data.summary[app.table_scroll_data.endpoint_starting_row]
+                        .path
+                        .to_string(),
                 ));
             }
         }

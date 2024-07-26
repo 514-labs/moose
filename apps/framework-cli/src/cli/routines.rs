@@ -124,6 +124,7 @@ use super::{Message, MessageType};
 pub mod aggregation;
 pub mod clean;
 pub mod consumption;
+pub mod datamodel;
 pub mod dev;
 pub mod docker_packager;
 pub mod initialize;

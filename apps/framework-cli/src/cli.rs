@@ -15,7 +15,8 @@ use std::sync::Arc;
 
 use clap::Parser;
 use commands::{
-    AggregationCommands, Commands, ConsumptionCommands, FunctionCommands, GenerateCommand,
+    AggregationCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
+    GenerateCommand,
 };
 use config::ConfigError;
 use display::with_spinner_async;
@@ -23,6 +24,7 @@ use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
+use routines::datamodel::read_json_file;
 use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
 use routines::plan;
@@ -524,6 +526,24 @@ async fn top_command_handler(
                         init.destination.clone(),
                     )
                     .await
+                }
+            }
+        }
+        Commands::DataModel(data_model_args) => {
+            let dm_cmd = data_model_args.command.as_ref().unwrap();
+            let project = load_project()?;
+            match dm_cmd {
+                DataModelCommands::Init(args) => {
+                    debug!("Running datamodel init command");
+                    let interface = read_json_file(args.name.clone(), args.sample.clone());
+                    let _ = std::fs::write(
+                        project.data_models_dir().join(format!("{}.ts", args.name)),
+                        interface.unwrap().as_bytes(),
+                    );
+                    Ok(RoutineSuccess::success(Message::new(
+                        "DataModel".to_string(),
+                        "Initialized".to_string(),
+                    )))
                 }
             }
         }

@@ -2,6 +2,7 @@ use convert_case::{Case, Casing};
 use serde::Serialize;
 use std::collections::HashSet;
 use std::fs;
+use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::{fmt, path::PathBuf};
 
@@ -112,12 +113,30 @@ impl InterfaceField {
 #[derive(Debug, Clone)]
 pub enum InterfaceFieldType {
     String,
+    Null,
     Number,
     Boolean,
     Date,
     Array(Box<InterfaceFieldType>),
     Object(Box<TypescriptInterface>),
     Enum(TSEnum),
+}
+
+// Implementing PartialEq for InterfaceFieldType
+impl PartialEq for InterfaceFieldType {
+    fn eq(&self, other: &Self) -> bool {
+        std::mem::discriminant(self) == std::mem::discriminant(other)
+    }
+}
+
+// Implementing Eq for InterfaceFieldType
+impl Eq for InterfaceFieldType {}
+
+// Implementing Hash for InterfaceFieldType
+impl Hash for InterfaceFieldType {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        std::mem::discriminant(self).hash(state);
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Eq, PartialEq, Hash)]
@@ -141,6 +160,7 @@ pub enum TSEnumValue {
 impl fmt::Display for InterfaceFieldType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
+            InterfaceFieldType::Null => write!(f, "null"),
             InterfaceFieldType::String => write!(f, "string"),
             InterfaceFieldType::Number => write!(f, "number"),
             InterfaceFieldType::Boolean => write!(f, "boolean"),

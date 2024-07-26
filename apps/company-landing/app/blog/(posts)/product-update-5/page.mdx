@@ -35,9 +35,9 @@ To use the Metrics Console you can run the command:
    Aka the number of data points in and database rows out.
    You can also see the number of messages in and out per second and the bytes per second coming out of your streaming functions.
 
-#### How Can You View Metrics In Production?
+#### How Can You View Raw Metrics?
 
-In production, you can see the metrics that your moose app is collecting by simply visiting `yourmooseurl/metrics`. This endpoint is also while running moose locally. These metrics are collected using Prometheus instrumentation and metrics format.
+In dev mode, you can see the metrics that your moose app is collecting by simply visiting `localhost:4000/metrics`. This endpoint is also while running moose locally. These metrics are collected using Prometheus instrumentation and metrics format.
 
 Here is an example of one of the metrics that is sent to this HTTP endpoint
 
@@ -52,15 +52,17 @@ streaming_functions_bytes{path="UserActivity_0_0 -> ParsedActivity_0_0"} 150
 # EOF
 ```
 
-All of the metrics outputted to this endpoint are in Prometheus format allowing you to connect them with your visualization tools.
+All of the metrics outputted to this endpoint are in Prometheus format.
 
-#### Technical Bits On The Metrics Console's Performance?
+If your moose app is in production on your own infrastructure, you can see the metrics by visiting the metrics HTTP endpoint at `yourmooseurl/metrics`.
+
+#### Technical Bits On The Metrics Console's Performance
 
 **The Metrics Console was developed with speed and efficiency in mind.**
 
 The Metrics Console is built as a completely separate process from the rest of the cli.
 Diving into some technical bits the Metrics Console works by sending an HTTP request to the metrics HTTP endpoint every second collecting the Prometheus metrics only when the console is running.
-The Metrics Console then parses the Prometheus metrics and stores the numbers. We display the parsed metrics right in your terminal with a comprehensive and intuitive interface.
+The Metrics Console then parses the Prometheus metrics and stores the numbers. We display the parsed metrics right in your terminal interface.
 This means when you are not running the console no computing resources are used by the console’s process.
 Even when you are running the Metrics Console there is no noticeable difference in performance.
 
@@ -74,5 +76,5 @@ export const metadata = {
   categories: ["Announcements, Product"],
   author: "Aditya",
   description:
-    "Introducing the Metrics Console, a new feature in Moose that allows you to view your apps metrics in a comprehensive and intuitive way.",
+    "Introducing the Metrics Console, a new feature in Moose that allows you to view your apps metrics right in your terminal.",
 };

@@ -1,14 +1,13 @@
 use super::display::Message;
 use super::display::MessageType;
 
-use crate::cli::routines::stop::StopLocalInfrastructure;
-use crate::cli::routines::Routine;
-use crate::cli::routines::RunMode;
+use crate::cli::display::with_spinner;
 use crate::framework::controller::RouteMeta;
 
 use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure_map::ApiChange;
 use crate::framework::core::infrastructure_map::Change;
+use crate::utilities::docker;
 
 use super::super::metrics::{Metrics, MetricsMessage};
 use crate::framework::data_model::config::EndpointIngestionFormat;
@@ -573,8 +572,9 @@ async fn router(
     let route_table = request.route_table;
 
     debug!(
-        "HTTP Request Received: {:?}, with Route Table {:?}",
-        req, route_table
+        "-> HTTP Request: {:?} - {:?}",
+        req.method(),
+        req.uri().path(),
     );
 
     let route_prefix = PathBuf::from("/");
@@ -583,11 +583,6 @@ async fn router(
         .unwrap()
         .to_path_buf()
         .clone();
-
-    debug!(
-        "Processing route: {:?}, with Route Table {:?}",
-        route, route_table
-    );
 
     let metrics_method = req.method().to_string();
 
@@ -792,13 +787,19 @@ impl Webserver {
         loop {
             tokio::select! {
                 _ = sigint.recv() => {
-                    let run_mode = RunMode::Explicit;
-                    StopLocalInfrastructure::new(project.clone()).run(run_mode).unwrap().show();
+                    if !project.is_production {
+                        with_spinner("Stopping containers", || {
+                             let _ = docker::stop_containers(&project);
+                        }, true);
+                    }
                     std::process::exit(0);
                 }
                 _ = sigterm.recv() => {
-                    let run_mode = RunMode::Explicit;
-                    StopLocalInfrastructure::new(project.clone()).run(run_mode).unwrap().show();
+                    if !project.is_production {
+                        with_spinner("Stopping containers", || {
+                            let _ = docker::stop_containers(&project);
+                       }, true);
+                    }
                     std::process::exit(0);
                 }
                 listener_result = listener.accept() => {

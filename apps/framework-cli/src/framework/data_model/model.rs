@@ -51,7 +51,7 @@ impl DataModel {
     }
 
     pub fn id(&self) -> String {
-        DataModel::model_id(&self.name, &self.version)
+        DataModel::model_id(&self.name, &self.version.replace('.', "_"))
     }
 
     pub fn model_id(name: &str, version: &str) -> String {

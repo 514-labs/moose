@@ -301,7 +301,7 @@ impl EventBuckets {
 async fn watch(
     project: Arc<Project>,
     features: Features,
-    framework_object_versions: &mut FrameworkObjectVersions,
+    framework_object_versions: &mut Option<FrameworkObjectVersions>,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     route_update_channel: tokio::sync::mpsc::Sender<ApiChange>,
     consumption_apis: &RwLock<HashSet<String>>,
@@ -387,94 +387,97 @@ async fn watch(
                             format!("Processing error occurred: {}", e),
                         )
                     })?;
-                }
+                } else {
+                    let framework_object_versions = framework_object_versions.as_mut().unwrap();
 
-                if !bucketed_events.data_models.is_empty() && !features.core_v2 {
-                    with_spinner_async(
-                        &format!(
-                            "Processing {} Data Model(s) changes from file watcher",
-                            bucketed_events.data_models.len()
-                        ),
-                        process_data_models_changes(
-                            project.clone(),
-                            bucketed_events.data_models,
-                            framework_object_versions,
-                            route_table,
-                            &configured_client,
-                            syncing_process_registry,
-                            metrics.clone(),
-                        ),
-                        !project.is_production,
-                    )
-                    .await
-                    .map_err(|e| {
-                        Error::new(
-                            ErrorKind::Other,
-                            format!("Processing error occurred: {}", e),
+                    if !bucketed_events.data_models.is_empty() {
+                        with_spinner_async(
+                            &format!(
+                                "Processing {} Data Model(s) changes from file watcher",
+                                bucketed_events.data_models.len()
+                            ),
+                            process_data_models_changes(
+                                project.clone(),
+                                bucketed_events.data_models,
+                                framework_object_versions,
+                                route_table,
+                                &configured_client,
+                                syncing_process_registry,
+                                metrics.clone(),
+                            ),
+                            !project.is_production,
                         )
-                    })?;
-                }
-                if !bucketed_events.functions.is_empty() && !features.core_v2 {
-                    let topics = fetch_topics(&project.redpanda_config).await?;
+                        .await
+                        .map_err(|e| {
+                            Error::new(
+                                ErrorKind::Other,
+                                format!("Processing error occurred: {}", e),
+                            )
+                        })?;
+                    }
 
-                    with_spinner_async(
-                        &format!(
-                            "Processing {} Streaming Function(s) changes from file watcher",
-                            bucketed_events.functions.len()
-                        ),
-                        process_streaming_func_changes(
-                            &project,
-                            &framework_object_versions.get_data_model_set(),
-                            &mut project_registries.functions,
-                            &topics,
-                        ),
-                        !project.is_production,
-                    )
-                    .await?;
-                }
-                if !bucketed_events.aggregations.is_empty() && !features.core_v2 {
-                    with_spinner_async(
-                        &format!(
-                            "Processing {} Aggregation(s) changes from file watcher",
-                            bucketed_events.aggregations.len()
-                        ),
-                        process_aggregations_changes(&mut project_registries.aggregations),
-                        !project.is_production,
-                    )
-                    .await?;
-                }
-                if !bucketed_events.consumption.is_empty() && !features.core_v2 {
-                    with_spinner_async(
-                        &format!(
-                            "Processing {} Consumption(s) changes from file watcher",
-                            bucketed_events.consumption.len()
-                        ),
-                        process_consumption_changes(
-                            &project,
-                            &mut project_registries.consumption,
-                            consumption_apis.write().await.deref_mut(),
-                        ),
-                        !project.is_production,
-                    )
-                    .await?;
-                }
+                    if !bucketed_events.functions.is_empty() {
+                        let topics = fetch_topics(&project.redpanda_config).await?;
 
-                if !features.core_v2 {
+                        with_spinner_async(
+                            &format!(
+                                "Processing {} Streaming Function(s) changes from file watcher",
+                                bucketed_events.functions.len()
+                            ),
+                            process_streaming_func_changes(
+                                &project,
+                                &framework_object_versions.get_data_model_set(),
+                                &mut project_registries.functions,
+                                &topics,
+                            ),
+                            !project.is_production,
+                        )
+                        .await?;
+                    }
+
+                    if !bucketed_events.aggregations.is_empty() {
+                        with_spinner_async(
+                            &format!(
+                                "Processing {} Aggregation(s) changes from file watcher",
+                                bucketed_events.aggregations.len()
+                            ),
+                            process_aggregations_changes(&mut project_registries.aggregations),
+                            !project.is_production,
+                        )
+                        .await?;
+                    }
+
+                    if !bucketed_events.consumption.is_empty() {
+                        with_spinner_async(
+                            &format!(
+                                "Processing {} Consumption(s) changes from file watcher",
+                                bucketed_events.consumption.len()
+                            ),
+                            process_consumption_changes(
+                                &project,
+                                &mut project_registries.consumption,
+                                consumption_apis.write().await.deref_mut(),
+                            ),
+                            !project.is_production,
+                        )
+                        .await?;
+                    }
+
                     let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
                     let aggregations = project.get_aggregations();
                     store_current_state(
                         &mut client,
-                        framework_object_versions,
+                        &framework_object_versions,
                         &aggregations,
                         &project.clickhouse_config,
                     )
-                    .await?
-                }
+                    .await?;
 
-                let _ = verify_streaming_functions_against_datamodels(
-                    &project,
-                    framework_object_versions,
-                );
+                    let _ = verify_streaming_functions_against_datamodels(
+                        &project,
+                        &framework_object_versions,
+                    );
+                }
             }
             Err(error) => {
                 log::error!("Watcher Error: {:?}", error);
@@ -559,7 +562,7 @@ impl FileWatcher {
         &self,
         project: Arc<Project>,
         features: &Features,
-        framework_object_versions: FrameworkObjectVersions,
+        framework_object_versions: Option<FrameworkObjectVersions>,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
         route_update_channel: tokio::sync::mpsc::Sender<ApiChange>,
         consumption_apis: &'static RwLock<HashSet<String>>,

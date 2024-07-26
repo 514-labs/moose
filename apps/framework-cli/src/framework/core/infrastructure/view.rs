@@ -34,7 +34,7 @@ impl View {
             name: data_model.name.clone(),
             version: data_model.version.clone(),
             view_type: ViewType::TableAlias {
-                source_table_name: source_data_model.name.clone(),
+                source_table_name: source_data_model.id(),
             },
         }
     }

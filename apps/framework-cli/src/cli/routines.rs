@@ -130,7 +130,6 @@ pub mod ls;
 pub mod metrics_console;
 pub mod migrate;
 pub mod ps;
-pub mod stop;
 pub mod streaming;
 pub mod templates;
 mod util;
@@ -279,21 +278,17 @@ pub async fn start_development_mode(
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(server_config.host.clone(), server_config.port);
-    let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
-
-    info!("<DCM> Initializing project state");
-    let (framework_object_versions, version_syncs) =
-        initialize_project_state(features, project.clone(), &mut route_table).await?;
-
-    let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
-        Box::leak(Box::new(RwLock::new(route_table)));
 
     let consumption_apis: &'static RwLock<HashSet<String>> =
         Box::leak(Box::new(RwLock::new(HashSet::new())));
 
-    let route_update_channel = web_server.spawn_api_update_listener(route_table).await;
+    if features.core_v2 {
+        let route_table = HashMap::<PathBuf, RouteMeta>::new();
+        let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
+            Box::leak(Box::new(RwLock::new(route_table)));
 
-    let (syncing_processes_registry, process_registry) = if features.core_v2 {
+        let route_update_channel = web_server.spawn_api_update_listener(route_table).await;
+
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
 
         let plan_result = plan_changes(&mut client, &project).await?;
@@ -316,8 +311,35 @@ pub async fn start_development_mode(
         )
         .await?;
 
-        (syncing_registry, process_registry)
+        let file_watcher = FileWatcher::new();
+        file_watcher.start(
+            project.clone(),
+            features,
+            None,
+            route_table,          // Deprecated way of updating the routes,
+            route_update_channel, // The new way of updating the routes
+            consumption_apis,
+            syncing_registry,
+            process_registry,
+            metrics.clone(),
+        )?;
+
+        info!("Starting web server...");
+        web_server
+            .start(route_table, consumption_apis, project, metrics)
+            .await;
     } else {
+        let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
+        info!("<DCM> Initializing project state");
+
+        let (framework_object_versions, version_syncs) =
+            initialize_project_state(project.clone(), &mut route_table).await?;
+
+        let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
+            Box::leak(Box::new(RwLock::new(route_table)));
+
+        let route_update_channel = web_server.spawn_api_update_listener(route_table).await;
+
         let mut syncing_processes_registry = SyncingProcessesRegistry::new(
             project.redpanda_config.clone(),
             project.clickhouse_config.clone(),
@@ -370,6 +392,18 @@ pub async fn start_development_mode(
         )
         .await?;
 
+        {
+            let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+            let aggregations = project.get_aggregations();
+            store_current_state(
+                &mut client,
+                &framework_object_versions,
+                &aggregations,
+                &project.clickhouse_config,
+            )
+            .await?
+        }
+
         let project_registries = ProcessRegistries {
             functions: function_process_registry,
             aggregations: aggregations_process_registry,
@@ -377,38 +411,24 @@ pub async fn start_development_mode(
             consumption: consumption_process_registry,
         };
 
-        (syncing_processes_registry, project_registries)
+        let file_watcher = FileWatcher::new();
+        file_watcher.start(
+            project.clone(),
+            features,
+            Some(framework_object_versions),
+            route_table,          // Deprecated way of updating the routes,
+            route_update_channel, // The new way of updating the routes
+            consumption_apis,
+            syncing_processes_registry,
+            project_registries,
+            metrics.clone(),
+        )?;
+
+        info!("Starting web server...");
+        web_server
+            .start(route_table, consumption_apis, project, metrics)
+            .await;
     };
-
-    {
-        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
-        let aggregations = project.get_aggregations();
-        store_current_state(
-            &mut client,
-            &framework_object_versions,
-            &aggregations,
-            &project.clickhouse_config,
-        )
-        .await?
-    }
-
-    let file_watcher = FileWatcher::new();
-    file_watcher.start(
-        project.clone(),
-        features,
-        framework_object_versions,
-        route_table,          // Deprecated way of updating the routes,
-        route_update_channel, // The new way of updating the routes
-        consumption_apis,
-        syncing_processes_registry,
-        process_registry,
-        metrics.clone(),
-    )?;
-
-    info!("Starting web server...");
-    web_server
-        .start(route_table, consumption_apis, project, metrics)
-        .await;
 
     Ok(())
 }
@@ -430,19 +450,16 @@ pub async fn start_production_mode(
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(server_config.host.clone(), server_config.port);
 
-    let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
-    info!("<DCM> Initializing project state");
-    let (framework_object_versions, version_syncs) =
-        initialize_project_state(&features, project.clone(), &mut route_table).await?;
-
-    debug!("Route table: {:?}", route_table);
-    let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
-        Box::leak(Box::new(RwLock::new(route_table)));
-
     let consumption_apis: &'static RwLock<HashSet<String>> =
         Box::leak(Box::new(RwLock::new(HashSet::new())));
 
     if features.core_v2 {
+        let route_table = HashMap::<PathBuf, RouteMeta>::new();
+
+        debug!("Route table: {:?}", route_table);
+        let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
+            Box::leak(Box::new(RwLock::new(route_table)));
+
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
 
         let plan_result = plan_changes(&mut client, &project).await?;
@@ -459,7 +476,21 @@ pub async fn start_production_mode(
             &plan_result.target_infra_map,
         )
         .await?;
+
+        web_server
+            .start(route_table, consumption_apis, project, metrics)
+            .await;
     } else {
+        info!("<DCM> Initializing project state");
+        let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
+
+        let (framework_object_versions, version_syncs) =
+            initialize_project_state(project.clone(), &mut route_table).await?;
+
+        debug!("Route table: {:?}", route_table);
+        let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
+            Box::leak(Box::new(RwLock::new(route_table)));
+
         let topics = fetch_topics(&project.redpanda_config).await?;
         let mut syncing_processes_registry = SyncingProcessesRegistry::new(
             project.redpanda_config.clone(),
@@ -506,12 +537,12 @@ pub async fn start_production_mode(
             consumption_apis.write().await.deref_mut(),
         )
         .await?;
-    }
 
-    info!("Starting web server...");
-    web_server
-        .start(route_table, consumption_apis, project, metrics)
-        .await;
+        info!("Starting web server...");
+        web_server
+            .start(route_table, consumption_apis, project, metrics)
+            .await;
+    }
 
     Ok(())
 }
@@ -536,8 +567,8 @@ pub async fn plan(project: &Project) -> anyhow::Result<()> {
     Ok(())
 }
 
+// This is deprectaed with CORE V2
 pub async fn initialize_project_state(
-    features: &Features,
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,
 ) -> anyhow::Result<(FrameworkObjectVersions, Vec<VersionSync>)> {
@@ -560,48 +591,41 @@ pub async fn initialize_project_state(
                     .get_mut(&version)
                     .unwrap();
 
-                // When using the core v2, this functionality is somewhere else
-                if !features.core_v2 {
-                    process_objects(
-                        &schema_version.models,
-                        &previous_version,
-                        project.clone(),
-                        &schema_version.base_path,
-                        &configured_client,
-                        route_table,
-                        &version,
-                    )
-                    .await?;
-                }
+                process_objects(
+                    &schema_version.models,
+                    &previous_version,
+                    project.clone(),
+                    &schema_version.base_path,
+                    &configured_client,
+                    route_table,
+                    &version,
+                )
+                .await?;
+
                 previous_version = Some((version, schema_version.models.clone()));
             }
 
-            // When using the core v2, this functionality is somewhere else
-            if !features.core_v2 {
-                let result = process_objects(
-                    &framework_object_versions.current_models.models,
-                    &previous_version,
-                    project.clone(),
-                    &framework_object_versions.current_models.base_path,
-                    &configured_client,
-                    route_table,
-                    &framework_object_versions.current_version,
-                )
-                .await;
+            let result = process_objects(
+                &framework_object_versions.current_models.models,
+                &previous_version,
+                project.clone(),
+                &framework_object_versions.current_models.base_path,
+                &configured_client,
+                route_table,
+                &framework_object_versions.current_version,
+            )
+            .await;
 
-                match result {
-                    Ok(_) => {
-                        info!("<DCM> Schema directory crawl completed successfully");
-                        Ok(())
-                    }
-                    Err(e) => {
-                        debug!("<DCM> Schema directory crawl failed");
-                        debug!("<DCM> Error: {:?}", e);
-                        Err(e)
-                    }
+            match result {
+                Ok(_) => {
+                    info!("<DCM> Schema directory crawl completed successfully");
+                    Ok(())
                 }
-            } else {
-                Ok(())
+                Err(e) => {
+                    debug!("<DCM> Schema directory crawl failed");
+                    debug!("<DCM> Error: {:?}", e);
+                    Err(e)
+                }
             }
         },
         !project.is_production,

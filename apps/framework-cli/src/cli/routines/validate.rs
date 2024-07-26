@@ -35,7 +35,7 @@ pub fn validate_redpanda_run() -> Result<RoutineSuccess, RoutineFailure> {
 }
 
 pub fn validate_redpanda_cluster(project_name: String) -> Result<RoutineSuccess, RoutineFailure> {
-    docker::run_rpk_cluster_info(&project_name).map_err(|err| {
+    docker::run_rpk_cluster_info(&project_name, 10).map_err(|err| {
         RoutineFailure::new(
             Message::new(
                 "Failed".to_string(),

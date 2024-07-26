@@ -91,7 +91,7 @@ pub async fn initial_data_load(
                         let payload = value.to_string();
                         send_with_back_pressure(&mut queue, &producer, topic, payload).await;
                     }
-                    Err(e) => println!("<DCM> Failure in row {:?}", e),
+                    Err(e) => log::error!("<DCM> Failure in row {:?}", e),
                 }
             }
             for future in queue {

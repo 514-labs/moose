@@ -252,7 +252,7 @@ pub fn create_compose_file(project: &Project) -> Result<(), DockerError> {
     Ok(std::fs::write(compose_file, COMPOSE_FILE)?)
 }
 
-pub fn run_rpk_cluster_info(project_name: &str) -> anyhow::Result<()> {
+pub fn run_rpk_cluster_info(project_name: &str, attempts: usize) -> anyhow::Result<()> {
     let child = Command::new("docker")
         .arg("exec")
         .arg(format!(
@@ -270,11 +270,16 @@ pub fn run_rpk_cluster_info(project_name: &str) -> anyhow::Result<()> {
     let output = child.wait_with_output()?;
 
     if !output.status.success() {
-        error!(
-            "Failed to stop containers: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        Err(anyhow::anyhow!("Failed to stop containers"))
+        if attempts > 0 {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            Ok(run_rpk_cluster_info(project_name, attempts - 1)?)
+        } else {
+            error!(
+                "Failed to run redpanda cluster info: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            Err(anyhow::anyhow!("Failed to run redpanda cluster info"))
+        }
     } else {
         Ok(())
     }

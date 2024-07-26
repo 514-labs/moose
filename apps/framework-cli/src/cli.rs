@@ -525,7 +525,7 @@ async fn top_command_handler(
 
             // TODO get rid of the routines and use functions instead
             let mut controller = RoutineController::new();
-            controller.add_routine(Box::new(CleanProject::new(project_arc, run_mode)));
+            controller.add_routine(Box::new(CleanProject::new(project_arc)));
             controller.run_routines(run_mode);
 
             wait_for_usage_capture(capture_handle).await;

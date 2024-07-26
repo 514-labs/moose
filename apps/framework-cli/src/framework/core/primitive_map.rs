@@ -74,8 +74,11 @@ impl PrimitiveMap {
         let mut primitive_map = PrimitiveMap::default();
 
         for version in project.versions() {
+            log::debug!("Loading Versioned primitive map for version: {}", version);
             PrimitiveMap::load_versioned(project, &version, &mut primitive_map).await?;
         }
+
+        log::debug!("Loaded Versioned primitive map: {:?}", primitive_map);
 
         // TODO add versioning for primitives other than data models.
         primitive_map.functions =
@@ -99,15 +102,13 @@ impl PrimitiveMap {
         primitive_map: &mut PrimitiveMap,
     ) -> Result<(), PrimitiveMapLoadingError> {
         let data_models_root = project.versioned_data_model_dir(version)?;
+        log::debug!("Loading data models from: {:?}", data_models_root);
 
         for res_entry in WalkDir::new(data_models_root) {
             let entry = res_entry?;
 
             if entry.file_type().is_file() {
-                for model in
-                    PrimitiveMap::load_data_model(project, project.cur_version(), entry.path())
-                        .await?
-                {
+                for model in PrimitiveMap::load_data_model(project, version, entry.path()).await? {
                     primitive_map.datamodels.add(model)
                 }
             }
@@ -126,6 +127,12 @@ impl PrimitiveMap {
         path: &Path,
     ) -> Result<Vec<DataModel>, DataModelError> {
         let file_objects = data_model::parser::parse_data_model_file(path, version, project)?;
+        log::debug!(
+            "Found the following data models: {:?} in path {:?}",
+            file_objects.models,
+            path
+        );
+
         let mut indexed_models: HashMap<String, DataModel> = HashMap::new();
 
         for model in file_objects.models {
@@ -163,6 +170,12 @@ impl PrimitiveMap {
                 }
             }
         }
+
+        log::debug!(
+            "Data Models matched with configuration: {:?} from file: {:?}",
+            indexed_models,
+            path
+        );
 
         Ok(indexed_models.values().cloned().collect())
     }

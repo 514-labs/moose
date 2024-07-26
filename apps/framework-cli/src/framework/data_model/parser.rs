@@ -39,16 +39,24 @@ pub fn parse_data_model_file(
     version: &str,
     project: &Project,
 ) -> Result<FileObjects, DataModelParsingError> {
-    if let Some(ext) = path.extension() {
-        match ext.to_str() {
-            Some("prisma") => Ok(prisma::parser::extract_data_model_from_file(path, version)?),
-            Some("ts") => Ok(typescript::parser::extract_data_model_from_file(
-                path, project, version,
-            )?),
-            Some("py") => Ok(python::parser::extract_data_model_from_file(path, version)?),
-            _ => Err(DataModelParsingError::UnsupportedFileType),
+    // TODO - Remove this if when we have deprecated v0.3 of the internal deployment
+    if !path
+        .file_name()
+        .is_some_and(|file_name| file_name.to_str().unwrap().contains("generated"))
+    {
+        if let Some(ext) = path.extension() {
+            match ext.to_str() {
+                Some("prisma") => Ok(prisma::parser::extract_data_model_from_file(path, version)?),
+                Some("ts") => Ok(typescript::parser::extract_data_model_from_file(
+                    path, project, version,
+                )?),
+                Some("py") => Ok(python::parser::extract_data_model_from_file(path, version)?),
+                _ => Err(DataModelParsingError::UnsupportedFileType),
+            }
+        } else {
+            Err(DataModelParsingError::UnsupportedFileType)
         }
     } else {
-        Err(DataModelParsingError::UnsupportedFileType)
+        Ok(FileObjects::new(vec![], vec![]))
     }
 }

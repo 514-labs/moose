@@ -44,7 +44,7 @@ pub fn create_view_query(
 
     let context = json!({
         "db_name": db_name,
-        "alias_name": view_name,
+        "view_name": view_name,
         "view_query": view_query,
     });
 
@@ -60,7 +60,7 @@ pub fn drop_view_query(db_name: &str, view_name: &str) -> Result<String, Clickho
 
     let context = json!({
         "db_name": db_name,
-        "alias_name": view_name,
+        "view_name": view_name,
     });
 
     Ok(reg.render_template(DROP_VIEW_TEMPLATE, &context)?)
@@ -79,7 +79,7 @@ pub fn update_view_query(
 
     let context = json!({
         "db_name": db_name,
-        "alias_name": view_name,
+        "view_name": view_name,
         "view_query": view_query,
     });
 

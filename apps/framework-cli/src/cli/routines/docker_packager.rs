@@ -1,8 +1,10 @@
 use super::{Routine, RoutineFailure, RoutineSuccess};
 use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
+use crate::framework::languages::SupportedLanguages;
 use crate::utilities::constants::{
     APP_DIR, CLI_INTERNAL_VERSIONS_DIR, OLD_PROJECT_CONFIG_FILE, PACKAGE_JSON, PROJECT_CONFIG_FILE,
+    SETUP_PY,
 };
 use crate::utilities::{constants, docker, system};
 use crate::{cli::display::Message, project::Project};
@@ -10,17 +12,14 @@ use log::{error, info};
 use std::fs;
 use std::sync::Arc;
 
-static DOCKER_FILE: &str = r#"
+// Adapted from https://github.com/nodejs/docker-node/blob/2928850549388a57a33365302fc5ebac91f78ffe/20/bookworm-slim/Dockerfile
+// and removed yarn
+static TS_BASE_DOCKER_FILE: &str = r#"
 # Created from docker_packager routine
-
-ARG DENO_VERSION=1.41.2
-FROM denoland/deno:bin-$DENO_VERSION AS deno
 
 FROM debian:bookworm-slim
 
 ARG DEBIAN_FRONTEND=noninteractive
-
-COPY --from=deno /deno /usr/local/bin/deno
 
 # Update the package lists for upgrades for security purposes
 RUN apt-get update && apt-get upgrade -y
@@ -79,7 +78,21 @@ RUN ARCH= OPENSSL_ARCH= && dpkgArch="$(dpkg --print-architecture)" \
 
 # This is to remove the notice to update NPM that will break the output from STDOUT
 RUN npm config set update-notifier false
+"#;
 
+static PY_BASE_DOCKER_FILE: &str = r#"
+# Created from docker_packager routine
+FROM python:3.12-bookworm
+ARG DEBIAN_FRONTEND=noninteractive
+
+# Update the package lists for upgrades for security purposes
+RUN apt-get update && apt-get upgrade -y
+
+# Install tail and locales package
+RUN apt-get install -y locales coreutils curl
+"#;
+
+static DOCKER_FILE_COMMON: &str = r#"
 # Generate locale files
 RUN locale-gen en_US.UTF-8
 
@@ -88,16 +101,14 @@ WORKDIR /application
 
 # Copy the application files to the container
 COPY ./app ./app
-COPY ./package.json ./package.json
+COPY_PACKAGE_FILE
 
 # https://stackoverflow.com/questions/70096208/dockerfile-copy-folder-if-it-exists-conditional-copy/70096420#70096420
 COPY ./project.tom[l] ./project.toml
 COPY ./moose.config.tom[l] ./moose.config.toml
 COPY ./versions .moose/versions
 
-# We should get compatible with other package managers 
-# and respect log files
-RUN npm install
+INSTALL_COMMAND
 
 # Expose the ports on which the application will listen
 EXPOSE 4000
@@ -176,7 +187,26 @@ impl Routine for CreateDockerfile {
             )
         })?;
 
-        fs::write(&file_path, DOCKER_FILE).map_err(|err| {
+        let docker_file = match self.project.language {
+            SupportedLanguages::Typescript => {
+                let install = DOCKER_FILE_COMMON
+                    .replace("COPY_PACKAGE_FILE", "COPY ./package.json ./package.json")
+                    // We should get compatible with other package managers
+                    // and respect log files
+                    .replace("INSTALL_COMMAND", "RUN npm install");
+
+                format!("{}{}", TS_BASE_DOCKER_FILE, install)
+            }
+            SupportedLanguages::Python => {
+                let install = DOCKER_FILE_COMMON
+                    .replace("COPY_PACKAGE_FILE", "COPY ./setup.py ./setup.py")
+                    .replace("INSTALL_COMMAND", "RUN pip install .");
+
+                format!("{}{}", PY_BASE_DOCKER_FILE, install)
+            }
+        };
+
+        fs::write(&file_path, docker_file).map_err(|err| {
             error!("Failed to write Docker file for project: {}", err);
             RoutineFailure::new(
                 Message::new(
@@ -269,6 +299,7 @@ impl Routine for BuildDockerfile {
         let items_to_copy = vec![
             APP_DIR,
             PACKAGE_JSON,
+            SETUP_PY,
             PROJECT_CONFIG_FILE,
             OLD_PROJECT_CONFIG_FILE,
         ];
@@ -300,10 +331,11 @@ impl Routine for BuildDockerfile {
         }
 
         // consts::CLI_VERSION is set from an environment variable during the CI/CD process
-        // however, its set to 0.0.1 in development so we set it to 0.3.93 for the purpose of local dev testing.
+        // however, it's set to 0.0.1 in development,
+        // so we set it to a recent version for the purpose of local dev testing.
         let mut cli_version = constants::CLI_VERSION;
         if cli_version == "0.0.1" {
-            cli_version = "0.3.343";
+            cli_version = "0.3.522";
         }
 
         let build_all = self.is_amd64 == self.is_arm64;

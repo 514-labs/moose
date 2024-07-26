@@ -203,7 +203,6 @@ pub struct DataModelArgs {
 
 #[derive(Debug, Subcommand)]
 pub enum DataModelCommands {
-    /// Structures the project's directory & files for a new streaming function
     #[command(arg_required_else_help = true)]
     Init(DataModelInitArgs),
 }

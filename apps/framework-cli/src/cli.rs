@@ -530,7 +530,6 @@ async fn top_command_handler(
             }
         }
         Commands::DataModel(data_model_args) => {
-            info!("Running function command");
             let dm_cmd = data_model_args.command.as_ref().unwrap();
             let project = load_project()?;
             match dm_cmd {

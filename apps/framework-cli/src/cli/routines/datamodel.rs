@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::io::BufReader;
 use std::{collections::HashSet, fs};
 
+use crate::cli::display::{Message, MessageType};
 use crate::framework::typescript::generator::InterfaceFieldType;
 
 #[derive(Debug, Clone, PartialEq)] // Add the PartialEq trait
@@ -34,10 +35,22 @@ fn parse_json_file(file_content: &str) -> Result<HashMap<String, CustomValue>, s
                 let parsed_map = parse_json(&obj);
                 i += 1;
                 if i % 100 == 0 {
-                    println!("Processed {} records", i);
+                    show_message!(
+                        MessageType::Info,
+                        Message {
+                            action: "Init Datamodel".to_string(),
+                            details: format!("Processed {:?} records", i),
+                        }
+                    );
                 }
                 if i == 1000 {
-                    println!("Processed {} records", i);
+                    show_message!(
+                        MessageType::Info,
+                        Message {
+                            action: "Init Datamodel".to_string(),
+                            details: format!("Processed {:?} records", i),
+                        }
+                    );
                     break;
                 }
                 schema = merge_maps(schema.clone(), parsed_map);
@@ -201,7 +214,7 @@ fn extract_types(value: &CustomValue) -> Vec<String> {
 }
 
 fn render_typescript_object(fields: &HashMap<String, CustomValue>) -> String {
-    let mut object = format!("{{\n");
+    let mut object = "{\n".to_string();
     for (field, value) in fields {
         let types = extract_types(value);
 
@@ -221,7 +234,7 @@ fn render_typescript_object(fields: &HashMap<String, CustomValue>) -> String {
         let optional_marker = if is_optional { "?" } else { "" };
         object.push_str(&format!("  {}{}: {};\n", field, optional_marker, types_str));
     }
-    object.push_str("}");
+    object.push('}');
     object
 }
 

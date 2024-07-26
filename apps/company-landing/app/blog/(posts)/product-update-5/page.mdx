@@ -10,11 +10,9 @@
 
 #### What is the Metrics Console? 📊
 
-The Metrics Console is a console in your terminal that allows you to view live metrics from your Moose application.
-
 Have you ever wondered why something is not working in your Moose application and did not know where to look or you want to know how your Moose app is performing? Or perhaps you are just curious about some metrics?
 
-The Metrics Console is the answer because it lets you pinpoint where your issue is within your Moose app and gives you a wide range of metrics which lets you analyze your Moose app’s performance or just view numbers out of curiosity.
+The Metrics Console is the answer because it lets you pinpoint where your issue is within your Moose app and gives you a wide range of metrics which lets you analyze your Moose app’s performance or just view numbers out of curiosity. The Metrics Console allows you to do all of this in your terminal.
 
 To use the Metrics Console you can run the command:
 `moose metrics`
@@ -23,21 +21,20 @@ To use the Metrics Console you can run the command:
 
 **In the Metrics Console, you can view three main categories of metrics.**
 
-1. **Endpoint Metrics:** These metrics track the performance of your ingest and consumption endpoints.
-   Some metrics you can see are the number of requests per second, bytes per second, the average latency, and many more.
-   One special feature that the endpoint metrics have is you can enter a detailed view which gives you a set of charts and detailed metrics to provide you with detailed insights for a specific endpoint.
-2. **Kafka to Clickhouse Sync Metrics:**
-   the Kafka to Clickhouse sync process which is the process that takes the ingested data and through Kafka puts it into Clickhouse.
-   You can view how many Kafka messages are being sent from each endpoint and how many are received from each data model.
-   There are also metrics tracking the lag, messages per second, and bytes per second.
-3. **Streaming Functions Metrics:**
-   These metrics give you valuable insights into how your streaming functions are performing with metrics that show the number of Kafka messages in and out of your streaming functions.
-   Aka the number of data points in and database rows out.
-   You can also see the number of messages in and out per second and the bytes per second coming out of your streaming functions.
+- **Endpoint Metrics:** These metrics track the performance of your ingest and consumption endpoints.
+  - **Overview Metrics:** These metrics include the number of requests per second, bytes per second in and out, the average latency, and the total number of requests.
+  - **Detailed Metrics:** By selecting an endpoint and pressing enter you can see a detailed view which gives you a set of charts and detailed metrics to provide you with detailed insights for a specific endpoint. These metrics include the number of requests per second, bytes per second in/out, the average latency, and the total number of requests all specific to that endpoint.
+- **Kafka to Clickhouse Sync Metrics:**
+  the Kafka to Clickhouse sync process which is the process that takes the ingested data and through Kafka puts it into Clickhouse.
+  You can view how many Kafka messages are being sent from each endpoint and how many are received from each Clickhouse table.
+  There are also metrics tracking the lag, messages per second, and bytes per second.
+- **Streaming Functions Metrics:**
+  These metrics help you monitor the number of Kafka messages transferred in and out of your Streaming Functions (aka the number of data samples in and database table rows returned).
+  You can also see the number of messages in and out per second and the bytes per second coming out of your streaming functions.
 
 #### How Can You View Raw Metrics?
 
-In dev mode, you can see the metrics that your moose app is collecting by simply visiting `localhost:4000/metrics`. This endpoint is also while running moose locally. These metrics are collected using Prometheus instrumentation and metrics format.
+In dev mode which you can start by running `moose dev`, you can see the metrics that your moose app is collecting by simply visiting `localhost:4000/metrics`. All of the metrics outputted to this endpoint are in Prometheus format.
 
 Here is an example of one of the metrics that is sent to this HTTP endpoint
 
@@ -52,8 +49,6 @@ streaming_functions_bytes{path="UserActivity_0_0 -> ParsedActivity_0_0"} 150
 # EOF
 ```
 
-All of the metrics outputted to this endpoint are in Prometheus format.
-
 If your moose app is in production on your own infrastructure, you can see the metrics by visiting the metrics HTTP endpoint at `yourmooseurl/metrics`.
 
 #### Technical Bits On The Metrics Console's Performance
@@ -61,7 +56,7 @@ If your moose app is in production on your own infrastructure, you can see the m
 **The Metrics Console was developed with speed and efficiency in mind.**
 
 The Metrics Console is built as a completely separate process from the rest of the cli.
-Diving into some technical bits the Metrics Console works by sending an HTTP request to the metrics HTTP endpoint every second collecting the Prometheus metrics only when the console is running.
+The Metrics Console works by sending an HTTP request to the `/metrics` HTTP endpoint every second, collecting the Prometheus metrics only when the console is running.
 The Metrics Console then parses the Prometheus metrics and stores the numbers. We display the parsed metrics right in your terminal interface.
 This means when you are not running the console no computing resources are used by the console’s process.
 Even when you are running the Metrics Console there is no noticeable difference in performance.

@@ -1,24 +1,62 @@
-use log::debug;
-use serde_json::{Map, Value};
+use serde_json::{Deserializer, Value};
 use std::collections::HashMap;
+use std::io::BufReader;
 use std::{collections::HashSet, fs};
 
-#[derive(Debug, Clone)]
+use crate::framework::typescript::generator::InterfaceFieldType;
+
+#[derive(Debug, Clone, PartialEq)] // Add the PartialEq trait
 enum CustomValue {
     TypeArray(Vec<CustomValue>),
     JsonArray(Vec<CustomValue>),
     JsonObject(HashMap<String, CustomValue>),
-    JsonPrimitive(Value),
+    JsonPrimitive(InterfaceFieldType),
 }
 
 // function which reads a json file
 pub fn read_json_file(name: String, file_path: String) -> Result<String, std::io::Error> {
     let file = fs::read_to_string(file_path)?;
-    println!("done parsing");
     let map = parse_json_file(&file).unwrap();
     let ts_inter: String = render_typescript_interface(&name, &map);
-    debug!("{:?}", ts_inter);
     Ok(ts_inter.to_string())
+}
+
+fn parse_json_file(file_content: &str) -> Result<HashMap<String, CustomValue>, serde_json::Error> {
+    let reader = BufReader::new(file_content.as_bytes());
+    let stream = Deserializer::from_reader(reader).into_iter::<Value>();
+
+    let mut schema = HashMap::new();
+
+    let mut i = 0;
+    for obj in stream {
+        if let Value::Array(array) = obj.unwrap() {
+            for obj in array {
+                let parsed_map = parse_json(&obj);
+                i += 1;
+                if i % 100 == 0 {
+                    println!("Processed {} records", i);
+                }
+                if i == 1000 {
+                    println!("Processed {} records", i);
+                    break;
+                }
+                schema = merge_maps(schema.clone(), parsed_map);
+            }
+        }
+    }
+
+    Ok(schema)
+}
+
+fn parse_json_value(json_data: &Value) -> CustomValue {
+    match json_data {
+        Value::Null => CustomValue::JsonPrimitive(InterfaceFieldType::Null),
+        Value::String(_) => CustomValue::JsonPrimitive(InterfaceFieldType::String),
+        Value::Number(_) => CustomValue::JsonPrimitive(InterfaceFieldType::Number),
+        Value::Bool(_) => CustomValue::JsonPrimitive(InterfaceFieldType::Boolean),
+        Value::Object(_) => CustomValue::JsonObject(parse_json(json_data)),
+        Value::Array(_) => CustomValue::JsonArray(parse_array(json_data)),
+    }
 }
 
 fn parse_json(json_data: &Value) -> HashMap<String, CustomValue> {
@@ -32,51 +70,21 @@ fn parse_json(json_data: &Value) -> HashMap<String, CustomValue> {
     }
 }
 
+// grab only the unique types from the JSON array
 fn parse_array(array: &Value) -> Vec<CustomValue> {
     match array {
-        Value::Array(items) => items.iter().map(parse_json_value).collect(),
+        Value::Array(items) => {
+            let mut unique_values = Vec::new();
+            for item in items.iter().map(parse_json_value) {
+                if !unique_values.contains(&item) {
+                    unique_values.push(item);
+                }
+            }
+            unique_values
+        }
         _ => vec![],
     }
 }
-
-fn parse_json_value(json_data: &Value) -> CustomValue {
-    match json_data {
-        Value::Null => CustomValue::JsonPrimitive(Value::Null),
-        Value::String(_) => CustomValue::JsonPrimitive(Value::String("string".to_string())),
-        Value::Number(num) => CustomValue::JsonPrimitive(Value::Number(num.clone())),
-        Value::Bool(bool) => CustomValue::JsonPrimitive(Value::Bool(bool.clone())),
-        Value::Object(_) => CustomValue::JsonObject(parse_json(json_data)),
-        Value::Array(_) => CustomValue::JsonArray(parse_array(json_data)),
-    }
-}
-
-fn parse_json_file(file_content: &str) -> Result<HashMap<String, CustomValue>, serde_json::Error> {
-    let json_array: Value = serde_json::from_str(file_content).unwrap();
-    let mut schema = HashMap::new();
-
-    let mut i = 0;
-    if let Value::Array(array) = json_array {
-        for obj in array {
-            let parsed_map = parse_json(&obj);
-            i += 1;
-            if (i % 50 == 0) {
-                println!("Processed {} records", i);
-            }
-            if (i == 3) {
-                println!("Processed {} records", i);
-                break;
-            }
-            schema = merge_maps(schema.clone(), parsed_map);
-        }
-    }
-
-    println!("{:?}", schema);
-
-    Ok(schema)
-}
-
-// function which merges two maps, if the key is already present in the first map, it merges the values
-// by appending it to an array
 
 fn merge_maps(
     mut map1: HashMap<String, CustomValue>,
@@ -84,28 +92,27 @@ fn merge_maps(
 ) -> HashMap<String, CustomValue> {
     for (key, value) in map2 {
         if let Some(existing_value) = map1.get_mut(&key) {
-            match (existing_value, value) {
-                (CustomValue::TypeArray(ref mut existing), CustomValue::TypeArray(mut new)) => {
-                    existing.append(&mut new);
-                }
-                (CustomValue::JsonArray(ref mut existing), CustomValue::JsonArray(mut new)) => {
-                    for item in new.drain(..) {
-                        if !existing.contains(&item) {
-                            existing.push(item);
-                        }
+            match existing_value {
+                CustomValue::TypeArray(arr) => {
+                    if !arr.contains(&value) {
+                        arr.push(value);
                     }
                 }
-                (CustomValue::JsonObject(ref mut existing), CustomValue::JsonObject(new)) => {
-                    let merged_obj = merge_maps(existing.clone(), new);
-                    *existing = merged_obj;
-                }
-                (existing, new) => {
-                    let mut arr = vec![existing.clone(), new];
-                    *existing = CustomValue::TypeArray(arr);
+                _ => {
+                    if !matches!(*existing_value, CustomValue::TypeArray(ref _arr)) {
+                        let arr = match existing_value {
+                            CustomValue::TypeArray(ref mut arr) => {
+                                arr.push(value);
+                                arr.clone()
+                            }
+                            _ => vec![existing_value.clone(), value],
+                        };
+                        *existing_value = CustomValue::TypeArray(arr);
+                    }
                 }
             }
         } else {
-            map1.insert(key, value);
+            map1.insert(key, CustomValue::TypeArray(vec![value]));
         }
     }
     map1
@@ -117,31 +124,35 @@ fn extract_types(value: &CustomValue) -> Vec<String> {
             let mut types = HashSet::new();
             for item in arr {
                 match item {
-                    CustomValue::JsonPrimitive(Value::String(_)) => {
+                    CustomValue::JsonPrimitive(InterfaceFieldType::String) => {
                         types.insert("string".to_string());
                     }
-                    CustomValue::JsonPrimitive(Value::Number(_)) => {
+                    CustomValue::JsonPrimitive(InterfaceFieldType::Number) => {
                         types.insert("number".to_string());
                     }
-                    CustomValue::JsonPrimitive(Value::Null) => {
+                    CustomValue::JsonPrimitive(InterfaceFieldType::Null) => {
                         types.insert("null".to_string());
                     }
-                    CustomValue::JsonPrimitive(Value::Bool(_)) => {
+                    CustomValue::JsonPrimitive(InterfaceFieldType::Boolean) => {
                         types.insert("boolean".to_string());
                     }
-                    CustomValue::JsonPrimitive(Value::Array(_)) => {
+                    CustomValue::JsonPrimitive(InterfaceFieldType::Array(_)) => {
                         types.insert("Array".to_string());
                     }
-                    CustomValue::JsonPrimitive(Value::Object(_)) => {
+                    CustomValue::JsonPrimitive(InterfaceFieldType::Object(_)) => {
                         types.insert("Object".to_string());
                     }
                     CustomValue::JsonObject(obj) => {
                         types.insert(render_typescript_object(obj));
                     }
                     CustomValue::JsonArray(arr) => {
-                        types.insert(
-                            extract_types(&CustomValue::JsonArray(arr.clone())).join(" | "),
-                        );
+                        let extracted_types = extract_types(&CustomValue::JsonArray(arr.clone()));
+                        let formatted_types = if extracted_types.len() > 1 {
+                            format!("({})[]", extracted_types.join(" | "))
+                        } else {
+                            format!("{}[]", extracted_types.join(""))
+                        };
+                        types.insert(formatted_types);
                     }
                     _ => {
                         types.insert("any".to_string());
@@ -154,23 +165,17 @@ fn extract_types(value: &CustomValue) -> Vec<String> {
             let mut types = HashSet::new();
             for item in arr {
                 match item {
-                    CustomValue::JsonPrimitive(Value::String(_)) => {
-                        types.insert("string[]".to_string());
+                    CustomValue::JsonPrimitive(InterfaceFieldType::String) => {
+                        types.insert("string".to_string());
                     }
-                    CustomValue::JsonPrimitive(Value::Number(_)) => {
-                        types.insert("number[]".to_string());
+                    CustomValue::JsonPrimitive(InterfaceFieldType::Number) => {
+                        types.insert("number".to_string());
                     }
-                    CustomValue::JsonPrimitive(Value::Null) => {
+                    CustomValue::JsonPrimitive(InterfaceFieldType::Null) => {
                         types.insert("null".to_string());
                     }
-                    CustomValue::JsonPrimitive(Value::Bool(_)) => {
-                        types.insert("boolean[]".to_string());
-                    }
-                    CustomValue::JsonPrimitive(Value::Array(_)) => {
-                        types.insert("Array".to_string());
-                    }
-                    CustomValue::JsonPrimitive(Value::Object(_)) => {
-                        types.insert("Object".to_string());
+                    CustomValue::JsonPrimitive(InterfaceFieldType::Boolean) => {
+                        types.insert("boolean".to_string());
                     }
                     CustomValue::JsonObject(obj) => {
                         types.insert(render_typescript_object(obj));
@@ -185,12 +190,13 @@ fn extract_types(value: &CustomValue) -> Vec<String> {
         CustomValue::JsonObject(map) => {
             vec![render_typescript_object(map)]
         }
-        CustomValue::JsonPrimitive(Value::Array(_)) => vec!["Array".to_string()],
-        CustomValue::JsonPrimitive(Value::Object(_)) => vec!["Object".to_string()],
-        CustomValue::JsonPrimitive(Value::String(_)) => vec!["string".to_string()],
-        CustomValue::JsonPrimitive(Value::Null) => vec!["null".to_string()],
-        CustomValue::JsonPrimitive(Value::Bool(_)) => vec!["boolean".to_string()],
-        CustomValue::JsonPrimitive(Value::Number(_)) => vec!["number".to_string()],
+        CustomValue::JsonPrimitive(InterfaceFieldType::Array(_)) => vec!["Array".to_string()],
+        CustomValue::JsonPrimitive(InterfaceFieldType::Object(_)) => vec!["Object".to_string()],
+        CustomValue::JsonPrimitive(InterfaceFieldType::String) => vec!["string".to_string()],
+        CustomValue::JsonPrimitive(InterfaceFieldType::Null) => vec!["null".to_string()],
+        CustomValue::JsonPrimitive(InterfaceFieldType::Boolean) => vec!["boolean".to_string()],
+        CustomValue::JsonPrimitive(InterfaceFieldType::Number) => vec!["number".to_string()],
+        _ => vec!["unsupported".to_string()],
     }
 }
 
@@ -198,14 +204,24 @@ fn render_typescript_object(fields: &HashMap<String, CustomValue>) -> String {
     let mut object = format!("{{\n");
     for (field, value) in fields {
         let types = extract_types(value);
+
         let is_optional = types.contains(&"null".to_string());
-        let types_str: Vec<String> = types.into_iter().filter(|t| t != "null").collect();
+        // if there is only null, then don't filter it out
+        let types_str = if types.iter().any(|t| t != "null") {
+            types
+                .into_iter()
+                .filter(|t| t != "null")
+                .collect::<Vec<String>>()
+        } else {
+            types
+        };
+
         let types_str = types_str.join(" | ");
 
         let optional_marker = if is_optional { "?" } else { "" };
         object.push_str(&format!("  {}{}: {};\n", field, optional_marker, types_str));
     }
-    object.push_str("}\n");
+    object.push_str("}");
     object
 }
 

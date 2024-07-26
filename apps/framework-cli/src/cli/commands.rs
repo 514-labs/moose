@@ -210,8 +210,6 @@ pub enum DataModelCommands {
 
 #[derive(Debug, Args)]
 pub struct DataModelInitArgs {
-    /// Name of your  data model
-    #[arg(short, long, required = true)]
     pub name: String,
 
     /// Name of your sample file

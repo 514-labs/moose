@@ -38,7 +38,7 @@ pub enum TableState {
     StreamingFunction,
 }
 
-pub struct AppKafkaMetrics {
+pub struct AppKafkaClickHouseSyncMetrics {
     pub kafka_messages_in_total: HashMap<String, (String, f64)>,
     pub kafka_messages_out_total: Vec<(String, String, f64)>,
     pub kafka_messages_out_per_sec: HashMap<String, (String, f64)>,
@@ -83,7 +83,7 @@ pub struct App {
     pub running: bool,
     pub table_scroll_data: AppTableScrollData,
     pub paths_data: AppPathsData,
-    pub kafka_metrics: AppKafkaMetrics,
+    pub kafka_clikhouse_sync_metrics: AppKafkaClickHouseSyncMetrics,
     pub streaming_functions_metrics: AppStreamingFunctionsMetrics,
     pub overview_data: AppOverviewMetrics,
 }
@@ -110,7 +110,7 @@ impl Default for App {
                     path_bytes_out_per_sec_vec: HashMap::new(),
                 },
             },
-            kafka_metrics: AppKafkaMetrics {
+            kafka_clikhouse_sync_metrics: AppKafkaClickHouseSyncMetrics {
                 kafka_messages_in_total: HashMap::new(),
                 kafka_messages_out_total: vec![],
                 kafka_messages_out_per_sec: HashMap::new(),
@@ -169,9 +169,11 @@ impl App {
 
         self.overview_data.main_bytes_data.total_bytes_in = parsed_data.total_bytes_in;
         self.overview_data.main_bytes_data.total_bytes_out = parsed_data.total_bytes_out;
-        self.kafka_metrics.kafka_messages_in_total = parsed_data.kafka_messages_in_total;
-        self.kafka_metrics.kafka_messages_out_total = parsed_data.kafka_messages_out_total;
-        self.kafka_metrics.kafka_bytes_out_total = parsed_data.kafka_bytes_out_total;
+        self.kafka_clikhouse_sync_metrics.kafka_messages_in_total =
+            parsed_data.kafka_messages_in_total;
+        self.kafka_clikhouse_sync_metrics.kafka_messages_out_total =
+            parsed_data.kafka_messages_out_total;
+        self.kafka_clikhouse_sync_metrics.kafka_bytes_out_total = parsed_data.kafka_bytes_out_total;
         self.streaming_functions_metrics.streaming_functions_in =
             parsed_data.streaming_functions_in;
         self.streaming_functions_metrics.streaming_functions_out =
@@ -193,7 +195,10 @@ impl App {
 
     pub fn kafka_down(&mut self) {
         if (self.table_scroll_data.kafka_starting_row + 1)
-            < self.kafka_metrics.kafka_messages_out_total.len()
+            < self
+                .kafka_clikhouse_sync_metrics
+                .kafka_messages_out_total
+                .len()
         {
             self.table_scroll_data.kafka_starting_row += 1;
         }
@@ -361,9 +366,9 @@ impl App {
             }
 
             for item in kafka_messages_in_total {
-                for prev_item in &self.kafka_metrics.kafka_messages_out_total {
+                for prev_item in &self.kafka_clikhouse_sync_metrics.kafka_messages_out_total {
                     if item.0 == prev_item.0 && item.1 == prev_item.1 {
-                        self.kafka_metrics
+                        self.kafka_clikhouse_sync_metrics
                             .kafka_messages_out_per_sec
                             .insert(item.0.clone(), (item.1.clone(), item.2 - prev_item.2));
                     }
@@ -389,9 +394,9 @@ impl App {
             }
 
             for item in &new_kafka_bytes_out {
-                for prev_item in &self.kafka_metrics.kafka_bytes_out_total {
+                for prev_item in &self.kafka_clikhouse_sync_metrics.kafka_bytes_out_total {
                     if *item.0 == *prev_item.0 {
-                        self.kafka_metrics
+                        self.kafka_clikhouse_sync_metrics
                             .kafka_bytes_out_per_sec
                             .insert(item.0.clone(), item.1 .1 - prev_item.1 .1);
                     }

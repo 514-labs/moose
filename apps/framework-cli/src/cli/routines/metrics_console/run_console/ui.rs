@@ -162,7 +162,7 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
                     ),
                     format!(
                         "{}",
-                        app.kafka_metrics
+                        app.kafka_clikhouse_sync_metrics
                             .kafka_messages_in_total
                             .get(&x.path)
                             .unwrap_or(&("".to_string(), 0.0))
@@ -185,7 +185,7 @@ fn render_active_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect) 
                     ),
                     format!(
                         "{}",
-                        app.kafka_metrics
+                        app.kafka_clikhouse_sync_metrics
                             .kafka_messages_in_total
                             .get(&x.path)
                             .unwrap_or(&("".to_string(), 0.0))
@@ -256,7 +256,7 @@ fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect)
                     ),
                     format!(
                         "{}",
-                        app.kafka_metrics
+                        app.kafka_clikhouse_sync_metrics
                             .kafka_messages_in_total
                             .get(&x.path)
                             .unwrap_or(&("".to_string(), 0.0))
@@ -279,7 +279,7 @@ fn render_passive_endpoint_table(app: &mut App, frame: &mut Frame, layout: Rect)
                     ),
                     format!(
                         "{}",
-                        app.kafka_metrics
+                        app.kafka_clikhouse_sync_metrics
                             .kafka_messages_in_total
                             .get(&x.path)
                             .unwrap_or(&("".to_string(), 0.0))
@@ -333,7 +333,11 @@ fn render_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout: Rect) 
 fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout: Rect) {
     let mut rows: Vec<Row> = vec![];
 
-    let mut sorted_messages: Vec<_> = app.kafka_metrics.kafka_messages_out_total.iter().collect();
+    let mut sorted_messages: Vec<_> = app
+        .kafka_clikhouse_sync_metrics
+        .kafka_messages_out_total
+        .iter()
+        .collect();
     sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
 
     for item in &sorted_messages {
@@ -343,7 +347,7 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
                 format!("{}", item.2),
                 format!("{}", {
                     let mut lag: Option<f64> = None;
-                    for value in &app.kafka_metrics.kafka_messages_in_total {
+                    for value in &app.kafka_clikhouse_sync_metrics.kafka_messages_in_total {
                         if table_equals_path(value.0.clone(), item.0.clone()) {
                             lag = Some(value.1 .1 - item.2);
                             break;
@@ -356,7 +360,7 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
                 }),
                 format!(
                     "{}",
-                    app.kafka_metrics
+                    app.kafka_clikhouse_sync_metrics
                         .kafka_messages_out_per_sec
                         .get(&item.0)
                         .unwrap_or(&("".to_string(), 0.0))
@@ -365,7 +369,7 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
                 format!(
                     "{}",
                     format_bytes(
-                        *app.kafka_metrics
+                        *app.kafka_clikhouse_sync_metrics
                             .kafka_bytes_out_per_sec
                             .get(&item.0)
                             .unwrap_or(&0) as f64
@@ -410,7 +414,11 @@ fn render_passive_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout
 fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout: Rect) {
     let mut rows: Vec<Row> = vec![];
 
-    let mut sorted_messages: Vec<_> = app.kafka_metrics.kafka_messages_out_total.iter().collect();
+    let mut sorted_messages: Vec<_> = app
+        .kafka_clikhouse_sync_metrics
+        .kafka_messages_out_total
+        .iter()
+        .collect();
     sorted_messages.sort_by(|a, b| a.0.to_lowercase().cmp(&b.0.to_lowercase()));
 
     for item in &sorted_messages {
@@ -420,7 +428,7 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
                 format!("{}", item.2),
                 format!("{}", {
                     let mut lag: Option<f64> = None;
-                    for value in &app.kafka_metrics.kafka_messages_in_total {
+                    for value in &app.kafka_clikhouse_sync_metrics.kafka_messages_in_total {
                         if table_equals_path(value.0.clone(), item.0.clone()) {
                             lag = Some(value.1 .1 - item.2);
                             break;
@@ -433,7 +441,7 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
                 }),
                 format!(
                     "{}",
-                    app.kafka_metrics
+                    app.kafka_clikhouse_sync_metrics
                         .kafka_messages_out_per_sec
                         .get(&item.0)
                         .unwrap_or(&("".to_string(), 0.0))
@@ -442,7 +450,7 @@ fn render_active_clickhouse_sync_table(app: &mut App, frame: &mut Frame, layout:
                 format!(
                     "{}",
                     format_bytes(
-                        *app.kafka_metrics
+                        *app.kafka_clikhouse_sync_metrics
                             .kafka_bytes_out_per_sec
                             .get(&item.0)
                             .unwrap_or(&0) as f64

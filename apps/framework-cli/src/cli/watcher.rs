@@ -467,7 +467,7 @@ async fn watch(
                     let aggregations = project.get_aggregations();
                     store_current_state(
                         &mut client,
-                        &framework_object_versions,
+                        framework_object_versions,
                         &aggregations,
                         &project.clickhouse_config,
                     )
@@ -475,7 +475,7 @@ async fn watch(
 
                     let _ = verify_streaming_functions_against_datamodels(
                         &project,
-                        &framework_object_versions,
+                        framework_object_versions,
                     );
                 }
             }

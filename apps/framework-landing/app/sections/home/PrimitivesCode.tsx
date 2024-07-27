@@ -27,7 +27,7 @@ import {
   Box,
   HardDriveUpload,
 } from "lucide-react";
-import { useState, useEffect, Fragment } from "react";
+import { useState, Fragment } from "react";
 import CodeBlock from "../../shiki";
 
 const content: {

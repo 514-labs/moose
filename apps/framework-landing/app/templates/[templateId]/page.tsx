@@ -153,21 +153,21 @@ export default function TemplatePage({
         },
       },
       {
-        slug: "llm-application",
-        title: "LLM Application",
+        slug: "observability-logging",
+        title: "Observability & Logging",
         imageSrcLight: "/images/diagrams/img-diagram-LLM-light.svg",
         imageSrcDark: "/images/diagrams/img-diagram-LLM-dark.svg",
         description:
-          "Build natural language interfaces on top of your data by exposing data APIs to a LLM",
+          "Capture, parse, and organize your application logs to be able to search and analyze them in real-time",
         usage: [],
       },
       {
-        slug: "data-warehouse",
-        title: "Data Warehouse",
+        slug: "realtime-leaderboards",
+        title: "Realtime Leaderboards",
         imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
         imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
         description:
-          "Integrate enterprise data sources into a central warehouse and connect to your BI tool of choice",
+          "Enhance your user facing applications with interactive, dynamic leaderboards, powered by a real-time backend data service",
         usage: [],
       },
     ],

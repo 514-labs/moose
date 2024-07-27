@@ -18,9 +18,9 @@ export default function TemplatesPage() {
   const content = {
     title: "Templates",
     hook: {
-      title: "Get started in no time",
+      title: "Kickstart your next project",
       description:
-        "Explore plug-and-play applications built with MooseJS, designed for immediate deployment, and fully customizable to meet your specific needs. Adapt the data models, flows, and insights effortlessly— all while using the programming languages and practices you prefer.",
+        "Explore our collection of example data intensive applications, built on Moose. These templates are composable and fully customizable to meet your specific needs.",
     },
   };
 

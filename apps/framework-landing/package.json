@@ -27,6 +27,7 @@
     "next-video": "^1.0.6",
     "react": "^18",
     "react-dom": "^18",
+    "shiki": "^1.11.2",
     "tailwind-merge": "^2.2.2",
     "tailwindcss-animate": "^1.0.7"
   },

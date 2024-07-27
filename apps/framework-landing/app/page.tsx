@@ -1,7 +1,6 @@
 import { ReactNode } from "react";
 
 import { VariantProps } from "class-variance-authority";
-import { DemoSection } from "./sections/home/DemoSection";
 import { FooterSection } from "./sections/FooterSection";
 import { HeroSection } from "./sections/home/HeroSection";
 import { PrimitivesCode } from "./sections/home/PrimitivesCode";
@@ -11,7 +10,7 @@ import { PrimitivesCode } from "./sections/home/PrimitivesCode";
 // } from "./sections/home/TemplatesSection";
 import { FeaturesSection } from "./sections/home/FeaturesSection";
 
-import { SecondaryCTASection } from "./sections/home/SecondaryCTASection";
+import { SecondaryCTASection } from "./sections/home/HostWithBorealSection";
 import { cn } from "@514labs/design-system-components/utils";
 
 import {
@@ -95,7 +94,6 @@ export default function Home() {
   return (
     <main>
       <HeroSection />
-      <DemoSection />
       <PrimitivesCode />
       <FeaturesSection />
       <WhatIsMooseFor />

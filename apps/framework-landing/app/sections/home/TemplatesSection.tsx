@@ -18,7 +18,7 @@ import { TemplateImg } from "./TemplateImg";
 import React from "react";
 
 const content = {
-  title: "Composable Templates",
+  title: "Templates",
   description:
     "Full-stack data & analytics application templates to get you started quickly",
   templates: [
@@ -35,10 +35,11 @@ const content = {
       },
     },
     {
-      title: "Observability",
+      title: "Observability Logging",
       imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
-      description: "Coming Soon",
+      description:
+        "Collect, parse, organize, and search OpenTelemetry logs from your apps",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
@@ -47,9 +48,10 @@ const content = {
     },
     {
       title: "Realtime Leaderboards",
-      imageSrcLight: "/images/diagrams/img-diagram-RL-light.svg",
-      imageSrcDark: "/images/diagrams/img-diagram-RL-dark.svg",
-      description: "Coming Soon",
+      imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
+      imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
+      description:
+        "Add dynamic leaderboards to your user facing apps, powered by live data",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",

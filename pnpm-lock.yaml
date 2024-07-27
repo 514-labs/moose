@@ -339,6 +339,9 @@ importers:
       react-dom:
         specifier: ^18
         version: 18.3.1(react@18.3.1)
+      shiki:
+        specifier: ^1.11.2
+        version: 1.11.2
       tailwind-merge:
         specifier: ^2.2.2
         version: 2.3.0
@@ -4819,6 +4822,15 @@ packages:
     transitivePeerDependencies:
       - encoding
       - supports-color
+
+  /@shikijs/core@1.11.2:
+    resolution:
+      {
+        integrity: sha512-9IBY31lvOo2uhrZjqRt2wTqfqfrXJnddnIx0PFL5E8a5RQUNOhkx+PD11PogZtyrIHlL4aTYDVlb+eyryzy+pQ==,
+      }
+    dependencies:
+      "@types/hast": 3.0.4
+    dev: false
 
   /@sinclair/typebox@0.27.8:
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
@@ -13283,6 +13295,16 @@ packages:
       jsonc-parser: 3.2.1
       vscode-oniguruma: 1.7.0
       vscode-textmate: 8.0.0
+    dev: false
+
+  /shiki@1.11.2:
+    resolution:
+      {
+        integrity: sha512-WEHfKf+JWEKm/p8BoiE5F4m6VwV6LzY7nFfwRz0nAj+sVD1sRyWiODYScDu3Q8P/Dpi7xKe1TDJF3ZOQnhfT1g==,
+      }
+    dependencies:
+      "@shikijs/core": 1.11.2
+      "@types/hast": 3.0.4
     dev: false
 
   /side-channel@1.0.6:

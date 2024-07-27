@@ -11,7 +11,6 @@ import {
   Text,
   HeadingLevel,
   SmallText,
-  GradientText,
 } from "@514labs/design-system-components/typography";
 import {
   FullWidthContentContainer,
@@ -20,9 +19,16 @@ import {
   HalfWidthContentContainer,
 } from "@514labs/design-system-components/components/containers";
 
-import { Repeat, ArrowRight, Folders, Table, GitFork } from "lucide-react";
-import { useState } from "react";
-import { Fragment } from "react";
+import {
+  HardDriveDownload,
+  RectangleEllipsis,
+  Table,
+  Code,
+  Box,
+  HardDriveUpload,
+} from "lucide-react";
+import { useState, useEffect, Fragment } from "react";
+import CodeBlock from "../../shiki";
 
 const content: {
   [key: string]: {
@@ -43,6 +49,13 @@ export interface UserActivity {
     userId: string;
     activity: string;
     timestamp: Date;
+}
+
+export interface ParsedActivity {
+    id: string;
+    userId: string;
+    activity: string;
+    utcTimestamp: Date;
 }`,
   },
   functions: {
@@ -51,9 +64,10 @@ export interface UserActivity {
       "Add custom logic to filter, enrich, and transform data in-stream",
     filename: "/functions/UserActivity__ParsedActivity.ts",
     typescript: `
-import { UserActivity, ParsedActivity } from "/datamodels/models";
+import { UserActivity } from "/datamodels/models"; 
+import { ParsedActivity } from "/datamodels/models";
 
-export default function convertUtc(source: UserActivity): ParsedActivity {
+export default function run(source: UserActivity): ParsedActivity {
   return {
     id: source.id,
     userId: "puid" + source.userId,
@@ -116,38 +130,44 @@ const infrastructure = [
   {
     title: "Ingress Routes",
     infra: "Webserver",
-    icon: <ArrowRight />,
+    icon: <HardDriveDownload />,
     primitive: "models",
+    order: "md:order-first",
   },
   {
     title: "Topics",
     infra: "Streams",
-    icon: <Folders />,
+    icon: <RectangleEllipsis />,
     primitive: "models",
-  },
-  {
-    title: "Tasks",
-    infra: "Orchestrator",
-    icon: <Repeat />,
-    primitive: "functions",
+    order: "md:order-2",
   },
   {
     title: "Tables",
     infra: "OLAP DB",
     icon: <Table />,
     primitive: "models",
+    order: "md:order-4",
+  },
+  {
+    title: "Tasks",
+    infra: "Orchestrator",
+    icon: <Code />,
+    primitive: "functions",
+    order: "md:order-3",
   },
   {
     title: "Views",
     infra: "OLAP DB",
-    icon: <GitFork />,
+    icon: <Box />,
     primitive: "blocks",
+    order: "md:order-5",
   },
   {
     title: "Egress Routes",
     infra: "Webserver",
-    icon: <ArrowRight />,
+    icon: <HardDriveUpload />,
     primitive: "apis",
+    order: "md:order-6",
   },
 ];
 
@@ -165,7 +185,9 @@ export const PrimitivesCode = () => {
         >
           Data modeling, processing, ingestion, orchestration, streaming,
           storage, and APIs—unified.{" "}
-          <GradientText>All in pure TypeScript or Python.</GradientText>
+          <span className="bg-[linear-gradient(150.33deg,_#641bff_-210.85%,_#1983ff_28.23%,_#ff2cc4_106.53%)] bg-clip-text text-transparent">
+            All in pure TypeScript or Python.
+          </span>
         </Heading>
       </Section>
       <Section className="mx-auto xl:max-w-screen-xl sm:px-6 lg:px-8">
@@ -196,12 +218,12 @@ export const PrimitivesCode = () => {
                 ))}
               </Tabs>
             </HalfWidthContentContainer>
-            <HalfWidthContentContainer className="lg:w-1/2 w-full">
-              <code>
-                <pre className="overflow-auto bg-primary/10 rounded-3xl h-64 lg:h-full w-full p-4 text-xs sm:text-sm">
-                  {content[activeTab]?.typescript}
-                </pre>
-              </code>
+            <HalfWidthContentContainer className="lg:w-2/3 w-full">
+              <CodeBlock
+                code={content[activeTab]?.typescript || ""}
+                language={"typescript"}
+                filename={content[activeTab]?.filename || ""}
+              />
             </HalfWidthContentContainer>
           </FullWidthContentContainer>
           <FullWidthContentContainer className="flex flex-col gap-2.5 border p-5 rounded-3xl justify-start text-left">
@@ -220,7 +242,7 @@ export const PrimitivesCode = () => {
                     infra.primitive === activeTab
                       ? "bg-primary/10 shadow-sm"
                       : ""
-                  }`}
+                  } ${infra.order}`}
                   key={infra.title}
                 >
                   <div className="bg-primary/10 p-3 w-fit rounded-xl">

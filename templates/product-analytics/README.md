@@ -1,3 +1,8 @@
+## Product Analytics Template
+
+This application architecture helps you build a simple product analytics solution using Moose. It sets up infrastructure for ingesting, processing, storing, and visualizing clickstream events. Components include a web server for data ingestion and consumption, a streaming data platform (Redpanda), an OLAP database (Clickhouse), and a NextJS dashboard for data visualization.
+
+For more details, [please refer to the full Template documentation](https://docs.moosejs.com/templates/product-analytics).
 # Product Analytics Template
 
 ## Introduction

@@ -1,15 +1,13 @@
 "use client";
-import { codeToHtml } from "shiki";
+// import { codeToHtml } from "shiki";
 import { useEffect, useState } from "react";
 
 const mooseTheme = {
   name: "moose-theme",
   type: "dark",
-  colors: {
-    "editor.background": "#1E1E1E",
-    "editor.foreground": "#E0E0E0",
-  },
-  tokenColors: [
+  fg: "#E0E0E0",
+  bg: "#1E1E1E",
+  settings: [
     {
       scope: ["comment", "punctuation.definition.comment"],
       settings: {
@@ -98,6 +96,11 @@ interface CodeBlockProps {
   filename: string;
 }
 
+async function shiki() {
+  const { createHighlighter } = await import("shiki");
+  return createHighlighter;
+}
+
 export default function CodeBlock({
   code,
   language,
@@ -107,10 +110,24 @@ export default function CodeBlock({
 
   useEffect(() => {
     async function highlight() {
-      const highlighted = await codeToHtml(code, {
-        lang: language,
-        theme: mooseTheme,
+      const createHighlighter = await shiki();
+      const highlighter = await createHighlighter({
+        themes: [
+          {
+            name: "moose-theme",
+            fg: "#E0E0E0",
+            bg: "#1E1E1E",
+            settings: mooseTheme.settings,
+          },
+        ],
+        langs: ["typescript", "python"],
       });
+
+      const highlighted = highlighter.codeToHtml(code, {
+        lang: language,
+        theme: "moose-theme",
+      });
+
       setHighlightedCode(highlighted);
     }
     highlight();

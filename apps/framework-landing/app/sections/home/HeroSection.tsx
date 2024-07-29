@@ -95,8 +95,8 @@ const styleMapperRoute = (index: number) => {
 
 const ValuePropHeroSection = () => {
   return (
-    <section className="max-w-5xl mx-auto sm:my-64 mt-0 pt-0">
-      <div className="flex lg:flex-row flex-col justify-between items-stretch gap-5">
+    <Section className="max-w-5xl mx-auto sm:my-64 mt-0 pt-0">
+      <div className="flex lg:flex-row flex-col justify-between items-stretch gap-10">
         {/* Without framework card */}
         <div className="border p-5 space-y-5 rounded-2xl lg:w-1/2 w-full">
           {/* Titles */}
@@ -223,7 +223,7 @@ const ValuePropHeroSection = () => {
           </div>
         </div>
       </div>
-    </section>
+    </Section>
   );
 };
 

@@ -339,9 +339,6 @@ importers:
       react-dom:
         specifier: ^18
         version: 18.3.1(react@18.3.1)
-      shiki:
-        specifier: ^1.11.2
-        version: 1.11.2
       tailwind-merge:
         specifier: ^2.2.2
         version: 2.3.0
@@ -379,6 +376,9 @@ importers:
       postcss:
         specifier: ^8
         version: 8.4.38
+      shiki:
+        specifier: ^1.12.0
+        version: 1.12.0
       tailwindcss:
         specifier: ^3.3.0
         version: 3.4.3
@@ -4823,14 +4823,14 @@ packages:
       - encoding
       - supports-color
 
-  /@shikijs/core@1.11.2:
+  /@shikijs/core@1.12.0:
     resolution:
       {
-        integrity: sha512-9IBY31lvOo2uhrZjqRt2wTqfqfrXJnddnIx0PFL5E8a5RQUNOhkx+PD11PogZtyrIHlL4aTYDVlb+eyryzy+pQ==,
+        integrity: sha512-mc1cLbm6UQ8RxLc0dZES7v5rkH+99LxQp/ZvTqV3NLyYsO/fD6JhEflP1H5b2SDq9gI0+0G36AVZWxvounfR9w==,
       }
     dependencies:
       "@types/hast": 3.0.4
-    dev: false
+    dev: true
 
   /@sinclair/typebox@0.27.8:
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
@@ -13297,15 +13297,15 @@ packages:
       vscode-textmate: 8.0.0
     dev: false
 
-  /shiki@1.11.2:
+  /shiki@1.12.0:
     resolution:
       {
-        integrity: sha512-WEHfKf+JWEKm/p8BoiE5F4m6VwV6LzY7nFfwRz0nAj+sVD1sRyWiODYScDu3Q8P/Dpi7xKe1TDJF3ZOQnhfT1g==,
+        integrity: sha512-BuAxWOm5JhRcbSOl7XCei8wGjgJJonnV0oipUupPY58iULxUGyHhW5CF+9FRMuM1pcJ5cGEJGll1LusX6FwpPA==,
       }
     dependencies:
-      "@shikijs/core": 1.11.2
+      "@shikijs/core": 1.12.0
       "@types/hast": 3.0.4
-    dev: false
+    dev: true
 
   /side-channel@1.0.6:
     resolution: {integrity: sha512-fDW/EZ6Q9RiO8eFG8Hj+7u/oW+XrPTIChwCOM2+th2A6OblDtYYIpve9m+KvI9Z4C9qSEXlaGR6bTEYHReuglA==}

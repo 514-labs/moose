@@ -47,7 +47,7 @@ docker info
 Navigate to the `moose` directory and install dependencies:
 
 ```bash
-cd moose && npm install
+cd moose-product-analytics/moose && npm install
 
 ```
 

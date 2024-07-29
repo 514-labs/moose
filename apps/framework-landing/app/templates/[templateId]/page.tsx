@@ -26,68 +26,6 @@ import React from "react";
 import { LooseMooseSection } from "../../sections/home/LooseMooseSection";
 import { TrackingVerb } from "@514labs/event-capture/withTrack";
 
-// interface TemplateAccordionItem {
-//   title: string;
-//   steps: {
-//     title: string;
-//     description: string;
-//     command?: string;
-//     action?: {
-//       label: string;
-//       href: string;
-//     };
-//   }[];
-// }
-
-// interface TemplateAccordionProps {
-//   templateAccordionItems: TemplateAccordionItem[];
-// }
-
-// function TemplateAccordion({ templateAccordionItems }: TemplateAccordionProps) {
-//   return (
-//     <Accordion
-//       type="single"
-//       defaultValue="item-0"
-//       collapsible
-//       className="w-full"
-//     >
-//       {templateAccordionItems.map((item, index) => (
-//         <AccordionItem value={`item-${index}`} key={index}>
-//           <AccordionTrigger>
-//             <Text>{item.title}</Text>
-//           </AccordionTrigger>
-//           <AccordionContent>
-//             {item.steps.map((step, index) => (
-//               <div key={index} className="py-5">
-//                 <Text className="text-muted-foreground">{step.title}</Text>
-//                 <Text>{step.description}</Text>
-//                 {step.command && (
-//                   <TrackableCodeSnippet
-//                     name={item.title}
-//                     subject={step.command}
-//                   >
-//                     {step.command}
-//                   </TrackableCodeSnippet>
-//                 )}
-//                 {step.action && (
-//                   <Link href={step.action.href}>
-//                     <TrackCtaButton
-//                       name={item.title}
-//                       subject={step.action.label}
-//                     >
-//                       {step.action.label}
-//                     </TrackCtaButton>
-//                   </Link>
-//                 )}
-//               </div>
-//             ))}
-//           </AccordionContent>
-//         </AccordionItem>
-//       ))}
-//     </Accordion>
-//   );
-// }
-
 // The layout for specific tempaltes
 export default function TemplatePage({
   params,
@@ -225,32 +163,6 @@ export default function TemplatePage({
             ) : (
               <Text className="text-muted-foreground">Coming Soon</Text>
             )}
-            {/* <div className="py-10 grid gap-x-0 gap-y-0">
-              {template?.features?.items.map((feature, index) => (
-                <Grid key={index}>
-                  <div key={index} className="col-span-6">
-                    <Text className="my-0">{feature.title}</Text>
-                    <Text className="my-0 text-muted-foreground">
-                      {feature.label}
-                    </Text>
-                  </div>
-                  <div className="col-span-6">
-                    {feature.items.map((item, index) => (
-                      <>
-                        <Text className="my-0" key={index}>
-                          {item}
-                        </Text>
-                      </>
-                    ))}
-                  </div>
-                  {index < template.features.items.length - 1 && (
-                    <div className="col-span-12">
-                      <Separator className="my-3" />
-                    </div>
-                  )}
-                </Grid>
-              ))}
-            </div> */}
           </Section>
         </div>
       </div>
@@ -275,7 +187,6 @@ export default function TemplatePage({
       </div>
       <FullWidthContentContainer className="col-span-12 ">
         <FooterSection />
-        {/* <EmailSection /> */}
         <LooseMooseSection />
       </FullWidthContentContainer>
     </Grid>

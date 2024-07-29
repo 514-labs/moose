@@ -4,10 +4,6 @@ import { VariantProps } from "class-variance-authority";
 import { FooterSection } from "./sections/FooterSection";
 import { HeroSection } from "./sections/home/HeroSection";
 import { PrimitivesCode } from "./sections/home/PrimitivesCode";
-// import {
-//   TemplateHeaderSection,
-//   TemplatesSection,
-// } from "./sections/home/TemplatesSection";
 import { FeaturesSection } from "./sections/home/FeaturesSection";
 
 import { SecondaryCTASection } from "./sections/home/HostWithBorealSection";
@@ -21,7 +17,6 @@ import {
 import { Text } from "@514labs/design-system-components/typography";
 import React from "react";
 import { LooseMooseSection } from "./sections/home/LooseMooseSection";
-//import { WhatIsMoose } from "./sections/home/WhatIsMooseV2";
 import { WhatIsMooseFor } from "./sections/home/WhatIsMooseForV2";
 
 export const CTAText = ({

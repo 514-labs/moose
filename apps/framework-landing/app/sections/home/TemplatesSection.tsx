@@ -58,29 +58,6 @@ const content = {
         href: "/templates/realtime-leaderboard",
       },
     },
-    // {
-    //   title: "LLM Tools",
-    //   imageSrcLight: "/images/diagrams/img-diagram-LLM-light.svg",
-    //   imageSrcDark: "/images/diagrams/img-diagram-LLM-dark.svg",
-    //   description:
-    //     "Build natural language interfaces by exposing data APIs to an LLM",
-    //   cta: {
-    //     subject: "cta-product-analytics-template-view",
-    //     label: "Learn More",
-    //     href: "/templates/llm-application",
-    //   },
-    // },
-    // {
-    //   title: "Data Warehouse",
-    //   imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
-    //   imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
-    //   description: "Centralize enterprise data and integrate with your BI tool",
-    //   cta: {
-    //     subject: "cta-product-analytics-template-view",
-    //     label: "Learn More",
-    //     href: "/templates/data-warehouse",
-    //   },
-    // },
   ],
 };
 

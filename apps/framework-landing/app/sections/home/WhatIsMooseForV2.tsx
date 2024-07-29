@@ -13,24 +13,6 @@ import React from "react";
 
 import { Badge } from "@514labs/design-system-components/components";
 
-// const content = {
-//   title: "When to use Moose",
-//   usecases: [
-//     {
-//       title: "Data-intensive apps",
-//       description:
-//         "Build an analytics backend to power real-time leaderboards, charts, and metrics in your products",
-//       badge: "Moose + OLTP Frameworks",
-//     },
-//     {
-//       title: "Enterprise data products",
-//       description:
-//         "Build a data warehouse to serve BI tools, AI/ML pipelines, and data exploration notebooks",
-//       badge: "Moose Only",
-//     },
-//   ],
-// };
-
 export const WhatIsMooseFor = () => {
   return (
     <>

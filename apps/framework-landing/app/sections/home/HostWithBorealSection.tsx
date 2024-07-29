@@ -67,7 +67,6 @@ export const SecondaryCTASection = () => {
             </div>
           </FullWidthContentContainer>
         </div>
-        {/* <div className="absolute bottom-0 left-o blur-[311px] rounded-3xl bg-[linear-gradient(219.3deg,_#24e4aa,_#000)] z-40" /> */}
       </div>
     </Section>
   );

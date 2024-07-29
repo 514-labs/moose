@@ -11,7 +11,7 @@ const mooseTheme = {
     {
       scope: ["comment", "punctuation.definition.comment"],
       settings: {
-        foreground: "#6A737D",
+        foreground: "#00A4C8",
       },
     },
     {
@@ -35,13 +35,13 @@ const mooseTheme = {
     {
       scope: ["keyword", "storage.type", "storage.modifier"],
       settings: {
-        foreground: "#641BFF",
+        foreground: "#00A4C8",
       },
     },
     {
       scope: ["entity.name.function", "support.function"],
       settings: {
-        foreground: "#1983FF",
+        foreground: "#2CFF8D",
       },
     },
     {
@@ -51,7 +51,7 @@ const mooseTheme = {
         "entity.other.inherited-class",
       ],
       settings: {
-        foreground: "#FF2CC4",
+        foreground: "#00A3FF",
       },
     },
     {

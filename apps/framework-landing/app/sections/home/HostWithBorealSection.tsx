@@ -17,13 +17,13 @@ export const SecondaryCTASection = () => {
     description: "No need to configure or secure any infrastructure.",
     ctas: [
       {
-        href: "https://boreal.cloud",
+        href: "https://boreal.cloud/sign-up",
         action: "",
         label: "Deploy Now",
         variant: "default",
       },
       {
-        href: "https://docs.moosejs.com/",
+        href: "https://boreal.cloud",
         action: "cta-early-access",
         label: "Learn More",
         variant: "outline",

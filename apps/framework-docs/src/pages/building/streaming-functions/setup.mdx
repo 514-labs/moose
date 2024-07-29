@@ -78,7 +78,7 @@ imports for your source and destination data model interfaces and sets up a
 default function template. The function is pre-configured with the correct
 argument and return types based on the specified data models:
 
-```ts filename="UserActivity__ParsedActivity.ts" copy {2-3,7}
+```ts filename="/functions/UserActivity__ParsedActivity.ts" copy {2-3,7}
 // Add your models & start the development server to import these types
 import { UserActivity } from "/path/to/UserActivity";
 import { ParsedActivity } from "/path/to/ParsedActivity";
@@ -106,7 +106,7 @@ match the source and destination data models, respectively.
 
 Here's an example streaming function file that converts timestamps to UTC:
 
-```ts filename="UserActivity__ParsedActivity.ts" copy {3-4,8}
+```ts filename="/functions/UserActivity__ParsedActivity.ts" copy {3-4,8}
 // Example streaming function: Converts local timestamps in UserEvent data to UTC.
 // Imports: Source (UserActivity) and Destination (ParsedActivity) data models.
 import { UserActivity, ParsedActivity } from "datamodels/models.ts";

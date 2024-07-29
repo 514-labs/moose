@@ -26,7 +26,7 @@ code for utilizing the API Endpoints for your specific models.
     ``` bash
   curl -X POST \
     -H "Content-Type: application/json" \
-    -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activityType": "click"}' \
+    -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \
     http://localhost:4000/ingest/UserActivity
   ```
   </Tabs.Tab>
@@ -41,7 +41,7 @@ code for utilizing the API Endpoints for your specific models.
       eventId: '1234567890',
       timestamp: '2019-01-01 00:00:01',
       userId: '123456',
-      activityType: 'click'
+      activity: 'click'
     })
   })
   ```
@@ -54,7 +54,7 @@ code for utilizing the API Endpoints for your specific models.
       'eventId': '1234567890',
       'timestamp': '2019-01-01 00:00:01',
       'userId': '123456',
-      'activityType': 'click'
+      'activity': 'click'
     })
     ```
 

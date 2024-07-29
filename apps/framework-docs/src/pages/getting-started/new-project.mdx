@@ -1,4 +1,4 @@
-import { Callout, Tabs, Steps } from "nextra/components";
+import { Callout, Tabs, Steps, Card } from "nextra/components";
 
 ## Prerequisites
 
@@ -113,13 +113,45 @@ The file contains schema definitions for two data models: `UserActivity` and `Pa
 
 Let's send some sample data to the `UserActivity` data model via the `/ingest/UserActivity/0.0` endpoint that Moose created for us. Run the following command:
 
-```bash filename="Terminal" copy
-curl -X POST \
--H "Content-Type: application/json" \
--d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \
-http://localhost:4000/ingest/UserActivity
+<Tabs items={['curl', 'javascript', 'python']}>
+  <Tabs.Tab>
+    ``` bash
+  curl -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \
+    http://localhost:4000/ingest/UserActivity
+  ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+  ```javascript
+  fetch('http://localhost:4000/ingest/UserActivity', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      eventId: '1234567890',
+      timestamp: '2019-01-01 00:00:01',
+      userId: '123456',
+      activity: 'click'
+    })
+  })
+  ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+  ```python
+    import requests
 
-```
+    requests.post('http://localhost:4000/ingest/UserActivity', json={
+      'eventId': '1234567890',
+      'timestamp': '2019-01-01 00:00:01',
+      'userId': '123456',
+      'activity': 'click'
+    })
+    ```
+
+  </Tabs.Tab>
+</Tabs>
 
 You should see a bunch of messages in the CLI confirming that Moose received the data. Let's double-check that the new data landed in our `UserActivity_0_0` table in our database.
 

@@ -54,9 +54,9 @@ Here's a breakdown of how this works:
 
 When you save this function in the `functions` folder, Moose automatically listens for new `PageViewRaw` events. Upon receiving a new record, Moose runs the `run` function to process the data and publishes the resulting `PageViewProcessed` event to the appropriate streaming topic. Finally, Moose stores this processed data in the `PageViewProcessed` table in Clickhouse, making it available for querying and analysis.
 
-You can validate that the Steaming function provided already worked on the `PageViewRaw` data you ingested by checking your CLI messages to see
+You can validate that the steaming function provided already worked on the `PageViewRaw` data you ingested by checking your terminal. You should see a message indicating that the function processed the data and the number of messages processed.
 
-querying the `PageViewProcessed` table in your database explorer.
+You can also verify the processed data by querying the `PageViewProcessed` table in your database explorer.
 
 ### Important Note
 

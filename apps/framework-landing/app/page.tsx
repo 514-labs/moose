@@ -94,7 +94,6 @@ export default function Home() {
       <WhatIsMooseFor />
       <SecondaryCTASection />
       <FooterSection />
-      <LooseMooseSection />
     </main>
   );
 }

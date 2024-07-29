@@ -162,7 +162,7 @@ export default function TemplatePage({
         usage: [],
       },
       {
-        slug: "realtime-leaderboards",
+        slug: "realtime-leaderboard",
         title: "Realtime Leaderboards",
         imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
         imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",

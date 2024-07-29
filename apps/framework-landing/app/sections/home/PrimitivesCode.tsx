@@ -3,9 +3,11 @@
 import {
   Tabs,
   TabsList,
-  TabsTrigger,
   TabsContent,
 } from "@514labs/design-system-components/components";
+
+import { TrackableTabsTrigger } from "../../trackable-components";
+
 import {
   Heading,
   Text,
@@ -204,9 +206,15 @@ export const PrimitivesCode = () => {
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="mx-auto w-full justify-start">
                   {tabs.map((tab) => (
-                    <TabsTrigger key={tab} value={tab} className="py-0 px-1">
+                    <TrackableTabsTrigger
+                      key={tab}
+                      value={tab}
+                      className="py-0 px-1"
+                      name="Moose Primitives Code"
+                      subject={tab}
+                    >
                       <Text className="py-0 px-2 ">{content[tab]?.title}</Text>
-                    </TabsTrigger>
+                    </TrackableTabsTrigger>
                   ))}
                 </TabsList>
                 {tabs.map((tab) => (

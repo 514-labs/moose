@@ -2,7 +2,10 @@
 import { CodeSnippet as AnimatedCodeSnippet } from "@514labs/design-system-components/typography/animated";
 import { withTrack, TrackingVerb } from "@514labs/event-capture/withTrack";
 import { CTAButton, CTAButtonProps } from "./page";
-import { AccordionTrigger } from "@514labs/design-system-components/components";
+import {
+  AccordionTrigger,
+  TabsTrigger,
+} from "@514labs/design-system-components/components";
 
 export const TrackableCodeSnippet = withTrack({
   Component: AnimatedCodeSnippet,
@@ -25,6 +28,12 @@ export const TrackCtaButton = (props: CTAButtonProps & TrackingFields) =>
 
 export const TrackableAccordionTrigger = withTrack({
   Component: AccordionTrigger,
+  action: TrackingVerb.clicked,
+  injectProps: (onClick) => ({ onClick }),
+});
+
+export const TrackableTabsTrigger = withTrack({
+  Component: TabsTrigger,
   action: TrackingVerb.clicked,
   injectProps: (onClick) => ({ onClick }),
 });

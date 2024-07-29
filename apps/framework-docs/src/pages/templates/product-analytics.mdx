@@ -1,169 +1,22 @@
-# Product Analytics Getting Started Guide
+# Product Analytics Template
 
 ## Introduction
 
-Build your own product analytics solution with the Product Analytics template. This template provides a starting point for creating a product analytics application that tracks user interactions with your product and visualizes the data in an interactive dashboard.
+This template helps you build your own simple product analytics solution with Moose. The Moose application provisions and configures the key infrastructure components needed for ingesting, processing, storing, aggregating, and consuming captured clickstream events. It includes a web server with ingest and consumption API routes, a streaming data platform, an OLAP database, and a background task orchestrator.
 
-The template includes two main components:
+Here's the developer workflow:
 
-- A backend data service (Moose application) that processes and stores event data.
-- A frontend analytics dashboard (Next.js application) that visualizes the data in an interactive interface.
+1. **Set Up Moose:** Clone the code and start a local server to ingest page view events.
+2. **Instrument Your Web App:** Send live page view events to Moose.
+3. **Event Processing:** Use Streaming Functions to process raw events.
+4. **Visualization:** Display processed data on a NextJS dashboard.
 
-This guide provides an overview of the template structure and instructions for setting up your product analytics application.
+### System Overview
 
-## Prerequisites
-
-Run the following command in your terminal to check if you have Node and Docker installed:
-
-```bash filename="terminal" copy
-docker --version && node --version
-```
-
-Below are links to install the required software if you don't have them installed:
-
-- [Node.js](https://nodejs.org/en/download/)
-- [Docker](https://www.docker.com/products/docker-desktop)
-
-## Create a New Project
-
-Run the following command in your terminal:
-
-```bash
-npx create-moose-app@latest moose-product-analytics --template product-analytics
-```
-
-You can optionally replace `moose-product-analytics` with your desired project name.
-
-### Project Structure
-
-Executing the command will create a new directory on your local machine, named after your project. This directory includes two main components:
-
-- `moose`: This folder contains all the code for the backend part of your analytics application, which is responsible for ingesting, processing, storing, and serving the captured event data.
-- `next`: This folder hosts the analytics dashboard frontend code. The dashboard is built using Next.js and provides an interactive interface for visualizing the event data captured by the backend. It fetches data from the consumption APIs exposed by the Moose application.
-
-The `moose` and `next` folders are independent of each other and can be run separately. You can optionally layer a different frontend dashboard solution of your choice and integrate with your Moose backjend, or consume the data by querying from your database directly.
-
-## Running the Template Locally
-
-### Start Docker
-
-Make sure Docker is running on your machine before starting the template.
-
-```bash filename="terminal" copy
-docker info
-```
-
-### Start Moose Development Server
-
-Start your Moose development server by executing the following commands in your terminal.
-
-```bash
-cd moose-product-analytics/moose && npx @514labs/moose-cli@latest dev
-```
-
-Running this sequence of commands will spin up all the backend infrastructure powering your backend data service (running on port 4000).
-
-Here is the default `PageViewEvent` data model you are provided in your `/datamodels` folder.
-
-```typescript filename="datamodels/models.ts" copy
-export interface PageViewEvent {
-    eventId    Key<string>
-    timestamp  DateTime
-    session_id String
-    user_agent String
-    locale     String
-    location   String
-    href       String
-    pathname   String
-    referrer   String
-}
-```
-
-### Start NextJS Development Server
-
-Open a new terminal window to start your NextJS dashboard application. First navigate to the `next` directory and install dependencies:
-
-```bash filename="terminal" copy
-cd moose-product-analytics/next && npm install
-```
-
-Next start the NextJS development server:
-
-```bash
-npm run dev
-```
-
-Port Configuration: Note the port number used (typically 3000), as it is needed for setting up event tracking in Step 3.
-
-## Capturing Page View Events
-
-### Using the Provided Script
-
-The analytics template includes an integrated script that posts `PageViewEvent` data to the `ingest/PageViewEvent` API endpoint that Moose automatically configured to run on your local development server. This script automatically triggers and sends new events and sets all properties defined in the `PageViewEvent` data model schema showcased above.
-
-#### Locating the Script
-
-The `script.js` file is located in the `/public` folder of your Next.js analytics dashboard application.
-When the Next.js application runs, it automatically serves this tracking script, making it available for inclusion in the web application you wish to instrument event tracking.
-
-#### Add the Script to Your Application:
-
-Insert the following script tag into the `<head>` section of your web application's HTML:
-
-```html
-<script
-  data-host="http://localhost:4000"
-  data-event="PageViewEvent/0.0"
-  src="http://localhost:<PORT_NUMBER>/script.js"
-></script>
-```
-
-Replace `<PORT_NUMBER>` with the port number where your Next.js server is running (typically 3000).
-The data-host attribute in the script tag points to the URL for your Moose ingestion webserver. The script uses this prop to ensure all your captured data is sent to the correct endpoint.
-
-## Tracking Custom Events
-
-### Define a New Data Model
-
-To track custom events effectively, start by defining a new data model based on your specific requirements. Begin with the global properties found in the `PageViewEvent` model, then add custom properties relevant to the specific events you want to track.
-
-#### Example: Button Click Event
-
-For a button click event, you might create a data model named ButtonClickEvent with properties that capture both the context and user interaction details:
-
-```typescript filename="datamodels/models.ts" copy
-interface ButtonClickEvent {
-    eventId    Key<string>
-    timestamp  DateTime
-    session_id String
-    user_agent String
-    locale     String
-    location   String
-    href       String
-    pathname   String
-    referrer   String
-    cta_copy   String // Text on the button clicked
-    cta_target   String // Target link redirected by the button
-}
-```
-
-### Sending Custom Events
-
-To send custom events, leverage the `script.js` that is already integrated into your application.
-
-#### Example: Tracking Button Click Events
-
-Add the following code to the `onClick()` event handler for the button you want to track:
-
-```typescript
-window.MooseAnalytics.trackEvent("ButtonClickEvent", {
-  cta_copy: button_text, // Dynamically capture the button text
-  cta_target: target_href, // Capture the target URL
-});
-```
-
-#### Key Points:
-
-- The first argument to `trackEvent()` corresponds to the data model name, ensuring the right model is used for transmitting your data to Moose.
-- The second argument is an object that includes the properties unique to the `ButtonClickEvent`, as specified in your data model.
-- The integrated script enriches the event data with common web analytics properties defined in the PageViewEvent model. This means you do not need to manually set these properties, as they are automatically appended to your event data payload in the tracking script.
+- **Event Capture:** Your web app sends events to Moose via HTTP `POST` requests.
+- **Ingestion:** Moose provisions a web server with `/ingest` endpoints to receive and route incoming `POST` requests.
+- **Buffering:** Moose buffers events into a designated Redpanda streaming topic.
+- **Processing:** Moose runs a background process to transform raw event data into a processed event.
+- **Storage:** Moose stores the transformed data in a Clickhouse table.
+- **Consumption:** Moose provides the processed data via an API endpoint on the existing web server.
+- **Visualization:** The NextJS dashboard frontend web app consumes data from Moose (via the configured APIs) and displays it on a dashboard.

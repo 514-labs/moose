@@ -101,10 +101,10 @@ const ValuePropHeroSection = () => {
         <div className="border p-5 space-y-5 rounded-2xl lg:w-1/2 w-full">
           {/* Titles */}
           <div className="space-y-2">
-            <div className="text-3xl">With our framework</div>
+            <div className="text-3xl">Without a framework</div>
             <div className="text-xl text-muted-foreground w-96">
-              Get bogged down in boiler plate and integrate, scale and manage
-              infra
+              Get bogged down in boilerplate and integrate, scale and manage
+              infrastructure yourself
             </div>
           </div>
           {/* Component grid */}
@@ -166,9 +166,10 @@ const ValuePropHeroSection = () => {
         <div className="border p-5 space-y-5 rounded-2xl overflow-hidden lg:w-1/2">
           {/* Titles */}
           <div className="space-y-2 relative z-10">
-            <div className="text-3xl">With our framework</div>
+            <div className="text-3xl">With a framework</div>
             <div className="text-xl text-muted-foreground w-96">
-              Let your teams focus on building. Let us handle the grunt work
+              Let your teams focus on building. Let the maintainers handle the
+              grunt work
             </div>
           </div>
           {/* Moose */}
@@ -231,7 +232,7 @@ export const HeroSection = () => {
   const content = {
     tagLine: "Prototype & scale data-intensive applications without the hassle",
     description:
-      "Moose is an open source developer framework for your data & analytics stack",
+      "An open source developer framework for your data & analytics stack",
     ctas: [
       {
         href: "https://docs.moosejs.com/getting-started/new-project",

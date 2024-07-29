@@ -43,7 +43,7 @@ const content = {
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
-        href: "/templates/observability",
+        href: "/templates/observability-logging",
       },
     },
     {
@@ -55,7 +55,7 @@ const content = {
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
-        href: "/templates/realtime-leaderboards",
+        href: "/templates/realtime-leaderboard",
       },
     },
     // {

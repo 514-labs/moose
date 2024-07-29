@@ -252,33 +252,27 @@ export const HeroSection = () => {
   return (
     <Fragment>
       <Section className="2xl:max-w-6xl mx-auto flex flex-col items-center px-5 mt-16 sm:my-64">
-        <FullWidthContentContainer className="pt-0 items-center flex flex-col gap-5 mb-0">
-          <div>
-            <Display className="my-0 text-center">{content.tagLine} </Display>
-
-            <Heading
-              level={HeadingLevel.l3}
-              className="text-muted-foreground text-center"
-            >
-              {" "}
-              {content.description}{" "}
-            </Heading>
-          </div>
-          <CTABar className="mb-10 align-center justify-center">
-            {content.ctas.map((cta, index) => (
-              <Link key={index} href={cta.href}>
-                <TrackCtaButton
-                  name={`Hero CTA ${cta.label}`}
-                  subject={content.tagLine}
-                  targetUrl={cta.href}
-                  variant={cta.variant as "default" | "outline"}
-                >
-                  {cta.label}
-                </TrackCtaButton>
-              </Link>
-            ))}
-          </CTABar>
-        </FullWidthContentContainer>
+        <Display className="text-center mb-0 w-full">{content.tagLine}</Display>
+        <Heading
+          level={HeadingLevel.l3}
+          className="text-muted-foreground text-center"
+        >
+          {content.description}
+        </Heading>
+        <CTABar className="mb-10 align-center justify-center">
+          {content.ctas.map((cta, index) => (
+            <Link key={index} href={cta.href}>
+              <TrackCtaButton
+                name={`Hero CTA ${cta.label}`}
+                subject={content.tagLine}
+                targetUrl={cta.href}
+                variant={cta.variant as "default" | "outline"}
+              >
+                {cta.label}
+              </TrackCtaButton>
+            </Link>
+          ))}
+        </CTABar>
       </Section>
       <ValuePropHeroSection />
     </Fragment>

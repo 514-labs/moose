@@ -1,0 +1,22 @@
+# Product Analytics Template
+
+## Introduction
+
+This template helps you build your own simple product analytics solution with Moose. The Moose application provisions and configures the key infrastructure components needed for ingesting, processing, storing, aggregating, and consuming captured clickstream events. It includes a web server with ingest and consumption API routes, a streaming data platform, an OLAP database, and a background task orchestrator.
+
+Here's the developer workflow:
+
+1. **Set Up Moose:** Clone the code and start a local server to ingest page view events.
+2. **Instrument Your Web App:** Send live page view events to Moose.
+3. **Event Processing:** Use Streaming Functions to process raw events.
+4. **Visualization:** Display processed data on a NextJS dashboard.
+
+### System Overview
+
+- **Event Capture:** Your web app sends events to Moose via HTTP `POST` requests.
+- **Ingestion:** Moose provisions a web server with `/ingest` endpoints to receive and route incoming `POST` requests.
+- **Buffering:** Moose buffers events into a designated Redpanda streaming topic.
+- **Processing:** Moose runs a background process to transform raw event data into a processed event.
+- **Storage:** Moose stores the transformed data in a Clickhouse table.
+- **Consumption:** Moose provides the processed data via an API endpoint on the existing web server.
+- **Visualization:** The NextJS dashboard frontend web app consumes data from Moose (via the configured APIs) and displays it on a dashboard.

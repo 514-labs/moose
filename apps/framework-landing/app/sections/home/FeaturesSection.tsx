@@ -7,29 +7,30 @@ import {
 import {
   Heading,
   Text,
+  SmallText,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
 import React from "react";
 
-import { Box, Database, Network, Share2, Terminal, Code2 } from "lucide-react";
+import { Box, Network, Share2, Terminal, Code2, Server } from "lucide-react";
 
 export const FeaturesSection = () => {
   const content = {
     title: "Your tools, your workflows",
     subtitle:
-      "Moose brings our favorite web dev ergonomics to the data & analytics stack",
+      "Moose brings software developer ergonomics to the data & analytics stack",
     features: [
       {
         title: "Python and TypeScript",
         description:
-          "Write code in your native language with your favorite IDE plug-ins and AI assistants",
+          "Write code in your native language with your favorite IDE plug-ins",
         icon: <Code2 strokeWidth={1} />,
       },
       {
         title: "Local Dev Server",
         description:
           "Run your application locally and see the impact of code changes in real-time",
-        icon: <Database strokeWidth={1} />,
+        icon: <Server strokeWidth={1} />,
       },
       {
         title: "Git-Based Workflows",
@@ -38,9 +39,9 @@ export const FeaturesSection = () => {
         icon: <Share2 strokeWidth={1} />,
       },
       {
-        title: "Migrations",
+        title: "OLAP Migrations",
         description:
-          "Keep versions your data synchronized through automated schema migrations",
+          "Keep versions of your data synchronized through automated schema migrations",
         icon: <Network strokeWidth={1} />,
       },
       {
@@ -78,7 +79,7 @@ export const FeaturesSection = () => {
       <Section className="mx-auto xl:max-w-screen-xl">
         <Grid className="mb-12 2xl:mb-20">
           <FullWidthContentContainer>
-            <Heading> {content.title} </Heading>
+            <Heading level={HeadingLevel.l2}> {content.title} </Heading>
             <Heading level={HeadingLevel.l3} className="text-muted-foreground">
               {content.subtitle}
             </Heading>
@@ -89,13 +90,13 @@ export const FeaturesSection = () => {
             return (
               <ThirdWidthContentContainer
                 key={index}
-                className="flex flex-col gap-2"
+                className="flex flex-col gap-5 border p-5 rounded-3xl"
               >
                 {feature.icon}
                 <Text className="my-0">{feature.title}</Text>
-                <Text className="my-0 text-muted-foreground">
+                <SmallText className="my-0 text-muted-foreground text-[20px]">
                   {feature.description}
-                </Text>
+                </SmallText>
               </ThirdWidthContentContainer>
             );
           })}

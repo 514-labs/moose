@@ -1,0 +1,165 @@
+import { Card } from "nextra/components";
+
+# Quick Start Guide
+
+## Prerequisites
+
+Ensure you have Node.js and Docker installed on your machine. You can check if they are installed by running the following command in your terminal:
+
+```bash filename="terminal" copy
+docker --version && node --version
+```
+
+If you don't have them installed, you can download them from the following links:
+
+- [Node.js](https://nodejs.org/en/download/)
+- [Docker](https://www.docker.com/products/docker-desktop)
+
+## Create a New Project
+
+To create a new project, run the following command in your terminal:
+
+```bash filename="terminal" copy
+npx create-moose-app@latest moose-product-analytics --template product-analytics
+```
+
+You can optionally replace `moose-product-analytics` with your desired project name.
+
+Executing the command creates a project-named directory on your machine with two components:
+
+- `moose`: Hosts the Moose application code for your backend data processing system.
+- `next`: Hosts frontend analytics dashboard code and a helper script for client-side events.
+
+The `moose` and `next` folders can run separately. Optionally, you can use a different frontend like Grafana or query the database directly to consume the captured and processed data.
+
+## Running the Moose Application Locally
+
+### Start Docker
+
+First make sure Docker is running on your machine:
+
+```bash filename="terminal" copy
+docker info
+```
+
+### Start Moose Development Server
+
+Navigate to the `moose` project directory and install the necessary dependencies:
+
+```bash filename="terminal" copy
+cd moose-product-analytics/moose && npm install
+```
+
+Now, start your Moose development server by running the following command:
+
+```bash filename="terminal" copy
+npx moose-cli dev
+```
+
+This will set up the backend infrastructure for your data service. It includes:
+
+- an OLAP database (Clickhouse) to store ingested events.
+- a streaming data platform (Redpanda) to buffer incoming data
+- a web server to POST data to or GET data from your OLAP storage,
+
+You should see a message in the CLI indicating the web server is running at `http://localhost:4000`.
+
+### Understanding the Provided Starter Code
+
+Open your project in your favorite IDE. Once your project is open, navigate to the `/datamodels` folder inside the `/app` directory. Open the `models.ts` file. You will see a pre-defined `PageViewRaw` data model:
+
+```tsx filename="moose/app/datamodels/models.ts" copy
+import { Key } from "@514labs/moose-lib"
+export interface PageViewRaw {
+    eventId    Key<string>
+    timestamp  DateTime
+    session_id String
+    user_agent String
+    locale     String
+    location   String
+    href       String
+    pathname   String
+    referrer   String
+}
+
+```
+
+Moose automatically configures the infrastructure to ingest new data samples that fit this `PageViewRaw` data model schema.
+
+Open a new terminal window and see for yourself! Ensure you are in the `moose` project directory, and run:
+
+```bash filename="terminal" copy
+npx moose-cli ls
+```
+
+You should now see a table showing the following:
+
+![Moose ls](/moose-ls-pa.png)
+
+As you can see, Moose has already set up the necessary infrastructure, including:
+
+- An `ingest/PageViewRaw` API endpoint running on a web server for posting new `PageViewRaw` data samples from your web application.
+- A `PageViewRaw` table in a Clickhouse database where Moose will store the ingested events.
+
+Now you are ready to start instrumenting your web app to see live data flowing into Moose.
+
+## Capturing Page View Events
+
+### Start NextJS Dev Server
+
+Open a new terminal window to start your NextJS dashboard application. First, navigate to the `next` directory and install dependencies:
+
+```bash filename="terminal" copy
+cd moose-product-analytics/next && npm install
+```
+
+Then, start the NextJS development server:
+
+```bash filename="terminal" copy
+npm run dev
+```
+
+Note the port number used (typically `3000`), as it is needed for setting up event tracking in the following steps.
+
+### Use the Provided Script
+
+The analytics template includes a helper script that sends`PageViewRaw` data to the `ingest/PageViewRaw` API endpoint that Moose automatically configures to run on your local development server. This script automatically triggers and sends new events and sets all properties defined in the `PageViewRaw` data model schema showcased above.
+
+### Locating the Script
+
+The `script.js` file can be found in the `/public` folder of the `next` project. When the Next.js app runs, it serves this tracking script so you can import it into your web app.
+
+### Adding the Script to Your Application
+
+To add the tracking script to your web application, insert the following script tag into the `<head>` section of your web application's HTML:
+
+```html
+<script
+  data-host="<http://localhost:4000>"
+  data-event="PageViewRaw/0.0"
+  src="<http://localhost:3000/script.js>"
+></script>
+```
+
+Here are the key points to note:
+
+- **`data-host` Attribute:** This should point to the URL of your Moose ingestion web server, which is typically `http://localhost:4000` when running locally. This ensures that all captured data is sent to the correct endpoint.
+- **`src` Attribute:** This should point to the URL where your tracking script is served, which is typically `http://localhost:3000/script.js` when running the Next.js server locally. Replace `3000` with the port number your Next.js server is running on, if different.
+
+With this script tag now included, your web application should be all set up to send `PageViewRaw` data to Moose.
+
+## Test it Out!
+
+Run your web app locally and navigate the pages. In the browser's developer console, check the network tab for `POST` requests to `http://localhost:4000/ingest/PageViewRaw`.
+
+To confirm Moose received these events, look for `Success` messages in the terminal where you started the Moose server.
+
+To check the data in the `PageViewRaw` table in Clickhouse, connect to the database using credentials in `moose.project.toml` under `[clickhouse config]`. For more details, [follow these instructions](https://docs.moosejs.com/getting-started/new-project#query-data).
+
+## Next Steps
+
+Congratulations! You have successfully integrated data into Moose. Here are some potential next steps you can explore:
+
+- **Process Event Data with Streaming Functions:** [Discover how to use streaming functions to transform and enhance incoming event data in real-time.](/templates/product-analytics/event-processing)
+- **Custom Event Tracking:** [Learn how to configure Moose to track your own custom events tailored to your application's needs.](/templates/product-analytics/custom-events)
+  {/* - **Data Aggregation and APIs:** Understand how to leverage blocks and consumption APIs to aggregate and serve event data, facilitating deeper analysis and exploration. */}

@@ -161,6 +161,20 @@ export const Text = forwardRef<HTMLParagraphElement, TextProps>(
   },
 );
 
+export const GradientText = ({
+  className,
+  children,
+}: {
+  className?: string;
+  children: ReactNode;
+}) => {
+  return (
+    <span className="text-transparent bg-clip-text bg-gradient-to-br from-[#3A36FF] via-[#00A4C8] via-90% to-[#C8FF2C]">
+      {children}
+    </span>
+  );
+};
+
 export const CodeSnippet = ({
   children,
   className,

@@ -27,6 +27,7 @@ export const metadata: Metadata = {
 
 const default_navigation = [
   { name: "docs", href: "https://docs.moosejs.com" },
+  { name: "boreal", href: "https://boreal.cloud" },
   { name: "templates", href: "/templates" },
   { name: "community", href: "/community" },
   { name: "blog", href: "https://www.fiveonefour.com/blog" },
@@ -64,7 +65,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Nav property="moosejs" navigation={default_navigation} />
+          <Nav property="moose" navigation={default_navigation} />
           {children}
         </ThemeProvider>
       </body>

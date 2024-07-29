@@ -1,17 +1,12 @@
 import { ReactNode } from "react";
 
 import { VariantProps } from "class-variance-authority";
-import { DemoSection } from "./sections/home/DemoSection";
 import { FooterSection } from "./sections/FooterSection";
 import { HeroSection } from "./sections/home/HeroSection";
-
-import {
-  TemplateHeaderSection,
-  TemplatesSection,
-} from "./sections/home/TemplatesSection";
+import { PrimitivesCode } from "./sections/home/PrimitivesCode";
 import { FeaturesSection } from "./sections/home/FeaturesSection";
 
-import { SecondaryCTASection } from "./sections/home/SecondaryCTASection";
+import { SecondaryCTASection } from "./sections/home/HostWithBorealSection";
 import { cn } from "@514labs/design-system-components/utils";
 
 import {
@@ -21,12 +16,7 @@ import {
 
 import { Text } from "@514labs/design-system-components/typography";
 import React from "react";
-import { LooseMooseSection } from "./sections/home/LooseMooseSection";
-import { WhatIsMoose } from "./sections/home/WhatIsMooseV2";
-import {
-  WhatIsMooseFor,
-  WhatIsntMooseFor,
-} from "./sections/home/WhatIsMooseFor";
+import { WhatIsMooseFor } from "./sections/home/WhatIsMooseForV2";
 
 export const CTAText = ({
   className,
@@ -98,16 +88,11 @@ export default function Home() {
   return (
     <main>
       <HeroSection />
-      <DemoSection />
-      <WhatIsMooseFor />
-      <WhatIsntMooseFor />
-      <WhatIsMoose />
+      <PrimitivesCode />
       <FeaturesSection />
-      <TemplateHeaderSection />
-      <TemplatesSection />
+      <WhatIsMooseFor />
       <SecondaryCTASection />
       <FooterSection />
-      <LooseMooseSection />
     </main>
   );
 }

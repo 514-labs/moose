@@ -7,6 +7,7 @@
   "dependencies": {
     "@514labs/moose-lib": "0.3.427",
     "@clickhouse/client-web": "^1.0.1",
+    "@types/ua-parser-js": "^0.7.39",
     "fastq": "^1.17.1",
     "kafkajs": "^2.2.4"
   },

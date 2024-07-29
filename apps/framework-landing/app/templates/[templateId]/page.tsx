@@ -2,13 +2,12 @@ import Link from "next/link";
 
 import { CTABar } from "../../page";
 import FooterSection from "../../sections/FooterSection";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-  Separator,
-} from "@514labs/design-system-components/components";
+// import {
+//   Accordion,
+//   AccordionContent,
+//   AccordionItem,
+//   AccordionTrigger
+// } from "@514labs/design-system-components/components";
 import {
   Grid,
   Section,
@@ -20,77 +19,12 @@ import {
   Heading,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
-import {
-  TrackCtaButton,
-  TrackableCodeSnippet,
-} from "../../trackable-components";
-import { CopyButton } from "./copy-button";
+import { TrackCtaButton } from "../../trackable-components";
 import { Suspense } from "react";
 import { TemplateImg } from "../../sections/home/TemplateImg";
 import React from "react";
 import { LooseMooseSection } from "../../sections/home/LooseMooseSection";
-
-interface TemplateAccordionItem {
-  title: string;
-  steps: {
-    title: string;
-    description: string;
-    command?: string;
-    action?: {
-      label: string;
-      href: string;
-    };
-  }[];
-}
-
-interface TemplateAccordionProps {
-  templateAccordionItems: TemplateAccordionItem[];
-}
-
-function TemplateAccordion({ templateAccordionItems }: TemplateAccordionProps) {
-  return (
-    <Accordion
-      type="single"
-      defaultValue="item-0"
-      collapsible
-      className="w-full"
-    >
-      {templateAccordionItems.map((item, index) => (
-        <AccordionItem value={`item-${index}`} key={index}>
-          <AccordionTrigger>
-            <Text>{item.title}</Text>
-          </AccordionTrigger>
-          <AccordionContent>
-            {item.steps.map((step, index) => (
-              <div key={index} className="py-5">
-                <Text className="text-muted-foreground">{step.title}</Text>
-                <Text>{step.description}</Text>
-                {step.command && (
-                  <TrackableCodeSnippet
-                    name={item.title}
-                    subject={step.command}
-                  >
-                    {step.command}
-                  </TrackableCodeSnippet>
-                )}
-                {step.action && (
-                  <Link href={step.action.href}>
-                    <TrackCtaButton
-                      name={item.title}
-                      subject={step.action.label}
-                    >
-                      {step.action.label}
-                    </TrackCtaButton>
-                  </Link>
-                )}
-              </div>
-            ))}
-          </AccordionContent>
-        </AccordionItem>
-      ))}
-    </Accordion>
-  );
-}
+import { TrackingVerb } from "@514labs/event-capture/withTrack";
 
 // The layout for specific tempaltes
 export default function TemplatePage({
@@ -105,10 +39,29 @@ export default function TemplatePage({
         title: "Product Analytics",
         imageSrcLight: "/images/diagrams/img-diagram-PA-light.svg",
         imageSrcDark: "/images/diagrams/img-diagram-PA-dark.svg",
-        cta: {
-          action: "cta-product-analytics-install",
-          label: "Create Template Command",
-          text: "npx create-moose-app your-analytics-app --template product-analytics",
+        ctas: {
+          docs: {
+            label: "Get Started",
+            href: "https://docs.moosejs.com/templates/product-analytics",
+            type: "primary",
+            action: TrackingVerb.clicked,
+            name: "Template Get Started",
+            subject: `Product Analytics`,
+          },
+          github: {
+            label: "View Repository",
+            href: "https://github.com/514-labs/moose/tree/main/templates/product-analytics",
+            type: "secondary",
+            action: TrackingVerb.clicked,
+            name: "Template View Repository",
+            subject: `Product Analytics`,
+          },
+          install: {
+            text: "npx create-moose-app moose-product-analytics --template product-analytics",
+            action: TrackingVerb.clicked,
+            name: "Template Install Command",
+            subject: `Product Analytics`,
+          },
         },
         description:
           "Capture clickstream events from your users and analyze their interactions with your product",
@@ -136,102 +89,23 @@ export default function TemplatePage({
             },
           ],
         },
-        usage: [
-          {
-            title: "Setting up locally",
-            steps: [
-              {
-                title: "Step 1",
-                description:
-                  "Begin with installing the template on your machine",
-                command:
-                  "npx create-moose-app your-analytics-app --template product-analytics",
-              },
-              {
-                title: "Step 2",
-                description:
-                  "Start Moose development environment from the moose directory",
-                command: "cd moose && npx @514labs/moose-cli@latest dev",
-              },
-              {
-                title: "Step 3",
-                description:
-                  "Install the dependencies and start the development server from the next directory",
-                command: "cd next && npm install && npm run dev",
-              },
-              {
-                title: "Step 4",
-                description:
-                  "Navigate to localhost:3001 to view the provided data models.",
-              },
-              {
-                title: "Step 5",
-                description:
-                  "Navigate to localhost:3000 to view your NextJS application.",
-              },
-            ],
-          },
-          {
-            title: "Capturing Events",
-            description:
-              "You'll now need to capture events in your user facing applications. You can find endpoints and SDKs in your moose console running on localhost:3001.",
-            steps: [
-              {
-                title: "Step 1",
-                description:
-                  "Paste the following HTML in your application <head> tag.",
-                command:
-                  '<script data-host="<YOUR_MOOSE_URL>" data-event="PageViewEvent/0.0" src="<YOUR_DASHBOARD_URL>/script.js">',
-              },
-              {
-                title: "Step 2",
-                description: "Start tracking events in your application",
-                command:
-                  "window.MooseAnalytics.trackEvent(<YOUR_EVENT_DATA_MODEL_NAME>, {...eventProperties})",
-              },
-              {
-                title: "Step 3",
-                description:
-                  "Navigate to localhost:3001 to view the events being captured in real-time.",
-                action: {
-                  label: "Go to localhost:3001",
-                  href: "http://localhost:3001",
-                },
-              },
-            ],
-          },
-          {
-            title: "Deployment",
-            steps: [
-              {
-                title: "Deploying Moose",
-                description:
-                  "Visit the docs to learn more about deploying MooseJS applications.",
-                action: {
-                  label: "Visit Docs",
-                  href: "https://docs.moosejs.com/deploying/summary",
-                },
-              },
-            ],
-          },
-        ],
       },
       {
-        slug: "llm-application",
-        title: "LLM Application",
+        slug: "observability-logging",
+        title: "Observability & Logging",
         imageSrcLight: "/images/diagrams/img-diagram-LLM-light.svg",
         imageSrcDark: "/images/diagrams/img-diagram-LLM-dark.svg",
         description:
-          "Build natural language interfaces on top of your data by exposing data APIs to a LLM",
+          "Capture, parse, and organize your application logs to be able to search and analyze them in real-time",
         usage: [],
       },
       {
-        slug: "data-warehouse",
-        title: "Data Warehouse",
+        slug: "realtime-leaderboard",
+        title: "Realtime Leaderboards",
         imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
         imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
         description:
-          "Integrate enterprise data sources into a central warehouse and connect to your BI tool of choice",
+          "Enhance your user facing applications with interactive, dynamic leaderboards, powered by a real-time backend data service",
         usage: [],
       },
     ],
@@ -261,45 +135,34 @@ export default function TemplatePage({
             >
               {template?.description}
             </Heading>
-            {template?.cta ? (
-              <CTABar>
-                <CopyButton
-                  copyText={template?.cta?.text ?? "Error_Event"}
-                  name={template?.cta?.label ?? "Error_Event"}
-                  subject={template?.cta?.text ?? ""}
-                >
-                  {template?.cta?.label}
-                </CopyButton>
-              </CTABar>
+            {template?.ctas ? (
+              <div className="flex flex-col gap-5">
+                <CTABar>
+                  <Link href={template.ctas.docs.href}>
+                    <TrackCtaButton
+                      name={template.ctas.docs.name}
+                      subject={template.ctas.docs.subject}
+                      targetUrl={template.ctas.docs.href}
+                    >
+                      {template.ctas.docs.label}
+                    </TrackCtaButton>
+                  </Link>
+                  <Link href={template.ctas.github.href}>
+                    <TrackCtaButton
+                      name={template.ctas.github.name}
+                      subject={template.ctas.github.subject}
+                      targetUrl={template.ctas.github.href}
+                      variant="outline"
+                    >
+                      {template.ctas.github.label}
+                    </TrackCtaButton>
+                  </Link>
+                </CTABar>
+                {/* <TrackableCodeSnippet name={template.ctas.install.name} subject={template.ctas.install.subject}>{template.ctas.install.text}</TrackableCodeSnippet> */}
+              </div>
             ) : (
               <Text className="text-muted-foreground">Coming Soon</Text>
             )}
-            <div className="py-10 grid gap-x-0 gap-y-0">
-              {template?.features?.items.map((feature, index) => (
-                <Grid key={index}>
-                  <div key={index} className="col-span-6">
-                    <Text className="my-0">{feature.title}</Text>
-                    <Text className="my-0 text-muted-foreground">
-                      {feature.label}
-                    </Text>
-                  </div>
-                  <div className="col-span-6">
-                    {feature.items.map((item, index) => (
-                      <>
-                        <Text className="my-0" key={index}>
-                          {item}
-                        </Text>
-                      </>
-                    ))}
-                  </div>
-                  {index < template.features.items.length - 1 && (
-                    <div className="col-span-12">
-                      <Separator className="my-3" />
-                    </div>
-                  )}
-                </Grid>
-              ))}
-            </div>
           </Section>
         </div>
       </div>
@@ -319,15 +182,11 @@ export default function TemplatePage({
                 )}
               </div>
             </div>
-            {template?.usage && (
-              <TemplateAccordion templateAccordionItems={template.usage} />
-            )}
           </Section>
         </div>
       </div>
       <FullWidthContentContainer className="col-span-12 ">
         <FooterSection />
-        {/* <EmailSection /> */}
         <LooseMooseSection />
       </FullWidthContentContainer>
     </Grid>

@@ -18,7 +18,7 @@ import { TemplateImg } from "./TemplateImg";
 import React from "react";
 
 const content = {
-  title: "Composable Templates",
+  title: "Templates",
   description:
     "Full-stack data & analytics application templates to get you started quickly",
   templates: [
@@ -35,26 +35,27 @@ const content = {
       },
     },
     {
-      title: "LLM Tools",
-      imageSrcLight: "/images/diagrams/img-diagram-LLM-light.svg",
-      imageSrcDark: "/images/diagrams/img-diagram-LLM-dark.svg",
+      title: "Observability Logging",
+      imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
+      imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
       description:
-        "Build natural language interfaces by exposing data APIs to an LLM",
+        "Collect, parse, organize, and search OpenTelemetry logs from your apps",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
-        href: "/templates/llm-application",
+        href: "/templates/observability-logging",
       },
     },
     {
-      title: "Data Warehouse",
+      title: "Realtime Leaderboards",
       imageSrcLight: "/images/diagrams/img-diagram-DW-light.svg",
       imageSrcDark: "/images/diagrams/img-diagram-DW-dark.svg",
-      description: "Centralize enterprise data and integrate with your BI tool",
+      description:
+        "Add dynamic leaderboards to your user facing apps, powered by live data",
       cta: {
         subject: "cta-product-analytics-template-view",
         label: "Learn More",
-        href: "/templates/data-warehouse",
+        href: "/templates/realtime-leaderboard",
       },
     },
   ],
@@ -85,7 +86,7 @@ export const TemplatesSection = () => {
             <Fragment key={index}>
               <ThirdWidthContentContainer
                 key={index}
-                className="flex flex-col xl:justify-start xl:order-4 p-5"
+                className="flex flex-col xl:justify-start xl:order-4 p-5 border rounded-3xl"
               >
                 <div className="relative aspect-square my-0">
                   <Suspense fallback={<div>Loading...</div>}>
@@ -108,7 +109,6 @@ export const TemplatesSection = () => {
                       name="Learn More"
                       subject={template.cta.subject}
                       className="grow"
-                      variant={"outline"}
                       targetUrl={template.cta.href}
                     >
                       {template.cta.label}

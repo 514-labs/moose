@@ -6,12 +6,12 @@
     }
   },
   "getting-started": "Getting Started",
-  "templates": "Template Guides",
   "building": "Developing your App",
   "deploying": "Deploying your App",
   "moose-cli": "Moose CLI",
   "metrics-console": "Metrics Console",
   "quick-reference": "Quick Reference",
+  "templates": "Template Guides",
   "faqs": "FAQs",
   "usage-data": "Privacy"
 }

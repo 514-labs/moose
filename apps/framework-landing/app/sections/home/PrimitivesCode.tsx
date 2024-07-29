@@ -181,16 +181,20 @@ export const PrimitivesCode = () => {
   return (
     <Fragment>
       <Section className="2xl:max-w-6xl mx-auto flex flex-col items-center px-5 my-16 sm:my-64">
-        <Heading
-          level={HeadingLevel.l1}
-          className="justify-center align-center text-center mb-24 sm:text-5xl px-40"
-        >
-          Data modeling, processing, ingestion, orchestration, streaming,
-          storage, and APIs—unified.{" "}
-          <span className="bg-[linear-gradient(150.33deg,_#641bff_-210.85%,_#1983ff_28.23%,_#ff2cc4_106.53%)] bg-clip-text text-transparent">
-            All in pure TypeScript or Python.
-          </span>
-        </Heading>
+        <Grid>
+          <FullWidthContentContainer>
+            <Heading
+              level={HeadingLevel.l1}
+              className="justify-center align-center text-center mb-24 sm:text-5xl"
+            >
+              Data modeling, processing, ingestion, orchestration, streaming,
+              storage, and APIs—unified.{" "}
+              <span className="bg-[linear-gradient(150.33deg,_#641bff_-210.85%,_#1983ff_28.23%,_#ff2cc4_106.53%)] bg-clip-text text-transparent">
+                All in pure TypeScript or Python.
+              </span>
+            </Heading>
+          </FullWidthContentContainer>
+        </Grid>
       </Section>
       <Section className="mx-auto xl:max-w-screen-xl sm:px-6 lg:px-8">
         <Grid className="flex flex-col">

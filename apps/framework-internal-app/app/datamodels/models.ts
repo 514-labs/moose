@@ -14,7 +14,7 @@ export const PageViewEventConfig = {
 
 export interface MooseActivity {
   id: Key<string>;
-  project: string;
+  project?: string;
   activityType: string;
   sequenceId: string;
   timestamp: Date;
@@ -26,7 +26,7 @@ export interface MooseActivity {
 
 export interface MooseActivityAugmented {
   id: Key<string>;
-  project: string;
+  project?: string;
   activityType: string;
   sequenceId: string;
   timestamp: Date;

@@ -53,6 +53,7 @@ use crate::framework::languages::SupportedLanguages;
 use crate::framework::sdk::ingest::generate_sdk;
 use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
 use crate::project::Project;
+use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 use crate::utilities::git::is_git_repo;
 
@@ -161,14 +162,14 @@ async fn top_command_handler(
                 name, language, location, template
             );
 
-            crate::utilities::capture::capture!(
+            let capture_handle = crate::utilities::capture::capture_usage(
                 if template.is_some() {
                     ActivityType::InitTemplateCommand
                 } else {
                     ActivityType::InitCommand
                 },
-                name.clone(),
-                &settings
+                Some(name.to_string()),
+                &settings,
             );
 
             check_project_name(name)?;
@@ -202,6 +203,8 @@ async fn top_command_handler(
 
                     maybe_create_git_repo(dir_path, project_arc);
 
+                    wait_for_usage_capture(capture_handle).await;
+
                     Ok(RoutineSuccess::highlight(Message::new(
                         "Get Started".to_string(),
                         format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n🛠️  Start dev server: \n\t$ npx @514labs/moose-cli@latest dev\n\n", dir_path.to_string_lossy()),
@@ -231,6 +234,8 @@ async fn top_command_handler(
                         SupportedLanguages::Python => "npx @514labs/moose-cli@latest dev",
                     };
 
+                    wait_for_usage_capture(capture_handle).await;
+
                     Ok(RoutineSuccess::highlight(Message::new(
                         "Get Started".to_string(),
                         format!("\n\n📂 Go to your project directory: \n\t$ cd {}\n\n   Install Dependencies:\n\t$ {} \n\n🛠️ Start dev server: \n\t$ {}\n\n", dir_path.to_string_lossy(), install_string, run_dev_string),
@@ -248,11 +253,6 @@ async fn top_command_handler(
             let project: Project = load_project()?;
             let project_arc = Arc::new(project);
 
-            crate::utilities::capture::capture!(
-                ActivityType::BuildCommand,
-                project_arc.name().clone(),
-                &settings
-            );
             check_project_name(&project_arc.name())?;
 
             let mut controller = RoutineController::new();
@@ -269,10 +269,10 @@ async fn top_command_handler(
 
             // docker flag is true then build docker images
             if *docker {
-                crate::utilities::capture::capture!(
+                let capture_handle = crate::utilities::capture::capture_usage(
                     ActivityType::DockerCommand,
-                    project_arc.name().clone(),
-                    &settings
+                    Some(project_arc.name()),
+                    &settings,
                 );
                 // TODO get rid of the routines and use functions instead
                 controller.add_routine(Box::new(CreateDockerfile::new(project_arc.clone())));
@@ -282,6 +282,8 @@ async fn top_command_handler(
                     *arm64,
                 )));
                 controller.run_routines(run_mode);
+
+                wait_for_usage_capture(capture_handle).await;
 
                 Ok(RoutineSuccess::success(Message::new(
                     "Built".to_string(),
@@ -301,10 +303,10 @@ async fn top_command_handler(
             project.set_is_production_env(false);
             let project_arc = Arc::new(project);
 
-            crate::utilities::capture::capture!(
+            let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::DevCommand,
-                project_arc.name().clone(),
-                &settings
+                Some(project_arc.name()),
+                &settings,
             );
 
             check_project_name(&project_arc.name())?;
@@ -319,6 +321,8 @@ async fn top_command_handler(
                     })
                 })?;
 
+            wait_for_usage_capture(capture_handle).await;
+
             Ok(RoutineSuccess::success(Message::new(
                 "Ran".to_string(),
                 "local infrastructure".to_string(),
@@ -330,9 +334,17 @@ async fn top_command_handler(
                 let project = load_project()?;
                 let project_arc = Arc::new(project);
 
+                let capture_handle = crate::utilities::capture::capture_usage(
+                    ActivityType::GenerateMigrations,
+                    Some(project_arc.name()),
+                    &settings,
+                );
+
                 check_project_name(&project_arc.name())?;
                 copy_old_schema(&project_arc)?.show();
                 generate_migration(&project_arc).await?.show();
+
+                wait_for_usage_capture(capture_handle).await;
 
                 Ok(RoutineSuccess::success(Message::new(
                     "Generated".to_string(),
@@ -358,6 +370,12 @@ async fn top_command_handler(
                         details: format!("Failed to load project: {:?}", e),
                     })
                 })?;
+
+                let capture_handle = crate::utilities::capture::capture_usage(
+                    ActivityType::GenerateSDKCommand,
+                    Some(project.name()),
+                    &settings,
+                );
 
                 with_spinner_async(
                     "Generating SDK",
@@ -391,6 +409,8 @@ async fn top_command_handler(
                 )
                 .await?;
 
+                wait_for_usage_capture(capture_handle).await;
+
                 Ok(RoutineSuccess::success(Message::new(
                     "Generated".to_string(),
                     "SDK".to_string(),
@@ -408,10 +428,10 @@ async fn top_command_handler(
             project.set_is_production_env(true);
             let project_arc = Arc::new(project);
 
-            crate::utilities::capture::capture!(
+            let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::ProdCommand,
-                project_arc.name().clone(),
-                &settings
+                Some(project_arc.name()),
+                &settings,
             );
 
             check_project_name(&project_arc.name())?;
@@ -419,6 +439,8 @@ async fn top_command_handler(
             routines::start_production_mode(project_arc, settings.features, metrics)
                 .await
                 .unwrap();
+
+            wait_for_usage_capture(capture_handle).await;
 
             Ok(RoutineSuccess::success(Message::new(
                 "Ran".to_string(),
@@ -429,10 +451,10 @@ async fn top_command_handler(
             info!("Running plan command");
             let project = load_project()?;
 
-            crate::utilities::capture::capture!(
+            let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::PlanCommand,
-                project.name().clone(),
-                &settings
+                Some(project.name()),
+                &settings,
             );
 
             check_project_name(&project.name())?;
@@ -443,6 +465,8 @@ async fn top_command_handler(
                 })
             })?;
 
+            wait_for_usage_capture(capture_handle).await;
+
             Ok(RoutineSuccess::success(Message::new(
                 "Plan".to_string(),
                 "Successfuly planned changes to the infrastructure".to_string(),
@@ -452,10 +476,10 @@ async fn top_command_handler(
             let project = load_project()?;
             let project_arc = Arc::new(project);
 
-            crate::utilities::capture::capture!(
+            let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::BumpVersionCommand,
-                project_arc.name().clone(),
-                &settings
+                Some(project_arc.name()),
+                &settings,
             );
 
             check_project_name(&project_arc.name())?;
@@ -479,17 +503,21 @@ async fn top_command_handler(
                 Some(new_version) => new_version.clone(),
             };
 
-            bump_version(&project_arc, new_version)
+            let result = bump_version(&project_arc, new_version);
+
+            wait_for_usage_capture(capture_handle).await;
+
+            result
         }
         Commands::Clean {} => {
             let run_mode = RunMode::Explicit {};
             let project = load_project()?;
             let project_arc = Arc::new(project);
 
-            crate::utilities::capture::capture!(
+            let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::CleanCommand,
-                project_arc.name().clone(),
-                &settings
+                Some(project_arc.name()),
+                &settings,
             );
 
             check_project_name(&project_arc.name())?;
@@ -498,6 +526,8 @@ async fn top_command_handler(
             let mut controller = RoutineController::new();
             controller.add_routine(Box::new(CleanProject::new(project_arc, run_mode)));
             controller.run_routines(run_mode);
+
+            wait_for_usage_capture(capture_handle).await;
 
             Ok(RoutineSuccess::success(Message::new(
                 "Cleaned".to_string(),
@@ -513,19 +543,23 @@ async fn top_command_handler(
                     let project = load_project()?;
                     let project_arc = Arc::new(project);
 
-                    crate::utilities::capture::capture!(
+                    let capture_handle = crate::utilities::capture::capture_usage(
                         ActivityType::FuncInitCommand,
-                        project_arc.name().clone(),
-                        &settings
+                        Some(project_arc.name()),
+                        &settings,
                     );
 
                     check_project_name(&project_arc.name())?;
-                    create_streaming_function_file(
+                    let result = create_streaming_function_file(
                         &project_arc,
                         init.source.clone(),
                         init.destination.clone(),
                     )
-                    .await
+                    .await;
+
+                    wait_for_usage_capture(capture_handle).await;
+
+                    result
                 }
             }
         }
@@ -535,11 +569,21 @@ async fn top_command_handler(
             match dm_cmd {
                 DataModelCommands::Init(args) => {
                     debug!("Running datamodel init command");
+
+                    let capture_handle = crate::utilities::capture::capture_usage(
+                        ActivityType::DataModelInitCommand,
+                        Some(project.name()),
+                        &settings,
+                    );
+
                     let interface = read_json_file(args.name.clone(), args.sample.clone());
                     let _ = std::fs::write(
                         project.data_models_dir().join(format!("{}.ts", args.name)),
                         interface.unwrap().as_bytes(),
                     );
+
+                    wait_for_usage_capture(capture_handle).await;
+
                     Ok(RoutineSuccess::success(Message::new(
                         "DataModel".to_string(),
                         "Initialized".to_string(),
@@ -556,14 +600,18 @@ async fn top_command_handler(
                     let project = load_project()?;
                     let project_arc = Arc::new(project);
 
-                    crate::utilities::capture::capture!(
+                    let capture_handle = crate::utilities::capture::capture_usage(
                         ActivityType::AggregationInitCommand,
-                        project_arc.name().clone(),
-                        &settings
+                        Some(project_arc.name()),
+                        &settings,
                     );
 
                     check_project_name(&project_arc.name())?;
-                    create_aggregation_file(&project_arc, name.to_string()).await
+                    let result = create_aggregation_file(&project_arc, name.to_string()).await;
+
+                    wait_for_usage_capture(capture_handle).await;
+
+                    result
                 }
             }
         }
@@ -576,14 +624,16 @@ async fn top_command_handler(
                     let project = load_project()?;
                     let project_arc = Arc::new(project);
 
-                    crate::utilities::capture::capture!(
+                    let capture_handle = crate::utilities::capture::capture_usage(
                         ActivityType::ConsumptionInitCommand,
-                        project_arc.name().clone(),
-                        &settings
+                        Some(project_arc.name()),
+                        &settings,
                     );
 
                     check_project_name(&project_arc.name())?;
                     create_consumption_file(&project_arc, name.to_string())?.show();
+
+                    wait_for_usage_capture(capture_handle).await;
 
                     Ok(RoutineSuccess::success(Message::new(
                         "Created".to_string(),
@@ -598,21 +648,25 @@ async fn top_command_handler(
             let project = load_project()?;
             let project_arc = Arc::new(project);
 
-            crate::utilities::capture::capture!(
+            let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::LogsCommand,
-                project_arc.name().clone(),
-                &settings
+                Some(project_arc.name()),
+                &settings,
             );
 
             check_project_name(&project_arc.name())?;
             let log_file_path = settings.logger.log_file.clone();
             let filter_value = filter.clone().unwrap_or_else(|| "".to_string());
 
-            if *tail {
+            let result = if *tail {
                 follow_logs(log_file_path, filter_value)
             } else {
                 show_logs(log_file_path, filter_value)
-            }
+            };
+
+            wait_for_usage_capture(capture_handle).await;
+
+            result
         }
         Commands::Ps {} => {
             info!("Running ps command");
@@ -620,13 +674,17 @@ async fn top_command_handler(
             let project = load_project()?;
             let project_arc = Arc::new(project);
 
-            crate::utilities::capture::capture!(
+            let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::PsCommand,
-                project_arc.name().clone(),
-                &settings
+                Some(project_arc.name()),
+                &settings,
             );
 
-            show_processes(project_arc)
+            let result = show_processes(project_arc);
+
+            wait_for_usage_capture(capture_handle).await;
+
+            result
         }
         Commands::Ls {
             version,
@@ -638,20 +696,37 @@ async fn top_command_handler(
             let project = load_project()?;
             let project_arc = Arc::new(project);
 
-            crate::utilities::capture::capture!(
+            let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::LsCommand,
-                project_arc.name().clone(),
-                &settings
+                Some(project_arc.name()),
+                &settings,
             );
 
-            if *streaming {
+            let res = if *streaming {
                 list_streaming(project_arc, limit).await
             } else {
                 list_db(project_arc, version, limit).await
-            }
+            };
+
+            wait_for_usage_capture(capture_handle).await;
+
+            res
         }
 
-        Commands::Metrics {} => run_console().await,
+        Commands::Metrics {} => {
+            let capture_handle = crate::utilities::capture::capture_usage(
+                ActivityType::MetricsCommand,
+                None,
+                &settings,
+            );
+
+            let result = run_console().await;
+
+            wait_for_usage_capture(capture_handle).await;
+
+            result
+        }
+
         Commands::Import {
             data_model_name,
             file,
@@ -660,6 +735,13 @@ async fn top_command_handler(
             version,
         } => {
             let project = load_project()?;
+
+            let capture_handle = crate::utilities::capture::capture_usage(
+                ActivityType::ImportCommand,
+                Some(project.name()),
+                &settings,
+            );
+
             let framework_object_versions =
                 load_framework_objects(&project).await.map_err(|e| {
                     RoutineFailure::error(Message {
@@ -713,6 +795,8 @@ async fn top_command_handler(
                     "only 'csv' is supported currently".to_string(),
                 )));
             }
+
+            wait_for_usage_capture(capture_handle).await;
 
             Ok(RoutineSuccess::success(Message::new(
                 "Imported".to_string(),

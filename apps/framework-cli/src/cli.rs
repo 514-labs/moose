@@ -51,7 +51,8 @@ use crate::framework::bulk_import::import_csv_file;
 use crate::framework::core::code_loader::load_framework_objects;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::sdk::ingest::generate_sdk;
-use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
+use crate::framework::versions::parse_version;
+use crate::infrastructure::olap::clickhouse::version_sync::version_to_string;
 use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
@@ -524,7 +525,7 @@ async fn top_command_handler(
 
             // TODO get rid of the routines and use functions instead
             let mut controller = RoutineController::new();
-            controller.add_routine(Box::new(CleanProject::new(project_arc, run_mode)));
+            controller.add_routine(Box::new(CleanProject::new(project_arc)));
             controller.run_routines(run_mode);
 
             wait_for_usage_capture(capture_handle).await;

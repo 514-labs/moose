@@ -45,8 +45,8 @@ use crate::framework::typescript::templates::{
 use crate::framework::typescript::templates::{
     VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
 };
+use crate::framework::versions::sort_versions;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
-use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, version_to_string};
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 
@@ -361,6 +361,15 @@ impl Project {
         schemas_dir
     }
 
+    // Will start to be more useful when we version more than just the data models
+    pub fn versioned_data_model_dir(&self, version: &str) -> Result<PathBuf, ProjectFileError> {
+        if version == self.cur_version() {
+            Ok(self.data_models_dir())
+        } else {
+            Ok(self.old_version_location(version)?)
+        }
+    }
+
     pub fn streaming_func_dir(&self) -> PathBuf {
         let functions_dir = self.app_dir().join(FUNCTIONS_DIR);
 
@@ -474,13 +483,6 @@ impl Project {
         Ok(())
     }
 
-    pub fn cur_version(&self) -> &str {
-        match &self.language_project_config {
-            LanguageProjectConfig::Typescript(package_json) => &package_json.version,
-            LanguageProjectConfig::Python(package_json) => &package_json.version,
-        }
-    }
-
     pub fn old_version_location(&self, version: &str) -> Result<PathBuf, ProjectFileError> {
         let mut old_base_path = self.internal_dir()?;
         old_base_path.push(CLI_INTERNAL_VERSIONS_DIR);
@@ -500,18 +502,21 @@ impl Project {
         Ok(())
     }
 
-    pub fn old_versions_sorted(&self) -> Vec<String> {
-        let mut old_versions = self
-            .supported_old_versions
-            .keys()
-            .map(|v| parse_version(v))
-            .collect::<Vec<Vec<i32>>>();
-        old_versions.sort();
+    pub fn cur_version(&self) -> &str {
+        match &self.language_project_config {
+            LanguageProjectConfig::Typescript(package_json) => &package_json.version,
+            LanguageProjectConfig::Python(package_json) => &package_json.version,
+        }
+    }
 
-        old_versions
-            .into_iter()
-            .map(|v| version_to_string(&v))
-            .collect::<Vec<String>>()
+    pub fn old_versions_sorted(&self) -> Vec<String> {
+        sort_versions(self.supported_old_versions.keys())
+    }
+
+    pub fn versions(&self) -> Vec<String> {
+        let mut versions = self.old_versions_sorted();
+        versions.push(self.cur_version().to_string());
+        versions
     }
 
     pub fn get_functions(&self) -> HashMap<String, Vec<String>> {

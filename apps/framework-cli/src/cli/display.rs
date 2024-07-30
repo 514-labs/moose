@@ -306,6 +306,15 @@ pub fn show_changes(infra_plan: &InfraPlan) {
             OlapChange::Table(Change::Updated { before, after: _ }) => {
                 infra_updated(&before.expanded_display());
             }
+            OlapChange::View(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            OlapChange::View(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            OlapChange::View(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
         });
 
     infra_plan

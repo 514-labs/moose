@@ -38,6 +38,7 @@ impl Default for PythonProject {
             dependencies: vec![
                 "kafka-python-ng==2.2.2".to_string(),
                 "clickhouse_connect==0.7.16".to_string(),
+                "requests==2.32.3".to_string(),
             ],
         }
     }
@@ -95,6 +96,7 @@ mod tests {
             vec![
                 "kafka-python-ng==2.2.2".to_string(),
                 "clickhouse_connect==0.7.16".to_string(),
+                "requests==2.32.3".to_string(),
             ]
         );
     }

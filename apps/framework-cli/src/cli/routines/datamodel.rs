@@ -131,7 +131,7 @@ fn merge_maps(
     map1
 }
 
-fn extract_types(value: &CustomValue) -> Vec<String> {
+fn extract_types(value: &CustomValue, tab_index: usize) -> Vec<String> {
     match value {
         CustomValue::TypeArray(arr) => {
             let mut types = HashSet::new();
@@ -156,10 +156,11 @@ fn extract_types(value: &CustomValue) -> Vec<String> {
                         types.insert("Object".to_string());
                     }
                     CustomValue::JsonObject(obj) => {
-                        types.insert(render_typescript_object(obj, false));
+                        types.insert(render_typescript_object(obj, false, tab_index + 1));
                     }
                     CustomValue::JsonArray(arr) => {
-                        let extracted_types = extract_types(&CustomValue::JsonArray(arr.clone()));
+                        let extracted_types =
+                            extract_types(&CustomValue::JsonArray(arr.clone()), tab_index);
                         let formatted_types = if extracted_types.len() > 1 {
                             format!("({})[]", extracted_types.join(" | "))
                         } else {
@@ -191,7 +192,7 @@ fn extract_types(value: &CustomValue) -> Vec<String> {
                         types.insert("boolean".to_string());
                     }
                     CustomValue::JsonObject(obj) => {
-                        types.insert(render_typescript_object(obj, false));
+                        types.insert(render_typescript_object(obj, false, tab_index));
                     }
                     _ => {
                         types.insert("any".to_string());
@@ -201,7 +202,7 @@ fn extract_types(value: &CustomValue) -> Vec<String> {
             types.into_iter().collect()
         }
         CustomValue::JsonObject(map) => {
-            vec![render_typescript_object(map, false)]
+            vec![render_typescript_object(map, false, tab_index)]
         }
         CustomValue::JsonPrimitive(InterfaceFieldType::Array(_)) => vec!["Array".to_string()],
         CustomValue::JsonPrimitive(InterfaceFieldType::Object(_)) => vec!["Object".to_string()],
@@ -216,15 +217,18 @@ fn extract_types(value: &CustomValue) -> Vec<String> {
 fn render_typescript_object(
     fields: &HashMap<String, CustomValue>,
     use_key_for_first_primitive: bool,
+    tab_index: usize,
 ) -> String {
     let mut content = String::new();
     let mut first_primitive_key_encountered = false;
 
+    // Helper function to generate indentation
+    let indent = |level: usize| " ".repeat(level * 4); // 4 spaces per tab level
+
     let mut fields_vec: Vec<(&String, Vec<String>)> = fields
         .iter()
         .map(|(field, value)| {
-            let types = extract_types(value);
-            // if there is only null, then don't filter it out
+            let types = extract_types(value, tab_index);
             let types_str = if types.iter().any(|t| t != "null") {
                 types
                     .into_iter()
@@ -242,35 +246,47 @@ fn render_typescript_object(
         let is_optional = types.contains(&"null".to_string());
         let optional_marker = if is_optional { "?" } else { "" };
 
-        // Check for only null, empty object, or empty array
         if types.len() == 1
             && (types.contains(&"null".to_string())
                 || types.contains(&"{}".to_string())
                 || types.contains(&"[]".to_string()))
         {
             content.push_str(&format!(
-                "  // {}{}: {};\n",
-                field, optional_marker, types_str
+                "{}// {}{}: {};\n",
+                indent(tab_index),
+                field,
+                optional_marker,
+                types_str
             ));
-        } else if !first_primitive_key_encountered
-            && use_key_for_first_primitive
-            && !types.contains(&"Array".to_string())
-            && !types.contains(&"Object".to_string())
-        {
+        } else if !first_primitive_key_encountered && use_key_for_first_primitive {
             content.push_str(&format!(
-                "  {}{}: Key<{}>;\n",
-                field, optional_marker, types_str
+                "{}{}{}: Key<{}>;\n",
+                indent(tab_index),
+                field,
+                optional_marker,
+                types_str
             ));
             first_primitive_key_encountered = true;
         } else {
-            content.push_str(&format!("  {}{}: {};\n", field, optional_marker, types_str));
+            content.push_str(&format!(
+                "{}{}{}: {};\n",
+                indent(tab_index),
+                field,
+                optional_marker,
+                types_str
+            ));
         }
     }
     // Check if the content is empty
     if content.trim().is_empty() {
         "{}".to_string()
     } else {
-        format!("{{\n{}}}", content)
+        format!(
+            "{{{}\n{}{}}}",
+            indent(tab_index),
+            content,
+            indent(tab_index - 1)
+        )
     }
 }
 
@@ -280,12 +296,10 @@ fn render_typescript_interface(
 ) -> String {
     let mut interface = format!(
         r#"
-    import {{ Key }} from "@514labs/moose-lib";
-    
-    export interface {}
-    "#,
+import {{ Key }} from "@514labs/moose-lib";    
+export interface {}"#,
         interface_name
     );
-    interface.push_str(&render_typescript_object(fields, true));
+    interface.push_str(&render_typescript_object(fields, true, 1));
     interface
 }

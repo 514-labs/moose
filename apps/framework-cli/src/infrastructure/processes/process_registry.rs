@@ -1,4 +1,3 @@
-use crate::cli::settings::Features;
 use crate::project::Project;
 
 use super::aggregations_registry::AggregationProcessRegistry;
@@ -8,22 +7,24 @@ use super::functions_registry::FunctionProcessRegistry;
 pub struct ProcessRegistries {
     pub functions: FunctionProcessRegistry,
     pub aggregations: AggregationProcessRegistry,
+    pub blocks: AggregationProcessRegistry,
     pub consumption: ConsumptionProcessRegistry,
 }
 
 impl ProcessRegistries {
-    pub fn new(project: &Project, features: &Features) -> Self {
+    pub fn new(project: &Project) -> Self {
         let functions = FunctionProcessRegistry::new(project.redpanda_config.clone());
-        let aggs_dir = if features.blocks {
-            project.blocks_dir()
-        } else {
-            project.aggregations_dir()
-        };
         let aggregations = AggregationProcessRegistry::new(
             project.language,
-            aggs_dir,
+            project.aggregations_dir(),
             project.clickhouse_config.clone(),
-            features,
+            true,
+        );
+        let blocks = AggregationProcessRegistry::new(
+            project.language,
+            project.aggregations_dir(),
+            project.clickhouse_config.clone(),
+            false,
         );
         let consumption = ConsumptionProcessRegistry::new(
             project.language,
@@ -34,6 +35,7 @@ impl ProcessRegistries {
         Self {
             functions,
             aggregations,
+            blocks,
             consumption,
         }
     }

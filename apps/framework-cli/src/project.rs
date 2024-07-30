@@ -29,22 +29,18 @@ use serde::Deserialize;
 use serde::Serialize;
 
 use crate::cli::local_webserver::LocalWebserverConfig;
-use crate::cli::settings::Features;
 use crate::framework::languages::SupportedLanguages;
+use crate::framework::python::templates::PTYHON_BASE_API_SAMPLE_TEMPLATE;
 use crate::framework::python::templates::PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE;
-use crate::framework::python::templates::{
-    PTYHON_BASE_AGG_SAMPLE_TEMPLATE, PTYHON_BASE_API_SAMPLE_TEMPLATE,
-};
 use crate::framework::streaming::loader::{
     extension_supported_in_streaming_function, parse_streaming_function,
 };
 use crate::framework::typescript::templates::BASE_APIS_SAMPLE_TEMPLATE;
 use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
-    TS_BASE_AGGREGATION_SAMPLE_TEMPLATE, TS_BASE_BLOCKS_SAMPLE_TEMPLATE,
-    TS_BASE_STREAMING_FUNCTION_SAMPLE_TEMPLATE,
+    TS_BASE_BLOCKS_SAMPLE_TEMPLATE, TS_BASE_STREAMING_FUNCTION_SAMPLE_TEMPLATE,
 };
 use crate::framework::typescript::templates::{
     VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
@@ -54,7 +50,6 @@ use crate::infrastructure::olap::clickhouse::version_sync::{parse_version, versi
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 
-use crate::utilities::constants::BLOCKS_DIR;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA;
@@ -62,14 +57,14 @@ use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS;
 use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::PROJECT_CONFIG_FILE;
-use crate::utilities::constants::PY_AGGREGATIONS_FILE;
+use crate::utilities::constants::PY_BLOCKS_FILE;
 use crate::utilities::constants::README_PREFIX;
-use crate::utilities::constants::TS_AGGREGATIONS_FILE;
 use crate::utilities::constants::{
     AGGREGATIONS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, OLD_PROJECT_CONFIG_FILE,
     SAMPLE_STREAMING_FUNCTION_DEST, SAMPLE_STREAMING_FUNCTION_SOURCE, TS_FLOW_FILE,
 };
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
+use crate::utilities::constants::{BLOCKS_DIR, TS_BLOCKS_FILE};
 use crate::utilities::constants::{PYTHON_INIT_FILE, PY_API_FILE, TS_API_FILE};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 use crate::utilities::git::GitConfig;
@@ -250,14 +245,10 @@ impl Project {
         Ok(())
     }
 
-    pub fn create_base_app_files(&self, features: &Features) -> Result<(), std::io::Error> {
+    pub fn create_base_app_files(&self) -> Result<(), std::io::Error> {
         // Common file paths
         let readme_file_path = self.project_location.join("README.md");
-        let aggregations_dir = if features.blocks {
-            self.blocks_dir()
-        } else {
-            self.aggregations_dir()
-        };
+        let blocks_dir = self.blocks_dir();
 
         self.write_file(
             &readme_file_path,
@@ -271,7 +262,7 @@ impl Project {
                     "{}__{}.ts",
                     SAMPLE_STREAMING_FUNCTION_SOURCE, SAMPLE_STREAMING_FUNCTION_DEST
                 ));
-                let aggregations_file_path = aggregations_dir.join(TS_AGGREGATIONS_FILE);
+                let blocks_file_path = blocks_dir.join(TS_BLOCKS_FILE);
 
                 // Write TypeScript specific templates
                 self.write_file(&apis_file_path, BASE_APIS_SAMPLE_TEMPLATE.to_string())?;
@@ -280,17 +271,11 @@ impl Project {
                     &function_file_path,
                     TS_BASE_STREAMING_FUNCTION_SAMPLE_TEMPLATE.to_string(),
                 )?;
-                if features.blocks {
-                    self.write_file(
-                        &aggregations_file_path,
-                        TS_BASE_BLOCKS_SAMPLE_TEMPLATE.to_string(),
-                    )?;
-                } else {
-                    self.write_file(
-                        &aggregations_file_path,
-                        TS_BASE_AGGREGATION_SAMPLE_TEMPLATE.to_string(),
-                    )?;
-                }
+
+                self.write_file(
+                    &blocks_file_path,
+                    TS_BASE_BLOCKS_SAMPLE_TEMPLATE.to_string(),
+                )?;
             }
             SupportedLanguages::Python => {
                 let apis_file_path = self.consumption_dir().join(PY_API_FILE);
@@ -299,7 +284,7 @@ impl Project {
                     "{}__{}.py",
                     SAMPLE_STREAMING_FUNCTION_SOURCE, SAMPLE_STREAMING_FUNCTION_DEST
                 ));
-                let aggregations_file_path = aggregations_dir.join(PY_AGGREGATIONS_FILE);
+                let aggregations_file_path = blocks_dir.join(PY_BLOCKS_FILE);
 
                 // Write Python specific templates
                 self.write_file(&apis_file_path, PTYHON_BASE_API_SAMPLE_TEMPLATE.to_string())?;
@@ -311,23 +296,15 @@ impl Project {
                     &function_file_path,
                     PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE.to_string(),
                 )?;
-                if features.blocks {
-                    self.write_file(
-                        &aggregations_file_path,
-                        PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE.to_string(),
-                    )?;
-                } else {
-                    self.write_file(
-                        &aggregations_file_path,
-                        PTYHON_BASE_AGG_SAMPLE_TEMPLATE.to_string(),
-                    )?;
-                }
+                self.write_file(
+                    &aggregations_file_path,
+                    PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE.to_string(),
+                )?;
 
                 // Create __init__.py in necessary directories for Python
                 for dir in &[
                     self.app_dir(),
                     self.data_models_dir(),
-                    aggregations_dir,
                     self.consumption_dir(),
                     self.streaming_func_dir(),
                 ] {
@@ -578,8 +555,12 @@ impl Project {
             Ok(files) => files
                 .filter_map(Result::ok)
                 .filter_map(|entry| entry.file_name().to_str().map(String::from))
-                .filter(|file_name| file_name.ends_with(".ts"))
-                .map(|file_name| file_name.trim_end_matches(".ts").to_string())
+                .filter_map(|file_name| {
+                    file_name
+                        .strip_suffix(".ts")
+                        .or_else(|| file_name.strip_suffix(".py"))
+                        .map(|file_name| file_name.to_string())
+                })
                 .collect::<HashSet<_>>(),
             Err(_) => HashSet::new(),
         }

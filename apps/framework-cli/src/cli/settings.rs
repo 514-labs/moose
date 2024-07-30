@@ -44,9 +44,6 @@ impl Default for Telemetry {
 pub struct Features {
     #[serde(default)]
     pub core_v2: bool,
-
-    #[serde(default)]
-    pub blocks: bool,
 }
 
 #[derive(Deserialize, Debug)]

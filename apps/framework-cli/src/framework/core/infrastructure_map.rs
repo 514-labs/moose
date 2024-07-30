@@ -357,6 +357,7 @@ impl InfrastructureMap {
         // Once we do the other refactor, we will be able to compare the changes and only restart
         // the process if there are changes
 
+        // currently we assume there is always a change and restart the processes
         changes.processes_changes.push(ProcessChange::OlapProcess(
             Change::<OlapProcess>::Updated {
                 before: OlapProcess {},

@@ -90,15 +90,19 @@ pub async fn execute_changes(
             ProcessChange::OlapProcess(Change::Added(olap_process)) => {
                 log::info!("Starting Aggregation process: {:?}", olap_process.id());
                 process_registry.aggregations.start(olap_process)?;
+                process_registry.blocks.start(olap_process)?;
             }
             ProcessChange::OlapProcess(Change::Removed(olap_process)) => {
                 log::info!("Stopping Aggregation process: {:?}", olap_process.id());
                 process_registry.aggregations.stop(olap_process).await?;
+                process_registry.blocks.stop(olap_process).await?;
             }
             ProcessChange::OlapProcess(Change::Updated { before, after }) => {
                 log::info!("Updating Aggregation process: {:?}", before.id());
                 process_registry.aggregations.stop(before).await?;
+                process_registry.blocks.stop(before).await?;
                 process_registry.aggregations.start(after)?;
+                process_registry.blocks.start(after)?;
             }
             ProcessChange::ConsumptionApiWebServer(Change::Added(_)) => {
                 log::info!("Starting Consumption webserver process");

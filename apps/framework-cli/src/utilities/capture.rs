@@ -97,7 +97,7 @@ pub fn capture_usage(
         let mut event = MooseActivity {
             id: Uuid::new_v4(),
             project: project_name,
-            activity_type: activity_type,
+            activity_type,
             sequence_id: CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
             timestamp: Utc::now(),
             cli_version: constants::CLI_VERSION.to_string(),

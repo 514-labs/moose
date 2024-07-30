@@ -216,7 +216,7 @@ async fn top_command_handler(
 
                     debug!("Project: {:?}", project_arc);
 
-                    initialize_project(&project_arc, empty, &settings.features)?.show();
+                    initialize_project(&project_arc, empty)?.show();
 
                     project_arc
                         .write_to_disk()

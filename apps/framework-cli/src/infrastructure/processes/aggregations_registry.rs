@@ -4,7 +4,6 @@ use log::info;
 use tokio::process::Child;
 
 use crate::{
-    cli::settings::Features,
     framework::{
         aggregations::model::AggregationError, core::infrastructure::olap_process::OlapProcess,
         languages::SupportedLanguages, python, typescript,
@@ -12,12 +11,13 @@ use crate::{
     infrastructure::olap::clickhouse::config::ClickHouseConfig,
 };
 
+// to be changed to BlocksProcessRegistry and remove is_aggregation
 pub struct AggregationProcessRegistry {
     registry: HashMap<String, Child>,
     language: SupportedLanguages,
     dir: PathBuf,
     clickhouse_config: ClickHouseConfig,
-    features: Features,
+    is_aggregation: bool,
 }
 
 impl AggregationProcessRegistry {
@@ -25,14 +25,14 @@ impl AggregationProcessRegistry {
         language: SupportedLanguages,
         dir: PathBuf,
         clickhouse_config: ClickHouseConfig,
-        features: &Features,
+        is_aggregation: bool,
     ) -> Self {
         Self {
             registry: HashMap::new(),
             language,
             dir,
             clickhouse_config,
-            features: features.clone(),
+            is_aggregation,
         }
     }
 
@@ -43,12 +43,12 @@ impl AggregationProcessRegistry {
             SupportedLanguages::Typescript => typescript::aggregation::run(
                 self.clickhouse_config.clone(),
                 &self.dir,
-                self.features.blocks,
+                self.is_aggregation,
             )?,
             SupportedLanguages::Python => python::aggregation::run(
                 self.clickhouse_config.clone(),
                 &self.dir,
-                self.features.blocks,
+                self.is_aggregation,
             )?,
         };
 
@@ -67,9 +67,5 @@ impl AggregationProcessRegistry {
         self.registry.clear();
 
         Ok(())
-    }
-
-    pub fn is_blocks_enabled(&self) -> bool {
-        self.features.blocks
     }
 }

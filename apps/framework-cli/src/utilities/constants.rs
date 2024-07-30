@@ -49,8 +49,8 @@ pub const GITIGNORE: &str = ".gitignore";
 pub const TS_FLOW_FILE: &str = "flow.ts";
 pub const PY_FLOW_FILE: &str = "flow.py";
 
-pub const TS_AGGREGATIONS_FILE: &str = "DailyActiveUsers.ts";
-pub const PY_AGGREGATIONS_FILE: &str = "DailyActiveUsers.py";
+pub const TS_BLOCKS_FILE: &str = "DailyActiveUsers.ts";
+pub const PY_BLOCKS_FILE: &str = "DailyActiveUsers.py";
 
 pub const TS_API_FILE: &str = "dailyActiveUsers.ts";
 pub const PY_API_FILE: &str = "dailyActiveUsers.py";

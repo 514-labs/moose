@@ -304,7 +304,6 @@ pub async fn start_development_mode(
         let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
         let (syncing_registry, process_registry) = execute_initial_infra_change(
             &project,
-            features,
             &plan_result,
             api_changes_channel,
             metrics.clone(),
@@ -346,17 +345,19 @@ pub async fn start_development_mode(
         )
         .await?;
 
-        let aggs_dir = if features.blocks {
-            project.blocks_dir()
-        } else {
-            project.aggregations_dir()
-        };
+        let mut blocks_process_registry = AggregationProcessRegistry::new(
+            project.language,
+            project.blocks_dir(),
+            project.clickhouse_config.clone(),
+            false,
+        );
+        process_aggregations_changes(&mut blocks_process_registry).await?;
 
         let mut aggregations_process_registry = AggregationProcessRegistry::new(
             project.language,
-            aggs_dir,
+            project.aggregations_dir(),
             project.clickhouse_config.clone(),
-            features,
+            true,
         );
         process_aggregations_changes(&mut aggregations_process_registry).await?;
 
@@ -375,6 +376,7 @@ pub async fn start_development_mode(
         let project_registries = ProcessRegistries {
             functions: function_process_registry,
             aggregations: aggregations_process_registry,
+            blocks: blocks_process_registry,
             consumption: consumption_process_registry,
         };
 
@@ -449,14 +451,8 @@ pub async fn start_production_mode(
         let plan_result = plan_changes(&mut client, &project).await?;
         log::info!("Plan Changes: {:?}", plan_result.changes);
         let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
-        execute_initial_infra_change(
-            &project,
-            &features,
-            &plan_result,
-            api_changes_channel,
-            metrics.clone(),
-        )
-        .await?;
+        execute_initial_infra_change(&project, &plan_result, api_changes_channel, metrics.clone())
+            .await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
 
         // Storing the result of the changes in the table
@@ -487,16 +483,18 @@ pub async fn start_production_mode(
             &topics,
         )
         .await?;
-        let aggs_dir = if features.blocks {
-            project.blocks_dir()
-        } else {
-            project.aggregations_dir()
-        };
+        let mut blocks_process_registry = AggregationProcessRegistry::new(
+            project.language,
+            project.blocks_dir(),
+            project.clickhouse_config.clone(),
+            false,
+        );
+        process_aggregations_changes(&mut blocks_process_registry).await?;
         let mut aggregations_process_registry = AggregationProcessRegistry::new(
             project.language,
-            aggs_dir,
+            project.aggregations_dir(),
             project.clickhouse_config.clone(),
-            &features,
+            true,
         );
         process_aggregations_changes(&mut aggregations_process_registry).await?;
 

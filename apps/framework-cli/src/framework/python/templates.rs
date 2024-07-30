@@ -88,29 +88,6 @@ def run(client, params):
     )
 "#;
 
-pub static PTYHON_BASE_AGG_SAMPLE_TEMPLATE: &str = r#"
-from dataclasses import dataclass
-
-# Here is a sample aggregation query that calculates the number of daily active users
-# based on the number of unique users who complete a sign-in activity each day.
-
-@dataclass
-class Aggregation:
-    select: str
-    order_by: str
-
-sql = """
-SELECT 
-uniqState(userId) as dailyActiveUsers,
-toStartOfDay(timestamp) as date
-FROM ParsedActivity_0_0
-WHERE activity = 'Login' 
-GROUP BY toStartOfDay(timestamp)
-"""
-
-agg = Aggregation(select=sql, order_by="date")
-"#;
-
 pub static PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE: &str = r#"
 from dataclasses import dataclass
 from typing import List

@@ -2,7 +2,6 @@ use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
 use crate::{
-    cli::settings::Features,
     infrastructure::{
         api,
         olap::{self, OlapChangesError},
@@ -35,7 +34,6 @@ pub enum ExecutionError {
 
 pub async fn execute_initial_infra_change(
     project: &Project,
-    features: &Features, // We should get rid of this when we moved away from aggregations
     plan: &InfraPlan,
     api_changes_channel: Sender<ApiChange>,
     metrics: Arc<Metrics>,
@@ -56,7 +54,7 @@ pub async fn execute_initial_infra_change(
         project.redpanda_config.clone(),
         project.clickhouse_config.clone(),
     );
-    let mut process_registries = ProcessRegistries::new(project, features);
+    let mut process_registries = ProcessRegistries::new(project);
 
     processes::execute_changes(
         &mut syncing_processes_registry,

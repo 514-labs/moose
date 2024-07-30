@@ -1,4 +1,3 @@
-use crate::cli::settings::Features;
 use crate::{cli::display::Message, project::Project};
 
 use super::{RoutineFailure, RoutineSuccess};
@@ -6,7 +5,6 @@ use super::{RoutineFailure, RoutineSuccess};
 pub fn initialize_project(
     project: &Project,
     empty: &bool,
-    features: &Features,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     project.setup_app_dir().map_err(|err| {
         RoutineFailure::new(
@@ -19,7 +17,7 @@ pub fn initialize_project(
     })?;
 
     if !empty {
-        project.create_base_app_files(features).map_err(|err| {
+        project.create_base_app_files().map_err(|err| {
             RoutineFailure::new(
                 Message::new(
                     "Failed".to_string(),

@@ -156,7 +156,7 @@ fn extract_types(value: &CustomValue) -> Vec<String> {
                         types.insert("Object".to_string());
                     }
                     CustomValue::JsonObject(obj) => {
-                        types.insert(render_typescript_object(obj));
+                        types.insert(render_typescript_object(obj, false));
                     }
                     CustomValue::JsonArray(arr) => {
                         let extracted_types = extract_types(&CustomValue::JsonArray(arr.clone()));
@@ -191,7 +191,7 @@ fn extract_types(value: &CustomValue) -> Vec<String> {
                         types.insert("boolean".to_string());
                     }
                     CustomValue::JsonObject(obj) => {
-                        types.insert(render_typescript_object(obj));
+                        types.insert(render_typescript_object(obj, false));
                     }
                     _ => {
                         types.insert("any".to_string());
@@ -201,7 +201,7 @@ fn extract_types(value: &CustomValue) -> Vec<String> {
             types.into_iter().collect()
         }
         CustomValue::JsonObject(map) => {
-            vec![render_typescript_object(map)]
+            vec![render_typescript_object(map, false)]
         }
         CustomValue::JsonPrimitive(InterfaceFieldType::Array(_)) => vec!["Array".to_string()],
         CustomValue::JsonPrimitive(InterfaceFieldType::Object(_)) => vec!["Object".to_string()],
@@ -213,36 +213,79 @@ fn extract_types(value: &CustomValue) -> Vec<String> {
     }
 }
 
-fn render_typescript_object(fields: &HashMap<String, CustomValue>) -> String {
-    let mut object = "{\n".to_string();
-    for (field, value) in fields {
-        let types = extract_types(value);
+fn render_typescript_object(
+    fields: &HashMap<String, CustomValue>,
+    use_key_for_first_primitive: bool,
+) -> String {
+    let mut content = String::new();
+    let mut first_primitive_key_encountered = false;
 
+    let mut fields_vec: Vec<(&String, Vec<String>)> = fields
+        .iter()
+        .map(|(field, value)| {
+            let types = extract_types(value);
+            // if there is only null, then don't filter it out
+            let types_str = if types.iter().any(|t| t != "null") {
+                types
+                    .into_iter()
+                    .filter(|t| t != "null")
+                    .collect::<Vec<String>>()
+            } else {
+                types
+            };
+            (field, types_str)
+        })
+        .collect();
+    fields_vec.sort_by(|a, b| a.0.cmp(b.0));
+    for (field, types) in fields_vec {
+        let types_str = types.join(" | ");
         let is_optional = types.contains(&"null".to_string());
-        // if there is only null, then don't filter it out
-        let types_str = if types.iter().any(|t| t != "null") {
-            types
-                .into_iter()
-                .filter(|t| t != "null")
-                .collect::<Vec<String>>()
-        } else {
-            types
-        };
-
-        let types_str = types_str.join(" | ");
-
         let optional_marker = if is_optional { "?" } else { "" };
-        object.push_str(&format!("  {}{}: {};\n", field, optional_marker, types_str));
+
+        // Check for only null, empty object, or empty array
+        if types.len() == 1
+            && (types.contains(&"null".to_string())
+                || types.contains(&"{}".to_string())
+                || types.contains(&"[]".to_string()))
+        {
+            content.push_str(&format!(
+                "  // {}{}: {};\n",
+                field, optional_marker, types_str
+            ));
+        } else if !first_primitive_key_encountered
+            && use_key_for_first_primitive
+            && !types.contains(&"Array".to_string())
+            && !types.contains(&"Object".to_string())
+        {
+            content.push_str(&format!(
+                "  {}{}: Key<{}>;\n",
+                field, optional_marker, types_str
+            ));
+            first_primitive_key_encountered = true;
+        } else {
+            content.push_str(&format!("  {}{}: {};\n", field, optional_marker, types_str));
+        }
     }
-    object.push('}');
-    object
+    // Check if the content is empty
+    if content.trim().is_empty() {
+        "{}".to_string()
+    } else {
+        format!("{{\n{}}}", content)
+    }
 }
 
 fn render_typescript_interface(
     interface_name: &str,
     fields: &HashMap<String, CustomValue>,
 ) -> String {
-    let mut interface = format!("export interface {} ", interface_name);
-    interface.push_str(&render_typescript_object(fields));
+    let mut interface = format!(
+        r#"
+    import {{ Key }} from "@514labs/moose-lib";
+    
+    export interface {}
+    "#,
+        interface_name
+    );
+    interface.push_str(&render_typescript_object(fields, true));
     interface
 }

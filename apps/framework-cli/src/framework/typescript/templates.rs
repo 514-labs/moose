@@ -154,6 +154,8 @@ export default {
 "#;
 
 pub static BASE_CONSUMPTION_TEMPLATE: &str = r#"
+import { ConsumptionUtil } from "@514labs/moose-lib";
+
 // This file is where you can define your API templates for consuming your data
 // All query_params are passed in as strings, and are used within the sql tag to parameterize you queries
 export interface QueryParams {
@@ -162,7 +164,7 @@ export interface QueryParams {
   
 export default async function handle(
   {}: QueryParams,
-  { client, sql }
+  { client, sql }: ConsumptionUtil
 ) {
 
     return client.query(sql``);

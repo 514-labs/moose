@@ -43,12 +43,12 @@ impl AggregationProcessRegistry {
             SupportedLanguages::Typescript => typescript::aggregation::run(
                 self.clickhouse_config.clone(),
                 &self.dir,
-                self.is_aggregation,
+                !self.is_aggregation,
             )?,
             SupportedLanguages::Python => python::aggregation::run(
                 self.clickhouse_config.clone(),
                 &self.dir,
-                self.is_aggregation,
+                !self.is_aggregation,
             )?,
         };
 

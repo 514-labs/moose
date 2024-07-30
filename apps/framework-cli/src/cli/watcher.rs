@@ -388,6 +388,7 @@ async fn watch(
                         )
                     })?;
                 } else {
+                    // framework_object_versions is None if using core_v2
                     let framework_object_versions = framework_object_versions.as_mut().unwrap();
 
                     if !bucketed_events.data_models.is_empty() {

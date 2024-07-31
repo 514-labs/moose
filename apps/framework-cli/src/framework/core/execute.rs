@@ -38,7 +38,7 @@ pub async fn execute_initial_infra_change(
     api_changes_channel: Sender<ApiChange>,
     metrics: Arc<Metrics>,
 ) -> Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError> {
-    // This probably can be paralelized through Tokio Spawn
+    // This probably can be parallelized through Tokio Spawn
     olap::execute_changes(project, &plan.changes.olap_changes).await?;
     stream::execute_changes(project, &plan.changes.streaming_engine_changes).await?;
 

@@ -531,24 +531,19 @@ async fn handle_json_array_body(
 }
 
 async fn validate_token(token: Option<&str>, env_var: &str) -> bool {
-    // Retrieve the INGEST_API_KEY from environment variables
     match env::var(env_var) {
-        Ok(ingest_api_key) => {
-            // Compare the provided token with the INGEST_API_KEY
-            match token {
-                Some(token) => hex_digest(Algorithm::SHA256, token.as_bytes()) == ingest_api_key, // Assuming an async validation function
-                None => false,
-            }
-        }
+        Ok(ingest_api_key) => match token {
+            Some(token) => hex_digest(Algorithm::SHA256, token.as_bytes()) == ingest_api_key,
+            None => false,
+        },
         Err(_) => {
-            // If the INGEST_API_KEY is not set, return true
+            // If API_KEY not SET
             true
         }
     }
 }
 
 async fn check_authorization(auth_header: Option<&HeaderValue>, env_var: &str) -> bool {
-    // Extract the Authorization header and check the bearer token
     let bearer_token = match auth_header {
         Some(header_value) => {
             let header_str = header_value.to_str().unwrap();
@@ -579,7 +574,6 @@ async fn ingest_route(
         }
     );
 
-    // Extract the Authorization header and check the bearer token
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
 
     if !check_authorization(auth_header, "MOOSE_INGEST_API_KEY").await {

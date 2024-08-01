@@ -75,7 +75,7 @@ jobs:
       - name: Inspect Logs
         if: always()
         run: |
-          cat ~/.moose/cli.log
+          cat ~/.moose/*-cli.log
 
   test-ubuntu:
     name: Test Suite (Ubuntu)
@@ -113,7 +113,7 @@ jobs:
       - name: Inspect Logs
         if: always()
         run: |
-          cat ~/.moose/cli.log
+          cat ~/.moose/*-cli.log
 
   lints:
     name: Lints

@@ -88,6 +88,28 @@ def run(client, params):
     )
 "#;
 
+pub static PTYHON_BASE_BLOCKS_TEMPLATE: &str = r#"
+from dataclasses import dataclass
+from typing import List
+
+# This file is where you can define your SQL queries to shape and manipulate batches
+# of data using Blocks. Blocks can also manage materialized views to store the results of 
+# your queries for improved performance. A materialized view is the recommended approach for aggregating
+# data. For more information on the types of aggregate functions you can run on your existing data, 
+# consult the Clickhouse documentation: https://clickhouse.com/docs/en/sql-reference/aggregate-functions
+
+@dataclass
+class Blocks:
+    teardown: List[str]
+    setup: List[str]
+
+teardown_queries = []
+
+setup_queries = []
+
+block = Blocks(teardown=teardown_queries, setup=setup_queries)
+"#;
+
 pub static PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE: &str = r#"
 from dataclasses import dataclass
 from typing import List

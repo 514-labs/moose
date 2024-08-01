@@ -118,7 +118,7 @@ export default async function handle(
 }
 "#;
 
-pub static BASE_BLOCK_TEMPLATE: &str = r#"
+pub static TS_BASE_BLOCK_TEMPLATE: &str = r#"
 // This file is where you can define your SQL queries to shape and manipulate batches
 // of data using Blocks. There is a collection of helper functions to create SQL queries
 // within the @514labs/moose-lib package. 

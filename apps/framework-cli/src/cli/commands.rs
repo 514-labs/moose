@@ -63,8 +63,8 @@ pub enum Commands {
     Clean {},
     /// Transforms upstream data into materialized datasets for analysis
     Function(FunctionArgs),
-    /// Defines aggregate table views of upstream data models
-    Aggregation(AggregationArgs),
+    /// Shapes & manipulates batches of data using SQL
+    Block(BlockArgs),
     /// Defines consumption APIs
     Consumption(ConsumptionArgs),
     /// View Moose logs
@@ -162,17 +162,17 @@ pub struct FuncInitArgs {
 
 #[derive(Debug, Args)]
 #[command(arg_required_else_help = true)]
-pub struct AggregationArgs {
+pub struct BlockArgs {
     #[command(subcommand)]
-    pub command: Option<AggregationCommands>,
+    pub command: Option<BlockCommands>,
 }
 
 #[derive(Debug, Subcommand)]
-pub enum AggregationCommands {
-    /// Creates a starter aggregation
+pub enum BlockCommands {
+    /// Creates a starter block
     #[command(arg_required_else_help = true)]
     Init {
-        /// Name of your aggregation
+        /// Name of your block
         name: String,
     },
 }

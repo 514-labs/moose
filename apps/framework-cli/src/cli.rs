@@ -15,7 +15,7 @@ use std::sync::Arc;
 
 use clap::Parser;
 use commands::{
-    AggregationCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
+    BlockCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
     GenerateCommand,
 };
 use config::ConfigError;
@@ -31,7 +31,7 @@ use routines::plan;
 use routines::ps::show_processes;
 use settings::{read_settings, Settings};
 
-use crate::cli::routines::aggregation::create_aggregation_file;
+use crate::cli::routines::block::create_block_file;
 use crate::cli::routines::consumption::create_consumption_file;
 
 use crate::cli::routines::dev::copy_old_schema;
@@ -592,23 +592,23 @@ async fn top_command_handler(
                 }
             }
         }
-        Commands::Aggregation(aggregation) => {
-            info!("Running aggregation command");
+        Commands::Block(block) => {
+            info!("Running block command");
 
-            let aggregation_cmd = aggregation.command.as_ref().unwrap();
-            match aggregation_cmd {
-                AggregationCommands::Init { name } => {
+            let block_cmd = block.command.as_ref().unwrap();
+            match block_cmd {
+                BlockCommands::Init { name } => {
                     let project = load_project()?;
                     let project_arc = Arc::new(project);
 
                     let capture_handle = crate::utilities::capture::capture_usage(
-                        ActivityType::AggregationInitCommand,
+                        ActivityType::BlockInitCommand,
                         Some(project_arc.name()),
                         &settings,
                     );
 
                     check_project_name(&project_arc.name())?;
-                    let result = create_aggregation_file(&project_arc, name.to_string()).await;
+                    let result = create_block_file(&project_arc, name.to_string()).await;
 
                     wait_for_usage_capture(capture_handle).await;
 

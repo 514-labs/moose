@@ -1,4 +1,4 @@
-use std::{fs, io::Write};
+use std::{fs, io::Write, path::PathBuf};
 
 use crate::{
     cli::display::Message,
@@ -16,61 +16,40 @@ pub async fn create_block_file(
     filename: String,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let blocks_dir = project.blocks_dir();
-    match project.language {
-        SupportedLanguages::Typescript => {
-            let block_file_path = blocks_dir.join(format!("{}.ts", filename));
+    let (extension, template) = match project.language {
+        SupportedLanguages::Typescript => ("ts", TS_BASE_BLOCK_TEMPLATE),
+        SupportedLanguages::Python => ("py", PTYHON_BASE_BLOCKS_TEMPLATE),
+    };
 
-            let mut block_file = fs::File::create(&block_file_path).map_err(|err| {
-                RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        format!("to create block file {}", block_file_path.display()),
-                    ),
-                    err,
-                )
-            })?;
-
-            block_file
-                .write_all(TS_BASE_BLOCK_TEMPLATE.as_bytes())
-                .map_err(|err| {
-                    RoutineFailure::new(
-                        Message::new(
-                            "Failed".to_string(),
-                            format!("to write to block file {}", block_file_path.display()),
-                        ),
-                        err,
-                    )
-                })?;
-        }
-        SupportedLanguages::Python => {
-            let block_file_path = blocks_dir.join(format!("{}.py", filename));
-
-            let mut block_file = fs::File::create(&block_file_path).map_err(|err| {
-                RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        format!("to create block file {}", block_file_path.display()),
-                    ),
-                    err,
-                )
-            })?;
-
-            block_file
-                .write_all(PTYHON_BASE_BLOCKS_TEMPLATE.as_bytes())
-                .map_err(|err| {
-                    RoutineFailure::new(
-                        Message::new(
-                            "Failed".to_string(),
-                            format!("to write to block file {}", block_file_path.display()),
-                        ),
-                        err,
-                    )
-                })?;
-        }
-    }
+    let block_file_path = blocks_dir.join(format!("{}.{}", filename, extension));
+    create_and_write_file(&block_file_path, template)?;
 
     Ok(RoutineSuccess::success(Message::new(
         "Created".to_string(),
         "block".to_string(),
     )))
+}
+
+fn create_and_write_file(path: &PathBuf, content: &str) -> Result<(), RoutineFailure> {
+    let mut block_file = fs::File::create(path).map_err(|err| {
+        RoutineFailure::new(
+            Message::new(
+                "Failed".to_string(),
+                format!("to create block file {}", path.display()),
+            ),
+            err,
+        )
+    })?;
+
+    block_file.write_all(content.as_bytes()).map_err(|err| {
+        RoutineFailure::new(
+            Message::new(
+                "Failed".to_string(),
+                format!("to write to block file {}", path.display()),
+            ),
+            err,
+        )
+    })?;
+
+    Ok(())
 }

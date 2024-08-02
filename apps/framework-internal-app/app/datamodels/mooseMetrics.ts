@@ -40,11 +40,14 @@ export interface MooseSessionTelemetry {
   isMooseDeveloper: boolean;
   ingestedEventsCount: number;
   ingestedEventsTotalBytes: number;
-  ingestP99LatencyInMs: number;
+  ingestAvgLatencyInMs: number;
   consumedRequestCount: number;
-  consumedP99LatencyInMs: number;
-  streamingToOLAPEventSyncedClount: number;
-  streamingFunctionsEventsProcessedCount: number;
+  consumedAvgLatencyInMs: number;
+  //   blocksCount: number;
+  streamingToOLAPEventSyncedCount: number;
+  streamingToOLAPEventSyncedBytesCount: number;
+  streamingFunctionsInputEventsProcessedCount: number;
+  streamingFunctionsOutputEventsProcessedCount: number;
   streamingFunctionsEventsProcessedTotalBytes: number;
   ip?: string;
 }

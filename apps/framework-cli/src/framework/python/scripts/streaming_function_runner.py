@@ -169,9 +169,12 @@ bytes_count = 0
 def send_message_metrics_in():
     while True:
         time.sleep(1)
-        requests.post("http://localhost:4000/metrics-logs", json={'count': count_in, 'bytes': bytes_count, 'path': f'{source_topic} -> {target_topic}', 'direction': 'In'})
-        requests.post("http://localhost:4000/metrics-logs", json={'count': count_out, 'bytes': bytes_count, 'path': f'{source_topic} -> {target_topic}', 'direction': 'Out'})
-
+        requests.post("http://localhost:4000/metrics-logs", json={'count': count_in, 'bytes': bytes_count, 'function_name': f'{source_topic} -> {target_topic}', 'direction': 'In'})
+        requests.post("http://localhost:4000/metrics-logs", json={'count': count_out, 'bytes': bytes_count, 'function_name': f'{source_topic} -> {target_topic}', 'direction': 'Out'})
+        count_in = 0
+        count_out = 0
+        bytes_count = 0
+        
 timer = threading.Thread(target=send_message_metrics_in)
 timer.daemon = True
 timer.start()

@@ -71,7 +71,7 @@ enum Direction {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct FlowMessages {
     count: u64,
-    path: String,
+    function_name: String,
     bytes: u64,
     direction: Direction,
 }
@@ -175,10 +175,11 @@ async fn create_client(
     let res = sender.send_request(req).await?;
     let body = res.collect().await.unwrap().to_bytes().to_vec();
     metrics
-        .send_metric(MetricsMessage::PutNumberOfBytesOut(
+        .send_metric(MetricsMessage::PutConsumedBytesCount {
             route,
-            body.len() as u64,
-        ))
+            method: "GET".to_string(),
+            bytes_count: body.len() as u64,
+        })
         .await;
 
     Ok(Response::builder()
@@ -269,38 +270,30 @@ async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Res
     let body = to_reader(req).await;
     let parsed: Result<FlowMessages, serde_json::Error> = serde_json::from_reader(body);
     match parsed {
-        Ok(cli_message) => {
-            let message = FlowMessages {
-                count: cli_message.count,
-                bytes: cli_message.bytes,
-                path: cli_message.path,
-                direction: cli_message.direction,
-            };
-            match message.direction {
-                Direction::In => {
-                    metrics
-                        .send_metric(MetricsMessage::PutStreamingFunctionMessagesIn(
-                            message.path.clone(),
-                            message.count,
-                        ))
-                        .await;
-                    metrics
-                        .send_metric(MetricsMessage::PutStreamingFunctionBytes(
-                            message.path,
-                            message.bytes,
-                        ))
-                        .await;
-                }
-                Direction::Out => {
-                    metrics
-                        .send_metric(MetricsMessage::PutStreamingFunctionMessagesOut(
-                            message.path,
-                            message.count,
-                        ))
-                        .await
-                }
+        Ok(cli_message) => match cli_message.direction {
+            Direction::In => {
+                metrics
+                    .send_metric(MetricsMessage::PutStreamingFunctionMessagesIn {
+                        function_name: cli_message.function_name.clone(),
+                        count: cli_message.count,
+                    })
+                    .await;
+                metrics
+                    .send_metric(MetricsMessage::PutStreamingFunctionBytes {
+                        function_name: cli_message.function_name.clone(),
+                        bytes_count: cli_message.bytes,
+                    })
+                    .await;
             }
-        }
+            Direction::Out => {
+                metrics
+                    .send_metric(MetricsMessage::PutStreamingFunctionMessagesOut {
+                        function_name: cli_message.function_name.clone(),
+                        count: cli_message.count,
+                    })
+                    .await
+            }
+        },
         Err(e) => println!("Received unknown message: {:?}", e),
     }
 
@@ -370,10 +363,12 @@ async fn send_payload_to_topic(
     debug!("Sending payload {:?} to topic: {}", payload, topic_name);
 
     metrics
-        .send_metric(MetricsMessage::PutNumberOfMessagesIn(
-            route.to_str().unwrap().to_string(),
-            topic_name.to_string(),
-        ))
+        .send_metric(MetricsMessage::PutHTTPToTopicEventCount {
+            route,
+            topic_name: topic_name.to_string(),
+            method: "POST".to_string(),
+            count: 1,
+        })
         .await;
 
     configured_producer
@@ -406,10 +401,11 @@ async fn handle_json_req(
     let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body);
 
     metrics
-        .send_metric(MetricsMessage::PutNumberOfBytesIn(
-            route.clone(),
-            number_of_bytes,
-        ))
+        .send_metric(MetricsMessage::PutIngestedBytesCount {
+            route: route.clone(),
+            method: "POST".to_string(),
+            bytes_count: number_of_bytes,
+        })
         .await;
     // TODO add check that the payload has the proper schema
 
@@ -439,22 +435,11 @@ async fn handle_json_req(
 async fn wait_for_batch_complete(
     res_arr: &mut Vec<Result<OwnedDeliveryResult, KafkaError>>,
     temp_res: Vec<Result<DeliveryFuture, KafkaError>>,
-    topic_name: &str,
-    metrics: Arc<Metrics>,
-    route: PathBuf,
 ) {
     for future_res in temp_res {
         match future_res {
             Ok(future) => match future.await {
-                Ok(res) => {
-                    metrics
-                        .send_metric(MetricsMessage::PutNumberOfMessagesIn(
-                            route.to_str().unwrap().to_string(),
-                            topic_name.to_string(),
-                        ))
-                        .await;
-                    res_arr.push(Ok(res))
-                }
+                Ok(res) => res_arr.push(Ok(res)),
                 Err(_) => res_arr.push(Err(KafkaError::Canceled)),
             },
             Err(e) => res_arr.push(Err(e)),
@@ -483,11 +468,13 @@ async fn handle_json_array_body(
 
     debug!("parsed json array for {}", topic_name);
     metrics
-        .send_metric(MetricsMessage::PutNumberOfBytesIn(
-            route.clone(),
-            number_of_bytes,
-        ))
+        .send_metric(MetricsMessage::PutIngestedBytesCount {
+            route: route.clone(),
+            method: "POST".to_string(),
+            bytes_count: number_of_bytes,
+        })
         .await;
+
     if let Err(e) = parsed {
         return bad_json_response(e);
     }
@@ -502,6 +489,7 @@ async fn handle_json_array_body(
         let record = FutureRecord::to(topic_name)
             .key(topic_name) // This should probably be generated by the client that pushes data to the API
             .payload(payload.as_slice());
+
         temp_res.push(
             configured_producer
                 .producer
@@ -511,18 +499,21 @@ async fn handle_json_array_body(
         // ideally we want to use redpanda::send_with_back_pressure
         // but it does not report the error back
         if count % 1024 == 1023 {
-            wait_for_batch_complete(
-                &mut res_arr,
-                temp_res,
-                topic_name,
-                metrics.clone(),
-                route.clone(),
-            )
-            .await;
+            wait_for_batch_complete(&mut res_arr, temp_res).await;
+
             temp_res = Vec::new();
         }
     }
-    wait_for_batch_complete(&mut res_arr, temp_res, topic_name, metrics, route).await;
+    wait_for_batch_complete(&mut res_arr, temp_res).await;
+
+    metrics
+        .send_metric(MetricsMessage::PutHTTPToTopicEventCount {
+            route: route.clone(),
+            method: "POST".to_string(),
+            count: res_arr.iter().filter(|res| res.is_ok()).count() as u64,
+            topic_name: topic_name.to_string(),
+        })
+        .await;
 
     if res_arr.iter().any(|res| res.is_err()) {
         return internal_server_error_response();
@@ -696,20 +687,15 @@ async fn router(
             .body(Full::new(Bytes::from("no match"))),
     };
 
-    if metrics_path.to_str().unwrap().starts_with("ingest/")
-        || metrics_path
-            .clone()
-            .into_os_string()
-            .to_str()
-            .unwrap()
-            .starts_with("consumption/")
-    {
+    let metrics_path_str = metrics_path.to_str().unwrap();
+
+    if metrics_path_str.starts_with("ingest/") || metrics_path_str.starts_with("consumption/") {
         metrics
-            .send_metric(MetricsMessage::HTTPLatency((
-                metrics_path,
-                now.elapsed(),
-                metrics_method,
-            )))
+            .send_metric(MetricsMessage::HTTPLatency {
+                path: metrics_path,
+                duration: now.elapsed(),
+                method: metrics_method,
+            })
             .await;
     }
 

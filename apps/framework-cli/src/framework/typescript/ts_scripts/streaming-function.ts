@@ -17,7 +17,7 @@ const SECURITY_PROTOCOL = process.argv[9];
 type CliLogData = {
   count: number;
   bytes: number;
-  path: string;
+  function_name: string;
   direction: "In" | "Out";
 };
 export const metricsLog: (log: CliLogData) => void = (log) => {
@@ -223,27 +223,31 @@ const sendMessages = async (
 
 setTimeout(() => sendMessageMetricsOut(), 1000);
 
-var count_in = 0;
-var count_out = 0;
-var bytes = 0;
+let count_in = 0;
+let count_out = 0;
+let bytes = 0;
 
 const sendMessageMetricsIn = () => {
   metricsLog({
     count: count_in,
-    path: logPrefix,
+    function_name: logPrefix,
     bytes: bytes,
     direction: "In",
   });
+  count_in = 0;
+  bytes = 0;
   setTimeout(() => sendMessageMetricsIn(), 1000);
 };
 
 const sendMessageMetricsOut = () => {
   metricsLog({
     count: count_out,
+    // We actually only read bytes from the in direction
     bytes: bytes,
-    path: logPrefix,
+    function_name: logPrefix,
     direction: "Out",
   });
+  count_out = 0;
   setTimeout(() => sendMessageMetricsOut(), 1000);
 };
 

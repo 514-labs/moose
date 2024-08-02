@@ -1,12 +1,21 @@
 use prometheus_client::metrics::counter::Counter;
 use prometheus_client::metrics::family::Family;
-use prometheus_client::metrics::gauge::Gauge;
 use prometheus_client::{
     encoding::{text::encode, EncodeLabelSet},
     metrics::histogram::Histogram,
     registry::Registry,
 };
-use std::{path::PathBuf, sync::Arc, time::Duration};
+use serde_json::json;
+use std::sync::Arc;
+use std::{path::PathBuf, time::Duration};
+use tokio::time;
+
+use chrono::Utc;
+
+use crate::utilities::constants::{self, CONTEXT, CTX_SESSION_ID};
+
+const ANONYMOUS_METRICS_URL: &str = "http://localhost:4000/ingest/MooseSessionTelemetry/0.6";
+const ANONMOUS_METRICS_REPORTING_INTERVAL: Duration = Duration::from_secs(10);
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
@@ -17,68 +26,124 @@ pub enum MetricsErrors {
 
 pub enum MetricsMessage {
     GetMetricsRegistryAsString(tokio::sync::oneshot::Sender<String>),
-    HTTPLatency((PathBuf, Duration, String)),
-    PutNumberOfBytesIn(PathBuf, u64),
-    PutNumberOfBytesOut(PathBuf, u64),
-    PutNumberOfMessagesIn(String, String),
-    PutNumberOfMessagesOut(String, String),
-    PutKafkaClickhouseSyncBytesOut(String, String, u64),
-    PutStreamingFunctionMessagesIn(String, u64),
-    PutStreamingFunctionMessagesOut(String, u64),
-    PutStreamingFunctionBytes(String, u64),
+    HTTPLatency {
+        path: PathBuf,
+        method: String,
+        duration: Duration,
+    },
+    PutIngestedBytesCount {
+        route: PathBuf,
+        method: String,
+        bytes_count: u64,
+    },
+    PutConsumedBytesCount {
+        route: PathBuf,
+        method: String,
+        bytes_count: u64,
+    },
+    PutHTTPToTopicEventCount {
+        topic_name: String,
+        route: PathBuf,
+        method: String,
+        count: u64,
+    },
+    PutTopicToOLAPEventCount {
+        consumer_group: String,
+        topic_name: String,
+        count: u64,
+    },
+    PutTopicToOLAPBytesCount {
+        consumer_group: String,
+        topic_name: String,
+        bytes_count: u64,
+    },
+    PutStreamingFunctionMessagesIn {
+        function_name: String,
+        count: u64,
+    },
+    PutStreamingFunctionMessagesOut {
+        function_name: String,
+        count: u64,
+    },
+    PutStreamingFunctionBytes {
+        function_name: String,
+        bytes_count: u64,
+    },
+}
+
+#[derive(Clone)]
+pub struct TelemetryMetadata {
+    pub anonymous_telemetry_enabled: bool,
+    pub machine_id: String,
+    pub is_moose_developer: bool,
+    pub is_production: bool,
+    pub project_name: String,
 }
 
 #[derive(Clone)]
 pub struct Metrics {
     pub tx: tokio::sync::mpsc::Sender<MetricsMessage>,
+    telemetry_metadata: TelemetryMetadata,
 }
 
 pub struct Statistics {
-    pub total_latency_histogram: Histogram,
-    pub histogram_family: Family<HistogramLabels, Histogram>,
-    pub bytes_in_family: Family<BytesCounterLabels, Counter>,
-    pub bytes_out_family: Family<BytesCounterLabels, Counter>,
-    pub messages_in_family: Family<MessagesInCounterLabels, Counter>,
-    pub messages_out_family: Family<MessagesOutCounterLabels, Counter>,
-    pub kafka_clickhouse_sync_bytes_out_family: Family<MessagesOutCounterLabels, Counter>,
-    pub streaming_functions_in_family: Family<StreamingFunctionMessagesCounterLabels, Gauge>,
-    pub streaming_functions_out_family: Family<StreamingFunctionMessagesCounterLabels, Gauge>,
-    pub streaming_functions_bytes_family: Family<StreamingFunctionMessagesCounterLabels, Gauge>,
-    pub registry: Option<Registry>,
+    pub http_latency_histogram_aggregate: Histogram,
+    pub http_latency_histogram: Family<HTTPLabel, Histogram>,
+    pub http_ingested_latency_sum_ms: Counter,
+    pub http_ingested_request_count: Counter,
+    pub http_ingested_total_bytes: Counter,
+    pub http_ingested_bytes: Family<HTTPLabel, Counter>,
+    pub http_consumed_request_count: Counter,
+    pub http_consumed_latency_sum_ms: Counter,
+    pub http_consumed_bytes: Family<HTTPLabel, Counter>,
+    pub http_to_topic_event_count: Family<MessagesInCounterLabels, Counter>,
+    pub topic_to_olap_event_count: Family<MessagesOutCounterLabels, Counter>,
+    pub topic_to_olap_event_total_count: Counter,
+    pub topic_to_olap_bytes_count: Family<MessagesOutCounterLabels, Counter>,
+    pub topic_to_olap_bytes_total_count: Counter,
+    pub streaming_functions_in_event_count: Family<StreamingFunctionMessagesCounterLabels, Counter>,
+    pub streaming_functions_out_event_count:
+        Family<StreamingFunctionMessagesCounterLabels, Counter>,
+    pub streaming_functions_bytes_proccessed_count:
+        Family<StreamingFunctionMessagesCounterLabels, Counter>,
+    pub streaming_functions_in_event_total_count: Counter,
+    pub streaming_functions_out_event_total_count: Counter,
+    pub streaming_functions_bytes_proccessed_total_count: Counter,
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
-pub struct HistogramLabels {
+pub struct HTTPLabel {
     method: String,
     path: String,
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
-pub struct BytesCounterLabels {
-    path: String,
-}
-
-#[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
 pub struct StreamingFunctionMessagesCounterLabels {
-    path: String,
+    function_name: String,
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
 pub struct MessagesInCounterLabels {
     path: String,
-    topic: String,
+    method: String,
+    topic_name: String,
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
 pub struct MessagesOutCounterLabels {
     consumer_group: String,
-    topic: String,
+    topic_name: String,
 }
 
 impl Metrics {
-    pub fn new() -> (Metrics, tokio::sync::mpsc::Receiver<MetricsMessage>) {
+    pub fn new(
+        telemetry_metadata: TelemetryMetadata,
+    ) -> (Metrics, tokio::sync::mpsc::Receiver<MetricsMessage>) {
         let (tx, rx) = tokio::sync::mpsc::channel(32);
-        let metrics = Metrics { tx };
+        let metrics = Metrics {
+            tx,
+            telemetry_metadata,
+        };
         (metrics, rx)
     }
 
@@ -99,18 +164,28 @@ impl Metrics {
     }
 
     pub async fn start_listening_to_metrics(
-        self: &Arc<Metrics>,
+        &self,
         mut rx: tokio::sync::mpsc::Receiver<MetricsMessage>,
     ) {
-        let mut data = Statistics {
-            total_latency_histogram: Histogram::new(
+        let data = Arc::new(Statistics {
+            http_ingested_request_count: Counter::default(),
+            http_ingested_total_bytes: Counter::default(),
+            http_ingested_latency_sum_ms: Counter::default(),
+            http_consumed_latency_sum_ms: Counter::default(),
+            http_consumed_request_count: Counter::default(),
+            streaming_functions_in_event_total_count: Counter::default(),
+            streaming_functions_out_event_total_count: Counter::default(),
+            streaming_functions_bytes_proccessed_total_count: Counter::default(),
+            topic_to_olap_event_total_count: Counter::default(),
+            topic_to_olap_bytes_total_count: Counter::default(),
+            http_latency_histogram_aggregate: Histogram::new(
                 [
                     0.001, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0, 120.0,
                     240.0,
                 ]
                 .into_iter(),
             ),
-            histogram_family: Family::<HistogramLabels, Histogram>::new_with_constructor(|| {
+            http_latency_histogram: Family::<HTTPLabel, Histogram>::new_with_constructor(|| {
                 Histogram::new(
                     [
                         0.001, 0.01, 0.02, 0.05, 0.1, 0.25, 0.5, 1.0, 5.0, 10.0, 30.0, 60.0, 120.0,
@@ -119,167 +194,306 @@ impl Metrics {
                     .into_iter(),
                 )
             }),
-            bytes_in_family: Family::<BytesCounterLabels, Counter>::new_with_constructor(|| {
+            http_ingested_bytes: Family::<HTTPLabel, Counter>::new_with_constructor(|| {
                 Counter::default()
             }),
-            bytes_out_family: Family::<BytesCounterLabels, Counter>::new_with_constructor(|| {
+            http_consumed_bytes: Family::<HTTPLabel, Counter>::new_with_constructor(|| {
                 Counter::default()
             }),
-            messages_in_family: Family::<MessagesInCounterLabels, Counter>::new_with_constructor(
-                Counter::default,
-            ),
-            messages_out_family: Family::<MessagesOutCounterLabels, Counter>::new_with_constructor(
-                Counter::default,
-            ),
-            kafka_clickhouse_sync_bytes_out_family:
+            http_to_topic_event_count:
+                Family::<MessagesInCounterLabels, Counter>::new_with_constructor(Counter::default),
+            topic_to_olap_event_count:
                 Family::<MessagesOutCounterLabels, Counter>::new_with_constructor(Counter::default),
-            streaming_functions_in_family:
-                Family::<StreamingFunctionMessagesCounterLabels, Gauge>::new_with_constructor(
-                    Gauge::default,
-                ),
-            streaming_functions_out_family:
-                Family::<StreamingFunctionMessagesCounterLabels, Gauge>::new_with_constructor(
-                    Gauge::default,
-                ),
-            streaming_functions_bytes_family:
-                Family::<StreamingFunctionMessagesCounterLabels, Gauge>::new_with_constructor(
-                    Gauge::default,
-                ),
-            registry: Some(Registry::default()),
-        };
-        let mut new_registry = data.registry.unwrap();
-        new_registry.register(
-            "total_latency",
+            topic_to_olap_bytes_count:
+                Family::<MessagesOutCounterLabels, Counter>::new_with_constructor(Counter::default),
+            streaming_functions_in_event_count: Family::<
+                StreamingFunctionMessagesCounterLabels,
+                Counter,
+            >::new_with_constructor(
+                Counter::default
+            ),
+            streaming_functions_out_event_count: Family::<
+                StreamingFunctionMessagesCounterLabels,
+                Counter,
+            >::new_with_constructor(
+                Counter::default
+            ),
+            streaming_functions_bytes_proccessed_count: Family::<
+                StreamingFunctionMessagesCounterLabels,
+                Counter,
+            >::new_with_constructor(
+                Counter::default
+            ),
+        });
+
+        let mut registry = Registry::default();
+
+        registry.register(
+            "moose_total_latency",
             "Total latency of HTTP requests",
-            data.total_latency_histogram.clone(),
+            data.http_latency_histogram_aggregate.clone(),
         );
-        new_registry.register(
-            "latency",
+        registry.register(
+            "moose_latency",
             "Latency of HTTP requests",
-            data.histogram_family.clone(),
+            data.http_latency_histogram.clone(),
         );
-        new_registry.register(
-            "bytes_in",
+        registry.register(
+            "moose_ingested_bytes",
             "Bytes received through ingest endpoints",
-            data.bytes_in_family.clone(),
+            data.http_ingested_bytes.clone(),
         );
-        new_registry.register(
-            "bytes_out",
+        registry.register(
+            "moose_consumed_bytes",
             "Bytes sent out through consumption endpoints",
-            data.bytes_out_family.clone(),
+            data.http_consumed_bytes.clone(),
         );
-        new_registry.register(
-            "messages_in",
+        registry.register(
+            "moose_http_to_kafka_event_count",
             "Messages sent to kafka stream",
-            data.messages_in_family.clone(),
+            data.http_to_topic_event_count.clone(),
         );
-        new_registry.register(
-            "messages_out",
+        registry.register(
+            "moose_kafka_to_olap_event_count",
             "Messages received from kafka stream",
-            data.messages_out_family.clone(),
+            data.topic_to_olap_event_count.clone(),
         );
 
-        new_registry.register(
-            "streaming_functions_in",
+        registry.register(
+            "moose_streaming_functions_in",
             "Messages sent from one data model to another using kafka stream",
-            data.streaming_functions_in_family.clone(),
+            data.streaming_functions_in_event_count.clone(),
         );
-        new_registry.register(
-            "streaming_functions_out",
+        registry.register(
+            "moose_streaming_functions_out",
             "Messages received from one data model to another using kafka stream",
-            data.streaming_functions_out_family.clone(),
+            data.streaming_functions_out_event_count.clone(),
         );
 
-        new_registry.register(
-            "kafka_clickhouse_sync_bytes_out",
+        registry.register(
+            "moose_kafka_clickhouse_sync_bytes_out",
             "Bytes sent to clickhouse",
-            data.kafka_clickhouse_sync_bytes_out_family.clone(),
+            data.topic_to_olap_bytes_count.clone(),
         );
-        new_registry.register(
-            "streaming_functions_bytes",
+        registry.register(
+            "moose_streaming_functions_bytes",
             "Bytes sent from one data model to another using kafka stream",
-            data.streaming_functions_bytes_family.clone(),
+            data.streaming_functions_bytes_proccessed_count.clone(),
         );
 
-        data.registry = Some(new_registry);
+        let cloned_data_ref = data.clone();
 
         tokio::spawn(async move {
             while let Some(message) = rx.recv().await {
                 match message {
                     MetricsMessage::GetMetricsRegistryAsString(v) => {
-                        let _ = v.send(formatted_registry(&data.registry.as_ref()).await);
+                        let _ = v.send(formatted_registry(&registry).await);
                     }
-                    MetricsMessage::HTTPLatency((path, duration, method)) => {
-                        data.histogram_family
-                            .get_or_create(&HistogramLabels {
+                    MetricsMessage::HTTPLatency {
+                        path,
+                        duration,
+                        method,
+                    } => {
+                        data.http_latency_histogram
+                            .get_or_create(&HTTPLabel {
                                 method,
-                                path: path.into_os_string().to_str().unwrap().to_string(),
+                                path: path.clone().into_os_string().to_str().unwrap().to_string(),
                             })
                             .observe(duration.as_secs_f64());
-                        data.total_latency_histogram.observe(duration.as_secs_f64())
+                        data.http_latency_histogram_aggregate
+                            .observe(duration.as_secs_f64());
+                        if path.starts_with("ingest") {
+                            data.http_ingested_latency_sum_ms
+                                .inc_by(duration.as_millis() as u64);
+                        } else {
+                            data.http_consumed_latency_sum_ms
+                                .inc_by(duration.as_millis() as u64);
+                        }
                     }
-                    MetricsMessage::PutNumberOfBytesIn(path, number_of_bytes) => {
-                        data.bytes_in_family
-                            .get_or_create(&BytesCounterLabels {
+                    MetricsMessage::PutIngestedBytesCount {
+                        route: path,
+                        bytes_count,
+                        method,
+                    } => {
+                        data.http_ingested_bytes
+                            .get_or_create(&HTTPLabel {
+                                method,
                                 path: path.clone().into_os_string().to_str().unwrap().to_string(),
                             })
-                            .inc_by(number_of_bytes);
+                            .inc_by(bytes_count);
+                        data.http_ingested_request_count.inc();
+                        data.http_ingested_total_bytes.inc_by(bytes_count);
                     }
-                    MetricsMessage::PutNumberOfBytesOut(path, number_of_bytes) => {
-                        data.bytes_out_family
-                            .get_or_create(&BytesCounterLabels {
+                    MetricsMessage::PutConsumedBytesCount {
+                        route: path,
+                        bytes_count,
+                        method,
+                    } => {
+                        data.http_consumed_bytes
+                            .get_or_create(&HTTPLabel {
+                                method,
                                 path: path.clone().into_os_string().to_str().unwrap().to_string(),
                             })
-                            .inc_by(number_of_bytes);
+                            .inc_by(bytes_count);
                     }
-                    MetricsMessage::PutNumberOfMessagesIn(path, topic) => {
-                        data.messages_in_family
-                            .get_or_create(&MessagesInCounterLabels { path, topic })
-                            .inc();
-                    }
-                    MetricsMessage::PutNumberOfMessagesOut(consumer_group, topic) => {
-                        data.messages_out_family
-                            .get_or_create(&MessagesOutCounterLabels {
-                                consumer_group,
-                                topic,
+                    MetricsMessage::PutHTTPToTopicEventCount {
+                        route: path,
+                        topic_name,
+                        method,
+                        count,
+                    } => {
+                        data.http_to_topic_event_count
+                            .get_or_create(&MessagesInCounterLabels {
+                                path: path.clone().into_os_string().to_str().unwrap().to_string(),
+                                topic_name,
+                                method,
                             })
-                            .inc();
+                            .inc_by(count);
                     }
-                    MetricsMessage::PutStreamingFunctionMessagesIn(path, count) => {
-                        data.streaming_functions_in_family
-                            .get_or_create(&StreamingFunctionMessagesCounterLabels { path })
-                            .set(count as i64);
-                    }
-                    MetricsMessage::PutStreamingFunctionMessagesOut(path, count) => {
-                        data.streaming_functions_out_family
-                            .get_or_create(&StreamingFunctionMessagesCounterLabels { path })
-                            .set(count as i64);
-                    }
-                    MetricsMessage::PutKafkaClickhouseSyncBytesOut(
+                    MetricsMessage::PutTopicToOLAPEventCount {
                         consumer_group,
-                        topic,
-                        number_of_bytes,
-                    ) => {
-                        data.kafka_clickhouse_sync_bytes_out_family
+                        topic_name,
+                        count,
+                    } => {
+                        data.topic_to_olap_event_count
                             .get_or_create(&MessagesOutCounterLabels {
                                 consumer_group,
-                                topic,
+                                topic_name,
                             })
-                            .inc_by(number_of_bytes);
+                            .inc_by(count);
+                        data.topic_to_olap_event_total_count.inc_by(count);
                     }
-                    MetricsMessage::PutStreamingFunctionBytes(path, count) => {
-                        data.streaming_functions_bytes_family
-                            .get_or_create(&StreamingFunctionMessagesCounterLabels { path })
-                            .set(count as i64);
+                    MetricsMessage::PutStreamingFunctionMessagesIn {
+                        function_name,
+                        count,
+                    } => {
+                        data.streaming_functions_in_event_count
+                            .get_or_create(&StreamingFunctionMessagesCounterLabels {
+                                function_name,
+                            })
+                            .inc_by(count);
+                        data.streaming_functions_in_event_total_count.inc_by(count);
+                    }
+                    MetricsMessage::PutStreamingFunctionMessagesOut {
+                        function_name,
+                        count,
+                    } => {
+                        data.streaming_functions_out_event_count
+                            .get_or_create(&StreamingFunctionMessagesCounterLabels {
+                                function_name,
+                            })
+                            .inc_by(count);
+                        data.streaming_functions_out_event_total_count.inc_by(count);
+                    }
+                    MetricsMessage::PutTopicToOLAPBytesCount {
+                        consumer_group,
+                        topic_name,
+                        bytes_count,
+                    } => {
+                        data.topic_to_olap_bytes_count
+                            .get_or_create(&MessagesOutCounterLabels {
+                                consumer_group,
+                                topic_name,
+                            })
+                            .inc_by(bytes_count);
+                        data.topic_to_olap_bytes_total_count.inc_by(bytes_count);
+                    }
+                    MetricsMessage::PutStreamingFunctionBytes {
+                        function_name,
+                        bytes_count: count,
+                    } => {
+                        data.streaming_functions_bytes_proccessed_count
+                            .get_or_create(&StreamingFunctionMessagesCounterLabels {
+                                function_name,
+                            })
+                            .inc_by(count);
+                        data.streaming_functions_bytes_proccessed_total_count
+                            .inc_by(count);
                     }
                 };
             }
         });
+
+        let cloned_metadata = self.telemetry_metadata.clone();
+
+        if self.telemetry_metadata.anonymous_telemetry_enabled {
+            tokio::spawn(async move {
+                let client = reqwest::Client::new();
+
+                let session_start = Utc::now();
+
+                let ip_response = client
+                    .get("https://api64.ipify.org?format=text")
+                    .timeout(Duration::from_secs(2))
+                    .send()
+                    .await
+                    .ok();
+
+                let ip = if let Some(response) = ip_response {
+                    Some(response.text().await.unwrap())
+                } else {
+                    None
+                };
+
+                loop {
+                    let _ = time::sleep(ANONMOUS_METRICS_REPORTING_INTERVAL).await;
+
+                    let session_duration_in_sec = Utc::now()
+                        .signed_duration_since(session_start)
+                        .num_seconds();
+
+                    let ingested_avg_latency_in_ms =
+                        if cloned_data_ref.http_ingested_request_count.get() != 0 {
+                            cloned_data_ref.http_ingested_latency_sum_ms.get()
+                                / cloned_data_ref.http_ingested_request_count.get()
+                        } else {
+                            0
+                        };
+
+                    let consumed_avg_latency_in_ms =
+                        if cloned_data_ref.http_consumed_request_count.get() != 0 {
+                            cloned_data_ref.http_consumed_latency_sum_ms.get()
+                                / cloned_data_ref.http_consumed_request_count.get()
+                        } else {
+                            0
+                        };
+
+                    let telemetry_payload = json!({
+                        "timestamp": Utc::now(),
+                        "machineId": cloned_metadata.machine_id.clone(),
+                        "sequenceId": CONTEXT.get(CTX_SESSION_ID).unwrap(),
+                        "project": cloned_metadata.project_name.clone(),
+                        "isProd": cloned_metadata.is_production.clone(),
+                        "isMooseDeveloper": cloned_metadata.is_moose_developer.clone(),
+                        "cliVersion": constants::CLI_VERSION,
+                        "sessionDurationInSec": session_duration_in_sec,
+                        "ingestedEventsCount": cloned_data_ref.http_ingested_request_count.get(),
+                        "ingestedEventsTotalBytes": cloned_data_ref.http_ingested_total_bytes.get(),
+                        "ingestAvgLatencyInMs": ingested_avg_latency_in_ms,
+                        "consumedRequestCount": cloned_data_ref.http_consumed_request_count.get(),
+                        "consumedAvgLatencyInMs": consumed_avg_latency_in_ms,
+                        // "blocksCount": &data.blocks_count.clone(),
+                        "streamingToOLAPEventSyncedCount": cloned_data_ref.topic_to_olap_event_total_count.get(),
+                        "streamingToOLAPEventSyncedBytesCount": cloned_data_ref.topic_to_olap_bytes_total_count.get(),
+                        "streamingFunctionsInputEventsProcessedCount": cloned_data_ref.streaming_functions_in_event_total_count.get(),
+                        "streamingFunctionsOutputEventsProcessedCount": cloned_data_ref.streaming_functions_out_event_total_count.get(),
+                        "streamingFunctionsEventsProcessedTotalBytes": cloned_data_ref.streaming_functions_bytes_proccessed_total_count.get(),
+                        "ip": ip,
+                    });
+
+                    let _ = client
+                        .post(ANONYMOUS_METRICS_URL)
+                        .json(&telemetry_payload)
+                        .send()
+                        .await;
+                }
+            });
+        }
     }
 }
 
-pub async fn formatted_registry(data: &Option<&Registry>) -> String {
+pub async fn formatted_registry(data: &Registry) -> String {
     let mut buffer = String::new();
-    let _ = encode(&mut buffer, data.as_ref().unwrap());
+    let _ = encode(&mut buffer, data);
     buffer
 }

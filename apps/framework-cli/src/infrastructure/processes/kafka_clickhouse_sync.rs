@@ -398,17 +398,18 @@ async fn iterate_subscriber<'a, F>(
                             source_topic_name, payload_str
                         );
                         metrics
-                            .send_metric(MetricsMessage::PutKafkaClickhouseSyncBytesOut(
-                                "clickhouse sync".to_string(),
-                                source_topic_name.clone(),
-                                payload.len() as u64,
-                            ))
+                            .send_metric(MetricsMessage::PutTopicToOLAPBytesCount {
+                                consumer_group: "clickhouse sync".to_string(),
+                                topic_name: source_topic_name.clone(),
+                                bytes_count: payload.len() as u64,
+                            })
                             .await;
                         metrics
-                            .send_metric(MetricsMessage::PutNumberOfMessagesOut(
-                                "clickhouse_sync".to_string(),
-                                source_topic_name.clone(),
-                            ))
+                            .send_metric(MetricsMessage::PutTopicToOLAPEventCount {
+                                consumer_group: "clickhouse sync".to_string(),
+                                topic_name: source_topic_name.clone(),
+                                count: 1,
+                            })
                             .await;
 
                         action(payload_str.to_string()).await;

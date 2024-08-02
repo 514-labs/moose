@@ -55,6 +55,7 @@ use crate::framework::languages::SupportedLanguages;
 use crate::framework::sdk::ingest::generate_sdk;
 use crate::framework::versions::parse_version;
 use crate::infrastructure::olap::clickhouse::version_sync::version_to_string;
+use crate::metrics::TelemetryMetadata;
 use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
@@ -149,7 +150,6 @@ fn maybe_create_git_repo(dir_path: &Path, project_arc: Arc<Project>) {
 async fn top_command_handler(
     settings: Settings,
     commands: &Commands,
-    metrics: Arc<Metrics>,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     match commands {
         Commands::Init {
@@ -312,10 +312,21 @@ async fn top_command_handler(
                 &settings,
             );
 
+            let (metrics, rx) = Metrics::new(TelemetryMetadata {
+                anonymous_telemetry_enabled: settings.telemetry.enabled,
+                machine_id: settings.telemetry.machine_id.clone(),
+                is_moose_developer: settings.telemetry.is_moose_developer,
+                is_production: project_arc.is_production,
+                project_name: project_arc.name().to_string(),
+            });
+
+            let arc_metrics = Arc::new(metrics);
+            arc_metrics.start_listening_to_metrics(rx).await;
+
             check_project_name(&project_arc.name())?;
             run_local_infrastructure(&project_arc)?.show();
 
-            routines::start_development_mode(project_arc, &settings.features, metrics)
+            routines::start_development_mode(project_arc, &settings.features, arc_metrics)
                 .await
                 .map_err(|e| {
                     RoutineFailure::error(Message {
@@ -452,6 +463,17 @@ async fn top_command_handler(
             project.set_is_production_env(true);
             let project_arc = Arc::new(project);
 
+            let (metrics, rx) = Metrics::new(TelemetryMetadata {
+                anonymous_telemetry_enabled: settings.telemetry.enabled,
+                machine_id: settings.telemetry.machine_id.clone(),
+                is_moose_developer: settings.telemetry.is_moose_developer,
+                is_production: project_arc.is_production,
+                project_name: project_arc.name().to_string(),
+            });
+
+            let arc_metrics = Arc::new(metrics);
+            arc_metrics.start_listening_to_metrics(rx).await;
+
             let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::ProdCommand,
                 Some(project_arc.name()),
@@ -460,7 +482,7 @@ async fn top_command_handler(
 
             check_project_name(&project_arc.name())?;
 
-            routines::start_production_mode(project_arc, settings.features, metrics)
+            routines::start_production_mode(project_arc, settings.features, arc_metrics)
                 .await
                 .unwrap();
 
@@ -862,11 +884,7 @@ pub async fn cli_run() {
 
     let cli = Cli::parse();
 
-    let (metrics, rx) = Metrics::new();
-    let arc_metrics = Arc::new(metrics);
-    arc_metrics.start_listening_to_metrics(rx).await;
-
-    match top_command_handler(config, &cli.command, arc_metrics).await {
+    match top_command_handler(config, &cli.command).await {
         Ok(s) => {
             show_message!(s.message_type, s.message);
             exit(0);
@@ -914,10 +932,7 @@ mod tests {
 
         let config = read_settings().unwrap();
 
-        let (metrics, _rx) = Metrics::new();
-        let arc_metrics = Arc::new(metrics);
-
-        top_command_handler(config, &cli.command, arc_metrics).await
+        top_command_handler(config, &cli.command).await
     }
 
     #[tokio::test]

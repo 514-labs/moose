@@ -1,5 +1,6 @@
 use prometheus_client::metrics::counter::Counter;
 use prometheus_client::metrics::family::Family;
+use prometheus_client::metrics::gauge::Gauge;
 use prometheus_client::{
     encoding::{text::encode, EncodeLabelSet},
     metrics::histogram::Histogram,
@@ -16,6 +17,19 @@ use crate::utilities::constants::{self, CONTEXT, CTX_SESSION_ID};
 
 const ANONYMOUS_METRICS_URL: &str = "http://localhost:4000/ingest/MooseSessionTelemetry/0.6";
 const ANONMOUS_METRICS_REPORTING_INTERVAL: Duration = Duration::from_secs(10);
+pub const TOTAL_LATENCY: &str = "moose_total_latency";
+pub const LATENCY: &str = "moose_latency";
+pub const INGESTED_BYTES: &str = "moose_ingested_bytes";
+pub const CONSUMED_BYTES: &str = "moose_consumed_bytes";
+pub const HTTP_TO_TOPIC_EVENT_COUNT: &str = "moose_http_to_topic_event_count";
+pub const TOPIC_TO_OLAP_EVENT_COUNT: &str = "moose_topic_to_olap_event_count";
+pub const STREAMING_FUNCTION_EVENT_INPUT_COUNT: &str =
+    "moose_streaming_functions_events_input_count";
+pub const STREAMING_FUNCTION_EVENT_OUPUT_COUNT: &str =
+    "moose_streaming_functions_events_output_count";
+pub const STREAMING_FUNCTION_PROCESSED_BYTE_COUNT: &str =
+    "moose_streaming_functions_processed_byte_count";
+pub const TOPIC_TO_OLAP_BYTE_COUNT: &str = "moose_topic_to_olap_bytes_count";
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
@@ -69,6 +83,9 @@ pub enum MetricsMessage {
         function_name: String,
         bytes_count: u64,
     },
+    PutBlockCount {
+        count: i64,
+    },
 }
 
 #[derive(Clone)]
@@ -97,6 +114,7 @@ pub struct Statistics {
     pub http_consumed_latency_sum_ms: Counter,
     pub http_consumed_bytes: Family<HTTPLabel, Counter>,
     pub http_to_topic_event_count: Family<MessagesInCounterLabels, Counter>,
+    pub blocks_count: Gauge,
     pub topic_to_olap_event_count: Family<MessagesOutCounterLabels, Counter>,
     pub topic_to_olap_event_total_count: Counter,
     pub topic_to_olap_bytes_count: Family<MessagesOutCounterLabels, Counter>,
@@ -177,6 +195,7 @@ impl Metrics {
             streaming_functions_out_event_total_count: Counter::default(),
             streaming_functions_bytes_proccessed_total_count: Counter::default(),
             topic_to_olap_event_total_count: Counter::default(),
+            blocks_count: Gauge::default(),
             topic_to_olap_bytes_total_count: Counter::default(),
             http_latency_histogram_aggregate: Histogram::new(
                 [
@@ -229,54 +248,54 @@ impl Metrics {
         let mut registry = Registry::default();
 
         registry.register(
-            "moose_total_latency",
+            TOTAL_LATENCY,
             "Total latency of HTTP requests",
             data.http_latency_histogram_aggregate.clone(),
         );
         registry.register(
-            "moose_latency",
+            LATENCY,
             "Latency of HTTP requests",
             data.http_latency_histogram.clone(),
         );
         registry.register(
-            "moose_ingested_bytes",
+            INGESTED_BYTES,
             "Bytes received through ingest endpoints",
             data.http_ingested_bytes.clone(),
         );
         registry.register(
-            "moose_consumed_bytes",
+            CONSUMED_BYTES,
             "Bytes sent out through consumption endpoints",
             data.http_consumed_bytes.clone(),
         );
         registry.register(
-            "moose_http_to_kafka_event_count",
+            HTTP_TO_TOPIC_EVENT_COUNT,
             "Messages sent to kafka stream",
             data.http_to_topic_event_count.clone(),
         );
         registry.register(
-            "moose_kafka_to_olap_event_count",
+            TOPIC_TO_OLAP_EVENT_COUNT,
             "Messages received from kafka stream",
             data.topic_to_olap_event_count.clone(),
         );
 
         registry.register(
-            "moose_streaming_functions_in",
+            STREAMING_FUNCTION_EVENT_INPUT_COUNT,
             "Messages sent from one data model to another using kafka stream",
             data.streaming_functions_in_event_count.clone(),
         );
         registry.register(
-            "moose_streaming_functions_out",
+            STREAMING_FUNCTION_EVENT_OUPUT_COUNT,
             "Messages received from one data model to another using kafka stream",
             data.streaming_functions_out_event_count.clone(),
         );
 
         registry.register(
-            "moose_kafka_clickhouse_sync_bytes_out",
+            TOPIC_TO_OLAP_BYTE_COUNT,
             "Bytes sent to clickhouse",
             data.topic_to_olap_bytes_count.clone(),
         );
         registry.register(
-            "moose_streaming_functions_bytes",
+            STREAMING_FUNCTION_PROCESSED_BYTE_COUNT,
             "Bytes sent from one data model to another using kafka stream",
             data.streaming_functions_bytes_proccessed_count.clone(),
         );
@@ -410,6 +429,9 @@ impl Metrics {
                         data.streaming_functions_bytes_proccessed_total_count
                             .inc_by(count);
                     }
+                    MetricsMessage::PutBlockCount { count } => {
+                        data.blocks_count.set(count);
+                    }
                 };
             }
         });
@@ -472,7 +494,7 @@ impl Metrics {
                         "ingestAvgLatencyInMs": ingested_avg_latency_in_ms,
                         "consumedRequestCount": cloned_data_ref.http_consumed_request_count.get(),
                         "consumedAvgLatencyInMs": consumed_avg_latency_in_ms,
-                        // "blocksCount": &data.blocks_count.clone(),
+                        "blocksCount": cloned_data_ref.blocks_count.get(),
                         "streamingToOLAPEventSyncedCount": cloned_data_ref.topic_to_olap_event_total_count.get(),
                         "streamingToOLAPEventSyncedBytesCount": cloned_data_ref.topic_to_olap_bytes_total_count.get(),
                         "streamingFunctionsInputEventsProcessedCount": cloned_data_ref.streaming_functions_in_event_total_count.get(),

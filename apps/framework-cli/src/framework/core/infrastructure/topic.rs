@@ -36,14 +36,19 @@ impl Topic {
     }
 
     pub fn from_migration_function(function: &StreamingFunction) -> (Topic, Topic) {
-        let source_topic = Topic {
-            name: format!(
-                "{}_{}_{}_{}_input",
+        let name = |suffix: &str| {
+            format!(
+                "{}_{}_{}_{}_{}",
                 function.source_data_model.name,
                 function.source_data_model.version.replace('.', "_"),
                 function.target_data_model.name,
-                function.target_data_model.version.replace('.', "_")
-            ),
+                function.target_data_model.version.replace('.', "_"),
+                suffix,
+            )
+        };
+
+        let source_topic = Topic {
+            name: name("input"),
             version: function.version.clone(),
             retention_period: Topic::default_duration(),
             columns: function.source_data_model.columns.clone(),
@@ -54,13 +59,7 @@ impl Topic {
         };
 
         let target_topic = Topic {
-            name: format!(
-                "{}_{}_{}_{}_output",
-                function.source_data_model.name,
-                function.source_data_model.version.replace('.', "_"),
-                function.target_data_model.name,
-                function.target_data_model.version.replace('.', "_")
-            ),
+            name: name("output"),
             version: function.version.clone(),
             retention_period: Topic::default_duration(),
             columns: function.target_data_model.columns.clone(),

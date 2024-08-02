@@ -313,7 +313,8 @@ async fn top_command_handler(
             );
 
             let (metrics, rx) = Metrics::new(TelemetryMetadata {
-                anonymous_telemetry_enabled: settings.telemetry.enabled,
+                anonymous_telemetry_enabled: settings.telemetry.enabled
+                    && settings.features.telemetry_metrics,
                 machine_id: settings.telemetry.machine_id.clone(),
                 is_moose_developer: settings.telemetry.is_moose_developer,
                 is_production: project_arc.is_production,
@@ -464,7 +465,8 @@ async fn top_command_handler(
             let project_arc = Arc::new(project);
 
             let (metrics, rx) = Metrics::new(TelemetryMetadata {
-                anonymous_telemetry_enabled: settings.telemetry.enabled,
+                anonymous_telemetry_enabled: settings.telemetry.enabled
+                    && settings.features.telemetry_metrics,
                 machine_id: settings.telemetry.machine_id.clone(),
                 is_moose_developer: settings.telemetry.is_moose_developer,
                 is_production: project_arc.is_production,

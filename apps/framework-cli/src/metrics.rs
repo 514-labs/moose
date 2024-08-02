@@ -15,7 +15,7 @@ use chrono::Utc;
 
 use crate::utilities::constants::{self, CONTEXT, CTX_SESSION_ID};
 
-const ANONYMOUS_METRICS_URL: &str = "http://localhost:4000/ingest/MooseSessionTelemetry/0.6";
+const ANONYMOUS_METRICS_URL: &str = "https://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
 const ANONMOUS_METRICS_REPORTING_INTERVAL: Duration = Duration::from_secs(10);
 pub const TOTAL_LATENCY: &str = "moose_total_latency";
 pub const LATENCY: &str = "moose_latency";
@@ -23,13 +23,13 @@ pub const INGESTED_BYTES: &str = "moose_ingested_bytes";
 pub const CONSUMED_BYTES: &str = "moose_consumed_bytes";
 pub const HTTP_TO_TOPIC_EVENT_COUNT: &str = "moose_http_to_topic_event_count";
 pub const TOPIC_TO_OLAP_EVENT_COUNT: &str = "moose_topic_to_olap_event_count";
+pub const TOPIC_TO_OLAP_BYTE_COUNT: &str = "moose_topic_to_olap_bytes_count";
 pub const STREAMING_FUNCTION_EVENT_INPUT_COUNT: &str =
     "moose_streaming_functions_events_input_count";
 pub const STREAMING_FUNCTION_EVENT_OUPUT_COUNT: &str =
     "moose_streaming_functions_events_output_count";
 pub const STREAMING_FUNCTION_PROCESSED_BYTE_COUNT: &str =
     "moose_streaming_functions_processed_byte_count";
-pub const TOPIC_TO_OLAP_BYTE_COUNT: &str = "moose_topic_to_olap_bytes_count";
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
@@ -122,11 +122,11 @@ pub struct Statistics {
     pub streaming_functions_in_event_count: Family<StreamingFunctionMessagesCounterLabels, Counter>,
     pub streaming_functions_out_event_count:
         Family<StreamingFunctionMessagesCounterLabels, Counter>,
-    pub streaming_functions_bytes_proccessed_count:
+    pub streaming_functions_processed_bytes_count:
         Family<StreamingFunctionMessagesCounterLabels, Counter>,
     pub streaming_functions_in_event_total_count: Counter,
     pub streaming_functions_out_event_total_count: Counter,
-    pub streaming_functions_bytes_proccessed_total_count: Counter,
+    pub streaming_functions_processed_bytes_total_count: Counter,
 }
 
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
@@ -193,7 +193,7 @@ impl Metrics {
             http_consumed_request_count: Counter::default(),
             streaming_functions_in_event_total_count: Counter::default(),
             streaming_functions_out_event_total_count: Counter::default(),
-            streaming_functions_bytes_proccessed_total_count: Counter::default(),
+            streaming_functions_processed_bytes_total_count: Counter::default(),
             topic_to_olap_event_total_count: Counter::default(),
             blocks_count: Gauge::default(),
             topic_to_olap_bytes_total_count: Counter::default(),
@@ -237,7 +237,7 @@ impl Metrics {
             >::new_with_constructor(
                 Counter::default
             ),
-            streaming_functions_bytes_proccessed_count: Family::<
+            streaming_functions_processed_bytes_count: Family::<
                 StreamingFunctionMessagesCounterLabels,
                 Counter,
             >::new_with_constructor(
@@ -297,7 +297,7 @@ impl Metrics {
         registry.register(
             STREAMING_FUNCTION_PROCESSED_BYTE_COUNT,
             "Bytes sent from one data model to another using kafka stream",
-            data.streaming_functions_bytes_proccessed_count.clone(),
+            data.streaming_functions_processed_bytes_count.clone(),
         );
 
         let cloned_data_ref = data.clone();
@@ -421,12 +421,12 @@ impl Metrics {
                         function_name,
                         bytes_count: count,
                     } => {
-                        data.streaming_functions_bytes_proccessed_count
+                        data.streaming_functions_processed_bytes_count
                             .get_or_create(&StreamingFunctionMessagesCounterLabels {
                                 function_name,
                             })
                             .inc_by(count);
-                        data.streaming_functions_bytes_proccessed_total_count
+                        data.streaming_functions_processed_bytes_total_count
                             .inc_by(count);
                     }
                     MetricsMessage::PutBlockCount { count } => {
@@ -499,7 +499,7 @@ impl Metrics {
                         "streamingToOLAPEventSyncedBytesCount": cloned_data_ref.topic_to_olap_bytes_total_count.get(),
                         "streamingFunctionsInputEventsProcessedCount": cloned_data_ref.streaming_functions_in_event_total_count.get(),
                         "streamingFunctionsOutputEventsProcessedCount": cloned_data_ref.streaming_functions_out_event_total_count.get(),
-                        "streamingFunctionsEventsProcessedTotalBytes": cloned_data_ref.streaming_functions_bytes_proccessed_total_count.get(),
+                        "streamingFunctionsEventsProcessedTotalBytes": cloned_data_ref.streaming_functions_processed_bytes_total_count.get(),
                         "ip": ip,
                     });
 

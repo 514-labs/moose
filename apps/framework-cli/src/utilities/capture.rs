@@ -22,8 +22,8 @@ use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 pub enum ActivityType {
-    #[serde(rename = "aggregationInitCommand")]
-    AggregationInitCommand,
+    #[serde(rename = "blockInitCommand")]
+    BlockInitCommand,
     #[serde(rename = "buildCommand")]
     BuildCommand,
     #[serde(rename = "bumpVersionCommand")]

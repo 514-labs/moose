@@ -118,19 +118,22 @@ export default async function handle(
 }
 "#;
 
-pub static BASE_AGGREGATION_TEMPLATE: &str = r#"
-// This file is where you can define your SQL query for aggregating your data
-// from other data models you have defined in Moose. For more information on the
-// types of aggregate functions you can run on your existing data, consult the
-// Clickhouse documentation: https://clickhouse.com/docs/en/sql-reference/aggregate-functions
+pub static TS_BASE_BLOCK_TEMPLATE: &str = r#"
+// This file is where you can define your SQL queries to shape and manipulate batches
+// of data using Blocks. There is a collection of helper functions to create SQL queries
+// within the @514labs/moose-lib package. 
 
-import { Aggregation } from "@514labs/moose-lib";
+// Blocks can also manage materialized views to store the results of your queries for 
+// improved performance. A materialized view is the recommended approach for aggregating
+// data. For more information on the types of aggregate functions you can run on your existing data, 
+// consult the Clickhouse documentation: https://clickhouse.com/docs/en/sql-reference/aggregate-functions
+
+import { Blocks } from "@514labs/moose-lib";
 
 export default {
-  select: ``,
-  orderBy: "",
-} satisfies Aggregation as Aggregation;
-
+  teardown: [],
+  setup: [],
+} as Blocks;
 "#;
 
 pub static BASE_CONSUMPTION_TEMPLATE: &str = r#"

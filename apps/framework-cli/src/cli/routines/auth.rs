@@ -42,10 +42,7 @@ pub fn generate_hash_token() {
             MessageType::Info,
             Message {
                 action: "Bearer Token".to_string(),
-                details: format!(
-                    "{} \n Authentication bearer token",
-                    concatenated.to_string()
-                ),
+                details: format!("{} \n Authentication bearer token", concatenated),
             }
         );
     }

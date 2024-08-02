@@ -1,5 +1,6 @@
 use super::display::Message;
 use super::display::MessageType;
+use super::routines::auth::validate_auth_token;
 
 use crate::cli::display::with_spinner;
 use crate::framework::controller::RouteMeta;
@@ -17,7 +18,6 @@ use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 use crate::framework::typescript::ts_node::CliMessage;
 use crate::project::Project;
 use bytes::Buf;
-use crypto_hash::{hex_digest, Algorithm};
 use http_body_util::BodyExt;
 use http_body_util::Full;
 use hyper::body::Body;
@@ -111,12 +111,11 @@ async fn create_client(
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
 
     if !check_authorization(auth_header, "MOOSE_CONSUMPTION_API_KEY").await {
-        return Response::builder()
+        return Ok(Response::builder()
             .status(StatusCode::UNAUTHORIZED)
             .body(Full::new(Bytes::from(
                 "Unauthorized: Invalid or missing token",
-            )))
-            .map_err(Into::into);
+            )))?);
     }
 
     let url = format!("http://{}:{}", host, 4001).parse::<hyper::Uri>()?;
@@ -531,30 +530,19 @@ async fn handle_json_array_body(
 }
 
 async fn validate_token(token: Option<&str>, env_var: &str) -> bool {
-    match env::var(env_var) {
-        Ok(ingest_api_key) => match token {
-            Some(token) => hex_digest(Algorithm::SHA256, token.as_bytes()) == ingest_api_key,
-            None => false,
-        },
-        Err(_) => {
-            // If API_KEY not SET
-            true
-        }
-    }
+    token.is_some_and(|t| env::var(env_var).map_or(true, |key| validate_auth_token(t, &key)))
 }
 
 async fn check_authorization(auth_header: Option<&HeaderValue>, env_var: &str) -> bool {
-    let bearer_token = match auth_header {
-        Some(header_value) => {
-            let header_str = header_value.to_str().unwrap();
+    let bearer_token = auth_header.and_then(|header_value| {
+        header_value.to_str().ok().and_then(|header_str| {
             if header_str.starts_with("Bearer ") {
                 Some(header_str.trim_start_matches("Bearer "))
             } else {
                 None
             }
-        }
-        None => None,
-    };
+        })
+    });
 
     validate_token(bearer_token, env_var).await
 }
@@ -581,8 +569,7 @@ async fn ingest_route(
             .status(StatusCode::UNAUTHORIZED)
             .body(Full::new(Bytes::from(
                 "Unauthorized: Invalid or missing token",
-            )))
-            .map_err(Into::into);
+            )));
     }
 
     match route_table.read().await.get(&route) {

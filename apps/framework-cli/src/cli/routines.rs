@@ -119,6 +119,7 @@ use super::watcher::FileWatcher;
 use super::{Message, MessageType};
 
 pub mod aggregation;
+pub mod auth;
 pub mod clean;
 pub mod consumption;
 pub mod datamodel;

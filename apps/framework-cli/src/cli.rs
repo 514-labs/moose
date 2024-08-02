@@ -24,6 +24,7 @@ use home::home_dir;
 use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
+use routines::auth::generate_hash_token;
 use routines::datamodel::read_json_file;
 use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
@@ -330,6 +331,27 @@ async fn top_command_handler(
             )))
         }
         Commands::Generate(generate) => match &generate.command {
+            Some(GenerateCommand::HashToken {}) => {
+                info!("Running generate hash token command");
+                let project = load_project()?;
+                let project_arc = Arc::new(project);
+
+                let capture_handle = crate::utilities::capture::capture_usage(
+                    ActivityType::GenerateHashCommand,
+                    Some(project_arc.name()),
+                    &settings,
+                );
+
+                check_project_name(&project_arc.name())?;
+                generate_hash_token();
+
+                wait_for_usage_capture(capture_handle).await;
+
+                Ok(RoutineSuccess::success(Message::new(
+                    "Token".to_string(),
+                    "Success".to_string(),
+                )))
+            }
             Some(GenerateCommand::Migrations {}) => {
                 info!("Running generate migration command");
                 let project = load_project()?;

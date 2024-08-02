@@ -118,6 +118,7 @@ use super::settings::Features;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
 
+pub mod auth;
 pub mod block;
 pub mod clean;
 pub mod consumption;

@@ -62,6 +62,8 @@ pub enum ActivityType {
     ImportCommand,
     #[serde(rename = "datamodelInitCommand")]
     DataModelInitCommand,
+    #[serde(rename = "generateHashCommand")]
+    GenerateHashCommand,
     #[serde(rename = "generateSDKCommand")]
     GenerateSDKCommand,
     #[serde(rename = "generateMigrations")]

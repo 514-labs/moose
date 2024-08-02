@@ -133,6 +133,7 @@ pub enum GenerateCommand {
         #[arg(default_value = "false", short = 'f', long)]
         full_package: bool,
     },
+    HashToken {},
 }
 
 #[derive(Debug, Args)]

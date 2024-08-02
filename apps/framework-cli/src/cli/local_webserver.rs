@@ -1,5 +1,6 @@
 use super::display::Message;
 use super::display::MessageType;
+use super::routines::auth::validate_auth_token;
 
 use crate::cli::display::with_spinner;
 use crate::framework::controller::RouteMeta;
@@ -22,6 +23,7 @@ use http_body_util::Full;
 use hyper::body::Body;
 use hyper::body::Bytes;
 use hyper::body::Incoming;
+use hyper::header::HeaderValue;
 use hyper::service::Service;
 use hyper::Request;
 use hyper::Response;
@@ -38,7 +40,9 @@ use rdkafka::util::Timeout;
 use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
+
 use std::collections::{HashMap, HashSet};
+use std::env;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -103,7 +107,17 @@ async fn create_client(
     metrics: Arc<Metrics>,
     route: PathBuf,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
-    // local only for now
+    // Extract the Authorization header and check the bearer token
+    let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
+
+    if !check_authorization(auth_header, "MOOSE_CONSUMPTION_API_KEY").await {
+        return Ok(Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .body(Full::new(Bytes::from(
+                "Unauthorized: Invalid or missing token",
+            )))?);
+    }
+
     let url = format!("http://{}:{}", host, 4001).parse::<hyper::Uri>()?;
 
     let host = url.host().expect("uri has no host");
@@ -515,6 +529,24 @@ async fn handle_json_array_body(
     success_response(url)
 }
 
+async fn validate_token(token: Option<&str>, env_var: &str) -> bool {
+    token.is_some_and(|t| env::var(env_var).map_or(true, |key| validate_auth_token(t, &key)))
+}
+
+async fn check_authorization(auth_header: Option<&HeaderValue>, env_var: &str) -> bool {
+    let bearer_token = auth_header.and_then(|header_value| {
+        header_value.to_str().ok().and_then(|header_str| {
+            if header_str.starts_with("Bearer ") {
+                Some(header_str.trim_start_matches("Bearer "))
+            } else {
+                None
+            }
+        })
+    });
+
+    validate_token(bearer_token, env_var).await
+}
+
 async fn ingest_route(
     req: Request<hyper::body::Incoming>,
     route: PathBuf,
@@ -529,6 +561,16 @@ async fn ingest_route(
             details: route.to_str().unwrap().to_string().to_string(),
         }
     );
+
+    let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
+
+    if !check_authorization(auth_header, "MOOSE_INGEST_API_KEY").await {
+        return Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .body(Full::new(Bytes::from(
+                "Unauthorized: Invalid or missing token",
+            )));
+    }
 
     match route_table.read().await.get(&route) {
         Some(route_meta) => match route_meta.format {

@@ -34,7 +34,7 @@ handlebars = "5.1"
 rdkafka = { version = "0.36", features = ["ssl"] }
 convert_case = "0.6.0"
 log = "0.4"
-fern = "0.6"
+fern = { version = "0.6", features = ["date-based"] }
 humantime = "2.1.0"
 uuid = { version = "1.6", features = ["v4"] }
 crypto-hash = "0.3.4"

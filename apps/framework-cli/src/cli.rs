@@ -8,11 +8,7 @@ mod routines;
 pub mod settings;
 mod watcher;
 use super::metrics::Metrics;
-use std::cmp::Ordering;
-use std::path::Path;
-use std::process::exit;
-use std::sync::Arc;
-
+use chrono::Utc;
 use clap::Parser;
 use commands::{
     BlockCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
@@ -31,6 +27,10 @@ use routines::metrics_console::run_console;
 use routines::plan;
 use routines::ps::show_processes;
 use settings::{read_settings, Settings};
+use std::cmp::Ordering;
+use std::path::Path;
+use std::process::exit;
+use std::sync::Arc;
 
 use crate::cli::routines::block::create_block_file;
 use crate::cli::routines::consumption::create_consumption_file;
@@ -43,6 +43,7 @@ use crate::cli::routines::streaming::create_streaming_function_file;
 use crate::cli::routines::templates;
 use crate::cli::routines::version::bump_version;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
+use crate::cli::settings::user_directory;
 use crate::cli::{
     display::{Message, MessageType},
     routines::{dev::run_local_infrastructure, RoutineController, RunMode},
@@ -669,16 +670,24 @@ async fn top_command_handler(
             info!("Running logs command");
 
             let project = load_project()?;
-            let project_arc = Arc::new(project);
 
             let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::LogsCommand,
-                Some(project_arc.name()),
+                Some(project.name()),
                 &settings,
             );
 
-            check_project_name(&project_arc.name())?;
-            let log_file_path = settings.logger.log_file.clone();
+            check_project_name(&project.name())?;
+
+            let log_file_path = Utc::now()
+                .format(&settings.logger.log_file_date_format)
+                .to_string();
+            let log_file_path = user_directory()
+                .join(log_file_path)
+                .to_str()
+                .unwrap()
+                .to_string();
+
             let filter_value = filter.clone().unwrap_or_else(|| "".to_string());
 
             let result = if *tail {

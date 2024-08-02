@@ -30,11 +30,8 @@
 //! error!("This is an ERROR message. Used when the system is in distress, customers are probably being affected but the program is not terminated.");
 //! ```
 //!
-//! ## Future Enhancements
-//!
-//! - Log file rotation: The log file should be rotated after it reaches a certain size to manage disk space.
 
-use log::{LevelFilter, Metadata, Record};
+use log::{info, LevelFilter, Metadata, Record};
 use std::time::{Duration, SystemTime};
 
 use opentelemetry::logs::Logger;
@@ -52,7 +49,7 @@ use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
 
 use super::settings::user_directory;
 
-const LOG_FILE: &str = "cli.log";
+const DEFAULT_LOG_FILE_FORMAT: &str = "%Y-%m-%d-cli.log";
 
 #[derive(Deserialize, Debug, Clone)]
 pub enum LoggerLevel {
@@ -86,7 +83,7 @@ pub enum LogFormat {
 #[derive(Deserialize, Debug, Clone)]
 pub struct LoggerSettings {
     #[serde(default = "default_log_file")]
-    pub log_file: String,
+    pub log_file_date_format: String,
     #[serde(default = "default_log_level")]
     pub level: LoggerLevel,
     #[serde(default = "default_log_stdout")]
@@ -99,9 +96,7 @@ pub struct LoggerSettings {
 }
 
 fn default_log_file() -> String {
-    let mut dir = user_directory();
-    dir.push(LOG_FILE);
-    dir.to_str().unwrap().to_string()
+    DEFAULT_LOG_FILE_FORMAT.to_string()
 }
 
 fn default_log_level() -> LoggerLevel {
@@ -119,7 +114,7 @@ fn default_log_format() -> LogFormat {
 impl Default for LoggerSettings {
     fn default() -> Self {
         LoggerSettings {
-            log_file: default_log_file(),
+            log_file_date_format: default_log_file(),
             level: default_log_level(),
             stdout: default_log_stdout(),
             format: default_log_format(),
@@ -128,8 +123,36 @@ impl Default for LoggerSettings {
     }
 }
 
-// TODO ensure that the log file rotates after a certain size
+// all errors are swallowed so that an error here does not break the app
+fn clean_old_logs() {
+    let cut_off = SystemTime::now() - Duration::from_secs(7 * 24 * 60 * 60);
+
+    if let Ok(dir) = user_directory().read_dir() {
+        for entry in dir.flatten() {
+            if entry.path().extension().is_some_and(|ext| ext == "log") {
+                match entry.metadata().and_then(|md| md.modified()) {
+                    Ok(t) if t > cut_off => {
+                        let _ = std::fs::remove_file(entry.path());
+                    }
+                    Ok(_) => {}
+                    Err(e) => {
+                        info!(
+                            "Failed to read modification time for {:?}. {}",
+                            entry.path(),
+                            e
+                        )
+                    }
+                }
+            }
+        }
+    } else {
+        info!("failed to read directory")
+    }
+}
+
 pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), fern::InitError> {
+    clean_old_logs();
+
     let session_id = CONTEXT.get(CTX_SESSION_ID).unwrap();
 
     let base_config = fern::Dispatch::new().level(settings.level.to_log_level());
@@ -166,7 +189,11 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
     let output_config = if settings.stdout {
         format_config.chain(std::io::stdout())
     } else {
-        format_config.chain(fern::log_file(&settings.log_file)?)
+        format_config.chain(fern::DateBased::new(
+            // `.join("")` is an idempotent way to ensure the path ends with '/'
+            user_directory().join("").to_str().unwrap(),
+            settings.log_file_date_format.clone(),
+        ))
     };
 
     let output_config = match &settings.export_to {

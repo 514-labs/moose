@@ -41,8 +41,10 @@ use serde::Deserialize;
 use serde::Serialize;
 use serde_json::Value;
 
+use lazy_static::lazy_static;
 use std::collections::{HashMap, HashSet};
 use std::env;
+use std::env::VarError;
 use std::future::Future;
 use std::net::SocketAddr;
 use std::path::PathBuf;
@@ -110,7 +112,7 @@ async fn create_client(
     // Extract the Authorization header and check the bearer token
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
 
-    if !check_authorization(auth_header, "MOOSE_CONSUMPTION_API_KEY").await {
+    if !check_authorization(auth_header, &MOOSE_CONSUMPTION_API_KEY).await {
         return Ok(Response::builder()
             .status(StatusCode::UNAUTHORIZED)
             .body(Full::new(Bytes::from(
@@ -529,22 +531,37 @@ async fn handle_json_array_body(
     success_response(url)
 }
 
-async fn validate_token(token: Option<&str>, env_var: &str) -> bool {
-    token.is_some_and(|t| env::var(env_var).map_or(true, |key| validate_auth_token(t, &key)))
+async fn validate_token(token: Option<&str>, key: &str) -> bool {
+    token.is_some_and(|t| validate_auth_token(t, key))
 }
 
-async fn check_authorization(auth_header: Option<&HeaderValue>, env_var: &str) -> bool {
-    let bearer_token = auth_header.and_then(|header_value| {
-        header_value.to_str().ok().and_then(|header_str| {
-            if header_str.starts_with("Bearer ") {
-                Some(header_str.trim_start_matches("Bearer "))
-            } else {
-                None
-            }
-        })
-    });
+fn get_env_var(s: &str) -> Option<String> {
+    match env::var(s) {
+        Ok(env_var) => Some(env_var),
+        Err(VarError::NotPresent) => None,
+        Err(VarError::NotUnicode(_)) => panic!("Invalid key for {}, NotUnicode", s),
+    }
+}
 
-    validate_token(bearer_token, env_var).await
+lazy_static! {
+    static ref MOOSE_CONSUMPTION_API_KEY: Option<String> = get_env_var("MOOSE_CONSUMPTION_API_KEY");
+    static ref MOOSE_INGEST_API_KEY: Option<String> = get_env_var("MOOSE_INGEST_API_KEY");
+}
+
+async fn check_authorization(auth_header: Option<&HeaderValue>, env_var: &Option<String>) -> bool {
+    match env_var {
+        None => true,
+        Some(key) => {
+            let bearer_token = auth_header.and_then(|header_value| {
+                header_value
+                    .to_str()
+                    .ok()
+                    .and_then(|header_str| header_str.strip_prefix("Bearer "))
+            });
+
+            validate_token(bearer_token, key).await
+        }
+    }
 }
 
 async fn ingest_route(
@@ -564,7 +581,7 @@ async fn ingest_route(
 
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
 
-    if !check_authorization(auth_header, "MOOSE_INGEST_API_KEY").await {
+    if !check_authorization(auth_header, &MOOSE_INGEST_API_KEY).await {
         return Response::builder()
             .status(StatusCode::UNAUTHORIZED)
             .body(Full::new(Bytes::from(

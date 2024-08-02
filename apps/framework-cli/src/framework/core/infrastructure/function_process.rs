@@ -40,14 +40,14 @@ impl FunctionProcess {
             name: function.name.clone(),
 
             // This probably should be a reference to the topic ingested from the
-            // infra map insteaad of using a convention for the topic name.
+            // infra map instead of using a convention for the topic name.
             // Leaving it as is for compatibility with the current code.
             source_topic: get_latest_topic(topics, &function.source_data_model.name)
                 .unwrap_or_else(|| function.source_data_model.name.clone()),
             source_columns: function.source_data_model.columns.clone(),
 
             // This probably should be a reference to the topic ingested from the
-            // infra map insteaad of using a convention for the topic name.
+            // infra map instead of using a convention for the topic name.
             // Leaving it as is for compatibility with the current code.
             target_topic: get_latest_topic(topics, &function.target_data_model.name)
                 .unwrap_or_else(|| function.target_data_model.name.clone()),

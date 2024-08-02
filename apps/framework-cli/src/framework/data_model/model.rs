@@ -23,7 +23,7 @@ pub struct DataModel {
 
 impl DataModel {
     // TODO this probably should be on the Table object itself which can be built from
-    // multiplle sources. The Aim will be to have DB Blocks provision some tables as well.
+    // multiple sources. The Aim will be to have DB Blocks provision some tables as well.
     pub fn to_table(&self) -> Table {
         Table {
             name: format!("{}_{}", self.name, self.version.replace('.', "_")),

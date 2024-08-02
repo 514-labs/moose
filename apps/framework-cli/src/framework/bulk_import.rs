@@ -28,14 +28,13 @@ pub async fn import_csv_file(
             }
 
             let record = result?;
-            let mut stuff = HashMap::new();
+            let mut json_map = HashMap::new();
             for (i, key) in headers.iter().enumerate() {
                 if let Some(value) = record.get(i) {
-                    stuff.insert(key, value);
+                    json_map.insert(key, value);
                 };
             }
-            let blah = serde_json::to_string(&stuff)?;
-            s.push_str(&blah);
+            s.push_str(&serde_json::to_string(&json_map)?);
         }
         s.push(']');
 

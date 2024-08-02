@@ -283,7 +283,7 @@ impl EventBuckets {
         }
 
         info!("Functions: {:?}", functions);
-        info!("Aggregations: {:?}", aggregations);
+        info!("Aggregations/Blocks: {:?}", aggregations);
         info!("Data Models: {:?}", data_models);
         info!("Consumption: {:?}", consumption);
 
@@ -439,7 +439,7 @@ async fn watch(
                     if !bucketed_events.aggregations.is_empty() {
                         with_spinner_async(
                             &format!(
-                                "Processing {} Aggregation(s) changes from file watcher",
+                                "Processing {} Aggregation(s)/Block(s) changes from file watcher",
                                 bucketed_events.aggregations.len()
                             ),
                             process_aggregations_changes(&mut project_registries.aggregations),

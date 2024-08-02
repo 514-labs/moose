@@ -79,7 +79,7 @@ pub async fn execute_changes(
                 process_registry.functions.start(function_process)?;
             }
             ProcessChange::FunctionProcess(Change::Removed(function_process)) => {
-                log::info!("Stoping Function process: {:?}", function_process.id());
+                log::info!("Stopping Function process: {:?}", function_process.id());
                 process_registry.functions.stop(function_process).await?;
             }
             ProcessChange::FunctionProcess(Change::Updated { before, after }) => {

@@ -22,8 +22,8 @@ use serde::Serialize;
 
 #[derive(Debug, Clone, Serialize)]
 pub enum ActivityType {
-    #[serde(rename = "aggregationInitCommand")]
-    AggregationInitCommand,
+    #[serde(rename = "blockInitCommand")]
+    BlockInitCommand,
     #[serde(rename = "buildCommand")]
     BuildCommand,
     #[serde(rename = "bumpVersionCommand")]
@@ -73,7 +73,7 @@ pub enum ActivityType {
 #[derive(Debug, Clone, Serialize)]
 pub struct MooseActivity {
     pub id: Uuid,
-    pub project: Option<String>,
+    pub project: String,
     #[serde(rename = "activityType")]
     pub activity_type: ActivityType,
     #[serde(rename = "sequenceId")]
@@ -98,7 +98,7 @@ pub fn capture_usage(
     if settings.telemetry.enabled {
         let mut event = MooseActivity {
             id: Uuid::new_v4(),
-            project: project_name,
+            project: project_name.unwrap_or("N/A".to_string()),
             activity_type,
             sequence_id: CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
             timestamp: Utc::now(),

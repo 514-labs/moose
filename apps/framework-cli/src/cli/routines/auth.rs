@@ -78,5 +78,5 @@ pub fn validate_auth_token(token: &str, private_pass: &str) -> bool {
             return false;
         }
     }
-    return true;
+    true
 }

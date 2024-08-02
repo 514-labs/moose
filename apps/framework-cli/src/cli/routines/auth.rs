@@ -73,10 +73,5 @@ pub fn validate_auth_token(token: &str, private_pass: &str) -> bool {
     let token_hash = hex::decode(private_pass).unwrap();
     let key1_hash = hex::decode(key1_hex).unwrap();
 
-    for i in 0..token_hash.len() {
-        if token_hash[i] != key1_hash[i] {
-            return false;
-        }
-    }
-    true
+    constant_time_eq::constant_time_eq(&token_hash, &key1_hash)
 }

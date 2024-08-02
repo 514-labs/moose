@@ -568,6 +568,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "constant_time_eq"
+version = "0.3.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "f7144d30dcf0fafbce74250a3963025d8d52177934239851c917d29f1df280c2"
+
+[[package]]
 name = "convert_case"
 version = "0.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1905,6 +1911,7 @@ dependencies = [
  "comfy-table",
  "config",
  "console",
+ "constant_time_eq",
  "convert_case 0.6.0",
  "crossterm",
  "crypto-hash",

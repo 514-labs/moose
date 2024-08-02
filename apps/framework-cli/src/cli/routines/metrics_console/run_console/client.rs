@@ -3,6 +3,13 @@ use std::collections::HashMap;
 use prometheus_parse::{self, HistogramCount, Sample};
 use reqwest;
 
+use crate::metrics::{
+    CONSUMED_BYTES, HTTP_TO_TOPIC_EVENT_COUNT, INGESTED_BYTES, LATENCY,
+    STREAMING_FUNCTION_EVENT_INPUT_COUNT, STREAMING_FUNCTION_EVENT_OUPUT_COUNT,
+    STREAMING_FUNCTION_PROCESSED_BYTE_COUNT, TOPIC_TO_OLAP_BYTE_COUNT, TOPIC_TO_OLAP_EVENT_COUNT,
+    TOTAL_LATENCY,
+};
+
 type Result<T> = std::result::Result<T, Box<dyn std::error::Error + Send + Sync>>;
 
 pub struct PathMetricsData {
@@ -58,7 +65,7 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
 
     let mut i = 0;
     while i < metrics_vec.len() {
-        if &metrics_vec[i].metric == "total_latency_sum" {
+        if metrics_vec[i].metric == format!("{}_sum", TOTAL_LATENCY) {
             let value = match &metrics_vec[i].value {
                 prometheus_parse::Value::Histogram(v) => v[0].count,
                 prometheus_parse::Value::Untyped(v) => *v,
@@ -66,7 +73,7 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
             };
             average_latency = value;
         }
-        if &metrics_vec[i].metric == "total_latency_count" {
+        if metrics_vec[i].metric == format!("{}_count", TOTAL_LATENCY) {
             let value = match &metrics_vec[i].value {
                 prometheus_parse::Value::Histogram(v) => v[0].count,
                 prometheus_parse::Value::Untyped(v) => *v,
@@ -82,7 +89,7 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
     let mut j = 0;
 
     while j < metrics_vec.len() {
-        if metrics_vec[j].metric == "latency_sum" {
+        if metrics_vec[j].metric == format!("{}_sum", LATENCY) {
             let sum_value = match &metrics_vec[j].value {
                 prometheus_parse::Value::Histogram(v) => v[0].count,
                 prometheus_parse::Value::Untyped(v) => *v,
@@ -98,7 +105,7 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
                 request_count: count_value,
                 path: (metrics_vec[j].labels["path"]).to_string(),
             });
-        } else if metrics_vec[j].metric.starts_with("bytes") {
+        } else if metrics_vec[j].metric == format!("{}_total", INGESTED_BYTES) {
             let value: f64 = match &metrics_vec[j].value {
                 prometheus_parse::Value::Counter(v) => *v,
                 prometheus_parse::Value::Untyped(v) => *v,
@@ -106,24 +113,27 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
             };
 
             paths_bytes_hashmap.insert((metrics_vec[j].labels["path"]).to_string(), value as u64);
-
-            if metrics_vec[j].labels["path"].starts_with("ingest/") {
-                total_bytes_in += value as u64;
-            } else {
-                total_bytes_out += value as u64;
-            }
-        } else if metrics_vec[j].metric == "messages_in_total" {
+            total_bytes_in += value as u64;
+        } else if metrics_vec[j].metric == format!("{}_total", CONSUMED_BYTES) {
+            let value: f64 = match &metrics_vec[j].value {
+                prometheus_parse::Value::Counter(v) => *v,
+                prometheus_parse::Value::Untyped(v) => *v,
+                _ => 0.0,
+            };
+            paths_bytes_hashmap.insert((metrics_vec[j].labels["path"]).to_string(), value as u64);
+            total_bytes_out += value as u64;
+        } else if metrics_vec[j].metric == format!("{}_total", HTTP_TO_TOPIC_EVENT_COUNT) {
             let value: f64 = match &metrics_vec[j].value {
                 prometheus_parse::Value::Counter(v) => *v,
                 prometheus_parse::Value::Untyped(v) => *v,
                 _ => 0.0,
             };
 
-            let topic = metrics_vec[j].labels["topic"].to_string();
+            let topic = metrics_vec[j].labels["topic_name"].to_string();
             let path = metrics_vec[j].labels["path"].to_string();
 
             kafka_messages_in_total.insert(path, (topic, value));
-        } else if metrics_vec[j].metric == "messages_out_total" {
+        } else if metrics_vec[j].metric == format!("{}_total", TOPIC_TO_OLAP_EVENT_COUNT) {
             let value: f64 = match &metrics_vec[j].value {
                 prometheus_parse::Value::Counter(v) => *v,
                 prometheus_parse::Value::Untyped(v) => *v,
@@ -131,10 +141,10 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
             };
 
             let consumer_group = metrics_vec[j].labels["consumer_group"].to_string();
-            let topic = metrics_vec[j].labels["topic"].to_string();
+            let topic = metrics_vec[j].labels["topic_name"].to_string();
 
             kafka_messages_out_total.push((topic, consumer_group, value));
-        } else if metrics_vec[j].metric == "kafka_clickhouse_sync_bytes_out_total" {
+        } else if metrics_vec[j].metric == format!("{}_total", TOPIC_TO_OLAP_BYTE_COUNT) {
             let value: f64 = match &metrics_vec[j].value {
                 prometheus_parse::Value::Counter(v) => *v,
                 prometheus_parse::Value::Untyped(v) => *v,
@@ -142,31 +152,39 @@ pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
             };
 
             let consumer_group = metrics_vec[j].labels["consumer_group"].to_string();
-            let topic = metrics_vec[j].labels["topic"].to_string();
+            let topic = metrics_vec[j].labels["topic_name"].to_string();
 
             kafka_bytes_out_total.insert(topic, (consumer_group, value as u64));
-        } else if &metrics_vec[j].metric == "streaming_functions_in" {
+        } else if metrics_vec[j].metric == format!("{}_total", STREAMING_FUNCTION_EVENT_INPUT_COUNT)
+        {
             let value = match &metrics_vec[j].value {
-                prometheus_parse::Value::Gauge(v) => v,
+                prometheus_parse::Value::Counter(v) => v,
                 prometheus_parse::Value::Untyped(v) => v,
                 _ => &0.0,
             };
-            streaming_functions_in.insert(metrics_vec[j].labels["path"].to_string(), *value);
-        } else if &metrics_vec[j].metric == "streaming_functions_out" {
+            streaming_functions_in
+                .insert(metrics_vec[j].labels["function_name"].to_string(), *value);
+        } else if metrics_vec[j].metric == format!("{}_total", STREAMING_FUNCTION_EVENT_OUPUT_COUNT)
+        {
             let value = match &metrics_vec[j].value {
-                prometheus_parse::Value::Gauge(v) => v,
+                prometheus_parse::Value::Counter(v) => v,
                 prometheus_parse::Value::Untyped(v) => v,
                 _ => &0.0,
             };
-            streaming_functions_out.insert(metrics_vec[j].labels["path"].to_string(), *value);
-        } else if &metrics_vec[j].metric == "streaming_functions_bytes" {
+            streaming_functions_out
+                .insert(metrics_vec[j].labels["function_name"].to_string(), *value);
+        } else if metrics_vec[j].metric
+            == format!("{}_total", STREAMING_FUNCTION_PROCESSED_BYTE_COUNT)
+        {
             let value = match &metrics_vec[j].value {
-                prometheus_parse::Value::Gauge(v) => v,
+                prometheus_parse::Value::Counter(v) => v,
                 prometheus_parse::Value::Untyped(v) => v,
                 _ => &0.0,
             };
-            streaming_functions_bytes
-                .insert(metrics_vec[j].labels["path"].to_string(), *value as u64);
+            streaming_functions_bytes.insert(
+                metrics_vec[j].labels["function_name"].to_string(),
+                *value as u64,
+            );
         }
 
         j += 1;

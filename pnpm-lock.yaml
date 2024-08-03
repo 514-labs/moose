@@ -248,8 +248,8 @@ importers:
   apps/framework-internal-app:
     dependencies:
       "@514labs/moose-lib":
-        specifier: 0.3.526
-        version: 0.3.526
+        specifier: 0.3.531
+        version: 0.3.531
       "@clickhouse/client-web":
         specifier: 1.1.0
         version: 1.1.0
@@ -267,8 +267,8 @@ importers:
         version: 2.2.4
     devDependencies:
       "@514labs/moose-cli":
-        specifier: 0.3.526
-        version: 0.3.526
+        specifier: 0.3.531
+        version: 0.3.531
       "@types/async":
         specifier: ^3.2.24
         version: 3.2.24
@@ -847,10 +847,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-arm64@0.3.526:
+  /@514labs/moose-cli-darwin-arm64@0.3.531:
     resolution:
       {
-        integrity: sha512-fidIzPZhONmsQ5F2vFuXYHx69k6Zz1BjxE/dxuKze3FML1A4pfRCum3SARLtTe0suqYolErDju+vLKnT2sb6YA==,
+        integrity: sha512-O3+lcfZfp+luF8ZQSQXLnCQU3LaVhZAr+pzMqwVzn3MqUq8/2uAyyRdA5t0nbbFlr37hfVIdMwgXvjJaQ3OB/w==,
       }
     cpu: [arm64]
     os: [darwin]
@@ -869,10 +869,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-darwin-x64@0.3.526:
+  /@514labs/moose-cli-darwin-x64@0.3.531:
     resolution:
       {
-        integrity: sha512-kDC7V+/AampcXO9AZz8V3PDPRo3OWZ/PlNIStYbXjZMmlezTXGYRStrfiYrpbJzmrsPVcXb0ukSERWsjGDKmxg==,
+        integrity: sha512-QLlolyPBYM/9q/tnsi9/QQ/dFWnlcBrR4rrlVwKA9sCNt1heb2Ao087vxbm6sYEEOYtr4fPoyrreVHSvCFIjgA==,
       }
     cpu: [x64]
     os: [darwin]
@@ -891,10 +891,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-arm64@0.3.526:
+  /@514labs/moose-cli-linux-arm64@0.3.531:
     resolution:
       {
-        integrity: sha512-UmzCL3bd2BBBZy6B8iFfNRw6qieyyO1Y18AsFuCL5IaVzNC93UwwqUn1tDFazUumm2h2Wvi4dWhKlP69l+nHgQ==,
+        integrity: sha512-jusCME7XzS4xZtBic37Iwso5CkdfMFUgOoYHC1NGGD6sniTXjj/SwoDmgxPuQJrfA/3j+51wbMJW/fZKbwJAeg==,
       }
     cpu: [arm64]
     os: [linux]
@@ -913,10 +913,10 @@ packages:
     dev: false
     optional: true
 
-  /@514labs/moose-cli-linux-x64@0.3.526:
+  /@514labs/moose-cli-linux-x64@0.3.531:
     resolution:
       {
-        integrity: sha512-FsxqyAAUaBUS8LlCo49T/ynL7v7oWQqXgs+1xY+vLdtEPGDTbR/S8KqRIpZ9yx4Jdw4HwvE76N7YduITyW8ViQ==,
+        integrity: sha512-sBx//JCaV92IjxEcJX+dE6kTh0NeF4p8kMdHLUnTndnx1Pczyu5kr9ZU1K8t5+ela7YwlCdUERcfA/l4G97Hhg==,
       }
     cpu: [x64]
     os: [linux]
@@ -937,23 +937,23 @@ packages:
       "@514labs/moose-cli-linux-x64": 0.3.205
     dev: false
 
-  /@514labs/moose-cli@0.3.526:
+  /@514labs/moose-cli@0.3.531:
     resolution:
       {
-        integrity: sha512-stNlVXr+Qu4893OcNMaJ7bAlRUqbPhtX5G58cMosia0IK3E5E5NFDpQXAUYZkvWwLTLn+9If/kvxU9SwBj+Vjw==,
+        integrity: sha512-t1l5oKlTxaobbv6J5Z5bzWGr8DpFJi4NQ4+fDT4+KDGt6w2RLQDM5Z6vmz80xzDyv86iG8+SDVMl9uyaQpsWYQ==,
       }
     hasBin: true
     optionalDependencies:
-      "@514labs/moose-cli-darwin-arm64": 0.3.526
-      "@514labs/moose-cli-darwin-x64": 0.3.526
-      "@514labs/moose-cli-linux-arm64": 0.3.526
-      "@514labs/moose-cli-linux-x64": 0.3.526
+      "@514labs/moose-cli-darwin-arm64": 0.3.531
+      "@514labs/moose-cli-darwin-x64": 0.3.531
+      "@514labs/moose-cli-linux-arm64": 0.3.531
+      "@514labs/moose-cli-linux-x64": 0.3.531
     dev: true
 
-  /@514labs/moose-lib@0.3.526:
+  /@514labs/moose-lib@0.3.531:
     resolution:
       {
-        integrity: sha512-IMDX8ch19pW2msJDGdYRK+JbhW4cjgxVObMguYqiKa2CKV/6ngWLOTGRRliS+w6g72dY9oPwRhnpPFModYXV8Q==,
+        integrity: sha512-SXqO7uKiqNAI5wso7k28krfLXQvpvb95zp73H5XSOSe5bsb2oTdP26TFFE3ZGj0DHjgO8uulTRyGJ6dM2ptIGQ==,
       }
     hasBin: true
     dependencies:

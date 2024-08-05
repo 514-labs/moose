@@ -262,9 +262,15 @@ const startConsumer = async (
     `Starting consumer group '${streamingFuncId}' with source topic: ${sourceTopic} and target topic: ${targetTopic}`,
   );
 
-  const streamingFunctionImport = await import(
-    FUNCTION_FILE_PATH.substring(0, FUNCTION_FILE_PATH.length - 3)
-  );
+  let streamingFunctionImport;
+  try {
+    streamingFunctionImport = await import(
+      FUNCTION_FILE_PATH.substring(0, FUNCTION_FILE_PATH.length - 3)
+    );
+  } catch (e) {
+    cliLog({ action: "Code failed to load", message: `${e}` });
+    throw e;
+  }
   const streamingFunction: StreamingFunction = streamingFunctionImport.default;
 
   await consumer.subscribe({

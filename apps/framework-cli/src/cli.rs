@@ -66,11 +66,8 @@ use self::routines::{
 };
 
 #[derive(Parser)]
-#[command(author, version, about, long_about = None, arg_required_else_help(true))]
+#[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
 struct Cli {
-    /// Optional name to operate on
-    name: Option<String>,
-
     // TODD: Add a config file option
     /// Sets a custom config file
     // #[arg(short, long, value_name = "FILE")]

@@ -54,10 +54,12 @@ If your Moose app is in production on your own infrastructure, you can see the m
 #### Technical Bits On The Metrics Console's Performance
 
 **The Metrics Console was developed with speed and efficiency in mind.**
+
 The Metrics Console is built as a completely separate process from the rest of the Moose CLI.
 When running, this process collects and sends Prometheus metrics to the `/metrics` HTTP endpoint of your Moose app every second.
 These metrics are then parsed, stored, and displayed right in your terminal interface.
 Even though we are sending metrics every second, you will not notice any performance degradation in your Moose app.
+When you close the Metrics Console, the process is terminated and no longer sends metrics to your app. This ensures that the Metrics Console does not consume any computing resources when not in use.
 
 **That's right Moose is still extremely fast!**
 

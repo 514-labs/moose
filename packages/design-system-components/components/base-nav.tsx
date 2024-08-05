@@ -13,6 +13,16 @@ import { Logo } from "./logo";
 import { Badge } from "./ui/badge";
 import { TrackLink } from "./trackable-components";
 import { ProductBadge } from "./language-badge";
+import {
+  NavigationMenu,
+  NavigationMenuContent,
+  NavigationMenuIndicator,
+  NavigationMenuItem,
+  NavigationMenuLink,
+  NavigationMenuList,
+  NavigationMenuTrigger,
+  NavigationMenuViewport,
+} from "./ui/navigation-menu";
 
 gsap.registerPlugin(SplitText);
 
@@ -37,7 +47,7 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
             <div className="flex h-20 justify-between items-center">
               <Grid className="grow md:grid md:grid-cols-12 md:gap-x-10">
                 <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary content-center">
-                  <div className="flex items-center align-content">
+                  <div className="flex flex-row items-center content-center justify-between w-fit p-10">
                     <TrackLink
                       name={"Nav"}
                       subject="home"
@@ -52,7 +62,7 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
                         subject="Language Badge"
                         href={"https://docs.moosejs.com"}
                       >
-                        <div className="flex flex-row">
+                        <div className="flex flex-row items-center content-center">
                           <ProductBadge name="" tag="JS" />
                           <ProductBadge name="" tag="PY" />
                         </div>

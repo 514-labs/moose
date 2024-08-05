@@ -1,0 +1,57 @@
+# Develop Transformation Logic
+
+Now that you have your streaming function file, you have to define the
+transformations within it: how you want to change the data in the source data
+model to get to the output anticipated by the destination data model.
+
+**This requires a default export function:** The transformation function should
+be the file's default export, allowing Moose to automatically identify and
+execute it.
+
+**And allows for type definitions:** Use TypeScript interfaces generated for
+your data models to type-check the function's input and output, ensuring they
+match the source and destination data models, respectively.
+
+Here's an example streaming function file that converts timestamps to UTC:
+
+```ts filename="/functions/UserActivity__ParsedActivity.ts" copy {3-4,8}
+// Example streaming function: Converts local timestamps in UserEvent data to UTC.
+// Imports: Source (UserActivity) and Destination (ParsedActivity) data models.
+import { UserActivity, ParsedActivity } from "datamodels/models.ts";
+
+// The 'convertUtc' function transforms UserActivity data to ParsedActivity format.
+export default function convertUtc(
+  source: UserActivity,
+): ParsedActivity[] | ParsedActivity | null {
+  // Convert local timestamp to UTC and return new ParsedActivity object.
+  return {
+    id: source.id, // Retain original event ID.
+    userId: "puid" + source.userId, // Example: Prefix user ID.
+    activity: source.activity, // Copy activity unchanged.
+    timestamp: new Date(source.timestamp), // Convert timestamp to UTC.
+  };
+}
+```
+
+Adjust function specifics according to your data transformation needs. The
+function's return type can be null (meaning no transformation will take place),
+a single object, or an array of objects. This structured approach ensures
+clarity in your data processing tasks, enabling Moose to efficiently handle and
+automate streaming functions.
+
+#### Splitting Data Into Multiple Entries
+
+To create multiple entries you can return a array of the destination data model.
+For example using the code above you can return an array with a type of `ParsedActivity[]`.
+MooseJS would convert each object inside of the array into a seperate database entry.
+
+# Validate Your Streaming Function
+
+To test and confirm your streaming function's logic:
+
+1. Send Test Data: Ingest test data into the source data model to trigger the function.
+2. Verify Transformation: After the streaming function processes the data, check the
+   destination table in the database to see if the data has been transformed correctly.
+
+For detailed instructions on data ingestion, consult the
+[Ingesting Data](../data-models/capture-data.mdx) section of the documentation.

@@ -1,0 +1,4 @@
+{
+  "ingest-api": "via Ingestion API Enpoints",
+  "ingest-sdk": "via Ingestion SDKs"
+}

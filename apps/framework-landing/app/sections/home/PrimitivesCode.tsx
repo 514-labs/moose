@@ -199,7 +199,7 @@ export const PrimitivesCode = () => {
       <Section className="mx-auto xl:max-w-screen-xl sm:px-6 lg:px-8">
         <Grid className="flex flex-col">
           <FullWidthContentContainer className="flex flex-col lg:flex-row gap-5 p-4 sm:p-6 border rounded-3xl h-1/2">
-            <HalfWidthContentContainer className="flex flex-col gap-5 justify-start lg:w-1/2 w-full">
+            <HalfWidthContentContainer className="flex flex-col gap-5 justify-start md:w-1/2 w-full">
               <Heading level={HeadingLevel.l3} className="mb-0">
                 Moose Primitives
               </Heading>

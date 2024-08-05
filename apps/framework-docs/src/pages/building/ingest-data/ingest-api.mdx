@@ -1,0 +1,52 @@
+import { Tabs } from "nextra/components";
+
+# Ingesting via API Endpoints
+
+As you define Data Models in your `/datamodels` folder, Moose will automatically generate ingestion points for you
+to send data to. Ingestion points are HTTP endpoints that you can send data to by making a `POST` request. When you run your development server on `localhost`, the default port is `4000`.
+
+The standard endpoint for each data model is:
+
+`http://localhost:4000/ingest/<DATA_MODEL_NAME>`
+
+Following is some example code for testing the API endpoints for a Data Model called `UserActivity`. When you run the `moose ls` command in your terminal, you'll see a table with the API endpoints for each of your Data Models.
+
+<Tabs items={['curl', 'javascript', 'python']}>
+  <Tabs.Tab>
+    ``` bash copy
+  curl -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \
+    http://localhost:4000/ingest/UserActivity
+  ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+  ```javascript copy
+  fetch('http://localhost:4000/ingest/UserActivity', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      eventId: '1234567890',
+      timestamp: '2019-01-01 00:00:01',
+      userId: '123456',
+      activity: 'click'
+    })
+  })
+  ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+  ```python copy
+    import requests
+
+    requests.post('http://localhost:4000/ingest/UserActivity', json={
+      'eventId': '1234567890',
+      'timestamp': '2019-01-01 00:00:01',
+      'userId': '123456',
+      'activity': 'click'
+    })
+    ```
+
+  </Tabs.Tab>
+</Tabs>

@@ -1,0 +1,17 @@
+import { Cards, Card } from "nextra/components";
+
+# Ingesting Data
+
+Once you've defined a Data Model, Moose makes it easy to ingest data from upstream data sources
+that align to the schema of your Data Model. There are two main ways to ingest data:
+
+1. Pushing data to the Ingestion API Endpoint that Moose automatically creates for each Data Model
+2. Instrumenting an upstream application using an SDK that Moose automatically creates for each Data Model -
+   this SDK makes it easy to capture data to send to the API Endpoint automatically
+
+The following sections will walk you through both methods.
+
+<Cards>
+  <Card href="./ingest-data/ingest-api" title="Ingestion APIs" />
+  <Card href="./ingest-data/ingest-sdk" title="Ingestion SDK" />
+</Cards>

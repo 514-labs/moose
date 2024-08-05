@@ -56,21 +56,6 @@ export const FeaturesSection = () => {
           "Package your application for deployment in any environment from the CLI",
         icon: <Box strokeWidth={1} />,
       },
-      // {
-      //   title: "UI Components (coming soon)",
-      //   description:
-      //     "Embed insightful react components in your framework of choice",
-      // },
-      // {
-      //   title: "Connectors & SDKs (coming soon)",
-      //   description:
-      //     "Connectors and auto generated SDKs get data in and out of moose",
-      // },
-      // {
-      //   title: "Orchestration (coming soon)",
-      //   description:
-      //     "Configurable orchestration to make sure data gets where it needs to go reliably",
-      // },
     ],
   };
 

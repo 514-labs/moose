@@ -1,0 +1,96 @@
+import { Callout, FileTree } from "nextra/components";
+
+# Create a Streaming Function in CLI
+
+Initiate your streaming function setup in Moose with the `moose function init` CLI command. This
+command structures your project's directory and creates necessary files based on
+your specified data models.
+
+```txt filename="Terminal" copy
+moose function init --source <SOURCE_DATA_MODEL> --destination <DESTINATION_DATA_MODEL>
+```
+
+This command takes two arguments: `--source` and `--destination`, which should
+each be followed by the name of the source and destination data models you wish
+to connect through this streaming function.
+
+<Callout>
+  These data models must exist before you create your streaming function. You
+  can find a list of your existing data models by running `moose ls`.
+</Callout>
+
+By way of example:
+
+```txt filename="Terminal" copy
+moose function init --source UserActivity --destination ParsedActivity
+```
+
+Represents a streaming function from a source data model `UserActivity` and
+a destination data model `ParsedActivity`, which themselves were defined in the
+`/datamodels` directory:
+
+```ts filename="/datamodels/models.ts"
+import { Key } from "@514labs/moose-lib";
+
+export interface UserActivity {
+    ...
+}
+
+export interface ParsedActivity {
+    ...
+}
+```
+
+<Callout>
+  Make sure your development server is running to keep Moose updated with your
+  data model definitions.
+</Callout>
+
+When you run this command, you will create the streaming function file and
+file structure described below.
+
+# Directory Structure Post-Initialization
+
+Running the `moose function init` command with valid arguments will create a
+`.ts` file to represent this newly created streaming function, in the following
+directory structure:
+
+<FileTree>
+  <FileTree.Folder name="my-moose-app" defaultOpen>
+    <FileTree.Folder name="functions" defaultOpen>
+      <FileTree.File name="UserActivity__ParsedActivity.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+In the example above
+
+```txt
+my-moose-app/functions/UserActivity__ParsedActivity.ts
+```
+
+Where:
+
+|                |                                                                        |
+| -------------- | ---------------------------------------------------------------------- |
+| UserActivity   | is the source data model Moose monitors for new data.                  |
+| ParsedActivity | is the destination data model where Moose routes the transformed data. |
+
+This TypeScript file is where you define the
+transformation needed to get from your source data model to the destination.
+In the file created, Moose provides starter code. This code includes
+imports for your source and destination data model interfaces and sets up a
+default function template. The function is pre-configured with the correct
+argument and return types based on the specified data models:
+
+```ts filename="/functions/UserActivity__ParsedActivity.ts" copy {2-3,7}
+// Add your models & start the development server to import these types
+import { UserActivity } from "/path/to/UserActivity";
+import { ParsedActivity } from "/path/to/ParsedActivity";
+
+// The 'run' function transforms source data to destination format.
+// For more details on how Moose streaming functions work, see: https://docs.moosejs.com
+export default function run(event: UserActivity): ParsedActivity | null {
+  return null;
+}
+```

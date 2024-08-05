@@ -1,8 +1,14 @@
-# Data Models Introduction
+# Introduction
 
-Data Models are foundational to your MooseJS application. Using Data Models, you define the schemas of the data you need to support in your application. Based on these simple schema definitions, MooseJS will configure end-to-end data infrastructure for you.
+Data Models are the backbone of your Moose application, enabling you to define the schemas for the data your application supports. Moose takes these definitions and automatically configures the entire data infrastructure, including:
 
-Data Models look like this:
+- **Typed SDK**: Capture data from upstream data sources or producers.
+- **`/ingest` API Endpoint**: Receive data from upstream sources, including but not limited to the SDK
+- **Streaming Topic**: Buffer incoming data from the ingestion server, handling peak loads without data loss.
+- **Database Landing Table**: Store ingested data.
+- **Database View**: Access and query the underlying data.
+
+Each component is strongly typed and kept in sync with the Data Model schema defined in your Moose application's source code.
 
 ```ts filename="datamodels/models.ts" copy
 import { Key } from "@514labs/moose-lib";

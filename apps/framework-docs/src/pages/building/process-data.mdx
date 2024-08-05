@@ -1,0 +1,48 @@
+import { Callout } from "nextra/components";
+
+# Introduction
+
+Sometimes, the data you get isn’t exactly the way you want it. So you have to
+process the data to fit the form you need. In Moose, you do this by creating a Streaming Function that connects one data model to another. Streaming Functions consist of:
+
+- a source data model
+- a destination data model
+- a function that processes the data from the source to fit the destination.
+
+## <br/>
+
+## File Structure
+
+When you create a Moose app, you will have a `/functions` directory in your app folder. This directory contains all the streaming functions you create. Each streaming function is a TypeScript (`.ts`) file that defines how data is transformed from the source data model to the destination data model. The file name should be in the format `SourceDataModel__DestinationDataModel.ts`.
+
+<Callout>
+  This file structure is important because Moose uses it to automatically
+  identify and execute the streaming functions you create. Make sure you use two
+  underscores to separate the source and destination data models in the file
+  name.
+</Callout>
+
+## Function Definition
+
+The function definition should have the following structure:
+
+```ts filename="/functions/SourceDataModel__DestinationDataModel.ts" copy
+export default function functionName(
+  source: SourceDataModel,
+): DestinationDataModel[] | DestinationDataModel | null {
+  // Transformation logic
+}
+```
+
+Creating a streaming function in Moose is easy: you write a TypeScript function
+that defines how data needs to be transformed. Moose’s will automatically
+apply these transformations whenever data hits the source data model that the streaming function
+is associated with.
+
+Each streaming function essentially has three components: the source and destination data
+models (which are represented in the structure of the `/functions` directory), and
+the TypeScript definition of how to manipulate the data from the source to fit
+the requirements of the destination.
+
+You define the start, the end, and the path, Moose’s infrastructure automates
+the rest.

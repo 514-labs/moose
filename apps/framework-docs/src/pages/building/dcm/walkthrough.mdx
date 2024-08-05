@@ -22,15 +22,15 @@ the concepts we are talking about and make sure we all start from the same point
 In the terminal, go to a directory where you wish to run your experiment.
 
 ```txt filename="Terminal" copy
-$ cd ~
+cd ~
 ```
 
 ```bash filename="Terminal" copy
-$ npx create-moose-app@latest dcm-walkthrough
+npx create-moose-app@latest dcm-walkthrough
 ```
 
 ```txt filename="Terminal" copy
-$ cd dcm-walkthrough
+cd dcm-walkthrough
 ```
 
 At the end of the initialization process, you will have two Data Models already defined,
@@ -73,9 +73,9 @@ When you run
 
 Moose will spin up a dev infrastructure for you to start building your moose app.
 
-Go to `http://localhost:3001` from your browser. You should see the following console:
+Run `moose-ls` in your terminal. You should see the following table:
 
-![Console Initialized](./console_init.png)
+![Console Initialized](/moose-ls.png)
 
 As you can see here, you have a table provisioned with the suffix `0_0` for `v0.0`
 which is the default version in your package.json. Your Data Model versions

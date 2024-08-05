@@ -1,6 +1,4 @@
 {
-  "intro": "Introduction",
   "model-data": "Usage",
-  "configuring": "Configuring",
-  "capture-data": "Ingesting Data"
+  "configuring": "Configuring"
 }

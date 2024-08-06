@@ -1,14 +1,45 @@
+import { FileTree, Callout } from "nextra/components";
+
 # Introduction
 
 Data Models are the backbone of your Moose application, enabling you to define the schemas for the data your application supports. Moose takes these definitions and automatically configures the entire data infrastructure, including:
 
-- **Typed SDK**: Capture data from upstream data sources or producers.
-- **`/ingest` API Endpoint**: Receive data from upstream sources, including but not limited to the SDK
-- **Streaming Topic**: Buffer incoming data from the ingestion server, handling peak loads without data loss.
-- **Database Landing Table**: Store ingested data.
-- **Database View**: Access and query the underlying data.
+- **Typed SDK**: Captures data from upstream data sources or producers
+- **Ingestion API Endpoint**: Receives data from upstream sources, including but not limited to the SDK
+- **Streaming Topic**: Buffers incoming data from the ingestion server, handling peak loads without data loss
+- **Database Landing Table**: Stores ingested data in a structured format
+- **Database View**: Facilitates access and querying of the underlying data
 
 Each component is strongly typed and kept in sync with the Data Model schema defined in your Moose application's source code.
+
+## Data Modeling Conventions
+
+Data Models must be placed in the `/datamodels` directory of your Moose application. The directory structure should look like this:
+
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="datamodels" open>
+      <FileTree.File name="models.ts" />
+    </FileTree.Folder>
+    <FileTree.Folder name="..." />
+  </FileTree.Folder>
+</FileTree>
+
+Data Models are represented using native features and syntax of the language you are using:
+
+- **TypeScript**: Data Models are represented as `interfaces`, and must be exported from a `.ts` file (using `export` keyword)
+- **Python**: Data Models are represented as `dataclasses` (using the `@dataclass` decorator), and must be defined in a `.py` file
+
+<Callout>
+  Notes: - You can define multiple Data Models within a single file. - The name
+  of the file is not important, but it must have a `.ts` or `.py` extension. -
+  Any exported interface or dataclass that adheres to the appropriate file and
+  folder conventions will be automatically detected by Moose and used to
+  generate the necessary infrastructure.
+  <br />
+</Callout>
+
+### Example Data Model in TypeScript
 
 ```ts filename="datamodels/models.ts" copy
 import { Key } from "@514labs/moose-lib";
@@ -20,32 +51,3 @@ export interface UserActivity {
   activity: string;
 }
 ```
-
----
-
-For each Data Model that you define, MooseJS with automatically configure for you:
-
-- A typed SDK to instrument your upstream application(s) to capture data (currently supports Typescript only)
-- A high-performance ingestion API endpoint to receive data from upstream data sources (including, but not limited to the SDK mentioned above)
-- A streaming buffer to store data as it's ingested from the ingestion server, in order to handle peak load ingest without dropping any data on the ground
-- A landing table in the underlying OLAP analytics database to store ingested data
-- A database view to access and query the underlying data
-- A consumption API endpoint to pull data into downstream applications (coming soon)
-- A typed SDK to use in your downstream application(s) to easily consume data from the API endpoint (coming soon)
-
-All of these components are typed to the schema of your Data Model, and automatically configured to be interconnected and to pass data seamlessly down the pipeline.
-
-In other words, simply by defining a couple simple Data Model primitives,
-you can be up and running with a modern, scalable, end-to-end data stack in just a couple minutes.
-You're ready to start ingesting data from data sources, building Streaming Functions to process that data,
-and consuming that data into downstream use cases like BI software, LLMs, or your own analytics-driven applications.
-
----
-
-In the following documentation you’ll find information about:
-
-1. How to create and inspect your Data Models
-2. How to ingest data into your MooseJS applications (via Data Models)
-3. How to consume data from your MooseJS applications (via Data Models)
-4. How to build Streaming Functions that transform data from one Data Model to another Data Model
-5. How modify and manage versions of your Data Models with Data Change Management

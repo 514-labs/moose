@@ -1,19 +1,23 @@
-import { Tabs } from "nextra/components";
+import { Tabs, Callout } from "nextra/components";
 
 # Ingesting via API Endpoints
 
 As you define Data Models in your `/datamodels` folder, Moose will automatically generate ingestion points for you
-to send data to. Ingestion points are HTTP endpoints that you can send data to by making a `POST` request. When you run your development server on `localhost`, the default port is `4000`.
+to send data to. Ingestion points are HTTP endpoints that you can send data to by making a `POST` request.
 
-The standard endpoint for each data model is:
+<Callout type="info">
+  {" "}
+  You can inspect these endpoints by running `moose ls` in your terminal. [Learn
+  more](/moose-cli#list)
+</Callout>
 
-`http://localhost:4000/ingest/<DATA_MODEL_NAME>`
+## Sending Data to the Ingestion Endpoints
 
-Following is some example code for testing the API endpoints for a Data Model called `UserActivity`. When you run the `moose ls` command in your terminal, you'll see a table with the API endpoints for each of your Data Models.
+You can send data to these endpoints from your application, from a script, or from a tool like `curl`. Below are some snippets for sending data to the `/ingest/UserActivity` endpopint, which Moose automatically generated for the `UserActivity` Data Model ([see the Data Models section](/building/data-models#example-data-model-in-typescript))
 
 <Tabs items={['curl', 'javascript', 'python']}>
   <Tabs.Tab>
-    ``` bash copy
+    ``` bash filename="Terminal" copy
   curl -X POST \
     -H "Content-Type: application/json" \
     -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \
@@ -21,7 +25,7 @@ Following is some example code for testing the API endpoints for a Data Model ca
   ```
   </Tabs.Tab>
   <Tabs.Tab>
-  ```javascript copy
+  ```javascript filename="Your Javascript/Typescript App or Script" copy
   fetch('http://localhost:4000/ingest/UserActivity', {
     method: 'POST',
     headers: {
@@ -37,7 +41,7 @@ Following is some example code for testing the API endpoints for a Data Model ca
   ```
   </Tabs.Tab>
   <Tabs.Tab>
-  ```python copy
+  ```python filename="Your Python App or Script" copy
     import requests
 
     requests.post('http://localhost:4000/ingest/UserActivity', json={
@@ -50,3 +54,10 @@ Following is some example code for testing the API endpoints for a Data Model ca
 
   </Tabs.Tab>
 </Tabs>
+
+<Callout type="warning">
+  Make sure your Moose development server is running before sending data to the
+  ingestion endpoints. The dev server runs on `localhost:4000` by default. You
+  can start the server by running `moose dev` in your terminal. [Learn
+  more](/moose-cli#dev)
+</Callout>

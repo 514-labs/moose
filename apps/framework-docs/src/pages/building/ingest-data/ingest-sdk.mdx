@@ -49,32 +49,33 @@ moose-cli generate sdk [OPTIONS]
 <Tabs items={["Typescript SDK (default settings)", "Python SDK (default settings)", "Typescript SDK with different destination directory","Python SDK from a specific project location", "Full-fledged TypeScript Package"]}>
   <Tabs.Tab>
   Generate a TypeScript SDK with default settings:
-   ```bash
+   ```bash filename="Terminal" copy
    npx moose-cli generate sdk
    ```
   </Tabs.Tab>
 
 {" "}
+
 <Tabs.Tab>
-  Generate a Python SDK with default settings: ```bash copy npx moose-cli
-  generate sdk --launguage python ```
+  Generate a Python SDK with default settings: ```bash filename="Terminal" copy
+  npx moose-cli generate sdk --launguage python ```
 </Tabs.Tab>
 
   <Tabs.Tab>
     Generate a TypeScript SDK and specify a different destination directory:
-   ```bash copy
+   ```bash filename="Terminal" copy
       npx moose-cli generate sdk --destination ./custom-sdk
    ```
   </Tabs.Tab>
   <Tabs.Tab>
   Generate a Python SDK from a specific project location:
-  ```bash copy
+  ```bash filename="Terminal" copy
     npx moose-cli generate sdk --language python --project-location /path/to/moose-project
    ```
   </Tabs.Tab>
   <Tabs.Tab>
   Generate a full-fledged TypeScript package:
-   ```bash copy
+   ```bash filename="Terminal" copy
    npx moose-cli generate sdk --full-package
    ```
   </Tabs.Tab>
@@ -82,11 +83,13 @@ moose-cli generate sdk [OPTIONS]
 
 ## Using the SDK to Send Data
 
-To capture data from your existing applications, import the correspondoing `send<DM_NAME>` method from your Moose SDK into your
-application code. Each data model has a corresponding method that facilitates the transmission of data to
-the appropriate destination table in your database. The method name follows the format `send<DATA_MODEL_NAME>`.
+Every Data Model defined in your Moose project has its own corresponding method in the generated SDK that allows you to send data to Moose for that particular model. The method name follows the format `send<DATA_MODEL_NAME>`.
 
-For example, if you're sending data for a `UserActivity` data model, your code snippet will look like this:
+To send data, you need to call the method with the data you want to send as an argument. The data should be an object that matches the schema of the Data Model.
+
+### Example Usage
+
+For the `UserActivity` example, you would call the `sendUserActivity()` method with an object that matches the `UserActivity` schema:
 
 ```js filename="Your Javascript Application Code" copy
 import { sendUserActivity } from "/path/to/sdk";

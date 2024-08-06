@@ -1,4 +1,5 @@
 {
-  "model-data": "Usage",
-  "configuring": "Configuring"
+  "initialization": "Creating Data Models",
+  "model-data": "Define Data Model Schema",
+  "configuring": "Configuring Infrastructure"
 }

@@ -1,108 +1,36 @@
 import { Cards, Card, Tabs, Callout } from "nextra/components";
 
-## Creating a Model
+# Defining Data Model Schemas
 
-To get started you simply need to open the `models.ts` file in your project's `datamodels` directory
-and add a new Data Model definition.
+The schema defines the names and data types of the properties in your Data Model. Moose uses this schema to automatically set up the data infrastructure, ensuring that only data conforming to the schema can be ingested, buffered, and stored.
 
-```ts filename="datamodels/models.ts" copy
-import { Key } from "@514labs/moose-lib";
+## `Key<T>`
 
-export interface UserActivity {
-  eventId: Key<string>;
-  timestamp: string;
-  userId: string;
-  activity: string;
-}
-```
+The `Key<T>` type is specific to Moose and is used to define a primary key for your Data Model. If your Data Model requires a composite key, you can apply the `Key` type to multiple columns.
 
-## Data Model conventions
+When provisioning the OLAP storage table, the `Key` type will be used to define the primary key. The meaning of a primary key depends on the database you are using. For instance, in Clickhouse, it will define the [primary key](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree#primary-keys-and-indexes-in-queries) of the table.
 
-As you can see, the data model is very simple. It's just a list of fields and their types.
-MooseJS's data modeling is integrated with the data modeling capabilities of your language of choice.
-For now that's Typescript Interfaces but Python is in the works, leveraging Data classes.
-We don't currently support all of Typescript schema modeling features, but we're working on it.
+<Callout type="warning">This field is mandatory for all Data Models.</Callout>
 
-### `Key<T>`
+## Other Supported Types
 
-The `Key<T>` type is a MooseJS-specific type that allows you to define a primary key for your data model.
-This is a required field for all data models. It can be added to multiple columns if you have a composite key.
+Moose supports various data types for Data Models, as summarized in the table below:
 
-When we are provioning the OLAP storage table, we will use the `Key` type to define the primary key of the table.
-What a primary key means in that database will depend on the database you are using. For Clickhouse, it will be
-the [primary key](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree#primary-keys-and-indexes-in-queries) of the table.
-
-### Files
-
-Data Models can be defined in any file with a `.ts` extension in your project's `datamodels` directory.
-The name of the file is not important. You may also define multiple models in the same Typescript file.
-
-## Supported Types
-
-Here is the status of MooseJS support for various data types in Data Models:
 | Clickhouse | Typescript | Moose |
-|:---------- |:---------- |:------- |
-| String | String | ✅ |
-| Boolean | Boolean | ✅ |
-| Int64 | Number | ✅ |
-| Int256 | BigInt | ❌ |
-| Float64 | Number | ✅ |
-| Decimal | Number | ✅ |
-| DateTime | Date | ✅ |
-| Json | Object | ❌ |
-| Bytes | bytes | ❌ |
-| Enum | Enum | ✅ |
-| Array | Array | ✅ |
-| nullable | nullable | ✅ |
+| :--------- | :--------- | :---- |
+| String     | String     | ✅    |
+| Boolean    | Boolean    | ✅    |
+| Int64      | Number     | ✅    |
+| Int256     | BigInt     | ❌    |
+| Float64    | Number     | ✅    |
+| Decimal    | Number     | ✅    |
+| DateTime   | Date       | ✅    |
+| Json       | Object     | ✅    |
+| Bytes      | bytes      | ❌    |
+| Enum       | Enum       | ✅    |
+| Array      | Array      | ✅    |
+| nullable   | nullable   | ✅    |
 
 <Callout type="info" emoji="ℹ️">
   Disclaimer: All Typescript number types are mapped to Float64
 </Callout>
-
-## Inspecting Your Model
-
-Once you've created your model, you can inspect it along with the infrastructure that MooseJS automatically
-generated for you by running `moose ls` in your terminal.
-
-```bash
-npx @514labs/moose-cli ls
-```
-
-Here you will find a list of all your Data Models along with their respective ingestion points and table names in the OLAP database.
-You can use a database explorer to query the data stored in the database table for each data model.
-
-![moose-ls](/moose-ls.png)
-
-## Ingest Data via API
-
-When you create a model, MooseJS automatically creates an ingestion point to facilitate immediate data
-testing. Send a sample payload to this endpoint using:
-
-<Tabs items={['Single Data Sample', 'Batch Sample']}>
-  <Tabs.Tab>
-  ``` bash
-  curl -X POST \
-    -H "Content-Type: application/json" \
-    -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activityType":"click"}' \
-    http://localhost:4000/ingest/UserActivity
-  ```
-  </Tabs.Tab>
-  <Tabs.Tab>
-  ``` bash
-  for i in {1..10}
-  do
-    curl -X POST \
-      -H "Content-Type: application/json" \
-      -d '{"eventId": "$i", "timestamp": "2024-01-01 00:00:00", "userId": "1234", "activityType":"click"}' \
-      http://localhost:4000/ingest/UserActivity
-  done
-  ```
-  </Tabs.Tab>
-</Tabs>
-
-## Next steps
-
-You're all set to start sending data into your Moose application from your raw data sources, and consuming
-into downstream sources. Check out the next two sections of the docs for more details on Ingesting and
-Consuming Data. To understand the impact of changes to your Data Model, refer to the
-[Data Change Management](/building/dcm/intro) section of the docs.

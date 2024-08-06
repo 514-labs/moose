@@ -6,9 +6,10 @@ import {
   HeadingLevel,
   SmallText,
   SmallTextEmbed,
+  textBodyBase,
 } from "@514labs/design-system-components/typography";
 import { Logo, Badge } from "@514labs/design-system-components/components";
-``;
+import { cn } from "@514labs/design-system-components/utils";
 
 export default {
   logo: () => (
@@ -53,13 +54,17 @@ export default {
       </Heading>
     ),
     p: ({ children }) => <SmallText>{children}</SmallText>,
-    li: ({ children }) => (
-      <li>
-        <SmallTextEmbed>{children}</SmallTextEmbed>
+    ul: (props) => (
+      <ul className={cn("pl-8 list-disc", textBodyBase)} {...props} />
+    ),
+    ol: (props) => (
+      <ol className={cn("pl-8 list-decimal", textBodyBase)} {...props} />
+    ),
+    li: (props) => (
+      <li {...props} className="list-item">
+        <SmallTextEmbed className="my-0">{props.children}</SmallTextEmbed>
       </li>
     ),
-    ul: ({ children }) => <SmallTextEmbed>{children}</SmallTextEmbed>,
-    ol: ({ children }) => <SmallTextEmbed>{children}</SmallTextEmbed>,
   },
   primaryHue: 220,
   primarySaturation: 0,

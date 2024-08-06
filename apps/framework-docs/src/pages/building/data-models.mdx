@@ -31,12 +31,20 @@ Data Models are represented using native features and syntax of the language you
 - **Python**: Data Models are represented as `dataclasses` (using the `@dataclass` decorator), and must be defined in a `.py` file
 
 <Callout>
-  Notes: - You can define multiple Data Models within a single file. - The name
-  of the file is not important, but it must have a `.ts` or `.py` extension. -
-  Any exported interface or dataclass that adheres to the appropriate file and
-  folder conventions will be automatically detected by Moose and used to
-  generate the necessary infrastructure.
-  <br />
+  Notes:
+  <ul>
+    <li> You can define multiple Data Models within a single file. </li>
+    <li>
+      The name of the file is not important, but it must have a `.ts` or `.py`
+      extension.{" "}
+    </li>
+    <li>
+      {" "}
+      Any exported interface or dataclass that adheres to the appropriate file and
+      folder conventions will be automatically detected by Moose and used to generate
+      the necessary infrastructure.
+    </li>
+  </ul>
 </Callout>
 
 ### Example Data Model in TypeScript

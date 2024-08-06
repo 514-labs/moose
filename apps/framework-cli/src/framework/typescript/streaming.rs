@@ -9,10 +9,8 @@ use super::ts_node;
 
 const FUNCTION_RUNNER_WRAPPER: &str = include_str!("ts_scripts/streaming-function.ts");
 
-// TODO: we currently refer repanda configuration here. If we want to be able to
+// TODO: we currently refer redpanda configuration here. If we want to be able to
 // abstract this to other type of streaming engine, we will need to be able to abstract this away.
-// TODO: compilation errors are not proxied to the user in dev mode. We need to fix it
-// so that they can have some feedback when they mess up the typescript
 pub fn run(
     redpanda_config: &RedpandaConfig,
     source_topic: &str,

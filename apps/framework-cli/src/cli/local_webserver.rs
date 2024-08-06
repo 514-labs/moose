@@ -80,11 +80,16 @@ pub struct FlowMessages {
 pub struct LocalWebserverConfig {
     pub host: String,
     pub port: u16,
+    pub path_prefix: Option<String>,
 }
 
 impl LocalWebserverConfig {
-    pub fn new(host: String, port: u16) -> Self {
-        Self { host, port }
+    pub fn new(host: String, port: u16, path_prefix: Option<String>) -> Self {
+        Self {
+            host,
+            port,
+            path_prefix,
+        }
     }
 
     pub fn url(&self) -> String {
@@ -97,6 +102,7 @@ impl Default for LocalWebserverConfig {
         Self {
             host: "localhost".to_string(),
             port: 4000,
+            path_prefix: None,
         }
     }
 }
@@ -194,6 +200,7 @@ async fn create_client(
 #[derive(Clone)]
 struct RouteService {
     host: String,
+    path_prefix: String,
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
     consumption_apis: &'static RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
@@ -210,6 +217,7 @@ impl Service<Request<Incoming>> for RouteService {
     fn call(&self, req: Request<Incoming>) -> Self::Future {
         Box::pin(router(
             self.current_version.clone(),
+            self.path_prefix.clone(),
             self.consumption_apis,
             self.configured_producer.clone(),
             self.host.clone(),
@@ -607,8 +615,10 @@ async fn ingest_route(
     }
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn router(
     current_version: String,
+    path_prefix: String,
     consumption_apis: &RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
     host: String,
@@ -627,12 +637,11 @@ async fn router(
         req.uri().path(),
     );
 
-    let route_prefix = PathBuf::from("/");
-    let route = PathBuf::from(req.uri().path())
-        .strip_prefix(route_prefix)
-        .unwrap()
-        .to_path_buf()
-        .clone();
+    let original_path = PathBuf::from(req.uri().path());
+    let route = original_path
+        .strip_prefix(PathBuf::from(path_prefix))
+        .unwrap_or(&original_path)
+        .to_path_buf();
 
     let metrics_method = req.method().to_string();
 
@@ -805,11 +814,17 @@ impl Webserver {
         );
 
         if !project.is_production {
+            let path_prefix = project
+                .http_server_config
+                .path_prefix
+                .as_deref()
+                .map(|p| format!("/{}", p.trim_matches('/')))
+                .unwrap_or_default();
             show_message!(
                 MessageType::Highlight,
                 Message {
                     action: "Next Steps".to_string(),
-                    details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: http://{}:{}/ingest\n", project.http_server_config.host.clone(), socket.port()),
+                    details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: http://{}:{}{}/ingest\n", project.http_server_config.host.clone(), socket.port(), path_prefix),
                 }
             );
         }
@@ -819,8 +834,15 @@ impl Webserver {
         let mut sigint =
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()).unwrap();
 
+        let path_prefix = project
+            .http_server_config
+            .path_prefix
+            .as_deref()
+            .map(|p| format!("/{}/", p.trim_matches('/')))
+            .unwrap_or("/".to_string());
         let route_service = RouteService {
             host: self.host.clone(),
+            path_prefix,
             route_table,
             consumption_apis,
             current_version: project.cur_version().to_string(),

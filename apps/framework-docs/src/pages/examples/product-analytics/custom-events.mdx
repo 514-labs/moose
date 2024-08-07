@@ -22,10 +22,9 @@ Add this `ButtonClickEvent` Data Model to your `models.ts` file:
 
 ```ts filename="moose/app/datamodels/models.ts" copy
 export interface ButtonClickEvent extends PageViewRaw {
-    cta_copy   String // Text on the button clicked
-    cta_target String // Target link redirected by the button
+  cta_copy: string; // Text on the button clicked
+  cta_target: string; // Target link redirected by the button
 }
-
 ```
 
 <Callout>
@@ -52,32 +51,53 @@ npx moose-cli ls
 ## Sending Custom Events
 
 <Tabs items={["Client-Side Events", "Server-Side Events"]}>
-
   <Tabs.Tab>
-  If your custom event is being instrumented from the client side of your web app, you can leverage the `script.js` that is already integrated into your application.
+  If your custom event is being instrumented from the client side of your web app, you can leverage the same `script.js` file you used to capture page view events.
 
 #### Example: Tracking Button Click Events
 
 Add the following code to the `onClick()` event handler for the button you want to track:
 
 ```tsx filename="Your Web App Client Code" copy
+...
+// Capture the button text and target URL
 window.MooseAnalytics.trackEvent("ButtonClickEvent", {
-  cta_copy: button_text, // Dynamically capture the button text
-  cta_target: target_href, // Capture the target URL
+  cta_copy: BUTTON_COPY, // Dynamically capture the button text
+  cta_target: BUTTON_HREF, // Capture the target URL
 });
+
+...
 ```
 
 Notes:
 
-- The first argument to `trackEvent()` corresponds to the data model name, ensuring the right model is used for transmitting your data to Moose.
-- The second argument is an object that includes the properties unique to the `ButtonClickEvent`, as specified in your data model.
-- The integrated script enriches the event data with common web analytics properties defined in the `PageViewRaw` model. This means you do not need to manually set these properties, as they are automatically appended to your event data payload in the tracking script.
+- The first argument to `trackEvent()` corresponds to the name of the Data Model you defined for your custom event
+- The second argument is an object containing the properties unique to the `ButtonClickEvent` Data Model (in this case, `cta_copy` and `cta_target`)
+- The integrated script enriches the event data with common web analytics properties defined in the `PageViewRaw` model. This means you do not need to manually set these properties, as they are automatically appended to the event payload in the tracking script.
 
   </Tabs.Tab>
   <Tabs.Tab>
-    If your custom event is being instrumented from the server side of your application, you can use the generated SDK to send the custom event data to Moose.
+    If your custom event is being instrumented from the server side of your application, you can use the generated Ingestion SDK to send server-side events to Moose.
 
-    See the [SDK documentation](/building/ingest-data/ingest-sdk) for more information on how to use the SDK to send data.
+    See the [SDK documentation](/building/ingest-data/ingest-sdk) for more information on how to generate the SDK for your Data Models.
+
+    #### Example: Tracking Button Click Events
+    Use the `sendButtonClickEvent()` function from the generated SDK to send the custom event data:
+
+    ```ts filename="Your Server-Side Code" copy
+    import { sendButtonClickEvent } from "/path/to/sdk";
+    ...
+    // Send the server-side event
+    sendButtonClickEvent({
+      cta_copy: BUTTON_TEXT,
+      cta_target: BUTTON_HREF,
+      eventId: EVENT_ID,
+      timestamp: new Date(),
+      session_id: SESSION_ID,
+      ...
+      /* Set rest of the default properties */
+    });
+    ```
 
   </Tabs.Tab>
 </Tabs>

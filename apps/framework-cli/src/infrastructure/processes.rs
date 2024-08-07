@@ -57,7 +57,7 @@ pub async fn execute_changes(
                 );
             }
             ProcessChange::TopicToTableSyncProcess(Change::Removed(sync)) => {
-                log::info!("Stoping sync process: {:?}", sync.id());
+                log::info!("Stopping sync process: {:?}", sync.id());
                 syncing_registry.stop_topic_to_table(&sync.source_topic_id, &sync.target_table_id)
             }
             ProcessChange::TopicToTableSyncProcess(Change::Updated { before, after }) => {

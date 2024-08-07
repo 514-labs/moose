@@ -1,3 +1,5 @@
+use crate::framework::core::infrastructure_map::{Change, StreamingChange};
+use crate::project::Project;
 use log::{error, info, warn};
 use rdkafka::admin::ResourceSpecifier;
 use rdkafka::config::RDKafkaLogLevel;
@@ -14,9 +16,6 @@ use rdkafka::{
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
-
-use crate::framework::core::infrastructure_map::{Change, StreamingChange};
-use crate::project::Project;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RedpandaChangesError {
@@ -289,12 +288,10 @@ pub async fn check_topic_size(topic: &str, config: &RedpandaConfig) -> Result<i6
     let client: StreamConsumer<_> = config_client(config).create()?;
     let timeout = Duration::from_secs(1);
     let md = client.fetch_metadata(Some(topic), timeout)?;
-    let partitions = md
-        .topics()
-        .iter()
-        .find(|t| t.name() == topic)
-        .ok_or_else(|| KafkaError::MetadataFetch(RDKafkaErrorCode::UnknownTopic))?
-        .partitions();
+    let partitions = match md.topics().iter().find(|t| t.name() == topic) {
+        None => return Ok(0),
+        Some(topic) => topic.partitions(),
+    };
     let total_count = partitions
         .iter()
         .map(|partition| {

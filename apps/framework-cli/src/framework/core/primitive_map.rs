@@ -5,6 +5,7 @@ use std::{
 
 use walkdir::WalkDir;
 
+use super::code_loader::MappingError;
 use crate::{
     framework::{
         aggregations::model::Aggregation,
@@ -19,8 +20,6 @@ use crate::{
     },
     project::{Project, ProjectFileError},
 };
-
-use super::code_loader::MappingError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PrimitiveMapLoadingError {
@@ -60,8 +59,8 @@ pub struct PrimitiveMap {
     // aggregation runner. We are loading aggregations as 1 unique aggregation as a default.
     pub aggregation: Aggregation,
 
-    // We are currrently not loading indiviual consumption endpoints in the CLI and we probably will not need to
-    // Since this is a local webserver without side effects, keepting track of what is up and running is not necessary
+    // We are currently not loading individual consumption endpoints in the CLI and we probably will not need to
+    // Since this is a local webserver without side effects, keeping track of what is up and running is not necessary
     // it just needs to be restarted when something in its dependency tree changes.
     // We might want to try and load the full map of consumption endpoints in the future to be able to display thgat
     // to the user.

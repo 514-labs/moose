@@ -292,17 +292,17 @@ pub async fn check_is_table_new(
 }
 
 pub async fn check_table_size(
-    table: &ClickHouseTable,
+    table_name: &str,
     configured_client: &ConfiguredDBClient,
 ) -> Result<i64, clickhouse::error::Error> {
     let client = &configured_client.client;
 
-    info!("<DCM> Checking size of {} table", table.name.clone());
+    info!("<DCM> Checking size of {} table", table_name);
     let result: Vec<i64> = client
         .query(&format!(
             "select count(*) from {}.{}",
             configured_client.config.db_name.clone(),
-            table.name
+            table_name
         ))
         .fetch_all::<i64>()
         .await?;

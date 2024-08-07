@@ -293,7 +293,7 @@ pub async fn start_development_mode(
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
 
         let plan_result = plan_changes(&mut client, &project).await?;
-        log::info!("Plan Changes: {:?}", plan_result.changes);
+        info!("Plan Changes: {:?}", plan_result.changes);
         let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
         let (syncing_registry, process_registry) = execute_initial_infra_change(
             &project,
@@ -464,7 +464,7 @@ pub async fn start_production_mode(
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
 
         let plan_result = plan_changes(&mut client, &project).await?;
-        log::info!("Plan Changes: {:?}", plan_result.changes);
+        info!("Plan Changes: {:?}", plan_result.changes);
         let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
         execute_initial_infra_change(&project, &plan_result, api_changes_channel, metrics.clone())
             .await?;

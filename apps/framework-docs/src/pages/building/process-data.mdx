@@ -1,21 +1,20 @@
 import { Callout, FileTree } from "nextra/components";
 
-# Introduction
+# Introduction to Streaming Functions
 
-Data processing is the core of any data intensive application. Moose provides a simple and powerful way to process data using Streaming Functions. Streaming Functions are regular Typescript or Python functions that define how to process data from a source Data Model into a target Data Model. Moose automatically executes these functions to incoming data as it hits the streaming topic associated with the source Data Model.
+Streaming Functions are a powerful feature in Moose that enable real-time data processing. These functions, written in TypeScript or Python, define how to transform data from a source Data Model into a target Data Model.
 
-Some common use cases for streaming functions include:
+<Callout type="info">
+  Moose automatically executes these functions on incoming data as it arrives in
+  the streaming topic associated with the source Data Model.
+</Callout>
 
-- **Data Transformation**: Transforming data from one format to another.
-- **Data Enrichment**: Adding additional information to the data.
-- **Data Filtering**: Filtering out unwanted data.
-- **Triggering Other Tasks**: Triggering other tasks based on the data.
+## File Naming Convention
 
----
+Streaming Functions are defined in files named according to the pattern:
+`SourceDataModel__DestinationDataModel.ts` or `SourceDataModel__DestinationDataModel.py`
 
-## File Structure
-
-All streaming functions are stored in the `/functions` directory of your Moose app. Each streaming function is a TypeScript (`.ts`) file that defines how data is transformed from the source data model to the destination data model. The file name should be in the format `SourceDataModel__DestinationDataModel.ts`.
+These files must be placed in the `/functions` directory of your Moose app:
 
 <FileTree>
   <FileTree.Folder name="my-moose-app" defaultOpen>
@@ -26,22 +25,19 @@ All streaming functions are stored in the `/functions` directory of your Moose a
 </FileTree>
 
 <Callout>
-  Moose uses this structural convention to automatically identify and execute
-  the Streaming Functions you create. Make sure you use two underscores to
-  separate the source and destination data models in the file name.
+  Moose uses this naming convention to automatically identify and execute the
+  Streaming Functions. Ensure you use two underscores to separate the source and
+  destination data models in the file name.
 </Callout>
-
-## Orchestration
-
-Moose orchestrates the execution of the streaming functions based on the source Data Model. When data is ingested into the source Data Model, Moose automatically triggers the corresponding Streaming Function to process the data.
-
----
 
 ## Function Definition
 
-The function definition should have the following structure:
+A typical Streaming Function has the following structure:
 
 ```ts filename="/functions/SourceDataModel__DestinationDataModel.ts" copy
+import { SourceDataModel } from "../datamodels/path/to/SourceDataModel";
+import { DestinationDataModel } from "../datamodels/path/to/DestinationDataModel";
+
 export default function functionName(
   source: SourceDataModel,
 ): DestinationDataModel[] | DestinationDataModel | null {
@@ -49,23 +45,41 @@ export default function functionName(
 }
 ```
 
-Notice that the function takes the source Data Model as an argument and can return an either:
+Let's break down the structure of this Streaming Function:
 
-- An array of target Data Models
-- A single target Data Model
-- `null`
+1. **Imports**:
 
-The return type of the function dictates the streaming topic where the data returned by the function will be published. If the function returns 'null', the data will not be published to any streaming topic.
+   ```ts
+   import { SourceDataModel } from "../datamodels/path/to/SourceDataModel";
+   import { DestinationDataModel } from "../datamodels/path/to/DestinationDataModel";
+   ```
 
-### Default Export
+   These lines import the necessary Data Model types from their respective files in the `/datamodels` directory.
 
-The main function should be the default export of the file. This is important because Moose uses the default export to identify the entry point into the Streaming Function.
+2. **Function Declaration**:
 
-### Function Body
+   ```ts
+   export default function functionName(
+     source: SourceDataModel,
+   ): DestinationDataModel[] | DestinationDataModel | null {
+     // Transformation logic
+   }
+   ```
 
-The function body should contain whatever logic is necessary to process the data from the source Data Model. Within the function, you can leverage the full power of TypeScript or Python to manipulate the data as needed. Here are some common operations you might perform within a streaming function:
+   - The function is exported as the default export. This is the function that Moose will call when it receives a new message on the streaming topic associated with the source Data Model.
+   - It takes a single parameter `source` of type `SourceDataModel`. This is the data that Moose will pass to the function when it receives a new message on the streaming topic associated with the source Data Model.
+   - The return type can be:
+     - An array of `DestinationDataModel` objects
+     - A single `DestinationDataModel` object
+     - `null` if no output should be produced
 
-- Call a third-party API to enrich the data
-- Perform a complex transformation on the data
-- Filter out unwanted data
-- Utilize a library to perform a specific operation on the data
+3. **Function Body**:
+   The function body contains the processing logic. We will go into more detail on this in the next section.
+
+4. **Return Value**:
+   The function returns the transformed data according to the `DestinationDataModel`, or `null` if no output should be produced for the given input. If a value is returned Moose automatically serializes it to JSON and writes it to the streaming topic associated with the destination Data Model.
+
+<Callout>
+  The function name itself is not important, as Moose identifies the function by
+  its file name. However, using a descriptive name can improve code readability.
+</Callout>

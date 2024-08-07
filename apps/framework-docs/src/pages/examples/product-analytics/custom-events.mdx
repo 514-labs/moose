@@ -74,4 +74,10 @@ window.MooseAnalytics.trackEvent("ButtonClickEvent", {
 - The integrated script enriches the event data with common web analytics properties defined in the `PageViewRaw` model. This means you do not need to manually set these properties, as they are automatically appended to your event data payload in the tracking script.
 
   </Tabs.Tab>
+  <Tabs.Tab>
+    If your custom event is being instrumented from the server side of your application, you can use the generated SDK to send the custom event data to Moose.
+    
+    See the [SDK documentation](/building/ingest-data/ingest-sdk) for more information on how to use the SDK to send data.
+    
+  </Tabs.Tab>
 </Tabs>

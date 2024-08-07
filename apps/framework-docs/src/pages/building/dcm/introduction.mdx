@@ -1,4 +1,17 @@
-## Context: why do we need Data Change Management (DCM)?
+# Data Change Management (DCM)
+
+## TLDR:
+
+- Data schemas evolve over time, both in production and consumption.
+- Traditional schema management tools for Transactional databases (like `ALTER TABLE` statements) aren't well-suited for analytics data.
+- Analytics data faces unique challenges:
+  - Data is often event-based and immutable
+  - Producers and consumers are typically decoupled
+  - Different evolution speeds between data production and consumption
+- Current tools don't adequately address these analytics-specific issues.
+- Moose's Data Change Management aims to solve these challenges in the analytics domain.
+
+## Why do we need Data Change Management (DCM)?
 
 Data, like software, has a life of its own. As the environment evolves, so does the
 data it produces. On the consuming end, data is also a moving target. Business needs

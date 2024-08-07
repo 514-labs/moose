@@ -80,15 +80,36 @@ pub struct FlowMessages {
 pub struct LocalWebserverConfig {
     pub host: String,
     pub port: u16,
+    pub path_prefix: Option<String>,
 }
 
 impl LocalWebserverConfig {
-    pub fn new(host: String, port: u16) -> Self {
-        Self { host, port }
+    pub fn new(host: String, port: u16, path_prefix: Option<String>) -> Self {
+        Self {
+            host,
+            port,
+            path_prefix,
+        }
     }
 
     pub fn url(&self) -> String {
-        format!("http://{}:{}", self.host, self.port)
+        let base_url = format!("http://{}:{}", self.host, self.port);
+        if let Some(prefix) = &self.path_prefix {
+            format!("{}/{}", base_url, prefix.trim_matches('/'))
+        } else {
+            base_url
+        }
+    }
+
+    pub fn normalized_path_prefix(&self) -> Option<String> {
+        self.path_prefix.as_ref().map(|prefix| {
+            let trimmed = prefix.trim_matches('/');
+            if trimmed.is_empty() {
+                prefix.to_string()
+            } else {
+                format!("/{}", trimmed)
+            }
+        })
     }
 }
 
@@ -97,6 +118,7 @@ impl Default for LocalWebserverConfig {
         Self {
             host: "localhost".to_string(),
             port: 4000,
+            path_prefix: None,
         }
     }
 }
@@ -194,6 +216,7 @@ async fn create_client(
 #[derive(Clone)]
 struct RouteService {
     host: String,
+    path_prefix: Option<String>,
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
     consumption_apis: &'static RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
@@ -210,6 +233,7 @@ impl Service<Request<Incoming>> for RouteService {
     fn call(&self, req: Request<Incoming>) -> Self::Future {
         Box::pin(router(
             self.current_version.clone(),
+            self.path_prefix.clone(),
             self.consumption_apis,
             self.configured_producer.clone(),
             self.host.clone(),
@@ -607,8 +631,23 @@ async fn ingest_route(
     }
 }
 
+fn get_path_without_prefix(path: PathBuf, path_prefix: Option<String>) -> PathBuf {
+    let path_without_prefix = if let Some(prefix) = path_prefix {
+        path.strip_prefix(&prefix).unwrap_or(&path).to_path_buf()
+    } else {
+        path
+    };
+
+    path_without_prefix
+        .strip_prefix("/")
+        .unwrap_or(&path_without_prefix)
+        .to_path_buf()
+}
+
+#[allow(clippy::too_many_arguments)]
 async fn router(
     current_version: String,
+    path_prefix: Option<String>,
     consumption_apis: &RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
     host: String,
@@ -627,12 +666,7 @@ async fn router(
         req.uri().path(),
     );
 
-    let route_prefix = PathBuf::from("/");
-    let route = PathBuf::from(req.uri().path())
-        .strip_prefix(route_prefix)
-        .unwrap()
-        .to_path_buf()
-        .clone();
+    let route = get_path_without_prefix(PathBuf::from(req.uri().path()), path_prefix);
 
     let metrics_method = req.method().to_string();
 
@@ -809,7 +843,7 @@ impl Webserver {
                 MessageType::Highlight,
                 Message {
                     action: "Next Steps".to_string(),
-                    details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: http://{}:{}/ingest\n", project.http_server_config.host.clone(), socket.port()),
+                    details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: {}/ingest\n", project.http_server_config.url()),
                 }
             );
         }
@@ -821,6 +855,7 @@ impl Webserver {
 
         let route_service = RouteService {
             host: self.host.clone(),
+            path_prefix: project.http_server_config.normalized_path_prefix(),
             route_table,
             consumption_apis,
             current_version: project.cur_version().to_string(),

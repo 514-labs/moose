@@ -67,7 +67,7 @@ window.MooseAnalytics.trackEvent("ButtonClickEvent", {
 });
 ```
 
-### Key Points
+Notes:
 
 - The first argument to `trackEvent()` corresponds to the data model name, ensuring the right model is used for transmitting your data to Moose.
 - The second argument is an object that includes the properties unique to the `ButtonClickEvent`, as specified in your data model.
@@ -76,8 +76,8 @@ window.MooseAnalytics.trackEvent("ButtonClickEvent", {
   </Tabs.Tab>
   <Tabs.Tab>
     If your custom event is being instrumented from the server side of your application, you can use the generated SDK to send the custom event data to Moose.
-    
+
     See the [SDK documentation](/building/ingest-data/ingest-sdk) for more information on how to use the SDK to send data.
-    
+
   </Tabs.Tab>
 </Tabs>

@@ -1,26 +1,41 @@
-import { Callout } from "nextra/components";
+import { Callout, FileTree } from "nextra/components";
 
 # Introduction
 
-Sometimes, the data you get isn’t exactly the way you want it. So you have to
-process the data to fit the form you need. In Moose, you do this by creating a Streaming Function that connects one data model to another. Streaming Functions consist of:
+Data processing is the core of any data intensive application. Moose provides a simple and powerful way to process data using Streaming Functions. Streaming Functions are regular Typescript or Python functions that define how to process data from a source Data Model into a target Data Model. Moose automatically executes these functions to incoming data as it hits the streaming topic associated with the source Data Model.
 
-- a source data model
-- a destination data model
-- a function that processes the data from the source to fit the destination.
+Some common use cases for streaming functions include:
 
-## <br/>
+- **Data Transformation**: Transforming data from one format to another.
+- **Data Enrichment**: Adding additional information to the data.
+- **Data Filtering**: Filtering out unwanted data.
+- **Triggering Other Tasks**: Triggering other tasks based on the data.
+
+---
 
 ## File Structure
 
-When you create a Moose app, you will have a `/functions` directory in your app folder. This directory contains all the streaming functions you create. Each streaming function is a TypeScript (`.ts`) file that defines how data is transformed from the source data model to the destination data model. The file name should be in the format `SourceDataModel__DestinationDataModel.ts`.
+All streaming functions are stored in the `/functions` directory of your Moose app. Each streaming function is a TypeScript (`.ts`) file that defines how data is transformed from the source data model to the destination data model. The file name should be in the format `SourceDataModel__DestinationDataModel.ts`.
+
+<FileTree>
+  <FileTree.Folder name="my-moose-app" defaultOpen>
+    <FileTree.Folder name="functions" defaultOpen>
+      <FileTree.File name="SourceDataModel__DestinationDataModel.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
 
 <Callout>
-  This file structure is important because Moose uses it to automatically
-  identify and execute the streaming functions you create. Make sure you use two
-  underscores to separate the source and destination data models in the file
-  name.
+  Moose uses this structural convention to automatically identify and execute
+  the Streaming Functions you create. Make sure you use two underscores to
+  separate the source and destination data models in the file name.
 </Callout>
+
+## Orchestration
+
+Moose orchestrates the execution of the streaming functions based on the source Data Model. When data is ingested into the source Data Model, Moose automatically triggers the corresponding Streaming Function to process the data.
+
+---
 
 ## Function Definition
 
@@ -34,15 +49,23 @@ export default function functionName(
 }
 ```
 
-Creating a streaming function in Moose is easy: you write a TypeScript function
-that defines how data needs to be transformed. Moose’s will automatically
-apply these transformations whenever data hits the source data model that the streaming function
-is associated with.
+Notice that the function takes the source Data Model as an argument and can return an either:
 
-Each streaming function essentially has three components: the source and destination data
-models (which are represented in the structure of the `/functions` directory), and
-the TypeScript definition of how to manipulate the data from the source to fit
-the requirements of the destination.
+- An array of target Data Models
+- A single target Data Model
+- `null`
 
-You define the start, the end, and the path, Moose’s infrastructure automates
-the rest.
+The return type of the function dictates the streaming topic where the data returned by the function will be published. If the function returns 'null', the data will not be published to any streaming topic.
+
+### Default Export
+
+The main function should be the default export of the file. This is important because Moose uses the default export to identify the entry point into the Streaming Function.
+
+### Function Body
+
+The function body should contain whatever logic is necessary to process the data from the source Data Model. Within the function, you can leverage the full power of TypeScript or Python to manipulate the data as needed. Here are some common operations you might perform within a streaming function:
+
+- Call a third-party API to enrich the data
+- Perform a complex transformation on the data
+- Filter out unwanted data
+- Utilize a library to perform a specific operation on the data

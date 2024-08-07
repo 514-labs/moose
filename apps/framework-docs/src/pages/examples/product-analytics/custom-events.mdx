@@ -52,28 +52,26 @@ npx moose-cli ls
 
 <Tabs items={["Client-Side Events", "Server-Side Events"]}>
   <Tabs.Tab>
-  If your custom event is being instrumented from the client side of your web app, you can leverage the same `script.js` file you used to capture page view events.
+    If your custom event is being instrumented from the client side of your web app, you can leverage the same `script.js` file you used to capture page view events.
 
-#### Example: Tracking Button Click Events
+    #### Example: Tracking Button Click Events
 
-Add the following code to the `onClick()` event handler for the button you want to track:
+    Add the following code to the `onClick()` event handler for the button you want to track:
 
-```tsx filename="Your Web App Client Code" copy
-...
-// Capture the button text and target URL
-window.MooseAnalytics.trackEvent("ButtonClickEvent", {
-  cta_copy: BUTTON_COPY, // Dynamically capture the button text
-  cta_target: BUTTON_HREF, // Capture the target URL
-});
+    ```tsx filename="Your Web App Client Code" copy
+    ...
+    // Capture the button text and target URL
+    window.MooseAnalytics.trackEvent("ButtonClickEvent", {
+      cta_copy: BUTTON_COPY, // Dynamically capture the button text
+      cta_target: BUTTON_HREF, // Capture the target URL
+    });
 
-...
-```
-
-Notes:
-
-- The first argument to `trackEvent()` corresponds to the name of the Data Model you defined for your custom event
-- The second argument is an object containing the properties unique to the `ButtonClickEvent` Data Model (in this case, `cta_copy` and `cta_target`)
-- The integrated script enriches the event data with common web analytics properties defined in the `PageViewRaw` model. This means you do not need to manually set these properties, as they are automatically appended to the event payload in the tracking script.
+    ...
+    ```
+    Notes:
+    - The first argument to `trackEvent()` corresponds to the name of the Data Model you defined for your custom event
+    - The second argument is an object containing the properties unique to the `ButtonClickEvent` Data Model (in this case, `cta_copy` and `cta_target`)
+    - The integrated script enriches the event data with common web analytics properties defined in the `PageViewRaw` model. This means you do not need to manually set these properties, as they are automatically appended to the event payload in the tracking script.
 
   </Tabs.Tab>
   <Tabs.Tab>

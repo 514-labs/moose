@@ -131,7 +131,8 @@ fn clean_old_logs() {
         for entry in dir.flatten() {
             if entry.path().extension().is_some_and(|ext| ext == "log") {
                 match entry.metadata().and_then(|md| md.modified()) {
-                    Ok(t) if t > cut_off => {
+                    // Smaller time means older than the cut_off
+                    Ok(t) if t < cut_off => {
                         let _ = std::fs::remove_file(entry.path());
                     }
                     Ok(_) => {}

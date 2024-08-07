@@ -68,10 +68,13 @@ npx moose-cli ls
 
     ...
     ```
+    <Callout>
     Notes:
     - The first argument to `trackEvent()` corresponds to the name of the Data Model you defined for your custom event
     - The second argument is an object containing the properties unique to the `ButtonClickEvent` Data Model (in this case, `cta_copy` and `cta_target`)
     - The integrated script enriches the event data with common web analytics properties defined in the `PageViewRaw` model. This means you do not need to manually set these properties, as they are automatically appended to the event payload in the tracking script.
+    <br/>
+    </Callout>
 
   </Tabs.Tab>
   <Tabs.Tab>

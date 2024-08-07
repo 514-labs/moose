@@ -10,7 +10,10 @@ The `Key<T>` type is specific to Moose and is used to define a primary key for y
 
 When provisioning the OLAP storage table, the `Key` type will be used to define the primary key. The meaning of a primary key depends on the database you are using. For instance, in Clickhouse, it will define the [primary key](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree#primary-keys-and-indexes-in-queries) of the table.
 
-<Callout type="warning">This field is mandatory for all Data Models.</Callout>
+<Callout type="warning">
+  It is mandatory for every Data Model to designate at least one field as the
+  `Key` type
+</Callout>
 
 ## Other Supported Types
 

@@ -13,9 +13,9 @@ import { cn } from "@514labs/design-system-components/utils";
 
 export default {
   logo: () => (
-    <div className="flex flex-row">
-      <Logo property="moosejs" subProperty="docs" />
-      <Badge className="ml-3 mt-1.5" variant={"outline"}>
+    <div className="flex flex-row items-center content-center">
+      <Logo property="moose" subProperty="docs" className="mr-2" />
+      <Badge variant={"outline"} className="w-fit ml-2">
         alpha
       </Badge>
     </div>

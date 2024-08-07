@@ -1,10 +1,22 @@
+import { CTABar, Button } from "@514labs/design-system-components/components";
+import Link from "next/link";
+
 # Product Analytics Template
 
-## Introduction
+This template is a great starting point for building a product analytics solution for your web application. It provides a simple example of how to capture page view events from a web app, process them in real-time, and display the processed data on a dashboard, all using Moose.
 
-This template helps you build your own simple product analytics solution with Moose. The Moose application provisions and configures the key infrastructure components needed for ingesting, processing, storing, aggregating, and consuming captured clickstream events. It includes a web server with ingest and consumption API routes, a streaming data platform, an OLAP database, and a background task orchestrator.
+<CTABar>
+  <Link href="./product-analytics/getting-started">
+    <Button>Get Started</Button>
+  </Link>
+  <Link href="https://github.com/514-labs/moose/tree/main/templates/product-analytics">
+    <Button variant={"outline"}>View Repository</Button>
+  </Link>
+</CTABar>
 
-Here's the developer workflow:
+## Dev Workflow
+
+The following documentation will guide you through the steps to get started with the Product Analytics template. The workflow is divided into four main sections:
 
 1. **Set Up Moose:** Clone the code and start a local server to ingest page view events.
 2. **Instrument Your Web App:** Send live page view events to Moose.
@@ -12,6 +24,8 @@ Here's the developer workflow:
 4. **Visualization:** Display processed data on a NextJS dashboard.
 
 ### System Overview
+
+![Product Analytics System Overview](/PA_architecture.png)
 
 - **Event Capture:** Your web app sends events to Moose via HTTP `POST` requests.
 - **Ingestion:** Moose provisions a web server with `/ingest` endpoints to receive and route incoming `POST` requests.

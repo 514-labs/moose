@@ -24,7 +24,6 @@ import { PageViewRaw, PageViewProcessed } from "../datamodels/models";
 import { UAParser } from "ua-parser-js";
 
 export default function run(event: PageViewRaw): PageViewProcessed {
-  console.log(`Processing event: ${JSON.stringify(event)}`);
   // Process the user_agent to extract device, browser, and OS details
   const { browser, device, os } = UAParser(event.user_agent);
 

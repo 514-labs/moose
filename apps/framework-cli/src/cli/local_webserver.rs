@@ -93,7 +93,23 @@ impl LocalWebserverConfig {
     }
 
     pub fn url(&self) -> String {
-        format!("http://{}:{}", self.host, self.port)
+        let base_url = format!("http://{}:{}", self.host, self.port);
+        if let Some(prefix) = &self.path_prefix {
+            format!("{}/{}", base_url, prefix.trim_matches('/'))
+        } else {
+            base_url
+        }
+    }
+
+    pub fn normalized_path_prefix(&self) -> Option<String> {
+        self.path_prefix.as_ref().map(|prefix| {
+            let trimmed = prefix.trim_matches('/');
+            if trimmed.is_empty() {
+                prefix.to_string()
+            } else {
+                format!("/{}", trimmed)
+            }
+        })
     }
 }
 
@@ -200,7 +216,7 @@ async fn create_client(
 #[derive(Clone)]
 struct RouteService {
     host: String,
-    path_prefix: String,
+    path_prefix: Option<String>,
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
     consumption_apis: &'static RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
@@ -615,10 +631,23 @@ async fn ingest_route(
     }
 }
 
+fn get_path_without_prefix(path: PathBuf, path_prefix: Option<String>) -> PathBuf {
+    let path_without_prefix = if let Some(prefix) = path_prefix {
+        path.strip_prefix(&prefix).unwrap_or(&path).to_path_buf()
+    } else {
+        path
+    };
+
+    path_without_prefix
+        .strip_prefix("/")
+        .unwrap_or(&path_without_prefix)
+        .to_path_buf()
+}
+
 #[allow(clippy::too_many_arguments)]
 async fn router(
     current_version: String,
-    path_prefix: String,
+    path_prefix: Option<String>,
     consumption_apis: &RwLock<HashSet<String>>,
     configured_producer: ConfiguredProducer,
     host: String,
@@ -637,11 +666,7 @@ async fn router(
         req.uri().path(),
     );
 
-    let original_path = PathBuf::from(req.uri().path());
-    let route = original_path
-        .strip_prefix(PathBuf::from(path_prefix))
-        .unwrap_or(&original_path)
-        .to_path_buf();
+    let route = get_path_without_prefix(PathBuf::from(req.uri().path()), path_prefix);
 
     let metrics_method = req.method().to_string();
 
@@ -814,17 +839,11 @@ impl Webserver {
         );
 
         if !project.is_production {
-            let path_prefix = project
-                .http_server_config
-                .path_prefix
-                .as_deref()
-                .map(|p| format!("/{}", p.trim_matches('/')))
-                .unwrap_or_default();
             show_message!(
                 MessageType::Highlight,
                 Message {
                     action: "Next Steps".to_string(),
-                    details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: http://{}:{}{}/ingest\n", project.http_server_config.host.clone(), socket.port(), path_prefix),
+                    details: format!("\n\n💻 Run the moose 👉 `ls` 👈 command for a bird's eye view of your application and infrastructure\n\n📥 Send Data to Moose\n\tYour local development server is running at: {}/ingest\n", project.http_server_config.url()),
                 }
             );
         }
@@ -834,15 +853,9 @@ impl Webserver {
         let mut sigint =
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()).unwrap();
 
-        let path_prefix = project
-            .http_server_config
-            .path_prefix
-            .as_deref()
-            .map(|p| format!("/{}/", p.trim_matches('/')))
-            .unwrap_or("/".to_string());
         let route_service = RouteService {
             host: self.host.clone(),
-            path_prefix,
+            path_prefix: project.http_server_config.normalized_path_prefix(),
             route_table,
             consumption_apis,
             current_version: project.cur_version().to_string(),

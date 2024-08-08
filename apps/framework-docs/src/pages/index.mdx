@@ -27,9 +27,9 @@ or [signup form](https://fiveonefour.typeform.com/signup). We can't wait to hear
 
 By automating the setup and management of these components and standardizing the interfaces between them, Moose eliminates the need for custom “glue code” and allows you to just focus on writing your application logic. These are tasks you shouldn't have to worry about or reinvent, especially since it’s crucial to do them correctly to ensure high performance and reliability when ingesting and processing petabytes of data.
 
-## Moose is designed for any TypeScript or Python developer, regardless of your background in data engineering. Built on Rust, it ensures speed and reliability even at a massive scale.
+Moose is designed for any TypeScript or Python developer, regardless of your background in data engineering. Built on Rust, it ensures speed and reliability even at a massive scale.
 
-## What types of applications can be built with MooseJS?
+## What types of applications can be built with Moose?
 
 Moose can be combined with your favorite front-end framework to embed data-intensive features in your products, such as:
 
@@ -43,7 +43,7 @@ Or, you can build a backend system to power enterprise data products like BI sof
 - Observability & Log Monitoring
 - Customer data platforms
 
-We include a number of example applications in the examples section of the documentation, so you can see how Moose can be used to build a variety of applications:
+We include some example applications in the [examples section](/examples), so you can see how Moose can be used to build a variety of applications:
 
 <Cards>
   <Card title="Product Analytics" href="/examples/product-analytics" />
@@ -52,19 +52,18 @@ We include a number of example applications in the examples section of the docum
 
 ---
 
-## How does MooseJS work?
+## How does Moose work?
 
 ![architecture diagram](/img-diagram-full-dark.svg)
 
-Using basic primitives like Data Models, Streaming Functions, Aggregations, and Consumption APIs,
-you define the core structure and business logic
-of your data stack, in languages you’re familiar with (for now, Typsecript, others coming soon).
-Then, when you build and deploy your code, Moose interprets these primitives and configures your
-entire production data stack - coordinated end-to-end, from data capture through data consumption.
+Moose provides a set of primitives that you can use to build your data stack in native TypeScript or Python. These primitives are:
 
-For example, when you define a schema with the Data Model primitive, MooseJS will automatically
-spin-up and coordinate all the middleware infrastructure you need to ingest, stream, store, and surface up
-data in that schema (including SDKs, API endpoints, streaming jobs, database tables and views, etc).
+- [Data Models](https://docs.moosejs.com/building/data-models)
+- [Streaming Functions](https://docs.moosejs.com/building/process-data)
+- [Blocks](https://docs.moosejs.com/building/aggregations)
+- [Consumption APIs](https://docs.moosejs.com/building/consumption-apis)
+
+When you build and run your code, Moose interprets your implemented primitives and automatically configures the assets in your data stack infrastructure to support your application.
 
 Learn more in the [architecture documentation](https://docs.moosejs.com/getting-started/architecture).
 
@@ -74,7 +73,7 @@ Learn more in the [architecture documentation](https://docs.moosejs.com/getting-
 
 ### Developer-first
 
-MooseJS is designed by software developers, for software developers. It's built from the ground up to enable
+Moose is designed by software developers, for software developers. It's built from the ground up to enable
 software development best practices that are often hard to implement in the data engineering world.
 
 - Develop in languages you know, in the IDE of your choice

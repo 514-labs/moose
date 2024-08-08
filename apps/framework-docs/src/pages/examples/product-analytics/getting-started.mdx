@@ -102,6 +102,7 @@ Open your project in your favorite IDE. Once your project is open, navigate to t
 
 ```tsx filename="moose/app/datamodels/models.ts" copy
 import { Key } from "@514labs/moose-lib"
+
 export interface PageViewRaw {
     eventId    Key<string>
     timestamp  DateTime
@@ -116,13 +117,25 @@ export interface PageViewRaw {
 
 ```
 
-Moose automatically configures the infrastructure to ingest new data samples that fit this `PageViewRaw` data model schema.
+<Callout>
+  The `PageViewRaw` data model is a good starting point for capturing web page
+  views.
+</Callout>
 
+### Verify the Moose Infrastructure
+
+When you run your local development server (via `moose-cli dev`), Moose automatically configures the infrastructure to ingest data that fits this schema.
 Open a new terminal window and see for yourself! Ensure you are in the `moose` project directory, and run:
 
 ```bash filename="terminal" copy
 npx moose-cli ls
 ```
+
+<Callout>
+  The `ls` command lists all the APIs and tables that Moose has created for you
+  based on the Data Models you have defined. [Learn more about the `ls`
+  command](/moose-cli#list).
+</Callout>
 
 You should now see a table showing the following:
 
@@ -133,4 +146,4 @@ As you can see, Moose has already set up the necessary infrastructure, including
 - An `ingest/PageViewRaw` API endpoint running on a web server for posting new `PageViewRaw` data samples from your web application.
 - A `PageViewRaw` table in a Clickhouse database where Moose will store the ingested events.
 
-Now you are ready to start instrumenting your web app to see live data flowing into Moose.
+Now you are ready to start instrumenting your web app to send live clickstream data to Moose.

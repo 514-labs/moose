@@ -1,6 +1,5 @@
 {
-  "intro": "Introduction",
-  "model-data": "Usage",
-  "configuring": "Configuring",
-  "capture-data": "Ingesting Data"
+  "initialization": "Creating Data Models",
+  "model-data": "Define Data Model Schema",
+  "configuring": "Configuring Infrastructure"
 }

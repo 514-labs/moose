@@ -1,0 +1,26 @@
+{
+  "status": "error",
+  "originalFilePath": "videos/get-started3.mp4",
+  "provider": "mux",
+  "providerMetadata": {
+    "mux": {
+      "uploadId": "5vHxfJvwwUl2tQcZB9N5tmN3osoyH6xTAFR6HRNnl7E",
+      "assetId": "00Hr4Q8A7nYqx01gFBQdsVl00Xuk3Q7UldQMX3r8vMfXB8",
+      "playbackId": "YfXPZnIaCw52lKvXotgskBBKhiMs1LhvqKi8UgQfZ9Q"
+    }
+  },
+  "createdAt": 1722616348598,
+  "updatedAt": 1722616351773,
+  "size": 48,
+  "sources": [
+    {
+      "src": "https://stream.mux.com/YfXPZnIaCw52lKvXotgskBBKhiMs1LhvqKi8UgQfZ9Q.m3u8",
+      "type": "application/x-mpegURL"
+    }
+  ],
+  "poster": "https://image.mux.com/YfXPZnIaCw52lKvXotgskBBKhiMs1LhvqKi8UgQfZ9Q/thumbnail.webp",
+  "error": {
+    "type": "invalid_input",
+    "messages": ["The input file was not a valid video or audio file."]
+  }
+}

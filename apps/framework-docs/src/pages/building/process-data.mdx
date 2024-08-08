@@ -1,0 +1,85 @@
+import { Callout, FileTree } from "nextra/components";
+
+# Introduction to Streaming Functions
+
+Streaming Functions are a powerful feature in Moose that enable real-time data processing. These functions, written in TypeScript or Python, define how to transform data from a source Data Model into a target Data Model.
+
+<Callout type="info">
+  Moose automatically executes these functions on incoming data as it arrives in
+  the streaming topic associated with the source Data Model.
+</Callout>
+
+## File Naming Convention
+
+Streaming Functions are defined in files named according to the pattern:
+`SourceDataModel__DestinationDataModel.ts` or `SourceDataModel__DestinationDataModel.py`
+
+These files must be placed in the `/functions` directory of your Moose app:
+
+<FileTree>
+  <FileTree.Folder name="my-moose-app" defaultOpen>
+    <FileTree.Folder name="functions" defaultOpen>
+      <FileTree.File name="SourceDataModel__DestinationDataModel.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+<Callout>
+  Moose uses this naming convention to automatically identify and execute the
+  Streaming Functions. Ensure you use two underscores to separate the source and
+  destination data models in the file name.
+</Callout>
+
+## Function Definition
+
+A typical Streaming Function has the following structure:
+
+```ts filename="/functions/SourceDataModel__DestinationDataModel.ts" copy
+import { SourceDataModel } from "../datamodels/path/to/SourceDataModel";
+import { DestinationDataModel } from "../datamodels/path/to/DestinationDataModel";
+
+export default function functionName(
+  source: SourceDataModel,
+): DestinationDataModel[] | DestinationDataModel | null {
+  // Transformation logic
+}
+```
+
+Let's break down the structure of this Streaming Function:
+
+1. **Imports**:
+
+   ```ts
+   import { SourceDataModel } from "../datamodels/path/to/SourceDataModel";
+   import { DestinationDataModel } from "../datamodels/path/to/DestinationDataModel";
+   ```
+
+   These lines import the necessary Data Model types from their respective files in the `/datamodels` directory.
+
+2. **Function Declaration**:
+
+   ```ts
+   export default function functionName(
+     source: SourceDataModel,
+   ): DestinationDataModel[] | DestinationDataModel | null {
+     // Transformation logic
+   }
+   ```
+
+   - The function is exported as the default export. This is the function that Moose will call when it receives a new message on the streaming topic associated with the source Data Model.
+   - It takes a single parameter `source` of type `SourceDataModel`. This is the data that Moose will pass to the function when it receives a new message on the streaming topic associated with the source Data Model.
+   - The return type can be:
+     - An array of `DestinationDataModel` objects
+     - A single `DestinationDataModel` object
+     - `null` if no output should be produced
+
+3. **Function Body**:
+   The function body contains the processing logic. We will go into more detail on this in the next section.
+
+4. **Return Value**:
+   The function returns the transformed data according to the `DestinationDataModel`, or `null` if no output should be produced for the given input. If a value is returned Moose automatically serializes it to JSON and writes it to the streaming topic associated with the destination Data Model.
+
+<Callout>
+  The function name itself is not important, as Moose identifies the function by
+  its file name. However, using a descriptive name can improve code readability.
+</Callout>

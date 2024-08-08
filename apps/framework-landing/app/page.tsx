@@ -5,6 +5,7 @@ import { FooterSection } from "./sections/FooterSection";
 import { HeroSection } from "./sections/home/HeroSection";
 import { PrimitivesCode } from "./sections/home/PrimitivesCode";
 import { FeaturesSection } from "./sections/home/FeaturesSection";
+import { DemoSection } from "./sections/home/DemoSection";
 
 import { SecondaryCTASection } from "./sections/home/HostWithBorealSection";
 import { cn } from "@514labs/design-system-components/utils";
@@ -91,6 +92,7 @@ export default function Home() {
       <PrimitivesCode />
       <FeaturesSection />
       <WhatIsMooseFor />
+      <DemoSection />
       <SecondaryCTASection />
       <FooterSection />
     </main>

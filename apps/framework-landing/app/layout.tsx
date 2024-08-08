@@ -28,7 +28,13 @@ export const metadata: Metadata = {
 const default_navigation = [
   { name: "docs", href: "https://docs.moosejs.com" },
   { name: "boreal", href: "https://boreal.cloud" },
-  { name: "templates", href: "/templates" },
+  {
+    name: "templates",
+    href: "/templates",
+    items: [
+      { name: "product analytics", href: "/templates/product-analytics" },
+    ],
+  },
   { name: "community", href: "/community" },
   { name: "blog", href: "https://www.fiveonefour.com/blog" },
   { name: "github", href: "https://github.com/514-labs/moose" },

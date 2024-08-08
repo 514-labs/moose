@@ -1,0 +1,118 @@
+import { Callout, Tabs } from "nextra/components";
+
+# Ingesting via MooseJS SDKs
+
+To facilitate the ingestion process, Moose can generate automatically a TypeScript or Python SDK for every Data Model defined in your project. The SDK provides instant type safety and schema validation, offering real-time
+feedback on the data you intend to send to Moose during instrumentation.
+
+<Callout>
+  If your application is not written in TypeScript or Python, you can [use the
+  HTTP ingest API endpoints to capture data.](./ingest-api)
+</Callout>
+
+## Generating the SDK
+
+To generate an SDK, use the following command:
+
+```bash copy filename="Terminal"
+moose-cli generate sdk [OPTIONS]
+```
+
+#### Options
+
+**`-l, --language <LANGUAGE>`**
+
+- **Description:** Specify the language of the SDK to be generated.
+- **Default:** `ts`
+- **Possible Values:** `ts` (TypeScript), `python` (Python)
+
+**`-d, --destination <DESTINATION>`**
+
+- **Description:** Specify the directory where the SDK files should be written.
+- **Default:** `./sdk`
+
+**`-p, --project-location <PROJECT_LOCATION>`**
+
+- **Description:** Specify the location of the Moose project.
+- **Default:** `.`
+
+**`-f, --full-package`**
+
+- **Description:** Generate a full-fledged package instead of just the source files in the chosen language.
+
+**`-h, --help`**
+
+- **Description:** Display the help information for the `generate sdk` command.
+
+#### Example Commands
+
+<Tabs items={["Typescript SDK (default settings)", "Python SDK (default settings)", "Typescript SDK with different destination directory","Python SDK from a specific project location", "Full-fledged TypeScript Package"]}>
+  <Tabs.Tab>
+  Generate a TypeScript SDK with default settings:
+   ```bash filename="Terminal" copy
+   npx moose-cli generate sdk
+   ```
+  </Tabs.Tab>
+
+{" "}
+
+<Tabs.Tab>
+  Generate a Python SDK with default settings: ```bash filename="Terminal" copy
+  npx moose-cli generate sdk --launguage python ```
+</Tabs.Tab>
+
+  <Tabs.Tab>
+    Generate a TypeScript SDK and specify a different destination directory:
+   ```bash filename="Terminal" copy
+      npx moose-cli generate sdk --destination ./custom-sdk
+   ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+  Generate a Python SDK from a specific project location:
+  ```bash filename="Terminal" copy
+    npx moose-cli generate sdk --language python --project-location /path/to/moose-project
+   ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+  Generate a full-fledged TypeScript package:
+   ```bash filename="Terminal" copy
+   npx moose-cli generate sdk --full-package
+   ```
+  </Tabs.Tab>
+</Tabs>
+
+## Using the SDK to Send Data
+
+Every Data Model defined in your Moose project has its own corresponding method in the generated SDK that allows you to send data to Moose for that particular model. The method name follows the format `send<DATA_MODEL_NAME>`.
+
+To send data, you need to call the method with the data you want to send as an argument. The data should be an object that matches the schema of the Data Model.
+
+### Example Usage
+
+For the `UserActivity` example, you would call the `sendUserActivity()` method with an object that matches the `UserActivity` schema:
+
+```js filename="Your Javascript Application Code" copy
+import { sendUserActivity } from "/path/to/sdk";
+
+...
+
+const eventId = SOME_EVENT_ID;
+const userId = SOME_USER_ID;
+
+sendUserActivity({
+  eventId: eventId,
+  timestamp: new Date(),
+  userId: userId,
+  activity: "Login"
+});
+
+// REST OF YOUR CODE...
+```
+
+<Callout type="info" emoji="ℹ️">
+  We currently support Typescript and Python SDKs. Support for other languages
+  is coming soon. If you'd like to see a particular language supported, please
+  join our [Slack
+  community](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg)
+  and let us know.
+</Callout>

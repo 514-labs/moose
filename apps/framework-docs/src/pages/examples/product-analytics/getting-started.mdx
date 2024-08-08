@@ -1,0 +1,149 @@
+import { Card, FileTree, Callout } from "nextra/components";
+
+# Quick Start Guide
+
+## Prerequisites
+
+Ensure you have Node.js and Docker installed on your machine. You can check if they are installed by running the following command in your terminal:
+
+```bash filename="terminal" copy
+docker --version && node --version
+```
+
+If you don't have them installed, you can download them from the following links:
+
+- [Node.js](https://nodejs.org/en/download/)
+- [Docker](https://www.docker.com/products/docker-desktop)
+
+## Download the Template Starter Code
+
+To create a new project, run the following command in your terminal:
+
+```bash filename="Terminal" copy
+npx create-moose-app@latest moose-product-analytics --template product-analytics
+```
+
+You can optionally replace `moose-product-analytics` with your desired project name.
+
+### Project Structure
+
+This command will create a new project directory named `moose-product-analytics` with the following structure:
+
+<FileTree>
+  <FileTree.Folder name="moose-product-analytics" open>
+    <FileTree.Folder name="moose">
+      <FileTree.Folder name="app" open>
+        <FileTree.Folder name="datamodels">
+          <FileTree.File name="models.ts" />
+        </FileTree.Folder>
+        <FileTree.Folder name="functions">
+          <FileTree.File name="PageViewRaw__PageViewProcessed.ts" />
+        </FileTree.Folder>
+        <FileTree.Folder name="blocks" />
+        <FileTree.Folder name="apis" />
+      </FileTree.Folder>
+    </FileTree.Folder>
+    <FileTree.Folder name="next">
+      <FileTree.Folder name="app" />
+      <FileTree.Folder name="public" open>
+        <FileTree.File name="script.js" />
+      </FileTree.Folder>
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+The project directory contains two subdirectories:
+
+- `moose`: Hosts the Moose application code for your backend clickstream event processing service
+- `next`: Hosts frontend analytics dashboard code and a helper script for capturing client-side events
+
+<Callout type="info">
+  The `moose` and `next` folders can run separately. Optionally, you can use a
+  different frontend like Grafana or query the database directly to consume the
+  captured and processed data.
+</Callout>
+
+## Running the Moose Application Locally
+
+### Start Docker
+
+First make sure Docker is running on your machine:
+
+```bash filename="terminal" copy
+docker info
+```
+
+### Start Moose Development Server
+
+Navigate to the `moose` project directory and install the necessary dependencies:
+
+```bash filename="terminal" copy
+cd moose-product-analytics/moose && npm install
+```
+
+Now, start your Moose development server by running the following command:
+
+```bash filename="terminal" copy
+npx moose-cli dev
+```
+
+You should see a message in the CLI indicating the development server is running at `http://localhost:4000`.
+
+<Callout>
+Did you know?
+
+The development server contains all the backend infrastructure needed to ingest, buffer, process, store, and query event data. [Learn more about the Moose development server architecture.](/getting-started/architecture)
+
+</Callout>
+
+### Understanding the Provided Starter Code
+
+Open your project in your favorite IDE. Once your project is open, navigate to the `/datamodels` folder inside the `/app` directory. Open the `models.ts` file. You will see a pre-defined `PageViewRaw` data model:
+
+```tsx filename="moose/app/datamodels/models.ts" copy
+import { Key } from "@514labs/moose-lib"
+
+export interface PageViewRaw {
+    eventId    Key<string>
+    timestamp  DateTime
+    session_id String
+    user_agent String
+    locale     String
+    location   String
+    href       String
+    pathname   String
+    referrer   String
+}
+
+```
+
+<Callout>
+  The `PageViewRaw` data model is a good starting point for capturing web page
+  views.
+</Callout>
+
+### Verify the Moose Infrastructure
+
+When you run your local development server (via `moose-cli dev`), Moose automatically configures the infrastructure to ingest data that fits this schema.
+Open a new terminal window and see for yourself! Ensure you are in the `moose` project directory, and run:
+
+```bash filename="terminal" copy
+npx moose-cli ls
+```
+
+<Callout>
+  The `ls` command lists all the APIs and tables that Moose has created for you
+  based on the Data Models you have defined. [Learn more about the `ls`
+  command](/moose-cli#list).
+</Callout>
+
+You should now see a table showing the following:
+
+![Moose ls](/moose-ls-pa.png)
+
+As you can see, Moose has already set up the necessary infrastructure, including:
+
+- An `ingest/PageViewRaw` API endpoint running on a web server for posting new `PageViewRaw` data samples from your web application.
+- A `PageViewRaw` table in a Clickhouse database where Moose will store the ingested events.
+
+Now you are ready to start instrumenting your web app to send live clickstream data to Moose.

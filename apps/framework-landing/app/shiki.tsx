@@ -35,7 +35,7 @@ const mooseTheme = {
     {
       scope: ["keyword", "storage.type", "storage.modifier"],
       settings: {
-        foreground: "#00A4C8",
+        foreground: "#00A3FF",
       },
     },
     {
@@ -51,7 +51,7 @@ const mooseTheme = {
         "entity.other.inherited-class",
       ],
       settings: {
-        foreground: "#00A3FF",
+        foreground: "#50FF76",
       },
     },
     {

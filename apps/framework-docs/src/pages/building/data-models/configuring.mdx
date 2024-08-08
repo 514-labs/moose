@@ -13,7 +13,7 @@ import { Key, DataModelConfig, IngestionFormat } from "@514labs/moose-lib";
 
 export const UserActivityConfig: DataModelConfig<UserActivity> = {
   ingestion: {
-    format: "json",
+    format: IngestionFormat.JSON,
   },
   storage: {
     enabled: true,
@@ -76,7 +76,6 @@ The ingestion configuration object is used to define how the API endpoint will r
   </Tabs>
     
   
-    
 
 
 ### `storage`

@@ -207,7 +207,7 @@ impl InfrastructureMap {
                     InitialDataLoad {
                         table: function.source_data_model.to_table(),
                         topic: source_topic.name.clone(),
-                        // it doesn't mean it is completed, it means we want it to be completed
+                        // it doesn't mean it is completed, it means the desired state is Completed
                         status: InitialDataLoadStatus::Completed,
                     },
                 );

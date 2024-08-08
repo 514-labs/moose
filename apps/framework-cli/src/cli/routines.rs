@@ -300,6 +300,7 @@ pub async fn start_development_mode(
             &plan_result,
             api_changes_channel,
             metrics.clone(),
+            &mut client,
         )
         .await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
@@ -466,8 +467,14 @@ pub async fn start_production_mode(
         let plan_result = plan_changes(&mut client, &project).await?;
         info!("Plan Changes: {:?}", plan_result.changes);
         let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
-        execute_initial_infra_change(&project, &plan_result, api_changes_channel, metrics.clone())
-            .await?;
+        execute_initial_infra_change(
+            &project,
+            &plan_result,
+            api_changes_channel,
+            metrics.clone(),
+            &mut client,
+        )
+        .await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
 
         // Storing the result of the changes in the table

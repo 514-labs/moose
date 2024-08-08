@@ -1,6 +1,8 @@
 use clickhouse::Client;
+use clickhouse_rs::ClientHandle;
 use crypto_hash::{hex_digest, Algorithm};
 use errors::ClickhouseError;
+use itertools::Itertools;
 use log::{debug, info};
 use mapper::std_table_to_clickhouse_table;
 use queries::{
@@ -293,23 +295,23 @@ pub async fn check_is_table_new(
 
 pub async fn check_table_size(
     table_name: &str,
-    configured_client: &ConfiguredDBClient,
-) -> Result<i64, clickhouse::error::Error> {
-    let client = &configured_client.client;
-
+    config: &ClickHouseConfig,
+    clickhouse: &mut ClientHandle,
+) -> Result<i64, clickhouse_rs::errors::Error> {
     info!("<DCM> Checking size of {} table", table_name);
-    let result: Vec<i64> = client
+    let result = clickhouse
         .query(&format!(
             "select count(*) from {}.{}",
-            configured_client.config.db_name.clone(),
+            config.db_name.clone(),
             table_name
         ))
-        .fetch_all::<i64>()
+        .fetch_all()
         .await?;
+    let rows = result.rows().collect_vec();
 
-    match result.len() {
-        1 => Ok(result[0]),
-        _ => panic!("Expected 1 result, got {:?}", result),
+    match rows.len() {
+        1 => Ok(rows[0].get(0)?),
+        _ => panic!("Expected 1 result, got {:?}", rows.len()),
     }
 }
 

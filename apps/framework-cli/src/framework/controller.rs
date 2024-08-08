@@ -1,14 +1,10 @@
-use std::collections::{HashMap, VecDeque};
-use std::io::Error;
-use std::io::ErrorKind;
-use std::path::Path;
-use std::path::PathBuf;
-use std::sync::Arc;
-
 use super::core::code_loader::FrameworkObject;
 use super::data_model::config::EndpointIngestionFormat;
 use crate::framework::core::infrastructure::table::Table;
+use crate::framework::core::plan::PlanningError;
+use crate::infrastructure::migration::InitialDataLoadError;
 use crate::infrastructure::olap;
+use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
 use crate::infrastructure::olap::clickhouse::queries::create_alias_for_table;
 use crate::infrastructure::olap::clickhouse::queries::create_alias_query_from_table;
@@ -19,10 +15,17 @@ use crate::infrastructure::stream::redpanda::{
     send_with_back_pressure, wait_for_delivery, RedpandaConfig,
 };
 use crate::project::Project;
+use clickhouse_rs::ClientHandle;
 use futures::StreamExt;
 use log::{debug, error, info, warn};
 use rdkafka::producer::DeliveryFuture;
 use serde::{Deserialize, Serialize};
+use std::collections::{HashMap, VecDeque};
+use std::io::Error;
+use std::io::ErrorKind;
+use std::path::Path;
+use std::path::PathBuf;
+use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct RouteMeta {
@@ -80,12 +83,31 @@ pub async fn initial_data_load(
     topic: &str,
     config: &RedpandaConfig,
 ) -> anyhow::Result<()> {
-    match check_topic_fully_populated(&table.name, configured_client, topic, config).await? {
+    let pool = olap::clickhouse_alt_client::get_pool(&configured_client.config);
+    let mut client = pool.get_handle().await?;
+
+    match check_topic_fully_populated(
+        &table.name,
+        &configured_client.config,
+        &mut client,
+        topic,
+        config,
+    )
+    .await?
+    {
         None => {
             debug!("Topic {} is already fully populated.", topic)
         }
         Some(offset) => {
-            resume_initial_data_load(table, configured_client, topic, config, offset).await?;
+            resume_initial_data_load(
+                table,
+                &configured_client.config,
+                &mut client,
+                topic,
+                config,
+                offset,
+            )
+            .await?;
         }
     };
     Ok(())
@@ -93,18 +115,17 @@ pub async fn initial_data_load(
 
 pub async fn resume_initial_data_load(
     table: &ClickHouseTable,
-    configured_client: &ConfiguredDBClient,
+    click_house_config: &ClickHouseConfig,
+    clickhouse_client: &mut ClientHandle,
     topic: &str,
     config: &RedpandaConfig,
     resume_from: i64,
-) -> anyhow::Result<()> {
+) -> Result<(), InitialDataLoadError> {
     // TODO: we should probably have a lazy_static pool, after we actually use the global project instance
-    let pool = olap::clickhouse_alt_client::get_pool(&configured_client.config);
-    let mut client = pool.get_handle().await?;
     let mut stream = olap::clickhouse_alt_client::select_all_as_json(
-        &configured_client.config.db_name,
+        &click_house_config.db_name,
         table,
-        &mut client,
+        clickhouse_client,
         resume_from,
     )
     .await?;
@@ -132,12 +153,14 @@ pub async fn resume_initial_data_load(
 /// returns None if fully populated, Some(topic_record_count) if not
 pub async fn check_topic_fully_populated(
     table_name: &str,
-    configured_client: &ConfiguredDBClient,
+    clickhouse_config: &ClickHouseConfig,
+    clickhouse: &mut ClientHandle,
     topic: &str,
     config: &RedpandaConfig,
-) -> anyhow::Result<Option<i64>> {
+) -> Result<Option<i64>, PlanningError> {
     let topic_size = redpanda::check_topic_size(topic, config).await?;
-    let table_size = olap::clickhouse::check_table_size(table_name, configured_client).await?;
+    let table_size =
+        olap::clickhouse::check_table_size(table_name, clickhouse_config, clickhouse).await?;
 
     Ok(if topic_size >= table_size {
         None

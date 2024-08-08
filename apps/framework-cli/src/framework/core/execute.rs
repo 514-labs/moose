@@ -1,8 +1,10 @@
+use clickhouse_rs::ClientHandle;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
 use super::{infrastructure_map::ApiChange, plan::InfraPlan};
 use crate::infrastructure::migration;
+use crate::infrastructure::migration::InitialDataLoadError;
 use crate::{
     infrastructure::{
         api,
@@ -32,7 +34,7 @@ pub enum ExecutionError {
     SyncProcessesChange(#[from] processes::SyncProcessChangesError),
 
     #[error("Failed to load to topic for migration")]
-    InitialDataLoad(#[from] anyhow::Error), // TODO: refactor to concrete types
+    InitialDataLoad(#[from] InitialDataLoadError), // TODO: refactor to concrete types
 }
 
 pub async fn execute_initial_infra_change(
@@ -40,6 +42,7 @@ pub async fn execute_initial_infra_change(
     plan: &InfraPlan,
     api_changes_channel: Sender<ApiChange>,
     metrics: Arc<Metrics>,
+    clickhouse_client: &mut ClientHandle,
 ) -> Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError> {
     // This probably can be parallelized through Tokio Spawn
     olap::execute_changes(project, &plan.changes.olap_changes).await?;
@@ -67,7 +70,8 @@ pub async fn execute_initial_infra_change(
     )
     .await?;
 
-    migration::execute_changes(project, &plan.changes.initial_data_loads).await?;
+    migration::execute_changes(project, &plan.changes.initial_data_loads, clickhouse_client)
+        .await?;
 
     Ok((syncing_processes_registry, process_registries))
 }

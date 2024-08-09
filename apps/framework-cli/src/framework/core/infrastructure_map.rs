@@ -202,6 +202,12 @@ impl InfrastructureMap {
                     &target_topic,
                 );
 
+                let sync_process = TopicToTableSyncProcess::new(
+                    &target_topic,
+                    &function.target_data_model.to_table(),
+                );
+                topic_to_table_sync_processes.insert(sync_process.id(), sync_process);
+
                 initial_data_loads.insert(
                     function_process.id(),
                     InitialDataLoad {

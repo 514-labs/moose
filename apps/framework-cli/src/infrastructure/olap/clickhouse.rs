@@ -309,10 +309,11 @@ pub async fn check_table_size(
         .await?;
     let rows = result.rows().collect_vec();
 
-    match rows.len() {
-        1 => Ok(rows[0].get(0)?),
+    let result: u64 = match rows.len() {
+        1 => rows[0].get(0)?,
         _ => panic!("Expected 1 result, got {:?}", rows.len()),
-    }
+    };
+    Ok(result as i64)
 }
 
 pub async fn fetch_table_names(

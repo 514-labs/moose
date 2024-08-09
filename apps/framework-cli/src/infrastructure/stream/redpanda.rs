@@ -38,18 +38,18 @@ pub async fn execute_changes(
     for change in changes.iter() {
         match change {
             StreamingChange::Topic(Change::Added(topic)) => {
-                log::info!("Creating topic: {:?}", topic.id());
+                info!("Creating topic: {:?}", topic.id());
                 create_topics(&project.redpanda_config, vec![topic.id()]).await?;
             }
 
             StreamingChange::Topic(Change::Removed(topic)) => {
-                log::info!("Deleting topic: {:?}", topic.id());
+                info!("Deleting topic: {:?}", topic.id());
                 delete_topics(&project.redpanda_config, vec![topic.id()]).await?;
             }
 
             StreamingChange::Topic(Change::Updated { before, after }) => {
                 if !project.is_production {
-                    log::info!("Replacing topic: {:?} with: {:?}", before, after);
+                    info!("Replacing topic: {:?} with: {:?}", before, after);
                     delete_topics(&project.redpanda_config, vec![before.id()]).await?;
                     create_topics(&project.redpanda_config, vec![after.id()]).await?;
                 } else {
@@ -329,6 +329,8 @@ pub fn create_subscriber(config: &RedpandaConfig, group_id: &str, topic: &str) -
         .set("enable.partition.eof", "false")
         .set("enable.auto.commit", "true")
         .set("auto.commit.interval.ms", "1000")
+        // to read records sent before subscriber is created
+        .set("auto.offset.reset", "earliest")
         // Groupid
         .set("group.id", group_id);
 

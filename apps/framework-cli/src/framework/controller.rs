@@ -71,6 +71,15 @@ pub struct InitialDataLoad {
     pub status: InitialDataLoadStatus,
 }
 
+impl InitialDataLoad {
+    pub(crate) fn expanded_display(&self) -> String {
+        format!(
+            "Initial data load: from table {} to topic {}",
+            self.table.name, self.topic
+        )
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub enum InitialDataLoadStatus {
     InProgress(i64),

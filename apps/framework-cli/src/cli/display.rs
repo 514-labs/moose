@@ -381,14 +381,16 @@ pub fn show_changes(infra_plan: &InfraPlan) {
         .changes
         .initial_data_loads
         .iter()
-        .for_each(|change| {
-            match change {
-                InitialDataLoadChange::Addition(_) => {
-                    // TODO
-                }
-                InitialDataLoadChange::Resumption { .. } => {
-                    // TODO
-                }
+        .for_each(|change| match change {
+            InitialDataLoadChange::Addition(load)
+            | InitialDataLoadChange::Resumption {
+                resume_from: 0,
+                load,
+            } => {
+                infra_added(&load.expanded_display());
+            }
+            InitialDataLoadChange::Resumption { load, .. } => {
+                infra_updated(&load.expanded_display());
             }
         })
 }

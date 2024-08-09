@@ -6,6 +6,7 @@ use spinners::{Spinner, Spinners};
 use std::sync::{Arc, RwLock};
 use tokio::macros::support::Future;
 
+use crate::framework::core::infrastructure_map::InitialDataLoadChange;
 use crate::framework::core::{
     infrastructure_map::{ApiChange, Change, OlapChange, ProcessChange, StreamingChange},
     plan::InfraPlan,
@@ -375,6 +376,23 @@ pub fn show_changes(infra_plan: &InfraPlan) {
                 infra_updated(&before.expanded_display());
             }
         });
+
+    infra_plan
+        .changes
+        .initial_data_loads
+        .iter()
+        .for_each(|change| match change {
+            InitialDataLoadChange::Addition(load)
+            | InitialDataLoadChange::Resumption {
+                resume_from: 0,
+                load,
+            } => {
+                infra_added(&load.expanded_display());
+            }
+            InitialDataLoadChange::Resumption { load, .. } => {
+                infra_updated(&load.expanded_display());
+            }
+        })
 }
 
 #[cfg(test)]

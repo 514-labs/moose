@@ -275,7 +275,8 @@ const startConsumer = async (
 
   await consumer.subscribe({
     topics: [sourceTopic],
-    fromBeginning: false,
+    // to read records sent before subscriber is created
+    fromBeginning: true,
   });
   await consumer.run({
     eachBatchAutoResolve: true,

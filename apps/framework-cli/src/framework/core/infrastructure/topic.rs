@@ -73,8 +73,17 @@ impl Topic {
     }
 
     pub fn id(&self) -> String {
-        // TODO have a proper version object that standardizes transformations
-        format!("{}_{}", self.name, self.version.replace('.', "_"))
+        match self.source_primitive.primitive_type {
+            // migration functions has versions in the name already
+            PrimitiveTypes::Function => self.name.clone(),
+            PrimitiveTypes::DataModel
+            // the following two possibilities are impossible
+            | PrimitiveTypes::DBBlock
+            | PrimitiveTypes::ConsumptionAPI => {
+                // TODO have a proper version object that standardizes transformations
+                format!("{}_{}", self.name, self.version.replace('.', "_"))
+            }
+        }
     }
 
     pub fn expanded_display(&self) -> String {

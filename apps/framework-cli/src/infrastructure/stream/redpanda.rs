@@ -191,11 +191,16 @@ pub async fn describe_topic_config(
 
 const NAMESPACE_SEPARATOR: &str = ".";
 
+fn default_replication_factor() -> i32 {
+    1
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct RedpandaConfig {
     pub broker: String,
     pub message_timeout_ms: i32,
     pub retention_ms: i32,
+    #[serde(default = "default_replication_factor")]
     pub replication_factor: i32,
     pub sasl_username: Option<String>,
     pub sasl_password: Option<String>,

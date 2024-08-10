@@ -92,6 +92,7 @@ pub enum ProjectFileError {
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
     pub language: SupportedLanguages,
+    #[serde(default)]
     pub redpanda_config: RedpandaConfig,
     pub clickhouse_config: ClickHouseConfig,
     pub http_server_config: LocalWebserverConfig,

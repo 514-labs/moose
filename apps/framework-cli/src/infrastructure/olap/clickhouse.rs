@@ -1,6 +1,8 @@
 use clickhouse::Client;
+use clickhouse_rs::ClientHandle;
 use crypto_hash::{hex_digest, Algorithm};
 use errors::ClickhouseError;
+use itertools::Itertools;
 use log::{debug, info};
 use mapper::std_table_to_clickhouse_table;
 use queries::{
@@ -292,25 +294,26 @@ pub async fn check_is_table_new(
 }
 
 pub async fn check_table_size(
-    table: &ClickHouseTable,
-    configured_client: &ConfiguredDBClient,
-) -> Result<i64, clickhouse::error::Error> {
-    let client = &configured_client.client;
-
-    info!("<DCM> Checking size of {} table", table.name.clone());
-    let result: Vec<i64> = client
+    table_name: &str,
+    config: &ClickHouseConfig,
+    clickhouse: &mut ClientHandle,
+) -> Result<i64, clickhouse_rs::errors::Error> {
+    info!("<DCM> Checking size of {} table", table_name);
+    let result = clickhouse
         .query(&format!(
             "select count(*) from {}.{}",
-            configured_client.config.db_name.clone(),
-            table.name
+            config.db_name.clone(),
+            table_name
         ))
-        .fetch_all::<i64>()
+        .fetch_all()
         .await?;
+    let rows = result.rows().collect_vec();
 
-    match result.len() {
-        1 => Ok(result[0]),
-        _ => panic!("Expected 1 result, got {:?}", result),
-    }
+    let result: u64 = match rows.len() {
+        1 => rows[0].get(0)?,
+        _ => panic!("Expected 1 result, got {:?}", rows.len()),
+    };
+    Ok(result as i64)
 }
 
 pub async fn fetch_table_names(

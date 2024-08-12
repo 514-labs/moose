@@ -1,3 +1,5 @@
+use crate::framework::core::infrastructure_map::{Change, StreamingChange};
+use crate::project::Project;
 use log::{error, info, warn};
 use rdkafka::admin::ResourceSpecifier;
 use rdkafka::config::RDKafkaLogLevel;
@@ -14,9 +16,6 @@ use rdkafka::{
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
-
-use crate::framework::core::infrastructure_map::{Change, StreamingChange};
-use crate::project::Project;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RedpandaChangesError {
@@ -39,18 +38,18 @@ pub async fn execute_changes(
     for change in changes.iter() {
         match change {
             StreamingChange::Topic(Change::Added(topic)) => {
-                log::info!("Creating topic: {:?}", topic.id());
+                info!("Creating topic: {:?}", topic.id());
                 create_topics(&project.redpanda_config, vec![topic.id()]).await?;
             }
 
             StreamingChange::Topic(Change::Removed(topic)) => {
-                log::info!("Deleting topic: {:?}", topic.id());
+                info!("Deleting topic: {:?}", topic.id());
                 delete_topics(&project.redpanda_config, vec![topic.id()]).await?;
             }
 
             StreamingChange::Topic(Change::Updated { before, after }) => {
                 if !project.is_production {
-                    log::info!("Replacing topic: {:?} with: {:?}", before, after);
+                    info!("Replacing topic: {:?} with: {:?}", before, after);
                     delete_topics(&project.redpanda_config, vec![before.id()]).await?;
                     create_topics(&project.redpanda_config, vec![after.id()]).await?;
                 } else {
@@ -300,12 +299,10 @@ pub async fn check_topic_size(topic: &str, config: &RedpandaConfig) -> Result<i6
     let client: StreamConsumer<_> = config_client(config).create()?;
     let timeout = Duration::from_secs(1);
     let md = client.fetch_metadata(Some(topic), timeout)?;
-    let partitions = md
-        .topics()
-        .iter()
-        .find(|t| t.name() == topic)
-        .ok_or_else(|| KafkaError::MetadataFetch(RDKafkaErrorCode::UnknownTopic))?
-        .partitions();
+    let partitions = match md.topics().iter().find(|t| t.name() == topic) {
+        None => return Ok(0),
+        Some(topic) => topic.partitions(),
+    };
     let total_count = partitions
         .iter()
         .map(|partition| {
@@ -343,6 +340,8 @@ pub fn create_subscriber(config: &RedpandaConfig, group_id: &str, topic: &str) -
         .set("enable.partition.eof", "false")
         .set("enable.auto.commit", "true")
         .set("auto.commit.interval.ms", "1000")
+        // to read records sent before subscriber is created
+        .set("auto.offset.reset", "earliest")
         // Groupid
         .set("group.id", group_id);
 

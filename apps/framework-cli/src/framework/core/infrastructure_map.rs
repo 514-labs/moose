@@ -1,6 +1,3 @@
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-
 use super::infrastructure::api_endpoint::ApiEndpoint;
 use super::infrastructure::consumption_webserver::ConsumptionApiWebServer;
 use super::infrastructure::function_process::FunctionProcess;
@@ -10,6 +7,9 @@ use super::infrastructure::topic::Topic;
 use super::infrastructure::topic_to_table_sync_process::TopicToTableSyncProcess;
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
+use crate::framework::controller::{InitialDataLoad, InitialDataLoadStatus};
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PrimitiveTypes {
@@ -71,6 +71,16 @@ pub struct InfraChanges {
     pub processes_changes: Vec<ProcessChange>,
     pub api_changes: Vec<ApiChange>,
     pub streaming_engine_changes: Vec<StreamingChange>,
+    pub initial_data_loads: Vec<InitialDataLoadChange>,
+}
+
+#[derive(Debug, Clone)]
+pub enum InitialDataLoadChange {
+    Addition(InitialDataLoad),
+    Resumption {
+        load: InitialDataLoad,
+        resume_from: i64,
+    },
 }
 
 impl InfraChanges {
@@ -99,6 +109,8 @@ pub struct InfrastructureMap {
     // Not sure if we will want to change that or not in the future to be able to tell
     // the new consumption endpoints that were added or removed.
     pub consumption_api_web_server: ConsumptionApiWebServer,
+
+    pub initial_data_loads: HashMap<String, InitialDataLoad>,
 }
 
 impl InfrastructureMap {
@@ -109,6 +121,7 @@ impl InfrastructureMap {
         let mut api_endpoints = HashMap::new();
         let mut topic_to_table_sync_processes = HashMap::new();
         let mut function_processes = HashMap::new();
+        let mut initial_data_loads = HashMap::new();
 
         let mut data_models_that_have_not_changed_with_new_version = Vec::new();
 
@@ -189,8 +202,24 @@ impl InfrastructureMap {
                     &target_topic,
                 );
 
+                let sync_process = TopicToTableSyncProcess::new(
+                    &target_topic,
+                    &function.target_data_model.to_table(),
+                );
+                topic_to_table_sync_processes.insert(sync_process.id(), sync_process);
+
+                initial_data_loads.insert(
+                    function_process.id(),
+                    InitialDataLoad {
+                        table: function.source_data_model.to_table(),
+                        topic: source_topic.name.clone(),
+                        // it doesn't mean it is completed, it means the desired state is Completed
+                        status: InitialDataLoadStatus::Completed,
+                    },
+                );
                 topics.insert(source_topic.id(), source_topic);
                 topics.insert(target_topic.id(), target_topic);
+
                 function_processes.insert(function_process.id(), function_process);
             } else {
                 let topics: Vec<String> = topics.values().map(|t| t.id()).collect();
@@ -216,6 +245,7 @@ impl InfrastructureMap {
             function_processes,
             block_db_processes,
             consumption_api_web_server,
+            initial_data_loads,
         }
     }
 
@@ -429,6 +459,30 @@ impl InfrastructureMap {
         }
 
         // =================================================================
+        //                             Initial Data Loads
+        // =================================================================
+        for (id, load) in &target_map.initial_data_loads {
+            let existing = self.initial_data_loads.get(id);
+            match existing {
+                None => changes
+                    .initial_data_loads
+                    .push(InitialDataLoadChange::Addition(load.clone())),
+                Some(existing) => {
+                    match existing.status {
+                        InitialDataLoadStatus::InProgress(resume_from) => changes
+                            .initial_data_loads
+                            .push(InitialDataLoadChange::Resumption {
+                                resume_from,
+                                load: load.clone(),
+                            }),
+                        // nothing to do
+                        InitialDataLoadStatus::Completed => {}
+                    }
+                }
+            }
+        }
+
+        // =================================================================
         //                             Aggregation Processes
         // =================================================================
 
@@ -475,12 +529,14 @@ impl InfrastructureMap {
         let processes_changes = self.init_processes();
         let api_changes = self.init_api_endpoints();
         let streaming_engine_changes = self.init_topics();
+        let initial_data_loads = self.init_data_loads();
 
         InfraChanges {
             olap_changes,
             processes_changes,
             api_changes,
             streaming_engine_changes,
+            initial_data_loads,
         }
     }
 
@@ -543,6 +599,19 @@ impl InfrastructureMap {
 
         topic_to_table_process_changes
     }
+
+    pub fn init_data_loads(&self) -> Vec<InitialDataLoadChange> {
+        self.initial_data_loads
+            .values()
+            .map(|load| {
+                InitialDataLoadChange::Addition(InitialDataLoad {
+                    // if existing deployment is empty, there is no initial data to load
+                    status: InitialDataLoadStatus::Completed,
+                    ..load.clone()
+                })
+            })
+            .collect()
+    }
 }
 
 #[cfg(test)]
@@ -601,7 +670,7 @@ mod tests {
             .datamodels
             .remove(data_model_name, data_model_version);
 
-        println!("Base Primitve Map: {:?} \n", primitive_map);
+        println!("Base Primitive Map: {:?} \n", primitive_map);
         println!("Target Primitive Map {:?} \n", new_target_primitive_map);
 
         let infra_map = super::InfrastructureMap::new(primitive_map);

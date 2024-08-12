@@ -1,6 +1,10 @@
+use clickhouse_rs::ClientHandle;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
 
+use super::{infrastructure_map::ApiChange, plan::InfraPlan};
+use crate::infrastructure::migration;
+use crate::infrastructure::migration::InitialDataLoadError;
 use crate::{
     infrastructure::{
         api,
@@ -15,8 +19,6 @@ use crate::{
     project::Project,
 };
 
-use super::{infrastructure_map::ApiChange, plan::InfraPlan};
-
 #[derive(Debug, thiserror::Error)]
 pub enum ExecutionError {
     #[error("Failed to communicate with state storage")]
@@ -30,6 +32,9 @@ pub enum ExecutionError {
 
     #[error("Failed to communicate with Sync Processes")]
     SyncProcessesChange(#[from] processes::SyncProcessChangesError),
+
+    #[error("Failed to load to topic for migration")]
+    InitialDataLoad(#[from] InitialDataLoadError), // TODO: refactor to concrete types
 }
 
 pub async fn execute_initial_infra_change(
@@ -37,12 +42,13 @@ pub async fn execute_initial_infra_change(
     plan: &InfraPlan,
     api_changes_channel: Sender<ApiChange>,
     metrics: Arc<Metrics>,
+    clickhouse_client: &mut ClientHandle,
 ) -> Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError> {
     // This probably can be parallelized through Tokio Spawn
     olap::execute_changes(project, &plan.changes.olap_changes).await?;
     stream::execute_changes(project, &plan.changes.streaming_engine_changes).await?;
 
-    // In prod, the webserver is part of the current process that gets spawned. As succh
+    // In prod, the webserver is part of the current process that gets spawned. As such
     // it is initialized from 0 and we don't need to apply diffs to it.
     api::execute_changes(
         &plan.target_infra_map.init_api_endpoints(),
@@ -63,6 +69,9 @@ pub async fn execute_initial_infra_change(
         metrics,
     )
     .await?;
+
+    migration::execute_changes(project, &plan.changes.initial_data_loads, clickhouse_client)
+        .await?;
 
     Ok((syncing_processes_registry, process_registries))
 }

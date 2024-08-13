@@ -206,18 +206,18 @@ jobs:
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
-        working-directory: ./apps/framework-cli
         with:
           target: ${{ matrix.build.TARGET }}
           args: --release --out dist
           sccache: "true"
           manylinux: auto
+          working-directory: ./apps/framework-cli
+
       - name: Upload wheels
-        working-directory: ./apps/framework-cli
         uses: actions/upload-artifact@v4
         with:
           name: wheels-linux-${{ matrix.build.TARGET }}
-          path: dist
+          path: ./apps/framework-cli/dist
 
       - name: Install node
         uses: actions/setup-node@v4
@@ -244,7 +244,6 @@ jobs:
             ./target/${{ matrix.build.TARGET }}/release/moose-cli-${{ matrix.build.TARGET }}
   sdist:
     runs-on: ubuntu-latest
-    working-directory: ./apps/framework-cli
     steps:
       - uses: actions/checkout@v4
       - name: Build sdist
@@ -252,11 +251,14 @@ jobs:
         with:
           command: sdist
           args: --out dist
+          working-directory: ./apps/framework-cli
+
       - name: Upload sdist
         uses: actions/upload-artifact@v4
         with:
           name: wheels-sdist
-          path: dist
+          path: ./apps/framework-cli/dist
+
   release-python:
     name: Release
     runs-on: ubuntu-latest

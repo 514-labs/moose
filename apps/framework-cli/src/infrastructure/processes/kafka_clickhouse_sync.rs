@@ -212,12 +212,11 @@ impl SyncingProcessesRegistry {
         metrics: Arc<Metrics>,
     ) {
         info!(
-            "<DCM> Starting syncing process for topic: {} and topic: {}",
+            "<DCM> Starting syncing process from topic: {} to topic: {}",
             source_topic_name, target_topic_name
         );
         let key = target_topic_name.clone();
 
-        // the schema of the currently running process is outdated
         if let Some(process) = self.to_topic_registry.remove(&key) {
             process.abort();
         }

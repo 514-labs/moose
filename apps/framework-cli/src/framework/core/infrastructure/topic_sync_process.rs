@@ -81,7 +81,7 @@ impl TopicToTopicSyncProcess {
     }
 
     pub fn id(&self) -> String {
-        format!("{}_{}", self.source_topic_id, self.target_topic_id)
+        self.target_topic_id.to_string()
     }
 
     pub fn expanded_display(&self) -> String {

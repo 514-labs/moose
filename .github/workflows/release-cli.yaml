@@ -205,6 +205,7 @@ jobs:
           use-cross: ${{ matrix.build.OS == 'ubuntu-20.04' }} # use `cross` for Linux builds
 
       - name: Build wheels
+        working-directory: ./apps/framework-cli
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.build.TARGET }}
@@ -212,6 +213,7 @@ jobs:
           sccache: "true"
           manylinux: auto
       - name: Upload wheels
+        working-directory: ./apps/framework-cli
         uses: actions/upload-artifact@v4
         with:
           name: wheels-linux-${{ matrix.build.TARGET }}
@@ -242,6 +244,7 @@ jobs:
             ./target/${{ matrix.build.TARGET }}/release/moose-cli-${{ matrix.build.TARGET }}
   sdist:
     runs-on: ubuntu-latest
+    working-directory: ./apps/framework-cli
     steps:
       - uses: actions/checkout@v4
       - name: Build sdist
@@ -259,6 +262,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-and-publish-binaries, sdist]
     if: ${{ !inputs.dry-run }}
+    working-directory: ./apps/framework-cli
     steps:
       - uses: actions/download-artifact@v4
       - name: Publish to PyPI

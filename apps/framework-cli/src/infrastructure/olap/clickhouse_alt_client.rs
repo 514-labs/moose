@@ -305,7 +305,7 @@ pub async fn retrieve_current_state(
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
 pub enum StateStorageError {
-    #[error("Failed to serialize the state")]
+    #[error("Failed to (de)serialize the state")]
     SerdeError(#[from] serde_json::Error),
     #[error("Clickhouse error")]
     ClickhouseError(#[from] clickhouse_rs::errors::Error),

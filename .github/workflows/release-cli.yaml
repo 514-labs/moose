@@ -258,6 +258,7 @@ jobs:
     name: Release
     runs-on: ubuntu-latest
     needs: [build-and-publish-binaries, sdist]
+    if: ${{ !inputs.dry-run }}
     steps:
       - uses: actions/download-artifact@v4
       - name: Publish to PyPI

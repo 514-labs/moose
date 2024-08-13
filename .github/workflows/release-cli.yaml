@@ -205,8 +205,8 @@ jobs:
           use-cross: ${{ matrix.build.OS == 'ubuntu-20.04' }} # use `cross` for Linux builds
 
       - name: Build wheels
-        working-directory: ./apps/framework-cli
         uses: PyO3/maturin-action@v1
+        working-directory: ./apps/framework-cli
         with:
           target: ${{ matrix.build.TARGET }}
           args: --release --out dist

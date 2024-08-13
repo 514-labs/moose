@@ -264,7 +264,6 @@ jobs:
     runs-on: ubuntu-latest
     needs: [build-and-publish-binaries, sdist]
     if: ${{ !inputs.dry-run }}
-    working-directory: ./apps/framework-cli
     steps:
       - uses: actions/download-artifact@v4
       - name: Publish to PyPI
@@ -274,6 +273,7 @@ jobs:
         with:
           command: upload
           args: --non-interactive --skip-existing wheels-*/*
+          working-directory: ./apps/framework-cli
 
   publish-npm-base:
     name: Publish the base NPM package

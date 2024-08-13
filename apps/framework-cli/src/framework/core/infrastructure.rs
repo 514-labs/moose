@@ -6,7 +6,7 @@ pub mod function_process;
 pub mod olap_process;
 pub mod table;
 pub mod topic;
-pub mod topic_to_table_sync_process;
+pub mod topic_sync_process;
 pub mod view;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

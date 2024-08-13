@@ -74,6 +74,28 @@ pub async fn execute_changes(
                     metrics.clone(),
                 );
             }
+            ProcessChange::TopicToTopicSyncProcess(Change::Added(sync)) => {
+                log::info!("Starting sync process: {:?}", sync.id());
+                syncing_registry.start_topic_to_topic(
+                    sync.source_topic_id.clone(),
+                    sync.target_topic_id.clone(),
+                    metrics.clone(),
+                );
+            }
+            ProcessChange::TopicToTopicSyncProcess(Change::Removed(sync)) => {
+                log::info!("Stopping sync process: {:?}", sync.id());
+                syncing_registry.stop_topic_to_topic(&sync.target_topic_id)
+            }
+            // TopicToTopicSyncProcess Updated seems impossible
+            ProcessChange::TopicToTopicSyncProcess(Change::Updated { before, after }) => {
+                log::info!("Replacing Sync process: {:?} by {:?}", before, after);
+                syncing_registry.stop_topic_to_topic(&before.target_topic_id);
+                syncing_registry.start_topic_to_topic(
+                    after.source_topic_id.clone(),
+                    after.target_topic_id.clone(),
+                    metrics.clone(),
+                );
+            }
             ProcessChange::FunctionProcess(Change::Added(function_process)) => {
                 log::info!("Starting Function process: {:?}", function_process.id());
                 process_registry.functions.start(function_process)?;

@@ -204,6 +204,37 @@ impl SyncingProcessesRegistry {
             process.abort();
         }
     }
+
+    pub fn start_topic_to_topic(
+        &mut self,
+        source_topic_name: String,
+        target_topic_name: String,
+        metrics: Arc<Metrics>,
+    ) {
+        info!(
+            "<DCM> Starting syncing process for topic: {} and topic: {}",
+            source_topic_name, target_topic_name
+        );
+        let key = target_topic_name.clone();
+
+        // the schema of the currently running process is outdated
+        if let Some(process) = self.to_topic_registry.remove(&key) {
+            process.abort();
+        }
+
+        self.insert_topic_sync(spawn_kafka_to_kafka_process(
+            self.kafka_config.clone(),
+            source_topic_name,
+            target_topic_name,
+            metrics.clone(),
+        ));
+    }
+
+    pub fn stop_topic_to_topic(&mut self, target_topic_name: &str) {
+        if let Some(process) = self.to_table_registry.remove(target_topic_name) {
+            process.abort();
+        }
+    }
 }
 
 type FnSyncProcess =

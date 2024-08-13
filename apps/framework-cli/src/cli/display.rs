@@ -323,6 +323,15 @@ pub fn show_changes(infra_plan: &InfraPlan) {
         .processes_changes
         .iter()
         .for_each(|change| match change {
+            ProcessChange::TopicToTopicSyncProcess(Change::Added(infra)) => {
+                infra_added(&infra.expanded_display());
+            }
+            ProcessChange::TopicToTopicSyncProcess(Change::Removed(infra)) => {
+                infra_removed(&infra.short_display());
+            }
+            ProcessChange::TopicToTopicSyncProcess(Change::Updated { before, after: _ }) => {
+                infra_updated(&before.expanded_display());
+            }
             ProcessChange::TopicToTableSyncProcess(Change::Added(infra)) => {
                 infra_added(&infra.expanded_display());
             }

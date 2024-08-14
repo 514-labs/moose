@@ -208,9 +208,8 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.build.TARGET }}
-          args: --release --out dist
+          args: --release --features rdkafka/cmake-build --locked --out dist
           sccache: "true"
-          manylinux: auto
           working-directory: ./apps/framework-cli
 
       - name: Upload wheels

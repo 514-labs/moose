@@ -370,7 +370,7 @@ pub async fn start_development_mode(
 
         process_streaming_func_changes(
             &project,
-            &framework_object_versions.get_data_model_set(),
+            &framework_object_versions.to_data_model_set(),
             &mut function_process_registry,
             &topics,
         )
@@ -542,7 +542,7 @@ pub async fn start_production_mode(
         // will need to get refactored out.
         process_streaming_func_changes(
             &project,
-            &framework_object_versions.get_data_model_set(),
+            &framework_object_versions.to_data_model_set(),
             &mut function_process_registry,
             &topics,
         )

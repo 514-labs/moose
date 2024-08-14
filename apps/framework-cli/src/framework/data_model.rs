@@ -2,14 +2,14 @@ pub mod config;
 pub mod model;
 pub mod parser;
 
+use crate::framework::data_model::model::DataModel;
+use crate::utilities::system::file_name_contains;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::{
     fmt,
     path::{Path, PathBuf},
 };
-
-use crate::utilities::system::file_name_contains;
 
 use super::core::code_loader::FrameworkObject;
 
@@ -33,6 +33,25 @@ impl DuplicateModelError {
                 model_name: other_fo.data_model.name,
                 file_path: current_path.to_path_buf(),
                 other_file_path: other_fo.original_file_path,
+            }),
+        }
+    }
+
+    pub fn try_insert_core_v2(
+        versions: &mut HashMap<String, DataModel>,
+        dm: DataModel,
+    ) -> Result<(), Self> {
+        let maybe_existing = versions.insert(dm.version.clone(), dm);
+        match maybe_existing {
+            None => Ok(()),
+            Some(other_dm) => Err(DuplicateModelError {
+                model_name: other_dm.name,
+                file_path: versions
+                    .get(&other_dm.version)
+                    .unwrap()
+                    .abs_file_path
+                    .clone(),
+                other_file_path: other_dm.abs_file_path,
             }),
         }
     }

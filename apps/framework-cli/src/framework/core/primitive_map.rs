@@ -6,6 +6,7 @@ use std::{
 use walkdir::WalkDir;
 
 use super::code_loader::MappingError;
+use crate::framework::data_model::DuplicateModelError;
 use crate::{
     framework::{
         aggregations::model::Aggregation,
@@ -42,6 +43,7 @@ pub enum DataModelError {
     Configuration(#[from] ModelConfigurationError),
     Parsing(#[from] DataModelParsingError),
     Mapping(#[from] MappingError),
+    Duplicate(#[from] DuplicateModelError),
 
     #[error("{message}")]
     Other {
@@ -108,7 +110,9 @@ impl PrimitiveMap {
 
             if entry.file_type().is_file() {
                 for model in PrimitiveMap::load_data_model(project, version, entry.path()).await? {
-                    primitive_map.datamodels.add(model)
+                    primitive_map.datamodels.add(model).map_err(|duplicate| {
+                        PrimitiveMapLoadingError::DataModel(duplicate.into())
+                    })?
                 }
             }
         }

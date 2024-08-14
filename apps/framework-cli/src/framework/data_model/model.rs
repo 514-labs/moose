@@ -7,6 +7,7 @@ use std::path::PathBuf;
 
 use crate::framework::core::infrastructure::table::{Column, Table};
 use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
+use crate::framework::data_model::DuplicateModelError;
 use crate::framework::versions::{find_previous_version, parse_version};
 
 use super::config::DataModelConfig;
@@ -72,18 +73,11 @@ impl DataModelSet {
         }
     }
 
-    pub fn add(&mut self, model: DataModel) {
-        match self.models.get_mut(&model.name) {
-            Some(versions) => {
-                versions.insert(model.version.clone(), model);
-            }
-            None => {
-                let mut versions = HashMap::new();
-                let model_name = model.name.clone();
-                versions.insert(model.version.clone(), model);
-                self.models.insert(model_name, versions);
-            }
-        }
+    pub fn add(&mut self, model: DataModel) -> Result<(), DuplicateModelError> {
+        let versions: &mut HashMap<String, DataModel> =
+            self.models.entry(model.name.clone()).or_default();
+
+        DuplicateModelError::try_insert_core_v2(versions, model)
     }
 
     pub fn get(&self, name: &str, version: &str) -> Option<&DataModel> {

@@ -724,7 +724,10 @@ mod tests {
             abs_file_path: PathBuf::new(),
         };
         // Making some changes to the map
-        new_target_primitive_map.datamodels.add(new_data_model);
+        new_target_primitive_map
+            .datamodels
+            .add(new_data_model)
+            .unwrap();
 
         new_target_primitive_map
             .datamodels

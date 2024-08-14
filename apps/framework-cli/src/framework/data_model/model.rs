@@ -74,10 +74,8 @@ impl DataModelSet {
     }
 
     pub fn add(&mut self, model: DataModel) -> Result<(), DuplicateModelError> {
-        let versions: &mut HashMap<String, DataModel> = self
-            .models
-            .entry(model.name.clone())
-            .or_insert(HashMap::new());
+        let versions: &mut HashMap<String, DataModel> =
+            self.models.entry(model.name.clone()).or_default();
 
         DuplicateModelError::try_insert_core_v2(versions, model)
     }

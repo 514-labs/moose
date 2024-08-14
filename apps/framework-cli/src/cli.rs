@@ -888,6 +888,9 @@ pub async fn cli_run() {
         }
         Err(e) => {
             show_message!(e.message_type, e.message);
+            if let Some(err) = e.error {
+                eprintln!("{:?}", err)
+            }
             exit(1);
         }
     };

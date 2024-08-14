@@ -6,12 +6,27 @@
     }
   },
   "getting-started": "Getting Started",
+  "tutorials": "Learn Moose",
+  "quick-reference": "Quick Reference",
+  "---": {
+    "type": "separator"
+  },
   "building": "Developing your App",
   "deploying": "Deploying your App",
+  "--": {
+    "type": "separator"
+  },
   "moose-cli": "Moose CLI",
-  "metrics-console": "Metrics Console",
-  "quick-reference": "Quick Reference",
-  "examples": "Example Apps",
   "faqs": "FAQs",
-  "usage-data": "Privacy"
+  "usage-data": "Privacy",
+  "templates": {
+    "title": "Templates",
+    "type": "menu",
+    "items": {
+      "product-analytics": {
+        "title": "Product Analytics",
+        "href": "/template/product-analytics"
+      }
+    }
+  }
 }

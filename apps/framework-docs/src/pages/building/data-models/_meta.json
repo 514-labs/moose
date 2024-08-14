@@ -1,5 +1,6 @@
 {
-  "initialization": "Creating Data Models",
+  "init-model": "Creating Data Models",
   "model-data": "Define Data Model Schema",
-  "configuring": "Configuring Infrastructure"
+  "configure-model": "Configuring Infrastructure",
+  "dcm": "Changing Data Models"
 }

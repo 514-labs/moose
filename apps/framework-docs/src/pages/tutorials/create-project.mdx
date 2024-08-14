@@ -1,0 +1,96 @@
+### Prerequisites
+
+Check that [Node.js](https://nodejs.org/en/download/) and [Docker](https://www.docker.com/products/docker-desktop) are installed:
+
+```bash
+docker --version && node --version
+```
+
+## A. Set Up Moose
+
+<aside>
+⚠️ **Make sure Docker is running:**
+
+- Open Docker Desktop if it is not already running.
+- Validate it is running:
+
+```bash
+docker info
+```
+
+You’ll see a bunch of info from docker, and it should run without an error.
+
+</aside>
+
+1. Install the `moose` CLI:
+
+```bash
+npm install -g @514labs/moose-cli@0.3.530
+```
+
+1. Validate the CLI is installed:
+
+```bash
+moose --version
+```
+
+### Create a Moose Application
+
+1. Create a new Moose app called `moose-github-analytics`:
+
+   ```bash
+   moose init moose-github-analytics --empty
+   ```
+
+   This is a helper function to create a new Moose app with the proper conventions for the basic directory structure. This includes an `/app` folder which contains the heart of your new Moose app, with each sub-folder containing one type of Moose primitive. The `--empty` flag signals not to include any example primitives in the project — so you’ll really start from scratch on this tutorial.
+
+   ```
+   .
+   └── moose-github-analytics/
+       └── app/
+           ├── aggreations
+           ├── apis
+           ├── datamodels
+           └── functions
+   ```
+
+2. `cd` into your Moose project and install dependencies. The command below will do both.
+
+   ```bash
+   cd moose-github-analytics && npm install
+   ```
+
+3. Run the Moose development server from **your project directory**:
+
+   ```bash
+   moose dev
+   ```
+
+   <aside>
+ℹ️ This sets up a Moose instance at `http://localhost:4000`, which provides the following infrastructure:
+
+   - an OLAP database (Clickhouse) to store and analyze your data
+   - a streaming data platform (Redpanda) to buffer and transform incoming data
+   - an ingestion and consumption API endpoint to `POST` data in and `GET` data out from your OLAP database.
+
+   As you write code for your Moose project, this dev server will automatically hot-swap in the latest code, so you can see your entire Moose application running locally as you develop.
+
+   </aside>
+
+   You should expect to see the following in your terminal. This is now your active Moose Server.
+
+   ![Screenshot 2024-07-29 at 1.45.51 PM.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/9855125a-bee2-4d60-b146-68c8dca168fe/687aa3b3-490a-490a-8108-6a151f71c0ae/Screenshot_2024-07-29_at_1.45.51_PM.png)
+
+   - _(Optional)_ View these services in Docker Desktop:
+     ![Screenshot 2024-07-24 at 10.03.59 PM.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/9855125a-bee2-4d60-b146-68c8dca168fe/7de169e8-0fb6-4f45-bd0b-83bbb2d75124/Screenshot_2024-07-24_at_10.03.59_PM.png)
+
+### Open Project in your IDE
+
+For example, for VSCode users:
+
+```bash
+code .
+```
+
+- **VSCode Users**: Install the recommended extensions in the pop-up window. **Click ‘Install’** on this popup in the bottom right.
+  ![Screenshot 2024-07-30 at 8.51.55 AM.png](https://prod-files-secure.s3.us-west-2.amazonaws.com/9855125a-bee2-4d60-b146-68c8dca168fe/15391d2d-e3ab-431c-90d6-3fb640d357dd/9b054366-942f-45f9-ac22-283c494b845a.png)

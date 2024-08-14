@@ -1,0 +1,26 @@
+import { Callout, Steps } from "nextra/components";
+
+# Initialize a Block
+
+## Using the CLI
+
+To create a new Block, use the `moose block init` command. This will generate a `.ts` or `.py` file in the `/blocks` directory, and export an empty `Blocks` object for you to fill in.
+
+For detailed information about the `moose block init` command, you can run the following in your terminal:
+
+```bash filename="Terminal" copy
+npx moose-cli block init --help
+
+```
+
+## Manual setup
+
+You can also manually create a Block by creating a `.ts` or `.py` file in the `/blocks` directory. Inside this file, you'll need to manually import the `Blocks` type from `@514labs/moose-lib` and export an empty `Blocks` object for you to fill in:
+
+```ts
+import { Blocks } from "@514labs/moose-lib";
+
+export default {
+  // DEFINE YOUR BLOCK HERE
+} as Blocks;
+```

@@ -27,7 +27,7 @@ export default {
     "https://github.com/514-labs/moose/tree/main/apps/framework-docs",
   useNextSeoProps() {
     return {
-      titleTemplate: "%s – MooseJS",
+      titleTemplate: "%s – Moose",
     };
   },
   head: () => (
@@ -69,7 +69,7 @@ export default {
   primaryHue: 220,
   primarySaturation: 0,
   sidebar: {
-    defaultMenuCollapseLevel: 2,
+    defaultMenuCollapseLevel: 1,
     titleComponent({ title }) {
       return (
         <SmallText className="my-0 text-muted-foreground">{title}</SmallText>

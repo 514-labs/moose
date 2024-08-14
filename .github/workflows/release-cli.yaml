@@ -260,8 +260,6 @@ jobs:
           working-directory: ./apps/framework-cli
         env:
           MATURIN_PYPI_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
-          command: upload
-          args: --non-interactive --skip-existing wheels-*/*
 
   publish-npm-base:
     name: Publish the base NPM package

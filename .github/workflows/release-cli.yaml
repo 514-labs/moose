@@ -210,7 +210,6 @@ jobs:
           target: ${{ matrix.build.TARGET }}
           args: --release --out dist
           sccache: "true"
-          manylinux: auto
           working-directory: ./apps/framework-cli
 
       - name: Upload wheels

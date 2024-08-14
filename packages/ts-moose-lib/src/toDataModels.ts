@@ -21,25 +21,28 @@ const convertSourceFile = (
     enums: [] as DataEnum[],
   };
 
-  checker
-    .getExportsOfModule(checker.getSymbolAtLocation(sourceFile)!)
-    .forEach((exported) => {
-      const declaration = exported.declarations![0];
-      if (isInterfaceDeclaration(declaration)) {
-        const name = declaration.name.text;
-        const t = checker.getTypeAtLocation(declaration);
+  let fileSymbol = checker.getSymbolAtLocation(sourceFile);
+  let exports =
+    fileSymbol === undefined
+      ? [] // empty file
+      : checker.getExportsOfModule(fileSymbol);
+  exports.forEach((exported) => {
+    const declaration = exported.declarations![0];
+    if (isInterfaceDeclaration(declaration)) {
+      const name = declaration.name.text;
+      const t = checker.getTypeAtLocation(declaration);
 
-        const columns: Column[] = toColumns(t, checker);
-        output.models.push({
-          name,
-          columns,
-        });
-      }
-      if (isEnumDeclaration(declaration)) {
-        const t = checker.getTypeAtLocation(declaration);
-        output.enums.push(enumConvert(t));
-      }
-    });
+      const columns: Column[] = toColumns(t, checker);
+      output.models.push({
+        name,
+        columns,
+      });
+    }
+    if (isEnumDeclaration(declaration)) {
+      const t = checker.getTypeAtLocation(declaration);
+      output.enums.push(enumConvert(t));
+    }
+  });
   return output;
 };
 

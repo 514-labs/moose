@@ -21,7 +21,7 @@ use crate::framework::core::code_loader::{
     get_framework_objects_from_schema_file, FrameworkObjectVersions,
 };
 use crate::framework::core::infrastructure::olap_process::OlapProcess;
-use crate::framework::core::infrastructure_map::ApiChange;
+use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
 use crate::framework::data_model::model::DataModelSet;
 use crate::framework::data_model::{is_schema_file, DuplicateModelError};
 use crate::framework::streaming::loader::get_all_current_streaming_functions;
@@ -304,6 +304,7 @@ async fn watch(
     framework_object_versions: &mut Option<FrameworkObjectVersions>,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     route_update_channel: tokio::sync::mpsc::Sender<ApiChange>,
+    infrastructure_map: &'static RwLock<InfrastructureMap>,
     consumption_apis: &RwLock<HashSet<String>>,
     syncing_process_registry: &mut SyncingProcessesRegistry,
     project_registries: &mut ProcessRegistries,
@@ -347,7 +348,7 @@ async fn watch(
 
                             match plan_result {
                                 Ok(plan_result) => {
-                                    log::info!("Plan Changes: {:?}", plan_result.changes);
+                                    info!("Plan Changes: {:?}", plan_result.changes);
 
                                     display::show_changes(&plan_result);
                                     framework::core::execute::execute_online_change(
@@ -366,6 +367,8 @@ async fn watch(
                                         &plan_result.target_infra_map,
                                     )
                                     .await?;
+                                    let mut infra_ptr = infrastructure_map.write().await;
+                                    *infra_ptr = plan_result.target_infra_map
                                 }
                                 Err(e) => {
                                     show_message!(MessageType::Error, {
@@ -566,6 +569,7 @@ impl FileWatcher {
         framework_object_versions: Option<FrameworkObjectVersions>,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
         route_update_channel: tokio::sync::mpsc::Sender<ApiChange>,
+        infrastructure_map: &'static RwLock<InfrastructureMap>,
         consumption_apis: &'static RwLock<HashSet<String>>,
         syncing_process_registry: SyncingProcessesRegistry,
         project_registries: ProcessRegistries,
@@ -590,6 +594,7 @@ impl FileWatcher {
                 &mut framework_object_versions,
                 route_table,
                 route_update_channel,
+                infrastructure_map,
                 consumption_apis,
                 &mut syncing_process_registry,
                 &mut project_registry,

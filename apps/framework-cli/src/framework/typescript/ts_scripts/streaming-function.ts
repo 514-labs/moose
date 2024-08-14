@@ -22,7 +22,7 @@ type CliLogData = {
 };
 export const metricsLog: (log: CliLogData) => void = (log) => {
   const req = http.request({
-    port: 4000,
+    port: 5000,
     method: "POST",
     path: "/metrics-logs",
   }); // no callback, fire and forget

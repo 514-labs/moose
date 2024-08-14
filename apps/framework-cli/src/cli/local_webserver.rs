@@ -46,10 +46,12 @@ use std::collections::{HashMap, HashSet};
 use std::env;
 use std::env::VarError;
 use std::future::Future;
+use std::io::ErrorKind;
 use std::net::SocketAddr;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::process::exit;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
@@ -895,10 +897,14 @@ impl Webserver {
         //! Starts the local webserver
         let socket = self.socket().await;
         // We create a TcpListener and bind it to {project.http_server_config.host} on port {project.http_server_config.port}
-        let listener = TcpListener::bind(socket).await.unwrap();
+        let listener = TcpListener::bind(socket)
+            .await
+            .unwrap_or_else(|e| handle_listener_err(socket.port(), e));
 
         let management_socket = self.management_socket().await;
-        let management_listener = TcpListener::bind(management_socket).await.unwrap();
+        let management_listener = TcpListener::bind(management_socket)
+            .await
+            .unwrap_or_else(|e| handle_listener_err(management_socket.port(), e));
 
         let producer = redpanda::create_producer(project.redpanda_config.clone());
 
@@ -1008,5 +1014,15 @@ impl InfraMapProvider for &RwLock<InfrastructureMap> {
 impl InfraMapProvider for &InfrastructureMap {
     async fn serialize(&self) -> serde_json::error::Result<String> {
         serde_json::to_string(self)
+    }
+}
+
+fn handle_listener_err(port: u16, e: std::io::Error) -> ! {
+    match e.kind() {
+        ErrorKind::AddrInUse => {
+            eprintln!("Port {} already in use.", port);
+            exit(1)
+        }
+        _ => panic!("Failed to listen to port {}: {:?}", port, e),
     }
 }

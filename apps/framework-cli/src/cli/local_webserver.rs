@@ -740,7 +740,6 @@ async fn router(
             }
         }
         (&hyper::Method::GET, ["health"]) => health_route(),
-        (&hyper::Method::GET, ["metrics"]) => metrics_route(metrics.clone()).await,
 
         (&hyper::Method::OPTIONS, _) => options_route(),
         _ => route_not_found_response(),
@@ -776,13 +775,12 @@ async fn management_router<I: InfraMapProvider>(
 
     let route = get_path_without_prefix(PathBuf::from(req.uri().path()), path_prefix);
 
-    let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
-    let res = match (req.method(), &route_split[..]) {
-        (&hyper::Method::POST, ["logs"]) if !is_prod => Ok(log_route(req).await),
-        (&hyper::Method::POST, ["metrics-logs"]) => {
-            Ok(metrics_log_route(req, metrics.clone()).await)
-        }
-        (&hyper::Method::GET, ["infra-map"]) => {
+    let route = route.to_str().unwrap();
+    let res = match (req.method(), route) {
+        (&hyper::Method::POST, "logs") if !is_prod => Ok(log_route(req).await),
+        (&hyper::Method::POST, "metrics-logs") => Ok(metrics_log_route(req, metrics.clone()).await),
+        (&hyper::Method::GET, "metrics") => metrics_route(metrics.clone()).await,
+        (&hyper::Method::GET, "infra-map") => {
             let res = infra_map.serialize().await.unwrap();
 
             hyper::Response::builder()

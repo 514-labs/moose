@@ -49,6 +49,7 @@ jobs:
 
   build-and-publish-py-moose-lib:
     runs-on: ubuntu-latest
+    if: ${{ !inputs.dry-run }}
     needs:
       - version
     steps:
@@ -73,6 +74,7 @@ jobs:
   package-and-publish-independant-ts-package:
     name: Package and Publish Independant TS Package
     runs-on: ubuntu-20.04
+    if: ${{ !inputs.dry-run }}
     needs:
       - version
     permissions:
@@ -196,19 +198,11 @@ jobs:
           cargo set-version ${{ needs.version.outputs.version }}
         working-directory: ./apps/framework-cli
 
-      - name: Build
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          # --features rdkafka/cmake-build is necessary for cross compilation builds
-          args: --manifest-path ./apps/framework-cli/Cargo.toml --features rdkafka/cmake-build --release --locked --target ${{ matrix.build.TARGET }}
-          use-cross: ${{ matrix.build.OS == 'ubuntu-20.04' }} # use `cross` for Linux builds
-
       - name: Build wheels
         uses: PyO3/maturin-action@v1
         with:
           target: ${{ matrix.build.TARGET }}
-          args: --release --features rdkafka/cmake-build --locked --out dist
+          args: --release --features rdkafka/cmake-build --locked --target ${{ matrix.build.TARGET }} --out dist
           sccache: "true"
           working-directory: ./apps/framework-cli
 

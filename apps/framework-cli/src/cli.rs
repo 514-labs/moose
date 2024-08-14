@@ -24,13 +24,15 @@ use routines::auth::generate_hash_token;
 use routines::datamodel::read_json_file;
 use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
-use routines::plan;
 use routines::ps::show_processes;
+use routines::{initialize_project_state, plan};
 use settings::{read_settings, Settings};
 use std::cmp::Ordering;
-use std::path::Path;
+use std::collections::HashMap;
+use std::path::{Path, PathBuf};
 use std::process::exit;
 use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use crate::cli::routines::block::create_block_file;
 use crate::cli::routines::consumption::create_consumption_file;
@@ -50,6 +52,7 @@ use crate::cli::{
     settings::{init_config_file, setup_user_directory},
 };
 use crate::framework::bulk_import::import_csv_file;
+use crate::framework::controller::RouteMeta;
 use crate::framework::core::code_loader::load_framework_objects;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::sdk::ingest::generate_sdk;
@@ -250,12 +253,23 @@ async fn top_command_handler(
         } => {
             let run_mode = RunMode::Explicit {};
             info!("Running build command");
-            let project: Project = load_project()?;
-            let project_arc = Arc::new(project);
+            let project_arc = Arc::new(load_project()?);
 
             check_project_name(&project_arc.name())?;
 
             let mut controller = RoutineController::new();
+
+            let route_table = HashMap::<PathBuf, RouteMeta>::new();
+            let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
+                Box::leak(Box::new(RwLock::new(route_table)));
+            initialize_project_state(project_arc.clone(), &mut *route_table.write().await)
+                .await
+                .map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Build".to_string(),
+                        details: format!("Failed to initialize project state: {}", e),
+                    })
+                })?;
 
             // Remove versions directory so only the relevant versions will be populated
             project_arc.delete_old_versions().map_err(|e| {

@@ -1,0 +1,154 @@
+import { Tabs, Callout } from "nextra/components";
+
+# Data Models
+
+       Data models define how incoming data should be structured, organized, and stored in your application. When you create or update a Data Model in your `/datamodels` folder, Moose integrates the schema into your project by generating an `/ingest` API endpoint, a streaming topic, and a database table. When you post data to the API, the framework handles ingesting, routing, buffering, and storing the data in your OLAP database.
+
+        ## Creating a Model
+
+        To create a data model you need to open the `models.ts` file in your project's `datamodels` directory
+        and add a new Data Model definition.
+
+        ```ts filename="datamodels/models.ts" copy
+        import { Key } from "@514labs/moose-lib";
+
+        export interface UserActivity {
+          eventId: Key<string>;
+          timestamp: string;
+          userId: string;
+          activity: string;
+        }
+        ```
+
+        ## Supported Types
+
+        Here is the status of MooseJS support for various data types in Data Models:
+        | Clickhouse | Typescript | Moose |
+        |:---------- |:---------- |:------- |
+        | String | String | ✅ |
+        | Boolean | Boolean | ✅ |
+        | Int64 | Number | ✅ |
+        | Int256 | BigInt | ❌ |
+        | Float64 | Number | ✅ |
+        | Decimal | Number | ✅ |
+        | DateTime | Date | ✅ |
+        | Json | Object | ❌ |
+        | Bytes | bytes | ❌ |
+        | Enum | Enum | ✅ |
+        | Array | Array | ✅ |
+        | nullable | nullable | ✅ |
+
+        <Callout type="info" emoji="ℹ️">
+        Disclaimer: All Typescript number types are mapped to Float64
+        </Callout>
+
+        ## Configuring Data Models
+
+        To set the configuration for a data model, just export a configuration object from the model file
+        with the data model name as a prefix and `config` as the suffix, like so:
+
+        ```ts filename="UserActivity.ts" copy
+        import { Key, DataModelConfig, IngestionFormat } from "@514labs/moose-lib";
+
+        // <modelName>Config
+        export const UserActivityConfig: DataModelConfig<UserActivity> = {
+          ingestion: {
+            format: "json",
+          },
+          storage: {
+            enabled: true,
+            order_by_fields: ["timestamp"],
+          },
+        };
+
+        export interface UserActivity {
+          eventId: Key<string>;
+          timestamp: string;
+          userId: string;
+          activity: string;
+        }
+        ```
+
+        ## Test Your Model
+
+        When you create a model, Moose automatically creates an ingestion point to facilitate immediate data
+        testing. Send a sample payload to this endpoint using:
+
+        <Tabs items={["Single Data Sample", "Batch Sample"]}>
+            <Tabs.Tab>
+            ```bash
+            curl -X POST \
+              -H "Content-Type: application/json" \
+              -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity":"click"}' \
+              http://localhost:4000/ingest/UserActivity
+            ```
+            </Tabs.Tab>
+            <Tabs.Tab>
+            ```bash
+            for i in {1..10}
+            do
+              curl -X POST \
+                -H "Content-Type: application/json" \
+                -d '{"eventId": "$i", "timestamp": "2024-01-01 00:00:00", "userId": "1234", "activity":"click"}' \
+                http://localhost:4000/ingest/UserActivity
+            done
+            ```
+            </Tabs.Tab>
+        </Tabs>
+
+        ## Ingesting via API Endpoints
+
+        Moose will automatically generate ingestion points for you to send data to.The default port is `4000`.
+        The standard endpoint for each data model is:
+
+        `http://localhost:4000/ingest/<DataModelName>`
+
+        Following is some example code for testing the API endpoints for a Data Model called `UserActivity`. In
+        the Moose developer console, when you view your Data Model, go to the `Setup` tab, and you'll find sample
+        code for utilizing the API Endpoints for your specific models.
+
+        <Tabs items={['curl', 'javascript', 'python']}>
+        <Tabs.Tab>
+            ``` bash
+        curl -X POST \
+            -H "Content-Type: application/json" \
+            -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \
+            http://localhost:4000/ingest/UserActivity
+        ```
+        </Tabs.Tab>
+        <Tabs.Tab>
+        ```javascript
+        fetch('http://localhost:4000/ingest/UserActivity', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            eventId: '1234567890',
+            timestamp: '2019-01-01 00:00:01',
+            userId: '123456',
+            activity: 'click'
+          })
+        })
+        ```
+        </Tabs.Tab>
+        <Tabs.Tab>
+        ```python
+            import requests
+
+            requests.post('http://localhost:4000/ingest/UserActivity', json={
+              'eventId': '1234567890',
+              'timestamp': '2019-01-01 00:00:01',
+              'userId': '123456',
+              'activity': 'click'
+            })
+            ```
+
+        </Tabs.Tab>
+
+        You can also ingest data using the Moose SDK. To learn more about the different ways to ingest data refer to the [Ingesting Data](/building/data-models/capture-data) page.
+        </Tabs>
+
+        ---
+
+        For more information refer to the [Data Models Usage](/building/data-models/model-data) page.

@@ -8,6 +8,7 @@ const config = {
     "./app/**/*.{ts,tsx, md, mdx}",
     "./src/**/*.{ts,tsx, md, mdx}",
     "./mdx-components.tsx",
+    "./theme.config.jsx",
     "../../packages/design-system-base/**/*.{ts,tsx, md, mdx}",
     "../../packages/design-system-components/**/*.{ts,tsx, md, mdx}",
     "../../packages/event-capture/**/*.{ts,tsx, md, mdx}",

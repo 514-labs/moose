@@ -2,6 +2,7 @@ use super::core::code_loader::FrameworkObject;
 use super::data_model::config::EndpointIngestionFormat;
 use crate::framework::core::infrastructure::table::Table;
 use crate::framework::core::plan::PlanningError;
+use crate::framework::data_model::model::DataModel;
 use crate::infrastructure::migration::InitialDataLoadError;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
@@ -30,6 +31,7 @@ use std::sync::Arc;
 #[derive(Debug, Clone)]
 pub struct RouteMeta {
     pub topic_name: String,
+    pub data_model: DataModel,
     pub format: EndpointIngestionFormat,
 }
 
@@ -476,6 +478,7 @@ pub async fn set_up_topic_and_tables_and_route(
         ingest_route.clone(),
         RouteMeta {
             topic_name,
+            data_model: fo.data_model.clone(),
             format: fo.data_model.config.ingestion.format.clone(),
         },
     );

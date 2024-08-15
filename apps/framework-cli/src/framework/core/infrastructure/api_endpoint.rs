@@ -11,7 +11,10 @@ use super::{topic::Topic, DataLineage, InfrastructureSignature};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum APIType {
-    INGRESS { target_topic: String },
+    INGRESS {
+        target_topic: String,
+        data_model: Option<DataModel>,
+    },
     EGRESS,
 }
 
@@ -41,9 +44,10 @@ impl ApiEndpoint {
             name: data_model.name.clone(),
             api_type: APIType::INGRESS {
                 target_topic: topic.id(),
+                data_model: Some(data_model.clone()),
             },
-            // This implementation is actually removing the functionaliy of nestedness of paths in
-            // data model to change the ingest path. Howevever, we are changin how this works with an
+            // This implementation is actually removing the functionality of nestedness of paths in
+            // data model to change the ingest path. However, we are changing how this works with an
             // explicit in ingest path and we have not seen people use that functionality yet.
             path: PathBuf::from("ingest")
                 .join(data_model.name.clone())
@@ -95,7 +99,7 @@ impl DataLineage for ApiEndpoint {
 
     fn pushes_data_to(&self) -> Vec<InfrastructureSignature> {
         match &self.api_type {
-            APIType::INGRESS { target_topic } => {
+            APIType::INGRESS { target_topic, .. } => {
                 vec![InfrastructureSignature::Topic {
                     id: target_topic.clone(),
                 }]

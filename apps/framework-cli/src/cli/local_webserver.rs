@@ -37,10 +37,12 @@ use rdkafka::message::OwnedMessage;
 use rdkafka::producer::future_producer::OwnedDeliveryResult;
 use rdkafka::producer::{DeliveryFuture, FutureRecord};
 use rdkafka::util::Timeout;
-use serde::Deserialize;
 use serde::Serialize;
-use serde_json::Value;
+use serde::{Deserialize, Deserializer};
+use serde_json::{Deserializer as JsonDeserializer, Value};
 
+use crate::framework::data_model::model::DataModel;
+use crate::utilities::validate_passthrough::DataModelVisitor;
 use lazy_static::lazy_static;
 use std::collections::{HashMap, HashSet};
 use std::env;
@@ -411,12 +413,10 @@ fn route_not_found_response() -> hyper::http::Result<Response<Full<Bytes>>> {
 async fn send_payload_to_topic(
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
-    payload: Value,
+    payload: Vec<u8>,
     metrics: Arc<Metrics>,
     route: PathBuf,
 ) -> Result<(i32, i64), (KafkaError, OwnedMessage)> {
-    let payload = serde_json::to_vec(&payload).unwrap();
-
     debug!("Sending payload {:?} to topic: {}", payload, topic_name);
 
     metrics
@@ -446,6 +446,7 @@ async fn to_reader(req: Request<Incoming>) -> bytes::buf::Reader<impl Buf + Size
 async fn handle_json_req(
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
+    data_model: &DataModel,
     req: Request<Incoming>,
     metrics: Arc<Metrics>,
     route: PathBuf,
@@ -455,7 +456,11 @@ async fn handle_json_req(
     let url = req.uri().to_string();
     let number_of_bytes = req.body().size_hint().exact().unwrap();
     let body = to_reader(req).await;
-    let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body);
+
+    let parsed =
+        JsonDeserializer::from_reader(body).deserialize_any(&mut DataModelVisitor::new(data_model));
+
+    // let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body);
 
     metrics
         .send_metric(MetricsMessage::PutIngestedBytesCount {
@@ -643,6 +648,7 @@ async fn ingest_route(
             EndpointIngestionFormat::Json => Ok(handle_json_req(
                 &configured_producer,
                 &route_meta.topic_name,
+                &route_meta.data_model,
                 req,
                 metrics,
                 route,
@@ -848,11 +854,15 @@ impl Webserver {
                     ApiChange::ApiEndpoint(Change::Added(api_endpoint)) => {
                         log::info!("Adding route: {:?}", api_endpoint.path);
                         match api_endpoint.api_type {
-                            APIType::INGRESS { target_topic } => {
+                            APIType::INGRESS {
+                                target_topic,
+                                data_model,
+                            } => {
                                 route_table.insert(
                                     api_endpoint.path.clone(),
                                     RouteMeta {
                                         format: api_endpoint.format.clone(),
+                                        data_model: data_model.unwrap(),
                                         topic_name: target_topic,
                                     },
                                 );
@@ -868,7 +878,10 @@ impl Webserver {
                     }
                     ApiChange::ApiEndpoint(Change::Updated { before, after }) => {
                         match &after.api_type {
-                            APIType::INGRESS { target_topic } => {
+                            APIType::INGRESS {
+                                target_topic,
+                                data_model,
+                            } => {
                                 log::info!("Replacing route: {:?} with {:?}", before, after);
 
                                 route_table.remove(&before.path);
@@ -876,6 +889,7 @@ impl Webserver {
                                     after.path.clone(),
                                     RouteMeta {
                                         format: after.format.clone(),
+                                        data_model: data_model.as_ref().unwrap().clone(),
                                         topic_name: target_topic.clone(),
                                     },
                                 );

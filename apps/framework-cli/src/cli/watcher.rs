@@ -214,6 +214,7 @@ async fn process_data_models_changes(
             ingest_route,
             RouteMeta {
                 topic_name: fo.topic.clone(),
+                data_model: fo.data_model.clone(),
                 format: fo.data_model.config.ingestion.format.clone(),
             },
         );

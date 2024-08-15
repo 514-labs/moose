@@ -5,11 +5,11 @@ import {
   HalfWidthContentContainer,
   Grid,
 } from "@514labs/design-system-components/components/containers";
-import {
-  Heading,
-  Display,
-  HeadingLevel,
-} from "@514labs/design-system-components/typography";
+// import {
+//   Heading,
+//   Display,
+//   HeadingLevel,
+// } from "@514labs/design-system-components/typography";
 import { TrackCtaButton } from "../../trackable-components";
 import React, { Fragment } from "react";
 import Link from "next/link";

@@ -23,7 +23,7 @@ import { TrackCtaButton } from "../../trackable-components";
 import { Suspense } from "react";
 import { TemplateImg } from "../../sections/home/TemplateImg";
 import React from "react";
-import { LooseMooseSection } from "../../sections/home/LooseMooseSection";
+// import { LooseMooseSection } from "../../sections/home/LooseMooseSection";
 import { TrackingVerb } from "@514labs/event-capture/withTrack";
 
 // The layout for specific tempaltes

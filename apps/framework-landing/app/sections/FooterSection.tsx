@@ -71,7 +71,7 @@ export const FooterDisclaimerContainer = () => {
 
 export const FooterContent = () => {
   return (
-    <FullWidthContentContainer className="px-0 xl:px-6 flex flex-col items-center md:flex-row sm:items-center gap-x-5 mx-auto xl:max-w-screen-xl">
+    <FullWidthContentContainer className="px-0 xl:px-6 flex flex-col items-center md:flex-row sm:items-center gap-x-5 mx-auto max-w-5xl ">
       <FooterDisclaimerContainer />
     </FullWidthContentContainer>
   );

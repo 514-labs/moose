@@ -16,9 +16,14 @@ import { Badge } from "@514labs/design-system-components/components";
 export const WhatIsMooseFor = () => {
   return (
     <>
-      <Section className="mx-auto xl:max-w-screen-xl">
-        <FullWidthContentContainer className="mb-12 2xl:mb-20">
-          <Heading level={HeadingLevel.l2}>When to use Moose</Heading>
+      <Section className="max-w-5xl mx-auto">
+        <FullWidthContentContainer>
+          <Heading
+            level={HeadingLevel.l1}
+            className="max-w-5xl justify-center align-center text-center mb-24 sm:text-5xl"
+          >
+            When to use Moose{" "}
+          </Heading>
         </FullWidthContentContainer>
         <Grid className="justify-center">
           <HalfWidthContentContainer className="flex flex-col xl:justify-start xl:order-4 border rounded-3xl p-8 gap-5">

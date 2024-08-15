@@ -618,6 +618,7 @@ async fn ingest_route(
     configured_producer: ConfiguredProducer,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     metrics: Arc<Metrics>,
+    is_prod: bool,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     show_message!(
         MessageType::Info,
@@ -656,11 +657,16 @@ async fn ingest_route(
             )
             .await),
         },
-        None => Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Full::new(Bytes::from(
-                "Please run `moose ls` to view your routes",
-            ))),
+        None => {
+            if !is_prod {
+                println!("Ingestion route {:?} not found.", route);
+            }
+            Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Full::new(Bytes::from(
+                    "Please run `moose ls` to view your routes",
+                )))
+        }
     }
 }
 
@@ -715,6 +721,7 @@ async fn router(
                 configured_producer,
                 route_table,
                 metrics.clone(),
+                is_prod,
             )
             .await
         }
@@ -725,6 +732,7 @@ async fn router(
                 configured_producer,
                 route_table,
                 metrics.clone(),
+                is_prod,
             )
             .await
         }

@@ -1,6 +1,8 @@
 import { Button, CTABar } from "@514labs/design-system-components/components";
 import Link from "next/link";
 import { Cards, Card } from "nextra/components";
+import CTACard from "../components/cta-card";
+import { Zap, GraduationCap } from "lucide-react";
 
 # Introduction
 
@@ -11,14 +13,29 @@ Please reach out over [email](mailto:hello@moosejs.dev),
 [Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg),
 or [signup form](https://fiveonefour.typeform.com/signup). We can't wait to hear from you!
 
-<CTABar>
-  <Link href="/getting-started/new-project">
-    <Button>Quick Start</Button>
-  </Link>
-  <Link href="/learn-moose">
-    <Button variant={"outline"}>Learn Moose</Button>
-  </Link>
-</CTABar>
+---
+
+## Pick Your Learning Path
+
+Choose the method that best suits your learning style for getting started with Moose:
+
+<div className="flex md:flex-row flex-col justify-start items-center">
+  <CTACard
+    title="Quick Start"
+    description="Get up and running with your own Moose project in minutes"
+    ctaLabel="Quick Start"
+    ctaLink="/getting-started/new-project"
+    Icon={Zap}
+  />
+  <CTACard
+    title="Tutorial"
+    description="Learn by building an end-to-end Moose application through a guided tutorial"
+    ctaLabel="Learn Moose"
+    ctaLink="/learn-moose"
+    Icon={GraduationCap}
+  />
+</div>
+
 ---
 
 ## What is Moose?
@@ -28,6 +45,8 @@ or [signup form](https://fiveonefour.typeform.com/signup). We can't wait to hear
 By automating the setup and management of these components and standardizing the interfaces between them, Moose eliminates the need for custom “glue code” and allows you to just focus on writing your application logic. These are tasks you shouldn't have to worry about or reinvent, especially since it’s crucial to do them correctly to ensure high performance and reliability when ingesting and processing petabytes of data.
 
 Moose is designed for any TypeScript or Python developer, regardless of your background in data engineering. Built on Rust, it ensures speed and reliability even at a massive scale.
+
+---
 
 ## What types of applications can be built with Moose?
 

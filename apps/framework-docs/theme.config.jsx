@@ -4,12 +4,14 @@ import {
   Text,
   TextEmbed,
   HeadingLevel,
+  GradientText,
   SmallText,
   SmallTextEmbed,
   textBodyBase,
 } from "@514labs/design-system-components/typography";
 import { Logo, Badge } from "@514labs/design-system-components/components";
 import { cn } from "@514labs/design-system-components/utils";
+import { Code, Rocket, Package, Library } from "lucide-react";
 
 export default {
   logo: () => (
@@ -69,12 +71,34 @@ export default {
   primaryHue: 220,
   primarySaturation: 0,
   sidebar: {
-    defaultMenuCollapseLevel: 2,
-    titleComponent({ title }) {
+    defaultMenuCollapseLevel: 1,
+    titleComponent({ title, type }) {
+      if (type === "separator") {
+        return (
+          <div className="flex flex-row items-center text-accent-foreground">
+            {(() => {
+              switch (title) {
+                case "Get Started":
+                  return <Rocket className="mr-2" />;
+                case "Develop":
+                  return <Code className="mr-2" />;
+                case "Deploy":
+                  return <Package className="mr-2" />;
+                case "Reference":
+                  return <Library className="mr-2" />;
+                default:
+                  return null;
+              }
+            })()}
+            <Text className="my-0">{title}</Text>
+          </div>
+        );
+      }
       return (
         <SmallText className="my-0 text-muted-foreground">{title}</SmallText>
       );
     },
+    toggleButton: true,
   },
   toc: {
     title: () => {

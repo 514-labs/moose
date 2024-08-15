@@ -80,6 +80,10 @@
   max-width: none;
 }
 
+/* .docs * {
+  font-weight: 400;
+} */
+
 .docs h2 {
   margin-bottom: none;
 }

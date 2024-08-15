@@ -9,3 +9,4 @@ export * from "./logo";
 export * from "./CTAs";
 export * from "./PlaceholderImage";
 export * from "./ui/tabs";
+export * from "./ui/card";

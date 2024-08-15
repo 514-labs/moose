@@ -180,6 +180,9 @@ importers:
       "@sentry/nextjs":
         specifier: ^7.106.0
         version: 7.114.0(next@14.2.4)(react@18.3.1)(webpack@5.93.0)
+      lucide-react:
+        specifier: ^0.427.0
+        version: 0.427.0(react@18.3.1)
       mixpanel:
         specifier: ^0.18.0
         version: 0.18.0
@@ -14144,6 +14147,17 @@ packages:
       }
     peerDependencies:
       react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0
+    dependencies:
+      react: 18.3.1
+    dev: false
+
+  /lucide-react@0.427.0(react@18.3.1):
+    resolution:
+      {
+        integrity: sha512-lv9s6c5BDF/ccuA0EgTdskTxIe11qpwBDmzRZHJAKtp8LTewAvDvOM+pTES9IpbBuTqkjiMhOmGpJ/CB+mKjFw==,
+      }
+    peerDependencies:
+      react: ^16.5.1 || ^17.0.0 || ^18.0.0 || ^19.0.0-rc
     dependencies:
       react: 18.3.1
     dev: false

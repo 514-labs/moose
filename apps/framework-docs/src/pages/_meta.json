@@ -1,25 +1,40 @@
 {
+  "--Get Started--": {
+    "type": "separator",
+    "title": "Get Started"
+  },
   "index": {
     "title": "Introduction",
     "theme": {
       "breadcrumb": false
     }
   },
-  "getting-started": "Getting Started",
-  "learn-moose": "Learn Moose",
-  "---": {
-    "type": "separator"
+  "new-project": "Quick Start",
+  "project-structure": "Project Structure",
+  "architecture": "Architecture",
+  "version-status": "Alpha Warning",
+  "learn-moose": "Tutorial",
+  "--Develop--": {
+    "type": "separator",
+    "title": "Develop"
   },
-  "building": "Developing your App",
-  "-": {
-    "type": "separator"
+  "data-models": "Data Modeling",
+  "ingest-data": "Ingesting Data",
+  "stream-processing": "Stream Processing",
+  "db-processing": "Database Processing",
+  "consumption-apis": "Consuming Data",
+  "metrics-console": "Monitoring Performance",
+  "--Deploy--": {
+    "type": "separator",
+    "title": "Deploy"
   },
   "deploying": "Deploying your App",
-  "--": {
-    "type": "separator"
+  "--Reference--": {
+    "type": "separator",
+    "title": "Reference"
   },
   "moose-cli": "Moose CLI",
-  "reference": "Reference",
+  "reference": "Primitives",
   "templates": "Templates",
   "faqs": "FAQs",
   "usage-data": "Privacy"

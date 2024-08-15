@@ -103,7 +103,7 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
                         )?;
                     }
                     ColumnType::Boolean => {
-                        get_and_set::<_, _, String>(
+                        get_and_set::<_, _, bool>(
                             &mut map,
                             &mut map_serializer,
                             key,
@@ -132,7 +132,7 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
                         )?;
                     }
                     ColumnType::DateTime => {
-                        get_and_set::<_, _, String>(
+                        get_and_set::<_, _, DateString>(
                             &mut map,
                             &mut map_serializer,
                             key,

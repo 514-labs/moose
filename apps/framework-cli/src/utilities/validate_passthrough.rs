@@ -1,12 +1,11 @@
-use std::collections::HashMap;
-use std::fmt::Formatter;
-
 use serde::de::{Error, MapAccess, Visitor};
 use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Serializer as JsonSerializer;
+use std::collections::HashMap;
+use std::fmt::Formatter;
 
-use crate::framework::core::infrastructure::table::{Column, ColumnType};
+use crate::framework::core::infrastructure::table::{Column, ColumnType, EnumValue};
 use crate::framework::data_model::model::DataModel;
 
 struct State {
@@ -62,6 +61,7 @@ fn get_and_set<
     map_serializer: &mut S,
     key: String,
     required: bool,
+    validation: Option<impl Fn(&T) -> Option<A::Error>>,
 ) -> Result<(), A::Error> {
     let value = map.next_value::<Option<T>>()?;
     if required && value.is_none() {
@@ -70,6 +70,15 @@ fn get_and_set<
             key
         )));
     };
+
+    if let Some(v) = validation {
+        if let Some(ref value) = value {
+            if let Some(e) = v(value) {
+                return Err(e);
+            }
+        }
+    }
+
     map_serializer
         .serialize_entry(&key, &value)
         .map_err(A::Error::custom)
@@ -100,6 +109,7 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
                             &mut map_serializer,
                             key,
                             column.required,
+                            None::<fn(&_) -> _>,
                         )?;
                     }
                     ColumnType::Boolean => {
@@ -108,6 +118,7 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
                             &mut map_serializer,
                             key,
                             column.required,
+                            None::<fn(&_) -> _>,
                         )?;
                     }
                     ColumnType::Int => {
@@ -116,6 +127,7 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
                             &mut map_serializer,
                             key,
                             column.required,
+                            None::<fn(&_) -> _>,
                         )?;
                     }
 
@@ -129,6 +141,7 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
                             &mut map_serializer,
                             key,
                             column.required,
+                            None::<fn(&_) -> _>,
                         )?;
                     }
                     ColumnType::DateTime => {
@@ -137,14 +150,19 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
                             &mut map_serializer,
                             key,
                             column.required,
+                            None::<fn(&_) -> _>,
                         )?;
                     }
-                    ColumnType::Enum(_) => {
-                        get_and_set::<_, _, String>(
+                    ColumnType::Enum(enum_def) => {
+                        get_and_set::<_, _, EnumValue>(
                             &mut map,
                             &mut map_serializer,
                             key,
                             column.required,
+                            Some(|v| match v {
+                                EnumValue::Int(i) => enum_def.values.iter().any(|v| v.value),
+                                EnumValue::String(_) => {}
+                            }),
                         )?;
                     }
                     ColumnType::Array(_) => {
@@ -153,6 +171,7 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
                             &mut map_serializer,
                             key,
                             column.required,
+                            None::<fn(&_) -> _>,
                         )?;
                     }
                     ColumnType::Nested(_) => {
@@ -161,6 +180,7 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
                             &mut map_serializer,
                             key,
                             column.required,
+                            None::<fn(&_) -> _>,
                         )?;
                     }
                 }
@@ -185,10 +205,3 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
         Ok(vec)
     }
 }
-//
-// fn deserialize<'de, D: Deserializer<'de>>(
-//     data_model: DataModel,
-//     deserializer: D,
-// ) -> Result<String, D::Error> {
-//     deserializer.deserialize_any(DataModelVisitor { data_model })
-// }

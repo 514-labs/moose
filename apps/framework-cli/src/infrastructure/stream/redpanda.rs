@@ -327,6 +327,7 @@ pub async fn fetch_topics(
     let topics = metadata
         .topics()
         .iter()
+        .filter(|t| t.name().starts_with(&config.get_namespace_prefix()))
         .map(|t| t.name().to_string())
         .collect();
     Ok(topics)

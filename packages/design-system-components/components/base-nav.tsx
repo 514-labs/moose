@@ -39,15 +39,15 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
   return (
     <Disclosure
       as="nav"
-      className="sticky top-0 w-full z-50 px-5 bg-background"
+      className="sticky top-0 z-50 px-5 py-5 lg:py-0 bg-black-100/90 backdrop-blur-2xl w-full"
     >
       {({ open }) => (
         <>
-          <div className="z-50 sticky w-full py-2">
-            <div className="flex h-20 justify-between items-center">
-              <Grid className="grow md:grid md:grid-cols-12 md:gap-x-10">
-                <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary content-center">
-                  <div className="flex flex-row items-center content-center justify-between w-fit p-10">
+          <div className="w-full">
+            <div className="flex justify-between items-center w-full ">
+              <Grid className="grow md:grid md:grid-cols-12 w-full">
+                <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary content-center w-full ">
+                  <div className="flex flex-row items-center content-center justify-between w-fit">
                     <TrackLink
                       name={"Nav"}
                       subject="home"
@@ -63,8 +63,7 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
                         href={"https://docs.moosejs.com"}
                       >
                         <div className="flex flex-row items-center content-center">
-                          <ProductBadge name="" tag="JS" />
-                          <ProductBadge name="" tag="PY" />
+                          <ProductBadge name="" tag="JS PY" />
                         </div>
                       </TrackLink>
                     ) : null}

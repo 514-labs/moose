@@ -10,20 +10,20 @@ import React from "react";
 
 export const DemoSection = () => {
   return (
-    <Section className="xl:mx-auto xl:px-16 2xl:px-24 3xl:px-64 px-20">
+    <Section className="max-w-5xl mx-auto px-5">
       <Grid>
         <FullWidthContentContainer>
-          <div className="mx-10 p-[3px] rounded-[30px] md:aspect-video bg-gradient-to-b from-[#5A5A5A] to-[#151515]">
+          <div className="p-[3px] rounded-2xl md:aspect-video bg-gradient-to-b from-[#5A5A5A] to-[#151515]">
             {/* <Image
           className="object-cover"
           src={"/images/demo/man_hero_upscale_forest.webp"}
           alt="lifestyleimg"
           fill
         ></Image> */}
-            <div className="bg-background rounded-[27px] p-1">
+            <div className="bg-background rounded-2xl">
               <Video
                 src={getStarted}
-                className="aspect-video overflow-hidden rounded-[26px]"
+                className="aspect-video overflow-hidden rounded-2xl"
                 theme="microvideo"
               />
             </div>

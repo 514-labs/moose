@@ -23,7 +23,7 @@ import { TrackCtaButton } from "../../trackable-components";
 import { Suspense } from "react";
 import { TemplateImg } from "../../sections/home/TemplateImg";
 import React from "react";
-import { LooseMooseSection } from "../../sections/home/LooseMooseSection";
+// import { LooseMooseSection } from "../../sections/home/LooseMooseSection";
 import { TrackingVerb } from "@514labs/event-capture/withTrack";
 
 // The layout for specific tempaltes
@@ -117,9 +117,9 @@ export default function TemplatePage({
 
   return (
     <Grid>
-      <div className="col-span-12 md:col-span-6 w-full relative mx-auto xl:max-w-screen-xl 2xl:px-10">
-        <div className="md:sticky top-10 w-full relative mx-auto">
-          <Section className="sm:pr=l-0 xl:pl-32 2xl:pl-48 3xl:pl-96 my-0">
+      <div className="col-span-12 md:col-span-6 w-full relative mx-auto py-0">
+        <div className="w-full relative mx-auto w-full">
+          <Section className="sm:pr=l-0">
             <div>
               <Link href="/templates">
                 <Text className="mt-0 pt-0">
@@ -166,10 +166,10 @@ export default function TemplatePage({
           </Section>
         </div>
       </div>
-      <div className="col-span-12 md:col-span-6 w-full relative mx-auto xl:max-w-screen-xl">
+      <div className="col-span-12 md:col-span-6 w-full relative mx-auto py-0">
         <div className="mb-5">
-          <Section className="sm:pr=l-0 xl:pr-32 2xl:pr-48 3xl:pr-96">
-            <div className="aspect-[4/3] flex flex-col justify-center">
+          <Section className="sm:pr=l-0">
+            <div className="aspect-[1/1] flex flex-col justify-center">
               <div className="relative h-4/5">
                 {template && (
                   <Suspense fallback={<div>Loading...</div>}>
@@ -185,9 +185,9 @@ export default function TemplatePage({
           </Section>
         </div>
       </div>
-      <FullWidthContentContainer className="col-span-12 ">
+      <FullWidthContentContainer className="col-span-12">
         <FooterSection />
-        <LooseMooseSection />
+        {/* <LooseMooseSection /> */}
       </FullWidthContentContainer>
     </Grid>
   );

@@ -32,11 +32,11 @@ export const SecondaryCTASection = () => {
   };
 
   return (
-    <Section className="mx-auto py-24 xl:max-w-screen-xl">
-      <div className="relative rounded-3xl p-[4px] bg-[linear-gradient(194deg,_#8CFFD5_-49.93%,_#000000_29.98%)]">
-        <div className="bg-background rounded-[20px] z-10">
-          <FullWidthContentContainer className="bg-[linear-gradient(213.94deg,_#50FF7626_-19.79%,_#000000_131.7%)] rounded-[20px]">
-            <div className="backdrop-brightness-50 backdrop-blur-md w-full f-full flex flex-row align-middle justify-between p-10 rounded-[20px]">
+    <Section className="mx-auto max-w-5xl">
+      <div className="relative rounded-3xl p-[3px]  bg-gradient-to-b from-green-400 to-black ">
+        <div className="bg-background rounded-3xl z-10">
+          <FullWidthContentContainer className="rounded-3xl">
+            <div className="backdrop-brightness-50 backdrop-blur-md w-full f-full flex flex-row align-middle justify-between p-10 rounded-3xl">
               <div className="flex flex-col gap-1">
                 <Heading className="my-0" level={HeadingLevel.l2}>
                   {content.title}

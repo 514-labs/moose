@@ -52,12 +52,9 @@ export const CTAButton = ({
 }: CTAButtonProps) => {
   return (
     <Button
-      size={"lg"}
+      size={"default"}
       variant={variant}
-      className={cn(
-        "h-full font-normal border-primary w-full sm:w-auto px-10 py-0 rounded-xl",
-        className,
-      )}
+      className={cn("border-primary w-full sm:w-auto", className)}
       onClick={onClick}
     >
       <Text

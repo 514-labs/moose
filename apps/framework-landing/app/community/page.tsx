@@ -135,13 +135,13 @@ export const SkillSection = () => {
               level={HeadingLevel.l1}
               className="max-w-5xl justify-center align-center text-center sm:text-5xl"
             >
-              {content.title}
+              {/* {content.title} */}
             </Heading>
             <Heading
               level={HeadingLevel.l2}
               className="max-w-5xl justify-center align-center text-center text-muted-foreground"
             >
-              {content.subtitle}
+              {/* {content.subtitle} */}
             </Heading>
           </FullWidthContentContainer>
         </Grid>
@@ -193,13 +193,13 @@ export const SlackSection = () => {
               level={HeadingLevel.l1}
               className="max-w-5xl justify-center align-center text-center sm:text-5xl"
             >
-              {content.title}
+              {/* {content.title} */}
             </Heading>
             <Heading
               level={HeadingLevel.l2}
               className="max-w-5xl justify-center align-center text-center text-muted-foreground"
             >
-              {content.subtitle}
+              {/* {content.subtitle} */}
             </Heading>
           </FullWidthContentContainer>
         </Grid>

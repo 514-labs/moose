@@ -32,9 +32,9 @@ import {
   TrendingUp,
 } from "lucide-react";
 
-export function cn(...inputs: ClassValue[]) {
-  return twMerge(clsx(inputs));
-}
+// export function cn(...inputs: ClassValue[]) {
+//   return twMerge(clsx(inputs));
+// }
 
 // import { cn } from "@514labs/design-system-components/lib/utils";
 // import { LooseMooseSection } from "../sections/home/LooseMooseSection";
@@ -87,7 +87,7 @@ const HeroSection = ({ className }: { className?: string }) => {
   };
 
   return (
-    <section className={cn(className)}>
+    <section className={className}>
       <div className="text-4xl sm:text-5xl md:text-6xl lg:text-6xl 2xl:text-7xl text-center z-10">
         {content.title}
       </div>

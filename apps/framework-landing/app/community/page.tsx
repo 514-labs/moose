@@ -102,7 +102,7 @@ const PickSection = ({ className }: { className?: string }) => {
   return <section className={className}>Pick your community</section>;
 };
 
-export const SkillSection = () => {
+const SkillSection = () => {
   const content = {
     skills: [
       {
@@ -166,7 +166,7 @@ export const SkillSection = () => {
   );
 };
 
-export const SlackSection = () => {
+const SlackSection = () => {
   const content = {
     slack: [
       {

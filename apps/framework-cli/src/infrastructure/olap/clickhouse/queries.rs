@@ -12,7 +12,7 @@ use super::model::ClickHouseColumn;
 
 // Unclear if we need to add flatten_nested to the views setting as well
 static CREATE_ALIAS_TEMPLATE: &str = r#"
-CREATE VIEW IF NOT EXISTS {{db_name}}.{{alias_name}} AS SELECT * FROM {{db_name}}.{{source_table_name}};
+CREATE VIEW IF NOT EXISTS "{{db_name}}"."{{alias_name}}" AS SELECT * FROM "{{db_name}}"."{{source_table_name}}";
 "#;
 
 fn create_alias_query(
@@ -32,7 +32,7 @@ fn create_alias_query(
 }
 
 static CREATE_VIEW_TEMPLATE: &str = r#"
-CREATE VIEW IF NOT EXISTS {{db_name}}.{{view_name}} AS {{view_query}};
+CREATE VIEW IF NOT EXISTS "{{db_name}}"."{{view_name}}" AS {{view_query}};
 "#;
 
 pub fn create_view_query(
@@ -52,7 +52,7 @@ pub fn create_view_query(
 }
 
 static DROP_VIEW_TEMPLATE: &str = r#"
-DROP VIEW {{db_name}}.{{view_name}};
+DROP VIEW "{{db_name}}"."{{view_name}}";
 "#;
 
 pub fn drop_view_query(db_name: &str, view_name: &str) -> Result<String, ClickhouseError> {
@@ -67,7 +67,7 @@ pub fn drop_view_query(db_name: &str, view_name: &str) -> Result<String, Clickho
 }
 
 static UPDATE_VIEW_TEMPLATE: &str = r#"
-CREATE OR REPLACE VIEW {{db_name}}.{{view_name}} AS {{view_query}};
+CREATE OR REPLACE VIEW "{{db_name}}"."{{view_name}}" AS {{view_query}};
 "#;
 
 pub fn update_view_query(

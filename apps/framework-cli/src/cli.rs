@@ -28,6 +28,7 @@ use routines::plan;
 use routines::ps::show_processes;
 use settings::{read_settings, Settings};
 use std::cmp::Ordering;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::process::exit;
 use std::sync::Arc;
@@ -50,13 +51,13 @@ use crate::cli::{
     settings::{init_config_file, setup_user_directory},
 };
 use crate::framework::bulk_import::import_csv_file;
-use crate::framework::core::code_loader::load_framework_objects;
+use crate::framework::core::code_loader::{get_all_framework_objects, load_framework_objects};
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::sdk::ingest::generate_sdk;
 use crate::framework::versions::parse_version;
 use crate::infrastructure::olap::clickhouse::version_sync::version_to_string;
 use crate::metrics::TelemetryMetadata;
-use crate::project::Project;
+use crate::project::{AggregationSet, Project};
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 use crate::utilities::git::is_git_repo;
@@ -250,12 +251,28 @@ async fn top_command_handler(
         } => {
             let run_mode = RunMode::Explicit {};
             info!("Running build command");
-            let project: Project = load_project()?;
-            let project_arc = Arc::new(project);
+            let project_arc = Arc::new(load_project()?);
+            let version = project_arc.cur_version();
 
             check_project_name(&project_arc.name())?;
 
             let mut controller = RoutineController::new();
+
+            let mut framework_objects = HashMap::new();
+            let aggregations = AggregationSet {
+                current_version: version.to_string(),
+                names: HashSet::new(),
+            };
+
+            let _result = get_all_framework_objects(
+                &project_arc.clone(),
+                &mut framework_objects,
+                &project_arc.clone().data_models_dir(),
+                // .join("separate_dir_to_test_get_all"),
+                version,
+                &aggregations,
+            )
+            .await;
 
             // Remove versions directory so only the relevant versions will be populated
             project_arc.delete_old_versions().map_err(|e| {
@@ -302,6 +319,23 @@ async fn top_command_handler(
             let mut project = load_project()?;
             project.set_is_production_env(false);
             let project_arc = Arc::new(project);
+
+            let mut framework_objects = HashMap::new();
+            let aggregations = AggregationSet {
+                current_version: "0.0".to_string(),
+                names: HashSet::new(),
+            };
+
+            let project_clone = project_arc.clone();
+            let _result = get_all_framework_objects(
+                &project_clone,
+                &mut framework_objects,
+                &project_clone.data_models_dir(),
+                // .join("separate_dir_to_test_get_all"),
+                "0.0",
+                &aggregations,
+            )
+            .await;
 
             let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::DevCommand,

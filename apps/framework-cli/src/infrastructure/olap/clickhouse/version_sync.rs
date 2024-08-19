@@ -300,7 +300,7 @@ impl VersionSync {
 
     pub fn drop_trigger_query(&self) -> String {
         format!(
-            "DROP VIEW IF EXISTS {}.{}",
+            "DROP VIEW IF EXISTS \"{}\".\"{}\"",
             self.db_name,
             self.migration_trigger_name()
         )

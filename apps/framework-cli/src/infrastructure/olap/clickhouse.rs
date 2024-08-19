@@ -252,7 +252,7 @@ pub async fn delete_table_or_view(
     );
 
     client
-        .query(format!("DROP TABLE {db_name}.{table_or_view_name}").as_str())
+        .query(format!("DROP TABLE \"{db_name}\".\"{table_or_view_name}\"").as_str())
         .execute()
         .await
 }
@@ -301,7 +301,7 @@ pub async fn check_table_size(
     info!("<DCM> Checking size of {} table", table_name);
     let result = clickhouse
         .query(&format!(
-            "select count(*) from {}.{}",
+            "select count(*) from \"{}\".\"{}\"",
             config.db_name.clone(),
             table_name
         ))

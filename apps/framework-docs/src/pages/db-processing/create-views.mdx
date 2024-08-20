@@ -69,15 +69,14 @@ export default createAggregation({
 }) as Blocks;
 ```
 
-{/\* ### Create a View on top of a Materialized View
+### Create a View on top of a Materialized View
 
-````ts filename="blocks/DailyActiveUsers.ts" copy
+```ts filename="blocks/DailyActiveUsers.ts" copy
 
 export default {
   // CREATE VIEW SQL CODE HERE
 }
 as Blocks;
-``` */}
 
 ### How the Materialized View is Created
 
@@ -89,4 +88,4 @@ When you save the file, Moose automatically creates a new table named and popula
   [Learn more about Clickhouse Materialized
   Views.](https://clickhouse.com/blog/using-materialized-views-in-clickhouse)
 </Callout>
-````
+```

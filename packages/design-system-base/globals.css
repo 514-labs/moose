@@ -194,11 +194,6 @@ tbody {
   width: 20rem;
 }
 
-img,
-svg {
-  filter: grayscale(100%);
-}
-
 li.nx-my-2 {
   list-style: none;
 }

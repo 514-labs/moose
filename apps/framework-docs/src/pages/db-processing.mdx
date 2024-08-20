@@ -2,6 +2,33 @@ import { Callout } from "nextra/components";
 
 # Introduction to Blocks
 
-Once your data is in their respective tables in the database, you might want to aggregate it into Views or Materialized Views to pre-compute metrics, time series, or other computationally expensive data analysis tasks.
+Blocks provide a versatile solution for various database operations and data management tasks. They facilitate:
 
-The following section walks through how to leverage Moose **Blocks** to create Views or Materialized Views of your database tables, where you define SQL SELECT statements to populate these views with the query result set.
+- **Data Transformation and Views**: Transforming data and creating views or materialized views for pre-computing metrics and performing computationally intensive data analyses.
+- **Data Lifecycle Management**: Implementing Time-To-Live (TTL) policies to automatically remove outdated data.
+- **Integration Testing**: Setting up and tearing down test environments for easier integration testing of data pipelines.
+- **Post-Ingestion Data Manipulation**: Manipulating data after it has been ingested into the database, such as hiding Personally Identifiable Information (PII) or transforming historical data.
+- **Access Control Management**: Managing user access levels to different tables to ensure data security and compliance.
+
+## Core Concepts
+
+### File and Folder Conventions
+
+Blocks are stored in the `/blocks` folder within your Moose project. Each block is defined as a file within this directory. The naming convention for these files should be clear and descriptive to indicate the purpose or function of the block.
+
+### Blocks Definition
+
+Inside each block file, you define SQL statements that are executed against the database. These SQL statements can include:
+
+- **Setup SQL**: Commands that initialize or configure the block. The setup SQL is executed on startup.
+- **Teardown SQL**: Commands that tear down the block. The teardown SQL is executed on shutdown.
+
+### How Moose Interprets Blocks
+
+Moose interprets and executes the SQL statements defined within the `setup` key of the block on startup.
+
+<Callout>
+  In dev mode, Moose continuously watches for changes in the `/blocks` folder
+  and re-executes the SQL statements when it detects new blocks or modifications
+  to existing ones.
+</Callout>

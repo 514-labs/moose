@@ -64,7 +64,7 @@ export default {
     ),
     li: (props) => (
       <li {...props} className="list-item">
-        <SmallTextEmbed className="my-0">{props.children}</SmallTextEmbed>
+        <SmallTextEmbed className="mb-1">{props.children}</SmallTextEmbed>
       </li>
     ),
   },
@@ -75,22 +75,24 @@ export default {
     titleComponent({ title, type }) {
       if (type === "separator") {
         return (
-          <div className="flex flex-row items-center text-accent-foreground">
-            {(() => {
-              switch (title) {
-                case "Get Started":
-                  return <Rocket className="mr-2" />;
-                case "Develop":
-                  return <Code className="mr-2" />;
-                case "Deploy":
-                  return <Package className="mr-2" />;
-                case "Reference":
-                  return <Library className="mr-2" />;
-                default:
-                  return null;
-              }
-            })()}
-            <Text className="my-0">{title}</Text>
+          <div className="flex flex-row justify-start items-center text-accent-foreground gap-3">
+            <div className="bg-muted rounded-md h-full">
+              {(() => {
+                switch (title) {
+                  case "Get Started":
+                    return <Rocket className="m-2 h-[20px] w-[20px]" />;
+                  case "Develop":
+                    return <Code className="m-2 h-[20px] w-[20px]" />;
+                  case "Deploy":
+                    return <Package className="m-2 h-[20px] w-[20px]" />;
+                  case "Reference":
+                    return <Library className="m-2 h-[20px] w-[20px]" />;
+                  default:
+                    return null;
+                }
+              })()}
+            </div>
+            <SmallText className="my-0">{title}</SmallText>
           </div>
         );
       }
@@ -106,7 +108,9 @@ export default {
     },
     headingComponent({ children }) {
       return (
-        <SmallText className="my-0 text-muted-foreground">{children}</SmallText>
+        <SmallText className="my-0 text-muted-foreground prose">
+          {children}
+        </SmallText>
       );
     },
   },

@@ -82,7 +82,21 @@
 
 /* .docs * {
   font-weight: 400;
+  line-height: 1.75;
 } */
+
+.docs div.info {
+  border-color: hsl(var(--muted-foreground));
+}
+
+.docs div.warning {
+  border-color: #fff490;
+  background-color: #fff4902e;
+}
+
+.docs div.danger {
+  border-color: hsl(var(--destructive));
+}
 
 .docs h2 {
   margin-bottom: none;
@@ -162,12 +176,14 @@ tbody {
 
 .docs li.active > a {
   color: var(--primary-foreground) !important;
-  background-color: transparent !important;
+  background-color: hsl(var(--muted)) !important;
+  border-radius: 10px;
 }
 
 .docs li.active > a > p {
   color: var(--primary-foreground) !important;
-  background-color: transparent !important;
+  background-color: hsl(var(--muted)) !important;
+  border-radius: 10px;
 }
 
 .docs aside.md\:nx-w-64 {

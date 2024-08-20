@@ -3,11 +3,12 @@
   "version": "0.6",
   "scripts": {
     "dev": "moose-cli dev",
+    "moose": "moose",
     "build": "moose-cli --version && moose-cli build --docker",
     "clean-logs": "npx ts-node script.ts"
   },
   "dependencies": {
-    "@514labs/moose-lib": "0.3.531",
+    "@514labs/moose-lib": "latest",
     "@clickhouse/client-web": "1.1.0",
     "fastq": "1.17.1",
     "kafkajs": "2.2.4",
@@ -16,7 +17,7 @@
   },
   "devDependencies": {
     "@types/async": "^3.2.24",
-    "@514labs/moose-cli": "0.3.531",
+    "@514labs/moose-cli": "latest",
     "@types/node": "^20.12.12",
     "ts-patch": "~3.2.0",
     "typescript": "~5.4.0"

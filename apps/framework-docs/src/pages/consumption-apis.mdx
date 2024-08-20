@@ -1,19 +1,44 @@
-# Introduction
+import Callout from "../components/Callout";
 
-Consumption APIs in Moose convert your data into consumable API endpoints, centralizing and standardizing how data is extracted. They create a single source of truth that delivers consistent and accurate insights from your data across all downstream users and systems. Whether you need to display a metric on an internal dashboard or engage end users with real-time data, Consumption APIs are the answer.
+# Introduction to Consumption APIs
 
-## Motivation
+Moose **Consumption APIs** offer a powerful and flexible way to create custom API endpoints, allowing your applications to access and retrieve data from your OLAP database. These APIs act as the final layer in your Moose application, dynamically generating and executing SQL queries based on parameters received from incoming requests from your data consumers.
 
-Previous attempts to solve data inconsistencies involved integrating new tools (semantic layers) or building in-house infrastructure (metric stores) on top of your analytics database. Both approaches are costly, resource-intensive, and difficult to maintain. They also require integrating separate systems, which can lead to headaches with managing changes and ensuring proper functionality.
+## Core Concepts
 
-In contrast, Consumption APIs let you build data products within your analytics stack, controlling all database-level functionality and data retrieval in a cohesive environment. This eliminates the need for downstream applications or technical teams to connect to and query your database directly, avoiding the complexities and inconsistencies of past methods.
+### HTTP Server and Request Handling
 
-## The Development Experience
+At the heart of Moose's Consumption APIs is an HTTP server that manages incoming `GET` requests. When a request is made to the `/consumption/<endpoint-name>` path, Moose automatically routes it to the corresponding handler file in your project's `/apis` directory.
 
-With Moose, you write and execute parameterized SQL queries within a simple function. Inside this function you can:
+### API Definition and File-Based Routing
 
-- Retrieve the necessary data from your database
-- Implement custom business logic to dynamically build and execute your database queries
-- Post-process your query results before returning the data to your consumer
+Consumption APIs are defined as individual files within the `/apis` folder of your Moose application. These files, written in TypeScript (`.ts`) or Python (`.py`), are automatically mapped to API endpoints based on their filenames. For instance, a file named `mostUsedLanguages.ts` would correspond to the `/consumption/mostUsedLanguages` endpoint.
 
-You get to do all of this in your preferred programming language. Combining database-level operations with the flexibility of native programming enhances data retrieval and augmentation capabilities, offering limitless possibilities for creating dynamic, custom data solutions suited to your needs.
+### Route Handler Functions
+
+Each API file contains a route handler function that processes requests to its corresponding endpoint. This function is responsible for:
+
+1. Parsing query parameters from the incoming request
+2. Dynamically constructing SQL queries based on these parameters
+3. Executing the queries against your database
+4. Processing and formatting the results before sending the response
+
+#### Language-Specific Conventions
+
+The definition of route handler functions follows language-specific conventions:
+
+- **TypeScript**: Export the function as the default export of the file.
+- **Python**: Define a single function named `run()` in the file.
+
+### Query Parameters and Dynamic Data Retrieval
+
+Query parameters play a crucial role in Consumption APIs, allowing for dynamic and flexible data retrieval. When defining your route handler function, you can specify the query parameters it accepts. These parameters are then passed to the function as arguments, mapped directly from the URL query parameters of the incoming HTTP `GET` request.
+
+<Callout
+  type="info"
+  title="Giving you the flexibility to customize your data endpoints"
+>
+  This enables you to create highly customizable data endpoints that can adapt
+  to various client requirements without the need for multiple, static API
+  endpoints.
+</Callout>

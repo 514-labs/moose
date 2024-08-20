@@ -1,31 +1,29 @@
-import { Callout } from "nextra/components";
+import Callout from "../../components/callout";
 
 # Creating Views and Materialized Views
 
-## Creating a Materialized View with `createAggregation()`
-
 `moose-lib` provides a helper function called `createAggregation()` that you can use to create a new Materialized View. This function takes in a `select` statement and an `orderBy` statement, and returns a new Materialized View object.
 
-<Callout type="info" emoji="💡">
-  Materialized Views are pre-computed queries stored as their own tables. When
-  new data is added to the source table, the database updates the materialized
-  view with the aggregated data.
+<Callout type="info" title="What are Materialized Views?">
+  In Moose, the result set of the Materialized Views query is stored in a
+  dedicated table in your database. When new data is added to the source table,
+  the database updates the materialized view with the aggregated data.
 </Callout>
 
 ### createAggregation()
 
 The `createAggregation()` function is a utility provided by `moose-lib` to create Materialized Views:
 
-| Key       | Description                                                                                                                                                                                | Required |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | -------- |
-| `name`    | The name of the view to create                                                                                                                                                             | Yes      |
-| `select`  | A valid Clickhouse SQL `SELECT` query that aggregates data                                                                                                                                 | Yes      |
-| `orderBy` | Columns that define the primary key for the target table where your query results will be stored. To define multiple columns, put them in parentheses e.g. `orderBy: “(column1, column2)”` | Yes      |
+| Key       | Description                                                                                       | Required |
+| :-------- | :------------------------------------------------------------------------------------------------ | -------: |
+| `name`    | The name of the view to create                                                                    |      Yes |
+| `select`  | A valid Clickhouse SQL `SELECT` query that aggregates data                                        |      Yes |
+| `orderBy` | Columns that define the primary key for the target table where your query results will be stored. |      Yes |
 
-<Callout type="info" emoji="💡">
-  [Test your query in a SQL explorer for a more efficient
-  workflow.](./workflow-tips) Once satisfied, copy-paste it into the aggregation
-  file. Be sure to validate your query using the [Clickhouse SQL
+<Callout type="info" title="Workflow Tip">
+  [Test your query in a SQL explorer for a more efficient workflow.]() Once
+  satisfied, copy-paste it into the aggregation file. Be sure to validate your
+  query using the [Clickhouse SQL
   Reference](https://clickhouse.com/docs/en/sql-reference/aggregate-functions/reference)
   to ensure it adheres to Clickhouse's syntax and utilizes the available
   functions effectively.
@@ -52,23 +50,43 @@ export default createAggregation({
 }) as Blocks;
 ```
 
-### Create a View on top of a Materialized View
+#### Ordering by Multiple Columns
 
 ```ts filename="blocks/DailyActiveUsers.ts" copy
+import { createAggregation } from "@514labs/moose-lib";
+
+export default createAggregation({
+  name: "DailyActiveUsers",
+  select: ` 
+    SELECT 
+        count(distinct userId) as dailyActiveUsers,
+        toStartOfDay(timestamp) as date
+    FROM ParsedActivity_0_0
+    WHERE activity = 'Login' 
+    GROUP BY toStartOfDay(timestamp)
+    `,
+  orderBy: "(date, userId)",
+}) as Blocks;
+```
+
+{/\* ### Create a View on top of a Materialized View
+
+````ts filename="blocks/DailyActiveUsers.ts" copy
 
 export default {
   // CREATE VIEW SQL CODE HERE
 }
 as Blocks;
-```
+``` */}
 
 ### How the Materialized View is Created
 
 When you save the file, Moose automatically creates a new table named and populates it with the results of the `SELECT` statement. You can then use this table in other queries to build further insights. Check out the Consumption API section of the documentation to learn how you could create an API to consume the aggregated data.
 
-<Callout type="info" emoji="💡">
+<Callout type="info" title="How Materialized Views Work">
   Materialized Views in Clickhouse automatically refresh your target table with
   the latest query results whenever new data is added to your source tables.
   [Learn more about Clickhouse Materialized
   Views.](https://clickhouse.com/blog/using-materialized-views-in-clickhouse)
 </Callout>
+````

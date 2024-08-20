@@ -3,10 +3,8 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
-  Button,
 } from "@514labs/design-system-components/components";
 import Link from "next/link";
 import { GraduationCap, Zap } from "lucide-react";
@@ -26,9 +24,11 @@ export default function CTACard({
 }: CTACardProps) {
   return (
     <Link href={ctaLink}>
-      <Card className="hover:bg-secondary md:w-64 w-auto h-48 m-4">
+      <Card className="hover:bg-secondary md:w-64 w-auto h-auto m-4">
         <CardHeader>
-          <Icon className="h-5 w-5" />
+          <div className="bg-muted rounded-md w-fit">
+            <Icon className="m-2 h-[20px] w-[20px]" />
+          </div>
         </CardHeader>
         <CardContent>
           <CardTitle>{title}</CardTitle>

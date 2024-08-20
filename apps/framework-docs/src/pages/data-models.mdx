@@ -12,7 +12,9 @@ Data Models are the backbone of your Moose application, enabling you to define t
 
 Each component is strongly typed and kept in sync with the Data Model schema defined in your Moose application's source code.
 
-## Data Modeling Conventions
+## Core Concepts
+
+### File and Folder Conventions
 
 Data Models must be placed in the `/datamodels` directory of your Moose application. The directory structure should look like this:
 
@@ -24,6 +26,8 @@ Data Models must be placed in the `/datamodels` directory of your Moose applicat
     <FileTree.Folder name="..." />
   </FileTree.Folder>
 </FileTree>
+
+### Data Model Definiton
 
 Data Models are represented using native features and syntax of the language you are using:
 
@@ -47,7 +51,11 @@ Data Models are represented using native features and syntax of the language you
   </ul>
 </Callout>
 
-### Example Data Model in TypeScript
+### How Moose Interprets Data Models
+
+Moose will automatically detect and use any exported interfaces or dataclasses that adhere to the file and folder conventions. The property names and data types in the Data Model are interpreted and translated into the infrastructure components (SDK, Ingestion API, Streaming Topic, Database Landing Table, Database View).
+
+### Example
 
 ```ts filename="datamodels/models.ts" copy
 import { Key } from "@514labs/moose-lib";

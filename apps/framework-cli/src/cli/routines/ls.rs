@@ -228,7 +228,7 @@ fn format_topics(
 
                     let topics_with_prefix: Vec<String> = topics_slice
                         .iter()
-                        .map(|topic| project.redpanda_config.get_topic_with_namespace(topic))
+                        .map(|topic| project.redpanda_config.prefix_with_namespace(topic))
                         .collect();
 
                     topics_with_prefix.join("\n")

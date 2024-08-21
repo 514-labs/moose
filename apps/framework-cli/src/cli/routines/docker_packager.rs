@@ -15,74 +15,17 @@ use std::sync::Arc;
 // Adapted from https://github.com/nodejs/docker-node/blob/2928850549388a57a33365302fc5ebac91f78ffe/20/bookworm-slim/Dockerfile
 // and removed yarn
 static TS_BASE_DOCKER_FILE: &str = r#"
-# Created from docker_packager routine
-
-FROM debian:bookworm-slim
-
-ARG DEBIAN_FRONTEND=noninteractive
-
-# Update the package lists for upgrades for security purposes
-RUN apt-get update && apt-get upgrade -y
-
-# Install tail and locales package
-RUN apt-get install -y locales coreutils curl
-
-# Install Node
-ENV NODE_VERSION 20.13.1
-
-RUN ARCH= OPENSSL_ARCH= && dpkgArch="$(dpkg --print-architecture)" \
-    && case "${dpkgArch##*-}" in \
-      amd64) ARCH='x64' OPENSSL_ARCH='linux-x86_64';; \
-      ppc64el) ARCH='ppc64le' OPENSSL_ARCH='linux-ppc64le';; \
-      s390x) ARCH='s390x' OPENSSL_ARCH='linux*-s390x';; \
-      arm64) ARCH='arm64' OPENSSL_ARCH='linux-aarch64';; \
-      armhf) ARCH='armv7l' OPENSSL_ARCH='linux-armv4';; \
-      i386) ARCH='x86' OPENSSL_ARCH='linux-elf';; \
-      *) echo "unsupported architecture"; exit 1 ;; \
-    esac \
-    && set -ex \
-    # libatomic1 for arm
-    && apt-get update && apt-get install -y ca-certificates curl wget gnupg dirmngr xz-utils libatomic1 --no-install-recommends \
-    && rm -rf /var/lib/apt/lists/* \
-    # use pre-existing gpg directory, see https://github.com/nodejs/docker-node/pull/1895#issuecomment-1550389150
-    && export GNUPGHOME="$(mktemp -d)" \
-    # gpg keys listed at https://github.com/nodejs/node#release-keys
-    && for key in \
-      4ED778F539E3634C779C87C6D7062848A1AB005C \
-      141F07595B7B3FFE74309A937405533BE57C7D57 \
-      74F12602B6F1C4E913FAA37AD3A89613643B6201 \
-      DD792F5973C6DE52C432CBDAC77ABFA00DDBF2B7 \
-      61FC681DFB92A079F1685E77973F295594EC4689 \
-      8FCCA13FEF1D0C2E91008E09770F7A9A5AE15600 \
-      C4F0DFFF4E8C1A8236409D08E73BC641CC11F4C8 \
-      890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4 \
-      C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C \
-      108F52B48DB57BB0CC439B2997B01419BD92F80A \
-      A363A499291CBBC940DD62E41F10027AF002F8B0 \
-      CC68F5A3106FF448322E48ED27F5E38D5B0A215F \
-    ; do \
-      gpg --batch --keyserver hkps://keys.openpgp.org --recv-keys "$key" || \
-      gpg --batch --keyserver keyserver.ubuntu.com --recv-keys "$key" ; \
-    done \
-    && curl -fsSLO --compressed "https://nodejs.org/dist/v$NODE_VERSION/node-v$NODE_VERSION-linux-$ARCH.tar.xz" \
-    && curl -fsSLO --compressed "https://nodejs.org/dist/v$NODE_VERSION/SHASUMS256.txt.asc" \
-    && gpg --batch --decrypt --output SHASUMS256.txt SHASUMS256.txt.asc \
-    && gpgconf --kill all \
-    && rm -rf "$GNUPGHOME" \
-    && grep " node-v$NODE_VERSION-linux-$ARCH.tar.xz\$" SHASUMS256.txt | sha256sum -c - \
-    && tar -xJf "node-v$NODE_VERSION-linux-$ARCH.tar.xz" -C /usr/local --strip-components=1 --no-same-owner \
-    && rm "node-v$NODE_VERSION-linux-$ARCH.tar.xz" SHASUMS256.txt.asc SHASUMS256.txt \
-    # smoke tests
-    && node --version \
-    && npm --version
+FROM node:20-bookworm-slim
 
 # This is to remove the notice to update NPM that will break the output from STDOUT
 RUN npm config set update-notifier false
 "#;
 
 static PY_BASE_DOCKER_FILE: &str = r#"
-# Created from docker_packager routine
 FROM python:3.12-bookworm
+"#;
+
+static DOCKER_FILE_COMMON: &str = r#"
 ARG DEBIAN_FRONTEND=noninteractive
 
 # Update the package lists for upgrades for security purposes
@@ -90,46 +33,51 @@ RUN apt-get update && apt-get upgrade -y
 
 # Install tail and locales package
 RUN apt-get install -y locales coreutils curl
-"#;
 
-static DOCKER_FILE_COMMON: &str = r#"
 # Generate locale files
-RUN locale-gen en_US.UTF-8
-
-# Set the working directory inside the container
-WORKDIR /application
-
-# Copy the application files to the container
-COPY ./app ./app
-COPY_PACKAGE_FILE
-
-# https://stackoverflow.com/questions/70096208/dockerfile-copy-folder-if-it-exists-conditional-copy/70096420#70096420
-COPY ./project.tom[l] ./project.toml
-COPY ./moose.config.tom[l] ./moose.config.toml
-COPY ./versions .moose/versions
-
-INSTALL_COMMAND
-
-# Expose the ports on which the application will listen
-EXPOSE 4000
-
-# Setup healthcheck
-HEALTHCHECK --interval=30s --timeout=3s \
-  CMD curl -f http://localhost:4000/health || exit 1
-
-# post install
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
 ENV LANGUAGE en_US:en
 ENV LC_ALL en_US.UTF-8
 ENV TZ UTC
 
+# Install Moose
 ARG FRAMEWORK_VERSION="0.0.0"
 ARG DOWNLOAD_URL
 RUN curl -Lo /usr/local/bin/moose ${DOWNLOAD_URL}
 RUN chmod +x /usr/local/bin/moose
 
 RUN moose --version
+
+# Setup healthcheck
+HEALTHCHECK --interval=30s --timeout=3s \
+  CMD curl -f http://localhost:4000/health || exit 1
+
+# Sets up non-root user using 1001 because node creates a user with 1000
+RUN groupadd --gid 1001 moose \
+  && useradd --uid 1001 --gid moose --shell /bin/bash --create-home moose
+
+# all commands from here on will be run as the moose user
+USER moose:moose
+
+# Set the working directory inside the container
+WORKDIR /application
+
+# Copy the application files to the container
+COPY --chown=moose:moose ./app ./app
+# Placeholder for the language specific copy package file copy
+COPY_PACKAGE_FILE
+
+# https://stackoverflow.com/questions/70096208/dockerfile-copy-folder-if-it-exists-conditional-copy/70096420#70096420
+COPY --chown=moose:moose ./project.tom[l] ./project.toml
+COPY --chown=moose:moose ./moose.config.tom[l] ./moose.config.toml
+COPY --chown=moose:moose ./versions .moose/versions
+
+# Placeholder for the language specific install command
+INSTALL_COMMAND
+
+# Expose the ports on which the application will listen
+EXPOSE 4000
 
 # Set the command to run the application
 CMD ["moose", "prod"]
@@ -190,7 +138,10 @@ impl Routine for CreateDockerfile {
         let docker_file = match self.project.language {
             SupportedLanguages::Typescript => {
                 let install = DOCKER_FILE_COMMON
-                    .replace("COPY_PACKAGE_FILE", "COPY ./package.json ./package.json")
+                    .replace(
+                        "COPY_PACKAGE_FILE",
+                        "COPY --chown=moose:moose ./package.json ./package.json",
+                    )
                     // We should get compatible with other package managers
                     // and respect log files
                     .replace("INSTALL_COMMAND", "RUN npm install");
@@ -199,7 +150,10 @@ impl Routine for CreateDockerfile {
             }
             SupportedLanguages::Python => {
                 let install = DOCKER_FILE_COMMON
-                    .replace("COPY_PACKAGE_FILE", "COPY ./setup.py ./setup.py")
+                    .replace(
+                        "COPY_PACKAGE_FILE",
+                        "COPY --chown=moose:moose ./setup.py ./setup.py",
+                    )
                     .replace("INSTALL_COMMAND", "RUN pip install .");
 
                 format!("{}{}", PY_BASE_DOCKER_FILE, install)

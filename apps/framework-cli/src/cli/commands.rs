@@ -132,6 +132,9 @@ pub enum GenerateCommand {
         /// Whether or not to generate a full fledged package or just the source files in the language of choice
         #[arg(default_value = "false", short = 'f', long)]
         full_package: bool,
+        /// Force overwrite of files and folders in the directory
+        #[arg(default_value = "false", short = 'y', long)]
+        overwrite: bool,
     },
     HashToken {},
 }

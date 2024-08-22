@@ -424,6 +424,7 @@ async fn top_command_handler(
                 destination,
                 project_location,
                 full_package: packaged,
+                overwrite,
             }) => {
                 let canonical_location = project_location.canonicalize().map_err(|e| {
                     RoutineFailure::error(Message {
@@ -431,6 +432,23 @@ async fn top_command_handler(
                         details: format!("Failed to canonicalize path: {:?}", e),
                     })
                 })?;
+
+                if canonical_location.exists() && canonical_location.is_dir() {
+                    // Check if the directory contains any files or subdirectories
+                    let is_empty = std::fs::read_dir(&canonical_location)
+                        .map(|mut dir| dir.next().is_none())
+                        .unwrap_or(false);
+
+                    if !is_empty && !overwrite {
+                        return Err(RoutineFailure::error(Message {
+                            action: "Generate".to_string(),
+                            details: format!(
+                                "Directory '{}' is not empty, and --overwrite flag is not set.",
+                                canonical_location.display()
+                            ),
+                        }));
+                    }
+                }
 
                 let project = Project::load(&canonical_location).map_err(|e| {
                     RoutineFailure::error(Message {

@@ -7,6 +7,7 @@ use crate::framework::typescript::templates::TS_BASE_STREAMING_FUNCTION_TEMPLATE
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
 use crate::infrastructure::olap::clickhouse::queries::create_version_sync_trigger_query;
 use crate::project::Project;
+use crate::utilities::constants;
 use lazy_static::lazy_static;
 use log::debug;
 use regex::Regex;
@@ -93,7 +94,8 @@ pub fn get_all_version_syncs(
 
                 let sync_type = match captures.get(6).unwrap().as_str() {
                     "sql" => VersionSyncType::Sql(std::fs::read_to_string(&path)?),
-                    "ts" => VersionSyncType::Ts(path.clone()),
+                    constants::TYPESCRIPT_FILE_EXTENSION => VersionSyncType::Ts(path.clone()),
+                    constants::PYTHON_FILE_EXTENSION => VersionSyncType::Py(path.clone()),
                     _ => panic!(),
                 };
 

@@ -1,3 +1,4 @@
+use crate::utilities::constants;
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 
@@ -12,8 +13,8 @@ pub enum SupportedLanguages {
 impl SupportedLanguages {
     pub fn extension(self) -> &'static str {
         match self {
-            SupportedLanguages::Typescript => "ts",
-            SupportedLanguages::Python => "py",
+            SupportedLanguages::Typescript => constants::TYPESCRIPT_FILE_EXTENSION,
+            SupportedLanguages::Python => constants::PYTHON_FILE_EXTENSION,
         }
     }
 }

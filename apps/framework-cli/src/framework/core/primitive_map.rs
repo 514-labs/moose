@@ -7,6 +7,7 @@ use walkdir::WalkDir;
 
 use super::code_loader::MappingError;
 use crate::framework::data_model::DuplicateModelError;
+use crate::utilities::PathExt;
 use crate::{
     framework::{
         aggregations::model::Aggregation,
@@ -86,11 +87,7 @@ impl PrimitiveMap {
             get_all_current_streaming_functions(project, &primitive_map.datamodels)
                 .await?
                 .iter()
-                .filter(|func| {
-                    func.executable
-                        .extension()
-                        .is_some_and(|ext| ext == "ts" || ext == "py")
-                })
+                .filter(|func| func.executable.ext_is_supported_lang())
                 .cloned()
                 .collect();
 

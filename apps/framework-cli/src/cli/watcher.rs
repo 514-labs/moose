@@ -26,6 +26,9 @@ use crate::framework::data_model::model::DataModelSet;
 use crate::framework::data_model::{is_schema_file, DuplicateModelError};
 use crate::framework::streaming::loader::get_all_current_streaming_functions;
 
+use super::display::{self, with_spinner_async, Message, MessageType};
+use super::routines::streaming::verify_streaming_functions_against_datamodels;
+use super::settings::Features;
 use crate::infrastructure::olap::clickhouse_alt_client::{
     get_pool, store_current_state, store_infrastructure_map,
 };
@@ -40,15 +43,12 @@ use crate::project::AggregationSet;
 use crate::utilities::constants::{
     AGGREGATIONS_DIR, BLOCKS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, SCHEMAS_DIR,
 };
+use crate::utilities::PathExt;
 use crate::{
     framework::controller::RouteMeta,
     infrastructure::olap::{self, clickhouse::ConfiguredDBClient},
     project::Project,
 };
-
-use super::display::{self, with_spinner_async, Message, MessageType};
-use super::routines::streaming::verify_streaming_functions_against_datamodels;
-use super::settings::Features;
 
 async fn process_data_models_changes(
     project: Arc<Project>,
@@ -532,11 +532,7 @@ pub async fn process_consumption_changes(
         .into_iter()
         .for_each(|f| {
             if let Ok(f) = f {
-                if f.file_type().is_file()
-                    && f.path()
-                        .extension()
-                        .is_some_and(|ext| ext == "ts" || ext == "py")
-                {
+                if f.file_type().is_file() && f.path().ext_is_supported_lang() {
                     if let Ok(path) = f.path().strip_prefix(project.consumption_dir()) {
                         let mut path = path.to_path_buf();
                         path.set_extension("");

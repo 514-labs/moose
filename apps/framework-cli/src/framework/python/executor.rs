@@ -3,6 +3,7 @@
 
 use std::process::Stdio;
 
+use crate::utilities::constants::{CLI_INTERNAL_VERSIONS_DIR, CLI_PROJECT_INTERNAL_DIR};
 use tokio::process::{Child, Command};
 
 /// Checks if the Python interpreter is available
@@ -48,7 +49,9 @@ fn python_path_with_version() -> String {
     if !paths.is_empty() {
         paths.push(':');
     }
-    paths.push_str(".moose/versions");
+    paths.push_str(CLI_PROJECT_INTERNAL_DIR);
+    paths.push('/');
+    paths.push_str(CLI_INTERNAL_VERSIONS_DIR);
     paths
 }
 

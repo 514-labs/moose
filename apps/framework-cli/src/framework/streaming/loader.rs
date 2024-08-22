@@ -1,5 +1,6 @@
 use super::model::{FunctionError, StreamingFunction};
 use crate::utilities::constants::PYTHON_INIT_FILE;
+use crate::utilities::PathExt;
 use crate::{
     framework::data_model::model::DataModelSet,
     project::Project,
@@ -36,14 +37,6 @@ pub fn parse_streaming_function(file_name_no_extension: &str) -> Option<(&str, &
     }
 }
 
-pub fn extension_supported_in_streaming_function(path: &Path) -> bool {
-    path.extension().is_some_and(|extension_os_str| {
-        extension_os_str
-            .to_str()
-            .is_some_and(|extension| extension == "ts" || extension == "py")
-    })
-}
-
 /**
  * This function should be pointed at the root of the 'functions' directory.
  * Whether this is an old version of the moose app function (inside the version directory)
@@ -72,7 +65,7 @@ async fn get_all_streaming_functions(
 
         // We check if the file is a migration streaming function
         if source.metadata()?.is_file() {
-            if extension_supported_in_streaming_function(&source.path())
+            if source.path().ext_is_supported_lang()
                 && source.path().file_name() != Some(OsStr::new(PYTHON_INIT_FILE))
             {
                 let potential_function_file_name = &source

@@ -771,6 +771,8 @@ async fn router(
     res
 }
 
+const METRICS_LOGS_PATH: &str = "metrics-logs";
+
 async fn management_router<I: InfraMapProvider>(
     path_prefix: Option<String>,
     is_prod: bool,
@@ -778,8 +780,8 @@ async fn management_router<I: InfraMapProvider>(
     infra_map: I,
     req: Request<Incoming>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
-    let level = if req.uri().path().ends_with("metrics-logs") {
-        Trace
+    let level = if req.uri().path().ends_with(METRICS_LOGS_PATH) {
+        Trace // too many lines of log created without user interaction
     } else {
         Debug
     };
@@ -795,7 +797,9 @@ async fn management_router<I: InfraMapProvider>(
     let route = route.to_str().unwrap();
     let res = match (req.method(), route) {
         (&hyper::Method::POST, "logs") if !is_prod => Ok(log_route(req).await),
-        (&hyper::Method::POST, "metrics-logs") => Ok(metrics_log_route(req, metrics.clone()).await),
+        (&hyper::Method::POST, METRICS_LOGS_PATH) => {
+            Ok(metrics_log_route(req, metrics.clone()).await)
+        }
         (&hyper::Method::GET, "metrics") => metrics_route(metrics.clone()).await,
         (&hyper::Method::GET, "infra-map") => {
             let res = infra_map.serialize().await.unwrap();

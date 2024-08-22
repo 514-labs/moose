@@ -59,6 +59,7 @@ pub const PYTHON_FILE_EXTENSION: &str = "py";
 pub const TYPESCRIPT_FILE_EXTENSION: &str = "ts";
 pub const SQL_FILE_EXTENSION: &str = "sql";
 
+pub const PYTHON_CACHE_EXTENSION: &str = "pyc";
 pub const PYTHON_INIT_FILE: &str = "__init__.py";
 
 lazy_static! {

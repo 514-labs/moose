@@ -27,9 +27,7 @@ use crate::framework::languages::SupportedLanguages;
 use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_STREAMING_FUNCTION_SAMPLE;
 use crate::framework::python::templates::{PYTHON_BASE_API_SAMPLE, PYTHON_BASE_BLOCKS_SAMPLE};
-use crate::framework::streaming::loader::{
-    extension_supported_in_streaming_function, parse_streaming_function,
-};
+use crate::framework::streaming::loader::parse_streaming_function;
 use crate::framework::typescript::templates::TS_BASE_APIS_SAMPLE;
 use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
@@ -66,6 +64,7 @@ use crate::utilities::constants::{BLOCKS_DIR, TS_BLOCKS_FILE};
 use crate::utilities::constants::{PYTHON_INIT_FILE, PY_API_FILE, TS_API_FILE};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 use crate::utilities::git::GitConfig;
+use crate::utilities::PathExt;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to create or delete project files")]
@@ -546,7 +545,7 @@ impl Project {
             // flatten here means ignoring the Err case
             for entry in entries.flatten() {
                 if entry.file_type().is_ok_and(|t| t.is_file())
-                    && extension_supported_in_streaming_function(&entry.path())
+                    && entry.path().ext_is_supported_lang()
                 {
                     parse_streaming_function(
                         entry

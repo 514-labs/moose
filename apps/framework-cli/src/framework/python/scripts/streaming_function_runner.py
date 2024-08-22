@@ -198,7 +198,7 @@ for message in consumer:
     count_in += len(output_data_list)
 
 
-    requests.post("http://localhost:4000/logs", json={"message_type": "Success", 'action': 'Received',
+    requests.post("http://localhost:5000/logs", json={"message_type": "Success", 'action': 'Received',
     'message': f'{source_topic} -> {target_topic} {len(output_data_list)} message(s)'})
     
     

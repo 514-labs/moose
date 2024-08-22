@@ -297,7 +297,7 @@ impl Project {
                     "{}__{}.py",
                     SAMPLE_STREAMING_FUNCTION_SOURCE, SAMPLE_STREAMING_FUNCTION_DEST
                 ));
-                let aggregations_file_path = blocks_dir.join(PY_BLOCKS_FILE);
+                let blocks_file_path = blocks_dir.join(PY_BLOCKS_FILE);
 
                 // Write Python specific templates
                 self.write_file(&apis_file_path, PYTHON_BASE_API_SAMPLE.to_string())?;
@@ -310,7 +310,7 @@ impl Project {
                     PYTHON_BASE_STREAMING_FUNCTION_SAMPLE.to_string(),
                 )?;
                 self.write_file(
-                    &aggregations_file_path,
+                    &blocks_file_path,
                     PYTHON_BASE_BLOCKS_SAMPLE.to_string(),
                 )?;
 

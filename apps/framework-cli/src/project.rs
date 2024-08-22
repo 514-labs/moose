@@ -235,9 +235,19 @@ impl Project {
         let app_dir = self.app_dir();
         std::fs::create_dir_all(&app_dir)?;
 
+        // TODO probably move this to the respective project language modules
+        if self.language == SupportedLanguages::Python {
+            std::fs::File::create(app_dir.join(PYTHON_INIT_FILE))?;
+        }
+
         for dir in APP_DIR_LAYOUT.iter() {
             let to_create = app_dir.join(dir);
-            std::fs::create_dir_all(to_create)?;
+            std::fs::create_dir_all(&to_create)?;
+
+            // TODO probably move this to the respective project language modules
+            if self.language == SupportedLanguages::Python {
+                std::fs::File::create(to_create.join(PYTHON_INIT_FILE))?;
+            }
         }
 
         Ok(())
@@ -253,6 +263,7 @@ impl Project {
             README_PREFIX.to_owned() + include_str!("../../../README.md"),
         )?;
         match self.language {
+            // TODO move the templates to the respective project language modules
             SupportedLanguages::Typescript => {
                 let tsconfig = self.project_location.join("tsconfig.json");
                 let apis_file_path = self.consumption_dir().join(TS_API_FILE);
@@ -297,7 +308,7 @@ impl Project {
                     "{}__{}.py",
                     SAMPLE_STREAMING_FUNCTION_SOURCE, SAMPLE_STREAMING_FUNCTION_DEST
                 ));
-                let aggregations_file_path = blocks_dir.join(PY_BLOCKS_FILE);
+                let blocks_file_path = blocks_dir.join(PY_BLOCKS_FILE);
 
                 // Write Python specific templates
                 self.write_file(&apis_file_path, PYTHON_BASE_API_SAMPLE.to_string())?;
@@ -309,20 +320,7 @@ impl Project {
                     &function_file_path,
                     PYTHON_BASE_STREAMING_FUNCTION_SAMPLE.to_string(),
                 )?;
-                self.write_file(
-                    &aggregations_file_path,
-                    PYTHON_BASE_BLOCKS_SAMPLE.to_string(),
-                )?;
-
-                // Create __init__.py in necessary directories for Python
-                for dir in &[
-                    self.app_dir(),
-                    self.data_models_dir(),
-                    self.consumption_dir(),
-                    self.streaming_func_dir(),
-                ] {
-                    std::fs::File::create(dir.join(PYTHON_INIT_FILE))?;
-                }
+                self.write_file(&blocks_file_path, PYTHON_BASE_BLOCKS_SAMPLE.to_string())?;
             }
         }
 

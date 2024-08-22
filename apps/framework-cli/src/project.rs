@@ -43,8 +43,8 @@ use crate::project::typescript_project::TypescriptProject;
 use config::{Config, ConfigError, Environment, File};
 use log::debug;
 use python_project::PythonProject;
-use serde::Deserialize;
 use serde::Serialize;
+use serde::{Deserialize, Deserializer};
 
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS;
@@ -86,7 +86,7 @@ pub enum ProjectFileError {
 // Dynamic Dispatch to handle the different types of projects
 // the approach with enums is the one that is the simplest to put into practice and
 // maintain. With Copilot - it also has the advaantage that the boiler plate is really fast to write
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Project {
     pub language: SupportedLanguages,
     #[serde(default)]
@@ -110,6 +110,53 @@ pub struct Project {
     pub supported_old_versions: HashMap<String, String>,
 }
 
+impl<'de> Deserialize<'de> for Project {
+    fn deserialize<D>(deserializer: D) -> Result<Project, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct ProjectHelper {
+            language: SupportedLanguages,
+            #[serde(default)]
+            redpanda_config: RedpandaConfig,
+            clickhouse_config: ClickHouseConfig,
+            http_server_config: LocalWebserverConfig,
+            #[serde(default)]
+            git_config: GitConfig,
+            #[serde(default = "HashMap::new")]
+            supported_old_versions: HashMap<String, String>,
+        }
+
+        let helper = ProjectHelper::deserialize(deserializer)?;
+
+        let language_project_config = match helper.language {
+            SupportedLanguages::Typescript => {
+                // Here, you would load or initialize the TypeScript project configuration
+                LanguageProjectConfig::Typescript(TypescriptProject::new(
+                    "default_name".to_string(),
+                ))
+            }
+            SupportedLanguages::Python => {
+                // Here, you would load or initialize the Python project configuration
+                LanguageProjectConfig::Python(PythonProject::new("default_name".to_string()))
+            }
+        };
+
+        Ok(Project {
+            language: helper.language,
+            redpanda_config: helper.redpanda_config,
+            clickhouse_config: helper.clickhouse_config,
+            http_server_config: helper.http_server_config,
+            git_config: helper.git_config,
+            language_project_config,
+            project_location: PathBuf::new(), // Initialize appropriately
+            is_production: false,
+            supported_old_versions: helper.supported_old_versions,
+        })
+    }
+}
+
 pub struct AggregationSet {
     pub current_version: String,
     pub names: HashSet<String>,
@@ -119,12 +166,6 @@ pub struct AggregationSet {
 pub enum LanguageProjectConfig {
     Typescript(TypescriptProject),
     Python(PythonProject),
-}
-
-impl Default for LanguageProjectConfig {
-    fn default() -> Self {
-        LanguageProjectConfig::Typescript(TypescriptProject::default())
-    }
 }
 
 static STREAMING_FUNCTION_RENAME_WARNING: Once = Once::new();

@@ -21,8 +21,9 @@ FROM node:20-bookworm-slim
 RUN npm config set update-notifier false
 "#;
 
+// Python and node 'slim' term is flipped
 static PY_BASE_DOCKER_FILE: &str = r#"
-FROM python:3.12-bookworm
+FROM python:3.12-slim-bookworm
 "#;
 
 static DOCKER_FILE_COMMON: &str = r#"

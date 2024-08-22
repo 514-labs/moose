@@ -126,12 +126,14 @@ export default {
     },
     headingComponent({ children }) {
       return (
-        <SmallText className="my-0 text-muted-foreground">{children}</SmallText>
+        <SmallText className="my-0 text-muted-foreground font-normal">
+          {children}
+        </SmallText>
       );
     },
     extraContent: () => {
       return (
-        <div className="border rounded-md">
+        <div className="border rounded-xl">
           <div className="m-4">
             <SmallText className="my-0">
               Have a question or want to provide us with feedback?

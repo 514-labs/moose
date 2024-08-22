@@ -100,8 +100,8 @@ from typing import List
 
 @dataclass
 class Blocks:
-    teardown: List[str]
-    setup: List[str]
+    teardown: list[str]
+    setup: list[str]
 
 teardown_queries = []
 
@@ -119,8 +119,8 @@ from typing import List
 
 @dataclass
 class Blocks:
-    teardown: List[str]
-    setup: List[str]
+    teardown: list[str]
+    setup: list[str]
 
 destination_table = "DailyActiveUsers"
 

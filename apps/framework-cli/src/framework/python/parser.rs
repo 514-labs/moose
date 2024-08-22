@@ -305,7 +305,7 @@ fn class_attribute_node_to_column_builder(
         Expr::Name(name) => {
             process_name_node(name, enums, python_classes, nested_classes, &mut column)?
         }
-        // Handles the case where the annotation is a subscript such as List[str], Optional[int], Key[str]
+        // Handles the case where the annotation is a subscript such as list[str], Optional[int], Key[str]
         Expr::Subscript(subscript) => process_subscript_node(subscript, &mut column)?,
 
         _ => {

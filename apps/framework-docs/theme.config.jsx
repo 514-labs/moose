@@ -12,7 +12,7 @@ import {
 import { Logo, Badge } from "@514labs/design-system-components/components";
 import { cn } from "@514labs/design-system-components/utils";
 import { Code, Rocket, Package, Library } from "lucide-react";
-import { Github } from "lucide-react";
+import Link from "next/link";
 
 export default {
   logo: () => (
@@ -129,12 +129,23 @@ export default {
         <SmallText className="my-0 text-muted-foreground">{children}</SmallText>
       );
     },
-    feedback: {
-      content: () => {
-        return <div className="border">TEST</div>;
-      },
+    extraContent: () => {
+      return (
+        <div className="border rounded-md">
+          <div className="m-4">
+            <SmallText className="my-0">
+              Have a question or want to provide us with feedback?
+            </SmallText>
+            <Link href="https://github.com/514-labs/moose/issues/new?title=Feedback%20for%20%E2%80%9CIntroduction%E2%80%9D&labels=feedback">
+              <SmallText className="text-pink my-0">Contact us</SmallText>
+            </Link>
+          </div>
+        </div>
+      );
     },
   },
+  feedback: false,
+  editLink: false,
   footer: {
     text: (
       <span>

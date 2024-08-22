@@ -156,6 +156,10 @@
   margin-right: 0;
 }
 
+.docs nav.nextra-toc > a {
+  font-weight: 400 !important;
+}
+
 .docs :is(html[class~="dark"] .dark\:nx-bg-dark) {
   background-color: hsl(var(--background)) !important;
 }

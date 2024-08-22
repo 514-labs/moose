@@ -125,9 +125,7 @@ export default {
     },
     headingComponent({ children }) {
       return (
-        <SmallText className="my-0 text-muted-foreground prose">
-          {children}
-        </SmallText>
+        <SmallText className="my-0 text-muted-foreground">{children}</SmallText>
       );
     },
   },

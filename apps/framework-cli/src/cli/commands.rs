@@ -16,7 +16,7 @@ pub enum Commands {
         name: String,
 
         /// Language of your app or service
-        #[arg(default_value_t = SupportedLanguages::Typescript, value_enum)]
+        #[arg(value_enum)]
         language: SupportedLanguages,
 
         /// Location of your app or service

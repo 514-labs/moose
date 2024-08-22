@@ -242,7 +242,7 @@ impl Project {
 
         for dir in APP_DIR_LAYOUT.iter() {
             let to_create = app_dir.join(dir);
-            std::fs::create_dir_all(to_create.clone())?;
+            std::fs::create_dir_all(&to_create)?;
 
             // TODO probably move this to the respective project language modules
             if self.language == SupportedLanguages::Python {

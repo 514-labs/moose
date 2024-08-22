@@ -441,7 +441,7 @@ async fn top_command_handler(
                         return Err(RoutineFailure::error(Message {
                             action: "Generate".to_string(),
                             details: format!(
-                                "Directory '{}' is not empty, and overwrite flag is not set.",
+                                "Directory '{}' is not empty, and --overwrite flag is not set.",
                                 canonical_location.display()
                             ),
                         }));

@@ -48,8 +48,8 @@ pub async fn create_or_replace_version_sync(
 
     match version_sync.sync_type {
         VersionSyncType::Sql(_) => create_sql_version_sync(version_sync, configured_client).await?,
-        VersionSyncType::Ts(_) => {
-            create_ts_version_sync_topics(project, version_sync).await?;
+        _ => {
+            create_streaming_function_version_sync_topics(project, version_sync).await?;
             initial_data_load(
                 &version_sync.source_table,
                 configured_client,
@@ -203,7 +203,7 @@ pub async fn create_sql_version_sync(
     Ok(())
 }
 
-pub async fn create_ts_version_sync_topics(
+pub async fn create_streaming_function_version_sync_topics(
     project: &Project,
     version_sync: &VersionSync,
 ) -> anyhow::Result<()> {

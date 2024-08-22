@@ -44,7 +44,7 @@ setup(
 )
 "#;
 
-pub static PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE: &str = r#"
+pub static PYTHON_BASE_STREAMING_FUNCTION_SAMPLE: &str = r#"
 from datetime import datetime
 from app.datamodels.models import UserActivity, ParsedActivity
 from dataclasses import dataclass
@@ -67,7 +67,7 @@ my_flow = Flow(
 )
 "#;
 
-pub static PTYHON_BASE_API_SAMPLE_TEMPLATE: &str = r#"
+pub static PYTHON_BASE_API_SAMPLE: &str = r#"
 def run(client, params):
     minDailyActiveUsers = int(params.get('minDailyActiveUsers', [0])[0])
     limit = int(params.get('limit', [10])[0])
@@ -88,7 +88,7 @@ def run(client, params):
     )
 "#;
 
-pub static PTYHON_BASE_BLOCKS_TEMPLATE: &str = r#"
+pub static PYTHON_BASE_BLOCKS_TEMPLATE: &str = r#"
 from dataclasses import dataclass
 from typing import List
 
@@ -100,8 +100,8 @@ from typing import List
 
 @dataclass
 class Blocks:
-    teardown: List[str]
-    setup: List[str]
+    teardown: list[str]
+    setup: list[str]
 
 teardown_queries = []
 
@@ -110,7 +110,7 @@ setup_queries = []
 block = Blocks(teardown=teardown_queries, setup=setup_queries)
 "#;
 
-pub static PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE: &str = r#"
+pub static PYTHON_BASE_BLOCKS_SAMPLE: &str = r#"
 from dataclasses import dataclass
 from typing import List
 
@@ -119,8 +119,8 @@ from typing import List
 
 @dataclass
 class Blocks:
-    teardown: List[str]
-    setup: List[str]
+    teardown: list[str]
+    setup: list[str]
 
 destination_table = "DailyActiveUsers"
 

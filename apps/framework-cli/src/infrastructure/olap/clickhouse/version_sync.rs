@@ -1,19 +1,19 @@
+use super::errors::ClickhouseError;
+use super::queries::create_initial_data_load_query;
 use crate::framework::core::code_loader::{FrameworkObject, FrameworkObjectVersions};
 use crate::framework::data_model::model::DataModel;
-use crate::infrastructure::olap::clickhouse::model::{
-    ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
-};
+use crate::framework::languages::SupportedLanguages;
+use crate::framework::typescript::templates::TS_BASE_STREAMING_FUNCTION_TEMPLATE;
+use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
 use crate::infrastructure::olap::clickhouse::queries::create_version_sync_trigger_query;
 use crate::project::Project;
+use crate::utilities::constants;
 use lazy_static::lazy_static;
 use log::debug;
 use regex::Regex;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::PathBuf;
-
-use super::errors::ClickhouseError;
-use super::queries::create_initial_data_load_query;
 
 pub fn parse_version(v: &str) -> Vec<i32> {
     v.split('.')
@@ -28,13 +28,20 @@ pub fn version_to_string(v: &[i32]) -> String {
         .join(".")
 }
 
-// to be removed when we move to all TS streaming function version syncs
-pub fn generate_sql_version_syncs(
-    db_name: &str,
+pub struct GeneratedStreamingFunctionMigration {
+    pub model_name: String,
+    pub source_version: String,
+    pub dest_version: String,
+    pub code: String,
+}
+
+pub fn generate_streaming_function_migration(
     framework_object_versions: &FrameworkObjectVersions,
     version_sync_list: &[VersionSync],
     previous_version: &str,
-) -> Vec<VersionSync> {
+    language: SupportedLanguages,
+    project: &Project,
+) -> Vec<GeneratedStreamingFunctionMigration> {
     let mut previous_models: HashMap<String, FrameworkObject> = framework_object_versions
         .previous_version_models
         .get(previous_version)
@@ -51,27 +58,15 @@ pub fn generate_sql_version_syncs(
     let mut res = vec![];
     for fo in framework_object_versions.current_models.models.values() {
         if let Some(old_model) = previous_models.get(&fo.data_model.name) {
-            if let Some(old_table) = &old_model.table {
-                if let Some(new_table) = &fo.table {
-                    if old_model.data_model.columns != fo.data_model.columns {
-                        res.push(VersionSync {
-                            db_name: db_name.to_string(),
-                            model_name: old_model.data_model.name.clone(),
-                            source_version: previous_version.to_string(),
-                            source_data_model: old_model.data_model.clone(),
-                            source_table: old_table.clone(),
-                            dest_data_model: fo.data_model.clone(),
-                            dest_version: framework_object_versions.current_version.clone(),
-                            dest_table: new_table.clone(),
-                            sync_type: VersionSyncType::Sql(
-                                VersionSync::generate_migration_function(
-                                    &old_table.columns,
-                                    &new_table.columns,
-                                ),
-                            ),
-                        });
-                    }
-                }
+            if old_model.data_model.columns != fo.data_model.columns {
+                let code =
+                    streaming_function(language, &old_model.data_model, &fo.data_model, project);
+                res.push(GeneratedStreamingFunctionMigration {
+                    model_name: old_model.data_model.name.clone(),
+                    source_version: previous_version.to_string(),
+                    dest_version: framework_object_versions.current_version.clone(),
+                    code,
+                })
             }
         }
     }
@@ -99,7 +94,8 @@ pub fn get_all_version_syncs(
 
                 let sync_type = match captures.get(6).unwrap().as_str() {
                     "sql" => VersionSyncType::Sql(std::fs::read_to_string(&path)?),
-                    "ts" => VersionSyncType::Ts(path.clone()),
+                    constants::TYPESCRIPT_FILE_EXTENSION => VersionSyncType::Ts(path.clone()),
+                    constants::PYTHON_FILE_EXTENSION => VersionSyncType::Py(path.clone()),
                     _ => panic!(),
                 };
 
@@ -168,6 +164,7 @@ pub fn get_all_version_syncs(
 pub enum VersionSyncType {
     Sql(String),
     Ts(PathBuf),
+    Py(PathBuf),
 }
 
 #[derive(Debug, Clone)]
@@ -186,7 +183,7 @@ pub struct VersionSync {
 lazy_static! {
     pub static ref VERSION_SYNC_REGEX: Regex =
         //            source_model_name         source     target_model_name   dest_version
-        Regex::new(r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-9_]+)__)?([0-9_]+).(sql|ts)$")
+        Regex::new(r"^([a-zA-Z0-9_]+)_migrate__([0-9_]+)__(([a-zA-Z0-9_]+)__)?([0-9_]+).(sql|ts|py)$")
             .unwrap();
 }
 
@@ -197,52 +194,6 @@ impl VersionSync {
             self.source_data_model.name.clone(),
             self.source_version.replace('.', "_")
         )
-    }
-
-    pub fn generate_migration_function(
-        old_columns: &[ClickHouseColumn],
-        new_columns: &[ClickHouseColumn],
-    ) -> String {
-        let input = old_columns
-            .iter()
-            .map(|c| c.name.clone())
-            .collect::<Vec<String>>()
-            .join(", ");
-
-        let mut old_column_index = 0;
-        let new_columns = new_columns
-            .iter()
-            .map(|c| {
-                if let Some(old_column) = old_columns.get(old_column_index) {
-                    if old_column.name == c.name {
-                        old_column_index += 1;
-                        if old_column.column_type == c.column_type {
-                            return c.name.clone();
-                        };
-                    }
-                }
-                match &c.column_type {
-                    ClickHouseColumnType::String => format!("'{}'", c.name),
-                    ClickHouseColumnType::Boolean => "true".to_string(),
-                    ClickHouseColumnType::ClickhouseInt(_) => "0".to_string(),
-                    ClickHouseColumnType::ClickhouseFloat(_) => "0.0".to_string(),
-                    ClickHouseColumnType::Decimal => "0.0".to_string(),
-                    ClickHouseColumnType::DateTime => "'2024-02-20T23:14:57.788Z'".to_string(),
-                    ClickHouseColumnType::Json => format!("'{{\"{}\": null}}'", c.name),
-                    ClickHouseColumnType::Bytes => "0.0".to_string(),
-                    ClickHouseColumnType::Nested(_) => {
-                        todo!("Implement the nested type mapper")
-                    }
-                    ClickHouseColumnType::Enum(data_enum) => {
-                        format!("'{}'", data_enum.values[0].name)
-                    }
-                    ClickHouseColumnType::Array(_) => "[]".to_string(),
-                }
-            })
-            .collect::<Vec<String>>()
-            .join(", ");
-
-        format!("({}) -> ({})", input, new_columns)
     }
 
     pub fn migration_function_name(&self) -> String {
@@ -273,7 +224,7 @@ impl VersionSync {
     pub fn sql_migration_function(&self) -> &str {
         match &self.sync_type {
             VersionSyncType::Sql(migration_function) => migration_function,
-            VersionSyncType::Ts(_) => {
+            _ => {
                 panic!("Retrieving SQL migration function from a streaming function version sync.")
             }
         }
@@ -304,5 +255,75 @@ impl VersionSync {
             self.db_name,
             self.migration_trigger_name()
         )
+    }
+}
+
+// TODO: refactor logic with StreamingFunctionFileBuilder
+fn streaming_function(
+    language: SupportedLanguages,
+    old_dm: &DataModel,
+    new_dm: &DataModel,
+    project: &Project,
+) -> String {
+    let template = match language {
+        SupportedLanguages::Typescript => TS_BASE_STREAMING_FUNCTION_TEMPLATE,
+        SupportedLanguages::Python => todo!(),
+    };
+
+    let mut old_name = old_dm.name.clone();
+    old_name.push_str("Old");
+
+    template
+        .to_string()
+        .replace("{{source}}", &old_name)
+        .replace("{{destination}}", &new_dm.name)
+        .replace(
+            "{{source_import}}",
+            &format!(
+                "import {{ {} as {} }} from \"{}\";",
+                &old_dm.name,
+                old_name,
+                &get_ts_import_path(old_dm, project)
+            ),
+        )
+        .replace(
+            "{{destination_import}}",
+            &format!(
+                "import {{ {} }} from \"{}\";",
+                &new_dm.name,
+                &get_ts_import_path(new_dm, project)
+            ),
+        )
+        .replace(
+            "{{destination_object}}",
+            "{ ...source }", // let the compiler figure out the rest
+        )
+}
+
+fn get_ts_import_path(data_model: &DataModel, project: &Project) -> String {
+    match data_model
+        .abs_file_path
+        .strip_prefix(project.old_version_location(&data_model.version).unwrap())
+    {
+        Ok(file) => {
+            format!(
+                "versions/{}/{}",
+                &data_model.version,
+                file.with_extension("").to_string_lossy()
+            )
+        }
+        Err(_) => {
+            assert_eq!(data_model.version, project.cur_version());
+
+            format!(
+                "datamodels/{}",
+                data_model
+                    .abs_file_path
+                    .with_extension("")
+                    .strip_prefix(project.data_models_dir())
+                    .unwrap()
+                    .to_string_lossy()
+            )
+        }
     }
 }

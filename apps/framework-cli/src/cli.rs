@@ -408,7 +408,9 @@ async fn top_command_handler(
 
                 check_project_name(&project_arc.name())?;
                 copy_old_schema(&project_arc)?.show();
-                generate_migration(&project_arc).await?.show();
+                generate_migration(&project_arc, project_arc.language)
+                    .await?
+                    .show();
 
                 wait_for_usage_capture(capture_handle).await;
 

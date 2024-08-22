@@ -1,3 +1,4 @@
+use crate::utilities::constants;
 use clap::ValueEnum;
 use serde::{Deserialize, Serialize};
 
@@ -7,6 +8,15 @@ pub enum SupportedLanguages {
     Typescript,
     #[value(name = "python")]
     Python,
+}
+
+impl SupportedLanguages {
+    pub fn extension(self) -> &'static str {
+        match self {
+            SupportedLanguages::Typescript => constants::TYPESCRIPT_FILE_EXTENSION,
+            SupportedLanguages::Python => constants::PYTHON_FILE_EXTENSION,
+        }
+    }
 }
 
 impl std::fmt::Display for SupportedLanguages {

@@ -127,7 +127,7 @@ impl SyncingProcessesRegistry {
 
         let version_syncs_iterator = version_syncs.iter().filter_map(|vs| match vs.sync_type {
             VersionSyncType::Sql(_) => None,
-            VersionSyncType::Ts(_) => {
+            _ => {
                 let output_topic = vs.topic_name("output");
                 if available_topics.contains(&output_topic) {
                     Some(spawn_sync_process_core(

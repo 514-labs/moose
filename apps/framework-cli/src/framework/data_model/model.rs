@@ -143,7 +143,7 @@ impl DataModelSet {
                     }
                 }
 
-                // We go back in history to find the earliest versiion that has the same hash as the current
+                // We go back in history to find the earliest version that has the same hash as the current
                 // version.
                 earlier_version = versions_parsed.pop_front();
                 let mut previously_similar = None;

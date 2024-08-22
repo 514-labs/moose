@@ -9,7 +9,7 @@ use crate::framework::core::code_loader::{
     load_framework_objects, FrameworkObject, FrameworkObjectVersions,
 };
 use crate::framework::core::infrastructure::table::ColumnType;
-use crate::framework::typescript::templates::BASE_STREAMING_FUNCTION_TEMPLATE;
+use crate::framework::typescript::templates::TS_BASE_STREAMING_FUNCTION_TEMPLATE;
 use crate::project::Project;
 
 use super::{RoutineFailure, RoutineSuccess};
@@ -21,7 +21,7 @@ pub struct StreamingFunctionFileBuilder {
 
 impl StreamingFunctionFileBuilder {
     pub fn new(project: &Project, source: &str, destination: &str) -> Self {
-        let function_file_template = BASE_STREAMING_FUNCTION_TEMPLATE
+        let function_file_template = TS_BASE_STREAMING_FUNCTION_TEMPLATE
             .to_string()
             .replace("{{source}}", source)
             .replace("{{destination}}", destination);

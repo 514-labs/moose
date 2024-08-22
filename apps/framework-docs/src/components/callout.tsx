@@ -14,26 +14,39 @@ interface CalloutProps {
   children: React.ReactNode;
 }
 
-const typeToIcon = {
-  info: <Info />,
-  warning: <TriangleAlert />,
-  danger: <Bug />,
+const calloutVariants = {
+  info: {
+    icon: <Info />,
+    color: "bg-blue/10",
+    border: "border-blue",
+  },
+  warning: {
+    icon: <TriangleAlert />,
+    color: "bg-yellow/10",
+    border: "border-yellow",
+  },
+  danger: {
+    icon: <Bug />,
+    color: "bg-descructive/10",
+    border: "border-destructive",
+  },
 };
 
-type CalloutType = keyof typeof typeToIcon;
+type CalloutType = keyof typeof calloutVariants;
 
-export default function Callout({ type, title, children }: CalloutProps) {
-  const icon = typeToIcon[type];
+export function Callout({ type, title, children }: CalloutProps) {
+  const variantProps = calloutVariants[type];
 
   return (
     <Card
       className={cn(
-        "border b-[1px] border-muted-foreground rounded-3xl my-5",
-        type,
+        "border b-[1px] rounded-3xl my-5",
+        variantProps.color,
+        variantProps.border,
       )}
     >
       <CardHeader className="flex flex-row items-center justify-start gap-2 w-full my-0 pb-0">
-        {icon && <div className="my-0 pt-0">{icon}</div>}
+        <div className="my-0 pt-0">{variantProps.icon}</div>
         <SmallText className="my-0 font-medium">{title}</SmallText>
       </CardHeader>
       <CardContent className="my-0">{children}</CardContent>

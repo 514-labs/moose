@@ -50,6 +50,28 @@ const config = {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
+        blue: {
+          DEFAULT: "hsl(var(--accent-blue))",
+        },
+        teal: {
+          DEFAULT: "hsl(var(--accent-teal))",
+        },
+        indigo: {
+          DEFAULT: "hsl(var(--accent-indigo))",
+          trans: "hsl(var(--accent-indigo-trans))/20",
+        },
+        purple: {
+          DEFAULT: "hsl(var(--accent-purple))",
+        },
+        pink: {
+          DEFAULT: "hsl(var(--accent-pink))",
+        },
+        yellow: {
+          DEFAULT: "hsl(var(--accent-yellow))",
+        },
+        green: {
+          DEFAULT: "hsl(var(--accent-green))",
+        },
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
@@ -58,6 +80,10 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+      },
+      backgroundImage: {
+        gradient: "var(--moose-gradient)",
+        gradientDark: "var(--moose-gradient-dark)",
       },
       borderRadius: {
         lg: "var(--radius)",

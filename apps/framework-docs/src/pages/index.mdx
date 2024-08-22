@@ -1,8 +1,12 @@
 import { Button, CTABar } from "@514labs/design-system-components/components";
 import Link from "next/link";
 import { Cards, Card } from "nextra/components";
-import CTACard from "../components/cta-card";
+import { CTACard } from "../components";
 import { Zap, GraduationCap } from "lucide-react";
+import {
+  Grid,
+  HalfWidthContentContainer,
+} from "@514labs/design-system-components/components/containers";
 
 # Introduction
 
@@ -25,12 +29,14 @@ Choose the method that best suits your learning style for getting started with M
     description="Get up and running with your own Moose project in minutes"
     ctaLink="/new-project"
     Icon={Zap}
+    className="mr-2"
   />
   <CTACard
     title="Tutorial"
-    description="Learn by building an end-to-end Moose application through a guided tutorial"
+    description="Build an end-to-end Moose app through a guided tutorial"
     ctaLink="/learn-moose"
     Icon={GraduationCap}
+    className="ml-2"
   />
 </div>
 
@@ -48,17 +54,25 @@ Moose is designed for any TypeScript or Python developer, regardless of your bac
 
 ## What types of applications can be built with Moose?
 
+<Grid className="flex flex-row w-full">
+<HalfWidthContentContainer className="border w-48">
+##### Embed Data Features in Frontend User-Facing Applications
 Moose can be combined with your favorite front-end framework to embed data-intensive features in your products, such as:
 
 - Dynamic leaderboards
 - Interactive charts
 - Real-time metric feeds
+  </HalfWidthContentContainer>
 
+<HalfWidthContentContainer className="border w-48 text-wrap h-fit" >
+##### Backend System for Enterprise Data Products
 Or, you can build a backend system to power enterprise data products like BI software, data exploration tools, and more to create feature-rich, interactive data applications for your users and stakeholders. Examples include:
 
 - Real-time dashboards
 - Observability & Log Monitoring
 - Customer data platforms
+  </HalfWidthContentContainer>
+</Grid>
 
 We include some example applications in the [templates section](/templates), so you can see how Moose can be used to build a variety of applications:
 

@@ -7,31 +7,40 @@ import {
   CardTitle,
 } from "@514labs/design-system-components/components";
 import Link from "next/link";
-import { GraduationCap, Zap } from "lucide-react";
+import {
+  Heading,
+  HeadingLevel,
+  Text,
+} from "@514labs/design-system-components/typography";
+import { cn } from "@514labs/design-system-components/utils";
 
 interface CTACardProps {
   title: string;
   description: string;
   ctaLink: string;
   Icon: React.ElementType;
+  className: string;
 }
 
-export default function CTACard({
+export function CTACard({
   title,
   description,
   ctaLink,
   Icon,
+  className,
 }: CTACardProps) {
   return (
     <Link href={ctaLink}>
-      <Card className="hover:bg-secondary md:w-64 w-auto h-auto m-4">
+      <Card className={cn("hover:bg-secondary md:w-64 w-auto h-56", className)}>
         <CardHeader>
-          <div className="bg-muted rounded-md w-fit">
-            <Icon className="m-2 h-[20px] w-[20px]" />
+          <div className="rounded-md w-fit bg-gradient">
+            <Icon className="m-3 h-[24px] w-[24px]" />
           </div>
         </CardHeader>
         <CardContent>
-          <CardTitle>{title}</CardTitle>
+          <Heading className="my-0 text-primary" level={HeadingLevel.l5}>
+            {title}
+          </Heading>
           <CardDescription className="mt-2">{description}</CardDescription>
         </CardContent>
       </Card>

@@ -15,7 +15,7 @@ import { Code, Rocket, Package, Library } from "lucide-react";
 
 export default {
   logo: () => (
-    <div className="flex flex-row items-center content-center">
+    <div className="flex flex-row items-center content-center w-[288px]">
       <Logo property="moose" subProperty="docs" className="mr-2" />
       <Badge variant={"outline"} className="w-fit ml-2">
         alpha
@@ -37,7 +37,6 @@ export default {
       <link rel="icon" href="/favicon.ico" type="image/x-icon" sizes="16x16" />
     </>
   ),
-
   components: {
     h1: ({ children }) => <Heading>{children}</Heading>,
     h2: ({ children }) => (
@@ -75,7 +74,7 @@ export default {
     titleComponent({ title, type }) {
       if (type === "separator") {
         return (
-          <div className="flex flex-row justify-start items-center text-accent-foreground gap-3">
+          <div className="flex flex-row justify-start items-center text-muted-foreground gap-3">
             <div className="bg-muted rounded-md h-full">
               {(() => {
                 switch (title) {
@@ -92,7 +91,9 @@ export default {
                 }
               })()}
             </div>
-            <SmallText className="my-0">{title}</SmallText>
+            <SmallText className="my-0 text-muted-foreground">
+              {title}
+            </SmallText>
           </div>
         );
       }

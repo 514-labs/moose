@@ -1,4 +1,5 @@
-import { FileTree, Callout } from "nextra/components";
+import { FileTree } from "nextra/components";
+import { Callout } from "../components";
 
 # Introduction to Data Models
 
@@ -18,7 +19,7 @@ Each component is strongly typed and kept in sync with the Data Model schema def
 
 Data Models must be placed in the `/datamodels` directory of your Moose application. The directory structure should look like this:
 
-<FileTree>
+<FileTree className="w-full">
   <FileTree.Folder name="app" open>
     <FileTree.Folder name="datamodels" open>
       <FileTree.File name="models.ts" />
@@ -34,21 +35,11 @@ Data Models are represented using native features and syntax of the language you
 - **TypeScript**: Data Models are represented as `interfaces`, and must be exported from a `.ts` file (using `export` keyword)
 - **Python**: Data Models are represented as `dataclasses` (using the `@dataclass` decorator), and must be defined in a `.py` file
 
-<Callout>
-  Notes:
-  <ul>
-    <li> You can define multiple Data Models within a single file. </li>
-    <li>
-      The name of the file is not important, but it must have a `.ts` or `.py`
-      extension.{" "}
-    </li>
-    <li>
-      {" "}
-      Any exported interface or dataclass that adheres to the appropriate file and
-      folder conventions will be automatically detected by Moose and used to generate
-      the necessary infrastructure.
-    </li>
-  </ul>
+<Callout type="info" title="Notes">
+  - You can define multiple Data Models within a single file. 
+  - The name of the file is not important, but it must have a `.ts` or `.py` extension.
+  - Any exported interface or dataclass that adheres to the appropriate file and folder conventions will be automatically detected by Moose and used to generate the necessary infrastructure.
+
 </Callout>
 
 ### How Moose Interprets Data Models

@@ -22,25 +22,18 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Once;
 
-use config::{Config, ConfigError, Environment, File};
-use log::debug;
-use python_project::PythonProject;
-use serde::Deserialize;
-use serde::Serialize;
-
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
-use crate::framework::python::templates::PTYHON_BASE_API_SAMPLE_TEMPLATE;
-use crate::framework::python::templates::PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
-use crate::framework::python::templates::PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE;
+use crate::framework::python::templates::PYTHON_BASE_STREAMING_FUNCTION_SAMPLE;
+use crate::framework::python::templates::{PYTHON_BASE_API_SAMPLE, PYTHON_BASE_BLOCKS_SAMPLE};
 use crate::framework::streaming::loader::{
     extension_supported_in_streaming_function, parse_streaming_function,
 };
-use crate::framework::typescript::templates::BASE_APIS_SAMPLE_TEMPLATE;
+use crate::framework::typescript::templates::TS_BASE_APIS_SAMPLE;
 use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
-    TS_BASE_BLOCKS_SAMPLE_TEMPLATE, TS_BASE_STREAMING_FUNCTION_SAMPLE_TEMPLATE,
+    TS_BASE_BLOCKS_SAMPLE, TS_BASE_STREAMING_FUNCTION_SAMPLE,
 };
 use crate::framework::typescript::templates::{
     VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
@@ -49,6 +42,11 @@ use crate::framework::versions::sort_versions;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
+use config::{Config, ConfigError, Environment, File};
+use log::debug;
+use python_project::PythonProject;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS;
@@ -257,6 +255,7 @@ impl Project {
         )?;
         match self.language {
             SupportedLanguages::Typescript => {
+                let tsconfig = self.project_location.join("tsconfig.json");
                 let apis_file_path = self.consumption_dir().join(TS_API_FILE);
                 let base_model_file_path = self.data_models_dir().join("models.ts");
                 let function_file_path = self.streaming_func_dir().join(format!(
@@ -266,17 +265,31 @@ impl Project {
                 let blocks_file_path = blocks_dir.join(TS_BLOCKS_FILE);
 
                 // Write TypeScript specific templates
-                self.write_file(&apis_file_path, BASE_APIS_SAMPLE_TEMPLATE.to_string())?;
+                self.write_file(
+                    &tsconfig,
+                    serde_json::to_string_pretty(&serde_json::json!(
+                        {
+                            "outDir": "dist",
+                            "compilerOptions": {
+                                "esModuleInterop": true,
+                                "paths": {
+                                  "datamodels/*": ["./app/datamodels/*"],
+                                  "versions/*": ["./.moose/versions/*"]
+                                }
+                            }
+                        }
+                    ))
+                    .expect("formatting `serde_json::Value` with string keys never fails"),
+                )?;
+
+                self.write_file(&apis_file_path, TS_BASE_APIS_SAMPLE.to_string())?;
                 self.write_file(&base_model_file_path, TS_BASE_MODEL_TEMPLATE.to_string())?;
                 self.write_file(
                     &function_file_path,
-                    TS_BASE_STREAMING_FUNCTION_SAMPLE_TEMPLATE.to_string(),
+                    TS_BASE_STREAMING_FUNCTION_SAMPLE.to_string(),
                 )?;
 
-                self.write_file(
-                    &blocks_file_path,
-                    TS_BASE_BLOCKS_SAMPLE_TEMPLATE.to_string(),
-                )?;
+                self.write_file(&blocks_file_path, TS_BASE_BLOCKS_SAMPLE.to_string())?;
             }
             SupportedLanguages::Python => {
                 let apis_file_path = self.consumption_dir().join(PY_API_FILE);
@@ -288,18 +301,18 @@ impl Project {
                 let aggregations_file_path = blocks_dir.join(PY_BLOCKS_FILE);
 
                 // Write Python specific templates
-                self.write_file(&apis_file_path, PTYHON_BASE_API_SAMPLE_TEMPLATE.to_string())?;
+                self.write_file(&apis_file_path, PYTHON_BASE_API_SAMPLE.to_string())?;
                 self.write_file(
                     &base_model_file_path,
                     PYTHON_BASE_MODEL_TEMPLATE.to_string(),
                 )?;
                 self.write_file(
                     &function_file_path,
-                    PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE.to_string(),
+                    PYTHON_BASE_STREAMING_FUNCTION_SAMPLE.to_string(),
                 )?;
                 self.write_file(
                     &aggregations_file_path,
-                    PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE.to_string(),
+                    PYTHON_BASE_BLOCKS_SAMPLE.to_string(),
                 )?;
 
                 // Create __init__.py in necessary directories for Python
@@ -319,6 +332,11 @@ impl Project {
 
     fn write_file(&self, path: &PathBuf, content: String) -> Result<(), std::io::Error> {
         let mut file = std::fs::File::create(path)?;
+        let content = if let Some(without_starting_empty_line) = content.strip_prefix('\n') {
+            without_starting_empty_line
+        } else {
+            &content
+        };
         file.write_all(content.as_bytes())?;
         Ok(())
     }
@@ -394,6 +412,7 @@ impl Project {
         let aggregations_dir = self.app_dir().join(AGGREGATIONS_DIR);
 
         if !aggregations_dir.exists() {
+            // TODO: kill it with fire
             std::fs::create_dir_all(&aggregations_dir)
                 .expect("Failed to create aggregations directory");
         }

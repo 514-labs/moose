@@ -1,15 +1,14 @@
 use std::{fs, io::Write, path::PathBuf};
 
+use super::{RoutineFailure, RoutineSuccess};
 use crate::{
     cli::display::Message,
     framework::{
-        languages::SupportedLanguages, python::templates::PTYHON_BASE_BLOCKS_TEMPLATE,
+        languages::SupportedLanguages, python::templates::PYTHON_BASE_BLOCKS_TEMPLATE,
         typescript::templates::TS_BASE_BLOCK_TEMPLATE,
     },
     project::Project,
 };
-
-use super::{RoutineFailure, RoutineSuccess};
 
 pub async fn create_block_file(
     project: &Project,
@@ -18,7 +17,7 @@ pub async fn create_block_file(
     let blocks_dir = project.blocks_dir();
     let (extension, template) = match project.language {
         SupportedLanguages::Typescript => ("ts", TS_BASE_BLOCK_TEMPLATE),
-        SupportedLanguages::Python => ("py", PTYHON_BASE_BLOCKS_TEMPLATE),
+        SupportedLanguages::Python => ("py", PYTHON_BASE_BLOCKS_TEMPLATE),
     };
 
     let block_file_path = blocks_dir.join(format!("{}.{}", filename, extension));

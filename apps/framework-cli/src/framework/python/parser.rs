@@ -326,9 +326,10 @@ fn process_subscript_node(
 ) -> Result<(), PythonParserError> {
     match &*subscript.value {
         Expr::Name(name) => match name.id.to_string().as_str() {
-            "List" => {
+            "list" => {
                 let col_type = ColumnType::Array(match &*subscript.slice {
                     Expr::Name(name) => Box::new(name_node_to_base_column_type(name.clone())?),
+                    // TODO: recursively handle complex types
                     _ => {
                         return Err(PythonParserError::UnsupportedDataTypeError {
                             type_name: "Unsupported data type".to_string(),

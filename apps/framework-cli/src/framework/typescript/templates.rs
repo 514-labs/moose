@@ -12,11 +12,11 @@ pub enum TypescriptRenderingError {
     HandlebarError(#[from] handlebars::RenderError),
 }
 
-pub static TS_BASE_STREAMING_FUNCTION_SAMPLE_TEMPLATE: &str = r#"
+pub static TS_BASE_STREAMING_FUNCTION_SAMPLE: &str = r#"
 // Example streaming function: Converts local timestamps in UserActivity data to UTC.
 
 // Imports: Source (UserActivity) and Destination (ParsedActivity) data models.
-import { ParsedActivity, UserActivity } from "../datamodels/models";
+import { ParsedActivity, UserActivity } from "datamodels/models";
 
 // The 'run' function transforms UserActivity data to ParsedActivity format.
 // For more details on how Moose streaming functions work, see: https://docs.moosejs.com
@@ -32,7 +32,7 @@ export default function run(source: UserActivity): ParsedActivity {
 
 "#;
 
-pub static BASE_STREAMING_FUNCTION_TEMPLATE: &str = r#"
+pub static TS_BASE_STREAMING_FUNCTION_TEMPLATE: &str = r#"
 // Add your models & start the development server to import these types
 {{source_import}}
 {{destination_import}}
@@ -45,7 +45,7 @@ export default function run(source: {{source}}): {{destination}} | null {
 
 "#;
 
-pub static TS_BASE_BLOCKS_SAMPLE_TEMPLATE: &str = r#"
+pub static TS_BASE_BLOCKS_SAMPLE: &str = r#"
 // Here is a sample aggregation query that calculates the number of daily active users
 // based on the number of unique users who complete a sign-in activity each day.
 
@@ -92,7 +92,7 @@ export default {
 } as Blocks;
 "#;
 
-pub static BASE_APIS_SAMPLE_TEMPLATE: &str = r#"
+pub static TS_BASE_APIS_SAMPLE: &str = r#"
 // Here is a sample api configuration that creates an API which serves the daily active users materialized view
 import { ConsumptionUtil } from "@514labs/moose-lib";
 

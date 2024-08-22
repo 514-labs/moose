@@ -9,6 +9,15 @@ pub enum SupportedLanguages {
     Python,
 }
 
+impl SupportedLanguages {
+    pub fn extension(self) -> &'static str {
+        match self {
+            SupportedLanguages::Typescript => "ts",
+            SupportedLanguages::Python => "py",
+        }
+    }
+}
+
 impl std::fmt::Display for SupportedLanguages {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {

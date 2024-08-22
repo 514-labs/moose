@@ -86,7 +86,11 @@ impl PrimitiveMap {
             get_all_current_streaming_functions(project, &primitive_map.datamodels)
                 .await?
                 .iter()
-                .filter(|func| func.executable.extension().unwrap() == "ts")
+                .filter(|func| {
+                    func.executable
+                        .extension()
+                        .is_some_and(|ext| ext == "ts" || ext == "py")
+                })
                 .cloned()
                 .collect();
 

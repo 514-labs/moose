@@ -30,8 +30,8 @@ use hyper::Response;
 use hyper::StatusCode;
 use hyper_util::rt::TokioIo;
 use hyper_util::{rt::TokioExecutor, server::conn::auto};
-use log::debug;
 use log::error;
+use log::{debug, log};
 use rdkafka::error::KafkaError;
 use rdkafka::message::OwnedMessage;
 use rdkafka::producer::future_producer::OwnedDeliveryResult;
@@ -42,6 +42,7 @@ use serde::Serialize;
 use serde_json::Value;
 
 use lazy_static::lazy_static;
+use log::Level::{Debug, Trace};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::env::VarError;
@@ -777,7 +778,13 @@ async fn management_router<I: InfraMapProvider>(
     infra_map: I,
     req: Request<Incoming>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
-    debug!(
+    let level = if req.uri().path().ends_with("metrics-logs") {
+        Trace
+    } else {
+        Debug
+    };
+    log!(
+        level,
         "-> HTTP Request: {:?} - {:?}",
         req.method(),
         req.uri().path(),

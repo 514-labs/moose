@@ -42,6 +42,16 @@ pub static AGGREGATIONS_RUNNER: &str = include_str!("scripts/aggregations_runner
 pub static BLOCKS_RUNNER: &str = include_str!("scripts/blocks_runner.py");
 pub static CONSUMPTION_RUNNER: &str = include_str!("scripts/consumption_runner.py");
 
+const PYTHON_PATH: &str = "PYTHONPATH";
+fn python_path_with_version() -> String {
+    let mut paths = std::env::var(PYTHON_PATH).unwrap_or_else(|_| String::from(""));
+    if !paths.is_empty() {
+        paths.push(':');
+    }
+    paths.push_str(".moose/versions");
+    paths
+}
+
 /// Executes a Python program in a subprocess
 pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Error> {
     let get_args = match program.clone() {
@@ -59,6 +69,7 @@ pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Erro
     };
 
     Command::new("python3")
+        .env(PYTHON_PATH, python_path_with_version())
         .arg("-u")
         .arg("-c")
         .arg(program_string)

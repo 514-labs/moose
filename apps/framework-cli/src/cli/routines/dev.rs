@@ -1,18 +1,18 @@
-use lazy_static::lazy_static;
-use std::fs;
-
-use crate::cli::display::with_spinner;
-use crate::cli::routines::util::ensure_docker_running;
-use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
-use crate::utilities::docker;
-use crate::utilities::git::dump_old_version_schema;
-use crate::{cli::display::Message, project::Project};
-use log::debug;
-
 use super::{
     validate::{validate_clickhouse_run, validate_redpanda_cluster, validate_redpanda_run},
     RoutineFailure, RoutineSuccess,
 };
+use crate::cli::display::with_spinner;
+use crate::cli::routines::util::ensure_docker_running;
+use crate::framework::languages::SupportedLanguages;
+use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
+use crate::utilities::docker;
+use crate::utilities::git::dump_old_version_schema;
+use crate::{cli::display::Message, project::Project};
+use lazy_static::lazy_static;
+use log::debug;
+use std::fs;
+use std::io::ErrorKind;
 
 pub fn run_local_infrastructure(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
     create_docker_compose_file(project)?.show();
@@ -79,6 +79,29 @@ pub fn copy_old_schema(project: &Project) -> Result<RoutineSuccess, RoutineFailu
                 git_err,
             )
         })?;
+
+        if project.language == SupportedLanguages::Python {
+            let valid_python_identifier = format!("v{}", version.replace('.', "_"));
+            std::os::unix::fs::symlink(
+                dest,
+                project
+                    .old_version_location(&valid_python_identifier)
+                    .unwrap(),
+            )
+            .or_else(|err| {
+                if err.kind() == ErrorKind::AlreadyExists {
+                    Ok(())
+                } else {
+                    Err(RoutineFailure::new(
+                        Message::new(
+                            "Failed".to_string(),
+                            format!("to create symlink for version {}", version),
+                        ),
+                        err,
+                    ))
+                }
+            })?;
+        }
     }
 
     Ok(RoutineSuccess::success(Message::new(

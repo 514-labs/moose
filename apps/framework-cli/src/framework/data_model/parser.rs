@@ -19,10 +19,13 @@ pub enum DataModelParsingError {
     TypescriptParsingError(#[from] typescript::parser::TypescriptParsingError),
     PythonParsingError(#[from] python::parser::PythonParserError),
     MappingError(#[from] MappingError),
-    UnsupportedFileType,
+    #[error("Unsupported file: {file_name}")]
+    UnsupportedFileType {
+        file_name: String,
+    },
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct FileObjects {
     pub models: Vec<DataModel>,
     pub enums: Vec<DataEnum>,
@@ -51,12 +54,22 @@ pub fn parse_data_model_file(
                     path, project, version,
                 )?),
                 Some("py") => Ok(python::parser::extract_data_model_from_file(path, version)?),
-                _ => Err(DataModelParsingError::UnsupportedFileType),
+                Some("pyc") => Ok(FileObjects::default()), // __pycache__
+                _ => unsupported_file_type(path),
             }
         } else {
-            Err(DataModelParsingError::UnsupportedFileType)
+            unsupported_file_type(path)
         }
     } else {
-        Ok(FileObjects::new(vec![], vec![]))
+        Ok(FileObjects::default())
     }
+}
+
+fn unsupported_file_type<T>(path: &Path) -> Result<T, DataModelParsingError> {
+    Err(DataModelParsingError::UnsupportedFileType {
+        file_name: match path.file_name() {
+            None => "".to_string(),
+            Some(f) => f.to_string_lossy().to_string(),
+        },
+    })
 }

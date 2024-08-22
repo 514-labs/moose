@@ -128,7 +128,7 @@
 }
 
 .docs h2 {
-  margin-bottom: none;
+  margin-bottom: 0;
 }
 
 .docs h2.nx-border-b {
@@ -156,8 +156,12 @@
   margin-right: 0;
 }
 
-.docs nav.nextra-toc > a {
+.docs nav.nextra-toc {
   font-weight: 400 !important;
+}
+
+.docs main > p {
+  line-height: 1.75rem;
 }
 
 .docs div.nextra-breadcrumb {

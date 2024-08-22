@@ -23,7 +23,7 @@ export function ZoomImg({ src, alt }: ZoomImageProps) {
         height={1000}
         className={`w-full h-auto transition-all duration-300 ${
           isZoomed
-            ? "fixed inset-0 cursor-zoom-out w-screen h-screen object-contain z-50 bg-primary"
+            ? "fixed inset-0 cursor-zoom-out w-screen h-screen object-contain z-50 bg-background"
             : "relative z-0 cursor-zoom-in"
         }`}
         onClick={toggleZoom}

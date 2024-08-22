@@ -1,8 +1,10 @@
-## Data Stack Architecture
+import { ZoomImg } from "../components";
 
-![architecture diagram](/img-diagram-full-dark.svg)
+# Data Stack Architecture
 
-Based on the MooseJS primitives that you define in your application, MooseJS will automatically configure and manage your underlying data infrastructure, including:
+<ZoomImg src="/img-diagram-full-dark.svg" />
+
+Based on the Moose primitives that you define in your application, Moose will automatically configure and manage your underlying data infrastructure, including:
 
 - An ingestion layer with API endpoints and automatically generated SDKs (as defined by your Data Models), to capture data from other applications or services
 - A storage and processing layer - with streaming buffers to handle peak load ingestion, and database tables to capture raw and processed data - again, as defined by your Data Models
@@ -17,10 +19,7 @@ Your Moose applications can be packaged up to run in two similar but distinct ar
 1. Local dev server, aka “Dev”
 2. Production deployment, aka “Prod”
 
-|                                                          |                                                         |
-| :------------------------------------------------------: | :-----------------------------------------------------: |
-| ![packaging diagram](/img-diagram-deploy-local-dark.svg) | ![packaging diagram](/img-diagram-deploy-prod-dark.svg) |
-|                                                          |                                                         |
+<ZoomImg src="/CONTAINER-ARCH.svg" />
 
 The “Dev” packaging is designed to run locally on your machine as you are developing.
 You can locally run your Moose app in this configuration automatically via the Moose CLI with the `moose dev` command.

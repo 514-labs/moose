@@ -1,7 +1,11 @@
-import { Button, CTABar } from "@514labs/design-system-components/components";
+import {
+  Button,
+  CTABar,
+  Badge,
+} from "@514labs/design-system-components/components";
 import Link from "next/link";
 import { Cards, Card } from "nextra/components";
-import { CTACard, ZoomImg } from "../components";
+import { CTACard, ZoomImg, ChipBadge } from "../components";
 import { Zap, GraduationCap } from "lucide-react";
 import {
   Grid,
@@ -54,23 +58,24 @@ Moose is designed for any TypeScript or Python developer, regardless of your bac
 
 ## What types of applications can be built with Moose?
 
+<br/>
 <Grid className="mt-4 md:gap-x-0 border">
-  <HalfWidthContentContainer className="border-r p-4">
+  <HalfWidthContentContainer className="border-r px-4">
   #### Embed Data Features in User-Facing Applications
-  Moose can be combined with your favorite front-end framework to embed data-intensive features in your products, such as:
+  Moose can be combined with your favorite front-end framework to embed data-intensive features in your products:
 
-  <ul>
+  <ul className="text-muted-foreground">
     <li>Dynamic leaderboards</li>
     <li>Interactive charts</li>
     <li>Real-time metric feeds</li>
   </ul>
   </HalfWidthContentContainer>
 
-  <HalfWidthContentContainer className="p-4" >
+  <HalfWidthContentContainer className="px-4 pb-4" >
   #### Backend System for Enterprise Data Products
   Build a backend system to power enterprise data products like BI software, data exploration tools, and more to create feature-rich, interactive data applications for your users and stakeholders. Examples include:
 
-    <ul>
+    <ul className="text-muted-foreground">
       <li>Real-time Dashboards</li>
       <li>Observability & Log Monitoring</li>
       <li>Customer Data Platforms</li>
@@ -81,9 +86,7 @@ Moose is designed for any TypeScript or Python developer, regardless of your bac
 
 We include some example applications in the [templates section](/templates), so you can see how Moose can be used to build a variety of applications:
 
-<Cards>
-  <Card title="Product Analytics" href="/templates/product-analytics" />
-</Cards>
+<ChipBadge href="/templates/product-analytics" label="Product Analytics" />
 
 ---
 

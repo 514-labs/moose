@@ -70,6 +70,7 @@ export default {
         {children}
       </Heading>
     ),
+    a: ({ children }) => <span className="text-pink">{children}</span>,
     p: ({ children }) => <SmallText>{children}</SmallText>,
     ul: (props) => (
       <ul className={cn("pl-8 list-disc", textBodyBase)} {...props} />
@@ -127,6 +128,11 @@ export default {
       return (
         <SmallText className="my-0 text-muted-foreground">{children}</SmallText>
       );
+    },
+    feedback: {
+      content: () => {
+        return <div className="border">TEST</div>;
+      },
     },
   },
   footer: {

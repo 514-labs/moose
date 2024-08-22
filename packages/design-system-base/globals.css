@@ -160,6 +160,11 @@
   font-weight: 400 !important;
 }
 
+.docs div.nextra-breadcrumb {
+  text-transform: uppercase;
+  font-family: monospace;
+}
+
 .docs :is(html[class~="dark"] .dark\:nx-bg-dark) {
   background-color: hsl(var(--background)) !important;
 }
@@ -234,11 +239,6 @@ tbody {
 
 .docs aside.md\:nx-w-64 {
   width: 20rem;
-}
-
-img,
-svg {
-  filter: grayscale(100%);
 }
 
 li.nx-my-2 {

@@ -1,4 +1,4 @@
-import { Callout } from "nextra/components";
+import { Callout } from "../components";
 
 # Introduction to Blocks
 
@@ -27,7 +27,7 @@ Inside each block file, you define SQL statements that are executed against the 
 
 Moose interprets and executes the SQL statements defined within the `setup` key of the block on startup.
 
-<Callout>
+<Callout type="info" title="Moose Hint">
   In dev mode, Moose continuously watches for changes in the `/blocks` folder
   and re-executes the SQL statements when it detects new blocks or modifications
   to existing ones.

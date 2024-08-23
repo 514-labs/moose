@@ -22,8 +22,8 @@ pub fn run_local_infrastructure(project: &Project) -> Result<RoutineSuccess, Rou
     ensure_docker_running()?;
     run_containers(project)?.show();
 
-    validate_clickhouse_run()?.show();
-    validate_redpanda_run()?.show();
+    validate_clickhouse_run(project)?.show();
+    validate_redpanda_run(project)?.show();
     validate_redpanda_cluster(project.name())?.show();
 
     Ok(RoutineSuccess::success(Message::new(

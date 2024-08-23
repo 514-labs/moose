@@ -584,7 +584,7 @@ impl FileWatcher {
         let features = features.clone();
 
         tokio::spawn(async move {
-            if let Err(error) = watch(
+            watch(
                 project,
                 features.clone(),
                 &mut framework_object_versions,
@@ -597,9 +597,7 @@ impl FileWatcher {
                 metrics,
             )
             .await
-            {
-                panic!("Watcher error: {error:?}");
-            }
+            .unwrap()
         });
 
         Ok(())

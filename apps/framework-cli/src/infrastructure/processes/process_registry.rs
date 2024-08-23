@@ -22,7 +22,7 @@ impl ProcessRegistries {
         );
         let blocks = AggregationProcessRegistry::new(
             project.language,
-            project.aggregations_dir(),
+            project.blocks_dir(),
             project.clickhouse_config.clone(),
             false,
         );

@@ -85,7 +85,7 @@ pub enum ProjectFileError {
 // We have explored using a Generic associated Types as well as
 // Dynamic Dispatch to handle the different types of projects
 // the approach with enums is the one that is the simplest to put into practice and
-// maintain. With Copilot - it also has the advaantage that the boiler plate is really fast to write
+// maintain. With Copilot - it also has the advantage that the boiler plate is really fast to write
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
     pub language: SupportedLanguages,
@@ -407,12 +407,6 @@ impl Project {
 
     pub fn aggregations_dir(&self) -> PathBuf {
         let aggregations_dir = self.app_dir().join(AGGREGATIONS_DIR);
-
-        if !aggregations_dir.exists() {
-            // TODO: kill it with fire
-            std::fs::create_dir_all(&aggregations_dir)
-                .expect("Failed to create aggregations directory");
-        }
 
         debug!("Aggregations dir: {:?}", aggregations_dir);
         aggregations_dir

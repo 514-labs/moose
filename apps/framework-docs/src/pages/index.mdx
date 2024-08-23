@@ -5,7 +5,14 @@ import {
 } from "@514labs/design-system-components/components";
 import Link from "next/link";
 import { Cards, Card } from "nextra/components";
-import { CTACard, ZoomImg, ChipBadge, TwoColumns } from "../components";
+import {
+  CTACard,
+  ZoomImg,
+  ChipBadge,
+  Columns,
+  Column,
+  Separator,
+} from "../components";
 import { Zap, GraduationCap } from "lucide-react";
 import {
   Grid,
@@ -60,7 +67,31 @@ Moose is designed for any TypeScript or Python developer, regardless of your bac
 
 <br />
 
-<TwoColumns />
+<Columns>
+  <Column
+    heading="Embed Data Features in User-Facing Applications"
+    body="Moose can be combined with your favorite front-end framework to embed
+          data-intensive features in your products."
+    list={[
+      "Dynamic leaderboards",
+      "Interactive charts",
+      "Real-time metric feeds",
+    ]}
+    className="col-span-6 border-r"
+  />
+  <Column
+    heading="Backend System for Enterprise Data Products"
+    body="Create a backend system for enterprise data products, such as BI
+          software and data exploration tools, to deliver interactive data
+          applications."
+    list={[
+      "Real-time Dashboards",
+      "Observability & Log Monitoring",
+      "Customer Data Platforms",
+    ]}
+    className="col-span-6"
+  />
+</Columns>
 
 We include some example applications in the [templates section](/templates), so you can see how Moose can be used to build a variety of applications:
 

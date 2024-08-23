@@ -33,7 +33,7 @@ export function CTACard({
     <Link href={ctaLink}>
       <Card className={cn("hover:bg-secondary md:w-64 w-auto h-56", className)}>
         <CardHeader>
-          <div className="rounded-md w-fit bg-gradient">
+          <div className="rounded-md w-fit bg-gradientDarkPink">
             <Icon className="m-3 h-[24px] w-[24px]" />
           </div>
         </CardHeader>

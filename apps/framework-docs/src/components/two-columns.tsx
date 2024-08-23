@@ -9,39 +9,31 @@ import {
   SmallText,
 } from "@514labs/design-system-components/typography";
 
-export function TwoColumns() {
-  return (
-    <Grid className="mt-4 md:gap-x-0 border rounded-3xl">
-      <HalfWidthContentContainer className="border-r px-4 flex flex-col justify-between">
-        <Heading level={HeadingLevel.l4}>
-          Embed Data Features in User-Facing Applications
-        </Heading>
-        <SmallText>
-          Moose can be combined with your favorite front-end framework to embed
-          data-intensive features in your products.
-        </SmallText>
-        <ul className="text-muted-foreground mb-4">
-          <li>Dynamic leaderboards</li>
-          <li>Interactive charts</li>
-          <li>Real-time metric feeds</li>
-        </ul>
-      </HalfWidthContentContainer>
+import { cn } from "@514labs/design-system-components/utils";
 
-      <HalfWidthContentContainer className="px-4 flex flex-col justify-between">
-        <Heading level={HeadingLevel.l4}>
-          Backend System for Enterprise Data Products
-        </Heading>
-        <SmallText>
-          Create a backend system for enterprise data products, such as BI
-          software and data exploration tools, to deliver interactive data
-          applications.
-        </SmallText>
-        <ul className="text-muted-foreground mb-4">
-          <li>Real-time Dashboards</li>
-          <li>Observability & Log Monitoring</li>
-          <li>Customer Data Platforms</li>
-        </ul>
-      </HalfWidthContentContainer>
-    </Grid>
+interface ColumnProps {
+  heading: string;
+  body: string;
+  list: string[];
+  className: string;
+}
+
+export function Column({ heading, body, list, className }: ColumnProps) {
+  return (
+    <div className={cn("p-5 flex flex-col", className)}>
+      <Heading level={HeadingLevel.l5} className="my-0 text-primary">
+        {heading}
+      </Heading>
+      <SmallText className="h-1/2">{body}</SmallText>
+      <ul className="text-muted-foreground">
+        {list.map((listItem) => (
+          <li>{listItem}</li>
+        ))}
+      </ul>
+    </div>
   );
+}
+
+export function Columns({ children }: { children: React.ReactNode }) {
+  return <Grid className="mt-4 md:gap-x-0 border rounded-3xl">{children}</Grid>;
 }

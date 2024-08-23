@@ -46,6 +46,11 @@
       #373fff -34.79%,
       #000000 100.32%
     );
+    --moose-gradient-dark-pink: linear-gradient(
+      212.17deg,
+      #d429ff -62.69%,
+      #000000 75.08%
+    );
 
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;

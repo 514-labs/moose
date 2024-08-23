@@ -1,12 +1,16 @@
+import { ZoomImg } from "../components";
+
 # Learn Moose
 
-This tutorial will guide you on using Moose to build a real-time analytics service that tracks when users star your GitHub repository and derives insights about them. Moose is an open-source framework for prototyping and scaling data-intensive apps.
+By the end of this tutorial you will have a solid grasp of the Moose framework and you will have built an end-to-end data and analytics service which gives you real-time insights into the users who star your Github repository. Here’s a high level diagram of what you will build:
 
-### System Architecture
+<ZoomImg src="/GH-highlevel.png" />
 
-The framework offers primitives that let you implement your application logic for data ingestion, processing, aggregation, and consumption. These primitives are implemented in a combination of pure TypeScript/Python and SQL. Moose interprets the application logic in your primitives to automatically manage and configure assets in your underlying infrastructure.
+In Typescript (or Python!) you declare your application logic in four primitives — Data Models, Function, Blocks and Consumption APIs — and Moose automatically creates the assets in your underlying infrastructure.
 
-The purpose of this project is to help you to learn and get comfortable building with Moose. At a high level you will:
+## What You'll Build
+
+In this tutorial, you will:
 
 1. Create a new Moose project from scratch and define your first Moose primitive (a **Data Model**) to start **ingesting** sample data within minutes.
 2. Configure GitHub to send live webhook notifications to your Moose application whenever someone stars your repository.
@@ -15,6 +19,5 @@ The purpose of this project is to help you to learn and get comfortable building
 5. Build **Consumption APIs to** surface insights about the programming languages the starrers use in their repositories.
 6. Access and analyze these insights via an API Client.
 
-### What You'll Build
-
-By the end of this tutorial, you will have built an end-to-end data-intensive back-end service with all the infrastructure—an OLAP database, streaming buffer, task orchestrator, and ingestion/consumption APIs—using Moose primitives and a few lines of code.
+<br />
+<ZoomImg src="/GH-overview-detailed.png" />

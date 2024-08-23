@@ -2,7 +2,9 @@ import { Callout } from "../components";
 
 # Introduction to Blocks
 
-Blocks provide a versatile solution for various database operations and data management tasks. They facilitate:
+The Blocks primitive is central to managing database operations in your Moose application. A Blocks object facilitates both setup and teardown operations, allowing you to define complex workflows that interact with your database. The setup and teardown parameters within the Blocks object accept arrays of SQL statements, which Moose executes sequentially to manage the state of your database.
+
+Some key applications of Blocks are to facilitate:
 
 - **Data Transformation and Views**: Transforming data and creating views or materialized views for pre-computing metrics and performing computationally intensive data analyses.
 - **Data Lifecycle Management**: Implementing Time-To-Live (TTL) policies to automatically remove outdated data.
@@ -10,25 +12,46 @@ Blocks provide a versatile solution for various database operations and data man
 - **Post-Ingestion Data Manipulation**: Manipulating data after it has been ingested into the database, such as hiding Personally Identifiable Information (PII) or transforming historical data.
 - **Access Control Management**: Managing user access levels to different tables to ensure data security and compliance.
 
+---
+
 ## Core Concepts
 
 ### File and Folder Conventions
 
-Blocks are stored in the `/blocks` folder within your Moose project. Each block is defined as a file within this directory. The naming convention for these files should be clear and descriptive to indicate the purpose or function of the block.
+In a Moose project, Blocks are stored in the `/blocks` folder. Each block is defined as a `.ts` or `.py` file within this directory. The file naming convention should be clear and descriptive, reflecting the block’s purpose or function (e.g., user_activity_aggregation.ts).
 
 ### Blocks Definition
 
-Inside each block file, you define SQL statements that are executed against the database. These SQL statements can include:
+Within each block file, you define a `Blocks` object that serves as a container for SQL operations related to setting up and tearing down database structures. This is commonly used to manage materialized views, tables, and other database resources:
 
-- **Setup SQL**: Commands that initialize or configure the block. The setup SQL is executed on startup.
-- **Teardown SQL**: Commands that tear down the block. The teardown SQL is executed on shutdown.
+```ts filename="/blocks/<BLOCK_FILENAME>.ts" copy
+import { Blocks } from "@514labs/moose-lib";
 
-### How Moose Interprets Blocks
+const blocks: Blocks = {
+  setup: [
+    // Array of SQL statements for setting up database resources
+    `CREATE TABLE my_table (...)`,
+    `CREATE MATERIALIZED VIEW my_view AS SELECT ...`,
+  ],
+  teardown: [
+    // Array of SQL statements for tearing down resources
+    `DROP VIEW IF EXISTS my_view`,
+    `DROP TABLE IF EXISTS my_table`,
+  ],
+};
+```
 
-Moose interprets and executes the SQL statements defined within the `setup` key of the block on startup.
+Object Parameters
+
+- `setup`: An array of SQL statements that will be executed when the setup phase is triggered. This parameter is typically used to define operations such as creating tables, indexes, and materialized views.
+- `teardown`: An array of SQL statements that will be executed during the teardown phase. This parameter is typically used to drop or remove tables, views, or any other resources created during setup.
+
+### Orchestration
+
+Moose orchestrates the execution of the SQL statements within the `setup` array during the startup of your Moose application. The SQL statements are executed sequentially, in the order they appear in the array. Similarly, the SQL statements in the `teardown` array are executed sequentially when you stop your Moose application, ensuring proper cleanup of the database resources.
 
 <Callout type="info" title="Moose Hint">
-  In dev mode, Moose continuously watches for changes in the `/blocks` folder
-  and re-executes the SQL statements when it detects new blocks or modifications
-  to existing ones.
+  When running in development mode, Moose continuously watches for changes in
+  the `/blocks` folder. If it detects new Blocks or modifications to existing
+  ones, it will re-execute the SQL statements within the relevant Blocks.
 </Callout>

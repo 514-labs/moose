@@ -84,6 +84,7 @@ const config = {
       backgroundImage: {
         gradient: "var(--moose-gradient)",
         gradientDark: "var(--moose-gradient-dark)",
+        gradientDarkPink: "var(--moose-gradient-dark-pink)",
       },
       borderRadius: {
         lg: "var(--radius)",

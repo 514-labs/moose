@@ -15,7 +15,8 @@
     "**/*.ts",
     "**/*.tsx",
     ".next/types/**/*.ts",
-    "**/*.jsx"
+    "**/*.jsx",
+    "src/pages/learn-moose/step-1.mdx"
   ],
   "exclude": ["node_modules"]
 }

@@ -21,6 +21,11 @@ You can also manually create a Block by creating a `.ts` or `.py` file in the `/
 import { Blocks } from "@514labs/moose-lib";
 
 export default {
-  // DEFINE YOUR BLOCK HERE
+  setup: [
+    // Array of SQL statements for setting up database resources
+  ],
+  teardown: [
+    // Array of SQL statements for tearing down resources
+  ],
 } as Blocks;
 ```

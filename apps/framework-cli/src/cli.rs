@@ -810,7 +810,7 @@ async fn top_command_handler(
             let res = if *streaming {
                 list_streaming(project_arc, limit).await
             } else {
-                list_db(project_arc, version, limit).await
+                list_db(project_arc, &settings.features, version, limit).await
             };
 
             wait_for_usage_capture(capture_handle).await;

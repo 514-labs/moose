@@ -14,12 +14,10 @@ services:
       - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
       - --pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082
       - --advertise-pandaproxy-addr=internal://redpanda:8082,external://localhost:18082
-      - --overprovisioned
+      - --mode=dev-container
       - --smp=1
       - --memory=2G
-      - --reserve-memory=200M
       - --node-id=0
-      - --check=false
   clickhousedb:
     image: docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-latest}
     volumes:
@@ -35,6 +33,12 @@ services:
     ports:
       - "${CLICKHOUSE_HOST_PORT:-18123}:8123"
       - "9000:9000"
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client -q 'select version()'"]
+      interval: 5s
+      retries: 2
+      start_period: 20s
+      timeout: 20s
     ulimits:
       nofile:
         soft: 20000

@@ -264,15 +264,20 @@ async fn top_command_handler(
                 names: HashSet::new(),
             };
 
-            let _result = get_all_framework_objects(
+            get_all_framework_objects(
                 &project_arc.clone(),
                 &mut framework_objects,
                 &project_arc.clone().data_models_dir(),
-                // .join("separate_dir_to_test_get_all"),
                 version,
                 &aggregations,
             )
-            .await;
+            .await
+            .map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Build".to_string(),
+                    details: format!("Invalid data schema detected: {:?}", e),
+                })
+            })?;
 
             // Remove versions directory so only the relevant versions will be populated
             project_arc.delete_old_versions().map_err(|e| {
@@ -810,7 +815,7 @@ async fn top_command_handler(
             let res = if *streaming {
                 list_streaming(project_arc, limit).await
             } else {
-                list_db(project_arc, version, limit).await
+                list_db(project_arc, &settings.features, version, limit).await
             };
 
             wait_for_usage_capture(capture_handle).await;

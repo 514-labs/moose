@@ -1,15 +1,67 @@
-use serde::de::{Error, MapAccess, Visitor};
+use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, EnumValue};
+use crate::framework::data_model::model::DataModel;
+use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
 use serde::ser::SerializeMap;
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Serializer as JsonSerializer;
 use std::collections::HashMap;
 use std::fmt::Formatter;
 
-use crate::framework::core::infrastructure::table::{Column, ColumnType, EnumValue};
-use crate::framework::data_model::model::DataModel;
-
 struct State {
     seen: bool,
+}
+
+struct ValueVisitor<'a, S: SerializeMap> {
+    t: &'a ColumnType,
+    write_to: &'a mut S,
+}
+
+struct ArrayVisitor<'a, S: SerializeMap> {
+    inner_type: &'a ColumnType,
+    write_to: &'a mut S,
+}
+struct ArrayElementVisitor<'a, S: SerializeMap> {
+    inner_type: &'a ColumnType,
+    write_to: &'a mut S,
+}
+impl<'de, 'a, S: SerializeMap> DeserializeSeed<'de> for ArrayVisitor<'a, S> {
+    type Value = ();
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_seq(self)
+    }
+}
+impl<'de, 'a, S: SerializeMap> Visitor<'de> for ArrayVisitor<'a, S> {
+    type Value = ();
+
+    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+        formatter.write_str("an array")
+    }
+    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let element = ArrayElementVisitor {
+            inner_type: &self.inner_type,
+            write_to: self.write_to,
+        };
+
+        while let Some(()) = seq.next_element_seed(&element)? {}
+        Ok(())
+    }
+}
+impl<'de, 'a, S: SerializeMap> DeserializeSeed<'de> for &ArrayElementVisitor<'a, S> {
+    type Value = ();
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        todo!()
+    }
 }
 
 pub struct DataModelVisitor {
@@ -48,6 +100,49 @@ impl Serialize for DateString {
         S: Serializer,
     {
         String::serialize(&self.0, serializer)
+    }
+}
+
+struct UnwrappedEnumValue(EnumValue);
+impl Serialize for UnwrappedEnumValue {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self.0 {
+            EnumValue::Int(i) => serializer.serialize_u8(i),
+            EnumValue::String(ref s) => serializer.serialize_str(s),
+        }
+    }
+}
+impl<'de> Deserialize<'de> for UnwrappedEnumValue {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(UnwrappedEnumValueVisitor)
+    }
+}
+struct UnwrappedEnumValueVisitor;
+impl<'de> Visitor<'de> for UnwrappedEnumValueVisitor {
+    type Value = UnwrappedEnumValue;
+
+    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+        todo!()
+    }
+
+    fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(UnwrappedEnumValue(EnumValue::Int(v)))
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        Ok(UnwrappedEnumValue(EnumValue::String(v.to_string())))
     }
 }
 
@@ -102,7 +197,7 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
         while let Some(key) = map.next_key::<String>()? {
             if let Some((column, state)) = self.columns.get_mut(&key) {
                 state.seen = true;
-                match column.data_type {
+                match &column.data_type {
                     ColumnType::String => {
                         get_and_set::<_, _, String>(
                             &mut map,
@@ -153,35 +248,21 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
                             None::<fn(&_) -> _>,
                         )?;
                     }
-                    ColumnType::Enum(enum_def) => {
+                    ColumnType::Enum(ref enum_def) => {
                         get_and_set::<_, _, EnumValue>(
                             &mut map,
                             &mut map_serializer,
                             key,
                             column.required,
-                            Some(|v| match v {
-                                EnumValue::Int(i) => enum_def.values.iter().any(|v| v.value),
-                                EnumValue::String(_) => {}
-                            }),
+                            Some(to_validation::<A>(enum_def)),
                         )?;
                     }
-                    ColumnType::Array(_) => {
-                        get_and_set::<_, _, String>(
-                            &mut map,
-                            &mut map_serializer,
-                            key,
-                            column.required,
-                            None::<fn(&_) -> _>,
-                        )?;
-                    }
+                    ColumnType::Array(inner) => map.next_value_seed(ArrayVisitor {
+                        inner_type: inner.as_ref(),
+                        write_to: &mut map_serializer,
+                    })?,
                     ColumnType::Nested(_) => {
-                        get_and_set::<_, _, String>(
-                            &mut map,
-                            &mut map_serializer,
-                            key,
-                            column.required,
-                            None::<fn(&_) -> _>,
-                        )?;
+                        todo!();
                     }
                 }
             }
@@ -204,4 +285,22 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
 
         Ok(vec)
     }
+}
+
+// TODO: cache this closure
+fn to_validation<'de, A: MapAccess<'de>>(
+    data_enum: &DataEnum,
+) -> impl Fn(&EnumValue) -> Option<A::Error> {
+    // match &data_enum.values[0].value {
+    //     EnumValue::Int(_) => {
+    //         let values = data_enum.values.iter().map(|v| match v.value {
+    //             EnumValue::Int(i) => i,
+    //             EnumValue::String(_) => {
+    //                 panic!("ahhhh")
+    //             }
+    //         })
+    //     },
+    //     EnumValue::String(_) => {}
+    // };
+    |enum_value: &EnumValue| None
 }

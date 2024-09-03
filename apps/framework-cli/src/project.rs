@@ -86,7 +86,7 @@ pub enum ProjectFileError {
 // Dynamic Dispatch to handle the different types of projects
 // the approach with enums is the one that is the simplest to put into practice and
 // maintain. With Copilot - it also has the advantage that the boiler plate is really fast to write
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Clone)]
 pub struct Project {
     pub language: SupportedLanguages,
     #[serde(default)]

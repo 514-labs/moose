@@ -1,3 +1,8 @@
+volumes:
+  redpanda-0: null
+  clickhouse-0-data: null
+  clickhouse-0-logs: null
+  clickhouse-0-users: null
 services:
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:latest
@@ -6,7 +11,7 @@ services:
       - "19092:19092"
       - "9644:9644"
     volumes:
-      - ./redpanda:/var/lib/redpanda/data
+      - redpanda-0:/var/lib/redpanda/data
     command:
       - redpanda
       - start
@@ -21,10 +26,9 @@ services:
   clickhousedb:
     image: docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-latest}
     volumes:
-      - ./clickhouse/configs/scripts:/docker-entrypoint-initdb.d
-      - ./clickhouse/data:/var/lib/clickhouse/
-      - ./clickhouse/logs:/var/log/clickhouse-server/
-      - ./clickhouse/configs/users:/etc/clickhouse-server/users.d
+      - clickhouse-0-data:/var/lib/clickhouse/
+      - clickhouse-0-logs:/var/log/clickhouse-server/
+      - clickhouse-0-users:/etc/clickhouse-server/users.d
     environment:
       - CLICKHOUSE_DB=${DB_NAME:-local}
       - CLICKHOUSE_USER=${CLICKHOUSE_USER:-panda}

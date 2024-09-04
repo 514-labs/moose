@@ -1,0 +1,67 @@
+import { Callout, ZoomImg } from "../../components";
+import { Steps, FileTree } from "nextra/components";
+
+# Create a New Project and Data Model
+
+<Callout type="warning" title="Run Docker">
+  Open Docker Desktop if its not already running. <br /> Don't have it
+  installed? [Download Docker
+  here](https://www.docker.com/products/docker-desktop)
+</Callout>
+
+## Create an Empty Moose Project
+
+#### Install the Moose CLI
+
+```bash filename="Terminal" copy
+npx create-moose-app@latest moose-github-analytics typescript
+```
+
+This Moose CLI helper function creates a new Moose app with the proper conventions for the basic directory structure. This includes an /app folder which contains the heart of your new Moose app. Each sub-folder containing one type of Moose primitive.
+
+<FileTree>
+  <FileTree.Folder open title="moose-github-analytics">
+    <FileTree.Folder open title="app">
+      <FileTree.Folder title="datamodels" />
+      <FileTree.Folder title="functions" />
+      <FileTree.Folder title="blocks" />
+      <FileTree.Folder title="apis" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+#### `cd` into your Moose Project and Install Dependencies
+
+```bash filename="Terminal" copy
+cd moose-github-analytics && npm install
+```
+
+#### Run the Moose Development Server
+
+```bash filename="Terminal" copy
+moose-cli dev
+```
+
+<Callout type="warning">
+  You must be in your project directory in order to start the development server
+</Callout>
+
+You should expect to see the following printed to your terminal:
+
+{" "}
+<ZoomImg src="/moose-dev-terminal.png" />
+
+{" "}
+<Callout type="success">
+  You have set up a Moose instance at `http://localhost:4000`. <br /> <br />{" "}
+  This development server provides the following infrastructure: - **OLAP
+  Database** (Clickhouse) to store and analyze your data - **Streaming Data
+  Platform** (Redpanda) to buffer and transform incoming data - **Ingestion and
+  Consumption APIs** to get data in and out of your database
+</Callout>
+
+<Callout type="info">
+  The development server will automatically hot-swap in the latest code as you
+  make changes, so you can see your entire Moose application running locally as
+  you develop.
+</Callout>

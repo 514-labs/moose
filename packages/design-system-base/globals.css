@@ -250,7 +250,10 @@ li.nx-my-2 {
   list-style: none;
 }
 
-.docs a:not(li a):not(nav a):not(:has(button)):not(footer a) {
+.docs
+  a:not(li a):not(nav a):not(:has(button)):not(footer a):not(
+    .nextra-breadcrumb a
+  ) {
   color: hsl(var(--accent-pink)) !important;
   border-color: hsl(var(--border));
   border-width: 1px;

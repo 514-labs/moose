@@ -20,14 +20,14 @@ const calloutVariants = {
     icon: <PartyPopper className="text-green" />,
     color: "bg-muted/20",
     border: "border-green/20",
-    title: "Success!",
+    title: "Congrats!",
     titleColor: "text-green",
   },
   info: {
     icon: <Lightbulb className="text-muted-foreground" />,
     color: "bg-muted/20",
     border: "border-accent",
-    title: "Moose Tip",
+    title: "MooseTip:",
     titleColor: "text-muted-foreground",
   },
   warning: {

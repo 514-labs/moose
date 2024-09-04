@@ -1,36 +1,48 @@
+use crate::cli::display::{Message, MessageType};
+use crate::framework::core::code_loader::{
+    load_framework_objects, FrameworkObject, FrameworkObjectVersions,
+};
+use crate::framework::core::infrastructure::table::ColumnType;
+use crate::framework::languages::SupportedLanguages;
+use crate::framework::python::templates::PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE;
+use crate::framework::typescript::templates::TS_BASE_STREAMING_FUNCTION_TEMPLATE;
+use crate::project::Project;
 use log::debug;
 use pathdiff::diff_paths;
 use std::collections::HashMap;
 use std::path::PathBuf;
 use std::{fs, io::Write, process::Stdio};
 
-use crate::cli::display::{Message, MessageType};
-use crate::framework::core::code_loader::{
-    load_framework_objects, FrameworkObject, FrameworkObjectVersions,
-};
-use crate::framework::core::infrastructure::table::ColumnType;
-use crate::framework::typescript::templates::TS_BASE_STREAMING_FUNCTION_TEMPLATE;
-use crate::project::Project;
-
 use super::{RoutineFailure, RoutineSuccess};
 
 pub struct StreamingFunctionFileBuilder {
+    language: SupportedLanguages,
     function_file_path: PathBuf,
     function_file_template: String,
 }
 
 impl StreamingFunctionFileBuilder {
     pub fn new(project: &Project, source: &str, destination: &str) -> Self {
-        let function_file_template = TS_BASE_STREAMING_FUNCTION_TEMPLATE
+        let language = project.language;
+        let template = match language {
+            SupportedLanguages::Typescript => TS_BASE_STREAMING_FUNCTION_TEMPLATE,
+            SupportedLanguages::Python => PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE,
+        };
+
+        let function_file_template = template
             .to_string()
             .replace("{{source}}", source)
             .replace("{{destination}}", destination);
 
-        let function_file_path = project
-            .streaming_func_dir()
-            .join(format!("{}__{}.ts", source, destination));
+        let function_file_path = project.streaming_func_dir().join(format!(
+            "{}__{}.{}",
+            source,
+            destination,
+            language.extension()
+        ));
 
         Self {
+            language,
             function_file_path,
             function_file_template,
         }
@@ -41,33 +53,61 @@ impl StreamingFunctionFileBuilder {
         destination: &str,
         models: &HashMap<String, FrameworkObject>,
     ) -> &mut Self {
-        if models.contains_key(destination) {
-            let mut destination_object = "{\n".to_string();
-            models
-                .get(destination)
-                .unwrap()
-                .data_model
-                .columns
-                .iter()
-                .for_each(|field| {
-                    destination_object.push_str(&format!(
-                        "    {}: {},\n",
-                        field.name,
-                        get_default_value_for_type(&field.data_type)
-                    ));
-                });
-            destination_object.push_str("  }");
+        if let Some(dest_model) = models.get(destination) {
+            let mut destination_object = "".to_string();
+            match self.language {
+                SupportedLanguages::Typescript => {
+                    destination_object.push_str("{\n");
+                    dest_model.data_model.columns.iter().for_each(|field| {
+                        destination_object.push_str(&format!(
+                            "    {}: {},\n",
+                            field.name,
+                            get_default_value_for_type(&field.data_type, self.language)
+                        ));
+                    });
+                    destination_object.push_str("  }");
+                }
+                SupportedLanguages::Python => {
+                    destination_object.push_str(destination);
+                    destination_object.push_str("(\n");
+                    dest_model.data_model.columns.iter().for_each(|field| {
+                        destination_object.push_str(&format!(
+                            "        {}={},\n",
+                            field.name,
+                            get_default_value_for_type(&field.data_type, self.language)
+                        ));
+                    });
+                    destination_object.push_str("    )");
+                }
+            }
 
             self.function_file_template = self
                 .function_file_template
                 .replace("{{destination_object}}", &destination_object);
         } else {
+            let empty = match self.language {
+                SupportedLanguages::Typescript => "null",
+                SupportedLanguages::Python => "None",
+            };
             self.function_file_template = self
                 .function_file_template
-                .replace("{{destination_object}}", "null");
+                .replace("{{destination_object}}", empty);
         }
 
         self
+    }
+
+    fn import_line(&self, path: &str, names: &[&str]) -> String {
+        match self.language {
+            SupportedLanguages::Typescript => {
+                let names = names.join(", ");
+                format!("import {{ {} }} from \"{}\";", names, path)
+            }
+            SupportedLanguages::Python => {
+                let names = names.join(", ");
+                format!("from {} import {}", path, names)
+            }
+        }
     }
 
     pub fn imports(
@@ -75,25 +115,20 @@ impl StreamingFunctionFileBuilder {
         source: &str,
         destination: &str,
         models: &HashMap<String, FrameworkObject>,
+        project: &Project,
     ) -> &mut Self {
-        let source_path = self.get_model_path(source, models);
-        let destination_path = self.get_model_path(destination, models);
+        let source_path = self.get_model_path(source, models, project);
+        let destination_path = self.get_model_path(destination, models, project);
 
         let (source_import, destination_import) = if source_path == destination_path {
             (
-                format!(
-                    "import {{ {}, {} }} from \"{}\";",
-                    source, destination, source_path
-                ),
+                self.import_line(&source_path, &[source, destination]),
                 "".to_string(),
             )
         } else {
             (
-                format!("import {{ {} }} from \"{}\";", source, source_path),
-                format!(
-                    "import {{ {} }} from \"{}\";",
-                    destination, destination_path
-                ),
+                self.import_line(&source_path, &[source]),
+                self.import_line(&destination_path, &[destination]),
             )
         };
 
@@ -109,19 +144,41 @@ impl StreamingFunctionFileBuilder {
         &self,
         target_model: &str,
         models: &HashMap<String, FrameworkObject>,
+        project: &Project,
     ) -> String {
-        if models.contains_key(target_model) {
-            let model_path = models.get(target_model).unwrap().original_file_path.clone();
-            let mut model_relative_path = diff_paths(
-                model_path.clone(),
-                self.function_file_path.parent().unwrap(),
-            )
-            .unwrap_or(model_path.clone());
-            model_relative_path.set_extension("");
+        if let Some(model) = models.get(target_model) {
+            let model_path = model.original_file_path.clone();
 
-            model_relative_path.to_string_lossy().to_string()
+            match self.language {
+                SupportedLanguages::Typescript => {
+                    let mut model_relative_path = diff_paths(
+                        model_path.clone(),
+                        self.function_file_path.parent().unwrap(),
+                    )
+                    .unwrap_or(model_path);
+                    model_relative_path.set_extension("");
+
+                    model_relative_path.to_string_lossy().to_string()
+                }
+                SupportedLanguages::Python => {
+                    let relative_path_from_root = model_path
+                        .strip_prefix(&project.project_location)
+                        .unwrap_or(&model_path);
+                    let mut path = "".to_string();
+                    for stuff in relative_path_from_root {
+                        if !path.is_empty() {
+                            path.push('.');
+                            path.push_str(&stuff.to_string_lossy())
+                        }
+                    }
+                    path
+                }
+            }
         } else {
-            "../datamodels/models".to_string()
+            match self.language {
+                SupportedLanguages::Typescript => "../datamodels/models".to_string(),
+                SupportedLanguages::Python => "app.datamodels.models".to_string(),
+            }
         }
     }
 
@@ -184,7 +241,7 @@ pub async fn create_streaming_function_file(
     };
 
     let success = StreamingFunctionFileBuilder::new(project, &source, &destination)
-        .imports(&source, &destination, models)
+        .imports(&source, &destination, models, project)
         .return_object(&destination, models)
         .write()?;
 
@@ -336,19 +393,22 @@ fn show_missing_datamodels_messages(missing_datamodels: &[&str]) {
     );
 }
 
-fn get_default_value_for_type(column_type: &ColumnType) -> String {
-    match column_type {
-        ColumnType::String => "\"\"".to_string(),
-        ColumnType::Boolean => "false".to_string(),
-        ColumnType::Int => "0".to_string(),
-        ColumnType::BigInt => "0".to_string(),
-        ColumnType::Float => "0".to_string(),
-        ColumnType::Decimal => "0".to_string(),
-        ColumnType::DateTime => "new Date()".to_string(),
-        ColumnType::Enum(_) => "any".to_string(),
-        ColumnType::Array(_) => "[]".to_string(),
-        ColumnType::Nested(_) => "{}".to_string(),
-        ColumnType::Json => "{}".to_string(),
-        ColumnType::Bytes => "[]".to_string(),
+fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages) -> String {
+    match (column_type, lang) {
+        (ColumnType::String, _) => "\"\"".to_string(),
+        (ColumnType::Boolean, _) => "false".to_string(),
+        (ColumnType::Int, _) => "0".to_string(),
+        (ColumnType::BigInt, _) => "0".to_string(),
+        (ColumnType::Float, SupportedLanguages::Typescript) => "0".to_string(),
+        (ColumnType::Float, SupportedLanguages::Python) => "0.0".to_string(),
+        (ColumnType::Decimal, _) => "0".to_string(),
+        (ColumnType::DateTime, SupportedLanguages::Typescript) => "new Date()".to_string(),
+        (ColumnType::DateTime, SupportedLanguages::Python) => "datetime.now()".to_string(),
+        (ColumnType::Enum(_), _) => "any".to_string(),
+        (ColumnType::Array(_), _) => "[]".to_string(),
+        (ColumnType::Nested(_), SupportedLanguages::Typescript) => "{}".to_string(),
+        (ColumnType::Nested(inner), SupportedLanguages::Python) => format!("{}()", inner.name),
+        (ColumnType::Json, _) => "{}".to_string(),
+        (ColumnType::Bytes, _) => "[]".to_string(),
     }
 }

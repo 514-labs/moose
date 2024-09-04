@@ -67,6 +67,25 @@ my_flow = Flow(
 )
 "#;
 
+pub static PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE: &str = r#"
+// Add your models & start the development server to import these types
+{{source_import}}
+{{destination_import}}
+from typing import Callable, Optional
+from datetime import datetime
+
+@dataclass
+class Flow:
+    run: Callable
+
+def flow(activity: {{source}}) -> Optional[{{destination}}]:
+    return {{destination_object}}
+
+my_flow = Flow(
+    run=flow
+)
+"#;
+
 pub static PYTHON_BASE_API_SAMPLE: &str = r#"
 def run(client, params):
     minDailyActiveUsers = int(params.get('minDailyActiveUsers', [0])[0])

@@ -22,6 +22,7 @@ use logger::setup_logging;
 use regex::Regex;
 use routines::auth::generate_hash_token;
 use routines::datamodel::read_json_file;
+use routines::docker_packager::{build_dockerfile, create_dockerfile};
 use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
 use routines::plan;
@@ -62,9 +63,7 @@ use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 use crate::utilities::git::is_git_repo;
 
-use self::routines::{
-    clean::CleanProject, docker_packager::BuildDockerfile, docker_packager::CreateDockerfile,
-};
+use self::routines::clean::CleanProject;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
@@ -244,18 +243,14 @@ async fn top_command_handler(
                 }
             }
         }
-        Commands::Build {
-            docker,
-            amd64,
-            arm64,
-        } => {
-            let run_mode = RunMode::Explicit {};
-            info!("Running build command");
+        // This command is used to check the project for errors that are not related to runtime
+        // For example, it checks that the project is valid and that all the primitives are loaded
+        // It is used in the build process to ensure that the project is valid while building docker images
+        Commands::Check {} => {
+            info!("Running check command");
             let project_arc = Arc::new(load_project()?);
 
             check_project_name(&project_arc.name())?;
-
-            let mut controller = RoutineController::new();
 
             PrimitiveMap::load(&project_arc).await.map_err(|e| {
                 RoutineFailure::error(Message {
@@ -263,6 +258,21 @@ async fn top_command_handler(
                     details: format!("Failed to load Primitives: {:?}", e),
                 })
             })?;
+
+            Ok(RoutineSuccess::success(Message::new(
+                "Checked".to_string(),
+                "No Errors found".to_string(),
+            )))
+        }
+        Commands::Build {
+            docker,
+            amd64,
+            arm64,
+        } => {
+            info!("Running build command");
+            let project_arc = Arc::new(load_project()?);
+
+            check_project_name(&project_arc.name())?;
 
             // Remove versions directory so only the relevant versions will be populated
             project_arc.delete_old_versions().map_err(|e| {
@@ -282,19 +292,15 @@ async fn top_command_handler(
                     &settings,
                 );
                 // TODO get rid of the routines and use functions instead
-                controller.add_routine(Box::new(CreateDockerfile::new(project_arc.clone())));
-                controller.add_routine(Box::new(BuildDockerfile::new(
-                    project_arc.clone(),
-                    *amd64,
-                    *arm64,
-                )));
-                controller.run_routines(run_mode);
+
+                create_dockerfile(&project_arc)?.show();
+                let _ = build_dockerfile(&project_arc, *amd64, *arm64)?;
 
                 wait_for_usage_capture(capture_handle).await;
 
                 Ok(RoutineSuccess::success(Message::new(
                     "Built".to_string(),
-                    "Docker images".to_string(),
+                    "Docker image(s)".to_string(),
                 )))
             } else {
                 Err(RoutineFailure::error(Message {

@@ -399,7 +399,7 @@ pub fn buildx(
     if !output.status.success() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
-            "Failed to run dockerx build",
+            String::from_utf8_lossy(&output.stderr),
         ));
     }
 

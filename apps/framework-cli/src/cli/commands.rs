@@ -46,6 +46,8 @@ pub enum Commands {
         #[arg(long)]
         arm64: bool,
     },
+    /// Checks the project for non-runtime errors
+    Check {},
     /// [Not Ready] Displays the changes that will be applied to the infrastructure during the next deployment
     /// to production, consdering the current state of the project
     Plan {},

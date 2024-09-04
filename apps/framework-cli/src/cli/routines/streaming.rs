@@ -163,13 +163,14 @@ impl StreamingFunctionFileBuilder {
                 SupportedLanguages::Python => {
                     let relative_path_from_root = model_path
                         .strip_prefix(&project.project_location)
-                        .unwrap_or(&model_path);
+                        .unwrap_or(&model_path)
+                        .with_extension("");
                     let mut path = "".to_string();
-                    for stuff in relative_path_from_root {
+                    for path_segment in &relative_path_from_root {
                         if !path.is_empty() {
                             path.push('.');
-                            path.push_str(&stuff.to_string_lossy())
                         }
+                        path.push_str(&path_segment.to_string_lossy())
                     }
                     path
                 }

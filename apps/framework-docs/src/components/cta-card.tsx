@@ -3,8 +3,10 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
+  Button,
 } from "@514labs/design-system-components/components";
 import Link from "next/link";
 import {
@@ -18,6 +20,7 @@ interface CTACardProps {
   title: string;
   description: string;
   ctaLink: string;
+  ctaLabel: string;
   Icon: React.ElementType;
   className: string;
 }
@@ -26,24 +29,38 @@ export function CTACard({
   title,
   description,
   ctaLink,
+  ctaLabel,
   Icon,
   className,
 }: CTACardProps) {
   return (
-    <Link href={ctaLink}>
-      <Card className={cn("hover:bg-secondary md:w-64 w-auto h-56", className)}>
-        <CardHeader>
-          <div className="rounded-md w-fit bg-gradientDarkPink">
+    <Card className={cn("md:w-64 w-auto h-auto rounded-3xl", className)}>
+      <CardHeader>
+        <div className="bg-gradient-to-b from-pink from-4.65% to-background to-93.24% w-fit rounded-[20px] border-transparent p-[2px]">
+          <div className="rounded-[18px] w-fit bg-gradientDarkPink p-[2px]">
             <Icon className="m-3 h-[24px] w-[24px]" />
           </div>
-        </CardHeader>
-        <CardContent>
-          <Heading className="my-0 text-primary" level={HeadingLevel.l5}>
-            {title}
-          </Heading>
-          <CardDescription className="mt-2">{description}</CardDescription>
-        </CardContent>
-      </Card>
-    </Link>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Heading className="my-0 text-primary" level={HeadingLevel.l5}>
+          {title}
+        </Heading>
+        <CardDescription className="mt-2">{description}</CardDescription>
+      </CardContent>
+      <CardFooter>
+        <Link href={ctaLink}>
+          <Button>{ctaLabel}</Button>
+        </Link>
+      </CardFooter>
+    </Card>
+  );
+}
+
+export function CTACards({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="flex md:flex-row flex-col justify-start items-center gap-5 mt-5">
+      {children}
+    </div>
   );
 }

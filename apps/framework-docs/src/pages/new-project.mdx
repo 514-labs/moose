@@ -1,5 +1,5 @@
 import { Tabs, Steps, Card } from "nextra/components";
-import { Callout, CTACard } from "../components";
+import { Callout, CTACard, CTACards } from "../components";
 import { RectangleEllipsis, Square } from "lucide-react";
 
 # Quick Start
@@ -356,7 +356,7 @@ Congrats! You've successfully set up a Moose project, ingested data, and confirm
 
 #### Learn Other Moose Primitives
 
-<div className="flex flex-row gap-4">
+<CTACards>
 <CTACard 
   title="Learn How to Process Data With Streaming Functions"
   description="Learn how to process UserActivity data into ParsedActivity data using Streaming Functions" 
@@ -368,6 +368,7 @@ Congrats! You've successfully set up a Moose project, ingested data, and confirm
   title="Add a New Data Model"
   description="Deep dive into Data Modeling and learn other ways to take advantage of Moose's data modeling capabilities, including the supported types you can leverage in your schema definitions" 
   ctaLink="/data-models" 
+  ctaLabel="Take me there"
   Icon={Square} 
 />
-</div>
+</CTACards>

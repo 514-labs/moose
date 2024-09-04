@@ -93,18 +93,18 @@ export default {
     titleComponent({ title, type }) {
       if (type === "separator") {
         return (
-          <div className="flex flex-row justify-start items-center text-muted-foreground gap-3">
-            <div className="bg-muted rounded-md h-full">
+          <div className="flex flex-row justify-start items-center text-muted-foreground gap-2">
+            <div className="h-full">
               {(() => {
                 switch (title) {
                   case "Get Started":
-                    return <Rocket className="m-2 h-[20px] w-[20px]" />;
+                    return <Rocket className="h-[20px] w-[20px]" />;
                   case "Develop":
-                    return <Code className="m-2 h-[20px] w-[20px]" />;
+                    return <Code className="h-[20px] w-[20px]" />;
                   case "Deploy":
-                    return <Package className="m-2 h-[20px] w-[20px]" />;
+                    return <Package className="h-[20px] w-[20px]" />;
                   case "Reference":
-                    return <Library className="m-2 h-[20px] w-[20px]" />;
+                    return <Library className="h-[20px] w-[20px]" />;
                   default:
                     return null;
                 }
@@ -148,8 +148,12 @@ export default {
       );
     },
   },
-  feedback: false,
-  editLink: false,
+  feedback: {
+    content: null,
+  },
+  editLink: {
+    component: null,
+  },
   footer: {
     text: (
       <span>

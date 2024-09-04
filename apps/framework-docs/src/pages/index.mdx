@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Cards, Card } from "nextra/components";
 import {
   CTACard,
+  CTACards,
   ZoomImg,
   ChipBadge,
   Columns,
@@ -28,30 +29,26 @@ Please reach out over [email](mailto:hello@moosejs.dev),
 [Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg),
 or [signup form](https://fiveonefour.typeform.com/signup). We can't wait to hear from you!
 
----
-
-## Pick Your Learning Path
+## Pick Your Path
 
 Choose the method that best suits your learning style for getting started with Moose:
 
-<div className="flex md:flex-row flex-col justify-start items-center">
+<CTACards>
   <CTACard
-    title="Quick Start"
+    title="Create a Moose Project"
     description="Get up and running with your own Moose project in minutes"
     ctaLink="/new-project"
+    ctaLabel="Quick Start"
     Icon={Zap}
-    className="mr-2"
   />
   <CTACard
-    title="Tutorial"
+    title="Learn Step-by-Step"
     description="Build an end-to-end Moose app through a guided tutorial"
     ctaLink="/learn-moose"
+    ctaLabel="Try Tutorial"
     Icon={GraduationCap}
-    className="ml-2"
   />
-</div>
-
----
+</CTACards>
 
 ## What is Moose?
 
@@ -60,8 +57,6 @@ Choose the method that best suits your learning style for getting started with M
 By automating the setup and management of these components and standardizing the interfaces between them, Moose eliminates the need for custom “glue code” and allows you to just focus on writing your application logic. These are tasks you shouldn't have to worry about or reinvent, especially since it’s crucial to do them correctly to ensure high performance and reliability when ingesting and processing petabytes of data.
 
 Moose is designed for any TypeScript or Python developer, regardless of your background in data engineering. Built on Rust, it ensures speed and reliability even at a massive scale.
-
----
 
 ## What types of applications can be built with Moose?
 
@@ -97,8 +92,6 @@ We include some example applications in the [templates section](/templates), so 
 
 <ChipBadge href="/templates/product-analytics" label="Product Analytics" />
 
----
-
 ## How does Moose work?
 
 <ZoomImg src="/OVERVIEW-DIAGRAM.svg" />
@@ -113,8 +106,6 @@ Moose provides a set of primitives that you can use to build your data stack in 
 When you build and run your code, Moose interprets your implemented primitives and automatically configures the assets in your data stack infrastructure to support your application.
 
 Learn more in the [architecture documentation](https://docs.moosejs.com/getting-started/architecture).
-
----
 
 ## What's the key functionality?
 

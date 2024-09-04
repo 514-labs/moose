@@ -77,7 +77,7 @@ COPY --chown=moose:moose ./versions .moose/versions
 INSTALL_COMMAND
 
 # Checks that the project is valid
-# RUN moose check
+RUN moose check
 
 # Expose the ports on which the application will listen
 EXPOSE 4000

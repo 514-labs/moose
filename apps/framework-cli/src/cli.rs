@@ -55,8 +55,7 @@ use crate::framework::core::code_loader::load_framework_objects;
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::sdk::ingest::generate_sdk;
-use crate::framework::versions::parse_version;
-use crate::infrastructure::olap::clickhouse::version_sync::version_to_string;
+use crate::framework::versions::{parse_version, version_to_string};
 use crate::metrics::TelemetryMetadata;
 use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
@@ -545,7 +544,7 @@ async fn top_command_handler(
 
             Ok(RoutineSuccess::success(Message::new(
                 "Plan".to_string(),
-                "Successfuly planned changes to the infrastructure".to_string(),
+                "Successfully planned changes to the infrastructure".to_string(),
             )))
         }
         Commands::BumpVersion { new_version } => {

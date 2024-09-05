@@ -65,6 +65,13 @@ pub fn generate(
     let source_path = get_import_path(source_dm, project);
     let destination_path = get_import_path(destination_dm, project);
 
+    let source_import_maybe_aliased = if maybe_old_name.is_empty() {
+        source_type.to_string()
+    } else {
+        // funny enough, same in ts and python
+        format!("{} as {}", destination_type, source_type)
+    };
+
     let (source_import, destination_import) = if source_path == destination_path {
         (
             import_line(
@@ -76,7 +83,11 @@ pub fn generate(
         )
     } else {
         (
-            import_line(project.language, &source_path, &[source_type]),
+            import_line(
+                project.language,
+                &source_path,
+                &[&source_import_maybe_aliased],
+            ),
             import_line(project.language, &destination_path, &[destination_type]),
         )
     };
@@ -354,7 +365,7 @@ export default function run(source: UserActivity): ParsedActivity | null {
             result,
             r#"
 // Add your models & start the development server to import these types
-import { UserActivityOld } from "versions/0.0/models";
+import { UserActivity as UserActivityOld } from "versions/0.0/models";
 import { UserActivity } from "datamodels/models";
 
 // The 'run' function transforms UserActivityOld data to UserActivity format.
@@ -414,7 +425,7 @@ export default function run(source: UserActivityOld): UserActivity | null {
             result,
             r#"
 # Add your models & start the development server to import these types
-from v0_0.models import UserActivityOld
+from v0_0.models import UserActivity as UserActivityOld
 from app.datamodels.models import UserActivity
 from typing import Callable, Optional
 from datetime import datetime

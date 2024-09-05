@@ -1,0 +1,138 @@
+import { Callout } from "../../components";
+import { Tabs, Steps } from "nextra/components";
+
+# Configure Github Webhook
+
+Now let’s get some real data into this data infrastructure. We’ll do this by configuring Github’s webhook service to send event data to the `/ingest/RawStarEvent` API.
+
+<Callout type="warning">
+  Since your Moose development server is running locally, you’ll need to use
+  Pinggy or NGROK to expose the port its running on to the web. This allows for
+  external webhook notifications from GitHub to be proxied to your local dev
+  server.
+</Callout>
+
+## Get a Port Forwarding URL to [localhost:4000](http://localhost:4000)
+
+To connect you local Moose instance over the internet, you need a port forwarding service that connects your local port to a public URL.
+
+<Tabs items={['Using Pinggy', 'Using Ngrok']}>
+
+<Tabs.Tab>
+### Setting Up Pinggy  
+Run this command in your terminal:
+```bash
+ssh -p 443 -R0:localhost:4000 -L4300:localhost:4300 qr@a.pinggy.io
+```
+You should see a few messages printed to your terminal, followed by this prompt: 
+```txt
+The authenticity of host '[a.pinggy.io]:443...
+...
+Are you sure you want to continue connecting (yes/no/[fingerprint])?
+```
+- Type `yes` to add Pinggy to your known SSH hosts.
+    
+You should see the below message printed to your terminal output: 
+    
+```text
+                           You are not authenticated.
+Your tunnel will expire in 60 minutes. Upgrade to Pinggy Pro to get unrestricted
+                      tunnels. https://dashboard.pinggy.io
+
+http://<YOUR_PINGGY_GENERATED_LINK>.a.free.pinggy.link
+https://<YOUR_PINGGY_GENERATED_LINK>.a.free.pinggy.link
+
+````
+**Copy the `https` URL. This is your forwarding URL.** You’ll need this to set up the Github webhook in the next step.
+
+</Tabs.Tab>
+
+<Tabs.Tab>
+#### Using Ngrok
+
+<Callout type="warning" title="Don't have Ngrok Installed?">
+Follow the Ngrok onboarding steps. Otherwise, we recommend following the [Using Pinggy]() guide to avoid the need to register.
+</Callout>
+
+If you’ve got `ngrok` already installed run `ngrok http 4000.`
+
+</Tabs.Tab>
+
+
+<Callout type="warning" title="Save Your Forwarding URL">
+It will come in handy later in the tutorial
+</Callout>
+
+</Tabs>
+
+## Configure Github Webhook
+
+Now you’ll configure GitHub to send webhook notifications to your Pinggy forwarding URL when someone stars your repository.
+
+<Steps>
+#### Login to your [Github.com](http://github.com/) account.
+
+#### Select a Repository to Track
+Navigate to this repository to set up webhook notifications.
+
+    <Callout type="warning">
+    You must own this repository!
+    </Callout>
+
+#### Open Settings > Webhooks in your Repository
+- Locate the '**Webhooks**' settings in the sidebar navigation
+- On the Webhooks page, click the **Add Webhook** button.
+
+
+#### Configure Webhook Settings
+    - In the **Payload URL** field, paste in your **forwarding URL** you previously copied to your clipboard. **Append: `/ingest/RawStarEvent`**
+    - Set **Content type** to `application/json`.
+    - **Secret**: Leave empty.
+
+
+    - Under **"Which events would you like to trigger this webhook?"**, choose **"Let me select individual events"**.
+        - Scroll through the events to configure notifications:
+            - **Unselect "Pushes"**
+            - **Select "Stars"**
+
+        ![](/webhook-config-settings.gif)
+
+#### Save Your Settings
+Click **"Add Webhook"** to save your configuration.
+    - The new webhook will appear in the list. It won't have a green checkmark until it sends its first notification.
+</Steps>
+
+## Trigger the Webhook: Get the Live Data Flowing!
+
+<Steps>
+### Star & Un-star your Github Repository
+Go to your Github repository and star/un-star it.
+<Callout type="info">
+Send us your URL, we’ll do it too.
+</Callout>
+### Check for `POST` and `SUCCESS` messages in CLI
+Check back on your terminal window. You should see `POST` and `SUCCESS` messages printed to the CLI:
+
+    <Callout type="success">
+    You now have live, real-time Github event data landing in your Moose app!
+    </Callout>
+
+### Re-run `RawStarEvent` Query in DB Explorer
+Go back to your database explorer and re-run this same query on the `RawStarEvent` table from earlier:
+
+    ```sql filename="Your DB Explorer" copy
+    SELECT * FROM local.RawStarEvent_0_0
+    ```
+
+    You should see the your own Github username and up-to-date information about your repositories!
+
+</Steps>
+
+
+<Callout type="success" title="Celebrate your Progress!">
+You've defined a Data Model, configured a GitHub webhook, and ingested real-time GitHub event data into your Moose application.
+<br/><br/>
+Your full data stack is up and running—a webserver, streaming data platform, and OLAP database—with live data flowing in. **You achieved all of that with just a few lines of code!**
+
+</Callout>
+````

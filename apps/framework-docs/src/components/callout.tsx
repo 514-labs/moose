@@ -5,9 +5,7 @@ import { Lightbulb, StopCircle, FileWarning, PartyPopper } from "lucide-react";
 import {
   Card,
   CardContent,
-  CardHeader,
 } from "@514labs/design-system-components/components";
-import { render } from "react-dom";
 
 interface CalloutProps {
   type: CalloutType;

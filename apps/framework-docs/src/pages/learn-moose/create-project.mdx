@@ -55,17 +55,32 @@ You should expect to see the following printed to your terminal:
 {" "}
 
 <Callout type="success">
-  You have set up a Moose instance at `http://localhost:4000`. <br /> <br />{" "}
-  This development server provides the following infrastructure:
+  You have set up a Moose instance at `http://localhost:4000`
+  
+  <br/><br/>
+
+It provides the following infrastructure:
+
   <ul>
-    - **OLAP Database** (Clickhouse) to store and analyze your data -
-    **Streaming Data Platform** (Redpanda) to buffer and transform incoming data
+    - **OLAP Database** (Clickhouse) to store and analyze your data 
+    - **Streaming Data Platform** (Redpanda) to buffer and transform incoming data
     - **Ingestion and Consumption APIs** to get data in and out of your database
   </ul>
+<br/>
+As you develop, the dev server automatically updates with your latest changes, providing a real-time view of your Moose application locally.
 </Callout>
 
-<Callout type="info">
-  The development server will automatically hot-swap in the latest code as you
-  make changes, so you can see your entire Moose application running locally as
-  you develop.
+#### Open Project in IDE
+
+VSCode:
+
+```bash filename="Terminal" copy
+code .
+```
+
+<Callout type="info" title="(VSCode) Install Recommended Extensions ">
+  Click '**Install**' on the pop-up window located in the bottom right corner of
+  the screen. Moose will automatically configure these extensions for you.
 </Callout>
+
+<ZoomImg src="/vscode-install.png" />

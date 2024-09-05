@@ -53,6 +53,10 @@ export default {
       <link rel="icon" href="/favicon.ico" type="image/x-icon" sizes="16x16" />
     </>
   ),
+  navigation: {
+    prev: true,
+    next: true,
+  },
   components: {
     h1: ({ children }) => <Heading>{children}</Heading>,
     h2: ({ children }) => (
@@ -120,7 +124,7 @@ export default {
         <SmallText className="my-0 text-muted-foreground">{title}</SmallText>
       );
     },
-    toggleButton: true,
+    toggleButton: false,
   },
   toc: {
     title: () => {

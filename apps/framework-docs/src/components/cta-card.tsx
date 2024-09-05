@@ -50,7 +50,7 @@ export function CTACard({
       </CardContent>
       <CardFooter>
         <Link href={ctaLink}>
-          <Button>{ctaLabel}</Button>
+          <Button className="font-normal">{ctaLabel}</Button>
         </Link>
       </CardFooter>
     </Card>

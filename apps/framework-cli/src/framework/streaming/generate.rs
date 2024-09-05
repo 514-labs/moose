@@ -413,7 +413,7 @@ export default function run(source: UserActivityOld): UserActivity | null {
         assert_eq!(
             result,
             r#"
-// Add your models & start the development server to import these types
+# Add your models & start the development server to import these types
 from v0_0.models import UserActivityOld
 from app.datamodels.models import UserActivity
 from typing import Callable, Optional

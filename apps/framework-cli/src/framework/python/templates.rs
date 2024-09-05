@@ -68,7 +68,7 @@ my_flow = Flow(
 "#;
 
 pub static PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE: &str = r#"
-// Add your models & start the development server to import these types
+# Add your models & start the development server to import these types
 {{source_import}}
 {{destination_import}}
 from typing import Callable, Optional

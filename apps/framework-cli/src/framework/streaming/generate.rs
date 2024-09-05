@@ -427,6 +427,7 @@ export default function run(source: UserActivityOld): UserActivity | null {
 # Add your models & start the development server to import these types
 from v0_0.models import UserActivity as UserActivityOld
 from app.datamodels.models import UserActivity
+from dataclasses import dataclass
 from typing import Callable, Optional
 from datetime import datetime
 

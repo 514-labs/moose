@@ -110,21 +110,26 @@ Go to your Github repository and star/un-star it.
 <Callout type="info">
 Send us your URL, we’ll do it too.
 </Callout>
-### Check for `POST` and `SUCCESS` messages in CLI
+### Check for `POST` and `SUCCESS` Messages in CLI
 Check back on your terminal window. You should see `POST` and `SUCCESS` messages printed to the CLI:
 
-    <Callout type="success">
-    You now have live, real-time Github event data landing in your Moose app!
-    </Callout>
+```txt
+POST ingest/RawStarEvent/0.0
+SUCCESS /ingest/RawStarEvent
+```
+
+<Callout type="success">
+You now have live, real-time Github event data landing in your Moose app!
+</Callout>
 
 ### Re-run `RawStarEvent` Query in DB Explorer
 Go back to your database explorer and re-run this same query on the `RawStarEvent` table from earlier:
 
-    ```sql filename="Your DB Explorer" copy
-    SELECT * FROM local.RawStarEvent_0_0
-    ```
+```sql filename="Your DB Explorer" copy
+SELECT * FROM local.RawStarEvent_0_0
+```
 
-    You should see the your own Github username and up-to-date information about your repositories!
+You should see the your own Github username and up-to-date information about your repositories!
 
 </Steps>
 
@@ -135,4 +140,6 @@ You've defined a Data Model, configured a GitHub webhook, and ingested real-time
 Your full data stack is up and running—a webserver, streaming data platform, and OLAP database—with live data flowing in. **You achieved all of that with just a few lines of code!**
 
 </Callout>
+
+
 ````

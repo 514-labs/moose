@@ -1,0 +1,72 @@
+import { Callout, ToggleBlock } from "../../components";
+import { Steps, FileTree } from "nextra/components";
+
+# Transform Raw Events with Streaming Functions
+
+With the data now flowing in from GitHub, the next step is to filter, transform and enrich it. In this module, you will:
+
+- Create a new `ProcessedStarEvent` Data Model to store the transformed properties from the `RawStarEvent` data
+- Define a **Streaming Function** to transform and enrich the incoming `RawStarEvent` data into `ProcessedStarEvent` data
+
+<Callout type="info">
+  [Streaming Functions](../stream-processing) are regular Typescript/Python
+  functions that let you apply custom logic to process incoming data from a
+  source data model to a target destination model.
+</Callout>
+
+These transformations allow you to select or restructure specific data, such as the GitHub usernames of users who star your repository. Additionally, you can enrich this data by adding more information about the users, like their programming language preferences. You will learn how to implement both transformations in this Streaming Function walkthrough!
+
+## Create `ProcessedStarEvent` Data Model
+
+The `ProcessedStarEvent` Data Model will represent the data after it is transformed.
+
+<Steps>
+### Create a New File `ProcessedStarEvent.ts`
+Add a new file to the `/datamodels` directory of your app named `ProcessedStarEvent.ts`:
+
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="datamodels" open>
+      <FileTree.File name="RawStarEvent.ts" />
+      <FileTree.File name="ProcessedStarEvent.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+### Define `ProcessedStarEvent` Data Model Fields
+
+It should contain the following fields:
+
+- `starred_at`: timestamp for the star event - to be used as the `Key`. You will need cast this as a `Date`, so make that the field type for this field.
+
+- `username`: the user who starred your repository
+- `languages`: an array of objects that captures the programming languages used by the starrer
+  - `language`: the name of a programming language (`string` )
+  - `bytes`: the total amount of code written by the starrer in the programming language across all their repositories.
+
+```ts filename="/datamodels/ProcessedStarEvent.ts" copy {2-3}
+export interface DATA_MODEL_NAME {
+  FIELD_NAME: Key<FIELD_TYPE>;
+  FIELD_NAME: FIELD_TYPE;
+  languages: Array<{ FIELD_NAME: FIELD_TYPE; FIELD_NAME: FIELD_TYPE }>;
+}
+```
+
+<Callout type="info" title="Complete The Code">
+  In the example code block, replace all `FIELD_NAME` and `FIELD_TYPE` values
+  with the appropriate field names and data types.
+</Callout>
+
+<ToggleBlock openText="Stuck? Reveal Solution" closeText="Hide Solution">
+```ts filename="/datamodels/ProcessedStarEvent.ts" copy
+export interface ProcessedStarEvent {
+	starred_at: Key<Date>;
+    username: string; 
+    languages: Array<{language: string, bytes: number}>
+}
+```
+
+</ToggleBlock>
+</Steps>
+
+You can see from the above that most of the fields map to fields in the RawStarEvents Data Model, but we’re missing language data. We will fetch the languages information from the GitHub API within the Streaming Function. Let's walk through how to set this up!

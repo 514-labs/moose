@@ -4,96 +4,28 @@ import { Callout } from "../../components";
 
 ## via the CLI
 
-To create a new API endpoint, run this command in your CLI:
+To create a new Consumption API endpoint, leverage the `moose-cli consumption init` command. This will generate a `.ts` or `.py` file in the `/apis` directory with the following structure:
 
-```bash copy
-moose consumption init <your-endpoint-name>
+```ts
+import { ConsumptionUtil } from "@514labs-moose-lib";
+// This file is where you can define your API templates for consuming your data
+// All query_params are passed in as strings, and are used within the sql tag to parameterize your queries
+export interface QueryParams {}
+
+export default async function handle(
+  {}: QueryParams,
+  { client, sql }: ConsumptionUtil,
+) {
+  return client.query(sql``);
+}
 ```
 
-<Callout type="info" title="What does this command do?">
-This command creates a new file named `<your-endpoint-name>.ts` in the `/apis` folder of your Moose project. 
-</Callout>
+For detailed information about the moose block init command, you can run the following in your terminal:
+
+```bash copy
+npx moose-cli consumption init --help
+```
 
 ## Manually
 
-### Implement your API function handler
-
-Open the newly created file and define your API using an asynchronous function. Moose provides helper functions to simplify building and running dynamic SQL queries, making it easy to define your API logic.
-
-Example structure:
-
-```ts filename="api/dailyActiveUsers.ts" copy
-interface QueryParams {
-  limit: string;
-  minDailyActiveUsers: string;
-}
-
-export default async function handle(
-  { limit = "10", minDailyActiveUsers = "0" }: QueryParams,
-  { client, sql },
-) {
-  return client.query(
-    sql`SELECT 
-      date,
-      dailyActiveUsers
-    FROM DailyActiveUsers
-    WHERE dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
-    LIMIT ${parseInt(limit)}`,
-  );
-}
-```
-
-Your function handler should be an asynchronous function and the default export of the file. This tells Moose which function to execute when handling API requests.
-
-Additionally, the function takes two arguments:
-
-- An object containing the query parameters (with default values if needed).
-- An object containing helper functions, including the database client (`client`) and a SQL tag function (`sql`).
-
-Specifically, the `sql` helper lets you wrap your parameterized SQL query in a tagged template literal with a sql prefix (`sql<SELECT STATEMENT HERE>`), which prevents SQL injection as well as giving syntax highlighting in your IDE.
-
-### Working with Query Parameters
-
-Define your parameter names and data types in the QueryParams interface. Inject them into your SQL query template string. Currently, URL query parameters are parsed as strings, so you need to convert them to the correct data type within your function. This step ensures your query parameters are correctly typed.
-
-You can either parse your parameters within the template string directly or separately in your function before injecting them into the template string, as shown below. Both methods work with TypeScript string literals.
-
-Example:
-
-```ts filename="api/dailyActiveUsers.ts" copy
-interface QueryParams {
-  limit: string;
-  minDailyActiveUsers: string;
-}
-
-export default async function handle(
-  { limit = "10", minDailyActiveUsers = "0" }: QueryParams,
-  { client, sql },
-) {
-  const limitInt = parseInt(limit);
-  const minUsersInt = parseInt(minDailyActiveUsers);
-  return client.query(
-    sql`SELECT 
-      date,
-      dailyActiveUsers
-    FROM DailyActiveUsers
-    WHERE dailyActiveUsers >= ${minUsersInt}
-    LIMIT ${limitInt}`,
-  );
-}
-```
-
-We are working on improvements to handle type parsing directly from the `QueryParams` interface in the future so you can skip the manual parsing step altogether. Stay tuned for updates on when this developer experience enhancement will be ready for you!
-
-### Executing Your Query
-
-Moose provides helper functions, including a database client, to build dynamic, parameterized SQL queries. The client handles database connections, query execution, SQL injection prevention, and data type casting from TypeScript to Clickhouse types.
-
-Refer to the [Supported Data Types table](/building/data-models/model-data#supported-types) for more information on how Moose maps Typescript data types to Clickhouse.
-
-### Test Your API
-
-Test your API by making an HTTP GET request to your local Moose developer server at:
-`https://localhost:4000/consumption/<your-endpoint-name>`
-
-Include the necessary query parameters for your function arguments. The name of your API endpoint should match the name of the Typescript file you created in the `/apis` folder.
+You can alternatively manually create a new `.ts` or `.py` file inside the `/apis` folder of your project.

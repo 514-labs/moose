@@ -250,7 +250,7 @@ li.nx-my-2 {
   list-style: none;
 }
 
-.docs
+/* .docs
   a:not(li a):not(nav a):not(:has(button)):not(footer a):not(
     .nextra-breadcrumb a
   ) {
@@ -266,7 +266,7 @@ li.nx-my-2 {
   border-radius: 0.5rem;
   color: hsl(var(--foreground));
   margin: 0rem 0.25rem;
-}
+} */
 
 /* custom-nextra-styles.css */
 .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 {

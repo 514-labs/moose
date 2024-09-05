@@ -34,7 +34,7 @@ export function CTACard({
   className,
 }: CTACardProps) {
   return (
-    <Card className={cn("md:w-64 w-auto h-auto rounded-3xl", className)}>
+    <Card className={cn("w-auto h- rounded-3xl", className)}>
       <CardHeader>
         <div className="bg-gradient-to-b from-pink from-4.65% to-background to-93.24% w-fit rounded-[20px] border-transparent p-[2px]">
           <div className="rounded-[18px] w-fit bg-gradientDarkPink p-[2px]">

@@ -114,7 +114,7 @@ export default {
                 }
               })()}
             </div>
-            <SmallText className="my-0 text-muted-foreground">
+            <SmallText className="my-0 text-muted-foreground leading-[15px] text-xs">
               {title}
             </SmallText>
           </div>

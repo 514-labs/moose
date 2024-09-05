@@ -1,4 +1,4 @@
-import { Callout } from "../../components";
+import { Callout, ToggleBlock } from "../../components";
 import { Steps, FileTree } from "nextra/components";
 
 # Aggregate Programming Languages with Blocks
@@ -24,6 +24,121 @@ npx moose-cli blocks init userLanguageTable
 This command will generate a new file named `userLanguageTable.ts` and place it inside the `/blocks` folder of your application:
 
 <FileTree>
-
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="blocks" open>
+      <FileTree.File name="userLanguageTable.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
 </FileTree>
+
+### Open and Inspect the File
+
+You should see the following boilerplate:
+
+```ts filename="app/blocks/userLanguageTable.ts" copy
+import { Blocks } from "@514labs/moose-lib";
+
+export default {
+  setup: [
+    // Array of SQL statements for setting up database resources
+  ],
+  teardown: [
+    // Array of SQL statements for tearing down resources
+  ],
+} as Blocks;
+```
+
+<Callout type="info" title="Blocks Structure">
+  - The `Blocks` type is imported from the `@514labs/moose-lib` library. This
+  ensures type safety for the `setup` and `teardown` properties. - The `default
+  export` is an object that conforms to the `Blocks` type. - **`setup`**: - An
+  array of SQL strings executed to set up the necessary database objects or
+  views. - These statements are run by Moose on your database automatically
+  whenever you start your dev server. The results of these statements create and
+  persist processes in your database. - **`teardown`**: - An array of SQL
+  statements used to clean up or delete the database objects created during the
+  setup. - These statements are automatically executed by Moose when you stop
+  your dev server.
+</Callout>
+
+### Define SQL Statements to Create and Drop `userLanguages` View
+
+Create a view named `userLanguages` to simplify the structure of the programming languages data, so that it iseasier to analyze which languages are most popular among the users who starred your repository. Each row in the view will represent a unique combination of a user and a programming language they use, along with the amount of code they've written in that language.
+
+Paste in the following SQL statements into the `setup` and `teardown` arrays inside the `Blocks` object, like so:
+
+```ts filename="app/blocks/userLanguageTable.ts" copy
+import { Blocks } from "@514labs/moose-lib";
+
+export default {
+  // Sequences of SQL you can apply to a database
+  setup: [
+    `
+   CREATE VIEW userLanguages AS
+    SELECT DISTINCT 
+        username AS user, 
+        arrayFirst(x->x IS NOT NULL, language_object.language) AS language, 
+        arrayFirst(x->x IS NOT NULL, language_object.bytes) AS bytes 
+    FROM 
+        local.ProcessedStarEvent_0_0
+    ARRAY JOIN 
+    languages AS language_object
+   `,
+  ],
+  // Delete and clean up the objects from the database
+  teardown: [`DROP VIEW userLanguages`],
+} as Blocks;
+```
+
+In this example:
+
+- The `setup` array contains a single SQL statement that creates a view named `userLanguages`
+- The `teardown` array contains a single SQL statement that drops the `userLanguages` view
+
+<Callout type="info" title="Why Create a View?">
+  This view simplifies the structure of the programming languages data, so that
+  it's easier to analyze which languages are most popular among the users who
+  starred your repository. Each row in the view represents a unique combination
+  of a user and a programming language they use, along with the amount of code
+  they've written in that language.
+</Callout>
+
+<ToggleBlock openText="Expand for Detailed Breakdown" closeText="Collapse Breakdown">
+This view transforms the data from the `ProcessedStarEvent` table, by:
+- Selecting distinct combinations of the Github usernames, programming languages, and number of bytes written in that language
+- Unpacking the nested `languages` array from the source table
+
+The resulting view will have 3 columns:
+
+- `user`: The username of the person who starred the repository
+- `language`: A programming language used by the user
+- `bytes`: The number of bytes of code written in that language by the user
+  </ToggleBlock>
+
+### Save the File
+
+Saving your changes to the `userLanguageTable.ts` file will update the infrastructure controlled by Moose-- in this case, the `userLanguages` view will be instantiated.
+
+### Verify the `userLanguages` View was Created
+
+Open your database explorer and inspect the list of views in your Clickhouse database. You should now see a view called `userLanguage` with columns `user`, `language`, and `bytes`.
+
+Take a look at the data inside the view!
+
 </Steps>
+
+<Callout type="success">
+  Now you can easily understand the expertise and coding preferences of users
+  who starred your repository! To recap:
+  <br /> <br />
+  <ul>
+    - You initialized a new [Block](/db-processing) using the Moose CLI helper
+    function - Inside the Block, you set up a view that unpacks the nested
+    `languages` array in the `ProcessedStarEvent` table - This view offers a
+    detailed breakdown of the programming languages used by each user who
+    starred your repository
+  </ul>
+  <br />
+  Your data is now processed, analyzed, and ready for building APIs that
+  integrate insights from your GitHub data into other applications.
+</Callout>

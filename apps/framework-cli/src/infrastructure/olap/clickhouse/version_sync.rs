@@ -3,6 +3,7 @@ use super::queries::create_initial_data_load_query;
 use crate::framework::core::code_loader::{FrameworkObject, FrameworkObjectVersions};
 use crate::framework::data_model::model::DataModel;
 use crate::framework::languages::SupportedLanguages;
+use crate::framework::streaming::generate::generate;
 use crate::framework::typescript::templates::TS_BASE_STREAMING_FUNCTION_TEMPLATE;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
 use crate::infrastructure::olap::clickhouse::queries::create_version_sync_trigger_query;
@@ -10,6 +11,7 @@ use crate::project::Project;
 use crate::utilities::constants;
 use lazy_static::lazy_static;
 use log::debug;
+use predicates::ord::ne;
 use regex::Regex;
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -39,7 +41,6 @@ pub fn generate_streaming_function_migration(
     framework_object_versions: &FrameworkObjectVersions,
     version_sync_list: &[VersionSync],
     previous_version: &str,
-    language: SupportedLanguages,
     project: &Project,
 ) -> Vec<GeneratedStreamingFunctionMigration> {
     let mut previous_models: HashMap<String, FrameworkObject> = framework_object_versions
@@ -59,8 +60,7 @@ pub fn generate_streaming_function_migration(
     for fo in framework_object_versions.current_models.models.values() {
         if let Some(old_model) = previous_models.get(&fo.data_model.name) {
             if old_model.data_model.columns != fo.data_model.columns {
-                let code =
-                    streaming_function(language, &old_model.data_model, &fo.data_model, project);
+                let code = generate(project, &old_model.data_model, &fo.data_model);
                 res.push(GeneratedStreamingFunctionMigration {
                     model_name: old_model.data_model.name.clone(),
                     source_version: previous_version.to_string(),
@@ -256,48 +256,6 @@ impl VersionSync {
             self.migration_trigger_name()
         )
     }
-}
-
-// TODO: refactor logic with StreamingFunctionFileBuilder
-fn streaming_function(
-    language: SupportedLanguages,
-    old_dm: &DataModel,
-    new_dm: &DataModel,
-    project: &Project,
-) -> String {
-    let template = match language {
-        SupportedLanguages::Typescript => TS_BASE_STREAMING_FUNCTION_TEMPLATE,
-        SupportedLanguages::Python => todo!(),
-    };
-
-    let mut old_name = old_dm.name.clone();
-    old_name.push_str("Old");
-
-    template
-        .to_string()
-        .replace("{{source}}", &old_name)
-        .replace("{{destination}}", &new_dm.name)
-        .replace(
-            "{{source_import}}",
-            &format!(
-                "import {{ {} as {} }} from \"{}\";",
-                &old_dm.name,
-                old_name,
-                &get_ts_import_path(old_dm, project)
-            ),
-        )
-        .replace(
-            "{{destination_import}}",
-            &format!(
-                "import {{ {} }} from \"{}\";",
-                &new_dm.name,
-                &get_ts_import_path(new_dm, project)
-            ),
-        )
-        .replace(
-            "{{destination_object}}",
-            "{ ...source }", // let the compiler figure out the rest
-        )
 }
 
 fn get_ts_import_path(data_model: &DataModel, project: &Project) -> String {

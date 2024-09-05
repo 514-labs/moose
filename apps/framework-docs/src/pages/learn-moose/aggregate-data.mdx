@@ -1,0 +1,29 @@
+import { Callout } from "../../components";
+import { Steps, FileTree } from "nextra/components";
+
+# Aggregate Programming Languages with Blocks
+
+In the `ProcessedStarEvent` table, the `languages` column contains nested arrays of programming languages used by each starrer across all their repositories. This structure makes it difficult to analyze which programming languages are most popular among all the starrers. To address this, you can use Moose **Blocks** to create a view that unpacks the `languages` array, allowing for easier analysis of this data.
+
+<Callout type="info" title="What are Blocks?">
+  The [Blocks primitive](/db-processing) lets you execute SQL statements against
+  your database to set up processes or objects in your database. This includes
+  creating views or materialized views to aggregate, join, or group data from
+  various rows and tables.
+</Callout>
+
+## Initialize a New Block: `userLanguageTable`
+
+<Steps>
+### Use the Moose CLI `blocks init` Helper
+In your terminal, run:
+```bash filename="Terminal" copy
+npx moose-cli blocks init userLanguageTable
+```
+
+This command will generate a new file named `userLanguageTable.ts` and place it inside the `/blocks` folder of your application:
+
+<FileTree>
+
+</FileTree>
+</Steps>

@@ -1,5 +1,8 @@
 {
   "create-project": "Create an Empty Project",
   "first-data-model": "Define your First Data Model",
-  "ingest-sample-data": "Ingest Sample Data"
+  "ingest-sample-data": "Ingest Sample Data",
+  "configure-webhook": "Connect to Github for Live Data",
+  "transform-raw-events": "Process Raw Events with Streaming Functions",
+  "aggregate-data": "Aggregate Processed Events with Blocks"
 }

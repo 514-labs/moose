@@ -15,6 +15,98 @@ struct ValueVisitor<'a, S: SerializeMap> {
     t: &'a ColumnType,
     write_to: &'a mut S,
 }
+impl<'de, 'a, S: SerializeMap> Visitor<'de> for ValueVisitor<'a, S> {
+    type Value = ();
+
+    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+        match self.t {
+            ColumnType::Boolean => formatter.write_str("a boolean value"),
+            ColumnType::Int => formatter.write_str("an integer value"),
+            ColumnType::Float => formatter.write_str("a floating-point value"),
+            ColumnType::String => formatter.write_str("a string value"),
+            ColumnType::DateTime => formatter.write_str("a datetime value"),
+            ColumnType::Enum(_) => formatter.write_str("an enum value"),
+            ColumnType::Array(_) => formatter.write_str("an array value"),
+            ColumnType::Nested(_) => formatter.write_str("a nested object"),
+            _ => formatter.write_str("a value matching the column type"),
+        }
+    }
+
+    fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        match self.t {
+            ColumnType::Boolean => self.write_to.serialize_value(&v).map_err(Error::custom),
+            _ => Err(Error::invalid_type(serde::de::Unexpected::Bool(v), &self)),
+        }
+    }
+
+    fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        match self.t {
+            ColumnType::Int => self.write_to.serialize_value(&v).map_err(Error::custom),
+            _ => Err(Error::invalid_type(serde::de::Unexpected::Signed(v), &self)),
+        }
+    }
+
+    fn visit_u64<E>(self, v: u64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        match self.t {
+            ColumnType::Int => self.write_to.serialize_value(&v).map_err(Error::custom),
+            _ => Err(Error::invalid_type(
+                serde::de::Unexpected::Unsigned(v),
+                &self,
+            )),
+        }
+    }
+
+    fn visit_f64<E>(self, v: f64) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        match self.t {
+            ColumnType::Float => self.write_to.serialize_value(&v).map_err(Error::custom),
+            _ => Err(Error::invalid_type(serde::de::Unexpected::Float(v), &self)),
+        }
+    }
+
+    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        match self.t {
+            ColumnType::String | ColumnType::DateTime => {
+                self.write_to.serialize_value(v).map_err(Error::custom)
+            }
+            ColumnType::Enum(ref enum_def) => {
+                // TODO: Implement enum validation
+                self.write_to.serialize_value(v).map_err(Error::custom)
+            }
+            _ => Err(Error::invalid_type(serde::de::Unexpected::Str(v), &self)),
+        }
+    }
+
+    fn visit_none<E>(self) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.write_to
+            .serialize_value(&None::<bool>)
+            .map_err(Error::custom)
+    }
+
+    fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(self)
+    }
+}
 
 struct ArrayVisitor<'a, S: SerializeMap> {
     inner_type: &'a ColumnType,
@@ -175,7 +267,10 @@ fn get_and_set<
     }
 
     map_serializer
-        .serialize_entry(&key, &value)
+        .serialize_key(&key)
+        .map_err(A::Error::custom)?;
+    map_serializer
+        .serialize_value(&value)
         .map_err(A::Error::custom)
 }
 

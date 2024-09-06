@@ -1,8 +1,12 @@
 # Implement API Route Handler Function
 
-Open the newly created file and define your API using an asynchronous function. Moose provides helper functions to simplify building and running dynamic SQL queries, making it easy to define your API logic.
+To create an API route handler in Moose, open the file corresponding to your route and define your API using an asynchronous function.
 
-Example structure:
+Moose simplifies this process by providing helper functions for building and executing dynamic SQL queries, making it easy to define your logic.
+
+## Example
+
+Below is a structure for an API that returns daily active users with a limit and a minimum threshold:
 
 ```ts filename="apis/dailyActiveUsers.ts" copy
 interface QueryParams {
@@ -25,22 +29,20 @@ export default async function handle(
 }
 ```
 
-Your function handler should be an asynchronous function and the default export of the file. This tells Moose which function to execute when handling API requests.
+In this example:
 
-Additionally, the function takes two arguments:
+- The handle function is the default export, making it the entry point for your API route.
+- The function accepts two arguments:
+  1.  `QueryParams`: This object contains your query parameters with default values.
+  2.  Helper object: This includes `client` (for executing the query) and `sql` (for constructing safe SQL queries).
 
-- A `QueryParams` object containing the query parameters (with default values if needed).
-- An object containing helper functions, including the database client (`client`) and a SQL tag function (`sql`).
+## Query Parameters
 
-Specifically, the `sql` helper lets you wrap your parameterized SQL query in a tagged template literal with a sql prefix (`sql<SELECT STATEMENT HERE>`), which prevents SQL injection as well as giving syntax highlighting in your IDE.
+Query parameters are parsed from the URL as strings. You’ll need to convert them to appropriate types (e.g., integers) before injecting them into your SQL query.
 
-### Working with Query Parameters
+### Example:
 
-Define your parameter names and data types in the QueryParams interface. Inject them into your SQL query template string. Currently, URL query parameters are parsed as strings, so you need to convert them to the correct data type within your function. This step ensures your query parameters are correctly typed.
-
-You can either parse your parameters within the template string directly or separately in your function before injecting them into the template string, as shown below. Both methods work with TypeScript string literals.
-
-Example:
+Here's a slightly modified version of the previous example, which demonstrates parsing the query parameters before building the SQL query:
 
 ```ts filename="api/dailyActiveUsers.ts" copy
 interface QueryParams {
@@ -65,17 +67,52 @@ export default async function handle(
 }
 ```
 
-We are working on improvements to handle type parsing directly from the `QueryParams` interface in the future so you can skip the manual parsing step altogether. Stay tuned for updates on when this developer experience enhancement will be ready for you!
+In this example, notice how:
 
-### Executing Your Query
+- Parameters `limit` and `minDailyActiveUsers` are parsed as integers before being injected into the SQL query
+- The `sql` tagged template literal is used to safely construct the query
 
-Moose provides helper functions, including a database client, to build dynamic, parameterized SQL queries. The client handles database connections, query execution, SQL injection prevention, and data type casting from TypeScript to Clickhouse types.
+This ensures proper type conversion, which will prevent SQL injection and maintain data type consistency.
 
-Refer to the [Supported Data Types table](/building/data-models/model-data#supported-types) for more information on how Moose maps Typescript data types to Clickhouse.
+### Handling More Complex Queries
 
-### Test Your API
+You can implement more complex logic by expanding the SQL query or adjusting the query parameters. Here’s an example where we add a date range filter:
 
-Test your API by making an HTTP GET request to your local Moose developer server at:
-`https://localhost:4000/consumption/<your-endpoint-name>`
+```ts filename="/apis/dailyActiveUsersWithDateRange.ts" copy
+interface QueryParams {
+  limit: string;
+  minDailyActiveUsers: string;
+  startDate: string;
+  endDate: string;
+}
 
-Include the necessary query parameters for your function arguments. The name of your API endpoint should match the name of the Typescript file you created in the `/apis` folder.
+export default async function handle(
+  { limit = "10", minDailyActiveUsers = "0", startDate, endDate }: QueryParams,
+  { client, sql },
+) {
+  const limitInt = parseInt(limit);
+  const minUsersInt = parseInt(minDailyActiveUsers);
+
+  return client.query(
+    sql`SELECT 
+      date,
+      dailyActiveUsers
+    FROM DailyActiveUsers
+    WHERE dailyActiveUsers >= ${minUsersInt}
+    AND date BETWEEN ${startDate} AND ${endDate}
+    LIMIT ${limitInt}`,
+  );
+}
+```
+
+In this case, we’re using additional query parameters (`startDate` and `endDate`) to filter records based on a date range.
+
+### Testing Consumption APIs Locally
+
+Once your route handler is defined, you can test it by making a request to your local Moose developer server:
+
+```txt
+https://localhost:4000/consumption/dailyActiveUsers?limit=10&minDailyActiveUsers=5
+```
+
+This example passes limit and minDailyActiveUsers as query parameters. Be sure that the endpoint URL matches the filename of your API handler, as Moose maps endpoints based on the filenames in the /apis folder.

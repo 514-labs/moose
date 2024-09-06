@@ -45,7 +45,6 @@ pub async fn generate_migration(
         &fo_versions,
         &version_syncs,
         previous_version,
-        language,
         project,
     );
 

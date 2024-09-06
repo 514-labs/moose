@@ -201,7 +201,8 @@ pub static VSCODE_SETTINGS_TEMPLATE: &str = r#"
             "driver": "ClickHouse",
             "name": "moose clickhouse"
         }
-    ]
+    ],
+    "python.analysis.extraPaths": [".moose/versions"]
 }
 "#;
 

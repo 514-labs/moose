@@ -5,6 +5,7 @@ use super::{
 use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
 use crate::framework::languages::SupportedLanguages;
+use crate::framework::python;
 use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
 use crate::utilities::docker;
 use crate::utilities::git::dump_old_version_schema;
@@ -81,11 +82,10 @@ pub fn copy_old_schema(project: &Project) -> Result<RoutineSuccess, RoutineFailu
         })?;
 
         if project.language == SupportedLanguages::Python {
-            let valid_python_identifier = format!("v{}", version.replace('.', "_"));
             std::os::unix::fs::symlink(
                 dest,
                 project
-                    .old_version_location(&valid_python_identifier)
+                    .old_version_location(&python::version_to_identifier(version))
                     .unwrap(),
             )
             .or_else(|err| {

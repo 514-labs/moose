@@ -230,7 +230,7 @@ async fn top_command_handler(
 
                     let run_dev_string = match language {
                         SupportedLanguages::Typescript => "npm run dev",
-                        SupportedLanguages::Python => "npx @514labs/moose-cli@latest dev",
+                        SupportedLanguages::Python => "moose-cli dev",
                     };
 
                     wait_for_usage_capture(capture_handle).await;

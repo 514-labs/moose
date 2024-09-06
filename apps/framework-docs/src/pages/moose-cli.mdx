@@ -78,7 +78,7 @@ moose prod
 #### Function Init
 
 Generates a new Streaming Function for you, including creating and structuring the necessary files
-based on your specified data models. Learn more in the [Streaming Function docs](../building/streaming-functions/setup).
+based on your specified data models. Learn more in the [Streaming Function docs](/stream-processing).
 
 ```txt filename="Terminal" copy
 moose function init --source <YourSourceDataModel> --destination <YourDestinationDataModel>
@@ -101,7 +101,7 @@ moose generate sdk -l <Language> -d <Directory> -p <ProjectLocation>
 
 #### Generate Migrations
 
-Generates migration scripts for models that are different from the previous version. Learn more in the [Data Change Management docs](../building/dcm/intro).
+Generates migration scripts for models that are different from the previous version. Learn more in the [Data Change Management docs](/data-models/dcm).
 
 ```txt filename="Terminal" copy
 moose generate migrations
@@ -109,7 +109,7 @@ moose generate migrations
 
 ### Bump Version
 
-Bumps the `version` field in `package.json`, and adds an entry of the current version and commit hash to `[supported_old_versions]` section in `moose.config.toml`. Learn more in the [Data Change Management docs](../building/dcm/intro).
+Bumps the `version` field in `package.json`, and adds an entry of the current version and commit hash to `[supported_old_versions]` section in `moose.config.toml`. Learn more in the [Data Change Management docs](../data-models/dcm).
 
 ```txt filename="Terminal" copy
 moose bump-version <new_version>

@@ -74,9 +74,6 @@ export default {
         {children}
       </Heading>
     ),
-    a: ({ children }) => (
-      <span className="text-pink cursor-pointer">{children}</span>
-    ),
     p: ({ children }) => <SmallText>{children}</SmallText>,
     ul: (props) => (
       <ul className={cn("pl-8 list-disc", textBodyBase)} {...props} />

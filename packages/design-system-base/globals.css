@@ -332,6 +332,11 @@ li.nx-my-2 {
   justify-content: center;
 }
 
+.nextra-nav-container p {
+  font-size: 16px !important;
+  line-height: 22px !important;
+}
+
 footer {
   background-color: transparent !important;
 }

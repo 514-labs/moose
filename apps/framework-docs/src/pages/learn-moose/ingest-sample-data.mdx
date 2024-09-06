@@ -176,6 +176,46 @@ SUCCESS /ingest/RawStarEvent
 
 ### Query the `RawStarEvent` Table
 
-<Tabs items={['Using the SQLTools VSCode Extension', 'Using Another DB Explorer']}>
+In your database explorer, execute the following query:
 
+```sql
+SELECT * FROM local.RawStarEvent_0_0
+```
+
+#### Setting Up Your Database Explorer
+
+<Tabs items={['Using the SQLTools VSCode Extension', 'Using Your Own Database Explorer']}>
+  <Tabs.Tab>
+    ##### VSCode SQL Tools Extension Setup
+    - Click the SQLTools database icon in your extensions tab. 
+    - You should see the Clickhouse icon followed by the connection details for the database running on your local dev server: `panda@localhost:18123/local`. 
+    - To create and run a new query, click the `New SQL File` icon.
+    
+    ![SQL Tools Setup](/sqltools.png)
+
+  </Tabs.Tab>
+<Tabs.Tab>
+  ##### Connecting to Moose From Your Own Database Explorer:
+  The following steps will guide you through configuring your preferred database explorer tool, such as DBeaver or DataGrip, to connect to the Clickhouse database instance that Moose will spin up for you on your local dev server.
+
+- Open your database explorer and navigate to the section for adding a new database connection.
+- Enter the connection details as follows:
+
+```text filename="moose.project.toml" copy
+[clickhouse config]
+  db_name = "local"
+  user = "panda"
+  password = "pandapass"
+  host = "localhost"
+  host_port = 18123
+```
+
+- Test and save the connection. You should now see the `local` database in your database explorer tool.
+
+<Callout type="info">
+  You can find all the infrastructure configuration details in the
+  `moose.project.toml` file in your project's root directory
+</Callout>
+
+</Tabs.Tab>
 </Tabs>

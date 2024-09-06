@@ -1,19 +1,33 @@
 import { Callout, ZoomImg, ToggleBlock } from "../../components";
-import { FileTree } from "nextra/components";
+import { FileTree, Steps } from "nextra/components";
 
 # Define a Data Model to Ingest Data from the Github Webhook
 
 Now you’re ready to define your first Moose primitive: a **Data Model**. This primitive is where you specify the schema of the data you will use in your application. Let's create a `RawStarEvent` Data Model for the data we will receive from the GitHub webhook.
 
-### Initialize a Data Model from Sample Data via the CLI
+## Initialize a Data Model from Sample Data via the CLI
 
 Instead of creating your Data Model by hand, let’s use the Moose helper function that can automatically generate Data Models based on analyzing a set of sample data.
 
-#### Add Sample Data to your Project
+<Steps>
 
-Create a new file named `sample-data.json` in the root folder of your project. Then paste the following sample data into the new file, and save and close:
+### Add Sample Data to your Project
 
-<ToggleBlock openText="Collapse Sample Data JSON" closeText="Show Sample Data JSON">
+Create a new file named `sample-data.json` in the root folder of your project:
+
+<FileTree>
+  <FileTree.File name="sample-data.json" />
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="datamodels" />
+    <FileTree.Folder name="functions" />
+    <FileTree.Folder name="blocks" />
+    <FileTree.Folder name="apis" />
+  </FileTree.Folder>
+</FileTree>
+
+Inside this file, paste in the following sample data and save your changes:
+
+<ToggleBlock openText="Expand to Copy Sample Data" closeText="Collapse Sample Data">
 ```json filename="sample-data.json" copy
 [{
   "action": "created",
@@ -174,13 +188,15 @@ Create a new file named `sample-data.json` in the root folder of your project. T
 ```
 </ToggleBlock>
 
-#### Run the CLI Command
+### Initialize a `RawStarEvent` Data Model via the CLI
 
 <Callout type="info">
   Start a new terminal session and make sure to navigate back to your project
   directory.
 </Callout>
-```bash filename="Terminal" copy npx moose-cli data-model init RawStarEvent -s sample-data.json
+
+```bash filename="Terminal" copy
+npx moose-cli data-model init RawStarEvent -s sample-data.json
 ```
 
 This command will generate a new file named:`RawStarEvent.ts` and place it in the `datamodels` folder of your project.
@@ -194,11 +210,13 @@ This command will generate a new file named:`RawStarEvent.ts` and place it in th
   </FileTree.Folder>
 </FileTree>
 
-#### Open and Inspect `RawStarEvent.ts`
+### Open and Inspect `RawStarEvent.ts`
 
-Open the file Moose generated for your in your IDE to inspect the Data Model code that was automatically generated from the sample data, noting a couple of interesting fields:
+Open the file Moose generated for you in your IDE to inspect the Data Model code that was automatically generated from the sample data.
 
-```ts filename="datamodels/RawStarEvent.ts" copy
+Note a couple of interesting fields:
+
+```ts filename="datamodels/RawStarEvent.ts" copy {4, 12, 15}
 import { Key } from "@514labs/moose-lib";
 
 export interface RawStarEvent {
@@ -224,15 +242,30 @@ export interface RawStarEvent {
   - `sender.repos_url`: the URL we can use to lookup the starrer's public repositories
 
 <Callout type="info" title="Data Modeling Tips:">
-  - Each Data Model must designate a field as the `Key` type. This special type,
-  imported from `@514labs/moose-lib`, specifies the sorting key for your
-  Clickhouse table. - The optional (`?`) operator is used to mark a field as
-  nullable (*i.e., it's possible for the field to be undefined*). - Only
-  **exported interfaces** are picked up as Data Models, and spin up
-  corresponding Moose infrastructure.
+  <br />
+  <br />
+  <ul>
+    <li>
+      {" "}
+      Each Data Model must designate a field as the `Key` type. This special type,
+      imported from `@514labs/moose-lib`, specifies the sorting key for your Clickhouse
+      table.{" "}
+    </li>
+    <br />
+    <li>
+      The optional (`?`) operator is used to mark a field as nullable (*i.e.,
+      it's possible for the field to be undefined*).
+    </li>
+    <br />
+    <li>
+      {" "}
+      Only **exported interfaces** are picked up as Data Models, and spin up corresponding
+      Moose infrastructure.{" "}
+    </li>
+  </ul>
 </Callout>
 
-#### Verify Moose Configured the infrastructure
+### Verify Moose Configured the infrastructure
 
 Your dev server should have automatically picked up on the new Data Model and configured the necessary infrastructure to ingest webhook events with this schema.
 
@@ -242,6 +275,7 @@ Run this command in your terminal to verify:
 npx moose-cli ls
 ```
 
+</Steps>
 <Callout type="success">
   With just a single terminal command, you've generated a Moose Data Model. This
   Data Model in turn automatically generated:

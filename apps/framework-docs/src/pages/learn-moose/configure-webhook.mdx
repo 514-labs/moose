@@ -16,25 +16,25 @@ Now let’s get some real data into this data infrastructure. We’ll do this by
 
 To connect you local Moose instance over the internet, you need a port forwarding service that connects your local port to a public URL.
 
-<Tabs items={['Using Pinggy', 'Using Ngrok']}>
+<Tabs items={['Pinggy Setup', 'Ngrok Setup']}>
 
 <Tabs.Tab>
-### Setting Up Pinggy  
-Run this command in your terminal:
+<Steps>
+#### Run this command in your terminal:
 ```bash
 ssh -p 443 -R0:localhost:4000 -L4300:localhost:4300 qr@a.pinggy.io
 ```
 You should see a few messages printed to your terminal, followed by this prompt: 
-```txt
+```txt {3}
 The authenticity of host '[a.pinggy.io]:443...
 ...
 Are you sure you want to continue connecting (yes/no/[fingerprint])?
 ```
-- Type `yes` to add Pinggy to your known SSH hosts.
+#### Type `yes` to add Pinggy to your known SSH hosts.
     
 You should see the below message printed to your terminal output: 
     
-```text
+```text {6}
                            You are not authenticated.
 Your tunnel will expire in 60 minutes. Upgrade to Pinggy Pro to get unrestricted
                       tunnels. https://dashboard.pinggy.io
@@ -43,15 +43,15 @@ http://<YOUR_PINGGY_GENERATED_LINK>.a.free.pinggy.link
 https://<YOUR_PINGGY_GENERATED_LINK>.a.free.pinggy.link
 
 ````
-**Copy the `https` URL. This is your forwarding URL.** You’ll need this to set up the Github webhook in the next step.
+#### Copy the `https` URL
+This is your forwarding URL. You’ll need this to set up the Github webhook in the next step.
 
+</Steps>
 </Tabs.Tab>
 
 <Tabs.Tab>
-#### Using Ngrok
-
-<Callout type="warning" title="Don't have Ngrok Installed?">
-Follow the Ngrok onboarding steps. Otherwise, we recommend following the [Using Pinggy]() guide to avoid the need to register.
+<Callout type="warning" title="Prerequisites: Download Ngrok and Complete Sign-Up">
+Follow the Ngrok onboarding steps. Otherwise, we recommend following the **Pinggy Setup** guide to avoid the need to register.
 </Callout>
 
 If you’ve got `ngrok` already installed run `ngrok http 4000.`
@@ -95,7 +95,6 @@ Navigate to this repository to set up webhook notifications.
             - **Unselect "Pushes"**
             - **Select "Stars"**
 
-        ![](/webhook-config-settings.gif)
 
 #### Save Your Settings
 Click **"Add Webhook"** to save your configuration.
@@ -107,8 +106,8 @@ Click **"Add Webhook"** to save your configuration.
 <Steps>
 ### Star & Un-star your Github Repository
 Go to your Github repository and star/un-star it.
-<Callout type="info">
-Send us your URL, we’ll do it too.
+<Callout type="success" title="Send us your Repository URL!">
+We’ll give it a star too!
 </Callout>
 ### Check for `POST` and `SUCCESS` Messages in CLI
 Check back on your terminal window. You should see `POST` and `SUCCESS` messages printed to the CLI:
@@ -140,6 +139,5 @@ You've defined a Data Model, configured a GitHub webhook, and ingested real-time
 Your full data stack is up and running—a webserver, streaming data platform, and OLAP database—with live data flowing in. **You achieved all of that with just a few lines of code!**
 
 </Callout>
-
 
 ````

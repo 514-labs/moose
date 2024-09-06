@@ -14,7 +14,7 @@ Additionally, recall that the state of your files in your git repository of your
   title="Prerequisites: Have a Moose project with a Data Model"
 >
   If you don't have a Moose project with a Data Model, follow the [Quick Start
-  guide](/getting-started) to create a new Moose project for this guide.
+  guide](/quickstart) to create a new Moose project for this guide.
 </Callout>
 
 ## Change a Data Model
@@ -28,7 +28,7 @@ Select a Data Model in your `datamodels` folder and make a change to one of the 
 
 ### Example: Defining a new version of the `UserActivity` Data Model
 
-In the boilerplate project created in the [Quick Start guide](/getting-started), the `UserActivity` Data Model is defined as follows:
+In the boilerplate project created in the [Quick Start guide](/quickstart), the `UserActivity` Data Model is defined as follows:
 
 ```ts filename="./app/datamodels/models.ts"
 export interface UserActivity {
@@ -54,7 +54,7 @@ export interface UserActivity {
 Run the following command to bump the version of the Data Model:
 
 ```bash filename="Terminal" copy
-moose-cli bump-version
+npx moose-cli bump-version
 ```
 
 <Callout type="info" title="Bumping the version">
@@ -72,7 +72,7 @@ This command will bump the version in your `package.json` file and add a pointer
 Run the following command:
 
 ```bash filename="Terminal" copy
-moose-cli generate migrations
+npx moose-cli generate migrations
 ```
 
 <Tabs items={["Streaming Function", "SQL Mapping File"]}>
@@ -107,11 +107,11 @@ The setup of this function looks like a regular [Streaming Function](/processing
 - The new version (`UserActivity_0_1`) is the output type.
 - The function body is the migration logic.
 
-<Callout type="info" title="Migration Streaming Function">
-This migration function is a special type of Streaming Function that is used to migrate data from the old data model version to the new data model version. Unlike regular Streaming Functions, this migration function is first executed against all the data in the table for the previous Data Model version. You can learn more about Initial Data Loads below.
-
-Then, like regular Streaming Functions, it will be executed for any new data that is ingested into the old Data Model version in order to migrate it to the new Data Model version. This is the continuous part of the migration.
-
+<Callout type="info" title="Migrations are a Special Type of Streaming Function">
+<br/><br/>
+Migration functions are unique because they initially executed on all the data in the table for the previous version. This is the **Initial Data Load** part of the migration.
+<br/><br/>
+Like regular Streaming Functions, this migration function will be executed for any new data that is ingested into the old Data Model version in order to migrate it to the new version. This is the **Continuous** part of the migration.
 </Callout>
 </Tabs.Tab>
 
@@ -145,13 +145,13 @@ that gets embedded into two other queries:
 First start your dev server:
 
 ```bash filename="Terminal" copy
-moose-cli dev
+npx moose-cli dev
 ```
 
 Next, open a new terminal window and run the following command:
 
 ```bash filename="Terminal" copy
-moose-cli ls
+npx moose-cli ls
 ```
 
 Here you will be able to see the additional tables automatically created for
@@ -175,7 +175,7 @@ You will notice that it contains the activity field that we deleted.
 
 ### Query the Data Model
 
-In your Database Expl
+In your DB explorer, execute the following query:
 
 ```sql filename="Your Database Explorer" copy
 SELECT * FROM local.UserActivity_0_0 LIMIT 50;
@@ -186,16 +186,23 @@ You should see the event we just added there.
 ### Validate the Continuous Migration Output
 
 The continuous migration working behind the scenes will allow you to also see the data
-inside `local.UserActivity_0_1`
+inside `local.UserActivity_0_1`:
 
 ```sql filename="Your Database Explorer" copy
 SELECT * FROM local.UserActivity_0_1 LIMIT 50;
 ```
 
-Now, you should see the same record without the `activity`
-column. The data was automatically migrated to the new table. This is a trivial example, but the same feature holds true for more complex migrations.
+This should return the same record, but without the `activity`
+column.
 
-Now if we want to set some data to the new data model version:
+<Callout type="success" title="Success!">
+  The data was automatically migrated to the new table. This is a trivial
+  example, but the same feature holds true for more complex migrations.
+</Callout>
+
+### Sending Data to the New Data Model Version
+
+Run the following `curl` command to send sample data to the new version of the `UserActivity` Data Model (`UserActivity_0_1`):
 
 ```txt filename="Terminal" copy
 curl -v -X POST \
@@ -204,16 +211,20 @@ curl -v -X POST \
     http://localhost:4000/ingest/UserActivity/0.1
 ```
 
-The data will show up in the 0.2 table but not in the 0.1 table.
-That enables you to keep old models alive with historical data as you
-migrate your infrastructure to produce and consume data on the new data model.
-Once all your data is migrated, you can remove the old version, and we will
-appropriately clean up the infrastructure.
+<Callout type="info" title="Data Shows up in the 0_1 table only!">
+  This setup enables you to keep old models alive with historical data as you
+  migrate your infrastructure to produce and consume data on the new data model.
+  <br />
+  <br />
+  Once all your data is migrated, you can remove the old version, and we will appropriately
+  clean up the infrastructure.
+</Callout>
 
-To summarize: the Data Change Management feature allows you to version your
-data infrastructure alongside your Data Models. As you update your Data Models,
-Moose will automate the creation of data infrastructure, and allow you to run the
-old data infrastructure alongside the new data infrastructure, keeping the old data
-flowing through to the new Data Models with migrations. Such migrations are defined
-by Moose, but you may change the definition as per your requirements.
-This allows you to treat your data infrastructure and your Data Models as you do your code.
+To summarize:
+
+- Data Change Management allows you to version your data infrastructure alongside your Data Models.
+- As you update your Data Models, Moose will automate the creation of data infrastructure, and allow you to run the
+  old data infrastructure alongside the new data infrastructure, keeping the old data
+  flowing through to the new Data Models with migrations.
+- Such migrations are defined by Moose, but you may change the definition as per your requirements.
+- This allows you to treat your data infrastructure and your Data Models as you do your code.

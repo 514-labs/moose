@@ -1,4 +1,5 @@
 import { Callout } from "../components";
+import { Tabs } from "nextra/components";
 
 # Introduction to Consumption APIs
 
@@ -6,15 +7,16 @@ Moose **Consumption APIs** offer a powerful and flexible way to create custom AP
 
 ## Core Concepts
 
-### HTTP Server and Request Handling
+### File and Folder Conventions
 
-At the heart of Moose's Consumption APIs is an HTTP server that manages incoming `GET` requests. When a request is made to the `/consumption/<endpoint-name>` path, Moose automatically routes it to the corresponding handler file in your project's `/apis` directory.
+Consumption APIs are defined as individual files within the `/apis` folder of your Moose application. These files, written in TypeScript (`.ts`) or Python (`.py`), are automatically mapped to API endpoints based on their filenames.
 
-### API Definition and File-Based Routing
+<Callout type="info" title="Example">
+  A file named `myMooseApi.ts` would correspond to the `/consumption/myMooseApi`
+  endpoint.
+</Callout>
 
-Consumption APIs are defined as individual files within the `/apis` folder of your Moose application. These files, written in TypeScript (`.ts`) or Python (`.py`), are automatically mapped to API endpoints based on their filenames. For instance, a file named `mostUsedLanguages.ts` would correspond to the `/consumption/mostUsedLanguages` endpoint.
-
-### Route Handler Functions
+### Consumption API Definition
 
 Each API file contains a route handler function that processes requests to its corresponding endpoint. This function is responsible for:
 
@@ -27,18 +29,65 @@ Each API file contains a route handler function that processes requests to its c
 
 The definition of route handler functions follows language-specific conventions:
 
-- **TypeScript**: Export the function as the default export of the file.
-- **Python**: Define a single function named `run()` in the file.
+<Tabs items={["Typescript", "Python"]}>
+  <Tabs.Tab>
+ For Typescript, you must export the function as the default export of the file:
+  ```ts filename="/apis/dailyActiveUsers.ts" copy {8}
+  import { ConsumptionUtil } from "@514labs/moose-lib";
 
-### Query Parameters and Dynamic Data Retrieval
+interface QueryParams {
+limit: string;
+minDailyActiveUsers: string;
+}
+
+export default async function handle(
+{ limit = "10", minDailyActiveUsers = "0" }: QueryParams,
+{ client, sql }: ConsumptionUtil,
+) {
+return client.query(
+sql`SELECT 
+          date,
+          dailyActiveUsers
+      FROM DailyActiveUsers
+      WHERE dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
+      LIMIT ${parseInt(limit)}`,
+);
+}
+
+````
+</Tabs.Tab>
+
+<Tabs.Tab>
+For Python, you must define a single function named `run()` in the file.
+```python filename="/apis/dailyActiveUsers.py" copy {1}
+def run(client, params):
+    minDailyActiveUsers = int(params.get('minDailyActiveUsers', [0])[0])
+    limit = int(params.get('limit', [10])[0])
+
+    return client.query(
+        '''SELECT
+            date,
+            uniqMerge(dailyActiveUsers) as dailyActiveUsers
+        FROM DailyActiveUsers
+        GROUP BY date
+        HAVING dailyActiveUsers >= {minDailyActiveUsers}
+        ORDER BY date
+        LIMIT {limit}''',
+        {
+            "minDailyActiveUsers": minDailyActiveUsers,
+            "limit": limit
+        }
+    )
+
+````
+
+  </Tabs.Tab>
+</Tabs>
+
+#### Query Parameters and Dynamic Data Retrieval
 
 Query parameters play a crucial role in Consumption APIs, allowing for dynamic and flexible data retrieval. When defining your route handler function, you can specify the query parameters it accepts. These parameters are then passed to the function as arguments, mapped directly from the URL query parameters of the incoming HTTP `GET` request.
 
-<Callout
-  type="info"
-  title="Giving you the flexibility to customize your data endpoints"
->
-  This enables you to create highly customizable data endpoints that can adapt
-  to various client requirements without the need for multiple, static API
-  endpoints.
-</Callout>
+### Orchestration
+
+At the heart of Moose's Consumption APIs is an HTTP server that manages incoming `GET` requests. When a request is made to the `/consumption/<endpoint-name>` path, Moose automatically routes it to the corresponding handler file in your project's `/apis` directory, and executes the function defined within that file.

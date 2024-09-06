@@ -1,24 +1,19 @@
 import { Callout } from "../../components";
+import { FileTree } from "nextra/components";
 
 # Initialize Your API Endpoint
 
 ## via the CLI
 
-To create a new Consumption API endpoint, leverage the `moose-cli consumption init` command. This will generate a `.ts` or `.py` file in the `/apis` directory with the following structure:
+To create a new Consumption API endpoint, leverage the `moose-cli consumption init` command. This will generate a `.ts` or `.py` file in the `/apis` directory.
 
-```ts
-import { ConsumptionUtil } from "@514labs-moose-lib";
-// This file is where you can define your API templates for consuming your data
-// All query_params are passed in as strings, and are used within the sql tag to parameterize your queries
-export interface QueryParams {}
-
-export default async function handle(
-  {}: QueryParams,
-  { client, sql }: ConsumptionUtil,
-) {
-  return client.query(sql``);
-}
-```
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="apis" open>
+      <FileTree.File name="YOUR_API_ROUTE.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
 
 For detailed information about the moose block init command, you can run the following in your terminal:
 

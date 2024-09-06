@@ -1,7 +1,7 @@
 import { Callout, ZoomImg } from "../../components";
 import { Steps, FileTree } from "nextra/components";
 
-# Create a New Project and Data Model
+# Getting Started with Moose
 
 <Callout type="warning" title="Run Docker">
   Open Docker Desktop if its not already running. <br /> Don't have it
@@ -11,32 +11,33 @@ import { Steps, FileTree } from "nextra/components";
 
 ## Create an Empty Moose Project
 
-#### Install the Moose CLI
+<Steps>
+### Install the Moose CLI
 
 ```bash filename="Terminal" copy
 npx create-moose-app@latest moose-github-analytics typescript
 ```
 
-This Moose CLI helper function creates a new Moose app with the proper conventions for the basic directory structure. This includes an /app folder which contains the heart of your new Moose app. Each sub-folder containing one type of Moose primitive.
+This Moose CLI helper function creates a new Moose app with the proper conventions for the basic directory structure. This includes an `/app` folder which contains the heart of your new Moose app. Each sub-folder hosts one type of Moose primitive.
 
 <FileTree>
-  <FileTree.Folder open title="moose-github-analytics">
-    <FileTree.Folder open title="app">
-      <FileTree.Folder title="datamodels" />
-      <FileTree.Folder title="functions" />
-      <FileTree.Folder title="blocks" />
-      <FileTree.Folder title="apis" />
+  <FileTree.Folder open name="moose-github-analytics">
+    <FileTree.Folder open name="app">
+      <FileTree.Folder name="datamodels" />
+      <FileTree.Folder name="functions" />
+      <FileTree.Folder name="blocks" />
+      <FileTree.Folder name="apis" />
     </FileTree.Folder>
   </FileTree.Folder>
 </FileTree>
 
-#### `cd` into your Moose Project and Install Dependencies
+### `cd` into your Moose Project and Install Dependencies
 
 ```bash filename="Terminal" copy
 cd moose-github-analytics && npm install
 ```
 
-#### Run the Moose Development Server
+### Run the Moose Development Server
 
 ```bash filename="Terminal" copy
 moose-cli dev
@@ -70,9 +71,9 @@ It provides the following infrastructure:
 As you develop, the dev server automatically updates with your latest changes, providing a real-time view of your Moose application locally.
 </Callout>
 
-#### Open Project in IDE
+### Open Project in IDE
 
-VSCode:
+With VSCode, for example:
 
 ```bash filename="Terminal" copy
 code .
@@ -84,3 +85,4 @@ code .
 </Callout>
 
 <ZoomImg src="/vscode-install.png" />
+</Steps>

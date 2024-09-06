@@ -9,7 +9,7 @@
       "breadcrumb": false
     }
   },
-  "new-project": "Quick Start",
+  "quickstart": "Quick Start",
   "project-structure": "Project Structure",
   "architecture": "Architecture",
   "version-status": "Alpha Warning",
@@ -34,7 +34,6 @@
     "title": "Reference"
   },
   "moose-cli": "Moose CLI",
-  "reference": "Primitives",
   "templates": "Templates",
   "faqs": "FAQs",
   "usage-data": "Privacy"

@@ -1,46 +1,48 @@
 import { Tabs } from "nextra/components";
 
-# Installation
+# Moose CLI Reference
 
-MooseJS comes with a handy CLI for managing your MooseJS application. Navigate to your project's directory to run commands. There are a few ways to run the CLI:
+## Installation
+
+Moose comes with a handy CLI for managing your application. Navigate to your project's directory to run commands. There are a few ways to run the CLI:
 
 <Tabs items={['No Install', 'Project-level Install', 'Global Install']}>
   <Tabs.Tab>
     The simplest method to run the CLI is via NPX. No extra installation is necessary for this method.
-    ```txt filename="Terminal" copy
-    $ npx @514labs/moose-cli <command>
+    ```bash filename="Terminal" copy
+    npx @514labs/moose-cli <command>
     ```
   </Tabs.Tab>
   <Tabs.Tab>
     Alternatively, the Moose CLI comes packaged with your Moose application. You can install the dependency locally and then run the Moose CLI within your project with:
-    ```txt filename="Terminal" copy
-    $ npm install
-    $ npm run moose <command> 
+    ```bash filename="Terminal" copy
+    npm install
+    npm run moose <command> 
     // or 
-    $ npx moose-cli <command>
+    npx moose-cli <command>
     ```
   </Tabs.Tab>
   <Tabs.Tab>
     Finally, you can install the Moose CLI globally using NPM. This will get you a cleaner command interface, and better performance on the CLI. You can then run the Moose CLI anywhere.  
     ```txt filename="Terminal" copy
-    $ npm install -g @514labs/moose-cli
-    $ moose <command>
+    npm install -g @514labs/moose-cli
+    moose <command>
     ```
   </Tabs.Tab>
 </Tabs>
 
-# Moose CLI commands
+# Commands
 
 ### Init
 
-Instead of using `create-moose-app`, you can initialize your project manually with the CLI, if you'd like more flexibility and control. Either option will initialize a new MooseJS project for you, with all the necessary directories including temporary ones for data storage.
+Instead of using `create-moose-app`, you can initialize your project manually with the CLI, if you'd like more flexibility and control. Either option will initialize a new Moose project for you, with all the necessary directories including temporary ones for data storage.
 
 ```txt filename="Terminal" copy
 moose init <name> --language <language> <--location <location>> <--no-fail-already-exists>
 ```
 
 - `<name>`: Name of your app or service.
-- `--language <language>`: Language of your app or service. We currently only support `Typescript`.
+- `--language <language>`: Language of your app or service. We currently support `ts` (Typescript) and `python`.
 - `--location <location>`: Location of your app or service. The default is the name of the project.
 - `--no-fail-already-exists`: By default, the init command fails if `location` exists, to prevent accidental reruns. This flag disables the check.
 

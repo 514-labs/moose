@@ -289,6 +289,7 @@ li.nx-my-2 {
   font-weight: 400;
   font-size: 16px;
   line-height: 22px;
+  border: hsl(var(--border));
 }
 
 .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:hover {
@@ -297,10 +298,21 @@ li.nx-my-2 {
 
 /* Hide the default chevron icons */
 .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a svg {
-  display: none !important;
+  width: 24px;
+  height: 24px;
+  background-color: hsl(var(--muted));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-size: 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  color: hsl(var(--primary));
+  margin: 0.25rem;
 }
 
-/* Left arrow for previous link */
+/* Left arrow for previous link
 .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:first-child::before {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23fafafa'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M10 19l-7-7m0 0l7-7m-7 7h18'%3E%3C/path%3E%3C/svg%3E");
   margin-right: 0.5rem;
@@ -318,7 +330,7 @@ li.nx-my-2 {
 }
 
 /* Right arrow for next link */
-.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:last-child::after {
+/* .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:last-child::after {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%23fafafa'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M14 5l7 7m0 0l-7 7m7-7H3'%3E%3C/path%3E%3C/svg%3E");
   margin-left: 0.5rem;
   content: "";
@@ -332,17 +344,24 @@ li.nx-my-2 {
   background-size: 16px;
   background-repeat: no-repeat;
   background-position: center;
+}  */
+
+.nx-mb-8.nx-flex.justify-between.nx-items-center.nx-border-t.nx-pt-8
+  a:only-child {
+  margin-left: auto !important;
+  justify-self: flex-end;
 }
 
 /* Style for the previous link */
 .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:first-child {
-  justify-content: flex-start !important;
+  justify-content: flex-start;
   margin-right: 0.5rem;
 }
 
 /* Style for the next link */
 .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:last-child {
   justify-content: flex-end;
+  flex-grow: 1;
   margin-left: 0.5rem;
 }
 

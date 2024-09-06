@@ -333,70 +333,49 @@ fn process_subscript_node(
     python_classes: &[&StmtClassDef],
     nested_classes: &[Identifier],
 ) -> Result<(), PythonParserError> {
+    fn process_slice(
+        slice: &Expr,
+        enums: &[FrameworkEnum],
+        python_classes: &[&StmtClassDef],
+        nested_classes: &[Identifier],
+    ) -> Result<ColumnType, PythonParserError> {
+        match slice {
+            Expr::Name(name) => match name_node_to_base_column_type(name.clone()) {
+                Ok(col_type) => Ok(col_type),
+                Err(_) => {
+                    handle_complex_named_type(name.clone(), enums, python_classes, nested_classes)
+                }
+            },
+            _ => Err(PythonParserError::UnsupportedDataTypeError {
+                type_name: "Unsupported data type".to_string(),
+            }),
+        }
+    }
+
     match &*subscript.value {
         Expr::Name(name) => match name.id.to_string().as_str() {
             "list" => {
-                let col_type = ColumnType::Array(match &*subscript.slice {
-                    Expr::Name(name) => {
-                        Box::new(match name_node_to_base_column_type(name.clone()) {
-                            Ok(col_type) => col_type,
-                            Err(_) => handle_complex_named_type(
-                                name.clone(),
-                                enums,
-                                python_classes,
-                                nested_classes,
-                            )?,
-                        })
-                    }
-                    _ => {
-                        return Err(PythonParserError::UnsupportedDataTypeError {
-                            type_name: "Unsupported data type".to_string(),
-                        })
-                    }
-                });
+                let col_type = ColumnType::Array(Box::new(process_slice(
+                    &subscript.slice,
+                    enums,
+                    python_classes,
+                    nested_classes,
+                )?));
                 column.data_type = Some(col_type);
             }
-            "Key" => match &*subscript.slice {
-                Expr::Name(name) => {
-                    let col_type = match name_node_to_base_column_type(name.clone()) {
-                        Ok(col_type) => col_type,
-                        Err(_) => handle_complex_named_type(
-                            name.clone(),
-                            enums,
-                            python_classes,
-                            nested_classes,
-                        )?,
-                    };
-                    column.data_type = Some(col_type);
-                    column.required = Some(true);
-                    column.primary_key = Some(true);
-                }
-                _ => {
-                    return Err(PythonParserError::UnsupportedDataTypeError {
-                        type_name: "Unsupported data type".to_string(),
-                    })
-                }
-            },
-            "Optional" => match &*subscript.slice {
-                Expr::Name(name) => {
-                    let col_type = match name_node_to_base_column_type(name.clone()) {
-                        Ok(col_type) => col_type,
-                        Err(_) => handle_complex_named_type(
-                            name.clone(),
-                            enums,
-                            python_classes,
-                            nested_classes,
-                        )?,
-                    };
-                    column.data_type = Some(col_type);
-                    column.required = Some(false);
-                }
-                _ => {
-                    return Err(PythonParserError::UnsupportedDataTypeError {
-                        type_name: "Unsupported data type".to_string(),
-                    })
-                }
-            },
+            "Key" => {
+                let col_type =
+                    process_slice(&subscript.slice, enums, python_classes, nested_classes)?;
+                column.data_type = Some(col_type);
+                column.required = Some(true);
+                column.primary_key = Some(true);
+            }
+            "Optional" => {
+                let col_type =
+                    process_slice(&subscript.slice, enums, python_classes, nested_classes)?;
+                column.data_type = Some(col_type);
+                column.required = Some(false);
+            }
 
             _ => {
                 return Err(PythonParserError::UnsupportedDataTypeError {

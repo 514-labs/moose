@@ -46,6 +46,40 @@ const config = {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",
         },
+        // Moose Accents
+        "moose-green": {
+          DEFAULT: "hsl(var(--accent-moo-green))",
+          foreground: "hsl(var(--accent-moo-green-foreground))",
+        },
+        "moose-indigo": {
+          DEFAULT: "hsl(var(--accent-moo-indigo))",
+          foreground: "hsl(var(--accent-moo-indigo-foreground))",
+        },
+        "moose-purple": {
+          DEFAULT: "hsl(var(--accent-moo-purple))",
+          foreground: "hsl(var(--accent-moo-purple-foreground))",
+        },
+        "moose-pink": {
+          DEFAULT: "hsl(var(--accent-moo-pink))",
+          foreground: "hsl(var(--accent-moo-pink-foreground))",
+        },
+        "moose-yellow": {
+          DEFAULT: "hsl(var(--accent-moo-yellow))",
+          foreground: "hsl(var(--accent-moo-yellow-foreground))",
+        },
+        // Boreal Accents
+        "boreal-teal": {
+          DEFAULT: "hsl(var(--accent-bor-tea))",
+          foreground: "hsl(var(--accent-bor-tea-foreground))",
+        },
+        "boreal-green": {
+          DEFAULT: "hsl(var(--accent-bor-green))",
+          foreground: "hsl(var(--accent-bor-green-foreground))",
+        },
+        "boreal-yellow": {
+          DEFAULT: "hsl(var(--accent-bor-yel))",
+          foreground: "hsl(var(--accent-bor-yel-foreground))",
+        },
         accent: {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",

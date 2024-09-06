@@ -21,11 +21,14 @@ use crate::framework::core::code_loader::{
     get_framework_objects_from_schema_file, FrameworkObjectVersions,
 };
 use crate::framework::core::infrastructure::olap_process::OlapProcess;
-use crate::framework::core::infrastructure_map::ApiChange;
+use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
 use crate::framework::data_model::model::DataModelSet;
 use crate::framework::data_model::{is_schema_file, DuplicateModelError};
 use crate::framework::streaming::loader::get_all_current_streaming_functions;
 
+use super::display::{self, with_spinner_async, Message, MessageType};
+use super::routines::streaming::verify_streaming_functions_against_datamodels;
+use super::settings::Features;
 use crate::infrastructure::olap::clickhouse_alt_client::{
     get_pool, store_current_state, store_infrastructure_map,
 };
@@ -40,15 +43,12 @@ use crate::project::AggregationSet;
 use crate::utilities::constants::{
     AGGREGATIONS_DIR, BLOCKS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, SCHEMAS_DIR,
 };
+use crate::utilities::PathExt;
 use crate::{
     framework::controller::RouteMeta,
     infrastructure::olap::{self, clickhouse::ConfiguredDBClient},
     project::Project,
 };
-
-use super::display::{self, with_spinner_async, Message, MessageType};
-use super::routines::streaming::verify_streaming_functions_against_datamodels;
-use super::settings::Features;
 
 async fn process_data_models_changes(
     project: Arc<Project>,
@@ -304,6 +304,7 @@ async fn watch(
     framework_object_versions: &mut Option<FrameworkObjectVersions>,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     route_update_channel: tokio::sync::mpsc::Sender<ApiChange>,
+    infrastructure_map: &'static RwLock<InfrastructureMap>,
     consumption_apis: &RwLock<HashSet<String>>,
     syncing_process_registry: &mut SyncingProcessesRegistry,
     project_registries: &mut ProcessRegistries,
@@ -347,7 +348,7 @@ async fn watch(
 
                             match plan_result {
                                 Ok(plan_result) => {
-                                    log::info!("Plan Changes: {:?}", plan_result.changes);
+                                    info!("Plan Changes: {:?}", plan_result.changes);
 
                                     display::show_changes(&plan_result);
                                     framework::core::execute::execute_online_change(
@@ -366,6 +367,8 @@ async fn watch(
                                         &plan_result.target_infra_map,
                                     )
                                     .await?;
+                                    let mut infra_ptr = infrastructure_map.write().await;
+                                    *infra_ptr = plan_result.target_infra_map
                                 }
                                 Err(e) => {
                                     show_message!(MessageType::Error, {
@@ -427,7 +430,7 @@ async fn watch(
                             ),
                             process_streaming_func_changes(
                                 &project,
-                                &framework_object_versions.get_data_model_set(),
+                                &framework_object_versions.to_data_model_set(),
                                 &mut project_registries.functions,
                                 &topics,
                             ),
@@ -529,11 +532,7 @@ pub async fn process_consumption_changes(
         .into_iter()
         .for_each(|f| {
             if let Ok(f) = f {
-                if f.file_type().is_file()
-                    && f.path()
-                        .extension()
-                        .is_some_and(|ext| ext == "ts" || ext == "py")
-                {
+                if f.file_type().is_file() && f.path().ext_is_supported_lang() {
                     if let Ok(path) = f.path().strip_prefix(project.consumption_dir()) {
                         let mut path = path.to_path_buf();
                         path.set_extension("");
@@ -566,6 +565,7 @@ impl FileWatcher {
         framework_object_versions: Option<FrameworkObjectVersions>,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
         route_update_channel: tokio::sync::mpsc::Sender<ApiChange>,
+        infrastructure_map: &'static RwLock<InfrastructureMap>,
         consumption_apis: &'static RwLock<HashSet<String>>,
         syncing_process_registry: SyncingProcessesRegistry,
         project_registries: ProcessRegistries,
@@ -584,21 +584,20 @@ impl FileWatcher {
         let features = features.clone();
 
         tokio::spawn(async move {
-            if let Err(error) = watch(
+            watch(
                 project,
                 features.clone(),
                 &mut framework_object_versions,
                 route_table,
                 route_update_channel,
+                infrastructure_map,
                 consumption_apis,
                 &mut syncing_process_registry,
                 &mut project_registry,
                 metrics,
             )
             .await
-            {
-                panic!("Watcher error: {error:?}");
-            }
+            .unwrap()
         });
 
         Ok(())

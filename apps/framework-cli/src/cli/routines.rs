@@ -98,6 +98,8 @@ use crate::framework::core::plan::plan_changes;
 
 use crate::cli::routines::streaming::verify_streaming_functions_against_datamodels;
 use crate::framework::controller::{create_or_replace_version_sync, process_objects, RouteMeta};
+use crate::framework::core::infrastructure_map::InfrastructureMap;
+use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::infrastructure::olap;
 use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
 use crate::infrastructure::olap::clickhouse_alt_client::{
@@ -278,7 +280,11 @@ pub async fn start_development_mode(
     );
 
     let server_config = project.http_server_config.clone();
-    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
+    let web_server = Webserver::new(
+        server_config.host.clone(),
+        server_config.port,
+        server_config.management_port,
+    );
 
     let consumption_apis: &'static RwLock<HashSet<String>> =
         Box::leak(Box::new(RwLock::new(HashSet::new())));
@@ -313,6 +319,9 @@ pub async fn start_development_mode(
         )
         .await?;
 
+        let infra_map: &'static RwLock<InfrastructureMap> =
+            Box::leak(Box::new(RwLock::new(plan_result.target_infra_map)));
+
         let file_watcher = FileWatcher::new();
         file_watcher.start(
             project.clone(),
@@ -320,6 +329,7 @@ pub async fn start_development_mode(
             None,
             route_table,          // Deprecated way of updating the routes,
             route_update_channel, // The new way of updating the routes
+            infra_map,
             consumption_apis,
             syncing_registry,
             process_registry,
@@ -328,7 +338,7 @@ pub async fn start_development_mode(
 
         info!("Starting web server...");
         web_server
-            .start(route_table, consumption_apis, project, metrics)
+            .start(route_table, consumption_apis, infra_map, project, metrics)
             .await;
     } else {
         let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
@@ -360,7 +370,7 @@ pub async fn start_development_mode(
 
         process_streaming_func_changes(
             &project,
-            &framework_object_versions.get_data_model_set(),
+            &framework_object_versions.to_data_model_set(),
             &mut function_process_registry,
             &topics,
         )
@@ -413,6 +423,10 @@ pub async fn start_development_mode(
             consumption: consumption_process_registry,
         };
 
+        let dummy_infra_map: &'static RwLock<InfrastructureMap> = Box::leak(Box::new(RwLock::new(
+            InfrastructureMap::new(PrimitiveMap::default()),
+        )));
+
         let file_watcher = FileWatcher::new();
         file_watcher.start(
             project.clone(),
@@ -420,6 +434,7 @@ pub async fn start_development_mode(
             Some(framework_object_versions),
             route_table,          // Deprecated way of updating the routes,
             route_update_channel, // The new way of updating the routes
+            dummy_infra_map,      // never updated
             consumption_apis,
             syncing_processes_registry,
             project_registries,
@@ -428,7 +443,13 @@ pub async fn start_development_mode(
 
         info!("Starting web server...");
         web_server
-            .start(route_table, consumption_apis, project, metrics)
+            .start(
+                route_table,
+                consumption_apis,
+                dummy_infra_map,
+                project,
+                metrics,
+            )
             .await;
     };
 
@@ -450,7 +471,11 @@ pub async fn start_production_mode(
     );
 
     let server_config = project.http_server_config.clone();
-    let web_server = Webserver::new(server_config.host.clone(), server_config.port);
+    let web_server = Webserver::new(
+        server_config.host.clone(),
+        server_config.port,
+        server_config.management_port,
+    );
 
     let consumption_apis: &'static RwLock<HashSet<String>> =
         Box::leak(Box::new(RwLock::new(HashSet::new())));
@@ -485,8 +510,11 @@ pub async fn start_production_mode(
         )
         .await?;
 
+        let infra_map: &'static InfrastructureMap =
+            Box::leak(Box::new(plan_result.target_infra_map));
+
         web_server
-            .start(route_table, consumption_apis, project, metrics)
+            .start(route_table, consumption_apis, infra_map, project, metrics)
             .await;
     } else {
         info!("<DCM> Initializing project state");
@@ -514,7 +542,7 @@ pub async fn start_production_mode(
         // will need to get refactored out.
         process_streaming_func_changes(
             &project,
-            &framework_object_versions.get_data_model_set(),
+            &framework_object_versions.to_data_model_set(),
             &mut function_process_registry,
             &topics,
         )
@@ -546,9 +574,18 @@ pub async fn start_production_mode(
         )
         .await?;
 
+        let dummy_infra_map: &'static InfrastructureMap =
+            Box::leak(Box::new(InfrastructureMap::new(PrimitiveMap::default())));
+
         info!("Starting web server...");
         web_server
-            .start(route_table, consumption_apis, project, metrics)
+            .start(
+                route_table,
+                consumption_apis,
+                dummy_infra_map,
+                project,
+                metrics,
+            )
             .await;
     }
 

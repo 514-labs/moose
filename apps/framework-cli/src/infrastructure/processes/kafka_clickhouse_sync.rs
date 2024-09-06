@@ -127,7 +127,7 @@ impl SyncingProcessesRegistry {
 
         let version_syncs_iterator = version_syncs.iter().filter_map(|vs| match vs.sync_type {
             VersionSyncType::Sql(_) => None,
-            VersionSyncType::Ts(_) => {
+            _ => {
                 let output_topic = vs.topic_name("output");
                 if available_topics.contains(&output_topic) {
                     Some(spawn_sync_process_core(
@@ -201,6 +201,36 @@ impl SyncingProcessesRegistry {
     pub fn stop_topic_to_table(&mut self, topic_name: &str, table_name: &str) {
         let key = Self::format_key_str(topic_name, table_name);
         if let Some(process) = self.to_table_registry.remove(&key) {
+            process.abort();
+        }
+    }
+
+    pub fn start_topic_to_topic(
+        &mut self,
+        source_topic_name: String,
+        target_topic_name: String,
+        metrics: Arc<Metrics>,
+    ) {
+        info!(
+            "<DCM> Starting syncing process from topic: {} to topic: {}",
+            source_topic_name, target_topic_name
+        );
+        let key = target_topic_name.clone();
+
+        if let Some(process) = self.to_topic_registry.remove(&key) {
+            process.abort();
+        }
+
+        self.insert_topic_sync(spawn_kafka_to_kafka_process(
+            self.kafka_config.clone(),
+            source_topic_name,
+            target_topic_name,
+            metrics.clone(),
+        ));
+    }
+
+    pub fn stop_topic_to_topic(&mut self, target_topic_name: &str) {
+        if let Some(process) = self.to_table_registry.remove(target_topic_name) {
             process.abort();
         }
     }

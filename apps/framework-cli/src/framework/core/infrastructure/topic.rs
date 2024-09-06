@@ -49,7 +49,7 @@ impl Topic {
 
         let source_topic = Topic {
             name: name("input"),
-            version: function.version.clone(),
+            version: function.source_data_model.version.clone(),
             retention_period: Topic::default_duration(),
             columns: function.source_data_model.columns.clone(),
             source_primitive: PrimitiveSignature {
@@ -60,7 +60,7 @@ impl Topic {
 
         let target_topic = Topic {
             name: name("output"),
-            version: function.version.clone(),
+            version: function.target_data_model.version.clone(),
             retention_period: Topic::default_duration(),
             columns: function.target_data_model.columns.clone(),
             source_primitive: PrimitiveSignature {

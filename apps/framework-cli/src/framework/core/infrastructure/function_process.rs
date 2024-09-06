@@ -136,6 +136,7 @@ fn get_latest_topic(topics: &[String], data_model: &str) -> Option<String> {
     // Ths algorithm is not super efficient. We probably should have a
     // good way to retrieve the topics for a given data model from the state
     sorted(
+        // FIXME: this will put version no. `3.11` before `3.9`
         topics
             .iter()
             .filter(|&topic| {

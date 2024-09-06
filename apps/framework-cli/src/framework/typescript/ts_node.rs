@@ -17,7 +17,6 @@ pub fn run(script: &str, args: &[&str]) -> Result<Child, std::io::Error> {
     command
         .arg("--yes")
         .arg("ts-node")
-        .arg("--skipProject")
         .arg("-e")
         .arg(script)
         .arg("--");

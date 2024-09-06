@@ -4,7 +4,7 @@ use super::infrastructure::function_process::FunctionProcess;
 use super::infrastructure::olap_process::OlapProcess;
 use super::infrastructure::table::Table;
 use super::infrastructure::topic::Topic;
-use super::infrastructure::topic_to_table_sync_process::TopicToTableSyncProcess;
+use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicToTopicSyncProcess};
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 use crate::framework::controller::{InitialDataLoad, InitialDataLoadStatus};
@@ -60,6 +60,7 @@ pub enum ApiChange {
 #[derive(Debug, Clone)]
 pub enum ProcessChange {
     TopicToTableSyncProcess(Change<TopicToTableSyncProcess>),
+    TopicToTopicSyncProcess(Change<TopicToTopicSyncProcess>),
     FunctionProcess(Change<FunctionProcess>),
     OlapProcess(Change<OlapProcess>),
     ConsumptionApiWebServer(Change<ConsumptionApiWebServer>),
@@ -101,6 +102,8 @@ pub struct InfrastructureMap {
     pub views: HashMap<String, View>,
 
     pub topic_to_table_sync_processes: HashMap<String, TopicToTableSyncProcess>,
+    #[serde(default = "HashMap::new")]
+    pub topic_to_topic_sync_processes: HashMap<String, TopicToTopicSyncProcess>,
     pub function_processes: HashMap<String, FunctionProcess>,
 
     // TODO change to a hashmap of processes when we have several
@@ -120,6 +123,7 @@ impl InfrastructureMap {
         let mut topics = HashMap::new();
         let mut api_endpoints = HashMap::new();
         let mut topic_to_table_sync_processes = HashMap::new();
+        let mut topic_to_topic_sync_processes = HashMap::new();
         let mut function_processes = HashMap::new();
         let mut initial_data_loads = HashMap::new();
 
@@ -208,6 +212,9 @@ impl InfrastructureMap {
                 );
                 topic_to_table_sync_processes.insert(sync_process.id(), sync_process);
 
+                let topic_sync = TopicToTopicSyncProcess::from_migration_function(function);
+                topic_to_topic_sync_processes.insert(topic_sync.id(), topic_sync);
+
                 initial_data_loads.insert(
                     function_process.id(),
                     InitialDataLoad {
@@ -240,6 +247,7 @@ impl InfrastructureMap {
             topics,
             api_endpoints,
             topic_to_table_sync_processes,
+            topic_to_topic_sync_processes,
             tables,
             views,
             function_processes,
@@ -422,6 +430,47 @@ impl InfrastructureMap {
         }
 
         // =================================================================
+        //                              Topic to Topic Sync Processes
+        // =================================================================
+
+        for (id, topic_to_topic_sync_process) in &self.topic_to_topic_sync_processes {
+            if let Some(target_topic_to_topic_sync_process) =
+                target_map.topic_to_topic_sync_processes.get(id)
+            {
+                if topic_to_topic_sync_process != target_topic_to_topic_sync_process {
+                    changes
+                        .processes_changes
+                        .push(ProcessChange::TopicToTopicSyncProcess(Change::<
+                            TopicToTopicSyncProcess,
+                        >::Updated {
+                            before: topic_to_topic_sync_process.clone(),
+                            after: target_topic_to_topic_sync_process.clone(),
+                        }));
+                }
+            } else {
+                changes
+                    .processes_changes
+                    .push(ProcessChange::TopicToTopicSyncProcess(Change::<
+                        TopicToTopicSyncProcess,
+                    >::Removed(
+                        topic_to_topic_sync_process.clone(),
+                    )));
+            }
+        }
+
+        for (id, topic_to_topic_sync_process) in &target_map.topic_to_topic_sync_processes {
+            if !self.topic_to_topic_sync_processes.contains_key(id) {
+                changes
+                    .processes_changes
+                    .push(ProcessChange::TopicToTopicSyncProcess(Change::<
+                        TopicToTopicSyncProcess,
+                    >::Added(
+                        topic_to_topic_sync_process.clone(),
+                    )));
+            }
+        }
+
+        // =================================================================
         //                             Function Processes
         // =================================================================
 
@@ -574,6 +623,17 @@ impl InfrastructureMap {
             })
             .collect();
 
+        let mut topic_to_topic_process_changes: Vec<ProcessChange> = self
+            .topic_to_topic_sync_processes
+            .values()
+            .map(|topic_to_table_sync_process| {
+                ProcessChange::TopicToTopicSyncProcess(Change::<TopicToTopicSyncProcess>::Added(
+                    topic_to_table_sync_process.clone(),
+                ))
+            })
+            .collect();
+        topic_to_table_process_changes.append(&mut topic_to_topic_process_changes);
+
         let mut function_process_changes: Vec<ProcessChange> = self
             .function_processes
             .values()
@@ -664,7 +724,10 @@ mod tests {
             abs_file_path: PathBuf::new(),
         };
         // Making some changes to the map
-        new_target_primitive_map.datamodels.add(new_data_model);
+        new_target_primitive_map
+            .datamodels
+            .add(new_data_model)
+            .unwrap();
 
         new_target_primitive_map
             .datamodels

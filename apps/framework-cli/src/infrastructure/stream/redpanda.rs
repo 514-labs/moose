@@ -216,8 +216,8 @@ impl RedpandaConfig {
             .unwrap_or_default()
     }
 
-    pub fn get_topic_with_namespace(&self, topic: &String) -> String {
-        format!("{}{}", self.get_namespace_prefix(), topic)
+    pub fn prefix_with_namespace(&self, value: &str) -> String {
+        format!("{}{}", self.get_namespace_prefix(), value)
     }
 
     pub fn get_topic_without_namespace(topic: &str) -> String {
@@ -327,6 +327,7 @@ pub async fn fetch_topics(
     let topics = metadata
         .topics()
         .iter()
+        .filter(|t| t.name().starts_with(&config.get_namespace_prefix()))
         .map(|t| t.name().to_string())
         .collect();
     Ok(topics)
@@ -343,7 +344,7 @@ pub fn create_subscriber(config: &RedpandaConfig, group_id: &str, topic: &str) -
         // to read records sent before subscriber is created
         .set("auto.offset.reset", "earliest")
         // Groupid
-        .set("group.id", group_id);
+        .set("group.id", config.prefix_with_namespace(group_id));
 
     let consumer: StreamConsumer = client_config.create().expect("Failed to create consumer");
 

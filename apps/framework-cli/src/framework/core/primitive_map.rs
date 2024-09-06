@@ -6,6 +6,9 @@ use std::{
 use walkdir::WalkDir;
 
 use super::code_loader::MappingError;
+use crate::framework::core::infrastructure::table::ColumnType;
+use crate::framework::data_model::DuplicateModelError;
+use crate::utilities::PathExt;
 use crate::{
     framework::{
         aggregations::model::Aggregation,
@@ -42,6 +45,7 @@ pub enum DataModelError {
     Configuration(#[from] ModelConfigurationError),
     Parsing(#[from] DataModelParsingError),
     Mapping(#[from] MappingError),
+    Duplicate(#[from] DuplicateModelError),
 
     #[error("{message}")]
     Other {
@@ -67,7 +71,49 @@ pub struct PrimitiveMap {
     pub consumption: Consumption,
 }
 
+fn check_no_empty_nested(
+    column_type: &ColumnType,
+    field_name: Vec<String>,
+) -> Result<(), PrimitiveMapLoadingError> {
+    match column_type {
+        ColumnType::Array(inner) => check_no_empty_nested(inner, field_name),
+        ColumnType::Nested(nested) => {
+            if nested.columns.is_empty() {
+                Err(DataModelError::Other {
+                    message: format!("No column inside nested: {}", field_name.join(".")),
+                })?
+            }
+            for inner in nested.columns.iter() {
+                let mut with_inner_field_name = field_name.clone();
+                with_inner_field_name.push(inner.name.clone());
+                check_no_empty_nested(&inner.data_type, with_inner_field_name)?
+            }
+            Ok(())
+        }
+        _ => Ok(()),
+    }
+}
+
 impl PrimitiveMap {
+    fn validate(&self) -> Result<(), PrimitiveMapLoadingError> {
+        for dm in self.datamodels.iter() {
+            let mut no_ordering = dm.config.storage.order_by_fields.is_empty();
+            for column in dm.columns.iter() {
+                if column.primary_key {
+                    no_ordering = false
+                }
+                check_no_empty_nested(&column.data_type, vec![column.name.clone()])?;
+            }
+
+            if no_ordering {
+                Err(DataModelError::Other {
+                    message: "Missing `Key` field or order_by_fields".to_string(),
+                })?
+            }
+        }
+        Ok(())
+    }
+
     // Currently limited to the current version - will need to layout previous versions in the future
     pub async fn load(project: &Project) -> Result<PrimitiveMap, PrimitiveMapLoadingError> {
         let mut primitive_map = PrimitiveMap::default();
@@ -84,9 +130,11 @@ impl PrimitiveMap {
             get_all_current_streaming_functions(project, &primitive_map.datamodels)
                 .await?
                 .iter()
-                .filter(|func| func.executable.extension().unwrap() == "ts")
+                .filter(|func| func.executable.ext_is_supported_lang())
                 .cloned()
                 .collect();
+
+        primitive_map.validate()?;
 
         Ok(primitive_map)
     }
@@ -108,7 +156,9 @@ impl PrimitiveMap {
 
             if entry.file_type().is_file() {
                 for model in PrimitiveMap::load_data_model(project, version, entry.path()).await? {
-                    primitive_map.datamodels.add(model)
+                    primitive_map.datamodels.add(model).map_err(|duplicate| {
+                        PrimitiveMapLoadingError::DataModel(duplicate.into())
+                    })?
                 }
             }
         }

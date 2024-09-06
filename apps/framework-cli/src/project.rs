@@ -22,25 +22,16 @@ use std::path::Path;
 use std::path::PathBuf;
 use std::sync::Once;
 
-use config::{Config, ConfigError, Environment, File};
-use log::debug;
-use python_project::PythonProject;
-use serde::Deserialize;
-use serde::Serialize;
-
 use crate::cli::local_webserver::LocalWebserverConfig;
 use crate::framework::languages::SupportedLanguages;
-use crate::framework::python::templates::PTYHON_BASE_API_SAMPLE_TEMPLATE;
-use crate::framework::python::templates::PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
-use crate::framework::python::templates::PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE;
-use crate::framework::streaming::loader::{
-    extension_supported_in_streaming_function, parse_streaming_function,
-};
-use crate::framework::typescript::templates::BASE_APIS_SAMPLE_TEMPLATE;
+use crate::framework::python::templates::PYTHON_BASE_STREAMING_FUNCTION_SAMPLE;
+use crate::framework::python::templates::{PYTHON_BASE_API_SAMPLE, PYTHON_BASE_BLOCKS_SAMPLE};
+use crate::framework::streaming::loader::parse_streaming_function;
+use crate::framework::typescript::templates::TS_BASE_APIS_SAMPLE;
 use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
 use crate::framework::typescript::templates::{
-    TS_BASE_BLOCKS_SAMPLE_TEMPLATE, TS_BASE_STREAMING_FUNCTION_SAMPLE_TEMPLATE,
+    TS_BASE_BLOCKS_SAMPLE, TS_BASE_STREAMING_FUNCTION_SAMPLE,
 };
 use crate::framework::typescript::templates::{
     VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
@@ -49,6 +40,11 @@ use crate::framework::versions::sort_versions;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
+use config::{Config, ConfigError, Environment, File};
+use log::debug;
+use python_project::PythonProject;
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS;
@@ -68,6 +64,7 @@ use crate::utilities::constants::{BLOCKS_DIR, TS_BLOCKS_FILE};
 use crate::utilities::constants::{PYTHON_INIT_FILE, PY_API_FILE, TS_API_FILE};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 use crate::utilities::git::GitConfig;
+use crate::utilities::PathExt;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to create or delete project files")]
@@ -88,7 +85,7 @@ pub enum ProjectFileError {
 // We have explored using a Generic associated Types as well as
 // Dynamic Dispatch to handle the different types of projects
 // the approach with enums is the one that is the simplest to put into practice and
-// maintain. With Copilot - it also has the advaantage that the boiler plate is really fast to write
+// maintain. With Copilot - it also has the advantage that the boiler plate is really fast to write
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Project {
     pub language: SupportedLanguages,
@@ -238,9 +235,19 @@ impl Project {
         let app_dir = self.app_dir();
         std::fs::create_dir_all(&app_dir)?;
 
+        // TODO probably move this to the respective project language modules
+        if self.language == SupportedLanguages::Python {
+            std::fs::File::create(app_dir.join(PYTHON_INIT_FILE))?;
+        }
+
         for dir in APP_DIR_LAYOUT.iter() {
             let to_create = app_dir.join(dir);
-            std::fs::create_dir_all(to_create)?;
+            std::fs::create_dir_all(&to_create)?;
+
+            // TODO probably move this to the respective project language modules
+            if self.language == SupportedLanguages::Python {
+                std::fs::File::create(to_create.join(PYTHON_INIT_FILE))?;
+            }
         }
 
         Ok(())
@@ -256,7 +263,9 @@ impl Project {
             README_PREFIX.to_owned() + include_str!("../../../README.md"),
         )?;
         match self.language {
+            // TODO move the templates to the respective project language modules
             SupportedLanguages::Typescript => {
+                let tsconfig = self.project_location.join("tsconfig.json");
                 let apis_file_path = self.consumption_dir().join(TS_API_FILE);
                 let base_model_file_path = self.data_models_dir().join("models.ts");
                 let function_file_path = self.streaming_func_dir().join(format!(
@@ -266,17 +275,31 @@ impl Project {
                 let blocks_file_path = blocks_dir.join(TS_BLOCKS_FILE);
 
                 // Write TypeScript specific templates
-                self.write_file(&apis_file_path, BASE_APIS_SAMPLE_TEMPLATE.to_string())?;
+                self.write_file(
+                    &tsconfig,
+                    serde_json::to_string_pretty(&serde_json::json!(
+                        {
+                            "outDir": "dist",
+                            "compilerOptions": {
+                                "esModuleInterop": true,
+                                "paths": {
+                                  "datamodels/*": ["./app/datamodels/*"],
+                                  "versions/*": ["./.moose/versions/*"]
+                                }
+                            }
+                        }
+                    ))
+                    .expect("formatting `serde_json::Value` with string keys never fails"),
+                )?;
+
+                self.write_file(&apis_file_path, TS_BASE_APIS_SAMPLE.to_string())?;
                 self.write_file(&base_model_file_path, TS_BASE_MODEL_TEMPLATE.to_string())?;
                 self.write_file(
                     &function_file_path,
-                    TS_BASE_STREAMING_FUNCTION_SAMPLE_TEMPLATE.to_string(),
+                    TS_BASE_STREAMING_FUNCTION_SAMPLE.to_string(),
                 )?;
 
-                self.write_file(
-                    &blocks_file_path,
-                    TS_BASE_BLOCKS_SAMPLE_TEMPLATE.to_string(),
-                )?;
+                self.write_file(&blocks_file_path, TS_BASE_BLOCKS_SAMPLE.to_string())?;
             }
             SupportedLanguages::Python => {
                 let apis_file_path = self.consumption_dir().join(PY_API_FILE);
@@ -285,32 +308,19 @@ impl Project {
                     "{}__{}.py",
                     SAMPLE_STREAMING_FUNCTION_SOURCE, SAMPLE_STREAMING_FUNCTION_DEST
                 ));
-                let aggregations_file_path = blocks_dir.join(PY_BLOCKS_FILE);
+                let blocks_file_path = blocks_dir.join(PY_BLOCKS_FILE);
 
                 // Write Python specific templates
-                self.write_file(&apis_file_path, PTYHON_BASE_API_SAMPLE_TEMPLATE.to_string())?;
+                self.write_file(&apis_file_path, PYTHON_BASE_API_SAMPLE.to_string())?;
                 self.write_file(
                     &base_model_file_path,
                     PYTHON_BASE_MODEL_TEMPLATE.to_string(),
                 )?;
                 self.write_file(
                     &function_file_path,
-                    PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE.to_string(),
+                    PYTHON_BASE_STREAMING_FUNCTION_SAMPLE.to_string(),
                 )?;
-                self.write_file(
-                    &aggregations_file_path,
-                    PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE.to_string(),
-                )?;
-
-                // Create __init__.py in necessary directories for Python
-                for dir in &[
-                    self.app_dir(),
-                    self.data_models_dir(),
-                    self.consumption_dir(),
-                    self.streaming_func_dir(),
-                ] {
-                    std::fs::File::create(dir.join(PYTHON_INIT_FILE))?;
-                }
+                self.write_file(&blocks_file_path, PYTHON_BASE_BLOCKS_SAMPLE.to_string())?;
             }
         }
 
@@ -319,6 +329,11 @@ impl Project {
 
     fn write_file(&self, path: &PathBuf, content: String) -> Result<(), std::io::Error> {
         let mut file = std::fs::File::create(path)?;
+        let content = if let Some(without_starting_empty_line) = content.strip_prefix('\n') {
+            without_starting_empty_line
+        } else {
+            &content
+        };
         file.write_all(content.as_bytes())?;
         Ok(())
     }
@@ -392,11 +407,6 @@ impl Project {
 
     pub fn aggregations_dir(&self) -> PathBuf {
         let aggregations_dir = self.app_dir().join(AGGREGATIONS_DIR);
-
-        if !aggregations_dir.exists() {
-            std::fs::create_dir_all(&aggregations_dir)
-                .expect("Failed to create aggregations directory");
-        }
 
         debug!("Aggregations dir: {:?}", aggregations_dir);
         aggregations_dir
@@ -527,7 +537,7 @@ impl Project {
             // flatten here means ignoring the Err case
             for entry in entries.flatten() {
                 if entry.file_type().is_ok_and(|t| t.is_file())
-                    && extension_supported_in_streaming_function(&entry.path())
+                    && entry.path().ext_is_supported_lang()
                 {
                     parse_streaming_function(
                         entry

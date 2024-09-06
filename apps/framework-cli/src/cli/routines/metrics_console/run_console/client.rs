@@ -35,7 +35,7 @@ pub struct ParsedMetricsData {
 }
 
 pub async fn getting_metrics_data() -> Result<ParsedMetricsData> {
-    let body = reqwest::get("http://localhost:4000/metrics")
+    let body = reqwest::get("http://localhost:5000/metrics")
         .await
         .unwrap()
         .text();

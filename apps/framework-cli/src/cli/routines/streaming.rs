@@ -1,169 +1,15 @@
-use log::debug;
-use pathdiff::diff_paths;
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::{fs, io::Write, process::Stdio};
-
+use super::{RoutineFailure, RoutineSuccess};
 use crate::cli::display::{Message, MessageType};
 use crate::framework::core::code_loader::{
     load_framework_objects, FrameworkObject, FrameworkObjectVersions,
 };
-use crate::framework::core::infrastructure::table::ColumnType;
-use crate::framework::typescript::templates::BASE_STREAMING_FUNCTION_TEMPLATE;
+use crate::framework::data_model::model::DataModel;
+use crate::framework::streaming;
 use crate::project::Project;
-
-use super::{RoutineFailure, RoutineSuccess};
-
-pub struct StreamingFunctionFileBuilder {
-    function_file_path: PathBuf,
-    function_file_template: String,
-}
-
-impl StreamingFunctionFileBuilder {
-    pub fn new(project: &Project, source: &str, destination: &str) -> Self {
-        let function_file_template = BASE_STREAMING_FUNCTION_TEMPLATE
-            .to_string()
-            .replace("{{source}}", source)
-            .replace("{{destination}}", destination);
-
-        let function_file_path = project
-            .streaming_func_dir()
-            .join(format!("{}__{}.ts", source, destination));
-
-        Self {
-            function_file_path,
-            function_file_template,
-        }
-    }
-
-    pub fn return_object(
-        &mut self,
-        destination: &str,
-        models: &HashMap<String, FrameworkObject>,
-    ) -> &mut Self {
-        if models.contains_key(destination) {
-            let mut destination_object = "{\n".to_string();
-            models
-                .get(destination)
-                .unwrap()
-                .data_model
-                .columns
-                .iter()
-                .for_each(|field| {
-                    destination_object.push_str(&format!(
-                        "    {}: {},\n",
-                        field.name,
-                        get_default_value_for_type(&field.data_type)
-                    ));
-                });
-            destination_object.push_str("  }");
-
-            self.function_file_template = self
-                .function_file_template
-                .replace("{{destination_object}}", &destination_object);
-        } else {
-            self.function_file_template = self
-                .function_file_template
-                .replace("{{destination_object}}", "null");
-        }
-
-        self
-    }
-
-    pub fn imports(
-        &mut self,
-        source: &str,
-        destination: &str,
-        models: &HashMap<String, FrameworkObject>,
-    ) -> &mut Self {
-        let source_path = self.get_model_path(source, models);
-        let destination_path = self.get_model_path(destination, models);
-
-        let (source_import, destination_import) = if source_path == destination_path {
-            (
-                format!(
-                    "import {{ {}, {} }} from \"{}\";",
-                    source, destination, source_path
-                ),
-                "".to_string(),
-            )
-        } else {
-            (
-                format!("import {{ {} }} from \"{}\";", source, source_path),
-                format!(
-                    "import {{ {} }} from \"{}\";",
-                    destination, destination_path
-                ),
-            )
-        };
-
-        self.function_file_template = self
-            .function_file_template
-            .replace("{{source_import}}", &source_import)
-            .replace("{{destination_import}}", &destination_import);
-
-        self
-    }
-
-    pub fn get_model_path(
-        &self,
-        target_model: &str,
-        models: &HashMap<String, FrameworkObject>,
-    ) -> String {
-        if models.contains_key(target_model) {
-            let model_path = models.get(target_model).unwrap().original_file_path.clone();
-            let mut model_relative_path = diff_paths(
-                model_path.clone(),
-                self.function_file_path.parent().unwrap(),
-            )
-            .unwrap_or(model_path.clone());
-            model_relative_path.set_extension("");
-
-            model_relative_path.to_string_lossy().to_string()
-        } else {
-            "../datamodels/models".to_string()
-        }
-    }
-
-    pub fn write(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        let mut function_file =
-            fs::File::create(self.function_file_path.as_path()).map_err(|err| {
-                RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        format!(
-                            "to create streaming function file in {}",
-                            self.function_file_path.display()
-                        ),
-                    ),
-                    err,
-                )
-            })?;
-
-        let _ = function_file
-            .write_all(self.function_file_template.as_bytes())
-            .map_err(|err| {
-                RoutineFailure::new(
-                    Message::new(
-                        "Failed".to_string(),
-                        format!(
-                            "to write to streaming function file in {}",
-                            self.function_file_path.display()
-                        ),
-                    ),
-                    err,
-                )
-            });
-
-        Ok(RoutineSuccess {
-            message_type: MessageType::Success,
-            message: Message {
-                action: "Created".to_string(),
-                details: "streaming function".to_string(),
-            },
-        })
-    }
-}
+use itertools::Either;
+use log::debug;
+use std::collections::HashMap;
+use std::{fs, io::Write, process::Stdio};
 
 pub async fn create_streaming_function_file(
     project: &Project,
@@ -183,10 +29,55 @@ pub async fn create_streaming_function_file(
         }
     };
 
-    let success = StreamingFunctionFileBuilder::new(project, &source, &destination)
-        .imports(&source, &destination, models)
-        .return_object(&destination, models)
-        .write()?;
+    fn try_get_from_models<'a>(
+        name: &'a str,
+        models: &'a HashMap<String, FrameworkObject>,
+    ) -> Either<&'a DataModel, &'a str> {
+        match models.get(name) {
+            None => Either::Right(name),
+            Some(framework_object) => Either::Left(&framework_object.data_model),
+        }
+    }
+
+    let function_file_content = streaming::generate::generate(
+        project,
+        try_get_from_models(&source, models),
+        try_get_from_models(&destination, models),
+    );
+
+    let function_file_path = project.streaming_func_dir().join(format!(
+        "{}__{}.{}",
+        source,
+        destination,
+        project.language.extension()
+    ));
+
+    let mut function_file = fs::File::create(function_file_path.as_path()).map_err(|err| {
+        RoutineFailure::new(
+            Message::new(
+                "Failed".to_string(),
+                format!(
+                    "to create streaming function file in {}",
+                    function_file_path.display()
+                ),
+            ),
+            err,
+        )
+    })?;
+    function_file
+        .write_all(function_file_content.as_bytes())
+        .map_err(|err| {
+            RoutineFailure::new(
+                Message::new(
+                    "Failed".to_string(),
+                    format!(
+                        "to write to streaming function file in {}",
+                        function_file_path.display()
+                    ),
+                ),
+                err,
+            )
+        })?;
 
     if error_occurred || !models.contains_key(&source) || !models.contains_key(&destination) {
         verify_datamodels_with_grep(project, &source, &destination);
@@ -194,7 +85,13 @@ pub async fn create_streaming_function_file(
         verify_datamodels_with_framework_objects(models, &source, &destination);
     }
 
-    Ok(success)
+    Ok(RoutineSuccess {
+        message_type: MessageType::Success,
+        message: Message {
+            action: "Created".to_string(),
+            details: "streaming function".to_string(),
+        },
+    })
 }
 
 pub fn verify_streaming_functions_against_datamodels(
@@ -334,21 +231,4 @@ fn show_missing_datamodels_messages(missing_datamodels: &[&str]) {
             )
         }
     );
-}
-
-fn get_default_value_for_type(column_type: &ColumnType) -> String {
-    match column_type {
-        ColumnType::String => "\"\"".to_string(),
-        ColumnType::Boolean => "false".to_string(),
-        ColumnType::Int => "0".to_string(),
-        ColumnType::BigInt => "0".to_string(),
-        ColumnType::Float => "0".to_string(),
-        ColumnType::Decimal => "0".to_string(),
-        ColumnType::DateTime => "new Date()".to_string(),
-        ColumnType::Enum(_) => "any".to_string(),
-        ColumnType::Array(_) => "[]".to_string(),
-        ColumnType::Nested(_) => "{}".to_string(),
-        ColumnType::Json => "{}".to_string(),
-        ColumnType::Bytes => "[]".to_string(),
-    }
 }

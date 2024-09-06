@@ -137,7 +137,7 @@ impl ClickHouseClient {
     ) -> anyhow::Result<()> {
         // TODO - this could be optimized with RowBinary instead
         let insert_query = format!(
-            "INSERT INTO {}.{} ({}) VALUES",
+            "INSERT INTO \"{}\".\"{}\" ({}) VALUES",
             self.config.db_name,
             table_name,
             columns.join(","),

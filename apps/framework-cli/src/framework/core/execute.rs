@@ -21,7 +21,7 @@ use crate::{
 
 #[derive(Debug, thiserror::Error)]
 pub enum ExecutionError {
-    #[error("Failed to communicate with state storage")]
+    #[error("Failed to communicate with Olap DB")]
     OlapChange(#[from] OlapChangesError),
 
     #[error("Failed to communicate with streaming engine")]

@@ -65,11 +65,13 @@ impl FrameworkObjectVersions {
         std::iter::once(&self.current_models).chain(self.previous_version_models.values())
     }
 
-    pub fn get_data_model_set(&self) -> DataModelSet {
+    // used only when not core_v2
+    pub fn to_data_model_set(&self) -> DataModelSet {
         let mut data_model_set = DataModelSet::new();
         for version in self.all_versions() {
             for model in version.models.values() {
-                data_model_set.add(model.data_model.clone());
+                // we're iterating maps, no chance of duplicates
+                data_model_set.add(model.data_model.clone()).unwrap();
             }
         }
         data_model_set

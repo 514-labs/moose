@@ -22,7 +22,7 @@ type CliLogData = {
 };
 export const metricsLog: (log: CliLogData) => void = (log) => {
   const req = http.request({
-    port: 4000,
+    port: 5000,
     method: "POST",
     path: "/metrics-logs",
   }); // no callback, fire and forget
@@ -287,6 +287,7 @@ const startConsumer = async (
         action: "Received",
         message: `${logPrefix} ${batch.messages.length} message(s)`,
       });
+      log(`Received ${batch.messages.length} message(s)`);
       const messages = (
         await Promise.all(
           batch.messages.map((message) =>

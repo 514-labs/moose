@@ -44,7 +44,7 @@ setup(
 )
 "#;
 
-pub static PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE: &str = r#"
+pub static PYTHON_BASE_STREAMING_FUNCTION_SAMPLE: &str = r#"
 from datetime import datetime
 from app.datamodels.models import UserActivity, ParsedActivity
 from dataclasses import dataclass
@@ -67,7 +67,27 @@ my_flow = Flow(
 )
 "#;
 
-pub static PTYHON_BASE_API_SAMPLE_TEMPLATE: &str = r#"
+pub static PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE: &str = r#"
+# Add your models & start the development server to import these types
+{{source_import}}
+{{destination_import}}
+from dataclasses import dataclass
+from typing import Callable, Optional
+from datetime import datetime
+
+@dataclass
+class Flow:
+    run: Callable
+
+def flow(activity: {{source}}) -> Optional[{{destination}}]:
+    return {{destination_object}}
+
+my_flow = Flow(
+    run=flow
+)
+"#;
+
+pub static PYTHON_BASE_API_SAMPLE: &str = r#"
 def run(client, params):
     minDailyActiveUsers = int(params.get('minDailyActiveUsers', [0])[0])
     limit = int(params.get('limit', [10])[0])
@@ -88,7 +108,7 @@ def run(client, params):
     )
 "#;
 
-pub static PTYHON_BASE_BLOCKS_TEMPLATE: &str = r#"
+pub static PYTHON_BASE_BLOCKS_TEMPLATE: &str = r#"
 from dataclasses import dataclass
 from typing import List
 
@@ -100,8 +120,8 @@ from typing import List
 
 @dataclass
 class Blocks:
-    teardown: List[str]
-    setup: List[str]
+    teardown: list[str]
+    setup: list[str]
 
 teardown_queries = []
 
@@ -110,7 +130,7 @@ setup_queries = []
 block = Blocks(teardown=teardown_queries, setup=setup_queries)
 "#;
 
-pub static PTYHON_BASE_BLOCKS_SAMPLE_TEMPLATE: &str = r#"
+pub static PYTHON_BASE_BLOCKS_SAMPLE: &str = r#"
 from dataclasses import dataclass
 from typing import List
 
@@ -119,8 +139,8 @@ from typing import List
 
 @dataclass
 class Blocks:
-    teardown: List[str]
-    setup: List[str]
+    teardown: list[str]
+    setup: list[str]
 
 destination_table = "DailyActiveUsers"
 

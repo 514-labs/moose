@@ -6,8 +6,8 @@ use crate::cli::display::with_spinner;
 use crate::framework::controller::RouteMeta;
 
 use crate::framework::core::infrastructure::api_endpoint::APIType;
-use crate::framework::core::infrastructure_map::ApiChange;
 use crate::framework::core::infrastructure_map::Change;
+use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
 use crate::utilities::docker;
 
 use super::super::metrics::{Metrics, MetricsMessage};
@@ -30,8 +30,8 @@ use hyper::Response;
 use hyper::StatusCode;
 use hyper_util::rt::TokioIo;
 use hyper_util::{rt::TokioExecutor, server::conn::auto};
-use log::debug;
 use log::error;
+use log::{debug, log};
 use rdkafka::error::KafkaError;
 use rdkafka::message::OwnedMessage;
 use rdkafka::producer::future_producer::OwnedDeliveryResult;
@@ -42,13 +42,17 @@ use serde::Serialize;
 use serde_json::Value;
 
 use lazy_static::lazy_static;
+use log::Level::{Debug, Trace};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::env::VarError;
 use std::future::Future;
+use std::io::ErrorKind;
 use std::net::SocketAddr;
+use std::ops::Deref;
 use std::path::PathBuf;
 use std::pin::Pin;
+use std::process::exit;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
@@ -76,22 +80,20 @@ pub struct FlowMessages {
     direction: Direction,
 }
 
+fn default_management_port() -> u16 {
+    5000
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone)]
 pub struct LocalWebserverConfig {
     pub host: String,
     pub port: u16,
+    #[serde(default = "default_management_port")]
+    pub management_port: u16,
     pub path_prefix: Option<String>,
 }
 
 impl LocalWebserverConfig {
-    pub fn new(host: String, port: u16, path_prefix: Option<String>) -> Self {
-        Self {
-            host,
-            port,
-            path_prefix,
-        }
-    }
-
     pub fn url(&self) -> String {
         let base_url = format!("http://{}:{}", self.host, self.port);
         if let Some(prefix) = &self.path_prefix {
@@ -118,6 +120,7 @@ impl Default for LocalWebserverConfig {
         Self {
             host: "localhost".to_string(),
             port: 4000,
+            management_port: 5000,
             path_prefix: None,
         }
     }
@@ -224,6 +227,13 @@ struct RouteService {
     is_prod: bool,
     metrics: Arc<Metrics>,
 }
+#[derive(Clone)]
+struct ManagementService<I: InfraMapProvider + Clone> {
+    path_prefix: Option<String>,
+    is_prod: bool,
+    metrics: Arc<Metrics>,
+    infra_map: I,
+}
 
 impl Service<Request<Incoming>> for RouteService {
     type Response = Response<Full<Bytes>>;
@@ -243,6 +253,24 @@ impl Service<Request<Incoming>> for RouteService {
                 req,
                 route_table: self.route_table,
             },
+        ))
+    }
+}
+impl<I: InfraMapProvider + Clone + Send + 'static> Service<Request<Incoming>>
+    for ManagementService<I>
+{
+    type Response = Response<Full<Bytes>>;
+    type Error = hyper::http::Error;
+    type Future = Pin<Box<dyn Future<Output = Result<Self::Response, Self::Error>> + Send>>;
+
+    fn call(&self, req: Request<Incoming>) -> Self::Future {
+        Box::pin(management_router(
+            self.path_prefix.clone(),
+            self.is_prod,
+            self.metrics.clone(),
+            // here we're either cloning the reference or the RwLock
+            self.infra_map.clone(),
+            req,
         ))
     }
 }
@@ -331,10 +359,10 @@ async fn metrics_route(metrics: Arc<Metrics>) -> Result<Response<Full<Bytes>>, h
     let response = Response::builder()
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from(
-            match metrics.get_prometheus_metrics_string().await {
-                Ok(data) => data,
-                Err(e) => format!("Unable to retrieve metrics: {}", e),
-            },
+            metrics
+                .get_prometheus_metrics_string()
+                .await
+                .unwrap_or_else(|e| format!("Unable to retrieve metrics: {}", e)),
         )))
         .unwrap();
 
@@ -373,6 +401,12 @@ fn internal_server_error_response() -> Response<Full<Bytes>> {
         .status(StatusCode::INTERNAL_SERVER_ERROR)
         .body(Full::new(Bytes::from("Error")))
         .unwrap()
+}
+
+fn route_not_found_response() -> hyper::http::Result<Response<Full<Bytes>>> {
+    Response::builder()
+        .status(StatusCode::NOT_FOUND)
+        .body(Full::new(Bytes::from("no match")))
 }
 
 async fn send_payload_to_topic(
@@ -585,6 +619,7 @@ async fn ingest_route(
     configured_producer: ConfiguredProducer,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     metrics: Arc<Metrics>,
+    is_prod: bool,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     show_message!(
         MessageType::Info,
@@ -623,11 +658,16 @@ async fn ingest_route(
             )
             .await),
         },
-        None => Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Full::new(Bytes::from(
-                "Please run `moose ls` to view your routes",
-            ))),
+        None => {
+            if !is_prod {
+                println!("Ingestion route {:?} not found.", route);
+            }
+            Response::builder()
+                .status(StatusCode::NOT_FOUND)
+                .body(Full::new(Bytes::from(
+                    "Please run `moose ls` to view your routes",
+                )))
+        }
     }
 }
 
@@ -682,6 +722,7 @@ async fn router(
                 configured_producer,
                 route_table,
                 metrics.clone(),
+                is_prod,
             )
             .await
         }
@@ -692,6 +733,7 @@ async fn router(
                 configured_producer,
                 route_table,
                 metrics.clone(),
+                is_prod,
             )
             .await
         }
@@ -708,17 +750,10 @@ async fn router(
                 }
             }
         }
-        (&hyper::Method::POST, ["logs"]) if !is_prod => Ok(log_route(req).await),
-        (&hyper::Method::POST, ["metrics-logs"]) => {
-            Ok(metrics_log_route(req, metrics.clone()).await)
-        }
         (&hyper::Method::GET, ["health"]) => health_route(),
-        (&hyper::Method::GET, ["metrics"]) => metrics_route(metrics.clone()).await,
 
         (&hyper::Method::OPTIONS, _) => options_route(),
-        _ => Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Full::new(Bytes::from("no match"))),
+        _ => route_not_found_response(),
     };
 
     let metrics_path_str = metrics_path.to_str().unwrap();
@@ -736,23 +771,77 @@ async fn router(
     res
 }
 
+const METRICS_LOGS_PATH: &str = "metrics-logs";
+
+async fn management_router<I: InfraMapProvider>(
+    path_prefix: Option<String>,
+    is_prod: bool,
+    metrics: Arc<Metrics>,
+    infra_map: I,
+    req: Request<Incoming>,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    let level = if req.uri().path().ends_with(METRICS_LOGS_PATH) {
+        Trace // too many lines of log created without user interaction
+    } else {
+        Debug
+    };
+    log!(
+        level,
+        "-> HTTP Request: {:?} - {:?}",
+        req.method(),
+        req.uri().path(),
+    );
+
+    let route = get_path_without_prefix(PathBuf::from(req.uri().path()), path_prefix);
+
+    let route = route.to_str().unwrap();
+    let res = match (req.method(), route) {
+        (&hyper::Method::POST, "logs") if !is_prod => Ok(log_route(req).await),
+        (&hyper::Method::POST, METRICS_LOGS_PATH) => {
+            Ok(metrics_log_route(req, metrics.clone()).await)
+        }
+        (&hyper::Method::GET, "metrics") => metrics_route(metrics.clone()).await,
+        (&hyper::Method::GET, "infra-map") => {
+            let res = infra_map.serialize().await.unwrap();
+
+            hyper::Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Full::new(Bytes::from(res)))
+        }
+        _ => route_not_found_response(),
+    };
+
+    res
+}
+
 #[derive(Debug)]
 pub struct Webserver {
     host: String,
     port: u16,
+    management_port: u16,
 }
 
 impl Webserver {
-    pub fn new(host: String, port: u16) -> Self {
-        Self { host, port }
+    pub fn new(host: String, port: u16, management_port: u16) -> Self {
+        Self {
+            host,
+            port,
+            management_port,
+        }
     }
 
-    pub async fn socket(&self) -> SocketAddr {
-        tokio::net::lookup_host(format!("{}:{}", self.host, self.port))
+    async fn get_socket(&self, port: u16) -> SocketAddr {
+        tokio::net::lookup_host(format!("{}:{}", self.host, port))
             .await
             .unwrap()
             .next()
             .unwrap()
+    }
+    pub async fn socket(&self) -> SocketAddr {
+        self.get_socket(self.port).await
+    }
+    pub async fn management_socket(&self) -> SocketAddr {
+        self.get_socket(self.management_port).await
     }
 
     pub async fn spawn_api_update_listener(
@@ -816,18 +905,26 @@ impl Webserver {
 
     // TODO - when we retire the the old core, we should remove routeTable from the start method and using only
     // the channel to update the routes
-    pub async fn start(
+    pub async fn start<I: InfraMapProvider + Clone + Send + 'static>(
         &self,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
         consumption_apis: &'static RwLock<HashSet<String>>,
+        infra_map: I,
         project: Arc<Project>,
         metrics: Arc<Metrics>,
     ) {
         //! Starts the local webserver
         let socket = self.socket().await;
-
         // We create a TcpListener and bind it to {project.http_server_config.host} on port {project.http_server_config.port}
-        let listener = TcpListener::bind(socket).await.unwrap();
+        let listener = TcpListener::bind(socket)
+            .await
+            .unwrap_or_else(|e| handle_listener_err(socket.port(), e));
+
+        let management_socket = self.management_socket().await;
+        let management_listener = TcpListener::bind(management_socket)
+            .await
+            .unwrap_or_else(|e| handle_listener_err(management_socket.port(), e));
+
         let producer = redpanda::create_producer(project.redpanda_config.clone());
 
         show_message!(
@@ -861,7 +958,13 @@ impl Webserver {
             current_version: project.cur_version().to_string(),
             configured_producer: producer,
             is_prod: project.is_production,
+            metrics: metrics.clone(),
+        };
+        let management_service = ManagementService {
+            path_prefix: project.http_server_config.normalized_path_prefix(),
+            is_prod: project.is_production,
             metrics,
+            infra_map,
         };
 
         loop {
@@ -898,7 +1001,47 @@ impl Webserver {
 
                     });
                 }
+                listener_result = management_listener.accept() => {
+                    let (stream, _) = listener_result.unwrap();
+                    let io = TokioIo::new(stream);
+
+                    let management_service = management_service.clone();
+
+                    tokio::task::spawn(async move {
+                        if let Err(e) = auto::Builder::new(TokioExecutor::new()).serve_connection(
+                                io,
+                                management_service,
+                            ).await {
+                                error!("server error: {}", e);
+                            }
+
+                    });
+                }
             }
         }
+    }
+}
+
+pub trait InfraMapProvider {
+    fn serialize(&self) -> impl Future<Output = serde_json::error::Result<String>> + Send;
+}
+impl InfraMapProvider for &RwLock<InfrastructureMap> {
+    async fn serialize(&self) -> serde_json::error::Result<String> {
+        serde_json::to_string(self.read().await.deref())
+    }
+}
+impl InfraMapProvider for &InfrastructureMap {
+    async fn serialize(&self) -> serde_json::error::Result<String> {
+        serde_json::to_string(self)
+    }
+}
+
+fn handle_listener_err(port: u16, e: std::io::Error) -> ! {
+    match e.kind() {
+        ErrorKind::AddrInUse => {
+            eprintln!("Port {} already in use.", port);
+            exit(1)
+        }
+        _ => panic!("Failed to listen to port {}: {:?}", port, e),
     }
 }

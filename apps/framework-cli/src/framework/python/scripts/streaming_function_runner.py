@@ -92,7 +92,7 @@ try:
     flow = import_module(function_file_name, package=function_file_dir)
     flow_def = flow.Flow
 except Exception as e:
-    error(f"Error importing flow: {e} in file {function_file_name} {function_file_path}")
+    error(f"Error importing flow: {e} in file {function_file_name}")
 
 # Get all the named flows in the flow file and make sure the flow is of type Flow
 flows = [f for f in dir(flow) if isinstance(getattr(flow, f), flow_def)]
@@ -167,10 +167,13 @@ count_in = 0
 count_out = 0
 bytes_count = 0
 def send_message_metrics_in():
+    global count_in
+    global count_out
+    global bytes_count
     while True:
         time.sleep(1)
-        requests.post("http://localhost:4000/metrics-logs", json={'count': count_in, 'bytes': bytes_count, 'function_name': f'{source_topic} -> {target_topic}', 'direction': 'In'})
-        requests.post("http://localhost:4000/metrics-logs", json={'count': count_out, 'bytes': bytes_count, 'function_name': f'{source_topic} -> {target_topic}', 'direction': 'Out'})
+        requests.post("http://localhost:5000/metrics-logs", json={'count': count_in, 'bytes': bytes_count, 'function_name': f'{source_topic} -> {target_topic}', 'direction': 'In'})
+        requests.post("http://localhost:5000/metrics-logs", json={'count': count_out, 'bytes': bytes_count, 'function_name': f'{source_topic} -> {target_topic}', 'direction': 'Out'})
         count_in = 0
         count_out = 0
         bytes_count = 0
@@ -195,7 +198,7 @@ for message in consumer:
     count_in += len(output_data_list)
 
 
-    requests.post("http://localhost:4000/logs", json={"message_type": "Success", 'action': 'Received',
+    requests.post("http://localhost:5000/logs", json={"message_type": "Success", 'action': 'Received',
     'message': f'{source_topic} -> {target_topic} {len(output_data_list)} message(s)'})
     
     

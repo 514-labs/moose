@@ -1,9 +1,10 @@
-use std::path::PathBuf;
-use std::process::{Command, Stdio};
-
+use lazy_static::lazy_static;
 use log::{error, info};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use serde_json::{from_slice, from_str};
+use std::path::PathBuf;
+use std::process::{Command, Stdio};
 use tokio::io::{AsyncBufReadExt, BufReader};
 
 use crate::project::Project;
@@ -37,6 +38,7 @@ pub struct ContainerRow {
     pub size: String,
     pub state: String,
     pub status: String,
+    pub health: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -54,8 +56,8 @@ pub struct NetworkRow {
     pub scope: String,
 }
 
-pub fn list_containers() -> std::io::Result<Vec<ContainerRow>> {
-    let child = Command::new("docker")
+pub fn list_containers(project: &Project) -> std::io::Result<Vec<ContainerRow>> {
+    let child = compose_command(project)
         .arg("ps")
         .arg("-a")
         .arg("--no-trunc")
@@ -144,6 +146,12 @@ fn compose_command(project: &Project) -> Command {
     command
 }
 
+lazy_static! {
+    pub static ref PORT_ALLOCATED_REGEX: Regex =
+        Regex::new("Bind for \\d+.\\d+.\\d+.\\d+:(\\d+) failed: port is already allocated")
+            .unwrap();
+}
+
 pub fn start_containers(project: &Project) -> anyhow::Result<()> {
     project.create_internal_redpanda_volume()?;
     project.create_internal_clickhouse_volume()?;
@@ -169,11 +177,20 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
     let output = child.wait_with_output()?;
 
     if !output.status.success() {
-        error!(
+        let error_message = String::from_utf8_lossy(&output.stderr);
+        error!("Failed to start containers: {}", error_message);
+
+        let mapped_error_message =
+            if let Some(stuff) = PORT_ALLOCATED_REGEX.captures(&error_message) {
+                format!("Port {} already in use.", stuff.get(1).unwrap().as_str())
+            } else {
+                error_message.to_string()
+            };
+
+        Err(anyhow::anyhow!(
             "Failed to start containers: {}",
-            String::from_utf8_lossy(&output.stderr)
-        );
-        Err(anyhow::anyhow!("Failed to start containers"))
+            mapped_error_message
+        ))
     } else {
         Ok(())
     }
@@ -382,7 +399,7 @@ pub fn buildx(
     if !output.status.success() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
-            "Failed to run dockerx build",
+            String::from_utf8_lossy(&output.stderr),
         ));
     }
 

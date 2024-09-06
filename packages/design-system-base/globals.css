@@ -320,7 +320,7 @@ li.nx-my-2 {
 
 .nx-truncate {
   background-color: transparent !important;
-  color: rgba(101, 52, 52, 0.5) !important;
+  color: hsl(var(--muted-foreground)) !important;
 }
 
 .nextra-steps h3:before {

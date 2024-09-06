@@ -57,8 +57,8 @@ const config = {
           DEFAULT: "hsl(var(--accent-moo-teal))",
         },
         indigo: {
-          DEFAULT: "hsl(var(--accent-indigo))",
-          trans: "hsl(var(--accent-indigo-trans))/20",
+          DEFAULT: "hsl(var(--accent-moo-indigo))",
+          trans: "hsl(var(--accent-moo-indigo-trans))/20",
         },
         purple: {
           DEFAULT: "hsl(var(--accent-moo-purple))",

@@ -23,7 +23,7 @@ class MyModel:
     flag: bool
     status: Status
     test_key: str
-    arr: List[str]
+    arr: list[str]
     opt: Optional[str]
     sub: MySubModel
     date: datetime

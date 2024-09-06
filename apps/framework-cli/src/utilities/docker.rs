@@ -38,6 +38,7 @@ pub struct ContainerRow {
     pub size: String,
     pub state: String,
     pub status: String,
+    pub health: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,8 +56,8 @@ pub struct NetworkRow {
     pub scope: String,
 }
 
-pub fn list_containers() -> std::io::Result<Vec<ContainerRow>> {
-    let child = Command::new("docker")
+pub fn list_containers(project: &Project) -> std::io::Result<Vec<ContainerRow>> {
+    let child = compose_command(project)
         .arg("ps")
         .arg("-a")
         .arg("--no-trunc")
@@ -398,7 +399,7 @@ pub fn buildx(
     if !output.status.success() {
         return Err(std::io::Error::new(
             std::io::ErrorKind::Other,
-            "Failed to run dockerx build",
+            String::from_utf8_lossy(&output.stderr),
         ));
     }
 

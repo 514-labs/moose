@@ -221,7 +221,7 @@ pub async fn select_all_as_json<'a>(
         format!("ORDER BY {}", key_columns.join(", "))
     };
     let query = &format!(
-        "select * from {}.{} {} offset {}",
+        "select * from \"{}\".\"{}\" {} offset {}",
         db_name, table.name, order_by, offset
     );
     info!("<DCM> Initial data load query: {}", query);
@@ -238,7 +238,7 @@ async fn create_state_table(
     click_house_config: &ClickHouseConfig,
 ) -> Result<(), clickhouse_rs::errors::Error> {
     let sql = format!(
-        r#"CREATE TABLE IF NOT EXISTS {}._MOOSE_STATE(
+        r#"CREATE TABLE IF NOT EXISTS "{}"._MOOSE_STATE(
     timestamp DateTime('UTC') DEFAULT now(),
     state String
 )ENGINE = MergeTree
@@ -265,7 +265,10 @@ pub async fn store_current_state(
         )))?],
     );
     client
-        .insert(format!("{}._MOOSE_STATE", click_house_config.db_name), data)
+        .insert(
+            format!("\"{}\"._MOOSE_STATE", click_house_config.db_name),
+            data,
+        )
         .await?;
     Ok(())
 }
@@ -285,7 +288,7 @@ pub async fn retrieve_current_state(
     create_state_table(client, click_house_config).await?;
     let block = client
         .query(format!(
-            "SELECT state from {}._MOOSE_STATE ORDER BY timestamp DESC LIMIT 1",
+            "SELECT state from \"{}\"._MOOSE_STATE ORDER BY timestamp DESC LIMIT 1",
             click_house_config.db_name
         ))
         .fetch_all()
@@ -360,7 +363,7 @@ pub async fn store_infrastructure_map(
     );
     client
         .insert(
-            format!("{}._MOOSE_STATE_V2", clickhouse_config.db_name),
+            format!("\"{}\"._MOOSE_STATE_V2", clickhouse_config.db_name),
             data,
         )
         .await?;
@@ -372,7 +375,7 @@ async fn create_infrastructure_map_table(
     click_house_config: &ClickHouseConfig,
 ) -> Result<(), clickhouse_rs::errors::Error> {
     let sql = format!(
-        r#"CREATE TABLE IF NOT EXISTS {}._MOOSE_STATE_V2 (
+        r#"CREATE TABLE IF NOT EXISTS "{}"._MOOSE_STATE_V2 (
             timestamp DateTime('UTC') DEFAULT now(),
             infra_map String
         ) ENGINE = MergeTree
@@ -391,7 +394,7 @@ pub async fn retrieve_infrastructure_map(
 
     let block = client
         .query(format!(
-            "SELECT infra_map from {}._MOOSE_STATE_V2 ORDER BY timestamp DESC LIMIT 1",
+            "SELECT infra_map from \"{}\"._MOOSE_STATE_V2 ORDER BY timestamp DESC LIMIT 1",
             click_house_config.db_name
         ))
         .fetch_all()

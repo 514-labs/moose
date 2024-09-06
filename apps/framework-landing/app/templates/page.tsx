@@ -1,6 +1,6 @@
 import React from "react";
 import { FooterSection } from "../sections/FooterSection";
-import { LooseMooseSection } from "../sections/home/LooseMooseSection";
+// import { LooseMooseSection } from "../sections/home/LooseMooseSection";
 import { TemplatesSection } from "../sections/home/TemplatesSection";
 import {
   Grid,
@@ -26,12 +26,12 @@ export default function TemplatesPage() {
 
   return (
     <>
-      <Section className="w-full relative mx-auto xl:max-w-screen-xl">
+      <Section className="w-full relative mx-auto max-w-5xl">
         <FullWidthContentContainer>
           <Display>{content.title}</Display>
         </FullWidthContentContainer>
       </Section>
-      <Section className="w-full relative mx-auto xl:max-w-screen-xl">
+      <Section className="w-full relative mx-auto max-w-5xl">
         <Grid>
           <HalfWidthContentContainer>
             <Heading>{content.hook.title}</Heading>
@@ -44,7 +44,7 @@ export default function TemplatesPage() {
       <TemplatesSection />
       <FooterSection />
       {/* <EmailSection /> */}
-      <LooseMooseSection />
+      {/* <LooseMooseSection /> */}
     </>
   );
 }

@@ -61,11 +61,19 @@ export const FeaturesSection = () => {
 
   return (
     <>
-      <Section className="mx-auto xl:max-w-screen-xl">
+      <Section className="mx-auto max-w-5xl">
         <Grid className="mb-12 2xl:mb-20">
           <FullWidthContentContainer>
-            <Heading level={HeadingLevel.l2}> {content.title} </Heading>
-            <Heading level={HeadingLevel.l3} className="text-muted-foreground">
+            <Heading
+              level={HeadingLevel.l1}
+              className="max-w-5xl justify-center align-center text-center sm:text-5xl"
+            >
+              {content.title}
+            </Heading>
+            <Heading
+              level={HeadingLevel.l2}
+              className="max-w-5xl justify-center align-center text-center mb-24 text-muted-foreground"
+            >
               {content.subtitle}
             </Heading>
           </FullWidthContentContainer>

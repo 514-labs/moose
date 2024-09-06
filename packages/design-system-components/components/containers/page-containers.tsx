@@ -114,7 +114,12 @@ export const Grid = ({
   className?: string;
 }) => {
   return (
-    <div className={cn("grid grid-cols-12 gap-y-5 md:gap-x-10", className)}>
+    <div
+      className={cn(
+        "grid grid-cols-12 gap-y-5 md:gap-x-10 mx-auto max-w-5xl",
+        className,
+      )}
+    >
       {children}
     </div>
   );

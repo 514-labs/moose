@@ -12,7 +12,7 @@ use super::model::ClickHouseColumn;
 
 // Unclear if we need to add flatten_nested to the views setting as well
 static CREATE_ALIAS_TEMPLATE: &str = r#"
-CREATE VIEW IF NOT EXISTS {{db_name}}.{{alias_name}} AS SELECT * FROM {{db_name}}.{{source_table_name}};
+CREATE VIEW IF NOT EXISTS "{{db_name}}"."{{alias_name}}" AS SELECT * FROM "{{db_name}}"."{{source_table_name}}";
 "#;
 
 fn create_alias_query(
@@ -32,7 +32,7 @@ fn create_alias_query(
 }
 
 static CREATE_VIEW_TEMPLATE: &str = r#"
-CREATE VIEW IF NOT EXISTS {{db_name}}.{{view_name}} AS {{view_query}};
+CREATE VIEW IF NOT EXISTS "{{db_name}}"."{{view_name}}" AS {{view_query}};
 "#;
 
 pub fn create_view_query(
@@ -52,7 +52,7 @@ pub fn create_view_query(
 }
 
 static DROP_VIEW_TEMPLATE: &str = r#"
-DROP VIEW {{db_name}}.{{view_name}};
+DROP VIEW "{{db_name}}"."{{view_name}}";
 "#;
 
 pub fn drop_view_query(db_name: &str, view_name: &str) -> Result<String, ClickhouseError> {
@@ -67,7 +67,7 @@ pub fn drop_view_query(db_name: &str, view_name: &str) -> Result<String, Clickho
 }
 
 static UPDATE_VIEW_TEMPLATE: &str = r#"
-CREATE OR REPLACE VIEW {{db_name}}.{{view_name}} AS {{view_query}};
+CREATE OR REPLACE VIEW "{{db_name}}"."{{view_name}}" AS {{view_query}};
 "#;
 
 pub fn update_view_query(
@@ -106,7 +106,7 @@ pub fn create_alias_for_table(
 
 // TODO: Add column comment capability to the schema and template
 static CREATE_TABLE_TEMPLATE: &str = r#"
-CREATE TABLE IF NOT EXISTS {{db_name}}.{{table_name}} 
+CREATE TABLE IF NOT EXISTS "{{db_name}}"."{{table_name}}"
 (
 {{#each fields}}   {{field_name}} {{{field_type}}} {{field_nullable}}{{#unless @last}},{{/unless}} 
 {{/each}}
@@ -163,7 +163,7 @@ pub fn create_table_query(
 }
 
 static CREATE_VERSION_SYNC_TRIGGER_TEMPLATE: &str = r#"
-CREATE MATERIALIZED VIEW IF NOT EXISTS {{db_name}}.{{view_name}} TO {{db_name}}.{{dest_table_name}}
+CREATE MATERIALIZED VIEW IF NOT EXISTS "{{db_name}}"."{{view_name}}" TO "{{db_name}}"."{{dest_table_name}}"
 (
     {{#each to_fields}} {{field_name}} {{{field_type}}} {{field_nullable}}{{#unless @last}},{{/unless}}
     {{/each}}
@@ -176,7 +176,7 @@ FROM (
     select {{migration_function_name}}(
         {{#each from_fields}} {{this}}{{#unless @last}},{{/unless}}
         {{/each}}
-    ) as moose_migrate_tuple FROM {{db_name}}.{{source_table_name}}
+    ) as moose_migrate_tuple FROM "{{db_name}}"."{{source_table_name}}"
 )
 "#;
 
@@ -197,7 +197,7 @@ pub fn create_version_sync_trigger_query(view: &VersionSync) -> Result<String, C
 }
 
 static INITIAL_DATA_LOAD_TEMPLATE: &str = r#"
-INSERT INTO {{db_name}}.{{dest_table_name}}
+INSERT INTO "{{db_name}}"."{{dest_table_name}}"
 SELECT
     {{#each to_fields}} moose_migrate_tuple.({{@index}} + 1) AS {{field_name}}{{#unless @last}},{{/unless}}
     {{/each}}
@@ -205,7 +205,7 @@ FROM (
     select {{migration_function_name}}(
         {{#each from_fields}}{{this}} {{#unless @last}},{{/unless}}
         {{/each}}
-    ) as moose_migrate_tuple FROM {{db_name}}.{{source_table_name}}
+    ) as moose_migrate_tuple FROM "{{db_name}}"."{{source_table_name}}"
 )
 "#;
 
@@ -225,7 +225,7 @@ pub fn create_initial_data_load_query(view: &VersionSync) -> Result<String, Clic
 }
 
 pub static DROP_TABLE_TEMPLATE: &str = r#"
-DROP TABLE IF EXISTS {{db_name}}.{{table_name}};
+DROP TABLE IF EXISTS "{{db_name}}"."{{table_name}}";
 "#;
 
 pub fn drop_table_query(db_name: &str, table: ClickHouseTable) -> Result<String, ClickhouseError> {

@@ -22,6 +22,7 @@ use logger::setup_logging;
 use regex::Regex;
 use routines::auth::generate_hash_token;
 use routines::datamodel::read_json_file;
+use routines::docker_packager::{build_dockerfile, create_dockerfile};
 use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
 use routines::plan;
@@ -51,19 +52,17 @@ use crate::cli::{
 };
 use crate::framework::bulk_import::import_csv_file;
 use crate::framework::core::code_loader::load_framework_objects;
+use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::sdk::ingest::generate_sdk;
-use crate::framework::versions::parse_version;
-use crate::infrastructure::olap::clickhouse::version_sync::version_to_string;
+use crate::framework::versions::{parse_version, version_to_string};
 use crate::metrics::TelemetryMetadata;
 use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 use crate::utilities::git::is_git_repo;
 
-use self::routines::{
-    clean::CleanProject, docker_packager::BuildDockerfile, docker_packager::CreateDockerfile,
-};
+use self::routines::clean::CleanProject;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
@@ -243,19 +242,36 @@ async fn top_command_handler(
                 }
             }
         }
+        // This command is used to check the project for errors that are not related to runtime
+        // For example, it checks that the project is valid and that all the primitives are loaded
+        // It is used in the build process to ensure that the project is valid while building docker images
+        Commands::Check {} => {
+            info!("Running check command");
+            let project_arc = Arc::new(load_project()?);
+
+            check_project_name(&project_arc.name())?;
+
+            PrimitiveMap::load(&project_arc).await.map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Build".to_string(),
+                    details: format!("Failed to load Primitives: {:?}", e),
+                })
+            })?;
+
+            Ok(RoutineSuccess::success(Message::new(
+                "Checked".to_string(),
+                "No Errors found".to_string(),
+            )))
+        }
         Commands::Build {
             docker,
             amd64,
             arm64,
         } => {
-            let run_mode = RunMode::Explicit {};
             info!("Running build command");
-            let project: Project = load_project()?;
-            let project_arc = Arc::new(project);
+            let project_arc = Arc::new(load_project()?);
 
             check_project_name(&project_arc.name())?;
-
-            let mut controller = RoutineController::new();
 
             // Remove versions directory so only the relevant versions will be populated
             project_arc.delete_old_versions().map_err(|e| {
@@ -275,19 +291,15 @@ async fn top_command_handler(
                     &settings,
                 );
                 // TODO get rid of the routines and use functions instead
-                controller.add_routine(Box::new(CreateDockerfile::new(project_arc.clone())));
-                controller.add_routine(Box::new(BuildDockerfile::new(
-                    project_arc.clone(),
-                    *amd64,
-                    *arm64,
-                )));
-                controller.run_routines(run_mode);
+
+                create_dockerfile(&project_arc)?.show();
+                let _ = build_dockerfile(&project_arc, *amd64, *arm64)?;
 
                 wait_for_usage_capture(capture_handle).await;
 
                 Ok(RoutineSuccess::success(Message::new(
                     "Built".to_string(),
-                    "Docker images".to_string(),
+                    "Docker image(s)".to_string(),
                 )))
             } else {
                 Err(RoutineFailure::error(Message {
@@ -374,7 +386,9 @@ async fn top_command_handler(
 
                 check_project_name(&project_arc.name())?;
                 copy_old_schema(&project_arc)?.show();
-                generate_migration(&project_arc).await?.show();
+                generate_migration(&project_arc, project_arc.language)
+                    .await?
+                    .show();
 
                 wait_for_usage_capture(capture_handle).await;
 
@@ -388,6 +402,7 @@ async fn top_command_handler(
                 destination,
                 project_location,
                 full_package: packaged,
+                overwrite,
             }) => {
                 let canonical_location = project_location.canonicalize().map_err(|e| {
                     RoutineFailure::error(Message {
@@ -395,6 +410,23 @@ async fn top_command_handler(
                         details: format!("Failed to canonicalize path: {:?}", e),
                     })
                 })?;
+
+                if canonical_location.exists() && canonical_location.is_dir() {
+                    // Check if the directory contains any files or subdirectories
+                    let is_empty = std::fs::read_dir(&canonical_location)
+                        .map(|mut dir| dir.next().is_none())
+                        .unwrap_or(false);
+
+                    if !is_empty && !overwrite {
+                        return Err(RoutineFailure::error(Message {
+                            action: "Generate".to_string(),
+                            details: format!(
+                                "Directory '{}' is not empty, and --overwrite flag is not set.",
+                                canonical_location.display()
+                            ),
+                        }));
+                    }
+                }
 
                 let project = Project::load(&canonical_location).map_err(|e| {
                     RoutineFailure::error(Message {
@@ -512,7 +544,7 @@ async fn top_command_handler(
 
             Ok(RoutineSuccess::success(Message::new(
                 "Plan".to_string(),
-                "Successfuly planned changes to the infrastructure".to_string(),
+                "Successfully planned changes to the infrastructure".to_string(),
             )))
         }
         Commands::BumpVersion { new_version } => {
@@ -756,7 +788,7 @@ async fn top_command_handler(
             let res = if *streaming {
                 list_streaming(project_arc, limit).await
             } else {
-                list_db(project_arc, version, limit).await
+                list_db(project_arc, &settings.features, version, limit).await
             };
 
             wait_for_usage_capture(capture_handle).await;

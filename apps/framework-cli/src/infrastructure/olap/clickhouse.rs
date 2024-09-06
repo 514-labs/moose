@@ -252,7 +252,7 @@ pub async fn delete_table_or_view(
     );
 
     client
-        .query(format!("DROP TABLE {db_name}.{table_or_view_name}").as_str())
+        .query(format!("DROP TABLE \"{db_name}\".\"{table_or_view_name}\"").as_str())
         .execute()
         .await
 }
@@ -301,7 +301,7 @@ pub async fn check_table_size(
     info!("<DCM> Checking size of {} table", table_name);
     let result = clickhouse
         .query(&format!(
-            "select count(*) from {}.{}",
+            "select count(*) from \"{}\".\"{}\"",
             config.db_name.clone(),
             table_name
         ))
@@ -382,68 +382,4 @@ pub fn table_schema_to_hash(
 struct TableDetail {
     pub engine: String,
     pub total_rows: Option<u64>,
-}
-
-#[cfg(test)]
-mod tests {
-    use crate::infrastructure::olap::clickhouse::model::{
-        ClickHouseColumn, ClickHouseColumnType, ClickHouseInt,
-    };
-    use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
-
-    #[test]
-    fn test_version_sync_function_generation() {
-        let columns = vec![
-            ClickHouseColumn {
-                name: "eventId".to_string(),
-                column_type: ClickHouseColumnType::String,
-                required: true,
-                unique: false,
-                primary_key: true,
-                default: None,
-            },
-            ClickHouseColumn {
-                name: "timestamp".to_string(),
-                column_type: ClickHouseColumnType::DateTime,
-                required: true,
-                unique: false,
-                primary_key: false,
-                default: None,
-            },
-            ClickHouseColumn {
-                name: "userId".to_string(),
-                column_type: ClickHouseColumnType::String,
-                required: true,
-                unique: false,
-                primary_key: false,
-                default: None,
-            },
-            ClickHouseColumn {
-                name: "activity".to_string(),
-                column_type: ClickHouseColumnType::String,
-                required: true,
-                unique: false,
-                primary_key: false,
-                default: None,
-            },
-        ];
-        assert_eq!(
-            VersionSync::generate_migration_function(&columns[0..3], &columns),
-            "(eventId, timestamp, userId) -> (eventId, timestamp, userId, 'activity')"
-        );
-
-        let mut no_timestamp = columns.clone();
-        no_timestamp.remove(1);
-        assert_eq!(
-            VersionSync::generate_migration_function(&no_timestamp, &columns),
-            "(eventId, userId, activity) -> (eventId, '2024-02-20T23:14:57.788Z', userId, activity)"
-        );
-
-        let mut int_user_id = columns.clone();
-        int_user_id[2].column_type = ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int32);
-        assert_eq!(
-            VersionSync::generate_migration_function(&columns, &int_user_id),
-            "(eventId, timestamp, userId, activity) -> (eventId, timestamp, 0, activity)"
-        );
-    }
 }

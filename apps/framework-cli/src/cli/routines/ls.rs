@@ -3,6 +3,9 @@ use std::{
     sync::Arc,
 };
 
+use super::{RoutineFailure, RoutineSuccess};
+use crate::cli::settings::Features;
+use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, retrieve_infrastructure_map};
 use crate::{
     cli::display::{show_table, Message},
     infrastructure::{
@@ -16,10 +19,9 @@ use crate::{
     project::Project,
 };
 
-use super::{RoutineFailure, RoutineSuccess};
-
 pub async fn list_db(
     project: Arc<Project>,
+    features: &Features,
     version: &Option<String>,
     limit: &u16,
 ) -> Result<RoutineSuccess, RoutineFailure> {
@@ -27,9 +29,59 @@ pub async fn list_db(
         .clone()
         .unwrap_or_else(|| project.cur_version().to_owned());
 
-    let current_state = get_current_state(&project).await?;
+    let mut output_table = if features.core_v2 {
+        let pool = get_pool(&project.clickhouse_config);
+        let mut client = pool.get_handle().await.map_err(|e| {
+            RoutineFailure::new(
+                Message {
+                    action: "Fail".to_string(),
+                    details: "to connect to state storage".to_string(),
+                },
+                e,
+            )
+        })?;
+        let infra = retrieve_infrastructure_map(&mut client, &project.clickhouse_config)
+            .await
+            // temporarily have some duplicate code with get_current_state
+            .map_err(|e| {
+                RoutineFailure::new(
+                    Message {
+                        action: "Failed".to_string(),
+                        details: "Error retrieving current state".to_string(),
+                    },
+                    e,
+                )
+            })?
+            .ok_or_else(|| {
+                RoutineFailure::error(Message::new(
+                    "Failed".to_string(),
+                    "No Moose state found".to_string(),
+                ))
+            })?;
 
-    let mut output_table = map_models_to_resources(&current_state, &target_version);
+        infra
+            .api_endpoints
+            .values()
+            .filter_map(|endpoint| {
+                if endpoint.version == project.cur_version() {
+                    Some((
+                        endpoint.name.clone(),
+                        vec![
+                            endpoint.path.to_string_lossy().to_string(),
+                            String::new(),
+                            String::new(),
+                        ],
+                    ))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    } else {
+        let current_state = get_current_state(&project).await?;
+
+        map_models_to_resources(&current_state, &target_version)
+    };
 
     add_tables_views(&project, &target_version, &mut output_table).await;
 
@@ -97,9 +149,9 @@ fn map_models_to_resources(
         .models
         .iter()
         .find(|&(project_version, _)| project_version == target_version)
-        .map(|tuple| {
+        .map(|(_, models)| {
             let mut map = HashMap::new();
-            for model in &tuple.1 {
+            for model in models {
                 // Map of data model to ingest point, table, and view
                 map.insert(
                     model.data_model.name.clone(),
@@ -228,7 +280,7 @@ fn format_topics(
 
                     let topics_with_prefix: Vec<String> = topics_slice
                         .iter()
-                        .map(|topic| project.redpanda_config.get_topic_with_namespace(topic))
+                        .map(|topic| project.redpanda_config.prefix_with_namespace(topic))
                         .collect();
 
                     topics_with_prefix.join("\n")

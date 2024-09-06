@@ -305,7 +305,7 @@ fn class_attribute_node_to_column_builder(
         Expr::Name(name) => {
             process_name_node(name, enums, python_classes, nested_classes, &mut column)?
         }
-        // Handles the case where the annotation is a subscript such as List[str], Optional[int], Key[str]
+        // Handles the case where the annotation is a subscript such as list[str], Optional[int], Key[str]
         Expr::Subscript(subscript) => process_subscript_node(subscript, &mut column)?,
 
         _ => {
@@ -326,9 +326,10 @@ fn process_subscript_node(
 ) -> Result<(), PythonParserError> {
     match &*subscript.value {
         Expr::Name(name) => match name.id.to_string().as_str() {
-            "List" => {
+            "list" => {
                 let col_type = ColumnType::Array(match &*subscript.slice {
                     Expr::Name(name) => Box::new(name_node_to_base_column_type(name.clone())?),
+                    // TODO: recursively handle complex types
                     _ => {
                         return Err(PythonParserError::UnsupportedDataTypeError {
                             type_name: "Unsupported data type".to_string(),

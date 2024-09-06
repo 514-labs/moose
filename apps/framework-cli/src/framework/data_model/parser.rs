@@ -1,6 +1,8 @@
 use serde::Deserialize;
 use std::path::Path;
 
+use super::model::DataModel;
+use crate::utilities::constants;
 use crate::{
     framework::{
         core::{code_loader::MappingError, infrastructure::table::DataEnum},
@@ -8,8 +10,6 @@ use crate::{
     },
     project::Project,
 };
-
-use super::model::DataModel;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to parse the data model file")]
@@ -19,10 +19,13 @@ pub enum DataModelParsingError {
     TypescriptParsingError(#[from] typescript::parser::TypescriptParsingError),
     PythonParsingError(#[from] python::parser::PythonParserError),
     MappingError(#[from] MappingError),
-    UnsupportedFileType,
+    #[error("Unsupported file: {file_name}")]
+    UnsupportedFileType {
+        file_name: String,
+    },
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Default)]
 pub struct FileObjects {
     pub models: Vec<DataModel>,
     pub enums: Vec<DataEnum>,
@@ -47,16 +50,28 @@ pub fn parse_data_model_file(
         if let Some(ext) = path.extension() {
             match ext.to_str() {
                 Some("prisma") => Ok(prisma::parser::extract_data_model_from_file(path, version)?),
-                Some("ts") => Ok(typescript::parser::extract_data_model_from_file(
-                    path, project, version,
-                )?),
-                Some("py") => Ok(python::parser::extract_data_model_from_file(path, version)?),
-                _ => Err(DataModelParsingError::UnsupportedFileType),
+                Some(constants::TYPESCRIPT_FILE_EXTENSION) => Ok(
+                    typescript::parser::extract_data_model_from_file(path, project, version)?,
+                ),
+                Some(constants::PYTHON_FILE_EXTENSION) => {
+                    Ok(python::parser::extract_data_model_from_file(path, version)?)
+                }
+                Some(constants::PYTHON_CACHE_EXTENSION) => Ok(FileObjects::default()), // __pycache__
+                _ => unsupported_file_type(path),
             }
         } else {
-            Err(DataModelParsingError::UnsupportedFileType)
+            unsupported_file_type(path)
         }
     } else {
-        Ok(FileObjects::new(vec![], vec![]))
+        Ok(FileObjects::default())
     }
+}
+
+fn unsupported_file_type<T>(path: &Path) -> Result<T, DataModelParsingError> {
+    Err(DataModelParsingError::UnsupportedFileType {
+        file_name: match path.file_name() {
+            None => "".to_string(),
+            Some(f) => f.to_string_lossy().to_string(),
+        },
+    })
 }

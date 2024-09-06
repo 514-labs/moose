@@ -16,7 +16,7 @@ pub enum Commands {
         name: String,
 
         /// Language of your app or service
-        #[arg(default_value_t = SupportedLanguages::Typescript, value_enum)]
+        #[arg(value_enum)]
         language: SupportedLanguages,
 
         /// Location of your app or service
@@ -46,6 +46,8 @@ pub enum Commands {
         #[arg(long)]
         arm64: bool,
     },
+    /// Checks the project for non-runtime errors
+    Check {},
     /// [Not Ready] Displays the changes that will be applied to the infrastructure during the next deployment
     /// to production, consdering the current state of the project
     Plan {},
@@ -132,6 +134,9 @@ pub enum GenerateCommand {
         /// Whether or not to generate a full fledged package or just the source files in the language of choice
         #[arg(default_value = "false", short = 'f', long)]
         full_package: bool,
+        /// Force overwrite of files and folders in the directory
+        #[arg(default_value = "false", short = 'y', long)]
+        overwrite: bool,
     },
     HashToken {},
 }

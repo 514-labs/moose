@@ -35,14 +35,14 @@ export const ProductTag = ({
   return (
     <div
       className={cn(
-        `ml-1 inline-block p-[1px] rounded-lg ${tag === "JS" ? gradients.js : gradients.py}`,
+        `ml-1 inline-block px-1 rounded-full border-2 indigo-500`,
         tagStyle,
       )}
     >
-      <div className="bg-background rounded-lg px-1 py-0.5">
+      <div className="rounded-lg px-1 py-0.5">
         <span
           className={cn(
-            `flex items-center bg-clip-text uppercase text-sm text-transparent ${tag === "JS" ? gradients.js : gradients.py}`,
+            `flex items-center bg-clip-text uppercase text-sm text-transparent text-muted-foreground`,
             tagStyle,
           )}
         >

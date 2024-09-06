@@ -66,6 +66,7 @@ pub enum ModelConfigurationError {
     TypescriptRunner(#[from] crate::framework::typescript::export_collectors::ExportCollectorError),
 }
 
+// TODO: handle python
 pub async fn get(
     path: &Path,
     enums: HashSet<&str>,

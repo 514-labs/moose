@@ -37,35 +37,38 @@ impl AggregationProcessRegistry {
     }
 
     pub fn start(&mut self, olap_process: &OlapProcess) -> Result<(), AggregationError> {
-        info!("Starting aggregation {:?}...", olap_process);
+        // TODO remove this when we remove aggregations all together
+        if self.dir.exists() {
+            info!("Starting aggregation {:?}...", olap_process);
+            let child = match self.language {
+                SupportedLanguages::Typescript => typescript::aggregation::run(
+                    self.clickhouse_config.clone(),
+                    &self.dir,
+                    !self.is_aggregation,
+                )?,
+                SupportedLanguages::Python => python::aggregation::run(
+                    self.clickhouse_config.clone(),
+                    &self.dir,
+                    !self.is_aggregation,
+                )?,
+            };
 
-        let child = match self.language {
-            SupportedLanguages::Typescript => typescript::aggregation::run(
-                self.clickhouse_config.clone(),
-                &self.dir,
-                !self.is_aggregation,
-            )?,
-            SupportedLanguages::Python => python::aggregation::run(
-                self.clickhouse_config.clone(),
-                &self.dir,
-                !self.is_aggregation,
-            )?,
-        };
-
-        self.registry.insert(olap_process.id(), child);
+            self.registry.insert(olap_process.id(), child);
+        }
 
         Ok(())
     }
 
     pub async fn stop(&mut self, _olap_process: &OlapProcess) -> Result<(), AggregationError> {
-        info!("Stopping aggregation...");
+        if self.dir.exists() {
+            info!("Stopping aggregation...");
 
-        for child in self.registry.values_mut() {
-            child.kill().await?;
+            for child in self.registry.values_mut() {
+                child.kill().await?;
+            }
+
+            self.registry.clear();
         }
-
-        self.registry.clear();
-
         Ok(())
     }
 }

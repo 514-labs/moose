@@ -28,13 +28,25 @@
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --accent-blue: 202 100% 50%;
-    --accent-teal: 191 100% 39%;
-    --accent-indigo: 241 100% 61%;
-    --accent-purple: 270 100% 50%;
-    --accent-pink: 288 100% 58%;
-    --accent-yellow: 65 100% 50%;
-    --accent-green: 120 100% 50%;
+    /* Moose Accents */
+    --accent-moo-green: 148, 100%, 59%;
+    --accent-moo-green-foreground: 0 0% 100%;
+    --accent-moo-indigo: 241, 100%, 61%;
+    --accent-moo-indigo-foreground: 0 0% 3.9%;
+    --accent-moo-purple: 158, 100%, 77%;
+    --accent-moo-purple-foreground: 0 0% 3.9%;
+    --accent-moo-pink: 288, 100%, 58%;
+    --accent-moo-pink-foreground: 0 0% 3.9%;
+    --accent-moo-yellow: 65, 100%, 50%;
+    --accent-moo-yellow-foreground: 0 0% 100%;
+
+    /* Boreal Accents */
+    --accent-bor-tea: 158, 100%, 77%;
+    --accent-bor-tea-foreground: 0 0% 100%;
+    --accent-bor-yellow: 65, 100%, 50%;
+    --accent-bor-yellow-foreground: 0 0% 100%;
+    --accent-bor-green: 133, 100%, 66%;
+    --accent-bor-green-foreground: 0 0% 100%;
 
     --moose-gradient: linear-gradient(
       150.33deg,
@@ -83,37 +95,6 @@
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-
-    /* Moose Accents */
-    --accent-moo-green: 148, 100%, 59%;
-    --accent-moo-green-foreground: 0 0% 100%;
-    --accent-moo-indigo: 241, 100%, 61%;
-    --accent-moo-indigo-foreground: 0 0% 3.9%;
-    --accent-moo-purple: 158, 100%, 77%;
-    --accent-moo-purple-foreground: 0 0% 3.9%;
-    --accent-moo-pink: 288, 100%, 58%;
-    --accent-moo-pink-foreground: 0 0% 3.9%;
-    --accent-moo-yellow: 65, 100%, 50%;
-    --accent-moo-yellow-foreground: 0 0% 100%;
-
-    --moose-gradient: linear-gradient(
-      150.33deg,
-      #641bff -2.98%,
-      #d52bff 106.53%
-    );
-    --moose-gradient-dark: linear-gradient(
-      219.61deg,
-      #373fff -34.79%,
-      #000000 100.32%
-    );
-
-    /* Boreal Accents */
-    --accent-bor-tea: 158, 100%, 77%;
-    --accent-bor-tea-foreground: 0 0% 100%;
-    --accent-bor-yellow: 65, 100%, 50%;
-    --accent-bor-yellow-foreground: 0 0% 100%;
-    --accent-bor-green: 133, 100%, 66%;
-    --accent-bor-green-foreground: 0 0% 100%;
 
     --border: 0 0% 14.9%;
     --input: 0 0% 14.9%;

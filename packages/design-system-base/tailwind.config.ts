@@ -51,26 +51,26 @@ const config = {
           foreground: "hsl(var(--accent-foreground))",
         },
         blue: {
-          DEFAULT: "hsl(var(--accent-blue))",
+          DEFAULT: "hsl(var(--accent-moo-blue))",
         },
         teal: {
-          DEFAULT: "hsl(var(--accent-teal))",
+          DEFAULT: "hsl(var(--accent-moo-teal))",
         },
         indigo: {
           DEFAULT: "hsl(var(--accent-indigo))",
           trans: "hsl(var(--accent-indigo-trans))/20",
         },
         purple: {
-          DEFAULT: "hsl(var(--accent-purple))",
+          DEFAULT: "hsl(var(--accent-moo-purple))",
         },
         pink: {
-          DEFAULT: "hsl(var(--accent-pink))",
+          DEFAULT: "hsl(var(--accent-moo-pink))",
         },
         yellow: {
-          DEFAULT: "hsl(var(--accent-yellow))",
+          DEFAULT: "hsl(var(--accent-moo-yellow))",
         },
         green: {
-          DEFAULT: "hsl(var(--accent-green))",
+          DEFAULT: "hsl(var(--accent-moo-green))",
         },
         popover: {
           DEFAULT: "hsl(var(--popover))",

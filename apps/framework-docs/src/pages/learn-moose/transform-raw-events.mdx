@@ -1,0 +1,242 @@
+import { Callout, ToggleBlock } from "../../components";
+import { Steps, FileTree } from "nextra/components";
+
+# Transform Raw Events with Streaming Functions
+
+With the data now flowing in from GitHub, the next step is to filter, transform and enrich it. In this module, you will:
+
+- Create a new `ProcessedStarEvent` Data Model to store the transformed properties from the `RawStarEvent` data
+- Define a **Streaming Function** to transform and enrich the incoming `RawStarEvent` data into `ProcessedStarEvent` data
+
+<Callout type="info">
+  [Streaming Functions](../stream-processing) are regular Typescript/Python
+  functions that let you apply custom logic to process incoming data from a
+  source data model into a target destination model.
+</Callout>
+
+These transformations allow you to select or restructure specific data, such as the GitHub usernames of users who star your repository. Additionally, you can enrich this data by adding more information about the users, like their programming language preferences. You will learn how to implement both transformations in this Streaming Function walkthrough!
+
+## Create `ProcessedStarEvent` Data Model
+
+The `ProcessedStarEvent` Data Model will represent the data after it is transformed.
+
+<Steps>
+### Create a New File `ProcessedStarEvent.ts`
+Add a new file to the `/datamodels` directory of your app named `ProcessedStarEvent.ts`:
+
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="datamodels" open>
+      <FileTree.File name="RawStarEvent.ts" />
+      <FileTree.File name="ProcessedStarEvent.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+### Define `ProcessedStarEvent` Data Model Fields
+
+It should contain the following fields:
+
+- `starred_at`: timestamp for the star event - to be used as the `Key`. You will need cast this as a `Date`, so make that the field type for this field.
+
+- `username`: the user who starred your repository
+- `languages`: an array of objects that captures the programming languages used by the starrer
+  - `language`: the name of a programming language (`string` )
+  - `bytes`: the total amount of code written by the starrer in the programming language across all their repositories.
+
+```ts filename="/datamodels/ProcessedStarEvent.ts" copy {2-3}
+export interface DATA_MODEL_NAME {
+  FIELD_NAME: Key<FIELD_TYPE>;
+  FIELD_NAME: FIELD_TYPE;
+  languages: Array<{ FIELD_NAME: FIELD_TYPE; FIELD_NAME: FIELD_TYPE }>;
+}
+```
+
+<Callout type="info" title="Complete The Code">
+  In the example code block, replace all `FIELD_NAME` and `FIELD_TYPE` values
+  with the appropriate field names and data types.
+</Callout>
+
+<ToggleBlock openText="Stuck? Reveal Solution" closeText="Hide Solution">
+```ts filename="/datamodels/ProcessedStarEvent.ts" copy
+export interface ProcessedStarEvent {
+	starred_at: Key<Date>;
+    username: string; 
+    languages: Array<{language: string, bytes: number}>
+}
+```
+
+</ToggleBlock>
+</Steps>
+
+You can see from the above that most of the fields map to fields in the RawStarEvents Data Model, but we’re missing language data. We will fetch the languages information from the GitHub API within the Streaming Function. Let's walk through how to set this up!
+
+## Create a Streaming Function to Transform `RawStarEvent` into `ProcessedStarEvent`
+
+<Steps>
+### Initialize a Streaming Function in the CLI
+In your terminal, run:
+```bash filename="Terminal" copy
+npx moose-cli function init --source RawStarEvent --destination ProcessedStarEvent
+```
+This command will generate a file named `RawStarEvent__ProcessedStarEvent.ts` for you in the `functions` folder of your project.
+
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="functions" open>
+      <FileTree.File name="RawStarEvent__ProcessedStarEvent.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+### Open File and Inspect Boilerplate Code
+
+Inside the generated file, you'll find this boilerplate code:
+
+```ts filename="functions/RawStarEvent__ProcessedStarEvent.ts" copy
+// Add your models & start the development server to import these types
+import { RawStarEvent, ProcessedStarEvent } from "../datamodels/RawStarEvent";
+
+// The 'run' function transforms RawStarEvent data to ProcessedStarEvent format.
+// For more details on how Moose streaming functions work, see: https://docs.moosejs.com
+export default function run(source: RawStarEvent): ProcessedStarEvent | null {
+  return {
+    starred_at: new Date(),
+    username: "",
+    languages: [],
+  };
+}
+```
+
+<Callout type="info" title="Streaming Function Structure">
+<br/><br/>
+**Imports**: The source (`RawStarEvent`) and destination (`ProcessedStarEvent`) Data Models are automatically imported.
+<br/><br/>
+
+**Default Export**: The `run()` function is the default export of the module, indicating to Moose which function to call for the transformation. - You can name this function anything you want; it's the `export default` keyword that matters.
+
+<br/>
+**Orchestration**: Moose streaming functions sit between the streaming topics for the designated source and destination Data Models.
+    - **Source Data Model**:  The function's input parameter is of the source Data Model type (`source: RawStarEvent`). Moose subscribes to the streaming topic for this source Data Model and executes the `run()` function on new records as they arrive in the streaming topic.
+    - **Destination Data Model**: The function returns a `ProcessedStarEvent` object, which tells Moose to publish the result to the `ProcessedStarEvent` streaming topic.
+<br/>
+[Learn more about Streaming Functions](/stream-processing)
+</Callout>
+
+</Steps>
+
+## Implement Streaming Function Logic to Enrich Usernames with Language Data
+
+Now you'll implement the actual transformation logic to:
+
+- Extract the username from the source `RawStarEvent`
+- Retrieve the programming languages used in the user's projects via the GitHub API
+- Return a `ProcessedStarEvent`
+
+### Replace the boilerplate `run()` Function
+
+In your `RawStarEvent__ProcessedStarEvent.ts` file, paste in the following code, replacing the boilerplate:
+
+```ts filename="functions/RawStarEvent__ProcessedStarEvent.ts" copy
+/* Filename: app/functions/RawStarEvent__ProcessedStarEvent.ts */
+import { RawStarEvent, ProcessedStarEvent } from "../datamodels/RawStarEvent";
+
+export default async function run(
+  source: RawStarEvent,
+): Promise<ProcessedStarEvent | null> {
+  // Drop events that are not created or have a date
+  if (source.action == "deleted" || !source.starred_at) {
+    return null;
+  }
+  // Enrich data from GitHub API
+  const languageMap = await getUserLanguage(source.sender.repos_url);
+  // Return the filtered and transformed fields
+  return {
+    starred_at: new Date(source.starred_at), // Convert string to date
+    username: source.sender.login,
+    languages: Array.from(languageMap, ([language, bytes]) => ({
+      language,
+      bytes,
+    })),
+  };
+}
+
+// ....... helper function code to call the GitHub API ......... //
+
+async function getUserLanguage(repoUrl: string): Promise<Map<string, number>> {
+  const repositories = await callGitHubAPI(repoUrl);
+  // Maps between the language and the number of bytes of code in the repository
+  const languageCounts = new Map<string, number>();
+  for (const repo of repositories) {
+    // Calls the API per repository to get language counts
+    const languages = await callGitHubAPI(repo.languages_url);
+    for (const [language, count] of Object.entries(
+      languages as GitHubLanguage,
+    )) {
+      // Sum the counts for each language
+      languageCounts.set(language, (languageCounts.get(language) || 0) + count);
+    }
+  }
+  return languageCounts;
+}
+
+async function callGitHubAPI(url: string): Promise<any> {
+  // GitHub requires auth for more than 60 requests per hour
+  const response = await fetch(url);
+  return await response.json();
+}
+
+interface GitHubLanguage {
+  [key: string]: number;
+}
+```
+
+<Callout type="info" title="Breaking Down the Code">
+  - The `run()` function returns `null` for events where the `action` is a
+  "deleted" star or if `starred_at` is null. This filters out unwanted rows from
+  the destination Data Model table. - The **`getUserLanguage()`** and
+  **`callGitHubAPI()`** are helper functions to interact with the GitHub API.
+  We're simply writing modular TypeScript code here—neat, right? 😊 - The
+  `getUserLanguage` function creates a `Map` of programming languages used in a
+  user's repositories. It does this by calling the GitHub API and summing the
+  byte counts for each language. - The `callGitHubAPI` function takes a URL and
+  makes a request to the GitHub API. - The enriched and transformed data is then
+  returned as a `ProcessedStarEvent` object and stored in the
+  `ProcessedStarEvent` database table.
+</Callout>
+
+## Test the Streaming Function
+
+<Steps>
+### Star Your Repository Again
+Send us the link so we can star it too!
+
+### Confirm the `RawStarEvent` webhook was received and transformed in the CLI
+
+You should see the following message printed to your terminal:
+
+```txt
+Received RawStarEvent_0_0 -> ProcessedStarEvent_0_0 1 message(s)
+```
+
+### Query the `ProcessedStarEvent` table to verify the data was processed and stored correctly
+
+Return to your database explorer and execute the following query:
+
+```sql
+SELECT * FROM local.ProcessedStarEvent
+```
+
+You should see the transformed event records in the query result set.
+
+</Steps>
+
+<Callout type="success">
+  By defining a Data Model for processed GitHub events and implementing simple
+  transformation logic in a Streaming Function, you now have an automated,
+  real-time data processing service in your Moose application.
+  <br /> <br />
+  Best of all, by enriching events with GitHub API data, you demonstrated the
+  powerful workflows that can be built using Streaming Functions and regular
+  TypeScript code.
+</Callout>

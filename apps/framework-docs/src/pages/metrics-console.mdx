@@ -1,27 +1,57 @@
-# Metrics Console
+import { Callout } from "../components";
 
-The metrics console lets you view live metrics from your Moose application all within your terminal
+# Monitoring Performance
 
-To view metrics, run the following command:
+Moose provides a console to view live metrics from your Moose application. To launch the console, run:
 
-```txt filename="Terminal" copy
-moose metrics
+```bash filename="Terminal" copy
+npx moose-cli metrics
 ```
 
 ## HTTP Endpoint Metrics
 
-In the metrics console you can view how many http requests per second and total requests are being send to each ingest and consumption endpoint.
-You can also view how many bytes per second are being sent to each endpoint. Using your arrow keys you can move up and down rows in the endpoint table and then press enter to view more details about that endpoint.
-In the detailed view you can see more detailed metrics and graphs.
+The following metrics are calculated across all HTTP `/ingest` and `/consumption` endpoints in your Moose application:
+
+| Metric                | Description                                                                         |
+| :-------------------- | :---------------------------------------------------------------------------------- |
+| `AVERAGE LATENCY`     | Average time in milliseconds it takes for a request to be processed by the endpoint |
+| `TOTAL # OF REQUESTS` | Total number of requests made to the endpoint                                       |
+| `REQUESTS PER SECOND` | Average number of requests made per second to the endpoint                          |
+| `DATA IN`             | Average number of bytes of data sent to all `/ingest` endpoints per second          |
+| `DATA OUT`            | Average number of bytes of data sent to all `/consumption` endpoints per second     |
+
+For each HTTP `/ingest` and `/consumption` endpoint that is configured in your Moose application, we also provide the following metrics:
+
+| Metric                        | Description                                                                         |
+| :---------------------------- | :---------------------------------------------------------------------------------- |
+| `LATENCY`                     | Average time in milliseconds it takes for a request to be processed by the endpoint |
+| `# OF REQUESTS RECEIVED`      | Total number of requests made to the endpoint                                       |
+| `# OF MESSAGES SENT TO KAFKA` | Total number of messages sent to the Kafka topic                                    |
+
+<Callout type="info" title="Moose Hint">
+  Use the arrow keys to move up and down rows in the endpoint table and press
+  enter to view more details about that endpoint.
+</Callout>
 
 ## Kafka To Clickhouse Sync Process Metrics
 
-The metrics console provide metrics to view the status of the Kafka Clickhouse sync process.
-You can view the number of messages that have been sent from the ingest point to kafka and how many have been received by the Clickhouse consumer.
-There are also metrics to show the lag of the consumer and the number of messages received per second and the number of bytes and per second that are being sent to Clickhouse.
+The following metrics analyze the performance of the process that syncs data from the configured Redpanda topic for a particular Data Model to the Clickhouse database table for that Data Model.
+
+| Metric      | Description                                                                                         |
+| :---------- | :-------------------------------------------------------------------------------------------------- |
+| `MSG READ`  | Total number of messages sent from `/ingest` API endpoint to the Kafka topic                        |
+| `LAG`       | The number of messages that have been sent to the consumer but not yet received                     |
+| `MSG/SEC`   | Average number of messages sent from `/ingest` API endpoint to the Kafka topic per second           |
+| `BYTES/SEC` | Average number of bytes of data received by the Clickhouse consumer from the Kafka topic per second |
 
 ## Streaming Functions Metrics
 
-The metrics console provide metrics to view the status of the streaming functions.
-You can see the total number of messages that have been sent to the streaming function and the number of messages that have been received by the streaming function.
-There are metrics that show the number of messages in per seconds, messages out per second, and bytes out per second.
+These metrics analyze the performance of each Streaming Function configured in your Moose application:
+
+| Metric        | Description                                                                   |
+| :------------ | :---------------------------------------------------------------------------- |
+| `MSG IN`      | Total number of messages passed into the streaming function                   |
+| `MSG IN/SEC`  | Average number of messages passed into the streaming function per second      |
+| `MSG OUT`     | Total number of messages returned by the streaming function                   |
+| `MSG OUT/SEC` | Average number of messages returned by the streaming function per second      |
+| `BYTES/SEC`   | Average number of bytes of data returned by the streaming function per second |

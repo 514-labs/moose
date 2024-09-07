@@ -1,0 +1,88 @@
+import { Callout, ZoomImg } from "../../components";
+import { Steps, FileTree } from "nextra/components";
+
+# Getting Started with Moose
+
+<Callout type="warning" title="Run Docker">
+  Open Docker Desktop if its not already running. <br /> Don't have it
+  installed? [Download Docker
+  here](https://www.docker.com/products/docker-desktop)
+</Callout>
+
+## Create an Empty Moose Project
+
+<Steps>
+### Install the Moose CLI
+
+```bash filename="Terminal" copy
+npx create-moose-app@latest moose-github-analytics typescript
+```
+
+This Moose CLI helper function creates a new Moose app with the proper conventions for the basic directory structure. This includes an `/app` folder which contains the heart of your new Moose app. Each sub-folder hosts one type of Moose primitive.
+
+<FileTree>
+  <FileTree.Folder open name="moose-github-analytics">
+    <FileTree.Folder open name="app">
+      <FileTree.Folder name="datamodels" />
+      <FileTree.Folder name="functions" />
+      <FileTree.Folder name="blocks" />
+      <FileTree.Folder name="apis" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+### `cd` into your Moose Project and Install Dependencies
+
+```bash filename="Terminal" copy
+cd moose-github-analytics && npm install
+```
+
+### Run the Moose Development Server
+
+```bash filename="Terminal" copy
+moose-cli dev
+```
+
+<Callout type="warning">
+  You must be in your project directory in order to start the development server
+</Callout>
+
+You should expect to see the following printed to your terminal:
+
+{" "}
+
+<ZoomImg src="/moose-dev-terminal.png" />
+
+{" "}
+
+<Callout type="success">
+  You have set up a Moose instance at `http://localhost:4000`
+  
+  <br/><br/>
+
+It provides the following infrastructure:
+
+  <ul>
+    - **OLAP Database** (Clickhouse) to store and analyze your data 
+    - **Streaming Data Platform** (Redpanda) to buffer and transform incoming data
+    - **Ingestion and Consumption APIs** to get data in and out of your database
+  </ul>
+<br/>
+As you develop, the dev server automatically updates with your latest changes, providing a real-time view of your Moose application locally.
+</Callout>
+
+### Open Project in IDE
+
+With VSCode, for example:
+
+```bash filename="Terminal" copy
+code .
+```
+
+<Callout type="info" title="(VSCode) Install Recommended Extensions ">
+  Click '**Install**' on the pop-up window located in the bottom right corner of
+  the screen. Moose will automatically configure these extensions for you.
+</Callout>
+
+<ZoomImg src="/vscode-install.png" />
+</Steps>

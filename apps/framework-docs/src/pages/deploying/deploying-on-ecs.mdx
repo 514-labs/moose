@@ -1,4 +1,4 @@
-import { Callout } from "nextra/components";
+import { Callout } from "../../components";
 
 # Deploying on Amazon ECS
 
@@ -65,7 +65,7 @@ Once you've completed creating an ECS Task, you're ready to create an ECS Servic
 Navigate to your cluster's Service page and press the `Create` button to create your new Moose service.
 The section we're interested in is the `Deployment configuration` section. There, you'll specify the Task Definition you created earlier. You can also specify the name of your service—perhaps something creative like `moose-service`—and the number of tasks to launch.
 
-<Callout type="warning" emoji="ℹ️">
+<Callout type="warning" title="Launch a Single Instance">
   Note at this time, we recommend that you only launch a single instance of
   Moose in your cluster. We're currently developing for multi-instance
   concurrent usage.

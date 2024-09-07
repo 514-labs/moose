@@ -1,0 +1,26 @@
+import { Callout } from "../../components";
+import { FileTree } from "nextra/components";
+
+# Initialize Your API Endpoint
+
+## via the CLI
+
+To create a new Consumption API endpoint, leverage the `moose-cli consumption init` command. This will generate a `.ts` or `.py` file in the `/apis` directory.
+
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="apis" open>
+      <FileTree.File name="YOUR_API_ROUTE.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+For detailed information about the moose block init command, you can run the following in your terminal:
+
+```bash copy
+npx moose-cli consumption init --help
+```
+
+## Manually
+
+You can alternatively manually create a new `.ts` or `.py` file inside the `/apis` folder of your project.

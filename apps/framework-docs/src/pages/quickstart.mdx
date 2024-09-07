@@ -1,0 +1,364 @@
+import { Tabs, Steps, Card } from "nextra/components";
+import { Callout, CTACard, CTACards } from "../components";
+import { RectangleEllipsis, Square } from "lucide-react";
+
+# Quick Start
+
+<Tabs items={["Typescript", "Python"]}>
+<Tabs.Tab>
+## Prerequisites
+
+Before using Moose, ensure you have the following dependencies installed on your machine:
+
+- [Git](https://git-scm.com/)
+- [NodeJS](https://nodejs.org/en/)
+- [Docker](https://www.docker.com/)
+- macOS or Linux (Windows is not supported at this time, but may work using WSL Windows Subsystem for Linux)
+
+To check if these dependencies are installed, run the following command in your terminal:
+
+```bash filename="Terminal" copy
+git --version && node --version && docker --version
+```
+
+## Create Moose App
+
+In your terminal, run:
+
+```bash filename="Terminal" copy
+npx create-moose-app@latest my-moose-app ts
+```
+
+This will automatically create a new project folder and initialize a skeleton Moose app with the entire project structure you need to get started.
+
+### Install Dependencies
+
+Navigate to your project directory and install project dependencies:
+
+```bash filename="Terminal" copy
+cd my-moose-app && npm install
+```
+
+## Start Local Dev Server
+
+<Callout type="warning" title="Make sure Docker is running">
+  Make sure Docker is running before you start your dev server. This is required
+  because the local instances of Clickhouse and Redpanda are running inside
+  containers.
+</Callout>
+
+To check if Docker is running, run:
+
+```bash filename="Terminal" copy
+docker info
+```
+
+Start your local development server to run your entire app,
+
+```bash filename="Terminal" copy
+npx moose-cli dev
+```
+
+This server operates all the infrastructure powering your application: a web server with API endpoints to ingest & consume data, a Redpanda platform to buffer data, and a Clickhouse database to store and query data for insights. The local dev server configures these components based on your code and updates them in real time as your application code changes.
+
+### Inspect Infrastructure
+
+Check that the infrastructure is setup according to the default starter code in your project by running:
+
+```bash filename="Terminal" copy
+npx moose-cli ls
+```
+
+You should see the following table in your terminal:
+
+![moose-ls](/moose-ls.png)
+
+## Open Project in IDE
+
+### VSCode Users: Install Recommended Extensions
+
+```bash filename="Terminal" copy
+code .
+```
+
+Opening your project in VSCode will prompt a recommendation to install the [SQLTools](https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools) and [SQLTools ClickHouse Driver](https://marketplace.visualstudio.com/items?itemName=ultram4rine.sqltools-clickhouse-driver) extensions. Installing these allows Moose to auto-configure them for your local Clickhouse database, letting you explore and query your data immediately.
+
+### Explore Data Models
+
+In your IDE file explorer, navigate to the `/app` folder of your project and open the `datamodels` directory. You should see a file named `models.ts` . Open the file and inspect the data models:
+
+```ts filename="/datamodels/models.ts" copy
+import { Key } from "@514labs/moose-lib";
+
+export interface UserActivity {
+  eventId: Key<string>;
+  timestamp: string;
+  userId: string;
+  activity: string;
+}
+
+export interface ParsedActivity {
+  eventId: Key<string>;
+  timestamp: Date;
+  userId: string;
+  activity: string;
+}
+```
+
+The file contains schema definitions for two data models: `UserActivity` and `ParsedActivity`. Each model defines the structure of the data that will be ingested into the Clickhouse database. Recall from the `moose-ls` output that Moose has automatically created ingestion points and tables in your database for these data models.
+
+</Tabs.Tab>
+<Tabs.Tab>
+## Prerequisites
+
+Before using Moose, ensure you have the following dependencies installed on your machine:
+
+- [Git](https://git-scm.com/)
+- [Python version 3.XX+](https://www.python.org/downloads/)
+- [Docker](https://www.docker.com/)
+- macOS or Linux (Windows is not supported at this time, but may work using WSL Windows Subsystem for Linux)
+
+To check if these dependencies are installed, run the following command in your terminal:
+
+```bash filename="Terminal" copy
+git --version && python3 --version && docker --version
+```
+
+## Create and Activate a Python Virtual Environment
+
+Navigate to where you want to create your project and run the following command to create a new Python virtual environment:
+
+```bash filename="Terminal" copy
+python -m venv venv
+```
+
+<Callout type="info" title="Virtual Environment">
+  It's a good practice to create a new Python virtual environment for each
+  project to avoid conflicts with other projects and dependencies. You can use
+  whatever name you want for your virtual environment, but we'll refer to it as
+  `venv` in the docs.
+</Callout>
+
+Activate the virtual environment by running the following command:
+
+```bash filename="Terminal" copy
+source venv/bin/activate
+```
+
+## Install the Moose CLI
+
+Moose is installed as a Python package, so you can install it using pip:
+
+```bash filename="Terminal" copy
+pip install moose-cli
+```
+
+## Initialize a New Moose Project
+
+In your terminal, run:
+
+```bash filename="Terminal" copy
+moose-cli init my-moose-app python
+```
+
+<Callout type="warning" title="Don't forget the python flag!">
+  Don't forget to include the `python` flag when initializing your project.
+</Callout>
+
+This will automatically create a new project folder and initialize a skeleton Moose app with the entire project structure you need to get started.
+
+## Start Local Dev Server
+
+<Callout type="warning" title="Make sure Docker is running">
+  Make sure Docker is running before you start your dev server. This is required
+  because the local instances of Clickhouse and Redpanda are running inside
+  containers.
+</Callout>
+
+To check if Docker is running, run:
+
+```bash filename="Terminal" copy
+docker info
+```
+
+Start your local development server to run your entire app,
+
+```bash filename="Terminal" copy
+moose-cli dev
+```
+
+This server operates all the infrastructure powering your application: a web server with API endpoints to ingest & consume data, a Redpanda platform to buffer data, and a Clickhouse database to store and query data for insights. The local dev server configures these components based on your code and updates them in real time as your application code changes.
+
+### Inspect Infrastructure
+
+Check that the infrastructure is setup according to the default starter code in your project by running:
+
+```bash filename="Terminal" copy
+moose-cli ls
+```
+
+You should see the following table in your terminal:
+
+![moose-ls](/moose-ls.png)
+
+## Open Project in IDE
+
+### VSCode Users: Install Recommended Extensions
+
+```bash filename="Terminal" copy
+code .
+```
+
+Opening your project in VSCode will prompt a recommendation to install the [SQLTools](https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools) and [SQLTools ClickHouse Driver](https://marketplace.visualstudio.com/items?itemName=ultram4rine.sqltools-clickhouse-driver) extensions. Installing these allows Moose to auto-configure them for your local Clickhouse database, letting you explore and query your data immediately.
+
+### Explore Data Models
+
+In your IDE file explorer, navigate to the `/app` folder of your project and open the `datamodels` directory. You should see a file named `models.py` . Open the file and inspect the data models:
+
+```python filename="/datamodels/models.py" copy
+from dataclasses import dataclass
+import datetime
+
+type Key[T: (str, int)] = T
+
+@dataclass
+class UserActivity:
+    eventId: Key[str]
+    timestamp: str
+    userId: str
+    activity: str
+
+@dataclass
+class ParsedActivity:
+    eventId: Key[str]
+    timestamp: datetime
+    userId: str
+    activity: str
+
+```
+
+The file contains schema definitions for two data models: `UserActivity` and `ParsedActivity`. Each model defines the structure of the data that will be ingested into the Clickhouse database. Recall from the `moose-ls` output that Moose has automatically created ingestion points and tables in your database for these data models.
+
+</Tabs.Tab>
+</Tabs>
+
+## Ingest Data
+
+Let's send some sample data to the `UserActivity` data model via the `/ingest/UserActivity/0.0` endpoint that Moose created for us. Run the following command:
+
+<Tabs items={['curl', 'javascript', 'python']}>
+  <Tabs.Tab>
+    ``` bash
+  curl -X POST \
+    -H "Content-Type: application/json" \
+    -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \
+    http://localhost:4000/ingest/UserActivity
+  ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+  ```javascript
+  fetch('http://localhost:4000/ingest/UserActivity', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify({
+      eventId: '1234567890',
+      timestamp: '2019-01-01 00:00:01',
+      userId: '123456',
+      activity: 'click'
+    })
+  })
+  ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+  ```python
+    import requests
+
+    requests.post('http://localhost:4000/ingest/UserActivity', json={
+      'eventId': '1234567890',
+      'timestamp': '2019-01-01 00:00:01',
+      'userId': '123456',
+      'activity': 'click'
+    })
+    ```
+
+  </Tabs.Tab>
+</Tabs>
+
+You should see a bunch of messages in the CLI confirming that Moose received the data. Let's double-check that the new data landed in our `UserActivity_0_0` table in our database.
+
+### Query Data
+
+Follow the steps below to get started with querying your data using either the SQLTools VSCode extension or your preferred database explorer tool.
+
+<Tabs items={['Using the SQLTools VSCode Extension', 'Using Your Own Database Explorer']}>
+  <Tabs.Tab>
+    #### Using the SQLTools VSCode Extension:
+    Click the SQLTools database icon in your extensions tab. You should see the Clickhouse icon followed by the connection details for the database running on your local dev server: `panda@localhost:18123/local`. 
+    
+    
+    ![SQL Tools Setup](/sqltools.png)
+
+    To create and run a new query, click the `New SQL File` icon.
+
+  </Tabs.Tab>
+<Tabs.Tab>
+  #### Using a Database Explorer:
+  The following steps will guide you through configuring your preferred database explorer tool, such as DBeaver or DataGrip, to connect to the Clickhouse database instance that Moose will spin up for you on your local dev server.
+
+- Open your database explorer and navigate to the section for adding a new database connection.
+- Enter the connection details as follows:
+
+```text filename="moose.project.toml" copy
+[clickhouse config]
+  db_name = "local"
+  user = "panda"
+  password = "pandapass"
+  host = "localhost"
+  host_port = 18123
+```
+
+- Test and save the connection. You should now see the `local` database in your database explorer tool.
+
+<Callout type="info">
+  You can find all the infrastructure configuration details in the
+  `moose.project.toml` file in your project's root directory
+</Callout>
+
+</Tabs.Tab>
+</Tabs>
+
+Execute the following query:
+
+```sql filename="DB Explorer" copy
+SELECT * FROM local.UserActivity
+```
+
+You should see the data you ingested in the `UserActivity` table.
+
+## Next Steps
+
+Congrats! You've successfully set up a Moose project, ingested data, and confirmed that it landed in your database. You're now ready to dive deeper and explore all the exciting capabilities that Moose has to offer. Here are some suggested next steps:
+
+#### Learn Other Moose Primitives
+
+<CTACards>
+<CTACard 
+  title="Learn How to Process Data With Streaming Functions"
+  description="Learn how to process UserActivity data into ParsedActivity data using Streaming Functions" 
+  ctaLink="/stream-processing"
+  ctaLabel="Learn Streaming Functions" 
+  Icon={RectangleEllipsis} 
+  className="w-1/2"
+/>
+
+<CTACard
+  title="Add a New Data Model"
+  description="Deep dive into Data Modeling and learn other ways to take advantage of Moose's data modeling capabilities, including the supported types you can leverage in your schema definitions" 
+  ctaLink="/data-models" 
+  ctaLabel="Take me there"
+  Icon={Square} 
+  className="w-1/2"
+/>
+</CTACards>

@@ -13,16 +13,6 @@ import { Logo } from "./logo";
 import { Badge } from "./ui/badge";
 import { TrackLink } from "./trackable-components";
 import { ProductBadge } from "./language-badge";
-import {
-  NavigationMenu,
-  NavigationMenuContent,
-  NavigationMenuIndicator,
-  NavigationMenuItem,
-  NavigationMenuLink,
-  NavigationMenuList,
-  NavigationMenuTrigger,
-  NavigationMenuViewport,
-} from "./ui/navigation-menu";
 
 gsap.registerPlugin(SplitText);
 

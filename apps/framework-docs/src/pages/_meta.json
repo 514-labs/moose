@@ -1,17 +1,40 @@
 {
+  "--Get Started--": {
+    "type": "separator",
+    "title": "Get Started"
+  },
   "index": {
     "title": "Introduction",
     "theme": {
       "breadcrumb": false
     }
   },
-  "getting-started": "Getting Started",
-  "building": "Developing your App",
+  "quickstart": "Quick Start",
+  "project-structure": "Project Structure",
+  "architecture": "Architecture",
+  "version-status": "Alpha Warning",
+  "learn-moose": "Tutorial",
+  "--Develop--": {
+    "type": "separator",
+    "title": "Develop"
+  },
+  "data-models": "Data Modeling",
+  "ingest-data": "Ingesting Data",
+  "stream-processing": "Stream Processing",
+  "db-processing": "Database Processing",
+  "consumption-apis": "Consuming Data",
+  "metrics-console": "Monitoring Performance",
+  "--Deploy--": {
+    "type": "separator",
+    "title": "Deploy"
+  },
   "deploying": "Deploying your App",
+  "--Reference--": {
+    "type": "separator",
+    "title": "Reference"
+  },
   "moose-cli": "Moose CLI",
-  "metrics-console": "Metrics Console",
-  "quick-reference": "Quick Reference",
-  "examples": "Example Apps",
+  "templates": "Templates",
   "faqs": "FAQs",
   "usage-data": "Privacy"
 }

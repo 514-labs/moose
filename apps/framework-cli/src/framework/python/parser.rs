@@ -306,7 +306,13 @@ fn class_attribute_node_to_column_builder(
             process_name_node(name, enums, python_classes, nested_classes, &mut column)?
         }
         // Handles the case where the annotation is a subscript such as list[str], Optional[int], Key[str]
-        Expr::Subscript(subscript) => process_subscript_node(subscript, &mut column)?,
+        Expr::Subscript(subscript) => process_subscript_node(
+            subscript,
+            &mut column,
+            enums,
+            python_classes,
+            nested_classes,
+        )?,
 
         _ => {
             return Err(PythonParserError::UnsupportedDataTypeError {
@@ -323,46 +329,53 @@ fn class_attribute_node_to_column_builder(
 fn process_subscript_node(
     subscript: ast::ExprSubscript,
     column: &mut ColumnBuilder,
+    enums: &[FrameworkEnum],
+    python_classes: &[&StmtClassDef],
+    nested_classes: &[Identifier],
 ) -> Result<(), PythonParserError> {
+    fn process_slice(
+        slice: &Expr,
+        enums: &[FrameworkEnum],
+        python_classes: &[&StmtClassDef],
+        nested_classes: &[Identifier],
+    ) -> Result<ColumnType, PythonParserError> {
+        match slice {
+            Expr::Name(name) => match name_node_to_base_column_type(name.clone()) {
+                Ok(col_type) => Ok(col_type),
+                Err(_) => {
+                    handle_complex_named_type(name.clone(), enums, python_classes, nested_classes)
+                }
+            },
+            _ => Err(PythonParserError::UnsupportedDataTypeError {
+                type_name: "Unsupported data type".to_string(),
+            }),
+        }
+    }
+
     match &*subscript.value {
         Expr::Name(name) => match name.id.to_string().as_str() {
             "list" => {
-                let col_type = ColumnType::Array(match &*subscript.slice {
-                    Expr::Name(name) => Box::new(name_node_to_base_column_type(name.clone())?),
-                    // TODO: recursively handle complex types
-                    _ => {
-                        return Err(PythonParserError::UnsupportedDataTypeError {
-                            type_name: "Unsupported data type".to_string(),
-                        })
-                    }
-                });
+                let col_type = ColumnType::Array(Box::new(process_slice(
+                    &subscript.slice,
+                    enums,
+                    python_classes,
+                    nested_classes,
+                )?));
                 column.data_type = Some(col_type);
             }
-            "Key" => match &*subscript.slice {
-                Expr::Name(name) => {
-                    let col_type = name_node_to_base_column_type(name.clone())?;
-                    column.data_type = Some(col_type);
-                    column.required = Some(true);
-                    column.primary_key = Some(true);
-                }
-                _ => {
-                    return Err(PythonParserError::UnsupportedDataTypeError {
-                        type_name: "Unsupported data type".to_string(),
-                    })
-                }
-            },
-            "Optional" => match &*subscript.slice {
-                Expr::Name(name) => {
-                    let col_type = name_node_to_base_column_type(name.clone())?;
-                    column.data_type = Some(col_type);
-                    column.required = Some(false);
-                }
-                _ => {
-                    return Err(PythonParserError::UnsupportedDataTypeError {
-                        type_name: "Unsupported data type".to_string(),
-                    })
-                }
-            },
+            "Key" => {
+                let col_type =
+                    process_slice(&subscript.slice, enums, python_classes, nested_classes)?;
+                column.data_type = Some(col_type);
+                column.required = Some(true);
+                column.primary_key = Some(true);
+            }
+            "Optional" => {
+                let col_type =
+                    process_slice(&subscript.slice, enums, python_classes, nested_classes)?;
+                column.data_type = Some(col_type);
+                column.required = Some(false);
+            }
 
             _ => {
                 return Err(PythonParserError::UnsupportedDataTypeError {
@@ -747,5 +760,32 @@ mod tests {
             .collect::<Vec<usize>>();
 
         assert_eq!(body_nodes_attribute_counts, [2, 9]);
+    }
+
+    #[test]
+    fn test_subscript_data_class() {
+        // checks that all the parsed classes have the right number of attributes
+
+        let test_file = std::env::current_dir()
+            .unwrap()
+            .join("tests/python/models/complex.py");
+
+        let models = extract_data_model_from_file(&test_file, "").unwrap().models;
+
+        println!("{:?}", models);
+        let model = models.iter().find(|m| m.name == "ComplexModel").unwrap();
+
+        let list_sub_field = model.columns.iter().find(|c| c.name == "list_sub").unwrap();
+
+        if let ColumnType::Array(inner_type) = &list_sub_field.data_type {
+            if let ColumnType::Nested(ref nested) = **inner_type {
+                assert_eq!(nested.name, "MySubModel");
+                assert_eq!(nested.columns.len(), 2);
+            } else {
+                panic!("Inner type of Array is not Nested");
+            }
+        } else {
+            panic!("list_sub field is not of type Array(Nested)");
+        }
     }
 }

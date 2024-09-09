@@ -34,7 +34,7 @@ export function CTACard({
   className,
 }: CTACardProps) {
   return (
-    <Card className={cn("w-auto h- rounded-3xl", className)}>
+    <Card className={cn("rounded-3xl h-full flex flex-col", className)}>
       <CardHeader>
         <div className="bg-gradient-to-b from-pink from-4.65% to-background to-93.24% w-fit rounded-[20px] border-transparent p-[2px]">
           <div className="rounded-[18px] w-fit bg-gradientDarkPink p-[2px]">
@@ -42,7 +42,7 @@ export function CTACard({
           </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="flex-grow">
         <Heading className="my-0 text-primary" level={HeadingLevel.l5}>
           {title}
         </Heading>
@@ -57,9 +57,25 @@ export function CTACard({
   );
 }
 
-export function CTACards({ children }: { children: React.ReactNode }) {
+interface CTACardsProps {
+  children: React.ReactNode;
+  columns?: number;
+}
+
+export function CTACards({ children, columns = 2 }: CTACardsProps) {
+  const gridColumns = {
+    1: "grid-cols-1",
+    2: "grid-cols-1 md:grid-cols-2",
+    3: "grid-cols-1 md:grid-cols-2 lg:grid-cols-3",
+    4: "grid-cols-1 md:grid-cols-2 lg:grid-cols-4",
+  };
   return (
-    <div className="flex md:flex-row flex-col justify-start items-center gap-5 mt-5">
+    <div
+      className={cn(
+        "grid gap-5 mt-5",
+        gridColumns[columns as keyof typeof gridColumns],
+      )}
+    >
       {children}
     </div>
   );

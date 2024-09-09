@@ -78,6 +78,11 @@ class MooseClient:
                 values[f'p{i}'] = value
         clickhouse_query = input.format_map(params)
        
+        # We are not using the result of the ping
+        # but this ensures that if the clickhouse cloud service is idle, we 
+        # wake it up, before we send the query.
+        self.ch_client.ping()
+
         val = self.ch_client.query(clickhouse_query, values)
 
         return list(val.named_results())

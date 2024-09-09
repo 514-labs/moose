@@ -413,7 +413,7 @@ async fn top_command_handler(
 
                 if destination.exists() && destination.is_dir() {
                     // Check if the directory contains any files or subdirectories
-                    let is_empty = std::fs::read_dir(&destination)
+                    let is_empty = std::fs::read_dir(destination)
                         .map(|mut dir| dir.next().is_none())
                         .unwrap_or(false);
 

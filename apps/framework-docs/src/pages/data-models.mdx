@@ -1,4 +1,4 @@
-import { FileTree } from "nextra/components";
+import { FileTree, Tabs } from "nextra/components";
 import { Callout } from "../components";
 
 # Introduction to Data Models
@@ -32,21 +32,10 @@ Data Models must be placed in the `/datamodels` directory of your Moose applicat
 
 Data Models are represented using native features and syntax of the language you are using:
 
-- **TypeScript**: Data Models are represented as `interfaces`, and must be exported from a `.ts` file (using `export` keyword)
-- **Python**: Data Models are represented as `dataclasses` (using the `@dataclass` decorator), and must be defined in a `.py` file
+<Tabs items={["Typescript", "Python"]}>
 
-<Callout type="info" title="Notes">
-  - You can define multiple Data Models within a single file. 
-  - The name of the file is not important, but it must have a `.ts` or `.py` extension.
-  - Any exported interface or dataclass that adheres to the appropriate file and folder conventions will be automatically detected by Moose and used to generate the necessary infrastructure.
-
-</Callout>
-
-### How Moose Interprets Data Models
-
-Moose will automatically detect and use any exported interfaces or dataclasses that adhere to the file and folder conventions. The property names and data types in the Data Model are interpreted and translated into the infrastructure components (SDK, Ingestion API, Streaming Topic, Database Landing Table, Database View).
-
-### Example
+<Tabs.Tab>
+In Typescript, Data Models are represented as `interfaces`, and must be exported from a `.ts` file (using `export` keyword):
 
 ```ts filename="datamodels/models.ts" copy
 import { Key } from "@514labs/moose-lib";
@@ -58,3 +47,33 @@ export interface UserActivity {
   activity: string;
 }
 ```
+
+</Tabs.Tab>
+
+<Tabs.Tab>
+In Python, Data Models are represented as `dataclasses` (using the `@dataclass` decorator), and must be defined in a `.py` file:
+
+```py filename="datamodels/models.py" copy
+from dataclasses import dataclass
+from typing import List
+
+@dataclass
+class UserActivity:
+    event_id: str
+    timestamp: str
+    user_id: str
+    activity: str
+```
+
+</Tabs.Tab>
+</Tabs>
+<Callout type="info" title="Notes">
+  - You can define multiple Data Models within a single file. 
+  - The name of the file is not important, but it must have a `.ts` or `.py` extension.
+  - Any exported interface or dataclass that adheres to the appropriate file and folder conventions will be automatically detected by Moose and used to generate the necessary infrastructure.
+
+</Callout>
+
+### How Moose Interprets Data Models
+
+Moose will automatically detect and use any exported interfaces or dataclasses that adhere to the file and folder conventions. The property names and data types in the Data Model are interpreted and translated into the infrastructure components (SDK, Ingestion API, Streaming Topic, Database Landing Table, Database View).

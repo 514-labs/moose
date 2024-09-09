@@ -1,36 +1,46 @@
-import { Steps, Callout } from "nextra/components";
+import { Steps } from "nextra/components";
+import { Callout } from "../../components";
 
 # Testing Streaming Functions
 
-## 1. Send Test Data to Source Data Model
+<Steps>
+### Send Test Data to Source Data Model
 
 Ingest test data into the source data model to trigger the function.
 
-<Callout>
-  Need help ingesting data? Check out the [Ingesting
-  Data](../data-models/capture-data) section of the documentation.
+<Callout type="info" title="Need Help Ingesting Data?">
+  Check out the [Ingesting Data](../ingest-data) section of the documentation.
 </Callout>
-## 2. Check CLI Output Check the terminal output to see if the streaming function
-has processed the data correctly. You should see the following message in your terminal:
+
+### Check CLI Output
+
+Check the terminal output to see if the streaming function has processed the data correctly. You should see the following message in your terminal:
 
 ```txt
 Received SourceDataModel -> DestinationDataModel 1 message(s)
 ```
 
-<Callout>
-  Don't see this message? Here are some troubleshooting tips: - Make sure you
-  have the correct source and destination data models in your function file. -
-  Save the function file after making changes. - Double check your function
-  logic for any errors. You can also run `moose logs --tail` to see logs in
-  real-time.
-  <br />
+<Callout type="danger" title="Don't See This Message?">
+  Here are some troubleshooting tips:
+  <ul>
+    <li>
+      Make sure you have the correct source and destination data models in your
+      function file.{" "}
+    </li>
+    <li>Save the function file after making changes. </li>
+    <li>Double check your function logic for any errors. </li>
+    <br />
+    You can also run `moose logs --tail` to see logs in real-time.
+  </ul>
 </Callout>
 
-## 3. Inspect Destination Data Model Table
+### Inspect Destination Data Model Table
 
 After the streaming function processes the data, check the destination table in the database to see if the data has been transformed correctly.
 
-<Callout>
-  Need help inspecting the data? [Learn more about how to connect to your local
-  OLAP database](/getting-started/quickstart).
+<Callout type="info" title="Need Help Inspecting the Data?">
+  [Learn more about how to connect to your local OLAP
+  database](/getting-started/quickstart).
 </Callout>
+
+</Steps>

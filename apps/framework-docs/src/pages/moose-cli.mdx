@@ -37,7 +37,7 @@ Moose comes with a handy CLI for managing your application. Navigate to your pro
 
 Instead of using `create-moose-app`, you can initialize your project manually with the CLI, if you'd like more flexibility and control. Either option will initialize a new Moose project for you, with all the necessary directories including temporary ones for data storage.
 
-```txt filename="Terminal" copy
+```bash filename="Terminal" copy
 moose init <name> --language <language> <--location <location>> <--no-fail-already-exists>
 ```
 
@@ -53,7 +53,7 @@ Builds your moose project. Syncs model changes, performs cleanup and prepares yo
 When the `--docker` flag is used, the Moose build command also packages your project into local Docker containers.
 You can also use optional flags to specify which architecture to build for.
 
-```txt filename="Terminal" copy
+```bash filename="Terminal" copy
 moose build <--docker> <--amd64 | --arm64>
 ```
 
@@ -61,7 +61,7 @@ moose build <--docker> <--amd64 | --arm64>
 
 Starts a development environment running the full stack of your MooseJS application locally. As you develop your MooseJS application locally, changes you make to your codebase will be automatically reflected here in real-time (when you save changes).
 
-```txt filename="Terminal" copy
+```bash filename="Terminal" copy
 moose dev
 ```
 
@@ -69,20 +69,77 @@ moose dev
 
 Starts Moose in production mode. This command is automatically invoked from a packaged Moose Docker container.
 
-```txt filename="Terminal" copy
+```bash filename="Terminal" copy
 moose prod
 ```
+
+### Check
+
+Checks the project for non-runtime errors.
+
+```bash filename="Terminal" copy
+moose check
+```
+
+### Data Model
+
+#### Data Model Init
+
+Initializes a new Data Model for your project. By specifying a sample data file, the CLI will be able to auto-generate the schema for you based on the data itself. Learn more about Data Models [here](/data-models).
+
+```bash filename="Terminal" copy
+moose data-model init <NAME> --sample <SAMPLE>
+```
+
+- `<NAME>`: Name of your data model.
+- `<SAMPLE>`: Path to a sample `.csv` or `.json` data file to introspect the schema from.
+
+### Import
+
+```bash filename="Terminal" copy
+moose import --file <FILE> <DATA_MODEL_NAME>
+```
+
+- `<FILE>`: Path to a `.csv` or `.json` file to import into the Data Model.
+- `<DATA_MODEL_NAME>`: Name of the Data Model to import the file into.
 
 ### Function
 
 #### Function Init
 
 Generates a new Streaming Function for you, including creating and structuring the necessary files
-based on your specified data models. Learn more in the [Streaming Function docs](/stream-processing).
+based on your specified Data Models. Learn more in the [Streaming Function docs](/stream-processing).
 
-```txt filename="Terminal" copy
-moose function init --source <YourSourceDataModel> --destination <YourDestinationDataModel>
+```bash filename="Terminal" copy
+moose function init --source <SOURCE> --destination <DESTINATION>
 ```
+
+- `<SOURCE>`: Name of the source Data Model.
+- `<DESTINATION>`: Name of the destination Data Model.
+
+### Block
+
+#### Block Init
+
+Generates a new Block for your project. Learn more in the [Blocks docs](/db-processing).
+
+```bash filename="Terminal" copy
+moose block init <NAME>
+```
+
+- `<NAME>`: Name of your block.
+
+### Consumption
+
+#### Consumption Init
+
+Generates a new Consumption API for your project. Learn more in the [Consumption docs](/consumption-apis).
+
+```bash filename="Terminal" copy
+moose consumption init <NAME>
+```
+
+- `<NAME>`: Name of your consumption API route.
 
 ### Generate
 
@@ -90,7 +147,7 @@ moose function init --source <YourSourceDataModel> --destination <YourDestinatio
 
 Generates an ingest sdk for the specified project.
 
-```txt filename="Terminal" copy
+```bash filename="Terminal" copy
 moose generate sdk -l <Language> -d <Directory> -p <ProjectLocation>
 ```
 
@@ -103,7 +160,7 @@ moose generate sdk -l <Language> -d <Directory> -p <ProjectLocation>
 
 Generates migration scripts for models that are different from the previous version. Learn more in the [Data Change Management docs](/data-models/dcm).
 
-```txt filename="Terminal" copy
+```bash filename="Terminal" copy
 moose generate migrations
 ```
 
@@ -111,7 +168,7 @@ moose generate migrations
 
 Bumps the `version` field in `package.json`, and adds an entry of the current version and commit hash to `[supported_old_versions]` section in `moose.config.toml`. Learn more in the [Data Change Management docs](../data-models/dcm).
 
-```txt filename="Terminal" copy
+```bash filename="Terminal" copy
 moose bump-version <new_version>
 ```
 
@@ -121,7 +178,7 @@ moose bump-version <new_version>
 
 Clears all temporary data and stops development infrastructure.
 
-```txt filename="Terminal" copy
+```bash filename="Terminal" copy
 moose clean
 ```
 
@@ -129,7 +186,7 @@ moose clean
 
 View logs to help debug how data moves through Moose.
 
-```txt filename="Terminal" copy
+```bash filename="Terminal" copy
 moose logs <--tail> <--filter <search_string>>
 ```
 
@@ -137,7 +194,7 @@ moose logs <--tail> <--filter <search_string>>
 
 View processes created by Moose, such as its underlying streaming platform & database with local access credentials.
 
-```txt filename="Terminal" copy
+```bash filename="Terminal" copy
 moose ps
 ```
 
@@ -145,7 +202,7 @@ moose ps
 
 View Moose primitives & infrastructure.
 
-```txt filename="Terminal" copy
+```bash filename="Terminal" copy
 moose ls -v <version> -l <limit> -s
 ```
 
@@ -157,6 +214,6 @@ moose ls -v <version> -l <limit> -s
 
 View live metrics from your Moose application
 
-```txt filename="Terminal" copy
+```bash filename="Terminal" copy
 moose metrics
 ```

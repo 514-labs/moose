@@ -1,4 +1,5 @@
-import { Tabs, Callout } from "nextra/components";
+import { Tabs } from "nextra/components";
+import { Callout } from "../../components";
 
 # Ingesting via API Endpoints
 
@@ -13,16 +14,16 @@ to send data to. Ingestion points are HTTP endpoints that you can send data to b
 
 ## Sending Data to the Ingestion Endpoints
 
-You can send data to these endpoints from your application, from a script, or from a tool like `curl`. Below are some snippets for sending data to the `/ingest/UserActivity` endpopint, which Moose automatically generated for the `UserActivity` Data Model ([see the Data Models section](/building/data-models#example-data-model-in-typescript))
+You can send data to these endpoints from your application, from a script, or from a tool like `curl`. Below are some snippets for sending data to the `/ingest/UserActivity` endpopint, which Moose automatically generated for the `UserActivity` Data Model ([see the Data Models section](/data-models))
 
 <Tabs items={['curl', 'javascript', 'python']}>
   <Tabs.Tab>
-    ``` bash filename="Terminal" copy
-  curl -X POST \
-    -H "Content-Type: application/json" \
-    -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \
-    http://localhost:4000/ingest/UserActivity
-  ```
+    ```bash filename="Terminal" copy
+      curl -X POST \
+        -H "Content-Type: application/json" \
+        -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \
+        http://localhost:4000/ingest/UserActivity
+    ```
   </Tabs.Tab>
   <Tabs.Tab>
   ```javascript filename="Your Javascript/Typescript App or Script" copy
@@ -55,9 +56,7 @@ You can send data to these endpoints from your application, from a script, or fr
   </Tabs.Tab>
 </Tabs>
 
-<Callout type="warning">
-  Make sure your Moose development server is running before sending data to the
-  ingestion endpoints. The dev server runs on `localhost:4000` by default. You
-  can start the server by running `moose dev` in your terminal. [Learn
-  more](/moose-cli#dev)
+<Callout type="warning" title="Make sure your development server is running">
+  The dev server runs on `localhost:4000` by default. You can start the server
+  by running `moose dev` in your terminal. [Learn more](/moose-cli#dev)
 </Callout>

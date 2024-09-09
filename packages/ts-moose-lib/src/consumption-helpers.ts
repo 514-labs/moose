@@ -8,7 +8,7 @@
  * @returns 'FLoat', 'Int', 'Bool', 'String'
  */
 
-import { ClickHouseClient } from "@clickhouse/client-web";
+import { ClickHouseClient } from "@clickhouse/client";
 
 export const mapToClickHouseType = (value: Value) => {
   if (typeof value === "number") {

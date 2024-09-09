@@ -411,9 +411,9 @@ async fn top_command_handler(
                     })
                 })?;
 
-                if canonical_location.exists() && canonical_location.is_dir() {
+                if destination.exists() && destination.is_dir() {
                     // Check if the directory contains any files or subdirectories
-                    let is_empty = std::fs::read_dir(&canonical_location)
+                    let is_empty = std::fs::read_dir(destination)
                         .map(|mut dir| dir.next().is_none())
                         .unwrap_or(false);
 
@@ -422,7 +422,7 @@ async fn top_command_handler(
                             action: "Generate".to_string(),
                             details: format!(
                                 "Directory '{}' is not empty, and --overwrite flag is not set.",
-                                canonical_location.display()
+                                destination.display()
                             ),
                         }));
                     }

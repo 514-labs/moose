@@ -287,6 +287,10 @@ jobs:
           node-version: "20"
           cache: "pnpm"
 
+      - name: Install dependencies
+        shell: bash
+        run: pnpm --filter ...create-moose-app  --filter ...@514labs/moose-cli install
+
       - name: Publish the NPM Moose CLI package
         shell: bash
         run: ./apps/moose-cli-npm/scripts/release-cli.sh ${{ needs.version.outputs.version }}

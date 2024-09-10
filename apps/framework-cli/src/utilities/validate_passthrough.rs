@@ -1,6 +1,6 @@
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::fmt::Formatter;
+use std::fmt::{Display, Formatter};
 use std::marker::PhantomData;
 
 use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
@@ -8,7 +8,7 @@ use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserializer, Serialize, Serializer};
 use serde_json::Serializer as JsonSerializer;
 
-use crate::framework::core::infrastructure::table::{Column, ColumnType, EnumValue};
+use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, EnumValue};
 
 struct State {
     seen: bool,
@@ -48,6 +48,53 @@ where
         T: ?Sized + Serialize,
     {
         self.0.serialize_element(value)
+    }
+}
+
+trait EnumInt {
+    fn from_u8(u8: u8) -> Self;
+    fn from_usize(usize: usize) -> Self;
+}
+impl EnumInt for u64 {
+    fn from_u8(u8: u8) -> u64 {
+        u8 as u64
+    }
+    fn from_usize(usize: usize) -> Self {
+        usize as u64
+    }
+}
+impl EnumInt for i64 {
+    fn from_u8(u8: u8) -> i64 {
+        u8 as i64
+    }
+    fn from_usize(usize: usize) -> i64 {
+        usize as i64
+    }
+}
+
+fn handle_enum_value<S: SerializeValue, E, T>(
+    write_to: &mut S,
+    enum_def: &DataEnum,
+    v: T,
+) -> Result<(), E>
+where
+    E: Error,
+    T: Copy + PartialEq + EnumInt + Serialize + Display,
+{
+    if enum_def
+        .values
+        .iter()
+        .enumerate()
+        .any(|(i, ev)| match &ev.value {
+            EnumValue::Int(value) => (T::from_u8(*value)) == v,
+            // TODO: string enums have range 1..=length
+            // we can skip the iteration
+            EnumValue::String(_) => (T::from_usize(i)) == v,
+        })
+    {
+        write_to.serialize_value(&v).map_err(E::custom)
+    } else {
+        Err(E::custom(format!("Invalid enum value: {}", v)))
     }
 }
 
@@ -95,30 +142,13 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
             _ => Err(Error::invalid_type(serde::de::Unexpected::Bool(v), &self)),
         }
     }
-
-    // TODO: handle int enums
     fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
     where
         E: Error,
     {
         match self.t {
             ColumnType::Int => self.write_to.serialize_value(&v).map_err(Error::custom),
-            ColumnType::Enum(enum_def) => {
-                if enum_def
-                    .values
-                    .iter()
-                    .enumerate()
-                    .any(|(i, ev)| match &ev.value {
-                        EnumValue::Int(value) => ((*value) as i64) == v,
-                        EnumValue::String(_) => (i as i64) == v,
-                    })
-                {
-                    self.write_to.serialize_value(&v).map_err(Error::custom)
-                } else {
-                    Err(E::custom(format!("Invalid enum value: {}", v)))
-                }
-            }
-
+            ColumnType::Enum(enum_def) => handle_enum_value(self.write_to, enum_def, v),
             _ => Err(Error::invalid_type(serde::de::Unexpected::Signed(v), &self)),
         }
     }
@@ -129,21 +159,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     {
         match self.t {
             ColumnType::Int => self.write_to.serialize_value(&v).map_err(Error::custom),
-            ColumnType::Enum(enum_def) => {
-                if enum_def
-                    .values
-                    .iter()
-                    .enumerate()
-                    .any(|(i, ev)| match &ev.value {
-                        EnumValue::Int(value) => ((*value) as u64) == v,
-                        EnumValue::String(_) => (i as u64) == v,
-                    })
-                {
-                    self.write_to.serialize_value(&v).map_err(Error::custom)
-                } else {
-                    Err(E::custom(format!("Invalid enum value: {}", v)))
-                }
-            }
+            ColumnType::Enum(enum_def) => handle_enum_value(self.write_to, enum_def, v),
             _ => Err(Error::invalid_type(
                 serde::de::Unexpected::Unsigned(v),
                 &self,
@@ -229,6 +245,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     {
         match self.t {
             ColumnType::Nested(ref fields) => {
+                // TODO: we should cache this value
                 let mut inner = DataModelVisitor::new(&fields.columns);
                 self.write_to
                     .serialize_value(&MapAccessSerializer {

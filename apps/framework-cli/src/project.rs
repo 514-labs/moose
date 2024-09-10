@@ -46,7 +46,6 @@ use python_project::PythonProject;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS;
@@ -61,6 +60,9 @@ use crate::utilities::constants::{
 };
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{BLOCKS_DIR, TS_BLOCKS_FILE};
+use crate::utilities::constants::{
+    CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS, ENVIRONMENT_VARIABLE_PREFIX,
+};
 use crate::utilities::constants::{PYTHON_INIT_FILE, PY_API_FILE, TS_API_FILE};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 use crate::utilities::git::GitConfig;
@@ -187,7 +189,7 @@ impl Project {
         let mut project_config: Project = Config::builder()
             .add_source(File::from(project_file).required(true))
             .add_source(
-                Environment::with_prefix("MOOSE")
+                Environment::with_prefix(ENVIRONMENT_VARIABLE_PREFIX)
                     .prefix_separator("_")
                     .separator("__"),
             )

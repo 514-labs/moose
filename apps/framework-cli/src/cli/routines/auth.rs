@@ -22,7 +22,7 @@ pub fn generate_hash_token() {
     // set timer to c
 
     let mut key1 = [0u8; 20];
-    pbkdf2_hmac::<Sha256>(&token, &salt, n, &mut key1);
+    pbkdf2_hmac::<Sha256>(token_hex.as_bytes(), salt_hex.as_bytes(), n, &mut key1);
 
     {
         show_message!(
@@ -54,16 +54,9 @@ pub fn validate_auth_token(token: &str, private_pass: &str) -> bool {
         return false;
     }
 
-    let token_hex = match hex::decode(token_parts[0]) {
-        Ok(token) => token,
-        Err(_) => return false,
-    };
+    let token_hex = token_parts[0].as_bytes();
 
-    let salt_hex = match hex::decode(token_parts[1]) {
-        Ok(salt) => salt,
-        Err(_) => return false,
-    };
-
+    let salt_hex = token_parts[1].as_bytes();
     let mut key1 = [0u8; 20];
     pbkdf2_hmac::<Sha256>(&token_hex, &salt_hex, 1000, &mut key1);
 

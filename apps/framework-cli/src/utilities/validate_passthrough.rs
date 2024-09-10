@@ -97,6 +97,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
         }
     }
 
+    // TODO: handle int enums
     fn visit_i64<E>(self, v: i64) -> Result<Self::Value, E>
     where
         E: Error,
@@ -192,6 +193,13 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
             _ => Err(Error::invalid_type(serde::de::Unexpected::Seq, &self)),
         }
     }
+
+    fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+    where
+        A: MapAccess<'de>,
+    {
+        todo!()
+    }
 }
 
 impl<'a, 'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'a, 'de, A> {
@@ -236,49 +244,6 @@ impl DataModelVisitor {
         }
     }
 }
-
-// struct UnwrappedEnumValue(EnumValue);
-// impl Serialize for UnwrappedEnumValue {
-//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-//     where
-//         S: Serializer,
-//     {
-//         match self.0 {
-//             EnumValue::Int(i) => serializer.serialize_u8(i),
-//             EnumValue::String(ref s) => serializer.serialize_str(s),
-//         }
-//     }
-// }
-// impl<'de> Deserialize<'de> for UnwrappedEnumValue {
-//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-//     where
-//         D: Deserializer<'de>,
-//     {
-//         deserializer.deserialize_any(UnwrappedEnumValueVisitor)
-//     }
-// }
-// struct UnwrappedEnumValueVisitor;
-// impl<'de> Visitor<'de> for UnwrappedEnumValueVisitor {
-//     type Value = UnwrappedEnumValue;
-
-//     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-//         todo!()
-//     }
-
-//     fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
-//     where
-//         E: Error,
-//     {
-//         Ok(UnwrappedEnumValue(EnumValue::Int(v)))
-//     }
-
-//     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-//     where
-//         E: Error,
-//     {
-//         Ok(UnwrappedEnumValue(EnumValue::String(v.to_string())))
-//     }
-// }
 
 impl<'de> Visitor<'de> for &mut DataModelVisitor {
     type Value = Vec<u8>;
@@ -330,24 +295,6 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
         Ok(vec)
     }
 }
-//
-// // TODO: cache this closure
-// fn to_validation<'de, A: MapAccess<'de>>(
-//     data_enum: &DataEnum,
-// ) -> impl Fn(&EnumValue) -> Option<A::Error> {
-//     // match &data_enum.values[0].value {
-//     //     EnumValue::Int(_) => {
-//     //         let values = data_enum.values.iter().map(|v| match v.value {
-//     //             EnumValue::Int(i) => i,
-//     //             EnumValue::String(_) => {
-//     //                 panic!("ahhhh")
-//     //             }
-//     //         })
-//     //     },
-//     //     EnumValue::String(_) => {}
-//     // };
-//     |enum_value: &EnumValue| None
-// }
 
 #[cfg(test)]
 mod tests {

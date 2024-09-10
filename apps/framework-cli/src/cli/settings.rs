@@ -21,15 +21,11 @@ use crate::utilities::constants::{
 /// - add a config file validation and error handling
 ///
 
-#[derive(Deserialize, Debug)]
+const ENVIRONMENT_VARIABLE_PREFIX: &str = "MOOSE";
+
+#[derive(Deserialize, Debug, Default)]
 pub struct MetricLabels {
     pub labels: Option<String>,
-}
-
-impl Default for MetricLabels {
-    fn default() -> Self {
-        MetricLabels { labels: None }
-    }
 }
 
 #[derive(Deserialize, Debug)]

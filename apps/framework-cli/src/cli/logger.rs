@@ -31,7 +31,7 @@
 //! ```
 //!
 
-use log::{debug, info, LevelFilter, Metadata, Record};
+use log::{info, LevelFilter, Metadata, Record};
 use std::env;
 use std::time::{Duration, SystemTime};
 
@@ -175,7 +175,7 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
         })
     } else {
         fern::Dispatch::new().format(move |out, message, record| {
-            let mut log_json = serde_json::json!({
+            let log_json = serde_json::json!({
                 "timestamp": chrono::Utc::now().to_rfc3339(),
                 "severity": record.level().to_string(),
                 "session_id": &session_id,

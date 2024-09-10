@@ -17,6 +17,7 @@ use tokio::time;
 use chrono::Utc;
 
 use crate::utilities::constants::{self, CONTEXT, CTX_SESSION_ID};
+use crate::utilities::decode_object;
 const DEFAULT_ANONYMOUS_METRICS_URL: &str =
     "https://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
 lazy_static::lazy_static! {
@@ -446,14 +447,8 @@ impl Metrics {
 
         let cloned_metadata = self.telemetry_metadata.clone();
 
-        let metric_labels = cloned_metadata
-            .metric_labels
-            .clone()
-            .map(|encoded| general_purpose::STANDARD.decode(encoded))
-            .and_then(|result| result.ok())
-            .and_then(|decoded| String::from_utf8(decoded).ok())
-            .and_then(|json_str| serde_json::from_str::<Value>(&json_str).ok())
-            .unwrap_or_else(|| serde_json::json!({}));
+        let metric_labels =
+            decode_object::decode_base64_to_json(cloned_metadata.metric_labels.unwrap().as_str());
 
         if self.telemetry_metadata.anonymous_telemetry_enabled {
             tokio::spawn(async move {

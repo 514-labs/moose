@@ -50,6 +50,7 @@ use opentelemetry_semantic_conventions::resource::SERVICE_NAME;
 use serde::Deserialize;
 
 use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
+use crate::utilities::decode_object;
 
 use super::settings::user_directory;
 
@@ -224,14 +225,9 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
                 KeyValue::new("session_id", session_id.as_str()),
                 KeyValue::new("machine_id", String::from(machine_id)),
             ];
-
-            let metric_labels = env::var("MOOSE_METRIC_LABELS")
-                .map(|encoded| general_purpose::STANDARD.decode(encoded))
-                .ok()
-                .and_then(|result| result.ok())
-                .and_then(|decoded| String::from_utf8(decoded).ok())
-                .and_then(|json_str| serde_json::from_str::<Value>(&json_str).ok())
-                .unwrap_or_else(|| serde_json::json!({}));
+            let metric_labels = decode_object::decode_base64_to_json(
+                env::var("MOOSE_METRIC_LABELS").unwrap().as_str(),
+            );
 
             if let Some(labels) = metric_labels.as_object() {
                 for (key, value) in labels {

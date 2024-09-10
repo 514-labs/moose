@@ -58,7 +58,7 @@ pub fn validate_auth_token(token: &str, private_pass: &str) -> bool {
 
     let salt_hex = token_parts[1].as_bytes();
     let mut key1 = [0u8; 20];
-    pbkdf2_hmac::<Sha256>(&token_hex, &salt_hex, 1000, &mut key1);
+    pbkdf2_hmac::<Sha256>(token_hex, salt_hex, 1000, &mut key1);
 
     let key1_hex = hex::encode(key1);
 

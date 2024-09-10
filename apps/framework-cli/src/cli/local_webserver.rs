@@ -458,8 +458,8 @@ async fn handle_json_req(
     let number_of_bytes = req.body().size_hint().exact().unwrap();
     let body = to_reader(req).await;
 
-    let parsed =
-        JsonDeserializer::from_reader(body).deserialize_any(&mut DataModelVisitor::new(data_model));
+    let parsed = JsonDeserializer::from_reader(body)
+        .deserialize_any(&mut DataModelVisitor::new(&data_model.columns));
 
     // let parsed: Result<Value, serde_json::Error> = serde_json::from_reader(body);
 

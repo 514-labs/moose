@@ -9,7 +9,6 @@ use serde::{Deserializer, Serialize, Serializer};
 use serde_json::Serializer as JsonSerializer;
 
 use crate::framework::core::infrastructure::table::{Column, ColumnType, EnumValue};
-use crate::framework::data_model::model::DataModel;
 
 struct State {
     seen: bool,
@@ -193,12 +192,23 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
             _ => Err(Error::invalid_type(serde::de::Unexpected::Seq, &self)),
         }
     }
-
-    fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
+    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
     where
         A: MapAccess<'de>,
     {
-        todo!()
+        match self.t {
+            ColumnType::Nested(ref fields) => {
+                let mut inner = DataModelVisitor::new(&fields.columns);
+                self.write_to
+                    .serialize_value(&MapAccessSerializer {
+                        inner: RefCell::new(&mut inner),
+                        map: RefCell::new(&mut (map)),
+                        _phantom_data: &PHANTOM_DATA,
+                    })
+                    .map_err(A::Error::custom)
+            }
+            _ => Err(A::Error::invalid_type(serde::de::Unexpected::Map, &self)),
+        }
     }
 }
 
@@ -229,19 +239,77 @@ struct SeqAccessSerializer<'a, 'de, A: SeqAccess<'de>> {
     _phantom_data: &'de PhantomData<()>,
 }
 
+struct MapAccessSerializer<'a, 'de, A: MapAccess<'de>> {
+    inner: RefCell<&'a mut DataModelVisitor>,
+    map: RefCell<&'a mut A>,
+    _phantom_data: &'de PhantomData<()>,
+}
+
+impl<'a, 'de, A: MapAccess<'de>> Serialize for MapAccessSerializer<'a, 'de, A> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let mut write_to = serializer.serialize_map(None)?;
+        let mut map = self.map.borrow_mut();
+        (*self.inner.borrow_mut())
+            .transfer_map_access_to_serialize_map(*map, &mut write_to)
+            .map_err(serde::ser::Error::custom)?;
+        write_to.end()
+    }
+}
+
 pub struct DataModelVisitor {
     columns: HashMap<String, (Column, State)>,
 }
 
 impl DataModelVisitor {
-    pub fn new(data_model: &DataModel) -> Self {
+    pub fn new(columns: &[Column]) -> Self {
         DataModelVisitor {
-            columns: data_model
-                .columns
+            columns: columns
                 .iter()
                 .map(|c| (c.name.clone(), (c.clone(), State { seen: false })))
                 .collect(),
         }
+    }
+
+    fn transfer_map_access_to_serialize_map<'de, A: MapAccess<'de>, S: SerializeMap>(
+        &mut self,
+        map: &mut A,
+        map_serializer: &mut S,
+    ) -> Result<(), A::Error> {
+        while let Some(key) = map.next_key::<String>()? {
+            if let Some((column, state)) = self.columns.get_mut(&key) {
+                state.seen = true;
+
+                map_serializer
+                    .serialize_key(&key)
+                    .map_err(A::Error::custom)?;
+
+                let mut visitor = ValueVisitor {
+                    t: &column.data_type,
+                    write_to: map_serializer,
+                    required: column.required,
+                };
+                map.next_value_seed(&mut visitor)?;
+            }
+        }
+        let mut missing_fields: Vec<&str> = Vec::new();
+        self.columns.values_mut().for_each(|(column, state)| {
+            if !state.seen && column.required {
+                missing_fields.push(&column.name)
+            }
+            state.seen = false
+        });
+
+        if !missing_fields.is_empty() {
+            return Err(A::Error::custom(format!(
+                "Missing fields: {}",
+                missing_fields.join(", ")
+            )));
+        }
+
+        Ok(())
     }
 }
 
@@ -260,37 +328,8 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
         let mut writer = JsonSerializer::new(&mut vec);
         let mut map_serializer = writer.serialize_map(None).map_err(A::Error::custom)?;
 
-        while let Some(key) = map.next_key::<String>()? {
-            if let Some((column, state)) = self.columns.get_mut(&key) {
-                state.seen = true;
-
-                map_serializer
-                    .serialize_key(&key)
-                    .map_err(A::Error::custom)?;
-
-                let mut visitor = ValueVisitor {
-                    t: &column.data_type,
-                    write_to: &mut map_serializer,
-                    required: column.required,
-                };
-                map.next_value_seed(&mut visitor)?;
-            }
-        }
+        self.transfer_map_access_to_serialize_map(&mut map, &mut map_serializer)?;
         SerializeMap::end(map_serializer).map_err(A::Error::custom)?;
-        let mut missing_fields: Vec<&str> = Vec::new();
-        self.columns.values_mut().for_each(|(column, state)| {
-            if !state.seen && column.required {
-                missing_fields.push(&column.name)
-            }
-            state.seen = false
-        });
-
-        if !missing_fields.is_empty() {
-            return Err(A::Error::custom(format!(
-                "Missing fields: {}",
-                missing_fields.join(", ")
-            )));
-        }
 
         Ok(vec)
     }
@@ -298,62 +337,54 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
 
 #[cfg(test)]
 mod tests {
-    use crate::framework::core::infrastructure::table::{DataEnum, EnumMember};
-    use crate::framework::data_model::config::DataModelConfig;
-    use std::path::PathBuf;
+    use crate::framework::core::infrastructure::table::{DataEnum, EnumMember, Nested};
 
     use super::*;
 
     #[test]
     fn test_happy_path_all_types() {
-        let data_model = DataModel {
-            columns: vec![
-                Column {
-                    name: "string_col".to_string(),
-                    data_type: ColumnType::String,
-                    required: true,
-                    unique: false,
-                    primary_key: false,
-                    default: None,
-                },
-                Column {
-                    name: "int_col".to_string(),
-                    data_type: ColumnType::Int,
-                    required: true,
-                    unique: false,
-                    primary_key: false,
-                    default: None,
-                },
-                Column {
-                    name: "float_col".to_string(),
-                    data_type: ColumnType::Float,
-                    required: true,
-                    unique: false,
-                    primary_key: false,
-                    default: None,
-                },
-                Column {
-                    name: "bool_col".to_string(),
-                    data_type: ColumnType::Boolean,
-                    required: true,
-                    unique: false,
-                    primary_key: false,
-                    default: None,
-                },
-                Column {
-                    name: "date_col".to_string(),
-                    data_type: ColumnType::DateTime,
-                    required: true,
-                    unique: false,
-                    primary_key: false,
-                    default: None,
-                },
-            ],
-            name: "TestModel".to_string(),
-            config: DataModelConfig::default(),
-            abs_file_path: PathBuf::from("/path/to/test_model.rs"),
-            version: "1.0".to_string(),
-        };
+        let columns = vec![
+            Column {
+                name: "string_col".to_string(),
+                data_type: ColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            Column {
+                name: "int_col".to_string(),
+                data_type: ColumnType::Int,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            Column {
+                name: "float_col".to_string(),
+                data_type: ColumnType::Float,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            Column {
+                name: "bool_col".to_string(),
+                data_type: ColumnType::Boolean,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            Column {
+                name: "date_col".to_string(),
+                data_type: ColumnType::DateTime,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+        ];
 
         let json = r#"
         {
@@ -366,7 +397,7 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&data_model))
+            .deserialize_any(&mut DataModelVisitor::new(&columns))
             .unwrap();
 
         let expected = r#"{"string_col":"test","int_col":42,"float_col":3.14,"bool_col":true,"date_col":"2024-09-10T17:34:51+00:00"}"#;
@@ -376,20 +407,14 @@ mod tests {
 
     #[test]
     fn test_bad_date_format() {
-        let data_model = DataModel {
-            columns: vec![Column {
-                name: "date_col".to_string(),
-                data_type: ColumnType::DateTime,
-                required: true,
-                unique: false,
-                primary_key: false,
-                default: None,
-            }],
-            name: "TestModel".to_string(),
-            config: DataModelConfig::default(),
-            abs_file_path: PathBuf::from("/path/to/test_model.rs"),
-            version: "1.0".to_string(),
-        };
+        let columns = vec![Column {
+            name: "date_col".to_string(),
+            data_type: ColumnType::DateTime,
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+        }];
 
         let json = r#"
         {
@@ -398,7 +423,7 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&data_model));
+            .deserialize_any(&mut DataModelVisitor::new(&columns));
 
         println!("{:?}", result);
         assert!(result.is_err());
@@ -406,20 +431,14 @@ mod tests {
 
     #[test]
     fn test_array() {
-        let data_model = DataModel {
-            columns: vec![Column {
-                name: "array_col".to_string(),
-                data_type: ColumnType::Array(Box::new(ColumnType::Int)),
-                required: true,
-                unique: false,
-                primary_key: false,
-                default: None,
-            }],
-            name: "TestModel".to_string(),
-            config: DataModelConfig::default(),
-            abs_file_path: PathBuf::from("/path/to/test_model.rs"),
-            version: "1.0".to_string(),
-        };
+        let columns = vec![Column {
+            name: "array_col".to_string(),
+            data_type: ColumnType::Array(Box::new(ColumnType::Int)),
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+        }];
 
         let json = r#"
         {
@@ -428,7 +447,7 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&data_model))
+            .deserialize_any(&mut DataModelVisitor::new(&columns))
             .unwrap();
 
         let expected = r#"{"array_col":[1,2,3,4,5]}"#;
@@ -438,32 +457,26 @@ mod tests {
 
     #[test]
     fn test_enum_valid_and_invalid() {
-        let data_model = DataModel {
-            columns: vec![Column {
-                name: "enum_col".to_string(),
-                data_type: ColumnType::Enum(DataEnum {
-                    name: "TestEnum".to_string(),
-                    values: vec![
-                        EnumMember {
-                            name: "Option1".to_string(),
-                            value: EnumValue::String("option1".to_string()),
-                        },
-                        EnumMember {
-                            name: "Option2".to_string(),
-                            value: EnumValue::String("option2".to_string()),
-                        },
-                    ],
-                }),
-                required: true,
-                unique: false,
-                primary_key: false,
-                default: None,
-            }],
-            name: "TestModel".to_string(),
-            config: DataModelConfig::default(),
-            abs_file_path: PathBuf::from("/path/to/test_model.rs"),
-            version: "1.0".to_string(),
-        };
+        let columns = vec![Column {
+            name: "enum_col".to_string(),
+            data_type: ColumnType::Enum(DataEnum {
+                name: "TestEnum".to_string(),
+                values: vec![
+                    EnumMember {
+                        name: "Option1".to_string(),
+                        value: EnumValue::String("option1".to_string()),
+                    },
+                    EnumMember {
+                        name: "Option2".to_string(),
+                        value: EnumValue::String("option2".to_string()),
+                    },
+                ],
+            }),
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+        }];
 
         // Test valid enum value
         let valid_json = r#"
@@ -473,7 +486,7 @@ mod tests {
         "#;
 
         let valid_result = serde_json::Deserializer::from_str(valid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&data_model))
+            .deserialize_any(&mut DataModelVisitor::new(&columns))
             .unwrap();
 
         let expected_valid = r#"{"enum_col":"option1"}"#;
@@ -490,12 +503,96 @@ mod tests {
         "#;
 
         let invalid_result = serde_json::Deserializer::from_str(invalid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&data_model));
+            .deserialize_any(&mut DataModelVisitor::new(&columns));
 
         assert!(invalid_result.is_err());
         assert!(invalid_result
             .unwrap_err()
             .to_string()
             .contains("Invalid enum value: invalid_option"));
+    }
+
+    #[test]
+    fn test_nested() {
+        let nested_columns = vec![
+            Column {
+                name: "nested_string".to_string(),
+                data_type: ColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            Column {
+                name: "nested_int".to_string(),
+                data_type: ColumnType::Int,
+                required: false,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+        ];
+
+        let columns = vec![
+            Column {
+                name: "top_level_string".to_string(),
+                data_type: ColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            Column {
+                name: "nested_object".to_string(),
+                data_type: ColumnType::Nested(Nested {
+                    name: "nested".to_string(),
+                    columns: nested_columns,
+                }),
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+        ];
+
+        // Test valid nested object
+        let valid_json = r#"
+        {
+            "top_level_string": "hello",
+            "nested_object": {
+                "nested_string": "world",
+                "nested_int": 42
+            }
+        }
+        "#;
+
+        let valid_result = serde_json::Deserializer::from_str(valid_json)
+            .deserialize_any(&mut DataModelVisitor::new(&columns))
+            .unwrap();
+
+        let expected_valid = r#"{"top_level_string":"hello","nested_object":{"nested_string":"world","nested_int":42}}"#;
+        assert_eq!(
+            String::from_utf8(valid_result),
+            Ok(expected_valid.to_string())
+        );
+
+        // Test invalid nested object (missing required field)
+        let invalid_json = r#"
+        {
+            "top_level_string": "hello",
+            "nested_object": {
+                "nested_int": 42
+            }
+        }
+        "#;
+
+        let invalid_result = serde_json::Deserializer::from_str(invalid_json)
+            .deserialize_any(&mut DataModelVisitor::new(&columns));
+
+        assert!(invalid_result.is_err());
+        assert!(invalid_result
+            .unwrap_err()
+            .to_string()
+            .contains("Missing fields: nested_string"));
     }
 }

@@ -64,7 +64,7 @@ pub struct Settings {
     pub telemetry: Telemetry,
 
     #[serde(default)]
-    pub metric_labels: MetricLabels,
+    pub metric: MetricLabels,
 
     #[serde(default)]
     pub features: Features,

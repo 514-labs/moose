@@ -115,12 +115,6 @@ fn default_log_format() -> LogFormat {
     LogFormat::Text
 }
 
-fn default_export_to() -> Option<reqwest::Url> {
-    env::var("LOG_EXPORT_DEST")
-        .ok()
-        .and_then(|url| url.parse().ok())
-}
-
 impl Default for LoggerSettings {
     fn default() -> Self {
         LoggerSettings {
@@ -128,7 +122,7 @@ impl Default for LoggerSettings {
             level: default_log_level(),
             stdout: default_log_stdout(),
             format: default_log_format(),
-            export_to: default_export_to(),
+            export_to: None,
         }
     }
 }
@@ -164,14 +158,6 @@ fn clean_old_logs() {
 pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), fern::InitError> {
     clean_old_logs();
 
-    let metric_labels = env::var("METRIC_LABELS")
-        .map(|encoded| general_purpose::STANDARD.decode(encoded))
-        .ok()
-        .and_then(|result| result.ok())
-        .and_then(|decoded| String::from_utf8(decoded).ok())
-        .and_then(|json_str| serde_json::from_str::<Value>(&json_str).ok())
-        .unwrap_or_else(|| serde_json::json!({}));
-
     let session_id = CONTEXT.get(CTX_SESSION_ID).unwrap();
 
     let base_config = fern::Dispatch::new().level(settings.level.to_log_level());
@@ -179,13 +165,12 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
     let format_config = if settings.format == LogFormat::Text {
         fern::Dispatch::new().format(move |out, message, record| {
             out.finish(format_args!(
-                "[{} {} {} - {}] {}, {}",
+                "[{} {} {} - {}] {}",
                 humantime::format_rfc3339_seconds(SystemTime::now()),
                 record.level(),
                 &session_id,
                 record.target(),
-                message,
-                serde_json::to_string(&metric_labels).unwrap_or_default()
+                message
             ))
         })
     } else {
@@ -197,15 +182,6 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
                 "target": record.target(),
                 "message": message,
             });
-
-            if let Some(obj) = log_json.as_object_mut() {
-                obj.extend(
-                    metric_labels
-                        .as_object()
-                        .unwrap_or(&serde_json::Map::new())
-                        .clone(),
-                );
-            }
 
             out.finish(format_args!(
                 "{}",
@@ -243,12 +219,30 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
                 .build_log_exporter()
                 .unwrap();
 
+            let mut resource_attributes = vec![
+                KeyValue::new(SERVICE_NAME, "moose-cli"),
+                KeyValue::new("session_id", session_id.as_str()),
+                KeyValue::new("machine_id", String::from(machine_id)),
+            ];
+
+            let metric_labels = env::var("MOOSE_METRIC_LABELS")
+                .map(|encoded| general_purpose::STANDARD.decode(encoded))
+                .ok()
+                .and_then(|result| result.ok())
+                .and_then(|decoded| String::from_utf8(decoded).ok())
+                .and_then(|json_str| serde_json::from_str::<Value>(&json_str).ok())
+                .unwrap_or_else(|| serde_json::json!({}));
+
+            if let Some(labels) = metric_labels.as_object() {
+                for (key, value) in labels {
+                    if let Some(value_str) = value.as_str() {
+                        resource_attributes.push(KeyValue::new(key.clone(), value_str.to_string()));
+                    }
+                }
+            }
+
             let logger_provider = LoggerProvider::builder()
-                .with_config(Config::default().with_resource(Resource::new(vec![
-                    KeyValue::new(SERVICE_NAME, "moose-cli"),
-                    KeyValue::new("session_id", session_id.as_str()),
-                    KeyValue::new("machine_id", String::from(machine_id)),
-                ])))
+                .with_config(Config::default().with_resource(Resource::new(resource_attributes)))
                 .with_batch_exporter(otel_exporter, opentelemetry_sdk::runtime::Tokio)
                 .build();
 

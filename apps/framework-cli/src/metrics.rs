@@ -17,7 +17,8 @@ use tokio::time;
 use chrono::Utc;
 
 use crate::utilities::constants::{self, CONTEXT, CTX_SESSION_ID};
-const ANONYMOUS_METRICS_URL: &str = "http://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
+const DEFAULT_ANONYMOUS_METRICS_URL: &str =
+    "http://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
 lazy_static::lazy_static! {
     static ref ANONYMOUS_METRICS_URL: String = env::var("MOOSE_METRICS_DEST")
         .unwrap_or_else(|_| DEFAULT_ANONYMOUS_METRICS_URL.to_string());
@@ -496,7 +497,7 @@ impl Metrics {
                             0
                         };
 
-                    let telemetry_payload = json!({
+                    let mut telemetry_payload = json!({
                         "timestamp": Utc::now(),
                         "machineId": cloned_metadata.machine_id.clone(),
                         "sequenceId": CONTEXT.get(CTX_SESSION_ID).unwrap(),
@@ -520,11 +521,11 @@ impl Metrics {
                     });
 
                     // // Merge metric_labels into telemetry_payload
-                    // if let Some(payload_obj) = telemetry_payload.as_object_mut() {
-                    //     if let Some(labels_obj) = metric_labels.as_object() {
-                    //         payload_obj.extend(labels_obj.clone());
-                    //     }
-                    // }
+                    if let Some(payload_obj) = telemetry_payload.as_object_mut() {
+                        if let Some(labels_obj) = metric_labels.as_object() {
+                            payload_obj.extend(labels_obj.clone());
+                        }
+                    }
 
                     let _ = client
                         .post(ANONYMOUS_METRICS_URL.as_str())

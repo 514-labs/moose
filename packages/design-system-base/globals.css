@@ -48,6 +48,22 @@
     --accent-bor-green: 133, 100%, 66%;
     --accent-bor-green-foreground: 0 0% 100%;
 
+    --moose-gradient: linear-gradient(
+      150.33deg,
+      #641bff -2.98%,
+      #d52bff 106.53%
+    );
+    --moose-gradient-dark: linear-gradient(
+      219.61deg,
+      #373fff -34.79%,
+      #000000 100.32%
+    );
+    --moose-gradient-dark-pink: linear-gradient(
+      212.17deg,
+      #d429ff -62.69%,
+      #000000 75.08%
+    );
+
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
     --ring: 0 0% 3.9%;
@@ -100,14 +116,18 @@
   max-width: none;
 }
 
-.docs * {
-  font-weight: 400 !important;
-}
+/* .docs * {
+  font-weight: 400;
+  line-height: 1.75;
+} */
 
 .docs h2 {
-  margin-bottom: none;
+  margin-bottom: 0;
 }
 
+.docs a {
+  color: hsl(var(--accent-moo-pink));
+}
 .docs h2.nx-border-b {
   border-bottom: none;
 }
@@ -118,6 +138,28 @@
 
 .docs div.nx-border-t {
   border-top: none;
+}
+
+.docs div.nextra-search {
+  width: 100%;
+  padding-left: 3rem;
+}
+
+.docs nav.nx-justify-end {
+  justify-content: flex-start;
+}
+
+.docs nav > a:is([dir="ltr"] .ltr\:nx-mr-auto) {
+  margin-right: 0;
+}
+
+.docs main > p {
+  line-height: 1.75rem;
+}
+
+.docs div.nextra-breadcrumb {
+  text-transform: uppercase;
+  font-family: monospace;
 }
 
 .docs :is(html[class~="dark"] .dark\:nx-bg-dark) {
@@ -182,12 +224,18 @@ tbody {
 
 .docs li.active > a {
   color: var(--primary-foreground) !important;
-  background-color: transparent !important;
+  background-color: hsl(var(--muted)) !important;
+  border-radius: 10px;
 }
 
 .docs li.active > a > p {
   color: var(--primary-foreground) !important;
-  background-color: transparent !important;
+  background-color: hsl(var(--muted)) !important;
+  border-radius: 10px;
+}
+
+.docs .callout p {
+  display: inline;
 }
 
 .docs aside.md\:nx-w-64 {
@@ -198,9 +246,95 @@ li.nx-my-2 {
   list-style: none;
 }
 
+/* custom-nextra-styles.css */
+.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 2rem;
+  margin-bottom: 2rem;
+}
+
+/* Style for both previous and next links */
+.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a {
+  display: flex !important;
+  align-items: center !important;
+  padding: 1rem !important;
+  border-radius: 0.5rem !important;
+  color: hsl(var(--accent-pink)) !important;
+  transition: background-color 0.3s ease !important;
+  width: 50% !important;
+  font-weight: 400;
+  font-size: 16px;
+  line-height: 22px;
+  border: hsl(var(--border));
+}
+
+.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:hover {
+  background-color: hsl(var(--muted)) !important;
+}
+
+/* Hide the default chevron icons */
+.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a svg {
+  width: 24px;
+  height: 24px;
+  background-color: hsl(var(--muted));
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-size: 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+  color: hsl(var(--primary));
+  margin: 0.25rem;
+}
+
+.nx-mb-8.nx-flex.justify-between.nx-items-center.nx-border-t.nx-pt-8
+  a:only-child {
+  margin-left: auto !important;
+  justify-self: flex-end;
+}
+
+/* Style for the previous link */
+.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:first-child {
+  justify-content: flex-start;
+  margin-right: 0.5rem;
+}
+
+/* Style for the next link */
+.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:last-child {
+  justify-content: flex-end;
+  flex-grow: 1;
+  margin-left: 0.5rem;
+}
+
+/* Style for the text */
+.nx-mb-8.nx-flex.justify-between.nx-items-center.nx-border-t.nx-pt-8 a span {
+  font-size: 1rem !important;
+  font-weight: 500 !important;
+}
+
+/* Style for the icons */
+.nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a svg {
+  width: 1.5rem !important;
+  height: 1.5rem !important;
+}
+
 .nx-truncate {
   background-color: transparent !important;
-  color: rgba(255, 255, 255, 0.5) !important;
+  color: hsl(var(--muted-foreground)) !important;
+}
+
+.nextra-steps h3:before {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.nextra-nav-container p {
+  font-size: 16px !important;
+  line-height: 22px !important;
 }
 
 footer {

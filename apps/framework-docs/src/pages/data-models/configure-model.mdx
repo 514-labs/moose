@@ -1,0 +1,114 @@
+import { Tabs } from "nextra/components";
+
+# Configuring Data Models
+
+While Moose provides sensible defaults for provisioning OLAP storage and infrastructure based on your Data Models, it also supports flexible customization for configurations like ingestion formats and storage options.
+
+### `DataModelConfig<T>`
+
+To set the configuration for a Data Model, export a configuration object from the model file with the data model name as a prefix and `Config` as the suffix, like so:
+
+```ts filename="datamodels/models.ts" copy
+import { Key, DataModelConfig, IngestionFormat } from "@514labs/moose-lib";
+
+export const UserActivityConfig: DataModelConfig<UserActivity> = {
+  ingestion: {
+    format: IngestionFormat.JSON,
+  },
+  storage: {
+    enabled: true,
+    order_by_fields: ["timestamp"],
+  },
+};
+
+export interface UserActivity {
+  eventId: Key<string>;
+  timestamp: string;
+  userId: string;
+  activity: string;
+}
+```
+
+## Config Options
+
+The `DataModelConfig<T>` object supports the following fields:
+
+- `ingestion`
+- `storage`
+
+### `ingestion`
+
+The ingestion configuration object is used to define how the API endpoint will receive data. The configuration supports the following options:
+
+- **`format`**: Specifies the format of the data that the ingestion endpoint will accept.
+  - **Type**: `IngestionFormat`
+  - **Default**: `IngestionFormat.JSON`
+  - **Options**:
+    - `IngestionFormat.JSON`: Single JSON object expected in the body of the request.
+    - `IngestionFormat.JSON_ARRAY`: Array of JSON objects expected in the body of the request.
+
+#### Examples
+
+  <Tabs items={['Single JSON Object', 'Array of JSON Objects']}>
+    <Tabs.Tab>
+    ```ts filename="datamodels/models.ts" copy
+    export const UserActivityConfig: DataModelConfig<UserActivity> = {
+        ingestion: {
+            format: IngestionFormat.JSON,
+        },
+    };
+    
+    export interface UserActivity {
+      ...
+    }
+    ```
+    </Tabs.Tab>
+    <Tabs.Tab>
+      ```ts filename="datamodels/models.ts" copy
+      export const UserActivityConfig: DataModelConfig<UserActivity> = {
+          ingestion: {
+              format: IngestionFormat.JSON_ARRAY,
+          },
+      };
+      
+      ```
+    </Tabs.Tab>
+  </Tabs>
+
+### `storage`
+
+The `storage` field configures the persistence layer for the data model. It supports the following options:
+
+- **`enabled`**: A boolean value that determines whether to enable a table in the OLAP storage for the data model.
+  - **Type**: `boolean`
+  - **Default**: `true`
+  - **Description**: When set to `true`, a table will be created in the OLAP storage for the data model, allowing data to be stored and queried. Setting it to `false` will disable this table creation.
+- **`order_by_fields`**: An array of strings that adds an `ORDER BY` clause to the table in the OLAP storage. This is useful for optimizing queries that sort the data model by specific fields.
+  - **Type**: `string[]`
+  - **Default**: `[]`
+  - **Description**: This is an array of field names by which the table data should be ordered. Ordering the data on disk can improve query performance for specific use cases, such as time-series analysis or sorting by frequently queried fields.
+
+#### Examples
+
+<Tabs items={['Disabling Storage', 'Setting Order By Fields']}>
+  <Tabs.Tab>
+    ```ts filename="/datamodels/models.ts" copy
+    export const UserActivityConfig: DataModelConfig<UserActivity> = {
+      storage: {
+        enabled: false,
+      },
+    };
+    
+    ```
+  </Tabs.Tab>
+  <Tabs.Tab>
+  ```ts filename="datamodels/models.ts" copy
+    export const UserActivityConfig: DataModelConfig<UserActivity> = {
+      storage: {
+        order_by_fields: ["timestamp"],
+      },
+    };
+    
+    ```
+  </Tabs.Tab>
+</Tabs>

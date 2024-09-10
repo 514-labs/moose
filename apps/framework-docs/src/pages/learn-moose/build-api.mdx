@@ -1,0 +1,200 @@
+import { Callout, ZoomImg } from "../../components";
+import { Steps, FileTree } from "nextra/components";
+import { Zap } from "lucide-react";
+
+# Build an API to Fetch Most Popular Languages
+
+Now that you have a structured view of the programming languages used by all of your respository's starrers, you can build a [Consumption API](/consumption-apis) to fetch data from this view and make it available for your other applications.
+
+<Callout type="info">
+  A Consumption API enables you to create specific API endpoints that allow your
+  applications to access and retrieve data. It serves as the final customization
+  layer, where you can use query parameters to dynamically generate and execute
+  SQL queries.
+</Callout>
+
+In this module, you will implement a Consumption API that will:
+
+- Dynamically generate and execute a query to extract analyzed data from the `userLanguages` view
+- Return a ranked list of programming languages based on either:
+  - The total bytes of code written, or
+  - The number of users using each language
+
+The ranking criteria will depend on the **Query Parameters** specified in the request URL, and the results will be limited to a specified number for clarity.
+
+## Generate a New File & Route for your API
+
+<Steps>
+### Leverage the Moose CLI to Initialize a New Consumption API
+```bash filename="Terminal" copy
+npx moose-cli consumption init mostUsedLanguages
+```
+
+This command will generate a new file named `mostUsedLanguages.ts` inside the `/apis` folder of your project:
+
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="apis" open>
+      <FileTree.File name="mostUsedLanguages.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+
+It will also create a corresponding API endpoint at: `https://[YOUR_FORWARDING_URL]/consumption/mostUsedLanguages`. Making an `HTTP GET` request to this URL will execute the exported function inside the file.
+
+<Callout type="info" title="Consumption API Routing">
+  Moose uses file-based routing conventions to map the files in the `apis`
+  folder to corresponding API endpoints. This means that the file
+  `mostUsedLanguages.ts` will automatically map to the
+  `/consumption/mostUsedLanguages` endpoint.
+</Callout>
+
+### Open and Inspect the File
+
+Go to the `/apis` folder and open `mostUsedLanguages.ts`. You should see the following code:
+
+```ts filename="/app/apis/mostUsedLanguages" copy
+import { ConsumptionUtil } from "@514labs-moose-lib";
+// This file is where you can define your API templates for consuming your data
+// All query_params are passed in as strings, and are used within the sql tag to parameterize your queries
+export interface QueryParams {}
+
+export default async function handle(
+  {}: QueryParams,
+  { client, sql }: ConsumptionUtil,
+) {
+  return client.query(sql``);
+}
+```
+
+<Callout type="info" title="Consumption API Structure">
+  <br />
+  <br />
+  **Importing** `ConsumptionUtil`: This utility type from the Moose library
+  gives you access to the database client (`client`) and SQL query tagged
+  template literals (`sql`).
+  <br />
+  <br />
+  **Default Export**: The default export is an asynchronous function named `handle`,
+  which takes two parameters: - An object conforming to an empty `QueryParams` interface.
+  You will define this interface in the next step to represent the different parameters
+  to use in your dynamic query. - The `ConsumptionUtil` object you imported
+</Callout>
+
+### Define the `QueryParams` Interface
+
+This interface should contain two keys:
+
+- `rankBy`: Specifies whether to fetch results based on the raw count of users who use the programming language or the aggregated sum of the total number of bytes used for that programming language across all user projects.
+- `top`: Specifies how many top languages to fetch.
+
+```ts filename="app/apis/mostUsedLanguages.ts" copy {5-6}
+import { ConsumptionUtil } from "@514labs/moose-lib";
+
+export interface QueryParams {
+  // PASTE THE FOLLOWING LINES INTO YOUR CODE
+  rankBy: string;
+  top: string;
+}
+```
+
+These parameters are set in the request URL as key-value pairs, and their values will be injected into the query that you will execute against the database.
+
+### Implement the `handle()` Function
+
+```ts filename="/app/apis/mostUsedLanguages.ts" copy {9-37}
+import { ConsumptionUtil } from "@514labs/moose-lib";
+
+export interface QueryParams {
+  rankBy: string;
+  top: string;
+}
+
+// REPLACE THE `handle()` FUNCTION WITH THE FOLLOWING CODE:
+export default async function handle(
+  { rankBy = "users", top = "3" }: QueryParams,
+  { client, sql }: ConsumptionUtil,
+) {
+  if (rankBy == "bytes") {
+    return client.query(sql`
+    SELECT
+      language,
+      SUM(bytes) AS total_bytes
+    FROM userLanguages
+    GROUP BY
+        language
+    ORDER BY
+        total_bytes DESC
+    LIMIT ${parseInt(top)}
+  `);
+  }
+  return client.query(sql`
+    SELECT
+      language,
+      COUNT(DISTINCT user) AS number_of_users
+    FROM userLanguages
+    GROUP BY
+        language
+    ORDER BY
+        number_of_users DESC
+    LIMIT ${parseInt(top)}
+  `);
+}
+```
+
+This function can be called to retrieve either the top languages by total bytes or by the number of users, depending on the value of `rankBy`. The results are limited by the `top` parameter.
+
+- To return the `top` 5 programming languages, based on the raw number of `users` who use the language, you can run: `https://[YOUR_FORWARDING_URL]/consumption/mostUsedLanguage?top=5`.
+- Use the parameter `?rankBy=bytes` to rank results by the total number of bytes written in each language across all the people who starred your repo.
+
+For both query parameters, we set default values (`top = 3`, `rankBy = 'users'`). These defaults are used in the query if no values are set for these parameters.
+
+</Steps>
+
+## Test Out the API Endpoint
+
+<Steps>
+### Call the API From Your Terminal via `curl`
+```bash filename="Terminal" copy
+curl -X GET https://[YOUR_FORWARDING_URL]/consumption/mostUsedLanguage
+```
+<Callout type="warning" title="Don't Forget to Use Your Forwarding URL">
+Remember when you saved it earlier?
+</Callout>
+
+### Test the Consumption API Endpoint Query Parameters via `curl`
+
+```bash filename="Terminal" copy
+curl -X GET  https://[YOUR_FORWARDING_URL]/consumption/mostUsedLanguages\?rankBy\=bytes\&top\=1
+```
+
+</Steps>
+
+### _(Optional)_ For a Better Experience, Use Your API Client of choice
+
+<Callout type="info" title="VSCode Users">
+  **If you agreed to install the Recommended Extensions** upon initially opening
+  your Moose project in VSCode, you will have the **Thunder Client** extension
+  autmatically installed in your project workspace. You can locate the extension
+  via the lightning bolt icon.
+</Callout>
+
+<ZoomImg src="/thunder-client.png" />
+
+Try changing the query parameters to see the results change. _The query parameters do not need to be backslashed in the URL, for example:_
+
+```txt copy
+https://[YOUR_FORWARDING_URL]/consumption/mostUsedLanguages?rankBy=bytes&top=1
+```
+
+<Callout type="success" title="Congrats on Completing the Tutorial!">
+  You've just built an impressive real-time analytics service for GitHub star
+  events using Moose! Let's recap your amazing journey:
+  <ul>
+    - You created a **Data Model** and set up a GitHub webhook to ingest star
+    events in real-time. - You created a **Streaming Function** to process and
+    enrich the raw star event data. - You implemented a **Block** to analyze
+    user programming languages. - You built a **Consumption API** to fetch
+    insights about the most used languages.
+  </ul>
+</Callout>

@@ -228,7 +228,7 @@ export const HeroSection = () => {
       "An open source developer framework for your data & analytics stack",
     ctas: [
       {
-        href: "https://docs.moosejs.com/getting-started/new-project",
+        href: "https://docs.moosejs.com/getting-started/quickstart",
         action: "cta-early-access",
         label: "Get Started",
         variant: "default",

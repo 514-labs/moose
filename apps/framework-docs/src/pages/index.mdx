@@ -1,6 +1,24 @@
-import { Button, CTABar } from "@514labs/design-system-components/components";
+import {
+  Button,
+  CTABar,
+  Badge,
+} from "@514labs/design-system-components/components";
 import Link from "next/link";
 import { Cards, Card } from "nextra/components";
+import {
+  CTACard,
+  CTACards,
+  ZoomImg,
+  ChipBadge,
+  Columns,
+  Column,
+  Separator,
+} from "../components";
+import { Zap, GraduationCap } from "lucide-react";
+import {
+  Grid,
+  HalfWidthContentContainer,
+} from "@514labs/design-system-components/components/containers";
 
 # Introduction
 
@@ -11,17 +29,28 @@ Please reach out over [email](mailto:hello@moosejs.dev),
 [Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg),
 or [signup form](https://fiveonefour.typeform.com/signup). We can't wait to hear from you!
 
-<CTABar>
-  <Link href="/getting-started/new-project">
-    <Button>Quick Start</Button>
-  </Link>
-  <Link href="https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg">
-    <Button variant={"outline"}>Join Slack</Button>
-  </Link>
-</CTABar>
----
+## Pick Your Path
 
-## What is MooseJS?
+Choose the method that best suits your learning style for getting started with Moose:
+
+<CTACards>
+  <CTACard
+    title="Create a Moose Project"
+    description="Get up and running with your own Moose project in minutes"
+    ctaLink="/quickstart"
+    ctaLabel="Quick Start"
+    Icon={Zap}
+  />
+  <CTACard
+    title="Learn Step-by-Step"
+    description="Build an end-to-end Moose app through a guided tutorial"
+    ctaLink="/learn-moose"
+    ctaLabel="Try Tutorial"
+    Icon={GraduationCap}
+  />
+</CTACards>
+
+## What is Moose?
 
 [Moose](https://www.moosejs.com) is a batteries-included developer framework for building data-intensive applications using pure TypeScript or Python. Similar to how Django, Rails, and Laravel integrate web rendering, ORM, and authentication, Moose provides everything needed for your data and analytics stack—from data capture to consumption. This includes setting up ingestion and consumption API routes on a web server, topics and processes in a streaming platform, and tables and views in an OLAP database.
 
@@ -31,43 +60,52 @@ Moose is designed for any TypeScript or Python developer, regardless of your bac
 
 ## What types of applications can be built with Moose?
 
-Moose can be combined with your favorite front-end framework to embed data-intensive features in your products, such as:
+<br />
 
-- Dynamic leaderboards
-- Interactive charts
-- Real-time metric feeds
+<Columns>
+  <Column
+    heading="Embed Data Features in User-Facing Applications"
+    body="Moose can be combined with your favorite front-end framework to embed
+          data-intensive features in your products."
+    list={[
+      "Dynamic leaderboards",
+      "Interactive charts",
+      "Real-time metric feeds",
+    ]}
+    className="col-span-6 border-r"
+  />
+  <Column
+    heading="Backend System for Enterprise Data Products"
+    body="Create a backend system for enterprise data products, such as BI
+          software and data exploration tools, to deliver interactive data
+          applications."
+    list={[
+      "Real-time Dashboards",
+      "Observability & Log Monitoring",
+      "Customer Data Platforms",
+    ]}
+    className="col-span-6"
+  />
+</Columns>
 
-Or, you can build a backend system to power enterprise data products like BI software, data exploration tools, and more to create feature-rich, interactive data applications for your users and stakeholders. Examples include:
+We include some example applications in the [templates section](/templates/product-analytics/), so you can see how Moose can be used to build a variety of applications:
 
-- Real-time dashboards
-- Observability & Log Monitoring
-- Customer data platforms
-
-We include some example applications in the [examples section](/examples), so you can see how Moose can be used to build a variety of applications:
-
-<Cards>
-  <Card title="Product Analytics" href="/examples/product-analytics" />
-  <Card title="Real-Time Leaderboards" href="/examples/realtime-leaderboard" />
-</Cards>
-
----
+<ChipBadge href="/templates/product-analytics" label="Product Analytics" />
 
 ## How does Moose work?
 
-![architecture diagram](/img-diagram-full-dark.svg)
+<ZoomImg src="/OVERVIEW-DIAGRAM.svg" />
 
 Moose provides a set of primitives that you can use to build your data stack in native TypeScript or Python. These primitives are:
 
-- [Data Models](https://docs.moosejs.com/building/data-models)
-- [Streaming Functions](https://docs.moosejs.com/building/process-data)
-- [Blocks](https://docs.moosejs.com/building/aggregations)
-- [Consumption APIs](https://docs.moosejs.com/building/consumption-apis)
+- [Data Models](/data-models)
+- [Streaming Functions](/stream-processing)
+- [Blocks](/db-processing)
+- [Consumption APIs](/consumption-apis)
 
 When you build and run your code, Moose interprets your implemented primitives and automatically configures the assets in your data stack infrastructure to support your application.
 
-Learn more in the [architecture documentation](https://docs.moosejs.com/getting-started/architecture).
-
----
+Learn more in the [architecture documentation](/architecture).
 
 ## What's the key functionality?
 

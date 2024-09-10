@@ -1,9 +1,0 @@
-# Additional Tips & Tricks
-
-## SQL Explorer Setup
-
-We recommend iterating on the `SELECT` query in a SQL explorer for a more efficient workflow. Once you’re satisfied with the query that will aggregate the data, you can easily copy-paste it into the aggregation file. If you’re using VS Code, Moose will automatically configure a SQL explorer extension that will connect to the local database. You can find these settings in the `.vscode` folder of your Moose project.
-
-## What is the `orderBy` Key?
-
-Moose creates a new table in the database for your Aggregation query results whenever you create or update an Aggregation. This requires specifying at least one column to use as the sorting key for the table in the `CREATE TABLE` command syntax.

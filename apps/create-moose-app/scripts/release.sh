@@ -13,6 +13,6 @@ jq \
     && mv package.json.tmp package.json
 
 cd ../..
-pnpm build --filter create-moose-app
+pnpm build --filter ...create-moose-app
 cd apps/create-moose-app
 pnpm publish --access public --no-git-checks

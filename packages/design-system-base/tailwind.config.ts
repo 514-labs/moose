@@ -8,6 +8,7 @@ const config = {
     "./app/**/*.{ts,tsx, md, mdx}",
     "./src/**/*.{ts,tsx, md, mdx}",
     "./mdx-components.tsx",
+    "./theme.config.jsx",
     "../../packages/design-system-base/**/*.{ts,tsx, md, mdx}",
     "../../packages/design-system-components/**/*.{ts,tsx, md, mdx}",
     "../../packages/event-capture/**/*.{ts,tsx, md, mdx}",
@@ -83,6 +84,28 @@ const config = {
           DEFAULT: "hsl(var(--accent))",
           foreground: "hsl(var(--accent-foreground))",
         },
+        blue: {
+          DEFAULT: "hsl(var(--accent-moo-blue))",
+        },
+        teal: {
+          DEFAULT: "hsl(var(--accent-moo-teal))",
+        },
+        indigo: {
+          DEFAULT: "hsl(var(--accent-moo-indigo))",
+          trans: "hsl(var(--accent-moo-indigo-trans))/20",
+        },
+        purple: {
+          DEFAULT: "hsl(var(--accent-moo-purple))",
+        },
+        pink: {
+          DEFAULT: "hsl(var(--accent-moo-pink))",
+        },
+        yellow: {
+          DEFAULT: "hsl(var(--accent-moo-yellow))",
+        },
+        green: {
+          DEFAULT: "hsl(var(--accent-moo-green))",
+        },
         popover: {
           DEFAULT: "hsl(var(--popover))",
           foreground: "hsl(var(--popover-foreground))",
@@ -91,6 +114,11 @@ const config = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+      },
+      backgroundImage: {
+        gradient: "var(--moose-gradient)",
+        gradientDark: "var(--moose-gradient-dark)",
+        gradientDarkPink: "var(--moose-gradient-dark-pink)",
       },
       borderRadius: {
         lg: "var(--radius)",

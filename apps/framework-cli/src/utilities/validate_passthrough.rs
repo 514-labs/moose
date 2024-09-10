@@ -426,7 +426,11 @@ mod tests {
             .deserialize_any(&mut DataModelVisitor::new(&columns));
 
         println!("{:?}", result);
-        assert!(result.is_err());
+        assert!(result
+            .err()
+            .unwrap()
+            .to_string()
+            .contains("Invalid date format"));
     }
 
     #[test]

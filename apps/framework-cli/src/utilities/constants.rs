@@ -4,6 +4,8 @@ use uuid::Uuid;
 
 pub const CLI_VERSION: &str = env!("CARGO_PKG_VERSION");
 
+pub const ENVIRONMENT_VARIABLE_PREFIX: &str = "MOOSE";
+
 pub const PACKAGE_JSON: &str = "package.json";
 pub const SETUP_PY: &str = "setup.py";
 pub const OLD_PROJECT_CONFIG_FILE: &str = "project.toml";

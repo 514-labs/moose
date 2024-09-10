@@ -8,7 +8,9 @@ use uuid::Uuid;
 
 use super::display::{Message, MessageType};
 use super::logger::LoggerSettings;
-use crate::utilities::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
+use crate::utilities::constants::{
+    CLI_CONFIG_FILE, CLI_USER_DIRECTORY, ENVIRONMENT_VARIABLE_PREFIX,
+};
 
 /// # Config
 /// Module to handle reading the config file from the user's home directory and configuring the CLI
@@ -18,8 +20,6 @@ use crate::utilities::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
 /// - add a config file generator to the CLI
 /// - add a config file validation and error handling
 ///
-
-const ENVIRONMENT_VARIABLE_PREFIX: &str = "MOOSE";
 
 #[derive(Deserialize, Debug)]
 pub struct Telemetry {
@@ -88,7 +88,8 @@ pub fn read_settings() -> Result<Settings, ConfigError> {
         .add_source(
             Environment::with_prefix(ENVIRONMENT_VARIABLE_PREFIX)
                 .try_parsing(true)
-                .separator("_"),
+                .prefix_separator("_")
+                .separator("__"),
         )
         .build()?;
 

@@ -125,9 +125,10 @@
   margin-bottom: 0;
 }
 
-.docs a {
+.docs a:not(:has-parent(footer)) {
   color: hsl(var(--accent-moo-pink));
 }
+
 .docs h2.nx-border-b {
   border-bottom: none;
 }

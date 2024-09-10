@@ -9,7 +9,10 @@ import {
   SmallTextEmbed,
   textBodyBase,
 } from "@514labs/design-system-components/typography";
-import { Logo, Badge } from "@514labs/design-system-components/components";
+import {
+  Logo,
+  ProductBadge,
+} from "@514labs/design-system-components/components";
 import { cn } from "@514labs/design-system-components/utils";
 import { Code, Rocket, Package, Library } from "lucide-react";
 import Link from "next/link";
@@ -17,10 +20,7 @@ import Link from "next/link";
 export default {
   logo: () => (
     <div className="flex flex-row items-center content-center w-[288px]">
-      <Logo property="moose" subProperty="docs" className="mr-2" />
-      <Badge variant={"outline"} className="w-fit ml-2">
-        alpha
-      </Badge>
+      <Logo property="Moose" subProperty="docs" className="mr-2 bg-gradient" />
     </div>
   ),
   project: {

@@ -7,6 +7,7 @@ use prometheus_client::{
     registry::Registry,
 };
 use serde_json::json;
+use std::env;
 use std::sync::Arc;
 use std::{path::PathBuf, time::Duration};
 use tokio::time;
@@ -14,9 +15,13 @@ use tokio::time;
 use chrono::Utc;
 
 use crate::utilities::constants::{self, CONTEXT, CTX_SESSION_ID};
-
-const ANONYMOUS_METRICS_URL: &str = "https://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
-const ANONMOUS_METRICS_REPORTING_INTERVAL: Duration = Duration::from_secs(10);
+const DEFAULT_ANONYMOUS_METRICS_URL: &str =
+    "https://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
+lazy_static::lazy_static! {
+    static ref ANONYMOUS_METRICS_URL: String = env::var("MOOSE_METRICS_DEST")
+        .unwrap_or_else(|_| DEFAULT_ANONYMOUS_METRICS_URL.to_string());
+}
+const ANONYMOUS_METRICS_REPORTING_INTERVAL: Duration = Duration::from_secs(10);
 pub const TOTAL_LATENCY: &str = "moose_total_latency";
 pub const LATENCY: &str = "moose_latency";
 pub const INGESTED_BYTES: &str = "moose_ingested_bytes";
@@ -458,7 +463,7 @@ impl Metrics {
                 };
 
                 loop {
-                    let _ = time::sleep(ANONMOUS_METRICS_REPORTING_INTERVAL).await;
+                    let _ = time::sleep(ANONYMOUS_METRICS_REPORTING_INTERVAL).await;
 
                     let session_duration_in_sec = Utc::now()
                         .signed_duration_since(session_start)
@@ -504,7 +509,7 @@ impl Metrics {
                     });
 
                     let _ = client
-                        .post(ANONYMOUS_METRICS_URL)
+                        .post(ANONYMOUS_METRICS_URL.as_str())
                         .json(&telemetry_payload)
                         .send()
                         .await;

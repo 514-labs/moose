@@ -32,6 +32,7 @@
 //!
 
 use log::{info, LevelFilter, Metadata, Record};
+use std::env;
 use std::time::{Duration, SystemTime};
 
 use opentelemetry::logs::Logger;
@@ -111,6 +112,12 @@ fn default_log_format() -> LogFormat {
     LogFormat::Text
 }
 
+fn default_export_to() -> Option<reqwest::Url> {
+    env::var("LOG_EXPORT_DEST")
+        .ok()
+        .and_then(|url| url.parse().ok())
+}
+
 impl Default for LoggerSettings {
     fn default() -> Self {
         LoggerSettings {
@@ -118,7 +125,7 @@ impl Default for LoggerSettings {
             level: default_log_level(),
             stdout: default_log_stdout(),
             format: default_log_format(),
-            export_to: None,
+            export_to: default_export_to(),
         }
     }
 }

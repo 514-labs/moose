@@ -17,7 +17,11 @@ use tokio::time;
 use chrono::Utc;
 
 use crate::utilities::constants::{self, CONTEXT, CTX_SESSION_ID};
-const ANONYMOUS_METRICS_URL: &str = "http://localhost:4000/ingest/MooseSessionTelemetry/0.0";
+const ANONYMOUS_METRICS_URL: &str = "http://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
+lazy_static::lazy_static! {
+    static ref ANONYMOUS_METRICS_URL: String = env::var("MOOSE_METRICS_DEST")
+        .unwrap_or_else(|_| DEFAULT_ANONYMOUS_METRICS_URL.to_string());
+}
 const ANONYMOUS_METRICS_REPORTING_INTERVAL: Duration = Duration::from_secs(10);
 pub const TOTAL_LATENCY: &str = "moose_total_latency";
 pub const LATENCY: &str = "moose_latency";
@@ -523,7 +527,7 @@ impl Metrics {
                     // }
 
                     let _ = client
-                        .post(ANONYMOUS_METRICS_URL)
+                        .post(ANONYMOUS_METRICS_URL.as_str())
                         .json(&telemetry_payload)
                         .send()
                         .await;

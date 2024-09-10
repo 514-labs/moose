@@ -62,8 +62,6 @@ use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 use crate::utilities::git::is_git_repo;
 
-use std::env;
-
 use self::routines::clean::CleanProject;
 
 #[derive(Parser)]

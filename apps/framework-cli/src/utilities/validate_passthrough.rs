@@ -8,7 +8,7 @@ use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserializer, Serialize, Serializer};
 use serde_json::Serializer as JsonSerializer;
 
-use crate::framework::core::infrastructure::table::{Column, ColumnType};
+use crate::framework::core::infrastructure::table::{Column, ColumnType, EnumValue};
 use crate::framework::data_model::model::DataModel;
 
 struct State {
@@ -142,9 +142,15 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
 
                 self.write_to.serialize_value(v).map_err(Error::custom)
             }
-            ColumnType::Enum(ref _enum_def) => {
-                // TODO: Implement enum validation
-                self.write_to.serialize_value(v).map_err(Error::custom)
+            ColumnType::Enum(ref enum_def) => {
+                if enum_def.values.iter().any(|ev| match &ev.value {
+                    EnumValue::Int(_) => ev.name == v,
+                    EnumValue::String(enum_value) => enum_value == v,
+                }) {
+                    self.write_to.serialize_value(v).map_err(Error::custom)
+                } else {
+                    Err(E::custom(format!("Invalid enum value: {}", v)))
+                }
             }
             _ => Err(Error::invalid_type(serde::de::Unexpected::Str(v), &self)),
         }
@@ -345,9 +351,9 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
 
 #[cfg(test)]
 mod tests {
-    use std::path::PathBuf;
-
+    use crate::framework::core::infrastructure::table::{DataEnum, EnumMember};
     use crate::framework::data_model::config::DataModelConfig;
+    use std::path::PathBuf;
 
     use super::*;
 
@@ -481,5 +487,68 @@ mod tests {
         let expected = r#"{"array_col":[1,2,3,4,5]}"#;
 
         assert_eq!(String::from_utf8(result), Ok(expected.to_string()));
+    }
+
+    #[test]
+    fn test_enum_valid_and_invalid() {
+        let data_model = DataModel {
+            columns: vec![Column {
+                name: "enum_col".to_string(),
+                data_type: ColumnType::Enum(DataEnum {
+                    name: "TestEnum".to_string(),
+                    values: vec![
+                        EnumMember {
+                            name: "Option1".to_string(),
+                            value: EnumValue::String("option1".to_string()),
+                        },
+                        EnumMember {
+                            name: "Option2".to_string(),
+                            value: EnumValue::String("option2".to_string()),
+                        },
+                    ],
+                }),
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            }],
+            name: "TestModel".to_string(),
+            config: DataModelConfig::default(),
+            abs_file_path: PathBuf::from("/path/to/test_model.rs"),
+            version: "1.0".to_string(),
+        };
+
+        // Test valid enum value
+        let valid_json = r#"
+        {
+            "enum_col": "option1"
+        }
+        "#;
+
+        let valid_result = serde_json::Deserializer::from_str(valid_json)
+            .deserialize_any(&mut DataModelVisitor::new(&data_model))
+            .unwrap();
+
+        let expected_valid = r#"{"enum_col":"option1"}"#;
+        assert_eq!(
+            String::from_utf8(valid_result),
+            Ok(expected_valid.to_string())
+        );
+
+        // Test invalid enum value
+        let invalid_json = r#"
+        {
+            "enum_col": "invalid_option"
+        }
+        "#;
+
+        let invalid_result = serde_json::Deserializer::from_str(invalid_json)
+            .deserialize_any(&mut DataModelVisitor::new(&data_model));
+
+        assert!(invalid_result.is_err());
+        assert!(invalid_result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid enum value: invalid_option"));
     }
 }

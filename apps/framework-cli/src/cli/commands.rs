@@ -55,6 +55,8 @@ pub enum Commands {
     Dev {},
     /// Start a remote environment for use in cloud deployments
     Prod {},
+
+    Test {},
     /// Generates missing migration files
     Generate(GenerateArgs),
     /// Bumps the version of the project

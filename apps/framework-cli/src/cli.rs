@@ -8,6 +8,7 @@ mod routines;
 pub mod settings;
 mod watcher;
 use super::metrics::Metrics;
+use crate::utilities::constants::{self, CONTEXT, CTX_SESSION_ID};
 use chrono::Utc;
 use clap::Parser;
 use commands::{
@@ -61,6 +62,11 @@ use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 use crate::utilities::git::is_git_repo;
+
+use std::env;
+
+use base64::{engine::general_purpose, Engine as _};
+use serde_json::Value;
 
 use self::routines::clean::CleanProject;
 
@@ -263,6 +269,19 @@ async fn top_command_handler(
                 "No Errors found".to_string(),
             )))
         }
+        Commands::Test {} => {
+            const DEFAULT_ANONYMOUS_METRICS_URL: &str =
+                "https://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
+            lazy_static::lazy_static! {
+                static ref ANONYMOUS_METRICS_URL: String = env::var("MOOSE_METRICS_DEST")
+                    .unwrap_or_else(|_| DEFAULT_ANONYMOUS_METRICS_URL.to_string());
+            }
+
+            Ok(RoutineSuccess::success(Message::new(
+                "Labels".to_string(),
+                ANONYMOUS_METRICS_URL.to_string(),
+            )))
+        }
         Commands::Build {
             docker,
             amd64,
@@ -324,6 +343,7 @@ async fn top_command_handler(
             let (metrics, rx) = Metrics::new(TelemetryMetadata {
                 anonymous_telemetry_enabled: settings.telemetry.enabled,
                 machine_id: settings.telemetry.machine_id.clone(),
+                metric_labels: settings.metric_labels.labels.clone(),
                 is_moose_developer: settings.telemetry.is_moose_developer,
                 is_production: project_arc.is_production,
                 project_name: project_arc.name().to_string(),
@@ -495,6 +515,7 @@ async fn top_command_handler(
             let (metrics, rx) = Metrics::new(TelemetryMetadata {
                 anonymous_telemetry_enabled: settings.telemetry.enabled,
                 machine_id: settings.telemetry.machine_id.clone(),
+                metric_labels: settings.metric_labels.labels.clone(),
                 is_moose_developer: settings.telemetry.is_moose_developer,
                 is_production: project_arc.is_production,
                 project_name: project_arc.name().to_string(),

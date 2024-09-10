@@ -31,9 +31,12 @@
 //! ```
 //!
 
-use log::{info, LevelFilter, Metadata, Record};
+use log::{debug, info, LevelFilter, Metadata, Record};
 use std::env;
 use std::time::{Duration, SystemTime};
+
+use base64::{engine::general_purpose, Engine as _};
+use serde_json::Value;
 
 use opentelemetry::logs::Logger;
 use opentelemetry::KeyValue;
@@ -161,6 +164,14 @@ fn clean_old_logs() {
 pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), fern::InitError> {
     clean_old_logs();
 
+    let metric_labels = env::var("METRIC_LABELS")
+        .map(|encoded| general_purpose::STANDARD.decode(encoded))
+        .ok()
+        .and_then(|result| result.ok())
+        .and_then(|decoded| String::from_utf8(decoded).ok())
+        .and_then(|json_str| serde_json::from_str::<Value>(&json_str).ok())
+        .unwrap_or_else(|| serde_json::json!({}));
+
     let session_id = CONTEXT.get(CTX_SESSION_ID).unwrap();
 
     let base_config = fern::Dispatch::new().level(settings.level.to_log_level());
@@ -168,28 +179,38 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
     let format_config = if settings.format == LogFormat::Text {
         fern::Dispatch::new().format(move |out, message, record| {
             out.finish(format_args!(
-                "[{} {} {} - {}] {}",
+                "[{} {} {} - {}] {}, {}",
                 humantime::format_rfc3339_seconds(SystemTime::now()),
                 record.level(),
                 &session_id,
                 record.target(),
-                message
+                message,
+                serde_json::to_string(&metric_labels).unwrap_or_default()
             ))
         })
     } else {
         fern::Dispatch::new().format(move |out, message, record| {
+            let mut log_json = serde_json::json!({
+                "timestamp": chrono::Utc::now().to_rfc3339(),
+                "severity": record.level().to_string(),
+                "session_id": &session_id,
+                "target": record.target(),
+                "message": message,
+            });
+
+            if let Some(obj) = log_json.as_object_mut() {
+                obj.extend(
+                    metric_labels
+                        .as_object()
+                        .unwrap_or(&serde_json::Map::new())
+                        .clone(),
+                );
+            }
+
             out.finish(format_args!(
                 "{}",
-                serde_json::to_string(&serde_json::json!(
-                    {
-                        "timestamp": chrono::Utc::now().to_rfc3339(),
-                        "severity": record.level(),
-                        "session_id": &session_id,
-                        "target": record.target(),
-                        "message": message,
-                    }
-                ))
-                .expect("formatting `serde_json::Value` with string keys never fails")
+                serde_json::to_string(&log_json)
+                    .expect("formatting `serde_json::Value` with string keys never fails")
             ))
         })
     };

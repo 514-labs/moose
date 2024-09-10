@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine as _};
 use prometheus_client::metrics::counter::Counter;
 use prometheus_client::metrics::family::Family;
 use prometheus_client::metrics::gauge::Gauge;
@@ -7,6 +8,7 @@ use prometheus_client::{
     registry::Registry,
 };
 use serde_json::json;
+use serde_json::Value;
 use std::env;
 use std::sync::Arc;
 use std::{path::PathBuf, time::Duration};
@@ -15,12 +17,7 @@ use tokio::time;
 use chrono::Utc;
 
 use crate::utilities::constants::{self, CONTEXT, CTX_SESSION_ID};
-const DEFAULT_ANONYMOUS_METRICS_URL: &str =
-    "https://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
-lazy_static::lazy_static! {
-    static ref ANONYMOUS_METRICS_URL: String = env::var("MOOSE_METRICS_DEST")
-        .unwrap_or_else(|_| DEFAULT_ANONYMOUS_METRICS_URL.to_string());
-}
+const ANONYMOUS_METRICS_URL: &str = "http://localhost:4000/ingest/MooseSessionTelemetry/0.0";
 const ANONYMOUS_METRICS_REPORTING_INTERVAL: Duration = Duration::from_secs(10);
 pub const TOTAL_LATENCY: &str = "moose_total_latency";
 pub const LATENCY: &str = "moose_latency";
@@ -98,6 +95,7 @@ pub struct TelemetryMetadata {
     pub anonymous_telemetry_enabled: bool,
     pub machine_id: String,
     pub is_moose_developer: bool,
+    pub metric_labels: Option<String>,
     pub is_production: bool,
     pub project_name: String,
 }
@@ -443,6 +441,15 @@ impl Metrics {
 
         let cloned_metadata = self.telemetry_metadata.clone();
 
+        let metric_labels = cloned_metadata
+            .metric_labels
+            .clone()
+            .map(|encoded| general_purpose::STANDARD.decode(encoded))
+            .and_then(|result| result.ok())
+            .and_then(|decoded| String::from_utf8(decoded).ok())
+            .and_then(|json_str| serde_json::from_str::<Value>(&json_str).ok())
+            .unwrap_or_else(|| serde_json::json!({}));
+
         if self.telemetry_metadata.anonymous_telemetry_enabled {
             tokio::spawn(async move {
                 let client = reqwest::Client::new();
@@ -508,8 +515,15 @@ impl Metrics {
                         "ip": ip,
                     });
 
+                    // // Merge metric_labels into telemetry_payload
+                    // if let Some(payload_obj) = telemetry_payload.as_object_mut() {
+                    //     if let Some(labels_obj) = metric_labels.as_object() {
+                    //         payload_obj.extend(labels_obj.clone());
+                    //     }
+                    // }
+
                     let _ = client
-                        .post(ANONYMOUS_METRICS_URL.as_str())
+                        .post(ANONYMOUS_METRICS_URL)
                         .json(&telemetry_payload)
                         .send()
                         .await;

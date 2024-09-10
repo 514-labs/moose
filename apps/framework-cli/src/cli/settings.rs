@@ -22,10 +22,20 @@ use crate::utilities::constants::{
 ///
 
 #[derive(Deserialize, Debug)]
+pub struct MetricLabels {
+    pub labels: Option<String>,
+}
+
+impl Default for MetricLabels {
+    fn default() -> Self {
+        MetricLabels { labels: None }
+    }
+}
+
+#[derive(Deserialize, Debug)]
 pub struct Telemetry {
     pub machine_id: String,
     pub enabled: bool,
-
     #[serde(default)]
     pub is_moose_developer: bool,
 }
@@ -52,6 +62,9 @@ pub struct Settings {
     pub logger: LoggerSettings,
     #[serde(default)]
     pub telemetry: Telemetry,
+
+    #[serde(default)]
+    pub metric_labels: MetricLabels,
 
     #[serde(default)]
     pub features: Features,

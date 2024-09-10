@@ -103,6 +103,22 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     {
         match self.t {
             ColumnType::Int => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Enum(enum_def) => {
+                if enum_def
+                    .values
+                    .iter()
+                    .enumerate()
+                    .any(|(i, ev)| match &ev.value {
+                        EnumValue::Int(value) => ((*value) as i64) == v,
+                        EnumValue::String(_) => (i as i64) == v,
+                    })
+                {
+                    self.write_to.serialize_value(&v).map_err(Error::custom)
+                } else {
+                    Err(E::custom(format!("Invalid enum value: {}", v)))
+                }
+            }
+
             _ => Err(Error::invalid_type(serde::de::Unexpected::Signed(v), &self)),
         }
     }
@@ -113,6 +129,21 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     {
         match self.t {
             ColumnType::Int => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Enum(enum_def) => {
+                if enum_def
+                    .values
+                    .iter()
+                    .enumerate()
+                    .any(|(i, ev)| match &ev.value {
+                        EnumValue::Int(value) => ((*value) as u64) == v,
+                        EnumValue::String(_) => (i as u64) == v,
+                    })
+                {
+                    self.write_to.serialize_value(&v).map_err(Error::custom)
+                } else {
+                    Err(E::custom(format!("Invalid enum value: {}", v)))
+                }
+            }
             _ => Err(Error::invalid_type(
                 serde::de::Unexpected::Unsigned(v),
                 &self,

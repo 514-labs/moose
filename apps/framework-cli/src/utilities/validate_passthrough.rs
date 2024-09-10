@@ -1,21 +1,73 @@
-use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, EnumValue};
-use crate::framework::data_model::model::DataModel;
-use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
-use serde::ser::SerializeMap;
-use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use serde_json::Serializer as JsonSerializer;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::Formatter;
+use std::marker::PhantomData;
+
+use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
+use serde::ser::{SerializeMap, SerializeSeq};
+use serde::{Deserializer, Serialize, Serializer};
+use serde_json::Serializer as JsonSerializer;
+
+use crate::framework::core::infrastructure::table::{Column, ColumnType};
+use crate::framework::data_model::model::DataModel;
 
 struct State {
     seen: bool,
 }
 
-struct ValueVisitor<'a, S: SerializeMap> {
+trait SerializeValue {
+    type Error: serde::ser::Error;
+
+    fn serialize_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
+    where
+        T: ?Sized + Serialize;
+}
+impl<S> SerializeValue for S
+where
+    S: SerializeMap,
+{
+    type Error = S::Error;
+
+    fn serialize_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
+    where
+        T: ?Sized + Serialize,
+    {
+        // must have called serialize_key first
+        S::serialize_value(self, value)
+    }
+}
+
+struct DummyWrapper<'a, T>(&'a mut T); // workaround so that implementations don't clash
+impl<'a, S> SerializeValue for DummyWrapper<'a, S>
+where
+    S: SerializeSeq,
+{
+    type Error = S::Error;
+
+    fn serialize_value<T>(&mut self, value: &T) -> Result<(), Self::Error>
+    where
+        T: ?Sized + Serialize,
+    {
+        self.0.serialize_element(value)
+    }
+}
+
+struct ValueVisitor<'a, S: SerializeValue> {
     t: &'a ColumnType,
+    required: bool,
     write_to: &'a mut S,
 }
-impl<'de, 'a, S: SerializeMap> Visitor<'de> for ValueVisitor<'a, S> {
+impl<'de, 'a, S: SerializeValue> DeserializeSeed<'de> for &mut ValueVisitor<'a, S> {
+    type Value = ();
+
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(self)
+    }
+}
+impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     type Value = ();
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
@@ -28,7 +80,10 @@ impl<'de, 'a, S: SerializeMap> Visitor<'de> for ValueVisitor<'a, S> {
             ColumnType::Enum(_) => formatter.write_str("an enum value"),
             ColumnType::Array(_) => formatter.write_str("an array value"),
             ColumnType::Nested(_) => formatter.write_str("a nested object"),
-            _ => formatter.write_str("a value matching the column type"),
+
+            ColumnType::BigInt | ColumnType::Decimal | ColumnType::Json | ColumnType::Bytes => {
+                formatter.write_str("a value matching the column type")
+            }
         }
     }
 
@@ -80,10 +135,14 @@ impl<'de, 'a, S: SerializeMap> Visitor<'de> for ValueVisitor<'a, S> {
         E: Error,
     {
         match self.t {
-            ColumnType::String | ColumnType::DateTime => {
+            ColumnType::String => self.write_to.serialize_value(v).map_err(Error::custom),
+            ColumnType::DateTime => {
+                chrono::DateTime::parse_from_rfc3339(v)
+                    .map_err(|_| E::custom("Invalid date format"))?;
+
                 self.write_to.serialize_value(v).map_err(Error::custom)
             }
-            ColumnType::Enum(ref enum_def) => {
+            ColumnType::Enum(ref _enum_def) => {
                 // TODO: Implement enum validation
                 self.write_to.serialize_value(v).map_err(Error::custom)
             }
@@ -95,6 +154,9 @@ impl<'de, 'a, S: SerializeMap> Visitor<'de> for ValueVisitor<'a, S> {
     where
         E: Error,
     {
+        if self.required {
+            return Err(E::custom("Required value, but is none".to_string()));
+        }
         self.write_to
             .serialize_value(&None::<bool>)
             .map_err(Error::custom)
@@ -106,54 +168,51 @@ impl<'de, 'a, S: SerializeMap> Visitor<'de> for ValueVisitor<'a, S> {
     {
         deserializer.deserialize_any(self)
     }
-}
-
-struct ArrayVisitor<'a, S: SerializeMap> {
-    inner_type: &'a ColumnType,
-    write_to: &'a mut S,
-}
-struct ArrayElementVisitor<'a, S: SerializeMap> {
-    inner_type: &'a ColumnType,
-    write_to: &'a mut S,
-}
-impl<'de, 'a, S: SerializeMap> DeserializeSeed<'de> for ArrayVisitor<'a, S> {
-    type Value = ();
-
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_seq(self)
-    }
-}
-impl<'de, 'a, S: SerializeMap> Visitor<'de> for ArrayVisitor<'a, S> {
-    type Value = ();
-
-    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-        formatter.write_str("an array")
-    }
-    fn visit_seq<A>(mut self, mut seq: A) -> Result<Self::Value, A::Error>
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
     where
         A: SeqAccess<'de>,
     {
-        let element = ArrayElementVisitor {
-            inner_type: &self.inner_type,
-            write_to: self.write_to,
-        };
-
-        while let Some(()) = seq.next_element_seed(&element)? {}
-        Ok(())
+        match self.t {
+            ColumnType::Array(ref inner_type) => {
+                self.write_to
+                    .serialize_value(&SeqAccessSerializer {
+                        inner_type,
+                        seq: RefCell::new(&mut seq),
+                        _phantom_data: &PHANTOM_DATA,
+                    })
+                    .map_err(A::Error::custom)?;
+                Ok(())
+            }
+            _ => Err(Error::invalid_type(serde::de::Unexpected::Seq, &self)),
+        }
     }
 }
-impl<'de, 'a, S: SerializeMap> DeserializeSeed<'de> for &ArrayElementVisitor<'a, S> {
-    type Value = ();
 
-    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+impl<'a, 'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'a, 'de, A> {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
-        D: Deserializer<'de>,
+        S: Serializer,
     {
-        todo!()
+        let mut write_to = serializer.serialize_seq(None)?;
+        let mut visitor = ValueVisitor {
+            t: self.inner_type,
+            required: true,
+            write_to: &mut DummyWrapper(&mut write_to),
+        };
+        let mut seq = self.seq.borrow_mut();
+        while let Some(()) = (*seq)
+            .next_element_seed(&mut visitor)
+            .map_err(serde::ser::Error::custom)?
+        {}
+        write_to.end()
     }
+}
+
+static PHANTOM_DATA: PhantomData<()> = PhantomData {};
+struct SeqAccessSerializer<'a, 'de, A: SeqAccess<'de>> {
+    inner_type: &'a ColumnType,
+    seq: RefCell<&'a mut A>,
+    _phantom_data: &'de PhantomData<()>,
 }
 
 pub struct DataModelVisitor {
@@ -172,107 +231,48 @@ impl DataModelVisitor {
     }
 }
 
-struct DateString(String);
-impl<'de> Deserialize<'de> for DateString {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        String::deserialize(deserializer).and_then(|s| {
-            match chrono::DateTime::parse_from_rfc3339(&s) {
-                Ok(_) => Ok(DateString(s)),
-                Err(_) => Err(D::Error::custom("Invalid date format")),
-            }
-        })
-    }
-}
-impl Serialize for DateString {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        String::serialize(&self.0, serializer)
-    }
-}
+// struct UnwrappedEnumValue(EnumValue);
+// impl Serialize for UnwrappedEnumValue {
+//     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+//     where
+//         S: Serializer,
+//     {
+//         match self.0 {
+//             EnumValue::Int(i) => serializer.serialize_u8(i),
+//             EnumValue::String(ref s) => serializer.serialize_str(s),
+//         }
+//     }
+// }
+// impl<'de> Deserialize<'de> for UnwrappedEnumValue {
+//     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+//     where
+//         D: Deserializer<'de>,
+//     {
+//         deserializer.deserialize_any(UnwrappedEnumValueVisitor)
+//     }
+// }
+// struct UnwrappedEnumValueVisitor;
+// impl<'de> Visitor<'de> for UnwrappedEnumValueVisitor {
+//     type Value = UnwrappedEnumValue;
 
-struct UnwrappedEnumValue(EnumValue);
-impl Serialize for UnwrappedEnumValue {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: Serializer,
-    {
-        match self.0 {
-            EnumValue::Int(i) => serializer.serialize_u8(i),
-            EnumValue::String(ref s) => serializer.serialize_str(s),
-        }
-    }
-}
-impl<'de> Deserialize<'de> for UnwrappedEnumValue {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        deserializer.deserialize_any(UnwrappedEnumValueVisitor)
-    }
-}
-struct UnwrappedEnumValueVisitor;
-impl<'de> Visitor<'de> for UnwrappedEnumValueVisitor {
-    type Value = UnwrappedEnumValue;
+//     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+//         todo!()
+//     }
 
-    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-        todo!()
-    }
+//     fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
+//     where
+//         E: Error,
+//     {
+//         Ok(UnwrappedEnumValue(EnumValue::Int(v)))
+//     }
 
-    fn visit_u8<E>(self, v: u8) -> Result<Self::Value, E>
-    where
-        E: Error,
-    {
-        Ok(UnwrappedEnumValue(EnumValue::Int(v)))
-    }
-
-    fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
-    where
-        E: Error,
-    {
-        Ok(UnwrappedEnumValue(EnumValue::String(v.to_string())))
-    }
-}
-
-fn get_and_set<
-    'de,
-    A: MapAccess<'de>,
-    S: SerializeMap,
-    T: Deserialize<'de> + ?Sized + Serialize,
->(
-    map: &mut A,
-    map_serializer: &mut S,
-    key: String,
-    required: bool,
-    validation: Option<impl Fn(&T) -> Option<A::Error>>,
-) -> Result<(), A::Error> {
-    let value = map.next_value::<Option<T>>()?;
-    if required && value.is_none() {
-        return Err(A::Error::custom(format!(
-            "Required value for field {} not found",
-            key
-        )));
-    };
-
-    if let Some(v) = validation {
-        if let Some(ref value) = value {
-            if let Some(e) = v(value) {
-                return Err(e);
-            }
-        }
-    }
-
-    map_serializer
-        .serialize_key(&key)
-        .map_err(A::Error::custom)?;
-    map_serializer
-        .serialize_value(&value)
-        .map_err(A::Error::custom)
-}
+//     fn visit_str<E>(self, v: &str) -> Result<Self::Value, E>
+//     where
+//         E: Error,
+//     {
+//         Ok(UnwrappedEnumValue(EnumValue::String(v.to_string())))
+//     }
+// }
 
 impl<'de> Visitor<'de> for &mut DataModelVisitor {
     type Value = Vec<u8>;
@@ -292,74 +292,17 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
         while let Some(key) = map.next_key::<String>()? {
             if let Some((column, state)) = self.columns.get_mut(&key) {
                 state.seen = true;
-                match &column.data_type {
-                    ColumnType::String => {
-                        get_and_set::<_, _, String>(
-                            &mut map,
-                            &mut map_serializer,
-                            key,
-                            column.required,
-                            None::<fn(&_) -> _>,
-                        )?;
-                    }
-                    ColumnType::Boolean => {
-                        get_and_set::<_, _, bool>(
-                            &mut map,
-                            &mut map_serializer,
-                            key,
-                            column.required,
-                            None::<fn(&_) -> _>,
-                        )?;
-                    }
-                    ColumnType::Int => {
-                        get_and_set::<_, _, i64>(
-                            &mut map,
-                            &mut map_serializer,
-                            key,
-                            column.required,
-                            None::<fn(&_) -> _>,
-                        )?;
-                    }
 
-                    ColumnType::BigInt
-                    | ColumnType::Decimal
-                    | ColumnType::Json
-                    | ColumnType::Bytes => return Err(A::Error::custom("UnsupportedColumnType")),
-                    ColumnType::Float => {
-                        get_and_set::<_, _, f64>(
-                            &mut map,
-                            &mut map_serializer,
-                            key,
-                            column.required,
-                            None::<fn(&_) -> _>,
-                        )?;
-                    }
-                    ColumnType::DateTime => {
-                        get_and_set::<_, _, DateString>(
-                            &mut map,
-                            &mut map_serializer,
-                            key,
-                            column.required,
-                            None::<fn(&_) -> _>,
-                        )?;
-                    }
-                    ColumnType::Enum(ref enum_def) => {
-                        get_and_set::<_, _, EnumValue>(
-                            &mut map,
-                            &mut map_serializer,
-                            key,
-                            column.required,
-                            Some(to_validation::<A>(enum_def)),
-                        )?;
-                    }
-                    ColumnType::Array(inner) => map.next_value_seed(ArrayVisitor {
-                        inner_type: inner.as_ref(),
-                        write_to: &mut map_serializer,
-                    })?,
-                    ColumnType::Nested(_) => {
-                        todo!();
-                    }
-                }
+                map_serializer
+                    .serialize_key(&key)
+                    .map_err(A::Error::custom)?;
+
+                let mut visitor = ValueVisitor {
+                    t: &column.data_type,
+                    write_to: &mut map_serializer,
+                    required: column.required,
+                };
+                map.next_value_seed(&mut visitor)?;
             }
         }
         SerializeMap::end(map_serializer).map_err(A::Error::custom)?;
@@ -381,21 +324,162 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
         Ok(vec)
     }
 }
+//
+// // TODO: cache this closure
+// fn to_validation<'de, A: MapAccess<'de>>(
+//     data_enum: &DataEnum,
+// ) -> impl Fn(&EnumValue) -> Option<A::Error> {
+//     // match &data_enum.values[0].value {
+//     //     EnumValue::Int(_) => {
+//     //         let values = data_enum.values.iter().map(|v| match v.value {
+//     //             EnumValue::Int(i) => i,
+//     //             EnumValue::String(_) => {
+//     //                 panic!("ahhhh")
+//     //             }
+//     //         })
+//     //     },
+//     //     EnumValue::String(_) => {}
+//     // };
+//     |enum_value: &EnumValue| None
+// }
 
-// TODO: cache this closure
-fn to_validation<'de, A: MapAccess<'de>>(
-    data_enum: &DataEnum,
-) -> impl Fn(&EnumValue) -> Option<A::Error> {
-    // match &data_enum.values[0].value {
-    //     EnumValue::Int(_) => {
-    //         let values = data_enum.values.iter().map(|v| match v.value {
-    //             EnumValue::Int(i) => i,
-    //             EnumValue::String(_) => {
-    //                 panic!("ahhhh")
-    //             }
-    //         })
-    //     },
-    //     EnumValue::String(_) => {}
-    // };
-    |enum_value: &EnumValue| None
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+
+    use crate::framework::data_model::config::DataModelConfig;
+
+    use super::*;
+
+    #[test]
+    fn test_happy_path_all_types() {
+        let data_model = DataModel {
+            columns: vec![
+                Column {
+                    name: "string_col".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+                Column {
+                    name: "int_col".to_string(),
+                    data_type: ColumnType::Int,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+                Column {
+                    name: "float_col".to_string(),
+                    data_type: ColumnType::Float,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+                Column {
+                    name: "bool_col".to_string(),
+                    data_type: ColumnType::Boolean,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+                Column {
+                    name: "date_col".to_string(),
+                    data_type: ColumnType::DateTime,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+            ],
+            name: "TestModel".to_string(),
+            config: DataModelConfig::default(),
+            abs_file_path: PathBuf::from("/path/to/test_model.rs"),
+            version: "1.0".to_string(),
+        };
+
+        let json = r#"
+        {
+            "string_col": "test",
+            "int_col": 42,
+            "float_col": 3.14,
+            "bool_col": true,
+            "date_col": "2024-09-10T17:34:51+00:00"
+        }
+        "#;
+
+        let result = serde_json::Deserializer::from_str(json)
+            .deserialize_any(&mut DataModelVisitor::new(&data_model))
+            .unwrap();
+
+        let expected = r#"{"string_col":"test","int_col":42,"float_col":3.14,"bool_col":true,"date_col":"2024-09-10T17:34:51+00:00"}"#;
+
+        assert_eq!(String::from_utf8(result), Ok(expected.to_string()));
+    }
+
+    #[test]
+    fn test_bad_date_format() {
+        let data_model = DataModel {
+            columns: vec![Column {
+                name: "date_col".to_string(),
+                data_type: ColumnType::DateTime,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            }],
+            name: "TestModel".to_string(),
+            config: DataModelConfig::default(),
+            abs_file_path: PathBuf::from("/path/to/test_model.rs"),
+            version: "1.0".to_string(),
+        };
+
+        let json = r#"
+        {
+            "date_col": "2024-09-10"
+        }
+        "#;
+
+        let result = serde_json::Deserializer::from_str(json)
+            .deserialize_any(&mut DataModelVisitor::new(&data_model));
+
+        println!("{:?}", result);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_array() {
+        let data_model = DataModel {
+            columns: vec![Column {
+                name: "array_col".to_string(),
+                data_type: ColumnType::Array(Box::new(ColumnType::Int)),
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            }],
+            name: "TestModel".to_string(),
+            config: DataModelConfig::default(),
+            abs_file_path: PathBuf::from("/path/to/test_model.rs"),
+            version: "1.0".to_string(),
+        };
+
+        let json = r#"
+        {
+            "array_col": [1, 2, 3, 4, 5]
+        }
+        "#;
+
+        let result = serde_json::Deserializer::from_str(json)
+            .deserialize_any(&mut DataModelVisitor::new(&data_model))
+            .unwrap();
+
+        let expected = r#"{"array_col":[1,2,3,4,5]}"#;
+
+        assert_eq!(String::from_utf8(result), Ok(expected.to_string()));
+    }
 }

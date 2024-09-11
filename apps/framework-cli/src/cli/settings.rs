@@ -8,9 +8,7 @@ use uuid::Uuid;
 
 use super::display::{Message, MessageType};
 use super::logger::LoggerSettings;
-use crate::utilities::constants::{
-    CLI_CONFIG_FILE, CLI_USER_DIRECTORY, ENVIRONMENT_VARIABLE_PREFIX,
-};
+use crate::utilities::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
 
 /// # Config
 /// Module to handle reading the config file from the user's home directory and configuring the CLI

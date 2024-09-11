@@ -32,12 +32,6 @@
 //!
 
 use log::{info, LevelFilter, Metadata, Record};
-use std::env;
-use std::time::{Duration, SystemTime};
-
-use base64::{engine::general_purpose, Engine as _};
-use serde_json::Value;
-
 use opentelemetry::logs::Logger;
 use opentelemetry::KeyValue;
 use opentelemetry_appender_log::OpenTelemetryLogBridge;
@@ -48,6 +42,9 @@ use opentelemetry_sdk::logs::LoggerProvider;
 use opentelemetry_sdk::Resource;
 use opentelemetry_semantic_conventions::resource::SERVICE_NAME;
 use serde::Deserialize;
+use serde_json::Value;
+use std::env;
+use std::time::{Duration, SystemTime};
 
 use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
 use crate::utilities::decode_object;
@@ -229,10 +226,10 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
                 env::var("MOOSE_METRIC_LABELS").unwrap().as_str(),
             );
 
-            if let Some(labels) = metric_labels.as_object() {
+            if let Ok(Value::Object(labels)) = metric_labels {
                 for (key, value) in labels {
                     if let Some(value_str) = value.as_str() {
-                        resource_attributes.push(KeyValue::new(key.clone(), value_str.to_string()));
+                        resource_attributes.push(KeyValue::new(key, value_str.to_string()));
                     }
                 }
             }

@@ -223,7 +223,9 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
                 KeyValue::new("machine_id", String::from(machine_id)),
             ];
             let metric_labels = decode_object::decode_base64_to_json(
-                env::var("MOOSE_METRIC_LABELS").unwrap().as_str(),
+                // We are reading from the environment variables because we metrics and logs are sharing
+                // the same fields to append to the JSON
+                env::var("MOOSE_METRIC__LABELS").unwrap().as_str(),
             );
 
             if let Ok(Value::Object(labels)) = metric_labels {

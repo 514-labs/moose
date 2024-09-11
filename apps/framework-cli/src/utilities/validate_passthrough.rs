@@ -211,8 +211,17 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
             return Err(E::custom("Required value, but is none".to_string()));
         }
         self.write_to
+            // type param of the None does not matter
+            // we're writing null anyway
             .serialize_value(&None::<bool>)
             .map_err(Error::custom)
+    }
+
+    fn visit_unit<E>(self) -> Result<Self::Value, E>
+    where
+        E: Error,
+    {
+        self.visit_none()
     }
 
     fn visit_some<D>(self, deserializer: D) -> Result<Self::Value, D::Error>

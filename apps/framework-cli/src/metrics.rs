@@ -1,4 +1,3 @@
-use base64::{engine::general_purpose, Engine as _};
 use prometheus_client::metrics::counter::Counter;
 use prometheus_client::metrics::family::Family;
 use prometheus_client::metrics::gauge::Gauge;
@@ -515,10 +514,10 @@ impl Metrics {
                         "ip": ip,
                     });
 
-                    // // Merge metric_labels into telemetry_payload
+                    // Merge metric_labels into telemetry_payload
                     if let Some(payload_obj) = telemetry_payload.as_object_mut() {
-                        if let Some(labels_obj) = metric_labels.as_object() {
-                            payload_obj.extend(labels_obj.clone());
+                        if let Ok(Value::Object(labels_obj)) = metric_labels.clone() {
+                            payload_obj.extend(labels_obj);
                         }
                     }
 

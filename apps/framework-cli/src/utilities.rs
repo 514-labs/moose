@@ -7,6 +7,7 @@ pub mod git;
 pub mod package_managers;
 pub mod retry;
 pub mod system;
+pub mod validate_passthrough;
 
 pub trait PathExt {
     fn ext_is_supported_lang(&self) -> bool;

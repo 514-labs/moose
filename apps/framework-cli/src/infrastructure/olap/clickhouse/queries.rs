@@ -272,6 +272,7 @@ fn basic_field_type_to_string(
                 .iter()
                 .map(|enum_member| match &enum_member.value {
                     EnumValue::Int(int) => format!("'{}' = {}", enum_member.name, int),
+                    // "Numbers are assigned starting from 1 by default."
                     EnumValue::String(string) => format!("'{}'", string),
                 })
                 .collect::<Vec<String>>()

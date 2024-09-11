@@ -13,6 +13,9 @@ use super::{topic::Topic, DataLineage, InfrastructureSignature};
 pub enum APIType {
     INGRESS {
         target_topic: String,
+        // in previous versions this is not stored,
+        // so deserialization may fail if the value is not optional
+        // our code does not depend on the stored field
         data_model: Option<DataModel>,
     },
     EGRESS,

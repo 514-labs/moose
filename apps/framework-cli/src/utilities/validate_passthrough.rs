@@ -221,7 +221,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     {
         deserializer.deserialize_any(self)
     }
-    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    fn visit_seq<A>(self, seq: A) -> Result<Self::Value, A::Error>
     where
         A: SeqAccess<'de>,
     {
@@ -230,7 +230,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
                 self.write_to
                     .serialize_value(&SeqAccessSerializer {
                         inner_type,
-                        seq: RefCell::new(&mut seq),
+                        seq: RefCell::new(seq),
                         _phantom_data: &PHANTOM_DATA,
                     })
                     .map_err(A::Error::custom)?;
@@ -239,18 +239,17 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
             _ => Err(Error::invalid_type(serde::de::Unexpected::Seq, &self)),
         }
     }
-    fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+    fn visit_map<A>(self, map: A) -> Result<Self::Value, A::Error>
     where
         A: MapAccess<'de>,
     {
         match self.t {
             ColumnType::Nested(ref fields) => {
-                // TODO: we should cache this value
                 let mut inner = DataModelVisitor::new(&fields.columns);
                 self.write_to
                     .serialize_value(&MapAccessSerializer {
                         inner: RefCell::new(&mut inner),
-                        map: RefCell::new(&mut (map)),
+                        map: RefCell::new(map),
                         _phantom_data: &PHANTOM_DATA,
                     })
                     .map_err(A::Error::custom)
@@ -272,7 +271,7 @@ impl<'a, 'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'a, 'de, A> {
             write_to: &mut DummyWrapper(&mut write_to),
         };
         let mut seq = self.seq.borrow_mut();
-        while let Some(()) = (*seq)
+        while let Some(()) = seq
             .next_element_seed(&mut visitor)
             .map_err(serde::ser::Error::custom)?
         {}
@@ -281,15 +280,18 @@ impl<'a, 'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'a, 'de, A> {
 }
 
 static PHANTOM_DATA: PhantomData<()> = PhantomData {};
+// RefCell for interior mutability
+// generally serialization for T should not change the T
+// but here we read elements/entries off from the SeqAccess/MapAccess
+// as we put it into the output JSON
 struct SeqAccessSerializer<'a, 'de, A: SeqAccess<'de>> {
     inner_type: &'a ColumnType,
-    seq: RefCell<&'a mut A>,
+    seq: RefCell<A>,
     _phantom_data: &'de PhantomData<()>,
 }
-
 struct MapAccessSerializer<'a, 'de, A: MapAccess<'de>> {
     inner: RefCell<&'a mut DataModelVisitor>,
-    map: RefCell<&'a mut A>,
+    map: RefCell<A>,
     _phantom_data: &'de PhantomData<()>,
 }
 
@@ -299,9 +301,9 @@ impl<'a, 'de, A: MapAccess<'de>> Serialize for MapAccessSerializer<'a, 'de, A> {
         S: Serializer,
     {
         let mut write_to = serializer.serialize_map(None)?;
-        let mut map = self.map.borrow_mut();
+        let map: &mut A = &mut self.map.borrow_mut();
         (*self.inner.borrow_mut())
-            .transfer_map_access_to_serialize_map(*map, &mut write_to)
+            .transfer_map_access_to_serialize_map(map, &mut write_to)
             .map_err(serde::ser::Error::custom)?;
         write_to.end()
     }

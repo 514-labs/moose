@@ -253,16 +253,14 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
         A: MapAccess<'de>,
     {
         match self.t {
-            ColumnType::Nested(ref fields) => {
-                let mut inner = DataModelVisitor::new(&fields.columns);
-                self.write_to
-                    .serialize_value(&MapAccessSerializer {
-                        inner: RefCell::new(&mut inner),
-                        map: RefCell::new(map),
-                        _phantom_data: &PHANTOM_DATA,
-                    })
-                    .map_err(A::Error::custom)
-            }
+            ColumnType::Nested(ref fields) => self
+                .write_to
+                .serialize_value(&MapAccessSerializer {
+                    inner: RefCell::new(DataModelVisitor::new(&fields.columns)),
+                    map: RefCell::new(map),
+                    _phantom_data: &PHANTOM_DATA,
+                })
+                .map_err(A::Error::custom),
             _ => Err(A::Error::invalid_type(serde::de::Unexpected::Map, &self)),
         }
     }
@@ -298,20 +296,21 @@ struct SeqAccessSerializer<'a, 'de, A: SeqAccess<'de>> {
     seq: RefCell<A>,
     _phantom_data: &'de PhantomData<()>,
 }
-struct MapAccessSerializer<'a, 'de, A: MapAccess<'de>> {
-    inner: RefCell<&'a mut DataModelVisitor>,
+struct MapAccessSerializer<'de, A: MapAccess<'de>> {
+    inner: RefCell<DataModelVisitor>,
     map: RefCell<A>,
     _phantom_data: &'de PhantomData<()>,
 }
 
-impl<'a, 'de, A: MapAccess<'de>> Serialize for MapAccessSerializer<'a, 'de, A> {
+impl<'de, A: MapAccess<'de>> Serialize for MapAccessSerializer<'de, A> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
     {
         let mut write_to = serializer.serialize_map(None)?;
         let map: &mut A = &mut self.map.borrow_mut();
-        (*self.inner.borrow_mut())
+        self.inner
+            .borrow_mut()
             .transfer_map_access_to_serialize_map(map, &mut write_to)
             .map_err(serde::ser::Error::custom)?;
         write_to.end()

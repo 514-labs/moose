@@ -310,7 +310,6 @@ impl<'a, 'de, A: MapAccess<'de>> Serialize for MapAccessSerializer<'a, 'de, A> {
 pub struct DataModelVisitor {
     columns: HashMap<String, (Column, State)>,
 }
-
 impl DataModelVisitor {
     pub fn new(columns: &[Column]) -> Self {
         DataModelVisitor {
@@ -382,7 +381,37 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
         Ok(vec)
     }
 }
+impl<'de> DeserializeSeed<'de> for &mut DataModelVisitor {
+    type Value = Vec<u8>;
 
+    fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        deserializer.deserialize_any(self)
+    }
+}
+pub struct DataModelArrayVisitor {
+    pub inner: DataModelVisitor,
+}
+impl<'de> Visitor<'de> for &mut DataModelArrayVisitor {
+    type Value = Vec<Vec<u8>>;
+
+    fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+        formatter.write_str("an array")
+    }
+
+    fn visit_seq<A>(self, mut seq: A) -> Result<Self::Value, A::Error>
+    where
+        A: SeqAccess<'de>,
+    {
+        let mut result = vec![];
+        while let Some(element) = seq.next_element_seed(&mut self.inner)? {
+            result.push(element)
+        }
+        Ok(result)
+    }
+}
 #[cfg(test)]
 mod tests {
     use crate::framework::core::infrastructure::table::{DataEnum, EnumMember, Nested};

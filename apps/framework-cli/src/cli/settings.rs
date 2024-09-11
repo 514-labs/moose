@@ -8,9 +8,7 @@ use uuid::Uuid;
 
 use super::display::{Message, MessageType};
 use super::logger::LoggerSettings;
-use crate::utilities::constants::{
-    CLI_CONFIG_FILE, CLI_USER_DIRECTORY, ENVIRONMENT_VARIABLE_PREFIX,
-};
+use crate::utilities::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
 
 /// # Config
 /// Module to handle reading the config file from the user's home directory and configuring the CLI
@@ -21,11 +19,17 @@ use crate::utilities::constants::{
 /// - add a config file validation and error handling
 ///
 
+const ENVIRONMENT_VARIABLE_PREFIX: &str = "MOOSE";
+
+#[derive(Deserialize, Debug, Default)]
+pub struct MetricLabels {
+    pub labels: Option<String>,
+}
+
 #[derive(Deserialize, Debug)]
 pub struct Telemetry {
     pub machine_id: String,
     pub enabled: bool,
-
     #[serde(default)]
     pub is_moose_developer: bool,
 }
@@ -52,6 +56,9 @@ pub struct Settings {
     pub logger: LoggerSettings,
     #[serde(default)]
     pub telemetry: Telemetry,
+
+    #[serde(default)]
+    pub metric: MetricLabels,
 
     #[serde(default)]
     pub features: Features,

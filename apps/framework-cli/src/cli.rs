@@ -324,6 +324,7 @@ async fn top_command_handler(
             let (metrics, rx) = Metrics::new(TelemetryMetadata {
                 anonymous_telemetry_enabled: settings.telemetry.enabled,
                 machine_id: settings.telemetry.machine_id.clone(),
+                metric_labels: settings.metric.labels.clone(),
                 is_moose_developer: settings.telemetry.is_moose_developer,
                 is_production: project_arc.is_production,
                 project_name: project_arc.name().to_string(),
@@ -495,6 +496,7 @@ async fn top_command_handler(
             let (metrics, rx) = Metrics::new(TelemetryMetadata {
                 anonymous_telemetry_enabled: settings.telemetry.enabled,
                 machine_id: settings.telemetry.machine_id.clone(),
+                metric_labels: settings.metric.labels.clone(),
                 is_moose_developer: settings.telemetry.is_moose_developer,
                 is_production: project_arc.is_production,
                 project_name: project_arc.name().to_string(),

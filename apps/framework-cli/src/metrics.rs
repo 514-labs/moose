@@ -7,6 +7,8 @@ use prometheus_client::{
     registry::Registry,
 };
 use serde_json::json;
+use serde_json::Value;
+use std::env;
 use std::sync::Arc;
 use std::{path::PathBuf, time::Duration};
 use tokio::time;
@@ -14,9 +16,14 @@ use tokio::time;
 use chrono::Utc;
 
 use crate::utilities::constants::{self, CONTEXT, CTX_SESSION_ID};
-
-const ANONYMOUS_METRICS_URL: &str = "https://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
-const ANONMOUS_METRICS_REPORTING_INTERVAL: Duration = Duration::from_secs(10);
+use crate::utilities::decode_object;
+const DEFAULT_ANONYMOUS_METRICS_URL: &str =
+    "https://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
+lazy_static::lazy_static! {
+    static ref ANONYMOUS_METRICS_URL: String = env::var("MOOSE_METRICS_DEST")
+        .unwrap_or_else(|_| DEFAULT_ANONYMOUS_METRICS_URL.to_string());
+}
+const ANONYMOUS_METRICS_REPORTING_INTERVAL: Duration = Duration::from_secs(10);
 pub const TOTAL_LATENCY: &str = "moose_total_latency";
 pub const LATENCY: &str = "moose_latency";
 pub const INGESTED_BYTES: &str = "moose_ingested_bytes";
@@ -93,6 +100,7 @@ pub struct TelemetryMetadata {
     pub anonymous_telemetry_enabled: bool,
     pub machine_id: String,
     pub is_moose_developer: bool,
+    pub metric_labels: Option<String>,
     pub is_production: bool,
     pub project_name: String,
 }
@@ -438,6 +446,17 @@ impl Metrics {
 
         let cloned_metadata = self.telemetry_metadata.clone();
 
+        let metric_labels = match cloned_metadata.metric_labels {
+            Some(labels) => match decode_object::decode_base64_to_json(labels.as_str()) {
+                Ok(decoded) => decoded,
+                Err(e) => {
+                    log::warn!("Failed to decode metric labels: {:?}", e);
+                    serde_json::Value::Null
+                }
+            },
+            None => serde_json::Value::Null,
+        };
+
         if self.telemetry_metadata.anonymous_telemetry_enabled {
             tokio::spawn(async move {
                 let client = reqwest::Client::new();
@@ -458,7 +477,7 @@ impl Metrics {
                 };
 
                 loop {
-                    let _ = time::sleep(ANONMOUS_METRICS_REPORTING_INTERVAL).await;
+                    let _ = time::sleep(ANONYMOUS_METRICS_REPORTING_INTERVAL).await;
 
                     let session_duration_in_sec = Utc::now()
                         .signed_duration_since(session_start)
@@ -480,7 +499,7 @@ impl Metrics {
                             0
                         };
 
-                    let telemetry_payload = json!({
+                    let mut telemetry_payload = json!({
                         "timestamp": Utc::now(),
                         "machineId": cloned_metadata.machine_id.clone(),
                         "sequenceId": CONTEXT.get(CTX_SESSION_ID).unwrap(),
@@ -503,8 +522,15 @@ impl Metrics {
                         "ip": ip,
                     });
 
+                    // Merge metric_labels into telemetry_payload
+                    if let Some(payload_obj) = telemetry_payload.as_object_mut() {
+                        if let Value::Object(labels_obj) = metric_labels.clone() {
+                            payload_obj.extend(labels_obj);
+                        }
+                    }
+
                     let _ = client
-                        .post(ANONYMOUS_METRICS_URL)
+                        .post(ANONYMOUS_METRICS_URL.as_str())
                         .json(&telemetry_payload)
                         .send()
                         .await;

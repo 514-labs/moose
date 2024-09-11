@@ -31,9 +31,8 @@
 //! ```
 //!
 
+use log::{error, warn};
 use log::{info, LevelFilter, Metadata, Record};
-use std::time::{Duration, SystemTime};
-
 use opentelemetry::logs::Logger;
 use opentelemetry::KeyValue;
 use opentelemetry_appender_log::OpenTelemetryLogBridge;
@@ -44,8 +43,13 @@ use opentelemetry_sdk::logs::LoggerProvider;
 use opentelemetry_sdk::Resource;
 use opentelemetry_semantic_conventions::resource::SERVICE_NAME;
 use serde::Deserialize;
+use serde_json::Value;
+use std::env;
+
+use std::time::{Duration, SystemTime};
 
 use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
+use crate::utilities::decode_object;
 
 use super::settings::user_directory;
 
@@ -171,18 +175,18 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
         })
     } else {
         fern::Dispatch::new().format(move |out, message, record| {
+            let log_json = serde_json::json!({
+                "timestamp": chrono::Utc::now().to_rfc3339(),
+                "severity": record.level().to_string(),
+                "session_id": &session_id,
+                "target": record.target(),
+                "message": message,
+            });
+
             out.finish(format_args!(
                 "{}",
-                serde_json::to_string(&serde_json::json!(
-                    {
-                        "timestamp": chrono::Utc::now().to_rfc3339(),
-                        "severity": record.level(),
-                        "session_id": &session_id,
-                        "target": record.target(),
-                        "message": message,
-                    }
-                ))
-                .expect("formatting `serde_json::Value` with string keys never fails")
+                serde_json::to_string(&log_json)
+                    .expect("formatting `serde_json::Value` with string keys never fails")
             ))
         })
     };
@@ -215,12 +219,30 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
                 .build_log_exporter()
                 .unwrap();
 
+            let mut resource_attributes = vec![
+                KeyValue::new(SERVICE_NAME, "moose-cli"),
+                KeyValue::new("session_id", session_id.as_str()),
+                KeyValue::new("machine_id", String::from(machine_id)),
+            ];
+            let metric_labels = decode_object::decode_base64_to_json(
+                // We are reading from the environment variables because we metrics and logs are sharing
+                // the same fields to append to the JSON
+                env::var("MOOSE_METRIC__LABELS").unwrap().as_str(),
+            );
+            match metric_labels {
+                Ok(Value::Object(labels)) => {
+                    for (key, value) in labels {
+                        if let Some(value_str) = value.as_str() {
+                            resource_attributes.push(KeyValue::new(key, value_str.to_string()));
+                        }
+                    }
+                }
+                Err(e) => error!("Error decoding MOOSE_METRIC_LABELS: {}", e),
+                _ => warn!("Unexpected value for MOOSE_METRIC_LABELS"),
+            }
+
             let logger_provider = LoggerProvider::builder()
-                .with_config(Config::default().with_resource(Resource::new(vec![
-                    KeyValue::new(SERVICE_NAME, "moose-cli"),
-                    KeyValue::new("session_id", session_id.as_str()),
-                    KeyValue::new("machine_id", String::from(machine_id)),
-                ])))
+                .with_config(Config::default().with_resource(Resource::new(resource_attributes)))
                 .with_batch_exporter(otel_exporter, opentelemetry_sdk::runtime::Tokio)
                 .build();
 

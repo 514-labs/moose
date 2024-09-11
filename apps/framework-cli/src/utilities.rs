@@ -2,6 +2,7 @@ use std::path::Path;
 
 pub mod capture;
 pub mod constants;
+pub mod decode_object;
 pub mod docker;
 pub mod git;
 pub mod package_managers;

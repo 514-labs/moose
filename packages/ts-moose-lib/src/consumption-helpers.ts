@@ -8,7 +8,7 @@
  * @returns 'FLoat', 'Int', 'Bool', 'String'
  */
 
-import { ClickHouseClient } from "@clickhouse/client-web";
+import { ClickHouseClient } from "@clickhouse/client";
 
 export const mapToClickHouseType = (value: Value) => {
   if (typeof value === "number") {
@@ -128,6 +128,7 @@ function emptyIfUndefined(value: string | undefined): string {
 
 export class MooseClient {
   client: ClickHouseClient;
+
   constructor(client: ClickHouseClient) {
     this.client = client;
   }
@@ -150,6 +151,11 @@ export class MooseClient {
       }),
       {},
     );
+
+    // We are not using the result of the ping
+    // but this ensures that if the clickhouse cloud service is idle, we
+    // wake it up.
+    this.client.ping();
 
     return this.client.query({
       query,

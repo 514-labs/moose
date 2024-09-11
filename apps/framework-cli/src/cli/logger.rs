@@ -31,6 +31,7 @@
 //! ```
 //!
 
+use log::{error, warn};
 use log::{info, LevelFilter, Metadata, Record};
 use opentelemetry::logs::Logger;
 use opentelemetry::KeyValue;
@@ -44,6 +45,7 @@ use opentelemetry_semantic_conventions::resource::SERVICE_NAME;
 use serde::Deserialize;
 use serde_json::Value;
 use std::env;
+
 use std::time::{Duration, SystemTime};
 
 use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
@@ -227,13 +229,16 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
                 // the same fields to append to the JSON
                 env::var("MOOSE_METRIC__LABELS").unwrap().as_str(),
             );
-
-            if let Ok(Value::Object(labels)) = metric_labels {
-                for (key, value) in labels {
-                    if let Some(value_str) = value.as_str() {
-                        resource_attributes.push(KeyValue::new(key, value_str.to_string()));
+            match metric_labels {
+                Ok(Value::Object(labels)) => {
+                    for (key, value) in labels {
+                        if let Some(value_str) = value.as_str() {
+                            resource_attributes.push(KeyValue::new(key, value_str.to_string()));
+                        }
                     }
                 }
+                Err(e) => error!("Error decoding MOOSE_METRIC_LABELS: {}", e),
+                _ => warn!("Unexpected value for MOOSE_METRIC_LABELS"),
             }
 
             let logger_provider = LoggerProvider::builder()

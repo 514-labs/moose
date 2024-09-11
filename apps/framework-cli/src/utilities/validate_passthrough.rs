@@ -148,6 +148,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     {
         match self.t {
             ColumnType::Int => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Float => self.write_to.serialize_value(&v).map_err(Error::custom),
             ColumnType::Enum(enum_def) => handle_enum_value(self.write_to, enum_def, v),
             _ => Err(Error::invalid_type(serde::de::Unexpected::Signed(v), &self)),
         }
@@ -159,6 +160,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     {
         match self.t {
             ColumnType::Int => self.write_to.serialize_value(&v).map_err(Error::custom),
+            ColumnType::Float => self.write_to.serialize_value(&v).map_err(Error::custom),
             ColumnType::Enum(enum_def) => handle_enum_value(self.write_to, enum_def, v),
             _ => Err(Error::invalid_type(
                 serde::de::Unexpected::Unsigned(v),

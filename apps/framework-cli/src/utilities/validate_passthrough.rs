@@ -686,4 +686,40 @@ mod tests {
             .to_string()
             .contains("Missing fields: nested_string"));
     }
+
+    #[test]
+    fn test_missing_non_required_field() {
+        let columns = vec![
+            Column {
+                name: "required_field".to_string(),
+                data_type: ColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            Column {
+                name: "optional_field".to_string(),
+                data_type: ColumnType::Int,
+                required: false,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+        ];
+
+        let json = r#"
+        {
+            "required_field": "hello",
+            "optional_field": null
+        }
+        "#;
+
+        let result = serde_json::Deserializer::from_str(json)
+            .deserialize_any(&mut DataModelVisitor::new(&columns))
+            .unwrap();
+
+        let expected = r#"{"required_field":"hello","optional_field":null}"#;
+        assert_eq!(String::from_utf8(result), Ok(expected.to_string()));
+    }
 }

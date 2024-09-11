@@ -809,7 +809,7 @@ importers:
 
   packages/ts-moose-lib:
     dependencies:
-      "@clickhouse/client":
+      "@clickhouse/client-web":
         specifier: 1.5.0
         version: 1.5.0
       fastq:
@@ -1566,17 +1566,16 @@ packages:
         integrity: sha512-BicoD3siXefroCgwVvZwCJhAOp+jo62La5yPyZp0FZ38mh7Po2vNS/VU34GRU+Kgc9+DJuDiAOmgclSveXsgMA==,
       }
 
+  "@clickhouse/client-web@1.5.0":
+    resolution:
+      {
+        integrity: sha512-21+c2UJ4cx9SPiIWQThCLULb8h/zng0pNrtTwbbnaoCqMbasyRCyRTHs3wRr7fqRUcZ3p9krIPuN0gnJw3GJ6Q==,
+      }
+
   "@clickhouse/client@0.3.1":
     resolution:
       {
         integrity: sha512-5ywbK3oJJ8HIMzSZ6qJAhr6SyjmaBLy9fnVrLdacnZpFhD8j2RMKyM9yu3kAOzCF2HhFbdTPM/+KVWTpKjJlpA==,
-      }
-    engines: { node: ">=16" }
-
-  "@clickhouse/client@1.5.0":
-    resolution:
-      {
-        integrity: sha512-Udwyoec+AHHS1TiLxDiWiJWcm2BvhZEqGjmUnvzL54NyT8D8eh2mxn5RR/W5ie64JDnsKLeZFlPYKRRhZMhkxA==,
       }
     engines: { node: ">=16" }
 
@@ -13372,13 +13371,13 @@ snapshots:
     dependencies:
       "@clickhouse/client-common": 1.1.0
 
+  "@clickhouse/client-web@1.5.0":
+    dependencies:
+      "@clickhouse/client-common": 1.5.0
+
   "@clickhouse/client@0.3.1":
     dependencies:
       "@clickhouse/client-common": 0.3.1
-
-  "@clickhouse/client@1.5.0":
-    dependencies:
-      "@clickhouse/client-common": 1.5.0
 
   "@esbuild/aix-ppc64@0.19.12":
     optional: true

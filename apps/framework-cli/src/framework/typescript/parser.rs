@@ -7,6 +7,7 @@ use serde_json::{json, Value};
 
 use crate::framework::data_model::parser::FileObjects;
 use crate::project::Project;
+use crate::utilities::constants::TSCONFIG_JSON;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to parse the typescript file")]
@@ -37,7 +38,7 @@ pub fn extract_data_model_from_file(
     let output_dir = internal.join("serialized_datamodels");
 
     fs::write(
-        internal.join("tsconfig.json"),
+        internal.join(TSCONFIG_JSON),
         json!({
             "compilerOptions":{
                 "outDir": "dist", // relative path, so .moose/dist
@@ -62,7 +63,7 @@ pub fn extract_data_model_from_file(
     let ts_return_code = Command::new("npx")
         .arg("tspc")
         .arg("--project")
-        .arg(".moose/tsconfig.json")
+        .arg(format!(".moose/{}", TSCONFIG_JSON))
         .env("NPM_CONFIG_UPDATE_NOTIFIER", "false")
         .current_dir(&project.project_location)
         .spawn()?

@@ -13,9 +13,9 @@ use crate::{
     utilities::{package_managers, system},
 };
 
-use crate::framework::core::infrastructure::table::{ColumnType, DataEnum, EnumValue, Table};
-
 use super::templates::TypescriptRenderingError;
+use crate::framework::core::infrastructure::table::{ColumnType, DataEnum, EnumValue, Table};
+use crate::utilities::constants::TSCONFIG_JSON;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to generate Typescript code")]
@@ -352,7 +352,7 @@ pub fn generate_sdk(
         let package_json_code = typescript::templates::render_package_json(&package.name)?;
         fs::write(sdk_dir.join("package.json"), package_json_code)?;
         let ts_config_code = typescript::templates::render_ts_config()?;
-        fs::write(sdk_dir.join("tsconfig.json"), ts_config_code)?;
+        fs::write(sdk_dir.join(TSCONFIG_JSON), ts_config_code)?;
     }
 
     let index_code = typescript::templates::render_ingest_client(

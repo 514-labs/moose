@@ -444,27 +444,26 @@ impl Metrics {
             }
         });
 
-        let metric_labels = match self
-            .telemetry_metadata
-            .metric_labels
-            .as_deref()
-            .map(decode_object::decode_base64_to_json)
-        {
-            None => None,
-            Some(Ok(Value::Object(map))) => Some(map),
-            Some(Ok(v)) => {
-                warn!("Unexpected JSON value for metric_labels {}", v);
-                None
-            }
-            Some(Err(e)) => {
-                warn!("Invalid JSON for metric_labels {}", e);
-                None
-            }
-        };
-
-        let cloned_metadata = self.telemetry_metadata.clone();
-
         if self.telemetry_metadata.anonymous_telemetry_enabled {
+            let metric_labels = match self
+                .telemetry_metadata
+                .metric_labels
+                .as_deref()
+                .map(decode_object::decode_base64_to_json)
+            {
+                None => None,
+                Some(Ok(Value::Object(map))) => Some(map),
+                Some(Ok(v)) => {
+                    warn!("Unexpected JSON value for metric_labels {}", v);
+                    None
+                }
+                Some(Err(e)) => {
+                    warn!("Invalid JSON for metric_labels {}", e);
+                    None
+                }
+            };
+
+            let cloned_metadata = self.telemetry_metadata.clone();
             tokio::spawn(async move {
                 let client = reqwest::Client::new();
 
@@ -484,7 +483,7 @@ impl Metrics {
                 };
 
                 loop {
-                    let _ = time::sleep(ANONYMOUS_METRICS_REPORTING_INTERVAL).await;
+                    time::sleep(ANONYMOUS_METRICS_REPORTING_INTERVAL).await;
 
                     let session_duration_in_sec = Utc::now()
                         .signed_duration_since(session_start)

@@ -46,7 +46,6 @@ use python_project::PythonProject;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA;
 use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS;
 use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
@@ -63,6 +62,7 @@ use crate::utilities::constants::{BLOCKS_DIR, TS_BLOCKS_FILE};
 use crate::utilities::constants::{
     CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS, ENVIRONMENT_VARIABLE_PREFIX,
 };
+use crate::utilities::constants::{CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS, TSCONFIG_JSON};
 use crate::utilities::constants::{PYTHON_INIT_FILE, PY_API_FILE, TS_API_FILE};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 use crate::utilities::git::GitConfig;
@@ -267,7 +267,7 @@ impl Project {
         match self.language {
             // TODO move the templates to the respective project language modules
             SupportedLanguages::Typescript => {
-                let tsconfig = self.project_location.join("tsconfig.json");
+                let tsconfig = self.project_location.join(TSCONFIG_JSON);
                 let apis_file_path = self.consumption_dir().join(TS_API_FILE);
                 let base_model_file_path = self.data_models_dir().join("models.ts");
                 let function_file_path = self.streaming_func_dir().join(format!(

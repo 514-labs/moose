@@ -4,7 +4,7 @@ use crate::cli::routines::util::ensure_docker_running;
 use crate::framework::languages::SupportedLanguages;
 use crate::utilities::constants::{
     APP_DIR, CLI_INTERNAL_VERSIONS_DIR, OLD_PROJECT_CONFIG_FILE, PACKAGE_JSON, PROJECT_CONFIG_FILE,
-    SETUP_PY,
+    SETUP_PY, TSCONFIG_JSON,
 };
 use crate::utilities::{constants, docker, system};
 use crate::{cli::display::Message, project::Project};
@@ -233,6 +233,7 @@ pub fn build_dockerfile(
         APP_DIR,
         PACKAGE_JSON,
         SETUP_PY,
+        TSCONFIG_JSON,
         PROJECT_CONFIG_FILE,
         OLD_PROJECT_CONFIG_FILE,
     ];

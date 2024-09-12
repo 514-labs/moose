@@ -9,20 +9,20 @@ use prometheus_client::{
 use serde_json::json;
 use serde_json::Value;
 use std::env;
-use std::sync::Arc;
+use std::sync::{Arc, LazyLock};
 use std::{path::PathBuf, time::Duration};
 use tokio::time;
 
-use chrono::Utc;
-
-use crate::utilities::constants::{self, CONTEXT, CTX_SESSION_ID};
+use crate::utilities::constants::{CLI_VERSION, CONTEXT, CTX_SESSION_ID};
 use crate::utilities::decode_object;
+use chrono::Utc;
+use log::warn;
+
 const DEFAULT_ANONYMOUS_METRICS_URL: &str =
     "https://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
-lazy_static::lazy_static! {
-    static ref ANONYMOUS_METRICS_URL: String = env::var("MOOSE_METRICS_DEST")
-        .unwrap_or_else(|_| DEFAULT_ANONYMOUS_METRICS_URL.to_string());
-}
+static ANONYMOUS_METRICS_URL: LazyLock<String> = LazyLock::new(|| {
+    env::var("MOOSE_METRICS_DEST").unwrap_or_else(|_| DEFAULT_ANONYMOUS_METRICS_URL.to_string())
+});
 const ANONYMOUS_METRICS_REPORTING_INTERVAL: Duration = Duration::from_secs(10);
 pub const TOTAL_LATENCY: &str = "moose_total_latency";
 pub const LATENCY: &str = "moose_latency";
@@ -314,7 +314,7 @@ impl Metrics {
             while let Some(message) = rx.recv().await {
                 match message {
                     MetricsMessage::GetMetricsRegistryAsString(v) => {
-                        let _ = v.send(formatted_registry(&registry).await);
+                        let _ = v.send(formatted_registry(&registry));
                     }
                     MetricsMessage::HTTPLatency {
                         path,
@@ -444,18 +444,25 @@ impl Metrics {
             }
         });
 
-        let cloned_metadata = self.telemetry_metadata.clone();
-
-        let metric_labels = match cloned_metadata.metric_labels {
-            Some(labels) => match decode_object::decode_base64_to_json(labels.as_str()) {
-                Ok(decoded) => decoded,
-                Err(e) => {
-                    log::warn!("Failed to decode metric labels: {:?}", e);
-                    serde_json::Value::Null
-                }
-            },
-            None => serde_json::Value::Null,
+        let metric_labels = match self
+            .telemetry_metadata
+            .metric_labels
+            .as_deref()
+            .map(decode_object::decode_base64_to_json)
+        {
+            None => None,
+            Some(Ok(Value::Object(map))) => Some(map),
+            Some(Ok(v)) => {
+                warn!("Unexpected JSON value for metric_labels {}", v);
+                None
+            }
+            Some(Err(e)) => {
+                warn!("Invalid JSON for metric_labels {}", e);
+                None
+            }
         };
+
+        let cloned_metadata = self.telemetry_metadata.clone();
 
         if self.telemetry_metadata.anonymous_telemetry_enabled {
             tokio::spawn(async move {
@@ -506,7 +513,7 @@ impl Metrics {
                         "project": cloned_metadata.project_name.clone(),
                         "isProd": cloned_metadata.is_production.clone(),
                         "isMooseDeveloper": cloned_metadata.is_moose_developer.clone(),
-                        "cliVersion": constants::CLI_VERSION,
+                        "cliVersion": CLI_VERSION,
                         "sessionDurationInSec": session_duration_in_sec,
                         "ingestedEventsCount": cloned_data_ref.http_ingested_request_count.get(),
                         "ingestedEventsTotalBytes": cloned_data_ref.http_ingested_total_bytes.get(),
@@ -523,10 +530,9 @@ impl Metrics {
                     });
 
                     // Merge metric_labels into telemetry_payload
-                    if let Some(payload_obj) = telemetry_payload.as_object_mut() {
-                        if let Value::Object(labels_obj) = metric_labels.clone() {
-                            payload_obj.extend(labels_obj);
-                        }
+                    let payload_obj = telemetry_payload.as_object_mut().unwrap();
+                    if let Some(labels_obj) = &metric_labels {
+                        payload_obj.extend(labels_obj.iter().map(|(k, v)| (k.clone(), v.clone())));
                     }
 
                     let _ = client
@@ -540,7 +546,7 @@ impl Metrics {
     }
 }
 
-pub async fn formatted_registry(data: &Registry) -> String {
+fn formatted_registry(data: &Registry) -> String {
     let mut buffer = String::new();
     let _ = encode(&mut buffer, data);
     buffer

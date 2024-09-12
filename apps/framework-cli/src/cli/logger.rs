@@ -238,7 +238,7 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
                 },
                 Err(VarError::NotPresent) => {}
                 Err(VarError::NotUnicode(e)) => {
-                    error!("MOOSE_METRIC__LABELS is not unicode: {}", e);
+                    error!("MOOSE_METRIC__LABELS is not unicode: {:?}", e);
                 }
             }
 

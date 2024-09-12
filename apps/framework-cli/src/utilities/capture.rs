@@ -3,8 +3,7 @@
 //! This module leverages moose to instrument moose. It includes a macro to easily capture data anywhere in the codebase.
 //!
 use crate::cli::settings::Settings;
-use crate::utilities::constants;
-use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
+use crate::utilities::constants::{CLI_VERSION, CONTEXT, CTX_SESSION_ID};
 use chrono::Utc;
 use lazy_static::lazy_static;
 use serde_json::json;
@@ -102,7 +101,7 @@ pub fn capture_usage(
             activity_type,
             sequence_id: CONTEXT.get(CTX_SESSION_ID).unwrap().clone(),
             timestamp: Utc::now(),
-            cli_version: constants::CLI_VERSION.to_string(),
+            cli_version: CLI_VERSION.to_string(),
             is_moose_developer: settings.telemetry.is_moose_developer,
             machine_id: settings.telemetry.machine_id.clone(),
             ip: None,

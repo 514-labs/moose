@@ -45,7 +45,7 @@ use opentelemetry_semantic_conventions::resource::SERVICE_NAME;
 use serde::Deserialize;
 use serde_json::Value;
 use std::env;
-
+use std::env::VarError;
 use std::time::{Duration, SystemTime};
 
 use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
@@ -224,21 +224,22 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
                 KeyValue::new("session_id", session_id.as_str()),
                 KeyValue::new("machine_id", String::from(machine_id)),
             ];
-            let metric_labels = decode_object::decode_base64_to_json(
-                // We are reading from the environment variables because we metrics and logs are sharing
-                // the same fields to append to the JSON
-                env::var("MOOSE_METRIC__LABELS").unwrap().as_str(),
-            );
-            match metric_labels {
-                Ok(Value::Object(labels)) => {
-                    for (key, value) in labels {
-                        if let Some(value_str) = value.as_str() {
-                            resource_attributes.push(KeyValue::new(key, value_str.to_string()));
+            match env::var("MOOSE_METRIC__LABELS") {
+                Ok(base64) => match decode_object::decode_base64_to_json(&base64) {
+                    Ok(Value::Object(labels)) => {
+                        for (key, value) in labels {
+                            if let Some(value_str) = value.as_str() {
+                                resource_attributes.push(KeyValue::new(key, value_str.to_string()));
+                            }
                         }
                     }
+                    Ok(_) => warn!("Unexpected value for MOOSE_METRIC_LABELS"),
+                    Err(e) => error!("Error decoding MOOSE_METRIC_LABELS: {}", e),
+                },
+                Err(VarError::NotPresent) => {}
+                Err(VarError::NotUnicode(e)) => {
+                    error!("MOOSE_METRIC__LABELS is not unicode: {:?}", e);
                 }
-                Err(e) => error!("Error decoding MOOSE_METRIC_LABELS: {}", e),
-                _ => warn!("Unexpected value for MOOSE_METRIC_LABELS"),
             }
 
             let logger_provider = LoggerProvider::builder()

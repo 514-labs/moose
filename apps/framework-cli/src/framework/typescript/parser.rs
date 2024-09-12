@@ -63,6 +63,7 @@ pub fn extract_data_model_from_file(
         .arg("tspc")
         .arg("--project")
         .arg(".moose/tsconfig.json")
+        .env("NPM_CONFIG_UPDATE_NOTIFIER", "false")
         .current_dir(&project.project_location)
         .spawn()?
         .wait()

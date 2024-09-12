@@ -15,6 +15,7 @@ pub fn run(script: &str, args: &[&str]) -> Result<Child, std::io::Error> {
     let mut command = Command::new("npx");
 
     command
+        .env("NPM_CONFIG_UPDATE_NOTIFIER", "false")
         .arg("--yes")
         .arg("ts-node")
         .arg("-e")

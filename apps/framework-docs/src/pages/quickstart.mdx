@@ -27,13 +27,15 @@ import { LanguageSwitcher } from "../components/language-switcher";
 Check if these dependencies are installed:
 
 <TypeScript>
-  ```bash filename="Terminal" copy git --version && node --version && docker
-  --version ```
+```bash filename="Terminal" copy 
+git --version && node --version && docker --version
+```
 </TypeScript>
 
 <Python>
-  ```bash filename="Terminal" copy git --version && python3 --version && docker
-  --version ```
+```bash filename="Terminal" copy 
+git --version && python3 --version && docker --version 
+```
 </Python>
 
 ## Initialize Moose Project
@@ -42,6 +44,7 @@ Check if these dependencies are installed:
 <Python>
 ### Create and Activate a Python Virtual Environment
 Navigate to where you want to create your project and run the following command to create a new Python virtual environment:
+
 ```bash filename="Terminal" copy
 python -m venv venv
 ```
@@ -74,8 +77,11 @@ moose-cli init my-moose-app python
 </Python>
 
 <TypeScript>
-  ### Run `create-moose-app` in your terminal ```bash filename="Terminal" copy
-  npx create-moose-app@latest my-moose-app ts ```
+### Run `create-moose-app` in your terminal 
+
+```bash filename="Terminal" copy
+npx create-moose-app@latest my-moose-app ts 
+```
 </TypeScript>
 
 This will automatically create a new project folder and initialize a skeleton Moose app with the entire project structure you need to get started.
@@ -194,7 +200,7 @@ timestamp: datetime
 userId: str
 activity: str
 
-````
+```
 </Python>
 
 
@@ -216,7 +222,7 @@ Let's send some sample data to the `UserActivity` data model via the `/ingest/Us
     -H "Content-Type: application/json" \
     -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \
     http://localhost:4000/ingest/UserActivity
-````
+```
 
   </Tabs.Tab>
   <Tabs.Tab>
@@ -247,7 +253,7 @@ requests.post('http://localhost:4000/ingest/UserActivity', json={
 'activity': 'click'
 })
 
-````
+```
 </Tabs.Tab>
 </Tabs>
 
@@ -282,7 +288,7 @@ Follow the steps below to get started with querying your data using either the S
   password = "pandapass"
   host = "localhost"
   host_port = 18123
-````
+```
 
 - Test and save the connection. You should now see the `local` database in your database explorer tool.
 

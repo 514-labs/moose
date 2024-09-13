@@ -4,6 +4,11 @@ import {
   Tabs,
   TabsList,
   TabsContent,
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
 } from "@514labs/design-system-components/components";
 
 import { TrackableTabsTrigger } from "../../trackable-components";
@@ -37,15 +42,16 @@ const content: {
     title: string;
     description: string;
     filename: string;
-    typescript: string;
+    ts: string;
+    py: string;
   };
 } = {
   models: {
     title: "Models",
     description:
       "Codify the shape and structure of the data that is used in your application",
-    filename: "/datamodels/models.ts",
-    typescript: `
+    filename: "/datamodels/models",
+    ts: `
 export interface UserActivity {
     id: string;
     userId: string;
@@ -59,13 +65,30 @@ export interface ParsedActivity {
     activity: string;
     utcTimestamp: Date;
 }`,
+    py: `
+from moose_lib import Key
+
+@dataclass
+class UserActivity:
+    eventId: Key[str]
+    timestamp: str
+    userId: str
+    activity: str
+
+@dataclass
+class ParsedActivity:
+    eventId: Key[str]
+    timestamp: datetime
+    userId: str
+    activity: str
+`,
   },
   functions: {
     title: "Functions",
     description:
       "Add custom logic to filter, enrich, and transform data in-stream",
-    filename: "/functions/UserActivity__ParsedActivity.ts",
-    typescript: `
+    filename: "/functions/UserActivity__ParsedActivity",
+    ts: `
 import { UserActivity } from "/datamodels/models"; 
 import { ParsedActivity } from "/datamodels/models";
 
@@ -77,34 +100,119 @@ export default function run(source: UserActivity): ParsedActivity {
     timestamp: new Date(source.timestamp),
   };
 } `,
+    py: `
+from app.datamodels.models import UserActivity, ParsedActivity
+from moose_lib import Flow
+
+def parse_activity(activity: UserActivity) -> ParsedActivity:
+    return ParsedActivity(
+        eventId=activity.eventId,
+        timestamp=datetime.fromisoformat(activity.timestamp),
+        userId=activity.userId,
+        activity=activity.activity,
+    )
+
+my_flow = Flow(
+    run=parse_activity
+)
+`,
   },
   blocks: {
     title: "Blocks",
     description:
       "Create views to slice, aggregate, and join data across rows and tables",
-    filename: "/blocks/dailyActiveUsers.ts",
-    typescript: `
-import { createAggregation } from "@514labs/moose-lib";
+    filename: "/blocks/dailyActiveUsers",
+    ts: `
+import {
+  createAggregation,
+  Blocks,
+  ClickHouseEngines,
+} from "@514labs/moose-lib";
+ 
+const DESTINATION_TABLE = "UserActivitySummary";
+const MATERIALIZED_VIEW = "UserActivitySummaryMV";
+ 
+const selectQuery = \`
+  SELECT 
+    activity,
+    uniqState(userId) as unique_user_count, 
+    countState(activity) AS activity_count 
+  FROM 
+    ParsedActivity_0_0 
+  GROUP BY 
+    activity
+\`;
+ 
+export default {
+  setup: createAggregation({
+    tableCreateOptions: {
+      name: DESTINATION_TABLE, 
+      columns: {
+        activity: "String",
+        unique_user_count: "AggregateFunction(uniq, String)",
+        activity_count: "AggregateFunction(count, String)", 
+      },
+      orderBy: "activity",
+      engine: ClickHouseEngines.AggregatingMergeTree,
+    },
+    materializedViewName: MATERIALIZED_VIEW,
+    select: selectQuery,
+  }),
+} as Blocks;`,
+    py: `
+from moose_lib import Blocks
 
-export default createAggregation({
-  name: "DailyActiveUsers",
-  select: \` 
-    SELECT 
-        uniqState(userId) as dailyActiveUsers,
-        toStartOfDay(timestamp) as date
-    FROM ParsedActivity
-    WHERE activity = 'Login' 
-    GROUP BY toStartOfDay(timestamp)
-    \`,
-  orderBy: "date",
-});`,
+destination_table = "DailyActiveUsers"
+materialized_view = "DailyActiveUsers_mv"
+
+select_sql = """
+SELECT
+  toStartOfDay(timestamp) as date,
+  uniqState(userId) as dailyActiveUsers
+FROM ParsedActivity_0_0
+WHERE activity = 'Login'
+GROUP BY toStartOfDay(timestamp)
+"""
+
+teardown_queries = [
+    f"""
+    DROP VIEW IF EXISTS {materialized_view}
+    """,
+    f"""
+    DROP TABLE IF EXISTS {destination_table}
+    """
+]
+
+setup_queries = [
+    f"""
+    CREATE TABLE IF NOT EXISTS {destination_table}
+    (
+        date Date,
+        dailyActiveUsers AggregateFunction(uniq, String)
+    )
+    ENGINE = AggregatingMergeTree()
+    ORDER BY date
+    """,
+    f"""
+    CREATE MATERIALIZED VIEW IF NOT EXISTS {materialized_view}
+    TO {destination_table}
+    AS {select_sql}
+    """,
+    f"""
+    INSERT INTO {destination_table}
+    {select_sql}
+    """
+]
+
+block = Blocks(teardown=teardown_queries, setup=setup_queries)
+`,
   },
   apis: {
     title: "APIs",
     description:
       "Define parameterized endpoints to dynamically fetch and serve real-time insights to your apps",
-    filename: "/apis/dailyActiveUsers.ts",
-    typescript: `
+    filename: "/apis/dailyActiveUsers",
+    ts: `
 interface QueryParams {
   limit: string;
   minDailyActiveUsers: string;
@@ -125,6 +233,26 @@ export default async function handle(
   );
 }
     `,
+    py: `
+def run(client, params):
+    minDailyActiveUsers = int(params.get('minDailyActiveUsers', [0])[0])
+    limit = int(params.get('limit', [10])[0])
+
+    return client.query(
+        '''SELECT
+            date,
+            uniqMerge(dailyActiveUsers) as dailyActiveUsers
+        FROM DailyActiveUsers
+        GROUP BY date
+        HAVING dailyActiveUsers >= {minDailyActiveUsers}
+        ORDER BY date
+        LIMIT {limit}''',
+        {
+            "minDailyActiveUsers": minDailyActiveUsers,
+            "limit": limit
+        }
+    )
+`,
   },
 };
 
@@ -174,7 +302,8 @@ const infrastructure = [
 ];
 
 export const PrimitivesCode = () => {
-  const [activeTab, setActiveTab] = useState("models");
+  const [activeTab, setActiveTab] = useState<keyof typeof content>("models");
+  const [language, setLanguage] = useState("ts");
 
   const tabs = ["models", "functions", "blocks", "apis"];
 
@@ -203,7 +332,7 @@ export const PrimitivesCode = () => {
               <Heading level={HeadingLevel.l3} className="mb-0">
                 Moose Primitives
               </Heading>
-              <Text className="text-muted-foreground sm:text-base">
+              <Text className="text-muted-foreground">
                 Define your unique application logic for how data is ingested,
                 processed, aggregated, and consumed for your use case
               </Text>
@@ -230,12 +359,24 @@ export const PrimitivesCode = () => {
                 ))}
               </Tabs>
             </HalfWidthContentContainer>
-            <HalfWidthContentContainer className="lg:w-2/3 w-full">
+            <HalfWidthContentContainer className="relative lg:w-2/3 w-full">
               <CodeBlock
-                code={content[activeTab]?.typescript || ""}
-                language={"typescript"}
-                filename={content[activeTab]?.filename || ""}
+                className="absolute overflow-scroll z-0"
+                code={content[activeTab]?.[language as "ts" | "py"] || ""}
+                language={language as "ts" | "py"}
+                filename={`${content[activeTab]?.filename}.${language}` || ""}
               />
+              <div className="absolute top-2 end-0 pr-4 pt-2 z-50">
+                <Select value={language} onValueChange={setLanguage}>
+                  <SelectTrigger className="px-2 py-1 w-fit justify-between gap-2 border-primary text-primary">
+                    <SelectValue placeholder="Select Language" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="ts">TypeScript</SelectItem>
+                    <SelectItem value="py">Python</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </HalfWidthContentContainer>
           </FullWidthContentContainer>
           <FullWidthContentContainer className="flex flex-col gap-2.5 border p-5 rounded-3xl justify-start text-left">

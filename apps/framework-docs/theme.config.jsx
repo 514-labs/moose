@@ -20,7 +20,7 @@ import Link from "next/link";
 export default {
   logo: () => (
     <div className="flex flex-row items-center content-center w-[288px]">
-      <Logo property="Moose" subProperty="docs" className="mr-2 bg-gradient" />
+      <Logo property="Moose" subProperty="Docs" className="bg-gradient" />
     </div>
   ),
   project: {

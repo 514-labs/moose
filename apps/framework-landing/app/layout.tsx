@@ -71,7 +71,12 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Nav property="Moose" navigation={default_navigation} />
+          <Nav
+            property="Moose"
+            subProperty="JS PY"
+            navigation={default_navigation}
+            className="bg-gradient"
+          />
           {children}
         </ThemeProvider>
       </body>

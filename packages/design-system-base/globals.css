@@ -125,8 +125,12 @@
   margin-bottom: 0;
 }
 
-.docs a:not(:has-parent(footer)) {
+.docs a {
   color: hsl(var(--accent-moo-pink));
+}
+
+.docs footer a {
+  color: inherit; /* or specify a different color if needed */
 }
 
 .docs h2.nx-border-b {

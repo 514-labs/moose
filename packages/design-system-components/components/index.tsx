@@ -12,3 +12,4 @@ export * from "./ui/tabs";
 export * from "./ui/card";
 export * from "./ui/collapsible";
 export * from "./language-badge";
+export * from "./ui/select";

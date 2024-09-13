@@ -6,28 +6,23 @@ import { RectangleEllipsis, Square } from "lucide-react";
 
 <Tabs items={["Typescript", "Python"]}>
 <Tabs.Tab>
-## Prerequisites
 
-Before using Moose, ensure you have the following dependencies installed on your machine:
-
-- [Git](https://git-scm.com/)
-- [NodeJS](https://nodejs.org/en/)
-- [Docker](https://www.docker.com/)
-- macOS or Linux
-
-<Callout type="info">
-  Windows is not supported at this time, but may work using WSL Windows
-  Subsystem for Linux
+<Callout type="info" title="Prerequisites:">
+  - [Git](https://git-scm.com/) - [NodeJS](https://nodejs.org/en/) -
+  [Docker](https://www.docker.com/) - macOS or Linux (Windows is not supported
+  at this time, but may work using WSL Windows Subsystem for Linux)
 </Callout>
-To check if these dependencies are installed, run the following command in your terminal:
+
+Check if these dependencies are installed:
 
 ```bash filename="Terminal" copy
 git --version && node --version && docker --version
 ```
 
-## Create Moose App
+## Initialize Moose Project
 
-In your terminal, run:
+<Steps>
+### Run `create-moose-app` in your terminal
 
 ```bash filename="Terminal" copy
 npx create-moose-app@latest my-moose-app ts
@@ -35,37 +30,28 @@ npx create-moose-app@latest my-moose-app ts
 
 This will automatically create a new project folder and initialize a skeleton Moose app with the entire project structure you need to get started.
 
-### Install Dependencies
-
-Navigate to your project directory and install project dependencies:
+### Navigate to your Project Directory and Install Project Dependencies
 
 ```bash filename="Terminal" copy
 cd my-moose-app && npm install
 ```
 
-## Start Local Dev Server
+### Start Local Dev Server
 
-<Callout
-  type="warning"
-  title="Make sure Docker is running before you start your dev server"
->
-  This is required because the local instances of Clickhouse and Redpanda are
-  running inside containers.
+<Callout type="warning" title="Make sure Docker is running.">
+  Run `docker info` to check.
 </Callout>
-
-To check if Docker is running, run:
-
-```bash filename="Terminal" copy
-docker info
-```
-
-Start your local development server to run your entire app,
 
 ```bash filename="Terminal" copy
 npx moose-cli dev
 ```
 
-This server operates all the infrastructure powering your application: a web server with API endpoints to ingest & consume data, a Redpanda platform to buffer data, and a Clickhouse database to store and query data for insights. The local dev server configures these components based on your code and updates them in real time as your application code changes.
+<Callout type="info" title="What's happening?">
+  The local dev server dynamically configures and updates the infrastructure for
+  your application, including a web server for data ingestion and consumption, a
+  Redpanda platform for data buffering, and a Clickhouse database for data
+  storage and querying.
+</Callout>
 
 ### Inspect Infrastructure
 
@@ -79,21 +65,31 @@ You should see the following table in your terminal:
 
 ![moose-ls](/moose-ls.png)
 
-## Open Project in IDE
+</Steps>
 
-### VSCode Users: Install Recommended Extensions
+## View and Test Your Data Models
+
+<Steps>
+### Open Project in IDE
 
 ```bash filename="Terminal" copy
 code .
 ```
 
-Opening your project in VSCode will prompt a recommendation to install the [SQLTools](https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools) and [SQLTools ClickHouse Driver](https://marketplace.visualstudio.com/items?itemName=ultram4rine.sqltools-clickhouse-driver) extensions. Installing these allows Moose to auto-configure them for your local Clickhouse database, letting you explore and query your data immediately.
+<Callout type="info" title="VSCode Users: Install Recommended Extensions">
+  When you open your project, you'll be prompted to install the
+  [SQLTools](https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools)
+  and [SQLTools ClickHouse
+  Driver](https://marketplace.visualstudio.com/items?itemName=ultram4rine.sqltools-clickhouse-driver)
+  extensions. Moose auto-configures these for your local Clickhouse database,
+  enabling you to explore and query your data immediately.
+</Callout>
 
-### Explore Data Models
+### Open `models.ts` and Inspect the Data Models
 
-In your IDE file explorer, navigate to the `/app` folder of your project and open the `datamodels` directory. You should see a file named `models.ts` . Open the file and inspect the data models:
+The file is located inside the `/app/datamodels` directory.
 
-```ts filename="/datamodels/models.ts" copy
+```ts filename="/app/datamodels/models.ts" copy
 import { Key } from "@514labs/moose-lib";
 
 export interface UserActivity {
@@ -111,26 +107,26 @@ export interface ParsedActivity {
 }
 ```
 
-The file contains schema definitions for two data models: `UserActivity` and `ParsedActivity`. Each model defines the structure of the data that will be ingested into the Clickhouse database. Recall from the `moose-ls` output that Moose has automatically created ingestion points and tables in your database for these data models.
-
+<Callout type="info">
+The file defines `UserActivity` and `ParsedActivity` data models, which structure data for ingestion into your Moose infrastructure. 
+<br/><br/>Moose automatically created database tables and ingestion points for these models, as seen in the `moose-ls` output.
+</Callout>
+</Steps>
 </Tabs.Tab>
+
 <Tabs.Tab>
-## Prerequisites
-
-Before using Moose, ensure you have the following dependencies installed on your machine:
-
+<Callout type="info" title="Prerequisites">
 - [Git](https://git-scm.com/)
 - [Python version 3.7+](https://www.python.org/downloads/)
 - [Docker](https://www.docker.com/)
 - macOS or Linux (Windows is not supported at this time, but may work using WSL Windows Subsystem for Linux)
-
-To check if these dependencies are installed, run the following command in your terminal:
-
+</Callout>
+Check if these dependencies are installed:
 ```bash filename="Terminal" copy
 git --version && python3 --version && docker --version
 ```
-
-## Create and Activate a Python Virtual Environment
+<Steps>
+### Create and Activate a Python Virtual Environment
 
 Navigate to where you want to create your project and run the following command to create a new Python virtual environment:
 
@@ -138,11 +134,8 @@ Navigate to where you want to create your project and run the following command 
 python -m venv venv
 ```
 
-<Callout type="info" title="Virtual Environment">
-  It's a good practice to create a new Python virtual environment for each
-  project to avoid conflicts with other projects and dependencies. You can use
-  whatever name you want for your virtual environment, but we'll refer to it as
-  `venv` in the docs.
+<Callout type="info" title="Virtual Environment Best Practice">
+  Create a new Python virtual environment for each project to avoid conflicts.
 </Callout>
 
 Activate the virtual environment by running the following command:
@@ -151,7 +144,7 @@ Activate the virtual environment by running the following command:
 source venv/bin/activate
 ```
 
-## Install the Moose CLI
+### Install the Moose CLI
 
 Moose is installed as a Python package, so you can install it using pip:
 
@@ -159,7 +152,7 @@ Moose is installed as a Python package, so you can install it using pip:
 pip install moose-cli
 ```
 
-## Initialize a New Moose Project
+### Initialize a New Moose Project
 
 In your terminal, run:
 
@@ -173,12 +166,11 @@ moose-cli init my-moose-app python
 
 This will automatically create a new project folder and initialize a skeleton Moose app with the entire project structure you need to get started.
 
+</Steps>
+
 ## Start Local Dev Server
 
-<Callout
-  type="warning"
-  title="Make sure Docker is running before you start your dev server"
->
+<Callout type="warning" title="Make sure Docker is running!">
   This is required because the local instances of Clickhouse and Redpanda are
   running inside containers.
 </Callout>
@@ -358,7 +350,7 @@ Congrats! You've successfully set up a Moose project, ingested data, and confirm
   title="Process Data with Streaming Functions"
   description="Learn how to process UserActivity data into ParsedActivity data using Streaming Functions" 
   ctaLink="/stream-processing"
-  ctaLabel="Learn Streaming Functions" 
+  ctaLabel="Learn More" 
   Icon={RectangleEllipsis}
 />
 
@@ -366,7 +358,9 @@ Congrats! You've successfully set up a Moose project, ingested data, and confirm
   title="Add a New Data Model"
   description="Take a deeper dive into the Data Models primitive and how to add a new Data Model to your Moose project" 
   ctaLink="/data-models" 
-  ctaLabel="Take me there"
-  Icon={Square} 
+  ctaLabel="Learn More"
+  Icon={Square}
+
 />
+
 </CTACards>

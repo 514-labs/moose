@@ -23,6 +23,7 @@ interface CTACardProps {
   ctaLabel: string;
   Icon: React.ElementType;
   className: string;
+  variant: "default" | "gradient";
 }
 
 export function CTACard({
@@ -32,12 +33,25 @@ export function CTACard({
   ctaLabel,
   Icon,
   className,
+  variant = "default",
 }: CTACardProps) {
   return (
     <Card className={cn("rounded-3xl h-full flex flex-col", className)}>
       <CardHeader>
-        <div className="bg-gradient-to-b from-pink from-4.65% to-background to-93.24% w-fit rounded-[20px] border-transparent p-[2px]">
-          <div className="rounded-[18px] w-fit bg-gradientDarkPink p-[2px]">
+        <div
+          className={cn(
+            "w-fit rounded-[20px] p-[2px]",
+            variant === "gradient"
+              ? "bg-gradient-to-b from-pink from-4.65% to-background to-93.24% border-transparent"
+              : "bg-muted",
+          )}
+        >
+          <div
+            className={cn(
+              "rounded-[18px] w-fit p-[2px]",
+              variant === "gradient" ? "bg-gradientDarkPink" : "bg-muted",
+            )}
+          >
             <Icon className="m-3 h-[24px] w-[24px]" />
           </div>
         </div>

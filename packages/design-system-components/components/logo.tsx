@@ -1,4 +1,4 @@
-import { GradientText, Text } from "./typography/standard";
+import { GradientText, SmallText, Text } from "./typography/standard";
 import { cn } from "../lib/utils";
 
 export const Logo = ({
@@ -14,7 +14,9 @@ export const Logo = ({
     <>
       <GradientText className={cn("my-0", className)}>{property}</GradientText>
       {subProperty && (
-        <Text className="my-0 ml-2 text-muted-foreground">{subProperty}</Text>
+        <SmallText className="my-0 ml-2 text-muted-foreground border rounded-full px-2 py-0.5">
+          {subProperty}
+        </SmallText>
       )}
     </>
   );

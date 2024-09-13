@@ -16,7 +16,7 @@ import {
 import { cn } from "@514labs/design-system-components/utils";
 import { Code, Rocket, Package, Library } from "lucide-react";
 import Link from "next/link";
-
+import { Python, TypeScript } from "./src/components/language-wrappers";
 export default {
   logo: () => (
     <div className="flex flex-row items-center content-center w-[288px]">
@@ -86,6 +86,8 @@ export default {
         <SmallTextEmbed className="mb-1">{props.children}</SmallTextEmbed>
       </li>
     ),
+    Python: ({ children }) => <Python>{children}</Python>,
+    TypeScript: ({ children }) => <TypeScript>{children}</TypeScript>,
   },
   primaryHue: 220,
   primarySaturation: 0,

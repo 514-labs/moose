@@ -20,7 +20,7 @@ const sansFont = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "MooseJ—A data engineering framework for all developers.",
+  title: "Moose—A data engineering framework for all developers.",
   description: "A data engineering framework for all developers.",
   metadataBase: new URL("https://www.moosejs.com"),
 };

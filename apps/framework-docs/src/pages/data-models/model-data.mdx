@@ -1,16 +1,24 @@
-import { Callout } from "../../components";
+import {
+  Callout,
+  LanguageSwitcher,
+  TypeScript,
+  Python,
+} from "../../components";
 import { Tabs } from "nextra/components";
 
 # Defining Data Model Schemas
 
+<LanguageSwitcher />
+
 The schema defines the names and data types of the properties in your Data Model. Moose uses this schema to automatically set up the data infrastructure, ensuring that only data conforming to the schema can be ingested, buffered, and stored.
 
-<Tabs items={["Typescript", "Python"]}>
-
-<Tabs.Tab>
+<TypeScript>
 ### `Key<T>`
+</TypeScript>
 
-The `Key<T>` type is specific to Moose and is used to define a primary key for your Data Model. If your Data Model requires a composite key, you can apply the `Key` type to multiple columns.
+<Python>### `Key[T: (str, int)] = T`</Python>
+
+The <TypeScript>`Key<T>`</TypeScript><Python>`Key[T: (str, int)] = T`</Python> type is specific to Moose and is used to define a primary key for your Data Model. If your Data Model requires a composite key, you can apply the `Key` type to multiple columns.
 
 When provisioning the OLAP storage table, the `Key` type will be used to define the primary key. The meaning of a primary key depends on the database you are using. For instance, in Clickhouse, it will define the [primary key](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree#primary-keys-and-indexes-in-queries) of the table.
 
@@ -23,6 +31,7 @@ When provisioning the OLAP storage table, the `Key` type will be used to define 
 
 Moose supports various data types for Data Models, as summarized in the table below:
 
+<TypeScript>
 | Clickhouse | Typescript | Moose |
 | :--------- | :--------- | :---- |
 | String     | String     | ✅    |
@@ -41,39 +50,17 @@ Moose supports various data types for Data Models, as summarized in the table be
 <Callout type="info" title="Disclaimer">
   All Typescript number types are mapped to Float64
 </Callout>
-</Tabs.Tab>
+</TypeScript>
 
-<Tabs.Tab>
-  ### `Key[T: (str, int)] = T`
-
-The `Key[T: (str, int)] = T` type is specific to Moose and is used to define a primary key for your Data Model. If your Data Model requires a composite key, you can apply the `Key` type to multiple columns.
-
-When provisioning the OLAP storage table, the `Key` type will be used to define the primary key. The meaning of a primary key depends on the database you are using. For instance, in Clickhouse, it will define the [primary key](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree#primary-keys-and-indexes-in-queries) of the table.
+<Python>
+  | Clickhouse | Python | Moose | | :--------- | :------- | :---- | | String |
+  str | ✅ | | Boolean | bool | ✅ | | Int64 | int | ✅ | | Int256 | int | ❌ |
+  | Float64 | float | ✅ | | Decimal | float | ✅ | | DateTime | datetime | ✅ |
+  | Json | dict | ❌ | | Bytes | bytes | ❌ | | Array | list | ✅ | | nullable |
+  nullable | ✅ |
+</Python>
 
 <Callout type="warning" title="Key Type is Required">
   It is mandatory for every Data Model to designate at least one field as the
   `Key` type
 </Callout>
-
-## Other Supported Types
-
-Moose supports various data types for Data Models, as summarized in the table below:
-
-| Clickhouse | Python   | Moose |
-| :--------- | :------- | :---- |
-| String     | str      | ✅    |
-| Boolean    | bool     | ✅    |
-| Int64      | int      | ✅    |
-| Int256     | int      | ❌    |
-| Float64    | float    | ✅    |
-| Decimal    | float    | ✅    |
-| DateTime   | datetime | ✅    |
-| Json       | dict     | ❌    |
-| Bytes      | bytes    | ❌    |
-| Array      | list     | ✅    |
-| nullable   | nullable | ✅    |
-
-/_TO-DO: nullable & enum types_/
-
-</Tabs.Tab>
-</Tabs>

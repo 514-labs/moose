@@ -138,7 +138,7 @@ export default {
       return (
         <div className="border rounded-xl">
           <div className="m-4">
-            <SmallText className="my-0">
+            <SmallText className="my-0 text-xs">
               Have a question or want to provide us with feedback?
             </SmallText>
             <Link href="https://github.com/514-labs/moose/issues/new?title=Feedback%20for%20%E2%80%9CIntroduction%E2%80%9D&labels=feedback">

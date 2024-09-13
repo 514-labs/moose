@@ -37,15 +37,7 @@ import {
 import { useState, Fragment } from "react";
 import CodeBlock from "../../shiki";
 
-const content: {
-  [key: string]: {
-    title: string;
-    description: string;
-    filename: string;
-    ts: string;
-    py: string;
-  };
-} = {
+const content = {
   models: {
     title: "Models",
     description:
@@ -305,8 +297,6 @@ export const PrimitivesCode = () => {
   const [activeTab, setActiveTab] = useState<keyof typeof content>("models");
   const [language, setLanguage] = useState("ts");
 
-  const tabs = ["models", "functions", "blocks", "apis"];
-
   return (
     <Fragment>
       <Section className="2xl:max-w-6xl mx-auto flex flex-col items-center px-5 my-16 sm:my-64">
@@ -336,9 +326,14 @@ export const PrimitivesCode = () => {
                 Define your unique application logic for how data is ingested,
                 processed, aggregated, and consumed for your use case
               </Text>
-              <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <Tabs
+                value={activeTab}
+                onValueChange={(tab) =>
+                  setActiveTab(tab as keyof typeof content)
+                }
+              >
                 <TabsList className="mx-auto w-full justify-start">
-                  {tabs.map((tab) => (
+                  {Object.keys(content).map((tab) => (
                     <TrackableTabsTrigger
                       key={tab}
                       value={tab}
@@ -346,14 +341,16 @@ export const PrimitivesCode = () => {
                       name="Moose Primitives Code"
                       subject={tab}
                     >
-                      <Text className="py-0 px-2 ">{content[tab]?.title}</Text>
+                      <Text className="py-0 px-2 ">
+                        {content[tab as keyof typeof content]?.title}
+                      </Text>
                     </TrackableTabsTrigger>
                   ))}
                 </TabsList>
-                {tabs.map((tab) => (
+                {Object.keys(content).map((tab) => (
                   <TabsContent key={tab} value={tab}>
                     <Text className="text-muted-foreground">
-                      {content[tab]?.description}
+                      {content[tab as keyof typeof content]?.description}
                     </Text>
                   </TabsContent>
                 ))}

@@ -1,7 +1,11 @@
 import { FileTree, Tabs } from "nextra/components";
 import { Callout } from "../components";
+import { LanguageSwitcher } from "../components";
 
 # Introduction to Streaming Functions
+
+<LanguageSwitcher />
+
 
 Streaming Functions in Moose enable real-time data processing, allowing you to transform, enrich, filter, or trigger actions based on incoming data. These powerful functions can:
 
@@ -10,7 +14,7 @@ Streaming Functions in Moose enable real-time data processing, allowing you to t
 - Filter out unwanted data
 - Implement arbitrary logic to handle and respond to incoming data
 
-They are defined as regular functions in TypeScript or Python files, and are executed in real-time as data flows into your Moose application.
+They are defined as regular functions in <TypeScript>TypeScript</TypeScript><Python>Python</Python> files, and are executed in real-time as data flows into your Moose application.
 
 ## Core Concepts
 
@@ -26,18 +30,31 @@ Streaming Functions act as intermediares between two Data Models: a source and a
 ### File and Folder Conventions
 
 Streaming Functions are defined in files within the `/functions` directory of your Moose app, following this naming pattern:
-
-- `SourceDataModel__DestinationDataModel.ts` (for TypeScript)
-- `SourceDataModel__DestinationDataModel.py` (for Python)
+<TypeScript>
+`SourceDataModel__DestinationDataModel.ts`
 
 <FileTree>
   <FileTree.Folder name="my-moose-app" defaultOpen>
     <FileTree.Folder name="functions" defaultOpen>
       <FileTree.File name="SourceDataModel__DestinationDataModel.ts" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+</TypeScript>
+
+
+<Python>
+`SourceDataModel__DestinationDataModel.py`
+
+<FileTree>
+  <FileTree.Folder name="my-moose-app" defaultOpen>
+    <FileTree.Folder name="functions" defaultOpen>
       <FileTree.File name="AnotherSource__AnotherDestination.py" />
     </FileTree.Folder>
   </FileTree.Folder>
 </FileTree>
+</Python>
+
 
 <Callout type="warning" title="Naming Convention">
   Use two underscores to separate the source and destination data models in the
@@ -47,9 +64,8 @@ Streaming Functions are defined in files within the `/functions` directory of yo
 
 ### Streaming Function Definition
 
-<Tabs items={["TypeScript", "Python"]}>
-<Tabs.Tab>
-In TypeScript, a Streaming Function is defined as the default export of its module:
+<TypeScript>
+A Streaming Function is defined as the default export of its module:
 
 ```ts filename="/functions/SourceDataModel__DestinationDataModel.ts" copy
 import { SourceDataModel } from "../datamodels/path/to/SourceDataModel";
@@ -61,6 +77,7 @@ export default function functionName(
   // Transformation logic
 }
 ```
+
 
 The function accepts a single parameter `source` of type `SourceDataModel`. This is the data that Moose will pass to the function when it receives a new message on the streaming topic associated with the source Data Model.
 
@@ -76,10 +93,10 @@ The function body contains the processing logic. We will go into more detail on 
   The function name itself is not important, as Moose identifies the function by
   the file convention.
 </Callout>
+</TypeScript>
 
-</Tabs.Tab>
-<Tabs.Tab>
-In Python, a Streaming Function is defined as a `Flow` object with a `run` attribute that is assigned the function:
+<Python>
+A Streaming Function is defined as a `Flow` object with a `run` attribute that is assigned the function:
 
 ```python filename="/functions/SourceDataModel__DestinationDataModel.py" copy
 from app.datamodels.models import SourceDataModel, DestinationDataModel
@@ -108,11 +125,9 @@ my_flow = Flow(
 - The function accepts a single parameter `source` of type `SourceDataModel`. This is the data that Moose will pass to the function when it receives a new message on the streaming topic associated with the source Data Model.
 
 - The return type is `DestinationDataModel`. If a value is returned Moose automatically serializes it to JSON and writes it to the streaming topic associated with the destination Data Model.
-
 <Callout type="info" title="What About the Function Name?">
   The function name itself is not important, as Moose identifies the function by
   whatever is assigned to the `run` attribute of the Flow object.
 </Callout>
+</Python>
 
-</Tabs.Tab>
-</Tabs>

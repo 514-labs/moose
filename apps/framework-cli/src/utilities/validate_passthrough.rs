@@ -351,6 +351,8 @@ impl DataModelVisitor {
                     required: column.required,
                 };
                 map.next_value_seed(&mut visitor)?;
+            } else {
+                map.next_value::<serde::de::IgnoredAny>()?;
             }
         }
         let mut missing_fields: Vec<&str> = Vec::new();

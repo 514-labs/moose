@@ -317,7 +317,7 @@ export const PrimitivesCode = () => {
       </Section>
       <Section className="mx-auto max-w-5xl sm:px-6 lg:px-8">
         <Grid className="flex flex-col">
-          <FullWidthContentContainer className="flex flex-col lg:flex-row gap-5 p-4 sm:p-6 border rounded-3xl h-1/2">
+          <FullWidthContentContainer className="flex md:flex-row flex-col gap-5 p-4 sm:p-6 border rounded-3xl h-fit">
             <HalfWidthContentContainer className="flex flex-col gap-5 justify-start md:w-1/2 w-full">
               <Heading level={HeadingLevel.l3} className="mb-0">
                 Moose Primitives
@@ -356,14 +356,8 @@ export const PrimitivesCode = () => {
                 ))}
               </Tabs>
             </HalfWidthContentContainer>
-            <HalfWidthContentContainer className="relative lg:w-2/3 w-full">
-              <CodeBlock
-                className="absolute overflow-scroll z-0"
-                code={content[activeTab]?.[language as "ts" | "py"] || ""}
-                language={language as "ts" | "py"}
-                filename={`${content[activeTab]?.filename}.${language}` || ""}
-              />
-              <div className="absolute top-2 end-0 pr-4 pt-2 z-50">
+            <HalfWidthContentContainer className="md:w-2/3 w-full overflow-hidden">
+              <div className="flex justify-end">
                 <Select value={language} onValueChange={setLanguage}>
                   <SelectTrigger className="px-2 py-1 w-fit justify-between gap-2 border-primary text-primary">
                     <SelectValue placeholder="Select Language" />
@@ -374,6 +368,12 @@ export const PrimitivesCode = () => {
                   </SelectContent>
                 </Select>
               </div>
+              <CodeBlock
+                className="mt-2"
+                code={content[activeTab]?.[language as "ts" | "py"] || ""}
+                language={language as "ts" | "py"}
+                filename={`${content[activeTab]?.filename}.${language}` || ""}
+              />
             </HalfWidthContentContainer>
           </FullWidthContentContainer>
           <FullWidthContentContainer className="flex flex-col gap-2.5 border p-5 rounded-3xl justify-start text-left">

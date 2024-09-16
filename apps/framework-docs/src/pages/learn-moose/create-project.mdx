@@ -9,13 +9,12 @@ import { Steps, FileTree } from "nextra/components";
   here](https://www.docker.com/products/docker-desktop)
 </Callout>
 
-## Create an Empty Moose Project
 
 <Steps>
-### Install the Moose CLI
+### Create an Empty Moose Project
 
 ```bash filename="Terminal" copy
-npx create-moose-app@latest moose-github-analytics typescript
+npx create-moose-app@latest moose-github-analytics ts --empty
 ```
 
 This Moose CLI helper function creates a new Moose app with the proper conventions for the basic directory structure. This includes an `/app` folder which contains the heart of your new Moose app. Each sub-folder hosts one type of Moose primitive.

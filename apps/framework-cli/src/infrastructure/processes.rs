@@ -16,6 +16,7 @@ use super::olap::clickhouse::{errors::ClickhouseError, mapper::std_columns_to_cl
 
 pub mod aggregations_registry;
 pub mod consumption_registry;
+pub mod cron_registry;
 pub mod functions_registry;
 pub mod kafka_clickhouse_sync;
 pub mod process_registry;

@@ -52,7 +52,7 @@ export function CTACard({
               variant === "gradient" ? "bg-gradientDarkPink" : "bg-muted",
             )}
           >
-            <Icon className="m-3 h-[24px] w-[24px]" />
+            <Icon className="m-3 h-[24px] w-[24px] text-white" />
           </div>
         </div>
       </CardHeader>

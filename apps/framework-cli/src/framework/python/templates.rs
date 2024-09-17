@@ -106,13 +106,13 @@ pub static PYTHON_BASE_BLOCKS_TEMPLATE: &str = r#"
 # consult the Clickhouse documentation: https://clickhouse.com/docs/en/sql-reference/aggregate-functions
 
 from moose_lib import (
+    AggregationCreateOptions,
     AggregationDropOptions,
     Blocks,
-    drop_aggregation,
-    TableCreateOptions,
     ClickHouseEngines,
-    AggregationCreateOptions,
+    TableCreateOptions,
     create_aggregation,
+    drop_aggregation,
 )
 
 teardown_queries = []
@@ -127,13 +127,13 @@ pub static PYTHON_BASE_BLOCKS_SAMPLE: &str = r#"
 # based on the number of unique users who complete a sign-in activity each day.
 
 from moose_lib import (
+    AggregationCreateOptions,
     AggregationDropOptions,
     Blocks,
-    drop_aggregation,
-    TableCreateOptions,
     ClickHouseEngines,
-    AggregationCreateOptions,
+    TableCreateOptions,
     create_aggregation,
+    drop_aggregation,
 )
 
 destination_table = "DailyActiveUsers"

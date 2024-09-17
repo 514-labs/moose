@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import Dict, List, Optional
+from typing import Dict, Optional
 
 class ClickHouseEngines(Enum):
     MergeTree = "MergeTree"
@@ -42,10 +42,10 @@ class PopulateTableOptions:
 
 @dataclass
 class Blocks:
-    teardown: List[str]
-    setup: List[str]
+    teardown: list[str]
+    setup: list[str]
 
-def drop_aggregation(options: AggregationDropOptions) -> List[str]:
+def drop_aggregation(options: AggregationDropOptions) -> list[str]:
     """
     Drops an aggregation's view & underlying table.
     """
@@ -63,7 +63,7 @@ def drop_view(name: str) -> str:
     """
     return f"DROP VIEW IF EXISTS {name}".strip()
 
-def create_aggregation(options: AggregationCreateOptions) -> List[str]:
+def create_aggregation(options: AggregationCreateOptions) -> list[str]:
     """
     Creates an aggregation which includes a table, materialized view, and initial data load.
     """

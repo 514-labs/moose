@@ -90,16 +90,16 @@ log(f"Importing streaming function {function_file_name} from {function_file_dir}
 try:
     # todo: check the flat naming
     flow = import_module(function_file_name, package=function_file_dir)
-    flow_def = flow.Flow
+    flow_def = flow.StreamingFunction
 except Exception as e:
-    error(f"Error importing flow: {e} in file {function_file_name}")
+    error(f"Error importing streaming function: {e} in file {function_file_name}")
 
 # Get all the named flows in the flow file and make sure the flow is of type Flow
 flows = [f for f in dir(flow) if isinstance(getattr(flow, f), flow_def)]
 
 # Make sure that there is only one flow in the file
 if len(flows) != 1:
-    error(f"Expected one flow in the file, but got {len(flows)}")
+    error(f"Expected one streaming function in the file, but got {len(flows)}")
 
 # Get the dataclass that's the input to the flow run function
 

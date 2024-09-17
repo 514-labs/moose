@@ -1,7 +1,14 @@
 from clickhouse_connect.driver.client import Client
+from dataclasses import dataclass
 from string import Formatter
-from typing import List, Union
+from typing import Callable, List, Union
 import sys
+
+type Key[T: (str, int)] = T 
+
+@dataclass
+class StreamingFunction:
+    run: Callable
 
 
 class MooseClient:

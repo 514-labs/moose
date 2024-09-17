@@ -39,7 +39,6 @@ setup(
         {{#each dependencies}}
         "{{{ this }}}",
         {{/each}}
-
     ],
 )
 "#;

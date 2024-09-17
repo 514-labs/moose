@@ -8,7 +8,7 @@ Data schemas evolve over time, both in production and consumption. While traditi
 - Decoupled producers and consumers
 - Different evolution speeds between data production and consumption
 
-Moose's Data Change Management (DCM) is designed to tackle these analytics-specific issues, by introducing a soluition that lets you manage how multiple versions of your Data Model coexist in production simultaneously.
+Moose's Data Change Management (DCM) is designed to tackle these analytics-specific issues, by introducing a solution that lets you manage how multiple versions of your Data Model coexist in production simultaneously.
 
 <Callout type="warning" title="Pre-Alpha Warning">
   Data change management is in pre-alpha. We are releasing it to get feedback on
@@ -42,7 +42,7 @@ To ensure data consistency across versions, Moose implements continuous migratio
 
 - Data ingested into older versions is automatically migrated to the latest version.
 - This process runs in near real-time within the database.
-- Migrations are defined using SQL mapping files, which can be customized as needed.
+- Migrations are defined in your programming language, which can be customized as needed.
 
 ### Initial Data Migrations
 

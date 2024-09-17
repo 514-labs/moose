@@ -129,6 +129,10 @@
   color: hsl(var(--accent-moo-pink));
 }
 
+.docs .nextra-breadcrumb a {
+  color: inherit;
+}
+
 .docs footer a {
   color: inherit; /* or specify a different color if needed */
 }

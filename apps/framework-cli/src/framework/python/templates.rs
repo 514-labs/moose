@@ -78,7 +78,9 @@ my_function = StreamingFunction(
 "#;
 
 pub static PYTHON_BASE_API_SAMPLE: &str = r#"
-def run(client, params):
+from moose_lib import MooseClient
+
+def run(client: MooseClient, params):
     minDailyActiveUsers = int(params.get('minDailyActiveUsers', [0])[0])
     limit = int(params.get('limit', [10])[0])
 

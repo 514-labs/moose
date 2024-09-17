@@ -1,7 +1,8 @@
 from clickhouse_connect.driver.client import Client
 from dataclasses import dataclass
+from enum import Enum
 from string import Formatter
-from typing import Callable, List, Union
+from typing import Callable, Generic, Optional, TypeVar, Union
 import sys
 
 type Key[T: (str, int)] = T 
@@ -9,6 +10,26 @@ type Key[T: (str, int)] = T
 @dataclass
 class StreamingFunction:
     run: Callable
+
+# class IngestionFormat(Enum):
+#     JSON = "JSON"
+#     JSON_ARRAY = "JSON_ARRAY"
+
+# T = TypeVar('T')
+
+# @dataclass
+# class IngestionConfig:
+#     format: Optional[IngestionFormat] = None
+
+# @dataclass
+# class StorageConfig(Generic[T]):
+#     enabled: Optional[bool] = None
+#     order_by_fields: Optional[list[str]] = None
+
+# @dataclass
+# class DataModelConfig(Generic[T]):
+#     ingestion: Optional[IngestionConfig] = None
+#     storage: Optional[StorageConfig[T]] = None
 
 
 class MooseClient:
@@ -40,7 +61,7 @@ class MooseClient:
     
     
 class Sql:
-    def __init__(self, raw_strings: List[str], raw_values: List['RawValue']):
+    def __init__(self, raw_strings: list[str], raw_values: list['RawValue']):
         if len(raw_strings) - 1 != len(raw_values):
             if len(raw_strings) == 0:
                 raise TypeError("Expected at least 1 string")
@@ -48,8 +69,8 @@ class Sql:
 
         values_length = sum(1 if not isinstance(value, Sql) else len(value.values) for value in raw_values)
 
-        self.values: List['Value'] = [None] * values_length
-        self.strings: List[str] = [None] * (values_length + 1)
+        self.values: list['Value'] = [None] * values_length
+        self.strings: list[str] = [None] * (values_length + 1)
 
         self.strings[0] = raw_strings[0]
 

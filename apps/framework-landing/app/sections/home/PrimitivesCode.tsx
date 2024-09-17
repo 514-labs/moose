@@ -11,6 +11,8 @@ import {
   SelectItem,
 } from "@514labs/design-system-components/components";
 
+import { CopyButton } from "../../copy-button";
+
 import { TrackableTabsTrigger } from "../../trackable-components";
 
 import {
@@ -33,6 +35,7 @@ import {
   Code,
   Box,
   HardDriveUpload,
+  CopyIcon,
 } from "lucide-react";
 import { useState, Fragment } from "react";
 import CodeBlock from "../../shiki";
@@ -357,9 +360,9 @@ export const PrimitivesCode = () => {
               </Tabs>
             </HalfWidthContentContainer>
             <HalfWidthContentContainer className="md:w-2/3 w-full overflow-hidden">
-              <div className="flex justify-end">
+              <div className="flex justify-end gap-2 items-center">
                 <Select value={language} onValueChange={setLanguage}>
-                  <SelectTrigger className="px-2 py-1 w-fit justify-between gap-2 border-primary text-primary">
+                  <SelectTrigger className="px-2 py-1 w-fit justify-between gap-2 border text-primary">
                     <SelectValue placeholder="Select Language" />
                   </SelectTrigger>
                   <SelectContent>
@@ -367,6 +370,14 @@ export const PrimitivesCode = () => {
                     <SelectItem value="py">Python</SelectItem>
                   </SelectContent>
                 </Select>
+                <CopyButton
+                  copyText={content[activeTab]?.[language as "ts" | "py"] || ""}
+                  subject={content[activeTab]?.filename}
+                  name={content[activeTab]?.filename}
+                  className="px-2 py-1 w-fit justify-between gap-2 border-muted bg-transparent hover:bg-primary/10"
+                >
+                  <CopyIcon size={16} />
+                </CopyButton>
               </div>
               <CodeBlock
                 className="mt-2"

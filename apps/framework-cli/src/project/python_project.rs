@@ -99,6 +99,8 @@ mod tests {
                 "kafka-python-ng==2.2.2".to_string(),
                 "clickhouse_connect==0.7.16".to_string(),
                 "requests==2.32.3".to_string(),
+                "moose-cli".to_string(),
+                "moose-lib".to_string(),
             ]
         );
     }

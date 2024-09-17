@@ -122,16 +122,6 @@ pub enum InterfaceFieldType {
     Enum(TSEnum),
 }
 
-// Implementing PartialEq for InterfaceFieldType
-impl PartialEq for InterfaceFieldType {
-    fn eq(&self, other: &Self) -> bool {
-        std::mem::discriminant(self) == std::mem::discriminant(other)
-    }
-}
-
-// Implementing Eq for InterfaceFieldType
-impl Eq for InterfaceFieldType {}
-
 // Implementing Hash for InterfaceFieldType
 impl Hash for InterfaceFieldType {
     fn hash<H: Hasher>(&self, state: &mut H) {

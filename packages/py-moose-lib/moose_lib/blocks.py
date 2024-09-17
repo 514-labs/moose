@@ -1,0 +1,110 @@
+from dataclasses import dataclass
+from enum import Enum
+from typing import Dict, List, Optional
+
+class ClickHouseEngines(Enum):
+    MergeTree = "MergeTree"
+    ReplacingMergeTree = "ReplacingMergeTree"
+    SummingMergeTree = "SummingMergeTree"
+    AggregatingMergeTree = "AggregatingMergeTree"
+    CollapsingMergeTree = "CollapsingMergeTree"
+    VersionedCollapsingMergeTree = "VersionedCollapsingMergeTree"
+    GraphiteMergeTree = "GraphiteMergeTree"
+
+class TableCreateOptions:
+    def __init__(self, name: str, columns: Dict[str, str], engine: Optional[ClickHouseEngines] = None, order_by: Optional[str] = None):
+        self.name = name
+        self.columns = columns
+        self.engine = engine or ClickHouseEngines.MergeTree
+        self.order_by = order_by
+
+class AggregationCreateOptions:
+    def __init__(self, table_create_options: TableCreateOptions, materialized_view_name: str, select: str):
+        self.table_create_options = table_create_options
+        self.materialized_view_name = materialized_view_name
+        self.select = select
+
+class AggregationDropOptions:
+    def __init__(self, view_name: str, table_name: str):
+        self.view_name = view_name
+        self.table_name = table_name
+
+class MaterializedViewCreateOptions:
+    def __init__(self, name: str, destination_table: str, select: str):
+        self.name = name
+        self.destination_table = destination_table
+        self.select = select
+
+class PopulateTableOptions:
+    def __init__(self, destination_table: str, select: str):
+        self.destination_table = destination_table
+        self.select = select
+
+@dataclass
+class Blocks:
+    teardown: List[str]
+    setup: List[str]
+
+def drop_aggregation(options: AggregationDropOptions) -> List[str]:
+    """
+    Drops an aggregation's view & underlying table.
+    """
+    return [drop_view(options.view_name), drop_table(options.table_name)]
+
+def drop_table(name: str) -> str:
+    """
+    Drops an existing table if it exists.
+    """
+    return f"DROP TABLE IF EXISTS {name}".strip()
+
+def drop_view(name: str) -> str:
+    """
+    Drops an existing view if it exists.
+    """
+    return f"DROP VIEW IF EXISTS {name}".strip()
+
+def create_aggregation(options: AggregationCreateOptions) -> List[str]:
+    """
+    Creates an aggregation which includes a table, materialized view, and initial data load.
+    """
+    return [
+        create_table(options.table_create_options),
+        create_materialized_view(MaterializedViewCreateOptions(
+            name=options.materialized_view_name,
+            destination_table=options.table_create_options.name,
+            select=options.select
+        )),
+        populate_table(PopulateTableOptions(
+            destination_table=options.table_create_options.name,
+            select=options.select
+        )),
+    ]
+
+def create_materialized_view(options: MaterializedViewCreateOptions) -> str:
+    """
+    Creates a materialized view.
+    """
+    return f"CREATE MATERIALIZED VIEW IF NOT EXISTS {options.name} \nTO {options.destination_table}\nAS {options.select}".strip()
+
+def create_table(options: TableCreateOptions) -> str:
+    """
+    Creates a new table with default MergeTree engine.
+    """
+    column_definitions = ",\n".join([f"{name} {type}" for name, type in options.columns.items()])
+    order_by_clause = f"ORDER BY {options.order_by}" if options.order_by else ""
+    engine = options.engine.value
+
+    return f"""
+    CREATE TABLE IF NOT EXISTS {options.name} 
+    (
+      {column_definitions}
+    )
+    ENGINE = {engine}()
+    {order_by_clause}
+    """.strip()
+
+def populate_table(options: PopulateTableOptions) -> str:
+    """
+    Populates a table with data.
+    """
+    return f"INSERT INTO {options.destination_table}\n{options.select}".strip()

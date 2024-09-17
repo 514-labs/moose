@@ -11,34 +11,34 @@ class ClickHouseEngines(Enum):
     VersionedCollapsingMergeTree = "VersionedCollapsingMergeTree"
     GraphiteMergeTree = "GraphiteMergeTree"
 
+@dataclass
 class TableCreateOptions:
-    def __init__(self, name: str, columns: Dict[str, str], engine: Optional[ClickHouseEngines] = None, order_by: Optional[str] = None):
-        self.name = name
-        self.columns = columns
-        self.engine = engine or ClickHouseEngines.MergeTree
-        self.order_by = order_by
+    name: str
+    columns: Dict[str, str]
+    engine: Optional[ClickHouseEngines] = ClickHouseEngines.MergeTree
+    order_by: Optional[str] = None
 
+@dataclass
 class AggregationCreateOptions:
-    def __init__(self, table_create_options: TableCreateOptions, materialized_view_name: str, select: str):
-        self.table_create_options = table_create_options
-        self.materialized_view_name = materialized_view_name
-        self.select = select
+    table_create_options: TableCreateOptions
+    materialized_view_name: str
+    select: str
 
+@dataclass
 class AggregationDropOptions:
-    def __init__(self, view_name: str, table_name: str):
-        self.view_name = view_name
-        self.table_name = table_name
+    view_name: str
+    table_name: str
 
+@dataclass
 class MaterializedViewCreateOptions:
-    def __init__(self, name: str, destination_table: str, select: str):
-        self.name = name
-        self.destination_table = destination_table
-        self.select = select
+    name: str
+    destination_table: str
+    select: str
 
+@dataclass
 class PopulateTableOptions:
-    def __init__(self, destination_table: str, select: str):
-        self.destination_table = destination_table
-        self.select = select
+    destination_table: str
+    select: str
 
 @dataclass
 class Blocks:

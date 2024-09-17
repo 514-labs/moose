@@ -1,7 +1,8 @@
 from clickhouse_connect.driver.client import Client
 from dataclasses import dataclass
+from enum import Enum
 from string import Formatter
-from typing import Callable, List, Union
+from typing import Callable, Generic, List, Optional, TypeVar, Union
 import sys
 
 type Key[T: (str, int)] = T 
@@ -9,6 +10,26 @@ type Key[T: (str, int)] = T
 @dataclass
 class StreamingFunction:
     run: Callable
+
+class IngestionFormat(Enum):
+    JSON = "JSON"
+    JSON_ARRAY = "JSON_ARRAY"
+
+T = TypeVar('T')
+
+@dataclass
+class IngestionConfig:
+    format: Optional[IngestionFormat] = None
+
+@dataclass
+class StorageConfig(Generic[T]):
+    enabled: Optional[bool] = None
+    order_by_fields: Optional[List[str]] = None
+
+@dataclass
+class DataModelConfig(Generic[T]):
+    ingestion: Optional[IngestionConfig] = None
+    storage: Optional[StorageConfig[T]] = None
 
 
 class MooseClient:

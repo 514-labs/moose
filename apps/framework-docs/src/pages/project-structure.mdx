@@ -1,11 +1,14 @@
 import { FileTree } from "nextra/components";
+import { LanguageSwitcher } from "../components";
 
 # Project Structure
 
-MooseJS relies heavily on structural conventions to make sure you can build quickly and reliably. That means the project structure is important.
+<LanguageSwitcher />
+Moose relies heavily on structural conventions to make sure you can build quickly and reliably. That means the project structure is important.
 
-The following is the basic structure of a MooseJS project:
+The following is the basic structure of a Moose project:
 
+<TypeScript>
 <FileTree>
   <FileTree.Folder name=".moose" />
   <FileTree.Folder name="app" defaultOpen>
@@ -25,6 +28,28 @@ The following is the basic structure of a MooseJS project:
   <FileTree.File name="package.json" />
   <FileTree.File name="moose.config.toml" />
 </FileTree>
+</TypeScript>
+
+<Python>
+<FileTree>
+  <FileTree.Folder name=".moose" />
+  <FileTree.Folder name="app" defaultOpen>
+    <FileTree.Folder name="datamodels" defaultOpen>
+      <FileTree.File name="models.py" />
+    </FileTree.Folder>
+    <FileTree.Folder name="functions" defaultOpen>
+      <FileTree.File name="sourceModel__destinationModel.py" />
+    </FileTree.Folder>
+    <FileTree.Folder name="blocks" defaultOpen>
+      <FileTree.File name="aggregation.py" />
+    </FileTree.Folder>
+    <FileTree.Folder name="apis" defaultOpen>
+      <FileTree.File name="data-api.py" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+  <FileTree.File name="moose.config.toml" />
+</FileTree>
+</Python>
 
 ## Top-level Folders and Files
 

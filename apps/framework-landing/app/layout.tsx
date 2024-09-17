@@ -20,7 +20,7 @@ const sansFont = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "MooseJS—A data engineering framework for all developers.",
+  title: "Moose—A data engineering framework for all developers.",
   description: "A data engineering framework for all developers.",
   metadataBase: new URL("https://www.moosejs.com"),
 };
@@ -71,7 +71,12 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Nav property="moose" navigation={default_navigation} />
+          <Nav
+            property="Moose"
+            subProperty="JS PY"
+            navigation={default_navigation}
+            className="bg-gradient"
+          />
           {children}
         </ThemeProvider>
       </body>

@@ -1,7 +1,9 @@
-import { FileTree } from "nextra/components";
-import { Callout } from "../components";
+import { FileTree, Tabs } from "nextra/components";
+import { Callout, LanguageSwitcher, TypeScript, Python } from "../components";
 
 # Introduction to Data Models
+
+<LanguageSwitcher />
 
 Data Models are the backbone of your Moose application, enabling you to define the schemas for the data your application supports. Moose takes these definitions and automatically configures the entire data infrastructure, including:
 
@@ -19,34 +21,32 @@ Each component is strongly typed and kept in sync with the Data Model schema def
 
 Data Models must be placed in the `/datamodels` directory of your Moose application. The directory structure should look like this:
 
-<FileTree className="w-full">
-  <FileTree.Folder name="app" open>
-    <FileTree.Folder name="datamodels" open>
-      <FileTree.File name="models.ts" />
+<TypeScript>
+  <FileTree className="w-full">
+    <FileTree.Folder name="app" open>
+      <FileTree.Folder name="datamodels" open>
+        <FileTree.File name="models.ts" />
+      </FileTree.Folder>
+      <FileTree.Folder name="..." />
     </FileTree.Folder>
-    <FileTree.Folder name="..." />
-  </FileTree.Folder>
-</FileTree>
+  </FileTree>
+</TypeScript>
+
+<Python>
+  <FileTree className="w-full">
+    <FileTree.Folder name="app" open>
+      <FileTree.Folder name="datamodels" open>
+        <FileTree.File name="models.py" />
+      </FileTree.Folder>
+      <FileTree.Folder name="..." />
+    </FileTree.Folder>
+  </FileTree>
+</Python>
 
 ### Data Model Definiton
 
-Data Models are represented using native features and syntax of the language you are using:
-
-- **TypeScript**: Data Models are represented as `interfaces`, and must be exported from a `.ts` file (using `export` keyword)
-- **Python**: Data Models are represented as `dataclasses` (using the `@dataclass` decorator), and must be defined in a `.py` file
-
-<Callout type="info" title="Notes">
-  - You can define multiple Data Models within a single file. 
-  - The name of the file is not important, but it must have a `.ts` or `.py` extension.
-  - Any exported interface or dataclass that adheres to the appropriate file and folder conventions will be automatically detected by Moose and used to generate the necessary infrastructure.
-
-</Callout>
-
-### How Moose Interprets Data Models
-
-Moose will automatically detect and use any exported interfaces or dataclasses that adhere to the file and folder conventions. The property names and data types in the Data Model are interpreted and translated into the infrastructure components (SDK, Ingestion API, Streaming Topic, Database Landing Table, Database View).
-
-### Example
+<TypeScript>
+Data Models are represented as `interfaces`, and must be exported from a `.ts` file (using `export` keyword):
 
 ```ts filename="datamodels/models.ts" copy
 import { Key } from "@514labs/moose-lib";
@@ -58,3 +58,33 @@ export interface UserActivity {
   activity: string;
 }
 ```
+
+</TypeScript>
+
+<Python>
+Data Models are represented as `dataclasses` (using the `@dataclass` decorator), and must be defined in a `.py` file:
+
+```py filename="datamodels/models.py" copy
+from dataclasses import dataclass
+from typing import List
+
+@dataclass
+class UserActivity:
+    event_id: str
+    timestamp: str
+    user_id: str
+    activity: str
+```
+
+</Python>
+
+<Callout type="info" title="Notes">
+  - You can define multiple Data Models within a single file. 
+  - The name of the file is not important, but it must have a <TypeScript>`.ts`</TypeScript> <Python>`.py`</Python> extension.
+  - Any exported <TypeScript>interface</TypeScript> <Python>dataclass</Python> that adheres to the appropriate file and folder conventions will be automatically detected by Moose and used to generate the necessary infrastructure.
+
+</Callout>
+
+### How Moose Interprets Data Models
+
+Moose will automatically detect and use any exported interfaces or dataclasses that adhere to the file and folder conventions. The property names and data types in the Data Model are interpreted and translated into the infrastructure components (SDK, Ingestion API, Streaming Topic, Database Landing Table, Database View).

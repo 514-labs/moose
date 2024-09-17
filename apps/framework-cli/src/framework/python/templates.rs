@@ -10,10 +10,9 @@ pub enum PythonRenderingError {
 }
 
 pub static PYTHON_BASE_MODEL_TEMPLATE: &str = r#"
+from moose_lib import Key
 from dataclasses import dataclass
 import datetime
-
-type Key[T: (str, int)] = T 
 
 @dataclass
 class UserActivity:
@@ -40,19 +39,15 @@ setup(
         {{#each dependencies}}
         "{{{ this }}}",
         {{/each}}
+
     ],
 )
 "#;
 
 pub static PYTHON_BASE_STREAMING_FUNCTION_SAMPLE: &str = r#"
+from moose_lib import StreamingFunction
 from datetime import datetime
 from app.datamodels.models import UserActivity, ParsedActivity
-from dataclasses import dataclass
-from typing import Callable
-
-@dataclass
-class Flow:
-    run: Callable
 
 def parse_activity(activity: UserActivity) -> ParsedActivity:
     return ParsedActivity(
@@ -62,7 +57,7 @@ def parse_activity(activity: UserActivity) -> ParsedActivity:
         activity=activity.activity,
     )
 
-my_flow = Flow(
+my_function = StreamingFunction(
     run=parse_activity
 )
 "#;
@@ -71,19 +66,15 @@ pub static PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE: &str = r#"
 # Add your models & start the development server to import these types
 {{source_import}}
 {{destination_import}}
-from dataclasses import dataclass
-from typing import Callable, Optional
+from moose_lib import StreamingFunction
+from typing import Optional
 from datetime import datetime
 
-@dataclass
-class Flow:
-    run: Callable
-
-def flow(activity: {{source}}) -> Optional[{{destination}}]:
+def fn(activity: {{source}}) -> Optional[{{destination}}]:
     return {{destination_object}}
 
-my_flow = Flow(
-    run=flow
+my_function = StreamingFunction(
+    run=fn
 )
 "#;
 

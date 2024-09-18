@@ -6,15 +6,16 @@ use serde_json::{Deserializer, Value};
 use std::collections::HashSet;
 use std::io::BufReader;
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum CustomValue {
-    TypeArray(Vec<CustomValue>),
-    JsonArray(Vec<CustomValue>),
+    UnionTypes(Vec<CustomValue>),
+    // if heterogeneous array (which we don't really support), then the inner value is UnionTypes
+    JsonArray(Box<CustomValue>),
     JsonObject(IndexMap<String, CustomValue>),
     JsonPrimitive(JsonPrimitive),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 enum JsonPrimitive {
     Null,
     String,
@@ -78,7 +79,7 @@ fn parse_json_value(json_data: &Value) -> CustomValue {
         Value::Number(_integer) => CustomValue::JsonPrimitive(JsonPrimitive::Int),
         Value::Bool(_) => CustomValue::JsonPrimitive(JsonPrimitive::Bool),
         Value::Object(_) => CustomValue::JsonObject(parse_json(json_data)),
-        Value::Array(_) => CustomValue::JsonArray(parse_array(json_data)),
+        Value::Array(values) => CustomValue::JsonArray(Box::new(parse_array(values))),
     }
 }
 
@@ -94,18 +95,17 @@ fn parse_json(json_data: &Value) -> IndexMap<String, CustomValue> {
 }
 
 // grab only the unique types from the JSON array
-fn parse_array(array: &Value) -> Vec<CustomValue> {
-    match array {
-        Value::Array(items) => {
-            let mut unique_values = Vec::new();
-            for item in items.iter().map(parse_json_value) {
-                if !unique_values.contains(&item) {
-                    unique_values.push(item);
-                }
-            }
-            unique_values
+fn parse_array(items: &[Value]) -> CustomValue {
+    let mut unique_types = Vec::new(); // not using hashset because we can't hash a CustomValue
+    for item in items.iter().map(parse_json_value) {
+        if !unique_types.contains(&item) {
+            unique_types.push(item);
         }
-        _ => vec![],
+    }
+    if unique_types.len() == 1 {
+        unique_types.into_iter().next().unwrap()
+    } else {
+        CustomValue::UnionTypes(unique_types)
     }
 }
 
@@ -116,26 +116,18 @@ fn merge_maps(
     for (key, value) in map2 {
         if let Some(existing_value) = map1.get_mut(&key) {
             match existing_value {
-                CustomValue::TypeArray(arr) => {
+                CustomValue::UnionTypes(arr) => {
                     if !arr.contains(&value) {
                         arr.push(value);
                     }
                 }
                 _ => {
-                    if !matches!(*existing_value, CustomValue::TypeArray(ref _arr)) {
-                        let arr = match existing_value {
-                            CustomValue::TypeArray(ref mut arr) => {
-                                arr.push(value);
-                                arr.clone()
-                            }
-                            _ => vec![existing_value.clone(), value],
-                        };
-                        *existing_value = CustomValue::TypeArray(arr);
-                    }
+                    let arr = vec![existing_value.clone(), value];
+                    *existing_value = CustomValue::UnionTypes(arr);
                 }
             }
         } else {
-            map1.insert(key, CustomValue::TypeArray(vec![value]));
+            map1.insert(key, value);
         }
     }
     map1
@@ -143,7 +135,7 @@ fn merge_maps(
 
 fn extract_types_py(value: &CustomValue, field_name: &str) -> Vec<String> {
     match value {
-        CustomValue::TypeArray(_) => {
+        CustomValue::UnionTypes(_) => {
             todo!()
         }
         CustomValue::JsonArray(_) => {
@@ -161,7 +153,7 @@ fn extract_types_py(value: &CustomValue, field_name: &str) -> Vec<String> {
 
 fn extract_types_ts(value: &CustomValue, tab_index: usize) -> Vec<String> {
     match value {
-        CustomValue::TypeArray(arr) => {
+        CustomValue::UnionTypes(arr) => {
             let mut types = HashSet::new();
             for item in arr {
                 match item {

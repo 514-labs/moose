@@ -452,6 +452,7 @@ pub fn extract_data_model_from_file(
 
     // Get the non-enum classes from the AST
     let python_classes: Vec<&StmtClassDef> = get_non_enum_class_ast_nodes(&ast);
+    // println!("python_classes: {:?}", python_classes);
 
     // Process the python enums into framework enums
     let framework_enums = python_enums

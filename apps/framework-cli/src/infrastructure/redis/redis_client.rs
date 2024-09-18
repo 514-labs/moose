@@ -59,7 +59,7 @@ use uuid::Uuid;
 const REDIS_KEY_PREFIX: &str = "MS"; // MooSe
 const KEY_EXPIRATION_TTL: usize = 3; // 3 seconds
 const LOCK_TTL: usize = 10; // 10 seconds
-const PRESENCE_UPDATE_INTERVAL: u64 = 60; // 1 second
+const PRESENCE_UPDATE_INTERVAL: u64 = 1; // 1 second
 const LOCK_RENEWAL_INTERVAL: u64 = 3; // 3 seconds
 
 pub struct RedisClient {

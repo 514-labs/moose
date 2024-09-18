@@ -3,26 +3,23 @@ volumes:
   clickhouse-0-data: null
   clickhouse-0-logs: null
   clickhouse-0-users: null
-  redis-data:
-  redisinsight-data:
+  redis-data: null
+  redisinsight-data: null
 
 services:
   redis:
-    image: redis:7-alpine
+    image: redis:latest
     ports:
       - "6379:6379"
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
   redisinsight:
-    image: redislabs/redisinsight:1.14.0
+    image: redislabs/redisinsight:latest
     ports:
-      - "8001:8001"
+      - "5540:5540"
     volumes:
       - redisinsight-data:/data
-    environment:
-      - REDISINSIGHT_HOST=0.0.0.0
-      - REDISINSIGHT_PORT=8001
     depends_on:
       - redis
   redpanda:

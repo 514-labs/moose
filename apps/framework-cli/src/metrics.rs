@@ -147,6 +147,18 @@ pub struct Statistics {
     pub streaming_functions_processed_bytes_total_count: Counter,
 }
 
+pub struct OpenTelemetryMetrics {
+    pub http_latency_histogram: opentelemetry::metrics::Histogram<f64>,
+    pub http_ingested_latency_sum_ms: opentelemetry::metrics::Counter<f64>,
+    pub http_ingested_request_count: opentelemetry::metrics::Counter<f64>,
+    pub http_ingested_total_bytes: opentelemetry::metrics::Counter<f64>,
+    pub http_consumed_latency_sum_ms: opentelemetry::metrics::Counter<f64>,
+    pub http_consumed_request_count: opentelemetry::metrics::Counter<f64>,
+    pub streaming_functions_in_event_count: opentelemetry::metrics::Counter<f64>,
+    pub streaming_functions_out_event_count: opentelemetry::metrics::Counter<f64>,
+    pub streaming_functions_processed_bytes_count: opentelemetry::metrics::Counter<f64>,
+}
+
 #[derive(Clone, Debug, Hash, PartialEq, Eq, EncodeLabelSet)]
 pub struct HTTPLabel {
     method: String,
@@ -172,14 +184,25 @@ pub struct MessagesOutCounterLabels {
 }
 
 fn init_meter_provider() -> opentelemetry_sdk::metrics::SdkMeterProvider {
-    // for example 1
-    let my_view_rename_and_unit = |i: &Instrument| {
-        if i.name == "my_histogram" {
-            Some(
-                Stream::new()
-                    .name("my_histogram_renamed")
-                    .unit("milliseconds"),
-            )
+    let latency_http = |i: &Instrument| {
+        if i.name == "latency_http" {
+            Some(Stream::new().name("latency_http").unit("milliseconds"))
+        } else {
+            None
+        }
+    };
+
+    let ingested_bytes = |i: &Instrument| {
+        if i.name == "ingested_bytes" {
+            Some(Stream::new().name("ingested_bytes").unit("bytes"))
+        } else {
+            None
+        }
+    };
+
+    let consumed_bytes = |i: &Instrument| {
+        if i.name == "consumed_bytes" {
+            Some(Stream::new().name("consumed_bytes").unit("bytes"))
         } else {
             None
         }
@@ -204,14 +227,15 @@ fn init_meter_provider() -> opentelemetry_sdk::metrics::SdkMeterProvider {
         )
         .unwrap();
 
-    let reader = PeriodicReader::builder(otel_exporter, runtime::Tokio).build();
+    let reader = PeriodicReader::builder(otel_exporter, runtime::Tokio)
+        .with_interval(Duration::from_secs(10))
+        .build();
     let provider = SdkMeterProvider::builder()
         .with_reader(reader)
-        .with_resource(Resource::new([KeyValue::new(
-            "service.name",
-            "metrics-advanced-example",
-        )]))
-        .with_view(my_view_rename_and_unit)
+        .with_resource(Resource::new([KeyValue::new("service.name", "Moose")]))
+        .with_view(latency_http)
+        .with_view(ingested_bytes)
+        .with_view(consumed_bytes)
         .build();
     global::set_meter_provider(provider.clone());
     provider
@@ -249,14 +273,14 @@ impl Metrics {
         &self,
         mut rx: tokio::sync::mpsc::Receiver<MetricsMessage>,
     ) {
-        // let meter_provider = init_meter_provider();
-        // let meter = global::meter("mylibraryname");
+        let meter_provider = init_meter_provider();
+        let meter = global::meter("mylibraryname");
 
-        // let histogram = meter
-        //     .f64_histogram("my_histogram")
-        //     .with_unit("ms")
-        //     .with_description("My histogram example description")
-        //     .init();
+        let histogram = meter
+            .f64_histogram("latency_http")
+            .with_unit("ms")
+            .with_description("Ingest Latency_http")
+            .init();
 
         let data = Arc::new(Statistics {
             http_ingested_request_count: Counter::default(),
@@ -386,16 +410,16 @@ impl Metrics {
                         duration,
                         method,
                     } => {
-                        // histogram.record(
-                        //     duration.as_secs_f64(),
-                        //     &[
-                        //         KeyValue::new("method", method.clone()),
-                        //         KeyValue::new(
-                        //             "path",
-                        //             path.clone().into_os_string().to_str().unwrap().to_string(),
-                        //         ),
-                        //     ],
-                        // );
+                        histogram.record(
+                            duration.as_secs_f64(),
+                            &[
+                                KeyValue::new("method", method.clone()),
+                                KeyValue::new(
+                                    "path",
+                                    path.clone().into_os_string().to_str().unwrap().to_string(),
+                                ),
+                            ],
+                        );
                         data.http_latency_histogram
                             .get_or_create(&HTTPLabel {
                                 method,
@@ -607,6 +631,10 @@ impl Metrics {
                     let payload_obj = telemetry_payload.as_object_mut().unwrap();
                     if let Some(labels_obj) = &metric_labels {
                         payload_obj.extend(labels_obj.iter().map(|(k, v)| (k.clone(), v.clone())));
+                    }
+
+                    if let Err(e) = meter_provider.force_flush() {
+                        warn!("Failed to flush metrics: {}", e);
                     }
 
                     let _ = client

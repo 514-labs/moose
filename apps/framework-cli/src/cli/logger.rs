@@ -31,14 +31,15 @@
 //! ```
 //!
 
+use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
+use crate::utilities::decode_object;
+use hyper_util::client::legacy::{connect::HttpConnector, Client};
 use log::{error, warn};
 use log::{info, LevelFilter, Metadata, Record};
 use opentelemetry::logs::Logger;
 use opentelemetry::KeyValue;
 use opentelemetry_appender_log::OpenTelemetryLogBridge;
-use opentelemetry_http::hyper::HyperClient;
 use opentelemetry_otlp::{Protocol, WithExportConfig};
-use opentelemetry_sdk::logs::Config;
 use opentelemetry_sdk::logs::LoggerProvider;
 use opentelemetry_sdk::Resource;
 use opentelemetry_semantic_conventions::resource::SERVICE_NAME;
@@ -47,9 +48,6 @@ use serde_json::Value;
 use std::env;
 use std::env::VarError;
 use std::time::{Duration, SystemTime};
-
-use crate::utilities::constants::{CONTEXT, CTX_SESSION_ID};
-use crate::utilities::decode_object;
 
 use super::settings::user_directory;
 
@@ -204,17 +202,13 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
     let output_config = match &settings.export_to {
         None => output_config,
         Some(otel_endpoint) => {
-            let https = hyper_tls_0_5::HttpsConnector::new();
-            let client = hyper_0_14::Client::builder().build::<_, hyper_0_14::Body>(https);
+            let client = reqwest::Client::new();
 
             let otel_exporter = opentelemetry_otlp::new_exporter()
                 .http()
+                .with_http_client(client)
                 .with_endpoint(otel_endpoint.clone())
                 .with_protocol(Protocol::HttpJson)
-                .with_http_client(HyperClient::new_with_timeout(
-                    client,
-                    Duration::from_millis(5000),
-                ))
                 .with_timeout(Duration::from_millis(5000))
                 .build_log_exporter()
                 .unwrap();
@@ -243,7 +237,7 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
             }
 
             let logger_provider = LoggerProvider::builder()
-                .with_config(Config::default().with_resource(Resource::new(resource_attributes)))
+                .with_resource(Resource::new(resource_attributes))
                 .with_batch_exporter(otel_exporter, opentelemetry_sdk::runtime::Tokio)
                 .build();
 

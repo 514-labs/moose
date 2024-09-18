@@ -1,3 +1,12 @@
+use opentelemetry::global;
+use opentelemetry::Key;
+use opentelemetry::KeyValue;
+use opentelemetry_otlp::{Protocol, WithExportConfig};
+use opentelemetry_sdk::metrics::reader::{DefaultAggregationSelector, DefaultTemporalitySelector};
+use opentelemetry_sdk::metrics::{
+    Aggregation, Instrument, PeriodicReader, SdkMeterProvider, Stream,
+};
+use opentelemetry_sdk::{runtime, Resource};
 use prometheus_client::metrics::counter::Counter;
 use prometheus_client::metrics::family::Family;
 use prometheus_client::metrics::gauge::Gauge;
@@ -111,6 +120,7 @@ pub struct Metrics {
     telemetry_metadata: TelemetryMetadata,
 }
 
+#[derive(Debug)]
 pub struct Statistics {
     pub http_latency_histogram_aggregate: Histogram,
     pub http_latency_histogram: Family<HTTPLabel, Histogram>,
@@ -161,6 +171,52 @@ pub struct MessagesOutCounterLabels {
     topic_name: String,
 }
 
+fn init_meter_provider() -> opentelemetry_sdk::metrics::SdkMeterProvider {
+    // for example 1
+    let my_view_rename_and_unit = |i: &Instrument| {
+        if i.name == "my_histogram" {
+            Some(
+                Stream::new()
+                    .name("my_histogram_renamed")
+                    .unit("milliseconds"),
+            )
+        } else {
+            None
+        }
+    };
+
+    // let exporter = opentelemetry_stdout::MetricsExporterBuilder::default()
+    // uncomment the below lines to pretty print output.
+    // .with_encoder(|writer, data|
+    //   Ok(serde_json::to_writer_pretty(writer, &data).unwrap()))
+    // .build();
+
+    let client = reqwest::Client::new();
+    let otel_exporter = opentelemetry_otlp::new_exporter()
+        .http()
+        .with_http_client(client)
+        .with_endpoint("https://enerjroe45pcn.x.pipedream.net")
+        // .with_protocol(Protocol::HttpJson)
+        .with_timeout(Duration::from_millis(5000))
+        .build_metrics_exporter(
+            Box::new(DefaultAggregationSelector::new()),
+            Box::new(DefaultTemporalitySelector::new()),
+        )
+        .unwrap();
+
+    let reader = PeriodicReader::builder(otel_exporter, runtime::Tokio).build();
+    let provider = SdkMeterProvider::builder()
+        .with_reader(reader)
+        .with_resource(Resource::new([KeyValue::new(
+            "service.name",
+            "metrics-advanced-example",
+        )]))
+        .with_view(my_view_rename_and_unit)
+        .build();
+    global::set_meter_provider(provider.clone());
+    provider
+}
+
 impl Metrics {
     pub fn new(
         telemetry_metadata: TelemetryMetadata,
@@ -193,6 +249,15 @@ impl Metrics {
         &self,
         mut rx: tokio::sync::mpsc::Receiver<MetricsMessage>,
     ) {
+        // let meter_provider = init_meter_provider();
+        // let meter = global::meter("mylibraryname");
+
+        // let histogram = meter
+        //     .f64_histogram("my_histogram")
+        //     .with_unit("ms")
+        //     .with_description("My histogram example description")
+        //     .init();
+
         let data = Arc::new(Statistics {
             http_ingested_request_count: Counter::default(),
             http_ingested_total_bytes: Counter::default(),
@@ -321,6 +386,16 @@ impl Metrics {
                         duration,
                         method,
                     } => {
+                        // histogram.record(
+                        //     duration.as_secs_f64(),
+                        //     &[
+                        //         KeyValue::new("method", method.clone()),
+                        //         KeyValue::new(
+                        //             "path",
+                        //             path.clone().into_os_string().to_str().unwrap().to_string(),
+                        //         ),
+                        //     ],
+                        // );
                         data.http_latency_histogram
                             .get_or_create(&HTTPLabel {
                                 method,

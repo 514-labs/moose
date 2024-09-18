@@ -33,6 +33,15 @@ use std::path::Path;
 use std::process::exit;
 use std::sync::Arc;
 
+use crate::infrastructure::redis::redis_client::{RedisClient, RedisError};
+impl From<RedisError> for RoutineFailure {
+    fn from(error: RedisError) -> Self {
+        RoutineFailure::error(Message {
+            action: "Redis".to_string(),
+            details: format!("Redis error: {:?}", error),
+        })
+    }
+}
 use crate::cli::routines::block::create_block_file;
 use crate::cli::routines::consumption::create_consumption_file;
 
@@ -334,9 +343,13 @@ async fn top_command_handler(
             arc_metrics.start_listening_to_metrics(rx).await;
 
             check_project_name(&project_arc.name())?;
-            run_local_infrastructure(&project_arc)?.show();
+            let project_arc_clone = Arc::clone(&project_arc);
+            run_local_infrastructure(&project_arc_clone)?.show();
 
-            routines::start_development_mode(project_arc, &settings.features, arc_metrics)
+            let mut redis_client = RedisClient::new(&project_arc.name()).await?;
+            redis_client.start_periodic_tasks().await;
+
+            routines::start_development_mode(project_arc_clone, &settings.features, arc_metrics)
                 .await
                 .map_err(|e| {
                     RoutineFailure::error(Message {
@@ -513,9 +526,16 @@ async fn top_command_handler(
 
             check_project_name(&project_arc.name())?;
 
-            routines::start_production_mode(project_arc, settings.features, arc_metrics)
-                .await
-                .unwrap();
+            let mut redis_client = RedisClient::new(&project_arc.name()).await?;
+            redis_client.start_periodic_tasks().await;
+
+            routines::start_production_mode(
+                Arc::clone(&project_arc),
+                settings.features,
+                arc_metrics,
+            )
+            .await
+            .unwrap();
 
             wait_for_usage_capture(capture_handle).await;
 

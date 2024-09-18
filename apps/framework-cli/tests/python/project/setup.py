@@ -8,5 +8,6 @@ setup(
         "kafka-python-ng==2.2.2",
         "clickhouse_connect==0.7.16",
         "requests==2.32.3",
+        "moose-cli",
     ],
 )

@@ -36,22 +36,13 @@ fn build_endpoint_file(
     file_path: &Path,
 ) -> Result<Option<EndpointFile>, ConsumptionLoaderError> {
     if let Ok(path) = file_path.strip_prefix(project.consumption_dir()) {
-        log::debug!("Building endpoint file: {:?}", file_path);
-
-        let mut file = fs::File::open(&file_path).map_err(|e| {
-            log::error!("Failed to open file: {:?}", e);
-            e
-        })?;
-        log::debug!("File Opened endpoint file: {:?}", file_path);
-
+        let mut file = fs::File::open(&file_path)?;
         let mut hasher = Sha256::new();
         io::copy(&mut file, &mut hasher)?;
-        log::debug!("Hashed endpoint file: {:?}", file_path);
         let hash = hasher.finalize();
 
         let mut path = path.to_path_buf();
         path.set_extension("");
-        log::debug!("Built endpoint file: {:?}", file_path);
 
         Ok(Some(EndpointFile { path, hash }))
     } else {

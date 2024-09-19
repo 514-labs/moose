@@ -163,6 +163,7 @@ async fn create_client(
             .path()
             .strip_prefix("/consumption/")
             .unwrap_or(cleaned_path);
+
         if !consumption_apis.contains(consumption_name) {
             if !is_prod {
                 println!(
@@ -194,12 +195,18 @@ async fn create_client(
 
     let authority = url.authority().unwrap().clone();
 
-    let req = Request::builder()
+    let mut new_req: Request<Full<Bytes>> = Request::builder()
         .uri(cleaned_path)
         .header(hyper::header::HOST, authority.as_str())
         .body(Full::new(Bytes::new()))?;
 
-    let res = sender.send_request(req).await?;
+    let headers = new_req.headers_mut();
+    for (key, value) in req.headers() {
+        headers.insert(key, value.clone());
+    }
+
+    let res = sender.send_request(new_req).await?;
+    let status = res.status();
     let body = res.collect().await.unwrap().to_bytes().to_vec();
     metrics
         .send_metric(MetricsMessage::PutConsumedBytesCount {
@@ -210,7 +217,7 @@ async fn create_client(
         .await;
 
     Ok(Response::builder()
-        .status(StatusCode::OK)
+        .status(status)
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Allow-Method", "GET, POST")
         .header("Access-Control-Allow-Headers", "Content-Type")
@@ -596,6 +603,9 @@ fn get_env_var(s: &str) -> Option<String> {
     }
 }
 
+// TODO should we move this to the project config?
+// Since it automatically loads the env var and orverrides local file settings
+//That way, a user can set dev variables easily and override them in prod with env vars.
 lazy_static! {
     static ref MOOSE_CONSUMPTION_API_KEY: Option<String> = get_env_var("MOOSE_CONSUMPTION_API_KEY");
     static ref MOOSE_INGEST_API_KEY: Option<String> = get_env_var("MOOSE_INGEST_API_KEY");

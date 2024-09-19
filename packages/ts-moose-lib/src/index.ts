@@ -1,3 +1,4 @@
+import { JWTPayload } from "jose";
 import { MooseClient, sql } from "./consumption-apis/helpers";
 export interface Aggregation {
   select: string;
@@ -11,6 +12,7 @@ export interface ConsumptionUtil {
 
   // SQL interpolator
   sql: typeof sql;
+  jwt: JWTPayload | undefined;
 }
 
 export enum IngestionFormat {

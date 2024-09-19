@@ -6,6 +6,7 @@ use tokio::process::Child;
 use crate::{
     framework::{languages::SupportedLanguages, python, typescript},
     infrastructure::olap::clickhouse::config::ClickHouseConfig,
+    project::JwtConfig,
     utilities::system::{kill_child, KillProcessError},
 };
 
@@ -25,12 +26,14 @@ pub struct ConsumptionProcessRegistry {
     dir: PathBuf,
     language: SupportedLanguages,
     project_path: PathBuf,
+    jwt_config: Option<JwtConfig>,
 }
 
 impl ConsumptionProcessRegistry {
     pub fn new(
         language: SupportedLanguages,
         clickhouse_config: ClickHouseConfig,
+        jwt_config: Option<JwtConfig>,
         dir: PathBuf,
         project_path: PathBuf,
     ) -> Self {
@@ -40,6 +43,7 @@ impl ConsumptionProcessRegistry {
             dir,
             clickhouse_config,
             project_path,
+            jwt_config,
         }
     }
 
@@ -52,6 +56,7 @@ impl ConsumptionProcessRegistry {
             }
             SupportedLanguages::Typescript => typescript::consumption::run(
                 self.clickhouse_config.clone(),
+                self.jwt_config.clone(),
                 &self.dir,
                 &self.project_path,
             ),

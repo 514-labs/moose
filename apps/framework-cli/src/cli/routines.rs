@@ -405,6 +405,7 @@ pub async fn start_development_mode(
         let mut consumption_process_registry = ConsumptionProcessRegistry::new(
             project.language,
             project.clickhouse_config.clone(),
+            project.jwt.clone(),
             project.consumption_dir(),
             project.project_location.clone(),
         );
@@ -582,6 +583,7 @@ pub async fn start_production_mode(
         let mut consumption_process_registry = ConsumptionProcessRegistry::new(
             project.language,
             project.clickhouse_config.clone(),
+            project.jwt.clone(),
             project.consumption_dir(),
             project.project_location.clone(),
         );

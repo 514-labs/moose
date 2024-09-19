@@ -821,6 +821,9 @@ importers:
       fastq:
         specifier: 1.17.1
         version: 1.17.1
+      jose:
+        specifier: 5.9.2
+        version: 5.9.2
       kafkajs:
         specifier: 2.2.4
         version: 2.2.4
@@ -8744,6 +8747,12 @@ packages:
     resolution:
       {
         integrity: sha512-jc7BFxgKPKi94uOvEmzlSWFFe2+vASyXaKUpdQKatWAESU2MWjDfFf0fdfc83CDKcA5QecabZeNLyfhe3yKNkg==,
+      }
+
+  jose@5.9.2:
+    resolution:
+      {
+        integrity: sha512-ILI2xx/I57b20sd7rHZvgiiQrmp2mcotwsAH+5ajbpFQbrYVQdNHYlQhoA5cFb78CgtBOxtC05TeA+mcgkuCqQ==,
       }
 
   joycon@3.1.1:
@@ -19009,6 +19018,8 @@ snapshots:
   jiti@1.21.0: {}
 
   jose@4.15.5: {}
+
+  jose@5.9.2: {}
 
   joycon@3.1.1: {}
 

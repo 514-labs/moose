@@ -34,6 +34,7 @@ impl ProcessRegistries {
         let consumption = ConsumptionProcessRegistry::new(
             project.language,
             project.clickhouse_config.clone(),
+            project.jwt.clone(),
             project.consumption_dir(),
             project.project_location.clone(),
         );

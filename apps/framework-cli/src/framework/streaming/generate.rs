@@ -431,7 +431,7 @@ from moose_lib import StreamingFunction
 from typing import Optional
 from datetime import datetime
 
-def fn(activity: UserActivityOld) -> Optional[UserActivity]:
+def fn(source: UserActivityOld) -> Optional[UserActivity]:
     return UserActivity(
         eventId="",
         timestamp="",

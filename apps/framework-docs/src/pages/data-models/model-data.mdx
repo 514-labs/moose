@@ -16,7 +16,9 @@ The schema defines the names and data types of the properties in your Data Model
 ### `Key<T>`
 </TypeScript>
 
-<Python>### `Key[T: (str, int)] = T`</Python>
+<Python>
+### `Key[T: (str, int)] = T`
+</Python>
 
 The <TypeScript>`Key<T>`</TypeScript><Python>`Key[T: (str, int)] = T`</Python> type is specific to Moose and is used to define a primary key for your Data Model. If your Data Model requires a composite key, you can apply the `Key` type to multiple columns.
 
@@ -64,8 +66,8 @@ Moose supports various data types for Data Models, as summarized in the table be
   | DateTime | datetime | ✅ |
   | Json | dict | ❌ | 
   | Bytes | bytes | ❌ | 
-  | Array | list | ✅ | 
-  | nullable | nullable | ✅ |
+  | Array | list[] | ✅ | 
+  | nullable | Optional[T] | ✅ |
 </Python>
 
 <Callout type="warning" title="Key Type is Required">

@@ -869,12 +869,12 @@ impl Webserver {
                             APIType::INGRESS {
                                 target_topic,
                                 data_model,
+                                format,
                             } => {
                                 route_table.insert(
                                     api_endpoint.path.clone(),
                                     RouteMeta {
-                                        // When doing Ingress API the format is always known
-                                        format: api_endpoint.format.unwrap().clone(),
+                                        format,
                                         data_model: data_model.unwrap(),
                                         topic_name: target_topic,
                                     },
@@ -891,10 +891,7 @@ impl Webserver {
                     ApiChange::ApiEndpoint(Change::Removed(api_endpoint)) => {
                         log::info!("Removing route: {:?}", api_endpoint.path);
                         match api_endpoint.api_type {
-                            APIType::INGRESS {
-                                target_topic: _,
-                                data_model: _,
-                            } => {
+                            APIType::INGRESS { .. } => {
                                 route_table.remove(&api_endpoint.path);
                             }
                             APIType::EGRESS => {
@@ -910,6 +907,7 @@ impl Webserver {
                             APIType::INGRESS {
                                 target_topic,
                                 data_model,
+                                format,
                             } => {
                                 log::info!("Replacing route: {:?} with {:?}", before, after);
 
@@ -917,8 +915,7 @@ impl Webserver {
                                 route_table.insert(
                                     after.path.clone(),
                                     RouteMeta {
-                                        // When doing Ingress API the format is always known
-                                        format: after.format.unwrap().clone(),
+                                        format: *format,
                                         data_model: data_model.as_ref().unwrap().clone(),
                                         topic_name: target_topic.clone(),
                                     },

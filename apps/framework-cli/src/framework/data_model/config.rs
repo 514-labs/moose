@@ -10,7 +10,7 @@ use crate::framework::typescript::export_collectors::get_data_model_configs;
 
 pub type ConfigIdentifier = String;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub enum EndpointIngestionFormat {
     #[serde(alias = "JSON", alias = "json")]
     Json,

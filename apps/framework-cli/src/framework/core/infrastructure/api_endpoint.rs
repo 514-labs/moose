@@ -18,6 +18,7 @@ pub enum APIType {
         // so deserialization may fail if the value is not optional
         // our code does not depend on the stored field
         data_model: Option<DataModel>,
+        format: EndpointIngestionFormat,
     },
     EGRESS,
 }
@@ -36,7 +37,6 @@ pub struct ApiEndpoint {
     pub api_type: APIType,
     pub path: PathBuf,
     pub method: Method,
-    pub format: Option<EndpointIngestionFormat>,
 
     pub version: String,
     pub source_primitive: PrimitiveSignature,
@@ -49,6 +49,7 @@ impl ApiEndpoint {
             api_type: APIType::INGRESS {
                 target_topic: topic.id(),
                 data_model: Some(data_model.clone()),
+                format: data_model.config.ingestion.format,
             },
             // This implementation is actually removing the functionality of nestedness of paths in
             // data model to change the ingest path. However, we are changing how this works with an
@@ -57,7 +58,6 @@ impl ApiEndpoint {
                 .join(data_model.name.clone())
                 .join(data_model.version.clone()),
             method: Method::POST,
-            format: Some(data_model.config.ingestion.format.clone()),
             version: data_model.version.clone(),
             source_primitive: PrimitiveSignature {
                 name: data_model.name.clone(),
@@ -83,8 +83,15 @@ impl ApiEndpoint {
             self.version,
             self.path.to_string_lossy(),
             self.method,
-            self.format
+            self.format(),
         )
+    }
+
+    fn format(&self) -> Option<EndpointIngestionFormat> {
+        match self.api_type {
+            APIType::INGRESS { format, .. } => Some(format),
+            APIType::EGRESS => None,
+        }
     }
 
     pub fn short_display(&self) -> String {
@@ -104,7 +111,6 @@ impl From<EndpointFile> for ApiEndpoint {
             api_type: APIType::EGRESS,
             path: value.path.clone(),
             method: Method::GET,
-            format: None,
             version: "0.0.0".to_string(),
             source_primitive: PrimitiveSignature {
                 name: value.path.to_string_lossy().to_string(),

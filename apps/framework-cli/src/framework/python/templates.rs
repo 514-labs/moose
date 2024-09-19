@@ -69,7 +69,7 @@ from moose_lib import StreamingFunction
 from typing import Optional
 from datetime import datetime
 
-def fn(activity: {{source}}) -> Optional[{{destination}}]:
+def fn(source: {{source}}) -> Optional[{{destination}}]:
     return {{destination_object}}
 
 my_function = StreamingFunction(

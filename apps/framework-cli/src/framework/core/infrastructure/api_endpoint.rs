@@ -3,6 +3,7 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 
 use crate::framework::{
+    consumption::model::EndpointFile,
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
     data_model::{config::EndpointIngestionFormat, model::DataModel},
 };
@@ -35,7 +36,7 @@ pub struct ApiEndpoint {
     pub api_type: APIType,
     pub path: PathBuf,
     pub method: Method,
-    pub format: EndpointIngestionFormat,
+    pub format: Option<EndpointIngestionFormat>,
 
     pub version: String,
     pub source_primitive: PrimitiveSignature,
@@ -56,7 +57,7 @@ impl ApiEndpoint {
                 .join(data_model.name.clone())
                 .join(data_model.version.clone()),
             method: Method::POST,
-            format: data_model.config.ingestion.format.clone(),
+            format: Some(data_model.config.ingestion.format.clone()),
             version: data_model.version.clone(),
             source_primitive: PrimitiveSignature {
                 name: data_model.name.clone(),
@@ -88,6 +89,28 @@ impl ApiEndpoint {
 
     pub fn short_display(&self) -> String {
         format!("API Endpoint: {} - Version: {}", self.name, self.version)
+    }
+}
+
+impl From<EndpointFile> for ApiEndpoint {
+    fn from(value: EndpointFile) -> Self {
+        ApiEndpoint {
+            name: value
+                .path
+                .file_stem()
+                .unwrap()
+                .to_string_lossy()
+                .to_string(),
+            api_type: APIType::EGRESS,
+            path: value.path.clone(),
+            method: Method::GET,
+            format: None,
+            version: "0.0.0".to_string(),
+            source_primitive: PrimitiveSignature {
+                name: value.path.to_string_lossy().to_string(),
+                primitive_type: PrimitiveTypes::ConsumptionAPI,
+            },
+        }
     }
 }
 

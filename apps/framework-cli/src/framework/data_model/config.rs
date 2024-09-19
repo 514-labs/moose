@@ -68,6 +68,7 @@ pub struct DataModelConfig {
 #[non_exhaustive]
 pub enum ModelConfigurationError {
     TypescriptRunner(#[from] crate::framework::typescript::export_collectors::ExportCollectorError),
+    PythonRunner(String),
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default, Hash)]
@@ -80,8 +81,10 @@ pub struct PythonDataModelConfig {
 
 async fn parse_python_model_file(
     path: &Path,
-) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ()> {
-    let process = run_python_file(path).await.map_err(|_| ())?;
+) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
+    let process = run_python_file(path)
+        .await
+        .map_err(|e| ModelConfigurationError::PythonRunner(e.to_string()))?;
 
     let mut stdout = match process.stdout {
         Some(handle) => handle,
@@ -119,10 +122,7 @@ pub async fn get(
     } else if path.extension() == Some(OsStr::new("py"))
         && path.file_name() != Some(OsStr::new("__init__.py"))
     {
-        match parse_python_model_file(path).await {
-            Ok(result) => return Ok(result),
-            Err(_) => return Ok(HashMap::new()),
-        }
+        return parse_python_model_file(path).await;
     } else {
         // We will use defaults values for the configuration for each data model.
         Ok(HashMap::new())

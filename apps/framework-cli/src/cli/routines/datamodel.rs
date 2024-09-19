@@ -354,7 +354,7 @@ export interface {} "#,
 fn render_python_dataclass(class_name: &str, fields: &IndexMap<String, CustomValue>) -> String {
     let mut class_def = format!(
         r#"from dataclasses import dataclass
-from typing import List, Optional, Union, Any
+from typing import Optional, Union, Any
 
 @dataclass
 class {}:
@@ -425,7 +425,7 @@ export interface User {
             parse_and_generate("User", JSON_CONTENT.to_string(), SupportedLanguages::Python);
 
         let expected = r#"from dataclasses import dataclass
-from typing import List, Optional, Union, Any
+from typing import Optional, Union, Any
 
 @dataclass
 class Address:

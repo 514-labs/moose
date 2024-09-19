@@ -36,7 +36,7 @@ fn build_endpoint_file(
     file_path: &Path,
 ) -> Result<Option<EndpointFile>, ConsumptionLoaderError> {
     if let Ok(path) = file_path.strip_prefix(project.consumption_dir()) {
-        let mut file = fs::File::open(&file_path)?;
+        let mut file = fs::File::open(file_path)?;
         let mut hasher = Sha256::new();
         io::copy(&mut file, &mut hasher)?;
         let hash = hasher.finalize();

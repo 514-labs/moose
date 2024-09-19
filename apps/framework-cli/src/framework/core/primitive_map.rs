@@ -6,8 +6,11 @@ use std::{
 use walkdir::WalkDir;
 
 use super::code_loader::MappingError;
-use crate::framework::core::infrastructure::table::ColumnType;
 use crate::framework::data_model::DuplicateModelError;
+use crate::framework::{
+    consumption::loader::{load_consumption, ConsumptionLoaderError},
+    core::infrastructure::table::ColumnType,
+};
 use crate::utilities::PathExt;
 use crate::{
     framework::{
@@ -36,6 +39,9 @@ pub enum PrimitiveMapLoadingError {
 
     #[error("Failed to load functions")]
     FunctionsLoading(#[from] crate::framework::streaming::model::FunctionError),
+
+    #[error("Failed to load consumption")]
+    Consumption(#[from] ConsumptionLoaderError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -123,8 +129,6 @@ impl PrimitiveMap {
             PrimitiveMap::load_versioned(project, &version, &mut primitive_map).await?;
         }
 
-        log::debug!("Loaded Versioned primitive map: {:?}", primitive_map);
-
         // TODO add versioning for primitives other than data models.
         primitive_map.functions =
             get_all_current_streaming_functions(project, &primitive_map.datamodels)
@@ -133,6 +137,10 @@ impl PrimitiveMap {
                 .filter(|func| func.executable.ext_is_supported_lang())
                 .cloned()
                 .collect();
+
+        primitive_map.consumption = load_consumption(project)?;
+
+        log::debug!("Loaded Versioned primitive map: {:?}", primitive_map);
 
         primitive_map.validate()?;
 

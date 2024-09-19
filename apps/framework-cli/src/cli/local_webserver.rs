@@ -853,6 +853,7 @@ impl Webserver {
     pub async fn spawn_api_update_listener(
         &self,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
+        consumption_apis: &'static RwLock<HashSet<String>>,
     ) -> mpsc::Sender<ApiChange> {
         log::info!("Spawning API update listener");
 
@@ -868,30 +869,45 @@ impl Webserver {
                             APIType::INGRESS {
                                 target_topic,
                                 data_model,
+                                format,
                             } => {
                                 route_table.insert(
                                     api_endpoint.path.clone(),
                                     RouteMeta {
-                                        format: api_endpoint.format.clone(),
+                                        format,
                                         data_model: data_model.unwrap(),
                                         topic_name: target_topic,
                                     },
                                 );
                             }
                             APIType::EGRESS => {
-                                log::warn!("Egress API not supported yet")
+                                consumption_apis
+                                    .write()
+                                    .await
+                                    .insert(api_endpoint.path.to_string_lossy().to_string());
                             }
                         }
                     }
                     ApiChange::ApiEndpoint(Change::Removed(api_endpoint)) => {
                         log::info!("Removing route: {:?}", api_endpoint.path);
-                        route_table.remove(&api_endpoint.path);
+                        match api_endpoint.api_type {
+                            APIType::INGRESS { .. } => {
+                                route_table.remove(&api_endpoint.path);
+                            }
+                            APIType::EGRESS => {
+                                consumption_apis
+                                    .write()
+                                    .await
+                                    .remove(&api_endpoint.path.to_string_lossy().to_string());
+                            }
+                        }
                     }
                     ApiChange::ApiEndpoint(Change::Updated { before, after }) => {
                         match &after.api_type {
                             APIType::INGRESS {
                                 target_topic,
                                 data_model,
+                                format,
                             } => {
                                 log::info!("Replacing route: {:?} with {:?}", before, after);
 
@@ -899,14 +915,14 @@ impl Webserver {
                                 route_table.insert(
                                     after.path.clone(),
                                     RouteMeta {
-                                        format: after.format.clone(),
+                                        format: *format,
                                         data_model: data_model.as_ref().unwrap().clone(),
                                         topic_name: target_topic.clone(),
                                     },
                                 );
                             }
                             APIType::EGRESS => {
-                                log::warn!("Egress API not supported yet")
+                                // Nothing to do, we don't need to update the route table
                             }
                         }
                     }

@@ -239,8 +239,11 @@ impl InfrastructureMap {
         // TODO update here when we have several aggregation processes
         let block_db_processes = OlapProcess::from_aggregation(&primitive_map.aggregation);
 
-        // We are currently not
+        // consumption api endpoints
         let consumption_api_web_server = ConsumptionApiWebServer {};
+        for api_endpoint in primitive_map.consumption.endpoint_files {
+            api_endpoints.insert(api_endpoint.id(), api_endpoint.into());
+        }
 
         InfrastructureMap {
             // primitive_map,

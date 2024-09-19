@@ -215,7 +215,7 @@ async fn process_data_models_changes(
             RouteMeta {
                 topic_name: fo.topic.clone(),
                 data_model: fo.data_model.clone(),
-                format: fo.data_model.config.ingestion.format.clone(),
+                format: fo.data_model.config.ingestion.format,
             },
         );
         let topics = vec![fo.topic.clone()];

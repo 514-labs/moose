@@ -294,13 +294,17 @@ pub async fn start_development_mode(
         let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
             Box::leak(Box::new(RwLock::new(route_table)));
 
-        let route_update_channel = web_server.spawn_api_update_listener(route_table).await;
+        let route_update_channel = web_server
+            .spawn_api_update_listener(route_table, consumption_apis)
+            .await;
 
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
 
         let plan_result = plan_changes(&mut client, &project).await?;
         info!("Plan Changes: {:?}", plan_result.changes);
-        let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
+        let api_changes_channel = web_server
+            .spawn_api_update_listener(route_table, consumption_apis)
+            .await;
         let (syncing_registry, process_registry) = execute_initial_infra_change(
             &project,
             &plan_result,
@@ -350,7 +354,9 @@ pub async fn start_development_mode(
         let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
             Box::leak(Box::new(RwLock::new(route_table)));
 
-        let route_update_channel = web_server.spawn_api_update_listener(route_table).await;
+        let route_update_channel = web_server
+            .spawn_api_update_listener(route_table, consumption_apis)
+            .await;
 
         let mut syncing_processes_registry = SyncingProcessesRegistry::new(
             project.redpanda_config.clone(),
@@ -491,7 +497,9 @@ pub async fn start_production_mode(
 
         let plan_result = plan_changes(&mut client, &project).await?;
         info!("Plan Changes: {:?}", plan_result.changes);
-        let api_changes_channel = web_server.spawn_api_update_listener(route_table).await;
+        let api_changes_channel = web_server
+            .spawn_api_update_listener(route_table, consumption_apis)
+            .await;
         execute_initial_infra_change(
             &project,
             &plan_result,

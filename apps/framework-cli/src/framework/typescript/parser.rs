@@ -37,13 +37,15 @@ pub fn extract_data_model_from_file(
     let internal = project.internal_dir().unwrap();
     let output_dir = internal.join("serialized_datamodels");
 
+    log::info!("Extracting data model from file: {:?}", path);
+
     fs::write(
         internal.join(TSCONFIG_JSON),
         json!({
             "compilerOptions":{
                 "outDir": "dist", // relative path, so .moose/dist
                 "plugins": [{
-                    "transform": "../node_modules/@514labs/moose-lib/dist/toDataModels.js"
+                    "transform": "../node_modules/@514labs/moose-lib/dist/dataModels/toDataModels.js"
                 }],
                 "strict":true
             },
@@ -60,15 +62,25 @@ pub fn extract_data_model_from_file(
             }
         },
     )?;
-    let ts_return_code = Command::new("npx")
-        .arg("tspc")
+
+    let ts_return_code = Command::new("moose-tspc")
         .arg("--project")
         .arg(format!(".moose/{}", TSCONFIG_JSON))
         .env("NPM_CONFIG_UPDATE_NOTIFIER", "false")
         .current_dir(&project.project_location)
-        .spawn()?
+        .spawn()
+        .map_err(|err| {
+            log::error!("Error while starting moose-tspc: {}", err);
+            TypescriptParsingError::TypescriptCompilerError(Some(err))
+        })?
         .wait()
-        .map_err(|err| TypescriptParsingError::TypescriptCompilerError(Some(err)))?;
+        .map_err(|err| {
+            log::error!("Error while running moose-tspc: {}", err);
+            TypescriptParsingError::TypescriptCompilerError(Some(err))
+        })?;
+
+    log::info!("Typescript compiler return code: {:?}", ts_return_code);
+
     if !ts_return_code.success() {
         return Err(TypescriptParsingError::TypescriptCompilerError(None));
     }
@@ -87,6 +99,7 @@ pub fn extract_data_model_from_file(
 
     let mut output_json = serde_json::from_slice::<Value>(&output)
         .map_err(|_| TypescriptParsingError::TypescriptCompilerError(None))?;
+
     if let Some(error_type) = output_json.get("error_type") {
         if let Some(error_type) = error_type.as_str() {
             if error_type == "unknown_type" {
@@ -169,18 +182,18 @@ mod tests {
                 .wait()
                 .unwrap();
 
-            Command::new("rm")
-                .arg("-rf")
-                .arg("./tests/test_project/node_modules/@514labs/moose-lib/dist/")
+            Command::new("npm")
+                .arg("link")
+                .current_dir("../../packages/ts-moose-lib")
                 .spawn()
                 .unwrap()
                 .wait()
                 .unwrap();
 
-            Command::new("cp")
-                .arg("-r")
-                .arg("../../packages/ts-moose-lib/dist/")
-                .arg("./tests/test_project/node_modules/@514labs/moose-lib/dist/")
+            Command::new("npm")
+                .arg("link")
+                .arg("@514labs/moose-lib")
+                .current_dir("./tests/test_project")
                 .spawn()
                 .unwrap()
                 .wait()

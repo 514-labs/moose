@@ -1,15 +1,16 @@
 import http from "http";
 import process from "node:process";
-import { getClickhouseClient, MooseClient, sql } from "@514labs/moose-lib";
+import { getClickhouseClient } from "../commons";
+import { MooseClient, sql } from "./helpers";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
 
-const CONSUMPTION_DIR_PATH = process.argv[1];
-
 const [
   ,
   ,
+  ,
+  CONSUMPTION_DIR_PATH,
   CLICKHOUSE_DB,
   CLICKHOUSE_HOST,
   CLICKHOUSE_PORT,
@@ -55,7 +56,7 @@ const apiHandler = async (
       {},
     );
 
-    const userFuncModule = await import(pathName);
+    const userFuncModule = require(pathName);
 
     const result = await userFuncModule.default(paramsObject, {
       client: new MooseClient(getClickhouseClient(clickhouseConfig)),
@@ -84,7 +85,7 @@ const apiHandler = async (
   }
 };
 
-const startApiService = async () => {
+export const runConsumptionApis = async () => {
   console.log("Starting API service");
   const server = http.createServer(apiHandler);
 
@@ -100,5 +101,3 @@ const startApiService = async () => {
     console.log("Server running on port 4001");
   });
 };
-
-startApiService();

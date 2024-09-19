@@ -15,7 +15,7 @@ use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 
-use crate::framework::typescript::ts_node::CliMessage;
+use crate::framework::typescript::bin::CliMessage;
 use crate::project::Project;
 use bytes::Buf;
 use http_body_util::BodyExt;

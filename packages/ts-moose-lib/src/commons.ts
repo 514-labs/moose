@@ -66,6 +66,7 @@ type CliLogData = {
   action: string;
   message: string;
 };
+
 export const cliLog: (log: CliLogData) => void = (log) => {
   const req = http.request({
     port: 5000,
@@ -76,3 +77,14 @@ export const cliLog: (log: CliLogData) => void = (log) => {
   req.write(JSON.stringify({ message_type: "Info", ...log }));
   req.end();
 };
+
+/**
+ * Method to change .ts, .cts, and .mts to .js, .cjs, and .mjs
+ * This is needed because 'import' does not support .ts, .cts, and .mts
+ */
+export function mapTstoJs(filePath: string): string {
+  return filePath
+    .replace(/\.ts$/, ".js")
+    .replace(/\.cts$/, ".cjs")
+    .replace(/\.mts$/, ".mjs");
+}

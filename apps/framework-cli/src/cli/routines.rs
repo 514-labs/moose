@@ -369,8 +369,10 @@ pub async fn start_development_mode(
 
         let topics = fetch_topics(&project.redpanda_config).await?;
 
-        let mut function_process_registry =
-            FunctionProcessRegistry::new(project.redpanda_config.clone());
+        let mut function_process_registry = FunctionProcessRegistry::new(
+            project.redpanda_config.clone(),
+            project.project_location.clone(),
+        );
         // Once the below function is optimized to act on events, this
         // will need to get refactored out.
 
@@ -385,6 +387,7 @@ pub async fn start_development_mode(
         let mut blocks_process_registry = AggregationProcessRegistry::new(
             project.language,
             project.blocks_dir(),
+            project.project_location.clone(),
             project.clickhouse_config.clone(),
             false,
         );
@@ -393,6 +396,7 @@ pub async fn start_development_mode(
         let mut aggregations_process_registry = AggregationProcessRegistry::new(
             project.language,
             project.aggregations_dir(),
+            project.project_location.clone(),
             project.clickhouse_config.clone(),
             true,
         );
@@ -402,6 +406,7 @@ pub async fn start_development_mode(
             project.language,
             project.clickhouse_config.clone(),
             project.consumption_dir(),
+            project.project_location.clone(),
         );
         process_consumption_changes(
             &project,
@@ -544,8 +549,10 @@ pub async fn start_production_mode(
             .start_all(&framework_object_versions, &version_syncs, metrics.clone())
             .await;
 
-        let mut function_process_registry =
-            FunctionProcessRegistry::new(project.redpanda_config.clone());
+        let mut function_process_registry = FunctionProcessRegistry::new(
+            project.redpanda_config.clone(),
+            project.project_location.clone(),
+        );
         // Once the below function is optimized to act on events, this
         // will need to get refactored out.
         process_streaming_func_changes(
@@ -558,6 +565,7 @@ pub async fn start_production_mode(
         let mut blocks_process_registry = AggregationProcessRegistry::new(
             project.language,
             project.blocks_dir(),
+            project.project_location.clone(),
             project.clickhouse_config.clone(),
             false,
         );
@@ -565,6 +573,7 @@ pub async fn start_production_mode(
         let mut aggregations_process_registry = AggregationProcessRegistry::new(
             project.language,
             project.aggregations_dir(),
+            project.project_location.clone(),
             project.clickhouse_config.clone(),
             true,
         );
@@ -574,6 +583,7 @@ pub async fn start_production_mode(
             project.language,
             project.clickhouse_config.clone(),
             project.consumption_dir(),
+            project.project_location.clone(),
         );
         process_consumption_changes(
             &project,

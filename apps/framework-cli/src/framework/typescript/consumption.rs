@@ -6,15 +6,16 @@ use tokio::process::Child;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::processes::consumption_registry::ConsumptionError;
 
-use super::ts_node;
+use super::bin;
 
-const CONSUMPTION_RUNNER_WRAPPER: &str = include_str!("ts_scripts/consumption-api.ts");
+const CONSUMPTION_RUNNER_BIN: &str = "consumption-apis";
 
 // TODO: Abstract away ClickhouseConfig to support other databases
 // TODO: Bubble up compilation errors to the user
 pub fn run(
     clickhouse_config: ClickHouseConfig,
     consumption_path: &Path,
+    project_path: &Path,
 ) -> Result<Child, ConsumptionError> {
     let host_port = clickhouse_config.host_port.to_string();
     let use_ssl = clickhouse_config.use_ssl.to_string();
@@ -28,7 +29,7 @@ pub fn run(
         &use_ssl,
     ];
 
-    let mut consumption_process = ts_node::run(CONSUMPTION_RUNNER_WRAPPER, &args)?;
+    let mut consumption_process = bin::run(CONSUMPTION_RUNNER_BIN, project_path, &args)?;
 
     let stdout = consumption_process
         .stdout

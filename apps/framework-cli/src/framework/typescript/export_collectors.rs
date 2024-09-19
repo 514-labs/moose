@@ -50,7 +50,6 @@ async fn collect_exports(file: &Path) -> Result<Value, ExportCollectorError> {
     } else {
         let mut raw_string_stdout: String = String::new();
         stdout.read_to_string(&mut raw_string_stdout).await?;
-        println!("collect_exports: {:?}", raw_string_stdout);
 
         Ok(serde_json::from_str(&raw_string_stdout)?)
     }
@@ -61,7 +60,6 @@ pub async fn get_data_model_configs(
     enums: HashSet<&str>,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ExportCollectorError> {
     let exports = collect_exports(file).await?;
-    println!("export_collectors: {:?}", exports);
 
     match exports {
         Value::Object(map) => {

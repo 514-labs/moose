@@ -93,7 +93,6 @@ async fn parse_python_model_file(
     if stdout.read_to_string(&mut raw_string_stdout).await.is_err() {
         return Ok(HashMap::new());
     }
-    println!("config from py lib: {:?}", raw_string_stdout);
 
     let configs: HashMap<ConfigIdentifier, DataModelConfig> = raw_string_stdout
         .split("___DATAMODELCONFIG___")
@@ -104,7 +103,7 @@ async fn parse_python_model_file(
         })
         .collect();
 
-    println!("Parsed PythonDataModelConfig: {:?}", configs);
+    info!("Data Model configuration for {:?}: {:?}", path, configs);
 
     Ok(configs)
 }
@@ -113,10 +112,8 @@ pub async fn get(
     path: &Path,
     enums: HashSet<&str>,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
-    println!("config.get path: {:?}", path);
     if path.extension() == Some(OsStr::new("ts")) {
         let config = get_data_model_configs(path, enums).await?;
-        println!("config.get config: {:?}", config);
         info!("Data Model configuration for {:?}: {:?}", path, config);
         Ok(config)
     } else if path.extension() == Some(OsStr::new("py"))

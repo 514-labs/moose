@@ -181,7 +181,6 @@ pub async fn get_framework_objects_from_schema_file(
                 let data_model_opt = indexed_models.get_mut(config_name_without_suffix);
                 if let Some(data_model) = data_model_opt {
                     data_model.config = config.clone();
-                    println!("Saved config to {:?} - {:?}", data_model.name, data_model.config);
                 } else {
                     return Err(DataModelError::Other {
                         message: format!(
@@ -219,10 +218,6 @@ pub fn framework_object_mapper(
     original_file_path: &Path,
     version: &str,
 ) -> Result<FrameworkObject, MappingError> {
-    println!(
-        "framework_object_mapper datamodel: {:?}, storage: {:?}",
-        s.name, s.config.storage.enabled
-    );
     let clickhouse_table = if s.config.storage.enabled {
         let table = s.to_table();
         Some(olap::clickhouse::mapper::std_table_to_clickhouse_table(

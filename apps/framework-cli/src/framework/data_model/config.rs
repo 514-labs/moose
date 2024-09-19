@@ -1,12 +1,16 @@
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
+use tokio::io::AsyncReadExt;
+
 use log::info;
 use serde::Deserialize;
 use serde::Serialize;
 use std::ffi::OsStr;
 
 use crate::framework::typescript::export_collectors::get_data_model_configs;
+
+use crate::framework::python::executor::run_python_file;
 
 pub type ConfigIdentifier = String;
 
@@ -64,9 +68,49 @@ pub struct DataModelConfig {
 #[non_exhaustive]
 pub enum ModelConfigurationError {
     TypescriptRunner(#[from] crate::framework::typescript::export_collectors::ExportCollectorError),
+    PythonRunner(String),
 }
 
-// TODO: handle python
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default, Hash)]
+pub struct PythonDataModelConfig {
+    #[serde(default)]
+    pub name: String,
+    #[serde(default)]
+    pub config: DataModelConfig,
+}
+
+async fn parse_python_model_file(
+    path: &Path,
+) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
+    let process = run_python_file(path)
+        .await
+        .map_err(|e| ModelConfigurationError::PythonRunner(e.to_string()))?;
+
+    let mut stdout = match process.stdout {
+        Some(handle) => handle,
+        None => return Ok(HashMap::new()),
+    };
+
+    let mut raw_string_stdout: String = String::new();
+
+    if stdout.read_to_string(&mut raw_string_stdout).await.is_err() {
+        return Ok(HashMap::new());
+    }
+
+    let configs: HashMap<ConfigIdentifier, DataModelConfig> = raw_string_stdout
+        .split("___DATAMODELCONFIG___")
+        .filter_map(|entry| {
+            let raw_value = serde_json::from_str(entry).ok()?;
+            let config: PythonDataModelConfig = serde_json::from_value(raw_value).ok()?;
+            Some((config.name.clone(), config.config))
+        })
+        .collect();
+
+    info!("Data Model configuration for {:?}: {:?}", path, configs);
+
+    Ok(configs)
+}
+
 pub async fn get(
     path: &Path,
     enums: HashSet<&str>,
@@ -75,9 +119,12 @@ pub async fn get(
         let config = get_data_model_configs(path, enums).await?;
         info!("Data Model configuration for {:?}: {:?}", path, config);
         Ok(config)
+    } else if path.extension() == Some(OsStr::new("py"))
+        && path.file_name() != Some(OsStr::new("__init__.py"))
+    {
+        return parse_python_model_file(path).await;
     } else {
-        // We currently fail transparently if the file is not a typescript file and
-        // we will use defaults values for the configuration for each data model.
+        // We will use defaults values for the configuration for each data model.
         Ok(HashMap::new())
     }
 }

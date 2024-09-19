@@ -1,9 +1,10 @@
 from clickhouse_connect.driver.client import Client
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from enum import Enum
 from string import Formatter
 from typing import Callable, Generic, Optional, TypeVar, Union
 import sys
+import json
 
 type Key[T: (str, int)] = T 
 
@@ -11,25 +12,37 @@ type Key[T: (str, int)] = T
 class StreamingFunction:
     run: Callable
 
-# class IngestionFormat(Enum):
-#     JSON = "JSON"
-#     JSON_ARRAY = "JSON_ARRAY"
+class IngestionFormat(Enum):
+    JSON = "JSON"
+    JSON_ARRAY = "JSON_ARRAY"
 
-# T = TypeVar('T')
+@dataclass
+class IngestionConfig:
+    format: Optional[IngestionFormat] = None
 
-# @dataclass
-# class IngestionConfig:
-#     format: Optional[IngestionFormat] = None
+@dataclass
+class StorageConfig:
+    enabled: Optional[bool] = None
+    order_by_fields: Optional[list[str]] = None
 
-# @dataclass
-# class StorageConfig(Generic[T]):
-#     enabled: Optional[bool] = None
-#     order_by_fields: Optional[list[str]] = None
+@dataclass
+class DataModelConfig:
+    ingestion: Optional[IngestionConfig] = None
+    storage: Optional[StorageConfig] = None
 
-# @dataclass
-# class DataModelConfig(Generic[T]):
-#     ingestion: Optional[IngestionConfig] = None
-#     storage: Optional[StorageConfig[T]] = None
+class CustomEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, Enum):
+            return obj.value
+        return super().default(obj)
+    
+def moose_data_model(dataclass: type, config: Optional[DataModelConfig] = None):
+    if config:
+        config_dict = asdict(config)
+        config_json = json.dumps(config_dict, cls=CustomEncoder, indent=4)
+        print(f'{{"name": "{dataclass.__name__}Config", "config": {config_json}}}___DATAMODELCONFIG___')
+    else:
+        print("{}")
 
 
 class MooseClient:

@@ -10,6 +10,8 @@ use std::ffi::OsStr;
 
 use crate::framework::typescript::export_collectors::get_data_model_configs;
 
+use crate::framework::python::executor::run_python_file;
+
 pub type ConfigIdentifier = String;
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -68,21 +70,6 @@ pub enum ModelConfigurationError {
     TypescriptRunner(#[from] crate::framework::typescript::export_collectors::ExportCollectorError),
 }
 
-// TODO: Clean up all of this
-
-use crate::utilities::constants::{CLI_INTERNAL_VERSIONS_DIR, CLI_PROJECT_INTERNAL_DIR};
-const PYTHON_PATH: &str = "PYTHONPATH";
-fn python_path_with_version() -> String {
-    let mut paths = std::env::var(PYTHON_PATH).unwrap_or_else(|_| String::from(""));
-    if !paths.is_empty() {
-        paths.push(':');
-    }
-    paths.push_str(CLI_PROJECT_INTERNAL_DIR);
-    paths.push('/');
-    paths.push_str(CLI_INTERNAL_VERSIONS_DIR);
-    paths
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default, Hash)]
 pub struct PythonDataModelConfig {
     #[serde(default)]
@@ -94,20 +81,12 @@ pub struct PythonDataModelConfig {
 async fn parse_python_model_file(
     path: &Path,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ()> {
-    let mut command = tokio::process::Command::new("python3");
-    let process = command
-        .env(PYTHON_PATH, python_path_with_version())
-        .arg("-u")
-        .arg(path)
-        .stdin(std::process::Stdio::piped())
-        .stdout(std::process::Stdio::piped())
-        .stderr(std::process::Stdio::piped())
-        .spawn()
-        .map_err(|_| ())?;
+    let process = run_python_file(path).await.map_err(|_| ())?;
 
-    let mut stdout = process
-        .stdout
-        .expect("Python process did not have a handle to stdout");
+    let mut stdout = match process.stdout {
+        Some(handle) => handle,
+        None => return Ok(HashMap::new()),
+    };
 
     let mut raw_string_stdout: String = String::new();
 

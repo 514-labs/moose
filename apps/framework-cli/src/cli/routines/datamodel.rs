@@ -28,8 +28,6 @@ enum JsonPrimitive {
 }
 pub fn parse_and_generate(name: &str, file: String, language: SupportedLanguages) -> String {
     let map = parse_json_file(&file).unwrap();
-    // TODO: better map merging
-    println!("{:?}", map);
 
     match language {
         SupportedLanguages::Typescript => render_typescript_file(name, &map),

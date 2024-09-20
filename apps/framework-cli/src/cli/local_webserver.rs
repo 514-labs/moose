@@ -779,6 +779,19 @@ async fn router(
 
 const METRICS_LOGS_PATH: &str = "metrics-logs";
 
+/**
+ * Management router
+ *
+ * This router is used to manage the moose server including:
+ * - Logging
+ * - Metrics
+ * - Infrastructure map
+ *
+ * It has three endpoints:
+ * - POST /logs - Log the adds a log entry to the logs
+ * - GET /metrics - Get the metrics for the server
+ * - GET /infra-map - Get the infrastructure map
+ */
 async fn management_router<I: InfraMapProvider>(
     path_prefix: Option<String>,
     is_prod: bool,

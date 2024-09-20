@@ -2,6 +2,7 @@ use crate::cli::display::{Message, MessageType};
 use crate::framework::languages::SupportedLanguages;
 use convert_case::{Case, Casing};
 use indexmap::IndexMap;
+use itertools::Itertools;
 use serde_json::{Deserializer, Value};
 use std::collections::HashSet;
 use std::io::BufReader;
@@ -9,13 +10,14 @@ use std::io::BufReader;
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum CustomValue {
     UnionTypes(Vec<CustomValue>),
-    // if heterogeneous array (which we don't really support), then the inner value is UnionTypes
+    // if the array is (which we don't really support),
+    // then the inner CustomValue is UnionTypes
     JsonArray(Box<CustomValue>),
     JsonObject(IndexMap<String, CustomValue>),
     JsonPrimitive(JsonPrimitive),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum JsonPrimitive {
     Null,
     String,
@@ -25,9 +27,10 @@ enum JsonPrimitive {
 }
 pub fn parse_and_generate(name: &str, file: String, language: SupportedLanguages) -> String {
     let map = parse_json_file(&file).unwrap();
+
     let schema = match language {
-        SupportedLanguages::Typescript => render_typescript_interface(&name, &map),
-        SupportedLanguages::Python => render_python_dataclass(&name, &map),
+        SupportedLanguages::Typescript => render_typescript_file(&name, &map),
+        SupportedLanguages::Python => render_python_file(&name, &map),
     };
     schema
 }
@@ -102,7 +105,9 @@ fn parse_array(items: &[Value]) -> CustomValue {
             unique_types.push(item);
         }
     }
-    if unique_types.len() == 1 {
+    if unique_types.is_empty() {
+        CustomValue::JsonPrimitive(JsonPrimitive::Null)
+    } else if unique_types.len() == 1 {
         unique_types.into_iter().next().unwrap()
     } else {
         CustomValue::UnionTypes(unique_types)
@@ -122,8 +127,10 @@ fn merge_maps(
                     }
                 }
                 _ => {
-                    let arr = vec![existing_value.clone(), value];
-                    *existing_value = CustomValue::UnionTypes(arr);
+                    if *existing_value != value {
+                        let arr = vec![existing_value.clone(), value];
+                        *existing_value = CustomValue::UnionTypes(arr);
+                    }
                 }
             }
         } else {
@@ -133,101 +140,87 @@ fn merge_maps(
     map1
 }
 
-fn extract_types_py(value: &CustomValue, field_name: &str) -> Vec<String> {
+fn extract_types_py(
+    value: &CustomValue,
+    field_name: &str,
+    extra_data_classes: &mut IndexMap<String, String>,
+) -> String {
+    fn is_simple_optional(types: &[CustomValue]) -> bool {
+        types.len() == 2 && types.contains(&CustomValue::JsonPrimitive(JsonPrimitive::Null))
+    }
+
     match value {
-        CustomValue::UnionTypes(_) => {
-            todo!()
+        CustomValue::UnionTypes(types) if is_simple_optional(types) => {
+            let t = types
+                .iter()
+                .filter(|t| **t != CustomValue::JsonPrimitive(JsonPrimitive::Null))
+                .next()
+                .unwrap();
+            format!(
+                "Optional[{}]",
+                extract_types_py(t, field_name, extra_data_classes)
+            )
         }
-        CustomValue::JsonArray(_) => {
-            todo!()
+        CustomValue::UnionTypes(types) => {
+            let mut type_strings = HashSet::new();
+            for item in types {
+                type_strings.insert(extract_types_py(item, field_name, extra_data_classes));
+            }
+            format!("Union[{}]", type_strings.into_iter().join(", "))
         }
-        CustomValue::JsonObject(_) => {
-            // TODO: write the inner object as another data class
-            vec![field_name.to_case(Case::Pascal)]
+        CustomValue::JsonArray(inner) => {
+            format!(
+                "list[{}]",
+                extract_types_py(inner, field_name, extra_data_classes)
+            )
+        }
+        CustomValue::JsonObject(fields) => {
+            let inner_type_name = field_name.to_case(Case::Pascal);
+            if !extra_data_classes.contains_key(&inner_type_name) {
+                let nested = render_python_dataclass(&inner_type_name, fields, extra_data_classes);
+                extra_data_classes.insert(inner_type_name.clone(), nested);
+            }
+            inner_type_name
         }
         CustomValue::JsonPrimitive(primitive) => {
-            vec![primitive_to_type(primitive, SupportedLanguages::Python).to_string()]
+            primitive_to_type(*primitive, SupportedLanguages::Python).to_string()
         }
     }
 }
 
-fn extract_types_ts(value: &CustomValue, tab_index: usize) -> Vec<String> {
+// returning a Vec because we want to remove parenthesis for JsonArray
+fn type_to_string_ts(value: &CustomValue, tab_index: usize) -> Vec<String> {
     match value {
-        CustomValue::UnionTypes(arr) => {
-            let mut types = HashSet::new();
-            for item in arr {
-                match item {
-                    CustomValue::JsonPrimitive(primitive) => {
-                        types.insert(
-                            primitive_to_type(primitive, SupportedLanguages::Typescript)
-                                .to_string(),
-                        );
-                    }
-                    CustomValue::JsonObject(obj) => {
-                        types.insert(render_object(
-                            obj,
-                            false,
-                            tab_index + 1,
-                            SupportedLanguages::Typescript,
-                        ));
-                    }
-                    CustomValue::JsonArray(arr) => {
-                        let extracted_types =
-                            extract_types_ts(&CustomValue::JsonArray(arr.clone()), tab_index);
-                        let formatted_types = if extracted_types.len() > 1 {
-                            format!("({})[]", extracted_types.join(" | "))
-                        } else {
-                            format!("{}[]", extracted_types.join(""))
-                        };
-                        types.insert(formatted_types);
-                    }
-                    _ => {
-                        types.insert("any".to_string());
-                    }
+        CustomValue::UnionTypes(types) => {
+            let mut type_strings = HashSet::new();
+            for item in types {
+                for extracted_type in type_to_string_ts(item, tab_index + 1) {
+                    type_strings.insert(extracted_type);
                 }
             }
-            types.into_iter().collect()
+            type_strings.into_iter().collect()
         }
-        CustomValue::JsonArray(arr) => {
-            let mut types = HashSet::new();
-            for item in arr {
-                match item {
-                    CustomValue::JsonPrimitive(primitive) => {
-                        types.insert(
-                            primitive_to_type(primitive, SupportedLanguages::Typescript)
-                                .to_string(),
-                        );
-                    }
-                    CustomValue::JsonObject(obj) => {
-                        types.insert(render_object(
-                            obj,
-                            false,
-                            tab_index,
-                            SupportedLanguages::Typescript,
-                        ));
-                    }
-                    _ => {
-                        types.insert("any".to_string());
-                    }
-                }
-            }
-            types.into_iter().collect()
+        CustomValue::JsonArray(inner) => {
+            let extracted_types = type_to_string_ts(inner, tab_index);
+            let res = if extracted_types.len() > 1 {
+                format!("({})[]", extracted_types.join(" | "))
+            } else if extracted_types.len() == 1 {
+                format!("{}[]", extracted_types.first().unwrap())
+            } else {
+                unreachable!()
+            };
+            vec![res]
         }
         CustomValue::JsonObject(map) => {
-            vec![render_object(
-                map,
-                false,
-                tab_index,
-                SupportedLanguages::Typescript,
-            )]
+            vec![render_object_ts(map, false, tab_index)]
         }
         CustomValue::JsonPrimitive(primitive) => {
-            vec![primitive_to_type(primitive, SupportedLanguages::Typescript).to_string()]
+            vec![primitive_to_type(*primitive, SupportedLanguages::Typescript).to_string()]
         }
     }
 }
 
-fn primitive_to_type(primitive: &JsonPrimitive, language: SupportedLanguages) -> &'static str {
+fn primitive_to_type(primitive: JsonPrimitive, language: SupportedLanguages) -> &'static str {
     match language {
         SupportedLanguages::Typescript => match primitive {
             JsonPrimitive::Null => "null",
@@ -245,11 +238,10 @@ fn primitive_to_type(primitive: &JsonPrimitive, language: SupportedLanguages) ->
     }
 }
 
-fn render_object(
+fn render_object_ts(
     fields: &IndexMap<String, CustomValue>,
     use_key_for_first_primitive: bool,
     tab_index: usize,
-    language: SupportedLanguages,
 ) -> String {
     let mut content = String::new();
     let mut first_primitive_key_encountered = false;
@@ -257,111 +249,108 @@ fn render_object(
     // Helper function to generate indentation
     let indent = |level: usize| " ".repeat(level * 4); // 4 spaces per tab level
 
-    let fields_vec: Vec<(&String, Vec<String>)> = fields
-        .iter()
-        .map(|(field, value)| {
-            let types = match language {
-                SupportedLanguages::Typescript => extract_types_ts(value, tab_index),
-                SupportedLanguages::Python => extract_types_py(value, field),
-            };
-            let types_str = if types.iter().any(|t| t != "null" && t != "None") {
+    let fields_vec = fields.iter().map(|(field, value)| {
+        let types = type_to_string_ts(value, tab_index);
+        let types_optional = if types.iter().any(|t| t == "null") {
+            (
                 types
                     .into_iter()
-                    .filter(|t| t != "null" && t != "None")
-                    .collect::<Vec<String>>()
-            } else {
-                types
-            };
-            (field, types_str)
-        })
-        .collect();
+                    .filter(|t| t != "null")
+                    .collect::<Vec<String>>(),
+                true,
+            )
+        } else {
+            (types, false)
+        };
+        (field, types_optional)
+    });
 
-    for (field, types) in fields_vec {
+    for (field, (types, is_optional)) in fields_vec {
         let types_str = types.join(" | ");
-        let is_optional =
-            types.contains(&"null".to_string()) || types.contains(&"None".to_string());
 
-        match language {
-            SupportedLanguages::Typescript => {
-                let optional_marker = if is_optional { "?" } else { "" };
-                if types.len() == 1
-                    && (types.contains(&"null".to_string())
-                        || types.contains(&"{}".to_string())
-                        || types.contains(&"[]".to_string()))
-                {
-                    content.push_str(&format!(
-                        "{}// {}{}: {};\n",
-                        indent(tab_index),
-                        field,
-                        optional_marker,
-                        types_str
-                    ));
-                } else if !first_primitive_key_encountered && use_key_for_first_primitive {
-                    content.push_str(&format!(
-                        "{}{}{}: Key<{}>;\n",
-                        indent(tab_index),
-                        field,
-                        optional_marker,
-                        types_str
-                    ));
-                    first_primitive_key_encountered = true;
-                } else {
-                    content.push_str(&format!(
-                        "{}{}{}: {};\n",
-                        indent(tab_index),
-                        field,
-                        optional_marker,
-                        types_str
-                    ));
-                }
-            }
-            SupportedLanguages::Python => {
-                let type_str = if is_optional {
-                    format!("Optional[{}]", types_str)
-                } else {
-                    types_str
-                };
-                content.push_str(&format!("{}{}: {}\n", indent(tab_index), field, type_str));
-            }
+        let optional_marker = if is_optional { "?" } else { "" };
+        if types.len() == 1
+            && (types.contains(&"null".to_string())
+                || types.contains(&"{}".to_string())
+                || types.contains(&"[]".to_string()))
+        {
+            content.push_str(&format!(
+                "{}// {}{}: {};\n",
+                indent(tab_index),
+                field,
+                optional_marker,
+                types_str
+            ));
+        } else if !first_primitive_key_encountered && use_key_for_first_primitive {
+            content.push_str(&format!(
+                "{}{}{}: Key<{}>;\n",
+                indent(tab_index),
+                field,
+                optional_marker,
+                types_str
+            ));
+            first_primitive_key_encountered = true;
+        } else {
+            content.push_str(&format!(
+                "{}{}{}: {};\n",
+                indent(tab_index),
+                field,
+                optional_marker,
+                types_str
+            ));
         }
     }
-    match language {
-        SupportedLanguages::Typescript if content.trim().is_empty() => "{}".to_string(),
-        SupportedLanguages::Typescript => format!("{{\n{}{}}}", content, indent(tab_index - 1)),
-        SupportedLanguages::Python => content,
+
+    if content.trim().is_empty() {
+        "{}".to_string()
+    } else {
+        format!("{{\n{}{}}}", content, indent(tab_index - 1))
     }
 }
 
-fn render_typescript_interface(
-    interface_name: &str,
-    fields: &IndexMap<String, CustomValue>,
-) -> String {
+fn render_typescript_file(interface_name: &str, fields: &IndexMap<String, CustomValue>) -> String {
     let mut interface = format!(
         r#"
-import {{ Key }} from "@514labs/moose-lib";    
+import {{ Key }} from "@514labs/moose-lib";
 export interface {} "#,
         interface_name
     );
-    interface.push_str(&render_object(
-        fields,
-        true,
-        1,
-        SupportedLanguages::Typescript,
-    ));
+    interface.push_str(&render_object_ts(fields, true, 1));
     interface
 }
 
-fn render_python_dataclass(class_name: &str, fields: &IndexMap<String, CustomValue>) -> String {
+fn render_python_dataclass(
+    class_name: &str,
+    fields: &IndexMap<String, CustomValue>,
+    extra_data_classes: &mut IndexMap<String, String>,
+) -> String {
     let mut class_def = format!(
-        r#"from dataclasses import dataclass
-from typing import Optional, Union, Any
-
+        r#"
 @dataclass
 class {}:
 "#,
         class_name
     );
-    class_def.push_str(&render_object(fields, false, 1, SupportedLanguages::Python));
+    for (field, t) in fields {
+        let type_str = extract_types_py(t, field, extra_data_classes);
+        class_def.push_str(&format!("    {}: {}\n", field, type_str));
+    }
+    class_def
+}
+
+fn render_python_file(class_name: &str, fields: &IndexMap<String, CustomValue>) -> String {
+    let mut class_def = r#"from dataclasses import dataclass
+from typing import Optional, Union, Any
+"#
+    .to_string();
+    let mut extra_data_classes = IndexMap::new();
+    let data_model = render_python_dataclass(class_name, &fields, &mut extra_data_classes);
+
+    for data_class in extra_data_classes.values().rev() {
+        class_def.push_str(data_class);
+    }
+    class_def.push_str(&data_model);
+
     class_def
 }
 
@@ -385,7 +374,7 @@ mod tests {
             {
                 "id": 2,
                 "name": "Jane Smith",
-                "age": 28,
+                "age": null,
                 "is_active": false,
                 "scores": [92, 88, 95],
                 "address": null
@@ -402,20 +391,20 @@ mod tests {
         );
 
         let expected = r#"
-import { Key } from "@514labs/moose-lib";    
+import { Key } from "@514labs/moose-lib";
 export interface User {
     id: Key<number>;
     name: string;
-    age: number;
+    age?: number;
     is_active: boolean;
     scores: number[];
-    address: {
+    address?: {
         street: string;
         city: string;
     };
 }"#;
 
-        print!("{}", result);
+        println!("{}", result);
         assert_eq!(result, expected);
     }
 
@@ -436,13 +425,13 @@ class Address:
 class User:
     id: int
     name: str
-    age: int
+    age: Optional[int]
     is_active: bool
     scores: list[int]
-    address: Optional[Any]
+    address: Optional[Address]
 "#;
 
-        print!("{}", result);
+        println!("{}", result);
         assert_eq!(result, expected);
     }
 }

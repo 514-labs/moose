@@ -16,6 +16,7 @@ pub struct AggregationProcessRegistry {
     registry: HashMap<String, Child>,
     language: SupportedLanguages,
     dir: PathBuf,
+    project_path: PathBuf,
     clickhouse_config: ClickHouseConfig,
     is_aggregation: bool,
 }
@@ -24,6 +25,7 @@ impl AggregationProcessRegistry {
     pub fn new(
         language: SupportedLanguages,
         dir: PathBuf,
+        project_path: PathBuf,
         clickhouse_config: ClickHouseConfig,
         is_aggregation: bool,
     ) -> Self {
@@ -31,6 +33,7 @@ impl AggregationProcessRegistry {
             registry: HashMap::new(),
             language,
             dir,
+            project_path,
             clickhouse_config,
             is_aggregation,
         }
@@ -45,6 +48,7 @@ impl AggregationProcessRegistry {
                     self.clickhouse_config.clone(),
                     &self.dir,
                     !self.is_aggregation,
+                    &self.project_path,
                 )?,
                 SupportedLanguages::Python => python::aggregation::run(
                     self.clickhouse_config.clone(),

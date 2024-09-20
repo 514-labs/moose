@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, path::PathBuf};
 
 use log::info;
 use tokio::process::Child;
@@ -29,13 +29,15 @@ pub enum FunctionRegistryError {
 pub struct FunctionProcessRegistry {
     registry: HashMap<String, Child>,
     kafka_config: RedpandaConfig,
+    project_path: PathBuf,
 }
 
 impl FunctionProcessRegistry {
-    pub fn new(kafka_config: RedpandaConfig) -> Self {
+    pub fn new(kafka_config: RedpandaConfig, project_path: PathBuf) -> Self {
         Self {
             registry: HashMap::new(),
             kafka_config,
+            project_path,
         }
     }
 
@@ -58,6 +60,7 @@ impl FunctionProcessRegistry {
                 &function_process.target_topic,
                 &function_process.target_topic_config_json(),
                 &function_process.executable,
+                &self.project_path,
             )?)
         } else {
             Err(FunctionRegistryError::UnsupportedFunctionLanguage {

@@ -68,7 +68,7 @@ fn parse_json_file(file_content: &str) -> Result<IndexMap<String, CustomValue>, 
                     );
                     break;
                 }
-                schema = merge_maps(schema, parsed_map);
+                merge_maps(&mut schema, parsed_map);
             }
         }
     }
@@ -101,9 +101,25 @@ fn parse_json(json_data: &Value) -> IndexMap<String, CustomValue> {
 
 // grab only the unique types from the JSON array
 fn parse_array(items: &[Value]) -> CustomValue {
+    let mut object_index = None;
     let mut unique_types = Vec::new(); // not using hashset because we can't hash a CustomValue
     for item in items.iter().map(parse_json_value) {
-        if !unique_types.contains(&item) {
+        if let CustomValue::JsonObject(obj) = item {
+            match object_index {
+                None => {
+                    unique_types.push(CustomValue::JsonObject(obj));
+                    object_index = Some(unique_types.len() - 1)
+                }
+                Some(index) => {
+                    let existing_obj = unique_types.get_mut(index).unwrap();
+                    let existing_map = match existing_obj {
+                        CustomValue::JsonObject(map) => map,
+                        _ => panic!("Expected JsonObject at index {}", index),
+                    };
+                    merge_maps(existing_map, obj);
+                }
+            }
+        } else if !unique_types.contains(&item) {
             unique_types.push(item);
         }
     }
@@ -116,10 +132,107 @@ fn parse_array(items: &[Value]) -> CustomValue {
     }
 }
 
-fn merge_maps(
-    mut map1: IndexMap<String, CustomValue>,
-    map2: IndexMap<String, CustomValue>,
-) -> IndexMap<String, CustomValue> {
+fn merge_types(t1: &mut CustomValue, t2: CustomValue) {
+    match t1 {
+        CustomValue::UnionTypes(existing_types) => match t2 {
+            CustomValue::UnionTypes(new_types) => {
+                new_types.into_iter().for_each(|t| merge_types(t1, t))
+            }
+            CustomValue::JsonArray(new_array) => {
+                let existing_array = existing_types.iter_mut().find_map(|t| match t {
+                    CustomValue::JsonArray(existing_array) => Some(existing_array),
+                    _ => None,
+                });
+                if let Some(existing_array) = existing_array {
+                    merge_types(existing_array, *new_array);
+                } else {
+                    existing_types.push(CustomValue::JsonArray(new_array));
+                }
+            }
+            CustomValue::JsonObject(new_obj) => {
+                let existing_obj = existing_types.iter_mut().find_map(|t| match t {
+                    CustomValue::JsonObject(existing_obj) => Some(existing_obj),
+                    _ => None,
+                });
+                if let Some(existing_obj) = existing_obj {
+                    merge_maps(existing_obj, new_obj);
+                } else {
+                    existing_types.push(CustomValue::JsonObject(new_obj));
+                }
+            }
+            t2 @ CustomValue::JsonPrimitive(_) => {
+                if !existing_types.contains(&t2) {
+                    existing_types.push(t2)
+                }
+            }
+        },
+        CustomValue::JsonArray(existing_array) => match t2 {
+            CustomValue::UnionTypes(new_types) => {
+                *t1 = CustomValue::UnionTypes(vec![t1.clone()]);
+                new_types.into_iter().for_each(|t| merge_types(t1, t));
+            }
+            CustomValue::JsonArray(new_array) => {
+                merge_types(existing_array, *new_array);
+            }
+            CustomValue::JsonObject(new_obj) => {
+                *t1 = CustomValue::UnionTypes(vec![t1.clone(), CustomValue::JsonObject(new_obj)]);
+            }
+            t2 @ CustomValue::JsonPrimitive(_) => {
+                *t1 = CustomValue::UnionTypes(vec![t1.clone(), t2]);
+            }
+        },
+        CustomValue::JsonObject(existing_obj) => match t2 {
+            CustomValue::UnionTypes(new_types) => {
+                *t1 = CustomValue::UnionTypes(vec![CustomValue::JsonObject(existing_obj.clone())]);
+                new_types.into_iter().for_each(|t| merge_types(t1, t));
+            }
+            CustomValue::JsonArray(new_array) => {
+                *t1 = CustomValue::UnionTypes(vec![
+                    CustomValue::JsonObject(existing_obj.clone()),
+                    CustomValue::JsonArray(new_array),
+                ]);
+            }
+            CustomValue::JsonObject(new_obj) => {
+                merge_maps(existing_obj, new_obj);
+            }
+            t2 @ CustomValue::JsonPrimitive(_) => {
+                *t1 = CustomValue::UnionTypes(vec![
+                    CustomValue::JsonObject(existing_obj.clone()),
+                    t2,
+                ]);
+            }
+        },
+        CustomValue::JsonPrimitive(existing_primitive) => match t2 {
+            CustomValue::UnionTypes(new_types) => {
+                *t1 =
+                    CustomValue::UnionTypes(vec![CustomValue::JsonPrimitive(*existing_primitive)]);
+                new_types.into_iter().for_each(|t| merge_types(t1, t));
+            }
+            CustomValue::JsonArray(new_array) => {
+                *t1 = CustomValue::UnionTypes(vec![
+                    CustomValue::JsonPrimitive(*existing_primitive),
+                    CustomValue::JsonArray(new_array),
+                ]);
+            }
+            CustomValue::JsonObject(new_obj) => {
+                *t1 = CustomValue::UnionTypes(vec![
+                    CustomValue::JsonPrimitive(*existing_primitive),
+                    CustomValue::JsonObject(new_obj),
+                ]);
+            }
+            CustomValue::JsonPrimitive(new_primitive) => {
+                if *existing_primitive != new_primitive {
+                    *t1 = CustomValue::UnionTypes(vec![
+                        CustomValue::JsonPrimitive(*existing_primitive),
+                        CustomValue::JsonPrimitive(new_primitive),
+                    ]);
+                }
+            }
+        },
+    }
+}
+
+fn merge_maps(map1: &mut IndexMap<String, CustomValue>, map2: IndexMap<String, CustomValue>) {
     for (key, value) in map2 {
         if let Some(existing_value) = map1.get_mut(&key) {
             match existing_value {
@@ -128,18 +241,15 @@ fn merge_maps(
                         arr.push(value);
                     }
                 }
-                _ => {
-                    if *existing_value != value {
-                        let arr = vec![existing_value.clone(), value];
-                        *existing_value = CustomValue::UnionTypes(arr);
-                    }
+                _ if *existing_value != value => {
+                    merge_types(existing_value, value);
                 }
+                _ => {}
             }
         } else {
             map1.insert(key, value);
         }
     }
-    map1
 }
 
 fn extract_types_py(
@@ -332,6 +442,11 @@ class {}:
 "#,
         class_name
     );
+
+    if fields.is_empty() {
+        class_def.push_str("    pass\n");
+        return class_def;
+    }
 
     let mut first_primitive_key_encountered = false;
     for (field, t) in fields {

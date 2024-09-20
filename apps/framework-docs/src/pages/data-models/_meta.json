@@ -1,6 +1,9 @@
 {
   "init-model": "Creating Data Models",
-  "model-data": "Define Data Model Schema",
+  "model-data": "Supported Data Types",
   "configure-model": "Configuring Infrastructure",
-  "dcm": "Changing Data Models"
+  "dcm": "Changing Data Models",
+  "examples": {
+    "display": "hidden"
+  }
 }

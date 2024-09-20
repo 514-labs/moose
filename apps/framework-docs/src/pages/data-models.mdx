@@ -1,5 +1,5 @@
 import { FileTree, Tabs } from "nextra/components";
-import { Callout, LanguageSwitcher, TypeScript, Python, ToggleBlock } from "../components";
+import { LanguageSwitcher, TypeScript, Python, Callout } from "../components";
 
 # Introduction to Data Models
 
@@ -58,31 +58,32 @@ export interface UserActivity {
   activity: string;
 }
 ```
-
 </TypeScript>
 
 <Python>
-Data Models are represented as `dataclasses` (using the `@dataclass` decorator), and must be defined in a `.py` file:
+Data Models are represented as `dataclasses` (using the `@dataclass` decorator), and must be defined in a `.py` file. The `moose_data_model` decorator is used to register the dataclass with Moose:
 
 ```py filename="datamodels/models.py" copy
+from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
 from typing import List
 
 @dataclass
 class UserActivity:
-    event_id: str
+    event_id: Key[str]
     timestamp: str
     user_id: str
     activity: str
-```
 
+moose_data_model(UserActivity)
+```
 </Python>
 
 <Callout type="info" title="Notes">
   - You can define multiple Data Models within a single file. 
   - The name of the file is not important, but it must have a <TypeScript className="inline">`.ts`</TypeScript> <Python className="inline">`.py`</Python> extension.
-  - Any exported <TypeScript className="inline">interface</TypeScript><Python className="inline">dataclass</Python> that adheres to the appropriate file and folder conventions will be automatically detected by Moose and used to generate the necessary infrastructure.
-
+  - Any exported interface that adheres to the appropriate file and folder conventions will be automatically detected by Moose and used to generate the necessary infrastructure.
+  - The dataclass must be passed as an argument to the `moose_data_model` decorator to register it with Moose. Other dataclasses in the file will be ignored.
 </Callout>
 
 ### How Moose Interprets Data Models
@@ -92,6 +93,7 @@ Moose will automatically detect and use any exported interfaces or dataclasses t
 
 
 ## Data Model Examples
+
 
 ### Basic Data Model
 
@@ -121,8 +123,7 @@ export interface BasicDataModel {
 <Python>
 ```py filename="datamodels/models.py" copy
 from dataclasses import dataclass
-from moose_lib import Key
-
+from moose_lib import Key, moose_data_model
 @dataclass
 class BasicDataModel:
     example_UUID: Key[str]
@@ -130,6 +131,8 @@ class BasicDataModel:
     example_number: int
     example_boolean: bool
     example_array: list[int]
+
+moose_data_model(BasicDataModel)
 ```
 </Python>
 
@@ -170,8 +173,8 @@ export interface DataModelWithOptionalField {
 
 <Python>
 ```py filename="datamodels/models.py" copy {12}
+
 from dataclasses import dataclass
-from moose_lib import Key
 from typing import Optional
 
 @dataclass
@@ -182,6 +185,8 @@ class DataModelWithOptionalField:
     example_boolean: bool
     example_array: list[int]
     example_optional_string: Optional[str] # Use the Optional type to mark a field as optional
+
+moose_data_model(DataModelWithOptionalField)
 ```
 </Python>
 
@@ -246,8 +251,8 @@ export interface DataModelWithInlineNestedObject {
 
 <Python>
 ```py filename="datamodels/models.py" copy {4-8, 17}
+from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
-from moose_lib import Key
 
 @dataclass
 class ExampleNestedObject:
@@ -263,5 +268,10 @@ class Example:
     example_boolean: bool
     example_array: list[int]
     example_nested_object: ExampleNestedObject
+
+moose_data_model(DataModelWithNestedObject) ## Only register the outer dataclass
 ```
+The `example_nested_object` field in the Data Model is a nested object that is defined using the `ExampleNestedObject` dataclass. The `moose_data_model` decorator is used to register the `DataModelWithNestedObject` dataclass with Moose.
 </Python>
+
+Moose offers a CLI helper to help automatically generate a Data Model and infer its schema based on a sample JSON file containing the data you want to ingest. The next section will provide more details on how to use this helper.

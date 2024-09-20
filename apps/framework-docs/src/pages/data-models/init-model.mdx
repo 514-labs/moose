@@ -11,31 +11,31 @@ import {
 
 ## Using the CLI
 
-To create a new Data Model in your Moose application, use the `moose data-model init` command. This will generate a <TypeScript className="inline">`.ts`</TypeScript> <Python className="inline">`.py`</Python> file in the `/datamodels` directory and define your Data Model within it.
+To create a new Data Model in your Moose application, use the `data-model init` command. This will generate a file in the `/datamodels` directory of your Moose application and define your Data Model within it.
 
-For detailed information about the `moose data-model init` command, you can run the following in your terminal:
 
 <TypeScript>
 ```bash filename="Terminal" copy 
-npx moose-cli data-model init --help 
+npx moose-cli data-model init --sample <PATH_TO_SAMPLE_DATA> <DATA_MODEL_NAME>
 ```
 </TypeScript>
 
 <Python>
 ```bash filename="Terminal" copy 
-moose-cli data-model init --help 
+moose-cli data-model init --sample <PATH_TO_SAMPLE_DATA> <DATA_MODEL_NAME>
 ```
 </Python>
 
-<Callout type="info">
-  If you have sample data in a `.json` or `.csv` file, you can use the
-  `--sample` flag to specify the path to that file. The CLI will then infer the
-  Data Model schema from the provided file and create the Data Model for you.
+- `<PATH_TO_SAMPLE_DATA>`: The path to the sample data file.
+- `<DATA_MODEL_NAME>`: The name of the Data Model.
+
+<Callout type="info" title="Automatically Infer Data Model">
+If you have a `.json` or `.csv` file with sample data representing the structure of the data you want to ingest, you can use the `--sample` flag to specify the path to that file. The CLI will then infer the Data Model schema from the provided file and create the Data Model for you.
 </Callout>
 
 ## Creating a new Data Model Manually
 
 There are two additional ways to initialize a new Data Model in your Moose project:
 
-- By creating a new <TypeScript className="inline">`.ts`</TypeScript> <Python className="inline">`.py`</Python> file in the `/datamodels` directory of your Moose application and defining a new <TypeScript className="inline">interface</TypeScript><Python className="inline">dataclass</Python> inside this file.
-- By appending a new interface or dataclass to an existing <TypeScript className="inline">`.ts`</TypeScript> <Python className="inline">`.py`</Python> file in your `/datamodels` directory
+- By creating a new <TypeScript inline>`.ts`</TypeScript> <Python inline>`.py`</Python> file in the `/datamodels` directory of your Moose application and defining a new Data Model inside this file.
+- By appending a new Data Model to an existing <TypeScript inline>`.ts`</TypeScript> <Python inline>`.py`</Python> file in your `/datamodels` directory.

@@ -9,6 +9,8 @@ import requests
 import threading
 import time
 
+from moose_lib import cli_log, CliLogData
+
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, datetime):
@@ -92,14 +94,15 @@ try:
     flow = import_module(function_file_name, package=function_file_dir)
     flow_def = flow.StreamingFunction
 except Exception as e:
-    error(f"Error importing streaming function: {e} in file {function_file_name}")
+    cli_log(CliLogData(action="Function", message=str(e), message_type="Error"))
 
 # Get all the named flows in the flow file and make sure the flow is of type Flow
 flows = [f for f in dir(flow) if isinstance(getattr(flow, f), flow_def)]
 
 # Make sure that there is only one flow in the file
 if len(flows) != 1:
-    error(f"Expected one streaming function in the file, but got {len(flows)}")
+    cli_log(CliLogData(action="Function", message=f"Expected one streaming function in the file, but got {len(flows)}", message_type="Error"))
+    sys.exit(1)
 
 # Get the dataclass that's the input to the flow run function
 
@@ -133,7 +136,7 @@ if sasl_config['mechanism'] is not None:
         value_deserializer=lambda m: json.loads(m.decode('utf-8'))
     )
 else:
-    print("No sasl mechanism specified. Using default consumer.")
+    log("No sasl mechanism specified. Using default consumer.")
     consumer = KafkaConsumer(
         source_topic,
         client_id= "python_flow_consumer",
@@ -186,28 +189,27 @@ timer.start()
 
 # This is batched under-the-hood
 for message in consumer:
-    # Parse the message into the input type
-    input_data = parse_input(message.value)
+    try:
+        # Parse the message into the input type
+        input_data = parse_input(message.value)
 
-    # Run the flow
-    output_data = flow_run(input_data)
+        # Run the flow
+        output_data = flow_run(input_data)
 
-    # Handle flow function returning an array or a single object
-    output_data_list = output_data if isinstance(output_data, list) else [output_data]
+        # Handle flow function returning an array or a single object
+        output_data_list = output_data if isinstance(output_data, list) else [output_data]
 
-    count_in += len(output_data_list)
+        count_in += len(output_data_list)
+        
+        cli_log(CliLogData(action="Received", message=f'{source_topic} -> {target_topic} {len(output_data_list)} message(s)'))
 
-
-    requests.post("http://localhost:5000/logs", json={"message_type": "Success", 'action': 'Received',
-    'message': f'{source_topic} -> {target_topic} {len(output_data_list)} message(s)'})
-    
-    
-
-    for item in output_data_list:
-        # Ignore flow function returning null
-        if item is not None:
-            # send() is asynchronous. When called it adds the record to a buffer of pending record sends 
-            # and immediately returns. This allows the producer to batch together individual records
-            bytes_count += len(json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))
-            producer.send(target_topic, json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))
-            count_out+=1
+        for item in output_data_list:
+            # Ignore flow function returning null
+            if item is not None:
+                # send() is asynchronous. When called it adds the record to a buffer of pending record sends 
+                # and immediately returns. This allows the producer to batch together individual records
+                bytes_count += len(json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))
+                producer.send(target_topic, json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))
+                count_out += 1
+    except Exception as e:
+        cli_log(CliLogData(action="Function", message=str(e), message_type="Error"))

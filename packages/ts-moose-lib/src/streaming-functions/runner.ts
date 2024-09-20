@@ -254,7 +254,7 @@ const startConsumer = async (
       args.functionFilePath.substring(0, args.functionFilePath.length - 3),
     );
   } catch (e) {
-    cliLog({ action: "Code failed to load", message: `${e}` });
+    cliLog({ action: "Function", message: `${e}`, message_type: "Error" });
     throw e;
   }
   const streamingFunction: StreamingFunction = streamingFunctionImport.default;

@@ -6,6 +6,8 @@ import argparse
 import os
 import sys
 
+from moose_lib import cli_log, CliLogData
+
 
 parser = argparse.ArgumentParser(description='Run blocks')
 parser.add_argument('blocks_dir_path', type=str,
@@ -68,7 +70,7 @@ def walk_dir(dir, file_extension):
 
     for root, dirs, files in os.walk(dir):
         for file in files:
-            if file.endswith(file_extension):
+            if file.endswith(file_extension) and file != '__init__.py':
                 file_list.append(os.path.join(root, file))
 
     return file_list
@@ -82,7 +84,7 @@ def create_blocks(ch_client, path):
             print(f"Creating block using query {query}")
             ch_client.command(query)
         except Exception as err:
-            print(f"Failed to create blocks: {err}")
+            cli_log(CliLogData(action="Blocks", message=f"Failed to create blocks: {err}", message_type="Error"))
 
 
 def delete_blocks(ch_client, path):
@@ -93,7 +95,7 @@ def delete_blocks(ch_client, path):
             print(f"Deleting block using query {query}")
             ch_client.command(query)
         except Exception as err:
-            print(f"Failed to delete blocks: {err}")
+            cli_log(CliLogData(action="Blocks", message=f"Failed to delete blocks: {err}", message_type="Error"))
 
 
 async def async_worker(task):
@@ -116,7 +118,7 @@ async def main():
             get_blocks_from_file(file)
             block_files.append(file)
         except Exception as err:
-            print(f"Skipping {file} due to error: {err}")
+            cli_log(CliLogData(action="Blocks", message=f"Skipping {file} due to error: {err}"))
 
     print(f"Found {len(block_files)} blocks in {blocks_dir_path}")
     print(f"Blocks: {block_files}")

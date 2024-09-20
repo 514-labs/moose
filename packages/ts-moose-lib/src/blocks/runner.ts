@@ -1,8 +1,9 @@
 import process from "node:process";
 import { ClickHouseClient } from "@clickhouse/client-web";
 import fastq, { queueAsPromised } from "fastq";
-import { getClickhouseClient, walkDir } from "../commons";
+import { cliLog, getClickhouseClient, walkDir } from "../commons";
 import { Blocks } from "./helpers";
+
 
 interface BlocksQueueTask {
   chClient: ClickHouseClient;
@@ -45,7 +46,11 @@ const createBlocks = async (chClient: ClickHouseClient, blocks: Blocks) => {
       console.log(`Creating block using query ${query}`);
       await chClient.command({ query });
     } catch (err) {
-      console.error(`Failed to create a block: ${err}`);
+      cliLog({
+        action: "Blocks",
+        message: `Failed to create blocks: ${err}`,
+        message_type: "Error",
+      });
       if (err && JSON.stringify(err).includes(`UNKNOWN_TABLE`)) {
         throw new DependencyError(err.toString());
       }
@@ -59,7 +64,11 @@ const deleteBlocks = async (chClient: ClickHouseClient, blocks: Blocks) => {
       console.log(`Deleting block using query ${query}`);
       await chClient.command({ query });
     } catch (err) {
-      console.error(`Failed to delete block: ${err}`);
+      cliLog({
+        action: "Blocks",
+        message: `Failed to delete blocks: ${err}`,
+        message_type: "Error",
+      });
     }
   }
 };
@@ -90,13 +99,20 @@ export const runBlocks = async () => {
   for (const path of blocksFiles) {
     console.log(`Adding to queue: ${path}`);
 
-    const blocks = require(path).default as Blocks;
-
-    queue.push({
-      chClient,
-      blocks,
-      retries: numOfBlockFiles,
-    });
+    try {
+      const blocks = require(path).default as Blocks;
+      queue.push({
+        chClient,
+        blocks,
+        retries: numOfBlockFiles,
+      });
+    } catch (err) {
+      cliLog({
+        action: "Blocks",
+        message: `Failed to import blocks from ${path}: ${err}`,
+        message_type: "Error",
+      });
+    }
   }
 
   while (!queue.idle()) {

@@ -95,6 +95,7 @@ try:
     flow_def = flow.StreamingFunction
 except Exception as e:
     cli_log(CliLogData(action="Function", message=str(e), message_type="Error"))
+    sys.exit(1)
 
 # Get all the named flows in the flow file and make sure the flow is of type Flow
 flows = [f for f in dir(flow) if isinstance(getattr(flow, f), flow_def)]

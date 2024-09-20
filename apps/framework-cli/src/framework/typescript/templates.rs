@@ -136,7 +136,7 @@ export default {
 } as Blocks;
 "#;
 
-pub static BASE_CONSUMPTION_TEMPLATE: &str = r#"
+pub static TS_BASE_CONSUMPTION_TEMPLATE: &str = r#"
 import { ConsumptionUtil } from "@514labs/moose-lib";
 
 // This file is where you can define your API templates for consuming your data
@@ -150,7 +150,7 @@ export default async function handle(
   { client, sql }: ConsumptionUtil
 ) {
 
-    return client.query(sql``);
+    return client.query(sql`SELECT 1`);
 }
 "#;
 

@@ -44,16 +44,17 @@
 //! ```
 //!
 //! Note: Make sure to set the REDIS_URL environment variable or the client will default to "redis://127.0.0.1:6379".
+use anyhow::{Context, Result};
+use log::{error, info};
 use redis::aio::Connection as AsyncConnection;
 use redis::AsyncCommands;
-pub use redis::RedisError;
-use redis::{Client, RedisResult, Script};
+use redis::{Client, Script};
 use std::env;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
-use tokio::time::{interval, Duration};
+use tokio::time::{interval, timeout, Duration};
 use uuid::Uuid;
 
 const REDIS_KEY_PREFIX: &str = "MS"; // MooSe
@@ -74,16 +75,22 @@ pub struct RedisClient {
 }
 
 impl RedisClient {
-    pub async fn new(service_name: &str) -> Result<Self, RedisError> {
+    pub async fn new(service_name: &str) -> Result<Self> {
         let redis_url =
             env::var("REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
-        let client = Client::open(redis_url.clone())?;
-        let mut connection = client.get_async_connection().await?;
-        let pub_sub = client.get_async_connection().await?;
+        let client = Client::open(redis_url.clone()).context("Failed to create Redis client")?;
+        let mut connection = client
+            .get_async_connection()
+            .await
+            .context("Failed to establish Redis connection")?;
+        let pub_sub = client
+            .get_async_connection()
+            .await
+            .context("Failed to establish Redis pub/sub connection")?;
         let instance_id = Uuid::new_v4().to_string();
         let lock_key = format!("{}::{}::leader-lock", REDIS_KEY_PREFIX, service_name);
 
-        println!(
+        info!(
             "Initializing Redis client for {} with instance ID: {}",
             service_name, instance_id
         );
@@ -93,8 +100,8 @@ impl RedisClient {
             .query_async::<_, String>(&mut connection)
             .await
         {
-            Ok(response) => println!("Redis connection successful: {}", response),
-            Err(e) => eprintln!("Redis connection failed: {}", e),
+            Ok(response) => info!("Redis connection successful: {}", response),
+            Err(e) => error!("Redis connection failed: {}", e),
         }
 
         Ok(Self {
@@ -109,50 +116,56 @@ impl RedisClient {
         })
     }
 
-    pub async fn presence_update(&self) -> RedisResult<()> {
+    pub async fn presence_update(&self) -> Result<()> {
         let key = format!(
             "{}::{}::{}::presence",
             REDIS_KEY_PREFIX, self.service_name, self.instance_id
         );
-        let mut conn = self.connection.lock().await;
-        let current_value: Option<String> = conn.get(&key).await?;
-        println!("Current presence value: {:?}", current_value);
-
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
-            .unwrap()
+            .context("Failed to get current time")?
             .as_secs()
             .to_string();
-        println!("Updating presence key: {} with value: {}", key, now);
-        let result = conn.set_ex(&key, &now, KEY_EXPIRATION_TTL).await;
-        println!("Presence update result: {:?}", result);
-        result
+        let result = {
+            let mut conn = self.connection.lock().await;
+            conn.set_ex(&key, &now, KEY_EXPIRATION_TTL).await
+        };
+
+        result.context("Failed to update presence")
     }
 
-    pub async fn attempt_leadership(&self) -> RedisResult<bool> {
+    pub async fn attempt_leadership(&self) -> Result<bool> {
         let mut conn = self.connection.lock().await;
-        let result: bool = conn.set_nx(&self.lock_key, &self.instance_id).await?;
+        let result: bool = conn
+            .set_nx(&self.lock_key, &self.instance_id)
+            .await
+            .context("Failed to attempt leadership")?;
         if result {
-            conn.expire(&self.lock_key, LOCK_TTL).await?;
+            conn.expire(&self.lock_key, LOCK_TTL)
+                .await
+                .context("Failed to set expiration on leadership lock")?;
         }
 
         let mut is_leader = self.is_leader.lock().await;
         *is_leader = result;
 
         if *is_leader {
-            println!("Instance {} became leader", self.instance_id);
+            info!("Instance {} became leader", self.instance_id);
             self.renew_lock().await?;
         }
 
         Ok(*is_leader)
     }
 
-    pub async fn renew_lock(&self) -> RedisResult<bool> {
+    pub async fn renew_lock(&self) -> Result<bool> {
         let mut conn = self.connection.lock().await;
-        let extended: bool = conn.expire(&self.lock_key, LOCK_TTL).await?;
+        let extended: bool = conn
+            .expire(&self.lock_key, LOCK_TTL)
+            .await
+            .context("Failed to renew leadership lock")?;
 
         if !extended {
-            println!("Failed to extend leader lock, lost leadership");
+            info!("Failed to extend leader lock, lost leadership");
             let mut is_leader = self.is_leader.lock().await;
             *is_leader = false;
         }
@@ -160,7 +173,7 @@ impl RedisClient {
         Ok(extended)
     }
 
-    pub async fn release_lock(&self) -> RedisResult<()> {
+    pub async fn release_lock(&self) -> Result<()> {
         let script = Script::new(
             r"
             if redis.call('get', KEYS[1]) == ARGV[1] then
@@ -176,9 +189,10 @@ impl RedisClient {
             .key(&self.lock_key)
             .arg(&self.instance_id)
             .invoke_async(&mut *conn)
-            .await?;
+            .await
+            .context("Failed to release leadership lock")?;
 
-        println!("Instance {} released leadership", self.instance_id);
+        info!("Instance {} released leadership", self.instance_id);
         let mut is_leader = self.is_leader.lock().await;
         *is_leader = false;
 
@@ -201,118 +215,152 @@ impl RedisClient {
         &self,
         message: &str,
         target_instance_id: &str,
-    ) -> RedisResult<()> {
+    ) -> Result<()> {
         let channel = format!(
             "{}::{}::{}::msgchannel",
             REDIS_KEY_PREFIX, self.service_name, target_instance_id
         );
         let mut conn = self.pub_sub.lock().await;
-        let _: () = conn.publish(&channel, message).await?;
+        let _: () = conn
+            .publish(&channel, message)
+            .await
+            .context("Failed to send message to instance")?;
         Ok(())
     }
 
-    pub async fn broadcast_message(&self, message: &str) -> RedisResult<()> {
+    pub async fn broadcast_message(&self, message: &str) -> Result<()> {
         let channel = format!("{}::{}::msgchannel", REDIS_KEY_PREFIX, self.service_name);
         let mut conn = self.pub_sub.lock().await;
-        let _: () = conn.publish(&channel, message).await?;
+        let _: () = conn
+            .publish(&channel, message)
+            .await
+            .context("Failed to broadcast message")?;
         Ok(())
     }
 
-    pub async fn get_queue_message(&self) -> RedisResult<Option<String>> {
+    pub async fn get_queue_message(&self) -> Result<Option<String>> {
         let source_queue = format!("{}::{}::mqrecieved", REDIS_KEY_PREFIX, self.service_name);
         let destination_queue = format!("{}::{}::mqprocess", REDIS_KEY_PREFIX, self.service_name);
         let mut conn = self.connection.lock().await;
-        conn.rpoplpush(&source_queue, &destination_queue).await
+        conn.rpoplpush(&source_queue, &destination_queue)
+            .await
+            .context("Failed to get queue message")
     }
 
-    pub async fn post_queue_message(&self, message: &str) -> RedisResult<()> {
+    pub async fn post_queue_message(&self, message: &str) -> Result<()> {
         let queue = format!("{}::{}::mqrecieved", REDIS_KEY_PREFIX, self.service_name);
         let mut conn = self.connection.lock().await;
-        let _: () = conn.rpush(&queue, message).await?;
+        let _: () = conn
+            .rpush(&queue, message)
+            .await
+            .context("Failed to post queue message")?;
         Ok(())
     }
 
-    pub async fn mark_queue_message(&self, message: &str, success: bool) -> RedisResult<()> {
+    pub async fn mark_queue_message(&self, message: &str, success: bool) -> Result<()> {
         let in_progress_queue =
             format!("{}::{}::mqinprogress", REDIS_KEY_PREFIX, self.service_name);
         let incomplete_queue = format!("{}::{}::mqincomplete", REDIS_KEY_PREFIX, self.service_name);
 
         let mut conn = self.connection.lock().await;
         if success {
-            let _: () = conn.lrem(&in_progress_queue, 0, message).await?;
+            let _: () = conn
+                .lrem(&in_progress_queue, 0, message)
+                .await
+                .context("Failed to mark queue message as successful")?;
         } else {
             let mut pipeline = redis::pipe();
             pipeline
                 .lrem(&in_progress_queue, 0, message)
                 .rpush(&incomplete_queue, message);
 
-            pipeline.query_async(&mut *conn).await?;
+            pipeline
+                .query_async(&mut *conn)
+                .await
+                .context("Failed to mark queue message as incomplete")?;
         }
         Ok(())
     }
 
     pub async fn start_periodic_tasks(&mut self) {
-        println!("Starting periodic tasks");
+        info!("Starting periodic tasks");
         let self_ref = Arc::new(self.clone());
 
+        let presence_client = Arc::clone(&self_ref);
         self.presence_task = Some(tokio::spawn(async move {
-            let presence_client = Arc::clone(&self_ref);
-            println!("Presence update task started");
-            let mut interval = interval(Duration::from_secs(PRESENCE_UPDATE_INTERVAL));
-            loop {
-                println!("Waiting for next tick...");
-                interval.tick().await;
-                println!("Tick received");
-                println!(
-                    "Attempting to update presence at {:?}",
-                    std::time::SystemTime::now()
-                );
-                match presence_client.presence_update().await {
-                    Ok(_) => println!("Presence updated successfully"),
-                    Err(e) => eprintln!("Error updating presence: {}", e),
+            if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                async move {
+                    info!("Presence update task started");
+                    let mut interval = interval(Duration::from_secs(PRESENCE_UPDATE_INTERVAL));
+                    loop {
+                        interval.tick().await;
+                        match timeout(Duration::from_secs(10), presence_client.presence_update())
+                            .await
+                        {
+                            Ok(result) => match result {
+                                Ok(_) => info!("Presence updated successfully"),
+                                Err(e) => error!("Error updating presence: {}", e),
+                            },
+                            Err(_) => error!("Presence update timed out"),
+                        }
+                        info!("Presence update loop iteration completed");
+                        tokio::task::yield_now().await; // Yield control back to the runtime
+                    }
                 }
-                println!("Loop iteration completed");
+            })) {
+                error!("Presence task panicked: {:?}", e);
             }
         }));
 
-        let lock_renewal_client = self.clone();
+        let lock_renewal_client = Arc::clone(&self_ref);
         self.lock_renewal_task = Some(tokio::spawn(async move {
-            println!("Lock renewal task started");
+            info!("Lock renewal task started");
             let mut interval = interval(Duration::from_secs(LOCK_RENEWAL_INTERVAL));
             loop {
-                println!("Waiting for next lock renewal tick...");
                 interval.tick().await;
-                println!("Lock renewal tick received");
                 if lock_renewal_client.is_current_leader().await {
-                    println!("Current instance is leader, renewing lock...");
-                    if let Err(e) = lock_renewal_client.renew_lock().await {
-                        eprintln!("Error renewing lock: {}", e);
+                    match lock_renewal_client.renew_lock().await {
+                        Ok(_) => info!("Lock renewed successfully"),
+                        Err(e) => {
+                            error!("Error renewing lock: {}", e);
+                            // Add a delay before retrying to avoid tight loop on error
+                            tokio::time::sleep(Duration::from_secs(1)).await;
+                        }
                     }
                 } else {
-                    println!("Current instance is not leader, attempting leadership...");
-                    if let Err(e) = lock_renewal_client.attempt_leadership().await {
-                        eprintln!("Error attempting leadership: {}", e);
+                    match lock_renewal_client.attempt_leadership().await {
+                        Ok(_) => info!("Leadership attempt completed"),
+                        Err(e) => {
+                            error!("Error attempting leadership: {}", e);
+                            // Add a delay before retrying to avoid tight loop on error
+                            tokio::time::sleep(Duration::from_secs(1)).await;
+                        }
                     }
                 }
+                info!("Lock renewal loop iteration completed");
+                tokio::task::yield_now().await; // Yield control back to the runtime
             }
         }));
-        println!("Periodic tasks started");
+
+        info!("Periodic tasks started");
     }
 
-    pub async fn stop_periodic_tasks(&mut self) {
+    pub async fn stop_periodic_tasks(&mut self) -> Result<()> {
         if let Some(task) = self.presence_task.take() {
             task.abort();
         }
         if let Some(task) = self.lock_renewal_task.take() {
             task.abort();
         }
+        Ok(())
     }
 
-    pub async fn check_connection(&self) -> RedisResult<()> {
+    pub async fn check_connection(&self) -> Result<()> {
         let mut conn = self.connection.lock().await;
         redis::cmd("PING")
             .query_async::<_, String>(&mut *conn)
-            .await?;
+            .await
+            .context("Failed to ping Redis server")?;
         Ok(())
     }
 }
@@ -334,16 +382,21 @@ impl Clone for RedisClient {
 
 impl Drop for RedisClient {
     fn drop(&mut self) {
-        println!("RedisClient is being dropped");
-        let rt = tokio::runtime::Runtime::new().unwrap();
-        rt.block_on(async {
-            self.stop_periodic_tasks().await;
-            if self.is_current_leader().await {
-                if let Err(e) = self.release_lock().await {
-                    eprintln!("Error releasing lock: {}", e);
+        info!("RedisClient is being dropped");
+        if let Ok(rt) = tokio::runtime::Handle::try_current() {
+            rt.block_on(async {
+                if let Err(e) = self.stop_periodic_tasks().await {
+                    error!("Error stopping periodic tasks: {}", e);
                 }
-            }
-        });
+                if self.is_current_leader().await {
+                    if let Err(e) = self.release_lock().await {
+                        error!("Error releasing lock: {}", e);
+                    }
+                }
+            });
+        } else {
+            error!("Failed to get current runtime handle in RedisClient::drop");
+        }
     }
 }
 

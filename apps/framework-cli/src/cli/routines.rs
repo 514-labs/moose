@@ -457,7 +457,7 @@ pub async fn start_development_mode(
             .await;
     };
 
-    redis_client.stop_periodic_tasks().await;
+    // redis_client.stop_periodic_tasks().await;
 
     Ok(())
 }

@@ -17,15 +17,7 @@ export const TypeScript: React.FC<LanguageProps> = ({
       {children}
     </NodeType>
   );
-};
-
-export const TypeScriptInline: React.FC<LanguageProps> = ({ children }) => {
-  const { language } = useLanguage();
-  return (
-    <span className={cn(language === "typescript" ? "inline" : "hidden")}>
-      {children}
-    </span>
-  );
+  //return language === "typescript" ? <>{children}</> : null;
 };
 
 export const Python: React.FC<LanguageProps> = ({
@@ -37,15 +29,6 @@ export const Python: React.FC<LanguageProps> = ({
     <NodeType className={cn(language === "python" ? "" : "hidden")}>
       {children}
     </NodeType>
-  );
-};
-
-export const PythonInline: React.FC<LanguageProps> = ({ children }) => {
-  const { language } = useLanguage();
-  return (
-    <span className={cn(language === "python" ? "inline" : "hidden")}>
-      {children}
-    </span>
   );
 };
 

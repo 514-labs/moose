@@ -28,6 +28,8 @@ enum JsonPrimitive {
 }
 pub fn parse_and_generate(name: &str, file: String, language: SupportedLanguages) -> String {
     let map = parse_json_file(&file).unwrap();
+    // TODO: better map merging
+    println!("{:?}", map);
 
     match language {
         SupportedLanguages::Typescript => render_typescript_file(name, &map),
@@ -176,7 +178,8 @@ fn extract_types_py(
         CustomValue::JsonObject(fields) => {
             let inner_type_name = field_name.to_case(Case::Pascal);
             if !extra_data_classes.contains_key(&inner_type_name) {
-                let nested = render_python_dataclass(&inner_type_name, fields, extra_data_classes);
+                let nested =
+                    render_python_dataclass(&inner_type_name, fields, false, extra_data_classes);
                 extra_data_classes.insert(inner_type_name.clone(), nested);
             }
             inner_type_name
@@ -319,6 +322,7 @@ export interface {} "#,
 fn render_python_dataclass(
     class_name: &str,
     fields: &IndexMap<String, CustomValue>,
+    use_key_for_first_primitive: bool,
     extra_data_classes: &mut IndexMap<String, String>,
 ) -> String {
     let mut class_def = format!(
@@ -328,22 +332,33 @@ class {}:
 "#,
         class_name
     );
+
+    let mut first_primitive_key_encountered = false;
     for (field, t) in fields {
-        let type_str = extract_types_py(t, field, extra_data_classes);
+        let mut type_str = extract_types_py(t, field, extra_data_classes);
+
+        if use_key_for_first_primitive
+            && (type_str == "str" || type_str == "int")
+            && !first_primitive_key_encountered
+        {
+            type_str = format!("Key[{}]", type_str);
+            first_primitive_key_encountered = true;
+        }
         class_def.push_str(&format!("    {}: {}\n", field, type_str));
     }
     class_def
 }
 
 fn render_python_file(class_name: &str, fields: &IndexMap<String, CustomValue>) -> String {
-    let mut class_def = r#"from dataclasses import dataclass
+    let mut class_def = r#"from moose_lib import Key
+from dataclasses import dataclass
 from typing import Optional, Union, Any
 "#
     .to_string();
     let mut extra_data_classes = IndexMap::new();
-    let data_model = render_python_dataclass(class_name, fields, &mut extra_data_classes);
+    let data_model = render_python_dataclass(class_name, fields, true, &mut extra_data_classes);
 
-    for data_class in extra_data_classes.values().rev() {
+    for data_class in extra_data_classes.values() {
         class_def.push_str(data_class);
     }
     class_def.push_str(&data_model);
@@ -410,7 +425,8 @@ export interface User {
         let result =
             parse_and_generate("User", JSON_CONTENT.to_string(), SupportedLanguages::Python);
 
-        let expected = r#"from dataclasses import dataclass
+        let expected = r#"from moose_lib import Key
+from dataclasses import dataclass
 from typing import Optional, Union, Any
 
 @dataclass
@@ -420,7 +436,7 @@ class Address:
 
 @dataclass
 class User:
-    id: int
+    id: Key[int]
     name: str
     age: Optional[int]
     is_active: bool

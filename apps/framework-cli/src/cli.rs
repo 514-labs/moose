@@ -664,7 +664,11 @@ async fn top_command_handler(
                     })?;
                     let interface = parse_and_generate(&args.name, file, project.language);
                     std::fs::write(
-                        project.data_models_dir().join(format!("{}.ts", args.name)),
+                        project.data_models_dir().join(format!(
+                            "{}.{}",
+                            args.name,
+                            project.language.extension()
+                        )),
                         interface.as_bytes(),
                     )
                     .map_err(|e| {

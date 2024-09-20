@@ -4,6 +4,7 @@ use convert_case::{Case, Casing};
 use indexmap::IndexMap;
 use itertools::Itertools;
 use serde_json::{Deserializer, Value};
+use std::cmp::Ordering;
 use std::collections::HashSet;
 use std::io::BufReader;
 
@@ -28,11 +29,10 @@ enum JsonPrimitive {
 pub fn parse_and_generate(name: &str, file: String, language: SupportedLanguages) -> String {
     let map = parse_json_file(&file).unwrap();
 
-    let schema = match language {
-        SupportedLanguages::Typescript => render_typescript_file(&name, &map),
-        SupportedLanguages::Python => render_python_file(&name, &map),
-    };
-    schema
+    match language {
+        SupportedLanguages::Typescript => render_typescript_file(name, &map),
+        SupportedLanguages::Python => render_python_file(name, &map),
+    }
 }
 
 fn parse_json_file(file_content: &str) -> Result<IndexMap<String, CustomValue>, serde_json::Error> {
@@ -153,8 +153,7 @@ fn extract_types_py(
         CustomValue::UnionTypes(types) if is_simple_optional(types) => {
             let t = types
                 .iter()
-                .filter(|t| **t != CustomValue::JsonPrimitive(JsonPrimitive::Null))
-                .next()
+                .find(|t| **t != CustomValue::JsonPrimitive(JsonPrimitive::Null))
                 .unwrap();
             format!(
                 "Optional[{}]",
@@ -202,12 +201,10 @@ fn type_to_string_ts(value: &CustomValue, tab_index: usize) -> Vec<String> {
         }
         CustomValue::JsonArray(inner) => {
             let extracted_types = type_to_string_ts(inner, tab_index);
-            let res = if extracted_types.len() > 1 {
-                format!("({})[]", extracted_types.join(" | "))
-            } else if extracted_types.len() == 1 {
-                format!("{}[]", extracted_types.first().unwrap())
-            } else {
-                unreachable!()
+            let res = match extracted_types.len().cmp(&1) {
+                Ordering::Greater => format!("({})[]", extracted_types.join(" | ")),
+                Ordering::Equal => format!("{}[]", extracted_types.first().unwrap()),
+                Ordering::Less => unreachable!(),
             };
             vec![res]
         }
@@ -344,7 +341,7 @@ from typing import Optional, Union, Any
 "#
     .to_string();
     let mut extra_data_classes = IndexMap::new();
-    let data_model = render_python_dataclass(class_name, &fields, &mut extra_data_classes);
+    let data_model = render_python_dataclass(class_name, fields, &mut extra_data_classes);
 
     for data_class in extra_data_classes.values().rev() {
         class_def.push_str(data_class);

@@ -83,7 +83,7 @@ async fn execute_python_model_file_for_config(
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
     let abs_path = path.canonicalize().or_else(|_| absolute(path));
     let path_str = abs_path.as_deref().unwrap_or(path).to_string_lossy();
-    let process = run_python_file(path, &vec![("MOOSE_PYTHON_DM_DUMP", &*path_str)])
+    let process = run_python_file(path, &[("MOOSE_PYTHON_DM_DUMP", &*path_str)])
         .await
         .map_err(|e| ModelConfigurationError::PythonRunner(e.to_string()))?;
 

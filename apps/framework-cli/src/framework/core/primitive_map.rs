@@ -207,13 +207,13 @@ impl PrimitiveMap {
         )
         .await?;
 
-        for (config_variable_name, config) in data_models_configs.iter() {
+        for (config_variable_name, config) in data_models_configs.into_iter() {
             let sanitized_config_name = config_variable_name.trim().to_lowercase();
             match sanitized_config_name.strip_suffix("config") {
                 Some(config_name_without_suffix) => {
                     let data_model_opt = indexed_models.get_mut(config_name_without_suffix);
                     if let Some(data_model) = data_model_opt {
-                        data_model.config = config.clone();
+                        data_model.config = config;
                     } else {
                         return Err(DataModelError::Other {
                             message: format!(

@@ -28,9 +28,9 @@ import { ManipulatedDestinationDataModel } from "datamodels/path/to/ManipulatedD
 
 export default function manipulateData(source: SourceDataModel): ManipulatedDestinationDataModel {
   // Manipulate multiple fields from the source data into the destination format.
-  const manipulatedNumber = source.int_field1 + source.int_field2;
-  const manipulatedString = source.string_field.toUpperCase();
-  const manipulatedDate = new Date(source.timestamp_field).toISOString();
+  const manipulatedNumber = source.numberField1 + source.numberField2;
+  const manipulatedString = source.stringField.toUpperCase();
+  const manipulatedDate = new Date(source.dateField).toISOString();
 
   return {
     id: source.id,
@@ -49,15 +49,15 @@ from app.datamodels.models import SourceDataModel, ManipulatedDestinationDataMod
 
 def manipulate_data(source: SourceDataModel) -> ManipulatedDestinationDataModel:
     # Manipulate multiple fields from the source data into the destination format.
-    manipulated_integer = source.field1 + source.field2
-    manipulated_string = source.field3.upper()
-    manipulated_date = source.field4.isoformat()
+    manipulated_integer = source.integer_field1 + source.integer_field2
+    manipulated_string = source.string_field.upper()
+    manipulated_datetime = source.datetime_field.isoformat()
 
     return ManipulatedDestinationDataModel(
         id=source.id,
         manipulated_integer=manipulated_integer,
         manipulated_string=manipulated_string,
-        manipulated_date=manipulated_date,
+        manipulated_datetime=manipulated_datetime,
     )
 
 streaming_function = StreamingFunction(

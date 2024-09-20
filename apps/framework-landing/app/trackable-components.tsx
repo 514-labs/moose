@@ -6,6 +6,7 @@ import {
   AccordionTrigger,
   TabsTrigger,
 } from "@514labs/design-system-components/components";
+import Link from "next/link";
 
 export const TrackableCodeSnippet = withTrack({
   Component: AnimatedCodeSnippet,
@@ -18,6 +19,12 @@ export interface TrackingFields {
   subject: string;
   targetUrl?: string;
 }
+
+export const TrackLink = withTrack({
+  Component: Link,
+  action: TrackingVerb.clicked,
+  injectProps: (onClick) => ({ onClick }),
+});
 
 export const TrackCtaButton = (props: CTAButtonProps & TrackingFields) =>
   withTrack<CTAButtonProps>({

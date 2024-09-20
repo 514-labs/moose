@@ -11,13 +11,15 @@ export const Logo = ({
   className?: string;
 }) => {
   return (
-    <>
-      <GradientText className={cn("my-0", className)}>{property}</GradientText>
+    <div className="flex flex-row items-center space-x-2">
+      <GradientText className={cn("my-0", className)} gradient="moose">
+        {property}
+      </GradientText>
       {subProperty && (
         <SmallText className="my-0 ml-2 text-muted-foreground border rounded-full px-2 py-0.5">
           {subProperty}
         </SmallText>
       )}
-    </>
+    </div>
   );
 };

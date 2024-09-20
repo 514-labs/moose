@@ -27,17 +27,9 @@ export const ProductTag = ({
   tag: string;
   tagStyle?: string;
 }) => {
-  const gradients = {
-    js: "bg-gradient-to-t from-[#3A36FF]  to-[#00A4C8]",
-    py: "bg-gradient-to-br from-[#B800C8] to-[#7F00FF]",
-  };
-
   return (
     <div
-      className={cn(
-        `ml-1 inline-block px-1 rounded-full border-2 indigo-500`,
-        tagStyle,
-      )}
+      className={cn(`ml-1 inline-block px-1 rounded-full border-2`, tagStyle)}
     >
       <div className="rounded-lg px-1 py-0.5">
         <span

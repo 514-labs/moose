@@ -1,6 +1,6 @@
 import { FileTree, Tabs } from "nextra/components";
 import { Callout } from "../components";
-import { LanguageSwitcher } from "../components";
+import { LanguageSwitcher, TypeScriptInline, PythonInline } from "../components";
 
 # Introduction to Streaming Functions
 
@@ -14,7 +14,7 @@ Streaming Functions in Moose enable real-time data processing, allowing you to t
 - Filter out unwanted data
 - Implement arbitrary logic to handle and respond to incoming data
 
-They are defined as regular functions in <TypeScript>TypeScript</TypeScript><Python>Python</Python> files, and are executed in real-time as data flows into your Moose application.
+They are defined as regular functions in <TypeScriptInline>TypeScript</TypeScriptInline><PythonInline>Python</PythonInline> files, and are executed in real-time as data flows into your Moose application.
 
 ## Core Concepts
 
@@ -96,38 +96,30 @@ The function body contains the processing logic. We will go into more detail on 
 </TypeScript>
 
 <Python>
-A Streaming Function is defined as a `Flow` object with a `run` attribute that is assigned the function:
+A Streaming Function is defined as a `StreamingFunction` object with a `run` attribute that is assigned the function:
 
 ```python filename="/functions/SourceDataModel__DestinationDataModel.py" copy
+from moose_lib import StreamingFunction
 from app.datamodels.models import SourceDataModel, DestinationDataModel
-from dataclasses import dataclass
-from typing import Callable
-
-
-@dataclass
-class Flow:
-  run: Callable
-
 
 def function_name(source: SourceDataModel) -> DestinationDataModel:
     # Transformation logic
     pass
 
-my_flow = Flow(
+streaming_function = StreamingFunction(
     run=function_name
 )
 
 ```
 
-- The `Flow` object is how Moose identifies the entry point for the Streaming Function.
+- The `StreamingFunction` object is how Moose identifies the entry point for the Streaming Function.
 - The `run` attribute is assigned the function that Moose will call when it receives a new message on the streaming topic associated with the source Data Model.
-
 - The function accepts a single parameter `source` of type `SourceDataModel`. This is the data that Moose will pass to the function when it receives a new message on the streaming topic associated with the source Data Model.
 
 - The return type is `DestinationDataModel`. If a value is returned Moose automatically serializes it to JSON and writes it to the streaming topic associated with the destination Data Model.
 <Callout type="info" title="What About the Function Name?">
   The function name itself is not important, as Moose identifies the function by
-  whatever is assigned to the `run` attribute of the Flow object.
+  whatever is assigned to the `run` attribute of the `StreamingFunction` object.
 </Callout>
 </Python>
 

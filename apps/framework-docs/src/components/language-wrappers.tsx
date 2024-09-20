@@ -4,32 +4,39 @@ import { cn } from "@514labs/design-system-components/utils";
 
 interface LanguageProps {
   children: ReactNode;
-  inline?: boolean;
 }
 
-export const TypeScript: React.FC<LanguageProps> = ({ children, inline }) => {
+export const TypeScript: React.FC<LanguageProps> = ({ children }) => {
   const { language } = useLanguage();
   return (
-    <div
-      className={cn(
-        language === "typescript" ? (inline ? "inline" : "") : "hidden",
-      )}
-    >
+    <div className={cn(language === "typescript" ? "" : "hidden")}>
       {children}
     </div>
   );
 };
 
-export const Python: React.FC<LanguageProps> = ({ children, inline }) => {
+export const TypeScriptInline: React.FC<LanguageProps> = ({ children }) => {
   const { language } = useLanguage();
   return (
-    <div
-      className={cn(
-        language === "python" ? (inline ? "inline" : "") : "hidden",
-      )}
-    >
+    <span className={cn(language === "typescript" ? "inline" : "hidden")}>
       {children}
-    </div>
+    </span>
+  );
+};
+
+export const Python: React.FC<LanguageProps> = ({ children }) => {
+  const { language } = useLanguage();
+  return (
+    <div className={cn(language === "python" ? "" : "hidden")}>{children}</div>
+  );
+};
+
+export const PythonInline: React.FC<LanguageProps> = ({ children }) => {
+  const { language } = useLanguage();
+  return (
+    <span className={cn(language === "python" ? "inline" : "hidden")}>
+      {children}
+    </span>
   );
 };
 

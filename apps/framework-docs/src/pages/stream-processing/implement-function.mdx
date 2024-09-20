@@ -1,9 +1,11 @@
 import { Steps } from "nextra/components";
-import { Callout } from "../../components";
+import { Callout, LanguageSwitcher, TypeScript, Python, TypeScriptInline, PythonInline } from "../../components";
 
 # Implementing Streaming Functions
 
-With the Streaming Function file set up, you can now define the processing logic to transform the data from the source Data Model to the destination Data Model. Since Streaming Functions are just ordinary Typescript/Python functions, you can leverage the full power of the language to manipulate the data as needed.
+<LanguageSwitcher />
+
+Streaming Functions are just ordinary <TypeScriptInline>Typescript</TypeScriptInline><PythonInline>Python</PythonInline> functions. Inside the function, you can leverage the full power of the language to process, enrich, filter, or otherwise manipulate the source data as needed.
 
 This guide introduces some common operations you might perform within a Streaming Function.
 
@@ -15,60 +17,194 @@ This guide introduces some common operations you might perform within a Streamin
   guide.
 </Callout>
 
-## Examples
 
-### Transforming Data
+### Basic Data Manipulation
 
-Here's an example Streaming Function that converts timestamps to UTC:
 
-```ts filename="/functions/UserActivity__ParsedActivity.ts" copy {12}
-// Example streaming function: Converts local timestamps in UserEvent data to UTC.
-// Imports: Source (UserActivity) and Destination (ParsedActivity) data models.
-import { UserActivity, ParsedActivity } from "datamodels/models.ts";
+<TypeScript>
+```ts filename="/functions/SourceDataModel__ManipulatedDestinationDataModel.ts" copy {15}
+import { SourceDataModel } from "datamodels/path/to/SourceDataModel.ts";
+import { ManipulatedDestinationDataModel } from "datamodels/path/to/ManipulatedDestinationDataModel.ts";
 
-// The 'convertUtc' function transforms UserActivity data to ParsedActivity format.
-export default function convertUtc(source: UserActivity): ParsedActivity {
-  // Convert local timestamp to UTC and return new ParsedActivity object.
+export default function manipulateData(source: SourceDataModel): ManipulatedDestinationDataModel {
+  // Manipulate multiple fields from the source data into the destination format.
+  const manipulatedNumber = source.int_field1 + source.int_field2;
+  const manipulatedString = source.string_field.toUpperCase();
+  const manipulatedDate = new Date(source.timestamp_field).toISOString();
+
   return {
-    id: source.id, // Retain original event ID.
-    userId: "puid" + source.userId, // Example: Prefix user ID.
-    activity: source.activity, // Copy activity unchanged.
-    timestamp: new Date(source.timestamp), // Convert timestamp to UTC.
+    id: source.id,
+    manipulatedNumber: manipulatedNumber,
+    manipulatedString: manipulatedString,
+    manipulatedDate: manipulatedDate,
   };
 }
 ```
+</TypeScript>
 
-Adjust function specifics according to your data transformation needs.
+<Python>
+```python filename="/functions/SourceDataModel__ManipulatedDestinationDataModel.py" copy {15}
+from moose_lib import StreamingFunction
+from app.datamodels.models import SourceDataModel, ManipulatedDestinationDataModel
 
-### Data Filtering
+def manipulate_data(source: SourceDataModel) -> ManipulatedDestinationDataModel:
+    # Manipulate multiple fields from the source data into the destination format.
+    manipulated_integer = source.field1 + source.field2
+    manipulated_string = source.field3.upper()
+    manipulated_date = source.field4.isoformat()
 
-Here's an example streaming function file that filters out unwanted data based on a specific condition:
+    return ManipulatedDestinationDataModel(
+        id=source.id,
+        manipulated_integer=manipulated_integer,
+        manipulated_string=manipulated_string,
+        manipulated_date=manipulated_date,
+    )
 
-```ts filename="/functions/UserActivity__ParsedActivity.ts" copy {7-9}
-// Example streaming function: Filters out UserEvent data with 'activity' field set to 'ignore'.
-// Imports: Source (UserActivity) and Destination (ParsedActivity) data models.
-import { UserActivity, ParsedActivity } from "datamodels/models.ts";
+streaming_function = StreamingFunction(
+    run=manipulate_data
+)
+```
+</Python>
 
-export default function filterActivity(
-  source: UserActivity,
-): ParsedActivity | null {
-  // Filter out UserActivity data with 'activity' field set to 'ignore'.
-  if (source.activity === "ignore") {
+### Data Validation and Filtering
+
+By returning <TypeScriptInline>`null`</TypeScriptInline><PythonInline>`None`</PythonInline> you can discard the data.
+
+<TypeScript>
+```ts filename="/functions/SourceDataModel__ValidatedDestinationDataModel.ts" copy {12}
+import { SourceDataModel } from "datamodels/models.ts";
+import { DestinationDataModel } from "datamodels/models.ts";
+
+export default function validateData(source: SourceDataModel): ValidatedDestinationDataModel | null {
+  // Validate the source data before processing.
+  if (!source.requiredField) {
+    // Discard the data if validation fails.
     return null;
   }
 
-  // Return ParsedActivity object for all other UserActivity data.
   return {
     id: source.id,
-    userId: "puid" + source.userId,
-    activity: source.activity,
+    validField: source.requiredField,
     timestamp: new Date(source.timestamp),
   };
 }
 ```
+</TypeScript>
+
+<Python>
+```python filename="/functions/SourceDataModel__ValidatedDestinationDataModel.py" copy {12}
+from moose_lib import StreamingFunction
+from app.datamodels.models import SourceDataModel, ValidatedDestinationDataModel
+
+def validate_data(source: SourceDataModel) -> ValidatedDestinationDataModel | None:
+    # Validate the source data before processing.
+    if not source.required_field:
+        # Discard the data if validation fails.
+        return None
+
+    return ValidatedDestinationDataModel(
+        id=source.id,
+        valid_field=source.required_field,
+        timestamp=source.timestamp
+    )
+
+streaming_function = StreamingFunction(
+    run=validate_data
+)
+```
+</Python>
+
+### Data Augmentation with External API
+You can use the <TypeScriptInline>`fetch`</TypeScriptInline><PythonInline>`requests`</PythonInline> module to enrich your source data with additional data from an external API.
+
+<TypeScript>
+```ts filename="/functions/SourceDataModel__AugmentedDestinationDataModel.ts" copy {20}
+import { SourceDataModel } from "datamodels/path/to/SourceDataModel.ts";
+import { AugmentedDestinationDataModel } from "datamodels/path/to/AugmentedDestinationDataModel.ts";
+
+export default async function augmentData(source: SourceDataModel): Promise<AugmentedDestinationDataModel> {
+  // Fetch additional information from an external API
+  const response = await fetch(`https://api.example.com/data/${source.id}`);
+  const extraData = await response.json();
+
+  // Combine source data with fetched extra data
+  return {
+    ...source,
+    extraField: extraData.field,
+    additionalInfo: extraData.info,
+  };
+}
+```
+<Callout type="info">
+  Make sure to return a promise to fetch data from an external API. You must also make the function `async` and use `await` to fetch data from an external API.
+</Callout>
+</TypeScript>
+
+<Python>
+```python filename="/functions/SourceDataModel__AugmentedDestinationDataModel.py" copy {20}
+from moose_lib import StreamingFunction
+from app.datamodels.models import SourceDataModel, AugmentedDestinationDataModel
+import requests
+
+def augment_data(source: SourceDataModel) -> AugmentedDestinationDataModel:
+    # Fetch additional information from an external API
+    response = requests.get(f"https://api.example.com/data/{source.id}")
+    extra_data = response.json()
+
+    # Combine source data with fetched extra data
+    return AugmentedDestinationDataModel(
+        id=source.id,
+        extra_field=extra_data['field'],
+        additional_info=extra_data['info'],
+        # Add other necessary fields here
+    )
+
+streaming_function = StreamingFunction(
+    run=augment_data
+)
+```
+</Python>
+
 
 ### Splitting Data Into Multiple Entries
+To create multiple entries, you can return an array of the destination Data Model. A common use case is when you have a Data Model with a nested list of objects that you want to unnest and store in their own table. Moose will convert each object inside the array into a separate database entry.
 
-To create multiple entries you can return a array of the destination data model.
-For example using the code above you can return an array with a type of `ParsedActivity[]`.
-Moose would convert each object inside of the array into a seperate database entry.
+<TypeScript>
+```ts filename="/functions/SourceDataModel__UnnestedDestinationDataModel.ts" copy {15}
+import { SourceDataModel } from "datamodels/models.ts";
+import { UnnestedDestinationDataModel } from "datamodels/models.ts";
+
+export default function reshapeData(source: SourceDataModel): UnnestedDestinationDataModel[] {
+  // Unnest a list of objects into their own table rows
+  const objects = source.nestedListOfObjects;
+
+  return objects.map((object) => ({
+    id: source.id, // Keep the ID of the parent object
+    ...object,
+  }));
+}
+```
+</TypeScript>
+
+<Python>
+```python filename="/functions/SourceDataModel__DestinationDataModel.py" copy {15}
+from moose_lib import StreamingFunction
+from app.datamodels.models import SourceDataModel, DestinationDataModel
+
+def reshape_data(source: SourceDataModel) -> list[DestinationDataModel]:
+  
+    objects = source.nested_list_of_objects
+
+    return [
+        DestinationDataModel(
+            id=source.id,
+            **item
+        )
+        for item in items
+    ]
+
+streaming_function = StreamingFunction(
+    run=reshape_data
+)
+```
+</Python>

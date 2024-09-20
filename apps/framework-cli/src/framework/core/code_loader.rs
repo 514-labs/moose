@@ -166,6 +166,7 @@ pub async fn get_framework_objects_from_schema_file(
 
     let data_models_configs = data_model::config::get(
         path,
+        &project.project_location,
         framework_objects
             .enums
             .iter()

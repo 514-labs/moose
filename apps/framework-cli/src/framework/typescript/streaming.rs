@@ -5,9 +5,9 @@ use tokio::process::Child;
 
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
-use super::ts_node;
+use super::bin;
 
-const FUNCTION_RUNNER_WRAPPER: &str = include_str!("ts_scripts/streaming-function.ts");
+const FUNCTION_RUNNER_BIN: &str = "streaming-functions";
 
 // TODO: we currently refer redpanda configuration here. If we want to be able to
 // abstract this to other type of streaming engine, we will need to be able to abstract this away.
@@ -17,6 +17,7 @@ pub fn run(
     target_topic: &str,
     target_topic_config: &str,
     streaming_function_file: &Path,
+    project_path: &Path,
     // TODO Remove the anyhow type here
 ) -> Result<Child, std::io::Error> {
     let mut args = vec![
@@ -48,7 +49,7 @@ pub fn run(
         args.push(redpanda_config.security_protocol.as_ref().unwrap());
     }
 
-    let mut streaming_function_process = ts_node::run(FUNCTION_RUNNER_WRAPPER, &args)?;
+    let mut streaming_function_process = bin::run(FUNCTION_RUNNER_BIN, project_path, &args)?;
 
     let stdout = streaming_function_process
         .stdout

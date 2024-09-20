@@ -1,4 +1,4 @@
-import { MooseClient, sql } from "./consumption-helpers";
+import { MooseClient, sql } from "./consumption-apis/helpers";
 export interface Aggregation {
   select: string;
   orderBy: string;
@@ -28,6 +28,6 @@ export type DataModelConfig<T> = Partial<{
   };
 }>;
 
-export * from "./blocks";
+export * from "./blocks/helpers";
 export * from "./commons";
-export * from "./consumption-helpers";
+export * from "./consumption-apis/helpers";

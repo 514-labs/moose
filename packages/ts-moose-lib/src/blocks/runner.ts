@@ -1,7 +1,8 @@
 import process from "node:process";
 import { ClickHouseClient } from "@clickhouse/client-web";
 import fastq, { queueAsPromised } from "fastq";
-import { getClickhouseClient, walkDir, Blocks } from "@514labs/moose-lib";
+import { getClickhouseClient, walkDir } from "../commons";
+import { Blocks } from "./helpers";
 
 interface BlocksQueueTask {
   chClient: ClickHouseClient;
@@ -17,6 +18,8 @@ class DependencyError extends Error {
 }
 
 const [
+  ,
+  ,
   ,
   BLOCKS_DIR_PATH,
   CLICKHOUSE_DB,
@@ -66,7 +69,7 @@ const asyncWorker = async (task: BlocksQueueTask) => {
   await createBlocks(task.chClient, task.blocks);
 };
 
-const main = async () => {
+export const runBlocks = async () => {
   const chClient = getClickhouseClient(clickhouseConfig);
   console.log(`Connected`);
 
@@ -87,7 +90,7 @@ const main = async () => {
   for (const path of blocksFiles) {
     console.log(`Adding to queue: ${path}`);
 
-    const blocks = (await import(path)).default as Blocks;
+    const blocks = require(path).default as Blocks;
 
     queue.push({
       chClient,
@@ -100,5 +103,3 @@ const main = async () => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 };
-
-main();

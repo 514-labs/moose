@@ -6,10 +6,10 @@ use tokio::process::Child;
 use crate::framework::aggregations::model::AggregationError;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 
-use super::ts_node;
+use super::bin;
 
-const AGGREGATION_RUNNER_WRAPPER: &str = include_str!("ts_scripts/aggregation.ts");
-const BLOCKS_RUNNER_WRAPPER: &str = include_str!("ts_scripts/blocks.ts");
+const BLOCKS_RUNNER_BIN: &str = "blocks";
+const AGGREGATIONS_RUNNER_BIN: &str = "aggregations";
 
 // TODO: Abstract away ClickhouseConfig to support other databases
 // TODO: Bubble up compilation errors to the user
@@ -17,6 +17,7 @@ pub fn run(
     clickhouse_config: ClickHouseConfig,
     aggregations_path: &Path,
     is_blocks: bool,
+    project_path: &Path,
 ) -> Result<Child, AggregationError> {
     let host_port = clickhouse_config.host_port.to_string();
     let use_ssl = clickhouse_config.use_ssl.to_string();
@@ -31,9 +32,9 @@ pub fn run(
     ];
 
     let mut aggregation_process = if is_blocks {
-        ts_node::run(BLOCKS_RUNNER_WRAPPER, &args)?
+        bin::run(BLOCKS_RUNNER_BIN, project_path, &args)?
     } else {
-        ts_node::run(AGGREGATION_RUNNER_WRAPPER, &args)?
+        bin::run(AGGREGATIONS_RUNNER_BIN, project_path, &args)?
     };
 
     let stdout = aggregation_process

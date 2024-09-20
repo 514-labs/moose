@@ -24,6 +24,7 @@ pub struct ConsumptionProcessRegistry {
     clickhouse_config: ClickHouseConfig,
     dir: PathBuf,
     language: SupportedLanguages,
+    project_path: PathBuf,
 }
 
 impl ConsumptionProcessRegistry {
@@ -31,12 +32,14 @@ impl ConsumptionProcessRegistry {
         language: SupportedLanguages,
         clickhouse_config: ClickHouseConfig,
         dir: PathBuf,
+        project_path: PathBuf,
     ) -> Self {
         Self {
             api_process: Option::None,
             language,
             dir,
             clickhouse_config,
+            project_path,
         }
     }
 
@@ -47,9 +50,11 @@ impl ConsumptionProcessRegistry {
             SupportedLanguages::Python => {
                 python::consumption::run(self.clickhouse_config.clone(), &self.dir)
             }
-            SupportedLanguages::Typescript => {
-                typescript::consumption::run(self.clickhouse_config.clone(), &self.dir)
-            }
+            SupportedLanguages::Typescript => typescript::consumption::run(
+                self.clickhouse_config.clone(),
+                &self.dir,
+                &self.project_path,
+            ),
         }?;
 
         self.api_process = Some(child);

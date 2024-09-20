@@ -113,10 +113,11 @@ async fn parse_python_model_file(
 
 pub async fn get(
     path: &Path,
+    project_path: &Path,
     enums: HashSet<&str>,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
     if path.extension() == Some(OsStr::new("ts")) {
-        let config = get_data_model_configs(path, enums).await?;
+        let config = get_data_model_configs(path, project_path, enums).await?;
         info!("Data Model configuration for {:?}: {:?}", path, config);
         Ok(config)
     } else if path.extension() == Some(OsStr::new("py"))

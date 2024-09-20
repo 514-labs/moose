@@ -118,7 +118,7 @@ async def main():
             get_blocks_from_file(file)
             block_files.append(file)
         except Exception as err:
-            cli_log(CliLogData(action="Blocks", message=f"Failed to import blocks from {file}: {err}"))
+            cli_log(CliLogData(action="Blocks", message=f"Failed to import blocks from {file}: {err}", message_type="Error"))
 
     print(f"Found {len(block_files)} blocks in {blocks_dir_path}")
     print(f"Blocks: {block_files}")

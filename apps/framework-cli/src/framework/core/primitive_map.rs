@@ -207,6 +207,7 @@ impl PrimitiveMap {
         )
         .await?;
 
+        // TODO: remove python data models without a config
         for (config_variable_name, config) in data_models_configs.into_iter() {
             let sanitized_config_name = config_variable_name.trim().to_lowercase();
             match sanitized_config_name.strip_suffix("config") {

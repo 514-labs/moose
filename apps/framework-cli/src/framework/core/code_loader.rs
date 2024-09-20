@@ -140,6 +140,7 @@ pub async fn get_all_framework_objects(
     Ok(())
 }
 
+// core v1 code
 pub async fn get_framework_objects_from_schema_file(
     project: &Project,
     path: &Path,

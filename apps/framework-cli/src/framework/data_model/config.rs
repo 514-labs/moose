@@ -1,14 +1,13 @@
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::path::{absolute, Path};
 
 use tokio::io::AsyncReadExt;
 
+use crate::framework::typescript::export_collectors::get_data_model_configs;
 use log::info;
 use serde::Deserialize;
 use serde::Serialize;
 use std::ffi::OsStr;
-
-use crate::framework::typescript::export_collectors::get_data_model_configs;
 
 use crate::framework::python::executor::run_python_file;
 
@@ -79,10 +78,12 @@ pub struct PythonDataModelConfig {
     pub config: DataModelConfig,
 }
 
-async fn parse_python_model_file(
+async fn execute_python_model_file_for_config(
     path: &Path,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
-    let process = run_python_file(path)
+    let abs_path = path.canonicalize().or_else(|_| absolute(path));
+    let path_str = abs_path.as_deref().unwrap_or(path).to_string_lossy();
+    let process = run_python_file(path, &vec![("MOOSE_PYTHON_DM_DUMP", &*path_str)])
         .await
         .map_err(|e| ModelConfigurationError::PythonRunner(e.to_string()))?;
 
@@ -123,7 +124,7 @@ pub async fn get(
     } else if path.extension() == Some(OsStr::new("py"))
         && path.file_name() != Some(OsStr::new("__init__.py"))
     {
-        return parse_python_model_file(path).await;
+        return execute_python_model_file_for_config(path).await;
     } else {
         // We will use defaults values for the configuration for each data model.
         Ok(HashMap::new())

@@ -132,6 +132,7 @@ fn parse_array(items: &[Value]) -> CustomValue {
     }
 }
 
+// TODO: simplify this mess
 fn merge_types(t1: &mut CustomValue, t2: CustomValue) {
     match t1 {
         CustomValue::UnionTypes(existing_types) => match t2 {
@@ -208,26 +209,13 @@ fn merge_types(t1: &mut CustomValue, t2: CustomValue) {
                     CustomValue::UnionTypes(vec![CustomValue::JsonPrimitive(*existing_primitive)]);
                 new_types.into_iter().for_each(|t| merge_types(t1, t));
             }
-            CustomValue::JsonArray(new_array) => {
+            _ if CustomValue::JsonPrimitive(*existing_primitive) != t2 => {
                 *t1 = CustomValue::UnionTypes(vec![
                     CustomValue::JsonPrimitive(*existing_primitive),
-                    CustomValue::JsonArray(new_array),
+                    t2,
                 ]);
             }
-            CustomValue::JsonObject(new_obj) => {
-                *t1 = CustomValue::UnionTypes(vec![
-                    CustomValue::JsonPrimitive(*existing_primitive),
-                    CustomValue::JsonObject(new_obj),
-                ]);
-            }
-            CustomValue::JsonPrimitive(new_primitive) => {
-                if *existing_primitive != new_primitive {
-                    *t1 = CustomValue::UnionTypes(vec![
-                        CustomValue::JsonPrimitive(*existing_primitive),
-                        CustomValue::JsonPrimitive(new_primitive),
-                    ]);
-                }
-            }
+            _ => {}
         },
     }
 }

@@ -1,11 +1,12 @@
 use opentelemetry::global;
-use opentelemetry::Key;
+use opentelemetry::metrics::MeterProvider;
 use opentelemetry::KeyValue;
-use opentelemetry_otlp::{Protocol, WithExportConfig};
+use opentelemetry_otlp::WithExportConfig;
+use opentelemetry_sdk::metrics::data::Temporality;
+use opentelemetry_sdk::metrics::reader::TemporalitySelector;
 use opentelemetry_sdk::metrics::reader::{DefaultAggregationSelector, DefaultTemporalitySelector};
-use opentelemetry_sdk::metrics::{
-    Aggregation, Instrument, PeriodicReader, SdkMeterProvider, Stream,
-};
+use opentelemetry_sdk::metrics::InstrumentKind;
+use opentelemetry_sdk::metrics::{Instrument, PeriodicReader, SdkMeterProvider, Stream};
 use opentelemetry_sdk::{runtime, Resource};
 use prometheus_client::metrics::counter::Counter;
 use prometheus_client::metrics::family::Family;
@@ -120,6 +121,28 @@ pub struct Metrics {
     telemetry_metadata: TelemetryMetadata,
 }
 
+/// Configure delta temporality for all [InstrumentKind]
+///
+/// [Temporality::Delta] will be used for all instrument kinds if this
+/// [TemporalitySelector] is used.
+#[derive(Clone, Default, Debug)]
+pub struct DeltaTemporalitySelector {
+    pub(crate) _private: (),
+}
+
+impl DeltaTemporalitySelector {
+    /// Create a new default temporality selector.
+    pub fn new() -> Self {
+        Self::default()
+    }
+}
+
+impl TemporalitySelector for DeltaTemporalitySelector {
+    fn temporality(&self, _kind: InstrumentKind) -> Temporality {
+        Temporality::Delta
+    }
+}
+
 #[derive(Debug)]
 pub struct Statistics {
     pub http_latency_histogram_aggregate: Histogram,
@@ -218,7 +241,7 @@ fn init_meter_provider() -> opentelemetry_sdk::metrics::SdkMeterProvider {
     let otel_exporter = opentelemetry_otlp::new_exporter()
         .http()
         .with_http_client(client)
-        .with_endpoint("https://enerjroe45pcn.x.pipedream.net")
+        .with_endpoint("https://enerjroe45pcn.x.pipedream.net/")
         // .with_protocol(Protocol::HttpJson)
         .with_timeout(Duration::from_millis(5000))
         .build_metrics_exporter(
@@ -232,7 +255,6 @@ fn init_meter_provider() -> opentelemetry_sdk::metrics::SdkMeterProvider {
         .build();
     let provider = SdkMeterProvider::builder()
         .with_reader(reader)
-        .with_resource(Resource::new([KeyValue::new("service.name", "Moose")]))
         .with_view(latency_http)
         .with_view(ingested_bytes)
         .with_view(consumed_bytes)
@@ -274,12 +296,60 @@ impl Metrics {
         mut rx: tokio::sync::mpsc::Receiver<MetricsMessage>,
     ) {
         let meter_provider = init_meter_provider();
-        let meter = global::meter("mylibraryname");
+        let meter = global::meter("moose-metrics");
 
         let histogram = meter
             .f64_histogram("latency_http")
             .with_unit("ms")
             .with_description("Ingest Latency_http")
+            .init();
+
+        let ingested_bytes = meter
+            .u64_counter("ingested_bytes")
+            .with_unit("bytes")
+            .with_description("Ingested Bytes")
+            .init();
+
+        let consumed_bytes = meter
+            .u64_counter("consumed_bytes")
+            .with_unit("bytes")
+            .with_description("Consumed Bytes")
+            .init();
+
+        let topic_to_olap_event_count = meter
+            .u64_counter("topic_to_olap_event_count")
+            .with_unit("count")
+            .with_description("Topic to OLAP event count")
+            .init();
+
+        let topic_to_olap_bytes_count = meter
+            .u64_counter("topic_to_olap_bytes_count")
+            .with_unit("bytes")
+            .with_description("Topic to OLAP bytes count")
+            .init();
+
+        let streaming_functions_in_event_count = meter
+            .u64_counter("streaming_functions_in_event_count")
+            .with_unit("count")
+            .with_description("Streaming functions in event count")
+            .init();
+
+        let streaming_functions_out_event_count = meter
+            .u64_counter("streaming_functions_out_event_count")
+            .with_unit("count")
+            .with_description("Streaming functions out event count")
+            .init();
+
+        let streaming_functions_processed_bytes_count = meter
+            .u64_counter("streaming_functions_processed_bytes_count")
+            .with_unit("bytes")
+            .with_description("Streaming functions processed bytes count")
+            .init();
+
+        let blocks_count = meter
+            .i64_gauge("blocks_count")
+            .with_unit("count")
+            .with_description("Blocks count")
             .init();
 
         let data = Arc::new(Statistics {
@@ -420,6 +490,7 @@ impl Metrics {
                                 ),
                             ],
                         );
+
                         data.http_latency_histogram
                             .get_or_create(&HTTPLabel {
                                 method,
@@ -441,6 +512,16 @@ impl Metrics {
                         bytes_count,
                         method,
                     } => {
+                        ingested_bytes.add(
+                            bytes_count,
+                            &[
+                                KeyValue::new("method", method.clone()),
+                                KeyValue::new(
+                                    "path",
+                                    path.clone().into_os_string().to_str().unwrap().to_string(),
+                                ),
+                            ],
+                        );
                         data.http_ingested_bytes
                             .get_or_create(&HTTPLabel {
                                 method,
@@ -455,6 +536,16 @@ impl Metrics {
                         bytes_count,
                         method,
                     } => {
+                        consumed_bytes.add(
+                            bytes_count,
+                            &[
+                                KeyValue::new("method", method.clone()),
+                                KeyValue::new(
+                                    "path",
+                                    path.clone().into_os_string().to_str().unwrap().to_string(),
+                                ),
+                            ],
+                        );
                         data.http_consumed_bytes
                             .get_or_create(&HTTPLabel {
                                 method,
@@ -468,6 +559,16 @@ impl Metrics {
                         method,
                         count,
                     } => {
+                        topic_to_olap_event_count.add(
+                            count,
+                            &[
+                                KeyValue::new("method", method.clone()),
+                                KeyValue::new(
+                                    "path",
+                                    path.clone().into_os_string().to_str().unwrap().to_string(),
+                                ),
+                            ],
+                        );
                         data.http_to_topic_event_count
                             .get_or_create(&MessagesInCounterLabels {
                                 path: path.clone().into_os_string().to_str().unwrap().to_string(),
@@ -481,6 +582,13 @@ impl Metrics {
                         topic_name,
                         count,
                     } => {
+                        topic_to_olap_event_count.add(
+                            count,
+                            &[
+                                KeyValue::new("consumer_group", consumer_group.clone()),
+                                KeyValue::new("topic_name", topic_name.clone()),
+                            ],
+                        );
                         data.topic_to_olap_event_count
                             .get_or_create(&MessagesOutCounterLabels {
                                 consumer_group,
@@ -493,6 +601,10 @@ impl Metrics {
                         function_name,
                         count,
                     } => {
+                        streaming_functions_in_event_count.add(
+                            count,
+                            &[KeyValue::new("function_name", function_name.clone())],
+                        );
                         data.streaming_functions_in_event_count
                             .get_or_create(&StreamingFunctionMessagesCounterLabels {
                                 function_name,
@@ -504,6 +616,10 @@ impl Metrics {
                         function_name,
                         count,
                     } => {
+                        streaming_functions_out_event_count.add(
+                            count,
+                            &[KeyValue::new("function_name", function_name.clone())],
+                        );
                         data.streaming_functions_out_event_count
                             .get_or_create(&StreamingFunctionMessagesCounterLabels {
                                 function_name,
@@ -516,6 +632,13 @@ impl Metrics {
                         topic_name,
                         bytes_count,
                     } => {
+                        topic_to_olap_bytes_count.add(
+                            bytes_count,
+                            &[
+                                KeyValue::new("consumer_group", consumer_group.clone()),
+                                KeyValue::new("topic_name", topic_name.clone()),
+                            ],
+                        );
                         data.topic_to_olap_bytes_count
                             .get_or_create(&MessagesOutCounterLabels {
                                 consumer_group,
@@ -528,6 +651,10 @@ impl Metrics {
                         function_name,
                         bytes_count: count,
                     } => {
+                        streaming_functions_processed_bytes_count.add(
+                            count,
+                            &[KeyValue::new("function_name", function_name.clone())],
+                        );
                         data.streaming_functions_processed_bytes_count
                             .get_or_create(&StreamingFunctionMessagesCounterLabels {
                                 function_name,
@@ -537,6 +664,7 @@ impl Metrics {
                             .inc_by(count);
                     }
                     MetricsMessage::PutBlockCount { count } => {
+                        blocks_count.record(count, &[]);
                         data.blocks_count.set(count);
                     }
                 };
@@ -633,9 +761,9 @@ impl Metrics {
                         payload_obj.extend(labels_obj.iter().map(|(k, v)| (k.clone(), v.clone())));
                     }
 
-                    if let Err(e) = meter_provider.force_flush() {
-                        warn!("Failed to flush metrics: {}", e);
-                    }
+                    // if let Err(e) = meter_provider.force_flush() {
+                    //     warn!("Failed to flush metrics: {}", e);
+                    // }
 
                     let _ = client
                         .post(ANONYMOUS_METRICS_URL.as_str())

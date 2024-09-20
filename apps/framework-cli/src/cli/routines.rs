@@ -172,7 +172,7 @@ impl RoutineSuccess {
     }
 
     pub fn show(&self) {
-        show_message!(self.message_type, self.message);
+        show_message!(self.message_type, self.message.clone());
     }
 }
 
@@ -457,7 +457,7 @@ pub async fn start_development_mode(
             .await;
     };
 
-    // redis_client.stop_periodic_tasks().await;
+    let _ = redis_client.stop_periodic_tasks().await;
 
     Ok(())
 }
@@ -598,7 +598,7 @@ pub async fn start_production_mode(
             .await;
     }
 
-    redis_client.stop_periodic_tasks().await;
+    let _ = redis_client.stop_periodic_tasks().await;
 
     Ok(())
 }

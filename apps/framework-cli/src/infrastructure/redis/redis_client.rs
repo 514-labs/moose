@@ -384,12 +384,13 @@ impl Drop for RedisClient {
     fn drop(&mut self) {
         info!("RedisClient is being dropped");
         if let Ok(rt) = tokio::runtime::Handle::try_current() {
-            rt.block_on(async {
-                if let Err(e) = self.stop_periodic_tasks().await {
+            let mut self_clone = self.clone(); // Ensure self_clone is mutable
+            rt.spawn(async move {
+                if let Err(e) = self_clone.stop_periodic_tasks().await {
                     error!("Error stopping periodic tasks: {}", e);
                 }
-                if self.is_current_leader().await {
-                    if let Err(e) = self.release_lock().await {
+                if self_clone.is_current_leader().await {
+                    if let Err(e) = self_clone.release_lock().await {
                         error!("Error releasing lock: {}", e);
                     }
                 }

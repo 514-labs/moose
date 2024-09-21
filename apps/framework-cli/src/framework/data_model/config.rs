@@ -102,14 +102,7 @@ async fn execute_python_model_file_for_config(
     let configs: HashMap<ConfigIdentifier, DataModelConfig> = raw_string_stdout
         .split("___DATAMODELCONFIG___")
         .filter_map(|entry| {
-            println!("geez{}geez", entry);
-            let config = match serde_json::from_str::<PythonDataModelConfig>(entry) {
-                Ok(config) => Some(config),
-                Err(err) => {
-                    println!("blahhhhhhh{}", err);
-                    None
-                }
-            }?;
+            let config = serde_json::from_str::<PythonDataModelConfig>(entry).ok()?;
             Some((config.class_name, config.config))
         })
         .collect();

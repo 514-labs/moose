@@ -15,7 +15,7 @@ class MySubModel:
     age: int
 
 
-@dataclass 
+@dataclass
 class ComplexModel:
     name: Key[str]
     age: int

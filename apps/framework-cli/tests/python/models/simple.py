@@ -11,12 +11,13 @@ class Status(Enum):
     OK = "ok"
     ERROR = "error"
 
+@dataclass
 class MySubModel:
     name: str
     age: int
 
 
-@dataclass 
+@dataclass
 class MyModel:
     name: Key[str]
     age: int

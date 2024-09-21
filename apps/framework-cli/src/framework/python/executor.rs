@@ -84,11 +84,15 @@ pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Erro
         .spawn()
 }
 
-pub async fn run_python_file(path: &Path) -> Result<Child, std::io::Error> {
-    let mut command = tokio::process::Command::new("python3");
+pub async fn run_python_file(path: &Path, env: &[(&str, &str)]) -> Result<Child, std::io::Error> {
+    let mut command = Command::new("python3");
+
+    command.env(PYTHON_PATH, python_path_with_version());
+    for (key, val) in env {
+        command.env(key, val);
+    }
 
     command
-        .env(PYTHON_PATH, python_path_with_version())
         .arg("-u")
         .arg(path)
         .stdin(std::process::Stdio::piped())

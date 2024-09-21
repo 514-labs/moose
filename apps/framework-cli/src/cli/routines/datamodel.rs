@@ -418,15 +418,24 @@ export interface {} "#,
 fn render_python_dataclass(
     class_name: &str,
     fields: &IndexMap<String, CustomValue>,
-    use_key_for_first_primitive: bool,
+    is_data_model: bool,
     extra_data_classes: &mut IndexMap<String, String>,
 ) -> String {
+    let maybe_data_model_decorator = if is_data_model {
+        "@moose_data_model\n"
+    } else {
+        ""
+    };
+
     let mut class_def = format!(
+        // PEP8: Surround top-level function and class definitions with two blank lines.
+        // Black: two lines before and after module-level functions and classes
         r#"
-@dataclass
+
+{}@dataclass
 class {}:
 "#,
-        class_name
+        maybe_data_model_decorator, class_name
     );
 
     if fields.is_empty() {
@@ -438,7 +447,7 @@ class {}:
     for (field, t) in fields {
         let mut type_str = extract_types_py(t, field, extra_data_classes);
 
-        if use_key_for_first_primitive
+        if is_data_model
             && (type_str == "str" || type_str == "int")
             && !first_primitive_key_encountered
         {
@@ -451,7 +460,7 @@ class {}:
 }
 
 fn render_python_file(class_name: &str, fields: &IndexMap<String, CustomValue>) -> String {
-    let mut class_def = r#"from moose_lib import Key
+    let mut class_def = r#"from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
 from typing import Optional, Union, Any
 "#
@@ -526,15 +535,18 @@ export interface User {
         let result =
             parse_and_generate("User", JSON_CONTENT.to_string(), SupportedLanguages::Python);
 
-        let expected = r#"from moose_lib import Key
+        let expected = r#"from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
 from typing import Optional, Union, Any
+
 
 @dataclass
 class Address:
     street: str
     city: str
 
+
+@moose_data_model
 @dataclass
 class User:
     id: Key[int]

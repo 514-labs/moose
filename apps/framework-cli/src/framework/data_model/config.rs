@@ -1,14 +1,13 @@
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::path::{absolute, Path};
 
 use tokio::io::AsyncReadExt;
 
-use log::info;
+use crate::framework::typescript::export_collectors::get_data_model_configs;
+use log::{info, warn};
 use serde::Deserialize;
 use serde::Serialize;
 use std::ffi::OsStr;
-
-use crate::framework::typescript::export_collectors::get_data_model_configs;
 
 use crate::framework::python::executor::run_python_file;
 
@@ -74,15 +73,17 @@ pub enum ModelConfigurationError {
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default, Hash)]
 pub struct PythonDataModelConfig {
     #[serde(default)]
-    pub name: String,
+    pub class_name: String,
     #[serde(default)]
     pub config: DataModelConfig,
 }
 
-async fn parse_python_model_file(
+async fn execute_python_model_file_for_config(
     path: &Path,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
-    let process = run_python_file(path)
+    let abs_path = path.canonicalize().or_else(|_| absolute(path));
+    let path_str = abs_path.as_deref().unwrap_or(path).to_string_lossy();
+    let process = run_python_file(path, &[("MOOSE_PYTHON_DM_DUMP", &*path_str)])
         .await
         .map_err(|e| ModelConfigurationError::PythonRunner(e.to_string()))?;
 
@@ -94,15 +95,15 @@ async fn parse_python_model_file(
     let mut raw_string_stdout: String = String::new();
 
     if stdout.read_to_string(&mut raw_string_stdout).await.is_err() {
+        warn!("Unable to read stdout for python config dump");
         return Ok(HashMap::new());
     }
 
     let configs: HashMap<ConfigIdentifier, DataModelConfig> = raw_string_stdout
         .split("___DATAMODELCONFIG___")
         .filter_map(|entry| {
-            let raw_value = serde_json::from_str(entry).ok()?;
-            let config: PythonDataModelConfig = serde_json::from_value(raw_value).ok()?;
-            Some((config.name.clone(), config.config))
+            let config = serde_json::from_str::<PythonDataModelConfig>(entry).ok()?;
+            Some((config.class_name, config.config))
         })
         .collect();
 
@@ -123,7 +124,7 @@ pub async fn get(
     } else if path.extension() == Some(OsStr::new("py"))
         && path.file_name() != Some(OsStr::new("__init__.py"))
     {
-        return parse_python_model_file(path).await;
+        return execute_python_model_file_for_config(path).await;
     } else {
         // We will use defaults values for the configuration for each data model.
         Ok(HashMap::new())
@@ -132,9 +133,11 @@ pub async fn get(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn test_partial_config() {
-        let config: super::DataModelConfig =
+        let config: DataModelConfig =
             serde_json::from_str("{\"storage\":{\"enabled\": true}}").unwrap();
         println!("{:?}", config)
     }

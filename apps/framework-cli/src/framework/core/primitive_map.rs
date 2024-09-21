@@ -187,7 +187,6 @@ impl PrimitiveMap {
         Ok(())
     }
 
-    // I have suspicion that we don't need to do that
     pub fn canonicalize_model_name(name: &str) -> String {
         name.trim().to_lowercase()
     }

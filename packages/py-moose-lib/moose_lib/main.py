@@ -64,15 +64,20 @@ def moose_data_model(arg: Any = None) -> Any:
             return module.__file__
         return None
 
+    def remove_null(d: dict) -> dict:
+        return {key: remove_null(value) if isinstance(value, dict) else value for key, value in d.items() if
+                not (value is None)}
+
     def decorator(data_class: type) -> type:
         expected_file_name = os.environ.get("MOOSE_PYTHON_DM_DUMP")
         if expected_file_name and expected_file_name == get_file(data_class):
+            output = {
+                'class_name': data_class.__name__
+            }
             if arg:
-                config_dict = asdict(arg)
-                config_json = json.dumps(config_dict, cls=CustomEncoder, indent=4)
-                print(f'{{"name": "{dataclass.__name__}Config", "config": {config_json}}}___DATAMODELCONFIG___')
-            else:
-                print(f'{{"name": "{dataclass.__name__}Config"}}___DATAMODELCONFIG___')
+                output["config"] = remove_null(asdict(arg))
+            output_json = json.dumps(output, cls=CustomEncoder, indent=4)
+            print(output_json, "___DATAMODELCONFIG___", sep="")
         return data_class
 
     if isinstance(arg, type):

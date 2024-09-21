@@ -4,7 +4,7 @@ use std::path::{absolute, Path};
 use tokio::io::AsyncReadExt;
 
 use crate::framework::typescript::export_collectors::get_data_model_configs;
-use log::info;
+use log::{info, warn};
 use serde::Deserialize;
 use serde::Serialize;
 use std::ffi::OsStr;
@@ -73,7 +73,7 @@ pub enum ModelConfigurationError {
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default, Hash)]
 pub struct PythonDataModelConfig {
     #[serde(default)]
-    pub name: String,
+    pub class_name: String,
     #[serde(default)]
     pub config: DataModelConfig,
 }
@@ -95,15 +95,22 @@ async fn execute_python_model_file_for_config(
     let mut raw_string_stdout: String = String::new();
 
     if stdout.read_to_string(&mut raw_string_stdout).await.is_err() {
+        warn!("Unable to read stdout for python config dump");
         return Ok(HashMap::new());
     }
 
     let configs: HashMap<ConfigIdentifier, DataModelConfig> = raw_string_stdout
         .split("___DATAMODELCONFIG___")
         .filter_map(|entry| {
-            let raw_value = serde_json::from_str(entry).ok()?;
-            let config: PythonDataModelConfig = serde_json::from_value(raw_value).ok()?;
-            Some((config.name.clone(), config.config))
+            println!("geez{}geez", entry);
+            let config = match serde_json::from_str::<PythonDataModelConfig>(entry) {
+                Ok(config) => Some(config),
+                Err(err) => {
+                    println!("blahhhhhhh{}", err);
+                    None
+                }
+            }?;
+            Some((config.class_name, config.config))
         })
         .collect();
 
@@ -133,9 +140,11 @@ pub async fn get(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn test_partial_config() {
-        let config: super::DataModelConfig =
+        let config: DataModelConfig =
             serde_json::from_str("{\"storage\":{\"enabled\": true}}").unwrap();
         println!("{:?}", config)
     }

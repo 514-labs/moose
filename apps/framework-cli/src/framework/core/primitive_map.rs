@@ -102,7 +102,7 @@ fn check_no_empty_nested(
     }
 }
 
-fn check_ordering(dm: &DataModel) -> Result<(), PrimitiveMapLoadingError> {
+fn check_invalid_table(dm: &DataModel) -> Result<(), PrimitiveMapLoadingError> {
     let mut no_ordering = dm.config.storage.order_by_fields.is_empty();
     for column in dm.columns.iter() {
         if column.primary_key {
@@ -126,7 +126,7 @@ impl PrimitiveMap {
     fn validate(&self) -> Result<(), PrimitiveMapLoadingError> {
         for dm in self.datamodels.iter() {
             if dm.config.storage.enabled {
-                check_ordering(dm)?
+                check_invalid_table(dm)?
             }
         }
         Ok(())

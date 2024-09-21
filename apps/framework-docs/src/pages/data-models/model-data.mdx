@@ -17,7 +17,9 @@ The schema defines the names and data types of the properties in your Data Model
 </TypeScript>
 
 <Python>
+
 ### `Key[T: (str, int)] = T`
+
 </Python>
 
 The `Key` type is specific to Moose and is used to define a [primary key](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree#primary-keys-and-indexes-in-queries) in the OLAP storage table for your Data Model. If your Data Model requires a composite key, you can apply the `Key` type to multiple columns.

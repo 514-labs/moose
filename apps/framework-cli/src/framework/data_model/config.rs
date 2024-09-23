@@ -65,6 +65,7 @@ pub struct DataModelConfig {
 #[non_exhaustive]
 pub enum ModelConfigurationError {
     TypescriptRunner(#[from] crate::framework::typescript::export_collectors::ExportCollectorError),
+    #[error("Failed to get the Data Model configuration with Python\n{0}")]
     PythonRunner(String),
 }
 

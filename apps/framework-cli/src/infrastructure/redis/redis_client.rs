@@ -54,7 +54,7 @@ use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
-use tokio::time::{interval, timeout, Duration};
+use tokio::time::{interval, Duration};
 use uuid::Uuid;
 
 const REDIS_KEY_PREFIX: &str = "MS"; // MooSe
@@ -69,7 +69,7 @@ pub struct RedisClient {
     service_name: String,
     instance_id: String,
     lock_key: String,
-    is_leader: Arc<Mutex<bool>>,
+    is_leader: bool,
     presence_task: Option<JoinHandle<()>>,
     lock_renewal_task: Option<JoinHandle<()>>,
 }
@@ -110,13 +110,13 @@ impl RedisClient {
             service_name: service_name.to_string(),
             instance_id,
             lock_key,
-            is_leader: Arc::new(Mutex::new(false)),
+            is_leader: false,
             presence_task: None,
             lock_renewal_task: None,
         })
     }
 
-    pub async fn presence_update(&self) -> Result<()> {
+    pub async fn presence_update(&mut self) -> Result<()> {
         let key = format!(
             "{}::{}::{}::presence",
             REDIS_KEY_PREFIX, self.service_name, self.instance_id
@@ -126,54 +126,60 @@ impl RedisClient {
             .context("Failed to get current time")?
             .as_secs()
             .to_string();
-        let result = {
-            let mut conn = self.connection.lock().await;
-            conn.set_ex(&key, &now, KEY_EXPIRATION_TTL).await
-        };
-
-        result.context("Failed to update presence")
+        self.connection
+            .lock()
+            .await
+            .set_ex(&key, &now, KEY_EXPIRATION_TTL)
+            .await
+            .context("Failed to update presence")
     }
 
-    pub async fn attempt_leadership(&self) -> Result<bool> {
-        let mut conn = self.connection.lock().await;
-        let result: bool = conn
+    pub async fn attempt_leadership(&mut self) -> Result<bool> {
+        let result: bool = self
+            .connection
+            .lock()
+            .await
             .set_nx(&self.lock_key, &self.instance_id)
             .await
             .context("Failed to attempt leadership")?;
         if result {
-            conn.expire(&self.lock_key, LOCK_TTL)
+            self.connection
+                .lock()
+                .await
+                .expire(&self.lock_key, LOCK_TTL)
                 .await
                 .context("Failed to set expiration on leadership lock")?;
         }
 
-        let mut is_leader = self.is_leader.lock().await;
-        *is_leader = result;
+        self.is_leader = result;
 
-        if *is_leader {
+        if self.is_leader {
             info!("Instance {} became leader", self.instance_id);
             self.renew_lock().await?;
         }
 
-        Ok(*is_leader)
+        Ok(self.is_leader)
     }
 
-    pub async fn renew_lock(&self) -> Result<bool> {
-        let mut conn = self.connection.lock().await;
-        let extended: bool = conn
+    pub async fn renew_lock(&mut self) -> Result<bool> {
+        let extended: bool = self
+            .connection
+            .lock()
+            .await
             .expire(&self.lock_key, LOCK_TTL)
             .await
             .context("Failed to renew leadership lock")?;
 
         if !extended {
             info!("Failed to extend leader lock, lost leadership");
-            let mut is_leader = self.is_leader.lock().await;
-            *is_leader = false;
+            self.is_leader = false;
         }
 
         Ok(extended)
     }
 
-    pub async fn release_lock(&self) -> Result<()> {
+    // Change the method signature to &mut self
+    pub async fn release_lock(&mut self) -> Result<()> {
         let script = Script::new(
             r"
             if redis.call('get', KEYS[1]) == ARGV[1] then
@@ -184,23 +190,21 @@ impl RedisClient {
         ",
         );
 
-        let mut conn = self.connection.lock().await;
-        let _: () = script
+        script
             .key(&self.lock_key)
             .arg(&self.instance_id)
-            .invoke_async(&mut *conn)
+            .invoke_async(&mut *self.connection.lock().await)
             .await
             .context("Failed to release leadership lock")?;
 
         info!("Instance {} released leadership", self.instance_id);
-        let mut is_leader = self.is_leader.lock().await;
-        *is_leader = false;
+        self.is_leader = false;
 
         Ok(())
     }
 
-    pub async fn is_current_leader(&self) -> bool {
-        *self.is_leader.lock().await
+    pub fn is_current_leader(&self) -> bool {
+        self.is_leader
     }
 
     pub fn get_instance_id(&self) -> &str {
@@ -220,18 +224,20 @@ impl RedisClient {
             "{}::{}::{}::msgchannel",
             REDIS_KEY_PREFIX, self.service_name, target_instance_id
         );
-        let mut conn = self.pub_sub.lock().await;
-        let _: () = conn
+        self.pub_sub
+            .lock()
+            .await
             .publish(&channel, message)
             .await
             .context("Failed to send message to instance")?;
         Ok(())
     }
 
-    pub async fn broadcast_message(&self, message: &str) -> Result<()> {
+    pub async fn broadcast_message(&mut self, message: &str) -> Result<()> {
         let channel = format!("{}::{}::msgchannel", REDIS_KEY_PREFIX, self.service_name);
-        let mut conn = self.pub_sub.lock().await;
-        let _: () = conn
+        self.pub_sub
+            .lock()
+            .await
             .publish(&channel, message)
             .await
             .context("Failed to broadcast message")?;
@@ -241,30 +247,34 @@ impl RedisClient {
     pub async fn get_queue_message(&self) -> Result<Option<String>> {
         let source_queue = format!("{}::{}::mqrecieved", REDIS_KEY_PREFIX, self.service_name);
         let destination_queue = format!("{}::{}::mqprocess", REDIS_KEY_PREFIX, self.service_name);
-        let mut conn = self.connection.lock().await;
-        conn.rpoplpush(&source_queue, &destination_queue)
+        self.connection
+            .lock()
+            .await
+            .rpoplpush(&source_queue, &destination_queue)
             .await
             .context("Failed to get queue message")
     }
 
     pub async fn post_queue_message(&self, message: &str) -> Result<()> {
         let queue = format!("{}::{}::mqrecieved", REDIS_KEY_PREFIX, self.service_name);
-        let mut conn = self.connection.lock().await;
-        let _: () = conn
+        self.connection
+            .lock()
+            .await
             .rpush(&queue, message)
             .await
             .context("Failed to post queue message")?;
         Ok(())
     }
 
-    pub async fn mark_queue_message(&self, message: &str, success: bool) -> Result<()> {
+    pub async fn mark_queue_message(&mut self, message: &str, success: bool) -> Result<()> {
         let in_progress_queue =
             format!("{}::{}::mqinprogress", REDIS_KEY_PREFIX, self.service_name);
         let incomplete_queue = format!("{}::{}::mqincomplete", REDIS_KEY_PREFIX, self.service_name);
 
-        let mut conn = self.connection.lock().await;
         if success {
-            let _: () = conn
+            self.connection
+                .lock()
+                .await
                 .lrem(&in_progress_queue, 0, message)
                 .await
                 .context("Failed to mark queue message as successful")?;
@@ -275,7 +285,7 @@ impl RedisClient {
                 .rpush(&incomplete_queue, message);
 
             pipeline
-                .query_async(&mut *conn)
+                .query_async(&mut *self.connection.lock().await)
                 .await
                 .context("Failed to mark queue message as incomplete")?;
         }
@@ -285,34 +295,37 @@ impl RedisClient {
     pub async fn start_periodic_tasks(&mut self) {
         info!("Starting periodic tasks");
 
-        let presence_client = Arc::new(self.clone());
-        let lock_renewal_client = Arc::clone(&presence_client);
+        let mut presence_client = self.clone(); // Ensure presence_client is mutable
+        let mut lock_renewal_client = self.clone(); // Ensure lock_renewal_client is declared as mutable
 
-        tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(PRESENCE_UPDATE_INTERVAL));
-            loop {
-                interval.tick().await;
-                if let Err(e) = presence_client.presence_update().await {
-                    error!("Error updating presence: {}", e);
+        let connection = Arc::clone(&self.connection);
+        self.presence_task = Some(tokio::spawn({
+            let connection = Arc::clone(&connection);
+            async move {
+                let mut interval = interval(Duration::from_secs(PRESENCE_UPDATE_INTERVAL));
+                loop {
+                    let mut _conn = connection.lock().await;
+                    interval.tick().await;
+                    if let Err(e) = presence_client.presence_update().await {
+                        error!("Error updating presence: {}", e);
+                    }
                 }
             }
-        });
+        }));
 
-        tokio::spawn(async move {
+        self.lock_renewal_task = Some(tokio::spawn(async move {
             let mut interval = interval(Duration::from_secs(LOCK_RENEWAL_INTERVAL));
             loop {
                 interval.tick().await;
-                if lock_renewal_client.is_current_leader().await {
+                if lock_renewal_client.is_current_leader() {
                     if let Err(e) = lock_renewal_client.renew_lock().await {
                         error!("Error renewing lock: {}", e);
                     }
-                } else {
-                    if let Err(e) = lock_renewal_client.attempt_leadership().await {
-                        error!("Error attempting leadership: {}", e);
-                    }
+                } else if let Err(e) = lock_renewal_client.attempt_leadership().await {
+                    error!("Error attempting leadership: {}", e);
                 }
             }
-        });
+        }));
 
         info!("Periodic tasks started");
     }
@@ -327,10 +340,9 @@ impl RedisClient {
         Ok(())
     }
 
-    pub async fn check_connection(&self) -> Result<()> {
-        let mut conn = self.connection.lock().await;
+    pub async fn check_connection(&mut self) -> Result<()> {
         redis::cmd("PING")
-            .query_async::<_, String>(&mut *conn)
+            .query_async::<_, String>(&mut *self.connection.lock().await)
             .await
             .context("Failed to ping Redis server")?;
         Ok(())
@@ -340,12 +352,12 @@ impl RedisClient {
 impl Clone for RedisClient {
     fn clone(&self) -> Self {
         Self {
-            connection: self.connection.clone(),
-            pub_sub: self.pub_sub.clone(),
+            connection: Arc::clone(&self.connection),
+            pub_sub: Arc::clone(&self.pub_sub),
             service_name: self.service_name.clone(),
             instance_id: self.instance_id.clone(),
             lock_key: self.lock_key.clone(),
-            is_leader: self.is_leader.clone(),
+            is_leader: self.is_leader,
             presence_task: None,
             lock_renewal_task: None,
         }
@@ -361,7 +373,7 @@ impl Drop for RedisClient {
                 if let Err(e) = self_clone.stop_periodic_tasks().await {
                     error!("Error stopping periodic tasks: {}", e);
                 }
-                if self_clone.is_current_leader().await {
+                if self_clone.is_current_leader() {
                     if let Err(e) = self_clone.release_lock().await {
                         error!("Error releasing lock: {}", e);
                     }
@@ -385,71 +397,118 @@ mod tests {
             .expect("Failed to create Redis client");
 
         // Test set and get
-        let mut conn = client.connection.lock().await;
-        let _: () = conn
+        let _: () = client
+            .connection
+            .lock()
+            .await
             .set("test_key", "test_value")
             .await
             .expect("Failed to set value");
-        let result: Option<String> = conn.get("test_key").await.expect("Failed to get value");
+        let result: Option<String> = client
+            .connection
+            .lock()
+            .await
+            .get("test_key")
+            .await
+            .expect("Failed to get value");
         assert_eq!(result, Some("test_value".to_string()));
 
         // Test delete
-        let _: () = conn.del("test_key").await.expect("Failed to delete key");
-        let result: Option<String> = conn
+        let _: () = client
+            .connection
+            .lock()
+            .await
+            .del("test_key")
+            .await
+            .expect("Failed to delete key");
+        let result: Option<String> = client
+            .connection
+            .lock()
+            .await
             .get("test_key")
             .await
             .expect("Failed to get value after deletion");
         assert_eq!(result, None);
 
         // Test set_ex
-        let _: () = conn
+        let _: () = client
+            .connection
+            .lock()
+            .await
             .set_ex("test_ex_key", "test_ex_value", 1)
             .await
             .expect("Failed to set value with expiry");
-        let result: Option<String> = conn
+        let result: Option<String> = client
+            .connection
+            .lock()
+            .await
             .get("test_ex_key")
             .await
             .expect("Failed to get value with expiry");
         assert_eq!(result, Some("test_ex_value".to_string()));
         tokio::time::sleep(Duration::from_secs(2)).await;
-        let result: Option<String> = conn
+        let result: Option<String> = client
+            .connection
+            .lock()
+            .await
             .get("test_ex_key")
             .await
             .expect("Failed to get expired value");
         assert_eq!(result, None);
 
         // Test rpush and rpoplpush
-        let _: () = conn
+        let _: () = client
+            .connection
+            .lock()
+            .await
             .rpush("source_list", "item1")
             .await
             .expect("Failed to push to list");
-        let _: () = conn
+        let _: () = client
+            .connection
+            .lock()
+            .await
             .rpush("source_list", "item2")
             .await
             .expect("Failed to push to list");
-        let result: Option<String> = conn
+        let result: Option<String> = client
+            .connection
+            .lock()
+            .await
             .rpoplpush("source_list", "dest_list")
             .await
             .expect("Failed to rpoplpush");
         assert_eq!(result, Some("item2".to_string()));
 
         // Test lrem
-        let _: () = conn
+        let _: () = client
+            .connection
+            .lock()
+            .await
             .lrem("dest_list", 0, "item2")
             .await
             .expect("Failed to remove from list");
-        let result: Option<String> = conn
+        let result: Option<String> = client
+            .connection
+            .lock()
+            .await
             .rpoplpush("dest_list", "source_list")
             .await
             .expect("Failed to rpoplpush after lrem");
         assert_eq!(result, None);
 
         // Cleanup
-        let _: () = conn
+        let _: () = client
+            .connection
+            .lock()
+            .await
             .del("dest_list")
             .await
             .expect("Failed to delete dest_list");
-        let _: () = conn
+        let _: () = client
+            .connection
+            .lock()
+            .await
             .del("source_list")
             .await
             .expect("Failed to delete source_list");

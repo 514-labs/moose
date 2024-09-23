@@ -1,10 +1,8 @@
 use std::collections::{HashMap, HashSet};
 use std::path::{absolute, Path};
 
-use tokio::io::AsyncReadExt;
-
 use crate::framework::typescript::export_collectors::get_data_model_configs;
-use log::{info, warn};
+use log::info;
 use serde::Deserialize;
 use serde::Serialize;
 use std::ffi::OsStr;
@@ -67,6 +65,7 @@ pub struct DataModelConfig {
 #[non_exhaustive]
 pub enum ModelConfigurationError {
     TypescriptRunner(#[from] crate::framework::typescript::export_collectors::ExportCollectorError),
+    #[error("Failed to get the Data Model configuration with Python\n{0}")]
     PythonRunner(String),
 }
 
@@ -87,17 +86,18 @@ async fn execute_python_model_file_for_config(
         .await
         .map_err(|e| ModelConfigurationError::PythonRunner(e.to_string()))?;
 
-    let mut stdout = match process.stdout {
-        Some(handle) => handle,
-        None => return Ok(HashMap::new()),
-    };
+    let output = process
+        .wait_with_output()
+        .await
+        .map_err(|e| ModelConfigurationError::PythonRunner(e.to_string()))?;
 
-    let mut raw_string_stdout: String = String::new();
-
-    if stdout.read_to_string(&mut raw_string_stdout).await.is_err() {
-        warn!("Unable to read stdout for python config dump");
-        return Ok(HashMap::new());
+    if !output.status.success() {
+        return Err(ModelConfigurationError::PythonRunner(
+            String::from_utf8_lossy(&output.stderr).to_string(),
+        ));
     }
+
+    let raw_string_stdout = String::from_utf8_lossy(&output.stdout);
 
     let configs: HashMap<ConfigIdentifier, DataModelConfig> = raw_string_stdout
         .split("___DATAMODELCONFIG___")

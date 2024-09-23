@@ -629,6 +629,7 @@ async fn top_command_handler(
                     check_project_name(&project_arc.name())?;
                     let result = create_streaming_function_file(
                         &project_arc,
+                        &settings.features,
                         init.source.clone(),
                         init.destination.clone(),
                     )

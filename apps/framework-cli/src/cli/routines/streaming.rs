@@ -1,9 +1,10 @@
 use super::{RoutineFailure, RoutineSuccess};
 use crate::cli::display::{Message, MessageType};
-use crate::framework::core::code_loader::{
-    load_framework_objects, FrameworkObject, FrameworkObjectVersions,
-};
+use crate::cli::settings::Features;
+use crate::framework::core::code_loader::{load_framework_objects, FrameworkObjectVersions};
+use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::data_model::model::DataModel;
+use crate::framework::languages::SupportedLanguages;
 use crate::framework::streaming;
 use crate::project::Project;
 use itertools::Either;
@@ -13,36 +14,73 @@ use std::{fs, io::Write, process::Stdio};
 
 pub async fn create_streaming_function_file(
     project: &Project,
+    features: &Features,
     source: String,
     destination: String,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let framework_objects = load_framework_objects(project).await;
-    let empty_map = HashMap::new();
-    let (models, error_occurred) = match &framework_objects {
-        Ok(framework_objects) => (&framework_objects.current_models.models, false),
-        Err(err) => {
-            debug!(
-                "Failed to crawl schema while creating streaming function: {:?}",
-                err
-            );
-            (&empty_map, true)
+    let (models, error_occurred) = if features.core_v2 {
+        match PrimitiveMap::load(project).await {
+            Ok(primitives) => {
+                let data_model_map: HashMap<String, DataModel> = primitives
+                    .datamodels
+                    .iter()
+                    .filter_map(|dm| {
+                        if dm.version == project.cur_version() {
+                            Some((dm.name.clone(), dm.clone()))
+                        } else {
+                            None
+                        }
+                    })
+                    .collect();
+                (data_model_map, false)
+            }
+            Err(err) => {
+                debug!(
+                    "Failed to load primitives while creating streaming function: {:?}",
+                    err
+                );
+                (HashMap::new(), true)
+            }
+        }
+    } else {
+        let framework_objects = load_framework_objects(project).await;
+        match framework_objects {
+            Ok(framework_objects) => (
+                framework_objects
+                    .current_models
+                    .models
+                    .into_iter()
+                    .map(|(name, fo)| (name, fo.data_model))
+                    .collect(),
+                false,
+            ),
+            Err(err) => {
+                debug!(
+                    "Failed to crawl schema while creating streaming function: {:?}",
+                    err
+                );
+                (HashMap::new(), true)
+            }
         }
     };
 
     fn try_get_from_models<'a>(
         name: &'a str,
-        models: &'a HashMap<String, FrameworkObject>,
+        models: &'a HashMap<String, DataModel>,
     ) -> Either<&'a DataModel, &'a str> {
         match models.get(name) {
-            None => Either::Right(name),
-            Some(framework_object) => Either::Left(&framework_object.data_model),
+            None => {
+                println!("No model named '{}' found", name);
+                Either::Right(name)
+            }
+            Some(data_model) => Either::Left(data_model),
         }
     }
 
     let function_file_content = streaming::generate::generate(
         project,
-        try_get_from_models(&source, models),
-        try_get_from_models(&destination, models),
+        try_get_from_models(&source, &models),
+        try_get_from_models(&destination, &models),
     );
 
     let function_file_path = project.streaming_func_dir().join(format!(
@@ -82,7 +120,7 @@ pub async fn create_streaming_function_file(
     if error_occurred || !models.contains_key(&source) || !models.contains_key(&destination) {
         verify_datamodels_with_grep(project, &source, &destination);
     } else {
-        verify_datamodels_with_framework_objects(models, &source, &destination);
+        verify_datamodels_with_framework_objects(&models, &source, &destination);
     }
 
     Ok(RoutineSuccess {
@@ -170,9 +208,18 @@ fn verify_datamodels_with_grep(project: &Project, source: &str, destination: &st
 fn grep_datamodel(project: &Project, datamodel: &str) -> anyhow::Result<()> {
     let child = std::process::Command::new("grep")
         .arg("-r")
-        .arg("--include=*.ts")
+        .arg(format!("--include=*.{}", project.language.extension()))
         .arg("-E")
-        .arg(format!("export\\s+interface\\s+\\b{}\\b", &datamodel))
+        .arg(match project.language {
+            SupportedLanguages::Typescript => {
+                format!("export\\s+interface\\s+\\b{}\\b", &datamodel)
+            }
+            SupportedLanguages::Python => {
+                // would be great to match `@dataclass` and `moose_data_model`
+                // but no multiline
+                format!("class\\s+\\b{}\\b", &datamodel)
+            }
+        })
         .arg(project.data_models_dir())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -191,7 +238,7 @@ fn grep_datamodel(project: &Project, datamodel: &str) -> anyhow::Result<()> {
 }
 
 fn verify_datamodels_with_framework_objects(
-    models: &HashMap<String, FrameworkObject>,
+    models: &HashMap<String, DataModel>,
     source: &str,
     destination: &str,
 ) {

@@ -178,7 +178,6 @@ impl RedisClient {
         Ok(extended)
     }
 
-    // Change the method signature to &mut self
     pub async fn release_lock(&mut self) -> Result<()> {
         let script = Script::new(
             r"
@@ -295,16 +294,11 @@ impl RedisClient {
     pub async fn start_periodic_tasks(&mut self) {
         info!("Starting periodic tasks");
 
-        let mut presence_client = self.clone(); // Ensure presence_client is mutable
-        let mut lock_renewal_client = self.clone(); // Ensure lock_renewal_client is declared as mutable
-
-        let connection = Arc::clone(&self.connection);
         self.presence_task = Some(tokio::spawn({
-            let connection = Arc::clone(&connection);
+            let mut presence_client = self.clone();
             async move {
                 let mut interval = interval(Duration::from_secs(PRESENCE_UPDATE_INTERVAL));
                 loop {
-                    let mut _conn = connection.lock().await;
                     interval.tick().await;
                     if let Err(e) = presence_client.presence_update().await {
                         error!("Error updating presence: {}", e);
@@ -313,16 +307,17 @@ impl RedisClient {
             }
         }));
 
-        self.lock_renewal_task = Some(tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(LOCK_RENEWAL_INTERVAL));
-            loop {
-                interval.tick().await;
-                if lock_renewal_client.is_current_leader() {
-                    if let Err(e) = lock_renewal_client.renew_lock().await {
-                        error!("Error renewing lock: {}", e);
+        self.lock_renewal_task = Some(tokio::spawn({
+            let mut lock_renewal_client = self.clone();
+            async move {
+                let mut interval = interval(Duration::from_secs(LOCK_RENEWAL_INTERVAL));
+                loop {
+                    interval.tick().await;
+                    if lock_renewal_client.is_current_leader() {
+                        if let Err(e) = lock_renewal_client.renew_lock().await {
+                            error!("Error renewing lock: {}", e);
+                        }
                     }
-                } else if let Err(e) = lock_renewal_client.attempt_leadership().await {
-                    error!("Error attempting leadership: {}", e);
                 }
             }
         }));
@@ -368,7 +363,7 @@ impl Drop for RedisClient {
     fn drop(&mut self) {
         info!("RedisClient is being dropped");
         if let Ok(rt) = tokio::runtime::Handle::try_current() {
-            let mut self_clone = self.clone(); // Ensure self_clone is mutable
+            let mut self_clone = self.clone();
             rt.spawn(async move {
                 if let Err(e) = self_clone.stop_periodic_tasks().await {
                     error!("Error stopping periodic tasks: {}", e);

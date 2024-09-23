@@ -126,10 +126,6 @@ impl RedisClient {
             .context("Failed to get current time")?
             .as_secs()
             .to_string();
-
-        info!("Attempting to update presence for {}", self.instance_id);
-        info!("First getting redis connection lock");
-
         self.connection
             .lock()
             .await
@@ -141,9 +137,6 @@ impl RedisClient {
     pub async fn attempt_leadership(&mut self) -> Result<bool> {
         let lock_key = self.lock_key.clone();
         let instance_id = self.instance_id.clone();
-
-        info!("Attempting leadership for {}", self.instance_id);
-        info!("First getting redis connection lock");
 
         let result: bool = self
             .connection

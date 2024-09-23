@@ -150,7 +150,8 @@ impl RedisClient {
             .context("Failed to attempt leadership")?;
 
         if result {
-            self.connection
+            let _: () = self
+                .connection
                 .lock()
                 .await
                 .expire(&lock_key, LOCK_TTL)
@@ -196,7 +197,7 @@ impl RedisClient {
         ",
         );
 
-        script
+        let _: () = script
             .key(&self.lock_key)
             .arg(&self.instance_id)
             .invoke_async(&mut *self.connection.lock().await)
@@ -230,7 +231,8 @@ impl RedisClient {
             "{}::{}::{}::msgchannel",
             REDIS_KEY_PREFIX, self.service_name, target_instance_id
         );
-        self.pub_sub
+        let _: () = self
+            .pub_sub
             .lock()
             .await
             .publish(&channel, message)
@@ -241,7 +243,8 @@ impl RedisClient {
 
     pub async fn broadcast_message(&mut self, message: &str) -> Result<()> {
         let channel = format!("{}::{}::msgchannel", REDIS_KEY_PREFIX, self.service_name);
-        self.pub_sub
+        let _: () = self
+            .pub_sub
             .lock()
             .await
             .publish(&channel, message)
@@ -263,7 +266,8 @@ impl RedisClient {
 
     pub async fn post_queue_message(&self, message: &str) -> Result<()> {
         let queue = format!("{}::{}::mqrecieved", REDIS_KEY_PREFIX, self.service_name);
-        self.connection
+        let _: () = self
+            .connection
             .lock()
             .await
             .rpush(&queue, message)
@@ -278,7 +282,8 @@ impl RedisClient {
         let incomplete_queue = format!("{}::{}::mqincomplete", REDIS_KEY_PREFIX, self.service_name);
 
         if success {
-            self.connection
+            let _: () = self
+                .connection
                 .lock()
                 .await
                 .lrem(&in_progress_queue, 0, message)
@@ -290,7 +295,7 @@ impl RedisClient {
                 .lrem(&in_progress_queue, 0, message)
                 .rpush(&incomplete_queue, message);
 
-            pipeline
+            let _: () = pipeline
                 .query_async(&mut *self.connection.lock().await)
                 .await
                 .context("Failed to mark queue message as incomplete")?;

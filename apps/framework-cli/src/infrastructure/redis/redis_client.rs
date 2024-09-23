@@ -139,18 +139,25 @@ impl RedisClient {
     }
 
     pub async fn attempt_leadership(&mut self) -> Result<bool> {
+        let lock_key = self.lock_key.clone();
+        let instance_id = self.instance_id.clone();
+
+        info!("Attempting leadership for {}", self.instance_id);
+        info!("First getting redis connection lock");
+
         let result: bool = self
             .connection
             .lock()
             .await
-            .set_nx(&self.lock_key, &self.instance_id)
+            .set_nx(&lock_key, &instance_id)
             .await
             .context("Failed to attempt leadership")?;
+
         if result {
             self.connection
                 .lock()
                 .await
-                .expire(&self.lock_key, LOCK_TTL)
+                .expire(&lock_key, LOCK_TTL)
                 .await
                 .context("Failed to set expiration on leadership lock")?;
         }
@@ -315,11 +322,29 @@ impl RedisClient {
             let mut lock_renewal_client = self.clone();
             async move {
                 let mut interval = interval(Duration::from_secs(LOCK_RENEWAL_INTERVAL));
+
+                // First attempt to gain leadership
+                match lock_renewal_client.attempt_leadership().await {
+                    Ok(is_leader) => {
+                        if is_leader {
+                            info!("Successfully gained leadership");
+                        } else {
+                            info!("Failed to gain leadership initially");
+                        }
+                    }
+                    Err(e) => error!("Error attempting leadership: {}", e),
+                }
+
                 loop {
                     interval.tick().await;
                     if lock_renewal_client.is_current_leader() {
                         if let Err(e) = lock_renewal_client.renew_lock().await {
                             error!("Error renewing lock: {}", e);
+                        }
+                    } else {
+                        // Attempt to gain leadership if not currently the leader
+                        if let Err(e) = lock_renewal_client.attempt_leadership().await {
+                            error!("Error attempting leadership: {}", e);
                         }
                     }
                 }

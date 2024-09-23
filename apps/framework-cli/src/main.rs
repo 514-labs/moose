@@ -9,9 +9,6 @@ pub mod utilities;
 // before Tokio takes over the main thread.
 // REF: https://docs.sentry.io/platforms/rust/#asynchronous
 fn main() {
-    // Initialize the tokio console subscriber
-    console_subscriber::init();
-
     let envionment = if cfg!(debug_assertions) {
         "development"
     } else {

@@ -281,7 +281,7 @@ pub async fn start_development_mode(
     );
 
     let mut redis_client = RedisClient::new(&project.name()).await?;
-    redis_client.start_periodic_tasks().await;
+    redis_client.start_periodic_tasks();
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(
@@ -477,7 +477,8 @@ pub async fn start_production_mode(
     );
 
     let mut redis_client = RedisClient::new(&project.name()).await?;
-    redis_client.start_periodic_tasks().await;
+    redis_client.start_periodic_tasks();
+    redis_client.attempt_leadership().await?;
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(

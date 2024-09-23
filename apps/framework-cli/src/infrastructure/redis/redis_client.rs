@@ -126,6 +126,10 @@ impl RedisClient {
             .context("Failed to get current time")?
             .as_secs()
             .to_string();
+
+        info!("Attempting to update presence for {}", self.instance_id);
+        info!("First getting redis connection lock");
+
         self.connection
             .lock()
             .await
@@ -291,7 +295,7 @@ impl RedisClient {
         Ok(())
     }
 
-    pub async fn start_periodic_tasks(&mut self) {
+    pub fn start_periodic_tasks(&mut self) {
         info!("Starting periodic tasks");
 
         self.presence_task = Some(tokio::spawn({

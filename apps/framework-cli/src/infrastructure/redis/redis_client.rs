@@ -138,6 +138,9 @@ impl RedisClient {
         let lock_key = self.lock_key.clone();
         let instance_id = self.instance_id.clone();
 
+        info!("Attempting leadership for {}", self.instance_id);
+        info!("First getting redis connection lock");
+
         let result: bool = self
             .connection
             .lock()

@@ -1,18 +1,41 @@
-import { Callout } from "../components";
-import { Tabs } from "nextra/components";
+import { Callout, TypeScript, Python, LanguageSwitcher, TypeScriptInline, PythonInline } from "../components";
+import { Tabs, FileTree } from "nextra/components";
 
 # Introduction to Consumption APIs
+<LanguageSwitcher />
 
-Moose **Consumption APIs** offer a powerful and flexible way to create custom API endpoints, allowing your applications to access and retrieve data from your OLAP database. These APIs act as the final layer in your Moose application, dynamically generating and executing SQL queries based on parameters received from incoming requests from your data consumers.
+Consumption APIs offer a powerful and flexible way to create custom API endpoints, allowing your applications to access and retrieve data from your OLAP database. These APIs act as the final layer in your Moose application, dynamically generating and executing SQL queries based on parameters received from incoming requests from your data consumers.
 
 ## Core Concepts
 
 ### File and Folder Conventions
 
-Consumption APIs are defined as individual files within the `/apis` folder of your Moose application. These files, written in TypeScript (`.ts`) or Python (`.py`), are automatically mapped to API endpoints based on their filenames.
+Consumption APIs are defined as individual <TypeScriptInline>`.ts`</TypeScriptInline><PythonInline>`.py`</PythonInline> files within the `/apis` folder of your Moose application. These files are automatically mapped to API endpoints based on their filenames.
+<TypeScript>
+<FileTree>
+<FileTree.Folder name="app" open>
+<FileTree.Folder name="datamodels"/>
+<FileTree.Folder name="functions" />
+<FileTree.Folder name="blocks" />
+<FileTree.Folder name="apis" open>
+<FileTree.File name="myMooseApi.ts" />
+</FileTree.Folder>
+</FileTree.Folder>
+</FileTree>
+</TypeScript>
+<Python>
+
+<FileTree>
+<FileTree.Folder name="app" open>
+<FileTree.Folder name="apis" />
+<FileTree.File name="myMooseApi.py" />
+</FileTree.Folder>
+</FileTree>
+</Python>
+
 
 <Callout type="info" title="Example">
-  A file named `myMooseApi.ts` would correspond to the `/consumption/myMooseApi`
+  A file named <TypeScriptInline>`myMooseApi.ts`</TypeScriptInline><PythonInline>`myMooseApi.py`</PythonInline> would correspond to the `/consumption/myMooseApi`
   endpoint.
 </Callout>
 
@@ -25,13 +48,9 @@ Each API file contains a route handler function that processes requests to its c
 3. Executing the queries against your database
 4. Processing and formatting the results before sending the response
 
-#### Language-Specific Conventions
 
-The definition of route handler functions follows language-specific conventions:
-
-<Tabs items={["Typescript", "Python"]}>
-  <Tabs.Tab>
- For Typescript, you must export the function as the default export of the file:
+<TypeScript>
+ This route hanlder function must be the default export of the file:
   ```ts filename="/apis/dailyActiveUsers.ts" copy {8}
   import { ConsumptionUtil } from "@514labs/moose-lib";
 
@@ -54,11 +73,11 @@ sql`SELECT
 );
 }
 
-````
-</Tabs.Tab>
+```
+</TypeScript>
 
-<Tabs.Tab>
-For Python, you must define a single function named `run()` in the file.
+<Python>
+Consumption APIs are defined as a function named `run()` in the file:
 ```python filename="/apis/dailyActiveUsers.py" copy {1}
 def run(client, params):
     minDailyActiveUsers = int(params.get('minDailyActiveUsers', [0])[0])
@@ -79,10 +98,8 @@ def run(client, params):
         }
     )
 
-````
-
-  </Tabs.Tab>
-</Tabs>
+```
+</Python>
 
 #### Query Parameters and Dynamic Data Retrieval
 

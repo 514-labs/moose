@@ -1,5 +1,5 @@
 import { Steps } from "nextra/components";
-import { Callout, LanguageSwitcher, TypeScript, Python, TypeScriptInline, PythonInline } from "../../components";
+import { Callout, LanguageSwitcher, TypeScript, Python } from "../../components";
 
 # Implementing Streaming Functions
 
@@ -68,7 +68,7 @@ streaming_function = StreamingFunction(
 
 ### Data Validation and Filtering
 
-By returning <TypeScriptInline>`null`</TypeScriptInline><PythonInline>`None`</PythonInline> you can discard the data.
+By returning <TypeScript NodeType="span">`null`</TypeScript><Python NodeType="span">`None`</Python> you can discard the data.
 
 <TypeScript>
 ```ts filename="/functions/SourceDataModel__ValidatedDestinationDataModel.ts" copy {12}
@@ -115,7 +115,7 @@ streaming_function = StreamingFunction(
 </Python>
 
 ### Data Augmentation with External API
-You can use the <TypeScriptInline>`fetch`</TypeScriptInline><PythonInline>`requests`</PythonInline> module to enrich your source data with additional data from an external API.
+You can use the <TypeScript NodeType="span">`fetch`</TypeScript><Python NodeType="span">`requests`</Python> module to enrich your source data with additional data from an external API.
 
 <TypeScript>
 ```ts filename="/functions/SourceDataModel__AugmentedDestinationDataModel.ts" copy {20}

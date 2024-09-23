@@ -81,6 +81,16 @@ my_function = StreamingFunction(
 )
 "#;
 
+pub static PYTHON_BASE_CONSUMPTION_TEMPLATE: &str = r#"
+# This file is where you can define your API templates for consuming your data
+# All query_params are passed in as strings, and are used within the sql tag to parameterize you queries
+
+from moose_lib import MooseClient
+
+def run(client: MooseClient, params):
+    return client.query("SELECT 1", { })
+"#;
+
 pub static PYTHON_BASE_API_SAMPLE: &str = r#"
 from moose_lib import MooseClient
 

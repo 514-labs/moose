@@ -284,63 +284,35 @@ impl RedisClient {
 
     pub async fn start_periodic_tasks(&mut self) {
         info!("Starting periodic tasks");
-        let self_ref = Arc::new(self.clone());
 
-        let presence_client = Arc::clone(&self_ref);
-        self.presence_task = Some(tokio::spawn(async move {
-            if let Err(e) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                async move {
-                    info!("Presence update task started");
-                    let mut interval = interval(Duration::from_secs(PRESENCE_UPDATE_INTERVAL));
-                    loop {
-                        interval.tick().await;
-                        match timeout(Duration::from_secs(10), presence_client.presence_update())
-                            .await
-                        {
-                            Ok(result) => match result {
-                                Ok(_) => info!("Presence updated successfully"),
-                                Err(e) => error!("Error updating presence: {}", e),
-                            },
-                            Err(_) => error!("Presence update timed out"),
-                        }
-                        info!("Presence update loop iteration completed");
-                        tokio::task::yield_now().await; // Yield control back to the runtime
-                    }
+        let presence_client = Arc::new(self.clone());
+        let lock_renewal_client = Arc::clone(&presence_client);
+
+        tokio::spawn(async move {
+            let mut interval = interval(Duration::from_secs(PRESENCE_UPDATE_INTERVAL));
+            loop {
+                interval.tick().await;
+                if let Err(e) = presence_client.presence_update().await {
+                    error!("Error updating presence: {}", e);
                 }
-            })) {
-                error!("Presence task panicked: {:?}", e);
             }
-        }));
+        });
 
-        let lock_renewal_client = Arc::clone(&self_ref);
-        self.lock_renewal_task = Some(tokio::spawn(async move {
-            info!("Lock renewal task started");
+        tokio::spawn(async move {
             let mut interval = interval(Duration::from_secs(LOCK_RENEWAL_INTERVAL));
             loop {
                 interval.tick().await;
                 if lock_renewal_client.is_current_leader().await {
-                    match lock_renewal_client.renew_lock().await {
-                        Ok(_) => info!("Lock renewed successfully"),
-                        Err(e) => {
-                            error!("Error renewing lock: {}", e);
-                            // Add a delay before retrying to avoid tight loop on error
-                            tokio::time::sleep(Duration::from_secs(1)).await;
-                        }
+                    if let Err(e) = lock_renewal_client.renew_lock().await {
+                        error!("Error renewing lock: {}", e);
                     }
                 } else {
-                    match lock_renewal_client.attempt_leadership().await {
-                        Ok(_) => info!("Leadership attempt completed"),
-                        Err(e) => {
-                            error!("Error attempting leadership: {}", e);
-                            // Add a delay before retrying to avoid tight loop on error
-                            tokio::time::sleep(Duration::from_secs(1)).await;
-                        }
+                    if let Err(e) = lock_renewal_client.attempt_leadership().await {
+                        error!("Error attempting leadership: {}", e);
                     }
                 }
-                info!("Lock renewal loop iteration completed");
-                tokio::task::yield_now().await; // Yield control back to the runtime
             }
-        }));
+        });
 
         info!("Periodic tasks started");
     }

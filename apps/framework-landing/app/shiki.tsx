@@ -1,12 +1,13 @@
 "use client";
 // import { codeToHtml } from "shiki";
 import { useEffect, useState } from "react";
+import { cn } from "@514labs/design-system-components/utils";
 
 const mooseTheme = {
   name: "moose-theme",
   type: "dark",
   fg: "#E0E0E0",
-  bg: "#1E1E1E",
+  bg: "#1C1C1C",
   settings: [
     {
       scope: ["comment", "punctuation.definition.comment"],
@@ -94,6 +95,7 @@ interface CodeBlockProps {
   code: string;
   language: string;
   filename: string;
+  className?: string;
 }
 
 async function shiki() {
@@ -105,6 +107,7 @@ export default function CodeBlock({
   code,
   language,
   filename,
+  className,
 }: CodeBlockProps) {
   const [highlightedCode, setHighlightedCode] = useState("");
 
@@ -116,7 +119,7 @@ export default function CodeBlock({
           {
             name: "moose-theme",
             fg: "#E0E0E0",
-            bg: "#1E1E1E",
+            bg: "#1c1c1c",
             settings: mooseTheme.settings,
           },
         ],
@@ -134,12 +137,17 @@ export default function CodeBlock({
   }, [code, language]);
 
   return (
-    <div className="overflow-y-auto w-full h-[350px] bg-[#1E1E1E] rounded-lg">
-      <div className="w-full text-sm text-primary bg-[#1A1A1A] p-3 border-b">
+    <div
+      className={cn(
+        "overflow-y-auto w-full h-[350px] bg-muted rounded-lg",
+        className,
+      )}
+    >
+      <div className="w-full text-sm text-muted-foreground bg-muted p-3 font-mono">
         {filename}
       </div>
       <div
-        className="px-3 text-sm"
+        className="px-3 text-sm bg-muted"
         dangerouslySetInnerHTML={{ __html: highlightedCode }}
       />
     </div>

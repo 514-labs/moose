@@ -4,10 +4,10 @@ use std::path::Path;
 use serde_json::Value;
 use tokio::io::AsyncReadExt;
 
-use super::ts_node::run;
+use super::bin;
 use crate::framework::data_model::config::{ConfigIdentifier, DataModelConfig};
 
-const MODULE_EXPORT_SERIALIZER: &str = include_str!("ts_scripts/moduleExportSerializer.ts");
+const EXPORT_SERIALIZER_BIN: &str = "export-serializer";
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to run code")]
@@ -21,13 +21,13 @@ pub enum ExportCollectorError {
     },
 }
 
-async fn collect_exports(file: &Path) -> Result<Value, ExportCollectorError> {
+async fn collect_exports(file: &Path, project_path: &Path) -> Result<Value, ExportCollectorError> {
     let file_path_str = file.to_str().ok_or(ExportCollectorError::Other {
         message: "Did not get a proper file path to load exports from".to_string(),
     })?;
 
     let args = vec![file_path_str];
-    let process = run(MODULE_EXPORT_SERIALIZER, &args)?;
+    let process = bin::run(EXPORT_SERIALIZER_BIN, project_path, &args)?;
 
     let mut stdout = process
         .stdout
@@ -57,9 +57,10 @@ async fn collect_exports(file: &Path) -> Result<Value, ExportCollectorError> {
 
 pub async fn get_data_model_configs(
     file: &Path,
+    project_path: &Path,
     enums: HashSet<&str>,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ExportCollectorError> {
-    let exports = collect_exports(file).await?;
+    let exports = collect_exports(file, project_path).await?;
 
     match exports {
         Value::Object(map) => {

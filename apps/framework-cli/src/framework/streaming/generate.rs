@@ -427,15 +427,11 @@ export default function run(source: UserActivityOld): UserActivity | null {
 # Add your models & start the development server to import these types
 from v0_0.models import UserActivity as UserActivityOld
 from app.datamodels.models import UserActivity
-from dataclasses import dataclass
-from typing import Callable, Optional
+from moose_lib import StreamingFunction
+from typing import Optional
 from datetime import datetime
 
-@dataclass
-class Flow:
-    run: Callable
-
-def flow(activity: UserActivityOld) -> Optional[UserActivity]:
+def fn(source: UserActivityOld) -> Optional[UserActivity]:
     return UserActivity(
         eventId="",
         timestamp="",
@@ -444,8 +440,8 @@ def flow(activity: UserActivityOld) -> Optional[UserActivity]:
         stuff="",
     )
 
-my_flow = Flow(
-    run=flow
+my_function = StreamingFunction(
+    run=fn
 )
 "#
         )

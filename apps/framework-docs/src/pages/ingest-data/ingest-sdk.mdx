@@ -1,11 +1,12 @@
-import { Callout, Tabs } from "nextra/components";
+import { Tabs } from "nextra/components";
+import { Callout } from "../../components";
 
 # Ingesting via MooseJS SDKs
 
 To facilitate the ingestion process, Moose can generate automatically a TypeScript or Python SDK for every Data Model defined in your project. The SDK provides instant type safety and schema validation, offering real-time
 feedback on the data you intend to send to Moose during instrumentation.
 
-<Callout>
+<Callout type="info">
   If your application is not written in TypeScript or Python, you can [use the
   HTTP ingest API endpoints to capture data.](./ingest-api)
 </Callout>
@@ -109,7 +110,7 @@ sendUserActivity({
 // REST OF YOUR CODE...
 ```
 
-<Callout type="info" emoji="ℹ️">
+<Callout type="info">
   We currently support Typescript and Python SDKs. Support for other languages
   is coming soon. If you'd like to see a particular language supported, please
   join our [Slack

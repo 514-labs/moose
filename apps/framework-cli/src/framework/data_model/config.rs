@@ -1,16 +1,17 @@
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::path::{absolute, Path};
 
+use crate::framework::typescript::export_collectors::get_data_model_configs;
 use log::info;
 use serde::Deserialize;
 use serde::Serialize;
 use std::ffi::OsStr;
 
-use crate::framework::typescript::export_collectors::get_data_model_configs;
+use crate::framework::python::executor::run_python_file;
 
 pub type ConfigIdentifier = String;
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
+#[derive(Debug, Copy, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub enum EndpointIngestionFormat {
     #[serde(alias = "JSON", alias = "json")]
     Json,
@@ -64,29 +65,79 @@ pub struct DataModelConfig {
 #[non_exhaustive]
 pub enum ModelConfigurationError {
     TypescriptRunner(#[from] crate::framework::typescript::export_collectors::ExportCollectorError),
+    #[error("Failed to get the Data Model configuration with Python\n{0}")]
+    PythonRunner(String),
 }
 
-// TODO: handle python
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default, Hash)]
+pub struct PythonDataModelConfig {
+    #[serde(default)]
+    pub class_name: String,
+    #[serde(default)]
+    pub config: DataModelConfig,
+}
+
+async fn execute_python_model_file_for_config(
+    path: &Path,
+) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
+    let abs_path = path.canonicalize().or_else(|_| absolute(path));
+    let path_str = abs_path.as_deref().unwrap_or(path).to_string_lossy();
+    let process = run_python_file(path, &[("MOOSE_PYTHON_DM_DUMP", &*path_str)])
+        .await
+        .map_err(|e| ModelConfigurationError::PythonRunner(e.to_string()))?;
+
+    let output = process
+        .wait_with_output()
+        .await
+        .map_err(|e| ModelConfigurationError::PythonRunner(e.to_string()))?;
+
+    if !output.status.success() {
+        return Err(ModelConfigurationError::PythonRunner(
+            String::from_utf8_lossy(&output.stderr).to_string(),
+        ));
+    }
+
+    let raw_string_stdout = String::from_utf8_lossy(&output.stdout);
+
+    let configs: HashMap<ConfigIdentifier, DataModelConfig> = raw_string_stdout
+        .split("___DATAMODELCONFIG___")
+        .filter_map(|entry| {
+            let config = serde_json::from_str::<PythonDataModelConfig>(entry).ok()?;
+            Some((config.class_name, config.config))
+        })
+        .collect();
+
+    info!("Data Model configuration for {:?}: {:?}", path, configs);
+
+    Ok(configs)
+}
+
 pub async fn get(
     path: &Path,
+    project_path: &Path,
     enums: HashSet<&str>,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ModelConfigurationError> {
     if path.extension() == Some(OsStr::new("ts")) {
-        let config = get_data_model_configs(path, enums).await?;
+        let config = get_data_model_configs(path, project_path, enums).await?;
         info!("Data Model configuration for {:?}: {:?}", path, config);
         Ok(config)
+    } else if path.extension() == Some(OsStr::new("py"))
+        && path.file_name() != Some(OsStr::new("__init__.py"))
+    {
+        return execute_python_model_file_for_config(path).await;
     } else {
-        // We currently fail transparently if the file is not a typescript file and
-        // we will use defaults values for the configuration for each data model.
+        // We will use defaults values for the configuration for each data model.
         Ok(HashMap::new())
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+
     #[test]
     fn test_partial_config() {
-        let config: super::DataModelConfig =
+        let config: DataModelConfig =
             serde_json::from_str("{\"storage\":{\"enabled\": true}}").unwrap();
         println!("{:?}", config)
     }

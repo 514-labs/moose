@@ -1,13 +1,18 @@
+use log::warn;
 use std::{
     collections::{HashMap, HashSet},
     path::Path,
 };
-
 use walkdir::WalkDir;
 
 use super::code_loader::MappingError;
-use crate::framework::core::infrastructure::table::ColumnType;
+use crate::framework::data_model::config::DataModelConfig;
 use crate::framework::data_model::DuplicateModelError;
+use crate::framework::languages::SupportedLanguages;
+use crate::framework::{
+    consumption::loader::{load_consumption, ConsumptionLoaderError},
+    core::infrastructure::table::ColumnType,
+};
 use crate::utilities::PathExt;
 use crate::{
     framework::{
@@ -36,6 +41,9 @@ pub enum PrimitiveMapLoadingError {
 
     #[error("Failed to load functions")]
     FunctionsLoading(#[from] crate::framework::streaming::model::FunctionError),
+
+    #[error("Failed to load consumption")]
+    Consumption(#[from] ConsumptionLoaderError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -94,21 +102,31 @@ fn check_no_empty_nested(
     }
 }
 
+fn check_invalid_table(dm: &DataModel) -> Result<(), PrimitiveMapLoadingError> {
+    let mut no_ordering = dm.config.storage.order_by_fields.is_empty();
+    for column in dm.columns.iter() {
+        if column.primary_key {
+            no_ordering = false
+        }
+        check_no_empty_nested(&column.data_type, vec![column.name.clone()])?;
+    }
+
+    if no_ordering {
+        Err(DataModelError::Other {
+            message: format!(
+                "Missing `Key` field or order_by_fields in data model {}",
+                dm.name
+            ),
+        })?
+    };
+    Ok(())
+}
+
 impl PrimitiveMap {
     fn validate(&self) -> Result<(), PrimitiveMapLoadingError> {
         for dm in self.datamodels.iter() {
-            let mut no_ordering = dm.config.storage.order_by_fields.is_empty();
-            for column in dm.columns.iter() {
-                if column.primary_key {
-                    no_ordering = false
-                }
-                check_no_empty_nested(&column.data_type, vec![column.name.clone()])?;
-            }
-
-            if no_ordering {
-                Err(DataModelError::Other {
-                    message: "Missing `Key` field or order_by_fields".to_string(),
-                })?
+            if dm.config.storage.enabled {
+                check_invalid_table(dm)?
             }
         }
         Ok(())
@@ -123,8 +141,6 @@ impl PrimitiveMap {
             PrimitiveMap::load_versioned(project, &version, &mut primitive_map).await?;
         }
 
-        log::debug!("Loaded Versioned primitive map: {:?}", primitive_map);
-
         // TODO add versioning for primitives other than data models.
         primitive_map.functions =
             get_all_current_streaming_functions(project, &primitive_map.datamodels)
@@ -133,6 +149,10 @@ impl PrimitiveMap {
                 .filter(|func| func.executable.ext_is_supported_lang())
                 .cloned()
                 .collect();
+
+        primitive_map.consumption = load_consumption(project)?;
+
+        log::debug!("Loaded Versioned primitive map: {:?}", primitive_map);
 
         primitive_map.validate()?;
 
@@ -167,29 +187,34 @@ impl PrimitiveMap {
         Ok(())
     }
 
+    pub fn canonicalize_model_name(name: &str) -> String {
+        name.trim().to_lowercase()
+    }
+
     /**
      * Loads the data models from the given file path and with their configurations.
      */
     async fn load_data_model(
         project: &Project,
         version: &str,
-        path: &Path,
+        file_path: &Path, // one single file
     ) -> Result<Vec<DataModel>, DataModelError> {
-        let file_objects = data_model::parser::parse_data_model_file(path, version, project)?;
+        let file_objects = data_model::parser::parse_data_model_file(file_path, version, project)?;
         log::debug!(
             "Found the following data models: {:?} in path {:?}",
             file_objects.models,
-            path
+            file_path
         );
 
-        let mut indexed_models: HashMap<String, DataModel> = HashMap::new();
-
-        for model in file_objects.models {
-            indexed_models.insert(model.name.clone().trim().to_lowercase(), model);
-        }
+        let mut indexed_models: HashMap<String, DataModel> = file_objects
+            .models
+            .into_iter()
+            .map(|model| (Self::canonicalize_model_name(&model.name), model))
+            .collect();
 
         let data_models_configs = data_model::config::get(
-            path,
+            file_path,
+            &project.project_location,
             file_objects
                 .enums
                 .iter()
@@ -198,13 +223,35 @@ impl PrimitiveMap {
         )
         .await?;
 
-        for (config_variable_name, config) in data_models_configs.iter() {
-            let sanitized_config_name = config_variable_name.trim().to_lowercase();
+        match project.language {
+            SupportedLanguages::Typescript => {
+                Self::combine_data_model_with_config_ts(&mut indexed_models, data_models_configs)?;
+            }
+            SupportedLanguages::Python => {
+                Self::combine_data_model_with_config_py(&mut indexed_models, data_models_configs)?;
+            }
+        }
+
+        log::debug!(
+            "Data Models matched with configuration: {:?} from file: {:?}",
+            indexed_models,
+            file_path
+        );
+
+        Ok(indexed_models.into_values().collect())
+    }
+
+    fn combine_data_model_with_config_ts(
+        indexed_models: &mut HashMap<String, DataModel>,
+        data_models_configs: HashMap<String, DataModelConfig>,
+    ) -> Result<(), DataModelError> {
+        for (config_variable_name, config) in data_models_configs.into_iter() {
+            let sanitized_config_name = Self::canonicalize_model_name(&config_variable_name);
             match sanitized_config_name.strip_suffix("config") {
                 Some(config_name_without_suffix) => {
                     let data_model_opt = indexed_models.get_mut(config_name_without_suffix);
                     if let Some(data_model) = data_model_opt {
-                        data_model.config = config.clone();
+                        data_model.config = config;
                     } else {
                         return Err(DataModelError::Other {
                             message: format!(
@@ -219,14 +266,26 @@ impl PrimitiveMap {
                 }
             }
         }
+        Ok(())
+    }
 
-        log::debug!(
-            "Data Models matched with configuration: {:?} from file: {:?}",
-            indexed_models,
-            path
-        );
-
-        Ok(indexed_models.values().cloned().collect())
+    fn combine_data_model_with_config_py(
+        indexed_models: &mut HashMap<String, DataModel>,
+        data_models_configs: HashMap<String, DataModelConfig>,
+    ) -> Result<(), DataModelError> {
+        let mut from = std::mem::take(indexed_models);
+        // models not found in data_models_configs are removed
+        // as that means the dataclass is not decorated by moose_data_model
+        for (name, config) in data_models_configs {
+            let name = Self::canonicalize_model_name(&name);
+            if let Some(mut dm) = from.remove(&name) {
+                dm.config = config;
+                indexed_models.insert(name, dm);
+            } else {
+                warn!("{} found in configs but not parsed data models.", name);
+            };
+        }
+        Ok(())
     }
 
     pub fn data_models_iter(&self) -> impl Iterator<Item = &DataModel> {

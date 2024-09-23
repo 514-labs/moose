@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional
+from typing import Optional
 from datetime import datetime
 
 
@@ -11,12 +11,13 @@ class Status(Enum):
     OK = "ok"
     ERROR = "error"
 
+@dataclass
 class MySubModel:
     name: str
     age: int
 
 
-@dataclass 
+@dataclass
 class MyModel:
     name: Key[str]
     age: int

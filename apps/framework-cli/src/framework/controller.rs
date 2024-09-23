@@ -484,7 +484,7 @@ pub async fn set_up_topic_and_tables_and_route(
         RouteMeta {
             topic_name,
             data_model: fo.data_model.clone(),
-            format: fo.data_model.config.ingestion.format.clone(),
+            format: fo.data_model.config.ingestion.format,
         },
     );
 

@@ -21,7 +21,7 @@ use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
 use routines::auth::generate_hash_token;
-use routines::datamodel::read_json_file;
+use routines::datamodel::parse_and_generate;
 use routines::docker_packager::{build_dockerfile, create_dockerfile};
 use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
@@ -634,6 +634,7 @@ async fn top_command_handler(
                     check_project_name(&project_arc.name())?;
                     let result = create_streaming_function_file(
                         &project_arc,
+                        &settings.features,
                         init.source.clone(),
                         init.destination.clone(),
                     )
@@ -658,11 +659,33 @@ async fn top_command_handler(
                         &settings,
                     );
 
-                    let interface = read_json_file(args.name.clone(), args.sample.clone());
-                    let _ = std::fs::write(
-                        project.data_models_dir().join(format!("{}.ts", args.name)),
-                        interface.unwrap().as_bytes(),
-                    );
+                    let file = std::fs::read_to_string(&args.sample).map_err(|e| {
+                        RoutineFailure::new(
+                            Message {
+                                action: "Failed".to_string(),
+                                details: "to read samples".to_string(),
+                            },
+                            e,
+                        )
+                    })?;
+                    let interface = parse_and_generate(&args.name, file, project.language);
+                    std::fs::write(
+                        project.data_models_dir().join(format!(
+                            "{}.{}",
+                            args.name,
+                            project.language.extension()
+                        )),
+                        interface.as_bytes(),
+                    )
+                    .map_err(|e| {
+                        RoutineFailure::new(
+                            Message {
+                                action: "Failed".to_string(),
+                                details: "to write data model".to_string(),
+                            },
+                            e,
+                        )
+                    })?;
 
                     wait_for_usage_capture(capture_handle).await;
 

@@ -9,18 +9,18 @@ import {
   SmallTextEmbed,
   textBodyBase,
 } from "@514labs/design-system-components/typography";
-import { Logo, Badge } from "@514labs/design-system-components/components";
+import {
+  Logo,
+  ProductBadge,
+} from "@514labs/design-system-components/components";
 import { cn } from "@514labs/design-system-components/utils";
 import { Code, Rocket, Package, Library } from "lucide-react";
 import Link from "next/link";
-
+import { Python, TypeScript } from "./src/components/language-wrappers";
 export default {
   logo: () => (
     <div className="flex flex-row items-center content-center w-[288px]">
-      <Logo property="moose" subProperty="docs" className="mr-2" />
-      <Badge variant={"outline"} className="w-fit ml-2">
-        alpha
-      </Badge>
+      <Logo property="Moose" subProperty="Docs" className="bg-gradient" />
     </div>
   ),
   project: {
@@ -86,6 +86,8 @@ export default {
         <SmallTextEmbed className="mb-1">{props.children}</SmallTextEmbed>
       </li>
     ),
+    Python: ({ children }) => <Python>{children}</Python>,
+    TypeScript: ({ children }) => <TypeScript>{children}</TypeScript>,
   },
   primaryHue: 220,
   primarySaturation: 0,
@@ -138,7 +140,7 @@ export default {
       return (
         <div className="border rounded-xl">
           <div className="m-4">
-            <SmallText className="my-0">
+            <SmallText className="my-0 text-xs">
               Have a question or want to provide us with feedback?
             </SmallText>
             <Link href="https://github.com/514-labs/moose/issues/new?title=Feedback%20for%20%E2%80%9CIntroduction%E2%80%9D&labels=feedback">

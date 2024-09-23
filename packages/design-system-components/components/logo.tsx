@@ -1,17 +1,22 @@
-import { Text } from "./typography/standard";
+import { GradientText, SmallText, Text } from "./typography/standard";
+import { cn } from "../lib/utils";
 
 export const Logo = ({
   property,
   subProperty,
+  className,
 }: {
   property: string;
   subProperty?: string;
+  className?: string;
 }) => {
   return (
     <>
-      <Text className="my-0">{property}</Text>
+      <GradientText className={cn("my-0", className)}>{property}</GradientText>
       {subProperty && (
-        <Text className="my-0 ml-2 text-muted-foreground">{subProperty}</Text>
+        <SmallText className="my-0 ml-2 text-muted-foreground border rounded-full px-2 py-0.5">
+          {subProperty}
+        </SmallText>
       )}
     </>
   );

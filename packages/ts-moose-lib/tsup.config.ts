@@ -1,7 +1,12 @@
 import { defineConfig } from "tsup";
 
 export default defineConfig({
-  entry: ["src/index.ts", "src/toDataModels.ts"],
+  entry: [
+    "src/index.ts",
+    "src/dataModels/toDataModels.ts",
+    "src/moose-tspc.ts",
+    "src/moose-runner.ts",
+  ],
   format: ["cjs", "esm"], // Build for commonJS and ESmodules
   dts: true, // Generate declaration file (.d.ts)
   splitting: false,

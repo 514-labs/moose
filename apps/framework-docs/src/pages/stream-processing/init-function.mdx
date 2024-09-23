@@ -1,4 +1,5 @@
-import { Callout, FileTree } from "nextra/components";
+import { FileTree } from "nextra/components";
+import { Callout } from "../../components";
 
 # Initialize a Streaming Function
 
@@ -12,10 +13,10 @@ moose function init --source <SOURCE_DATA_MODEL> --destination <DESTINATION_DATA
 
 This command generates a new Streaming Function file in the `/functions` directory of your Moose app according to the [file structure described previously](../process-data).
 
-<Callout type="warning">
-  Make sure the `SOURCE_DATA_MODEL` and `DESTINATION_DATA_MODEL` are valid data
-  models that exist in your `/datamodels` directory. You can find a list of your
-  existing data models by running `moose ls`.
+<Callout type="warning" title="Make Sure the Data Models Exist">
+  `SOURCE_DATA_MODEL` and `DESTINATION_DATA_MODEL` must be valid data models
+  that exist in your `/datamodels` directory. <br />
+  <br /> You can find a list of your existing data models by running `moose ls`.
 </Callout>
 
 ## Manual Initialization
@@ -34,15 +35,26 @@ export default function functionName(
 }
 ```
 
-Hints:
-
-- Make sure to import the source and destination Data Models from the
-  correct paths in your app
-- Replace `functionName` with whatever descriptive
-  name you choose for your function
-- Replace `SourceDataModel` and `DestinationDataModel` with the actual names of your Data Models
-- The default export is important because Moose uses it to identify the entry point into the
-  Streaming Function
+<Callout type="info" title="Streaming Function Tips">
+  <ul>
+    <li>
+      Make sure to import the source and destination Data Models from the
+      correct paths in your app
+    </li>
+    <li>
+      Replace `functionName` with whatever descriptive name you choose for your
+      function
+    </li>
+    <li>
+      Replace `SourceDataModel` and `DestinationDataModel` with the actual names
+      of your Data Models
+    </li>
+    <li>
+      The default export is important because Moose uses it to identify the
+      entry point into the Streaming Function
+    </li>
+  </ul>
+</Callout>
 
 ## Next Steps
 

@@ -20,9 +20,15 @@ interface NavProps {
   property: string;
   subProperty?: string;
   navigation: { name: string; href: string; emphasized?: boolean }[];
+  className?: string;
 }
 
-export const Nav = ({ property, subProperty, navigation }: NavProps) => {
+export const Nav = ({
+  property,
+  subProperty,
+  navigation,
+  className,
+}: NavProps) => {
   useLayoutEffect(() => {}, []);
   const pathname = usePathname();
 
@@ -39,24 +45,17 @@ export const Nav = ({ property, subProperty, navigation }: NavProps) => {
                 <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary content-center w-full ">
                   <div className="flex flex-row items-center content-center justify-between w-fit">
                     <TrackLink
-                      name={"Nav"}
+                      name={"Nav Lo"}
                       subject="home"
                       href="/"
                       className="flex items-center"
                     >
-                      <Logo property={property} subProperty={subProperty} />
+                      <Logo
+                        property={property}
+                        subProperty={subProperty}
+                        className={className}
+                      />
                     </TrackLink>
-                    {property !== "fiveonefour" ? (
-                      <TrackLink
-                        name={"Link"}
-                        subject="Language Badge"
-                        href={"https://docs.moosejs.com"}
-                      >
-                        <div className="flex flex-row items-center content-center">
-                          <ProductBadge name="" tag="JS PY" />
-                        </div>
-                      </TrackLink>
-                    ) : null}
                   </div>
                 </div>
 

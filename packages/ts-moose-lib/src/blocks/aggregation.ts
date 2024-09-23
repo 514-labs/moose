@@ -1,12 +1,9 @@
 import process from "node:process";
 import { ClickHouseClient } from "@clickhouse/client-web";
 import fastq, { queueAsPromised } from "fastq";
-import {
-  getFileName,
-  walkDir,
-  getClickhouseClient,
-  cliLog,
-} from "@514labs/moose-lib";
+import { cliLog, getClickhouseClient, getFileName, walkDir } from "../commons";
+
+// DEPRECATED we need to remove this file when all the aggregations are converted to use the new blocks
 
 interface MvQuery {
   select: string;
@@ -29,6 +26,8 @@ class DependencyError extends Error {
 const AGGREGATIONS_DIR_PATH = process.argv[1];
 
 const [
+  ,
+  ,
   ,
   ,
   CLICKHOUSE_DB,
@@ -99,7 +98,7 @@ const asyncWorker = async (task: MvQueueTask) => {
   await createAggregation(task.chClient, task.path);
 };
 
-const main = async () => {
+export const runAggregations = async () => {
   const chClient = getClickhouseClient(clickhouseConfig);
   console.log(`Connected`);
 
@@ -130,5 +129,3 @@ const main = async () => {
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
 };
-
-main();

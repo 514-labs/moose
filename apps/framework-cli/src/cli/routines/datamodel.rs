@@ -1,36 +1,49 @@
-use serde_json::{Deserializer, Value};
-use std::collections::HashMap;
-use std::io::BufReader;
-use std::{collections::HashSet, fs};
-
 use crate::cli::display::{Message, MessageType};
-use crate::framework::typescript::generator::InterfaceFieldType;
+use crate::framework::languages::SupportedLanguages;
+use convert_case::{Case, Casing};
+use indexmap::IndexMap;
+use itertools::Itertools;
+use serde_json::{Deserializer, Value};
+use std::cmp::Ordering;
+use std::collections::HashSet;
+use std::io::BufReader;
 
-#[derive(Debug, Clone, PartialEq)] // Add the PartialEq trait
+#[derive(Debug, Clone, PartialEq, Eq)]
 enum CustomValue {
-    TypeArray(Vec<CustomValue>),
-    JsonArray(Vec<CustomValue>),
-    JsonObject(HashMap<String, CustomValue>),
-    JsonPrimitive(InterfaceFieldType),
+    UnionTypes(Vec<CustomValue>),
+    // if the array is (which we don't really support),
+    // then the inner CustomValue is UnionTypes
+    JsonArray(Box<CustomValue>),
+    JsonObject(IndexMap<String, CustomValue>),
+    JsonPrimitive(JsonPrimitive),
 }
 
-// function which reads a json file
-pub fn read_json_file(name: String, file_path: String) -> Result<String, std::io::Error> {
-    let file = fs::read_to_string(file_path)?;
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+enum JsonPrimitive {
+    Null,
+    String,
+    Int,
+    Float,
+    Bool,
+}
+pub fn parse_and_generate(name: &str, file: String, language: SupportedLanguages) -> String {
     let map = parse_json_file(&file).unwrap();
-    let ts_inter: String = render_typescript_interface(&name, &map);
-    Ok(ts_inter.to_string())
+
+    match language {
+        SupportedLanguages::Typescript => render_typescript_file(name, &map),
+        SupportedLanguages::Python => render_python_file(name, &map),
+    }
 }
 
-fn parse_json_file(file_content: &str) -> Result<HashMap<String, CustomValue>, serde_json::Error> {
+fn parse_json_file(file_content: &str) -> Result<IndexMap<String, CustomValue>, serde_json::Error> {
     let reader = BufReader::new(file_content.as_bytes());
     let stream = Deserializer::from_reader(reader).into_iter::<Value>();
 
-    let mut schema = HashMap::new();
+    let mut schema = IndexMap::new();
 
     let mut i = 0;
     for obj in stream {
-        if let Value::Array(array) = obj.unwrap() {
+        if let Value::Array(array) = obj? {
             for obj in array {
                 let parsed_map = parse_json(&obj);
                 i += 1;
@@ -53,7 +66,7 @@ fn parse_json_file(file_content: &str) -> Result<HashMap<String, CustomValue>, s
                     );
                     break;
                 }
-                schema = merge_maps(schema.clone(), parsed_map);
+                merge_maps(&mut schema, parsed_map);
             }
         }
     }
@@ -63,159 +76,266 @@ fn parse_json_file(file_content: &str) -> Result<HashMap<String, CustomValue>, s
 
 fn parse_json_value(json_data: &Value) -> CustomValue {
     match json_data {
-        Value::Null => CustomValue::JsonPrimitive(InterfaceFieldType::Null),
-        Value::String(_) => CustomValue::JsonPrimitive(InterfaceFieldType::String),
-        Value::Number(_) => CustomValue::JsonPrimitive(InterfaceFieldType::Number),
-        Value::Bool(_) => CustomValue::JsonPrimitive(InterfaceFieldType::Boolean),
+        Value::Null => CustomValue::JsonPrimitive(JsonPrimitive::Null),
+        Value::String(_) => CustomValue::JsonPrimitive(JsonPrimitive::String),
+        Value::Number(n) if n.is_f64() => CustomValue::JsonPrimitive(JsonPrimitive::Float),
+        Value::Number(_integer) => CustomValue::JsonPrimitive(JsonPrimitive::Int),
+        Value::Bool(_) => CustomValue::JsonPrimitive(JsonPrimitive::Bool),
         Value::Object(_) => CustomValue::JsonObject(parse_json(json_data)),
-        Value::Array(_) => CustomValue::JsonArray(parse_array(json_data)),
+        Value::Array(values) => CustomValue::JsonArray(Box::new(parse_array(values))),
     }
 }
 
-fn parse_json(json_data: &Value) -> HashMap<String, CustomValue> {
+fn parse_json(json_data: &Value) -> IndexMap<String, CustomValue> {
     match json_data {
-        Value::Object(map) => map.iter().fold(HashMap::new(), |mut acc, (key, val)| {
+        Value::Object(map) => map.iter().fold(IndexMap::new(), |mut acc, (key, val)| {
             let entry = parse_json_value(val);
             acc.insert(key.clone(), entry);
             acc
         }),
-        _ => HashMap::new(),
+        _ => IndexMap::new(),
     }
 }
 
 // grab only the unique types from the JSON array
-fn parse_array(array: &Value) -> Vec<CustomValue> {
-    match array {
-        Value::Array(items) => {
-            let mut unique_values = Vec::new();
-            for item in items.iter().map(parse_json_value) {
-                if !unique_values.contains(&item) {
-                    unique_values.push(item);
+fn parse_array(items: &[Value]) -> CustomValue {
+    let mut object_index = None;
+    let mut unique_types = Vec::new(); // not using hashset because we can't hash a CustomValue
+    for item in items.iter().map(parse_json_value) {
+        if let CustomValue::JsonObject(obj) = item {
+            match object_index {
+                None => {
+                    unique_types.push(CustomValue::JsonObject(obj));
+                    object_index = Some(unique_types.len() - 1)
+                }
+                Some(index) => {
+                    let existing_obj = unique_types.get_mut(index).unwrap();
+                    let existing_map = match existing_obj {
+                        CustomValue::JsonObject(map) => map,
+                        _ => panic!("Expected JsonObject at index {}", index),
+                    };
+                    merge_maps(existing_map, obj);
                 }
             }
-            unique_values
+        } else if !unique_types.contains(&item) {
+            unique_types.push(item);
         }
-        _ => vec![],
+    }
+    if unique_types.is_empty() {
+        CustomValue::JsonPrimitive(JsonPrimitive::Null)
+    } else if unique_types.len() == 1 {
+        unique_types.into_iter().next().unwrap()
+    } else {
+        CustomValue::UnionTypes(unique_types)
     }
 }
 
-fn merge_maps(
-    mut map1: HashMap<String, CustomValue>,
-    map2: HashMap<String, CustomValue>,
-) -> HashMap<String, CustomValue> {
+// TODO: simplify this mess
+fn merge_types(t1: &mut CustomValue, t2: CustomValue) {
+    match t1 {
+        CustomValue::UnionTypes(existing_types) => match t2 {
+            CustomValue::UnionTypes(new_types) => {
+                new_types.into_iter().for_each(|t| merge_types(t1, t))
+            }
+            CustomValue::JsonArray(new_array) => {
+                let existing_array = existing_types.iter_mut().find_map(|t| match t {
+                    CustomValue::JsonArray(existing_array) => Some(existing_array),
+                    _ => None,
+                });
+                if let Some(existing_array) = existing_array {
+                    merge_types(existing_array, *new_array);
+                } else {
+                    existing_types.push(CustomValue::JsonArray(new_array));
+                }
+            }
+            CustomValue::JsonObject(new_obj) => {
+                let existing_obj = existing_types.iter_mut().find_map(|t| match t {
+                    CustomValue::JsonObject(existing_obj) => Some(existing_obj),
+                    _ => None,
+                });
+                if let Some(existing_obj) = existing_obj {
+                    merge_maps(existing_obj, new_obj);
+                } else {
+                    existing_types.push(CustomValue::JsonObject(new_obj));
+                }
+            }
+            t2 @ CustomValue::JsonPrimitive(_) => {
+                if !existing_types.contains(&t2) {
+                    existing_types.push(t2)
+                }
+            }
+        },
+        CustomValue::JsonArray(existing_array) => match t2 {
+            CustomValue::UnionTypes(new_types) => {
+                *t1 = CustomValue::UnionTypes(vec![t1.clone()]);
+                new_types.into_iter().for_each(|t| merge_types(t1, t));
+            }
+            CustomValue::JsonArray(new_array) => {
+                merge_types(existing_array, *new_array);
+            }
+            CustomValue::JsonObject(new_obj) => {
+                *t1 = CustomValue::UnionTypes(vec![t1.clone(), CustomValue::JsonObject(new_obj)]);
+            }
+            t2 @ CustomValue::JsonPrimitive(_) => {
+                *t1 = CustomValue::UnionTypes(vec![t1.clone(), t2]);
+            }
+        },
+        CustomValue::JsonObject(existing_obj) => match t2 {
+            CustomValue::UnionTypes(new_types) => {
+                *t1 = CustomValue::UnionTypes(vec![CustomValue::JsonObject(existing_obj.clone())]);
+                new_types.into_iter().for_each(|t| merge_types(t1, t));
+            }
+            CustomValue::JsonArray(new_array) => {
+                *t1 = CustomValue::UnionTypes(vec![
+                    CustomValue::JsonObject(existing_obj.clone()),
+                    CustomValue::JsonArray(new_array),
+                ]);
+            }
+            CustomValue::JsonObject(new_obj) => {
+                merge_maps(existing_obj, new_obj);
+            }
+            t2 @ CustomValue::JsonPrimitive(_) => {
+                *t1 = CustomValue::UnionTypes(vec![
+                    CustomValue::JsonObject(existing_obj.clone()),
+                    t2,
+                ]);
+            }
+        },
+        CustomValue::JsonPrimitive(existing_primitive) => match t2 {
+            CustomValue::UnionTypes(new_types) => {
+                *t1 =
+                    CustomValue::UnionTypes(vec![CustomValue::JsonPrimitive(*existing_primitive)]);
+                new_types.into_iter().for_each(|t| merge_types(t1, t));
+            }
+            _ if CustomValue::JsonPrimitive(*existing_primitive) != t2 => {
+                *t1 = CustomValue::UnionTypes(vec![
+                    CustomValue::JsonPrimitive(*existing_primitive),
+                    t2,
+                ]);
+            }
+            _ => {}
+        },
+    }
+}
+
+fn merge_maps(map1: &mut IndexMap<String, CustomValue>, map2: IndexMap<String, CustomValue>) {
     for (key, value) in map2 {
         if let Some(existing_value) = map1.get_mut(&key) {
             match existing_value {
-                CustomValue::TypeArray(arr) => {
+                CustomValue::UnionTypes(arr) => {
                     if !arr.contains(&value) {
                         arr.push(value);
                     }
                 }
-                _ => {
-                    if !matches!(*existing_value, CustomValue::TypeArray(ref _arr)) {
-                        let arr = match existing_value {
-                            CustomValue::TypeArray(ref mut arr) => {
-                                arr.push(value);
-                                arr.clone()
-                            }
-                            _ => vec![existing_value.clone(), value],
-                        };
-                        *existing_value = CustomValue::TypeArray(arr);
-                    }
+                _ if *existing_value != value => {
+                    merge_types(existing_value, value);
                 }
+                _ => {}
             }
         } else {
-            map1.insert(key, CustomValue::TypeArray(vec![value]));
+            map1.insert(key, value);
         }
     }
-    map1
 }
 
-fn extract_types(value: &CustomValue, tab_index: usize) -> Vec<String> {
+fn extract_types_py(
+    value: &CustomValue,
+    field_name: &str,
+    extra_data_classes: &mut IndexMap<String, String>,
+) -> String {
+    fn is_simple_optional(types: &[CustomValue]) -> bool {
+        types.len() == 2 && types.contains(&CustomValue::JsonPrimitive(JsonPrimitive::Null))
+    }
+
     match value {
-        CustomValue::TypeArray(arr) => {
-            let mut types = HashSet::new();
-            for item in arr {
-                match item {
-                    CustomValue::JsonPrimitive(InterfaceFieldType::String) => {
-                        types.insert("string".to_string());
-                    }
-                    CustomValue::JsonPrimitive(InterfaceFieldType::Number) => {
-                        types.insert("number".to_string());
-                    }
-                    CustomValue::JsonPrimitive(InterfaceFieldType::Null) => {
-                        types.insert("null".to_string());
-                    }
-                    CustomValue::JsonPrimitive(InterfaceFieldType::Boolean) => {
-                        types.insert("boolean".to_string());
-                    }
-                    CustomValue::JsonPrimitive(InterfaceFieldType::Array(_)) => {
-                        types.insert("Array".to_string());
-                    }
-                    CustomValue::JsonPrimitive(InterfaceFieldType::Object(_)) => {
-                        types.insert("Object".to_string());
-                    }
-                    CustomValue::JsonObject(obj) => {
-                        types.insert(render_typescript_object(obj, false, tab_index + 1));
-                    }
-                    CustomValue::JsonArray(arr) => {
-                        let extracted_types =
-                            extract_types(&CustomValue::JsonArray(arr.clone()), tab_index);
-                        let formatted_types = if extracted_types.len() > 1 {
-                            format!("({})[]", extracted_types.join(" | "))
-                        } else {
-                            format!("{}[]", extracted_types.join(""))
-                        };
-                        types.insert(formatted_types);
-                    }
-                    _ => {
-                        types.insert("any".to_string());
-                    }
-                }
-            }
-            types.into_iter().collect()
+        CustomValue::UnionTypes(types) if is_simple_optional(types) => {
+            let t = types
+                .iter()
+                .find(|t| **t != CustomValue::JsonPrimitive(JsonPrimitive::Null))
+                .unwrap();
+            format!(
+                "Optional[{}]",
+                extract_types_py(t, field_name, extra_data_classes)
+            )
         }
-        CustomValue::JsonArray(arr) => {
-            let mut types = HashSet::new();
-            for item in arr {
-                match item {
-                    CustomValue::JsonPrimitive(InterfaceFieldType::String) => {
-                        types.insert("string".to_string());
-                    }
-                    CustomValue::JsonPrimitive(InterfaceFieldType::Number) => {
-                        types.insert("number".to_string());
-                    }
-                    CustomValue::JsonPrimitive(InterfaceFieldType::Null) => {
-                        types.insert("null".to_string());
-                    }
-                    CustomValue::JsonPrimitive(InterfaceFieldType::Boolean) => {
-                        types.insert("boolean".to_string());
-                    }
-                    CustomValue::JsonObject(obj) => {
-                        types.insert(render_typescript_object(obj, false, tab_index));
-                    }
-                    _ => {
-                        types.insert("any".to_string());
-                    }
+        CustomValue::UnionTypes(types) => {
+            let mut type_strings = HashSet::new();
+            for item in types {
+                type_strings.insert(extract_types_py(item, field_name, extra_data_classes));
+            }
+            format!("Union[{}]", type_strings.into_iter().join(", "))
+        }
+        CustomValue::JsonArray(inner) => {
+            format!(
+                "list[{}]",
+                extract_types_py(inner, field_name, extra_data_classes)
+            )
+        }
+        CustomValue::JsonObject(fields) => {
+            let inner_type_name = field_name.to_case(Case::Pascal);
+            if !extra_data_classes.contains_key(&inner_type_name) {
+                let nested =
+                    render_python_dataclass(&inner_type_name, fields, false, extra_data_classes);
+                extra_data_classes.insert(inner_type_name.clone(), nested);
+            }
+            inner_type_name
+        }
+        CustomValue::JsonPrimitive(primitive) => {
+            primitive_to_type(*primitive, SupportedLanguages::Python).to_string()
+        }
+    }
+}
+
+// returning a Vec because we want to remove parenthesis for JsonArray
+fn type_to_string_ts(value: &CustomValue, tab_index: usize) -> Vec<String> {
+    match value {
+        CustomValue::UnionTypes(types) => {
+            let mut type_strings = HashSet::new();
+            for item in types {
+                for extracted_type in type_to_string_ts(item, tab_index + 1) {
+                    type_strings.insert(extracted_type);
                 }
             }
-            types.into_iter().collect()
+            type_strings.into_iter().collect()
+        }
+        CustomValue::JsonArray(inner) => {
+            let extracted_types = type_to_string_ts(inner, tab_index);
+            let res = match extracted_types.len().cmp(&1) {
+                Ordering::Greater => format!("({})[]", extracted_types.join(" | ")),
+                Ordering::Equal => format!("{}[]", extracted_types.first().unwrap()),
+                Ordering::Less => unreachable!(),
+            };
+            vec![res]
         }
         CustomValue::JsonObject(map) => {
-            vec![render_typescript_object(map, false, tab_index)]
+            vec![render_object_ts(map, false, tab_index)]
         }
-        CustomValue::JsonPrimitive(InterfaceFieldType::Array(_)) => vec!["Array".to_string()],
-        CustomValue::JsonPrimitive(InterfaceFieldType::Object(_)) => vec!["Object".to_string()],
-        CustomValue::JsonPrimitive(InterfaceFieldType::String) => vec!["string".to_string()],
-        CustomValue::JsonPrimitive(InterfaceFieldType::Null) => vec!["null".to_string()],
-        CustomValue::JsonPrimitive(InterfaceFieldType::Boolean) => vec!["boolean".to_string()],
-        CustomValue::JsonPrimitive(InterfaceFieldType::Number) => vec!["number".to_string()],
-        _ => vec!["unsupported".to_string()],
+        CustomValue::JsonPrimitive(primitive) => {
+            vec![primitive_to_type(*primitive, SupportedLanguages::Typescript).to_string()]
+        }
     }
 }
 
-fn render_typescript_object(
-    fields: &HashMap<String, CustomValue>,
+fn primitive_to_type(primitive: JsonPrimitive, language: SupportedLanguages) -> &'static str {
+    match language {
+        SupportedLanguages::Typescript => match primitive {
+            JsonPrimitive::Null => "null",
+            JsonPrimitive::String => "string",
+            JsonPrimitive::Int | JsonPrimitive::Float => "number",
+            JsonPrimitive::Bool => "boolean",
+        },
+        SupportedLanguages::Python => match primitive {
+            JsonPrimitive::Null => "None",
+            JsonPrimitive::String => "str",
+            JsonPrimitive::Int => "int",
+            JsonPrimitive::Float => "float",
+            JsonPrimitive::Bool => "bool",
+        },
+    }
+}
+
+fn render_object_ts(
+    fields: &IndexMap<String, CustomValue>,
     use_key_for_first_primitive: bool,
     tab_index: usize,
 ) -> String {
@@ -225,27 +345,26 @@ fn render_typescript_object(
     // Helper function to generate indentation
     let indent = |level: usize| " ".repeat(level * 4); // 4 spaces per tab level
 
-    let mut fields_vec: Vec<(&String, Vec<String>)> = fields
-        .iter()
-        .map(|(field, value)| {
-            let types = extract_types(value, tab_index);
-            let types_str = if types.iter().any(|t| t != "null") {
+    let fields_vec = fields.iter().map(|(field, value)| {
+        let types = type_to_string_ts(value, tab_index);
+        let types_optional = if types.iter().any(|t| t == "null") {
+            (
                 types
                     .into_iter()
                     .filter(|t| t != "null")
-                    .collect::<Vec<String>>()
-            } else {
-                types
-            };
-            (field, types_str)
-        })
-        .collect();
-    fields_vec.sort_by(|a, b| a.0.cmp(b.0));
-    for (field, types) in fields_vec {
-        let types_str = types.join(" | ");
-        let is_optional = types.contains(&"null".to_string());
-        let optional_marker = if is_optional { "?" } else { "" };
+                    .collect::<Vec<String>>(),
+                true,
+            )
+        } else {
+            (types, false)
+        };
+        (field, types_optional)
+    });
 
+    for (field, (types, is_optional)) in fields_vec {
+        let types_str = types.join(" | ");
+
+        let optional_marker = if is_optional { "?" } else { "" };
         if types.len() == 1
             && (types.contains(&"null".to_string())
                 || types.contains(&"{}".to_string())
@@ -277,29 +396,168 @@ fn render_typescript_object(
             ));
         }
     }
-    // Check if the content is empty
+
     if content.trim().is_empty() {
         "{}".to_string()
     } else {
-        format!(
-            "{{{}\n{}{}}}",
-            indent(tab_index),
-            content,
-            indent(tab_index - 1)
-        )
+        format!("{{\n{}{}}}", content, indent(tab_index - 1))
     }
 }
 
-fn render_typescript_interface(
-    interface_name: &str,
-    fields: &HashMap<String, CustomValue>,
-) -> String {
+fn render_typescript_file(interface_name: &str, fields: &IndexMap<String, CustomValue>) -> String {
     let mut interface = format!(
         r#"
-import {{ Key }} from "@514labs/moose-lib";    
-export interface {}"#,
+import {{ Key }} from "@514labs/moose-lib";
+export interface {} "#,
         interface_name
     );
-    interface.push_str(&render_typescript_object(fields, true, 1));
+    interface.push_str(&render_object_ts(fields, true, 1));
     interface
+}
+
+fn render_python_dataclass(
+    class_name: &str,
+    fields: &IndexMap<String, CustomValue>,
+    is_data_model: bool,
+    extra_data_classes: &mut IndexMap<String, String>,
+) -> String {
+    let maybe_data_model_decorator = if is_data_model {
+        "@moose_data_model\n"
+    } else {
+        ""
+    };
+
+    let mut class_def = format!(
+        // PEP8: Surround top-level function and class definitions with two blank lines.
+        // Black: two lines before and after module-level functions and classes
+        r#"
+
+{}@dataclass
+class {}:
+"#,
+        maybe_data_model_decorator, class_name
+    );
+
+    if fields.is_empty() {
+        class_def.push_str("    pass\n");
+        return class_def;
+    }
+
+    let mut first_primitive_key_encountered = false;
+    for (field, t) in fields {
+        let mut type_str = extract_types_py(t, field, extra_data_classes);
+
+        if is_data_model
+            && (type_str == "str" || type_str == "int")
+            && !first_primitive_key_encountered
+        {
+            type_str = format!("Key[{}]", type_str);
+            first_primitive_key_encountered = true;
+        }
+        class_def.push_str(&format!("    {}: {}\n", field, type_str));
+    }
+    class_def
+}
+
+fn render_python_file(class_name: &str, fields: &IndexMap<String, CustomValue>) -> String {
+    let mut class_def = r#"from moose_lib import Key, moose_data_model
+from dataclasses import dataclass
+from typing import Optional, Union, Any
+"#
+    .to_string();
+    let mut extra_data_classes = IndexMap::new();
+    let data_model = render_python_dataclass(class_name, fields, true, &mut extra_data_classes);
+
+    for data_class in extra_data_classes.values() {
+        class_def.push_str(data_class);
+    }
+    class_def.push_str(&data_model);
+
+    class_def
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const JSON_CONTENT: &str = r#"
+        [
+            {
+                "id": 1,
+                "name": "John Doe",
+                "age": 30,
+                "is_active": true,
+                "scores": [85, 90, 78],
+                "address": {
+                    "street": "123 Main St",
+                    "city": "Anytown"
+                }
+            },
+            {
+                "id": 2,
+                "name": "Jane Smith",
+                "age": null,
+                "is_active": false,
+                "scores": [92, 88, 95],
+                "address": null
+            }
+        ]
+        "#;
+
+    #[test]
+    fn test_json_to_typescript() {
+        let result = parse_and_generate(
+            "User",
+            JSON_CONTENT.to_string(),
+            SupportedLanguages::Typescript,
+        );
+
+        let expected = r#"
+import { Key } from "@514labs/moose-lib";
+export interface User {
+    id: Key<number>;
+    name: string;
+    age?: number;
+    is_active: boolean;
+    scores: number[];
+    address?: {
+        street: string;
+        city: string;
+    };
+}"#;
+
+        println!("{}", result);
+        assert_eq!(result, expected);
+    }
+
+    #[test]
+    fn test_json_to_python() {
+        let result =
+            parse_and_generate("User", JSON_CONTENT.to_string(), SupportedLanguages::Python);
+
+        let expected = r#"from moose_lib import Key, moose_data_model
+from dataclasses import dataclass
+from typing import Optional, Union, Any
+
+
+@dataclass
+class Address:
+    street: str
+    city: str
+
+
+@moose_data_model
+@dataclass
+class User:
+    id: Key[int]
+    name: str
+    age: Optional[int]
+    is_active: bool
+    scores: list[int]
+    address: Optional[Address]
+"#;
+
+        println!("{}", result);
+        assert_eq!(result, expected);
+    }
 }

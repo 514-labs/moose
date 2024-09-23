@@ -29,15 +29,15 @@
     --destructive-foreground: 0 0% 98%;
 
     /* Moose Accents */
-    --accent-moo-green: 148, 100%, 59%;
+    --accent-moo-green: 148 100% 59%;
     --accent-moo-green-foreground: 0 0% 100%;
-    --accent-moo-indigo: 241, 100%, 61%;
+    --accent-moo-indigo: 241, 100% 61%;
     --accent-moo-indigo-foreground: 0 0% 3.9%;
-    --accent-moo-purple: 158, 100%, 77%;
+    --accent-moo-purple: 158 100% 77%;
     --accent-moo-purple-foreground: 0 0% 3.9%;
-    --accent-moo-pink: 288, 100%, 58%;
+    --accent-moo-pink: 288 100% 58%;
     --accent-moo-pink-foreground: 0 0% 3.9%;
-    --accent-moo-yellow: 65, 100%, 50%;
+    --accent-moo-yellow: 65 100% 50%;
     --accent-moo-yellow-foreground: 0 0% 100%;
 
     /* Boreal Accents */
@@ -128,6 +128,15 @@
 .docs a {
   color: hsl(var(--accent-moo-pink));
 }
+
+.docs .nextra-breadcrumb a {
+  color: inherit;
+}
+
+.docs footer a {
+  color: inherit; /* or specify a different color if needed */
+}
+
 .docs h2.nx-border-b {
   border-bottom: none;
 }
@@ -261,13 +270,13 @@ li.nx-my-2 {
   align-items: center !important;
   padding: 1rem !important;
   border-radius: 0.5rem !important;
-  color: hsl(var(--accent-pink)) !important;
+  color: hsl(var(--accent-moo-pink)) !important;
   transition: background-color 0.3s ease !important;
   width: 50% !important;
   font-weight: 400;
   font-size: 16px;
   line-height: 22px;
-  border: hsl(var(--border));
+  border: 1px solid hsl(var(--border));
 }
 
 .nx-mb-8.nx-flex.nx-items-center.nx-border-t.nx-pt-8 a:hover {

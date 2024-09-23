@@ -109,7 +109,7 @@ The setup of this function looks like a regular [Streaming Function](/processing
 
 <Callout type="info" title="Migrations are a Special Type of Streaming Function">
 <br/><br/>
-Migration functions are unique because they initially executed on all the data in the table for the previous version. This is the **Initial Data Load** part of the migration.
+Migration functions are unique because they are initially executed on all the data in the table for the previous version. This is the **Initial Data Load** part of the migration.
 <br/><br/>
 Like regular Streaming Functions, this migration function will be executed for any new data that is ingested into the old Data Model version in order to migrate it to the new version. This is the **Continuous** part of the migration.
 </Callout>
@@ -158,7 +158,7 @@ Here you will be able to see the additional tables automatically created for
 you: `UserActivity_0_1` is one of them.
 
 <Callout type="info" title="Not working with the UserActivity Data Model?">
-  If you are followiung this guide with a different Data Model in your own
+  If you are following this guide with a different Data Model in your own
   project, you should see `YOUR_DATA_MODEL_NAME_0_1` in the list of tables.
 </Callout>
 

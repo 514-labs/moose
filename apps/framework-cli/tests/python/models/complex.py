@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
-from typing import List, Optional
+from typing import Optional
 from datetime import datetime
 
 
@@ -15,7 +15,7 @@ class MySubModel:
     age: int
 
 
-@dataclass 
+@dataclass
 class ComplexModel:
     name: Key[str]
     age: int

@@ -1,6 +1,7 @@
 //! # Executes Python code in a subprocess.
 //! This module provides a Python executor that can run Python code in a subprocess
 
+use std::path::Path;
 use std::process::Stdio;
 
 use crate::utilities::constants::{CLI_INTERNAL_VERSIONS_DIR, CLI_PROJECT_INTERNAL_DIR};
@@ -80,6 +81,23 @@ pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Erro
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
+        .spawn()
+}
+
+pub async fn run_python_file(path: &Path, env: &[(&str, &str)]) -> Result<Child, std::io::Error> {
+    let mut command = Command::new("python3");
+
+    command.env(PYTHON_PATH, python_path_with_version());
+    for (key, val) in env {
+        command.env(key, val);
+    }
+
+    command
+        .arg("-u")
+        .arg(path)
+        .stdin(std::process::Stdio::piped())
+        .stdout(std::process::Stdio::piped())
+        .stderr(std::process::Stdio::piped())
         .spawn()
 }
 

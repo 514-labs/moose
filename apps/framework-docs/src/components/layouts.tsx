@@ -1,4 +1,6 @@
 import localFont from "next/font/local";
+import { LanguageProvider } from "./LanguageContext";
+import { LanguageSwitcher } from "./language-switcher";
 // Font files can be colocated inside of `app`
 const monoFont = localFont({
   src: "../ABCMonumentGroteskMonoVariable.woff2",
@@ -18,11 +20,13 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <main
-      lang="en"
-      className={"font-sans" + ` ${monoFont.variable} ${sansFont.variable}`}
-    >
-      {children}
-    </main>
+    <LanguageProvider>
+      <main
+        lang="en"
+        className={"font-sans" + ` ${monoFont.variable} ${sansFont.variable}`}
+      >
+        {children}
+      </main>
+    </LanguageProvider>
   );
 }

@@ -69,10 +69,7 @@ pub async fn create_streaming_function_file(
         models: &'a HashMap<String, DataModel>,
     ) -> Either<&'a DataModel, &'a str> {
         match models.get(name) {
-            None => {
-                println!("No model named '{}' found", name);
-                Either::Right(name)
-            }
+            None => Either::Right(name),
             Some(data_model) => Either::Left(data_model),
         }
     }

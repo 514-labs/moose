@@ -110,6 +110,7 @@ use crate::infrastructure::processes::consumption_registry::ConsumptionProcessRe
 use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
+use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::fetch_topics;
 use crate::project::Project;
 
@@ -171,7 +172,7 @@ impl RoutineSuccess {
     }
 
     pub fn show(&self) {
-        show_message!(self.message_type, self.message);
+        show_message!(self.message_type, self.message.clone());
     }
 }
 
@@ -278,6 +279,9 @@ pub async fn start_development_mode(
             details: "development mode".to_string(),
         }
     );
+
+    let mut redis_client = RedisClient::new(&project.name()).await?;
+    redis_client.start_periodic_tasks();
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(
@@ -464,6 +468,8 @@ pub async fn start_development_mode(
             .await;
     };
 
+    let _ = redis_client.stop_periodic_tasks();
+
     Ok(())
 }
 
@@ -480,6 +486,9 @@ pub async fn start_production_mode(
             details: "production mode".to_string(),
         }
     );
+
+    let mut redis_client = RedisClient::new(&project.name()).await?;
+    redis_client.start_periodic_tasks();
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(
@@ -606,6 +615,8 @@ pub async fn start_production_mode(
             )
             .await;
     }
+
+    let _ = redis_client.stop_periodic_tasks();
 
     Ok(())
 }

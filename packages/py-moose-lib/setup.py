@@ -12,5 +12,7 @@ setup(
     name='moose_lib',
     version=version,
     packages=find_packages(),
-    install_requires=[],
+    install_requires=[
+        'pyjwt[crypto]==2.9.0',
+    ],
 )

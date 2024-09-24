@@ -51,9 +51,11 @@ impl ConsumptionProcessRegistry {
         info!("Starting consumption API...");
 
         let child = match self.language {
-            SupportedLanguages::Python => {
-                python::consumption::run(self.clickhouse_config.clone(), &self.dir)
-            }
+            SupportedLanguages::Python => python::consumption::run(
+                self.clickhouse_config.clone(),
+                self.jwt_config.clone(),
+                &self.dir,
+            ),
             SupportedLanguages::Typescript => typescript::consumption::run(
                 self.clickhouse_config.clone(),
                 self.jwt_config.clone(),

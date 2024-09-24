@@ -12,6 +12,10 @@ import os
 import sys
 import json
 
+import jwt
+from jwt import InvalidTokenError
+from typing import Optional, Dict, Any
+
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -28,6 +32,9 @@ parser.add_argument('clickhouse_username', type=str,
 parser.add_argument('clickhouse_password', type=str,
                     help='Clickhouse password')
 parser.add_argument('clickhouse_use_ssl', type=str, help='Clickhouse use SSL')
+parser.add_argument('jwt_secret', type=str, help='JWT secret')
+parser.add_argument('jwt_issuer', type=str, help='JWT issuer')
+parser.add_argument('jwt_audience', type=str, help='JWT audience')
 
 
 args = parser.parse_args()
@@ -39,6 +46,10 @@ db = args.clickhouse_db
 user = args.clickhouse_username
 password = args.clickhouse_password
 consumption_dir_path = args.consumption_dir_path
+
+jwt_secret = args.jwt_secret
+jwt_issuer = args.jwt_issuer
+jwt_audience = args.jwt_audience
 
 sys.path.append(consumption_dir_path)
 
@@ -87,6 +98,13 @@ class MooseClient:
 
         return list(val.named_results())
 
+def verify_jwt(token: str) -> Optional[Dict[str, Any]]:
+    try:
+        payload = jwt.decode(token, jwt_secret, algorithms=["RS256"], audience=jwt_audience, issuer=jwt_issuer)
+        return payload
+    except InvalidTokenError as e:
+        print("JWT verification failed:", str(e))
+        return None
 
 def handler_with_client(ch_client):
     class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
@@ -97,10 +115,18 @@ def handler_with_client(ch_client):
                 module = import_module(module_name)
                 # get the flow definition
                 print(module_name)
+
+                jwt_payload: Optional[Dict[str, Any]] = None
+                auth_header = self.headers.get('Authorization')
+                if auth_header:
+                    # Bearer <token>
+                    token = auth_header.split(" ")[1] if " " in auth_header else None
+                    if token:
+                        jwt_payload = verify_jwt(token)
                 
                 query_params = parse_qs(parsed_path.query)
 
-                response = module.run(ch_client, query_params)
+                response = module.run(ch_client, query_params, jwt_payload)
                 response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
                 self.send_response(200)
                 self.end_headers()

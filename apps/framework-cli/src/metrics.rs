@@ -89,8 +89,10 @@ pub struct TelemetryMetadata {
     pub machine_id: String,
     pub is_moose_developer: bool,
     pub metric_labels: Option<String>,
+    pub metric_endpoints: Option<String>,
     pub is_production: bool,
     pub project_name: String,
+    pub export_metrics: bool,
 }
 
 #[derive(Clone)]
@@ -156,10 +158,26 @@ impl Metrics {
         telemetry_metadata: TelemetryMetadata,
     ) -> (Metrics, tokio::sync::mpsc::Receiver<MetricEvent>) {
         let (tx_events, rx_events) = tokio::sync::mpsc::channel(32);
+        let metric_labels = match telemetry_metadata
+            .metric_labels
+            .as_deref()
+            .map(decode_object::decode_base64_to_json)
+        {
+            Some(Ok(Value::Object(map))) => Some(map),
+            _ => None,
+        };
+        let metric_endpoints = match telemetry_metadata
+            .metric_endpoints
+            .as_deref()
+            .map(decode_object::decode_base64_to_json)
+        {
+            Some(Ok(Value::Object(map))) => Some(map),
+            _ => None,
+        };
         let metrics = Metrics {
             tx_events,
             telemetry_metadata,
-            metrics_inserter: MetricsInserter::new(),
+            metrics_inserter: MetricsInserter::new(metric_labels, metric_endpoints),
             registry: Arc::new(Mutex::new(Registry::default())),
         };
         (metrics, rx_events)
@@ -295,13 +313,14 @@ impl Metrics {
 
         let cloned_data_ref = data.clone();
 
-        let client = reqwest::Client::new();
-
         let metrics_inserter = self.metrics_inserter.clone();
+        let export_metrics = self.telemetry_metadata.export_metrics;
 
         tokio::spawn(async move {
             while let Some(message) = rx_events.recv().await {
-                let _ = metrics_inserter.insert(message.clone()).await;
+                if export_metrics {
+                    let _ = metrics_inserter.insert(message.clone()).await;
+                }
                 match message {
                     MetricEvent::IngestedEvent {
                         timestamp: _,
@@ -333,26 +352,13 @@ impl Metrics {
                             .inc_by(count);
                     }
                     MetricEvent::ConsumedEvent {
-                        timestamp,
-                        count,
+                        timestamp: _,
+                        count: _,
                         latency,
                         bytes,
                         route,
                         method,
                     } => {
-                        let _ = client
-                            .post("http://localhost:4000/ingest/ConsumptionEvent/0.0")
-                            .json(&json!({
-                                "timestamp": timestamp,
-                                "count": count,
-                                "latency": latency.as_secs_f64(),
-                                "bytes": bytes,
-                                "route": route.as_os_str().to_str().unwrap(),
-                                "method": method,
-                            }))
-                            .send()
-                            .await;
-
                         data.http_latency_histogram
                             .get_or_create(&HTTPLabel {
                                 method: method.clone(),

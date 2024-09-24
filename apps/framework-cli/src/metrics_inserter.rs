@@ -17,10 +17,17 @@ pub struct MetricsInserter {
 }
 
 impl MetricsInserter {
-    pub fn new() -> Self {
+    pub fn new(
+        metric_labels: Option<serde_json::Map<String, serde_json::Value>>,
+        metric_endpoints: Option<serde_json::Map<String, serde_json::Value>>,
+    ) -> Self {
         let buffer = Arc::new(Mutex::new(Vec::new()));
 
-        tokio::spawn(flush(buffer.clone()));
+        tokio::spawn(flush(
+            buffer.clone(),
+            metric_labels.clone(),
+            metric_endpoints.clone(),
+        ));
 
         Self { buffer }
     }
@@ -32,12 +39,15 @@ impl MetricsInserter {
     }
 }
 
-async fn flush(buffer: BatchEvents) {
+async fn flush(
+    buffer: BatchEvents,
+    metric_labels: Option<serde_json::Map<String, serde_json::Value>>,
+    metric_endpoints: Option<serde_json::Map<String, serde_json::Value>>,
+) {
     let mut interval = time::interval(Duration::from_secs(MAX_FLUSH_INTERVAL_SECONDS));
     let client = Client::new();
 
     loop {
-        println!("Flushing metrics");
         interval.tick().await;
         let mut buffer_owned = buffer.lock().await;
         if buffer_owned.is_empty() {
@@ -47,7 +57,7 @@ async fn flush(buffer: BatchEvents) {
 
         for chunk in buffer_owned.chunks(MAX_BATCH_SIZE) {
             for event in chunk {
-                match event {
+                let (event_type, payload) = match event {
                     MetricEvent::IngestedEvent {
                         timestamp,
                         count,
@@ -56,21 +66,19 @@ async fn flush(buffer: BatchEvents) {
                         route,
                         method,
                         topic,
-                    } => {
-                        let _ = client
-                            .post("http://localhost:4000/ingest/IngestEvent/0.0")
-                            .json(&json!({
-                                "timestamp": timestamp,
-                                "count": count,
-                                "bytes": bytes,
-                                "latency": latency.as_secs_f64(),
-                                "route": route.as_os_str().to_str().unwrap(),
-                                "method": method,
-                                "topic": topic,
-                            }))
-                            .send()
-                            .await;
-                    }
+                    } => (
+                        "IngestEvent",
+                        &json!({
+                            "timestamp": timestamp,
+                            "count": count,
+                            "bytes": bytes,
+                            "latency": latency.as_secs_f64(),
+                            "route": route.as_os_str().to_str().unwrap(),
+                            "method": method,
+                            "topic": topic,
+                        }),
+                    ),
+
                     MetricEvent::ConsumedEvent {
                         timestamp,
                         count,
@@ -78,59 +86,71 @@ async fn flush(buffer: BatchEvents) {
                         bytes,
                         route,
                         method,
-                    } => {
-                        let _ = client
-                            .post("http://localhost:4000/ingest/ConsumptionEvent/0.0")
-                            .json(&json!({
-                                "timestamp": timestamp,
-                                "count": count,
-                                "latency": latency.as_secs_f64(),
-                                "bytes": bytes,
-                                "route": route.as_os_str().to_str().unwrap(),
-                                "method": method,
-                            }))
-                            .send()
-                            .await;
-                    }
+                    } => (
+                        "ConsumptionEvent",
+                        &json!({
+                            "timestamp": timestamp,
+                            "count": count,
+                            "latency": latency.as_secs_f64(),
+                            "bytes": bytes,
+                            "route": route.as_os_str().to_str().unwrap(),
+                            "method": method,
+                        }),
+                    ),
+
                     MetricEvent::StreamingFunctionEvent {
                         timestamp,
                         count_in,
                         count_out,
                         bytes,
                         function_name,
-                    } => {
-                        let _ = client
-                            .post("http://localhost:4000/ingest/StreamingFunctionEvent/0.0")
-                            .json(&json!({
-                                "timestamp": timestamp,
-                                "count_in": count_in,
-                                "count_out": count_out,
-                                "bytes": bytes,
-                                "function_name": function_name,
-                            }))
-                            .send()
-                            .await;
-                    }
+                    } => (
+                        "StreamingFunctionEvent",
+                        &json!({
+                            "timestamp": timestamp,
+                            "count_in": count_in,
+                            "count_out": count_out,
+                            "bytes": bytes,
+                            "function_name": function_name,
+                        }),
+                    ),
                     MetricEvent::TopicToOLAPEvent {
                         timestamp,
                         count,
                         bytes,
                         consumer_group,
                         topic_name,
-                    } => {
-                        let _ = client
-                            .post("http://localhost:4000/ingest/TopicToOLAPEvent/0.0")
-                            .json(&json!({
-                                "timestamp": timestamp,
-                                "count": count,
-                                "bytes": bytes,
-                                "consumer_group": consumer_group,
-                                "topic_name": topic_name,
-                            }))
-                            .send()
-                            .await;
+                    } => (
+                        "TopicToOLAPEvent",
+                        &json!({
+                            "timestamp": timestamp,
+                            "count": count,
+                            "bytes": bytes,
+                            "consumer_group": consumer_group,
+                            "topic_name": topic_name,
+                        }),
+                    ),
+                };
+
+                let route = match metric_endpoints
+                    .as_ref()
+                    .and_then(|endpoints| endpoints.get(event_type))
+                    .and_then(|endpoint| endpoint.as_str())
+                {
+                    Some(route) => route,
+                    None => {
+                        eprintln!("Error: No endpoint found for event type: {}", event_type);
+                        continue; // Skip this event and move to the next one
                     }
+                };
+
+                let mut payload = payload.clone();
+                let payload_obj = payload.as_object_mut().unwrap();
+                if let Some(labels_obj) = &metric_labels {
+                    payload_obj.extend(labels_obj.iter().map(|(k, v)| (k.clone(), v.clone())));
                 }
+
+                let _ = client.post(route).json(payload_obj).send().await;
             }
         }
 

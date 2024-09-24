@@ -328,6 +328,8 @@ async fn top_command_handler(
                 is_moose_developer: settings.telemetry.is_moose_developer,
                 is_production: project_arc.is_production,
                 project_name: project_arc.name().to_string(),
+                export_metrics: settings.telemetry.export_metrics,
+                metric_endpoints: settings.metric.endpoints.clone(),
             });
 
             let arc_metrics = Arc::new(metrics);
@@ -500,6 +502,8 @@ async fn top_command_handler(
                 is_moose_developer: settings.telemetry.is_moose_developer,
                 is_production: project_arc.is_production,
                 project_name: project_arc.name().to_string(),
+                export_metrics: settings.telemetry.export_metrics,
+                metric_endpoints: settings.metric.endpoints.clone(),
             });
 
             let arc_metrics = Arc::new(metrics);

@@ -24,12 +24,15 @@ const ENVIRONMENT_VARIABLE_PREFIX: &str = "MOOSE";
 #[derive(Deserialize, Debug, Default)]
 pub struct MetricLabels {
     pub labels: Option<String>,
+    pub endpoints: Option<String>,
 }
 
 #[derive(Deserialize, Debug)]
 pub struct Telemetry {
     pub machine_id: String,
     pub enabled: bool,
+    #[serde(default)]
+    pub export_metrics: bool,
     #[serde(default)]
     pub is_moose_developer: bool,
 }
@@ -40,6 +43,7 @@ impl Default for Telemetry {
             enabled: true,
             is_moose_developer: false,
             machine_id: Uuid::new_v4().to_string(),
+            export_metrics: false,
         }
     }
 }

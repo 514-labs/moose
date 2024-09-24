@@ -567,7 +567,6 @@ async fn ingest_route(
     route: PathBuf,
     configured_producer: ConfiguredProducer,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
-    metrics: Arc<Metrics>,
     is_prod: bool,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     show_message!(
@@ -671,21 +670,12 @@ async fn router(
                 route.join(current_version),
                 configured_producer,
                 route_table,
-                metrics.clone(),
                 is_prod,
             )
             .await
         }
         (&hyper::Method::POST, ["ingest", _, _]) => {
-            ingest_route(
-                req,
-                route,
-                configured_producer,
-                route_table,
-                metrics.clone(),
-                is_prod,
-            )
-            .await
+            ingest_route(req, route, configured_producer, route_table, is_prod).await
         }
 
         (&hyper::Method::GET, ["consumption", _rt]) => {

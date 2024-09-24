@@ -53,7 +53,7 @@ class ExampleDataModel:
     example_bool: bool
     example_string_array: list[str]
  
-user_activity_config = DataModelConfig(
+example_config = DataModelConfig(
     ingestion=IngestionConfig(format=IngestionFormat.JSON),
     storage=StorageConfig(enabled=False, order_by_fields=["example_timestamp"])
 )

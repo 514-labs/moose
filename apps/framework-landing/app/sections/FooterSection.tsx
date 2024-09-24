@@ -120,12 +120,13 @@ const FooterContentContainer = () => {
         fiveonefour
       </FooterNavItem>
       {Object.entries(footerContent).map(([key, value]) => (
-        <div className="flex flex-col w-full">
+        <div className="flex flex-col w-full" key={key}>
           <Text className="flex flex-row capitalize justify-start mb-0 self-start">
             {key}
           </Text>
           {value.map((item) => (
             <FooterNavItem
+              key={item.name}
               item={item}
               className="my-0 py-0 text-muted-foreground"
               textClassName="text-muted-foreground mb-0"

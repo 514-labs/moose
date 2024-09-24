@@ -199,11 +199,11 @@ export interface ParsedActivity {
 
 <Python>
 ```python filename="/datamodels/models.py" copy
+from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
-import datetime
+from datetime import datetime
 
-type Key[T: (str, int)] = T
-
+@moose_data_model
 @dataclass
 class UserActivity:
 eventId: Key[str]
@@ -211,16 +211,15 @@ timestamp: str
 userId: str
 activity: str
 
+@moose_data_model
 @dataclass
 class ParsedActivity:
 eventId: Key[str]
 timestamp: datetime
 userId: str
 activity: str
-
 ```
 </Python>
-
 
 <Callout type="info">
 The file defines `UserActivity` and `ParsedActivity` data models, which structure data for ingestion into your Moose infrastructure.

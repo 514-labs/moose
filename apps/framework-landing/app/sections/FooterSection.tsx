@@ -112,15 +112,15 @@ const footerContent = {
 
 const FooterContentContainer = () => {
   return (
-    <div className="flex flex-row justify-evenly w-full items-start mb-4">
+    <div className="flex flex-wrap lg:flex-nowrap flex-row justify-between md:justify-evenly w-full items-start mb-4">
       <FooterNavItem
         item={{ name: "FiveOneFour", href: "https://fiveonefour.com" }}
-        className="mb-0 w-full"
+        className="mb-0 w-full hidden lg:block"
       >
         fiveonefour
       </FooterNavItem>
       {Object.entries(footerContent).map(([key, value]) => (
-        <div className="flex flex-col w-full" key={key}>
+        <div className="flex flex-col lg:w-full" key={key}>
           <Text className="flex flex-row capitalize justify-start mb-0 self-start">
             {key}
           </Text>

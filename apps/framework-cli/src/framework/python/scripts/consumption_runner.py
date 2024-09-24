@@ -65,7 +65,6 @@ class EnhancedJSONEncoder(json.JSONEncoder):
             return dataclasses.asdict(o)
         return super().default(o)
 
-
 class MooseClient:
     def __init__(self, ch_client: Client):
         self.ch_client = ch_client
@@ -127,8 +126,14 @@ def handler_with_client(ch_client):
                 query_params = parse_qs(parsed_path.query)
 
                 response = module.run(ch_client, query_params, jwt_payload)
-                response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
-                self.send_response(200)
+
+                if hasattr(response, 'status') and hasattr(response, 'body'):
+                    self.send_response(response.status)
+                    response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
+                else:
+                    self.send_response(200)
+                    response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
+                
                 self.end_headers()
                 self.wfile.write(response_message)
             except Exception as e:

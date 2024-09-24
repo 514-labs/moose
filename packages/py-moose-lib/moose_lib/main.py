@@ -87,6 +87,11 @@ def moose_data_model(arg: Any = None) -> Any:
 
 JWTPayload = Dict[str, Any]
 
+@dataclass
+class QueryResult:
+    status: int
+    body: Any
+
 class MooseClient:
     def __init__(self, ch_client: Client):
         self.ch_client = ch_client

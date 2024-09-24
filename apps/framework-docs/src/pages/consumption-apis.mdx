@@ -1,4 +1,4 @@
-import { Callout, TypeScript, Python, LanguageSwitcher, TypeScriptInline, PythonInline } from "../components";
+import { Callout, TypeScript, Python, LanguageSwitcher } from "../components";
 import { Tabs, FileTree } from "nextra/components";
 
 # Introduction to Consumption APIs
@@ -10,7 +10,7 @@ Consumption APIs offer a powerful and flexible way to create custom API endpoint
 
 ### File and Folder Conventions
 
-Consumption APIs are defined as individual <TypeScriptInline>`.ts`</TypeScriptInline><PythonInline>`.py`</PythonInline> files within the `/apis` folder of your Moose application. These files are automatically mapped to API endpoints based on their filenames.
+Consumption APIs are defined as individual <TypeScript NodeType="span">`.ts`</TypeScript><Python NodeType="span">`.py`</Python> files within the `/apis` folder of your Moose application. These files are automatically mapped to API endpoints based on their filenames.
 <TypeScript>
 <FileTree>
 <FileTree.Folder name="app" open>
@@ -35,7 +35,7 @@ Consumption APIs are defined as individual <TypeScriptInline>`.ts`</TypeScriptIn
 
 
 <Callout type="info" title="Example">
-  A file named <TypeScriptInline>`myMooseApi.ts`</TypeScriptInline><PythonInline>`myMooseApi.py`</PythonInline> would correspond to the `/consumption/myMooseApi`
+  A file named <TypeScript NodeType="span">`myMooseApi.ts`</TypeScript><Python NodeType="span">`myMooseApi.py`</Python> would correspond to the `/consumption/myMooseApi`
   endpoint.
 </Callout>
 

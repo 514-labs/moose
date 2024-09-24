@@ -1,29 +1,58 @@
 import { FileTree } from "nextra/components";
-import { Callout } from "../../components";
+import { Callout, LanguageSwitcher, TypeScript, Python } from "../../components";
 
 # Initialize a Streaming Function
+
+<LanguageSwitcher />
 
 ## Using the CLI
 
 Initialize your Streaming Function with the `moose function init` CLI command:
 
+<TypeScript>
 ```bash filename="Terminal" copy
-moose function init --source <SOURCE_DATA_MODEL> --destination <DESTINATION_DATA_MODEL>
+npx moose-cli function init --source <SOURCE_DATA_MODEL> --destination <DESTINATION_DATA_MODEL>
 ```
+</TypeScript>
+
+<Python>
+```bash filename="Terminal" copy
+moose-cli function init --source <SOURCE_DATA_MODEL> --destination <DESTINATION_DATA_MODEL>
+```
+</Python>
 
 This command generates a new Streaming Function file in the `/functions` directory of your Moose app according to the [file structure described previously](../process-data).
+
+<TypeScript>
+<FileTree>
+<FileTree.Folder name="functions">
+<FileTree.File name="SourceDataModel__DestinationDataModel.ts" />
+</FileTree.Folder>
+</FileTree>
+</TypeScript>
+
+<Python>
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="functions" open>
+      <FileTree.File name="SourceDataModel__DestinationDataModel.py" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+</Python>
 
 <Callout type="warning" title="Make Sure the Data Models Exist">
   `SOURCE_DATA_MODEL` and `DESTINATION_DATA_MODEL` must be valid data models
   that exist in your `/datamodels` directory. <br />
-  <br /> You can find a list of your existing data models by running `moose ls`.
+  <br /> You can find a list of your existing data models by running `moose-cli ls`.
 </Callout>
 
 ## Manual Initialization
 
-You can alternatively create a new Streaming Function file manually in the `/functions` directory of your Moose app. The file name should be in the format `SourceDataModel__DestinationDataModel.ts`.
+You can alternatively create a new Streaming Function file manually in the `/functions` directory of your Moose app. The file name should be in the format <TypeScript>`SourceDataModel__DestinationDataModel.ts`</TypeScript><Python>`SourceDataModel__DestinationDataModel.py`</Python>.
 Inside the file, define the function as follows:
 
+<TypeScript>
 ```ts filename="/functions/SourceDataModel__DestinationDataModel.ts" copy
 import { SourceDataModel } from "../datamodels/path/to/SourceDataModel";
 import { DestinationDataModel } from "../datamodels/path/to/DestinationDataModel";
@@ -34,6 +63,21 @@ export default function functionName(
   // Transformation logic
 }
 ```
+</TypeScript>
+
+<Python>
+```py filename="/functions/SourceDataModel__DestinationDataModel.py" copy
+from app.datamodels.path.to.SourceDataModel import SourceDataModel
+from app.datamodels.path.to.DestinationDataModel import DestinationDataModel
+from moose_lib import StreamingFunction
+
+def functionName(source: SourceDataModel) -> DestinationDataModel | list[DestinationDataModel] | None:
+  # Transformation logic
+
+
+my_streaming_function = StreamingFunction(run=functionName)
+```
+</Python>
 
 <Callout type="info" title="Streaming Function Tips">
   <ul>

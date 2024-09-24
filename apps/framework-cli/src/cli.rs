@@ -334,10 +334,9 @@ async fn top_command_handler(
             arc_metrics.start_listening_to_metrics(rx).await;
 
             check_project_name(&project_arc.name())?;
-            let project_arc_clone = Arc::clone(&project_arc);
-            run_local_infrastructure(&project_arc_clone)?.show();
+            run_local_infrastructure(&project_arc)?.show();
 
-            routines::start_development_mode(project_arc_clone, &settings.features, arc_metrics)
+            routines::start_development_mode(project_arc, &settings.features, arc_metrics)
                 .await
                 .map_err(|e| {
                     RoutineFailure::error(Message {
@@ -514,13 +513,9 @@ async fn top_command_handler(
 
             check_project_name(&project_arc.name())?;
 
-            routines::start_production_mode(
-                Arc::clone(&project_arc),
-                settings.features,
-                arc_metrics,
-            )
-            .await
-            .unwrap();
+            routines::start_production_mode(project_arc, settings.features, arc_metrics)
+                .await
+                .unwrap();
 
             wait_for_usage_capture(capture_handle).await;
 

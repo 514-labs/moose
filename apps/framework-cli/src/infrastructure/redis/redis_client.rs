@@ -355,7 +355,7 @@ impl RedisClient {
         info!("Periodic tasks started");
     }
 
-    pub async fn stop_periodic_tasks(&mut self) -> Result<()> {
+    pub fn stop_periodic_tasks(&mut self) -> Result<()> {
         if let Some(task) = self.presence_task.take() {
             task.abort();
         }
@@ -395,7 +395,7 @@ impl Drop for RedisClient {
         if let Ok(rt) = tokio::runtime::Handle::try_current() {
             let mut self_clone = self.clone();
             rt.spawn(async move {
-                if let Err(e) = self_clone.stop_periodic_tasks().await {
+                if let Err(e) = self_clone.stop_periodic_tasks() {
                     error!("Error stopping periodic tasks: {}", e);
                 }
                 if self_clone.is_current_leader() {

@@ -468,7 +468,7 @@ pub async fn start_development_mode(
             .await;
     };
 
-    let _ = redis_client.stop_periodic_tasks().await;
+    let _ = redis_client.stop_periodic_tasks();
 
     Ok(())
 }
@@ -616,7 +616,7 @@ pub async fn start_production_mode(
             .await;
     }
 
-    let _ = redis_client.stop_periodic_tasks().await;
+    let _ = redis_client.stop_periodic_tasks();
 
     Ok(())
 }

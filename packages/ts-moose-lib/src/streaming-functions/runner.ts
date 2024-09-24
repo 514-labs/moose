@@ -5,10 +5,11 @@ import http from "http";
 import { cliLog } from "../commons";
 
 type CliLogData = {
-  count: number;
+  count_in: number;
+  count_out: number;
   bytes: number;
   function_name: string;
-  direction: "In" | "Out";
+  timestamp: Date;
 };
 
 type StreamingFunction = (data: unknown) => unknown | Promise<unknown>;
@@ -210,28 +211,20 @@ let count_in = 0;
 let count_out = 0;
 let bytes = 0;
 
-const sendMessageMetricsIn = (logger: Logger) => {
-  metricsLog({
-    count: count_in,
-    function_name: logger.logPrefix,
-    bytes: bytes,
-    direction: "In",
-  });
+const sendMessageMetrics = (logger: Logger) => {
+  if (count_in > 0 || count_out > 0 || bytes > 0) {
+    metricsLog({
+      count_in: count_in,
+      count_out: count_out,
+      function_name: logger.logPrefix,
+      bytes: bytes,
+      timestamp: new Date(),
+    });
+  }
   count_in = 0;
   bytes = 0;
-  setTimeout(() => sendMessageMetricsIn(logger), 1000);
-};
-
-const sendMessageMetricsOut = (logger: Logger) => {
-  metricsLog({
-    count: count_out,
-    // We actually only read bytes from the in direction
-    bytes: bytes,
-    function_name: logger.logPrefix,
-    direction: "Out",
-  });
   count_out = 0;
-  setTimeout(() => sendMessageMetricsOut(logger), 1000);
+  setTimeout(() => sendMessageMetrics(logger), 1000);
 };
 
 const startConsumer = async (
@@ -299,6 +292,7 @@ const startConsumer = async (
   logger.log("Consumer is running...");
 };
 
+
 /**
  * message.max.bytes is a broker setting that applies to all topics.
  * max.message.bytes is a per-topic setting.
@@ -339,8 +333,7 @@ export const runStreamingFunctions = async (): Promise<void> => {
   const args = parseArgs();
   const logger = buildLogger(args);
 
-  setTimeout(() => sendMessageMetricsIn(logger), 1000);
-  setTimeout(() => sendMessageMetricsOut(logger), 1000);
+  setTimeout(() => sendMessageMetrics(logger), 1000);
 
   const kafka = new Kafka({
     clientId: "streaming-function-consumer",

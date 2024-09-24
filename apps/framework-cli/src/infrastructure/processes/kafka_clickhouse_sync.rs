@@ -29,7 +29,7 @@ use crate::infrastructure::stream::redpanda::create_subscriber;
 use crate::infrastructure::stream::redpanda::fetch_topics;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::infrastructure::stream::redpanda::{create_producer, send_with_back_pressure};
-use crate::metrics::{Metrics, MetricsMessage};
+use crate::metrics::{MetricEvent, Metrics};
 
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
 const VERSION_SYNC_GROUP_ID: &str = "version_sync_flow_sync";
@@ -428,17 +428,12 @@ async fn iterate_subscriber<'a, F>(
                             source_topic_name, payload_str
                         );
                         metrics
-                            .send_metric(MetricsMessage::PutTopicToOLAPBytesCount {
-                                consumer_group: "clickhouse sync".to_string(),
-                                topic_name: source_topic_name.clone(),
-                                bytes_count: payload.len() as u64,
-                            })
-                            .await;
-                        metrics
-                            .send_metric(MetricsMessage::PutTopicToOLAPEventCount {
-                                consumer_group: "clickhouse sync".to_string(),
-                                topic_name: source_topic_name.clone(),
+                            .send_metric_event(MetricEvent::TopicToOLAPEvent {
+                                timestamp: chrono::Utc::now(),
                                 count: 1,
+                                bytes: payload.len() as u64,
+                                consumer_group: "clickhouse sync".to_string(),
+                                topic_name: source_topic_name.clone(),
                             })
                             .await;
 

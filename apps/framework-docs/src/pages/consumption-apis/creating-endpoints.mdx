@@ -1,7 +1,9 @@
-import { Callout, TypeScriptInline, PythonInline, TypeScript, Python } from "../../components";
+import { Callout, LanguageSwitcher, TypeScript, Python } from "../../components";
 import { FileTree } from "nextra/components";
 
 # Initialize Your API Endpoint
+
+<LanguageSwitcher />
 
 ## via the CLI
 
@@ -11,11 +13,19 @@ To create a new Consumption API endpoint, leverage the `moose-cli consumption in
 ```bash filename="Terminal" copy
 npx moose-cli consumption init <YOUR_API_ROUTE>
 ```
+</TypeScript>
+
+<Python>
+```bash filename="Terminal" copy
+moose-cli consumption init <YOUR_API_ROUTE>
+```
+</Python>
 
 - `<YOUR_API_ROUTE>`: The name of the route you want to create.
 
-This command will generate a <TypeScriptInline>`.ts`</TypeScriptInline><PythonInline>`.py`</PythonInline>file in the `/apis` directory.
+This command will generate a <TypeScript NodeType="span">`.ts`</TypeScript><Python NodeType="span">`.py`</Python> file in the `/apis` directory.
 
+<TypeScript>
 <FileTree>
   <FileTree.Folder name="app" open>
     <FileTree.Folder name="apis" open>
@@ -42,4 +52,4 @@ npx moose-cli consumption init --help
 
 ## Manually
 
-You can alternatively manually create a new <TypeScriptInline>`.ts`</TypeScriptInline><PythonInline>`.py`</PythonInline> file inside the `/apis` folder of your project.
+You can alternatively manually create a new <TypeScript NodeType="span">`.ts`</TypeScript><Python NodeType="span">`.py`</Python> file inside the `/apis` folder of your project.

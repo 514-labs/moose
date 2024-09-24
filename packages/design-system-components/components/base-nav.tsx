@@ -13,6 +13,9 @@ import { Logo } from "./logo";
 import { Badge } from "./ui/badge";
 import { TrackLink } from "./trackable-components";
 import { ProductBadge } from "./language-badge";
+import { Slash } from "lucide-react";
+
+import Image from "next/image";
 
 gsap.registerPlugin(SplitText);
 
@@ -22,6 +25,52 @@ interface NavProps {
   navigation: { name: string; href: string; emphasized?: boolean }[];
   className?: string;
 }
+
+export const FiveOneFourLogo = () => {
+  return (
+    <TrackLink
+      name="logo-link"
+      subject="514 home"
+      targetUrl="https://www.fiveonefour.com"
+      href="https://www.fiveonefour.com"
+      className="h-8 w-8 shrink-0"
+    >
+      <Image
+        src="../images/fiveonefour_logo.png"
+        alt="logo"
+        className="h-8 w-8 rounded-lg"
+        priority
+        width={32}
+        height={32}
+      />
+    </TrackLink>
+  );
+};
+
+const NavSlot = ({ children }: { children?: React.ReactNode }) => {
+  return (
+    <div className="flex flex-row items-center space-x-2">
+      <Slash className="w-4 h-4 text-muted-foreground" />
+
+      <div>{children}</div>
+    </div>
+  );
+};
+
+export const MooseLogo = () => {
+  return (
+    <TrackLink
+      name="logo-link"
+      subject="moose home"
+      targetUrl="https://getmoose.dev"
+      href="/"
+    >
+      <NavSlot>
+        <ProductBadge name="Moose" tag="JS PY" />
+      </NavSlot>
+    </TrackLink>
+  );
+};
 
 export const Nav = ({
   property,
@@ -43,7 +92,9 @@ export const Nav = ({
             <div className="flex justify-between items-center w-full ">
               <Grid className="grow md:grid md:grid-cols-12 w-full">
                 <div className="col-span-6 flex-shrink-0 grow items-center justify-center text-primary content-center w-full ">
-                  <div className="flex flex-row items-center content-center justify-between w-fit">
+                  <FiveOneFourLogo />
+                  <MooseLogo />
+                  {/* <div className="flex flex-row items-center content-center justify-between w-fit">
                     <TrackLink
                       name={"Nav Lo"}
                       subject="home"
@@ -56,7 +107,7 @@ export const Nav = ({
                         className={className}
                       />
                     </TrackLink>
-                  </div>
+                  </div> */}
                 </div>
 
                 <div className="hidden md:ml-5 col-span-6 md:flex justify-end">

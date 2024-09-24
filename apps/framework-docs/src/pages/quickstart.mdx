@@ -46,7 +46,7 @@ git --version && python3 --version && docker --version
 Navigate to where you want to create your project and run the following command to create a new Python virtual environment:
 
 ```bash filename="Terminal" copy
-python -m venv venv
+python3 -m venv venv
 ```
 <Callout type="info" title="Virtual Environment Best Practice">
   Create a new Python virtual environment for each project to avoid conflicts.
@@ -86,14 +86,20 @@ npx create-moose-app@latest my-moose-app ts
 
 This will automatically create a new project folder and initialize a skeleton Moose app with the entire project structure you need to get started.
 
-<TypeScript>
+
 ### Navigate to your Project Directory and Install Project Dependencies
 
+<TypeScript>
 ```bash filename="Terminal" copy
 cd my-moose-app && npm install
 ```
-
 </TypeScript>
+
+<Python>
+```bash filename="Terminal" copy
+cd my-moose-app && pip install -e .
+```
+</Python>
 
 ### Start Local Dev Server
 
@@ -193,11 +199,11 @@ export interface ParsedActivity {
 
 <Python>
 ```python filename="/datamodels/models.py" copy
+from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
-import datetime
+from datetime import datetime
 
-type Key[T: (str, int)] = T
-
+@moose_data_model
 @dataclass
 class UserActivity:
 eventId: Key[str]
@@ -205,16 +211,15 @@ timestamp: str
 userId: str
 activity: str
 
+@moose_data_model
 @dataclass
 class ParsedActivity:
 eventId: Key[str]
 timestamp: datetime
 userId: str
 activity: str
-
 ```
 </Python>
-
 
 <Callout type="info">
 The file defines `UserActivity` and `ParsedActivity` data models, which structure data for ingestion into your Moose infrastructure.

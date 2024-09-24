@@ -3,7 +3,7 @@ import "@514labs/design-system-base/globals.css";
 import localFont from "next/font/local";
 import { ThemeProvider } from "@514labs/design-system-components/components";
 import { cn } from "@514labs/design-system-components/utils";
-import { Nav } from "@514labs/design-system-components/trackable-components";
+import { Nav } from "./nav";
 import Script from "next/script";
 import { GoogleTagManager } from "@next/third-parties/google";
 
@@ -26,18 +26,14 @@ export const metadata: Metadata = {
 };
 
 const default_navigation = [
-  { name: "docs", href: "https://docs.moosejs.com" },
-  { name: "boreal", href: "https://boreal.cloud" },
+  { name: "Host with Boreal", href: "https://boreal.cloud" },
+  { name: "Docs", href: "https://docs.getmoose.dev" },
+  { name: "GitHub", href: "https://github.com/514-labs/moose" },
   {
-    name: "templates",
-    href: "/templates",
-    items: [
-      { name: "product analytics", href: "/templates/product-analytics" },
-    ],
+    name: "Slack",
+    href: "https://join.slack.com/t/moose-community/shared_invite/zt-2345678901-23456789012345678901234567890123",
   },
-  { name: "community", href: "/community" },
-  { name: "blog", href: "https://www.fiveonefour.com/blog" },
-  { name: "github", href: "https://github.com/514-labs/moose" },
+  { name: "Blog", href: "https://www.fiveonefour.com/blog" },
 ];
 
 export default async function RootLayout({
@@ -71,12 +67,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Nav
-            property="Moose"
-            subProperty="JS PY"
-            navigation={default_navigation}
-            className="bg-gradient"
-          />
+          <Nav property="Moose" navigation={default_navigation} />
           {children}
         </ThemeProvider>
       </body>

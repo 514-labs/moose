@@ -30,7 +30,6 @@ export const Python: React.FC<LanguageProps> = ({
       {children}
     </NodeType>
   );
-  //return language === "python" ? <>{children}</> : null;
 };
 
 export const LanguageSwitch: React.FC<{

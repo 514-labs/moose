@@ -1,8 +1,10 @@
 import { Callout } from "../components";
+import { TypeScript, Python, LanguageSwitcher } from "../components";
 
 # Introduction to Blocks
+<LanguageSwitcher />
 
-The Blocks primitive is central to managing database operations in your Moose application. A Blocks object facilitates both setup and teardown operations, allowing you to define complex workflows that interact with your database. The setup and teardown parameters within the Blocks object accept arrays of SQL statements, which Moose executes sequentially to manage the state of your database.
+The Blocks primitive is central to managing database operations in your Moose application. The Blocks primtive facilitates both setup and teardown operations, allowing you to define complex workflows that interact with your database. The setup and teardown parameters within the Blocks object accept arrays of SQL statements, which Moose executes sequentially to manage the state of your database.
 
 Some key applications of Blocks are to facilitate:
 
@@ -16,16 +18,21 @@ Some key applications of Blocks are to facilitate:
 
 ### File and Folder Conventions
 
-In a Moose project, Blocks are stored in the `/blocks` folder. Each block is defined as a `.ts` or `.py` file within this directory. The file naming convention should be clear and descriptive, reflecting the block’s purpose or function (e.g., user_activity_aggregation.ts).
+In a Moose project, Blocks are stored in the `/blocks` folder. Each block is defined as a <TypeScript NodeType="span">`.ts`</TypeScript><Python NodeType="span">`.py`</Python> file within this directory. 
+
+<Callout type="info">
+The file name itself is not important, but the file name should be clear and descriptive.
+</Callout>
 
 ### Blocks Definition
 
-Within each block file, you define a `Blocks` object that serves as a container for SQL operations related to setting up and tearing down database structures. This is commonly used to manage materialized views, tables, and other database resources:
+Within each block file, you instantiate a `Blocks` <TypeScript NodeType="span">object, making it the default export of the file,</TypeScript><Python NodeType="span">class</Python> that serves as a container for SQL operations related to setting up and tearing down database structures. This is commonly used to manage materialized views, tables, and other database resources:
 
+<TypeScript>
 ```ts filename="/blocks/<BLOCK_FILENAME>.ts" copy
 import { Blocks } from "@514labs/moose-lib";
 
-const blocks: Blocks = {
+export default {
   setup: [
     // Array of SQL statements for setting up database resources
     `CREATE TABLE my_table (...)`,
@@ -36,10 +43,30 @@ const blocks: Blocks = {
     `DROP VIEW IF EXISTS my_view`,
     `DROP TABLE IF EXISTS my_table`,
   ],
-};
+} as Blocks;
 ```
+</TypeScript>
 
-Object Parameters
+<Python>
+```py filename="/blocks/<BLOCK_FILENAME>.py" copy
+from moose_lib import Blocks
+
+block = Blocks(
+    setup=[
+        # Array of SQL statements for setting up database resources
+        "CREATE TABLE my_table (...)",
+        "CREATE MATERIALIZED VIEW my_view AS SELECT ...",
+    ],
+    teardown=[
+        # Array of SQL statements for tearing down resources
+        "DROP VIEW IF EXISTS my_view",
+        "DROP TABLE IF EXISTS my_table",
+    ],
+)
+```
+</Python>
+
+`Blocks` Parameters
 
 - `setup`: An array of SQL statements that will be executed when the setup phase is triggered. This parameter is typically used to define operations such as creating tables, indexes, and materialized views.
 - `teardown`: An array of SQL statements that will be executed during the teardown phase. This parameter is typically used to drop or remove tables, views, or any other resources created during setup.

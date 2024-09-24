@@ -86,10 +86,10 @@ export default function Home() {
   return (
     <main>
       <HeroSection />
-      <PrimitivesCode />
-      <FeaturesSection />
-      <WhatIsMooseFor />
       <DemoSection />
+      <PrimitivesCode />
+      <WhatIsMooseFor />
+      <FeaturesSection />
       <SecondaryCTASection />
       <FooterSection />
     </main>

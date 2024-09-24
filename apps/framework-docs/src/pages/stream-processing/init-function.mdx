@@ -80,25 +80,17 @@ my_streaming_function = StreamingFunction(run=functionName)
 </Python>
 
 <Callout type="info" title="Streaming Function Tips">
-  <ul>
-    <li>
-      Make sure to import the source and destination Data Models from the
-      correct paths in your app
-    </li>
-    <li>
-      Replace `functionName` with whatever descriptive name you choose for your
-      function
-    </li>
-    <li>
-      Replace `SourceDataModel` and `DestinationDataModel` with the actual names
-      of your Data Models
-    </li>
-    <li>
-      The default export is important because Moose uses it to identify the
-      entry point into the Streaming Function
-    </li>
-  </ul>
+- Ensure you import the source and destination Data Models from the correct paths within your application.
+- Replace `functionName` with a descriptive name that clearly reflects the function's purpose.
+- Substitute `SourceDataModel` and `DestinationDataModel` with the actual names of your Data Models.
+<TypeScript>
+- The default export is crucial because Moose uses it to identify the entry point of the Streaming Function.
+</TypeScript>
+<Python>
+- Assign your function to the `run` parameter in the `StreamingFunction` class to designate it as the entry point.
+</Python>
 </Callout>
+
 
 ## Next Steps
 

@@ -28,8 +28,8 @@ use crate::framework::python::templates::PYTHON_BASE_MODEL_TEMPLATE;
 use crate::framework::python::templates::PYTHON_BASE_STREAMING_FUNCTION_SAMPLE;
 use crate::framework::python::templates::{PYTHON_BASE_API_SAMPLE, PYTHON_BASE_BLOCKS_SAMPLE};
 use crate::framework::streaming::loader::parse_streaming_function;
-use crate::framework::typescript::templates::TS_BASE_APIS_SAMPLE;
 use crate::framework::typescript::templates::TS_BASE_MODEL_TEMPLATE;
+use crate::framework::typescript::templates::{TS_BASE_APIS_SAMPLE, VS_CODE_PYTHON_SETTINGS};
 use crate::framework::typescript::templates::{
     TS_BASE_BLOCKS_SAMPLE, TS_BASE_STREAMING_FUNCTION_SAMPLE,
 };
@@ -255,28 +255,21 @@ impl Project {
         Ok(())
     }
 
-    pub fn create_base_app_files(&self) -> Result<(), std::io::Error> {
+    pub fn create_base_app_files(&self, no_samples: bool) -> Result<(), std::io::Error> {
         // Common file paths
         let readme_file_path = self.project_location.join("README.md");
         let blocks_dir = self.blocks_dir();
 
-        self.write_file(
-            &readme_file_path,
-            README_PREFIX.to_owned() + include_str!("../../../README.md"),
-        )?;
+        if !no_samples {
+            self.write_file(
+                &readme_file_path,
+                README_PREFIX.to_owned() + include_str!("../../../README.md"),
+            )?;
+        }
         match self.language {
             // TODO move the templates to the respective project language modules
             SupportedLanguages::Typescript => {
                 let tsconfig = self.project_location.join(TSCONFIG_JSON);
-                let apis_file_path = self.consumption_dir().join(TS_API_FILE);
-                let base_model_file_path = self.data_models_dir().join("models.ts");
-                let function_file_path = self.streaming_func_dir().join(format!(
-                    "{}__{}.ts",
-                    SAMPLE_STREAMING_FUNCTION_SOURCE, SAMPLE_STREAMING_FUNCTION_DEST
-                ));
-                let blocks_file_path = blocks_dir.join(TS_BLOCKS_FILE);
-
-                // Write TypeScript specific templates
                 self.write_file(
                     &tsconfig,
                     serde_json::to_string_pretty(&serde_json::json!(
@@ -294,16 +287,26 @@ impl Project {
                     .expect("formatting `serde_json::Value` with string keys never fails"),
                 )?;
 
-                self.write_file(&apis_file_path, TS_BASE_APIS_SAMPLE.to_string())?;
-                self.write_file(&base_model_file_path, TS_BASE_MODEL_TEMPLATE.to_string())?;
-                self.write_file(
-                    &function_file_path,
-                    TS_BASE_STREAMING_FUNCTION_SAMPLE.to_string(),
-                )?;
+                if !no_samples {
+                    let apis_file_path = self.consumption_dir().join(TS_API_FILE);
+                    let base_model_file_path = self.data_models_dir().join("models.ts");
+                    let function_file_path = self.streaming_func_dir().join(format!(
+                        "{}__{}.ts",
+                        SAMPLE_STREAMING_FUNCTION_SOURCE, SAMPLE_STREAMING_FUNCTION_DEST
+                    ));
+                    let blocks_file_path = blocks_dir.join(TS_BLOCKS_FILE);
 
-                self.write_file(&blocks_file_path, TS_BASE_BLOCKS_SAMPLE.to_string())?;
+                    self.write_file(&apis_file_path, TS_BASE_APIS_SAMPLE.to_string())?;
+                    self.write_file(&base_model_file_path, TS_BASE_MODEL_TEMPLATE.to_string())?;
+                    self.write_file(
+                        &function_file_path,
+                        TS_BASE_STREAMING_FUNCTION_SAMPLE.to_string(),
+                    )?;
+
+                    self.write_file(&blocks_file_path, TS_BASE_BLOCKS_SAMPLE.to_string())?;
+                }
             }
-            SupportedLanguages::Python => {
+            SupportedLanguages::Python if !no_samples => {
                 let apis_file_path = self.consumption_dir().join(PY_API_FILE);
                 let base_model_file_path = self.data_models_dir().join("models.py");
                 let function_file_path = self.streaming_func_dir().join(format!(
@@ -324,6 +327,7 @@ impl Project {
                 )?;
                 self.write_file(&blocks_file_path, PYTHON_BASE_BLOCKS_SAMPLE.to_string())?;
             }
+            SupportedLanguages::Python => {} // nothing to do
         }
 
         Ok(())
@@ -350,7 +354,17 @@ impl Project {
         let mut settings_file = std::fs::File::create(settings_file_path)?;
 
         ext_file.write_all(VSCODE_EXTENSIONS_TEMPLATE.as_bytes())?;
-        settings_file.write_all(VSCODE_SETTINGS_TEMPLATE.as_bytes())?;
+        settings_file.write_all(
+            VSCODE_SETTINGS_TEMPLATE
+                .replace(
+                    "{language_specific_settings}",
+                    match self.language {
+                        SupportedLanguages::Typescript => "",
+                        SupportedLanguages::Python => VS_CODE_PYTHON_SETTINGS,
+                    },
+                )
+                .as_bytes(),
+        )?;
 
         Ok(())
     }

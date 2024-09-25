@@ -201,10 +201,13 @@ pub static VSCODE_SETTINGS_TEMPLATE: &str = r#"
             "driver": "ClickHouse",
             "name": "moose clickhouse"
         }
-    ],
-    "python.analysis.extraPaths": [".moose/versions"]
+    ]{language_specific_settings}
 }
 "#;
+
+pub static VS_CODE_PYTHON_SETTINGS: &str = r#",
+    "python.analysis.extraPaths": [".moose/versions"],
+    "python.analysis.typeCheckingMode": "basic""#;
 
 // ==================================================================================================
 // |                                          SDK TEMPLATES                                          |

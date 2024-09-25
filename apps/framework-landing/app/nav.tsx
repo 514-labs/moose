@@ -77,9 +77,9 @@ export const Nav = ({ navigation }: NavProps) => {
     >
       {({ open }) => (
         <>
-          <div className="max-w-5xl mx-auto flex items-center justify-between">
+          <div className="max-w-5xl mx-auto flex flex-row items-center justify-between">
             {/* Logo */}
-            <div className="flex items-center space-x-20">
+            <div className="flex items-center md:space-x-20">
               <div className="space-x-5 flex flex-row items-center">
                 <div className="flex flex-row items-center space-x-2">
                   <FiveOneFourLogo />
@@ -135,42 +135,42 @@ export const Nav = ({ navigation }: NavProps) => {
                 );
               })}
             </div>
-          </div>
-          <div className="-mr-2 flex items-center md:hidden">
-            {/* Mobile menu button */}
-            <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-2 text-primary hover:text-action-primary focus:outline-none focus:ring-2 focus:ring-inset focus:ring-action-primary">
-              <span className="absolute -inset-0.5" />
-              <span className="sr-only">Open main menu</span>
-              {open ? (
-                <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
-              ) : (
-                <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
-              )}
-            </Disclosure.Button>
-          </div>
-
-          <Disclosure.Panel className="sticky top-20 h-screen md:h-auto justify-center w-full z-10 bg-background md:hidden">
-            <div className="space-y-1 pb-3 pt-2 mt-[25%]">
-              {navigation.map((item) => {
-                const isActive = pathname.startsWith(item.href);
-
-                return (
-                  <Disclosure.Button
-                    as="a"
-                    href={item.href}
-                    key={item.name}
-                    className={
-                      isActive
-                        ? "block py-2 pl-0 pr-4 text-5xl text-action-primary hover:text-primary"
-                        : "block py-2 pl-0 pr-4 text-5xl text-primary hover:text-action-primary"
-                    }
-                  >
-                    {item.name}
-                  </Disclosure.Button>
-                );
-              })}
+            <div className="-mr-2 flex items-center md:hidden">
+              {/* Mobile menu button */}
+              <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-2 text-primary hover:text-action-primary focus:outline-none focus:ring-2 focus:ring-inset focus:ring-action-primary">
+                <span className="absolute -inset-0.5" />
+                <span className="sr-only">Open main menu</span>
+                {open ? (
+                  <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
+                ) : (
+                  <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
+                )}
+              </Disclosure.Button>
             </div>
-          </Disclosure.Panel>
+
+            <Disclosure.Panel className="sticky top-20 h-screen md:h-auto justify-center w-full z-10 bg-background md:hidden">
+              <div className="space-y-1 pb-3 pt-2 mt-[25%]">
+                {navigation.map((item) => {
+                  const isActive = pathname.startsWith(item.href);
+
+                  return (
+                    <Disclosure.Button
+                      as="a"
+                      href={item.href}
+                      key={item.name}
+                      className={
+                        isActive
+                          ? "block py-2 pl-0 pr-4 text-5xl text-action-primary hover:text-primary"
+                          : "block py-2 pl-0 pr-4 text-5xl text-primary hover:text-action-primary"
+                      }
+                    >
+                      {item.name}
+                    </Disclosure.Button>
+                  );
+                })}
+              </div>
+            </Disclosure.Panel>
+          </div>
         </>
       )}
     </Disclosure>

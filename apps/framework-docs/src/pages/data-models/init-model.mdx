@@ -37,5 +37,37 @@ If you have a `.json` or `.csv` file with sample data representing the structure
 
 There are two additional ways to initialize a new Data Model in your Moose project:
 
-- By creating a new <TypeScript inline>`.ts`</TypeScript> <Python inline>`.py`</Python> file in the `/datamodels` directory of your Moose application and defining a new Data Model inside this file.
-- By appending a new Data Model to an existing <TypeScript inline>`.ts`</TypeScript> <Python inline>`.py`</Python> file in your `/datamodels` directory.
+- By creating a new <TypeScript NodeType="span">`.ts`</TypeScript> <Python NodeType="span">`.py`</Python> file in the `/datamodels` directory of your Moose application and defining a new Data Model inside this file.
+- By appending a new Data Model to an existing <TypeScript NodeType="span">`.ts`</TypeScript> <Python NodeType="span">`.py`</Python> file in your `/datamodels` directory.
+
+<TypeScript>
+```typescript filename="datamodels/myDataModel.ts" copy
+import { Key } from "moose-lib";
+
+export interface MyNewDataModel {
+  primaryKey: Key<string>;
+  someString: string;
+  someNumber: number;
+  someBoolean: boolean;
+  someDate: Date;
+  someArray: string[];
+  ...
+}
+```
+</TypeScript>
+
+<Python>
+```python filename="datamodels/new_data_model.py" copy
+from moose_lib import Key, moose_data_model
+from dataclasses import dataclass
+
+@moose_data_model
+@dataclass
+class NewDataModel:
+    primary_key: Key[str]
+    some_string: str
+    some_number: int
+    some_boolean: bool
+    some_list: list[str]
+```
+</Python>

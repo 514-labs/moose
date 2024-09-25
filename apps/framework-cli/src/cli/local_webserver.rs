@@ -72,15 +72,6 @@ pub struct RouterRequest {
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct FlowMessages {
-    count_in: u64,
-    count_out: u64,
-    function_name: String,
-    bytes: u64,
-    timestamp: DateTime<Utc>,
-}
-
 fn default_management_port() -> u16 {
     5000
 }

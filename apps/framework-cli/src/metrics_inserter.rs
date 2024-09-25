@@ -141,10 +141,7 @@ async fn flush(
                     payload_obj.extend(labels_obj.iter().map(|(k, v)| (k.clone(), v.clone())));
                 }
 
-                event_groups
-                    .entry(event_type)
-                    .or_insert_with(Vec::new)
-                    .push(payload);
+                event_groups.entry(event_type).or_default().push(payload);
             }
         }
 

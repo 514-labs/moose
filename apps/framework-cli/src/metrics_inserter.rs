@@ -55,6 +55,9 @@ async fn flush(
             continue;
         }
 
+        let mut event_groups: std::collections::HashMap<&str, Vec<serde_json::Value>> =
+            std::collections::HashMap::new();
+
         for chunk in buffer_owned.chunks(MAX_BATCH_SIZE) {
             for event in chunk {
                 let (event_type, payload) = match event {
@@ -132,26 +135,33 @@ async fn flush(
                     ),
                 };
 
-                let route = match metric_endpoints
-                    .as_ref()
-                    .and_then(|endpoints| endpoints.get(event_type))
-                    .and_then(|endpoint| endpoint.as_str())
-                {
-                    Some(route) => route,
-                    None => {
-                        eprintln!("Error: No endpoint found for event type: {}", event_type);
-                        continue; // Skip this event and move to the next one
-                    }
-                };
-
                 let mut payload = payload.clone();
                 let payload_obj = payload.as_object_mut().unwrap();
                 if let Some(labels_obj) = &metric_labels {
                     payload_obj.extend(labels_obj.iter().map(|(k, v)| (k.clone(), v.clone())));
                 }
 
-                let _ = client.post(route).json(payload_obj).send().await;
+                event_groups
+                    .entry(event_type)
+                    .or_insert_with(Vec::new)
+                    .push(payload);
             }
+        }
+
+        for (event_type, events) in event_groups {
+            let route = match metric_endpoints
+                .as_ref()
+                .and_then(|endpoints| endpoints.get(event_type))
+                .and_then(|endpoint| endpoint.as_str())
+            {
+                Some(route) => route,
+                None => {
+                    eprintln!("Error: No endpoint found for event type: {}", event_type);
+                    continue;
+                }
+            };
+
+            let _ = client.post(route).json(&events).send().await;
         }
 
         buffer_owned.clear();

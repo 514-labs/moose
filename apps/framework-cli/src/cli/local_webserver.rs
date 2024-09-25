@@ -318,10 +318,10 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
 
 async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Response<Full<Bytes>> {
     let body = to_reader(req).await;
-    let parsed: Result<FlowMessages, serde_json::Error> = serde_json::from_reader(body);
+    let parsed: Result<MetricEvent, serde_json::Error> = serde_json::from_reader(body);
     match parsed {
         Ok(cli_message) => match cli_message {
-            FlowMessages {
+            MetricEvent::StreamingFunctionEvent {
                 count_in,
                 count_out,
                 bytes,
@@ -334,10 +334,11 @@ async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Res
                         count_in,
                         count_out,
                         bytes,
-                        function_name,
+                        function_name: function_name.clone(),
                     })
                     .await;
             }
+            _ => println!("Received unknown message: {:?}", cli_message),
         },
         Err(e) => println!("Received unknown message: {:?}", e),
     }

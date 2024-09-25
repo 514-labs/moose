@@ -6,6 +6,7 @@ use prometheus_client::{
     metrics::histogram::Histogram,
     registry::Registry,
 };
+use serde::Deserialize;
 use serde_json::json;
 use serde_json::Value;
 use std::env;
@@ -47,7 +48,7 @@ pub enum MetricsErrors {
     OneShotError(#[from] tokio::sync::oneshot::error::RecvError),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Deserialize)]
 pub enum MetricEvent {
     // GetMetricsRegistryAsString(tokio::sync::oneshot::Sender<String>),
     IngestedEvent {
@@ -376,7 +377,6 @@ impl Metrics {
                                 path: route.clone().into_os_string().to_str().unwrap().to_string(),
                             })
                             .inc_by(bytes);
-                        println!("ConsumedEvent: {:?}", route.as_os_str().to_str().unwrap());
                     }
                     MetricEvent::TopicToOLAPEvent {
                         timestamp: _,

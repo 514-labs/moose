@@ -320,28 +320,23 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
 async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Response<Full<Bytes>> {
     let body = to_reader(req).await;
     let parsed: Result<MetricEvent, serde_json::Error> = serde_json::from_reader(body);
-    match parsed {
-        Ok(cli_message) => match cli_message {
-            MetricEvent::StreamingFunctionEvent {
+    if let Ok(MetricEvent::StreamingFunctionEvent {
+        count_in,
+        count_out,
+        bytes,
+        function_name,
+        timestamp,
+    }) = parsed
+    {
+        metrics
+            .send_metric_event(MetricEvent::StreamingFunctionEvent {
+                timestamp,
                 count_in,
                 count_out,
                 bytes,
-                function_name,
-                timestamp,
-            } => {
-                metrics
-                    .send_metric_event(MetricEvent::StreamingFunctionEvent {
-                        timestamp,
-                        count_in,
-                        count_out,
-                        bytes,
-                        function_name: function_name.clone(),
-                    })
-                    .await;
-            }
-            _ => {} // _ => println!("Received unknown message: {:?}", e),
-        },
-        Err(_e) => {} // Err(e) => println!("Received unknown message: {:?}", e),
+                function_name: function_name.clone(),
+            })
+            .await;
     }
 
     Response::builder()

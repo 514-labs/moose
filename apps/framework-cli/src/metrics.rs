@@ -11,7 +11,7 @@ use serde_json::json;
 use serde_json::Value;
 use std::env;
 use std::sync::{Arc, LazyLock};
-use std::{path::PathBuf, time::Duration};
+use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time;
 
@@ -57,7 +57,7 @@ pub enum MetricEvent {
         count: u64,
         bytes: u64,
         latency: Duration,
-        route: PathBuf,
+        route: String,
         method: String,
     },
     ConsumedEvent {
@@ -65,7 +65,7 @@ pub enum MetricEvent {
         count: u64,
         latency: Duration,
         bytes: u64,
-        route: PathBuf,
+        route: String,
         method: String,
     },
     StreamingFunctionEvent {
@@ -335,7 +335,7 @@ impl Metrics {
                         data.http_ingested_bytes
                             .get_or_create(&HTTPLabel {
                                 method: method.clone(),
-                                path: route.clone().into_os_string().to_str().unwrap().to_string(),
+                                path: route.clone(),
                             })
                             .inc_by(bytes);
                         data.http_ingested_request_count.inc();
@@ -346,7 +346,7 @@ impl Metrics {
 
                         data.http_to_topic_event_count
                             .get_or_create(&MessagesInCounterLabels {
-                                path: route.clone().into_os_string().to_str().unwrap().to_string(),
+                                path: route.clone(),
                                 topic_name: topic.clone(),
                                 method: method.clone(),
                             })
@@ -363,7 +363,7 @@ impl Metrics {
                         data.http_latency_histogram
                             .get_or_create(&HTTPLabel {
                                 method: method.clone(),
-                                path: route.clone().into_os_string().to_str().unwrap().to_string(),
+                                path: route.clone(),
                             })
                             .observe(latency.as_secs_f64());
                         data.http_latency_histogram_aggregate
@@ -374,7 +374,7 @@ impl Metrics {
                         data.http_consumed_bytes
                             .get_or_create(&HTTPLabel {
                                 method: method.clone(),
-                                path: route.clone().into_os_string().to_str().unwrap().to_string(),
+                                path: route.clone(),
                             })
                             .inc_by(bytes);
                     }

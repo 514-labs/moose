@@ -1,6 +1,7 @@
 use super::display::Message;
 use super::display::MessageType;
 use super::routines::auth::validate_auth_token;
+use crate::metrics::MetricEvent;
 
 use crate::cli::display::with_spinner;
 use crate::framework::controller::RouteMeta;
@@ -8,9 +9,9 @@ use crate::framework::controller::RouteMeta;
 use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure_map::Change;
 use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
+use crate::metrics::Metrics;
 use crate::utilities::docker;
 
-use super::super::metrics::{Metrics, MetricsMessage};
 use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
@@ -18,6 +19,7 @@ use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 use crate::framework::typescript::bin::CliMessage;
 use crate::project::Project;
 use bytes::Buf;
+use chrono::Utc;
 use http_body_util::BodyExt;
 use http_body_util::Full;
 use hyper::body::Body;
@@ -40,6 +42,7 @@ use rdkafka::util::Timeout;
 use serde::Serialize;
 use serde::{Deserialize, Deserializer};
 use serde_json::Deserializer as JsonDeserializer;
+use tokio::spawn;
 
 use crate::framework::data_model::model::DataModel;
 use crate::utilities::validate_passthrough::{DataModelArrayVisitor, DataModelVisitor};
@@ -66,20 +69,6 @@ use tokio::sync::RwLock;
 pub struct RouterRequest {
     req: Request<hyper::body::Incoming>,
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-enum Direction {
-    In,
-    Out,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone)]
-pub struct FlowMessages {
-    count: u64,
-    function_name: String,
-    bytes: u64,
-    direction: Direction,
 }
 
 fn default_management_port() -> u16 {
@@ -133,8 +122,6 @@ async fn create_client(
     host: String,
     consumption_apis: &RwLock<HashSet<String>>,
     is_prod: bool,
-    metrics: Arc<Metrics>,
-    route: PathBuf,
 ) -> Result<Response<Full<Bytes>>, anyhow::Error> {
     // Extract the Authorization header and check the bearer token
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
@@ -208,13 +195,6 @@ async fn create_client(
     let res = sender.send_request(new_req).await?;
     let status = res.status();
     let body = res.collect().await.unwrap().to_bytes().to_vec();
-    metrics
-        .send_metric(MetricsMessage::PutConsumedBytesCount {
-            route,
-            method: "GET".to_string(),
-            bytes_count: body.len() as u64,
-        })
-        .await;
 
     Ok(Response::builder()
         .status(status)
@@ -318,7 +298,7 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
             };
             show_message!(cli_message.message_type, message);
         }
-        Err(e) => println!("Received unknown message: {:?}", e),
+        Err(e) => println!("Received unkn message: {:?}", e),
     }
 
     Response::builder()
@@ -329,33 +309,24 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
 
 async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Response<Full<Bytes>> {
     let body = to_reader(req).await;
-    let parsed: Result<FlowMessages, serde_json::Error> = serde_json::from_reader(body);
-    match parsed {
-        Ok(cli_message) => match cli_message.direction {
-            Direction::In => {
-                metrics
-                    .send_metric(MetricsMessage::PutStreamingFunctionMessagesIn {
-                        function_name: cli_message.function_name.clone(),
-                        count: cli_message.count,
-                    })
-                    .await;
-                metrics
-                    .send_metric(MetricsMessage::PutStreamingFunctionBytes {
-                        function_name: cli_message.function_name.clone(),
-                        bytes_count: cli_message.bytes,
-                    })
-                    .await;
-            }
-            Direction::Out => {
-                metrics
-                    .send_metric(MetricsMessage::PutStreamingFunctionMessagesOut {
-                        function_name: cli_message.function_name.clone(),
-                        count: cli_message.count,
-                    })
-                    .await
-            }
-        },
-        Err(e) => println!("Received unknown message: {:?}", e),
+    let parsed: Result<MetricEvent, serde_json::Error> = serde_json::from_reader(body);
+    if let Ok(MetricEvent::StreamingFunctionEvent {
+        count_in,
+        count_out,
+        bytes,
+        function_name,
+        timestamp,
+    }) = parsed
+    {
+        metrics
+            .send_metric_event(MetricEvent::StreamingFunctionEvent {
+                timestamp,
+                count_in,
+                count_out,
+                bytes,
+                function_name: function_name.clone(),
+            })
+            .await;
     }
 
     Response::builder()
@@ -368,10 +339,7 @@ async fn metrics_route(metrics: Arc<Metrics>) -> Result<Response<Full<Bytes>>, h
     let response = Response::builder()
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from(
-            metrics
-                .get_prometheus_metrics_string()
-                .await
-                .unwrap_or_else(|e| format!("Unable to retrieve metrics: {}", e)),
+            metrics.get_metrics_registry_as_string().await,
         )))
         .unwrap();
 
@@ -422,19 +390,8 @@ async fn send_payload_to_topic(
     configured_producer: &ConfiguredProducer,
     topic_name: &str,
     payload: Vec<u8>,
-    metrics: Arc<Metrics>,
-    route: PathBuf,
 ) -> Result<(i32, i64), (KafkaError, OwnedMessage)> {
     debug!("Sending payload {:?} to topic: {}", payload, topic_name);
-
-    metrics
-        .send_metric(MetricsMessage::PutHTTPToTopicEventCount {
-            route,
-            topic_name: topic_name.to_string(),
-            method: "POST".to_string(),
-            count: 1,
-        })
-        .await;
 
     configured_producer
         .producer
@@ -456,39 +413,22 @@ async fn handle_json_req(
     topic_name: &str,
     data_model: &DataModel,
     req: Request<Incoming>,
-    metrics: Arc<Metrics>,
-    route: PathBuf,
 ) -> Response<Full<Bytes>> {
     // TODO probably a refactor to be done here with the array json but it doesn't seem to be
     // straightforward to do it in a generic way.
     let url = req.uri().to_string();
-    let number_of_bytes = req.body().size_hint().exact().unwrap();
     let body = to_reader(req).await;
 
     let parsed = JsonDeserializer::from_reader(body)
         .deserialize_any(&mut DataModelVisitor::new(&data_model.columns));
 
-    metrics
-        .send_metric(MetricsMessage::PutIngestedBytesCount {
-            route: route.clone(),
-            method: "POST".to_string(),
-            bytes_count: number_of_bytes,
-        })
-        .await;
     // TODO add check that the payload has the proper schema
 
     if let Err(e) = parsed {
         return bad_json_response(e);
     }
 
-    let res = send_payload_to_topic(
-        configured_producer,
-        topic_name,
-        parsed.ok().unwrap(),
-        metrics,
-        route,
-    )
-    .await;
+    let res = send_payload_to_topic(configured_producer, topic_name, parsed.ok().unwrap()).await;
     if let Err((kafka_error, _)) = res {
         debug!(
             "Failed to deliver message to {} with error: {}",
@@ -520,8 +460,6 @@ async fn handle_json_array_body(
     topic_name: &str,
     data_model: &DataModel,
     req: Request<Incoming>,
-    metrics: Arc<Metrics>,
-    route: PathBuf,
 ) -> Response<Full<Bytes>> {
     // TODO probably a refactor to be done here with the json but it doesn't seem to be
     // straightforward to do it in a generic way.
@@ -538,13 +476,6 @@ async fn handle_json_array_body(
     });
 
     debug!("parsed json array for {}", topic_name);
-    metrics
-        .send_metric(MetricsMessage::PutIngestedBytesCount {
-            route: route.clone(),
-            method: "POST".to_string(),
-            bytes_count: number_of_bytes,
-        })
-        .await;
 
     if let Err(e) = parsed {
         return bad_json_response(e);
@@ -574,15 +505,6 @@ async fn handle_json_array_body(
         }
     }
     wait_for_batch_complete(&mut res_arr, temp_res).await;
-
-    metrics
-        .send_metric(MetricsMessage::PutHTTPToTopicEventCount {
-            route: route.clone(),
-            method: "POST".to_string(),
-            count: res_arr.iter().filter(|res| res.is_ok()).count() as u64,
-            topic_name: topic_name.to_string(),
-        })
-        .await;
 
     if res_arr.iter().any(|res| res.is_err()) {
         return internal_server_error_response();
@@ -632,7 +554,6 @@ async fn ingest_route(
     route: PathBuf,
     configured_producer: ConfiguredProducer,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
-    metrics: Arc<Metrics>,
     is_prod: bool,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     show_message!(
@@ -660,8 +581,6 @@ async fn ingest_route(
                 &route_meta.topic_name,
                 &route_meta.data_model,
                 req,
-                metrics,
-                route,
             )
             .await),
             EndpointIngestionFormat::JsonArray => Ok(handle_json_array_body(
@@ -669,8 +588,6 @@ async fn ingest_route(
                 &route_meta.topic_name,
                 &route_meta.data_model,
                 req,
-                metrics,
-                route,
             )
             .await),
         },
@@ -714,6 +631,8 @@ async fn router(
     let now = Instant::now();
 
     let req = request.req;
+    let req_bytes = req.body().size_hint().exact().unwrap();
+
     let route_table = request.route_table;
 
     debug!(
@@ -723,10 +642,9 @@ async fn router(
     );
 
     let route = get_path_without_prefix(PathBuf::from(req.uri().path()), path_prefix);
+    let route_clone = route.clone();
 
     let metrics_method = req.method().to_string();
-
-    let metrics_path = route.clone();
 
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
     let res = match (req.method(), &route_split[..]) {
@@ -737,26 +655,16 @@ async fn router(
                 route.join(current_version),
                 configured_producer,
                 route_table,
-                metrics.clone(),
                 is_prod,
             )
             .await
         }
         (&hyper::Method::POST, ["ingest", _, _]) => {
-            ingest_route(
-                req,
-                route,
-                configured_producer,
-                route_table,
-                metrics.clone(),
-                is_prod,
-            )
-            .await
+            ingest_route(req, route, configured_producer, route_table, is_prod).await
         }
 
         (&hyper::Method::GET, ["consumption", _rt]) => {
-            match create_client(req, host, consumption_apis, is_prod, metrics.clone(), route).await
-            {
+            match create_client(req, host, consumption_apis, is_prod).await {
                 Ok(response) => Ok(response),
                 Err(e) => {
                     debug!("Error: {:?}", e);
@@ -772,17 +680,46 @@ async fn router(
         _ => route_not_found_response(),
     };
 
-    let metrics_path_str = metrics_path.to_str().unwrap();
+    let res_bytes = res.as_ref().unwrap().body().size_hint().exact().unwrap();
+    let topic = route_table
+        .read()
+        .await
+        .get(&route_clone)
+        .map(|route_meta| route_meta.topic_name.clone())
+        .unwrap_or_default();
 
-    if metrics_path_str.starts_with("ingest/") || metrics_path_str.starts_with("consumption/") {
-        metrics
-            .send_metric(MetricsMessage::HTTPLatency {
-                path: metrics_path,
-                duration: now.elapsed(),
-                method: metrics_method,
-            })
-            .await;
-    }
+    let metrics_clone = metrics.clone();
+    let metrics_path = route_clone.clone().to_str().unwrap().to_string();
+    let metrics_path_clone = metrics_path.clone();
+
+    spawn(async move {
+        if metrics_path_clone.starts_with("ingest/") {
+            let _ = metrics_clone
+                .send_metric_event(MetricEvent::IngestedEvent {
+                    topic,
+                    timestamp: Utc::now(),
+                    count: 1,
+                    bytes: req_bytes,
+                    latency: now.elapsed(),
+                    route: metrics_path.clone(),
+                    method: metrics_method.clone(),
+                })
+                .await;
+        }
+
+        if metrics_path_clone.starts_with("consumption/") {
+            let _ = metrics_clone
+                .send_metric_event(MetricEvent::ConsumedEvent {
+                    timestamp: Utc::now(),
+                    count: 1,
+                    latency: now.elapsed(),
+                    bytes: res_bytes,
+                    route: metrics_path.clone(),
+                    method: metrics_method.clone(),
+                })
+                .await;
+        }
+    });
 
     res
 }

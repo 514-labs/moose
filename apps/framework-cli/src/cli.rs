@@ -321,17 +321,19 @@ async fn top_command_handler(
                 &settings,
             );
 
-            let (metrics, rx) = Metrics::new(TelemetryMetadata {
+            let (metrics, rx_events) = Metrics::new(TelemetryMetadata {
                 anonymous_telemetry_enabled: settings.telemetry.enabled,
                 machine_id: settings.telemetry.machine_id.clone(),
                 metric_labels: settings.metric.labels.clone(),
                 is_moose_developer: settings.telemetry.is_moose_developer,
                 is_production: project_arc.is_production,
                 project_name: project_arc.name().to_string(),
+                export_metrics: settings.telemetry.export_metrics,
+                metric_endpoints: settings.metric.endpoints.clone(),
             });
 
             let arc_metrics = Arc::new(metrics);
-            arc_metrics.start_listening_to_metrics(rx).await;
+            arc_metrics.start_listening_to_metrics(rx_events).await;
 
             check_project_name(&project_arc.name())?;
             run_local_infrastructure(&project_arc)?.show();
@@ -493,17 +495,19 @@ async fn top_command_handler(
             project.set_is_production_env(true);
             let project_arc = Arc::new(project);
 
-            let (metrics, rx) = Metrics::new(TelemetryMetadata {
+            let (metrics, rx_events) = Metrics::new(TelemetryMetadata {
                 anonymous_telemetry_enabled: settings.telemetry.enabled,
                 machine_id: settings.telemetry.machine_id.clone(),
                 metric_labels: settings.metric.labels.clone(),
                 is_moose_developer: settings.telemetry.is_moose_developer,
                 is_production: project_arc.is_production,
                 project_name: project_arc.name().to_string(),
+                export_metrics: settings.telemetry.export_metrics,
+                metric_endpoints: settings.metric.endpoints.clone(),
             });
 
             let arc_metrics = Arc::new(metrics);
-            arc_metrics.start_listening_to_metrics(rx).await;
+            arc_metrics.start_listening_to_metrics(rx_events).await;
 
             let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::ProdCommand,

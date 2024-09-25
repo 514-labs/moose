@@ -2,7 +2,7 @@ from clickhouse_connect.driver.client import Client
 from dataclasses import dataclass, asdict
 from enum import Enum
 from string import Formatter
-from typing import Callable, Dict, Generic, Optional, TypeVar, Union, Any, overload
+from typing import Any, Callable, Dict, Generic, Optional, TypeVar, Union, overload
 import sys
 import os
 import json
@@ -88,7 +88,7 @@ def moose_data_model(arg: Any = None) -> Any:
 JWTPayload = Dict[str, Any]
 
 @dataclass
-class QueryResult:
+class ConsumptionApiResult:
     status: int
     body: Any
 

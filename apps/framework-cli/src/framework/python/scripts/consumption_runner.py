@@ -35,6 +35,7 @@ parser.add_argument('clickhouse_use_ssl', type=str, help='Clickhouse use SSL')
 parser.add_argument('jwt_secret', type=str, help='JWT secret')
 parser.add_argument('jwt_issuer', type=str, help='JWT issuer')
 parser.add_argument('jwt_audience', type=str, help='JWT audience')
+parser.add_argument('jwt_enforce_all', type=str, help='Auto-handle requests without JWT')
 
 
 args = parser.parse_args()
@@ -50,6 +51,7 @@ consumption_dir_path = args.consumption_dir_path
 jwt_secret = args.jwt_secret
 jwt_issuer = args.jwt_issuer
 jwt_audience = args.jwt_audience
+jwt_enforce_all = args.jwt_enforce_all
 
 sys.path.append(consumption_dir_path)
 
@@ -64,6 +66,7 @@ class EnhancedJSONEncoder(json.JSONEncoder):
         if dataclasses.is_dataclass(o):
             return dataclasses.asdict(o)
         return super().default(o)
+
 
 class MooseClient:
     def __init__(self, ch_client: Client):
@@ -123,16 +126,20 @@ def handler_with_client(ch_client):
                     if token:
                         jwt_payload = verify_jwt(token)
                 
-                query_params = parse_qs(parsed_path.query)
-
-                response = module.run(ch_client, query_params, jwt_payload)
-
-                if hasattr(response, 'status') and hasattr(response, 'body'):
-                    self.send_response(response.status)
-                    response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
+                if jwt_payload is None and jwt_enforce_all == 'true':
+                    self.send_response(401)
+                    response_message = bytes(json.dumps({"error": "Unauthorized"}), 'utf-8')
                 else:
-                    self.send_response(200)
-                    response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
+                    query_params = parse_qs(parsed_path.query)
+
+                    response = module.run(ch_client, query_params, jwt_payload)
+
+                    if hasattr(response, 'status') and hasattr(response, 'body'):
+                        self.send_response(response.status)
+                        response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
+                    else:
+                        self.send_response(200)
+                        response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
                 
                 self.end_headers()
                 self.wfile.write(response_message)

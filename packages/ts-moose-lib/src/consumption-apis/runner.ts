@@ -21,6 +21,7 @@ const [
   JWT_SECRET, // Optional we will need to bring a proper cli parsing tool to help to make sure this is more resilient. or make it one json object
   JWT_ISSUER, // Optional
   JWT_AUDIENCE, // Optional
+  ENFORCE_ON_ALL_CONSUMPTIONS_APIS, // Optional
 ] = process.argv;
 
 const clickhouseConfig = {
@@ -53,8 +54,21 @@ const apiHandler =
             jwtPayload = payload;
           } catch (error) {
             console.log("JWT verification failed");
+            if (ENFORCE_ON_ALL_CONSUMPTIONS_APIS === "true") {
+              res.writeHead(401, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: "Unauthorized" }));
+              return;
+            }
           }
+        } else if (ENFORCE_ON_ALL_CONSUMPTIONS_APIS === "true") {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Unauthorized" }));
+          return;
         }
+      } else if (ENFORCE_ON_ALL_CONSUMPTIONS_APIS === "true") {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Unauthorized" }));
+        return;
       }
 
       const pathName = createPath(fileName);

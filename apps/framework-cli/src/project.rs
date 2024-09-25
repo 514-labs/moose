@@ -116,6 +116,8 @@ pub struct Project {
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct JwtConfig {
+    #[serde(default)]
+    pub enforce_on_all_consumptions_apis: bool,
     pub secret: String,
     pub issuer: String,
     pub audience: String,

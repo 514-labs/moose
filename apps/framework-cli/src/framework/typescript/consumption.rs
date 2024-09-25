@@ -26,14 +26,21 @@ pub fn run(
         .as_ref()
         .map(|jwt| jwt.secret.clone())
         .unwrap_or("".to_string());
+
     let jwt_issuer = jwt_config
         .as_ref()
         .map(|jwt| jwt.issuer.clone())
         .unwrap_or("".to_string());
+
     let jwt_audience = jwt_config
         .as_ref()
         .map(|jwt| jwt.audience.clone())
         .unwrap_or("".to_string());
+
+    let enforce_on_all_consumptions_apis = jwt_config
+        .as_ref()
+        .map(|jwt| jwt.enforce_on_all_consumptions_apis.to_string())
+        .unwrap_or("false".to_string());
 
     let args = vec![
         consumption_path.to_str().unwrap(),
@@ -46,6 +53,7 @@ pub fn run(
         &jwt_secret,
         &jwt_issuer,
         &jwt_audience,
+        &enforce_on_all_consumptions_apis,
     ];
 
     let mut consumption_process = bin::run(CONSUMPTION_RUNNER_BIN, project_path, &args)?;

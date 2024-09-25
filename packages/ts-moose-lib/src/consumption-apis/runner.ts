@@ -2,6 +2,7 @@ import http from "http";
 import process from "node:process";
 import { getClickhouseClient } from "../commons";
 import { MooseClient, sql } from "./helpers";
+import * as jose from "jose";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
@@ -17,6 +18,10 @@ const [
   CLICKHOUSE_USERNAME,
   CLICKHOUSE_PASSWORD,
   CLICKHOUSE_USE_SSL,
+  JWT_SECRET, // Optional we will need to bring a proper cli parsing tool to help to make sure this is more resilient. or make it one json object
+  JWT_ISSUER, // Optional
+  JWT_AUDIENCE, // Optional
+  ENFORCE_ON_ALL_CONSUMPTIONS_APIS, // Optional
 ] = process.argv;
 
 const clickhouseConfig = {
@@ -30,64 +35,111 @@ const clickhouseConfig = {
 
 const createPath = (path: string) => `${CONSUMPTION_DIR_PATH}${path}.ts`;
 
-const apiHandler = async (
-  req: http.IncomingMessage,
-  res: http.ServerResponse,
-) => {
-  try {
-    const url = new URL(req.url || "", "https://localhost");
-    const fileName = url.pathname;
+const apiHandler =
+  (publicKey: jose.KeyLike | undefined) =>
+  async (req: http.IncomingMessage, res: http.ServerResponse) => {
+    try {
+      const url = new URL(req.url || "", "https://localhost");
+      const fileName = url.pathname;
 
-    const pathName = createPath(fileName);
-
-    const paramsObject = Array.from(url.searchParams.entries()).reduce(
-      (obj: { [key: string]: any }, [key, value]) => {
-        if (obj[key]) {
-          if (Array.isArray(obj[key])) {
-            obj[key].push(value);
-          } else {
-            obj[key] = [obj[key], value];
+      let jwtPayload;
+      if (publicKey && JWT_ISSUER && JWT_AUDIENCE) {
+        const jwt = req.headers.authorization?.split(" ")[1]; // Bearer <token>
+        if (jwt) {
+          try {
+            const { payload } = await jose.jwtVerify(jwt, publicKey, {
+              issuer: JWT_ISSUER,
+              audience: JWT_AUDIENCE,
+            });
+            jwtPayload = payload;
+          } catch (error) {
+            console.log("JWT verification failed");
+            if (ENFORCE_ON_ALL_CONSUMPTIONS_APIS === "true") {
+              res.writeHead(401, { "Content-Type": "application/json" });
+              res.end(JSON.stringify({ error: "Unauthorized" }));
+              return;
+            }
           }
-        } else {
-          obj[key] = value;
+        } else if (ENFORCE_ON_ALL_CONSUMPTIONS_APIS === "true") {
+          res.writeHead(401, { "Content-Type": "application/json" });
+          res.end(JSON.stringify({ error: "Unauthorized" }));
+          return;
         }
-        return obj;
-      },
-      {},
-    );
+      } else if (ENFORCE_ON_ALL_CONSUMPTIONS_APIS === "true") {
+        res.writeHead(401, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: "Unauthorized" }));
+        return;
+      }
 
-    const userFuncModule = require(pathName);
+      const pathName = createPath(fileName);
 
-    const result = await userFuncModule.default(paramsObject, {
-      client: new MooseClient(getClickhouseClient(clickhouseConfig)),
-      sql: sql,
-    });
+      const paramsObject = Array.from(url.searchParams.entries()).reduce(
+        (obj: { [key: string]: any }, [key, value]) => {
+          if (obj[key]) {
+            if (Array.isArray(obj[key])) {
+              obj[key].push(value);
+            } else {
+              obj[key] = [obj[key], value];
+            }
+          } else {
+            obj[key] = value;
+          }
+          return obj;
+        },
+        {},
+      );
 
-    let body: string;
+      const userFuncModule = require(pathName);
 
-    // TODO investigate why these prototypes are different
-    if (Object.getPrototypeOf(result).constructor.name === "ResultSet") {
-      body = JSON.stringify(await result.json());
-    } else {
-      body = JSON.stringify(result);
+      const result = await userFuncModule.default(paramsObject, {
+        client: new MooseClient(getClickhouseClient(clickhouseConfig)),
+        sql: sql,
+        jwt: jwtPayload,
+      });
+
+      let body: string;
+      let status: number | undefined;
+
+      // TODO investigate why these prototypes are different
+      if (Object.getPrototypeOf(result).constructor.name === "ResultSet") {
+        body = JSON.stringify(await result.json());
+      } else {
+        if ("body" in result && "status" in result) {
+          body = JSON.stringify(result.body);
+          status = result.status;
+        } else {
+          body = JSON.stringify(result);
+        }
+      }
+
+      if (status) {
+        res.writeHead(status, { "Content-Type": "application/json" });
+      } else {
+        res.writeHead(200, { "Content-Type": "application/json" });
+      }
+
+      res.end(body);
+    } catch (error: any) {
+      if (error instanceof Error) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: error.message }));
+      } else {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res;
+      }
     }
-
-    res.writeHead(200, { "Content-Type": "application/json" });
-    res.end(body);
-  } catch (error: any) {
-    if (error instanceof Error) {
-      res.writeHead(500, { "Content-Type": "application/json" });
-      res.end(JSON.stringify({ error: error.message }));
-    } else {
-      res.writeHead(500, { "Content-Type": "application/json" });
-      res;
-    }
-  }
-};
+  };
 
 export const runConsumptionApis = async () => {
   console.log("Starting API service");
-  const server = http.createServer(apiHandler);
+
+  let publicKey;
+  if (JWT_SECRET) {
+    console.log("Importing JWT public key...");
+    publicKey = await jose.importSPKI(JWT_SECRET, "RS256");
+  }
+
+  const server = http.createServer(apiHandler(publicKey));
 
   process.on("SIGTERM", async () => {
     console.log("Received SIGTERM, shutting down...");

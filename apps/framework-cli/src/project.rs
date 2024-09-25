@@ -110,6 +110,17 @@ pub struct Project {
 
     #[serde(default = "HashMap::new")]
     pub supported_old_versions: HashMap<String, String>,
+    #[serde(default)]
+    pub jwt: Option<JwtConfig>,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct JwtConfig {
+    #[serde(default)]
+    pub enforce_on_all_consumptions_apis: bool,
+    pub secret: String,
+    pub issuer: String,
+    pub audience: String,
 }
 
 pub struct AggregationSet {
@@ -169,6 +180,7 @@ impl Project {
             language_project_config,
             supported_old_versions: HashMap::new(),
             git_config: GitConfig::default(),
+            jwt: None,
         }
     }
 

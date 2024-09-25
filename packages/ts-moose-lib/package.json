@@ -23,7 +23,8 @@
     "kafkajs": "2.2.4",
     "ts-patch": "~3.2.0",
     "ts-node": "10.9.2",
-    "typescript": "~5.4.0"
+    "typescript": "~5.4.0",
+    "jose": "5.9.2"
   },
   "devDependencies": {
     "@repo/ts-config": "workspace:*",

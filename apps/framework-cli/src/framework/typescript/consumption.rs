@@ -5,6 +5,7 @@ use tokio::process::Child;
 
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::processes::consumption_registry::ConsumptionError;
+use crate::project::JwtConfig;
 
 use super::bin;
 
@@ -14,11 +15,33 @@ const CONSUMPTION_RUNNER_BIN: &str = "consumption-apis";
 // TODO: Bubble up compilation errors to the user
 pub fn run(
     clickhouse_config: ClickHouseConfig,
+    jwt_config: Option<JwtConfig>,
     consumption_path: &Path,
     project_path: &Path,
 ) -> Result<Child, ConsumptionError> {
     let host_port = clickhouse_config.host_port.to_string();
     let use_ssl = clickhouse_config.use_ssl.to_string();
+
+    let jwt_secret = jwt_config
+        .as_ref()
+        .map(|jwt| jwt.secret.clone())
+        .unwrap_or("".to_string());
+
+    let jwt_issuer = jwt_config
+        .as_ref()
+        .map(|jwt| jwt.issuer.clone())
+        .unwrap_or("".to_string());
+
+    let jwt_audience = jwt_config
+        .as_ref()
+        .map(|jwt| jwt.audience.clone())
+        .unwrap_or("".to_string());
+
+    let enforce_on_all_consumptions_apis = jwt_config
+        .as_ref()
+        .map(|jwt| jwt.enforce_on_all_consumptions_apis.to_string())
+        .unwrap_or("false".to_string());
+
     let args = vec![
         consumption_path.to_str().unwrap(),
         &clickhouse_config.db_name,
@@ -27,6 +50,10 @@ pub fn run(
         &clickhouse_config.user,
         &clickhouse_config.password,
         &use_ssl,
+        &jwt_secret,
+        &jwt_issuer,
+        &jwt_audience,
+        &enforce_on_all_consumptions_apis,
     ];
 
     let mut consumption_process = bin::run(CONSUMPTION_RUNNER_BIN, project_path, &args)?;

@@ -19,7 +19,6 @@ use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 use crate::framework::typescript::bin::CliMessage;
 use crate::project::Project;
 use bytes::Buf;
-use chrono::DateTime;
 use chrono::Utc;
 use http_body_util::BodyExt;
 use http_body_util::Full;

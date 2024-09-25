@@ -50,10 +50,6 @@ async fn flush(
     loop {
         interval.tick().await;
         let mut buffer_owned = buffer.lock().await;
-        if buffer_owned.is_empty() {
-            drop(buffer_owned);
-            continue;
-        }
 
         let mut event_groups: std::collections::HashMap<&str, Vec<serde_json::Value>> =
             std::collections::HashMap::new();
@@ -162,6 +158,5 @@ async fn flush(
         }
 
         buffer_owned.clear();
-        drop(buffer_owned);
     }
 }

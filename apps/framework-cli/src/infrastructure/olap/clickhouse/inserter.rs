@@ -54,10 +54,6 @@ async fn flush(
     loop {
         interval.tick().await;
         let mut buffer_owned = buffer.lock().await;
-        if buffer_owned.is_empty() {
-            drop(buffer_owned);
-            continue;
-        }
 
         // in case the buffer is too big, we slice it and then we flush it
         for chunk in buffer_owned.chunks(MAX_BATCH_SIZE) {
@@ -73,7 +69,5 @@ async fn flush(
         }
 
         buffer_owned.clear();
-
-        drop(buffer_owned);
     }
 }

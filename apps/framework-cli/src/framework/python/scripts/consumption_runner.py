@@ -104,7 +104,7 @@ def verify_jwt(token: str) -> Optional[Dict[str, Any]]:
     try:
         payload = jwt.decode(token, jwt_secret, algorithms=["RS256"], audience=jwt_audience, issuer=jwt_issuer)
         return payload
-    except InvalidTokenError as e:
+    except Exception as e:
         print("JWT verification failed:", str(e))
         return None
 

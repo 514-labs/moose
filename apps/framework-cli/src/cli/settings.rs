@@ -46,8 +46,14 @@ impl Default for Telemetry {
 
 #[derive(Deserialize, Debug, Default, Clone)]
 pub struct Features {
-    #[serde(default)]
+    #[serde(default = "Features::default_core_v2")]
     pub core_v2: bool,
+}
+
+impl Features {
+    fn default_core_v2() -> bool {
+        true
+    }
 }
 
 #[derive(Deserialize, Debug)]

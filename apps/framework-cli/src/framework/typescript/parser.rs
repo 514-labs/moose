@@ -1,7 +1,7 @@
-use std::fs;
 use std::io::ErrorKind::NotFound;
 use std::path::Path;
 use std::process::Command;
+use std::{env, fs};
 
 use serde_json::{json, Value};
 
@@ -63,9 +63,18 @@ pub fn extract_data_model_from_file(
         },
     )?;
 
+    // This adds the node_modules/.bin to the PATH so that we can run moose-tspc
+    let path_env = env::var("PATH").unwrap_or_else(|_| "/usr/local/bin".to_string());
+    let bin_path = format!(
+        "{}:{}/node_modules/.bin",
+        path_env,
+        project.project_location.to_str().unwrap()
+    );
+
     let ts_return_code = Command::new("moose-tspc")
         .arg("--project")
         .arg(format!(".moose/{}", TSCONFIG_JSON))
+        .env("PATH", bin_path)
         .env("NPM_CONFIG_UPDATE_NOTIFIER", "false")
         .current_dir(&project.project_location)
         .spawn()

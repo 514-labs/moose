@@ -1,6 +1,6 @@
 use crate::{cli::display::MessageType, utilities::constants::TSCONFIG_JSON};
 use serde::Deserialize;
-use std::{path::Path, process::Stdio};
+use std::{env, path::Path, process::Stdio};
 
 use tokio::process::{Child, Command};
 
@@ -22,7 +22,17 @@ pub fn run(
 
     command.arg(binary_command);
 
-    command.env("TS_NODE_PROJECT", project_path.join(TSCONFIG_JSON));
+    // This adds the node_modules/.bin to the PATH so that we can run moose-tspc
+    let path = env::var("PATH").unwrap_or_else(|_| "/usr/local/bin".to_string());
+    let bin_path = format!(
+        "{}:{}/node_modules/.bin",
+        path,
+        project_path.to_str().unwrap()
+    );
+
+    command
+        .env("TS_NODE_PROJECT", project_path.join(TSCONFIG_JSON))
+        .env("PATH", bin_path);
 
     for arg in args {
         command.arg(arg);

@@ -269,7 +269,7 @@ pub fn build_dockerfile(
     // so we set it to a recent version for the purpose of local dev testing.
     let mut cli_version = constants::CLI_VERSION;
     if cli_version == "0.0.1" {
-        cli_version = "0.3.522";
+        cli_version = "0.3.625";
     }
 
     let build_all = is_amd64 == is_arm64;

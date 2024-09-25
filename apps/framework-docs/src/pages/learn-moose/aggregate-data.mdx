@@ -1,41 +1,43 @@
 import { Callout, ToggleBlock } from "../../components";
 import { Steps, FileTree } from "nextra/components";
 
-# Aggregate Programming Languages with Blocks
+# Aggregate Programming Languages with Moose Blocks
 
-In the `ProcessedStarEvent` table, the `languages` column contains nested arrays of programming languages used by each starrer across all their repositories. This structure makes it difficult to analyze which programming languages are most popular among all the starrers. To address this, you can use Moose **Blocks** to create a view that unpacks the `languages` array, allowing for easier analysis of this data.
+To analyze which programming languages are most popular among your stargazers, we need to aggregate data from the `StargazerProjectInfo` table. This table contains details about each repository owned by your stargazers, but the data is spread across multiple rows and columns, making it hard to glean insights directly.
+
+We can use Moose **Blocks** to create a **Materialized View** that pre-aggregates this data for us. This way, we can efficiently query the most popular programming languages among all stargazers.
 
 <Callout type="info" title="What are Blocks?">
-  The [Blocks primitive](/db-processing) lets you execute SQL statements against
-  your database to set up processes or objects in your database. This includes
-  creating views or materialized views to aggregate, join, or group data from
-  various rows and tables.
+  [Blocks](/db-processing) allow you to execute SQL statements against your database to set up or manage database objects. This includes creating views or materialized views to aggregate, join, or group data from various tables.
 </Callout>
 
-## Initialize a New Block: `userLanguageTable`
+## Create a New Block: `TopProgrammingLanguages`
 
 <Steps>
-### Use the Moose CLI `blocks init` Helper
+
+### Initialize the Block with Moose CLI
+
 In your terminal, run:
+
 ```bash filename="Terminal" copy
-npx moose-cli blocks init userLanguageTable
+npx moose-cli block init TopProgrammingLanguages
 ```
 
-This command will generate a new file named `userLanguageTable.ts` and place it inside the `/blocks` folder of your application:
+This command generates a new file `TopProgrammingLanguages.ts` in the `/blocks` directory:
 
 <FileTree>
   <FileTree.Folder name="app" open>
     <FileTree.Folder name="blocks" open>
-      <FileTree.File name="userLanguageTable.ts" />
+      <FileTree.File name="TopProgrammingLanguages.ts" />
     </FileTree.Folder>
   </FileTree.Folder>
 </FileTree>
 
-### Open and Inspect the File
+### Inspect the Generated File
 
-You should see the following boilerplate:
+Open `TopProgrammingLanguages.ts`. You should see:
 
-```ts filename="app/blocks/userLanguageTable.ts" copy
+```ts filename="app/blocks/TopProgrammingLanguages.ts" copy
 import { Blocks } from "@514labs/moose-lib";
 
 export default {
@@ -48,107 +50,102 @@ export default {
 } as Blocks;
 ```
 
-<Callout type="info" title="Blocks Structure">
-  - The `Blocks` type is imported from the `@514labs/moose-lib` library. This
-  ensures type safety for the `setup` and `teardown` properties. - The `default
-  export` is an object that conforms to the `Blocks` type. - **`setup`**: - An
-  array of SQL strings executed to set up the necessary database objects or
-  views. - These statements are run by Moose on your database automatically
-  whenever you start your dev server. The results of these statements create and
-  persist processes in your database. - **`teardown`**: - An array of SQL
-  statements used to clean up or delete the database objects created during the
-  setup. - These statements are automatically executed by Moose when you stop
-  your dev server.
+<Callout type="info" title="Understanding Blocks">
+- **Blocks Type**: Imported from `@514labs/moose-lib`, it provides type safety for the `setup` and `teardown` arrays.
+- **Default Export**: An object conforming to the `Blocks` type.
+- **`setup`**: An array of SQL statements executed to set up database resources when you start your dev server.
+- **`teardown`**: An array of SQL statements executed to clean up resources when you stop your dev server.
 </Callout>
 
-### Define SQL Statements to Create and Drop `userLanguages` View
+### Implement the Materialized View
 
-Create a view named `userLanguages` to simplify the structure of the programming languages data, so that it iseasier to analyze which languages are most popular among the users who starred your repository. Each row in the view will represent a unique combination of a user and a programming language they use, along with the amount of code they've written in that language.
+We'll create a materialized view that aggregates programming language data from `StargazerProjectInfo_0_0`. This view will automatically update as new data arrives, providing real-time insights into the most popular programming languages among your stargazers.
 
-Paste in the following SQL statements into the `setup` and `teardown` arrays inside the `Blocks` object, like so:
+Here's how to implement it:
 
-```ts filename="app/blocks/userLanguageTable.ts" copy
-import { Blocks } from "@514labs/moose-lib";
+```ts filename="app/blocks/TopProgrammingLanguages.ts" copy
+import {
+  Blocks,
+  createAggregation,
+  dropAggregation,
+  ClickHouseEngines,
+} from "@514labs/moose-lib";
+
+const MV_NAME = "TopProgrammingLanguages_MV";
+const TABLE_NAME = "TopProgrammingLanguages";
+
+const createTableOptions = {
+  name: TABLE_NAME,
+  columns: {
+    language: "String", // Programming language name
+    total_projects: "AggregateFunction(count, UInt64)", // Total number of projects using the language
+    total_repo_size_kb: "AggregateFunction(sum, Float64)", // Sum of repository sizes using the language
+  },
+  engine: ClickHouseEngines.AggregatingMergeTree, // Optimized for aggregation
+  orderBy: "language", // Data ordered by language
+};
+
+const selectQuery = `
+SELECT
+  language,
+  countState() AS total_projects,
+  sumState(repoSizeKb) AS total_repo_size_kb
+FROM StargazerProjectInfo_0_0
+GROUP BY language
+`;
 
 export default {
-  // Sequences of SQL you can apply to a database
   setup: [
-    `
-   CREATE VIEW userLanguages AS
-    SELECT DISTINCT 
-        username AS user, 
-        arrayFirst(x->x IS NOT NULL, language_object.language) AS language, 
-        arrayFirst(x->x IS NOT NULL, language_object.bytes) AS bytes 
-    FROM 
-        local.ProcessedStarEvent_0_0
-    ARRAY JOIN 
-    languages AS language_object
-   `,
+    ...createAggregation({
+      materializedViewName: MV_NAME,
+      tableCreateOptions: createTableOptions,
+      select: selectQuery,
+    }),
   ],
-  // Delete and clean up the objects from the database
-  teardown: [`DROP VIEW userLanguages`],
+  teardown: [
+    ...dropAggregation({ viewName: MV_NAME, tableName: TABLE_NAME }),
+  ],
 } as Blocks;
 ```
 
-In this example:
+**Explanation:**
 
-- The `setup` array contains a single SQL statement that creates a view named `userLanguages`
-- The `teardown` array contains a single SQL statement that drops the `userLanguages` view
+- **Define the Aggregated Table**: We specify `createTableOptions` for the `TopProgrammingLanguages` table, which will store aggregated data such as the total number of projects and total repository size per programming language.
 
-<Callout type="info" title="Why Create a View?">
-  This view simplifies the structure of the programming languages data, so that
-  it's easier to analyze which languages are most popular among the users who
-  starred your repository. Each row in the view represents a unique combination
-  of a user and a programming language they use, along with the amount of code
-  they've written in that language.
+- **Write the Aggregation Query**: The `selectQuery` aggregates data from `StargazerProjectInfo_0_0`, grouping by `language` and calculating counts and sums.
+
+- **Set Up and Tear Down**: In the `export default` object, we use `createAggregation` in `setup` to establish the materialized view and table. The `teardown` uses `dropAggregation` to remove them when they are no longer needed.
+
+- **AggregatingMergeTree Engine**: We use this engine for the table to optimize aggregation operations. It maintains and updates aggregation states efficiently as new data is inserted.
+
+### Save and Apply the Changes
+
+Save `TopProgrammingLanguages.ts`. Moose will automatically apply the changes, creating the new table and materialized view in your database.
+
+### Verify the Materialized View
+
+Open your ClickHouse database explorer and check that the `TopProgrammingLanguages` table and `TopProgrammingLanguages_MV` materialized view have been created. Query the `TopProgrammingLanguages` table to see the aggregated data:
+
+```sql
+SELECT
+  language,
+  countMerge(total_projects) AS total_projects,
+  sumMerge(total_repo_size_kb) AS total_repo_size_kb
+FROM TopProgrammingLanguages
+ORDER BY total_projects DESC
+```
+
+<Callout type="info" title="Understanding the Query">
+In AggregatingMergeTree tables, `countState` and `sumState` store intermediate states (partial counts or sums). To get final results, `countMerge` and `sumMerge` combine these states into total counts or sums.
 </Callout>
-
-<ToggleBlock openText="Expand for Detailed Breakdown" closeText="Collapse Breakdown">
-This view transforms the data from the `ProcessedStarEvent` table, by:
-- Selecting distinct combinations of the Github usernames, programming languages, and number of bytes written in that language
-- Unpacking the nested `languages` array from the source table
-
-The resulting view will have 3 columns:
-
-<ul>
-<li>`user`: The username of the person who starred the repository</li>
-<li>`language`: A programming language used by the user</li>
-<li>`bytes`: The number of bytes of code written in that language by the user</li>
-</ul>
-</ToggleBlock>
-
-### Save the File
-
-Saving your changes to the `userLanguageTable.ts` file will update the infrastructure controlled by Moose-- in this case, the `userLanguages` view will be instantiated.
-
-### Verify the `userLanguages` View was Created
-
-Open your database explorer and inspect the list of views in your Clickhouse database. You should now see a view called `userLanguage` with columns `user`, `language`, and `bytes`.
-
-Take a look at the data inside the view!
 
 </Steps>
 
 <Callout type="success">
-  Now you can easily understand the expertise and coding preferences of users
-  who starred your repository! To recap:
-  <br /> <br />
-  <ul>
-    <li>
-      You initialized a new [Block](/db-processing) using the Moose CLI helper
-      function
-    </li>
-    <li>
-      Inside the Block, you set up a view that unpacks the nested `languages`
-      array in the `ProcessedStarEvent` table{" "}
-    </li>
-    <li>
-      {" "}
-      This view offers a detailed breakdown of the programming languages used by
-      each user who starred your repository{" "}
-    </li>
-  </ul>
-  <br />
-  Your data is now processed, analyzed, and ready for building APIs that
-  integrate insights from your GitHub data into other applications.
+  You've successfully aggregated programming language data! To recap:
+  - You initialized a new Block using the Moose CLI helper.
+  - You implemented a materialized view that aggregates data from `StargazerProjectInfo_0_0`.
+  - The setup automates the creation of the view and table, and Moose manages the execution of these SQL statements.
+
+  Your data is now pre-aggregated and ready for analysis or integration into applications.
 </Callout>

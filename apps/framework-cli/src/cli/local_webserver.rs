@@ -43,6 +43,7 @@ use rdkafka::util::Timeout;
 use serde::Serialize;
 use serde::{Deserialize, Deserializer};
 use serde_json::Deserializer as JsonDeserializer;
+use tokio::spawn;
 
 use crate::framework::data_model::model::DataModel;
 use crate::utilities::validate_passthrough::{DataModelArrayVisitor, DataModelVisitor};
@@ -307,7 +308,7 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
             };
             show_message!(cli_message.message_type, message);
         }
-        Err(e) => println!("Received unknown message: {:?}", e),
+        Err(e) => println!("Received unkn message: {:?}", e),
     }
 
     Response::builder()
@@ -338,9 +339,9 @@ async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Res
                     })
                     .await;
             }
-            _ => println!("Received unknown message: {:?}", cli_message),
+            _ => {} // _ => println!("Received unknown message: {:?}", e),
         },
-        Err(e) => println!("Received unknown message: {:?}", e),
+        Err(_e) => {} // Err(e) => println!("Received unknown message: {:?}", e),
     }
 
     Response::builder()
@@ -660,8 +661,6 @@ async fn router(
 
     let metrics_method = req.method().to_string();
 
-    let metrics_path = route.clone();
-
     let route_split = route.to_str().unwrap().split('/').collect::<Vec<&str>>();
     let res = match (req.method(), &route_split[..]) {
         (&hyper::Method::POST, ["ingest", _]) => {
@@ -696,42 +695,46 @@ async fn router(
         _ => route_not_found_response(),
     };
 
-    let metrics_path_str = metrics_path.to_str().unwrap();
-
     let res_bytes = res.as_ref().unwrap().body().size_hint().exact().unwrap();
     let topic = route_table
         .read()
         .await
         .get(&route_clone)
         .map(|route_meta| route_meta.topic_name.clone())
-        .unwrap();
+        .unwrap_or_default();
 
-    if metrics_path_str.starts_with("ingest/") {
-        metrics
-            .send_metric_event(MetricEvent::IngestedEvent {
-                topic,
-                timestamp: Utc::now(),
-                count: 1,
-                bytes: req_bytes.clone(),
-                latency: now.elapsed(),
-                route: metrics_path.clone(),
-                method: metrics_method.clone(),
-            })
-            .await;
-    }
+    let metrics_clone = metrics.clone();
+    let metrics_path = route_clone.clone().to_str().unwrap().to_string();
+    let metrics_path_clone = metrics_path.clone();
 
-    if metrics_path_str.starts_with("consumption/") {
-        metrics
-            .send_metric_event(MetricEvent::ConsumedEvent {
-                timestamp: Utc::now(),
-                count: 1,
-                latency: now.elapsed(),
-                bytes: res_bytes.clone(),
-                route: metrics_path.clone(),
-                method: metrics_method.clone(),
-            })
-            .await;
-    }
+    spawn(async move {
+        if metrics_path_clone.starts_with("ingest/") {
+            let _ = metrics_clone
+                .send_metric_event(MetricEvent::IngestedEvent {
+                    topic,
+                    timestamp: Utc::now(),
+                    count: 1,
+                    bytes: req_bytes,
+                    latency: now.elapsed(),
+                    route: metrics_path.clone(),
+                    method: metrics_method.clone(),
+                })
+                .await;
+        }
+
+        if metrics_path_clone.starts_with("consumption/") {
+            let _ = metrics_clone
+                .send_metric_event(MetricEvent::ConsumedEvent {
+                    timestamp: Utc::now(),
+                    count: 1,
+                    latency: now.elapsed(),
+                    bytes: res_bytes,
+                    route: metrics_path.clone(),
+                    method: metrics_method.clone(),
+                })
+                .await;
+        }
+    });
 
     res
 }

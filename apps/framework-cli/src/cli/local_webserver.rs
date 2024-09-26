@@ -72,7 +72,7 @@ pub struct RouterRequest {
 }
 
 fn default_management_port() -> u16 {
-    5000
+    5001
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -111,7 +111,7 @@ impl Default for LocalWebserverConfig {
         Self {
             host: "localhost".to_string(),
             port: 4000,
-            management_port: 5000,
+            management_port: default_management_port(),
             path_prefix: None,
         }
     }

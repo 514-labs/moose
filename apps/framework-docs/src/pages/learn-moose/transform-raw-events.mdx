@@ -1,242 +1,369 @@
-import { Callout, ToggleBlock } from "../../components";
+import { Callout, ToggleBlock, TypeScript, Python, LanguageSwitcher } from "../../components";
 import { Steps, FileTree } from "nextra/components";
 
-# Transform Raw Events with Streaming Functions
+# Transform Raw GitHub Star Events with a Streaming Function
 
-With the data now flowing in from GitHub, the next step is to filter, transform and enrich it. In this module, you will:
+<LanguageSwitcher />
+In this section, we'll enrich raw GitHub star event data by fetching additional information about the repositories owned by users who starred your repository. We'll use a **Streaming Function** to process incoming data in real-time.
 
-- Create a new `ProcessedStarEvent` Data Model to store the transformed properties from the `RawStarEvent` data
-- Define a **Streaming Function** to transform and enrich the incoming `RawStarEvent` data into `ProcessedStarEvent` data
+## Create `StargazerProjectInfo` Data Model
 
-<Callout type="info">
-  [Streaming Functions](../stream-processing) are regular Typescript/Python
-  functions that let you apply custom logic to process incoming data from a
-  source data model into a target destination model.
-</Callout>
-
-These transformations allow you to select or restructure specific data, such as the GitHub usernames of users who star your repository. Additionally, you can enrich this data by adding more information about the users, like their programming language preferences. You will learn how to implement both transformations in this Streaming Function walkthrough!
-
-## Create `ProcessedStarEvent` Data Model
-
-The `ProcessedStarEvent` Data Model will represent the data after it is transformed.
+Let's define the data model that will store the enriched information.
 
 <Steps>
-### Create a New File `ProcessedStarEvent.ts`
-Add a new file to the `/datamodels` directory of your app named `ProcessedStarEvent.ts`:
 
+<TypeScript>
+### Create StargazerProjectInfo.ts
+</TypeScript>
+
+<Python>
+### Create StargazerProjectInfo.py
+</Python>
+
+Add a new file named <TypeScript NodeType="span">StargazerProjectInfo.ts</TypeScript><Python NodeType="span">StargazerProjectInfo.py</Python> in your `/datamodels` directory:
+
+<TypeScript>
 <FileTree>
   <FileTree.Folder name="app" open>
     <FileTree.Folder name="datamodels" open>
       <FileTree.File name="RawStarEvent.ts" />
-      <FileTree.File name="ProcessedStarEvent.ts" />
+      <FileTree.File name="StargazerProjectInfo.ts" />
     </FileTree.Folder>
   </FileTree.Folder>
 </FileTree>
+</TypeScript>
 
-### Define `ProcessedStarEvent` Data Model Fields
+<Python>
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="datamodels" open>
+      <FileTree.File name="RawStarEvent.py" />
+      <FileTree.File name="StargazerProjectInfo.py" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+</Python>
 
-It should contain the following fields:
+### Define the Data Model
 
-- `starred_at`: timestamp for the star event - to be used as the `Key`. You will need cast this as a `Date`, so make that the field type for this field.
+Include the following fields in `StargazerProjectInfo.ts`:
 
-- `username`: the user who starred your repository
-- `languages`: an array of objects that captures the programming languages used by the starrer
-  - `language`: the name of a programming language (`string` )
-  - `bytes`: the total amount of code written by the starrer in the programming language across all their repositories.
+<TypeScript>
+- `starred_at` _(Date)_: Timestamp of the star event (used as the `Key`)
+- `stargazerName` _(string)_: Username of the stargazer
+- `repoName` _(string)_: Name of the repository
+- `repoFullName` _(string)_: Full name of the repository
+- `description` _(string)_: Repository description
+- `repoUrl` _(string)_: Repository URL
+- `repoStars` _(number)_: Number of stars the repository has
+- `repoWatchers` _(number)_: Number of watchers the repository has
+- `language` _(string)_: Programming language of the repository
+- `repoSizeKb` _(number)_: Size of the repository in kilobytes
+- `createdAt` _(Date)_: Repository creation date
+- `updatedAt` _(Date)_: Last update date of the repository
+</TypeScript>
 
-```ts filename="/datamodels/ProcessedStarEvent.ts" copy {2-3}
-export interface DATA_MODEL_NAME {
-  FIELD_NAME: Key<FIELD_TYPE>;
-  FIELD_NAME: FIELD_TYPE;
-  languages: Array<{ FIELD_NAME: FIELD_TYPE; FIELD_NAME: FIELD_TYPE }>;
-}
-```
+<Python>
+- `starred_at` _(datetime)_: Timestamp of the star event 
+- `stargazer_login` _(str)_: Username of the stargazer (used as the `Key`)
+- `repo_name` _(str)_: Name of the repository
+- `repo_full_name` _(str)_: Full name of the repository
+- `description` _(str)_: Repository description
+- `repo_url` _(str)_: Repository URL
+- `repo_stars` _(int)_: Number of stars the repository has
+- `repo_watchers` _(int)_: Number of watchers the repository has
+- `language` _(str)_: Programming language of the repository
+- `repo_size_kb` _(int)_: Size of the repository in kilobytes
+- `created_at` _(datetime)_: Repository creation date
+- `updated_at` _(datetime)_: Last update date of the repository
+</Python>
 
-<Callout type="info" title="Complete The Code">
-  In the example code block, replace all `FIELD_NAME` and `FIELD_TYPE` values
-  with the appropriate field names and data types.
+<Callout type="info" title="Try It Yourself">
+Try creating the `StargazerProjectInfo` Data Model yourself. The solution is available if you get stuck.
 </Callout>
-
 <ToggleBlock openText="Stuck? Reveal Solution" closeText="Hide Solution">
-```ts filename="/datamodels/ProcessedStarEvent.ts" copy
-export interface ProcessedStarEvent {
-	starred_at: Key<Date>;
-    username: string; 
-    languages: Array<{language: string, bytes: number}>
+
+<TypeScript>
+```ts filename="/datamodels/StargazerProjectInfo.ts" copy
+export interface StargazerProjectInfo {
+  starred_at: Key<Date>;
+  stargazerName: string;
+  repoName: string;
+  repoFullName: string;
+  description: string;
+  repoUrl: string;
+  repoStars: number;
+  repoWatchers: number;
+  language: string;
+  repoSizeKb: number;
+  createdAt: Date;
+  updatedAt: Date;
 }
 ```
+</TypeScript>
+
+<Python>
+```py filename="datamodels/StargazerProjectInfo.py" copy
+from moose_lib import Key, moose_data_model
+from dataclasses import dataclass
+from typing import Optional
+from datetime import datetime
+
+@moose_data_model
+@dataclass
+class StargazerRepositoryInfo:
+    starred_at: datetime
+    stargazer_login: Key[str]
+    repo_name: str
+    repo_full_name: str
+    description: str
+    repo_url: str
+    repo_stars: int
+    repo_watchers: int
+    language: str
+    repo_size_kb: int
+    created_at: datetime
+    updated_at: datetime
+```
+</Python>
+
 
 </ToggleBlock>
 </Steps>
 
-You can see from the above that most of the fields map to fields in the RawStarEvents Data Model, but we’re missing language data. We will fetch the languages information from the GitHub API within the Streaming Function. Let's walk through how to set this up!
+## Initialize the Streaming Function
 
-## Create a Streaming Function to Transform `RawStarEvent` into `ProcessedStarEvent`
+We'll create a Streaming Function to transform `RawStarEvent` data into `StargazerProjectInfo`.
 
 <Steps>
-### Initialize a Streaming Function in the CLI
-In your terminal, run:
-```bash filename="Terminal" copy
-npx moose-cli function init --source RawStarEvent --destination ProcessedStarEvent
-```
-This command will generate a file named `RawStarEvent__ProcessedStarEvent.ts` for you in the `functions` folder of your project.
 
+### Create the Function
+
+Run the following command in your terminal:
+
+<TypeScript>
+```bash filename="Terminal" copy
+npx moose-cli function init --source RawStarEvent --destination StargazerProjectInfo
+```
+</TypeScript>
+
+<Python>
+```bash filename="Terminal" copy
+moose-cli function init --source RawStarEvent --destination StargazerProjectInfo
+```
+</Python>
+
+This generates <TypeScript NodeType="span">`RawStarEvent__StargazerProjectInfo.ts`</TypeScript><Python NodeType="span">`RawStarEvent__StargazerProjectInfo.py`</Python> in the `functions` folder:
+
+<TypeScript>
 <FileTree>
   <FileTree.Folder name="app" open>
     <FileTree.Folder name="functions" open>
-      <FileTree.File name="RawStarEvent__ProcessedStarEvent.ts" />
+      <FileTree.File name="RawStarEvent__StargazerProjectInfo.ts" />
     </FileTree.Folder>
   </FileTree.Folder>
 </FileTree>
+</TypeScript>
 
-### Open File and Inspect Boilerplate Code
+<Python>
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="functions" open>
+      <FileTree.File name="RawStarEvent__StargazerProjectInfo.py" />
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+</Python>
 
-Inside the generated file, you'll find this boilerplate code:
+### Review the Boilerplate
 
-```ts filename="functions/RawStarEvent__ProcessedStarEvent.ts" copy
-// Add your models & start the development server to import these types
-import { RawStarEvent, ProcessedStarEvent } from "../datamodels/RawStarEvent";
+The generated file includes:
 
-// The 'run' function transforms RawStarEvent data to ProcessedStarEvent format.
-// For more details on how Moose streaming functions work, see: https://docs.moosejs.com
-export default function run(source: RawStarEvent): ProcessedStarEvent | null {
+<TypeScript>
+```ts filename="functions/RawStarEvent__StargazerProjectInfo.ts" copy
+import { RawStarEvent } from "datamodels/RawStarEvent";
+import { StargazerProjectInfo } from "datamodels/StargazerProjectInfo";
+
+export default function run(source: RawStarEvent): StargazerProjectInfo | null {
   return {
     starred_at: new Date(),
-    username: "",
-    languages: [],
+    stargazerName: "",
+    repoName: "",
+    repoFullName: "",
+    description: "",
+    repoUrl: "",
+    repoStars: 0,
+    repoWatchers: 0,
+    language: "",
+    repoSizeKb: 0,
+    createdAt: new Date(),
+    updatedAt: new Date(),
   };
 }
 ```
+</TypeScript>
 
-<Callout type="info" title="Streaming Function Structure">
-<br/><br/>
-**Imports**: The source (`RawStarEvent`) and destination (`ProcessedStarEvent`) Data Models are automatically imported.
-<br/><br/>
+<Python>
+```py filename="functions/RawStarEvent__StargazerProjectInfo.py" copy
+# Add your models & start the development server to import these types
+from app.datamodels.RawStarEvent import RawStarEvent
+from app.datamodels.StargazerRepositoryInfo import StargazerRepositoryInfo
+from moose_lib import StreamingFunction
+from typing import Optional
+from datetime import datetime
 
-**Default Export**: The `run()` function is the default export of the module, indicating to Moose which function to call for the transformation. - You can name this function anything you want; it's the `export default` keyword that matters.
+def fn(source: RawStarEvent) -> Optional[StargazerRepositoryInfo]:
+    return StargazerRepositoryInfo(
+            starred_at=datetime.now(),
+            stargazer_login="",
+            repo_name="",
+            repo_full_name="",
+            description="",
+            repo_url="",
+            repo_stars=0,
+            repo_watchers=0,
+            language="",
+            repo_size_kb=0,
+            created_at=datetime.now(),
+            updated_at=datetime.now(),
+    )
 
-<br/>
-**Orchestration**: Moose streaming functions sit between the streaming topics for the designated source and destination Data Models.
-    - **Source Data Model**:  The function's input parameter is of the source Data Model type (`source: RawStarEvent`). Moose subscribes to the streaming topic for this source Data Model and executes the `run()` function on new records as they arrive in the streaming topic.
-    - **Destination Data Model**: The function returns a `ProcessedStarEvent` object, which tells Moose to publish the result to the `ProcessedStarEvent` streaming topic.
-<br/>
-[Learn more about Streaming Functions](/stream-processing)
-</Callout>
+    
+my_function = StreamingFunction(
+    run=fn
+)
+```
+</Python>
+
+- When a new `RawStarEvent` is ingested, the Streaming Function automatically processes it using the <TypeScript NodeType="span">`run()` function</TypeScript><Python NodeType="span">function assigned to the `run` property of the `StreamingFunction` (in this case, the `fn()` function)</Python>.
+- The boilerplate <TypeScript NodeType="span">`run()` function</TypeScript><Python NodeType="span">`fn()` function</Python> imports `RawStarEvent` and `StargazerProjectInfo` and returns a `StargazerProjectInfo` object with placeholder values.
 
 </Steps>
 
-## Implement Streaming Function Logic to Enrich Usernames with Language Data
+You will implement the logic to transform `RawStarEvent` data into `StargazerProjectInfo` records within the <TypeScript NodeType="span">`run()` function</TypeScript><Python NodeType="span">`fn()` function</Python>. Inside this function, you will fetch information about your stargazer's own repositories from the GitHub API and map the retrieved data to `StargazerProjectInfo` records.
 
-Now you'll implement the actual transformation logic to:
+## Implement the Transformation Logic
 
-- Extract the username from the source `RawStarEvent`
-- Retrieve the programming languages used in the user's projects via the GitHub API
-- Return a `ProcessedStarEvent`
+<TypeScript>
+Replace the boilerplate `run()` function with the following code to enrich the data:
 
-### Replace the boilerplate `run()` Function
-
-In your `RawStarEvent__ProcessedStarEvent.ts` file, paste in the following code, replacing the boilerplate:
-
-```ts filename="functions/RawStarEvent__ProcessedStarEvent.ts" copy
-/* Filename: app/functions/RawStarEvent__ProcessedStarEvent.ts */
-import { RawStarEvent, ProcessedStarEvent } from "../datamodels/RawStarEvent";
+```ts filename="functions/RawStarEvent__StargazerProjectInfo.ts" copy
+import { RawStarEvent } from "datamodels/RawStarEvent";
+import { StargazerProjectInfo } from "datamodels/StargazerProjectInfo";
 
 export default async function run(
-  source: RawStarEvent,
-): Promise<ProcessedStarEvent | null> {
-  // Drop events that are not created or have a date
-  if (source.action == "deleted" || !source.starred_at) {
+  source: RawStarEvent
+): Promise<StargazerProjectInfo[] | null> {
+  if (source.action === "deleted" || !source.starred_at) {
     return null;
   }
-  // Enrich data from GitHub API
-  const languageMap = await getUserLanguage(source.sender.repos_url);
-  // Return the filtered and transformed fields
-  return {
-    starred_at: new Date(source.starred_at), // Convert string to date
-    username: source.sender.login,
-    languages: Array.from(languageMap, ([language, bytes]) => ({
-      language,
-      bytes,
-    })),
-  };
-}
 
-// ....... helper function code to call the GitHub API ......... //
+  const repositories = await callGitHubAPI(source.sender.repos_url);
 
-async function getUserLanguage(repoUrl: string): Promise<Map<string, number>> {
-  const repositories = await callGitHubAPI(repoUrl);
-  // Maps between the language and the number of bytes of code in the repository
-  const languageCounts = new Map<string, number>();
-  for (const repo of repositories) {
-    // Calls the API per repository to get language counts
-    const languages = await callGitHubAPI(repo.languages_url);
-    for (const [language, count] of Object.entries(
-      languages as GitHubLanguage,
-    )) {
-      // Sum the counts for each language
-      languageCounts.set(language, (languageCounts.get(language) || 0) + count);
-    }
-  }
-  return languageCounts;
+  const stargazerProjects = repositories.map((repo: any) => ({
+    starred_at: new Date(source.starred_at),
+    stargazerName: source.sender.login,
+    repoName: repo.name,
+    repoFullName: repo.full_name,
+    description: repo.description,
+    repoUrl: repo.html_url,
+    repoStars: repo.stargazers_count,
+    repoWatchers: repo.watchers_count,
+    language: repo.language || "Multiple Languages",
+    repoSizeKb: repo.size,
+    createdAt: new Date(repo.created_at),
+    updatedAt: new Date(repo.updated_at),
+  }));
+
+  return stargazerProjects;
 }
 
 async function callGitHubAPI(url: string): Promise<any> {
-  // GitHub requires auth for more than 60 requests per hour
   const response = await fetch(url);
-  return await response.json();
-}
-
-interface GitHubLanguage {
-  [key: string]: number;
+  return response.json();
 }
 ```
+</TypeScript>
 
-<Callout type="info" title="Breaking Down the Code">
-  - The `run()` function returns `null` for events where the `action` is a
-  "deleted" star or if `starred_at` is null. This filters out unwanted rows from
-  the destination Data Model table. - The **`getUserLanguage()`** and
-  **`callGitHubAPI()`** are helper functions to interact with the GitHub API.
-  We're simply writing modular TypeScript code here—neat, right? 😊 - The
-  `getUserLanguage` function creates a `Map` of programming languages used in a
-  user's repositories. It does this by calling the GitHub API and summing the
-  byte counts for each language. - The `callGitHubAPI` function takes a URL and
-  makes a request to the GitHub API. - The enriched and transformed data is then
-  returned as a `ProcessedStarEvent` object and stored in the
-  `ProcessedStarEvent` database table.
+<Python>
+Replace the boilerplace `fn()` function with the following code to enrich the data:
+
+```python filename="functions/RawStarEvent__StargazerProjectInfo.py" copy
+
+# Add your models & start the development server to import these types
+from app.datamodels.RawStarEvent import RawStarEvent
+from app.datamodels.StargazerRepositoryInfo import StargazerRepositoryInfo
+from moose_lib import StreamingFunction, cli_log, CliLogData
+from typing import Optional
+from datetime import datetime
+
+def call_github_api(url: str) -> dict:
+    response = requests.get(url)
+    response.raise_for_status()
+    return response.json()
+
+def fn(source: RawStarEvent) -> Optional[list[StargazerRepositoryInfo]]:
+    if source.action == "deleted" or not source.starred_at:
+        return None
+    
+    repositories = call_github_api(source.sender["repos_url"])
+    return [
+        StargazerRepositoryInfo(
+            starred_at=source.starred_at,
+            stargazer_login=source.sender["login"],
+            repo_name=repo["name"],
+            repo_full_name=repo["full_name"],
+            description=repo["description"],
+            repo_url=repo["html_url"],
+            repo_stars=repo["stargazers_count"],
+            repo_watchers=repo["watchers_count"],
+            language=repo["language"] if repo["language"] else "Multiple Languages",
+            repo_size_kb=repo["size"],
+            created_at=repo["created_at"],
+            updated_at=repo["updated_at"],
+        )
+        for repo in repositories
+    ]
+    
+my_function = StreamingFunction(
+    run=fn
+)
+```
+</Python>
+This code fetches the stargazer's repositories from the GitHub API and maps each repository to a `StargazerProjectInfo` record. 
+
+<Callout type="info" title="Returning an Array">
+Moose will store each `StargazerProjectInfo` record in the returned array as its own row in the `StargazerProjectInfo` table.
 </Callout>
+
+The <TypeScript NodeType="span">`run()` function</TypeScript><Python NodeType="span">`fn()` function</Python> returns <TypeScript NodeType="span">`null`</TypeScript><Python NodeType="span">`None`</Python> for `deleted` stars, so Moose ignores them since we don't need to process these events.
+
 
 ## Test the Streaming Function
 
 <Steps>
-### Star Your Repository Again
-Send us the link so we can star it too!
 
-### Confirm the `RawStarEvent` webhook was received and transformed in the CLI
+### Trigger a New Event
 
-You should see the following message printed to your terminal:
+Star your repository again to generate a new `RawStarEvent`.
+
+### Verify the Transformation
+
+In your terminal, confirm that the event was processed:
 
 ```txt
-Received RawStarEvent_0_0 -> ProcessedStarEvent_0_0 1 message(s)
+Received RawStarEvent_0_0 -> StargazerProjectInfo_0_0 1 message(s)
 ```
 
-### Query the `ProcessedStarEvent` table to verify the data was processed and stored correctly
+### Check the Data
 
-Return to your database explorer and execute the following query:
+Query the `StargazerProjectInfo` table to see the enriched data:
 
 ```sql
-SELECT * FROM local.ProcessedStarEvent
+SELECT * FROM local.StargazerProjectInfo_0_0
 ```
-
-You should see the transformed event records in the query result set.
 
 </Steps>
 
-<Callout type="success">
-  By defining a Data Model for processed GitHub events and implementing simple
-  transformation logic in a Streaming Function, you now have an automated,
-  real-time data processing service in your Moose application.
-  <br /> <br />
-  Best of all, by enriching events with GitHub API data, you demonstrated the
-  powerful workflows that can be built using Streaming Functions and regular
-  TypeScript code.
-</Callout>
+You have now created a real-time data processing service using a Streaming Function to enrich GitHub star events with additional repository information.
+

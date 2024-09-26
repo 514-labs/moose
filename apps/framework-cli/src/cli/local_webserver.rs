@@ -550,7 +550,7 @@ async fn check_authorization(
         return validate_token(bearer_token, key).await;
     }
 
-    if let Some(config) = jwt_config {
+    if let Some(config) = jwt_config.as_ref() {
         return validate_jwt(
             bearer_token,
             &config.secret,

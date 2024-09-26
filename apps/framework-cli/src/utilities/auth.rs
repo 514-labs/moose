@@ -1,4 +1,4 @@
-use jsonwebtoken::{decode, Algorithm, DecodingKey, TokenData, Validation};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize, Serialize)]

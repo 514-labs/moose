@@ -108,6 +108,9 @@ def verify_jwt(token: str) -> Optional[Dict[str, Any]]:
         print("JWT verification failed:", str(e))
         return None
 
+def has_jwt_config() -> bool:
+    return jwt_secret and jwt_issuer and jwt_audience
+
 def handler_with_client(ch_client):
     class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         def do_GET(self):
@@ -118,29 +121,40 @@ def handler_with_client(ch_client):
                 # get the flow definition
                 print(module_name)
 
-                jwt_payload: Optional[Dict[str, Any]] = None
-                auth_header = self.headers.get('Authorization')
-                if auth_header:
-                    # Bearer <token>
-                    token = auth_header.split(" ")[1] if " " in auth_header else None
-                    if token:
-                        jwt_payload = verify_jwt(token)
-                
-                if jwt_payload is None and jwt_enforce_all == 'true':
-                    self.send_response(401)
-                    response_message = bytes(json.dumps({"error": "Unauthorized"}), 'utf-8')
+                if has_jwt_config():
+                    jwt_payload: Optional[Dict[str, Any]] = None
+                    auth_header = self.headers.get('Authorization')
+                    if auth_header:
+                        # Bearer <token>
+                        token = auth_header.split(" ")[1] if " " in auth_header else None
+                        if token:
+                            jwt_payload = verify_jwt(token)
+                    
+                    if jwt_payload is None and jwt_enforce_all == 'true':
+                        self.send_response(401)
+                        response_message = bytes(json.dumps({"error": "Unauthorized"}), 'utf-8')
+                    else:
+                        query_params = parse_qs(parsed_path.query)
+                        response = module.run(ch_client, query_params, jwt_payload)
+
+                        if hasattr(response, 'status') and hasattr(response, 'body'):
+                            self.send_response(response.status)
+                            response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
+                        else:
+                            self.send_response(200)
+                            response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
+
                 else:
                     query_params = parse_qs(parsed_path.query)
-
-                    response = module.run(ch_client, query_params, jwt_payload)
-
+                    response = module.run(ch_client, query_params)
+                
                     if hasattr(response, 'status') and hasattr(response, 'body'):
                         self.send_response(response.status)
                         response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
                     else:
                         self.send_response(200)
                         response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
-                
+
                 self.end_headers()
                 self.wfile.write(response_message)
             except Exception as e:

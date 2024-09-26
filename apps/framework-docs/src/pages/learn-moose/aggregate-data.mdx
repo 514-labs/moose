@@ -124,33 +124,33 @@ const TABLE_NAME = "TopProgrammingLanguages";
 const createTableOptions = {
   name: TABLE_NAME,
   columns: {
-    language: "String", // Programming language name
-    total_projects: "AggregateFunction(count, UInt64)", // Total number of projects using the language
-    total_repo_size_kb: "AggregateFunction(sum, Float64)", // Sum of repository sizes using the language
+    language: "String",
+    total_projects: "AggregateFunction(count, UInt64)",
+    total_repo_size_kb: "AggregateFunction(sum, Float64)",
+    average_repo_size_kb: "AggregateFunction(avg, Float64)",
   },
-  engine: ClickHouseEngines.AggregatingMergeTree, // Optimized for aggregation
-  orderBy: "language", // Data ordered by language
+  engine: ClickHouseEngines.AggregatingMergeTree,
+  orderBy: "language",
 };
 
 const selectQuery = `
 SELECT
   language,
-  countState() AS total_projects,
-  sumState(repoSizeKb) AS total_repo_size_kb
+  countState(*) AS total_projects,
+  sumState(repoSizeKb) AS total_repo_size_kb,
+  avgState(repoSizeKb) AS average_repo_size_kb
 FROM StargazerProjectInfo_0_0
 GROUP BY language
 `;
 
 export default {
+  teardown: [...dropAggregation({ viewName: MV_NAME, tableName: TABLE_NAME })],
   setup: [
     ...createAggregation({
       materializedViewName: MV_NAME,
       tableCreateOptions: createTableOptions,
       select: selectQuery,
     }),
-  ],
-  teardown: [
-    ...dropAggregation({ viewName: MV_NAME, tableName: TABLE_NAME }),
   ],
 } as Blocks;
 ```
@@ -230,7 +230,8 @@ Open your ClickHouse database explorer and check that the `TopProgrammingLanguag
 SELECT
   language,
   countMerge(total_projects) AS total_projects,
-  sumMerge(total_repo_size_kb) AS total_repo_size_kb
+  sumMerge(total_repo_size_kb) AS total_repo_size_kb,
+  avgMerge(average_repo_size_kb) AS average_repo_size_kb
 FROM TopProgrammingLanguages
 ORDER BY total_projects DESC
 ```

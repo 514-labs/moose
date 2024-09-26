@@ -10,6 +10,7 @@ use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure_map::Change;
 use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
 use crate::metrics::Metrics;
+use crate::utilities::auth::validate_jwt;
 use crate::utilities::docker;
 
 use crate::framework::data_model::config::EndpointIngestionFormat;
@@ -17,7 +18,7 @@ use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 
 use crate::framework::typescript::bin::CliMessage;
-use crate::project::Project;
+use crate::project::{JwtConfig, Project};
 use bytes::Buf;
 use chrono::Utc;
 use http_body_util::BodyExt;
@@ -126,7 +127,8 @@ async fn create_client(
     // Extract the Authorization header and check the bearer token
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
 
-    if !check_authorization(auth_header, &MOOSE_CONSUMPTION_API_KEY).await {
+    // JWT config for consumption api is handled in user's api files
+    if !check_authorization(auth_header, &MOOSE_CONSUMPTION_API_KEY, &None).await {
         return Ok(Response::builder()
             .status(StatusCode::UNAUTHORIZED)
             .body(Full::new(Bytes::from(
@@ -211,6 +213,7 @@ struct RouteService {
     path_prefix: Option<String>,
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
     consumption_apis: &'static RwLock<HashSet<String>>,
+    jwt_config: Option<JwtConfig>,
     configured_producer: ConfiguredProducer,
     current_version: String,
     is_prod: bool,
@@ -234,6 +237,7 @@ impl Service<Request<Incoming>> for RouteService {
             self.current_version.clone(),
             self.path_prefix.clone(),
             self.consumption_apis,
+            self.jwt_config.clone(),
             self.configured_producer.clone(),
             self.host.clone(),
             self.is_prod,
@@ -533,20 +537,29 @@ lazy_static! {
     static ref MOOSE_INGEST_API_KEY: Option<String> = get_env_var("MOOSE_INGEST_API_KEY");
 }
 
-async fn check_authorization(auth_header: Option<&HeaderValue>, env_var: &Option<String>) -> bool {
-    match env_var {
-        None => true,
-        Some(key) => {
-            let bearer_token = auth_header.and_then(|header_value| {
-                header_value
-                    .to_str()
-                    .ok()
-                    .and_then(|header_str| header_str.strip_prefix("Bearer "))
-            });
+async fn check_authorization(
+    auth_header: Option<&HeaderValue>,
+    api_key: &Option<String>,
+    jwt_config: &Option<JwtConfig>,
+) -> bool {
+    let bearer_token = auth_header
+        .and_then(|header_value| header_value.to_str().ok())
+        .and_then(|header_str| header_str.strip_prefix("Bearer "));
 
-            validate_token(bearer_token, key).await
-        }
+    if let Some(key) = api_key.as_ref() {
+        return validate_token(bearer_token, key).await;
     }
+
+    if let Some(config) = jwt_config {
+        return validate_jwt(
+            bearer_token,
+            &config.secret,
+            &config.issuer,
+            &config.audience,
+        );
+    }
+
+    true
 }
 
 async fn ingest_route(
@@ -555,6 +568,7 @@ async fn ingest_route(
     configured_producer: ConfiguredProducer,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     is_prod: bool,
+    jwt_config: Option<JwtConfig>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     show_message!(
         MessageType::Info,
@@ -566,7 +580,7 @@ async fn ingest_route(
 
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
 
-    if !check_authorization(auth_header, &MOOSE_INGEST_API_KEY).await {
+    if !check_authorization(auth_header, &MOOSE_INGEST_API_KEY, &jwt_config).await {
         return Response::builder()
             .status(StatusCode::UNAUTHORIZED)
             .body(Full::new(Bytes::from(
@@ -622,6 +636,7 @@ async fn router(
     current_version: String,
     path_prefix: Option<String>,
     consumption_apis: &RwLock<HashSet<String>>,
+    jwt_config: Option<JwtConfig>,
     configured_producer: ConfiguredProducer,
     host: String,
     is_prod: bool,
@@ -656,11 +671,20 @@ async fn router(
                 configured_producer,
                 route_table,
                 is_prod,
+                jwt_config,
             )
             .await
         }
         (&hyper::Method::POST, ["ingest", _, _]) => {
-            ingest_route(req, route, configured_producer, route_table, is_prod).await
+            ingest_route(
+                req,
+                route,
+                configured_producer,
+                route_table,
+                is_prod,
+                jwt_config,
+            )
+            .await
         }
 
         (&hyper::Method::GET, ["consumption", _rt]) => {
@@ -932,6 +956,7 @@ impl Webserver {
             path_prefix: project.http_server_config.normalized_path_prefix(),
             route_table,
             consumption_apis,
+            jwt_config: project.jwt.clone(),
             current_version: project.cur_version().to_string(),
             configured_producer: producer,
             is_prod: project.is_production,

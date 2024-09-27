@@ -102,7 +102,8 @@ struct ValueVisitor<'a, S: SerializeValue> {
     t: &'a ColumnType,
     required: bool,
     write_to: &'a mut S,
-    path: String,
+    context: &'a DataModelVisitor<'a>,
+    field_name: &'a str,
 }
 impl<'de, 'a, S: SerializeValue> DeserializeSeed<'de> for &mut ValueVisitor<'a, S> {
     type Value = ();
@@ -118,7 +119,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     type Value = ();
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-        write!(formatter, "at {}, ", self.path)?;
+        write!(formatter, "at {}, ", self.get_path())?;
         match self.t {
             ColumnType::Boolean => formatter.write_str("a boolean value"),
             ColumnType::Int => formatter.write_str("an integer value"),
@@ -188,8 +189,9 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
         match self.t {
             ColumnType::String => self.write_to.serialize_value(v).map_err(Error::custom),
             ColumnType::DateTime => {
-                chrono::DateTime::parse_from_rfc3339(v)
-                    .map_err(|_| E::custom(format!("Invalid date format at {}", self.path)))?;
+                chrono::DateTime::parse_from_rfc3339(v).map_err(|_| {
+                    E::custom(format!("Invalid date format at {}", self.get_path()))
+                })?;
 
                 self.write_to.serialize_value(v).map_err(Error::custom)
             }
@@ -202,7 +204,8 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
                 } else {
                     Err(E::custom(format!(
                         "Invalid enum value at {}: {}",
-                        self.path, v
+                        self.get_path(),
+                        v
                     )))
                 }
             }
@@ -217,7 +220,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
         if self.required {
             return Err(E::custom(format!(
                 "Required value at {}, but is none",
-                self.path
+                self.get_path()
             )));
         }
         self.write_to
@@ -251,7 +254,8 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
                         inner_type,
                         seq: RefCell::new(seq),
                         _phantom_data: &PHANTOM_DATA,
-                        path: self.path.clone(),
+                        parent: self.context,
+                        field_name: self.field_name,
                     })
                     .map_err(A::Error::custom)?;
                 Ok(())
@@ -264,19 +268,29 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
         A: MapAccess<'de>,
     {
         match self.t {
-            ColumnType::Nested(ref fields) => self
-                .write_to
-                .serialize_value(&MapAccessSerializer {
-                    inner: RefCell::new(DataModelVisitor::new(
-                        &fields.columns,
-                        Some(self.path.clone()),
-                    )),
+            ColumnType::Nested(ref fields) => {
+                let inner =
+                    DataModelVisitor::new(&fields.columns, Some((self.context, &self.field_name)));
+                let serializer = MapAccessSerializer {
+                    inner: RefCell::new(inner),
                     map: RefCell::new(map),
                     _phantom_data: &PHANTOM_DATA,
-                })
-                .map_err(A::Error::custom),
+                };
+                self.write_to
+                    .serialize_value(&serializer)
+                    .map_err(A::Error::custom)
+            }
             _ => Err(A::Error::invalid_type(serde::de::Unexpected::Map, &self)),
         }
+    }
+}
+
+impl<'a, S: SerializeValue> ValueVisitor<'a, S> {
+    fn get_path(&self) -> String {
+        add_path_component(
+            parent_context_to_string(self.context.parent_context),
+            self.field_name,
+        )
     }
 }
 
@@ -290,7 +304,8 @@ impl<'a, 'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'a, 'de, A> {
             t: self.inner_type,
             required: true,
             write_to: &mut DummyWrapper(&mut write_to),
-            path: self.path.clone(),
+            context: self.parent,
+            field_name: self.field_name,
         };
         let mut seq = self.seq.borrow_mut();
         while let Some(()) = seq
@@ -310,15 +325,16 @@ struct SeqAccessSerializer<'a, 'de, A: SeqAccess<'de>> {
     inner_type: &'a ColumnType,
     seq: RefCell<A>,
     _phantom_data: &'de PhantomData<()>,
-    path: String,
+    parent: &'a DataModelVisitor<'a>,
+    field_name: &'a str,
 }
-struct MapAccessSerializer<'de, A: MapAccess<'de>> {
-    inner: RefCell<DataModelVisitor>,
+struct MapAccessSerializer<'de, 'a, A: MapAccess<'de>> {
+    inner: RefCell<DataModelVisitor<'a>>,
     map: RefCell<A>,
     _phantom_data: &'de PhantomData<()>,
 }
 
-impl<'de, A: MapAccess<'de>> Serialize for MapAccessSerializer<'de, A> {
+impl<'de, 'a, A: MapAccess<'de>> Serialize for MapAccessSerializer<'de, 'a, A> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -333,18 +349,21 @@ impl<'de, A: MapAccess<'de>> Serialize for MapAccessSerializer<'de, A> {
     }
 }
 
-pub struct DataModelVisitor {
+pub struct DataModelVisitor<'a> {
     columns: HashMap<String, (Column, State)>,
-    parent: Option<String>,
+    parent_context: Option<(&'a DataModelVisitor<'a>, &'a str)>,
 }
-impl DataModelVisitor {
-    pub fn new(columns: &[Column], parent: Option<String>) -> Self {
+impl<'a> DataModelVisitor<'a> {
+    pub fn new(
+        columns: &[Column],
+        parent_context: Option<(&'a DataModelVisitor<'a>, &'a str)>,
+    ) -> Self {
         DataModelVisitor {
             columns: columns
                 .iter()
                 .map(|c| (c.name.clone(), (c.clone(), State { seen: false })))
                 .collect(),
-            parent,
+            parent_context,
         }
     }
 
@@ -354,23 +373,25 @@ impl DataModelVisitor {
         map_serializer: &mut S,
     ) -> Result<(), A::Error> {
         while let Some(key) = map.next_key::<String>()? {
-            if let Some((column, state)) = self.columns.get_mut(&key) {
-                state.seen = true;
+            if self.columns.contains_key(&key) {
+                // gross code to satisfy the borrow checker
+                {
+                    let (_column, state) = self.columns.get_mut(&key).unwrap();
+                    state.seen = true;
+                }
+
+                let (column, _state) = self.columns.get(&key).unwrap();
 
                 map_serializer
                     .serialize_key(&key)
                     .map_err(A::Error::custom)?;
 
-                let path = match &self.parent {
-                    Some(parent) => format!("{}.{}", parent, key),
-                    None => key.clone(),
-                };
-
                 let mut visitor = ValueVisitor {
                     t: &column.data_type,
                     write_to: map_serializer,
                     required: column.required,
-                    path,
+                    context: self,
+                    field_name: &key,
                 };
                 map.next_value_seed(&mut visitor)?;
             } else {
@@ -380,10 +401,8 @@ impl DataModelVisitor {
         let mut missing_fields: Vec<String> = Vec::new();
         self.columns.values_mut().for_each(|(column, state)| {
             if !state.seen && column.required {
-                let path = match &self.parent {
-                    Some(parent) => format!("{}.{}", parent, column.name),
-                    None => column.name.clone(),
-                };
+                let parent_path = parent_context_to_string(self.parent_context);
+                let path = add_path_component(parent_path, &column.name);
                 missing_fields.push(path);
             }
             state.seen = false
@@ -400,7 +419,16 @@ impl DataModelVisitor {
     }
 }
 
-impl<'de> Visitor<'de> for &mut DataModelVisitor {
+fn parent_context_to_string(parent_context: Option<(&DataModelVisitor<'_>, &str)>) -> String {
+    match parent_context {
+        Some((parent, field_name)) => {
+            add_path_component(parent_context_to_string(parent.parent_context), field_name)
+        }
+        None => String::new(),
+    }
+}
+
+impl<'de, 'a> Visitor<'de> for &mut DataModelVisitor<'a> {
     type Value = Vec<u8>;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
@@ -421,7 +449,7 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
         Ok(vec)
     }
 }
-impl<'de> DeserializeSeed<'de> for &mut DataModelVisitor {
+impl<'de, 'a> DeserializeSeed<'de> for &mut DataModelVisitor<'a> {
     type Value = Vec<u8>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -431,10 +459,10 @@ impl<'de> DeserializeSeed<'de> for &mut DataModelVisitor {
         deserializer.deserialize_any(self)
     }
 }
-pub struct DataModelArrayVisitor {
-    pub inner: DataModelVisitor,
+pub struct DataModelArrayVisitor<'a> {
+    pub inner: DataModelVisitor<'a>,
 }
-impl<'de> Visitor<'de> for &mut DataModelArrayVisitor {
+impl<'de, 'a> Visitor<'de> for &mut DataModelArrayVisitor<'a> {
     type Value = Vec<Vec<u8>>;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
@@ -452,6 +480,15 @@ impl<'de> Visitor<'de> for &mut DataModelArrayVisitor {
         Ok(result)
     }
 }
+
+fn add_path_component(mut path: String, field_name: &str) -> String {
+    if !path.is_empty() {
+        path.push('.');
+    }
+    path.push_str(field_name);
+    path
+}
+
 #[cfg(test)]
 mod tests {
     use crate::framework::core::infrastructure::table::{DataEnum, EnumMember, Nested};
@@ -710,6 +747,7 @@ mod tests {
         let invalid_result = serde_json::Deserializer::from_str(invalid_json)
             .deserialize_any(&mut DataModelVisitor::new(&columns, None));
 
+        println!("{:?}", invalid_result);
         assert!(invalid_result.is_err());
         assert!(invalid_result
             .unwrap_err()

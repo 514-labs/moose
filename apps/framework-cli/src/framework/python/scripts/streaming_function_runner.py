@@ -176,7 +176,7 @@ def send_message_metrics_in():
     global bytes_count
     while True:
         time.sleep(1)
-        requests.post("http://localhost:5000/metrics-logs", json={'count_in': count_in, 'count_out': count_out, 'bytes': bytes_count, 'function_name': f'{source_topic} -> {target_topic}'})
+        requests.post("http://localhost:5001/metrics-logs", json={'count_in': count_in, 'count_out': count_out, 'bytes': bytes_count, 'function_name': f'{source_topic} -> {target_topic}'})
         count_in = 0
         count_out = 0
         bytes_count = 0

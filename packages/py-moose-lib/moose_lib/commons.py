@@ -9,6 +9,6 @@ class CliLogData:
         self.message = message
 
 def cli_log(log: CliLogData) -> None:
-    url = "http://localhost:5000/logs"
+    url = "http://localhost:5001/logs"
     headers = {'Content-Type': 'application/json'}
     requests.post(url, data=json.dumps(log.__dict__), headers=headers)

@@ -80,7 +80,7 @@ const buildSaslConfig = (
 
 export const metricsLog: (log: CliLogData) => void = (log) => {
   const req = http.request({
-    port: 5000,
+    port: 5001,
     method: "POST",
     path: "/metrics-logs",
   }); // no callback, fire and forget
@@ -291,7 +291,6 @@ const startConsumer = async (
 
   logger.log("Consumer is running...");
 };
-
 
 /**
  * message.max.bytes is a broker setting that applies to all topics.

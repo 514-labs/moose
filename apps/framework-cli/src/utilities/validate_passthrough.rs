@@ -1,12 +1,12 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
-use std::marker::PhantomData;
-
+use itertools::Either;
 use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserializer, Serialize, Serializer};
 use serde_json::Serializer as JsonSerializer;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::fmt::{Display, Formatter, Write};
+use std::marker::PhantomData;
 
 use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, EnumValue};
 
@@ -98,10 +98,28 @@ where
     }
 }
 
+struct ParentContext<'a> {
+    parent: Option<&'a ParentContext<'a>>,
+    field_name: Either<&'a str, usize>,
+}
+impl ParentContext<'_> {
+    fn bump_index(&mut self) {
+        match self.field_name {
+            Either::Left(_) => {
+                panic!("Expecting array index case")
+            }
+            Either::Right(ref mut i) => {
+                *i += 1;
+            }
+        }
+    }
+}
+
 struct ValueVisitor<'a, S: SerializeValue> {
     t: &'a ColumnType,
     required: bool,
     write_to: &'a mut S,
+    context: ParentContext<'a>,
 }
 impl<'de, 'a, S: SerializeValue> DeserializeSeed<'de> for &mut ValueVisitor<'a, S> {
     type Value = ();
@@ -130,7 +148,8 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
             ColumnType::BigInt | ColumnType::Decimal | ColumnType::Json | ColumnType::Bytes => {
                 formatter.write_str("a value matching the column type")
             }
-        }
+        }?;
+        write!(formatter, " at {}", self.get_path())
     }
 
     fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
@@ -186,8 +205,9 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
         match self.t {
             ColumnType::String => self.write_to.serialize_value(v).map_err(Error::custom),
             ColumnType::DateTime => {
-                chrono::DateTime::parse_from_rfc3339(v)
-                    .map_err(|_| E::custom("Invalid date format"))?;
+                chrono::DateTime::parse_from_rfc3339(v).map_err(|_| {
+                    E::custom(format!("Invalid date format at {}", self.get_path()))
+                })?;
 
                 self.write_to.serialize_value(v).map_err(Error::custom)
             }
@@ -198,7 +218,11 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
                 }) {
                     self.write_to.serialize_value(v).map_err(Error::custom)
                 } else {
-                    Err(E::custom(format!("Invalid enum value: {}", v)))
+                    Err(E::custom(format!(
+                        "Invalid enum value at {}: {}",
+                        self.get_path(),
+                        v
+                    )))
                 }
             }
             _ => Err(Error::invalid_type(serde::de::Unexpected::Str(v), &self)),
@@ -210,7 +234,10 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
         E: Error,
     {
         if self.required {
-            return Err(E::custom("Required value, but is none".to_string()));
+            return Err(E::custom(format!(
+                "Required value at {}, but is none",
+                self.get_path()
+            )));
         }
         self.write_to
             // type param of the None does not matter
@@ -243,6 +270,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
                         inner_type,
                         seq: RefCell::new(seq),
                         _phantom_data: &PHANTOM_DATA,
+                        context: &self.context,
                     })
                     .map_err(A::Error::custom)?;
                 Ok(())
@@ -255,16 +283,28 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
         A: MapAccess<'de>,
     {
         match self.t {
-            ColumnType::Nested(ref fields) => self
-                .write_to
-                .serialize_value(&MapAccessSerializer {
-                    inner: RefCell::new(DataModelVisitor::new(&fields.columns)),
+            ColumnType::Nested(ref fields) => {
+                let inner = DataModelVisitor::with_context(&fields.columns, Some(&self.context));
+                let serializer = MapAccessSerializer {
+                    inner: RefCell::new(inner),
                     map: RefCell::new(map),
                     _phantom_data: &PHANTOM_DATA,
-                })
-                .map_err(A::Error::custom),
+                };
+                self.write_to
+                    .serialize_value(&serializer)
+                    .map_err(A::Error::custom)
+            }
             _ => Err(A::Error::invalid_type(serde::de::Unexpected::Map, &self)),
         }
+    }
+}
+
+impl<'a, S: SerializeValue> ValueVisitor<'a, S> {
+    fn get_path(&self) -> String {
+        add_path_component(
+            parent_context_to_string(self.context.parent),
+            self.context.field_name,
+        )
     }
 }
 
@@ -278,12 +318,18 @@ impl<'a, 'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'a, 'de, A> {
             t: self.inner_type,
             required: true,
             write_to: &mut DummyWrapper(&mut write_to),
+            context: ParentContext {
+                parent: Some(self.context),
+                field_name: Either::Right(0),
+            },
         };
         let mut seq = self.seq.borrow_mut();
         while let Some(()) = seq
             .next_element_seed(&mut visitor)
             .map_err(serde::ser::Error::custom)?
-        {}
+        {
+            visitor.context.bump_index();
+        }
         write_to.end()
     }
 }
@@ -297,14 +343,15 @@ struct SeqAccessSerializer<'a, 'de, A: SeqAccess<'de>> {
     inner_type: &'a ColumnType,
     seq: RefCell<A>,
     _phantom_data: &'de PhantomData<()>,
+    context: &'a ParentContext<'a>,
 }
-struct MapAccessSerializer<'de, A: MapAccess<'de>> {
-    inner: RefCell<DataModelVisitor>,
+struct MapAccessSerializer<'de, 'a, A: MapAccess<'de>> {
+    inner: RefCell<DataModelVisitor<'a>>,
     map: RefCell<A>,
     _phantom_data: &'de PhantomData<()>,
 }
 
-impl<'de, A: MapAccess<'de>> Serialize for MapAccessSerializer<'de, A> {
+impl<'de, 'a, A: MapAccess<'de>> Serialize for MapAccessSerializer<'de, 'a, A> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -319,16 +366,21 @@ impl<'de, A: MapAccess<'de>> Serialize for MapAccessSerializer<'de, A> {
     }
 }
 
-pub struct DataModelVisitor {
+pub struct DataModelVisitor<'a> {
     columns: HashMap<String, (Column, State)>,
+    parent_context: Option<&'a ParentContext<'a>>,
 }
-impl DataModelVisitor {
+impl<'a> DataModelVisitor<'a> {
     pub fn new(columns: &[Column]) -> Self {
+        Self::with_context(columns, None)
+    }
+    fn with_context(columns: &[Column], parent_context: Option<&'a ParentContext<'a>>) -> Self {
         DataModelVisitor {
             columns: columns
                 .iter()
                 .map(|c| (c.name.clone(), (c.clone(), State { seen: false })))
                 .collect(),
+            parent_context,
         }
     }
 
@@ -349,16 +401,22 @@ impl DataModelVisitor {
                     t: &column.data_type,
                     write_to: map_serializer,
                     required: column.required,
+                    context: ParentContext {
+                        parent: self.parent_context,
+                        field_name: Either::Left(&key),
+                    },
                 };
                 map.next_value_seed(&mut visitor)?;
             } else {
                 map.next_value::<serde::de::IgnoredAny>()?;
             }
         }
-        let mut missing_fields: Vec<&str> = Vec::new();
+        let mut missing_fields: Vec<String> = Vec::new();
         self.columns.values_mut().for_each(|(column, state)| {
             if !state.seen && column.required {
-                missing_fields.push(&column.name)
+                let parent_path = parent_context_to_string(self.parent_context);
+                let path = add_path_component(parent_path, Either::Left(&column.name));
+                missing_fields.push(path);
             }
             state.seen = false
         });
@@ -374,7 +432,16 @@ impl DataModelVisitor {
     }
 }
 
-impl<'de> Visitor<'de> for &mut DataModelVisitor {
+fn parent_context_to_string(parent_context: Option<&ParentContext>) -> String {
+    match parent_context {
+        Some(ParentContext { parent, field_name }) => {
+            add_path_component(parent_context_to_string(*parent), *field_name)
+        }
+        None => String::new(),
+    }
+}
+
+impl<'de, 'a> Visitor<'de> for &mut DataModelVisitor<'a> {
     type Value = Vec<u8>;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
@@ -395,7 +462,7 @@ impl<'de> Visitor<'de> for &mut DataModelVisitor {
         Ok(vec)
     }
 }
-impl<'de> DeserializeSeed<'de> for &mut DataModelVisitor {
+impl<'de, 'a> DeserializeSeed<'de> for &mut DataModelVisitor<'a> {
     type Value = Vec<u8>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -405,10 +472,10 @@ impl<'de> DeserializeSeed<'de> for &mut DataModelVisitor {
         deserializer.deserialize_any(self)
     }
 }
-pub struct DataModelArrayVisitor {
-    pub inner: DataModelVisitor,
+pub struct DataModelArrayVisitor<'a> {
+    pub inner: DataModelVisitor<'a>,
 }
-impl<'de> Visitor<'de> for &mut DataModelArrayVisitor {
+impl<'de, 'a> Visitor<'de> for &mut DataModelArrayVisitor<'a> {
     type Value = Vec<Vec<u8>>;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
@@ -426,6 +493,23 @@ impl<'de> Visitor<'de> for &mut DataModelArrayVisitor {
         Ok(result)
     }
 }
+
+fn add_path_component(mut path: String, field_name: Either<&str, usize>) -> String {
+    if !path.is_empty() {
+        path.push('.');
+    }
+    match field_name {
+        Either::Left(field_name) => {
+            path.push_str(field_name);
+        }
+        Either::Right(index) => {
+            write!(path, "{}", index).unwrap();
+        }
+    }
+
+    path
+}
+
 #[cfg(test)]
 mod tests {
     use crate::framework::core::infrastructure::table::{DataEnum, EnumMember, Nested};
@@ -521,7 +605,7 @@ mod tests {
             .err()
             .unwrap()
             .to_string()
-            .contains("Invalid date format"));
+            .contains("Invalid date format at date_col"));
     }
 
     #[test]
@@ -604,7 +688,7 @@ mod tests {
         assert!(invalid_result
             .unwrap_err()
             .to_string()
-            .contains("Invalid enum value: invalid_option"));
+            .contains("Invalid enum value at enum_col: invalid_option"));
     }
 
     #[test]
@@ -684,11 +768,12 @@ mod tests {
         let invalid_result = serde_json::Deserializer::from_str(invalid_json)
             .deserialize_any(&mut DataModelVisitor::new(&columns));
 
+        println!("{:?}", invalid_result);
         assert!(invalid_result.is_err());
         assert!(invalid_result
             .unwrap_err()
             .to_string()
-            .contains("Missing fields: nested_string"));
+            .contains("Missing fields: nested_object.nested_string"));
     }
 
     #[test]

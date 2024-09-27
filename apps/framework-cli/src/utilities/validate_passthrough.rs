@@ -98,12 +98,17 @@ where
     }
 }
 
+#[derive(Clone, Copy)] // just two pointers, copying is fine
+struct ParentContext<'a> {
+    parent: Option<&'a ParentContext<'a>>,
+    field_name: &'a str,
+}
+
 struct ValueVisitor<'a, S: SerializeValue> {
     t: &'a ColumnType,
     required: bool,
     write_to: &'a mut S,
-    context: &'a DataModelVisitor<'a>,
-    field_name: &'a str,
+    context: ParentContext<'a>,
 }
 impl<'de, 'a, S: SerializeValue> DeserializeSeed<'de> for &mut ValueVisitor<'a, S> {
     type Value = ();
@@ -254,8 +259,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
                         inner_type,
                         seq: RefCell::new(seq),
                         _phantom_data: &PHANTOM_DATA,
-                        parent: self.context,
-                        field_name: self.field_name,
+                        context: &self.context,
                     })
                     .map_err(A::Error::custom)?;
                 Ok(())
@@ -269,8 +273,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     {
         match self.t {
             ColumnType::Nested(ref fields) => {
-                let inner =
-                    DataModelVisitor::new(&fields.columns, Some((self.context, &self.field_name)));
+                let inner = DataModelVisitor::with_context(&fields.columns, Some(&self.context));
                 let serializer = MapAccessSerializer {
                     inner: RefCell::new(inner),
                     map: RefCell::new(map),
@@ -288,8 +291,8 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
 impl<'a, S: SerializeValue> ValueVisitor<'a, S> {
     fn get_path(&self) -> String {
         add_path_component(
-            parent_context_to_string(self.context.parent_context),
-            self.field_name,
+            parent_context_to_string(self.context.parent),
+            self.context.field_name,
         )
     }
 }
@@ -304,8 +307,7 @@ impl<'a, 'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'a, 'de, A> {
             t: self.inner_type,
             required: true,
             write_to: &mut DummyWrapper(&mut write_to),
-            context: self.parent,
-            field_name: self.field_name,
+            context: *self.context,
         };
         let mut seq = self.seq.borrow_mut();
         while let Some(()) = seq
@@ -325,8 +327,7 @@ struct SeqAccessSerializer<'a, 'de, A: SeqAccess<'de>> {
     inner_type: &'a ColumnType,
     seq: RefCell<A>,
     _phantom_data: &'de PhantomData<()>,
-    parent: &'a DataModelVisitor<'a>,
-    field_name: &'a str,
+    context: &'a ParentContext<'a>,
 }
 struct MapAccessSerializer<'de, 'a, A: MapAccess<'de>> {
     inner: RefCell<DataModelVisitor<'a>>,
@@ -351,13 +352,13 @@ impl<'de, 'a, A: MapAccess<'de>> Serialize for MapAccessSerializer<'de, 'a, A> {
 
 pub struct DataModelVisitor<'a> {
     columns: HashMap<String, (Column, State)>,
-    parent_context: Option<(&'a DataModelVisitor<'a>, &'a str)>,
+    parent_context: Option<&'a ParentContext<'a>>,
 }
 impl<'a> DataModelVisitor<'a> {
-    pub fn new(
-        columns: &[Column],
-        parent_context: Option<(&'a DataModelVisitor<'a>, &'a str)>,
-    ) -> Self {
+    pub fn new(columns: &[Column]) -> Self {
+        Self::with_context(columns, None)
+    }
+    fn with_context(columns: &[Column], parent_context: Option<&'a ParentContext<'a>>) -> Self {
         DataModelVisitor {
             columns: columns
                 .iter()
@@ -373,14 +374,8 @@ impl<'a> DataModelVisitor<'a> {
         map_serializer: &mut S,
     ) -> Result<(), A::Error> {
         while let Some(key) = map.next_key::<String>()? {
-            if self.columns.contains_key(&key) {
-                // gross code to satisfy the borrow checker
-                {
-                    let (_column, state) = self.columns.get_mut(&key).unwrap();
-                    state.seen = true;
-                }
-
-                let (column, _state) = self.columns.get(&key).unwrap();
+            if let Some((column, state)) = self.columns.get_mut(&key) {
+                state.seen = true;
 
                 map_serializer
                     .serialize_key(&key)
@@ -390,8 +385,10 @@ impl<'a> DataModelVisitor<'a> {
                     t: &column.data_type,
                     write_to: map_serializer,
                     required: column.required,
-                    context: self,
-                    field_name: &key,
+                    context: ParentContext {
+                        parent: self.parent_context,
+                        field_name: &key,
+                    },
                 };
                 map.next_value_seed(&mut visitor)?;
             } else {
@@ -419,10 +416,10 @@ impl<'a> DataModelVisitor<'a> {
     }
 }
 
-fn parent_context_to_string(parent_context: Option<(&DataModelVisitor<'_>, &str)>) -> String {
+fn parent_context_to_string(parent_context: Option<&ParentContext>) -> String {
     match parent_context {
-        Some((parent, field_name)) => {
-            add_path_component(parent_context_to_string(parent.parent_context), field_name)
+        Some(ParentContext { parent, field_name }) => {
+            add_path_component(parent_context_to_string(*parent), field_name)
         }
         None => String::new(),
     }
@@ -551,7 +548,7 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
+            .deserialize_any(&mut DataModelVisitor::new(&columns))
             .unwrap();
 
         let expected = r#"{"string_col":"test","int_col":42,"float_col":3.14,"bool_col":true,"date_col":"2024-09-10T17:34:51+00:00"}"#;
@@ -577,7 +574,7 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns, None));
+            .deserialize_any(&mut DataModelVisitor::new(&columns));
 
         println!("{:?}", result);
         assert!(result
@@ -605,7 +602,7 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
+            .deserialize_any(&mut DataModelVisitor::new(&columns))
             .unwrap();
 
         let expected = r#"{"array_col":[1,2,3,4,5]}"#;
@@ -644,7 +641,7 @@ mod tests {
         "#;
 
         let valid_result = serde_json::Deserializer::from_str(valid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
+            .deserialize_any(&mut DataModelVisitor::new(&columns))
             .unwrap();
 
         let expected_valid = r#"{"enum_col":"option1"}"#;
@@ -661,7 +658,7 @@ mod tests {
         "#;
 
         let invalid_result = serde_json::Deserializer::from_str(invalid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns, None));
+            .deserialize_any(&mut DataModelVisitor::new(&columns));
 
         assert!(invalid_result.is_err());
         assert!(invalid_result
@@ -725,7 +722,7 @@ mod tests {
         "#;
 
         let valid_result = serde_json::Deserializer::from_str(valid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
+            .deserialize_any(&mut DataModelVisitor::new(&columns))
             .unwrap();
 
         let expected_valid = r#"{"top_level_string":"hello","nested_object":{"nested_string":"world","nested_int":42}}"#;
@@ -745,7 +742,7 @@ mod tests {
         "#;
 
         let invalid_result = serde_json::Deserializer::from_str(invalid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns, None));
+            .deserialize_any(&mut DataModelVisitor::new(&columns));
 
         println!("{:?}", invalid_result);
         assert!(invalid_result.is_err());
@@ -784,7 +781,7 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
+            .deserialize_any(&mut DataModelVisitor::new(&columns))
             .unwrap();
 
         let expected = r#"{"required_field":"hello","optional_field":null}"#;

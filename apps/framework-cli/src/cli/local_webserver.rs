@@ -420,7 +420,7 @@ async fn handle_json_req(
     let body = to_reader(req).await;
 
     let parsed = JsonDeserializer::from_reader(body)
-        .deserialize_any(&mut DataModelVisitor::new(&data_model.columns, None));
+        .deserialize_any(&mut DataModelVisitor::new(&data_model.columns));
 
     // TODO add check that the payload has the proper schema
 
@@ -472,7 +472,7 @@ async fn handle_json_array_body(
         number_of_bytes, topic_name
     );
     let parsed = JsonDeserializer::from_reader(body).deserialize_seq(&mut DataModelArrayVisitor {
-        inner: DataModelVisitor::new(&data_model.columns, None),
+        inner: DataModelVisitor::new(&data_model.columns),
     });
 
     debug!("parsed json array for {}", topic_name);

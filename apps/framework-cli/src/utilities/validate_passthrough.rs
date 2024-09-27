@@ -1,12 +1,12 @@
-use std::cell::RefCell;
-use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
-use std::marker::PhantomData;
-
+use itertools::Either;
 use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserializer, Serialize, Serializer};
 use serde_json::Serializer as JsonSerializer;
+use std::cell::RefCell;
+use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
+use std::marker::PhantomData;
 
 use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, EnumValue};
 
@@ -98,10 +98,21 @@ where
     }
 }
 
-#[derive(Clone, Copy)] // just two pointers, copying is fine
 struct ParentContext<'a> {
     parent: Option<&'a ParentContext<'a>>,
-    field_name: &'a str,
+    field_name: Either<&'a str, usize>,
+}
+impl ParentContext<'_> {
+    fn bump_index(&mut self) {
+        match self.field_name {
+            Either::Left(_) => {
+                panic!("Expecting array index case")
+            }
+            Either::Right(ref mut i) => {
+                *i += 1;
+            }
+        }
+    }
 }
 
 struct ValueVisitor<'a, S: SerializeValue> {
@@ -307,13 +318,18 @@ impl<'a, 'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'a, 'de, A> {
             t: self.inner_type,
             required: true,
             write_to: &mut DummyWrapper(&mut write_to),
-            context: *self.context,
+            context: ParentContext {
+                parent: Some(self.context),
+                field_name: Either::Right(0),
+            },
         };
         let mut seq = self.seq.borrow_mut();
         while let Some(()) = seq
             .next_element_seed(&mut visitor)
             .map_err(serde::ser::Error::custom)?
-        {}
+        {
+            visitor.context.bump_index();
+        }
         write_to.end()
     }
 }
@@ -387,7 +403,7 @@ impl<'a> DataModelVisitor<'a> {
                     required: column.required,
                     context: ParentContext {
                         parent: self.parent_context,
-                        field_name: &key,
+                        field_name: Either::Left(&key),
                     },
                 };
                 map.next_value_seed(&mut visitor)?;
@@ -399,7 +415,7 @@ impl<'a> DataModelVisitor<'a> {
         self.columns.values_mut().for_each(|(column, state)| {
             if !state.seen && column.required {
                 let parent_path = parent_context_to_string(self.parent_context);
-                let path = add_path_component(parent_path, &column.name);
+                let path = add_path_component(parent_path, Either::Left(&column.name));
                 missing_fields.push(path);
             }
             state.seen = false
@@ -419,7 +435,7 @@ impl<'a> DataModelVisitor<'a> {
 fn parent_context_to_string(parent_context: Option<&ParentContext>) -> String {
     match parent_context {
         Some(ParentContext { parent, field_name }) => {
-            add_path_component(parent_context_to_string(*parent), field_name)
+            add_path_component(parent_context_to_string(*parent), *field_name)
         }
         None => String::new(),
     }
@@ -478,11 +494,19 @@ impl<'de, 'a> Visitor<'de> for &mut DataModelArrayVisitor<'a> {
     }
 }
 
-fn add_path_component(mut path: String, field_name: &str) -> String {
+fn add_path_component(mut path: String, field_name: Either<&str, usize>) -> String {
     if !path.is_empty() {
         path.push('.');
     }
-    path.push_str(field_name);
+    match field_name {
+        Either::Left(field_name) => {
+            path.push_str(field_name);
+        }
+        Either::Right(index) => {
+            path.push_str(&index.to_string());
+        }
+    }
+
     path
 }
 

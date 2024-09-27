@@ -357,7 +357,7 @@ fn bad_json_response(e: serde_json::Error) -> Response<Full<Bytes>> {
 
     Response::builder()
         .status(StatusCode::BAD_REQUEST)
-        .body(Full::new(Bytes::from("Invalid JSON")))
+        .body(Full::new(Bytes::from(format!("Invalid JSON: {}", e))))
         .unwrap()
 }
 

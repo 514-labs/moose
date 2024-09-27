@@ -5,7 +5,7 @@ use serde::{Deserializer, Serialize, Serializer};
 use serde_json::Serializer as JsonSerializer;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
+use std::fmt::{Display, Formatter, Write};
 use std::marker::PhantomData;
 
 use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, EnumValue};
@@ -135,7 +135,6 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     type Value = ();
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
-        write!(formatter, "at {}, ", self.get_path())?;
         match self.t {
             ColumnType::Boolean => formatter.write_str("a boolean value"),
             ColumnType::Int => formatter.write_str("an integer value"),
@@ -149,7 +148,8 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
             ColumnType::BigInt | ColumnType::Decimal | ColumnType::Json | ColumnType::Bytes => {
                 formatter.write_str("a value matching the column type")
             }
-        }
+        }?;
+        write!(formatter, " at {}", self.get_path())
     }
 
     fn visit_bool<E>(self, v: bool) -> Result<Self::Value, E>
@@ -503,7 +503,7 @@ fn add_path_component(mut path: String, field_name: Either<&str, usize>) -> Stri
             path.push_str(field_name);
         }
         Either::Right(index) => {
-            path.push_str(&index.to_string());
+            write!(path, "{}", index).unwrap();
         }
     }
 

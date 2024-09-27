@@ -102,6 +102,7 @@ struct ValueVisitor<'a, S: SerializeValue> {
     t: &'a ColumnType,
     required: bool,
     write_to: &'a mut S,
+    path: String,
 }
 impl<'de, 'a, S: SerializeValue> DeserializeSeed<'de> for &mut ValueVisitor<'a, S> {
     type Value = ();
@@ -117,6 +118,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     type Value = ();
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
+        write!(formatter, "at {}, ", self.path)?;
         match self.t {
             ColumnType::Boolean => formatter.write_str("a boolean value"),
             ColumnType::Int => formatter.write_str("an integer value"),
@@ -187,7 +189,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
             ColumnType::String => self.write_to.serialize_value(v).map_err(Error::custom),
             ColumnType::DateTime => {
                 chrono::DateTime::parse_from_rfc3339(v)
-                    .map_err(|_| E::custom("Invalid date format"))?;
+                    .map_err(|_| E::custom(format!("Invalid date format at {}", self.path)))?;
 
                 self.write_to.serialize_value(v).map_err(Error::custom)
             }
@@ -198,7 +200,10 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
                 }) {
                     self.write_to.serialize_value(v).map_err(Error::custom)
                 } else {
-                    Err(E::custom(format!("Invalid enum value: {}", v)))
+                    Err(E::custom(format!(
+                        "Invalid enum value at {}: {}",
+                        self.path, v
+                    )))
                 }
             }
             _ => Err(Error::invalid_type(serde::de::Unexpected::Str(v), &self)),
@@ -210,7 +215,10 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
         E: Error,
     {
         if self.required {
-            return Err(E::custom("Required value, but is none".to_string()));
+            return Err(E::custom(format!(
+                "Required value at {}, but is none",
+                self.path
+            )));
         }
         self.write_to
             // type param of the None does not matter
@@ -243,6 +251,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
                         inner_type,
                         seq: RefCell::new(seq),
                         _phantom_data: &PHANTOM_DATA,
+                        path: self.path.clone(),
                     })
                     .map_err(A::Error::custom)?;
                 Ok(())
@@ -258,7 +267,10 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
             ColumnType::Nested(ref fields) => self
                 .write_to
                 .serialize_value(&MapAccessSerializer {
-                    inner: RefCell::new(DataModelVisitor::new(&fields.columns)),
+                    inner: RefCell::new(DataModelVisitor::new(
+                        &fields.columns,
+                        Some(self.path.clone()),
+                    )),
                     map: RefCell::new(map),
                     _phantom_data: &PHANTOM_DATA,
                 })
@@ -278,6 +290,7 @@ impl<'a, 'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'a, 'de, A> {
             t: self.inner_type,
             required: true,
             write_to: &mut DummyWrapper(&mut write_to),
+            path: self.path.clone(),
         };
         let mut seq = self.seq.borrow_mut();
         while let Some(()) = seq
@@ -297,6 +310,7 @@ struct SeqAccessSerializer<'a, 'de, A: SeqAccess<'de>> {
     inner_type: &'a ColumnType,
     seq: RefCell<A>,
     _phantom_data: &'de PhantomData<()>,
+    path: String,
 }
 struct MapAccessSerializer<'de, A: MapAccess<'de>> {
     inner: RefCell<DataModelVisitor>,
@@ -321,14 +335,16 @@ impl<'de, A: MapAccess<'de>> Serialize for MapAccessSerializer<'de, A> {
 
 pub struct DataModelVisitor {
     columns: HashMap<String, (Column, State)>,
+    parent: Option<String>,
 }
 impl DataModelVisitor {
-    pub fn new(columns: &[Column]) -> Self {
+    pub fn new(columns: &[Column], parent: Option<String>) -> Self {
         DataModelVisitor {
             columns: columns
                 .iter()
                 .map(|c| (c.name.clone(), (c.clone(), State { seen: false })))
                 .collect(),
+            parent,
         }
     }
 
@@ -345,20 +361,30 @@ impl DataModelVisitor {
                     .serialize_key(&key)
                     .map_err(A::Error::custom)?;
 
+                let path = match &self.parent {
+                    Some(parent) => format!("{}.{}", parent, key),
+                    None => key.clone(),
+                };
+
                 let mut visitor = ValueVisitor {
                     t: &column.data_type,
                     write_to: map_serializer,
                     required: column.required,
+                    path,
                 };
                 map.next_value_seed(&mut visitor)?;
             } else {
                 map.next_value::<serde::de::IgnoredAny>()?;
             }
         }
-        let mut missing_fields: Vec<&str> = Vec::new();
+        let mut missing_fields: Vec<String> = Vec::new();
         self.columns.values_mut().for_each(|(column, state)| {
             if !state.seen && column.required {
-                missing_fields.push(&column.name)
+                let path = match &self.parent {
+                    Some(parent) => format!("{}.{}", parent, column.name),
+                    None => column.name.clone(),
+                };
+                missing_fields.push(path);
             }
             state.seen = false
         });
@@ -488,7 +514,7 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns))
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
             .unwrap();
 
         let expected = r#"{"string_col":"test","int_col":42,"float_col":3.14,"bool_col":true,"date_col":"2024-09-10T17:34:51+00:00"}"#;
@@ -514,14 +540,14 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns));
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None));
 
         println!("{:?}", result);
         assert!(result
             .err()
             .unwrap()
             .to_string()
-            .contains("Invalid date format"));
+            .contains("Invalid date format at date_col"));
     }
 
     #[test]
@@ -542,7 +568,7 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns))
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
             .unwrap();
 
         let expected = r#"{"array_col":[1,2,3,4,5]}"#;
@@ -581,7 +607,7 @@ mod tests {
         "#;
 
         let valid_result = serde_json::Deserializer::from_str(valid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns))
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
             .unwrap();
 
         let expected_valid = r#"{"enum_col":"option1"}"#;
@@ -598,13 +624,13 @@ mod tests {
         "#;
 
         let invalid_result = serde_json::Deserializer::from_str(invalid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns));
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None));
 
         assert!(invalid_result.is_err());
         assert!(invalid_result
             .unwrap_err()
             .to_string()
-            .contains("Invalid enum value: invalid_option"));
+            .contains("Invalid enum value at enum_col: invalid_option"));
     }
 
     #[test]
@@ -662,7 +688,7 @@ mod tests {
         "#;
 
         let valid_result = serde_json::Deserializer::from_str(valid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns))
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
             .unwrap();
 
         let expected_valid = r#"{"top_level_string":"hello","nested_object":{"nested_string":"world","nested_int":42}}"#;
@@ -682,13 +708,13 @@ mod tests {
         "#;
 
         let invalid_result = serde_json::Deserializer::from_str(invalid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns));
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None));
 
         assert!(invalid_result.is_err());
         assert!(invalid_result
             .unwrap_err()
             .to_string()
-            .contains("Missing fields: nested_string"));
+            .contains("Missing fields: nested_object.nested_string"));
     }
 
     #[test]
@@ -720,7 +746,7 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns))
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
             .unwrap();
 
         let expected = r#"{"required_field":"hello","optional_field":null}"#;

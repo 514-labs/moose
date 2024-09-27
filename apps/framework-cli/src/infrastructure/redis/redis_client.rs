@@ -49,7 +49,7 @@ use log::{error, info};
 use redis::aio::Connection as AsyncConnection;
 use redis::AsyncCommands;
 use redis::{Client, Script};
-use std::env;
+use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
@@ -57,15 +57,31 @@ use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
 use uuid::Uuid;
 
-const REDIS_KEY_PREFIX: &str = "MS"; // MooSe
+// Internal constants that we don't expose to the user
 const KEY_EXPIRATION_TTL: u64 = 3; // 3 seconds
 const LOCK_TTL: i64 = 10; // 10 seconds
 const PRESENCE_UPDATE_INTERVAL: u64 = 1; // 1 second
 const LOCK_RENEWAL_INTERVAL: u64 = 3; // 3 seconds
 
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct RedisConfig {
+    pub url: String,
+    pub key_prefix: String,
+}
+
+impl Default for RedisConfig {
+    fn default() -> Self {
+        RedisConfig {
+            url: "redis://127.0.0.1:6379".to_string(),
+            key_prefix: "MS".to_string(),
+        }
+    }
+}
+
 pub struct RedisClient {
     connection: Arc<Mutex<AsyncConnection>>,
     pub_sub: Arc<Mutex<AsyncConnection>>,
+    redis_config: RedisConfig,
     service_name: String,
     instance_id: String,
     lock_key: String,
@@ -75,20 +91,22 @@ pub struct RedisClient {
 }
 
 impl RedisClient {
-    pub async fn new(service_name: &str) -> Result<Self> {
-        let redis_url =
-            env::var("MOOSE_REDIS_URL").unwrap_or_else(|_| "redis://127.0.0.1:6379".to_string());
-        let client = Client::open(redis_url.clone()).context("Failed to create Redis client")?;
+    pub async fn new(service_name: String, redis_config: RedisConfig) -> Result<Self> {
+        let client =
+            Client::open(redis_config.url.clone()).context("Failed to create Redis client")?;
+
         let mut connection = client
             .get_async_connection()
             .await
             .context("Failed to establish Redis connection")?;
+
         let pub_sub = client
             .get_async_connection()
             .await
             .context("Failed to establish Redis pub/sub connection")?;
+
         let instance_id = Uuid::new_v4().to_string();
-        let lock_key = format!("{}::{}::leader-lock", REDIS_KEY_PREFIX, service_name);
+        let lock_key = format!("{}::{}::leader-lock", redis_config.key_prefix, service_name);
 
         info!(
             "Initializing Redis client for {} with instance ID: {}",
@@ -107,8 +125,9 @@ impl RedisClient {
         Ok(Self {
             connection: Arc::new(Mutex::new(connection)),
             pub_sub: Arc::new(Mutex::new(pub_sub)),
-            service_name: service_name.to_string(),
+            redis_config,
             instance_id,
+            service_name,
             lock_key,
             is_leader: false,
             presence_task: None,
@@ -119,13 +138,15 @@ impl RedisClient {
     pub async fn presence_update(&mut self) -> Result<()> {
         let key = format!(
             "{}::{}::{}::presence",
-            REDIS_KEY_PREFIX, self.service_name, self.instance_id
+            self.redis_config.key_prefix, self.service_name, self.instance_id
         );
+
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .context("Failed to get current time")?
             .as_secs()
             .to_string();
+
         self.connection
             .lock()
             .await
@@ -229,7 +250,7 @@ impl RedisClient {
     ) -> Result<()> {
         let channel = format!(
             "{}::{}::{}::msgchannel",
-            REDIS_KEY_PREFIX, self.service_name, target_instance_id
+            self.redis_config.key_prefix, self.service_name, target_instance_id
         );
         let _: () = self
             .pub_sub
@@ -242,7 +263,10 @@ impl RedisClient {
     }
 
     pub async fn broadcast_message(&mut self, message: &str) -> Result<()> {
-        let channel = format!("{}::{}::msgchannel", REDIS_KEY_PREFIX, self.service_name);
+        let channel = format!(
+            "{}::{}::msgchannel",
+            self.redis_config.key_prefix, self.service_name
+        );
         let _: () = self
             .pub_sub
             .lock()
@@ -254,8 +278,14 @@ impl RedisClient {
     }
 
     pub async fn get_queue_message(&self) -> Result<Option<String>> {
-        let source_queue = format!("{}::{}::mqrecieved", REDIS_KEY_PREFIX, self.service_name);
-        let destination_queue = format!("{}::{}::mqprocess", REDIS_KEY_PREFIX, self.service_name);
+        let source_queue = format!(
+            "{}::{}::mqrecieved",
+            self.redis_config.key_prefix, self.service_name
+        );
+        let destination_queue = format!(
+            "{}::{}::mqprocess",
+            self.redis_config.key_prefix, self.service_name
+        );
         self.connection
             .lock()
             .await
@@ -265,7 +295,10 @@ impl RedisClient {
     }
 
     pub async fn post_queue_message(&self, message: &str) -> Result<()> {
-        let queue = format!("{}::{}::mqrecieved", REDIS_KEY_PREFIX, self.service_name);
+        let queue = format!(
+            "{}::{}::mqrecieved",
+            self.redis_config.key_prefix, self.service_name
+        );
         let _: () = self
             .connection
             .lock()
@@ -277,9 +310,14 @@ impl RedisClient {
     }
 
     pub async fn mark_queue_message(&mut self, message: &str, success: bool) -> Result<()> {
-        let in_progress_queue =
-            format!("{}::{}::mqinprogress", REDIS_KEY_PREFIX, self.service_name);
-        let incomplete_queue = format!("{}::{}::mqincomplete", REDIS_KEY_PREFIX, self.service_name);
+        let in_progress_queue = format!(
+            "{}::{}::mqinprogress",
+            self.redis_config.key_prefix, self.service_name
+        );
+        let incomplete_queue = format!(
+            "{}::{}::mqincomplete",
+            self.redis_config.key_prefix, self.service_name
+        );
 
         if success {
             let _: () = self
@@ -379,10 +417,11 @@ impl Clone for RedisClient {
         Self {
             connection: Arc::clone(&self.connection),
             pub_sub: Arc::clone(&self.pub_sub),
-            service_name: self.service_name.clone(),
+            redis_config: self.redis_config.clone(),
             instance_id: self.instance_id.clone(),
             lock_key: self.lock_key.clone(),
             is_leader: self.is_leader,
+            service_name: self.service_name.clone(),
             presence_task: None,
             lock_renewal_task: None,
         }
@@ -417,9 +456,15 @@ mod tests {
     use tokio;
     #[tokio::test]
     async fn test_redis_operations() {
-        let client = RedisClient::new("test_service")
-            .await
-            .expect("Failed to create Redis client");
+        let client = RedisClient::new(
+            "test_service".to_string(),
+            RedisConfig {
+                url: "redis://127.0.0.1:6379".to_string(),
+                key_prefix: "MS".to_string(),
+            },
+        )
+        .await
+        .expect("Failed to create Redis client");
 
         // Test set and get
         let _: () = client

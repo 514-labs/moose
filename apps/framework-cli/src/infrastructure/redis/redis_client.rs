@@ -65,15 +65,27 @@ const LOCK_RENEWAL_INTERVAL: u64 = 3; // 3 seconds
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedisConfig {
+    #[serde(default = "RedisConfig::default_url")]
     pub url: String,
+    #[serde(default = "RedisConfig::default_key_prefix")]
     pub key_prefix: String,
+}
+
+impl RedisConfig {
+    pub fn default_url() -> String {
+        "redis://127.0.0.1:6379".to_string()
+    }
+
+    pub fn default_key_prefix() -> String {
+        "MS".to_string()
+    }
 }
 
 impl Default for RedisConfig {
     fn default() -> Self {
         RedisConfig {
-            url: "redis://127.0.0.1:6379".to_string(),
-            key_prefix: "MS".to_string(),
+            url: RedisConfig::default_url(),
+            key_prefix: RedisConfig::default_key_prefix(),
         }
     }
 }

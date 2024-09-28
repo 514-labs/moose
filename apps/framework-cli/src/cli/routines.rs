@@ -110,7 +110,7 @@ use crate::infrastructure::processes::consumption_registry::ConsumptionProcessRe
 use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
-use crate::infrastructure::redis::RedisClient;
+use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::fetch_topics;
 use crate::project::Project;
 
@@ -280,7 +280,7 @@ pub async fn start_development_mode(
         }
     );
 
-    let mut redis_client = RedisClient::new(&project.name()).await?;
+    let mut redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
     redis_client.start_periodic_tasks();
 
     let server_config = project.http_server_config.clone();
@@ -488,7 +488,7 @@ pub async fn start_production_mode(
         }
     );
 
-    let mut redis_client = RedisClient::new(&project.name()).await?;
+    let mut redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
     redis_client.start_periodic_tasks();
 
     let server_config = project.http_server_config.clone();

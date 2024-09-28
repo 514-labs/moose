@@ -1,3 +1,1 @@
-mod redis_client;
-
-pub use redis_client::RedisClient;
+pub mod redis_client;

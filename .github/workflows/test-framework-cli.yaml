@@ -48,6 +48,11 @@ jobs:
     runs-on: macos-latest
     strategy:
       fail-fast: false
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -84,6 +89,11 @@ jobs:
       RUSTC_WRAPPER: "sccache"
       RUST_BACKTRACE: full
     runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
     strategy:
       fail-fast: false
     steps:

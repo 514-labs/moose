@@ -38,6 +38,7 @@ use crate::framework::typescript::templates::{
 };
 use crate::framework::versions::sort_versions;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
+use crate::infrastructure::redis::redis_client::RedisConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 use config::{Config, ConfigError, Environment, File};
@@ -95,6 +96,8 @@ pub struct Project {
     pub redpanda_config: RedpandaConfig,
     pub clickhouse_config: ClickHouseConfig,
     pub http_server_config: LocalWebserverConfig,
+    #[serde(default)]
+    pub redis_config: RedisConfig,
     #[serde(default)]
     pub git_config: GitConfig,
 
@@ -176,6 +179,7 @@ impl Project {
             project_location: location.clone(),
             redpanda_config: RedpandaConfig::default(),
             clickhouse_config: ClickHouseConfig::default(),
+            redis_config: RedisConfig::default(),
             http_server_config: LocalWebserverConfig::default(),
             language_project_config,
             supported_old_versions: HashMap::new(),

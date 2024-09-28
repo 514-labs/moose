@@ -79,6 +79,7 @@ hex = "0.4.2"
 constant_time_eq = "0.3.0"
 tokio-cron-scheduler = "0.11.0"
 indexmap = "2.5.0"
+redis = { version = "0.24.0", features = ["tokio-comp", "aio"] }
 
 [dev-dependencies]
 clickhouse = { version = "0.11.5", features = ["uuid", "test-util"] }

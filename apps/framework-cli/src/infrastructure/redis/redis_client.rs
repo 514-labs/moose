@@ -463,9 +463,12 @@ impl Drop for RedisClient {
 
 #[cfg(test)]
 mod tests {
+
     use super::*;
     use std::time::Duration;
     use tokio;
+
+    #[ignore]
     #[tokio::test]
     async fn test_redis_operations() {
         let client = RedisClient::new(

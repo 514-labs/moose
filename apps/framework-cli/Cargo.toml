@@ -16,7 +16,6 @@ console = "0.15.7"
 thiserror = "1.0.59"
 hyper = { version = "1", features = ["full"] }
 hyper-tls = "0.6.0"
-notify-debouncer-mini = { version = "0.4.1", default-features = false }
 notify = { version = "6.1.1", default-features = false, features = [
     "macos_kqueue",
 ]}

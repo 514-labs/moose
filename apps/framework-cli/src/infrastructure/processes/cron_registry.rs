@@ -1,5 +1,5 @@
 use anyhow::Result;
-use log::{debug, info};
+use log::info;
 use serde_json::Value;
 use std::fs;
 use std::path::Path;

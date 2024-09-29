@@ -1,10 +1,11 @@
 use anyhow::Result;
+use log::{debug, info};
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError};
+use tokio_cron_scheduler::{Job, JobScheduler, JobSchedulerError}; // Added this line
 
 pub struct CronRegistry {
     scheduler: Arc<Mutex<JobScheduler>>,
@@ -80,15 +81,13 @@ impl CronRegistry {
                 }
 
                 self.add_job(&cron_spec, move || {
-                    println!("Executing job: {}", job_id);
+                    info!("Executing job: {}", job_id); // Changed from println! to info!
                     if let Some(ref path) = script_path {
-                        // Borrowing script_path
-                        println!("Script path: {}", path);
-                        // Execute the script here
+                        info!("Script path: {}", path); // Changed from println! to info!
+                                                        // Execute the script here
                     } else if let Some(ref url) = url {
-                        // Borrow url
-                        println!("Calling URL: {}", url);
-                        // Call the URL here
+                        info!("Calling URL: {}", url); // Changed from println! to info!
+                                                       // Call the URL here
                     }
                     Ok(())
                 })

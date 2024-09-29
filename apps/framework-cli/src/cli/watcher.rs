@@ -1,5 +1,6 @@
 use crate::framework;
 use log::{debug, info, warn};
+use notify::event::ModifyKind;
 use notify::{Event, EventHandler, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashSet;
 use std::ops::DerefMut;
@@ -244,8 +245,9 @@ impl EventHandler for EventListener {
     fn handle_event(&mut self, event: notify::Result<Event>) {
         match event {
             Ok(event) => {
-                self.tx.send_modify(|events| {
+                self.tx.send_if_modified(|events| {
                     events.insert(event);
+                    !events.is_empty()
                 });
             }
             Err(e) => {
@@ -255,7 +257,7 @@ impl EventHandler for EventListener {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct EventBuckets {
     functions: HashSet<PathBuf>,
     aggregations: HashSet<PathBuf>,
@@ -280,7 +282,7 @@ impl EventBuckets {
 
     pub fn insert(&mut self, event: Event) {
         match event.kind {
-            EventKind::Access(_) => return,
+            EventKind::Access(_) | EventKind::Modify(ModifyKind::Metadata(_)) => return,
             EventKind::Any
             | EventKind::Create(_)
             | EventKind::Modify(_)
@@ -290,10 +292,12 @@ impl EventBuckets {
         for path in event.paths {
             if !path.ext_is_supported_lang() &&
                 // todo: remove this extension when we drop prisma support
-                path.extension().is_some_and(|ext| ext != "prisma")
+                !path.extension().is_some_and(|ext| ext == "prisma")
             {
                 continue;
             }
+
+            println!("{:?}, {:?}", path, event.kind);
 
             if path
                 .iter()
@@ -366,6 +370,8 @@ async fn watch(
         if !rx.borrow().is_empty() {
             rx.mark_changed();
         }
+
+        println!("{:?}", bucketed_events);
 
         if features.core_v2 {
             with_spinner_async(

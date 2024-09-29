@@ -273,13 +273,6 @@ impl EventBuckets {
             && self.consumption.is_empty()
     }
 
-    // pub fn combine(&mut self, other: Self) {
-    //     self.functions.extend(other.functions);
-    //     self.aggregations.extend(other.aggregations);
-    //     self.data_models.extend(other.data_models);
-    //     self.consumption.extend(other.consumption);
-    // }
-
     pub fn insert(&mut self, event: Event) {
         match event.kind {
             EventKind::Access(_) | EventKind::Modify(ModifyKind::Metadata(_)) => return,
@@ -296,8 +289,6 @@ impl EventBuckets {
             {
                 continue;
             }
-
-            println!("{:?}, {:?}", path, event.kind);
 
             if path
                 .iter()
@@ -348,7 +339,7 @@ async fn watch(
     let mut clickhouse_client_v2 = get_pool(&project.clickhouse_config).get_handle().await?;
 
     let (tx, mut rx) = tokio::sync::watch::channel(EventBuckets::default());
-    let tx2 = tx.clone();
+    let receiver_ack = tx.clone();
 
     let mut watcher = RecommendedWatcher::new(EventListener { tx }, notify::Config::default())
         .map_err(|e| {
@@ -364,14 +355,12 @@ async fn watch(
 
     while let Ok(()) = rx.changed().await {
         sleep(Duration::from_secs(1)).await;
-        let bucketed_events = tx2.send_replace(EventBuckets::default());
+        let bucketed_events = receiver_ack.send_replace(EventBuckets::default());
         rx.mark_unchanged();
-        // so that updates done between tx2.send_replace and rx.mark_unchanged is not lost
+        // so that updates done between receiver_ack.send_replace and rx.mark_unchanged is not lost
         if !rx.borrow().is_empty() {
             rx.mark_changed();
         }
-
-        println!("{:?}", bucketed_events);
 
         if features.core_v2 {
             with_spinner_async(

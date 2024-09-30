@@ -6,6 +6,7 @@ export default defineConfig({
     "src/dataModels/toDataModels.ts",
     "src/moose-tspc.ts",
     "src/moose-runner.ts",
+    "src/moose-exec.ts",
   ],
   format: ["cjs", "esm"], // Build for commonJS and ESmodules
   dts: true, // Generate declaration file (.d.ts)

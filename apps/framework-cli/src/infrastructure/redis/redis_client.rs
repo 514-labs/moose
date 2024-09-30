@@ -100,6 +100,7 @@ pub struct RedisClient {
     is_leader: bool,
     presence_task: Option<JoinHandle<()>>,
     lock_renewal_task: Option<JoinHandle<()>>,
+    leadership_callback: Option<Arc<Mutex<dyn Fn() + Send + Sync>>>, // Added this line
 }
 
 impl RedisClient {
@@ -144,6 +145,7 @@ impl RedisClient {
             is_leader: false,
             presence_task: None,
             lock_renewal_task: None,
+            leadership_callback: None, // Added this line
         })
     }
 
@@ -197,6 +199,14 @@ impl RedisClient {
         if self.is_leader {
             info!("Instance {} became leader", self.instance_id);
             self.renew_lock().await?;
+
+            // Call the leadership callback if set
+            if let Some(callback) = &self.leadership_callback {
+                let callback = callback.clone();
+                tokio::spawn(async move {
+                    (callback.lock().await)();
+                });
+            }
         }
 
         Ok(self.is_leader)
@@ -422,6 +432,14 @@ impl RedisClient {
             .context("Failed to ping Redis server")?;
         Ok(())
     }
+
+    // Added this method
+    pub fn set_leadership_callback<F>(&mut self, callback: F)
+    where
+        F: Fn() + Send + Sync + 'static,
+    {
+        self.leadership_callback = Some(Arc::new(Mutex::new(callback)));
+    }
 }
 
 impl Clone for RedisClient {
@@ -436,6 +454,7 @@ impl Clone for RedisClient {
             service_name: self.service_name.clone(),
             presence_task: None,
             lock_renewal_task: None,
+            leadership_callback: self.leadership_callback.clone(), // Added this line
         }
     }
 }

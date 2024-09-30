@@ -84,8 +84,9 @@ use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use anyhow::Error;
 use log::{debug, info};
-use tokio::sync::RwLock;
+use tokio::sync::RwLock; // or use the appropriate error type
 
 use crate::cli::watcher::{
     process_aggregations_changes, process_consumption_changes, process_streaming_func_changes,
@@ -107,6 +108,7 @@ use crate::infrastructure::olap::clickhouse_alt_client::{
 };
 use crate::infrastructure::processes::aggregations_registry::AggregationProcessRegistry;
 use crate::infrastructure::processes::consumption_registry::ConsumptionProcessRegistry;
+use crate::infrastructure::processes::cron_registry::CronRegistry;
 use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
@@ -266,6 +268,23 @@ impl RoutineController {
     }
 }
 
+async fn leadership_callback(project: Arc<Project>) -> Result<(), Error> {
+    let cron_registry = CronRegistry::new().await?;
+    cron_registry.register_jobs(&project).await?;
+    cron_registry.start().await?;
+    Ok(())
+}
+
+async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<RedisClient> {
+    let mut redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
+    let project_clone = Arc::clone(&project);
+    redis_client.set_leadership_callback(move || {
+        tokio::spawn(leadership_callback(project_clone.clone()));
+    });
+    redis_client.start_periodic_tasks();
+    Ok(redis_client)
+}
+
 // Starts the file watcher and the webserver
 pub async fn start_development_mode(
     project: Arc<Project>,
@@ -280,8 +299,7 @@ pub async fn start_development_mode(
         }
     );
 
-    let mut redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
-    redis_client.start_periodic_tasks();
+    let mut redis_client = setup_redis_client(project.clone()).await?;
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(
@@ -488,8 +506,7 @@ pub async fn start_production_mode(
         }
     );
 
-    let mut redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
-    redis_client.start_periodic_tasks();
+    let mut redis_client = setup_redis_client(project.clone()).await?;
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(

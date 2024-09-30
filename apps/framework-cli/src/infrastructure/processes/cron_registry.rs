@@ -3,6 +3,7 @@ use anyhow::{anyhow, Result};
 use log::{error, info};
 use reqwest;
 use serde::{Deserialize, Serialize};
+use std::env;
 use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
@@ -73,6 +74,7 @@ impl CronRegistry {
     pub async fn register_jobs(&self, project: &Project) -> Result<()> {
         info!("<cron> Registering cron jobs from project configuration");
         info!("<cron> Cron jobs: {:?}", project.cron_jobs);
+        let project_path = project.project_location.clone();
 
         for job in &project.cron_jobs {
             let job_id = job.job_id.clone();
@@ -88,6 +90,7 @@ impl CronRegistry {
                 ));
             }
 
+            let project_path_clone = project_path.clone();
             self.add_job(&cron_spec, move || {
                 if let Some(ref path) = script_path {
                     // Execute the script based on file extension
@@ -98,7 +101,19 @@ impl CronRegistry {
 
                     let output = match extension {
                         "js" => Command::new("node").arg(path).output(),
-                        "ts" => Command::new("moose-exec").arg(path).output(),
+                        "ts" => {
+                            let path =
+                                env::var("PATH").unwrap_or_else(|_| "/usr/local/bin".to_string());
+                            let bin_path = format!(
+                                "{}:{}/node_modules/.bin",
+                                path,
+                                project_path_clone.to_str().unwrap()
+                            );
+                            Command::new("moose-exec")
+                                .arg(path)
+                                .env("PATH", bin_path)
+                                .output()
+                        }
                         "py" => Command::new("python3").arg(path).output(),
                         _ => Err(std::io::Error::new(
                             std::io::ErrorKind::Other,

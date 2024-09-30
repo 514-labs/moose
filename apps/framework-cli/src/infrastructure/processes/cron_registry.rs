@@ -1,20 +1,34 @@
 use anyhow::{anyhow, Result};
 use log::{error, info};
 use reqwest;
-use serde_json::Value;
+use serde::Deserialize;
+use std::env;
 use std::fs;
 use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
+use thiserror::Error;
 use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler};
-
-use thiserror::Error;
+use toml;
 
 #[derive(Error, Debug)]
 pub enum CronError {
     #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
+}
+
+#[derive(Deserialize, Debug)]
+pub struct CronJob {
+    job_id: String,
+    cron_spec: String,
+    script_path: Option<String>,
+    url: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct CronConfig {
+    cron_jobs: Vec<CronJob>,
 }
 
 pub struct CronRegistry {
@@ -64,109 +78,99 @@ impl CronRegistry {
     }
 
     pub async fn load_from_file(&self, file_path: &str) -> Result<()> {
-        let json_str = fs::read_to_string(file_path).map_err(|e| anyhow!(e))?;
-        let json: Value = serde_json::from_str(&json_str).map_err(|e| anyhow!(e))?;
+        let toml_str = fs::read_to_string(file_path).map_err(|e| anyhow!(e))?;
+        let config: CronConfig = toml::from_str(&toml_str).map_err(|e| anyhow!(e))?;
         info!("<cron> Loaded cron jobs from file: {}", file_path);
-        info!("<cron> Cron jobs: {}", json);
-        let cron_jobs = json.get("cron_jobs").and_then(|j| j.as_array()).cloned();
-        if let Some(cron_jobs) = cron_jobs {
-            for job in cron_jobs {
-                let job_id = job
-                    .get("job_id")
-                    .and_then(|j| j.as_str())
-                    .map(String::from)
-                    .ok_or_else(|| anyhow!("Missing job_id"))?;
-                let cron_spec = job
-                    .get("cron_spec")
-                    .and_then(|j| j.as_str())
-                    .map(String::from)
-                    .ok_or_else(|| anyhow!("Missing cron_spec"))?;
-                let script_path = job
-                    .get("script_path")
-                    .and_then(|j| j.as_str())
-                    .map(String::from);
-                let url = job.get("url").and_then(|j| j.as_str()).map(String::from);
+        info!("<cron> Cron jobs: {:?}", config.cron_jobs);
 
-                // Ensure at least one of script_path or url is present
-                if script_path.is_none() && url.is_none() {
-                    return Err(anyhow!(
-                        "At least one of script_path or url must be present"
-                    ));
-                }
+        for job in config.cron_jobs {
+            let job_id = job.job_id;
+            let cron_spec = job.cron_spec;
+            let script_path = job.script_path;
+            let url = job.url;
 
-                self.add_job(&cron_spec, move || {
-                    info!("<cron> Executing job: {}", job_id);
-                    if let Some(ref path) = script_path {
-                        info!("<cron> Script path: {}", path);
-                        // Execute the script based on file extension
-                        let extension = std::path::Path::new(path)
-                            .extension()
-                            .and_then(std::ffi::OsStr::to_str)
-                            .unwrap_or("");
-
-                        let output = match extension {
-                            "js" => {
-                                info!("<cron> Executing Node.js script: {}", path);
-                                Command::new("node").arg(path).output()
-                            }
-                            "ts" => {
-                                info!("<cron> Executing TypeScript script: {}", path);
-                                Command::new("ts-node").arg(path).output()
-                            }
-                            "py" => {
-                                info!("<cron> Executing Python script: {}", path);
-                                Command::new("python3").arg(path).output()
-                            }
-                            _ => Err(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                "Unsupported file type",
-                            )),
-                        };
-
-                        match output {
-                            Ok(output) => {
-                                let stdout = String::from_utf8_lossy(&output.stdout);
-                                let stderr = String::from_utf8_lossy(&output.stderr);
-                                if !stdout.is_empty() {
-                                    info!("<cron> Script stdout:\n{}", stdout);
-                                }
-                                if !stderr.is_empty() {
-                                    error!("<cron> Script stderr:\n{}", stderr);
-                                }
-                                if !output.status.success() {
-                                    error!("<cron> Script exited with status: {}", output.status);
-                                }
-                            }
-                            Err(e) => error!("<cron> Failed to execute script: {}", e),
-                        }
-                    } else if let Some(ref url) = url.clone() {
-                        info!("<cron> Calling URL: {}", url);
-                        let url = url.to_string();
-                        tokio::spawn(async move {
-                            match reqwest::get(&url).await {
-                                Ok(response) => {
-                                    info!("<cron> URL response status: {}", response.status())
-                                }
-                                Err(e) => error!("<cron> Failed to call URL: {}", e),
-                            }
-                        });
-                    }
-                    Ok(())
-                })
-                .await?;
+            // Ensure at least one of script_path or url is present
+            if script_path.is_none() && url.is_none() {
+                return Err(anyhow!(
+                    "At least one of script_path or url must be present for job: {}",
+                    job_id
+                ));
             }
+
+            self.add_job(&cron_spec, move || {
+                info!("<cron> Executing job: {}", job_id);
+                if let Some(ref path) = script_path {
+                    info!("<cron> Script path: {}", path);
+                    // Execute the script based on file extension
+                    let extension = Path::new(path)
+                        .extension()
+                        .and_then(std::ffi::OsStr::to_str)
+                        .unwrap_or("");
+
+                    let output = match extension {
+                        "js" => {
+                            info!("<cron> Executing Node.js script: {}", path);
+                            Command::new("node").arg(path).output()
+                        }
+                        "ts" => {
+                            info!("<cron> Executing TypeScript script: {}", path);
+                            Command::new("ts-node").arg(path).output()
+                        }
+                        "py" => {
+                            info!("<cron> Executing Python script: {}", path);
+                            Command::new("python3").arg(path).output()
+                        }
+                        _ => Err(std::io::Error::new(
+                            std::io::ErrorKind::Other,
+                            "Unsupported file type",
+                        )),
+                    };
+
+                    match output {
+                        Ok(output) => {
+                            let stdout = String::from_utf8_lossy(&output.stdout);
+                            let stderr = String::from_utf8_lossy(&output.stderr);
+                            if !stdout.is_empty() {
+                                info!("<cron> Script stdout:\n{}", stdout);
+                            }
+                            if !stderr.is_empty() {
+                                error!("<cron> Script stderr:\n{}", stderr);
+                            }
+                            if !output.status.success() {
+                                error!("<cron> Script exited with status: {}", output.status);
+                            }
+                        }
+                        Err(e) => error!("<cron> Failed to execute script: {}", e),
+                    }
+                } else if let Some(ref url) = url.clone() {
+                    info!("<cron> Calling URL: {}", url);
+                    let url = url.to_string();
+                    tokio::spawn(async move {
+                        match reqwest::get(&url).await {
+                            Ok(response) => {
+                                info!("<cron> URL response status: {}", response.status())
+                            }
+                            Err(e) => error!("<cron> Failed to call URL: {}", e),
+                        }
+                    });
+                }
+                Ok(())
+            })
+            .await?;
         }
 
         Ok(())
     }
 
     pub async fn load_jobs(&self) -> Result<()> {
-        let moose_cron_path = Path::new("moose.json");
+        let current_dir = env::current_dir().map_err(|e| anyhow!(e))?;
+        let moose_cron_path = current_dir.join("moose.config.toml");
+
         if moose_cron_path.exists() {
             self.load_from_file(moose_cron_path.to_str().unwrap())
                 .await?;
         } else {
-            info!("<cron> moose.json file not found. No jobs loaded.");
+            info!("<cron> moose.config.toml file not found in the project root directory. No jobs loaded.");
         }
         Ok(())
     }

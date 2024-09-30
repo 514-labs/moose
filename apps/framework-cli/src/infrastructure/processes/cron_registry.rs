@@ -98,7 +98,7 @@ impl CronRegistry {
 
                     let output = match extension {
                         "js" => Command::new("node").arg(path).output(),
-                        "ts" => Command::new("ts-node").arg(path).output(),
+                        "ts" => Command::new("moose-exec").arg(path).output(),
                         "py" => Command::new("python3").arg(path).output(),
                         _ => Err(std::io::Error::new(
                             std::io::ErrorKind::Other,

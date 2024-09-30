@@ -98,9 +98,7 @@ impl CronRegistry {
             }
 
             self.add_job(&cron_spec, move || {
-                info!("<cron> Executing job: {}", job_id);
                 if let Some(ref path) = script_path {
-                    info!("<cron> Script path: {}", path);
                     // Execute the script based on file extension
                     let extension = Path::new(path)
                         .extension()
@@ -108,18 +106,9 @@ impl CronRegistry {
                         .unwrap_or("");
 
                     let output = match extension {
-                        "js" => {
-                            info!("<cron> Executing Node.js script: {}", path);
-                            Command::new("node").arg(path).output()
-                        }
-                        "ts" => {
-                            info!("<cron> Executing TypeScript script: {}", path);
-                            Command::new("ts-node").arg(path).output()
-                        }
-                        "py" => {
-                            info!("<cron> Executing Python script: {}", path);
-                            Command::new("python3").arg(path).output()
-                        }
+                        "js" => Command::new("node").arg(path).output(),
+                        "ts" => Command::new("ts-node").arg(path).output(),
+                        "py" => Command::new("python3").arg(path).output(),
                         _ => Err(std::io::Error::new(
                             std::io::ErrorKind::Other,
                             "Unsupported file type",
@@ -134,10 +123,10 @@ impl CronRegistry {
                                 info!("<cron> Script stdout:\n{}", stdout);
                             }
                             if !stderr.is_empty() {
-                                error!("<cron> Script stderr:\n{}", stderr);
+                                error!("<cron> Script stderr\n{}", stderr);
                             }
                             if !output.status.success() {
-                                error!("<cron> Script exited with status: {}", output.status);
+                                error!("<cron> Script exited with status:\n{}", output.status);
                             }
                         }
                         Err(e) => error!("<cron> Failed to execute script: {}", e),

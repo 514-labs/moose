@@ -384,7 +384,7 @@ impl InfrastructureMap {
         }
 
         for (id, view) in &target_map.views {
-            if !self.tables.contains_key(id) {
+            if !self.views.contains_key(id) {
                 changes
                     .olap_changes
                     .push(OlapChange::View(Change::<View>::Added(view.clone())));

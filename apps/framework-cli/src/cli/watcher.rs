@@ -1,6 +1,7 @@
+use crate::framework;
 use log::{debug, info, warn};
-use notify::RecursiveMode;
-use notify_debouncer_mini::{new_debouncer, DebouncedEvent};
+use notify::event::ModifyKind;
+use notify::{Event, EventHandler, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use std::collections::HashSet;
 use std::ops::DerefMut;
 use std::sync::Arc;
@@ -11,8 +12,7 @@ use std::{
     path::PathBuf,
 };
 use tokio::sync::RwLock;
-
-use crate::framework;
+use tokio::time::sleep;
 
 use crate::framework::controller::{
     create_or_replace_tables, drop_table, schema_file_path_to_ingest_route,
@@ -52,7 +52,7 @@ use crate::{
 
 async fn process_data_models_changes(
     project: Arc<Project>,
-    events: Vec<DebouncedEvent>,
+    paths: HashSet<PathBuf>,
     framework_object_versions: &mut FrameworkObjectVersions,
     route_table: &RwLock<HashMap<PathBuf, RouteMeta>>,
     configured_client: &ConfiguredDBClient,
@@ -61,14 +61,12 @@ async fn process_data_models_changes(
 ) -> anyhow::Result<()> {
     debug!(
         "File Watcher Event Received: {:?}, with Route Table {:?}",
-        events, route_table
+        paths, route_table
     );
 
     let schema_files = project.data_models_dir();
-
-    let paths = events
+    let paths = paths
         .into_iter()
-        .map(|e| e.path)
         .filter(|p| is_schema_file(p) && p.starts_with(&schema_files))
         .collect::<HashSet<PathBuf>>();
 
@@ -239,61 +237,86 @@ async fn process_data_models_changes(
 
     Ok(())
 }
+struct EventListener {
+    tx: tokio::sync::watch::Sender<EventBuckets>,
+}
 
+impl EventHandler for EventListener {
+    fn handle_event(&mut self, event: notify::Result<Event>) {
+        match event {
+            Ok(event) => {
+                self.tx.send_if_modified(|events| {
+                    events.insert(event);
+                    !events.is_empty()
+                });
+            }
+            Err(e) => {
+                log::error!("Watcher Error: {:?}", e);
+            }
+        }
+    }
+}
+
+#[derive(Default, Debug)]
 struct EventBuckets {
-    functions: Vec<DebouncedEvent>,
-    aggregations: Vec<DebouncedEvent>,
-    data_models: Vec<DebouncedEvent>,
-    consumption: Vec<DebouncedEvent>,
+    functions: HashSet<PathBuf>,
+    aggregations: HashSet<PathBuf>,
+    data_models: HashSet<PathBuf>,
+    consumption: HashSet<PathBuf>,
 }
 
 impl EventBuckets {
-    pub fn new(events: Vec<DebouncedEvent>) -> Self {
-        info!("Events: {:?}", events);
+    pub fn is_empty(&self) -> bool {
+        self.functions.is_empty()
+            && self.aggregations.is_empty()
+            && self.data_models.is_empty()
+            && self.consumption.is_empty()
+    }
 
-        let mut functions = Vec::new();
-        let mut aggregations = Vec::new();
-        let mut data_models = Vec::new();
-        let mut consumption = Vec::new();
+    pub fn insert(&mut self, event: Event) {
+        match event.kind {
+            EventKind::Access(_) | EventKind::Modify(ModifyKind::Metadata(_)) => return,
+            EventKind::Any
+            | EventKind::Create(_)
+            | EventKind::Modify(_)
+            | EventKind::Remove(_)
+            | EventKind::Other => {}
+        };
+        for path in event.paths {
+            if !path.ext_is_supported_lang() &&
+                // todo: remove this extension when we drop prisma support
+                !path.extension().is_some_and(|ext| ext == "prisma")
+            {
+                continue;
+            }
 
-        for event in events {
-            if event
-                .path
+            if path
                 .iter()
                 .any(|component| component.eq_ignore_ascii_case(FUNCTIONS_DIR))
             {
-                functions.push(event);
-            } else if event.path.iter().any(|component| {
+                self.functions.insert(path);
+            } else if path.iter().any(|component| {
                 component.eq_ignore_ascii_case(AGGREGATIONS_DIR)
                     || component.eq_ignore_ascii_case(BLOCKS_DIR)
             }) {
-                aggregations.push(event);
-            } else if event
-                .path
+                self.aggregations.insert(path);
+            } else if path
                 .iter()
                 .any(|component| component.eq_ignore_ascii_case(SCHEMAS_DIR))
             {
-                data_models.push(event);
-            } else if event
-                .path
+                self.data_models.insert(path);
+            } else if path
                 .iter()
                 .any(|component| component.eq_ignore_ascii_case(CONSUMPTION_DIR))
             {
-                consumption.push(event);
+                self.consumption.insert(path);
             }
         }
 
-        info!("Functions: {:?}", functions);
-        info!("Aggregations/Blocks: {:?}", aggregations);
-        info!("Data Models: {:?}", data_models);
-        info!("Consumption: {:?}", consumption);
-
-        Self {
-            functions,
-            aggregations,
-            data_models,
-            consumption,
-        }
+        info!("Functions: {:?}", self.functions);
+        info!("Aggregations/Blocks: {:?}", self.aggregations);
+        info!("Data Models: {:?}", self.data_models);
+        info!("Consumption: {:?}", self.consumption);
     }
 }
 
@@ -315,178 +338,171 @@ async fn watch(
 
     let mut clickhouse_client_v2 = get_pool(&project.clickhouse_config).get_handle().await?;
 
-    let (tx, mut rx) = tokio::sync::mpsc::channel(32);
+    let (tx, mut rx) = tokio::sync::watch::channel(EventBuckets::default());
+    let receiver_ack = tx.clone();
 
-    let mut debouncer = new_debouncer(Duration::from_secs(1), move |res| {
-        let _ = tx
-            .blocking_send(res)
-            .map_err(|e| log::error!("Failed to watcher send debounced event: {:?}", e));
-    })?;
+    let mut watcher = RecommendedWatcher::new(EventListener { tx }, notify::Config::default())
+        .map_err(|e| {
+            Error::new(
+                ErrorKind::Other,
+                format!("Failed to create file watcher: {}", e),
+            )
+        })?;
 
-    debouncer
-        .watcher()
+    watcher
         .watch(project.app_dir().as_ref(), RecursiveMode::Recursive)
         .map_err(|e| Error::new(ErrorKind::Other, format!("Failed to watch file: {}", e)))?;
 
-    while let Some(res) = rx.recv().await {
-        match res {
-            Ok(debounced_events) => {
-                if debounced_events.is_empty() {
-                    continue;
-                }
+    while let Ok(()) = rx.changed().await {
+        sleep(Duration::from_secs(1)).await;
+        let bucketed_events = receiver_ack.send_replace(EventBuckets::default());
+        rx.mark_unchanged();
+        // so that updates done between receiver_ack.send_replace and rx.mark_unchanged is not lost
+        if !rx.borrow().is_empty() {
+            rx.mark_changed();
+        }
 
-                let bucketed_events = EventBuckets::new(debounced_events);
-
-                if features.core_v2 {
-                    with_spinner_async(
-                        "Processing Infrastructure changes from file watcher",
-                        async {
-                            let plan_result = framework::core::plan::plan_changes(
-                                &mut clickhouse_client_v2,
-                                &project,
-                            )
+        if features.core_v2 {
+            with_spinner_async(
+                "Processing Infrastructure changes from file watcher",
+                async {
+                    let plan_result =
+                        framework::core::plan::plan_changes(&mut clickhouse_client_v2, &project)
                             .await;
 
-                            match plan_result {
-                                Ok(plan_result) => {
-                                    info!("Plan Changes: {:?}", plan_result.changes);
+                    match plan_result {
+                        Ok(plan_result) => {
+                            info!("Plan Changes: {:?}", plan_result.changes);
 
-                                    display::show_changes(&plan_result);
-                                    framework::core::execute::execute_online_change(
-                                        &project,
-                                        &plan_result,
-                                        route_update_channel.clone(),
-                                        syncing_process_registry,
-                                        project_registries,
-                                        metrics.clone(),
-                                    )
-                                    .await?;
-
-                                    store_infrastructure_map(
-                                        &mut clickhouse_client_v2,
-                                        &project.clickhouse_config,
-                                        &plan_result.target_infra_map,
-                                    )
-                                    .await?;
-                                    let mut infra_ptr = infrastructure_map.write().await;
-                                    *infra_ptr = plan_result.target_infra_map
-                                }
-                                Err(e) => {
-                                    show_message!(MessageType::Error, {
-                                        Message {
-                                            action: "\nFailed".to_string(),
-                                            details: format!("\n {}", e),
-                                        }
-                                    });
-                                }
-                            }
-                            Ok(())
-                        },
-                        !project.is_production,
-                    )
-                    .await
-                    .map_err(|e: anyhow::Error| {
-                        Error::new(
-                            ErrorKind::Other,
-                            format!("Processing error occurred: {}", e),
-                        )
-                    })?;
-                } else {
-                    // framework_object_versions is None if using core_v2
-                    let framework_object_versions = framework_object_versions.as_mut().unwrap();
-
-                    if !bucketed_events.data_models.is_empty() {
-                        with_spinner_async(
-                            &format!(
-                                "Processing {} Data Model(s) changes from file watcher",
-                                bucketed_events.data_models.len()
-                            ),
-                            process_data_models_changes(
-                                project.clone(),
-                                bucketed_events.data_models,
-                                framework_object_versions,
-                                route_table,
-                                &configured_client,
+                            display::show_changes(&plan_result);
+                            framework::core::execute::execute_online_change(
+                                &project,
+                                &plan_result,
+                                route_update_channel.clone(),
                                 syncing_process_registry,
+                                project_registries,
                                 metrics.clone(),
-                            ),
-                            !project.is_production,
-                        )
-                        .await
-                        .map_err(|e| {
-                            Error::new(
-                                ErrorKind::Other,
-                                format!("Processing error occurred: {}", e),
                             )
-                        })?;
+                            .await?;
+
+                            store_infrastructure_map(
+                                &mut clickhouse_client_v2,
+                                &project.clickhouse_config,
+                                &plan_result.target_infra_map,
+                            )
+                            .await?;
+                            let mut infra_ptr = infrastructure_map.write().await;
+                            *infra_ptr = plan_result.target_infra_map
+                        }
+                        Err(e) => {
+                            show_message!(MessageType::Error, {
+                                Message {
+                                    action: "\nFailed".to_string(),
+                                    details: format!("\n {}", e),
+                                }
+                            });
+                        }
                     }
+                    Ok(())
+                },
+                !project.is_production,
+            )
+            .await
+            .map_err(|e: anyhow::Error| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!("Processing error occurred: {}", e),
+                )
+            })?;
+        } else {
+            // framework_object_versions is None if using core_v2
+            let framework_object_versions = framework_object_versions.as_mut().unwrap();
 
-                    if !bucketed_events.functions.is_empty() {
-                        let topics = fetch_topics(&project.redpanda_config).await?;
-
-                        with_spinner_async(
-                            &format!(
-                                "Processing {} Streaming Function(s) changes from file watcher",
-                                bucketed_events.functions.len()
-                            ),
-                            process_streaming_func_changes(
-                                &project,
-                                &framework_object_versions.to_data_model_set(),
-                                &mut project_registries.functions,
-                                &topics,
-                            ),
-                            !project.is_production,
-                        )
-                        .await?;
-                    }
-
-                    if !bucketed_events.aggregations.is_empty() {
-                        with_spinner_async(
-                            &format!(
-                                "Processing {} Aggregation(s)/Block(s) changes from file watcher",
-                                bucketed_events.aggregations.len()
-                            ),
-                            process_aggregations_changes(&mut project_registries.aggregations),
-                            !project.is_production,
-                        )
-                        .await?;
-                    }
-
-                    if !bucketed_events.consumption.is_empty() {
-                        with_spinner_async(
-                            &format!(
-                                "Processing {} Consumption(s) changes from file watcher",
-                                bucketed_events.consumption.len()
-                            ),
-                            process_consumption_changes(
-                                &project,
-                                &mut project_registries.consumption,
-                                consumption_apis.write().await.deref_mut(),
-                            ),
-                            !project.is_production,
-                        )
-                        .await?;
-                    }
-
-                    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
-                    let aggregations = project.get_aggregations();
-                    store_current_state(
-                        &mut client,
+            if !bucketed_events.data_models.is_empty() {
+                with_spinner_async(
+                    &format!(
+                        "Processing {} Data Model(s) changes from file watcher",
+                        bucketed_events.data_models.len()
+                    ),
+                    process_data_models_changes(
+                        project.clone(),
+                        bucketed_events.data_models,
                         framework_object_versions,
-                        &aggregations,
-                        &project.clickhouse_config,
+                        route_table,
+                        &configured_client,
+                        syncing_process_registry,
+                        metrics.clone(),
+                    ),
+                    !project.is_production,
+                )
+                .await
+                .map_err(|e| {
+                    Error::new(
+                        ErrorKind::Other,
+                        format!("Processing error occurred: {}", e),
                     )
-                    .await?;
+                })?;
+            }
 
-                    let _ = verify_streaming_functions_against_datamodels(
+            if !bucketed_events.functions.is_empty() {
+                let topics = fetch_topics(&project.redpanda_config).await?;
+
+                with_spinner_async(
+                    &format!(
+                        "Processing {} Streaming Function(s) changes from file watcher",
+                        bucketed_events.functions.len()
+                    ),
+                    process_streaming_func_changes(
                         &project,
-                        framework_object_versions,
-                    );
-                }
+                        &framework_object_versions.to_data_model_set(),
+                        &mut project_registries.functions,
+                        &topics,
+                    ),
+                    !project.is_production,
+                )
+                .await?;
             }
-            Err(error) => {
-                log::error!("Watcher Error: {:?}", error);
+
+            if !bucketed_events.aggregations.is_empty() {
+                with_spinner_async(
+                    &format!(
+                        "Processing {} Aggregation(s)/Block(s) changes from file watcher",
+                        bucketed_events.aggregations.len()
+                    ),
+                    process_aggregations_changes(&mut project_registries.aggregations),
+                    !project.is_production,
+                )
+                .await?;
             }
+
+            if !bucketed_events.consumption.is_empty() {
+                with_spinner_async(
+                    &format!(
+                        "Processing {} Consumption(s) changes from file watcher",
+                        bucketed_events.consumption.len()
+                    ),
+                    process_consumption_changes(
+                        &project,
+                        &mut project_registries.consumption,
+                        consumption_apis.write().await.deref_mut(),
+                    ),
+                    !project.is_production,
+                )
+                .await?;
+            }
+
+            let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+            let aggregations = project.get_aggregations();
+            store_current_state(
+                &mut client,
+                framework_object_versions,
+                &aggregations,
+                &project.clickhouse_config,
+            )
+            .await?;
+
+            let _ =
+                verify_streaming_functions_against_datamodels(&project, framework_object_versions);
         }
     }
 

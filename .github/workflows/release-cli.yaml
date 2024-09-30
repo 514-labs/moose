@@ -204,6 +204,7 @@ jobs:
           target: ${{ matrix.build.TARGET }}
           args: --release --features rdkafka/cmake-build --locked --target ${{ matrix.build.TARGET }} --out dist
           sccache: "true"
+          manylinux: ${{ matrix.target == 'aarch64' && '2_28' || 'auto' }}
           working-directory: ./apps/framework-cli
 
       - name: Upload wheels

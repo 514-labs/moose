@@ -1,8 +1,10 @@
 use anyhow::{anyhow, Result};
-use log::info;
+use log::{error, info};
+use reqwest;
 use serde_json::Value;
 use std::fs;
 use std::path::Path;
+use std::process::Command;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler};
@@ -13,12 +15,7 @@ use thiserror::Error;
 pub enum CronError {
     #[error("I/O error: {0}")]
     IoError(#[from] std::io::Error),
-    // Add any other errors that your function might return.
 }
-
-// Ensure `CronError` implements `Send` and `Sync`
-unsafe impl Send for CronError {}
-unsafe impl Sync for CronError {}
 
 pub struct CronRegistry {
     scheduler: Arc<Mutex<JobScheduler>>,
@@ -101,10 +98,58 @@ impl CronRegistry {
                     info!("<cron> Executing job: {}", job_id);
                     if let Some(ref path) = script_path {
                         info!("<cron> Script path: {}", path);
-                        // Execute the script here
-                    } else if let Some(ref url) = url {
+                        // Execute the script based on file extension
+                        let extension = std::path::Path::new(path)
+                            .extension()
+                            .and_then(std::ffi::OsStr::to_str)
+                            .unwrap_or("");
+
+                        let output = match extension {
+                            "js" => {
+                                info!("<cron> Executing Node.js script: {}", path);
+                                Command::new("node").arg(path).output()
+                            }
+                            "ts" => {
+                                info!("<cron> Executing TypeScript script: {}", path);
+                                Command::new("ts-node").arg(path).output()
+                            }
+                            "py" => {
+                                info!("<cron> Executing Python script: {}", path);
+                                Command::new("python3").arg(path).output()
+                            }
+                            _ => Err(std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                "Unsupported file type",
+                            )),
+                        };
+
+                        match output {
+                            Ok(output) => {
+                                let stdout = String::from_utf8_lossy(&output.stdout);
+                                let stderr = String::from_utf8_lossy(&output.stderr);
+                                if !stdout.is_empty() {
+                                    info!("<cron> Script stdout:\n{}", stdout);
+                                }
+                                if !stderr.is_empty() {
+                                    error!("<cron> Script stderr:\n{}", stderr);
+                                }
+                                if !output.status.success() {
+                                    error!("<cron> Script exited with status: {}", output.status);
+                                }
+                            }
+                            Err(e) => error!("<cron> Failed to execute script: {}", e),
+                        }
+                    } else if let Some(ref url) = url.clone() {
                         info!("<cron> Calling URL: {}", url);
-                        // Call the URL here
+                        let url = url.to_string();
+                        tokio::spawn(async move {
+                            match reqwest::get(&url).await {
+                                Ok(response) => {
+                                    info!("<cron> URL response status: {}", response.status())
+                                }
+                                Err(e) => error!("<cron> Failed to call URL: {}", e),
+                            }
+                        });
                     }
                     Ok(())
                 })

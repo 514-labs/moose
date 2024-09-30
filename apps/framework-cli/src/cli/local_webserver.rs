@@ -546,10 +546,6 @@ async fn check_authorization(
         .and_then(|header_value| header_value.to_str().ok())
         .and_then(|header_str| header_str.strip_prefix("Bearer "));
 
-    if let Some(key) = api_key.as_ref() {
-        return validate_token(bearer_token, key).await;
-    }
-
     if let Some(config) = jwt_config.as_ref() {
         return validate_jwt(
             bearer_token,
@@ -557,6 +553,10 @@ async fn check_authorization(
             &config.issuer,
             &config.audience,
         );
+    }
+
+    if let Some(key) = api_key.as_ref() {
+        return validate_token(bearer_token, key).await;
     }
 
     true

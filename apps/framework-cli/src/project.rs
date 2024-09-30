@@ -38,8 +38,10 @@ use crate::framework::typescript::templates::{
 };
 use crate::framework::versions::sort_versions;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
+use crate::infrastructure::processes::cron_registry::CronJob;
 use crate::infrastructure::redis::redis_client::RedisConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
+
 use crate::project::typescript_project::TypescriptProject;
 use config::{Config, ConfigError, Environment, File};
 use log::debug;
@@ -115,6 +117,9 @@ pub struct Project {
     pub supported_old_versions: HashMap<String, String>,
     #[serde(default)]
     pub jwt: Option<JwtConfig>,
+
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cron_jobs: Vec<CronJob>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -185,6 +190,7 @@ impl Project {
             supported_old_versions: HashMap::new(),
             git_config: GitConfig::default(),
             jwt: None,
+            cron_jobs: Vec::new(),
         }
     }
 

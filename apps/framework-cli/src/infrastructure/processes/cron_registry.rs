@@ -1,16 +1,14 @@
+use crate::project::Project;
 use anyhow::{anyhow, Result};
 use log::{error, info};
 use reqwest;
-use serde::Deserialize;
-use std::env;
-use std::fs;
+use serde::{Deserialize, Serialize};
 use std::path::Path;
 use std::process::Command;
 use std::sync::Arc;
 use thiserror::Error;
 use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler};
-use toml;
 
 #[derive(Error, Debug)]
 pub enum CronError {
@@ -18,17 +16,12 @@ pub enum CronError {
     IoError(#[from] std::io::Error),
 }
 
-#[derive(Deserialize, Debug)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct CronJob {
     job_id: String,
     cron_spec: String,
     script_path: Option<String>,
     url: Option<String>,
-}
-
-#[derive(Deserialize)]
-struct CronConfig {
-    cron_jobs: Vec<CronJob>,
 }
 
 pub struct CronRegistry {
@@ -77,17 +70,15 @@ impl CronRegistry {
         Ok(())
     }
 
-    pub async fn load_from_file(&self, file_path: &str) -> Result<()> {
-        let toml_str = fs::read_to_string(file_path).map_err(|e| anyhow!(e))?;
-        let config: CronConfig = toml::from_str(&toml_str).map_err(|e| anyhow!(e))?;
-        info!("<cron> Loaded cron jobs from file: {}", file_path);
-        info!("<cron> Cron jobs: {:?}", config.cron_jobs);
+    pub async fn register_jobs(&self, project: &Project) -> Result<()> {
+        info!("<cron> Registering cron jobs from project configuration");
+        info!("<cron> Cron jobs: {:?}", project.cron_jobs);
 
-        for job in config.cron_jobs {
-            let job_id = job.job_id;
-            let cron_spec = job.cron_spec;
-            let script_path = job.script_path;
-            let url = job.url;
+        for job in &project.cron_jobs {
+            let job_id = job.job_id.clone();
+            let cron_spec = job.cron_spec.clone();
+            let script_path = job.script_path.clone();
+            let url = job.url.clone();
 
             // Ensure at least one of script_path or url is present
             if script_path.is_none() && url.is_none() {
@@ -126,7 +117,7 @@ impl CronRegistry {
                                 error!("<cron> Script stderr\n{}", stderr);
                             }
                             if !output.status.success() {
-                                error!("<cron> Script exited with status:\n{}", output.status);
+                                error!("<cron> Script exited with status:\n {}", output.status);
                             }
                         }
                         Err(e) => error!("<cron> Failed to execute script: {}", e),
@@ -151,16 +142,5 @@ impl CronRegistry {
         Ok(())
     }
 
-    pub async fn load_jobs(&self) -> Result<()> {
-        let current_dir = env::current_dir().map_err(|e| anyhow!(e))?;
-        let moose_cron_path = current_dir.join("moose.config.toml");
-
-        if moose_cron_path.exists() {
-            self.load_from_file(moose_cron_path.to_str().unwrap())
-                .await?;
-        } else {
-            info!("<cron> moose.config.toml file not found in the project root directory. No jobs loaded.");
-        }
-        Ok(())
-    }
+    // Remove the load_jobs function as it's no longer needed
 }

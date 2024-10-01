@@ -470,7 +470,11 @@ async fn handle_json_array_body(
     topic_name: &str,
     data_model: &DataModel,
     req: Request<Incoming>,
+    jwt_config: &Option<JwtConfig>,
 ) -> Response<Full<Bytes>> {
+    let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
+    let jwt_claims = get_claims(auth_header, jwt_config);
+
     // TODO probably a refactor to be done here with the json but it doesn't seem to be
     // straightforward to do it in a generic way.
     let url = req.uri().to_string();
@@ -482,7 +486,7 @@ async fn handle_json_array_body(
         number_of_bytes, topic_name
     );
     let parsed = JsonDeserializer::from_reader(body).deserialize_seq(&mut DataModelArrayVisitor {
-        inner: DataModelVisitor::new(&data_model.columns, None),
+        inner: DataModelVisitor::new(&data_model.columns, jwt_claims.as_ref()),
     });
 
     debug!("parsed json array for {}", topic_name);
@@ -609,6 +613,7 @@ async fn ingest_route(
                 &route_meta.topic_name,
                 &route_meta.data_model,
                 req,
+                &jwt_config,
             )
             .await),
         },

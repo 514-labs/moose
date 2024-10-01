@@ -9,6 +9,7 @@ pub struct ColumnBuilder {
     pub required: Option<bool>,
     pub unique: Option<bool>,
     pub primary_key: Option<bool>,
+    pub jwt: Option<bool>,
     pub path: Option<String>,
     pub default: Option<ColumnDefaults>,
 }
@@ -32,14 +33,15 @@ impl ColumnBuilder {
 
         let primary_key = self.primary_key.unwrap_or(false);
 
+        let jwt = self.jwt.unwrap_or(false);
+
         Ok(Column {
             name,
             data_type,
             required,
             unique,
             primary_key,
-            // TODO: Handle python
-            jwt: false,
+            jwt,
             default: self.default,
         })
     }

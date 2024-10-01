@@ -370,6 +370,13 @@ fn process_subscript_node(
                 column.required = Some(true);
                 column.primary_key = Some(true);
             }
+            "JWT" => {
+                let col_type =
+                    process_slice(&subscript.slice, enums, python_classes, nested_classes)?;
+                column.data_type = Some(col_type);
+                column.required = Some(true);
+                column.jwt = Some(true);
+            }
             "Optional" => {
                 let col_type =
                     process_slice(&subscript.slice, enums, python_classes, nested_classes)?;

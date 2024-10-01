@@ -57,6 +57,7 @@ pub const VSCODE_EXT_FILE: &str = "extensions.json";
 pub const VSCODE_SETTINGS_FILE: &str = "settings.json";
 
 pub const CTX_SESSION_ID: &str = "session_id";
+pub const CTX_IS_LEADER: &str = "is_leader";
 
 pub const PYTHON_FILE_EXTENSION: &str = "py";
 pub const TYPESCRIPT_FILE_EXTENSION: &str = "ts";

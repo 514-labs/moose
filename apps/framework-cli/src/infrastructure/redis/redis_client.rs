@@ -44,6 +44,7 @@
 //! ```
 //!
 //! Note: Make sure to set the MOOSE_REDIS_URL environment variable or the client will default to "redis://127.0.0.1:6379".
+use crate::utilities::constants::{CONTEXT, CTX_IS_LEADER};
 use anyhow::{Context, Result};
 use log::{error, info};
 use redis::aio::Connection as AsyncConnection;
@@ -56,6 +57,14 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
 use uuid::Uuid;
+
+use lazy_static::lazy_static;
+use std::collections::HashMap;
+
+// Wrap CONTEXT in a Mutex
+lazy_static! {
+    static ref MUTEX_CONTEXT: Mutex<HashMap<String, String>> = Mutex::new(CONTEXT.clone());
+}
 
 // Internal constants that we don't expose to the user
 const KEY_EXPIRATION_TTL: u64 = 3; // 3 seconds
@@ -200,6 +209,9 @@ impl RedisClient {
             info!("Instance {} became leader", self.instance_id);
             self.renew_lock().await?;
 
+            let mut context = MUTEX_CONTEXT.lock().await;
+            context.insert(CTX_IS_LEADER.to_string(), "true".to_string());
+
             // Call the leadership callback if set
             if let Some(callback) = &self.leadership_callback {
                 let callback = callback.clone();
@@ -207,6 +219,9 @@ impl RedisClient {
                     (callback.lock().await)();
                 });
             }
+        } else {
+            let mut context = MUTEX_CONTEXT.lock().await;
+            context.insert(CTX_IS_LEADER.to_string(), "false".to_string());
         }
 
         Ok(self.is_leader)

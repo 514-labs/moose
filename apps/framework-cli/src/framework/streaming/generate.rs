@@ -456,6 +456,7 @@ my_function = StreamingFunction(
                 required: true,
                 unique: is_key,
                 primary_key: is_key,
+                jwt: false,
                 default: None,
             })
             .collect()

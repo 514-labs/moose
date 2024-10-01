@@ -49,6 +49,8 @@ pub struct Column {
     pub required: bool,
     pub unique: bool,
     pub primary_key: bool,
+    #[serde(default)]
+    pub jwt: bool,
     pub default: Option<ColumnDefaults>,
 }
 

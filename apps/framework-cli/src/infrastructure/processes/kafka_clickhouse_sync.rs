@@ -720,6 +720,7 @@ mod tests {
                     required: true,
                     unique: false,
                     primary_key: false,
+                    jwt: false,
                     default: None,
                 },
                 Column {
@@ -728,6 +729,7 @@ mod tests {
                     required: true,
                     unique: false,
                     primary_key: false,
+                    jwt: false,
                     default: None,
                 },
                 Column {
@@ -741,6 +743,7 @@ mod tests {
                                 required: true,
                                 unique: false,
                                 primary_key: false,
+                                jwt: false,
                                 default: None,
                             },
                             Column {
@@ -754,6 +757,7 @@ mod tests {
                                             required: true,
                                             unique: false,
                                             primary_key: false,
+                                            jwt: false,
                                             default: None,
                                         },
                                         Column {
@@ -762,6 +766,7 @@ mod tests {
                                             required: true,
                                             unique: false,
                                             primary_key: false,
+                                            jwt: false,
                                             default: None,
                                         },
                                         Column {
@@ -770,6 +775,7 @@ mod tests {
                                             required: true,
                                             unique: false,
                                             primary_key: false,
+                                            jwt: false,
                                             default: None,
                                         },
                                     ],
@@ -777,6 +783,7 @@ mod tests {
                                 required: true,
                                 unique: false,
                                 primary_key: false,
+                                jwt: false,
                                 default: None,
                             },
                             Column {
@@ -785,6 +792,7 @@ mod tests {
                                 required: true,
                                 unique: false,
                                 primary_key: false,
+                                jwt: false,
                                 default: None,
                             },
                         ],
@@ -792,6 +800,7 @@ mod tests {
                     required: true,
                     unique: false,
                     primary_key: false,
+                    jwt: false,
                     default: None,
                 },
                 Column {
@@ -800,6 +809,7 @@ mod tests {
                     required: false,
                     unique: false,
                     primary_key: false,
+                    jwt: false,
                     default: None,
                 },
             ],

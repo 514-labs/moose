@@ -38,6 +38,8 @@ impl ColumnBuilder {
             required,
             unique,
             primary_key,
+            // TODO: Handle python
+            jwt: false,
             default: self.default,
         })
     }

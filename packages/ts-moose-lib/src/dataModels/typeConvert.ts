@@ -67,16 +67,25 @@ const tsTypeToDataType = (
   return [nullable, dataType];
 };
 
-const hasKeyWrapping = (typeNode: ts.TypeNode | undefined) => {
+const hasWrapping = (
+  typeNode: ts.TypeNode | undefined,
+  wrapperName: string,
+) => {
   if (typeNode !== undefined && isTypeReferenceNode(typeNode)) {
     const typeName = typeNode.typeName;
-    return (
-      (isIdentifier(typeName) ? typeName.text : typeName.right.text) == "Key" &&
-      typeNode.typeArguments?.length === 1
-    );
+    const name = isIdentifier(typeName) ? typeName.text : typeName.right.text;
+    return name === wrapperName && typeNode.typeArguments?.length === 1;
   } else {
     return false;
   }
+};
+
+const hasKeyWrapping = (typeNode: ts.TypeNode | undefined) => {
+  return hasWrapping(typeNode, "Key");
+};
+
+const hasJwtWrapping = (typeNode: ts.TypeNode | undefined) => {
+  return hasWrapping(typeNode, "JWT");
 };
 
 export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
@@ -90,6 +99,7 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
     const type = checker.getTypeOfSymbolAtLocation(prop, node);
 
     const isKey = hasKeyWrapping(node.type);
+    const isJwt = hasJwtWrapping(node.type);
     const [nullable, dataType] = tsTypeToDataType(
       type,
       checker,
@@ -101,6 +111,7 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
       name: prop.name,
       data_type: dataType,
       primary_key: isKey,
+      jwt: isJwt,
       required: !nullable,
       unique: false,
       default: null,

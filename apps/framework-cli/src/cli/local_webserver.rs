@@ -10,7 +10,7 @@ use crate::framework::core::infrastructure::api_endpoint::APIType;
 use crate::framework::core::infrastructure_map::Change;
 use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
 use crate::metrics::Metrics;
-use crate::utilities::auth::validate_jwt;
+use crate::utilities::auth::{get_claims, validate_jwt};
 use crate::utilities::docker;
 
 use crate::framework::data_model::config::EndpointIngestionFormat;
@@ -417,14 +417,20 @@ async fn handle_json_req(
     topic_name: &str,
     data_model: &DataModel,
     req: Request<Incoming>,
+    jwt_config: &Option<JwtConfig>,
 ) -> Response<Full<Bytes>> {
+    let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
+    let jwt_claims = get_claims(auth_header, jwt_config);
+
     // TODO probably a refactor to be done here with the array json but it doesn't seem to be
     // straightforward to do it in a generic way.
     let url = req.uri().to_string();
     let body = to_reader(req).await;
 
-    let parsed = JsonDeserializer::from_reader(body)
-        .deserialize_any(&mut DataModelVisitor::new(&data_model.columns));
+    let parsed = JsonDeserializer::from_reader(body).deserialize_any(&mut DataModelVisitor::new(
+        &data_model.columns,
+        jwt_claims.as_ref(),
+    ));
 
     // TODO add check that the payload has the proper schema
 
@@ -476,7 +482,7 @@ async fn handle_json_array_body(
         number_of_bytes, topic_name
     );
     let parsed = JsonDeserializer::from_reader(body).deserialize_seq(&mut DataModelArrayVisitor {
-        inner: DataModelVisitor::new(&data_model.columns),
+        inner: DataModelVisitor::new(&data_model.columns, None),
     });
 
     debug!("parsed json array for {}", topic_name);
@@ -595,6 +601,7 @@ async fn ingest_route(
                 &route_meta.topic_name,
                 &route_meta.data_model,
                 req,
+                &jwt_config,
             )
             .await),
             EndpointIngestionFormat::JsonArray => Ok(handle_json_array_body(

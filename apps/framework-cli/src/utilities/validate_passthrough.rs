@@ -875,7 +875,7 @@ mod tests {
                 default: None,
             },
             Column {
-                name: "aud".to_string(),
+                name: "exp".to_string(),
                 data_type: ColumnType::Float,
                 required: true,
                 unique: false,
@@ -927,7 +927,7 @@ mod tests {
             .deserialize_any(&mut DataModelVisitor::new(&columns, Some(&jwt_claims)))
             .unwrap();
 
-        // Visitor should've appended the jwt claims
+        // Visitor should've injected the jwt claims
         let expected_valid = format!(
             r#"{{"top_level_string":"hello","jwt_object":{}}}"#,
             jwt_claims.to_string()

@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "E2E tests for framework-cli",
   "scripts": {
-    "pretest": "cd ../.. && cargo build",
+    "pretest": "cd ../.. && cargo build && pnpm run build --filter=moose-lib",
     "test": "mocha -r ts-node/register -p 'test/**/*.ts'"
   },
   "devDependencies": {

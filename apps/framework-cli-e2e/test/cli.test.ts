@@ -10,6 +10,10 @@ const execAsync = promisify(exec);
 const setTimeoutAsync = promisify(setTimeout);
 const CLI_PATH = path.resolve(__dirname, "../../../target/debug/moose-cli");
 const TEST_PROJECT_DIR = path.join(__dirname, "test-project");
+const MOOSE_LIB_PATH = path.resolve(
+  __dirname,
+  "../../../packages/ts-moose-lib",
+);
 
 describe("framework-cli", () => {
   let devProcess: ChildProcess | null = null;
@@ -75,6 +79,14 @@ describe("framework-cli", () => {
     await execAsync(
       `"${CLI_PATH}" init my-moose-app ts --location "${TEST_PROJECT_DIR}"`,
     );
+
+    console.log("Updating package.json to use local moose-lib...");
+    const packageJsonPath = path.join(TEST_PROJECT_DIR, "package.json");
+    const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+
+    packageJson.dependencies["@514labs/moose"] = `file:${MOOSE_LIB_PATH}`;
+
+    fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
     console.log("Installing dependencies...");
     await new Promise<void>((resolve, reject) => {
@@ -181,13 +193,11 @@ describe("framework-cli", () => {
       const rows: any[] = await result.json();
       console.log("ParsedActivity data:", rows);
 
-      // Assert that there's exactly one element in the result
       expect(rows).to.have.lengthOf(
         1,
         "Expected exactly one row in ParsedActivity",
       );
 
-      // Assert that the eventId matches the one we generated
       expect(rows[0].eventId).to.equal(
         eventId,
         "EventId in ParsedActivity should match the generated UUID",

@@ -47,7 +47,7 @@ describe("framework-cli", () => {
         });
       });
     }
-    console.log("Stopping Docker containers...");
+    console.log("Stopping Docker containers and removing volumes...");
     try {
       await execAsync(
         "docker compose -f .moose/docker-compose.yml -p my-moose-app down -v",

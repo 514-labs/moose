@@ -110,6 +110,11 @@ jobs:
         env:
           MOOSE_TELEMETRY_ENABLED: false
 
+      - name: Run e2e Tests
+        run: pnpm --filter=framework-cli-e2e run test
+        env:
+          MOOSE_TELEMETRY_ENABLED: false
+
       - name: Inspect Logs
         if: always()
         run: |

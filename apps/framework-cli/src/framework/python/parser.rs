@@ -258,6 +258,7 @@ fn attempt_nested_class(
                 ColumnType::Nested(Nested {
                     name: name.id.to_string(),
                     columns,
+                    jwt: false,
                 })
             });
         col_type
@@ -371,11 +372,15 @@ fn process_subscript_node(
                 column.primary_key = Some(true);
             }
             "JWT" => {
-                let col_type =
+                let mut col_type =
                     process_slice(&subscript.slice, enums, python_classes, nested_classes)?;
+
+                if let ColumnType::Nested(ref mut nested) = col_type {
+                    nested.jwt = true;
+                }
+
                 column.data_type = Some(col_type);
                 column.required = Some(true);
-                column.jwt = Some(true);
             }
             "Optional" => {
                 let col_type =
@@ -816,6 +821,10 @@ mod tests {
 
         let jwt_field = model.columns.iter().find(|c| c.name == "jwt").unwrap();
 
-        assert!(jwt_field.jwt);
+        if let ColumnType::Nested(nested) = &jwt_field.data_type {
+            assert!(nested.jwt);
+        } else {
+            panic!("JWT field should be Nested");
+        }
     }
 }

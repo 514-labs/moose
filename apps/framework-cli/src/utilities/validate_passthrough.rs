@@ -432,7 +432,7 @@ impl<'a> DataModelVisitor<'a> {
                 let parent_path = parent_context_to_string(self.parent_context);
                 let path = add_path_component(parent_path, Either::Left(&column.name));
 
-                if column.jwt {
+                if is_nested_with_jwt(&column.data_type) {
                     if let Some(jwt_claims) = self.jwt_claims {
                         map_serializer
                             .serialize_key(&column.name)
@@ -537,6 +537,13 @@ fn add_path_component(mut path: String, field_name: Either<&str, usize>) -> Stri
     path
 }
 
+fn is_nested_with_jwt(column_type: &ColumnType) -> bool {
+    match column_type {
+        ColumnType::Nested(nested) => nested.jwt,
+        _ => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::framework::core::infrastructure::table::{DataEnum, EnumMember, Nested};
@@ -552,7 +559,6 @@ mod tests {
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
             Column {
@@ -561,7 +567,6 @@ mod tests {
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
             Column {
@@ -570,7 +575,6 @@ mod tests {
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
             Column {
@@ -579,7 +583,6 @@ mod tests {
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
             Column {
@@ -588,7 +591,6 @@ mod tests {
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
         ];
@@ -620,7 +622,6 @@ mod tests {
             required: true,
             unique: false,
             primary_key: false,
-            jwt: false,
             default: None,
         }];
 
@@ -649,7 +650,6 @@ mod tests {
             required: true,
             unique: false,
             primary_key: false,
-            jwt: false,
             default: None,
         }];
 
@@ -688,7 +688,6 @@ mod tests {
             required: true,
             unique: false,
             primary_key: false,
-            jwt: false,
             default: None,
         }];
 
@@ -735,7 +734,6 @@ mod tests {
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
             Column {
@@ -744,7 +742,6 @@ mod tests {
                 required: false,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
         ];
@@ -756,7 +753,6 @@ mod tests {
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
             Column {
@@ -764,11 +760,11 @@ mod tests {
                 data_type: ColumnType::Nested(Nested {
                     name: "nested".to_string(),
                     columns: nested_columns,
+                    jwt: false,
                 }),
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
         ];
@@ -824,7 +820,6 @@ mod tests {
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
             Column {
@@ -833,7 +828,6 @@ mod tests {
                 required: false,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
         ];
@@ -862,7 +856,6 @@ mod tests {
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
             Column {
@@ -871,7 +864,6 @@ mod tests {
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
             Column {
@@ -880,7 +872,6 @@ mod tests {
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
         ];
@@ -892,7 +883,6 @@ mod tests {
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: false,
                 default: None,
             },
             Column {
@@ -900,11 +890,11 @@ mod tests {
                 data_type: ColumnType::Nested(Nested {
                     name: "nested".to_string(),
                     columns: nested_columns,
+                    jwt: true,
                 }),
                 required: true,
                 unique: false,
                 primary_key: false,
-                jwt: true,
                 default: None,
             },
         ];

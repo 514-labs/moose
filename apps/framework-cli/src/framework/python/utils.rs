@@ -33,15 +33,12 @@ impl ColumnBuilder {
 
         let primary_key = self.primary_key.unwrap_or(false);
 
-        let jwt = self.jwt.unwrap_or(false);
-
         Ok(Column {
             name,
             data_type,
             required,
             unique,
             primary_key,
-            jwt,
             default: self.default,
         })
     }

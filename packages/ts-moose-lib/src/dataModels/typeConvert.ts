@@ -32,9 +32,9 @@ const throwUnknownType = (
 const tsTypeToDataType = (
   t: ts.Type,
   checker: TypeChecker,
-
   fieldName: string,
   typeName: string,
+  isJwt: boolean,
 ): [boolean, DataType] => {
   const nonNull = t.getNonNullableType();
   const nullable = nonNull != t;
@@ -57,11 +57,16 @@ const tsTypeToDataType = (
                     checker,
                     fieldName,
                     typeName,
+                    isJwt,
                   )[1],
                 }
               : nonNull.isClassOrInterface() ||
                   (nonNull.flags & TypeFlags.Object) !== 0
-                ? { name: t.symbol.name, columns: toColumns(nonNull, checker) }
+                ? {
+                    name: t.symbol.name,
+                    columns: toColumns(nonNull, checker),
+                    jwt: isJwt,
+                  }
                 : throwUnknownType(t, fieldName, typeName);
 
   return [nullable, dataType];
@@ -105,13 +110,13 @@ export const toColumns = (t: ts.Type, checker: TypeChecker): Column[] => {
       checker,
       prop.name,
       t.symbol.name,
+      isJwt,
     );
 
     return {
       name: prop.name,
       data_type: dataType,
       primary_key: isKey,
-      jwt: isJwt,
       required: !nullable,
       unique: false,
       default: null,

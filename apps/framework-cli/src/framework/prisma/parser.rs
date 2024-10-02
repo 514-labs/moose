@@ -158,8 +158,6 @@ fn field_to_column(f: &Field, enums: &[DataEnum]) -> Result<Column, PrismaParsin
             required: !optional,
             unique: attributes.unique,
             primary_key: attributes.primary_key,
-            // Prisma getting deprecated
-            jwt: false,
             default: attributes.default,
         }),
         schema_ast::ast::FieldType::Unsupported(x, _) => {

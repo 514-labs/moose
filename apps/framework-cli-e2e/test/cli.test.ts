@@ -4,21 +4,57 @@ import * as fs from "fs";
 import * as path from "path";
 import { promisify } from "util";
 import { createClient } from "@clickhouse/client";
+import { randomUUID } from "crypto";
+
 const execAsync = promisify(exec);
 const setTimeoutAsync = promisify(setTimeout);
 const CLI_PATH = path.resolve(__dirname, "../../../target/debug/moose-cli");
 const TEST_PROJECT_DIR = path.join(__dirname, "test-project");
 
 describe("framework-cli", () => {
+  let devProcess: ChildProcess | null = null;
+
   before(async function () {
     try {
       await fs.promises.access(CLI_PATH, fs.constants.F_OK);
     } catch (err) {
       console.error(
-        `CLI not found at ${CLI_PATH}. It should be built by pretest.`,
+        `CLI not found at ${CLI_PATH}. It should be built in the pretest step.`,
       );
       throw err;
     }
+  });
+
+  const removeTestProj = () =>
+    fs.rmSync(TEST_PROJECT_DIR, { recursive: true, force: true });
+
+  after(async function () {
+    if (devProcess && !devProcess.killed) {
+      this.timeout(10_000);
+
+      console.log("Stopping dev process...");
+      devProcess.kill("SIGINT");
+
+      // Wait for the devProcess to exit
+      await new Promise<void>((resolve) => {
+        devProcess!.on("exit", () => {
+          console.log("Dev process has exited");
+          resolve();
+        });
+      });
+    }
+    console.log("Stopping Docker containers...");
+    try {
+      await execAsync(
+        "docker compose -f .moose/docker-compose.yml -p my-moose-app down -v",
+        { cwd: TEST_PROJECT_DIR },
+      );
+      console.log("Docker containers stopped successfully");
+    } catch (error) {
+      console.error("Error stopping Docker containers:", error);
+    }
+
+    removeTestProj();
   });
 
   it("should return the dummy version in debug build", async () => {
@@ -27,9 +63,6 @@ describe("framework-cli", () => {
     const expectedVersion = "moose-cli 0.0.1";
     expect(version).to.equal(expectedVersion);
   });
-
-  const removeTestProj = () =>
-    fs.rmSync(TEST_PROJECT_DIR, { recursive: true, force: true });
 
   it("should init a project, install dependencies, run dev command, send a request, and stop it", async function () {
     this.timeout(120_000); // 2 minutes
@@ -43,11 +76,12 @@ describe("framework-cli", () => {
       `"${CLI_PATH}" init my-moose-app ts --location "${TEST_PROJECT_DIR}"`,
     );
 
-    process.chdir(TEST_PROJECT_DIR);
-
     console.log("Installing dependencies...");
     await new Promise<void>((resolve, reject) => {
-      const npmInstall = spawn("npm", ["install"], { stdio: "inherit" });
+      const npmInstall = spawn("npm", ["install"], {
+        stdio: "inherit",
+        cwd: TEST_PROJECT_DIR,
+      });
       npmInstall.on("close", (code) => {
         console.log(`npm install exited with code ${code}`);
         code === 0
@@ -57,14 +91,14 @@ describe("framework-cli", () => {
     });
 
     console.log("Starting dev server...");
-    const devProcess: ChildProcess = spawn(CLI_PATH, ["dev"], {
+    devProcess = spawn(CLI_PATH, ["dev"], {
       stdio: "pipe",
       cwd: TEST_PROJECT_DIR,
     });
 
     await new Promise<void>((resolve, reject) => {
       let serverStarted = false;
-      devProcess.stdout?.on("data", async (data) => {
+      devProcess!.stdout?.on("data", async (data) => {
         const output = data.toString();
         console.log("Dev server output:", output);
 
@@ -79,20 +113,20 @@ describe("framework-cli", () => {
         }
       });
 
-      devProcess.stderr?.on("data", (data) => {
+      devProcess!.stderr?.on("data", (data) => {
         console.error("Dev server stderr:", data.toString());
       });
 
-      devProcess.on("exit", (code) => {
+      devProcess!.on("exit", (code) => {
         console.log(`Dev process exited with code ${code}`);
         expect(code).to.equal(0);
       });
 
       (async () => {
         await setTimeoutAsync(60_000);
-        if (devProcess.killed) return;
+        if (devProcess!.killed) return;
         console.error("Dev server did not start or complete in time");
-        devProcess.kill("SIGINT");
+        devProcess!.kill("SIGINT");
         reject(new Error("Dev server timeout"));
       })();
     });
@@ -102,6 +136,7 @@ describe("framework-cli", () => {
     await setTimeoutAsync(2000);
 
     console.log("Sending test request...");
+    const eventId = randomUUID();
     try {
       const response = await fetch(
         "http://localhost:4000/ingest/UserActivity",
@@ -109,7 +144,7 @@ describe("framework-cli", () => {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            eventId: "1234567890",
+            eventId: eventId,
             timestamp: "2019-01-01 00:00:01",
             userId: "123456",
             activity: "click",
@@ -140,27 +175,28 @@ describe("framework-cli", () => {
 
     try {
       const result = await client.query({
-        query: "SELECT * FROM ParsedActivity",
+        query: "SELECT * FROM ParsedActivity_0_0",
         format: "JSONEachRow",
       });
-      const rows = await result.json();
-      console.log("ParsedActivity data:", result);
+      const rows: any[] = await result.json();
+      console.log("ParsedActivity data:", rows);
+
+      // Assert that there's exactly one element in the result
+      expect(rows).to.have.lengthOf(
+        1,
+        "Expected exactly one row in ParsedActivity",
+      );
+
+      // Assert that the eventId matches the one we generated
+      expect(rows[0].eventId).to.equal(
+        eventId,
+        "EventId in ParsedActivity should match the generated UUID",
+      );
     } catch (error) {
       console.error("Error querying ClickHouse:", error);
+      throw error; // Re-throw the error to fail the test
+    } finally {
+      await client.close();
     }
-
-    console.log("Stopping dev process...");
-    devProcess.kill("SIGINT");
-
-    // Wait for the devProcess to exit
-    await new Promise<void>((resolve) => {
-      devProcess.on("exit", () => {
-        console.log("Dev process has exited");
-        resolve();
-      });
-    });
-
-    process.chdir(__dirname);
-    removeTestProj();
   });
 });

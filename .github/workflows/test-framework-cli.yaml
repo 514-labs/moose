@@ -111,7 +111,7 @@ jobs:
           MOOSE_TELEMETRY_ENABLED: false
 
       - name: Run e2e Tests
-        run: pnpm --filter=framework-cli-e2e run test
+        run: pnpm install --frozen-lockfile && pnpm --filter=framework-cli-e2e run test
         env:
           MOOSE_TELEMETRY_ENABLED: false
 

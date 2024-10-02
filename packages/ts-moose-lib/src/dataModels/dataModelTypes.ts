@@ -4,7 +4,7 @@ export type EnumValues =
   | { name: string; value: { Int: number } }[]
   | { name: string; value: { String: string } }[];
 export type DataEnum = { name: string; values: EnumValues };
-export type Nested = { name: string; columns: Column[] };
+export type Nested = { name: string; columns: Column[]; jwt: boolean };
 export type DataType = string | DataEnum | { elementType: DataType } | Nested;
 export interface Column {
   name: string;

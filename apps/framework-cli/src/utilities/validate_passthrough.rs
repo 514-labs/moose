@@ -3,6 +3,7 @@ use serde::de::{DeserializeSeed, Error, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeMap, SerializeSeq};
 use serde::{Deserializer, Serialize, Serializer};
 use serde_json::Serializer as JsonSerializer;
+use serde_json::Value;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter, Write};
@@ -120,6 +121,7 @@ struct ValueVisitor<'a, S: SerializeValue> {
     required: bool,
     write_to: &'a mut S,
     context: ParentContext<'a>,
+    jwt_claims: Option<&'a Value>,
 }
 impl<'de, 'a, S: SerializeValue> DeserializeSeed<'de> for &mut ValueVisitor<'a, S> {
     type Value = ();
@@ -284,7 +286,11 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     {
         match self.t {
             ColumnType::Nested(ref fields) => {
-                let inner = DataModelVisitor::with_context(&fields.columns, Some(&self.context));
+                let inner = DataModelVisitor::with_context(
+                    &fields.columns,
+                    Some(&self.context),
+                    self.jwt_claims,
+                );
                 let serializer = MapAccessSerializer {
                     inner: RefCell::new(inner),
                     map: RefCell::new(map),
@@ -322,6 +328,7 @@ impl<'a, 'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'a, 'de, A> {
                 parent: Some(self.context),
                 field_name: Either::Right(0),
             },
+            jwt_claims: None,
         };
         let mut seq = self.seq.borrow_mut();
         while let Some(()) = seq
@@ -369,18 +376,25 @@ impl<'de, 'a, A: MapAccess<'de>> Serialize for MapAccessSerializer<'de, 'a, A> {
 pub struct DataModelVisitor<'a> {
     columns: HashMap<String, (Column, State)>,
     parent_context: Option<&'a ParentContext<'a>>,
+    jwt_claims: Option<&'a Value>,
 }
 impl<'a> DataModelVisitor<'a> {
-    pub fn new(columns: &[Column]) -> Self {
-        Self::with_context(columns, None)
+    pub fn new(columns: &[Column], jwt_claims: Option<&'a Value>) -> Self {
+        Self::with_context(columns, None, jwt_claims)
     }
-    fn with_context(columns: &[Column], parent_context: Option<&'a ParentContext<'a>>) -> Self {
+
+    fn with_context(
+        columns: &[Column],
+        parent_context: Option<&'a ParentContext<'a>>,
+        jwt_claims: Option<&'a Value>,
+    ) -> Self {
         DataModelVisitor {
             columns: columns
                 .iter()
                 .map(|c| (c.name.clone(), (c.clone(), State { seen: false })))
                 .collect(),
             parent_context,
+            jwt_claims,
         }
     }
 
@@ -405,6 +419,7 @@ impl<'a> DataModelVisitor<'a> {
                         parent: self.parent_context,
                         field_name: Either::Left(&key),
                     },
+                    jwt_claims: self.jwt_claims,
                 };
                 map.next_value_seed(&mut visitor)?;
             } else {
@@ -412,14 +427,26 @@ impl<'a> DataModelVisitor<'a> {
             }
         }
         let mut missing_fields: Vec<String> = Vec::new();
-        self.columns.values_mut().for_each(|(column, state)| {
+        for (column, state) in self.columns.values_mut() {
             if !state.seen && column.required {
                 let parent_path = parent_context_to_string(self.parent_context);
                 let path = add_path_component(parent_path, Either::Left(&column.name));
-                missing_fields.push(path);
+
+                if is_nested_with_jwt(&column.data_type) {
+                    if let Some(jwt_claims) = self.jwt_claims {
+                        map_serializer
+                            .serialize_key(&column.name)
+                            .map_err(A::Error::custom)?;
+                        map_serializer
+                            .serialize_value(jwt_claims)
+                            .map_err(A::Error::custom)?;
+                    }
+                } else {
+                    missing_fields.push(path);
+                }
             }
             state.seen = false
-        });
+        }
 
         if !missing_fields.is_empty() {
             return Err(A::Error::custom(format!(
@@ -510,6 +537,13 @@ fn add_path_component(mut path: String, field_name: Either<&str, usize>) -> Stri
     path
 }
 
+fn is_nested_with_jwt(column_type: &ColumnType) -> bool {
+    match column_type {
+        ColumnType::Nested(nested) => nested.jwt,
+        _ => false,
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use crate::framework::core::infrastructure::table::{DataEnum, EnumMember, Nested};
@@ -572,7 +606,7 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns))
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
             .unwrap();
 
         let expected = r#"{"string_col":"test","int_col":42,"float_col":3.14,"bool_col":true,"date_col":"2024-09-10T17:34:51+00:00"}"#;
@@ -598,7 +632,7 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns));
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None));
 
         println!("{:?}", result);
         assert!(result
@@ -626,7 +660,7 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns))
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
             .unwrap();
 
         let expected = r#"{"array_col":[1,2,3,4,5]}"#;
@@ -665,7 +699,7 @@ mod tests {
         "#;
 
         let valid_result = serde_json::Deserializer::from_str(valid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns))
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
             .unwrap();
 
         let expected_valid = r#"{"enum_col":"option1"}"#;
@@ -682,7 +716,7 @@ mod tests {
         "#;
 
         let invalid_result = serde_json::Deserializer::from_str(invalid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns));
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None));
 
         assert!(invalid_result.is_err());
         assert!(invalid_result
@@ -726,6 +760,7 @@ mod tests {
                 data_type: ColumnType::Nested(Nested {
                     name: "nested".to_string(),
                     columns: nested_columns,
+                    jwt: false,
                 }),
                 required: true,
                 unique: false,
@@ -746,7 +781,7 @@ mod tests {
         "#;
 
         let valid_result = serde_json::Deserializer::from_str(valid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns))
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
             .unwrap();
 
         let expected_valid = r#"{"top_level_string":"hello","nested_object":{"nested_string":"world","nested_int":42}}"#;
@@ -766,7 +801,7 @@ mod tests {
         "#;
 
         let invalid_result = serde_json::Deserializer::from_str(invalid_json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns));
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None));
 
         println!("{:?}", invalid_result);
         assert!(invalid_result.is_err());
@@ -805,10 +840,92 @@ mod tests {
         "#;
 
         let result = serde_json::Deserializer::from_str(json)
-            .deserialize_any(&mut DataModelVisitor::new(&columns))
+            .deserialize_any(&mut DataModelVisitor::new(&columns, None))
             .unwrap();
 
         let expected = r#"{"required_field":"hello","optional_field":null}"#;
         assert_eq!(String::from_utf8(result), Ok(expected.to_string()));
+    }
+
+    #[test]
+    fn test_jwt() {
+        let nested_columns = vec![
+            Column {
+                name: "iss".to_string(),
+                data_type: ColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            Column {
+                name: "aud".to_string(),
+                data_type: ColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            Column {
+                name: "exp".to_string(),
+                data_type: ColumnType::Float,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+        ];
+
+        let columns = vec![
+            Column {
+                name: "top_level_string".to_string(),
+                data_type: ColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+            Column {
+                name: "jwt_object".to_string(),
+                data_type: ColumnType::Nested(Nested {
+                    name: "nested".to_string(),
+                    columns: nested_columns,
+                    jwt: true,
+                }),
+                required: true,
+                unique: false,
+                primary_key: false,
+                default: None,
+            },
+        ];
+
+        // JWT purposely missing in the request
+        let valid_json = r#"
+        {
+            "top_level_string": "hello"
+        }
+        "#;
+
+        // Fake JWT claims to pass to the visitor
+        let jwt_claims = serde_json::json!({
+            "iss": "issuer",
+            "aud": "audience",
+            "exp": 2043418466
+        });
+
+        let valid_result = serde_json::Deserializer::from_str(valid_json)
+            .deserialize_any(&mut DataModelVisitor::new(&columns, Some(&jwt_claims)))
+            .unwrap();
+
+        // Visitor should've injected the jwt claims
+        let expected_valid = format!(
+            r#"{{"top_level_string":"hello","jwt_object":{}}}"#,
+            jwt_claims.to_string()
+        );
+
+        assert_eq!(
+            String::from_utf8(valid_result),
+            Ok(expected_valid.to_string())
+        );
     }
 }

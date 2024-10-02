@@ -120,6 +120,7 @@ impl Serialize for ColumnType {
                 let mut state = serializer.serialize_struct("Nested", 2)?;
                 state.serialize_field("name", &nested.name)?;
                 state.serialize_field("columns", &nested.columns)?;
+                state.serialize_field("jwt", &nested.jwt)?;
                 state.end()
             }
             ColumnType::Json => serializer.serialize_str("Json"),
@@ -140,6 +141,8 @@ pub struct DataEnum {
 pub struct Nested {
     pub name: String,
     pub columns: Vec<Column>,
+    #[serde(default)]
+    pub jwt: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -198,6 +201,7 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
         let mut name = None;
         let mut values = None;
         let mut columns = None;
+        let mut jwt = None;
         while let Some(key) = map.next_key::<String>()? {
             if key == "elementType" {
                 return Ok(ColumnType::Array(Box::new(
@@ -211,6 +215,8 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
                 values = Some(map.next_value::<Vec<EnumMember>>()?)
             } else if key == "columns" {
                 columns = Some(map.next_value::<Vec<Column>>()?)
+            } else if key == "jwt" {
+                jwt = Some(map.next_value::<bool>()?)
             }
         }
 
@@ -221,7 +227,11 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
         match (values, columns) {
             (None, None) => Err(A::Error::custom("Missing field: values/columns.")),
             (Some(values), _) => Ok(ColumnType::Enum(DataEnum { name, values })),
-            (_, Some(columns)) => Ok(ColumnType::Nested(Nested { name, columns })),
+            (_, Some(columns)) => Ok(ColumnType::Nested(Nested {
+                name,
+                columns,
+                jwt: jwt.unwrap_or(false),
+            })),
         }
     }
 }
@@ -289,5 +299,26 @@ mod tests {
                 },
             ],
         }));
+    }
+
+    #[test]
+    fn test_column_with_nested_type() {
+        let nested_column = Column {
+            name: "nested_column".to_string(),
+            data_type: ColumnType::Nested(Nested {
+                name: "nested".to_string(),
+                columns: vec![],
+                jwt: true,
+            }),
+            required: true,
+            unique: false,
+            primary_key: false,
+            default: None,
+        };
+
+        let json = serde_json::to_string(&nested_column).unwrap();
+        println!("Serialized JSON: {}", json);
+        let deserialized: Column = serde_json::from_str(&json).unwrap();
+        assert_eq!(nested_column, deserialized);
     }
 }

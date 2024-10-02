@@ -258,6 +258,7 @@ fn attempt_nested_class(
                 ColumnType::Nested(Nested {
                     name: name.id.to_string(),
                     columns,
+                    jwt: false,
                 })
             });
         col_type
@@ -369,6 +370,17 @@ fn process_subscript_node(
                 column.data_type = Some(col_type);
                 column.required = Some(true);
                 column.primary_key = Some(true);
+            }
+            "JWT" => {
+                let mut col_type =
+                    process_slice(&subscript.slice, enums, python_classes, nested_classes)?;
+
+                if let ColumnType::Nested(ref mut nested) = col_type {
+                    nested.jwt = true;
+                }
+
+                column.data_type = Some(col_type);
+                column.required = Some(true);
             }
             "Optional" => {
                 let col_type =
@@ -657,6 +669,12 @@ mod tests {
         current_dir.join("tests/python/models/simple.py")
     }
 
+    fn get_jwt_python_file_path() -> std::path::PathBuf {
+        let current_dir = std::env::current_dir().unwrap();
+        println!("Jwt python file lookup current dir: {:?}", current_dir);
+        current_dir.join("tests/python/models/jwt.py")
+    }
+
     fn get_setup_python_file_path() -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap();
         println!("Setup python file lookup current dir: {:?}", current_dir);
@@ -786,6 +804,27 @@ mod tests {
             }
         } else {
             panic!("list_sub field is not of type Array(Nested)");
+        }
+    }
+
+    #[test]
+    fn test_parse_jwt_file() {
+        let test_file = get_jwt_python_file_path();
+
+        let result = extract_data_model_from_file(&test_file, "");
+
+        assert!(result.is_ok());
+
+        let models = result.unwrap().models;
+
+        let model = models.iter().find(|m| m.name == "MyJwtModel").unwrap();
+
+        let jwt_field = model.columns.iter().find(|c| c.name == "jwt").unwrap();
+
+        if let ColumnType::Nested(nested) = &jwt_field.data_type {
+            assert!(nested.jwt);
+        } else {
+            panic!("JWT field should be Nested");
         }
     }
 }

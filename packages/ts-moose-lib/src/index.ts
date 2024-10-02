@@ -7,6 +7,8 @@ export interface Aggregation {
 
 export type Key<T extends string | number | Date> = T;
 
+export type JWT<T extends object> = T;
+
 export interface ConsumptionUtil {
   client: MooseClient;
 

@@ -1,0 +1,19 @@
+{
+  "name": "framework-cli-e2e",
+  "version": "1.0.0",
+  "description": "E2E tests for framework-cli",
+  "scripts": {
+    "pretest": "cd ../.. && cargo build",
+    "test": "mocha -r ts-node/register -p 'test/**/*.ts'"
+  },
+  "devDependencies": {
+    "@types/chai": "^4.3.5",
+    "@types/mocha": "^10.0.1",
+    "@types/node": "^20.2.5",
+    "chai": "^4.3.7",
+    "@clickhouse/client": "latest",
+    "mocha": "^10.2.0",
+    "ts-node": "^10.9.1",
+    "typescript": "^5.1.3"
+  }
+}

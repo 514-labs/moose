@@ -852,4 +852,90 @@ mod tests {
         let expected = r#"{"required_field":"hello","optional_field":null}"#;
         assert_eq!(String::from_utf8(result), Ok(expected.to_string()));
     }
+
+    #[test]
+    fn test_jwt() {
+        let nested_columns = vec![
+            Column {
+                name: "iss".to_string(),
+                data_type: ColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                jwt: false,
+                default: None,
+            },
+            Column {
+                name: "aud".to_string(),
+                data_type: ColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                jwt: false,
+                default: None,
+            },
+            Column {
+                name: "aud".to_string(),
+                data_type: ColumnType::Float,
+                required: true,
+                unique: false,
+                primary_key: false,
+                jwt: false,
+                default: None,
+            },
+        ];
+
+        let columns = vec![
+            Column {
+                name: "top_level_string".to_string(),
+                data_type: ColumnType::String,
+                required: true,
+                unique: false,
+                primary_key: false,
+                jwt: false,
+                default: None,
+            },
+            Column {
+                name: "jwt_object".to_string(),
+                data_type: ColumnType::Nested(Nested {
+                    name: "nested".to_string(),
+                    columns: nested_columns,
+                }),
+                required: true,
+                unique: false,
+                primary_key: false,
+                jwt: true,
+                default: None,
+            },
+        ];
+
+        // JWT purposely missing in the request
+        let valid_json = r#"
+        {
+            "top_level_string": "hello"
+        }
+        "#;
+
+        // Fake JWT claims to pass to the visitor
+        let jwt_claims = serde_json::json!({
+            "iss": "issuer",
+            "aud": "audience",
+            "exp": 2043418466
+        });
+
+        let valid_result = serde_json::Deserializer::from_str(valid_json)
+            .deserialize_any(&mut DataModelVisitor::new(&columns, Some(&jwt_claims)))
+            .unwrap();
+
+        // Visitor should've appended the jwt claims
+        let expected_valid = format!(
+            r#"{{"top_level_string":"hello","jwt_object":{}}}"#,
+            jwt_claims.to_string()
+        );
+
+        assert_eq!(
+            String::from_utf8(valid_result),
+            Ok(expected_valid.to_string())
+        );
+    }
 }

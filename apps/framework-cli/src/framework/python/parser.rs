@@ -664,6 +664,12 @@ mod tests {
         current_dir.join("tests/python/models/simple.py")
     }
 
+    fn get_jwt_python_file_path() -> std::path::PathBuf {
+        let current_dir = std::env::current_dir().unwrap();
+        println!("Jwt python file lookup current dir: {:?}", current_dir);
+        current_dir.join("tests/python/models/jwt.py")
+    }
+
     fn get_setup_python_file_path() -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap();
         println!("Setup python file lookup current dir: {:?}", current_dir);
@@ -794,5 +800,22 @@ mod tests {
         } else {
             panic!("list_sub field is not of type Array(Nested)");
         }
+    }
+
+    #[test]
+    fn test_parse_jwt_file() {
+        let test_file = get_jwt_python_file_path();
+
+        let result = extract_data_model_from_file(&test_file, "");
+
+        assert!(result.is_ok());
+
+        let models = result.unwrap().models;
+
+        let model = models.iter().find(|m| m.name == "MyJwtModel").unwrap();
+
+        let jwt_field = model.columns.iter().find(|c| c.name == "jwt").unwrap();
+
+        assert!(jwt_field.jwt);
     }
 }

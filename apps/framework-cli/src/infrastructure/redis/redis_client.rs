@@ -50,6 +50,7 @@ use redis::aio::Connection as AsyncConnection;
 use redis::AsyncCommands;
 use redis::{Client, Script};
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
@@ -59,9 +60,7 @@ use uuid::Uuid;
 
 // Internal constants that we don't expose to the user
 const KEY_EXPIRATION_TTL: u64 = 3; // 3 seconds
-const LOCK_TTL: i64 = 10; // 10 seconds
 const PRESENCE_UPDATE_INTERVAL: u64 = 1; // 1 second
-const LOCK_RENEWAL_INTERVAL: u64 = 3; // 3 seconds
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedisConfig {
@@ -90,17 +89,20 @@ impl Default for RedisConfig {
     }
 }
 
+#[derive(Clone)]
+pub struct RedisLock {
+    key: String,
+    ttl: i64,
+}
+
 pub struct RedisClient {
     connection: Arc<Mutex<AsyncConnection>>,
     pub_sub: Arc<Mutex<AsyncConnection>>,
     redis_config: RedisConfig,
     service_name: String,
     instance_id: String,
-    lock_key: String,
-    is_leader: bool,
+    locks: HashMap<String, RedisLock>,
     presence_task: Option<JoinHandle<()>>,
-    lock_renewal_task: Option<JoinHandle<()>>,
-    leadership_callback: Option<Arc<Mutex<dyn Fn() + Send + Sync>>>, // Added this line
 }
 
 impl RedisClient {
@@ -119,7 +121,6 @@ impl RedisClient {
             .context("Failed to establish Redis pub/sub connection")?;
 
         let instance_id = Uuid::new_v4().to_string();
-        let lock_key = format!("{}::{}::leader-lock", redis_config.key_prefix, service_name);
 
         info!(
             "Initializing Redis client for {} with instance ID: {}",
@@ -141,11 +142,8 @@ impl RedisClient {
             redis_config,
             instance_id,
             service_name,
-            lock_key,
-            is_leader: false,
+            locks: HashMap::new(),
             presence_task: None,
-            lock_renewal_task: None,
-            leadership_callback: None, // Added this line
         })
     }
 
@@ -169,92 +167,97 @@ impl RedisClient {
             .context("Failed to update presence")
     }
 
-    pub async fn attempt_leadership(&mut self) -> Result<bool> {
-        let lock_key = self.lock_key.clone();
-        let instance_id = self.instance_id.clone();
-
-        info!("Attempting leadership for {}", self.instance_id);
-        info!("First getting redis connection lock");
-
-        let result: bool = self
-            .connection
-            .lock()
-            .await
-            .set_nx(&lock_key, &instance_id)
-            .await
-            .context("Failed to attempt leadership")?;
-
-        if result {
-            let _: () = self
-                .connection
-                .lock()
-                .await
-                .expire(&lock_key, LOCK_TTL)
-                .await
-                .context("Failed to set expiration on leadership lock")?;
-        }
-
-        self.is_leader = result;
-
-        if self.is_leader {
-            info!("Instance {} became leader", self.instance_id);
-            self.renew_lock().await?;
-
-            // Call the leadership callback if set
-            if let Some(callback) = &self.leadership_callback {
-                let callback = callback.clone();
-                tokio::spawn(async move {
-                    (callback.lock().await)();
-                });
-            }
-        }
-
-        Ok(self.is_leader)
-    }
-
-    pub async fn renew_lock(&mut self) -> Result<bool> {
-        let extended: bool = self
-            .connection
-            .lock()
-            .await
-            .expire(&self.lock_key, LOCK_TTL)
-            .await
-            .context("Failed to renew leadership lock")?;
-
-        if !extended {
-            info!("Failed to extend leader lock, lost leadership");
-            self.is_leader = false;
-        }
-
-        Ok(extended)
-    }
-
-    pub async fn release_lock(&mut self) -> Result<()> {
-        let script = Script::new(
-            r"
-            if redis.call('get', KEYS[1]) == ARGV[1] then
-                return redis.call('del', KEYS[1])
-            else
-                return 0
-            end
-        ",
+    pub async fn register_lock(&mut self, name: &str, ttl: i64) -> Result<()> {
+        let lock_key = format!(
+            "{}::{}::{}::lock",
+            self.redis_config.key_prefix, self.service_name, name
         );
-
-        let _: () = script
-            .key(&self.lock_key)
-            .arg(&self.instance_id)
-            .invoke_async(&mut *self.connection.lock().await)
-            .await
-            .context("Failed to release leadership lock")?;
-
-        info!("Instance {} released leadership", self.instance_id);
-        self.is_leader = false;
-
+        let lock = RedisLock { key: lock_key, ttl };
+        self.locks.insert(name.to_string(), lock);
         Ok(())
     }
 
-    pub fn is_current_leader(&self) -> bool {
-        self.is_leader
+    pub async fn attempt_lock(&self, name: &str) -> Result<bool> {
+        if let Some(lock) = self.locks.get(name) {
+            let result: bool = self
+                .connection
+                .lock()
+                .await
+                .set_nx(&lock.key, &self.instance_id)
+                .await
+                .context("Failed to attempt lock")?;
+
+            if result {
+                let _: () = self
+                    .connection
+                    .lock()
+                    .await
+                    .expire(&lock.key, lock.ttl)
+                    .await
+                    .context("Failed to set expiration on lock")?;
+            }
+
+            Ok(result)
+        } else {
+            Err(anyhow::anyhow!("Lock not registered"))
+        }
+    }
+
+    pub async fn renew_lock(&self, name: &str) -> Result<bool> {
+        if let Some(lock) = self.locks.get(name) {
+            let extended: bool = self
+                .connection
+                .lock()
+                .await
+                .expire(&lock.key, lock.ttl)
+                .await
+                .context("Failed to renew lock")?;
+
+            Ok(extended)
+        } else {
+            Err(anyhow::anyhow!("Lock not registered"))
+        }
+    }
+
+    pub async fn release_lock(&self, name: &str) -> Result<()> {
+        if let Some(lock) = self.locks.get(name) {
+            let script = Script::new(
+                r"
+                if redis.call('get', KEYS[1]) == ARGV[1] then
+                    return redis.call('del', KEYS[1])
+                else
+                    return 0
+                end
+            ",
+            );
+
+            let _: () = script
+                .key(&lock.key)
+                .arg(&self.instance_id)
+                .invoke_async(&mut *self.connection.lock().await)
+                .await
+                .context("Failed to release lock")?;
+
+            Ok(())
+        } else {
+            Err(anyhow::anyhow!("Lock not registered"))
+        }
+    }
+
+    pub async fn has_lock(&self, name: &str) -> Result<bool> {
+        if let Some(lock) = self.locks.get(name) {
+            let value: Option<String> = self
+                .connection
+                .lock()
+                .await
+                .get(&lock.key)
+                .await
+                .context("Failed to check lock")?;
+
+            Ok(value == Some(self.instance_id.clone()))
+        } else {
+            Err(anyhow::anyhow!("Lock not registered"))
+        }
     }
 
     pub fn get_instance_id(&self) -> &str {
@@ -379,47 +382,11 @@ impl RedisClient {
             }
         }));
 
-        self.lock_renewal_task = Some(tokio::spawn({
-            let mut lock_renewal_client = self.clone();
-            async move {
-                let mut interval = interval(Duration::from_secs(LOCK_RENEWAL_INTERVAL));
-
-                // First attempt to gain leadership
-                match lock_renewal_client.attempt_leadership().await {
-                    Ok(is_leader) => {
-                        if is_leader {
-                            info!("Successfully gained leadership");
-                        } else {
-                            info!("Failed to gain leadership initially");
-                        }
-                    }
-                    Err(e) => error!("Error attempting leadership: {}", e),
-                }
-
-                loop {
-                    interval.tick().await;
-                    if lock_renewal_client.is_current_leader() {
-                        if let Err(e) = lock_renewal_client.renew_lock().await {
-                            error!("Error renewing lock: {}", e);
-                        }
-                    } else {
-                        // Attempt to gain leadership if not currently the leader
-                        if let Err(e) = lock_renewal_client.attempt_leadership().await {
-                            error!("Error attempting leadership: {}", e);
-                        }
-                    }
-                }
-            }
-        }));
-
         info!("Periodic tasks started");
     }
 
     pub fn stop_periodic_tasks(&mut self) -> Result<()> {
         if let Some(task) = self.presence_task.take() {
-            task.abort();
-        }
-        if let Some(task) = self.lock_renewal_task.take() {
             task.abort();
         }
         Ok(())
@@ -432,14 +399,6 @@ impl RedisClient {
             .context("Failed to ping Redis server")?;
         Ok(())
     }
-
-    // Added this method
-    pub fn set_leadership_callback<F>(&mut self, callback: F)
-    where
-        F: Fn() + Send + Sync + 'static,
-    {
-        self.leadership_callback = Some(Arc::new(Mutex::new(callback)));
-    }
 }
 
 impl Clone for RedisClient {
@@ -449,12 +408,9 @@ impl Clone for RedisClient {
             pub_sub: Arc::clone(&self.pub_sub),
             redis_config: self.redis_config.clone(),
             instance_id: self.instance_id.clone(),
-            lock_key: self.lock_key.clone(),
-            is_leader: self.is_leader,
             service_name: self.service_name.clone(),
+            locks: self.locks.clone(),
             presence_task: None,
-            lock_renewal_task: None,
-            leadership_callback: self.leadership_callback.clone(), // Added this line
         }
     }
 }
@@ -468,9 +424,10 @@ impl Drop for RedisClient {
                 if let Err(e) = self_clone.stop_periodic_tasks() {
                     error!("Error stopping periodic tasks: {}", e);
                 }
-                if self_clone.is_current_leader() {
-                    if let Err(e) = self_clone.release_lock().await {
-                        error!("Error releasing lock: {}", e);
+                let lock_names: Vec<_> = self_clone.locks.keys().cloned().collect();
+                for name in lock_names {
+                    if let Err(e) = self_clone.release_lock(&name).await {
+                        error!("Error releasing lock {}: {}", name, e);
                     }
                 }
             });

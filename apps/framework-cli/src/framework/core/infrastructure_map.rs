@@ -1,3 +1,41 @@
+//! # Infrastructure Map Module
+//!
+//! This module defines the structures and mechanisms for representing the current and desired state of the system's infrastructure.
+//! It includes functionality to compute the differences between the current infrastructure and the target infrastructure, which are represented as `InfraChanges`.
+//!
+//! # Key Components
+//!
+//! - `PrimitiveTypes`: An enumeration of the different primitive types that can exist in the infrastructure (e.g., DataModel, Function, DBBlock, ConsumptionAPI).
+//! - `PrimitiveSignature`: A struct that pairs a primitive name with its type.
+//! - `Change<T>`: An enum representing the possible changes (Added, Removed, Updated) for a given infrastructure component.
+//! - `InfraChange`: An enum encapsulating the various types of infrastructure changes (e.g., OlapChange, StreamingChange, ApiChange, ProcessChange).
+//! - `OlapChange`: An enum representing changes specific to OLAP components like Tables and Views.
+//!
+//! # Responsibilities
+//!
+//! 1. **Infrastructure Representation**: Defines the data structures that represent the infrastructure's current and target states.
+//! 2. **Change Detection**: Provides mechanisms to compute and represent differences between infrastructure states.
+//! 3. **Change Categorization**: Classifies changes into different categories (OLAP, Streaming, API, Process) to facilitate targeted execution.
+//!
+//! # Interaction with Other Components
+//!
+//! - Works closely with the `PrimitiveMap` to build the target infrastructure state from primitive definitions.
+//! - Interfaces with the `InfraPlan` to generate executable plans based on detected infrastructure changes.
+//! - Used by execution modules to apply changes to the actual infrastructure.
+//!
+//! # Future Considerations
+//!
+//! - Extend change detection logic to support more granular updates.
+//! - Incorporate audit logging for changes to facilitate tracking and debugging.
+//! - Enhance compatibility with additional infrastructure components as the system expands.
+//!
+//! # Examples
+//!
+//! ```rust
+//! // Example usage of Change enum
+//! let table_change = Change::Added(Table::new("new_table"));
+//! ```
+
 use super::infrastructure::api_endpoint::ApiEndpoint;
 use super::infrastructure::consumption_webserver::ConsumptionApiWebServer;
 use super::infrastructure::function_process::FunctionProcess;
@@ -392,7 +430,7 @@ impl InfrastructureMap {
         }
 
         // =================================================================
-        //                              Topic to Table Sync Processes
+        //                    Topic to Table Sync Processes
         // =================================================================
 
         for (id, topic_to_table_sync_process) in &self.topic_to_table_sync_processes {
@@ -433,7 +471,7 @@ impl InfrastructureMap {
         }
 
         // =================================================================
-        //                              Topic to Topic Sync Processes
+        //                  Topic to Topic Sync Processes
         // =================================================================
 
         for (id, topic_to_topic_sync_process) in &self.topic_to_topic_sync_processes {
@@ -474,7 +512,7 @@ impl InfrastructureMap {
         }
 
         // =================================================================
-        //                             Function Processes
+        //                       Function Processes
         // =================================================================
 
         for (id, function_process) in &self.function_processes {
@@ -511,7 +549,7 @@ impl InfrastructureMap {
         }
 
         // =================================================================
-        //                             Initial Data Loads
+        //                       Initial Data Loads
         // =================================================================
         for (id, load) in &target_map.initial_data_loads {
             let existing = self.initial_data_loads.get(id);
@@ -535,7 +573,7 @@ impl InfrastructureMap {
         }
 
         // =================================================================
-        //                             Aggregation Processes
+        //                     Aggregation Processes
         // =================================================================
 
         // Until we refactor to have multiple processes, we will consider that we need to restart
@@ -552,7 +590,7 @@ impl InfrastructureMap {
         ));
 
         // =================================================================
-        //                          Consumption Process
+        //                      Consumption Process
         // =================================================================
 
         // We are currently not tracking individual consumption endpoints, so we will just restart

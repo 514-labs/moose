@@ -1,3 +1,49 @@
+//! # Primitive Map Module
+//!
+//! This module serves as a central registry for various primitives used within the framework,
+//! such as data models, functions, consumption models, and aggregations.
+//!
+//! It provides mechanisms to load and manage these primitives from the project's directory
+//! structure, handling tasks such as parsing, validation, and error reporting.
+//!
+//! ## Key Components
+//!
+//! - **`PrimitiveMap`**: A structure that holds collections of loaded primitives like data models,
+//!   functions, consumptions, and aggregations.
+//! - **`PrimitiveMapLoadingError`**: An enumeration of errors that may occur during the loading process.
+//! - **Error Types**: Includes specific error types like `DataModelError` for handling data model-related errors.
+//!
+//! ## Responsibilities
+//!
+//! 1. **Primitive Loading**: Parses files from the project directory to load data models,
+//!    functions, consumption definitions, and aggregations into the framework.
+//! 2. **Error Handling**: Provides detailed error reporting to facilitate debugging
+//!    when issues arise during the loading process.
+//! 3. **Data Validation**: Validates the primitives to ensure they meet the required
+//!    configurations and constraints before they are used elsewhere in the system.
+//!
+//! ## Interaction with Other Components
+//!
+//! - Works closely with the `DataModel` structures for data representation.
+//! - Interfaces with the `Aggregation` models to manage data aggregations.
+//! - Utilizes `StreamingFunction` for handling functions within streaming processes.
+//! - Collaborates with the `Consumption` models to manage consumption configurations.
+//!
+//! ## Future Considerations
+//!
+//! - **Extend Support**: Add support for additional primitive types as the system expands.
+//! - **Enhanced Validation**: Improve validation logic to handle more complex use cases and configurations.
+//! - **Performance Optimization**: Optimize the loading mechanism for better performance on large-scale projects.
+//!
+//! ## Examples
+//!
+//! ```rust
+//! use crate::framework::core::primitive_map::PrimitiveMap;
+//!
+//! // Example of loading primitives into the PrimitiveMap
+//! let primitive_map = PrimitiveMap::new(&project)?;
+//! ```
+
 use std::{
     collections::{HashMap, HashSet},
     path::Path,

@@ -32,6 +32,10 @@ pub enum PlanningError {
     Other(#[from] anyhow::Error),
 }
 
+/// The plan of infrastructure changes
+///
+/// Used to apply changes to the infrastructure and display real-time
+/// feedback to the user.
 pub struct InfraPlan {
     // pub current_infra_map: Option<InfrastructureMap>,
     pub target_infra_map: InfrastructureMap,
@@ -39,6 +43,11 @@ pub struct InfraPlan {
     pub changes: InfraChanges,
 }
 
+/// Plans the changes to the infrastructure.
+///
+/// This creates a plan of the changes to be applied to the infrastructure
+/// from the current state to the target state. The current state is stored
+/// in the state storage.
 pub async fn plan_changes(
     client: &mut ClientHandle,
     project: &Project,

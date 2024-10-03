@@ -1,3 +1,58 @@
+//! # Execution engine for the core infrastructure
+//!
+//! This module is responsible for executing and managing infrastructure changes within the framework.
+//! It serves as the central orchestrator for applying modifications to various components of the system,
+//! ensuring that the actual infrastructure aligns with the desired state as defined in the `InfraPlan`.
+//!
+//! # Key Components
+//!
+//! - `ExecutionError`: An enum encapsulating various error types that may occur during the execution process.
+//! - `execute_initial_infra_change`: A function that bootstraps the initial infrastructure setup.
+//!
+//! # Responsibilities
+//!
+//! 1. OLAP (Online Analytical Processing) Management:
+//!    - Applying changes to tables, views, and other OLAP structures.
+//!    - Handling data migrations and schema updates.
+//!
+//! 2. Streaming Infrastructure:
+//!    - Managing topics, partitions, and other streaming-related components.
+//!    - Coordinating changes between streaming and OLAP systems.
+//!
+//! 3. API Layer Management:
+//!    - Updating API endpoints and structures based on infrastructure changes.
+//!    - Ensuring consistency between the API layer and underlying data models.
+//!
+//! 4. Process Synchronization:
+//!    - Managing synchronization processes between different components.
+//!    - Handling data consistency across various parts of the infrastructure.
+//!
+//! 5. Initial Data Loading:
+//!    - Coordinating the initial population of data into newly created structures.
+//!    - Ensuring data integrity during the bootstrapping process.
+//!
+//! # Interaction with Other Components
+//!
+//! This module interacts closely with:
+//! - Clickhouse for OLAP operations
+//! - Kafka or similar systems for streaming
+//! - Custom API servers
+//! - Various synchronization processes
+//! - Metrics collection for monitoring execution progress and performance
+//!
+//! # Error Handling
+//!
+//! The `ExecutionError` enum provides a comprehensive set of error types, allowing for
+//! precise error reporting and handling throughout the execution process.
+//!
+//! # Future Considerations
+//!
+//! As the system evolves, this module may need to accommodate:
+//! - More granular control over execution steps
+//! - Enhanced rollback capabilities for failed executions
+//! - Integration with external monitoring and alerting systems
+//! - Support for blue-green deployments or other advanced deployment strategies
+
 use clickhouse_rs::ClientHandle;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
@@ -37,6 +92,11 @@ pub enum ExecutionError {
     InitialDataLoad(#[from] InitialDataLoadError), // TODO: refactor to concrete types
 }
 
+/// Executes the initial infrastructure changes.
+///
+/// This initializes the infrastructure from the target state and returns the
+/// syncing processes registry and the process registries which are used to
+/// execute subsequent changes to the infrastructure plan.
 pub async fn execute_initial_infra_change(
     project: &Project,
     plan: &InfraPlan,
@@ -76,6 +136,10 @@ pub async fn execute_initial_infra_change(
     Ok((syncing_processes_registry, process_registries))
 }
 
+/// Executes the changes to the infrastructure plan.
+///
+/// Leverages the syncing processes registry and the process registries to
+/// execute the changes to the infrastructure plan in the correct order.
 pub async fn execute_online_change(
     project: &Project,
     plan: &InfraPlan,
@@ -88,7 +152,7 @@ pub async fn execute_online_change(
     olap::execute_changes(project, &plan.changes.olap_changes).await?;
     stream::execute_changes(project, &plan.changes.streaming_engine_changes).await?;
 
-    // In prod, the webserver is part of the current process that gets spawned. As succh
+    // In prod, the webserver is part of the current process that gets spawned. As such
     // it is initialized from 0 and we don't need to apply diffs to it.
     api::execute_changes(&plan.changes.api_changes, api_changes_channel).await?;
 

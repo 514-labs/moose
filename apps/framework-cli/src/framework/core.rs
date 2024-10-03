@@ -20,6 +20,7 @@
 /// │              │                     │              │
 /// └──────────────┘                     └──────────────┘
 ///
+pub mod check;
 pub mod code_loader;
 pub mod execute;
 pub mod infrastructure;

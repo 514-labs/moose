@@ -2,44 +2,25 @@
 
 import { register } from "ts-node";
 
-import fs from "fs";
-import path from "path";
-import * as vm from "vm";
-
 // Register ts-node to interpret TypeScript code
 register({
   esm: true,
-  experimentalTsImportSpecifiers: true,
+  experimentalSpecifierResolution: "node",
 });
 
 // Get the script path from the command line arguments
-const scriptPath = process.argv[2];
-
+let scriptPath = process.argv[2];
 if (!scriptPath) {
-  console.error("No script path provided.");
+  console.error("moose-exec: No script path provided.");
   process.exit(1);
 }
 
-// Read the TypeScript file
-const tsCode = fs.readFileSync(scriptPath, "utf-8");
+scriptPath = scriptPath.substring(0, scriptPath.length - 3);
 
-// Compile and execute the TypeScript code
-const script = new vm.Script(tsCode, {
-  filename: path.basename(scriptPath),
-});
-
-const context = vm.createContext({
-  require,
-  module,
-  __filename: scriptPath,
-  __dirname: path.dirname(scriptPath),
-  console,
-  process,
-  Buffer,
-  setTimeout,
-  setInterval,
-  clearTimeout,
-  clearInterval,
-});
-
-script.runInContext(context);
+// Use dynamic import to load and execute the TypeScript file
+try {
+  require(scriptPath);
+} catch (e) {
+  console.error("moose-exec: Error executing the script:", e);
+  process.exit(1);
+}

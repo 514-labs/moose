@@ -255,14 +255,14 @@ async fn top_command_handler(
                 .await
                 .map_err(|e| {
                     RoutineFailure::error(Message {
-                        action: "Check".to_string(),
+                        action: "System".to_string(),
                         details: format!("Failed to validate system requirements: {:?}", e),
                     })
                 })?;
 
             PrimitiveMap::load(&project_arc).await.map_err(|e| {
                 RoutineFailure::error(Message {
-                    action: "Check".to_string(),
+                    action: "Build".to_string(),
                     details: format!("Failed to load Primitives: {:?}", e),
                 })
             })?;

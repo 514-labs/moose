@@ -1,4 +1,5 @@
 use crate::project::Project;
+use crate::utilities::constants::TSCONFIG_JSON;
 use anyhow::{anyhow, Result};
 use log::{error, info};
 use reqwest;
@@ -109,8 +110,11 @@ impl CronRegistry {
                                 path,
                                 project_path_clone.to_str().unwrap()
                             );
+                            let ts_script_path =
+                                project_path_clone.join(script_path.as_ref().unwrap());
                             Command::new("moose-exec")
-                                .arg(path)
+                                .arg(ts_script_path.to_str().unwrap())
+                                .env("TS_NODE_PROJECT", project_path_clone.join(TSCONFIG_JSON))
                                 .env("PATH", bin_path)
                                 .output()
                         }

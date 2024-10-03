@@ -4,6 +4,7 @@ use anyhow::{anyhow, Result};
 use log::{error, info};
 use reqwest;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::env;
 use std::path::Path;
 use std::process::Command;
@@ -28,6 +29,8 @@ pub struct CronJob {
 
 pub struct CronRegistry {
     scheduler: Arc<Mutex<JobScheduler>>,
+    registered_jobs: Arc<Mutex<HashSet<String>>>,
+    jobs_registered: Arc<Mutex<bool>>,
 }
 
 impl CronRegistry {
@@ -36,6 +39,8 @@ impl CronRegistry {
 
         Ok(CronRegistry {
             scheduler: Arc::new(Mutex::new(scheduler)),
+            registered_jobs: Arc::new(Mutex::new(HashSet::new())),
+            jobs_registered: Arc::new(Mutex::new(false)),
         })
     }
 
@@ -73,12 +78,26 @@ impl CronRegistry {
     }
 
     pub async fn register_jobs(&self, project: &Project) -> Result<()> {
-        info!("<cron> Registering cron jobs from project configuration");
+        let mut jobs_registered = self.jobs_registered.lock().await;
+        if *jobs_registered {
+            info!("<cron> Jobs have already been registered, skipping");
+            return Ok(());
+        }
+
+        info!("<cron> Attempting to register cron jobs from project configuration");
         info!("<cron> Cron jobs: {:?}", project.cron_jobs);
         let project_path = project.project_location.clone();
 
         for job in &project.cron_jobs {
             let job_id = job.job_id.clone();
+
+            // Check if the job is already registered
+            let mut registered_jobs = self.registered_jobs.lock().await;
+            if registered_jobs.contains(&job_id) {
+                info!("<cron> Job {} is already registered, skipping", job_id);
+                continue;
+            }
+
             let cron_spec = job.cron_spec.clone();
             let script_path = job.script_path.clone();
             let url = job.url.clone();
@@ -156,8 +175,12 @@ impl CronRegistry {
                 Ok(())
             })
             .await?;
+
+            // Add the job_id to the set of registered jobs
+            registered_jobs.insert(job_id);
         }
 
+        *jobs_registered = true;
         Ok(())
     }
 

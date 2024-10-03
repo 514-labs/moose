@@ -296,8 +296,8 @@ impl Project {
                     &tsconfig,
                     serde_json::to_string_pretty(&serde_json::json!(
                         {
-                            "outDir": "dist",
                             "compilerOptions": {
+                                "outDir": "dist",
                                 "esModuleInterop": true,
                                 "paths": {
                                   "datamodels/*": ["./app/datamodels/*"],

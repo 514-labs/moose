@@ -1,15 +1,14 @@
 import { Callout } from "../components/callout";
 
 # Running Scheduled Tasks
-
-Cron jobs in Moose provide a mechanism to schedule and execute arbitrary scripts or make HTTP `GET` calls at specified intervals. These jobs are defined within the `moose.project.toml` configuration file. Moose cron jobs are useful for automating recurring tasks, for example:
+Moose provides a mechanism to schedule and execute arbitrary scripts or make HTTP `GET` calls at specified intervals via cron jobs. These jobs are useful for automating recurring tasks, for example:
 - Extracting batched data from an external data source on a schedule
 - Periodically calling an HTTP API to check for updates
 - Cleaning up old data on a schedule
 - Generating reports at a scheduled time each day
 - Any other recurring task you can imagine
 
-## Supported Task Types
+### Supported Task Types
 - **Script Execution**: Run arbitrary scripts written in Node.js (TypeScript supported), JavaScript, or Python.
 - **HTTP Requests**: Execute scheduled HTTP `GET` requests to specified endpoints.
 
@@ -21,7 +20,7 @@ You can test your cron spec using the [crontab guru](https://crontab.guru/) webs
 </Callout>
 
 ## Configuration
-Cron jobs are defined in the `[cron_jobs]` array within the configuration file. Each job entry should include:
+Cron jobs are defined within the `moose.project.toml` configuration file, under the `[cron_jobs]` array. Each job entry should include:
 
 - `job_id`: Unique identifier for the job.
 - `cron_spec`: Cron expression specifying the execution schedule.

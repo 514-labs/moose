@@ -75,7 +75,7 @@ COPY --chown=moose:moose ./project.tom[l] ./project.toml
 COPY --chown=moose:moose ./moose.config.tom[l] ./moose.config.toml
 COPY --chown=moose:moose ./versions .moose/versions
 
-COPY --chown=moose:moose ./.moose/infrastructure_map.json /application/.moose/infrastructure_map.json
+COPY --chown=moose:moose ./.moose/infrastructure_map.json .moose/infrastructure_map.json
 
 # Placeholder for the language specific install command
 INSTALL_COMMAND

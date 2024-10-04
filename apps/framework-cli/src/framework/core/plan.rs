@@ -45,7 +45,7 @@ pub async fn plan_changes(
     project: &Project,
 ) -> Result<InfraPlan, PlanningError> {
     let target_infra_map = if project.is_production {
-        let json_path = Path::new("/application/.moose/infrastructure_map.json");
+        let json_path = Path::new(".moose/infrastructure_map.json");
         InfrastructureMap::load_from_json(json_path).map_err(|e| PlanningError::Other(e.into()))?
     } else {
         let primitive_map = PrimitiveMap::load(project).await?;

@@ -261,6 +261,7 @@ export const HeroSection = () => {
                     subject={content.tagLine}
                     targetUrl={cta.href}
                     variant={cta.variant as "default" | "outline"}
+                    size="lg"
                   >
                     {cta.label}
                   </TrackCtaButton>

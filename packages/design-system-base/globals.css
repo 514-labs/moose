@@ -251,6 +251,10 @@ tbody {
   width: 20rem;
 }
 
+.docs .nextra-steps h3 {
+  font-size: 1rem;
+}
+
 li.nx-my-2 {
   list-style: none;
 }

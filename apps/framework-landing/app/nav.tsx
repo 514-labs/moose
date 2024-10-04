@@ -1,15 +1,18 @@
-"use client";
-import { useLayoutEffect } from "react";
 import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
-import { Disclosure } from "@headlessui/react";
-import { Bars3Icon, XMarkIcon } from "@heroicons/react/24/outline";
-import { usePathname } from "next/navigation";
 import { cn } from "@514labs/design-system-components/utils";
 import { Text } from "@514labs/design-system-components/typography";
 import { Button, Logo } from "@514labs/design-system-components/components";
 import { TrackLink } from "./trackable-components";
-import { Slash } from "lucide-react";
+import { Menu, Slash, XIcon } from "lucide-react";
+import {
+  Sheet,
+  SheetContent,
+  SheetTrigger,
+  SheetHeader,
+  SheetClose,
+} from "@514labs/design-system-components/components";
+import { CTAButton } from "./page";
 
 import Image from "next/image";
 
@@ -18,6 +21,14 @@ gsap.registerPlugin(SplitText);
 interface NavProps {
   property: string;
   navigation: { name: string; href: string; emphasized?: boolean }[];
+}
+
+interface NavLink {
+  eventName: string;
+  href: string;
+  subject: string;
+  content: string;
+  emphasized?: boolean;
 }
 
 export const FiveOneFourLogo = () => {
@@ -66,113 +77,142 @@ export const MooseLogo = () => {
   );
 };
 
-export const Nav = ({ navigation }: NavProps) => {
-  useLayoutEffect(() => {}, []);
-  const pathname = usePathname();
+const MainNav = () => {
+  return (
+    <div className="flex flex-row items-center space-x-2">
+      <FiveOneFourLogo />
+      <MooseLogo />
+    </div>
+  );
+};
+
+const SecondaryNav = ({
+  content,
+  className,
+}: {
+  content: NavLink[];
+  className?: string;
+}) => {
+  return (
+    <div className={cn("", className)}>
+      {content.map((link, index) => {
+        return (
+          <div
+            className={cn("flex items-center text-primary w-full sm:w-auto")}
+            key={index}
+          >
+            <TrackLink
+              name={link.eventName}
+              subject={link.subject}
+              href={link.href}
+              targetUrl={link.href}
+              className={cn(link.emphasized ? "w-full" : "w-auto")}
+            >
+              {link.emphasized ? (
+                <Button
+                  size="lg"
+                  className={cn(
+                    "py-8 px-4 rounded-xl w-full sm:w-auto sm:text-sm text-lg sm:ml-2 mt-2 sm:my-0",
+                    "hover:text-primary-foreground hover:bg-primary/90",
+                    "text-primary-foreground",
+                  )}
+                >
+                  {link.content}
+                </Button>
+              ) : (
+                <Text className="py-0 sm:py-2 sm:px-4 my-0">
+                  {link.content}
+                </Text>
+              )}
+            </TrackLink>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
+const MobileNav = ({ content }: { content: NavLink[] }) => {
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button size="icon" variant="ghost" className="sm:hidden">
+          <Menu />
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="top" className="w-full h-full flex flex-col">
+        <SheetHeader className="flex flex-row items-center justify-between">
+          <div className="space-x-5 flex flex-row items-center">
+            <MainNav />
+          </div>
+          <SheetClose asChild>
+            <Button size="icon" variant="ghost">
+              <XIcon />
+            </Button>
+          </SheetClose>
+        </SheetHeader>
+        <SecondaryNav
+          content={content}
+          className="grow mt-0 pt-0 flex flex-col gap-0 text-4xl w-full items-center justify-center"
+        />
+      </SheetContent>
+    </Sheet>
+  );
+};
+
+export const Nav = () => {
+  const mooseNavLinks = [
+    {
+      content: "Host with Boreal",
+      href: "https://boreal.cloud",
+      eventName: "nav-link",
+      subject: "host with boreal",
+    },
+    {
+      content: "GitHub",
+      href: "https://github.com/514-labs/moose",
+      eventName: "nav-link",
+      subject: "moose github",
+    },
+    {
+      content: "Slack",
+      href: "https://join.slack.com/t/moose-community/shared_invite/zt-2345678901-23456789012345678901234567890123",
+      eventName: "nav-link",
+      subject: "moose slack",
+    },
+    {
+      content: "Blog",
+      href: "https://www.fiveonefour.com/blog",
+      eventName: "nav-link",
+      subject: "moose blog",
+    },
+    {
+      content: "Get Started",
+      href: "https://docs.getmoose.dev",
+      eventName: "nav-link",
+      subject: "moose docs",
+      emphasized: true,
+    },
+  ];
 
   return (
-    <Disclosure
-      as="nav"
-      className="sticky top-0 z-50 px-5 py-5 lg:py-0 bg-black-100/90 backdrop-blur-2xl w-full"
-    >
-      {({ open }) => (
-        <>
-          <div className="max-w-5xl mx-auto flex flex-row items-center justify-between">
-            {/* Logo */}
-            <div className="flex items-center md:space-x-20">
-              <div className="space-x-5 flex flex-row items-center">
-                <div className="flex flex-row items-center space-x-2">
-                  <FiveOneFourLogo />
-                  <MooseLogo />
-                </div>
-              </div>
-            </div>
-            {/* Desktop Nav Items */}
-            <div className="justify-end hidden sm:display items-center sm:flex">
-              {navigation.map((item) => {
-                const isActive = pathname.startsWith(item.href);
-                return (
-                  <div
-                    className={cn(
-                      isActive
-                        ? "flex items-center text-action-primary"
-                        : "flex items-center text-primary",
-                    )}
-                    key={item.name}
-                  >
-                    <TrackLink
-                      name={"Nav Click"}
-                      subject={item.name}
-                      href={item.href}
-                    >
-                      {item.emphasized ? (
-                        <Button size={"lg"} className="py-8">
-                          <Text
-                            className={cn(
-                              isActive
-                                ? "hover:text-action-primary-foreground "
-                                : "hover:text-primary-foreground",
-                              "text-primary-foreground",
-                            )}
-                          >
-                            {item.name}
-                          </Text>
-                        </Button>
-                      ) : (
-                        <Text
-                          className={cn(
-                            isActive
-                              ? "hover:text-action-primary border-b-2 border-primary"
-                              : "hover:text-primary border-b-2 border-transparent",
-                            "py-2 px-5",
-                          )}
-                        >
-                          {item.name}
-                        </Text>
-                      )}
-                    </TrackLink>
-                  </div>
-                );
-              })}
-            </div>
-            <div className="-mr-2 flex items-center md:hidden">
-              {/* Mobile menu button */}
-              <Disclosure.Button className="relative inline-flex items-center justify-center rounded-md p-2 text-primary hover:text-action-primary focus:outline-none focus:ring-2 focus:ring-inset focus:ring-action-primary">
-                <span className="absolute -inset-0.5" />
-                <span className="sr-only">Open main menu</span>
-                {open ? (
-                  <XMarkIcon className="block h-6 w-6" aria-hidden="true" />
-                ) : (
-                  <Bars3Icon className="block h-6 w-6" aria-hidden="true" />
-                )}
-              </Disclosure.Button>
-            </div>
-
-            <Disclosure.Panel className="sticky top-20 h-screen md:h-auto justify-center w-full z-10 bg-background md:hidden">
-              <div className="space-y-1 pb-3 pt-2 mt-[25%]">
-                {navigation.map((item) => {
-                  const isActive = pathname.startsWith(item.href);
-
-                  return (
-                    <Disclosure.Button
-                      as="a"
-                      href={item.href}
-                      key={item.name}
-                      className={
-                        isActive
-                          ? "block py-2 pl-0 pr-4 text-5xl text-action-primary hover:text-primary"
-                          : "block py-2 pl-0 pr-4 text-5xl text-primary hover:text-action-primary"
-                      }
-                    >
-                      {item.name}
-                    </Disclosure.Button>
-                  );
-                })}
-              </div>
-            </Disclosure.Panel>
+    <nav className={cn("sticky top-0 z-50 bg-black p-6 w-full")}>
+      <div className="max-w-5xl mx-auto flex items-center justify-between">
+        <div className="flex items-center space-x-20">
+          <div className="space-x-5 flex flex-row items-center">
+            <MainNav />
           </div>
-        </>
-      )}
-    </Disclosure>
+        </div>
+
+        <div>
+          <MobileNav content={mooseNavLinks} />
+        </div>
+
+        <SecondaryNav
+          content={mooseNavLinks}
+          className="hidden sm:display items-center sm:flex"
+        />
+      </div>
+    </nav>
   );
 };

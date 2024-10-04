@@ -12,16 +12,10 @@ import {
   SheetHeader,
   SheetClose,
 } from "@514labs/design-system-components/components";
-import { CTAButton } from "./page";
 
 import Image from "next/image";
 
 gsap.registerPlugin(SplitText);
-
-interface NavProps {
-  property: string;
-  navigation: { name: string; href: string; emphasized?: boolean }[];
-}
 
 interface NavLink {
   eventName: string;

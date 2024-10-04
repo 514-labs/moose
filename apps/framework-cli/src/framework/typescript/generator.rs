@@ -418,40 +418,37 @@ pub fn generate_sdk(
 
     Ok(())
 }
-
 fn collect_ts_objects_from_primitive_map(
     primitive_map: &PrimitiveMap,
     version: &str,
 ) -> Result<Vec<TypescriptObjects>, TypescriptGeneratorError> {
-    let mut ts_objects: Vec<TypescriptObjects> = Vec::new();
-
-    for model in primitive_map.data_models_iter() {
-        if model.version == version {
-            let interface = std_table_to_typescript_interface(model.to_table(), &model.name)?;
-            ts_objects.push(TypescriptObjects::new(interface));
-        }
-    }
-
-    Ok(ts_objects)
+    primitive_map
+        .data_models_iter()
+        .filter(|model| model.version == version)
+        .map(|model| {
+            std_table_to_typescript_interface(model.to_table(), &model.name)
+                .map(TypescriptObjects::new)
+        })
+        .collect()
 }
 
 fn collect_enums_from_primitive_map(
     primitive_map: &PrimitiveMap,
     version: &str,
 ) -> HashSet<TSEnum> {
-    let mut enums: HashSet<TSEnum> = HashSet::new();
-
-    for model in primitive_map.data_models_iter() {
-        if model.version == version {
-            for column in &model.columns {
+    primitive_map
+        .data_models_iter()
+        .filter(|model| model.version == version)
+        .flat_map(|model| {
+            model.columns.iter().filter_map(|column| {
                 if let ColumnType::Enum(enum_type) = &column.data_type {
-                    enums.insert(map_std_enum_to_ts(enum_type.clone()));
+                    Some(map_std_enum_to_ts(enum_type.clone()))
+                } else {
+                    None
                 }
-            }
-        }
-    }
-
-    enums
+            })
+        })
+        .collect()
 }
 
 pub fn move_to_npm_global_dir(sdk_location: &PathBuf) -> Result<PathBuf, std::io::Error> {

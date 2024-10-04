@@ -266,6 +266,10 @@ pub fn std_table_to_typescript_interface(
     let mut fields: Vec<InterfaceField> = Vec::new();
 
     for column in table.columns {
+        if matches!(&column.data_type, ColumnType::Nested(n) if n.jwt) {
+            continue;
+        }
+
         let typescript_interface_type =
             std_field_type_to_typescript_field_mapper(column.data_type.clone())?;
 

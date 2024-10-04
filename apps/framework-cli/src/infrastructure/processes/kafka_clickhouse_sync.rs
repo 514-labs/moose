@@ -712,6 +712,7 @@ mod tests {
 
         let nested_column_type: Nested = Nested {
             name: "my_nested_column".to_string(),
+            jwt: false,
             // constructed from the example json
             columns: vec![
                 Column {
@@ -734,6 +735,7 @@ mod tests {
                     name: "C".to_string(),
                     data_type: ColumnType::Nested(Nested {
                         name: "C".to_string(),
+                        jwt: false,
                         columns: vec![
                             Column {
                                 name: "a".to_string(),
@@ -747,6 +749,7 @@ mod tests {
                                 name: "b".to_string(),
                                 data_type: ColumnType::Nested(Nested {
                                     name: "b".to_string(),
+                                    jwt: false,
                                     columns: vec![
                                         Column {
                                             name: "d".to_string(),

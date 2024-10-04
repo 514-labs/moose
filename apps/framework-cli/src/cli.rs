@@ -8,7 +8,6 @@ mod routines;
 pub mod settings;
 mod watcher;
 use super::metrics::Metrics;
-use chrono::Utc;
 use clap::Parser;
 use commands::{
     BlockCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
@@ -759,9 +758,10 @@ async fn top_command_handler(
 
             check_project_name(&project.name())?;
 
-            let log_file_path = Utc::now()
+            let log_file_path = chrono::Local::now()
                 .format(&settings.logger.log_file_date_format)
                 .to_string();
+
             let log_file_path = user_directory()
                 .join(log_file_path)
                 .to_str()

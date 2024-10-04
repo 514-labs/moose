@@ -1,6 +1,3 @@
-use serde::Deserialize;
-use std::path::Path;
-
 use super::model::DataModel;
 use crate::utilities::constants;
 use crate::{
@@ -10,6 +7,9 @@ use crate::{
     },
     project::Project,
 };
+use log::info;
+use serde::Deserialize;
+use std::path::Path;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to parse the data model file")]
@@ -19,10 +19,6 @@ pub enum DataModelParsingError {
     TypescriptParsingError(#[from] typescript::parser::TypescriptParsingError),
     PythonParsingError(#[from] python::parser::PythonParserError),
     MappingError(#[from] MappingError),
-    #[error("Unsupported file: {file_name}")]
-    UnsupportedFileType {
-        file_name: String,
-    },
 }
 
 #[derive(Deserialize, Debug, Default)]
@@ -72,11 +68,12 @@ pub fn parse_data_model_file(
     }
 }
 
-fn unsupported_file_type<T>(path: &Path) -> Result<T, DataModelParsingError> {
-    Err(DataModelParsingError::UnsupportedFileType {
-        file_name: match path.file_name() {
-            None => "".to_string(),
-            Some(f) => f.to_string_lossy().to_string(),
-        },
-    })
+fn unsupported_file_type<T>(path: &Path) -> Result<FileObjects, T> {
+    let file_name = match path.file_name() {
+        None => "".to_string(),
+        Some(f) => f.to_string_lossy().to_string(),
+    };
+    info!("Unsupported file: {}", file_name);
+
+    Ok(FileObjects::default())
 }

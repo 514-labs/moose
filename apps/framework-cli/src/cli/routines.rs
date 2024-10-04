@@ -84,8 +84,9 @@ use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use log::{debug, info};
-use tokio::sync::RwLock;
+use log::{debug, error, info};
+use tokio::sync::RwLock; // or use the appropriate error type
+use tokio::time::{interval, Duration};
 
 use crate::cli::watcher::{
     process_aggregations_changes, process_consumption_changes, process_streaming_func_changes,
@@ -107,6 +108,7 @@ use crate::infrastructure::olap::clickhouse_alt_client::{
 };
 use crate::infrastructure::processes::aggregations_registry::AggregationProcessRegistry;
 use crate::infrastructure::processes::consumption_registry::ConsumptionProcessRegistry;
+use crate::infrastructure::processes::cron_registry::CronRegistry;
 use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
@@ -266,6 +268,65 @@ impl RoutineController {
     }
 }
 
+async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<RedisClient> {
+    let mut redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
+
+    // Register the leadership lock
+    redis_client.register_lock("leadership", 10).await?;
+
+    // Start the leadership lock management task
+    start_leadership_lock_task(redis_client.clone(), project.clone());
+
+    redis_client.start_periodic_tasks();
+    Ok(redis_client)
+}
+
+fn start_leadership_lock_task(redis_client: RedisClient, project: Arc<Project>) {
+    tokio::spawn(async move {
+        let mut interval = interval(Duration::from_secs(5)); // Adjust the interval as needed
+        loop {
+            interval.tick().await;
+            if let Err(e) = manage_leadership_lock(&redis_client, &project).await {
+                error!("Error managing leadership lock: {}", e);
+            }
+        }
+    });
+}
+
+async fn manage_leadership_lock(
+    redis_client: &RedisClient,
+    project: &Arc<Project>,
+) -> Result<(), anyhow::Error> {
+    match redis_client.has_lock("leadership").await? {
+        true => {
+            // We have the lock, renew it
+            redis_client.renew_lock("leadership").await?;
+        }
+        false => {
+            // We don't have the lock, try to acquire it
+            if redis_client.attempt_lock("leadership").await? {
+                info!("Obtained leadership lock, performing leadership tasks");
+                let project_clone = project.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = leadership_tasks(project_clone).await {
+                        error!("Error executing leadership tasks: {}", e);
+                    }
+                });
+            } else {
+                debug!("Failed to obtain leadership lock");
+            }
+        }
+    }
+    Ok(())
+}
+
+async fn leadership_tasks(project: Arc<Project>) -> Result<(), anyhow::Error> {
+    let cron_registry = CronRegistry::new().await?;
+    cron_registry.register_jobs(&project).await?;
+    cron_registry.start().await?;
+    Ok(())
+}
+
 // Starts the file watcher and the webserver
 pub async fn start_development_mode(
     project: Arc<Project>,
@@ -280,8 +341,7 @@ pub async fn start_development_mode(
         }
     );
 
-    let mut redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
-    redis_client.start_periodic_tasks();
+    let mut redis_client = setup_redis_client(project.clone()).await?;
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(
@@ -488,8 +548,7 @@ pub async fn start_production_mode(
         }
     );
 
-    let mut redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
-    redis_client.start_periodic_tasks();
+    let mut redis_client = setup_redis_client(project.clone()).await?;
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(

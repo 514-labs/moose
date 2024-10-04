@@ -25,7 +25,9 @@ use crate::framework::core::infrastructure::table::{
     Column, ColumnType, DataEnum as FrameworkEnum, Nested,
 };
 
+use crate::framework::core::infrastructure::table::{EnumMember, EnumValue};
 use crate::framework::python::utils::ColumnBuilder;
+use num_traits::cast::ToPrimitive;
 
 #[derive(Debug, Clone, thiserror::Error)]
 #[error("Failed to parse the python file")]
@@ -175,9 +177,41 @@ pub fn get_nested_classes(python_classes: &Vec<&StmtClassDef>) -> Vec<Identifier
 fn python_enum_to_framework_enum(
     enum_node: &StmtClassDef,
 ) -> Result<FrameworkEnum, PythonParserError> {
+    let mut values = Vec::new();
+
+    for stmt in &enum_node.body {
+        if let Stmt::Assign(assign) = stmt {
+            if let Some(Expr::Name(name)) = assign.targets.first() {
+                if let Expr::Constant(constant) = assign.value.as_ref() {
+                    let enum_value = match &constant.value {
+                        Constant::Str(s) => EnumValue::String(s.to_string()),
+                        Constant::Int(i) => {
+                            EnumValue::Int(i.to_u8().ok_or(PythonParserError::EnumParseError {
+                                message: format!("Enum value {} out of range", i),
+                            })?)
+                        }
+                        _ => {
+                            return Err(PythonParserError::EnumParseError {
+                                message: "Unexpected enum value".to_string(),
+                            })
+                        }
+                    };
+                    values.push(EnumMember {
+                        name: name.id.to_string(),
+                        value: enum_value,
+                    });
+                } else {
+                    return Err(PythonParserError::EnumParseError {
+                        message: "Unexpected enum value".to_string(),
+                    });
+                }
+            }
+        }
+    }
+
     Ok(FrameworkEnum {
         name: enum_node.name.to_string(),
-        values: vec![],
+        values,
     })
 }
 
@@ -258,6 +292,7 @@ fn attempt_nested_class(
                 ColumnType::Nested(Nested {
                     name: name.id.to_string(),
                     columns,
+                    jwt: false,
                 })
             });
         col_type
@@ -369,6 +404,17 @@ fn process_subscript_node(
                 column.data_type = Some(col_type);
                 column.required = Some(true);
                 column.primary_key = Some(true);
+            }
+            "JWT" => {
+                let mut col_type =
+                    process_slice(&subscript.slice, enums, python_classes, nested_classes)?;
+
+                if let ColumnType::Nested(ref mut nested) = col_type {
+                    nested.jwt = true;
+                }
+
+                column.data_type = Some(col_type);
+                column.required = Some(true);
             }
             "Optional" => {
                 let col_type =
@@ -657,6 +703,12 @@ mod tests {
         current_dir.join("tests/python/models/simple.py")
     }
 
+    fn get_jwt_python_file_path() -> std::path::PathBuf {
+        let current_dir = std::env::current_dir().unwrap();
+        println!("Jwt python file lookup current dir: {:?}", current_dir);
+        current_dir.join("tests/python/models/jwt.py")
+    }
+
     fn get_setup_python_file_path() -> std::path::PathBuf {
         let current_dir = std::env::current_dir().unwrap();
         println!("Setup python file lookup current dir: {:?}", current_dir);
@@ -763,6 +815,41 @@ mod tests {
     }
 
     #[test]
+    fn has_enum_members() {
+        // checks that all the parsed classes have the right number of attributes
+
+        let test_file = get_simple_python_file_path();
+
+        let data_models = extract_data_model_from_file(&test_file, "").unwrap().models;
+        let data_model = data_models.first().unwrap();
+
+        let column = data_model
+            .columns
+            .iter()
+            .find(|column| column.name == "status")
+            .unwrap();
+
+        match &column.data_type {
+            ColumnType::Enum(platform_enum) => {
+                assert_eq!(platform_enum.name, "Status");
+
+                assert_eq!(
+                    platform_enum
+                        .values
+                        .iter()
+                        .map(|m| match &m.value {
+                            EnumValue::Int(_) => panic!(),
+                            EnumValue::String(s) => s.as_str(),
+                        })
+                        .collect::<Vec<&str>>(),
+                    ["ok", "error"]
+                );
+            }
+            _ => panic!(),
+        }
+    }
+
+    #[test]
     fn test_subscript_data_class() {
         // checks that all the parsed classes have the right number of attributes
 
@@ -786,6 +873,27 @@ mod tests {
             }
         } else {
             panic!("list_sub field is not of type Array(Nested)");
+        }
+    }
+
+    #[test]
+    fn test_parse_jwt_file() {
+        let test_file = get_jwt_python_file_path();
+
+        let result = extract_data_model_from_file(&test_file, "");
+
+        assert!(result.is_ok());
+
+        let models = result.unwrap().models;
+
+        let model = models.iter().find(|m| m.name == "MyJwtModel").unwrap();
+
+        let jwt_field = model.columns.iter().find(|c| c.name == "jwt").unwrap();
+
+        if let ColumnType::Nested(nested) = &jwt_field.data_type {
+            assert!(nested.jwt);
+        } else {
+            panic!("JWT field should be Nested");
         }
     }
 }

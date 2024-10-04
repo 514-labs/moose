@@ -2,10 +2,8 @@ from dataclasses import dataclass
 from enum import Enum
 from typing import Optional
 from datetime import datetime
+from .commons import JWT, Key
 
-
-
-type Key[T: (str, int)] = T 
 
 class Status(Enum):
     OK = "ok"

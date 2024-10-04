@@ -23,7 +23,7 @@
     "d3": "^7.9.0",
     "lodash": "^4.17.21",
     "lucide-react": "^0.344.0",
-    "next": "14.2.4",
+    "next": "14.2.10",
     "react": "^18",
     "react-dom": "^18",
     "react-hook-form": "^7.51.0",

@@ -61,7 +61,7 @@ export const getClickhouseClient = ({
   });
 };
 
-type CliLogData = {
+export type CliLogData = {
   message_type?: "Info" | "Success" | "Error" | "Highlight";
   action: string;
   message: string;

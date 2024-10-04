@@ -1,6 +1,8 @@
 use super::{RoutineFailure, RoutineSuccess};
 use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
+use crate::framework::core::infrastructure_map::InfrastructureMap;
+use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::languages::SupportedLanguages;
 use crate::utilities::constants::{
     APP_DIR, CLI_INTERNAL_VERSIONS_DIR, OLD_PROJECT_CONFIG_FILE, PACKAGE_JSON, PROJECT_CONFIG_FILE,
@@ -72,6 +74,8 @@ COPY_PACKAGE_FILE
 COPY --chown=moose:moose ./project.tom[l] ./project.toml
 COPY --chown=moose:moose ./moose.config.tom[l] ./moose.config.toml
 COPY --chown=moose:moose ./versions .moose/versions
+
+COPY --chown=moose:moose ./.moose/infrastructure_map.json /application/.moose/infrastructure_map.json
 
 # Placeholder for the language specific install command
 INSTALL_COMMAND
@@ -266,6 +270,40 @@ pub fn build_dockerfile(
             }
         }
     }
+
+    // Generate and save InfrastructureMap as JSON
+    let primitive_map = tokio::runtime::Runtime::new()
+        .unwrap()
+        .block_on(PrimitiveMap::load(project))
+        .map_err(|e| {
+            RoutineFailure::new(
+                Message::new("Failed".to_string(), "to load PrimitiveMap".to_string()),
+                e,
+            )
+        })?;
+
+    let infra_map = InfrastructureMap::new(primitive_map);
+
+    let json_path = internal_dir.join("packager/.moose/infrastructure_map.json");
+    fs::create_dir_all(json_path.parent().unwrap()).map_err(|e| {
+        RoutineFailure::new(
+            Message::new(
+                "Failed".to_string(),
+                "to create .moose directory".to_string(),
+            ),
+            e,
+        )
+    })?;
+
+    infra_map.save_to_json(&json_path).map_err(|e| {
+        RoutineFailure::new(
+            Message::new(
+                "Failed".to_string(),
+                "to save InfrastructureMap as JSON".to_string(),
+            ),
+            e,
+        )
+    })?;
 
     // consts::CLI_VERSION is set from an environment variable during the CI/CD process
     // however, it's set to 0.0.1 in development,

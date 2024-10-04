@@ -16,7 +16,7 @@ Moose provides a mechanism to schedule and execute arbitrary scripts or make HTT
 Cron jobs are scheduled using an extended cron format that includes seconds. The cron expression consists of seven fields: **seconds**, **minutes**, **hours**, **day of month**, **month**, **day of week**, and optionally **year**. Each field can specify exact values, ranges, or wildcards to define the schedule. 
 
 <Callout type="info" title="Test Your Cron Spec" >
-You can test your cron spec using the [crontab guru](https://crontab.guru/) website.
+You can test your cron spec using this [online tool](https://www.freeformatter.com/cron-expression-generator-quartz.html).
 </Callout>
 
 ## Configuration
@@ -25,6 +25,10 @@ Cron jobs are defined within the `moose.project.toml` configuration file, under 
 - `job_id`: Unique identifier for the job.
 - `cron_spec`: Cron expression specifying the execution schedule.
 - `script_path` or `url`: Specifies the path to the arbitrary script file (TypeScript, JavaScript, or Python) or the URL of the HTTP endpoint.
+
+<Callout type="Warning" title="Job ID Must Be Unique" >
+Each job ID must be unique within the project. Moose will not allow duplicate job IDs.
+</Callout>
 
 **Example:**
 ```toml

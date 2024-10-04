@@ -178,7 +178,7 @@ pub fn create_dockerfile(project: &Project) -> Result<RoutineSuccess, RoutineFai
     )))
 }
 
-pub fn build_dockerfile(
+pub async fn build_dockerfile(
     project: &Project,
     is_amd64: bool,
     is_arm64: bool,
@@ -272,15 +272,12 @@ pub fn build_dockerfile(
     }
 
     // Generate and save InfrastructureMap as JSON
-    let primitive_map = tokio::runtime::Runtime::new()
-        .unwrap()
-        .block_on(PrimitiveMap::load(project))
-        .map_err(|e| {
-            RoutineFailure::new(
-                Message::new("Failed".to_string(), "to load PrimitiveMap".to_string()),
-                e,
-            )
-        })?;
+    let primitive_map = PrimitiveMap::load(project).await.map_err(|e| {
+        RoutineFailure::new(
+            Message::new("Failed".to_string(), "to load PrimitiveMap".to_string()),
+            e,
+        )
+    })?;
 
     let infra_map = InfrastructureMap::new(primitive_map);
 

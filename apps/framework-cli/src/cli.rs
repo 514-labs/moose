@@ -292,7 +292,7 @@ async fn top_command_handler(
                 // TODO get rid of the routines and use functions instead
 
                 create_dockerfile(&project_arc)?.show();
-                let _ = build_dockerfile(&project_arc, *amd64, *arm64)?;
+                let _: RoutineSuccess = build_dockerfile(&project_arc, *amd64, *arm64).await?;
 
                 wait_for_usage_capture(capture_handle).await;
 

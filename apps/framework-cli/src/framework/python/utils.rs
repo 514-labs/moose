@@ -1,6 +1,9 @@
-use crate::framework::core::infrastructure::table::{Column, ColumnDefaults, ColumnType};
-
 use super::parser::PythonParserError;
+use crate::framework::core::check::CheckerError;
+use crate::framework::core::infrastructure::table::{Column, ColumnDefaults, ColumnType};
+use crate::framework::versions::parse_version;
+
+use tokio::process::Command;
 
 #[derive(Default)]
 pub struct ColumnBuilder {
@@ -42,4 +45,38 @@ impl ColumnBuilder {
             default: self.default,
         })
     }
+}
+
+pub async fn check_python_version(required_version: &str) -> Result<(), CheckerError> {
+    let output = Command::new("python3").arg("--version").output().await?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        return Err(CheckerError::NotSupported(format!(
+            "Failed to get Python version: {}",
+            stderr
+        )));
+    }
+
+    let version_str = std::str::from_utf8(&output.stdout).unwrap_or("");
+    let version_parts: Vec<&str> = version_str.split_whitespace().collect();
+    if version_parts.len() < 2 {
+        return Err(CheckerError::NotSupported(format!(
+            "Failed to get Python version. Found version: {}",
+            version_str
+        )));
+    }
+
+    let current_version = version_parts[1];
+    let current_version_parts = parse_version(current_version);
+    let required_version_parts = parse_version(required_version);
+
+    if current_version_parts < required_version_parts {
+        return Err(CheckerError::NotSupported(format!(
+            "Python version {} is not supported. Required version is {}+",
+            current_version, required_version
+        )));
+    }
+
+    Ok(())
 }

@@ -50,7 +50,7 @@ use crate::cli::{
     settings::{init_config_file, setup_user_directory},
 };
 use crate::framework::bulk_import::import_csv_file;
-use crate::framework::core::check::Checker;
+use crate::framework::core::check::check_system_reqs;
 use crate::framework::core::code_loader::load_framework_objects;
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::languages::SupportedLanguages;
@@ -251,7 +251,7 @@ async fn top_command_handler(
 
             check_project_name(&project_arc.name())?;
 
-            Checker::validate_system_reqs(&project_arc.language_project_config)
+            check_system_reqs(&project_arc.language_project_config)
                 .await
                 .map_err(|e| {
                     RoutineFailure::error(Message {

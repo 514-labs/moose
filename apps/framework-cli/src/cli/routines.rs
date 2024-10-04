@@ -300,9 +300,7 @@ async fn manage_leadership_lock(
     match redis_client.has_lock("leadership").await? {
         true => {
             // We have the lock, renew it
-            if redis_client.renew_lock("leadership").await? {
-                debug!("Leadership lock renewed");
-            }
+            redis_client.renew_lock("leadership").await?;
         }
         false => {
             // We don't have the lock, try to acquire it

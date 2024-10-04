@@ -371,9 +371,6 @@ pub fn generate_sdk(
     }
 
     for version in project.supported_old_versions.keys() {
-        let version_dir = sdk_dir.join(version);
-        fs::create_dir_all(&version_dir)?;
-
         let (ts_objects, version_enums) = match framework_objects {
             Either::Left(framework_object_versions) => {
                 let models = match framework_object_versions
@@ -392,9 +389,15 @@ pub fn generate_sdk(
                 let current_version_ts_objects =
                     collect_ts_objects_from_primitive_map(primitive_map, version)?;
                 let enums = collect_enums_from_primitive_map(primitive_map, version);
+                if current_version_ts_objects.is_empty() {
+                    continue;
+                }
                 (current_version_ts_objects, enums)
             }
         };
+
+        let version_dir = sdk_dir.join(version);
+        fs::create_dir_all(&version_dir)?;
 
         if !version_enums.is_empty() {
             let enums_code = typescript::templates::render_enums(version_enums)?;
@@ -415,8 +418,6 @@ pub fn generate_sdk(
 
     Ok(())
 }
-
-// Add these new helper functions to work with PrimitiveMap
 
 fn collect_ts_objects_from_primitive_map(
     primitive_map: &PrimitiveMap,

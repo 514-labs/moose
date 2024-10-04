@@ -1,0 +1,21 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",
+    "module": "commonjs",
+    "lib": ["ES2020"],
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "outDir": "./dist",
+    "rootDir": ".",
+    "baseUrl": ".",
+    "paths": {
+      "datamodels/*": ["test/test-project/app/datamodels/*"],
+      "versions/*": ["test/test-project/.moose/versions/*"]
+    },
+    "types": ["mocha", "chai", "node"]
+  },
+  "include": ["test/**/*"],
+  "exclude": ["node_modules"]
+}

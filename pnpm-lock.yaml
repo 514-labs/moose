@@ -166,6 +166,33 @@ importers:
         specifier: ^4.9.5
         version: 4.9.5
 
+  apps/framework-cli-e2e:
+    devDependencies:
+      "@clickhouse/client":
+        specifier: latest
+        version: 1.6.0
+      "@types/chai":
+        specifier: ^4.3.5
+        version: 4.3.20
+      "@types/mocha":
+        specifier: ^10.0.1
+        version: 10.0.8
+      "@types/node":
+        specifier: ^20.2.5
+        version: 20.14.13
+      chai:
+        specifier: ^4.3.7
+        version: 4.5.0
+      mocha:
+        specifier: ^10.2.0
+        version: 10.7.3
+      ts-node:
+        specifier: ^10.9.1
+        version: 10.9.2(@types/node@20.14.13)(typescript@5.4.5)
+      typescript:
+        specifier: ^5.1.3
+        version: 5.4.5
+
   apps/framework-docs:
     dependencies:
       "@514labs/design-system-base":
@@ -6587,6 +6614,25 @@ packages:
       supports-color:
         optional: true
 
+  debug@4.3.7:
+    resolution:
+      {
+        integrity: sha512-Er2nc/H7RrMXZBFCEim6TCmMk02Z8vLC2Rbi1KEBggpo0fS6l0S1nnapwmIi3yW/+GOJap1Krg4w0Hg80oCqgQ==,
+      }
+    engines: { node: ">=6.0" }
+    peerDependencies:
+      supports-color: "*"
+    peerDependenciesMeta:
+      supports-color:
+        optional: true
+
+  decamelize@4.0.0:
+    resolution:
+      {
+        integrity: sha512-9iE1PgSik9HeIIw2JO94IidnE3eBoQrFJ3w7sFuzSX4DpmZ3v5sZpUiV5Swcf6mQEF+Y0ru8Neo+p+nyh2J+hQ==,
+      }
+    engines: { node: ">=10" }
+
   decimal.js-light@2.5.1:
     resolution:
       {
@@ -6615,6 +6661,13 @@ packages:
     peerDependenciesMeta:
       babel-plugin-macros:
         optional: true
+
+  deep-eql@4.1.4:
+    resolution:
+      {
+        integrity: sha512-SUwdGfqdKOwxCPeVYjwSyRpJ7Z+fhpwIAtmCUdZIWZ/YP5R9WAsyuSgpLVDi9bjWoN2LXHNss/dk3urXtdQxGg==,
+      }
+    engines: { node: ">=6" }
 
   deep-equal@2.2.3:
     resolution:
@@ -9182,6 +9235,12 @@ packages:
         integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==,
       }
     hasBin: true
+
+  loupe@2.3.7:
+    resolution:
+      {
+        integrity: sha512-zSMINGVYkdpYSOBmLi0D1Uo7JU9nVdQKrHxC8eYlV+9YKK9WePqAlL7lSlorG/U2Fw1w0hTBmaa/jrQ3UbPHtA==,
+      }
 
   lru-cache@10.2.2:
     resolution:
@@ -12796,6 +12855,13 @@ packages:
       }
     engines: { node: ">= 14" }
     hasBin: true
+
+  yargs-parser@20.2.9:
+    resolution:
+      {
+        integrity: sha512-y11nGElTIV+CT3Zv9t7VKl+Q3hTQoT9a1Qzezhhl6Rp21gJ/IVTW7Z3y9EWXhuUBC2Shnf+DX0antecpAwSP8w==,
+      }
+    engines: { node: ">=10" }
 
   yargs-parser@21.1.1:
     resolution:
@@ -16689,6 +16755,8 @@ snapshots:
       is-array-buffer: 3.0.4
       is-shared-array-buffer: 1.0.3
 
+  assertion-error@1.1.0: {}
+
   ast-types-flow@0.0.8: {}
 
   astral-regex@2.0.0: {}
@@ -16804,6 +16872,8 @@ snapshots:
     dependencies:
       fill-range: 7.1.1
 
+  browser-stdout@1.3.1: {}
+
   browserslist@4.23.0:
     dependencies:
       caniuse-lite: 1.0.30001617
@@ -16863,6 +16933,16 @@ snapshots:
 
   ccount@2.0.1: {}
 
+  chai@4.5.0:
+    dependencies:
+      assertion-error: 1.1.0
+      check-error: 1.0.3
+      deep-eql: 4.1.4
+      get-func-name: 2.0.2
+      loupe: 2.3.7
+      pathval: 1.1.1
+      type-detect: 4.1.0
+
   chalk@2.3.0:
     dependencies:
       ansi-styles: 3.2.1
@@ -16898,6 +16978,10 @@ snapshots:
   character-reference-invalid@2.0.1: {}
 
   chardet@0.7.0: {}
+
+  check-error@1.0.3:
+    dependencies:
+      get-func-name: 2.0.2
 
   chokidar@3.6.0:
     dependencies:
@@ -16940,6 +17024,12 @@ snapshots:
     dependencies:
       arch: 2.2.0
       execa: 0.8.0
+
+  cliui@7.0.4:
+    dependencies:
+      string-width: 4.2.3
+      strip-ansi: 6.0.1
+      wrap-ansi: 7.0.0
 
   cliui@8.0.1:
     dependencies:
@@ -17275,6 +17365,14 @@ snapshots:
     dependencies:
       ms: 2.1.2
 
+  debug@4.3.7(supports-color@8.1.1):
+    dependencies:
+      ms: 2.1.3
+    optionalDependencies:
+      supports-color: 8.1.1
+
+  decamelize@4.0.0: {}
+
   decimal.js-light@2.5.1: {}
 
   decimal.js@10.4.3: {}
@@ -17284,6 +17382,10 @@ snapshots:
       character-entities: 2.0.2
 
   dedent@1.5.3: {}
+
+  deep-eql@4.1.4:
+    dependencies:
+      type-detect: 4.1.0
 
   deep-equal@2.2.3:
     dependencies:
@@ -18139,6 +18241,8 @@ snapshots:
       keyv: 4.5.4
       rimraf: 3.0.2
 
+  flat@5.0.2: {}
+
   flatted@3.3.1: {}
 
   flexsearch@0.7.43: {}
@@ -18198,6 +18302,8 @@ snapshots:
   get-caller-file@2.0.5: {}
 
   get-east-asian-width@1.2.0: {}
+
+  get-func-name@2.0.2: {}
 
   get-intrinsic@1.2.4:
     dependencies:
@@ -18512,6 +18618,8 @@ snapshots:
       property-information: 6.5.0
       space-separated-tokens: 2.0.2
 
+  he@1.2.0: {}
+
   hls.js@1.5.8: {}
 
   hoist-non-react-statics@3.3.2:
@@ -18715,6 +18823,8 @@ snapshots:
 
   is-path-inside@3.0.3: {}
 
+  is-plain-obj@2.1.0: {}
+
   is-plain-obj@3.0.0: {}
 
   is-plain-obj@4.1.0: {}
@@ -18761,6 +18871,8 @@ snapshots:
   is-typed-array@1.1.13:
     dependencies:
       which-typed-array: 1.1.15
+
+  is-unicode-supported@0.1.0: {}
 
   is-weakmap@2.0.2: {}
 
@@ -19381,6 +19493,11 @@ snapshots:
 
   lodash@4.17.21: {}
 
+  log-symbols@4.1.0:
+    dependencies:
+      chalk: 4.1.2
+      is-unicode-supported: 0.1.0
+
   log-update@6.0.0:
     dependencies:
       ansi-escapes: 6.2.1
@@ -19394,6 +19511,10 @@ snapshots:
   loose-envify@1.4.0:
     dependencies:
       js-tokens: 4.0.0
+
+  loupe@2.3.7:
+    dependencies:
+      get-func-name: 2.0.2
 
   lru-cache@10.2.2: {}
 
@@ -20276,6 +20397,29 @@ snapshots:
     dependencies:
       minimist: 1.2.8
 
+  mocha@10.7.3:
+    dependencies:
+      ansi-colors: 4.1.3
+      browser-stdout: 1.3.1
+      chokidar: 3.6.0
+      debug: 4.3.7(supports-color@8.1.1)
+      diff: 5.2.0
+      escape-string-regexp: 4.0.0
+      find-up: 5.0.0
+      glob: 8.1.0
+      he: 1.2.0
+      js-yaml: 4.1.0
+      log-symbols: 4.1.0
+      minimatch: 5.1.6
+      ms: 2.1.3
+      serialize-javascript: 6.0.2
+      strip-json-comments: 3.1.1
+      supports-color: 8.1.1
+      workerpool: 6.5.1
+      yargs: 16.2.0
+      yargs-parser: 20.2.9
+      yargs-unparser: 2.0.0
+
   mri@1.2.0: {}
 
   ms@2.1.2: {}
@@ -20671,6 +20815,8 @@ snapshots:
       minipass: 7.1.1
 
   path-type@4.0.0: {}
+
+  pathval@1.1.1: {}
 
   periscopic@3.1.0:
     dependencies:
@@ -21769,7 +21915,6 @@ snapshots:
       typescript: 5.4.5
       v8-compile-cache-lib: 3.0.1
       yn: 3.1.1
-    optional: true
 
   ts-node@10.9.2(@types/node@20.14.5)(typescript@5.4.5):
     dependencies:
@@ -21875,6 +22020,8 @@ snapshots:
       prelude-ls: 1.2.1
 
   type-detect@4.0.8: {}
+
+  type-detect@4.1.0: {}
 
   type-fest@0.20.2: {}
 
@@ -22289,6 +22436,8 @@ snapshots:
 
   word-wrap@1.2.5: {}
 
+  workerpool@6.5.1: {}
+
   wrap-ansi@6.2.0:
     dependencies:
       ansi-styles: 4.3.0
@@ -22338,7 +22487,26 @@ snapshots:
 
   yaml@2.4.2: {}
 
+  yargs-parser@20.2.9: {}
+
   yargs-parser@21.1.1: {}
+
+  yargs-unparser@2.0.0:
+    dependencies:
+      camelcase: 6.3.0
+      decamelize: 4.0.0
+      flat: 5.0.2
+      is-plain-obj: 2.1.0
+
+  yargs@16.2.0:
+    dependencies:
+      cliui: 7.0.4
+      escalade: 3.1.2
+      get-caller-file: 2.0.5
+      require-directory: 2.1.1
+      string-width: 4.2.3
+      y18n: 5.0.8
+      yargs-parser: 20.2.9
 
   yargs@17.7.2:
     dependencies:

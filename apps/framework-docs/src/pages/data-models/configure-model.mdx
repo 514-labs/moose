@@ -44,6 +44,12 @@ from moose_lib import DataModelConfig, IngestionConfig, IngestionFormat, Storage
 from dataclasses import dataclass
 from datetime import datetime
 
+example_config = DataModelConfig(
+    ingestion=IngestionConfig(format=IngestionFormat.JSON),
+    storage=StorageConfig(enabled=False, order_by_fields=["example_timestamp"])
+)
+
+@moose_data_model(user_activity_config)
 @dataclass
 class ExampleDataModel:
     example_timestamp: datetime.datetime
@@ -53,12 +59,6 @@ class ExampleDataModel:
     example_bool: bool
     example_string_array: list[str]
  
-example_config = DataModelConfig(
-    ingestion=IngestionConfig(format=IngestionFormat.JSON),
-    storage=StorageConfig(enabled=False, order_by_fields=["example_timestamp"])
-)
-
-moose_data_model(ExampleDataModel, user_activity_config)
 ```
 </Python>
 

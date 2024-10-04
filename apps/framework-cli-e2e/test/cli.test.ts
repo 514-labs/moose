@@ -68,7 +68,7 @@ describe("framework-cli", () => {
     expect(version).to.equal(expectedVersion);
   });
 
-  it("should init a project, install dependencies, run dev command, send a request, and stop it", async function () {
+  it("should init a project, install dependencies, run dev command, send a request", async function () {
     this.timeout(120_000); // 2 minutes
 
     if (fs.existsSync(TEST_PROJECT_DIR)) {
@@ -145,33 +145,27 @@ describe("framework-cli", () => {
 
     console.log("Server started, waiting before sending test request...");
 
-    await setTimeoutAsync(2000);
-
     console.log("Sending test request...");
     const eventId = randomUUID();
-    try {
-      const response = await fetch(
-        "http://localhost:4000/ingest/UserActivity",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            eventId: eventId,
-            timestamp: "2019-01-01 00:00:01",
-            userId: "123456",
-            activity: "click",
-          }),
-        },
-      );
 
-      if (response.ok) {
-        console.log("Test request sent successfully");
-      } else {
-        console.error("Response code:", response.status);
-        console.error(`Test request failed:`, await response.text());
-      }
-    } catch (error) {
-      console.error("Error sending test request:", error);
+    const response = await fetch("http://localhost:4000/ingest/UserActivity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        eventId: eventId,
+        timestamp: "2019-01-01 00:00:01",
+        userId: "123456",
+        activity: "Login",
+      }),
+    });
+
+    if (response.ok) {
+      console.log("Test request sent successfully");
+    } else {
+      console.error("Response code:", response.status);
+      const text = await response.text();
+      console.error(`Test request failed: ${text}`);
+      throw new Error(`${response.status}: ${text}`);
     }
 
     // Wait for data to be processed
@@ -207,6 +201,27 @@ describe("framework-cli", () => {
       throw error; // Re-throw the error to fail the test
     } finally {
       await client.close();
+    }
+
+    console.log("Sending consumption request...");
+    const consumptionResponse = await fetch(
+      "http://localhost:4000/consumption/dailyActiveUsers",
+    );
+
+    if (consumptionResponse.ok) {
+      console.log("Test request sent successfully");
+      let json = await consumptionResponse.json();
+      expect(json).to.deep.equal([
+        {
+          date: "2019-01-01",
+          dailyActiveUsers: "1",
+        },
+      ]);
+    } else {
+      console.error("Response code:", consumptionResponse.status);
+      const text = await consumptionResponse.text();
+      console.error(`Test request failed: ${text}`);
+      throw new Error(`${consumptionResponse.status}: ${text}`);
     }
   });
 });

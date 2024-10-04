@@ -308,12 +308,12 @@ async fn manage_leadership_lock(
             // We don't have the lock, try to acquire it
             if redis_client.attempt_lock("leadership").await? {
                 info!("Obtained leadership lock, performing leadership tasks");
-                // Call leadership_tasks immediately when the lock is first acquired
-                if let Err(e) = leadership_tasks(project.clone()).await {
-                    error!("Error executing leadership tasks: {}", e);
-                }
-                // Continue to spawn the task for periodic execution
-                tokio::spawn(leadership_tasks(project.clone()));
+                let project_clone = project.clone();
+                tokio::spawn(async move {
+                    if let Err(e) = leadership_tasks(project_clone).await {
+                        error!("Error executing leadership tasks: {}", e);
+                    }
+                });
             } else {
                 debug!("Failed to obtain leadership lock");
             }

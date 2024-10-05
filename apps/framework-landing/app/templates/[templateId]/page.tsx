@@ -19,7 +19,7 @@ import {
   Heading,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
-import { TrackCtaButton } from "../../trackable-components";
+import { TrackButton } from "@514labs/design-system-components/components";
 import { Suspense } from "react";
 import { TemplateImg } from "../../sections/home/TemplateImg";
 import React from "react";
@@ -71,7 +71,7 @@ export default function TemplatePage({
             {
               title: "Analytics services",
               label: "Backend",
-              items: ["MooseJS", "Event Data Models"],
+              items: ["Moose", "Event Data Models"],
             },
             {
               title: "Analytics dashboard",
@@ -139,23 +139,23 @@ export default function TemplatePage({
               <div className="flex flex-col gap-5">
                 <CTABar>
                   <Link href={template.ctas.docs.href}>
-                    <TrackCtaButton
+                    <TrackButton
                       name={template.ctas.docs.name}
                       subject={template.ctas.docs.subject}
                       targetUrl={template.ctas.docs.href}
                     >
                       {template.ctas.docs.label}
-                    </TrackCtaButton>
+                    </TrackButton>
                   </Link>
                   <Link href={template.ctas.github.href}>
-                    <TrackCtaButton
+                    <TrackButton
                       name={template.ctas.github.name}
                       subject={template.ctas.github.subject}
                       targetUrl={template.ctas.github.href}
                       variant="outline"
                     >
                       {template.ctas.github.label}
-                    </TrackCtaButton>
+                    </TrackButton>
                   </Link>
                 </CTABar>
                 {/* <TrackableCodeSnippet name={template.ctas.install.name} subject={template.ctas.install.subject}>{template.ctas.install.text}</TrackableCodeSnippet> */}

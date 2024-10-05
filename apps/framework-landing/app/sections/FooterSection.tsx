@@ -7,10 +7,8 @@ import {
 import { Text } from "@514labs/design-system-components/typography";
 
 import { cn } from "@514labs/design-system-components/utils";
-import {
-  ThemeToggle,
-  TrackLink,
-} from "@514labs/design-system-components/components";
+import { ThemeToggle } from "@514labs/design-system-components/components";
+import { TrackLink } from "@514labs/design-system-components/trackable-components";
 
 export const FooterSection = () => {
   return (

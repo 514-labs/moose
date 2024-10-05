@@ -20,7 +20,7 @@ import {
 } from "@514labs/design-system-components/typography";
 import React, { useEffect, useRef, useState } from "react";
 
-import { TrackableAccordionTrigger } from "../../trackable-components";
+import { TrackableAccordionTrigger } from "@514labs/design-system-components/components";
 import Diagram from "../../spline";
 import { useTheme } from "next-themes";
 

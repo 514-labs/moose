@@ -14,3 +14,4 @@ export * from "./ui/collapsible";
 export * from "./language-badge";
 export * from "./ui/select";
 export * from "./ui/sheet";
+export * from "./trackable-components";

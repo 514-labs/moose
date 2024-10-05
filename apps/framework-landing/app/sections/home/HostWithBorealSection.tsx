@@ -8,7 +8,7 @@ import {
   Heading,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
-import { TrackCtaButton } from "../../trackable-components";
+import { TrackButton } from "@514labs/design-system-components/components";
 import React from "react";
 
 export const SecondaryCTASection = () => {
@@ -52,14 +52,14 @@ export const SecondaryCTASection = () => {
                 <CTABar>
                   {content.ctas.map((cta, index) => (
                     <Link key={index} href={cta.href}>
-                      <TrackCtaButton
+                      <TrackButton
                         name={`Boreal CTA: ${content.title}`}
-                        subject={`${cta.label} - ${cta.variant}`}
+                        subject={cta.label}
                         targetUrl={cta.href}
                         variant={cta.variant as "default" | "outline"}
                       >
                         {cta.label}
-                      </TrackCtaButton>
+                      </TrackButton>
                     </Link>
                   ))}
                 </CTABar>

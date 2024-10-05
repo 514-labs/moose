@@ -1,5 +1,5 @@
 "use client";
-import { TrackCtaButton } from "./trackable-components";
+import { TrackButton } from "@514labs/design-system-components/components";
 import { cn } from "@514labs/design-system-components/utils";
 
 interface Props {
@@ -17,7 +17,7 @@ export function CopyButton({
   className,
 }: Props) {
   return (
-    <TrackCtaButton
+    <TrackButton
       variant="outline"
       name={name}
       className={cn("flex items-center gap-4", className)}
@@ -28,6 +28,6 @@ export function CopyButton({
     >
       {children}
       {/* <CopyIcon size={24} /> */}
-    </TrackCtaButton>
+    </TrackButton>
   );
 }

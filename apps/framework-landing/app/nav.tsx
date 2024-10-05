@@ -2,8 +2,11 @@ import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { cn } from "@514labs/design-system-components/utils";
 import { Text } from "@514labs/design-system-components/typography";
-import { Button, Logo } from "@514labs/design-system-components/components";
-import { TrackLink } from "./trackable-components";
+import {
+  Button,
+  Logo,
+  TrackLink,
+} from "@514labs/design-system-components/components";
 import { Menu, Slash, XIcon } from "lucide-react";
 import {
   Sheet,
@@ -181,7 +184,7 @@ export const Nav = () => {
       subject: "moose blog",
     },
     {
-      content: "Get Started",
+      content: "Get Moose",
       href: "https://docs.getmoose.dev",
       eventName: "nav-link",
       subject: "moose docs",

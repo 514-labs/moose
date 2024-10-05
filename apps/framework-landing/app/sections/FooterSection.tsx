@@ -7,8 +7,10 @@ import {
 import { Text } from "@514labs/design-system-components/typography";
 
 import { cn } from "@514labs/design-system-components/utils";
-import { ThemeToggle } from "@514labs/design-system-components/components";
-import { TrackLink } from "@514labs/design-system-components/trackable-components";
+import {
+  ThemeToggle,
+  TrackLink,
+} from "@514labs/design-system-components/components";
 
 export const FooterSection = () => {
   return (
@@ -33,7 +35,7 @@ export const FooterNavItem = ({
 }) => {
   return (
     <TrackLink
-      name="Footer Nav"
+      name="Footer"
       subject={item.name}
       href={item.href}
       className={cn("text-foreground flex flex-row justify-start", className)}

@@ -22363,6 +22363,7 @@ snapshots:
       webpack-sources: 3.2.3
     transitivePeerDependencies:
       - "@swc/core"
+      - "@swc/core"
       - esbuild
       - uglify-js
 

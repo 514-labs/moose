@@ -12,7 +12,7 @@ import {
 import { Heading, Text } from "@514labs/design-system-components/typography";
 import React from "react";
 
-import { TrackableAccordionTrigger } from "@514labs/design-system-components/components";
+import { TrackableAccordionTrigger } from "@514labs/design-system-components/trackable-components";
 
 const content = {
   title: "Purpose built for data focused applications",

@@ -8,7 +8,7 @@ import {
   Heading,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
-import { TrackButton } from "@514labs/design-system-components/components";
+import { TrackButton } from "@514labs/design-system-components/trackable-components";
 import React from "react";
 
 export const SecondaryCTASection = () => {

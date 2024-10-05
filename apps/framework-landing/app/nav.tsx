@@ -2,11 +2,6 @@ import { gsap } from "gsap";
 import { SplitText } from "gsap/SplitText";
 import { cn } from "@514labs/design-system-components/utils";
 import { Text } from "@514labs/design-system-components/typography";
-import {
-  Button,
-  Logo,
-  TrackLink,
-} from "@514labs/design-system-components/components";
 import { Menu, Slash, XIcon } from "lucide-react";
 import {
   Sheet,
@@ -14,8 +9,10 @@ import {
   SheetTrigger,
   SheetHeader,
   SheetClose,
+  Button,
+  Logo,
 } from "@514labs/design-system-components/components";
-
+import { TrackLink } from "@514labs/design-system-components/trackable-components";
 import Image from "next/image";
 
 gsap.registerPlugin(SplitText);

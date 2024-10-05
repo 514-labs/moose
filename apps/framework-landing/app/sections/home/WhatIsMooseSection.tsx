@@ -6,7 +6,7 @@ import {
 import { CTABar } from "../../page";
 import { Heading, Text } from "@514labs/design-system-components/typography";
 import Image from "next/image";
-import { TrackButton } from "@514labs/design-system-components/components";
+import { TrackButton } from "@514labs/design-system-components/trackable-components";
 import Link from "next/link";
 import React from "react";
 

@@ -11,7 +11,7 @@ import {
 import { CTABar } from "@514labs/design-system-components/components";
 import FooterSection from "../sections/FooterSection";
 import Link from "next/link";
-import { TrackButton } from "@514labs/design-system-components/components";
+import { TrackButton } from "@514labs/design-system-components/trackable-components";
 import { LooseMooseSection } from "../sections/home/LooseMooseSection";
 
 const content = {

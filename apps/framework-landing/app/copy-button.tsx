@@ -1,5 +1,5 @@
 "use client";
-import { TrackButton } from "@514labs/design-system-components/components";
+import { TrackButton } from "@514labs/design-system-components/trackable-components";
 import { cn } from "@514labs/design-system-components/utils";
 
 interface Props {

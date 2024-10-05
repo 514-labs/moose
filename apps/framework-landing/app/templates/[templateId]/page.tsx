@@ -19,7 +19,7 @@ import {
   Heading,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
-import { TrackButton } from "@514labs/design-system-components/components";
+import { TrackButton } from "@514labs/design-system-components/trackable-components";
 import { Suspense } from "react";
 import { TemplateImg } from "../../sections/home/TemplateImg";
 import React from "react";

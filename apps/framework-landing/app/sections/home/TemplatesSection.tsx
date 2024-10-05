@@ -13,7 +13,7 @@ import {
   HeadingLevel,
   Text,
 } from "@514labs/design-system-components/typography";
-import { TrackButton } from "@514labs/design-system-components/components";
+import { TrackButton } from "@514labs/design-system-components/trackable-components";
 import { TemplateImg } from "./TemplateImg";
 import React from "react";
 

@@ -1,4 +1,4 @@
-import { TrackButton } from "@514labs/design-system-components/components";
+import { TrackButton } from "@514labs/design-system-components/trackable-components";
 import React from "react";
 import Link from "next/link";
 import { cn } from "@514labs/design-system-components/utils";

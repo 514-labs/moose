@@ -9,7 +9,6 @@ import {
 } from "lucide-react";
 import {
   Section,
-  FullWidthContentContainer,
   HalfWidthContentContainer,
   Grid,
 } from "@514labs/design-system-components/components/containers";

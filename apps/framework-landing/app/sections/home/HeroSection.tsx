@@ -1,21 +1,6 @@
-import { CTABar } from "../../page";
-import {
-  Section,
-  FullWidthContentContainer,
-  HalfWidthContentContainer,
-  Grid,
-} from "@514labs/design-system-components/components/containers";
 import { TrackButton } from "@514labs/design-system-components/components";
-import React, { Fragment } from "react";
+import React from "react";
 import Link from "next/link";
-import {
-  HardDriveDownload,
-  RectangleEllipsis,
-  Table,
-  Code,
-  Box,
-  HardDriveUpload,
-} from "lucide-react";
 import { cn } from "@514labs/design-system-components/utils";
 
 export const HeroSection = ({ className }: { className?: string }) => {

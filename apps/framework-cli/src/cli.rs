@@ -8,6 +8,8 @@ mod routines;
 pub mod settings;
 mod watcher;
 use super::metrics::Metrics;
+use crate::cli::routines::block::create_block_file;
+use crate::cli::routines::consumption::create_consumption_file;
 use clap::Parser;
 use commands::{
     BlockCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
@@ -16,6 +18,7 @@ use commands::{
 use config::ConfigError;
 use display::with_spinner_async;
 use home::home_dir;
+use itertools::Either;
 use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
@@ -31,9 +34,6 @@ use std::cmp::Ordering;
 use std::path::Path;
 use std::process::exit;
 use std::sync::Arc;
-
-use crate::cli::routines::block::create_block_file;
-use crate::cli::routines::consumption::create_consumption_file;
 
 use crate::cli::routines::dev::copy_old_schema;
 use crate::cli::routines::initialize::initialize_project;
@@ -446,8 +446,8 @@ async fn top_command_handler(
                 with_spinner_async(
                     "Generating SDK",
                     async {
-                        let framework_object_versions =
-                            load_framework_objects(&project).await.map_err(|e| {
+                        let framework_objects = if settings.features.core_v2 {
+                            let objects = PrimitiveMap::load(&project).await.map_err(|e| {
                                 RoutineFailure::error(Message {
                                     action: "Generate".to_string(),
                                     details: format!(
@@ -456,11 +456,24 @@ async fn top_command_handler(
                                     ),
                                 })
                             })?;
+                            Either::Right(objects)
+                        } else {
+                            let objects = load_framework_objects(&project).await.map_err(|e| {
+                                RoutineFailure::error(Message {
+                                    action: "Generate".to_string(),
+                                    details: format!(
+                                        "Failed to load initial project state: {:?}",
+                                        e
+                                    ),
+                                })
+                            })?;
+                            Either::Left(objects)
+                        };
 
                         generate_sdk(
                             language,
                             &project,
-                            &framework_object_versions,
+                            framework_objects.as_ref(),
                             destination,
                             packaged,
                         )

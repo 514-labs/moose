@@ -1605,6 +1605,12 @@ packages:
         integrity: sha512-U3vDp+PDnNVEv6kia+Mq5ygnlMZzsYU+3TX+0da3XvL926jzYLMBlIvFUxe2+/5k47ySvnINRC/2QxVK7PC2/A==,
       }
 
+  "@clickhouse/client-common@1.6.0":
+    resolution:
+      {
+        integrity: sha512-DPdfPUIrBumWff8JdE2oLqnOIN1DwxXt48juV+tB6zaonufQR1QImtUGEhIFIqRWJU7zErtQ1eKfkwjLY0MYDg==,
+      }
+
   "@clickhouse/client-web@1.1.0":
     resolution:
       {
@@ -1621,6 +1627,13 @@ packages:
     resolution:
       {
         integrity: sha512-5ywbK3oJJ8HIMzSZ6qJAhr6SyjmaBLy9fnVrLdacnZpFhD8j2RMKyM9yu3kAOzCF2HhFbdTPM/+KVWTpKjJlpA==,
+      }
+    engines: { node: ">=16" }
+
+  "@clickhouse/client@1.6.0":
+    resolution:
+      {
+        integrity: sha512-cjuOL5O11Y/axYIvSaNgZjZqD53BBbScrG0DCgZ7XBCz5KWlA5lIG3fP6A4jME277q8ZUYAQxUOlJjeF18872A==,
       }
     engines: { node: ">=16" }
 
@@ -4562,6 +4575,12 @@ packages:
         integrity: sha512-WXCyOcRtH37HAUkpXhUduaxdm82b4GSlyTqajXviN4EfiuPgNYR109xMCKvpl6zPIpua0DGlMEDCq+g8EdoheQ==,
       }
 
+  "@types/chai@4.3.20":
+    resolution:
+      {
+        integrity: sha512-/pC9HAB5I/xMlc5FP77qjCnI16ChlJfW0tGa0IUcFn38VJrTV6DeZ60NU5KZBtaOZqjdpwTWohz5HU1RrhiYxQ==,
+      }
+
   "@types/d3-array@3.2.1":
     resolution:
       {
@@ -4878,6 +4897,12 @@ packages:
     resolution:
       {
         integrity: sha512-+OWZQfAYyio6YkJb3HLxDrvnx6SWWDbC0zVPfBRzUk0/nqoDyf6dNxQi3eArPe8rJ473nobTMQ/8Zk+LxJ+Yuw==,
+      }
+
+  "@types/mocha@10.0.8":
+    resolution:
+      {
+        integrity: sha512-HfMcUmy9hTMJh66VNcmeC9iVErIZJli2bszuXc6julh5YGuRb/W5OnkHjwLNYdFlMis0sY3If5SEAp+PktdJjw==,
       }
 
   "@types/ms@0.7.34":
@@ -5604,6 +5629,12 @@ packages:
       }
     engines: { node: ">= 0.4" }
 
+  assertion-error@1.1.0:
+    resolution:
+      {
+        integrity: sha512-jgsaNduz+ndvGyFt3uSuWqvy4lCnIJiovtouQN5JZHOKCS2QuhEdbcQHFhVksz2N2U9hXJo8odG7ETyWlEeuDw==,
+      }
+
   ast-types-flow@0.0.8:
     resolution:
       {
@@ -5775,6 +5806,12 @@ packages:
       }
     engines: { node: ">=8" }
 
+  browser-stdout@1.3.1:
+    resolution:
+      {
+        integrity: sha512-qhAVI1+Av2X7qelOfAIYwXONood6XlZE/fXaBSmW/T5SzLAmCgzi+eiWE7fUvbHaeNBQH13UftjpXxsfLkMpgw==,
+      }
+
   browserslist@4.23.0:
     resolution:
       {
@@ -5892,6 +5929,13 @@ packages:
         integrity: sha512-eyrF0jiFpY+3drT6383f1qhkbGsLSifNAjA61IUjZjmLCWjItY6LB9ft9YhoDgwfmclB2zhu51Lc7+95b8NRAg==,
       }
 
+  chai@4.5.0:
+    resolution:
+      {
+        integrity: sha512-RITGBfijLkBddZvnn8jdqoTypxvqbOLYQkGGxXzeFjVHvudaPw0HNFD9x928/eUwYWd2dPCugVqspGALTZZQKw==,
+      }
+    engines: { node: ">=4" }
+
   chalk@2.3.0:
     resolution:
       {
@@ -5962,6 +6006,12 @@ packages:
     resolution:
       {
         integrity: sha512-mT8iDcrh03qDGRRmoA2hmBJnxpllMR+0/0qlzjqZES6NdiWDcZkCNAk4rPFZ9Q85r27unkiNNg8ZOiwZXBHwcA==,
+      }
+
+  check-error@1.0.3:
+    resolution:
+      {
+        integrity: sha512-iKEoDYaRmd1mxM90a2OEfWhjsjPpYPuQ+lMYsoxB126+t8fw7ySEO48nmDg5COTjxDI65/Y2OWpeEHk3ZOe8zg==,
       }
 
   chokidar@3.6.0:
@@ -6037,6 +6087,12 @@ packages:
         integrity: sha512-16KrBOV7bHmHdxcQiCvfUFYVFyEah4FI8vYT1Fr7CGSA4G+xBWMEfUEQJS1hxeHGtI9ju1Bzs9uXSbj5HZKArw==,
       }
     engines: { node: ">=4" }
+
+  cliui@7.0.4:
+    resolution:
+      {
+        integrity: sha512-OcRE68cOsVMXp1Yvonl/fzkQOyjLSu/8bhPDfQt0e0/Eb283TKP20Fs2MqoPsr9SwA595rRCA+QMzYc9nBP+JQ==,
+      }
 
   cliui@8.0.1:
     resolution:
@@ -7553,6 +7609,13 @@ packages:
       }
     engines: { node: ^10.12.0 || >=12.0.0 }
 
+  flat@5.0.2:
+    resolution:
+      {
+        integrity: sha512-b6suED+5/3rTpUBdG1gupIl8MPFCAMA0QXwmljLhvCUKcUvdE4gWky9zpuGCcXHOsz4J9wPGNWq6OKpmIzz3hQ==,
+      }
+    hasBin: true
+
   flatted@3.3.1:
     resolution:
       {
@@ -7676,6 +7739,12 @@ packages:
         integrity: sha512-2nk+7SIVb14QrgXFHcm84tD4bKQz0RxPuMT8Ag5KPOq7J5fEmAg0UbXdTOSHqNuHSU28k55qnceesxXRZGzKWA==,
       }
     engines: { node: ">=18" }
+
+  get-func-name@2.0.2:
+    resolution:
+      {
+        integrity: sha512-8vXOvuE167CtIc3OyItco7N/dpRtBbYOsPsXCz7X/PMnlGjYjSGuZJgM1Y7mmew7BKf9BqvLX2tnOVy1BBUsxQ==,
+      }
 
   get-intrinsic@1.2.4:
     resolution:
@@ -8033,6 +8102,13 @@ packages:
       {
         integrity: sha512-dMOtzCEd3ABUeSIISmrETiKuyydk1w0pa+gE/uormcTpSYuaNJPbX1NU3JLyscSLjwAQM8bWMhhIlnCqnRvDTw==,
       }
+
+  he@1.2.0:
+    resolution:
+      {
+        integrity: sha512-F/1DnUGPopORZi0ni+CvrCgHQ5FyEAHRLSApuYWMmrbSwoN2Mn/7k+Gl38gJnR7yyDZk6WLXwiGod1JOWNDKGw==,
+      }
+    hasBin: true
 
   hls.js@1.5.8:
     resolution:
@@ -8455,6 +8531,13 @@ packages:
       }
     engines: { node: ">=8" }
 
+  is-plain-obj@2.1.0:
+    resolution:
+      {
+        integrity: sha512-YWnfyRwxL/+SsrWYfOpUtz5b3YD+nyfkHvjbcanzk8zgyO4ASD67uVMRt8k5bM4lLMDnXfriRhOpemw+NfT1eA==,
+      }
+    engines: { node: ">=8" }
+
   is-plain-obj@3.0.0:
     resolution:
       {
@@ -8555,6 +8638,13 @@ packages:
         integrity: sha512-uZ25/bUAlUY5fR4OKT4rZQEBrzQWYV9ZJYGGsUmEJ6thodVJ1HX64ePQ6Z0qPWP+m+Uq6e9UugrE38jeYsDSMw==,
       }
     engines: { node: ">= 0.4" }
+
+  is-unicode-supported@0.1.0:
+    resolution:
+      {
+        integrity: sha512-knxG2q4UC3u8stRGyAVJCOdxFmv5DZiRcdlIaAQXAbSfJya+OhopNotLQrstBhququ4ZpuKbDc/8S6mgXgPFPw==,
+      }
+    engines: { node: ">=10" }
 
   is-weakmap@2.0.2:
     resolution:
@@ -9215,6 +9305,13 @@ packages:
       {
         integrity: sha512-v2kDEe57lecTulaDIuNTPy3Ry4gLGJ6Z1O3vE1krgXZNrsQ+LFTGHVxVjcXPs17LhbZVGedAJv8XZ1tvj5FvSg==,
       }
+
+  log-symbols@4.1.0:
+    resolution:
+      {
+        integrity: sha512-8XPvpAA8uyhfteu8pIvQxpJZ7SYYdpUivZpGy6sFsBuKRY/7rQGavedeB8aK+Zkyq6upMFVL/9AW6vOYzfRyLg==,
+      }
+    engines: { node: ">=10" }
 
   log-update@6.0.0:
     resolution:
@@ -10038,6 +10135,14 @@ packages:
       }
     hasBin: true
 
+  mocha@10.7.3:
+    resolution:
+      {
+        integrity: sha512-uQWxAu44wwiACGqjbPYmjo7Lg8sFrS3dQe7PP2FQI+woptP4vZXSMcfMyFL/e1yFEeEpV4RtyTpZROOKmxis+A==,
+      }
+    engines: { node: ">= 14.0.0" }
+    hasBin: true
+
   mri@1.2.0:
     resolution:
       {
@@ -10602,6 +10707,12 @@ packages:
         integrity: sha512-gDKb8aZMDeD/tZWs9P6+q0J9Mwkdl6xMV8TjnGP3qJVJ06bdMgkbBlLU8IdfOsIsFz2BW1rNVT3XuNEl8zPAvw==,
       }
     engines: { node: ">=8" }
+
+  pathval@1.1.1:
+    resolution:
+      {
+        integrity: sha512-Dp6zGqpTdETdR63lehJYPeIOqpiNBNtc7BpWSLrOje7UaIsE5aY92r/AunQA7rsXvet3lrJ3JnZX29UPTKXyKQ==,
+      }
 
   periscopic@3.1.0:
     resolution:
@@ -12192,6 +12303,13 @@ packages:
       }
     engines: { node: ">=4" }
 
+  type-detect@4.1.0:
+    resolution:
+      {
+        integrity: sha512-Acylog8/luQ8L7il+geoSxhEkazvkslg7PSNKOX59mbB9cOveP5aq9h74Y7YU8yDpJwetzQQrfIwtf4Wp4LKcw==,
+      }
+    engines: { node: ">=4" }
+
   type-fest@0.20.2:
     resolution:
       {
@@ -12747,6 +12865,12 @@ packages:
       }
     engines: { node: ">=0.10.0" }
 
+  workerpool@6.5.1:
+    resolution:
+      {
+        integrity: sha512-Fs4dNYcsdpYSAfVxhnl1L5zTksjvOJxtC5hzMNl+1t9B8hTJTdKDyZ5ju7ztgPy+ft9tBFXoOlDNiOT9WUXZlA==,
+      }
+
   wrap-ansi@6.2.0:
     resolution:
       {
@@ -12869,6 +12993,20 @@ packages:
         integrity: sha512-tVpsJW7DdjecAiFpbIB1e3qxIQsE6NoPc5/eTdrbbIC4h0LVsWhnoa3g+m2HclBIujHzsxZ4VJVA+GUuc2/LBw==,
       }
     engines: { node: ">=12" }
+
+  yargs-unparser@2.0.0:
+    resolution:
+      {
+        integrity: sha512-7pRTIA9Qc1caZ0bZ6RYRGbHJthJWuakf+WmHK0rVeLkNrrGhfoabBNdue6kdINI6r4if7ocq9aD/n7xwKOdzOA==,
+      }
+    engines: { node: ">=10" }
+
+  yargs@16.2.0:
+    resolution:
+      {
+        integrity: sha512-D1mvvtDG0L5ft/jGWkLpG1+m0eQxOfaBvTNELraWj22wSVUMWxZUvYgJYcKh6jGGIkJFhH4IZPQhR4TKpc8mBw==,
+      }
+    engines: { node: ">=10" }
 
   yargs@17.7.2:
     resolution:
@@ -13685,6 +13823,8 @@ snapshots:
 
   "@clickhouse/client-common@1.5.0": {}
 
+  "@clickhouse/client-common@1.6.0": {}
+
   "@clickhouse/client-web@1.1.0":
     dependencies:
       "@clickhouse/client-common": 1.1.0
@@ -13696,6 +13836,10 @@ snapshots:
   "@clickhouse/client@0.3.1":
     dependencies:
       "@clickhouse/client-common": 0.3.1
+
+  "@clickhouse/client@1.6.0":
+    dependencies:
+      "@clickhouse/client-common": 1.6.0
 
   "@cspotcode/source-map-support@0.8.1":
     dependencies:
@@ -15940,6 +16084,8 @@ snapshots:
     dependencies:
       "@babel/types": 7.24.5
 
+  "@types/chai@4.3.20": {}
+
   "@types/d3-array@3.2.1": {}
 
   "@types/d3-axis@3.0.6":
@@ -16131,6 +16277,8 @@ snapshots:
       "@types/unist": 3.0.2
 
   "@types/mdx@2.0.13": {}
+
+  "@types/mocha@10.0.8": {}
 
   "@types/ms@0.7.34": {}
 
@@ -22362,7 +22510,6 @@ snapshots:
       watchpack: 2.4.1
       webpack-sources: 3.2.3
     transitivePeerDependencies:
-      - "@swc/core"
       - "@swc/core"
       - esbuild
       - uglify-js

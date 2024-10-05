@@ -33,7 +33,7 @@ export const FooterNavItem = ({
 }) => {
   return (
     <TrackLink
-      name="Footer Nav"
+      name="Footer"
       subject={item.name}
       href={item.href}
       className={cn("text-foreground flex flex-row justify-start", className)}

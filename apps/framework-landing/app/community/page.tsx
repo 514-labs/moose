@@ -11,7 +11,7 @@ import {
 import { CTABar } from "@514labs/design-system-components/components";
 import FooterSection from "../sections/FooterSection";
 import Link from "next/link";
-import { TrackCtaButton } from "../trackable-components";
+import { TrackButton } from "@514labs/design-system-components/trackable-components";
 import { LooseMooseSection } from "../sections/home/LooseMooseSection";
 
 const content = {
@@ -97,13 +97,13 @@ export default function Community() {
               <Text>{community.description}</Text>
               <CTABar>
                 <Link href={community.href}>
-                  <TrackCtaButton
+                  <TrackButton
                     name={community.title} // Add any necessary props for tracking
                     subject="Join Community" // Add any necessary props for tracking
                     variant={"outline"}
                   >
                     Join
-                  </TrackCtaButton>
+                  </TrackButton>
                 </Link>
               </CTABar>
             </HalfWidthContentContainer>

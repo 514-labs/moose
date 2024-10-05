@@ -23,6 +23,7 @@
   "stream-processing": "Stream Processing",
   "db-processing": "Database Processing",
   "consumption-apis": "Consuming Data",
+  "cron": "Running Scheduled Tasks",
   "metrics-console": "Monitoring Performance",
   "--Deploy--": {
     "type": "separator",

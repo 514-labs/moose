@@ -25,17 +25,6 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://www.moosejs.com"),
 };
 
-const default_navigation = [
-  { name: "Host with Boreal", href: "https://boreal.cloud" },
-  { name: "Docs", href: "https://docs.getmoose.dev" },
-  { name: "GitHub", href: "https://github.com/514-labs/moose" },
-  {
-    name: "Slack",
-    href: "https://join.slack.com/t/moose-community/shared_invite/zt-2345678901-23456789012345678901234567890123",
-  },
-  { name: "Blog", href: "https://www.fiveonefour.com/blog" },
-];
-
 export default async function RootLayout({
   children,
 }: Readonly<{
@@ -67,7 +56,7 @@ export default async function RootLayout({
           enableSystem
           disableTransitionOnChange
         >
-          <Nav property="Moose" navigation={default_navigation} />
+          <Nav />
           {children}
         </ThemeProvider>
       </body>

@@ -1,12 +1,12 @@
 import React from "react";
 import { useLanguage } from "./LanguageContext";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@514labs/design-system-components/components";
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from "@514labs/design-system-components/components";
 import {
   Heading,
   HeadingLevel,

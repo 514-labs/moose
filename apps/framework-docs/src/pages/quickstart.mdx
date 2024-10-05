@@ -1,5 +1,5 @@
 import { Tabs, Steps, Card } from "nextra/components";
-import { Callout, CTACard, CTACards } from "../components";
+import { Callout, CTACard, CTACards, ToggleBlock } from "../components";
 import { RectangleEllipsis, Square } from "lucide-react";
 import { LanguageSwitcher } from "../components/language-switcher";
 
@@ -8,20 +8,16 @@ import { LanguageSwitcher } from "../components/language-switcher";
 <LanguageSwitcher />
 
 <Callout type="info" title="Prerequisites:">
-  <ul>
-    <li>[Git](https://git-scm.com/)</li>
-    <TypeScript>
-      <li>[NodeJS](https://nodejs.org/en/)</li>
-    </TypeScript>
-    <Python>
-      <li>[Python version 3.12+](https://www.python.org/downloads/)</li>
-    </Python>
-    <li>[Docker](https://www.docker.com/)</li>
-    <li>
-      macOS or Linux (Windows is not supported at this time, but may work using
-      WSL Windows Subsystem for Linux){" "}
-    </li>
-  </ul>
+  - [Git](https://git-scm.com/)
+  <TypeScript>
+    - [Node](https://nodejs.org/en/)
+  </TypeScript>
+  <Python>
+    - [Python version 3.12+](https://www.python.org/downloads/)
+  </Python>
+  - [Docker](https://www.docker.com/)
+  - macOS or Linux (Windows is not supported at this time, but may work using
+    WSL Windows Subsystem for Linux)
 </Callout>
 
 Check if these dependencies are installed:
@@ -38,24 +34,10 @@ git --version && python3 --version && docker --version
 ```
 </Python>
 
-## Initialize Moose Project
+### First, initialize your Moose project
 
 <Steps>
 <Python>
-### Create and Activate a Python Virtual Environment
-Navigate to where you want to create your project and run the following command to create a new Python virtual environment:
-
-```bash filename="Terminal" copy
-python3 -m venv venv
-```
-<Callout type="info" title="Virtual Environment Best Practice">
-  Create a new Python virtual environment for each project to avoid conflicts.
-</Callout>
-Activate the virtual environment by running the following command:
-```bash filename="Terminal" copy
-source venv/bin/activate
-```
-
 ### Install the Moose CLI
 
 Moose is installed as a Python package, so you can install it using pip:
@@ -87,7 +69,7 @@ npx create-moose-app@latest my-moose-app ts
 This will automatically create a new project folder and initialize a skeleton Moose app with the entire project structure you need to get started.
 
 
-### Navigate to your Project Directory and Install Project Dependencies
+### Navigate to your project directory and install project dependencies
 
 <TypeScript>
 ```bash filename="Terminal" copy
@@ -101,7 +83,7 @@ cd my-moose-app && pip install -e .
 ```
 </Python>
 
-### Start Local Dev Server
+### Spin up your Moose local development server
 
 <Callout type="warning" title="Make sure Docker is running.">
   Run `docker info` to check.
@@ -121,16 +103,16 @@ moose-cli dev
 </Python>
 
 <Callout type="info" title="What's happening?">
-  The local dev server dynamically configures and updates the infrastructure for
+  The dev server dynamically configures and updates the infrastructure for
   your application, including a web server for data ingestion and consumption, a
   Redpanda platform for data buffering, and a Clickhouse database for data
   storage and querying.
 </Callout>
 
-### Inspect Infrastructure
-
-Check that the infrastructure is setup according to the default starter code in your project by running:
-
+### Check that the infrastructure is set up correctly
+<Callout type="warning" title="Open a new terminal session">
+  Make sure to `cd` into your Moose project directory before running the command.
+</Callout>
 <TypeScript>
 ```bash filename="Terminal" copy 
 npx moose-cli ls 
@@ -143,20 +125,16 @@ moose-cli ls
 ```
 </Python>
 
-You should see the following table in your terminal:
+You should see the following ouput, which shows the ingestion points and tables that have been created for your project: 
 
 ![moose-ls](/moose-ls.png)
 
 </Steps>
 
-## View and Test Your Data Models
+### Next, view and test your data models
 
 <Steps>
 ### Open Project in IDE
-
-```bash filename="Terminal" copy
-code .
-```
 
 <Callout type="info" title="VSCode Users: Install Recommended Extensions">
   When you open your project, you'll be prompted to install the
@@ -168,14 +146,12 @@ code .
 </Callout>
 
 <TypeScript>
-### Open `models.ts` and Inspect the Data Models
+#### Open `models.ts` and inspect the data models (located in `/app/datamodels`)
 </TypeScript>
 
 <Python>
-### Open `models.py` and Inspect the Data Models
+#### Open `models.py` and inspect the data models (located in `/app/datamodels`)
 </Python>
-
-The file is located inside the `/app/datamodels` directory.
 
 <TypeScript>
 ```ts filename="/app/datamodels/models.ts" copy
@@ -228,9 +204,11 @@ The file defines `UserActivity` and `ParsedActivity` data models, which structur
 </Steps>
 
 
-## Ingest Data
+### Finally, ingest data into your application infrastructure
 
-Let's send some sample data to the `UserActivity` data model via the `/ingest/UserActivity/0.0` endpoint that Moose created for us. Run the following command:
+<Steps>
+
+### Send sample `UserActivity` data to the `/ingest/UserActivity` API endpoint on your local dev server (running on `localhost:4000`):
 
 <Tabs items={['curl', 'javascript', 'python']}>
   <Tabs.Tab>
@@ -243,6 +221,7 @@ Let's send some sample data to the `UserActivity` data model via the `/ingest/Us
 
   </Tabs.Tab>
   <Tabs.Tab>
+  If you have a Javascript enviroment, you can run the following code in a script file or in the console:
   ```javascript filename="Your Javascript Code" copy
   fetch('http://localhost:4000/ingest/UserActivity', {
     method: 'POST',
@@ -259,7 +238,7 @@ Let's send some sample data to the `UserActivity` data model via the `/ingest/Us
 ```
   </Tabs.Tab>
   <Tabs.Tab>
-  
+  If you have a Python enviroment, you can run the following code in a script file or in the console:
   ```python filename="Your Python Code" copy
   import requests
 
@@ -274,28 +253,23 @@ requests.post('http://localhost:4000/ingest/UserActivity', json={
 </Tabs.Tab>
 </Tabs>
 
-You should see a bunch of messages in the CLI confirming that Moose received the data. Let's double-check that the new data landed in our `UserActivity_0_0` table in our database.
+### Check for confirmation messages in the CLI that the API endpoint received the data
 
-### Query Data
+```txt filename="Terminal"
+POST /ingest/UserActivity/0.0
+SUCCESS /ingest/UserActivity/0.0
+```
 
-Follow the steps below to get started with querying your data using either the SQLTools VSCode extension or your preferred database explorer tool.
-
-<Tabs items={['Using the SQLTools VSCode Extension', 'Using Your Own Database Explorer']}>
+### Navigate to your preferred database explorer and connect to the Clickhouse database:
+<Tabs items={['Using the SQLTools VSCode Extension', 'Using Another Database Explorer']}>
   <Tabs.Tab>
-    #### Using the SQLTools VSCode Extension:
-    Click the SQLTools database icon in your extensions tab. You should see the Clickhouse icon followed by the connection details for the database running on your local dev server: `panda@localhost:18123/local`.
-
-
+    - Click the SQLTools database icon in your extensions tab. 
+    - You should see the Clickhouse icon followed by the connection details for the database running on your local dev server: `panda@localhost:18123/local`.
     ![SQL Tools Setup](/sqltools.png)
-
-    To create and run a new query, click the `New SQL File` icon.
-
+    - To create and run a new query, click the `New SQL File` icon.
   </Tabs.Tab>
 <Tabs.Tab>
-  #### Using a Database Explorer:
-  The following steps will guide you through configuring your preferred database explorer tool, such as DBeaver or DataGrip, to connect to the Clickhouse database instance that Moose will spin up for you on your local dev server.
-
-- Open your database explorer and navigate to the section for adding a new database connection.
+- Open your database explorer (e.g. DBeaver, DataGrip, etc.) and navigate to the section for adding a new database connection.
 - Enter the connection details as follows:
 
 ```text filename="moose.project.toml" copy
@@ -317,17 +291,19 @@ Follow the steps below to get started with querying your data using either the S
 </Tabs.Tab>
 </Tabs>
 
-Execute the following query:
+### Query your database to confirm the data landed
 
+Navigate to your preferred database explorer tool and run the following query:
 ```sql filename="DB Explorer" copy
-SELECT * FROM local.UserActivity
+SELECT * FROM local.UserActivity_0_0
 ```
-
 You should see the data you ingested in the `UserActivity` table.
+</Steps>
 
-## Next Steps
-
-Congrats! You've successfully set up a Moose project, ingested data, and confirmed that it landed in your database. You're now ready to dive deeper and explore all the exciting capabilities that Moose has to offer. Here are some suggested next steps:
+### Next Steps
+<Callout type="success" title="Congratulations!">
+  You've successfully set up a Moose project, ingested data, and confirmed that it landed in your database. You're now ready to dive deeper and explore all the exciting capabilities that Moose has to offer. Here are some suggested next steps:
+</Callout>
 
 #### Learn Other Moose Primitives
 

@@ -6,7 +6,7 @@ import {
 import { CTABar } from "../../page";
 import { Heading, Text } from "@514labs/design-system-components/typography";
 import Image from "next/image";
-import { TrackCtaButton } from "../../trackable-components";
+import { TrackButton } from "@514labs/design-system-components/trackable-components";
 import Link from "next/link";
 import React from "react";
 
@@ -31,9 +31,9 @@ export const WhatIsMooseSection = () => {
             <Text> {content.description} </Text>
             <Link href={content.cta.href}>
               <CTABar>
-                <TrackCtaButton name="How it works" subject={content.cta.label}>
+                <TrackButton name="How it works" subject={content.cta.label}>
                   {content.cta.label}
-                </TrackCtaButton>
+                </TrackButton>
               </CTABar>
             </Link>
           </HalfWidthContentContainer>

@@ -1,23 +1,14 @@
 import { Callout } from "../components/callout";
 
 # Running Scheduled Tasks
-<<<<<<< HEAD
 Moose provides a mechanism to schedule and execute arbitrary scripts or make HTTP `GET` calls at specified intervals via cron jobs. These jobs are useful for automating recurring tasks, for example:
-=======
-
-Cron jobs in Moose provide a mechanism to schedule and execute arbitrary scripts or make HTTP `GET` calls at specified intervals. These jobs are defined within the `moose.project.toml` configuration file. Moose cron jobs are useful for automating recurring tasks, for example:
->>>>>>> cea168b8 (docs & landing)
 - Extracting batched data from an external data source on a schedule
 - Periodically calling an HTTP API to check for updates
 - Cleaning up old data on a schedule
 - Generating reports at a scheduled time each day
 - Any other recurring task you can imagine
 
-<<<<<<< HEAD
 ### Supported Task Types
-=======
-## Supported Task Types
->>>>>>> cea168b8 (docs & landing)
 - **Script Execution**: Run arbitrary scripts written in Node.js (TypeScript supported), JavaScript, or Python.
 - **HTTP Requests**: Execute scheduled HTTP `GET` requests to specified endpoints.
 
@@ -25,31 +16,20 @@ Cron jobs in Moose provide a mechanism to schedule and execute arbitrary scripts
 Cron jobs are scheduled using an extended cron format that includes seconds. The cron expression consists of seven fields: **seconds**, **minutes**, **hours**, **day of month**, **month**, **day of week**, and optionally **year**. Each field can specify exact values, ranges, or wildcards to define the schedule. 
 
 <Callout type="info" title="Test Your Cron Spec" >
-<<<<<<< HEAD
 You can test your cron spec using this [online tool](https://www.freeformatter.com/cron-expression-generator-quartz.html).
 </Callout>
 
 ## Configuration
 Cron jobs are defined within the `moose.project.toml` configuration file, under the `[cron_jobs]` array. Each job entry should include:
-=======
-You can test your cron spec using the [crontab guru](https://crontab.guru/) website.
-</Callout>
-
-## Configuration
-Cron jobs are defined in the `[cron_jobs]` array within the configuration file. Each job entry should include:
->>>>>>> cea168b8 (docs & landing)
 
 - `job_id`: Unique identifier for the job.
 - `cron_spec`: Cron expression specifying the execution schedule.
 - `script_path` or `url`: Specifies the path to the arbitrary script file (TypeScript, JavaScript, or Python) or the URL of the HTTP endpoint.
 
-<<<<<<< HEAD
 <Callout type="warning" title="Job ID Must Be Unique" >
 Each job ID must be unique within the project. Moose will not allow duplicate job IDs.
 </Callout>
 
-=======
->>>>>>> cea168b8 (docs & landing)
 **Example:**
 ```toml
 [[cron_jobs]]

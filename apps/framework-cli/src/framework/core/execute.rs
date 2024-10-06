@@ -1,3 +1,4 @@
+use crate::infrastructure::redis::redis_client::RedisClient;
 use clickhouse_rs::ClientHandle;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
@@ -35,6 +36,12 @@ pub enum ExecutionError {
 
     #[error("Failed to load to topic for migration")]
     InitialDataLoad(#[from] InitialDataLoadError), // TODO: refactor to concrete types
+
+    #[error("Leadership check failed")]
+    LeadershipCheckFailed(anyhow::Error),
+
+    #[error("Migration error")]
+    MigrationError(String),
 }
 
 pub async fn execute_initial_infra_change(
@@ -43,6 +50,7 @@ pub async fn execute_initial_infra_change(
     api_changes_channel: Sender<ApiChange>,
     metrics: Arc<Metrics>,
     clickhouse_client: &mut ClientHandle,
+    redis_client: &RedisClient,
 ) -> Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError> {
     // This probably can be parallelized through Tokio Spawn
     olap::execute_changes(project, &plan.changes.olap_changes).await?;
@@ -70,8 +78,19 @@ pub async fn execute_initial_infra_change(
     )
     .await?;
 
-    migration::execute_changes(project, &plan.changes.initial_data_loads, clickhouse_client)
-        .await?;
+    // Check if this process instance has the "leadership" lock
+    if redis_client
+        .has_lock("leadership")
+        .await
+        .map_err(ExecutionError::LeadershipCheckFailed)?
+    {
+        // Execute migration changes only if we have the leadership lock
+        migration::execute_changes(project, &plan.changes.initial_data_loads, clickhouse_client)
+            .await
+            .map_err(|e| ExecutionError::MigrationError(e.to_string()))?;
+    } else {
+        log::info!("Skipping migration changes as this instance does not have the leadership lock");
+    }
 
     Ok((syncing_processes_registry, process_registries))
 }

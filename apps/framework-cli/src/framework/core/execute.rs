@@ -70,20 +70,20 @@ pub async fn execute_initial_infra_change(
     );
     let mut process_registries = ProcessRegistries::new(project);
 
-    processes::execute_changes(
-        &mut syncing_processes_registry,
-        &mut process_registries,
-        &plan.target_infra_map.init_processes(),
-        metrics,
-    )
-    .await?;
-
     // Check if this process instance has the "leadership" lock
     if redis_client
         .has_lock("leadership")
         .await
         .map_err(ExecutionError::LeadershipCheckFailed)?
     {
+        processes::execute_changes(
+            &mut syncing_processes_registry,
+            &mut process_registries,
+            &plan.target_infra_map.init_processes(),
+            metrics,
+        )
+        .await?;
+
         // Execute migration changes only if we have the leadership lock
         migration::execute_changes(project, &plan.changes.initial_data_loads, clickhouse_client)
             .await

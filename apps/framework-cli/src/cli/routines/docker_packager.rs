@@ -75,7 +75,7 @@ COPY --chown=moose:moose ./project.tom[l] ./project.toml
 COPY --chown=moose:moose ./moose.config.tom[l] ./moose.config.toml
 COPY --chown=moose:moose ./versions .moose/versions
 
-COPY --chown=moose:moose ./.moose/infrastructure_map.json .moose/infrastructure_map.json
+COPY --chown=moose:moose ./infrastructure_map.json .moose/infrastructure_map.json
 
 # Placeholder for the language specific install command
 INSTALL_COMMAND
@@ -281,7 +281,7 @@ pub async fn build_dockerfile(
 
     let infra_map = InfrastructureMap::new(primitive_map);
 
-    let json_path = internal_dir.join("packager/.moose/infrastructure_map.json");
+    let json_path = internal_dir.join("packager/infrastructure_map.json");
     fs::create_dir_all(json_path.parent().unwrap()).map_err(|e| {
         RoutineFailure::new(
             Message::new(
@@ -307,7 +307,7 @@ pub async fn build_dockerfile(
     // so we set it to a recent version for the purpose of local dev testing.
     let mut cli_version = constants::CLI_VERSION;
     if cli_version == "0.0.1" {
-        cli_version = "0.3.626";
+        cli_version = "0.3.655";
     }
 
     let build_all = is_amd64 == is_arm64;

@@ -81,6 +81,7 @@ indexmap = "2.5.0"
 redis = { version = "0.24.0", features = ["tokio-comp", "aio", "tokio-native-tls-comp"] }
 jsonwebtoken = "9.3.0"
 num-traits = "0.2.19"
+async-trait = "0.1.83"
 
 [dev-dependencies]
 clickhouse = { version = "0.11.5", features = ["uuid", "test-util"] }

@@ -7,12 +7,6 @@ use std::process::Stdio;
 use crate::utilities::constants::{CLI_INTERNAL_VERSIONS_DIR, CLI_PROJECT_INTERNAL_DIR};
 use tokio::process::{Child, Command};
 
-/// Checks if the Python interpreter is available
-
-/// Checks the version of the Python interpreter
-
-/// Ensures that Python3.7 is available on the system
-
 pub enum PythonSerializers {
     FrameworkObjectSerializer,
     ProjectObjectSerializer,

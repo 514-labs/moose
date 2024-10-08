@@ -8,6 +8,8 @@ mod routines;
 pub mod settings;
 mod watcher;
 use super::metrics::Metrics;
+use crate::cli::routines::block::create_block_file;
+use crate::cli::routines::consumption::create_consumption_file;
 use clap::Parser;
 use commands::{
     BlockCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
@@ -16,6 +18,7 @@ use commands::{
 use config::ConfigError;
 use display::with_spinner_async;
 use home::home_dir;
+use itertools::Either;
 use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
@@ -32,9 +35,6 @@ use std::path::Path;
 use std::process::exit;
 use std::sync::Arc;
 
-use crate::cli::routines::block::create_block_file;
-use crate::cli::routines::consumption::create_consumption_file;
-
 use crate::cli::routines::dev::copy_old_schema;
 use crate::cli::routines::initialize::initialize_project;
 use crate::cli::routines::logs::{follow_logs, show_logs};
@@ -50,6 +50,7 @@ use crate::cli::{
     settings::{init_config_file, setup_user_directory},
 };
 use crate::framework::bulk_import::import_csv_file;
+use crate::framework::core::check::check_system_reqs;
 use crate::framework::core::code_loader::load_framework_objects;
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::languages::SupportedLanguages;
@@ -250,6 +251,15 @@ async fn top_command_handler(
 
             check_project_name(&project_arc.name())?;
 
+            check_system_reqs(&project_arc.language_project_config)
+                .await
+                .map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "System".to_string(),
+                        details: format!("Failed to validate system requirements: {:?}", e),
+                    })
+                })?;
+
             PrimitiveMap::load(&project_arc).await.map_err(|e| {
                 RoutineFailure::error(Message {
                     action: "Build".to_string(),
@@ -446,8 +456,8 @@ async fn top_command_handler(
                 with_spinner_async(
                     "Generating SDK",
                     async {
-                        let framework_object_versions =
-                            load_framework_objects(&project).await.map_err(|e| {
+                        let framework_objects = if settings.features.core_v2 {
+                            let objects = PrimitiveMap::load(&project).await.map_err(|e| {
                                 RoutineFailure::error(Message {
                                     action: "Generate".to_string(),
                                     details: format!(
@@ -456,11 +466,24 @@ async fn top_command_handler(
                                     ),
                                 })
                             })?;
+                            Either::Right(objects)
+                        } else {
+                            let objects = load_framework_objects(&project).await.map_err(|e| {
+                                RoutineFailure::error(Message {
+                                    action: "Generate".to_string(),
+                                    details: format!(
+                                        "Failed to load initial project state: {:?}",
+                                        e
+                                    ),
+                                })
+                            })?;
+                            Either::Left(objects)
+                        };
 
                         generate_sdk(
                             language,
                             &project,
-                            &framework_object_versions,
+                            framework_objects.as_ref(),
                             destination,
                             packaged,
                         )

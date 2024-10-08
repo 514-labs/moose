@@ -1,5 +1,4 @@
-use std::path::Path;
-
+use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::{
     framework::{
         core::code_loader::FrameworkObjectVersions,
@@ -8,6 +7,8 @@ use crate::{
     },
     project::Project,
 };
+use itertools::Either;
+use std::path::Path;
 
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
@@ -19,7 +20,7 @@ pub enum SDKGenerationError {
 pub fn generate_sdk(
     language: &SupportedLanguages,
     project: &Project,
-    framework_objects: &FrameworkObjectVersions,
+    framework_objects: Either<&FrameworkObjectVersions, &PrimitiveMap>,
     destination: &Path,
     packaged: &bool,
 ) -> Result<(), SDKGenerationError> {

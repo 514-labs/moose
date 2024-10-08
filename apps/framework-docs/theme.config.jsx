@@ -1,18 +1,11 @@
 import {
-  Display,
   Heading,
-  Text,
-  TextEmbed,
   HeadingLevel,
-  GradientText,
   SmallText,
   SmallTextEmbed,
   textBodyBase,
 } from "@514labs/design-system-components/typography";
-import {
-  Logo,
-  ProductBadge,
-} from "@514labs/design-system-components/components";
+import { Logo } from "@514labs/design-system-components/components";
 import { cn } from "@514labs/design-system-components/utils";
 import { Code, Rocket, Package, Library } from "lucide-react";
 import Link from "next/link";

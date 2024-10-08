@@ -13,7 +13,7 @@ import {
   HeadingLevel,
   Text,
 } from "@514labs/design-system-components/typography";
-import { TrackCtaButton } from "../../trackable-components";
+import { TrackButton } from "@514labs/design-system-components/trackable-components";
 import { TemplateImg } from "./TemplateImg";
 import React from "react";
 
@@ -105,14 +105,14 @@ export const TemplatesSection = () => {
                 </div>
                 <CTABar className="my-5">
                   <Link className="flex flex-col" href={template.cta.href}>
-                    <TrackCtaButton
+                    <TrackButton
                       name="Learn More"
                       subject={template.cta.subject}
                       className="grow"
                       targetUrl={template.cta.href}
                     >
                       {template.cta.label}
-                    </TrackCtaButton>
+                    </TrackButton>
                   </Link>
                 </CTABar>
               </ThirdWidthContentContainer>

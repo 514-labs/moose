@@ -10,10 +10,8 @@ import {
   SelectContent,
   SelectItem,
 } from "@514labs/design-system-components/components";
-
+import { TrackableTabsTrigger } from "@514labs/design-system-components/trackable-components";
 import { CopyButton } from "../../copy-button";
-
-import { TrackableTabsTrigger } from "../../trackable-components";
 
 import {
   Heading,

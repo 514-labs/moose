@@ -6,7 +6,7 @@ import {
 import { Heading, Text } from "@514labs/design-system-components/typography";
 import { CTABar } from "../../page";
 import Image from "next/image";
-import { TrackableCodeSnippet } from "../../trackable-components";
+import { TrackableCodeSnippet } from "@514labs/design-system-components/trackable-components";
 
 export const GetMooseCTASection = () => {
   const content = {

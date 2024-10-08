@@ -6,7 +6,6 @@ import {
 import { Heading, Text } from "@514labs/design-system-components/typography";
 //import { CTABar } from "../../page";
 import Image from "next/image";
-//import { TrackableCodeSnippet } from "../../trackable-components";
 
 export const ImageSection = () => {
   const content = {

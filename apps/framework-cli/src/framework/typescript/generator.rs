@@ -1,12 +1,14 @@
 use convert_case::{Case, Casing};
+use itertools::Either;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::fs;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
 use std::path::Path;
 use std::{fmt, path::PathBuf};
 
 use crate::framework::core::code_loader::{FrameworkObjectVersions, SchemaVersion};
+use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::typescript;
 use crate::{
     project::Project,
@@ -120,13 +122,6 @@ pub enum InterfaceFieldType {
     Array(Box<InterfaceFieldType>),
     Object(Box<TypescriptInterface>),
     Enum(TSEnum),
-}
-
-// Implementing Hash for InterfaceFieldType
-impl Hash for InterfaceFieldType {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        std::mem::discriminant(self).hash(state);
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Eq, PartialEq, Hash)]
@@ -266,6 +261,10 @@ pub fn std_table_to_typescript_interface(
     let mut fields: Vec<InterfaceField> = Vec::new();
 
     for column in table.columns {
+        if matches!(&column.data_type, ColumnType::Nested(n) if n.jwt) {
+            continue;
+        }
+
         let typescript_interface_type =
             std_field_type_to_typescript_field_mapper(column.data_type.clone())?;
 
@@ -311,7 +310,7 @@ fn collect_enums(framework_objects: &SchemaVersion) -> HashSet<TSEnum> {
 
 pub fn generate_sdk(
     project: &Project,
-    framework_object_versions: &FrameworkObjectVersions,
+    framework_objects: Either<&FrameworkObjectVersions, &PrimitiveMap>,
     sdk_dir: &Path,
     packaged: &bool,
 ) -> Result<(), TypescriptGeneratorError> {
@@ -319,17 +318,28 @@ pub fn generate_sdk(
     //!
     //! # Arguments
     //! - `project` - The project to generate the SDK for.
-    //! - `framework_object_versions` - The objects to generate the SDK for.
+    //! - `framework_objects` - Either FrameworkObjectVersions or PrimitiveMap to generate the SDK for.
     //! - `sdk_dir` - Where to write the generated SDK.
     //! - `packaged` - Whether or not to generate a full fledged package or just the source files in the
     //!                language of choice.
     //!
     //! # Returns
-    //! - `Result<PathBuf, std::io::Error>` - A result containing the path where the SDK was generated.
+    //! - `Result<(), TypescriptGeneratorError>` - A result indicating success or failure.
 
-    let current_version_ts_objects = collect_ts_objects(&framework_object_versions.current_models)?;
-
-    let enums: HashSet<TSEnum> = collect_enums(&framework_object_versions.current_models);
+    let (current_version_ts_objects, enums) = match framework_objects {
+        Either::Left(framework_object_versions) => {
+            let current_version_ts_objects =
+                collect_ts_objects(&framework_object_versions.current_models)?;
+            let enums = collect_enums(&framework_object_versions.current_models);
+            (current_version_ts_objects, enums)
+        }
+        Either::Right(primitive_map) => {
+            let current_version_ts_objects =
+                collect_ts_objects_from_primitive_map(primitive_map, project.cur_version())?;
+            let enums = collect_enums_from_primitive_map(primitive_map, project.cur_version());
+            (current_version_ts_objects, enums)
+        }
+    };
 
     std::fs::remove_dir_all(sdk_dir).or_else(|err| match err.kind() {
         std::io::ErrorKind::NotFound => Ok(()),
@@ -346,7 +356,7 @@ pub fn generate_sdk(
     }
 
     let index_code = typescript::templates::render_ingest_client(
-        &framework_object_versions.current_version,
+        project.cur_version(),
         &current_version_ts_objects,
     )?;
     fs::write(sdk_dir.join("index.ts"), index_code)?;
@@ -364,14 +374,34 @@ pub fn generate_sdk(
         )?;
     }
 
-    let versions = framework_object_versions.previous_version_models.iter();
+    for version in project.supported_old_versions.keys() {
+        let (ts_objects, version_enums) = match framework_objects {
+            Either::Left(framework_object_versions) => {
+                let models = match framework_object_versions
+                    .previous_version_models
+                    .get(version)
+                {
+                    None => continue,
+                    Some(models) => models,
+                };
 
-    for (version, models) in versions {
+                let current_version_ts_objects = collect_ts_objects(models)?;
+                let enums = collect_enums(models);
+                (current_version_ts_objects, enums)
+            }
+            Either::Right(primitive_map) => {
+                let current_version_ts_objects =
+                    collect_ts_objects_from_primitive_map(primitive_map, version)?;
+                let enums = collect_enums_from_primitive_map(primitive_map, version);
+                if current_version_ts_objects.is_empty() {
+                    continue;
+                }
+                (current_version_ts_objects, enums)
+            }
+        };
+
         let version_dir = sdk_dir.join(version);
         fs::create_dir_all(&version_dir)?;
-
-        let ts_objects = collect_ts_objects(models)?;
-        let version_enums = collect_enums(models);
 
         if !version_enums.is_empty() {
             let enums_code = typescript::templates::render_enums(version_enums)?;
@@ -391,6 +421,38 @@ pub fn generate_sdk(
     }
 
     Ok(())
+}
+fn collect_ts_objects_from_primitive_map(
+    primitive_map: &PrimitiveMap,
+    version: &str,
+) -> Result<Vec<TypescriptObjects>, TypescriptGeneratorError> {
+    primitive_map
+        .data_models_iter()
+        .filter(|model| model.version == version)
+        .map(|model| {
+            std_table_to_typescript_interface(model.to_table(), &model.name)
+                .map(TypescriptObjects::new)
+        })
+        .collect()
+}
+
+fn collect_enums_from_primitive_map(
+    primitive_map: &PrimitiveMap,
+    version: &str,
+) -> HashSet<TSEnum> {
+    primitive_map
+        .data_models_iter()
+        .filter(|model| model.version == version)
+        .flat_map(|model| {
+            model.columns.iter().filter_map(|column| {
+                if let ColumnType::Enum(enum_type) = &column.data_type {
+                    Some(map_std_enum_to_ts(enum_type.clone()))
+                } else {
+                    None
+                }
+            })
+        })
+        .collect()
 }
 
 pub fn move_to_npm_global_dir(sdk_location: &PathBuf) -> Result<PathBuf, std::io::Error> {

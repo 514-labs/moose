@@ -9,9 +9,7 @@ import {
   Text,
 } from "@514labs/design-system-components/typography";
 import FooterSection from "../sections/FooterSection";
-// import { EmailSection } from "../sections/EmailSection";
 import { ImageSection } from "../sections/home/ImageSection";
-//import { TrackCtaButton } from "../trackable-components";
 
 const content = {
   title: "About",

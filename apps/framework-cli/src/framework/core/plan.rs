@@ -12,6 +12,7 @@ use crate::{
 use clickhouse_rs::ClientHandle;
 use rdkafka::error::KafkaError;
 use std::collections::HashMap;
+use std::path::Path;
 
 #[derive(Debug, thiserror::Error)]
 pub enum PlanningError {
@@ -43,8 +44,13 @@ pub async fn plan_changes(
     client: &mut ClientHandle,
     project: &Project,
 ) -> Result<InfraPlan, PlanningError> {
-    let primitive_map = PrimitiveMap::load(project).await?;
-    let target_infra_map = InfrastructureMap::new(primitive_map);
+    let target_infra_map = if project.is_production {
+        let json_path = Path::new(".moose/infrastructure_map.json");
+        InfrastructureMap::load_from_json(json_path).map_err(|e| PlanningError::Other(e.into()))?
+    } else {
+        let primitive_map = PrimitiveMap::load(project).await?;
+        InfrastructureMap::new(primitive_map)
+    };
 
     let current_infra_map = {
         // in the rest of this block of code,

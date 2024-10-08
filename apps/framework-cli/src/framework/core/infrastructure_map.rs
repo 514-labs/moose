@@ -10,6 +10,8 @@ use super::primitive_map::PrimitiveMap;
 use crate::framework::controller::{InitialDataLoad, InitialDataLoadStatus};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::fs;
+use std::path::Path;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum PrimitiveTypes {
@@ -674,6 +676,17 @@ impl InfrastructureMap {
                 })
             })
             .collect()
+    }
+
+    pub fn save_to_json(&self, path: &Path) -> Result<(), std::io::Error> {
+        let json = serde_json::to_string(self)?;
+        fs::write(path, json)
+    }
+
+    pub fn load_from_json(path: &Path) -> Result<Self, std::io::Error> {
+        let json = fs::read_to_string(path)?;
+        let infra_map = serde_json::from_str(&json)?;
+        Ok(infra_map)
     }
 }
 

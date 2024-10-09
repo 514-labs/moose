@@ -1,4 +1,4 @@
-use super::infrastructure::api_endpoint::ApiEndpoint;
+use super::infrastructure::api_endpoint::{APIType, ApiEndpoint};
 use super::infrastructure::consumption_webserver::ConsumptionApiWebServer;
 use super::infrastructure::function_process::FunctionProcess;
 use super::infrastructure::olap_process::OlapProcess;
@@ -8,6 +8,7 @@ use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicTo
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 use crate::framework::controller::{InitialDataLoad, InitialDataLoadStatus};
+use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -119,6 +120,64 @@ pub struct InfrastructureMap {
 }
 
 impl InfrastructureMap {
+    // we want to add the prefix as soon as possible
+    // to avoid worrying whether the topic name is prefixed
+    // we dump the infra map during build, when the prefix is unavailable
+    // so the prefix adding has to be written as a mutation
+    //
+    // an alternative is to dump the PrimitiveMap during build,
+    // and add `RedpandaConfig` param to the `new(PrimitiveMap)->InfrastructureMap` function.
+    pub fn with_topic_namespace(&mut self, redpanda_config: &RedpandaConfig) {
+        let topics = std::mem::take(&mut self.topics);
+        for mut topic in topics.into_values() {
+            topic.name = redpanda_config.prefix_with_namespace(&topic.name);
+            self.topics.insert(topic.id(), topic);
+        }
+
+        let api_endpoints = std::mem::take(&mut self.api_endpoints);
+        for mut api_endpoint in api_endpoints.into_values() {
+            match api_endpoint.api_type {
+                APIType::INGRESS {
+                    ref mut target_topic,
+                    ..
+                } => *target_topic = redpanda_config.prefix_with_namespace(target_topic),
+                APIType::EGRESS => {}
+            }
+            self.api_endpoints.insert(api_endpoint.id(), api_endpoint);
+        }
+
+        let topic_to_table_sync_processes = std::mem::take(&mut self.topic_to_table_sync_processes);
+        for mut process in topic_to_table_sync_processes.into_values() {
+            process.source_topic_id =
+                redpanda_config.prefix_with_namespace(&process.source_topic_id);
+            self.topic_to_table_sync_processes
+                .insert(process.id(), process);
+        }
+
+        let topic_to_topic_sync_processes = std::mem::take(&mut self.topic_to_topic_sync_processes);
+        for mut process in topic_to_topic_sync_processes.into_values() {
+            process.source_topic_id =
+                redpanda_config.prefix_with_namespace(&process.source_topic_id);
+            process.target_topic_id =
+                redpanda_config.prefix_with_namespace(&process.target_topic_id);
+
+            self.topic_to_topic_sync_processes
+                .insert(process.id(), process);
+        }
+
+        let function_processes = std::mem::take(&mut self.function_processes);
+        for mut process in function_processes.into_values() {
+            process.source_topic = redpanda_config.prefix_with_namespace(&process.source_topic);
+            process.target_topic = redpanda_config.prefix_with_namespace(&process.target_topic);
+            self.function_processes.insert(process.id(), process);
+        }
+        let initial_data_loads = std::mem::take(&mut self.initial_data_loads);
+        for (id, mut process) in initial_data_loads.into_iter() {
+            process.topic = redpanda_config.prefix_with_namespace(&process.topic);
+            self.initial_data_loads.insert(id, process);
+        }
+    }
+
     pub fn new(primitive_map: PrimitiveMap) -> InfrastructureMap {
         let mut tables = HashMap::new();
         let mut views = HashMap::new();

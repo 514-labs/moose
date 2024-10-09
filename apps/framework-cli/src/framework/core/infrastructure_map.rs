@@ -120,6 +120,13 @@ pub struct InfrastructureMap {
 }
 
 impl InfrastructureMap {
+    // we want to add the prefix as soon as possible
+    // to avoid worrying whether the topic name is prefixed
+    // we dump the infra map during build, when the prefix is unavailable
+    // so the prefix adding has to be written as a mutation
+    //
+    // an alternative is to dump the PrimitiveMap during build,
+    // and add `RedpandaConfig` param to the `new(PrimitiveMap)->InfrastructureMap` function.
     pub fn with_topic_namespace(&mut self, redpanda_config: &RedpandaConfig) {
         let topics = std::mem::take(&mut self.topics);
         for mut topic in topics.into_values() {

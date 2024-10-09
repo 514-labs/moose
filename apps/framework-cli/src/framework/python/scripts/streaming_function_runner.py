@@ -118,7 +118,17 @@ run_input_type = flow_run.__annotations__[list(flow_run.__annotations__.keys())[
 
 # parse json into the input type
 def parse_input(json_input):
-    return run_input_type(**json_input)
+    def deserialize(data, cls):
+        if dataclasses.is_dataclass(cls):
+            field_types = {f.name: f.type for f in dataclasses.fields(cls)}
+            return cls(**{name: deserialize(data.get(name), field_types[name]) for name in field_types})
+        elif isinstance(data, list):
+            return [deserialize(item, cls.__args__[0]) for item in data]
+        else:
+            return data
+
+    return deserialize(json_input, run_input_type)
+
 
 flow_id = f'flow-{source_topic} -> {target_topic}'
 max_message_size = get_max_message_size(target_topic_config)

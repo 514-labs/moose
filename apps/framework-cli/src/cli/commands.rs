@@ -47,7 +47,10 @@ pub enum Commands {
         arm64: bool,
     },
     /// Checks the project for non-runtime errors
-    Check {},
+    Check {
+        #[arg(long, default_value = "false")]
+        write_infra_map: bool,
+    },
     /// [Not Ready] Displays the changes that will be applied to the infrastructure during the next deployment
     /// to production, consdering the current state of the project
     Plan {},

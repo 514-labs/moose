@@ -52,6 +52,7 @@ use crate::cli::{
 use crate::framework::bulk_import::import_csv_file;
 use crate::framework::core::check::check_system_reqs;
 use crate::framework::core::code_loader::load_framework_objects;
+use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::sdk::ingest::generate_sdk;
@@ -245,7 +246,7 @@ async fn top_command_handler(
         // This command is used to check the project for errors that are not related to runtime
         // For example, it checks that the project is valid and that all the primitives are loaded
         // It is used in the build process to ensure that the project is valid while building docker images
-        Commands::Check {} => {
+        Commands::Check { write_infra_map } => {
             info!("Running check command");
             let project_arc = Arc::new(load_project()?);
 
@@ -260,12 +261,39 @@ async fn top_command_handler(
                     })
                 })?;
 
-            PrimitiveMap::load(&project_arc).await.map_err(|e| {
+            let primitive_map = PrimitiveMap::load(&project_arc).await.map_err(|e| {
                 RoutineFailure::error(Message {
                     action: "Build".to_string(),
                     details: format!("Failed to load Primitives: {:?}", e),
                 })
             })?;
+
+            if *write_infra_map {
+                let infra_map = InfrastructureMap::new(primitive_map);
+
+                let json_path = project_arc
+                    .internal_dir()
+                    .map_err(|e| {
+                        RoutineFailure::new(
+                            Message::new(
+                                "Failed".to_string(),
+                                "to create .moose directory".to_string(),
+                            ),
+                            e,
+                        )
+                    })?
+                    .join("infrastructure_map.json");
+
+                infra_map.save_to_json(&json_path).map_err(|e| {
+                    RoutineFailure::new(
+                        Message::new(
+                            "Failed".to_string(),
+                            "to save InfrastructureMap as JSON".to_string(),
+                        ),
+                        e,
+                    )
+                })?;
+            }
 
             Ok(RoutineSuccess::success(Message::new(
                 "Checked".to_string(),
@@ -302,7 +330,7 @@ async fn top_command_handler(
                 // TODO get rid of the routines and use functions instead
 
                 create_dockerfile(&project_arc)?.show();
-                let _: RoutineSuccess = build_dockerfile(&project_arc, *amd64, *arm64).await?;
+                let _: RoutineSuccess = build_dockerfile(&project_arc, *amd64, *arm64)?;
 
                 wait_for_usage_capture(capture_handle).await;
 

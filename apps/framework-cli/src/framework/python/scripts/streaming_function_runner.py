@@ -122,8 +122,6 @@ def parse_input(json_input):
         if dataclasses.is_dataclass(cls):
             field_types = {f.name: f.type for f in dataclasses.fields(cls)}
             return cls(**{name: deserialize(data.get(name), field_types[name]) for name in field_types})
-        elif isinstance(data, dict):
-            return {k: deserialize(v, cls) for k, v in data.items()}
         elif isinstance(data, list):
             return [deserialize(item, cls.__args__[0]) for item in data]
         else:

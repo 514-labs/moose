@@ -12,7 +12,7 @@ pub enum PythonRenderingError {
 pub static PYTHON_BASE_MODEL_TEMPLATE: &str = r#"
 from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
-import datetime
+from datetime import datetime
 
 
 @moose_data_model

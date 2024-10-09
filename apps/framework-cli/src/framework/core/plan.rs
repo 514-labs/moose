@@ -44,13 +44,15 @@ pub async fn plan_changes(
     client: &mut ClientHandle,
     project: &Project,
 ) -> Result<InfraPlan, PlanningError> {
-    let target_infra_map = if project.is_production {
+    let mut target_infra_map = if project.is_production {
         let json_path = Path::new(".moose/infrastructure_map.json");
         InfrastructureMap::load_from_json(json_path).map_err(|e| PlanningError::Other(e.into()))?
     } else {
         let primitive_map = PrimitiveMap::load(project).await?;
         InfrastructureMap::new(primitive_map)
     };
+
+    target_infra_map.with_topic_namespace(&project.redpanda_config);
 
     let current_infra_map = {
         // in the rest of this block of code,

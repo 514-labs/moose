@@ -48,7 +48,7 @@ sasl_mechanism = args.sasl_mechanism
 
 # Setup SASL config w/ supported mechanisms
 if args.sasl_mechanism is not None:
-    if args.sasl_mechanism not in ['PLAIN', 'SCRAM-SHA-256']:
+    if args.sasl_mechanism not in ['PLAIN', 'SCRAM-SHA-256', 'SCRAM-SHA-512']:
         raise Exception(f"Unsupported SASL mechanism: {args.sasl_mechanism}")
     if args.sasl_username is None or args.sasl_password is None:
         raise Exception("SASL username and password must be provided if a SASL mechanism is specified")
@@ -130,7 +130,8 @@ def parse_input(json_input):
     return deserialize(json_input, run_input_type)
 
 
-flow_id = f'flow-{source_topic} -> {target_topic}'
+# This format is used in ACLs
+flow_id = f'flow-{source_topic}-{target_topic}'
 max_message_size = get_max_message_size(target_topic_config)
 
 if sasl_config['mechanism'] is not None:
@@ -168,6 +169,7 @@ if sasl_config['mechanism'] is not None:
         max_request_size=max_message_size
     )
 else:
+    log("No sasl mechanism specified. Using default producer.")
     producer = KafkaProducer(
         bootstrap_servers=broker,
         max_in_flight_requests_per_connection=1,

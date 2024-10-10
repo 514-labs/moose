@@ -95,6 +95,13 @@ pub async fn run_python_file(path: &Path, env: &[(&str, &str)]) -> Result<Child,
         .spawn()
 }
 
+pub fn add_optional_arg(args: &mut Vec<String>, flag: &str, value: &Option<String>) {
+    if let Some(val) = value {
+        args.push(flag.to_string());
+        args.push(val.to_string());
+    }
+}
+
 // TESTs
 #[cfg(test)]
 mod tests {

@@ -158,8 +158,6 @@ export class MooseClient {
     // wake it up.
     this.client.ping();
 
-    console.log("queryid", this.query_id);
-
     return this.client.query({
       query,
       query_params,

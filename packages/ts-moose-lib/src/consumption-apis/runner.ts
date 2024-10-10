@@ -2,6 +2,7 @@ import http from "http";
 import process from "node:process";
 import { getClickhouseClient } from "../commons";
 import { MooseClient, sql } from "./helpers";
+import * as jose from "jose";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;

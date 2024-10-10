@@ -6,6 +6,7 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use tokio::io::AsyncBufReadExt;
 
 use super::executor;
+use crate::framework::python::executor::add_optional_arg;
 
 pub fn run(
     redpanda_config: &RedpandaConfig,
@@ -28,16 +29,31 @@ pub fn run(
         .unwrap()
         .to_string();
 
+    let mut args = vec![
+        source_topic.to_string(),
+        target_topic.to_string(),
+        target_topic_config.to_string(),
+        dir,
+        module_name,
+        redpanda_config.broker.clone(),
+    ];
+
+    add_optional_arg(&mut args, "--sasl_username", &redpanda_config.sasl_username);
+    add_optional_arg(&mut args, "--sasl_password", &redpanda_config.sasl_password);
+    add_optional_arg(
+        &mut args,
+        "--sasl_mechanism",
+        &redpanda_config.sasl_mechanism,
+    );
+    add_optional_arg(
+        &mut args,
+        "--security_protocol",
+        &redpanda_config.security_protocol,
+    );
+
     let mut streaming_function_process =
         executor::run_python_program(executor::PythonProgram::StreamingFunctionRunner {
-            args: vec![
-                source_topic.to_string(),
-                target_topic.to_string(),
-                target_topic_config.to_string(),
-                dir,
-                module_name,
-                redpanda_config.broker.clone(),
-            ],
+            args: args,
         })?;
 
     let stdout = streaming_function_process

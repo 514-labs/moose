@@ -92,7 +92,10 @@ const apiHandler =
       const userFuncModule = require(pathName);
 
       const result = await userFuncModule.default(paramsObject, {
-        client: new MooseClient(getClickhouseClient(clickhouseConfig)),
+        client: new MooseClient(
+          getClickhouseClient(clickhouseConfig),
+          fileName,
+        ),
         sql: sql,
         jwt: jwtPayload,
       });

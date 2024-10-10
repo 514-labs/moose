@@ -128,9 +128,10 @@ function emptyIfUndefined(value: string | undefined): string {
 
 export class MooseClient {
   client: ClickHouseClient;
-
-  constructor(client: ClickHouseClient) {
+  query_id: string;
+  constructor(client: ClickHouseClient, query_id: string) {
     this.client = client;
+    this.query_id = query_id;
   }
 
   async query(sql: Sql) {
@@ -161,6 +162,7 @@ export class MooseClient {
       query,
       query_params,
       format: "JSONEachRow",
+      query_id: this.query_id,
     });
   }
 }

@@ -52,9 +52,7 @@ pub fn run(
     );
 
     let mut streaming_function_process =
-        executor::run_python_program(executor::PythonProgram::StreamingFunctionRunner {
-            args: args,
-        })?;
+        executor::run_python_program(executor::PythonProgram::StreamingFunctionRunner { args })?;
 
     let stdout = streaming_function_process
         .stdout

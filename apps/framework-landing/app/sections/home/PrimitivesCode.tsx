@@ -18,7 +18,6 @@ import {
   Heading,
   Text,
   HeadingLevel,
-  SmallText,
 } from "@514labs/design-system-components/typography";
 import {
   FullWidthContentContainer,

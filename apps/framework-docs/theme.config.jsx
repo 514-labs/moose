@@ -51,19 +51,19 @@ export default {
     next: true,
   },
   components: {
-    h1: ({ children }) => <Heading>{children}</Heading>,
-    h2: ({ children }) => (
-      <Heading longForm level={HeadingLevel.l2}>
+    h1: ({ id, children }) => <Heading id={id}>{children}</Heading>,
+    h2: ({ id, children }) => (
+      <Heading longForm level={HeadingLevel.l2} id={id}>
         {children}
       </Heading>
     ),
-    h3: ({ children }) => (
-      <Heading longForm level={HeadingLevel.l3}>
+    h3: ({ id, children }) => (
+      <Heading longForm level={HeadingLevel.l3} id={id}>
         {children}
       </Heading>
     ),
-    h4: ({ children }) => (
-      <Heading longForm level={HeadingLevel.l4}>
+    h4: ({ id, children }) => (
+      <Heading longForm level={HeadingLevel.l4} id={id}>
         {children}
       </Heading>
     ),
@@ -124,7 +124,7 @@ export default {
     },
     headingComponent({ children }) {
       return (
-        <SmallText className="my-0 text-muted-foreground font-normal">
+        <SmallText className="my-0 text-muted-foreground font-normal hover:text-primary">
           {children}
         </SmallText>
       );

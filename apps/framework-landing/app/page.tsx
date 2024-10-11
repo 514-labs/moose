@@ -1,4 +1,3 @@
-import { FromToSection } from "./sections/home/FromToSection";
 import { FooterSection } from "./sections/FooterSection";
 import { HeroSection } from "./sections/home/HeroSection";
 import { PrimitivesCode } from "./sections/home/PrimitivesCode";

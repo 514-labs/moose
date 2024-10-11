@@ -6,20 +6,13 @@ import {
 } from "@514labs/design-system-components/components/containers";
 import {
   Heading,
-  Text,
-  SmallText,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
 import { IconCard } from "@514labs/design-system-components/components";
 import React from "react";
 
 import {
-  Box,
-  Network,
-  Share2,
   Terminal,
-  Code2,
-  Server,
   FileCheck,
   Eye,
   Database,

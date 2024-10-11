@@ -164,7 +164,7 @@ impl RedisClient {
         }
 
         info!(
-            "<RedisClient> Started {} with id {}",
+            "<RedisClient> Started {}::{}",
             client.get_service_name(),
             client.get_instance_id()
         );
@@ -453,8 +453,25 @@ impl RedisClient {
         );
 
         // Create a separate PubSub connection for listening to messages
-        let client = Client::open(self.redis_config.url.clone())?;
-        let pubsub_conn = client.get_async_connection().await?;
+        let client = match Client::open(self.redis_config.url.clone()) {
+            Ok(client) => client,
+            Err(e) => {
+                error!("<RedisClient> Failed to open Redis client: {}", e);
+                return Err(e);
+            }
+        };
+
+        let pubsub_conn = match client.get_async_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!(
+                    "<RedisClient> Failed to get async connection for PubSub: {}",
+                    e
+                );
+                return Err(e);
+            }
+        };
+
         let mut pubsub = pubsub_conn.into_pubsub();
 
         pubsub

@@ -26,11 +26,10 @@ export default function Home() {
   return (
     <main>
       <HeroSection className="max-w-5xl mx-auto flex flex-col items-center px-5 my-16 sm:my-32 py-10 pb-20" />
-      <FromToSection />
-      <DemoSection />
       <PrimitivesCode />
-      <WhatIsMooseFor />
       <FeaturesSection />
+      <DemoSection />
+      <WhatIsMooseFor />
       <SecondaryCTASection />
       <FooterSection />
     </main>

@@ -9,6 +9,7 @@ import {
   SelectValue,
   SelectContent,
   SelectItem,
+  IconCard,
 } from "@514labs/design-system-components/components";
 import { TrackableTabsTrigger } from "@514labs/design-system-components/trackable-components";
 import { CopyButton } from "../../copy-button";
@@ -79,7 +80,7 @@ class ParsedActivity:
   functions: {
     title: "Functions",
     description:
-      "Add custom logic to filter, enrich, and transform data in-stream",
+      "Implement custom processing functions to run on your data in-stream",
     filename: "/functions/UserActivity__ParsedActivity",
     ts: `
 import { UserActivity } from "/datamodels/models"; 
@@ -251,44 +252,44 @@ def run(client, params):
 
 const infrastructure = [
   {
-    title: "Ingress Routes",
+    title: "Ingest API",
     infra: "Webserver",
-    icon: <HardDriveDownload />,
+    icon: HardDriveDownload,
     primitive: "models",
     order: "md:order-first",
   },
   {
     title: "Topics",
     infra: "Streams",
-    icon: <RectangleEllipsis />,
+    icon: RectangleEllipsis,
     primitive: "models",
     order: "md:order-2",
   },
   {
     title: "Tables",
     infra: "OLAP DB",
-    icon: <Table />,
+    icon: Table,
     primitive: "models",
     order: "md:order-4",
   },
   {
     title: "Tasks",
     infra: "Orchestrator",
-    icon: <Code />,
+    icon: Code,
     primitive: "functions",
     order: "md:order-3",
   },
   {
     title: "Views",
     infra: "OLAP DB",
-    icon: <Box />,
+    icon: Box,
     primitive: "blocks",
     order: "md:order-5",
   },
   {
-    title: "Egress Routes",
+    title: "Egress API",
     infra: "Webserver",
-    icon: <HardDriveUpload />,
+    icon: HardDriveUpload,
     primitive: "apis",
     order: "md:order-6",
   },
@@ -304,12 +305,14 @@ export const PrimitivesCode = () => {
         <Grid>
           <FullWidthContentContainer>
             <Heading
-              level={HeadingLevel.l1}
+              level={HeadingLevel.l2}
               className="max-w-5xl justify-center align-center text-center md:mb-24 sm:text-5xl"
             >
-              Data modeling, processing, ingestion, orchestration, streaming,
-              storage, and APIs—unified.{" "}
-              <span className="bg-[linear-gradient(150.33deg,_#641bff_-210.85%,_#1983ff_28.23%,_#ff2cc4_106.53%)] bg-clip-text text-transparent">
+              Moose provides the right data engineering primitives, dev time
+              data visibility and infra automation, so you can focus on
+              building, not on setup.
+              <span className="bg-gradient bg-clip-text text-transparent">
+                {" "}
                 All in pure TypeScript or Python.
               </span>
             </Heading>
@@ -321,11 +324,11 @@ export const PrimitivesCode = () => {
           <FullWidthContentContainer className="flex md:flex-row flex-col gap-5 p-4 sm:p-6 border rounded-3xl h-fit">
             <HalfWidthContentContainer className="flex flex-col gap-5 justify-start md:w-1/2 w-full">
               <Heading level={HeadingLevel.l3} className="mb-0">
-                Moose Primitives
+                Develop application logic
               </Heading>
               <Text className="text-muted-foreground">
-                Define your unique application logic for how data is ingested,
-                processed, aggregated, and consumed for your use case
+                Define data workflows locally in your TypeScript or Python
+                project code.
               </Text>
               <Tabs
                 value={activeTab}
@@ -387,33 +390,26 @@ export const PrimitivesCode = () => {
           </FullWidthContentContainer>
           <FullWidthContentContainer className="flex flex-col gap-2.5 border p-5 rounded-3xl justify-start text-left">
             <Heading level={HeadingLevel.l3} className="mb-0">
-              Moose Provisioned Infra
+              Moose automatically derives the infrastructure
             </Heading>
             <Text className="text-muted-foreground">
-              Moose interprets the application logic in your primitives to
-              automatically manage and configure assets in your underlying
-              infrastructure
+              Moose automatically creates and manages the APIs, topics, tables,
+              and processes needed to support the data workflows defined in your
+              project code.
             </Text>
-            <div className="w-full grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-4">
+            <div className="w-full grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
               {infrastructure.map((infra) => (
-                <div
-                  className={`px-4 pt-4 rounded-2xl ${
+                <IconCard
+                  className={`${
                     infra.primitive === activeTab
                       ? "bg-primary/10 shadow-sm"
                       : ""
                   } ${infra.order}`}
                   key={infra.title}
-                >
-                  <div className="bg-primary/10 p-3 w-fit rounded-xl">
-                    {infra.icon}
-                  </div>
-                  <SmallText className="text-sm font-medium">
-                    {infra.title}
-                  </SmallText>
-                  <SmallText className="text-muted-foreground text-wrap">
-                    {infra.infra}
-                  </SmallText>
-                </div>
+                  Icon={infra.icon}
+                  title={infra.title}
+                  description={infra.infra}
+                />
               ))}
             </div>
           </FullWidthContentContainer>

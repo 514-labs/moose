@@ -45,7 +45,7 @@
 //!
 //! Note: Make sure to set the MOOSE_REDIS_URL environment variable or the client will default to "redis://127.0.0.1:6379".
 use anyhow::{Context, Result};
-use log::{error, info};
+use log::{error, info, warn};
 use redis::aio::Connection as RedisConnection;
 use redis::{AsyncCommands, Client, RedisError, Script};
 use serde::{Deserialize, Serialize};
@@ -485,16 +485,21 @@ impl RedisClient {
         let callback = self.message_callbacks.clone();
 
         let listener_task = tokio::spawn(async move {
-            let mut pubsub_stream = pubsub.on_message();
+            loop {
+                let mut pubsub_stream = pubsub.on_message();
 
-            while let Some(msg) = pubsub_stream.next().await {
-                if let Ok(payload) = msg.get_payload::<String>() {
-                    info!("<RedisClient> Received pubsub message: {}", payload);
-                    let callbacks = callback.lock().await.clone();
-                    for cb in callbacks {
-                        cb(payload.clone()).await;
+                while let Some(msg) = pubsub_stream.next().await {
+                    if let Ok(payload) = msg.get_payload::<String>() {
+                        info!("<RedisClient> Received pubsub message: {}", payload);
+                        let callbacks = callback.lock().await.clone();
+                        for cb in callbacks {
+                            cb(payload.clone()).await;
+                        }
+                    } else {
+                        warn!("<RedisClient> Failed to get payload from message");
                     }
                 }
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
             }
         });
 

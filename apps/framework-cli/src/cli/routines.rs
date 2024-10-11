@@ -302,8 +302,13 @@ async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<RedisClient
 }
 
 async fn process_pubsub_message(message: String) {
-    info!("<Routines>Received pubsub message: {}", message);
-    // TODO - process the message
+    if message.contains("<migration_start>") {
+        println!("<Routines> Migration start message received: {}", message);
+    } else if message.contains("<migration_end>") {
+        println!("<Routines> Migration end message received: {}", message);
+    } else {
+        println!("<Routines> Received pubsub message: {}", message);
+    }
 }
 
 fn start_leadership_lock_task(redis_client: RedisClient, project: Arc<Project>) {
@@ -338,7 +343,8 @@ async fn manage_leadership_lock(
                     }
                 });
             } else {
-                debug!("Failed to obtain leadership lock");
+                // Don't log this as it's normal for the lock to not be available to non-laader instances
+                // debug!("Failed to obtain leadership lock");
             }
         }
     }

@@ -271,14 +271,39 @@ impl RoutineController {
 async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<RedisClient> {
     let mut redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
 
+    show_message!(
+        MessageType::Info,
+        Message {
+            action: "Node Id:".to_string(),
+            details: format!(
+                "{}::{}",
+                redis_client.get_service_name(),
+                redis_client.get_instance_id()
+            ),
+        }
+    );
+
     // Register the leadership lock
     redis_client.register_lock("leadership", 10).await?;
 
     // Start the leadership lock management task
     start_leadership_lock_task(redis_client.clone(), project.clone());
 
+    let callback = Arc::new(|message| {
+        tokio::spawn(async move {
+            process_pubsub_message(message).await;
+        });
+    });
+
+    redis_client.register_message_handler(callback).await;
+
     redis_client.start_periodic_tasks();
     Ok(redis_client)
+}
+
+async fn process_pubsub_message(message: String) {
+    info!("<Routines>Received pubsub message: {}", message);
+    // TODO - process the message
 }
 
 fn start_leadership_lock_task(redis_client: RedisClient, project: Arc<Project>) {

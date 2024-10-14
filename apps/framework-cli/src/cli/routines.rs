@@ -337,12 +337,20 @@ async fn process_pubsub_message(message: String) {
         .unwrap_or(false)
     {
         if message.contains("<migration_start>") {
-            println!("<Routines> Migration start message received: {}", message);
+            println!("<Routines> This instance is the leader so ignoring the Migration start message: {}", message);
         } else if message.contains("<migration_end>") {
-            println!("<Routines> Migration end message received: {}", message);
+            println!("<Routines> This instance is the leader so ignoring the Migration end message received: {}", message);
         } else {
-            println!("<Routines> Received pubsub message: {}", message);
+            println!(
+                "<Routines> This instance is the leader and received pubsub message: {}",
+                message
+            );
         }
+    } else {
+        println!(
+            "<Routines> This instance is not the leader and received pubsub message: {}",
+            message
+        );
     }
 }
 
@@ -446,7 +454,7 @@ pub async fn start_development_mode(
             api_changes_channel,
             metrics.clone(),
             &mut client,
-            &*redis_client.lock().await, // Dereference the MutexGuard
+            &*redis_client.lock().await,
         )
         .await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
@@ -655,7 +663,7 @@ pub async fn start_production_mode(
             api_changes_channel,
             metrics.clone(),
             &mut client,
-            &*redis_client.lock().await, // Dereference the MutexGuard
+            &*redis_client.lock().await,
         )
         .await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.

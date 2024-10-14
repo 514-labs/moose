@@ -79,13 +79,14 @@
 //! - Organize routines better in the file hiearchy
 //!
 
+use crate::infrastructure::redis::redis_client::RedisClient;
 use std::collections::{HashMap, HashSet};
 use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use log::{debug, error, info};
-use tokio::sync::RwLock; // or use the appropriate error type
+use tokio::sync::{Mutex, RwLock};
 use tokio::time::{interval, Duration};
 
 use crate::cli::watcher::{
@@ -112,7 +113,6 @@ use crate::infrastructure::processes::cron_registry::CronRegistry;
 use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
-use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::fetch_topics;
 use crate::project::Project;
 
@@ -122,6 +122,11 @@ use super::local_webserver::Webserver;
 use super::settings::Features;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
+
+use std::sync::LazyLock;
+
+static REDIS_CLIENT: LazyLock<Mutex<Option<Arc<Mutex<RedisClient>>>>> =
+    LazyLock::new(|| Mutex::new(None));
 
 pub mod auth;
 pub mod block;
@@ -268,23 +273,32 @@ impl RoutineController {
     }
 }
 
-async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<RedisClient> {
-    let mut redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
+async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<RedisClient>>> {
+    let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
+    let redis_client = Arc::new(Mutex::new(redis_client));
+
+    let (service_name, instance_id) = {
+        let client = redis_client.lock().await;
+        (
+            client.get_service_name().to_string(),
+            client.get_instance_id().to_string(),
+        )
+    };
 
     show_message!(
         MessageType::Info,
         Message {
             action: "Node Id:".to_string(),
-            details: format!(
-                "{}::{}",
-                redis_client.get_service_name(),
-                redis_client.get_instance_id()
-            ),
+            details: format!("{}::{}", service_name, instance_id),
         }
     );
 
     // Register the leadership lock
-    redis_client.register_lock("leadership", 10).await?;
+    redis_client
+        .lock()
+        .await
+        .register_lock("leadership", 10)
+        .await?;
 
     // Start the leadership lock management task
     start_leadership_lock_task(redis_client.clone(), project.clone());
@@ -295,23 +309,44 @@ async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<RedisClient
         });
     });
 
-    redis_client.register_message_handler(callback).await;
+    redis_client
+        .lock()
+        .await
+        .register_message_handler(callback)
+        .await;
+    redis_client.lock().await.start_periodic_tasks();
 
-    redis_client.start_periodic_tasks();
+    // Initialize the global REDIS_CLIENT
+    let mut global_client = REDIS_CLIENT.lock().await;
+    *global_client = Some(redis_client.clone());
+
     Ok(redis_client)
 }
 
 async fn process_pubsub_message(message: String) {
-    if message.contains("<migration_start>") {
-        println!("<Routines> Migration start message received: {}", message);
-    } else if message.contains("<migration_end>") {
-        println!("<Routines> Migration end message received: {}", message);
-    } else {
-        println!("<Routines> Received pubsub message: {}", message);
+    let redis_client = {
+        let lock = REDIS_CLIENT.lock().await;
+        lock.clone().expect("Redis client not initialized")
+    };
+
+    if redis_client
+        .lock()
+        .await
+        .has_lock("leadership")
+        .await
+        .unwrap_or(false)
+    {
+        if message.contains("<migration_start>") {
+            println!("<Routines> Migration start message received: {}", message);
+        } else if message.contains("<migration_end>") {
+            println!("<Routines> Migration end message received: {}", message);
+        } else {
+            println!("<Routines> Received pubsub message: {}", message);
+        }
     }
 }
 
-fn start_leadership_lock_task(redis_client: RedisClient, project: Arc<Project>) {
+fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Arc<Project>) {
     tokio::spawn(async move {
         let mut interval = interval(Duration::from_secs(5)); // Adjust the interval as needed
         loop {
@@ -324,28 +359,33 @@ fn start_leadership_lock_task(redis_client: RedisClient, project: Arc<Project>) 
 }
 
 async fn manage_leadership_lock(
-    redis_client: &RedisClient,
+    redis_client: &Arc<Mutex<RedisClient>>,
     project: &Arc<Project>,
 ) -> Result<(), anyhow::Error> {
-    match redis_client.has_lock("leadership").await? {
-        true => {
-            // We have the lock, renew it
-            redis_client.renew_lock("leadership").await?;
-        }
-        false => {
-            // We don't have the lock, try to acquire it
-            if redis_client.attempt_lock("leadership").await? {
-                info!("Obtained leadership lock, performing leadership tasks");
-                let project_clone = project.clone();
-                tokio::spawn(async move {
-                    if let Err(e) = leadership_tasks(project_clone).await {
-                        error!("Error executing leadership tasks: {}", e);
-                    }
-                });
-            } else {
-                // Don't log this as it's normal for the lock to not be available to non-laader instances
-                // debug!("Failed to obtain leadership lock");
-            }
+    let has_lock = {
+        let client = redis_client.lock().await;
+        client.has_lock("leadership").await?
+    };
+
+    if has_lock {
+        // We have the lock, renew it
+        let client = redis_client.lock().await;
+        client.renew_lock("leadership").await?;
+    } else {
+        // We don't have the lock, try to acquire it
+        let acquired_lock = {
+            let client = redis_client.lock().await;
+            client.attempt_lock("leadership").await?
+        };
+
+        if acquired_lock {
+            info!("Obtained leadership lock, performing leadership tasks");
+            let project_clone = project.clone();
+            tokio::spawn(async move {
+                if let Err(e) = leadership_tasks(project_clone).await {
+                    error!("Error executing leadership tasks: {}", e);
+                }
+            });
         }
     }
     Ok(())
@@ -372,7 +412,7 @@ pub async fn start_development_mode(
         }
     );
 
-    let mut redis_client = setup_redis_client(project.clone()).await?;
+    let redis_client = setup_redis_client(project.clone()).await?;
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(
@@ -406,7 +446,7 @@ pub async fn start_development_mode(
             api_changes_channel,
             metrics.clone(),
             &mut client,
-            &redis_client,
+            &*redis_client.lock().await, // Dereference the MutexGuard
         )
         .await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
@@ -561,7 +601,10 @@ pub async fn start_development_mode(
             .await;
     };
 
-    let _ = redis_client.stop_periodic_tasks();
+    {
+        let mut redis_client = redis_client.lock().await;
+        let _ = redis_client.stop_periodic_tasks();
+    }
 
     Ok(())
 }
@@ -580,7 +623,7 @@ pub async fn start_production_mode(
         }
     );
 
-    let mut redis_client = setup_redis_client(project.clone()).await?;
+    let redis_client = setup_redis_client(project.clone()).await?;
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(
@@ -612,7 +655,7 @@ pub async fn start_production_mode(
             api_changes_channel,
             metrics.clone(),
             &mut client,
-            &redis_client,
+            &*redis_client.lock().await, // Dereference the MutexGuard
         )
         .await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
@@ -710,7 +753,10 @@ pub async fn start_production_mode(
             .await;
     }
 
-    let _ = redis_client.stop_periodic_tasks();
+    {
+        let mut redis_client = redis_client.lock().await;
+        let _ = redis_client.stop_periodic_tasks();
+    }
 
     Ok(())
 }

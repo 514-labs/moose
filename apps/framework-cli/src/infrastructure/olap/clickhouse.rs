@@ -72,29 +72,12 @@ pub async fn execute_changes(
                 run_query(&drop_query, &configured_client).await?;
             }
             OlapChange::Table(Change::Updated { before, after }) => {
-                // In dev - we drop and re-create the table
-                if !project.is_production {
-                    log::info!(
-                        "Replacing table: {:?} and replacing it with {:?}",
-                        before,
-                        after
-                    );
-                    let table_to_drop = std_table_to_clickhouse_table(before)?;
-                    let drop_query = drop_table_query(db_name, table_to_drop)?;
-                    run_query(&drop_query, &configured_client).await?;
-
-                    let table_to_create = std_table_to_clickhouse_table(after)?;
-                    let create_data_table_query =
-                        create_table_query(db_name, table_to_create, ClickhouseEngine::MergeTree)?;
-                    run_query(&create_data_table_query, &configured_client).await?;
-                } else {
-                    log::info!("Updating table: {:?} to {:?}", before.id(), after.id());
-                    let table_diff = compute_table_diff(before, after);
-                    let alter_statements =
-                        generate_alter_statements(&table_diff, db_name, &before.name);
-                    for statement in alter_statements {
-                        run_query(&statement, &configured_client).await?;
-                    }
+                log::info!("Updating table: {:?} to {:?}", before.id(), after.id());
+                let table_diff = compute_table_diff(before, after);
+                let alter_statements =
+                    generate_alter_statements(&table_diff, db_name, &before.name);
+                for statement in alter_statements {
+                    run_query(&statement, &configured_client).await?;
                 }
             }
             OlapChange::View(Change::Added(view)) => match &view.view_type {

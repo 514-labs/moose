@@ -11,6 +11,7 @@ use queries::{
 };
 use serde::{Deserialize, Serialize};
 
+use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
 use crate::framework::core::infrastructure::view::ViewType;
 use crate::framework::core::infrastructure_map::{Change, OlapChange};
 use crate::infrastructure::olap::clickhouse::model::{ClickHouseSystemTableRow, ClickHouseTable};
@@ -87,14 +88,13 @@ pub async fn execute_changes(
                         create_table_query(db_name, table_to_create, ClickhouseEngine::MergeTree)?;
                     run_query(&create_data_table_query, &configured_client).await?;
                 } else {
-                    // In production - ideally we would run an alter statement if possible. Current functionlity is that
-                    // this should not happen - so we error out. This is to prevent accidental data loss
-                    // We should complain at the planning level an actually never get here.
-
-                    return Err(ClickhouseChangesError::NotSupported(format!(
-                        "Table update to {} are not supported in production",
-                        after.id()
-                    )));
+                    log::info!("Updating table: {:?} to {:?}", before.id(), after.id());
+                    let table_diff = compute_table_diff(before, after);
+                    let alter_statements =
+                        generate_alter_statements(&table_diff, db_name, &before.name);
+                    for statement in alter_statements {
+                        run_query(&statement, &configured_client).await?;
+                    }
                 }
             }
             OlapChange::View(Change::Added(view)) => match &view.view_type {
@@ -382,4 +382,211 @@ pub fn table_schema_to_hash(
 struct TableDetail {
     pub engine: String,
     pub total_rows: Option<u64>,
+}
+
+#[derive(Debug, Clone)]
+enum TableDiff {
+    AddColumn(Column),
+    DropColumn(String),
+    ModifyColumn { name: String, new_type: ColumnType },
+    ModifyOrderBy(Vec<String>),
+}
+
+fn compute_table_diff(before: &Table, after: &Table) -> Vec<TableDiff> {
+    let mut diff = Vec::new();
+
+    // Check for added or modified columns
+    for after_col in &after.columns {
+        match before.columns.iter().find(|c| c.name == after_col.name) {
+            // If the column is in the before table, but different, then it is modified
+            Some(before_col) if before_col != after_col => {
+                diff.push(TableDiff::ModifyColumn {
+                    name: after_col.name.clone(),
+                    new_type: after_col.data_type.clone(),
+                });
+            }
+            // If the column is not in the before table, then it is added
+            None => {
+                diff.push(TableDiff::AddColumn(after_col.clone()));
+            }
+            _ => {}
+        }
+    }
+
+    // Check for dropped columns
+    for before_col in &before.columns {
+        if !after.columns.iter().any(|c| c.name == before_col.name) {
+            diff.push(TableDiff::DropColumn(before_col.name.clone()));
+        }
+    }
+
+    // Check for changes in ORDER BY
+    if before.order_by != after.order_by {
+        diff.push(TableDiff::ModifyOrderBy(after.order_by.clone()));
+    }
+
+    diff
+}
+
+fn generate_alter_statements(diff: &[TableDiff], db_name: &str, table_name: &str) -> Vec<String> {
+    diff.iter()
+        .map(|d| match d {
+            TableDiff::AddColumn(col) => {
+                format!(
+                    "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {}",
+                    db_name, table_name, col.name, col.data_type
+                )
+            }
+            TableDiff::DropColumn(name) => {
+                format!(
+                    "ALTER TABLE `{}`.`{}` DROP COLUMN `{}`",
+                    db_name, table_name, name
+                )
+            }
+            TableDiff::ModifyColumn { name, new_type } => {
+                format!(
+                    "ALTER TABLE `{}`.`{}` MODIFY COLUMN `{}` {}",
+                    db_name, table_name, name, new_type
+                )
+            }
+            TableDiff::ModifyOrderBy(new_order) => {
+                format!(
+                    "ALTER TABLE `{}`.`{}` MODIFY ORDER BY ({})",
+                    db_name,
+                    table_name,
+                    new_order.iter().map(|s| format!("`{}`", s)).join(", ")
+                )
+            }
+        })
+        .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::framework::core::{
+        infrastructure::table::{Column, ColumnType, Table},
+        infrastructure_map::PrimitiveSignature,
+    };
+
+    #[test]
+    fn test_compute_table_diff() {
+        let before = Table {
+            name: "test_table".to_string(),
+            columns: vec![
+                Column {
+                    name: "id".to_string(),
+                    data_type: ColumnType::Int,
+                    required: true,
+                    unique: true,
+                    primary_key: true,
+                    default: None,
+                },
+                Column {
+                    name: "name".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+                Column {
+                    name: "to_be_removed".to_string(),
+                    data_type: ColumnType::String,
+                    required: false,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+            ],
+            order_by: vec!["id".to_string()],
+            version: "1.0".to_string(),
+            source_primitive: PrimitiveSignature::default(),
+        };
+
+        let after = Table {
+            name: "test_table".to_string(),
+            columns: vec![
+                Column {
+                    name: "id".to_string(),
+                    data_type: ColumnType::BigInt, // Changed type
+                    required: true,
+                    unique: true,
+                    primary_key: true,
+                    default: None,
+                },
+                Column {
+                    name: "name".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+                Column {
+                    name: "age".to_string(), // New column
+                    data_type: ColumnType::Int,
+                    required: false,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+            ],
+            order_by: vec!["id".to_string(), "name".to_string()], // Changed order_by
+            version: "1.1".to_string(),
+            source_primitive: PrimitiveSignature::default(),
+        };
+
+        let diff = compute_table_diff(&before, &after);
+
+        assert_eq!(diff.len(), 4);
+        assert!(
+            matches!(&diff[0], TableDiff::ModifyColumn { name, new_type } if name == "id" && matches!(new_type, ColumnType::BigInt))
+        );
+        assert!(matches!(&diff[1], TableDiff::AddColumn(col) if col.name == "age"));
+        assert!(matches!(&diff[2], TableDiff::DropColumn(name) if name == "to_be_removed"));
+        assert!(
+            matches!(&diff[3], TableDiff::ModifyOrderBy(order_by) if *order_by == vec!["id".to_string(), "name".to_string()])
+        );
+    }
+
+    #[test]
+    fn test_generate_alter_statements() {
+        let diff = vec![
+            TableDiff::AddColumn(Column {
+                name: "age".to_string(),
+                data_type: ColumnType::Int,
+                required: false,
+                unique: false,
+                primary_key: false,
+                default: None,
+            }),
+            TableDiff::DropColumn("old_column".to_string()),
+            TableDiff::ModifyColumn {
+                name: "id".to_string(),
+                new_type: ColumnType::BigInt,
+            },
+            TableDiff::ModifyOrderBy(vec!["id".to_string(), "name".to_string()]),
+        ];
+
+        let statements = generate_alter_statements(&diff, "test_db", "test_table");
+
+        assert_eq!(statements.len(), 4);
+        assert_eq!(
+            statements[0],
+            "ALTER TABLE `test_db`.`test_table` ADD COLUMN `age` Int"
+        );
+        assert_eq!(
+            statements[1],
+            "ALTER TABLE `test_db`.`test_table` DROP COLUMN `old_column`"
+        );
+        assert_eq!(
+            statements[2],
+            "ALTER TABLE `test_db`.`test_table` MODIFY COLUMN `id` BigInt"
+        );
+        assert_eq!(
+            statements[3],
+            "ALTER TABLE `test_db`.`test_table` MODIFY ORDER BY (`id`, `name`)"
+        );
+    }
 }

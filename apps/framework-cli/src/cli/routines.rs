@@ -554,17 +554,19 @@ pub async fn start_production_mode(
     }
 
     let mut redis_client = setup_redis_client(project.clone()).await?;
-
+    info!("Redis client initialized");
     let server_config = project.http_server_config.clone();
+    info!("Server config: {:?}", server_config);
     let web_server = Webserver::new(
         server_config.host.clone(),
         server_config.port,
         server_config.management_port,
     );
+    info!("Web server initialized");
 
     let consumption_apis: &'static RwLock<HashSet<String>> =
         Box::leak(Box::new(RwLock::new(HashSet::new())));
-
+    info!("Consumption APIs initialized");
     if features.core_v2 {
         let route_table = HashMap::<PathBuf, RouteMeta>::new();
 
@@ -573,6 +575,7 @@ pub async fn start_production_mode(
             Box::leak(Box::new(RwLock::new(route_table)));
 
         let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+        info!("Clickhouse client initialized");
 
         let plan_result = plan_changes(&mut client, &project).await?;
         info!("Plan Changes: {:?}", plan_result.changes);

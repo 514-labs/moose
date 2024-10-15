@@ -28,6 +28,15 @@ pub struct PrimitiveSignature {
     pub primitive_type: PrimitiveTypes,
 }
 
+impl Default for PrimitiveSignature {
+    fn default() -> Self {
+        Self {
+            name: String::new(),
+            primitive_type: PrimitiveTypes::DataModel,
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum Change<T> {
     Added(Box<T>),

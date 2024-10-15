@@ -18,7 +18,7 @@ export const SecondaryCTASection = () => {
     ctas: [
       {
         href: "https://boreal.cloud/sign-up",
-        action: "",
+        action: "boreal-sign-up",
         label: "Deploy Now",
         variant: "default",
       },

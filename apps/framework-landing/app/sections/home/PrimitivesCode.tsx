@@ -300,24 +300,6 @@ export const PrimitivesCode = () => {
 
   return (
     <Fragment>
-      <Section className="2xl:max-w-6xl mx-auto flex flex-col items-center px-5 my-16 sm:my-64">
-        <Grid>
-          <FullWidthContentContainer>
-            <Heading
-              level={HeadingLevel.l2}
-              className="max-w-5xl justify-center align-center text-center md:mb-24 sm:text-5xl"
-            >
-              Moose provides the right data engineering primitives, dev time
-              data visibility and infra automation, so you can focus on
-              building, not on setup.
-              <span className="bg-gradient bg-clip-text text-transparent">
-                {" "}
-                All in pure TypeScript or Python.
-              </span>
-            </Heading>
-          </FullWidthContentContainer>
-        </Grid>
-      </Section>
       <Section className="mx-auto max-w-5xl sm:px-6 lg:px-8">
         <Grid className="flex flex-col">
           <FullWidthContentContainer className="flex md:flex-row flex-col gap-5 p-4 sm:p-6 border rounded-3xl h-fit">

@@ -5,9 +5,9 @@ import { cn } from "@514labs/design-system-components/utils";
 
 export const HeroSection = ({ className }: { className?: string }) => {
   const content = {
-    title: "Prototype & scale data-intensive applications without the hassle",
+    title: "A data engineering framework for all devs",
     description:
-      "An open source developer framework for your data & analytics stack",
+      "From full-stack devs to AI agents, Moose helps build powerful applications powered by big and small data",
     primaryCTA: "Get started",
     primaryCTAUrl: "https://docs.getmoose.dev/quickstart",
     secondaryCTA: "View Docs",

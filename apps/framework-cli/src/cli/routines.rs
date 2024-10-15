@@ -123,11 +123,6 @@ use super::settings::Features;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
 
-use std::sync::LazyLock;
-
-static REDIS_CLIENT: LazyLock<Mutex<Option<Arc<Mutex<RedisClient>>>>> =
-    LazyLock::new(|| Mutex::new(None));
-
 pub mod auth;
 pub mod block;
 pub mod clean;
@@ -303,9 +298,13 @@ async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<R
     // Start the leadership lock management task
     start_leadership_lock_task(redis_client.clone(), project.clone());
 
-    let callback = Arc::new(|message| {
+    let redis_client_clone = redis_client.clone();
+    let callback = Arc::new(move |message: String| {
+        let redis_client = redis_client_clone.clone();
         tokio::spawn(async move {
-            process_pubsub_message(message).await;
+            if let Err(e) = process_pubsub_message(message, redis_client).await {
+                error!("Error processing pubsub message: {}", e);
+            }
         });
     });
 
@@ -316,26 +315,19 @@ async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<R
         .await;
     redis_client.lock().await.start_periodic_tasks();
 
-    // Initialize the global REDIS_CLIENT
-    let mut global_client = REDIS_CLIENT.lock().await;
-    *global_client = Some(redis_client.clone());
-
     Ok(redis_client)
 }
 
-async fn process_pubsub_message(message: String) {
-    let redis_client = {
-        let lock = REDIS_CLIENT.lock().await;
-        lock.clone().expect("Redis client not initialized")
+async fn process_pubsub_message(
+    message: String,
+    redis_client: Arc<Mutex<RedisClient>>,
+) -> anyhow::Result<()> {
+    let has_lock = {
+        let client = redis_client.lock().await;
+        client.has_lock("leadership").await?
     };
 
-    if redis_client
-        .lock()
-        .await
-        .has_lock("leadership")
-        .await
-        .unwrap_or(false)
-    {
+    if has_lock {
         if message.contains("<migration_start>") {
             println!("<Routines> This instance is the leader so ignoring the Migration start message: {}", message);
         } else if message.contains("<migration_end>") {
@@ -352,6 +344,7 @@ async fn process_pubsub_message(message: String) {
             message
         );
     }
+    Ok(())
 }
 
 fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Arc<Project>) {

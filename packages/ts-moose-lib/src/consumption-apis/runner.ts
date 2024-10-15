@@ -35,6 +35,10 @@ const clickhouseConfig = {
 
 const createPath = (path: string) => `${CONSUMPTION_DIR_PATH}${path}.ts`;
 
+const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
+  console.log(`${req.method} ${req.url} ${res.statusCode}`);
+};
+
 const apiHandler =
   (publicKey: jose.KeyLike | undefined) =>
   async (req: http.IncomingMessage, res: http.ServerResponse) => {
@@ -57,17 +61,20 @@ const apiHandler =
             if (ENFORCE_ON_ALL_CONSUMPTIONS_APIS === "true") {
               res.writeHead(401, { "Content-Type": "application/json" });
               res.end(JSON.stringify({ error: "Unauthorized" }));
+              httpLogger(req, res);
               return;
             }
           }
         } else if (ENFORCE_ON_ALL_CONSUMPTIONS_APIS === "true") {
           res.writeHead(401, { "Content-Type": "application/json" });
           res.end(JSON.stringify({ error: "Unauthorized" }));
+          httpLogger(req, res);
           return;
         }
       } else if (ENFORCE_ON_ALL_CONSUMPTIONS_APIS === "true") {
         res.writeHead(401, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: "Unauthorized" }));
+        httpLogger(req, res);
         return;
       }
 
@@ -117,18 +124,23 @@ const apiHandler =
 
       if (status) {
         res.writeHead(status, { "Content-Type": "application/json" });
+        httpLogger(req, res);
       } else {
         res.writeHead(200, { "Content-Type": "application/json" });
+        httpLogger(req, res);
       }
 
       res.end(body);
     } catch (error: any) {
+      console.log(error);
       if (error instanceof Error) {
         res.writeHead(500, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: error.message }));
+        httpLogger(req, res);
       } else {
         res.writeHead(500, { "Content-Type": "application/json" });
-        res;
+        res.end();
+        httpLogger(req, res);
       }
     }
   };

@@ -329,17 +329,17 @@ async fn process_pubsub_message(
 
     if has_lock {
         if message.contains("<migration_start>") {
-            println!("<Routines> This instance is the leader so ignoring the Migration start message: {}", message);
+            info!("<Routines> This instance is the leader so ignoring the Migration start message: {}", message);
         } else if message.contains("<migration_end>") {
-            println!("<Routines> This instance is the leader so ignoring the Migration end message received: {}", message);
+            info!("<Routines> This instance is the leader so ignoring the Migration end message received: {}", message);
         } else {
-            println!(
+            info!(
                 "<Routines> This instance is the leader and received pubsub message: {}",
                 message
             );
         }
     } else {
-        println!(
+        info!(
             "<Routines> This instance is not the leader and received pubsub message: {}",
             message
         );

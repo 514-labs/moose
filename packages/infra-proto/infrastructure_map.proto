@@ -1,0 +1,7 @@
+syntax = "proto3";
+
+package moose.proto;
+
+message InfrastructureMap {
+  map<string, string> topics = 1;
+}

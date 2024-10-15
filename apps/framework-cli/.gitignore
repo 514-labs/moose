@@ -3,3 +3,5 @@ scripts/moose**
 !Cargo.lock
 
 *.tmp
+
+src/proto/

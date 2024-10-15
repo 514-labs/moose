@@ -6,10 +6,19 @@ pub mod metrics_inserter;
 pub mod project;
 pub mod utilities;
 
+pub mod proto;
+
 // This is not Aysnc because we need to have sentry instrument
 // before Tokio takes over the main thread.
 // REF: https://docs.sentry.io/platforms/rust/#asynchronous
 fn main() {
+    println!(
+        "{:?}",
+        proto::infrastructure_map::InfrastructureMap {
+            topics: Default::default(),
+            special_fields: Default::default(),
+        }
+    );
     let envionment = if cfg!(debug_assertions) {
         "development"
     } else {

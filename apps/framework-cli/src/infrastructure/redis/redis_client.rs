@@ -399,6 +399,16 @@ impl RedisClient {
             .context("Failed to ping Redis server")?;
         Ok(())
     }
+
+    pub async fn set(&self, key: &str, value: &str) -> Result<()> {
+        self.connection
+            .lock()
+            .await
+            .set::<_, _, ()>(key, value)
+            .await
+            .context("Failed to set value in Redis")?;
+        Ok(())
+    }
 }
 
 impl Clone for RedisClient {

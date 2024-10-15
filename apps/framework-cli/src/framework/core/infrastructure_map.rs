@@ -8,7 +8,9 @@ use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicTo
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 use crate::framework::controller::{InitialDataLoad, InitialDataLoadStatus};
+use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -746,6 +748,17 @@ impl InfrastructureMap {
         let json = fs::read_to_string(path)?;
         let infra_map = serde_json::from_str(&json)?;
         Ok(infra_map)
+    }
+
+    pub async fn store_in_redis(&self, redis_client: &RedisClient) -> Result<()> {
+        use anyhow::Context;
+        let json = serde_json::to_string(self)?;
+        redis_client
+            .set("infrastructure_map", &json)
+            .await
+            .context("Failed to store InfrastructureMap in Redis")?;
+
+        Ok(())
     }
 }
 

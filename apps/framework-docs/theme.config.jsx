@@ -147,9 +147,6 @@ export default {
   feedback: {
     content: null,
   },
-  editLink: {
-    component: null,
-  },
   footer: {
     text: (
       <span>

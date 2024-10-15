@@ -157,10 +157,12 @@ def handler_with_client(ch_client):
 
                 self.end_headers()
                 self.wfile.write(response_message)
+
             except Exception as e:
                 self.send_response(500)
                 self.end_headers()
                 self.wfile.write(str(e).encode())
+
     return SimpleHTTPRequestHandler
 
 

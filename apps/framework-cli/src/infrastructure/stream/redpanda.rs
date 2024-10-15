@@ -48,11 +48,7 @@ pub async fn execute_changes(
             }
 
             StreamingChange::Topic(Change::Updated { before, after }) => {
-                if !project.is_production {
-                    info!("Replacing topic: {:?} with: {:?}", before, after);
-                    delete_topics(&project.redpanda_config, vec![before.id()]).await?;
-                    create_topics(&project.redpanda_config, vec![after.id()]).await?;
-                } else if before.retention_period != after.retention_period {
+                if before.retention_period != after.retention_period {
                     info!("Updating topic: {:?} with: {:?}", before, after);
                     update_topic_config(&project.redpanda_config, &before.id(), &after).await?;
                 }

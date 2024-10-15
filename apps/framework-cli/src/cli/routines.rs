@@ -549,11 +549,8 @@ pub async fn start_production_mode(
         }
     );
 
-    match std::env::var("MOOSE_TEST__CRASH") {
-        Ok(_) => {
-            panic!("Crashing for testing purposes");
-        }
-        Err(_) => {}
+    if std::env::var("MOOSE_TEST__CRASH").is_ok() {
+        panic!("Crashing for testing purposes");
     }
 
     let mut redis_client = setup_redis_client(project.clone()).await?;

@@ -2,6 +2,177 @@ syntax = "proto3";
 
 package moose.proto;
 
+import "google/protobuf/duration.proto";
+
 message InfrastructureMap {
-  map<string, string> topics = 1;
+  map<string, Topic> topics = 1;
+  map<string, ApiEndpoint> api_endpoints = 2;
+  map<string, Table> tables = 3;
+  map<string, View> views = 4;
+  map<string, TopicToTableSyncProcess> topic_to_table_sync_processes = 5;
+  map<string, TopicToTopicSyncProcess> topic_to_topic_sync_processes = 6;
+  map<string, FunctionProcess> function_processes = 7;
+  OlapProcess block_db_processes = 8;
+  ConsumptionApiWebServer consumption_api_web_server = 9;
+  map<string, InitialDataLoad> initial_data_loads = 10;
+}
+
+message Topic {
+  string version = 1;
+  string name = 2;
+  google.protobuf.Duration retention_period = 3;
+  repeated Column columns = 4;
+  PrimitiveSignature source_primitive = 5;
+}
+
+message ApiEndpoint {
+  string name = 1;
+  APIType api_type = 2;
+  string path = 3;
+  Method method = 4;
+  string version = 5;
+  PrimitiveSignature source_primitive = 6;
+}
+
+enum APIType {
+  INGRESS = 0;
+  EGRESS = 1;
+}
+
+enum Method {
+  GET = 0;
+  POST = 1;
+  PUT = 2;
+  DELETE = 3;
+}
+
+message Table {
+  string name = 1;
+  repeated Column columns = 2;
+  repeated string order_by = 3;
+  string version = 4;
+  PrimitiveSignature source_primitive = 5;
+}
+
+message View {
+  string name = 1;
+  string version = 2;
+  ViewType view_type = 3;
+}
+
+message ViewType {
+  string source_table_name = 1;
+}
+
+message TopicToTableSyncProcess {
+  string source_topic_id = 1;
+  string target_table_id = 2;
+  repeated Column columns = 3;
+  string version = 4;
+  PrimitiveSignature source_primitive = 5;
+}
+
+message TopicToTopicSyncProcess {
+  string source_topic_id = 1;
+  string target_topic_id = 2;
+  PrimitiveSignature source_primitive = 3;
+}
+
+message FunctionProcess {
+  string name = 1;
+  string source_topic = 2;
+  repeated Column source_columns = 3;
+  string target_topic = 4;
+  map<string, string> target_topic_config = 5;
+  repeated Column target_columns = 6;
+  string executable = 7;
+  string version = 8;
+  PrimitiveSignature source_primitive = 9;
+}
+
+message OlapProcess {
+  // Empty as per the Rust struct
+}
+
+message ConsumptionApiWebServer {
+  // Empty as per the Rust struct
+}
+
+message InitialDataLoad {
+  Table table = 1;
+  string topic = 2;
+  InitialDataLoadStatus status = 3;
+}
+
+enum InitialDataLoadStatus {
+  COMPLETED = 0;
+  IN_PROGRESS = 1;
+}
+
+message Column {
+  string name = 1;
+  ColumnType data_type = 2;
+  bool required = 3;
+  bool unique = 4;
+  bool primary_key = 5;
+  ColumnDefaults default = 6;
+}
+
+message ColumnType {
+  oneof type {
+    string string = 1;
+    bool boolean = 2;
+    int32 int = 3;
+    int64 big_int = 4;
+    float float = 5;
+    string decimal = 6;
+    string date_time = 7;
+    DataEnum enum = 8;
+    ColumnType array = 9;
+    Nested nested = 10;
+    bool json = 11;
+    bool bytes = 12;
+  }
+}
+
+message DataEnum {
+  string name = 1;
+  repeated EnumMember values = 2;
+}
+
+message Nested {
+  string name = 1;
+  repeated Column columns = 2;
+  bool jwt = 3;
+}
+
+message EnumMember {
+  string name = 1;
+  EnumValue value = 2;
+}
+
+message EnumValue {
+  oneof value {
+    uint32 int_value = 1;
+    string string_value = 2;
+  }
+}
+
+enum ColumnDefaults {
+  AUTO_INCREMENT = 0;
+  CUID = 1;
+  UUID = 2;
+  NOW = 3;
+}
+
+message PrimitiveSignature {
+  string name = 1;
+  PrimitiveTypes primitive_type = 2;
+}
+
+enum PrimitiveTypes {
+  DATA_MODEL = 0;
+  FUNCTION = 1;
+  DB_BLOCK = 2;
+  CONSUMPTION_API = 3;
 }

@@ -52,11 +52,9 @@ pub async fn execute_changes(
                     info!("Replacing topic: {:?} with: {:?}", before, after);
                     delete_topics(&project.redpanda_config, vec![before.id()]).await?;
                     create_topics(&project.redpanda_config, vec![after.id()]).await?;
-                } else {
-                    if before.retention_period != after.retention_period {
-                        info!("Updating topic: {:?} with: {:?}", before, after);
-                        update_topic_config(&project.redpanda_config, &before.id(), &after).await?;
-                    }
+                } else if before.retention_period != after.retention_period {
+                    info!("Updating topic: {:?} with: {:?}", before, after);
+                    update_topic_config(&project.redpanda_config, &before.id(), &after).await?;
                 }
             }
         }

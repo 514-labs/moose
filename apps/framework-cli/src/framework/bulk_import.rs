@@ -1,7 +1,9 @@
 use crate::framework::core::code_loader::FrameworkObject;
+use crate::framework::core::infrastructure::table::ColumnType;
 use anyhow::bail;
 use itertools::Itertools;
 use serde::__private::from_utf8_lossy;
+use serde_json::{json, Value};
 use std::collections::HashMap;
 use std::path::Path;
 
@@ -15,6 +17,13 @@ pub async fn import_csv_file(
     let headers: Vec<String> = rdr.headers()?.into_iter().map(|s| s.to_string()).collect();
 
     let client = reqwest::Client::new();
+
+    let types: HashMap<String, ColumnType> = data_model
+        .data_model
+        .columns
+        .iter()
+        .map(|col| (col.name.clone(), col.data_type.clone()))
+        .collect();
 
     for chunks in &rdr.records().chunks(1024) {
         let mut s = "[".to_string();
@@ -31,7 +40,31 @@ pub async fn import_csv_file(
             let mut json_map = HashMap::new();
             for (i, key) in headers.iter().enumerate() {
                 if let Some(value) = record.get(i) {
-                    json_map.insert(key, value);
+                    if let Some(t) = types.get(key) {
+                        match t {
+                            ColumnType::String | ColumnType::DateTime | ColumnType::Enum(_) => {
+                                json_map.insert(key, json!(value));
+                            }
+                            ColumnType::Boolean => {
+                                json_map.insert(key, json!(value.parse::<bool>()?));
+                            }
+                            ColumnType::Int | ColumnType::BigInt => {
+                                json_map.insert(key, json!(value.parse::<i64>()?));
+                            }
+                            ColumnType::Float => {
+                                json_map.insert(key, json!(value.parse::<f64>()?));
+                            }
+                            ColumnType::Decimal => {
+                                json_map.insert(key, json!(value.parse::<f64>()?));
+                            }
+                            ColumnType::Array(_)
+                            | ColumnType::Nested(_)
+                            | ColumnType::Json
+                            | ColumnType::Bytes => {
+                                bail!("CSV importing does not support complex types");
+                            }
+                        }
+                    }
                 };
             }
             s.push_str(&serde_json::to_string(&json_map)?);

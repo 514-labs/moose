@@ -34,7 +34,6 @@ use hyper::StatusCode;
 use hyper_util::rt::TokioIo;
 use hyper_util::{rt::TokioExecutor, server::conn::auto};
 use log::error;
-use log::info;
 use log::{debug, log};
 use rdkafka::error::KafkaError;
 use rdkafka::message::OwnedMessage;

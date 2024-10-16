@@ -16,10 +16,13 @@ use crate::infrastructure::stream::redpanda::{
     send_with_back_pressure, wait_for_delivery, RedpandaConfig,
 };
 use crate::project::Project;
+use crate::proto::infrastructure_map::InitialDataLoad as ProtoInitialDataLoad;
+use crate::proto::infrastructure_map::InitialDataLoadStatus as ProtoInitialDataLoadStatus;
 use clickhouse_rs::errors::codes::UNKNOWN_TABLE;
 use clickhouse_rs::ClientHandle;
 use futures::StreamExt;
 use log::{debug, error, info, warn};
+use protobuf::{EnumOrUnknown, MessageField};
 use rdkafka::producer::DeliveryFuture;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -81,12 +84,30 @@ impl InitialDataLoad {
             self.table.name, self.topic
         )
     }
+
+    pub fn to_proto(&self) -> ProtoInitialDataLoad {
+        ProtoInitialDataLoad {
+            table: MessageField::some(self.table.to_proto()),
+            topic: self.topic.clone(),
+            status: EnumOrUnknown::new(self.status.to_proto()),
+            special_fields: Default::default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
 pub enum InitialDataLoadStatus {
     InProgress(i64),
     Completed,
+}
+
+impl InitialDataLoadStatus {
+    fn to_proto(&self) -> ProtoInitialDataLoadStatus {
+        match self {
+            InitialDataLoadStatus::Completed => ProtoInitialDataLoadStatus::COMPLETED,
+            InitialDataLoadStatus::InProgress(_) => ProtoInitialDataLoadStatus::IN_PROGRESS,
+        }
+    }
 }
 
 pub async fn initial_data_load(

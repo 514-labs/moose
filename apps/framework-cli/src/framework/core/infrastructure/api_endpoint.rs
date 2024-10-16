@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-
+use protobuf::{EnumOrUnknown, MessageField};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 use crate::framework::{
     consumption::model::EndpointFile,
@@ -9,6 +9,10 @@ use crate::framework::{
 };
 
 use super::{topic::Topic, DataLineage, InfrastructureSignature};
+
+use crate::proto::infrastructure_map::ApiEndpoint as ProtoApiEndpoint;
+use crate::proto::infrastructure_map::ApiType as ProtoApiType;
+use crate::proto::infrastructure_map::Method as ProtoMethod;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum APIType {
@@ -97,6 +101,18 @@ impl ApiEndpoint {
     pub fn short_display(&self) -> String {
         format!("API Endpoint: {} - Version: {}", self.name, self.version)
     }
+
+    pub fn to_proto(&self) -> ProtoApiEndpoint {
+        ProtoApiEndpoint {
+            name: self.name.clone(),
+            api_type: EnumOrUnknown::new(self.api_type.to_proto()),
+            path: self.path.to_str().unwrap_or_default().to_string(),
+            method: EnumOrUnknown::new(self.method.to_proto()),
+            version: self.version.clone(),
+            source_primitive: MessageField::some(self.source_primitive.to_proto()),
+            special_fields: Default::default(),
+        }
+    }
 }
 
 impl From<EndpointFile> for ApiEndpoint {
@@ -137,6 +153,26 @@ impl DataLineage for ApiEndpoint {
                 }]
             }
             APIType::EGRESS => vec![],
+        }
+    }
+}
+
+impl APIType {
+    fn to_proto(&self) -> ProtoApiType {
+        match self {
+            APIType::INGRESS { .. } => ProtoApiType::INGRESS,
+            APIType::EGRESS => ProtoApiType::EGRESS,
+        }
+    }
+}
+
+impl Method {
+    fn to_proto(&self) -> ProtoMethod {
+        match self {
+            Method::GET => ProtoMethod::GET,
+            Method::POST => ProtoMethod::POST,
+            Method::PUT => ProtoMethod::PUT,
+            Method::DELETE => ProtoMethod::DELETE,
         }
     }
 }

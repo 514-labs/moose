@@ -1,6 +1,6 @@
 use std::io::Result;
 fn main() -> Result<()> {
-    // std::fs::create_dir_all("src/proto/")?;
+    std::fs::create_dir_all("src/proto/")?;
     protobuf_codegen::Codegen::new()
         // // Use `protoc` parser, optional.
         // .protoc()

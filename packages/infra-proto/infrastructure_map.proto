@@ -27,14 +27,14 @@ message Topic {
 
 message ApiEndpoint {
   string name = 1;
-  APIType api_type = 2;
+  ApiType api_type = 2;
   string path = 3;
   Method method = 4;
   string version = 5;
   PrimitiveSignature source_primitive = 6;
 }
 
-enum APIType {
+enum ApiType {
   INGRESS = 0;
   EGRESS = 1;
 }
@@ -159,10 +159,11 @@ message EnumValue {
 }
 
 enum ColumnDefaults {
-  AUTO_INCREMENT = 0;
-  CUID = 1;
-  UUID = 2;
-  NOW = 3;
+  NONE = 0;
+  AUTO_INCREMENT = 1;
+  CUID = 2;
+  UUID = 3;
+  NOW = 4;
 }
 
 message PrimitiveSignature {

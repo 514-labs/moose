@@ -10,7 +10,9 @@ use super::primitive_map::PrimitiveMap;
 use crate::framework::controller::{InitialDataLoad, InitialDataLoadStatus};
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use crate::proto::infrastructure_map::InfrastructureMap as ProtoInfrastructureMap;
 use anyhow::Result;
+use protobuf::{EnumOrUnknown, Message, MessageField};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -28,6 +30,31 @@ pub enum PrimitiveTypes {
 pub struct PrimitiveSignature {
     pub name: String,
     pub primitive_type: PrimitiveTypes,
+}
+
+impl PrimitiveSignature {
+    pub fn to_proto(&self) -> crate::proto::infrastructure_map::PrimitiveSignature {
+        crate::proto::infrastructure_map::PrimitiveSignature {
+            name: self.name.clone(),
+            primitive_type: EnumOrUnknown::new(self.primitive_type.to_proto()),
+            special_fields: Default::default(),
+        }
+    }
+}
+
+impl PrimitiveTypes {
+    fn to_proto(&self) -> crate::proto::infrastructure_map::PrimitiveTypes {
+        match self {
+            PrimitiveTypes::DataModel => {
+                crate::proto::infrastructure_map::PrimitiveTypes::DATA_MODEL
+            }
+            PrimitiveTypes::Function => crate::proto::infrastructure_map::PrimitiveTypes::FUNCTION,
+            PrimitiveTypes::DBBlock => crate::proto::infrastructure_map::PrimitiveTypes::DB_BLOCK,
+            PrimitiveTypes::ConsumptionAPI => {
+                crate::proto::infrastructure_map::PrimitiveTypes::CONSUMPTION_API
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -759,6 +786,60 @@ impl InfrastructureMap {
             .context("Failed to store InfrastructureMap in Redis")?;
 
         Ok(())
+    }
+
+    pub fn to_proto(&self) -> ProtoInfrastructureMap {
+        ProtoInfrastructureMap {
+            topics: self
+                .topics
+                .iter()
+                .map(|(k, v)| (k.clone(), v.to_proto()))
+                .collect(),
+            api_endpoints: self
+                .api_endpoints
+                .iter()
+                .map(|(k, v)| (k.clone(), v.to_proto()))
+                .collect(),
+            tables: self
+                .tables
+                .iter()
+                .map(|(k, v)| (k.clone(), v.to_proto()))
+                .collect(),
+            views: self
+                .views
+                .iter()
+                .map(|(k, v)| (k.clone(), v.to_proto()))
+                .collect(),
+            topic_to_table_sync_processes: self
+                .topic_to_table_sync_processes
+                .iter()
+                .map(|(k, v)| (k.clone(), v.to_proto()))
+                .collect(),
+            topic_to_topic_sync_processes: self
+                .topic_to_topic_sync_processes
+                .iter()
+                .map(|(k, v)| (k.clone(), v.to_proto()))
+                .collect(),
+            function_processes: self
+                .function_processes
+                .iter()
+                .map(|(k, v)| (k.clone(), v.to_proto()))
+                .collect(),
+            block_db_processes: MessageField::some(self.block_db_processes.to_proto()),
+            consumption_api_web_server: MessageField::some(
+                self.consumption_api_web_server.to_proto(),
+            ),
+            initial_data_loads: self
+                .initial_data_loads
+                .iter()
+                .map(|(k, v)| (k.clone(), v.to_proto()))
+                .collect(),
+            special_fields: Default::default(),
+        }
+    }
+
+    pub fn to_proto_bytes(&self) -> Vec<u8> {
+        self.to_proto().write_to_bytes().unwrap()
     }
 }
 

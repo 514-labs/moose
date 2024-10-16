@@ -378,8 +378,10 @@ async fn manage_leadership_lock(
             let client = redis_client.lock().await;
             client.attempt_lock("leadership").await?
         };
-
         if acquired_lock {
+            let mut client = redis_client.lock().await;
+            client.broadcast_message("<new_leader>").await?;
+
             info!("Obtained leadership lock, performing leadership tasks");
             let project_clone = project.clone();
             tokio::spawn(async move {

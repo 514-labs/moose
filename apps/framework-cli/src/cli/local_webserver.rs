@@ -34,6 +34,7 @@ use hyper::StatusCode;
 use hyper_util::rt::TokioIo;
 use hyper_util::{rt::TokioExecutor, server::conn::auto};
 use log::error;
+use log::info;
 use log::{debug, log};
 use rdkafka::error::KafkaError;
 use rdkafka::message::OwnedMessage;
@@ -312,8 +313,12 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
 }
 
 async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Response<Full<Bytes>> {
+    debug!("Received metrics log route");
+
     let body = to_reader(req).await;
     let parsed: Result<MetricEvent, serde_json::Error> = serde_json::from_reader(body);
+    debug!("Parsed metrics log route: {:?}", parsed);
+
     if let Ok(MetricEvent::StreamingFunctionEvent {
         count_in,
         count_out,

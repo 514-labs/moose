@@ -3,7 +3,7 @@ use crate::framework::core::infrastructure::table::ColumnType;
 use anyhow::bail;
 use itertools::Itertools;
 use serde::__private::from_utf8_lossy;
-use serde_json::{json, Value};
+use serde_json::json;
 use std::collections::HashMap;
 use std::path::Path;
 

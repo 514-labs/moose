@@ -195,6 +195,15 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
         E: Error,
     {
         match self.t {
+            ColumnType::DateTime => {
+                let seconds = v.trunc() as i64;
+                let nanos = ((v.fract() * 1_000_000_000.0).round() as u32).min(999_999_999);
+                let date = chrono::DateTime::from_timestamp(seconds, nanos)
+                    .ok_or(E::custom("Invalid timestamp"))?;
+                self.write_to
+                    .serialize_value(&date.to_rfc3339_opts(chrono::SecondsFormat::Nanos, true))
+                    .map_err(Error::custom)
+            }
             ColumnType::Float => self.write_to.serialize_value(&v).map_err(Error::custom),
             _ => Err(Error::invalid_type(serde::de::Unexpected::Float(v), &self)),
         }

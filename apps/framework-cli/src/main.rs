@@ -12,20 +12,6 @@ pub mod proto;
 // before Tokio takes over the main thread.
 // REF: https://docs.sentry.io/platforms/rust/#asynchronous
 fn main() {
-    println!(
-        "{:?}",
-        proto::infrastructure_map::InfrastructureMap {
-            topics: Default::default(),
-            api_endpoints: Default::default(),
-            tables: Default::default(),
-            views: Default::default(),
-            topic_to_table_sync_processes: Default::default(),
-            topic_to_topic_sync_processes: Default::default(),
-            function_processes: Default::default(),
-            initial_data_loads: Default::default(),
-            special_fields: Default::default(),
-        }
-    );
     let envionment = if cfg!(debug_assertions) {
         "development"
     } else {

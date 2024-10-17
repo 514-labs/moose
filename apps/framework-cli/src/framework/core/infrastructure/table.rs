@@ -5,6 +5,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 
 use crate::framework::core::infrastructure_map::PrimitiveSignature;
+use crate::proto::infrastructure_map::ColumnDefaults as ProtoColumnDefaults;
 use crate::proto::infrastructure_map::Table as ProtoTable;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -270,7 +271,7 @@ impl Column {
             unique: self.unique,
             primary_key: self.primary_key,
             default: EnumOrUnknown::new(match &self.default {
-                None => crate::proto::infrastructure_map::ColumnDefaults::NONE,
+                None => ProtoColumnDefaults::NONE,
                 Some(column_default) => column_default.to_proto(),
             }),
             special_fields: Default::default(),
@@ -351,14 +352,12 @@ impl EnumValue {
 }
 
 impl ColumnDefaults {
-    fn to_proto(&self) -> crate::proto::infrastructure_map::ColumnDefaults {
+    fn to_proto(&self) -> ProtoColumnDefaults {
         match self {
-            ColumnDefaults::AutoIncrement => {
-                crate::proto::infrastructure_map::ColumnDefaults::AUTO_INCREMENT
-            }
-            ColumnDefaults::CUID => crate::proto::infrastructure_map::ColumnDefaults::CUID,
-            ColumnDefaults::UUID => crate::proto::infrastructure_map::ColumnDefaults::UUID,
-            ColumnDefaults::Now => crate::proto::infrastructure_map::ColumnDefaults::NOW,
+            ColumnDefaults::AutoIncrement => ProtoColumnDefaults::AUTO_INCREMENT,
+            ColumnDefaults::CUID => ProtoColumnDefaults::CUID,
+            ColumnDefaults::UUID => ProtoColumnDefaults::UUID,
+            ColumnDefaults::Now => ProtoColumnDefaults::NOW,
         }
     }
 }

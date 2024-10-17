@@ -30,9 +30,9 @@ pub struct PrimitiveSignature {
 
 #[derive(Debug, Clone)]
 pub enum Change<T> {
-    Added(T),
-    Removed(T),
-    Updated { before: T, after: T },
+    Added(Box<T>),
+    Removed(Box<T>),
+    Updated { before: Box<T>, after: Box<T> },
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -338,16 +338,16 @@ impl InfrastructureMap {
                     changes
                         .streaming_engine_changes
                         .push(StreamingChange::Topic(Change::<Topic>::Updated {
-                            before: topic.clone(),
-                            after: target_topic.clone(),
+                            before: Box::new(topic.clone()),
+                            after: Box::new(target_topic.clone()),
                         }));
                 }
             } else {
                 changes
                     .streaming_engine_changes
-                    .push(StreamingChange::Topic(Change::<Topic>::Removed(
+                    .push(StreamingChange::Topic(Change::<Topic>::Removed(Box::new(
                         topic.clone(),
-                    )));
+                    ))));
             }
         }
 
@@ -355,9 +355,9 @@ impl InfrastructureMap {
             if !self.topics.contains_key(id) {
                 changes
                     .streaming_engine_changes
-                    .push(StreamingChange::Topic(Change::<Topic>::Added(
+                    .push(StreamingChange::Topic(Change::<Topic>::Added(Box::new(
                         topic.clone(),
-                    )));
+                    ))));
             }
         }
 
@@ -370,8 +370,8 @@ impl InfrastructureMap {
                 if api_endpoint != target_api_endpoint {
                     changes.api_changes.push(ApiChange::ApiEndpoint(
                         Change::<ApiEndpoint>::Updated {
-                            before: api_endpoint.clone(),
-                            after: target_api_endpoint.clone(),
+                            before: Box::new(api_endpoint.clone()),
+                            after: Box::new(target_api_endpoint.clone()),
                         },
                     ));
                 }
@@ -379,7 +379,7 @@ impl InfrastructureMap {
                 changes
                     .api_changes
                     .push(ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Removed(
-                        api_endpoint.clone(),
+                        Box::new(api_endpoint.clone()),
                     )));
             }
         }
@@ -389,7 +389,7 @@ impl InfrastructureMap {
                 changes
                     .api_changes
                     .push(ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Added(
-                        api_endpoint.clone(),
+                        Box::new(api_endpoint.clone()),
                     )));
             }
         }
@@ -404,14 +404,16 @@ impl InfrastructureMap {
                     changes
                         .olap_changes
                         .push(OlapChange::Table(Change::<Table>::Updated {
-                            before: table.clone(),
-                            after: target_table.clone(),
+                            before: Box::new(table.clone()),
+                            after: Box::new(target_table.clone()),
                         }));
                 }
             } else {
                 changes
                     .olap_changes
-                    .push(OlapChange::Table(Change::<Table>::Removed(table.clone())));
+                    .push(OlapChange::Table(Change::<Table>::Removed(Box::new(
+                        table.clone(),
+                    ))));
             }
         }
 
@@ -419,7 +421,9 @@ impl InfrastructureMap {
             if !self.tables.contains_key(id) {
                 changes
                     .olap_changes
-                    .push(OlapChange::Table(Change::<Table>::Added(table.clone())));
+                    .push(OlapChange::Table(Change::<Table>::Added(Box::new(
+                        table.clone(),
+                    ))));
             }
         }
 
@@ -433,14 +437,16 @@ impl InfrastructureMap {
                     changes
                         .olap_changes
                         .push(OlapChange::View(Change::<View>::Updated {
-                            before: view.clone(),
-                            after: target_view.clone(),
+                            before: Box::new(view.clone()),
+                            after: Box::new(target_view.clone()),
                         }));
                 }
             } else {
                 changes
                     .olap_changes
-                    .push(OlapChange::View(Change::<View>::Removed(view.clone())));
+                    .push(OlapChange::View(Change::<View>::Removed(Box::new(
+                        view.clone(),
+                    ))));
             }
         }
 
@@ -448,7 +454,9 @@ impl InfrastructureMap {
             if !self.views.contains_key(id) {
                 changes
                     .olap_changes
-                    .push(OlapChange::View(Change::<View>::Added(view.clone())));
+                    .push(OlapChange::View(Change::<View>::Added(Box::new(
+                        view.clone(),
+                    ))));
             }
         }
 
@@ -466,8 +474,8 @@ impl InfrastructureMap {
                         .push(ProcessChange::TopicToTableSyncProcess(Change::<
                             TopicToTableSyncProcess,
                         >::Updated {
-                            before: topic_to_table_sync_process.clone(),
-                            after: target_topic_to_table_sync_process.clone(),
+                            before: Box::new(topic_to_table_sync_process.clone()),
+                            after: Box::new(target_topic_to_table_sync_process.clone()),
                         }));
                 }
             } else {
@@ -476,7 +484,7 @@ impl InfrastructureMap {
                     .push(ProcessChange::TopicToTableSyncProcess(Change::<
                         TopicToTableSyncProcess,
                     >::Removed(
-                        topic_to_table_sync_process.clone(),
+                        Box::new(topic_to_table_sync_process.clone()),
                     )));
             }
         }
@@ -488,7 +496,7 @@ impl InfrastructureMap {
                     .push(ProcessChange::TopicToTableSyncProcess(Change::<
                         TopicToTableSyncProcess,
                     >::Added(
-                        topic_to_table_sync_process.clone(),
+                        Box::new(topic_to_table_sync_process.clone()),
                     )));
             }
         }
@@ -507,8 +515,8 @@ impl InfrastructureMap {
                         .push(ProcessChange::TopicToTopicSyncProcess(Change::<
                             TopicToTopicSyncProcess,
                         >::Updated {
-                            before: topic_to_topic_sync_process.clone(),
-                            after: target_topic_to_topic_sync_process.clone(),
+                            before: Box::new(topic_to_topic_sync_process.clone()),
+                            after: Box::new(target_topic_to_topic_sync_process.clone()),
                         }));
                 }
             } else {
@@ -517,7 +525,7 @@ impl InfrastructureMap {
                     .push(ProcessChange::TopicToTopicSyncProcess(Change::<
                         TopicToTopicSyncProcess,
                     >::Removed(
-                        topic_to_topic_sync_process.clone(),
+                        Box::new(topic_to_topic_sync_process.clone()),
                     )));
             }
         }
@@ -529,7 +537,7 @@ impl InfrastructureMap {
                     .push(ProcessChange::TopicToTopicSyncProcess(Change::<
                         TopicToTopicSyncProcess,
                     >::Added(
-                        topic_to_topic_sync_process.clone(),
+                        Box::new(topic_to_topic_sync_process.clone()),
                     )));
             }
         }
@@ -548,15 +556,15 @@ impl InfrastructureMap {
                     .processes_changes
                     .push(ProcessChange::FunctionProcess(
                         Change::<FunctionProcess>::Updated {
-                            before: function_process.clone(),
-                            after: target_function_process.clone(),
+                            before: Box::new(function_process.clone()),
+                            after: Box::new(target_function_process.clone()),
                         },
                     ));
             } else {
                 changes
                     .processes_changes
                     .push(ProcessChange::FunctionProcess(
-                        Change::<FunctionProcess>::Removed(function_process.clone()),
+                        Change::<FunctionProcess>::Removed(Box::new(function_process.clone())),
                     ));
             }
         }
@@ -566,7 +574,7 @@ impl InfrastructureMap {
                 changes
                     .processes_changes
                     .push(ProcessChange::FunctionProcess(
-                        Change::<FunctionProcess>::Added(function_process.clone()),
+                        Change::<FunctionProcess>::Added(Box::new(function_process.clone())),
                     ));
             }
         }
@@ -607,8 +615,8 @@ impl InfrastructureMap {
         // currently we assume there is always a change and restart the processes
         changes.processes_changes.push(ProcessChange::OlapProcess(
             Change::<OlapProcess>::Updated {
-                before: OlapProcess {},
-                after: OlapProcess {},
+                before: Box::new(OlapProcess {}),
+                after: Box::new(OlapProcess {}),
             },
         ));
 
@@ -626,8 +634,8 @@ impl InfrastructureMap {
             .push(ProcessChange::ConsumptionApiWebServer(Change::<
                 ConsumptionApiWebServer,
             >::Updated {
-                before: ConsumptionApiWebServer {},
-                after: ConsumptionApiWebServer {},
+                before: Box::new(ConsumptionApiWebServer {}),
+                after: Box::new(ConsumptionApiWebServer {}),
             }));
 
         changes
@@ -656,7 +664,7 @@ impl InfrastructureMap {
     pub fn init_topics(&self) -> Vec<StreamingChange> {
         self.topics
             .values()
-            .map(|topic| StreamingChange::Topic(Change::<Topic>::Added(topic.clone())))
+            .map(|topic| StreamingChange::Topic(Change::<Topic>::Added(Box::new(topic.clone()))))
             .collect()
     }
 
@@ -664,7 +672,7 @@ impl InfrastructureMap {
         self.api_endpoints
             .values()
             .map(|api_endpoint| {
-                ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Added(api_endpoint.clone()))
+                ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Added(Box::new(api_endpoint.clone())))
             })
             .collect()
     }
@@ -672,7 +680,7 @@ impl InfrastructureMap {
     pub fn init_tables(&self) -> Vec<OlapChange> {
         self.tables
             .values()
-            .map(|table| OlapChange::Table(Change::<Table>::Added(table.clone())))
+            .map(|table| OlapChange::Table(Change::<Table>::Added(Box::new(table.clone()))))
             .collect()
     }
 
@@ -682,7 +690,7 @@ impl InfrastructureMap {
             .values()
             .map(|topic_to_table_sync_process| {
                 ProcessChange::TopicToTableSyncProcess(Change::<TopicToTableSyncProcess>::Added(
-                    topic_to_table_sync_process.clone(),
+                    Box::new(topic_to_table_sync_process.clone()),
                 ))
             })
             .collect();
@@ -692,7 +700,7 @@ impl InfrastructureMap {
             .values()
             .map(|topic_to_table_sync_process| {
                 ProcessChange::TopicToTopicSyncProcess(Change::<TopicToTopicSyncProcess>::Added(
-                    topic_to_table_sync_process.clone(),
+                    Box::new(topic_to_table_sync_process.clone()),
                 ))
             })
             .collect();
@@ -702,9 +710,9 @@ impl InfrastructureMap {
             .function_processes
             .values()
             .map(|function_process| {
-                ProcessChange::FunctionProcess(Change::<FunctionProcess>::Added(
+                ProcessChange::FunctionProcess(Change::<FunctionProcess>::Added(Box::new(
                     function_process.clone(),
-                ))
+                )))
             })
             .collect();
 
@@ -712,13 +720,13 @@ impl InfrastructureMap {
 
         // TODO Change this when we have multiple processes for aggregations
         topic_to_table_process_changes.push(ProcessChange::OlapProcess(
-            Change::<OlapProcess>::Added(OlapProcess {}),
+            Change::<OlapProcess>::Added(Box::new(OlapProcess {})),
         ));
 
         topic_to_table_process_changes.push(ProcessChange::ConsumptionApiWebServer(Change::<
             ConsumptionApiWebServer,
         >::Added(
-            ConsumptionApiWebServer {},
+            Box::new(ConsumptionApiWebServer {}),
         )));
 
         topic_to_table_process_changes

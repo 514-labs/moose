@@ -22,8 +22,6 @@ fn main() {
             topic_to_table_sync_processes: Default::default(),
             topic_to_topic_sync_processes: Default::default(),
             function_processes: Default::default(),
-            block_db_processes: Default::default(),
-            consumption_api_web_server: Default::default(),
             initial_data_loads: Default::default(),
             special_fields: Default::default(),
         }

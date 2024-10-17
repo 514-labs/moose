@@ -12,7 +12,7 @@ use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::proto::infrastructure_map::InfrastructureMap as ProtoInfrastructureMap;
 use anyhow::Result;
-use protobuf::{EnumOrUnknown, Message, MessageField};
+use protobuf::{EnumOrUnknown, Message};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -825,10 +825,6 @@ impl InfrastructureMap {
                 .iter()
                 .map(|(k, v)| (k.clone(), v.to_proto()))
                 .collect(),
-            block_db_processes: MessageField::some(self.block_db_processes.to_proto()),
-            consumption_api_web_server: MessageField::some(
-                self.consumption_api_web_server.to_proto(),
-            ),
             initial_data_loads: self
                 .initial_data_loads
                 .iter()

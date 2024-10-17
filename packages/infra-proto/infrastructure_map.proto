@@ -12,8 +12,10 @@ message InfrastructureMap {
   map<string, TopicToTableSyncProcess> topic_to_table_sync_processes = 5;
   map<string, TopicToTopicSyncProcess> topic_to_topic_sync_processes = 6;
   map<string, FunctionProcess> function_processes = 7;
-  OlapProcess block_db_processes = 8;
-  ConsumptionApiWebServer consumption_api_web_server = 9;
+
+//  add then when they have fields in rust
+//  OlapProcess block_db_processes = 8;
+//  ConsumptionApiWebServer consumption_api_web_server = 9;
   map<string, InitialDataLoad> initial_data_loads = 10;
 }
 
@@ -90,23 +92,11 @@ message FunctionProcess {
   PrimitiveSignature source_primitive = 9;
 }
 
-message OlapProcess {
-  // Empty as per the Rust struct
-}
-
-message ConsumptionApiWebServer {
-  // Empty as per the Rust struct
-}
-
 message InitialDataLoad {
   Table table = 1;
   string topic = 2;
-  InitialDataLoadStatus status = 3;
-}
-
-enum InitialDataLoadStatus {
-  COMPLETED = 0;
-  IN_PROGRESS = 1;
+  // unset means completed
+  optional fixed64 progress = 3;
 }
 
 message Column {

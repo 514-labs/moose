@@ -29,7 +29,7 @@ pub enum ExecutionError {
     StreamingChange(#[from] stream::StreamingChangesError),
 
     #[error("Failed to communicate with API")]
-    ApiChange(#[from] api::ApiChangeError),
+    ApiChange(#[from] Box<api::ApiChangeError>),
 
     #[error("Failed to communicate with Sync Processes")]
     SyncProcessesChange(#[from] processes::SyncProcessChangesError),
@@ -62,7 +62,8 @@ pub async fn execute_initial_infra_change(
         &plan.target_infra_map.init_api_endpoints(),
         api_changes_channel,
     )
-    .await?;
+    .await
+    .map_err(Box::new)?;
 
     let mut syncing_processes_registry = SyncingProcessesRegistry::new(
         project.redpanda_config.clone(),
@@ -109,7 +110,9 @@ pub async fn execute_online_change(
 
     // In prod, the webserver is part of the current process that gets spawned. As succh
     // it is initialized from 0 and we don't need to apply diffs to it.
-    api::execute_changes(&plan.changes.api_changes, api_changes_channel).await?;
+    api::execute_changes(&plan.changes.api_changes, api_changes_channel)
+        .await
+        .map_err(Box::new)?;
 
     processes::execute_changes(
         sync_processes_registry,

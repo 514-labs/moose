@@ -72,9 +72,8 @@ impl ConsumptionProcessRegistry {
     pub async fn stop(&mut self) -> Result<(), ConsumptionError> {
         info!("Stopping consumption...");
 
-        match &self.api_process {
-            Some(child) => kill_child(child).await?,
-            None => (),
+        if let Some(child) = &self.api_process {
+            kill_child(child).await?
         };
 
         self.api_process = None;

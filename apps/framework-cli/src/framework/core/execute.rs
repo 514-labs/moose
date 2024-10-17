@@ -2,6 +2,7 @@ use crate::infrastructure::redis::redis_client::RedisClient;
 use clickhouse_rs::ClientHandle;
 use std::sync::Arc;
 use tokio::sync::mpsc::Sender;
+use tokio::sync::Mutex;
 
 use super::{infrastructure_map::ApiChange, plan::InfraPlan};
 use crate::infrastructure::migration;
@@ -50,7 +51,7 @@ pub async fn execute_initial_infra_change(
     api_changes_channel: Sender<ApiChange>,
     metrics: Arc<Metrics>,
     clickhouse_client: &mut ClientHandle,
-    redis_client: &RedisClient,
+    redis_client: &Arc<Mutex<RedisClient>>,
 ) -> Result<(SyncingProcessesRegistry, ProcessRegistries), ExecutionError> {
     // This probably can be parallelized through Tokio Spawn
     olap::execute_changes(project, &plan.changes.olap_changes).await?;
@@ -72,6 +73,8 @@ pub async fn execute_initial_infra_change(
 
     // Check if this process instance has the "leadership" lock
     if redis_client
+        .lock()
+        .await
         .has_lock("leadership")
         .await
         .map_err(ExecutionError::LeadershipCheckFailed)?

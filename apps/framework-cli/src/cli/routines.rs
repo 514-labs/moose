@@ -449,7 +449,7 @@ pub async fn start_development_mode(
             api_changes_channel,
             metrics.clone(),
             &mut client,
-            &*redis_client.lock().await,
+            &redis_client,
         )
         .await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
@@ -662,7 +662,7 @@ pub async fn start_production_mode(
             api_changes_channel,
             metrics.clone(),
             &mut client,
-            &*redis_client.lock().await,
+            &redis_client,
         )
         .await?;
         // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.

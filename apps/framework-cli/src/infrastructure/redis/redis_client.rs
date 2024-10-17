@@ -3,47 +3,8 @@
 //! This module provides a Redis client implementation with support for leader election,
 //! presence updates, and message passing (Sending) and message queuing.
 //!
-//! # Example Usage
-//!
-//! ```rust
-//! use your_crate_name::infrastructure::redis::RedisClient;
-//!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Initialize the Redis client
-//!     let mut client = RedisClient::new("my_service").await?;
-//!
-//!     // Start periodic tasks (presence updates and lock renewal)
-//!     client.start_periodic_tasks().await;
-//!
-//!     // Attempt to gain leadership
-//!     let is_leader = client.attempt_leadership().await?;
-//!     println!("Is leader: {}", is_leader);
-//!
-//!     // Send a message to another instance
-//!     client.send_message_to_instance("Hello", "target_instance_id").await?;
-//!
-//!     // Broadcast a message to all instances
-//!     client.broadcast_message("Broadcast message").await?;
-//!
-//!     // Post a message to the queue
-//!     client.post_queue_message("New task").await?;
-//!
-//!     // Get a message from the queue
-//!     if let Some(message) = client.get_queue_message().await? {
-//!         println!("Received message: {}", message);
-//!         // Process the message...
-//!         client.mark_queue_message(&message, true).await?;
-//!     }
-//!
-//!     // The client will automatically stop periodic tasks and release the lock (if leader)
-//!     // when it goes out of scope due to the Drop implementation
-//!
-//!     Ok(())
-//! }
-//! ```
-//!
-//! Note: Make sure to set the MOOSE_REDIS_URL environment variable or the client will default to "redis://127.0.0.1:6379".
+//! Note: Make sure to set the MOOSE_REDIS_URL environment variable or the client will
+//! default to "redis://127.0.0.1:6379".
 use anyhow::{Context, Result};
 use log::{error, info, warn};
 use redis::aio::Connection as RedisConnection;

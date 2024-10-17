@@ -19,7 +19,7 @@ use crate::metrics_inserter::MetricsInserter;
 use crate::utilities::constants::{CLI_VERSION, CONTEXT, CTX_SESSION_ID};
 use crate::utilities::decode_object;
 use chrono::{DateTime, Utc};
-use log::warn;
+use log::{debug, warn};
 
 const DEFAULT_ANONYMOUS_METRICS_URL: &str =
     "https://moosefood.514.dev/ingest/MooseSessionTelemetry/0.6";
@@ -49,6 +49,7 @@ pub enum MetricsErrors {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
 pub enum MetricEvent {
     // GetMetricsRegistryAsString(tokio::sync::oneshot::Sender<String>),
     IngestedEvent {
@@ -104,6 +105,7 @@ pub struct Metrics {
     registry: Arc<Mutex<Registry>>,
 }
 
+#[derive(Clone, Debug)]
 pub struct Statistics {
     pub http_latency_histogram_aggregate: Histogram,
     pub http_latency_histogram: Family<HTTPLabel, Histogram>,
@@ -262,6 +264,7 @@ impl Metrics {
         registry.register(
             TOTAL_LATENCY,
             "Total latency of HTTP requests",
+            // Those clones are ok because this is cloning an Arc reference behind the scenes
             data.http_latency_histogram_aggregate.clone(),
         );
         registry.register(
@@ -322,6 +325,9 @@ impl Metrics {
                 if export_metrics {
                     let _ = metrics_inserter.insert(message.clone()).await;
                 }
+
+                debug!("Received Metrics Event: {:?}", message);
+
                 match message {
                     MetricEvent::IngestedEvent {
                         timestamp: _,
@@ -338,8 +344,19 @@ impl Metrics {
                                 path: route.clone(),
                             })
                             .inc_by(bytes);
+
                         data.http_ingested_request_count.inc();
                         data.http_ingested_total_bytes.inc_by(bytes);
+
+                        data.http_latency_histogram
+                            .get_or_create(&HTTPLabel {
+                                method: method.clone(),
+                                path: route.clone(),
+                            })
+                            .observe(latency.as_secs_f64());
+
+                        data.http_latency_histogram_aggregate
+                            .observe(latency.as_secs_f64());
 
                         data.http_ingested_latency_sum_ms
                             .inc_by(latency.as_millis() as u64);
@@ -366,8 +383,10 @@ impl Metrics {
                                 path: route.clone(),
                             })
                             .observe(latency.as_secs_f64());
+
                         data.http_latency_histogram_aggregate
                             .observe(latency.as_secs_f64());
+
                         data.http_consumed_latency_sum_ms
                             .inc_by(latency.as_millis() as u64);
 
@@ -433,6 +452,8 @@ impl Metrics {
                             .inc_by(bytes);
                     }
                 };
+
+                debug!("Updated metrics: {:?}", data);
             }
         });
 

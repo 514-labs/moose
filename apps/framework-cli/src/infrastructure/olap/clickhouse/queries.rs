@@ -150,7 +150,7 @@ pub fn create_table_query(
         "table_name": table.name,
         "fields":  builds_field_context(&table.columns)?,
         "primary_key_string": if !primary_key.is_empty() {
-            Some(primary_key.join(", "))
+            Some(primary_key.join("`, `"))
         } else {
             None
         },

@@ -1,7 +1,3 @@
-use itertools::sorted;
-use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, path::PathBuf};
-
 use crate::{
     framework::{
         core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
@@ -10,8 +6,14 @@ use crate::{
     infrastructure::stream::redpanda::RedpandaConfig,
     utilities::constants::{PYTHON_FILE_EXTENSION, TYPESCRIPT_FILE_EXTENSION},
 };
+use itertools::sorted;
+use protobuf::MessageField;
+use serde::{Deserialize, Serialize};
+use std::{collections::HashMap, path::PathBuf};
 
 use super::{table::Column, topic::Topic};
+
+use crate::proto::infrastructure_map::FunctionProcess as ProtoFunctionProcess;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct FunctionProcess {
@@ -125,6 +127,21 @@ impl FunctionProcess {
 
     pub fn target_topic_config_json(&self) -> String {
         serde_json::to_string(&self.target_topic_config).unwrap()
+    }
+
+    pub fn to_proto(&self) -> ProtoFunctionProcess {
+        ProtoFunctionProcess {
+            name: self.name.clone(),
+            source_topic: self.source_topic.clone(),
+            source_columns: self.source_columns.iter().map(|c| c.to_proto()).collect(),
+            target_topic: self.target_topic.clone(),
+            target_topic_config: self.target_topic_config.clone(),
+            target_columns: self.target_columns.iter().map(|c| c.to_proto()).collect(),
+            executable: self.executable.to_str().unwrap_or_default().to_string(),
+            version: self.version.clone(),
+            source_primitive: MessageField::some(self.source_primitive.to_proto()),
+            special_fields: Default::default(),
+        }
     }
 }
 

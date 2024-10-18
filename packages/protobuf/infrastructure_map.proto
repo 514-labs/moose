@@ -13,9 +13,9 @@ message InfrastructureMap {
   map<string, TopicToTopicSyncProcess> topic_to_topic_sync_processes = 6;
   map<string, FunctionProcess> function_processes = 7;
 
-//  add then when they have fields in rust
-//  OlapProcess block_db_processes = 8;
-//  ConsumptionApiWebServer consumption_api_web_server = 9;
+  //  add then when they have fields in rust
+  //  OlapProcess block_db_processes = 8;
+  //  ConsumptionApiWebServer consumption_api_web_server = 9;
   map<string, InitialDataLoad> initial_data_loads = 10;
 }
 
@@ -29,16 +29,28 @@ message Topic {
 
 message ApiEndpoint {
   string name = 1;
-  ApiType api_type = 2;
-  string path = 3;
-  Method method = 4;
-  string version = 5;
-  PrimitiveSignature source_primitive = 6;
+  oneof api_type {
+    IngressDetails ingress = 2;
+    EgressDetails egress = 3;
+  }
+  string path = 4;
+  Method method = 5;
+  string version = 6;
+  PrimitiveSignature source_primitive = 7;
 }
 
-enum ApiType {
-  INGRESS = 0;
-  EGRESS = 1;
+message IngressDetails {
+  string target_topic = 1;
+  EndpointIngestionFormat format = 2;
+}
+
+message EgressDetails {
+  // nothing right now
+}
+
+enum EndpointIngestionFormat {
+  JSON = 0;
+  JSON_ARRAY = 1;
 }
 
 enum Method {
@@ -96,7 +108,7 @@ message InitialDataLoad {
   Table table = 1;
   string topic = 2;
   // unset means completed
-  optional fixed64 progress = 3;
+  optional uint64 progress = 3;
 }
 
 message Column {

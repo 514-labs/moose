@@ -10,9 +10,11 @@ use crate::framework::{
 
 use super::{topic::Topic, DataLineage, InfrastructureSignature};
 
-use crate::proto::infrastructure_map::ApiEndpoint as ProtoApiEndpoint;
-use crate::proto::infrastructure_map::ApiType as ProtoApiType;
+use crate::proto::infrastructure_map::api_endpoint::Api_type as ProtoApiType;
 use crate::proto::infrastructure_map::Method as ProtoMethod;
+use crate::proto::infrastructure_map::{
+    ApiEndpoint as ProtoApiEndpoint, EndpointIngestionFormat as ProtoIngressFormat, IngressDetails,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum APIType {
@@ -105,7 +107,7 @@ impl ApiEndpoint {
     pub fn to_proto(&self) -> ProtoApiEndpoint {
         ProtoApiEndpoint {
             name: self.name.clone(),
-            api_type: EnumOrUnknown::new(self.api_type.to_proto()),
+            api_type: Some(self.api_type.to_proto()),
             path: self.path.to_str().unwrap_or_default().to_string(),
             method: EnumOrUnknown::new(self.method.to_proto()),
             version: self.version.clone(),
@@ -160,8 +162,19 @@ impl DataLineage for ApiEndpoint {
 impl APIType {
     fn to_proto(&self) -> ProtoApiType {
         match self {
-            APIType::INGRESS { .. } => ProtoApiType::INGRESS,
-            APIType::EGRESS => ProtoApiType::EGRESS,
+            APIType::INGRESS {
+                target_topic,
+                format,
+                ..
+            } => ProtoApiType::Ingress(IngressDetails {
+                target_topic: target_topic.clone(),
+                format: EnumOrUnknown::new(match format {
+                    EndpointIngestionFormat::Json => ProtoIngressFormat::JSON,
+                    EndpointIngestionFormat::JsonArray => ProtoIngressFormat::JSON_ARRAY,
+                }),
+                special_fields: Default::default(),
+            }),
+            APIType::EGRESS => ProtoApiType::Egress(Default::default()),
         }
     }
 }

@@ -1,9 +1,9 @@
-use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
 
 use crate::framework::data_model::model::DataModel;
+use crate::proto::infrastructure_map::view::View_type as ProtoViewType;
+use crate::proto::infrastructure_map::TableAlias as ProtoTableAlias;
 use crate::proto::infrastructure_map::View as ProtoView;
-use crate::proto::infrastructure_map::ViewType as ProtoViewType;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ViewType {
@@ -46,7 +46,7 @@ impl View {
         ProtoView {
             name: self.name.clone(),
             version: self.version.clone(),
-            view_type: MessageField::some(self.view_type.to_proto()),
+            view_type: Some(self.view_type.to_proto()),
             special_fields: Default::default(),
         }
     }
@@ -55,10 +55,12 @@ impl View {
 impl ViewType {
     fn to_proto(&self) -> ProtoViewType {
         match self {
-            ViewType::TableAlias { source_table_name } => ProtoViewType {
-                source_table_name: source_table_name.clone(),
-                special_fields: Default::default(),
-            },
+            ViewType::TableAlias { source_table_name } => {
+                ProtoViewType::TableAlias(ProtoTableAlias {
+                    source_table_name: source_table_name.clone(),
+                    special_fields: Default::default(),
+                })
+            }
         }
     }
 }

@@ -1,12 +1,10 @@
 use std::io::Result;
 
 fn main() -> Result<()> {
+    println!("cargo:rerun-if-changed=../../packages/protobuf");
+
     std::fs::create_dir_all("src/proto/")?;
     protobuf_codegen::Codegen::new()
-        // // Use `protoc` parser, optional.
-        // .protoc()
-        // // Use `protoc-bin-vendored` bundled protoc command, optional.
-        // .protoc_path(&protoc_bin_vendored::protoc_bin_path().unwrap())
         // All inputs and imports from the inputs must reside in `includes` directories.
         .includes(["../../packages/protobuf"])
         // Inputs must reside in some of include paths.

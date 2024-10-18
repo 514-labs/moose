@@ -71,10 +71,12 @@ message Table {
 message View {
   string name = 1;
   string version = 2;
-  ViewType view_type = 3;
+  oneof view_type {
+    TableAlias table_alias = 3;
+  }
 }
 
-message ViewType {
+message TableAlias {
   string source_table_name = 1;
 }
 

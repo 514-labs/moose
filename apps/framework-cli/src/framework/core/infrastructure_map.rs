@@ -787,9 +787,9 @@ impl InfrastructureMap {
 
     pub async fn store_in_redis(&self, redis_client: &RedisClient) -> Result<()> {
         use anyhow::Context;
-        let json = serde_json::to_string(self)?;
+        let encoded: Vec<u8> = self.to_proto().write_to_bytes()?;
         redis_client
-            .set("infrastructure_map", &json)
+            .set("infrastructure_map", &encoded)
             .await
             .context("Failed to store InfrastructureMap in Redis")?;
 

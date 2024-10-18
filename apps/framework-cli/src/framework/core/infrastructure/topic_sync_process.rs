@@ -1,3 +1,4 @@
+use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
 
 use super::{
@@ -6,6 +7,10 @@ use super::{
 };
 use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
 use crate::framework::streaming::model::StreamingFunction;
+use crate::proto::infrastructure_map::{
+    TopicToTableSyncProcess as ProtoTopicToTableSyncProcess,
+    TopicToTopicSyncProcess as ProtoTopicToTopicSyncProcess,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct TopicToTableSyncProcess {
@@ -64,6 +69,17 @@ impl TopicToTableSyncProcess {
             self.source_topic_id, self.target_table_id
         )
     }
+
+    pub fn to_proto(&self) -> ProtoTopicToTableSyncProcess {
+        ProtoTopicToTableSyncProcess {
+            source_topic_id: self.source_topic_id.clone(),
+            target_table_id: self.target_table_id.clone(),
+            columns: self.columns.iter().map(|c| c.to_proto()).collect(),
+            version: self.version.clone(),
+            source_primitive: MessageField::some(self.source_primitive.to_proto()),
+            special_fields: Default::default(),
+        }
+    }
 }
 
 impl TopicToTopicSyncProcess {
@@ -96,5 +112,14 @@ impl TopicToTopicSyncProcess {
             "Topic to Topic Sync Process: {} -> {}",
             self.source_topic_id, self.target_topic_id
         )
+    }
+
+    pub fn to_proto(&self) -> ProtoTopicToTopicSyncProcess {
+        ProtoTopicToTopicSyncProcess {
+            source_topic_id: self.source_topic_id.clone(),
+            target_topic_id: self.target_topic_id.clone(),
+            source_primitive: MessageField::some(self.source_primitive.to_proto()),
+            special_fields: Default::default(),
+        }
     }
 }

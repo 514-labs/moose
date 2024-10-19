@@ -108,7 +108,7 @@ impl ApiEndpoint {
         ProtoApiEndpoint {
             name: self.name.clone(),
             api_type: Some(self.api_type.to_proto()),
-            path: self.path.to_str().unwrap_or_default().to_string(),
+            path: self.path.to_string_lossy().to_string(),
             method: EnumOrUnknown::new(self.method.to_proto()),
             version: self.version.clone(),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),

@@ -1,10 +1,14 @@
-use std::fmt;
-
+use protobuf::{EnumOrUnknown, MessageField};
 use serde::de::{Error, MapAccess, Visitor};
 use serde::ser::SerializeStruct;
 use serde::{Deserialize, Deserializer, Serialize};
+use std::fmt;
 
 use crate::framework::core::infrastructure_map::PrimitiveSignature;
+use crate::proto::infrastructure_map::column_type;
+use crate::proto::infrastructure_map::ColumnType as ProtoColumnType;
+use crate::proto::infrastructure_map::Table as ProtoTable;
+use crate::proto::infrastructure_map::{ColumnDefaults as ProtoColumnDefaults, SimpleColumnType};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Table {
@@ -39,6 +43,17 @@ impl Table {
 
     pub fn short_display(&self) -> String {
         format!("Table: {} Version {}", self.name, self.version)
+    }
+
+    pub fn to_proto(&self) -> ProtoTable {
+        ProtoTable {
+            name: self.name.clone(),
+            columns: self.columns.iter().map(|c| c.to_proto()).collect(),
+            order_by: self.order_by.clone(),
+            version: self.version.clone(),
+            source_primitive: MessageField::some(self.source_primitive.to_proto()),
+            special_fields: Default::default(),
+        }
     }
 }
 
@@ -247,6 +262,104 @@ impl<'de> Deserialize<'de> for ColumnType {
 
 pub fn is_enum_type(string_type: &str, enums: &[DataEnum]) -> bool {
     enums.iter().any(|e| e.name == string_type)
+}
+
+impl Column {
+    pub fn to_proto(&self) -> crate::proto::infrastructure_map::Column {
+        crate::proto::infrastructure_map::Column {
+            name: self.name.clone(),
+            data_type: MessageField::some(self.data_type.to_proto()),
+            required: self.required,
+            unique: self.unique,
+            primary_key: self.primary_key,
+            default: EnumOrUnknown::new(match &self.default {
+                None => ProtoColumnDefaults::NONE,
+                Some(column_default) => column_default.to_proto(),
+            }),
+            special_fields: Default::default(),
+        }
+    }
+}
+impl ColumnType {
+    pub fn to_proto(&self) -> ProtoColumnType {
+        let t = match self {
+            ColumnType::String => column_type::T::Simple(SimpleColumnType::STRING.into()),
+            ColumnType::Boolean => column_type::T::Simple(SimpleColumnType::BOOLEAN.into()),
+            ColumnType::Int => column_type::T::Simple(SimpleColumnType::INT.into()),
+            ColumnType::BigInt => column_type::T::Simple(SimpleColumnType::BIGINT.into()),
+            ColumnType::Float => column_type::T::Simple(SimpleColumnType::FLOAT.into()),
+            ColumnType::Decimal => column_type::T::Simple(SimpleColumnType::DECIMAL.into()),
+            ColumnType::DateTime => column_type::T::Simple(SimpleColumnType::DATETIME.into()),
+            ColumnType::Enum(data_enum) => column_type::T::Enum(data_enum.to_proto()),
+            ColumnType::Array(inner) => column_type::T::Array(Box::new(inner.to_proto())),
+            ColumnType::Nested(nested) => column_type::T::Nested(nested.to_proto()),
+            ColumnType::Json => column_type::T::Simple(SimpleColumnType::JSON_COLUMN.into()),
+            ColumnType::Bytes => column_type::T::Simple(SimpleColumnType::BYTES.into()),
+        };
+        ProtoColumnType {
+            t: Some(t),
+            special_fields: Default::default(),
+        }
+    }
+}
+
+impl DataEnum {
+    pub fn to_proto(&self) -> crate::proto::infrastructure_map::DataEnum {
+        crate::proto::infrastructure_map::DataEnum {
+            name: self.name.clone(),
+            values: self.values.iter().map(|v| v.to_proto()).collect(),
+            special_fields: Default::default(),
+        }
+    }
+}
+
+impl Nested {
+    pub fn to_proto(&self) -> crate::proto::infrastructure_map::Nested {
+        crate::proto::infrastructure_map::Nested {
+            name: self.name.clone(),
+            columns: self.columns.iter().map(|c| c.to_proto()).collect(),
+            jwt: self.jwt,
+            special_fields: Default::default(),
+        }
+    }
+}
+
+impl EnumMember {
+    pub fn to_proto(&self) -> crate::proto::infrastructure_map::EnumMember {
+        crate::proto::infrastructure_map::EnumMember {
+            name: self.name.clone(),
+            value: MessageField::some(self.value.to_proto()),
+            special_fields: Default::default(),
+        }
+    }
+}
+
+impl EnumValue {
+    pub fn to_proto(&self) -> crate::proto::infrastructure_map::EnumValue {
+        let value = match self {
+            EnumValue::Int(i) => {
+                crate::proto::infrastructure_map::enum_value::Value::IntValue(*i as i32)
+            }
+            EnumValue::String(s) => {
+                crate::proto::infrastructure_map::enum_value::Value::StringValue(s.clone())
+            }
+        };
+        crate::proto::infrastructure_map::EnumValue {
+            value: Some(value),
+            special_fields: Default::default(),
+        }
+    }
+}
+
+impl ColumnDefaults {
+    fn to_proto(&self) -> ProtoColumnDefaults {
+        match self {
+            ColumnDefaults::AutoIncrement => ProtoColumnDefaults::AUTO_INCREMENT,
+            ColumnDefaults::CUID => ProtoColumnDefaults::CUID,
+            ColumnDefaults::UUID => ProtoColumnDefaults::UUID,
+            ColumnDefaults::Now => ProtoColumnDefaults::NOW,
+        }
+    }
 }
 
 #[cfg(test)]

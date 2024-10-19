@@ -137,6 +137,12 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 
+      # to trigger code gen
+      - name: Run cargo build
+        uses: actions-rs/cargo@v1
+        with:
+          command: build
+
       - name: Run cargo fmt
         uses: actions-rs/cargo@v1
         with:

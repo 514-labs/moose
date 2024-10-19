@@ -47,7 +47,7 @@
 use anyhow::{Context, Result};
 use log::{error, info};
 use redis::aio::Connection as AsyncConnection;
-use redis::AsyncCommands;
+use redis::{AsyncCommands, ToRedisArgs};
 use redis::{Client, Script};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -397,6 +397,20 @@ impl RedisClient {
             .query_async::<_, String>(&mut *self.connection.lock().await)
             .await
             .context("Failed to ping Redis server")?;
+        Ok(())
+    }
+
+    pub async fn set<K: ToRedisArgs + Send + Sync, V: ToRedisArgs + Send + Sync>(
+        &self,
+        key: K,
+        value: V,
+    ) -> Result<()> {
+        self.connection
+            .lock()
+            .await
+            .set::<K, V, ()>(key, value)
+            .await
+            .context("Failed to set value in Redis")?;
         Ok(())
     }
 }

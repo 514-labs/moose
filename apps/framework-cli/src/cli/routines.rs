@@ -387,6 +387,10 @@ pub async fn start_development_mode(
             &plan_result.target_infra_map,
         )
         .await?;
+        plan_result
+            .target_infra_map
+            .store_in_redis(&redis_client)
+            .await?;
 
         let infra_map: &'static RwLock<InfrastructureMap> =
             Box::leak(Box::new(RwLock::new(plan_result.target_infra_map)));
@@ -403,6 +407,7 @@ pub async fn start_development_mode(
             syncing_registry,
             process_registry,
             metrics.clone(),
+            &redis_client,
         )?;
 
         info!("Starting web server...");
@@ -516,6 +521,7 @@ pub async fn start_development_mode(
             syncing_processes_registry,
             project_registries,
             metrics.clone(),
+            &redis_client,
         )?;
 
         info!("Starting web server...");
@@ -597,6 +603,10 @@ pub async fn start_production_mode(
             &plan_result.target_infra_map,
         )
         .await?;
+        plan_result
+            .target_infra_map
+            .store_in_redis(&redis_client)
+            .await?;
 
         let infra_map: &'static InfrastructureMap =
             Box::leak(Box::new(plan_result.target_infra_map));

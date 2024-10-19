@@ -1,6 +1,6 @@
-use std::path::PathBuf;
-
+use protobuf::{EnumOrUnknown, MessageField};
 use serde::{Deserialize, Serialize};
+use std::path::PathBuf;
 
 use crate::framework::{
     consumption::model::EndpointFile,
@@ -9,6 +9,12 @@ use crate::framework::{
 };
 
 use super::{topic::Topic, DataLineage, InfrastructureSignature};
+
+use crate::proto::infrastructure_map::api_endpoint::Api_type as ProtoApiType;
+use crate::proto::infrastructure_map::Method as ProtoMethod;
+use crate::proto::infrastructure_map::{
+    ApiEndpoint as ProtoApiEndpoint, EndpointIngestionFormat as ProtoIngressFormat, IngressDetails,
+};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum APIType {
@@ -97,6 +103,18 @@ impl ApiEndpoint {
     pub fn short_display(&self) -> String {
         format!("API Endpoint: {} - Version: {}", self.name, self.version)
     }
+
+    pub fn to_proto(&self) -> ProtoApiEndpoint {
+        ProtoApiEndpoint {
+            name: self.name.clone(),
+            api_type: Some(self.api_type.to_proto()),
+            path: self.path.to_string_lossy().to_string(),
+            method: EnumOrUnknown::new(self.method.to_proto()),
+            version: self.version.clone(),
+            source_primitive: MessageField::some(self.source_primitive.to_proto()),
+            special_fields: Default::default(),
+        }
+    }
 }
 
 impl From<EndpointFile> for ApiEndpoint {
@@ -137,6 +155,37 @@ impl DataLineage for ApiEndpoint {
                 }]
             }
             APIType::EGRESS => vec![],
+        }
+    }
+}
+
+impl APIType {
+    fn to_proto(&self) -> ProtoApiType {
+        match self {
+            APIType::INGRESS {
+                target_topic,
+                data_model: _data_model,
+                format,
+            } => ProtoApiType::Ingress(IngressDetails {
+                target_topic: target_topic.clone(),
+                format: EnumOrUnknown::new(match format {
+                    EndpointIngestionFormat::Json => ProtoIngressFormat::JSON,
+                    EndpointIngestionFormat::JsonArray => ProtoIngressFormat::JSON_ARRAY,
+                }),
+                special_fields: Default::default(),
+            }),
+            APIType::EGRESS => ProtoApiType::Egress(Default::default()),
+        }
+    }
+}
+
+impl Method {
+    fn to_proto(&self) -> ProtoMethod {
+        match self {
+            Method::GET => ProtoMethod::GET,
+            Method::POST => ProtoMethod::POST,
+            Method::PUT => ProtoMethod::PUT,
+            Method::DELETE => ProtoMethod::DELETE,
         }
     }
 }

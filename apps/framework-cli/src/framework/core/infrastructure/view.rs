@@ -1,6 +1,9 @@
 use serde::{Deserialize, Serialize};
 
 use crate::framework::data_model::model::DataModel;
+use crate::proto::infrastructure_map::view::View_type as ProtoViewType;
+use crate::proto::infrastructure_map::TableAlias as ProtoTableAlias;
+use crate::proto::infrastructure_map::View as ProtoView;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum ViewType {
@@ -36,6 +39,28 @@ impl View {
             view_type: ViewType::TableAlias {
                 source_table_name: source_data_model.id(),
             },
+        }
+    }
+
+    pub fn to_proto(&self) -> ProtoView {
+        ProtoView {
+            name: self.name.clone(),
+            version: self.version.clone(),
+            view_type: Some(self.view_type.to_proto()),
+            special_fields: Default::default(),
+        }
+    }
+}
+
+impl ViewType {
+    fn to_proto(&self) -> ProtoViewType {
+        match self {
+            ViewType::TableAlias { source_table_name } => {
+                ProtoViewType::TableAlias(ProtoTableAlias {
+                    source_table_name: source_table_name.clone(),
+                    special_fields: Default::default(),
+                })
+            }
         }
     }
 }

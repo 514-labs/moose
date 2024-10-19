@@ -164,8 +164,8 @@ impl APIType {
         match self {
             APIType::INGRESS {
                 target_topic,
+                data_model: _data_model,
                 format,
-                ..
             } => ProtoApiType::Ingress(IngressDetails {
                 target_topic: target_topic.clone(),
                 format: EnumOrUnknown::new(match format {

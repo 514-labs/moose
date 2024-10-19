@@ -338,7 +338,7 @@ impl EnumValue {
     pub fn to_proto(&self) -> crate::proto::infrastructure_map::EnumValue {
         let value = match self {
             EnumValue::Int(i) => {
-                crate::proto::infrastructure_map::enum_value::Value::IntValue(*i as u32)
+                crate::proto::infrastructure_map::enum_value::Value::IntValue(*i as i32)
             }
             EnumValue::String(s) => {
                 crate::proto::infrastructure_map::enum_value::Value::StringValue(s.clone())

@@ -5,8 +5,10 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 
 use crate::framework::core::infrastructure_map::PrimitiveSignature;
-use crate::proto::infrastructure_map::ColumnDefaults as ProtoColumnDefaults;
+use crate::proto::infrastructure_map::column_type;
+use crate::proto::infrastructure_map::ColumnType as ProtoColumnType;
 use crate::proto::infrastructure_map::Table as ProtoTable;
+use crate::proto::infrastructure_map::{ColumnDefaults as ProtoColumnDefaults, SimpleColumnType};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Table {
@@ -278,26 +280,24 @@ impl Column {
         }
     }
 }
-
 impl ColumnType {
-    pub fn to_proto(&self) -> crate::proto::infrastructure_map::ColumnType {
-        use crate::proto::infrastructure_map::column_type::Type;
-        let type_field = match self {
-            ColumnType::String => Type::String(String::new()),
-            ColumnType::Boolean => Type::Boolean(false),
-            ColumnType::Int => Type::Int(0),
-            ColumnType::BigInt => Type::BigInt(0),
-            ColumnType::Float => Type::Float(0.0),
-            ColumnType::Decimal => Type::Decimal(String::new()),
-            ColumnType::DateTime => Type::DateTime(String::new()),
-            ColumnType::Enum(data_enum) => Type::Enum(data_enum.to_proto()),
-            ColumnType::Array(inner) => Type::Array(Box::new(inner.to_proto())),
-            ColumnType::Nested(nested) => Type::Nested(nested.to_proto()),
-            ColumnType::Json => Type::Json(true),
-            ColumnType::Bytes => Type::Bytes(true),
+    pub fn to_proto(&self) -> ProtoColumnType {
+        let t = match self {
+            ColumnType::String => column_type::T::Simple(SimpleColumnType::STRING.into()),
+            ColumnType::Boolean => column_type::T::Simple(SimpleColumnType::BOOLEAN.into()),
+            ColumnType::Int => column_type::T::Simple(SimpleColumnType::INT.into()),
+            ColumnType::BigInt => column_type::T::Simple(SimpleColumnType::BIGINT.into()),
+            ColumnType::Float => column_type::T::Simple(SimpleColumnType::FLOAT.into()),
+            ColumnType::Decimal => column_type::T::Simple(SimpleColumnType::DECIMAL.into()),
+            ColumnType::DateTime => column_type::T::Simple(SimpleColumnType::DATETIME.into()),
+            ColumnType::Enum(data_enum) => column_type::T::Enum(data_enum.to_proto()),
+            ColumnType::Array(inner) => column_type::T::Array(Box::new(inner.to_proto())),
+            ColumnType::Nested(nested) => column_type::T::Nested(nested.to_proto()),
+            ColumnType::Json => column_type::T::Simple(SimpleColumnType::JSON_COLUMN.into()),
+            ColumnType::Bytes => column_type::T::Simple(SimpleColumnType::BYTES.into()),
         };
-        crate::proto::infrastructure_map::ColumnType {
-            type_: Some(type_field),
+        ProtoColumnType {
+            t: Some(t),
             special_fields: Default::default(),
         }
     }

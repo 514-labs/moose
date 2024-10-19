@@ -122,20 +122,25 @@ message Column {
   ColumnDefaults default = 6;
 }
 
+enum SimpleColumnType {
+  STRING = 0;
+  BOOLEAN = 1;
+  INT = 2;
+  BIGINT = 3;
+  FLOAT = 4;
+  DECIMAL = 5;
+  DATETIME = 6;
+
+  JSON_COLUMN = 14;
+  BYTES = 15;
+}
+
 message ColumnType {
-  oneof type {
-    string string = 1;
-    bool boolean = 2;
-    int32 int = 3;
-    int64 big_int = 4;
-    float float = 5;
-    string decimal = 6;
-    string date_time = 7;
-    DataEnum enum = 8;
-    ColumnType array = 9;
-    Nested nested = 10;
-    bool json = 11;
-    bool bytes = 12;
+  oneof t {
+    SimpleColumnType simple = 1;
+    DataEnum enum = 2;
+    ColumnType array = 3;
+    Nested nested = 4;
   }
 }
 

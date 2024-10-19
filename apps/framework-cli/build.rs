@@ -5,6 +5,7 @@ fn main() -> Result<()> {
 
     std::fs::create_dir_all("src/proto/")?;
     protobuf_codegen::Codegen::new()
+        .pure()
         // All inputs and imports from the inputs must reside in `includes` directories.
         .includes(["../../packages/protobuf"])
         // Inputs must reside in some of include paths.

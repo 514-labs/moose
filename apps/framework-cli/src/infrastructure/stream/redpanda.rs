@@ -50,7 +50,7 @@ pub async fn execute_changes(
             StreamingChange::Topic(Change::Updated { before, after }) => {
                 if before.retention_period != after.retention_period {
                     info!("Updating topic: {:?} with: {:?}", before, after);
-                    update_topic_config(&project.redpanda_config, &before.id(), &after).await?;
+                    update_topic_config(&project.redpanda_config, &before.id(), after).await?;
                 }
             }
         }
@@ -62,7 +62,7 @@ pub async fn execute_changes(
 async fn update_topic_config(
     redpanda_config: &RedpandaConfig,
     id: &str,
-    after: &&crate::framework::core::infrastructure::topic::Topic,
+    after: &crate::framework::core::infrastructure::topic::Topic,
 ) -> anyhow::Result<()> {
     info!("Updating topic config for: {}", id);
 

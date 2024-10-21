@@ -25,6 +25,11 @@ interface IconCardProps {
   variant?: "default" | "gradient";
 }
 
+interface IconPops {
+  Icon: React.ElementType;
+  variant: "default" | "gradient";
+}
+
 interface CTACardProps extends IconCardProps {
   ctaLink: string;
   ctaLabel: string;
@@ -45,23 +50,7 @@ function BaseCard({
   return (
     <Card className={cn("rounded-2xl h-full flex flex-col", className)}>
       <CardHeader>
-        <div
-          className={cn(
-            "w-fit rounded-[12px] p-[2px]",
-            variant === "gradient"
-              ? "bg-gradient-to-b from-pink from-4.65% to-background to-93.24% border-transparent"
-              : "",
-          )}
-        >
-          <div
-            className={cn(
-              "rounded-[10px] w-fit p-2",
-              variant === "gradient" ? "bg-gradientDarkPink" : "bg-[#262626]",
-            )}
-          >
-            <Icon className="h-[24px] w-[24px] text-white" />
-          </div>
-        </div>
+        <BackgroundIcon variant={variant} Icon={Icon} />
       </CardHeader>
       <CardContent className="flex-grow">
         <Text className="my-0">{title}</Text>
@@ -69,6 +58,28 @@ function BaseCard({
       </CardContent>
       {children}
     </Card>
+  );
+}
+
+export function BackgroundIcon({ Icon, variant = "default" }: IconPops) {
+  return (
+    <div
+      className={cn(
+        "w-fit rounded-[12px] p-[2px]",
+        variant === "gradient"
+          ? "bg-gradient-to-b from-pink from-4.65% to-background to-93.24% border-transparent"
+          : "",
+      )}
+    >
+      <div
+        className={cn(
+          "rounded-[10px] w-fit p-2",
+          variant === "gradient" ? "bg-gradientDarkPink" : "bg-[#262626]",
+        )}
+      >
+        <Icon className="h-[24px] w-[24px] text-white" />
+      </div>
+    </div>
   );
 }
 

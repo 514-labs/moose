@@ -569,7 +569,12 @@ async fn top_command_handler(
 
             routines::start_production_mode(project_arc, settings.features, arc_metrics)
                 .await
-                .unwrap();
+                .map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Prod".to_string(),
+                        details: format!("Failed to start production mode: {:?}", e),
+                    })
+                })?;
 
             wait_for_usage_capture(capture_handle).await;
 

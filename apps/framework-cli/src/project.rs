@@ -650,6 +650,15 @@ impl Project {
         }
         None
     }
+
+    /**
+     * Check if the project is running in a docker constainer we built from the CLI
+     * The docker container will have a special environment variable that is set by the build
+     * image that we can check for. DOCKER_IMAGE=true
+     */
+    pub fn is_docker_image(&self) -> bool {
+        std::env::var("DOCKER_IMAGE").unwrap_or("false".to_string()) == "true"
+    }
 }
 
 // Tests

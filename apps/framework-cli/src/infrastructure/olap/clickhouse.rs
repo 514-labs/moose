@@ -12,7 +12,7 @@ use queries::{
 use serde::{Deserialize, Serialize};
 
 use crate::framework::core::infrastructure::view::ViewType;
-use crate::framework::core::infrastructure_map::{Change, OlapChange};
+use crate::framework::core::infrastructure_map::{Change, ColumnChange, OlapChange, TableChange};
 use crate::infrastructure::olap::clickhouse::model::{ClickHouseSystemTableRow, ClickHouseTable};
 use crate::project::Project;
 
@@ -55,7 +55,7 @@ pub async fn execute_changes(
 
     for change in changes.iter() {
         match change {
-            OlapChange::Table(Change::Added(table)) => {
+            OlapChange::Table(TableChange::Added(table)) => {
                 log::info!("Creating table: {:?}", table.id());
 
                 let clickhouse_table = std_table_to_clickhouse_table(table)?;
@@ -63,38 +63,30 @@ pub async fn execute_changes(
                     create_table_query(db_name, clickhouse_table, ClickhouseEngine::MergeTree)?;
                 run_query(&create_data_table_query, &configured_client).await?;
             }
-            OlapChange::Table(Change::Removed(table)) => {
+            OlapChange::Table(TableChange::Removed(table)) => {
                 log::info!("Removing table: {:?}", table.id());
 
                 let clickhouse_table = std_table_to_clickhouse_table(table)?;
                 let drop_query = drop_table_query(db_name, clickhouse_table)?;
                 run_query(&drop_query, &configured_client).await?;
             }
-            OlapChange::Table(Change::Updated { before, after }) => {
-                // In dev - we drop and re-create the table
-                if !project.is_production {
-                    log::info!(
-                        "Replacing table: {:?} and replacing it with {:?}",
-                        before,
-                        after
-                    );
-                    let table_to_drop = std_table_to_clickhouse_table(before)?;
-                    let drop_query = drop_table_query(db_name, table_to_drop)?;
-                    run_query(&drop_query, &configured_client).await?;
+            OlapChange::Table(TableChange::Updated {
+                name,
+                column_changes,
+                order_by_change,
+            }) => {
+                log::info!("Updating table: {:?}", name);
+                let mut alter_statements =
+                    generate_column_alter_statements(column_changes, db_name, name);
 
-                    let table_to_create = std_table_to_clickhouse_table(after)?;
-                    let create_data_table_query =
-                        create_table_query(db_name, table_to_create, ClickhouseEngine::MergeTree)?;
-                    run_query(&create_data_table_query, &configured_client).await?;
-                } else {
-                    // In production - ideally we would run an alter statement if possible. Current functionlity is that
-                    // this should not happen - so we error out. This is to prevent accidental data loss
-                    // We should complain at the planning level an actually never get here.
+                if order_by_change.before != order_by_change.after {
+                    let order_by_alter_statement =
+                        generate_order_by_alter_statement(&order_by_change.after, db_name, name);
+                    alter_statements.push(order_by_alter_statement);
+                }
 
-                    return Err(ClickhouseChangesError::NotSupported(format!(
-                        "Table update to {} are not supported in production",
-                        after.id()
-                    )));
+                for statement in alter_statements {
+                    run_query(&statement, &configured_client).await?;
                 }
             }
             OlapChange::View(Change::Added(view)) => match &view.view_type {
@@ -382,4 +374,150 @@ pub fn table_schema_to_hash(
 struct TableDetail {
     pub engine: String,
     pub total_rows: Option<u64>,
+}
+
+fn generate_column_alter_statements(
+    diff: &[ColumnChange],
+    db_name: &str,
+    table_name: &str,
+) -> Vec<String> {
+    diff.iter()
+        .map(|d: &ColumnChange| match d {
+            ColumnChange::Added(col) => {
+                format!(
+                    "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {}",
+                    db_name, table_name, col.name, col.data_type
+                )
+            }
+            ColumnChange::Removed(col) => {
+                format!(
+                    "ALTER TABLE `{}`.`{}` DROP COLUMN `{}`",
+                    db_name, table_name, col.name
+                )
+            }
+            ColumnChange::Updated { before, after } => {
+                format!(
+                    "ALTER TABLE `{}`.`{}` MODIFY COLUMN `{}` {}",
+                    db_name, table_name, before.name, after.data_type
+                )
+            }
+        })
+        .collect()
+}
+
+fn generate_order_by_alter_statement(
+    order_by: &[String],
+    db_name: &str,
+    table_name: &str,
+) -> String {
+    format!(
+        "ALTER TABLE `{}`.`{}` MODIFY ORDER BY ({})",
+        db_name,
+        table_name,
+        order_by.iter().map(|col| format!("`{}`", col)).join(", ")
+    )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::framework::core::infrastructure::table::{Column, ColumnType};
+
+    #[test]
+    fn test_generate_column_alter_statements() {
+        let diff = vec![
+            ColumnChange::Added(Column {
+                name: "age".to_string(),
+                data_type: ColumnType::Int,
+                required: false,
+                unique: false,
+                primary_key: false,
+                default: None,
+            }),
+            ColumnChange::Removed(Column {
+                name: "old_column".to_string(),
+                data_type: ColumnType::String, // Assuming String type, adjust if needed
+                required: false,
+                unique: false,
+                primary_key: false,
+                default: None,
+            }),
+            ColumnChange::Updated {
+                before: Column {
+                    name: "id".to_string(),
+                    data_type: ColumnType::Int, // Assuming it was Int before, adjust if needed
+                    required: true,
+                    unique: true,
+                    primary_key: true,
+                    default: None,
+                },
+                after: Column {
+                    name: "id".to_string(),
+                    data_type: ColumnType::BigInt,
+                    required: true,
+                    unique: true,
+                    primary_key: true,
+                    default: None,
+                },
+            },
+        ];
+
+        let statements = generate_column_alter_statements(&diff, "test_db", "test_table");
+
+        assert_eq!(statements.len(), 3);
+        assert_eq!(
+            statements[0],
+            "ALTER TABLE `test_db`.`test_table` ADD COLUMN `age` Int"
+        );
+        assert_eq!(
+            statements[1],
+            "ALTER TABLE `test_db`.`test_table` DROP COLUMN `old_column`"
+        );
+        assert_eq!(
+            statements[2],
+            "ALTER TABLE `test_db`.`test_table` MODIFY COLUMN `id` BigInt"
+        );
+    }
+
+    #[test]
+    fn test_generate_order_by_alter_statement() {
+        let new_order_by = vec!["id".to_string(), "timestamp".to_string()];
+        let db_name = "test_db";
+        let table_name = "test_table";
+
+        let statement = generate_order_by_alter_statement(&new_order_by, db_name, table_name);
+
+        assert_eq!(
+            statement,
+            "ALTER TABLE `test_db`.`test_table` MODIFY ORDER BY (`id`, `timestamp`)"
+        );
+    }
+
+    #[test]
+    fn test_generate_order_by_alter_statement_single_column() {
+        let new_order_by = vec!["id".to_string()];
+        let db_name = "test_db";
+        let table_name = "test_table";
+
+        let statement = generate_order_by_alter_statement(&new_order_by, db_name, table_name);
+
+        assert_eq!(
+            statement,
+            "ALTER TABLE `test_db`.`test_table` MODIFY ORDER BY (`id`)"
+        );
+    }
+
+    #[test]
+    fn test_generate_order_by_alter_statement_empty_order_by() {
+        let new_order_by: Vec<String> = vec![];
+        let db_name = "test_db";
+        let table_name = "test_table";
+
+        let statement = generate_order_by_alter_statement(&new_order_by, db_name, table_name);
+
+        assert_eq!(
+            statement,
+            "ALTER TABLE `test_db`.`test_table` MODIFY ORDER BY ()"
+        );
+    }
 }

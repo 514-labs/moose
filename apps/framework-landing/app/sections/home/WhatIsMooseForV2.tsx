@@ -2,6 +2,7 @@ import {
   FullWidthContentContainer,
   Grid,
   Section,
+  HalfWidthContentContainer,
 } from "@514labs/design-system-components/components/containers";
 
 import {
@@ -27,27 +28,35 @@ export const WhatIsMooseFor = () => {
           </span>
         </Heading>
       </FullWidthContentContainer>
-      <Grid className="grid grid-cols-2 grid-rows-2 grid-flow-col">
-        <IconCard
-          title="Interactive Analytics Features"
-          description="Enable embedded personalized charts, metrics, and data feeds in your user-facing applications"
-          Icon={PieChart}
-        />
-        <IconCard
-          title="Custom Data APIs"
-          description="Serve processed data through authenticated APIs for external applications"
-          Icon={Code}
-        />
-        <IconCard
-          title="Enterprise Data Products"
-          description="Power reports, dashboards, and internal analytics like C360, observability, or supply chain"
-          Icon={LayoutDashboard}
-        />
-        <IconCard
-          title="Real-Time Processing Pipelines"
-          description="Process and analyze live data streams for real-time insights and workflow automation"
-          Icon={GitCompare}
-        />
+      <Grid className="grid-flow-col grid-rows-4 md:grid-rows-2">
+        <HalfWidthContentContainer>
+          <IconCard
+            title="Interactive Analytics Features"
+            description="Enable embedded personalized charts, metrics, and data feeds in your user-facing applications"
+            Icon={PieChart}
+          />
+        </HalfWidthContentContainer>
+        <HalfWidthContentContainer>
+          <IconCard
+            title="Custom Data APIs"
+            description="Serve processed data through authenticated APIs for external applications"
+            Icon={Code}
+          />
+        </HalfWidthContentContainer>
+        <HalfWidthContentContainer>
+          <IconCard
+            title="Enterprise Data Products"
+            description="Power reports, dashboards, and internal analytics like C360, observability, or supply chain"
+            Icon={LayoutDashboard}
+          />
+        </HalfWidthContentContainer>
+        <HalfWidthContentContainer>
+          <IconCard
+            title="Real-Time Processing Pipelines"
+            description="Process and analyze live data streams for real-time insights and workflow automation"
+            Icon={GitCompare}
+          />
+        </HalfWidthContentContainer>
       </Grid>
     </Section>
   );

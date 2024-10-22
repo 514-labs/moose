@@ -29,11 +29,14 @@ export const SecondaryCTASection = () => {
 
   return (
     <Section className="mx-auto max-w-5xl">
-      <div className="rounded-2xl border-2 flex flex-row justify-between items-start gap-10 p-8">
-        <Heading className="w-1/2 mt-0" level={HeadingLevel.l2}>
+      <div className="rounded-2xl border-2 flex flex-col md:flex-row justify-between items-center md:items-start gap-10 p-8">
+        <Heading
+          className="w-full md:w-1/2 mt-0 text-center md:text-start"
+          level={HeadingLevel.l2}
+        >
           {content.title}
         </Heading>
-        <div className="flex-grow flex flex-col gap-4">
+        <div className="flex-grow flex flex-col w-full gap-4">
           {content.ctas.map((cta, index) => (
             <Link key={index} href={cta.href}>
               <TrackButton

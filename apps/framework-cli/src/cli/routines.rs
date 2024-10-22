@@ -79,13 +79,14 @@
 //! - Organize routines better in the file hiearchy
 //!
 
+use crate::infrastructure::redis::redis_client::RedisClient;
 use std::collections::{HashMap, HashSet};
 use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use log::{debug, error, info};
-use tokio::sync::RwLock; // or use the appropriate error type
+use tokio::sync::{Mutex, RwLock};
 use tokio::time::{interval, Duration};
 
 use crate::cli::watcher::{
@@ -112,7 +113,6 @@ use crate::infrastructure::processes::cron_registry::CronRegistry;
 use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
-use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::fetch_topics;
 use crate::project::Project;
 
@@ -268,20 +268,86 @@ impl RoutineController {
     }
 }
 
-async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<RedisClient> {
-    let mut redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
+async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<RedisClient>>> {
+    let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
+    let redis_client = Arc::new(Mutex::new(redis_client));
+
+    let (service_name, instance_id) = {
+        let client = redis_client.lock().await;
+        (
+            client.get_service_name().to_string(),
+            client.get_instance_id().to_string(),
+        )
+    };
+
+    show_message!(
+        MessageType::Info,
+        Message {
+            action: "Node Id:".to_string(),
+            details: format!("{}::{}", service_name, instance_id),
+        }
+    );
 
     // Register the leadership lock
-    redis_client.register_lock("leadership", 10).await?;
+    redis_client
+        .lock()
+        .await
+        .register_lock("leadership", 10)
+        .await?;
 
     // Start the leadership lock management task
     start_leadership_lock_task(redis_client.clone(), project.clone());
 
-    redis_client.start_periodic_tasks();
+    let redis_client_clone = redis_client.clone();
+    let callback = Arc::new(move |message: String| {
+        let redis_client = redis_client_clone.clone();
+        tokio::spawn(async move {
+            if let Err(e) = process_pubsub_message(message, redis_client).await {
+                error!("Error processing pubsub message: {}", e);
+            }
+        });
+    });
+
+    redis_client
+        .lock()
+        .await
+        .register_message_handler(callback)
+        .await;
+    redis_client.lock().await.start_periodic_tasks();
+
     Ok(redis_client)
 }
 
-fn start_leadership_lock_task(redis_client: RedisClient, project: Arc<Project>) {
+async fn process_pubsub_message(
+    message: String,
+    redis_client: Arc<Mutex<RedisClient>>,
+) -> anyhow::Result<()> {
+    let has_lock = {
+        let client = redis_client.lock().await;
+        client.has_lock("leadership").await?
+    };
+
+    if has_lock {
+        if message.contains("<migration_start>") {
+            info!("<Routines> This instance is the leader so ignoring the Migration start message: {}", message);
+        } else if message.contains("<migration_end>") {
+            info!("<Routines> This instance is the leader so ignoring the Migration end message received: {}", message);
+        } else {
+            info!(
+                "<Routines> This instance is the leader and received pubsub message: {}",
+                message
+            );
+        }
+    } else {
+        info!(
+            "<Routines> This instance is not the leader and received pubsub message: {}",
+            message
+        );
+    }
+    Ok(())
+}
+
+fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Arc<Project>) {
     tokio::spawn(async move {
         let mut interval = interval(Duration::from_secs(5)); // Adjust the interval as needed
         loop {
@@ -294,27 +360,35 @@ fn start_leadership_lock_task(redis_client: RedisClient, project: Arc<Project>) 
 }
 
 async fn manage_leadership_lock(
-    redis_client: &RedisClient,
+    redis_client: &Arc<Mutex<RedisClient>>,
     project: &Arc<Project>,
 ) -> Result<(), anyhow::Error> {
-    match redis_client.has_lock("leadership").await? {
-        true => {
-            // We have the lock, renew it
-            redis_client.renew_lock("leadership").await?;
-        }
-        false => {
-            // We don't have the lock, try to acquire it
-            if redis_client.attempt_lock("leadership").await? {
-                info!("Obtained leadership lock, performing leadership tasks");
-                let project_clone = project.clone();
-                tokio::spawn(async move {
-                    if let Err(e) = leadership_tasks(project_clone).await {
-                        error!("Error executing leadership tasks: {}", e);
-                    }
-                });
-            } else {
-                debug!("Failed to obtain leadership lock");
-            }
+    let has_lock = {
+        let client = redis_client.lock().await;
+        client.has_lock("leadership").await?
+    };
+
+    if has_lock {
+        // We have the lock, renew it
+        let client = redis_client.lock().await;
+        client.renew_lock("leadership").await?;
+    } else {
+        // We don't have the lock, try to acquire it
+        let acquired_lock = {
+            let client = redis_client.lock().await;
+            client.attempt_lock("leadership").await?
+        };
+        if acquired_lock {
+            let mut client = redis_client.lock().await;
+            client.broadcast_message("<new_leader>").await?;
+
+            info!("Obtained leadership lock, performing leadership tasks");
+            let project_clone = project.clone();
+            tokio::spawn(async move {
+                if let Err(e) = leadership_tasks(project_clone).await {
+                    error!("Error executing leadership tasks: {}", e);
+                }
+            });
         }
     }
     Ok(())
@@ -341,7 +415,7 @@ pub async fn start_development_mode(
         }
     );
 
-    let mut redis_client = setup_redis_client(project.clone()).await?;
+    let redis_client = setup_redis_client(project.clone()).await?;
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(
@@ -530,7 +604,10 @@ pub async fn start_development_mode(
             .await;
     };
 
-    let _ = redis_client.stop_periodic_tasks();
+    {
+        let mut redis_client = redis_client.lock().await;
+        let _ = redis_client.stop_periodic_tasks();
+    }
 
     Ok(())
 }
@@ -553,8 +630,7 @@ pub async fn start_production_mode(
         panic!("Crashing for testing purposes");
     }
 
-    let mut redis_client = setup_redis_client(project.clone()).await?;
-    info!("Redis client initialized");
+    let redis_client = setup_redis_client(project.clone()).await?;
     let server_config = project.http_server_config.clone();
     info!("Server config: {:?}", server_config);
     let web_server = Webserver::new(
@@ -686,7 +762,10 @@ pub async fn start_production_mode(
             .await;
     }
 
-    let _ = redis_client.stop_periodic_tasks();
+    {
+        let mut redis_client = redis_client.lock().await;
+        let _ = redis_client.stop_periodic_tasks();
+    }
 
     Ok(())
 }

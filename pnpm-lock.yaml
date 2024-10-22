@@ -897,6 +897,7 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
+
   '@514labs/moose-cli-darwin-arm64@0.3.672':
     resolution: {integrity: sha512-ArL0kpQcxDs+I9D47nG+0i3jaxZg196P5eYv1Api0V79z58bMXlPKylQYbOwFXrB59aJHBNZWlZA+dhvP2wdDw==}
     cpu: [arm64]

@@ -4,10 +4,10 @@ use crypto_hash::{hex_digest, Algorithm};
 use errors::ClickhouseError;
 use itertools::Itertools;
 use log::{debug, info};
-use mapper::std_table_to_clickhouse_table;
+use mapper::{std_column_to_clickhouse_column, std_table_to_clickhouse_table};
 use queries::{
-    create_table_query, create_view_query, drop_table_query, drop_view_query, update_view_query,
-    ClickhouseEngine,
+    basic_field_type_to_string, create_table_query, create_view_query, drop_table_query,
+    drop_view_query, update_view_query, ClickhouseEngine,
 };
 use serde::{Deserialize, Serialize};
 
@@ -77,7 +77,7 @@ pub async fn execute_changes(
             }) => {
                 log::info!("Updating table: {:?}", name);
                 let mut alter_statements =
-                    generate_column_alter_statements(column_changes, db_name, name);
+                    generate_column_alter_statements(column_changes, db_name, name)?;
 
                 if order_by_change.before != order_by_change.after {
                     let order_by_alter_statement =
@@ -380,29 +380,49 @@ fn generate_column_alter_statements(
     diff: &[ColumnChange],
     db_name: &str,
     table_name: &str,
-) -> Vec<String> {
-    diff.iter()
-        .map(|d: &ColumnChange| match d {
+) -> Result<Vec<String>, ClickhouseError> {
+    let mut statements: Vec<String> = vec![];
+
+    for column_change in diff {
+        match column_change {
             ColumnChange::Added(col) => {
-                format!(
-                    "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {}",
-                    db_name, table_name, col.name, col.data_type
-                )
+                let clickhouse_column = std_column_to_clickhouse_column(col.clone())?;
+                let column_type_string =
+                    basic_field_type_to_string(&clickhouse_column.column_type)?;
+
+                statements.push(format!(
+                    "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {}{}",
+                    db_name,
+                    table_name,
+                    clickhouse_column.name,
+                    column_type_string,
+                    if clickhouse_column.required {
+                        " NOT NULL"
+                    } else {
+                        ""
+                    }
+                ));
             }
             ColumnChange::Removed(col) => {
-                format!(
+                statements.push(format!(
                     "ALTER TABLE `{}`.`{}` DROP COLUMN `{}`",
                     db_name, table_name, col.name
-                )
+                ));
             }
             ColumnChange::Updated { before, after } => {
-                format!(
+                let clickhouse_column = std_column_to_clickhouse_column(after.clone())?;
+                let column_type_string =
+                    basic_field_type_to_string(&clickhouse_column.column_type)?;
+
+                statements.push(format!(
                     "ALTER TABLE `{}`.`{}` MODIFY COLUMN `{}` {}",
-                    db_name, table_name, before.name, after.data_type
-                )
+                    db_name, table_name, before.name, column_type_string
+                ));
             }
-        })
-        .collect()
+        }
+    }
+
+    Ok(statements)
 }
 
 fn generate_order_by_alter_statement(
@@ -422,6 +442,26 @@ fn generate_order_by_alter_statement(
 mod tests {
     use super::*;
     use crate::framework::core::infrastructure::table::{Column, ColumnType};
+
+    #[test]
+    fn test_generate_column_alter_statements_with_array_float() {
+        let diff = vec![ColumnChange::Added(Column {
+            name: "prices".to_string(),
+            data_type: ColumnType::Array(Box::new(ColumnType::Float)),
+            required: false,
+            unique: false,
+            primary_key: false,
+            default: None,
+        })];
+
+        let statements = generate_column_alter_statements(&diff, "test_db", "test_table").unwrap();
+
+        assert_eq!(statements.len(), 1);
+        assert_eq!(
+            statements[0],
+            "ALTER TABLE `test_db`.`test_table` ADD COLUMN `prices` Array(Float64)"
+        );
+    }
 
     #[test]
     fn test_generate_column_alter_statements() {
@@ -453,7 +493,7 @@ mod tests {
                 },
                 after: Column {
                     name: "id".to_string(),
-                    data_type: ColumnType::BigInt,
+                    data_type: ColumnType::Float,
                     required: true,
                     unique: true,
                     primary_key: true,
@@ -462,12 +502,12 @@ mod tests {
             },
         ];
 
-        let statements = generate_column_alter_statements(&diff, "test_db", "test_table");
+        let statements = generate_column_alter_statements(&diff, "test_db", "test_table").unwrap();
 
         assert_eq!(statements.len(), 3);
         assert_eq!(
             statements[0],
-            "ALTER TABLE `test_db`.`test_table` ADD COLUMN `age` Int"
+            "ALTER TABLE `test_db`.`test_table` ADD COLUMN `age` Int64"
         );
         assert_eq!(
             statements[1],
@@ -475,7 +515,7 @@ mod tests {
         );
         assert_eq!(
             statements[2],
-            "ALTER TABLE `test_db`.`test_table` MODIFY COLUMN `id` BigInt"
+            "ALTER TABLE `test_db`.`test_table` MODIFY COLUMN `id` Float64"
         );
     }
 

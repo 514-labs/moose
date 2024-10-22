@@ -245,7 +245,7 @@ pub fn drop_table_query(db_name: &str, table: ClickHouseTable) -> Result<String,
     Ok(reg.render_template(DROP_TABLE_TEMPLATE, &context)?)
 }
 
-fn basic_field_type_to_string(
+pub fn basic_field_type_to_string(
     field_type: &ClickHouseColumnType,
 ) -> Result<String, ClickhouseError> {
     // Blowing out match statements here in case we need to customize the output string for some types.

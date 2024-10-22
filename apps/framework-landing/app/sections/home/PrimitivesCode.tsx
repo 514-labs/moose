@@ -259,42 +259,42 @@ const infrastructure = [
     infra: "Webserver",
     icon: HardDriveDownload,
     primitive: "models",
-    order: "md:order-first",
+    order: "order-first",
   },
   {
     title: "Topics",
     infra: "Streams",
     icon: RectangleEllipsis,
     primitive: "models",
-    order: "md:order-2",
+    order: "order-2",
   },
   {
     title: "Tables",
     infra: "OLAP DB",
     icon: Table,
     primitive: "models",
-    order: "md:order-4",
+    order: "order-4",
   },
   {
     title: "Tasks",
     infra: "Orchestrator",
     icon: Code,
     primitive: "functions",
-    order: "md:order-3",
+    order: "order-3",
   },
   {
     title: "Views",
     infra: "OLAP DB",
     icon: Box,
     primitive: "blocks",
-    order: "md:order-5",
+    order: "order-5",
   },
   {
     title: "Egress API",
     infra: "Webserver",
     icon: HardDriveUpload,
     primitive: "apis",
-    order: "md:order-6",
+    order: "order-6",
   },
 ];
 
@@ -303,6 +303,13 @@ export const PrimitivesCode = () => {
 
   return (
     <Section className="mx-auto max-w-5xl sm:px-6 lg:px-8">
+      <Heading
+        level={HeadingLevel.l2}
+        className="justify-center align-center text-center mb-24 sm:text-5xl"
+      >
+        Write code, get infra. Moose uses framework-defined infrastucture to
+        keep you focused.
+      </Heading>
       <FullWidthContentContainer className="w-full justify-center">
         <Tabs defaultValue="models">
           <TabsList className="mx-auto w-full justify-center">
@@ -312,28 +319,21 @@ export const PrimitivesCode = () => {
                 subject={tab}
                 key={tab}
                 value={tab}
-                className="py-0 px-1"
+                className="rounded-2xl"
               >
-                <Text className="py-0 px-2 ">
-                  {content[tab as keyof typeof content]?.title}
-                </Text>
+                <Text>{content[tab as keyof typeof content]?.title}</Text>
               </TrackableTabsTrigger>
             ))}
           </TabsList>
           {Object.keys(content).map((tab) => (
-            <TabsContent key={tab} value={tab} className="mx-auto w-full">
-              {/* <Text className="text-muted-foreground">
-                  {content[tab as keyof typeof content]?.description}
-                </Text> */}
-              <Grid className="w-full">
-                <HalfWidthContentContainer className="md:col-span-7">
-                  <div>
-                    <Heading level={HeadingLevel.l3} className="mb-0">
-                      Develop application logic
-                    </Heading>
-                  </div>
-                  <div className="flex flex-col w-full overflow-hidden relative mt-2">
-                    <div className="flex flex-row justify-end gap-2 items-center absolute top-6 right-4 z-10">
+            <TabsContent key={tab} value={tab}>
+              <Grid>
+                <div className="col-span-* md:col-span-7 w-full flex flex-col gap-2">
+                  <Heading level={HeadingLevel.l4}>
+                    Develop application logic
+                  </Heading>
+                  <div className="relative h-[450px] w-full">
+                    <div className="flex flex-row justify-end gap-2 items-center absolute top-4 right-4 z-10">
                       <Select value={language} onValueChange={setLanguage}>
                         <SelectTrigger className="px-2 py-1 w-fit justify-between gap-2 border text-primary bg-background">
                           <SelectValue placeholder="Select Language" />
@@ -357,7 +357,7 @@ export const PrimitivesCode = () => {
                       </CopyButton>
                     </div>
                     <CodeBlock
-                      className="mt-4 pb-4 h-96"
+                      className="pt-4"
                       code={
                         content[tab as keyof typeof content]?.[
                           language as "ts" | "py"
@@ -370,16 +370,20 @@ export const PrimitivesCode = () => {
                       }
                     />
                   </div>
-                </HalfWidthContentContainer>
-                <HalfWidthContentContainer className="md:col-span-5 flex-grow-0">
-                  <Heading level={HeadingLevel.l3}>Moose derives infra</Heading>
-                  <div className="w-full grid grid-row-6 gap-2 mt-2">
+                </div>
+
+                <div className="sm:col-span-12 md:col-span-5 flex flex-col gap-2 w-full">
+                  <Heading className="col-span-5" level={HeadingLevel.l4}>
+                    Moose derives infra
+                  </Heading>
+                  <div className="col-span-5 flex flex-col gap-2">
                     {infrastructure.map((infra) => (
                       <div
                         key={infra.title}
                         className={cn(
                           "flex flex-row items-start justify-start gap-4 rounded-2xl p-1",
                           tab === infra.primitive ? "bg-muted" : "",
+                          infra.order,
                         )}
                       >
                         <BackgroundIcon Icon={infra.icon} variant="default" />
@@ -392,7 +396,7 @@ export const PrimitivesCode = () => {
                       </div>
                     ))}
                   </div>
-                </HalfWidthContentContainer>
+                </div>
               </Grid>
             </TabsContent>
           ))}

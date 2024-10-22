@@ -137,12 +137,17 @@ export default function CodeBlock({
   }, [code, language]);
 
   return (
-    <div className={cn("overflow-y-auto w-full rounded-2xl border", className)}>
+    <div
+      className={cn(
+        "overflow-y-scroll h-full w-full rounded-2xl border",
+        className,
+      )}
+    >
       <div className="w-full text-sm text-muted-foreground p-3 font-mono">
         {filename}
       </div>
       <div
-        className="px-3 text-sm"
+        className="flex-grow px-3 text-sm overflow-auto h-full" // Ensure it fills the height and scrolls
         dangerouslySetInnerHTML={{ __html: highlightedCode }}
       />
     </div>

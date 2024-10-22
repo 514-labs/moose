@@ -103,16 +103,7 @@ const SecondaryNav = ({
               className={cn(link.emphasized ? "w-full" : "w-auto")}
             >
               {link.emphasized ? (
-                <Button
-                  size="lg"
-                  className={cn(
-                    "py-8 px-4 rounded-xl w-full sm:w-auto sm:text-sm text-lg sm:ml-2 mt-2 sm:my-0",
-                    "hover:text-primary-foreground hover:bg-primary/90",
-                    "text-primary-foreground",
-                  )}
-                >
-                  {link.content}
-                </Button>
+                <Button>{link.content}</Button>
               ) : (
                 <Text className="py-0 sm:py-2 sm:px-4 my-0">
                   {link.content}

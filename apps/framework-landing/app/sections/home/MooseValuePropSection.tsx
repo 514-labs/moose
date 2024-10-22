@@ -92,24 +92,24 @@ export function MooseValuePropSection() {
         level={HeadingLevel.l2}
         className="justify-center align-center text-center mb-24 sm:text-5xl"
       >
-        Tools you love, context you need.
+        Develop locally, scale to production smoothly.
         <span className="bg-gradient bg-clip-text text-transparent">
           {" "}
-          Built for modern, AI-centric development workflows
+          All using your tools and AI-centric workflows.
         </span>
       </Heading>
       <Grid>
         <ThirdWidthContentContainer>
           <IconCard
             title="Local to cloud development workflows"
-            description="Build your app locally using the tools you love then take your app to the cloud reliably"
+            description="Build locally using the tools you love then take your app to the cloud reliably"
             Icon={Cloud}
           />
         </ThirdWidthContentContainer>
         <ThirdWidthContentContainer>
           <IconCard
             title="Data Model awareness for you and your AI co-pilots"
-            description="Data context pulled directly into your development workflow at dev and build time"
+            description="Data context pulled directly into your dev workflow at dev and build time"
             Icon={Wand2}
           />
         </ThirdWidthContentContainer>

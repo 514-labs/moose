@@ -10,7 +10,6 @@ import {
 } from "@514labs/design-system-components/typography";
 import { IconCard } from "@514labs/design-system-components/components";
 import {
-  Bot,
   Cloud,
   Database,
   GitBranch,

@@ -2,7 +2,7 @@ use super::infrastructure::api_endpoint::{APIType, ApiEndpoint};
 use super::infrastructure::consumption_webserver::ConsumptionApiWebServer;
 use super::infrastructure::function_process::FunctionProcess;
 use super::infrastructure::olap_process::OlapProcess;
-use super::infrastructure::table::Table;
+use super::infrastructure::table::{Column, Table};
 use super::infrastructure::topic::Topic;
 use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicToTopicSyncProcess};
 use super::infrastructure::view::View;
@@ -29,10 +29,34 @@ pub struct PrimitiveSignature {
 }
 
 #[derive(Debug, Clone)]
+pub enum ColumnChange {
+    Added(Column),
+    Removed(Column),
+    Updated { before: Column, after: Column },
+}
+
+#[derive(Debug, Clone)]
+pub struct OrderByChange {
+    pub before: Vec<String>,
+    pub after: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum TableChange {
+    Added(Table),
+    Removed(Table),
+    Updated {
+        name: String,
+        column_changes: Vec<ColumnChange>,
+        order_by_change: OrderByChange,
+    },
+}
+
+#[derive(Debug, Clone)]
 pub enum Change<T> {
-    Added(T),
-    Removed(T),
-    Updated { before: T, after: T },
+    Added(Box<T>),
+    Removed(Box<T>),
+    Updated { before: Box<T>, after: Box<T> },
 }
 
 #[allow(clippy::large_enum_variant)]
@@ -46,7 +70,7 @@ pub enum InfraChange {
 
 #[derive(Debug, Clone)]
 pub enum OlapChange {
-    Table(Change<Table>),
+    Table(TableChange),
     View(Change<View>),
 }
 
@@ -338,16 +362,16 @@ impl InfrastructureMap {
                     changes
                         .streaming_engine_changes
                         .push(StreamingChange::Topic(Change::<Topic>::Updated {
-                            before: topic.clone(),
-                            after: target_topic.clone(),
+                            before: Box::new(topic.clone()),
+                            after: Box::new(target_topic.clone()),
                         }));
                 }
             } else {
                 changes
                     .streaming_engine_changes
-                    .push(StreamingChange::Topic(Change::<Topic>::Removed(
+                    .push(StreamingChange::Topic(Change::<Topic>::Removed(Box::new(
                         topic.clone(),
-                    )));
+                    ))));
             }
         }
 
@@ -355,9 +379,9 @@ impl InfrastructureMap {
             if !self.topics.contains_key(id) {
                 changes
                     .streaming_engine_changes
-                    .push(StreamingChange::Topic(Change::<Topic>::Added(
+                    .push(StreamingChange::Topic(Change::<Topic>::Added(Box::new(
                         topic.clone(),
-                    )));
+                    ))));
             }
         }
 
@@ -370,8 +394,8 @@ impl InfrastructureMap {
                 if api_endpoint != target_api_endpoint {
                     changes.api_changes.push(ApiChange::ApiEndpoint(
                         Change::<ApiEndpoint>::Updated {
-                            before: api_endpoint.clone(),
-                            after: target_api_endpoint.clone(),
+                            before: Box::new(api_endpoint.clone()),
+                            after: Box::new(target_api_endpoint.clone()),
                         },
                     ));
                 }
@@ -379,7 +403,7 @@ impl InfrastructureMap {
                 changes
                     .api_changes
                     .push(ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Removed(
-                        api_endpoint.clone(),
+                        Box::new(api_endpoint.clone()),
                     )));
             }
         }
@@ -389,7 +413,7 @@ impl InfrastructureMap {
                 changes
                     .api_changes
                     .push(ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Added(
-                        api_endpoint.clone(),
+                        Box::new(api_endpoint.clone()),
                     )));
             }
         }
@@ -401,17 +425,22 @@ impl InfrastructureMap {
         for (id, table) in &self.tables {
             if let Some(target_table) = target_map.tables.get(id) {
                 if table != target_table {
+                    let column_changes = compute_table_diff(table, target_table);
                     changes
                         .olap_changes
-                        .push(OlapChange::Table(Change::<Table>::Updated {
-                            before: table.clone(),
-                            after: target_table.clone(),
+                        .push(OlapChange::Table(TableChange::Updated {
+                            name: table.name.clone(),
+                            column_changes,
+                            order_by_change: OrderByChange {
+                                before: table.order_by.clone(),
+                                after: target_table.order_by.clone(),
+                            },
                         }));
                 }
             } else {
                 changes
                     .olap_changes
-                    .push(OlapChange::Table(Change::<Table>::Removed(table.clone())));
+                    .push(OlapChange::Table(TableChange::Removed(table.clone())));
             }
         }
 
@@ -419,7 +448,7 @@ impl InfrastructureMap {
             if !self.tables.contains_key(id) {
                 changes
                     .olap_changes
-                    .push(OlapChange::Table(Change::<Table>::Added(table.clone())));
+                    .push(OlapChange::Table(TableChange::Added(table.clone())));
             }
         }
 
@@ -433,14 +462,16 @@ impl InfrastructureMap {
                     changes
                         .olap_changes
                         .push(OlapChange::View(Change::<View>::Updated {
-                            before: view.clone(),
-                            after: target_view.clone(),
+                            before: Box::new(view.clone()),
+                            after: Box::new(target_view.clone()),
                         }));
                 }
             } else {
                 changes
                     .olap_changes
-                    .push(OlapChange::View(Change::<View>::Removed(view.clone())));
+                    .push(OlapChange::View(Change::<View>::Removed(Box::new(
+                        view.clone(),
+                    ))));
             }
         }
 
@@ -448,7 +479,9 @@ impl InfrastructureMap {
             if !self.views.contains_key(id) {
                 changes
                     .olap_changes
-                    .push(OlapChange::View(Change::<View>::Added(view.clone())));
+                    .push(OlapChange::View(Change::<View>::Added(Box::new(
+                        view.clone(),
+                    ))));
             }
         }
 
@@ -466,8 +499,8 @@ impl InfrastructureMap {
                         .push(ProcessChange::TopicToTableSyncProcess(Change::<
                             TopicToTableSyncProcess,
                         >::Updated {
-                            before: topic_to_table_sync_process.clone(),
-                            after: target_topic_to_table_sync_process.clone(),
+                            before: Box::new(topic_to_table_sync_process.clone()),
+                            after: Box::new(target_topic_to_table_sync_process.clone()),
                         }));
                 }
             } else {
@@ -476,7 +509,7 @@ impl InfrastructureMap {
                     .push(ProcessChange::TopicToTableSyncProcess(Change::<
                         TopicToTableSyncProcess,
                     >::Removed(
-                        topic_to_table_sync_process.clone(),
+                        Box::new(topic_to_table_sync_process.clone()),
                     )));
             }
         }
@@ -488,7 +521,7 @@ impl InfrastructureMap {
                     .push(ProcessChange::TopicToTableSyncProcess(Change::<
                         TopicToTableSyncProcess,
                     >::Added(
-                        topic_to_table_sync_process.clone(),
+                        Box::new(topic_to_table_sync_process.clone()),
                     )));
             }
         }
@@ -507,8 +540,8 @@ impl InfrastructureMap {
                         .push(ProcessChange::TopicToTopicSyncProcess(Change::<
                             TopicToTopicSyncProcess,
                         >::Updated {
-                            before: topic_to_topic_sync_process.clone(),
-                            after: target_topic_to_topic_sync_process.clone(),
+                            before: Box::new(topic_to_topic_sync_process.clone()),
+                            after: Box::new(target_topic_to_topic_sync_process.clone()),
                         }));
                 }
             } else {
@@ -517,7 +550,7 @@ impl InfrastructureMap {
                     .push(ProcessChange::TopicToTopicSyncProcess(Change::<
                         TopicToTopicSyncProcess,
                     >::Removed(
-                        topic_to_topic_sync_process.clone(),
+                        Box::new(topic_to_topic_sync_process.clone()),
                     )));
             }
         }
@@ -529,7 +562,7 @@ impl InfrastructureMap {
                     .push(ProcessChange::TopicToTopicSyncProcess(Change::<
                         TopicToTopicSyncProcess,
                     >::Added(
-                        topic_to_topic_sync_process.clone(),
+                        Box::new(topic_to_topic_sync_process.clone()),
                     )));
             }
         }
@@ -548,15 +581,15 @@ impl InfrastructureMap {
                     .processes_changes
                     .push(ProcessChange::FunctionProcess(
                         Change::<FunctionProcess>::Updated {
-                            before: function_process.clone(),
-                            after: target_function_process.clone(),
+                            before: Box::new(function_process.clone()),
+                            after: Box::new(target_function_process.clone()),
                         },
                     ));
             } else {
                 changes
                     .processes_changes
                     .push(ProcessChange::FunctionProcess(
-                        Change::<FunctionProcess>::Removed(function_process.clone()),
+                        Change::<FunctionProcess>::Removed(Box::new(function_process.clone())),
                     ));
             }
         }
@@ -566,7 +599,7 @@ impl InfrastructureMap {
                 changes
                     .processes_changes
                     .push(ProcessChange::FunctionProcess(
-                        Change::<FunctionProcess>::Added(function_process.clone()),
+                        Change::<FunctionProcess>::Added(Box::new(function_process.clone())),
                     ));
             }
         }
@@ -607,8 +640,8 @@ impl InfrastructureMap {
         // currently we assume there is always a change and restart the processes
         changes.processes_changes.push(ProcessChange::OlapProcess(
             Change::<OlapProcess>::Updated {
-                before: OlapProcess {},
-                after: OlapProcess {},
+                before: Box::new(OlapProcess {}),
+                after: Box::new(OlapProcess {}),
             },
         ));
 
@@ -626,8 +659,8 @@ impl InfrastructureMap {
             .push(ProcessChange::ConsumptionApiWebServer(Change::<
                 ConsumptionApiWebServer,
             >::Updated {
-                before: ConsumptionApiWebServer {},
-                after: ConsumptionApiWebServer {},
+                before: Box::new(ConsumptionApiWebServer {}),
+                after: Box::new(ConsumptionApiWebServer {}),
             }));
 
         changes
@@ -656,7 +689,7 @@ impl InfrastructureMap {
     pub fn init_topics(&self) -> Vec<StreamingChange> {
         self.topics
             .values()
-            .map(|topic| StreamingChange::Topic(Change::<Topic>::Added(topic.clone())))
+            .map(|topic| StreamingChange::Topic(Change::<Topic>::Added(Box::new(topic.clone()))))
             .collect()
     }
 
@@ -664,7 +697,7 @@ impl InfrastructureMap {
         self.api_endpoints
             .values()
             .map(|api_endpoint| {
-                ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Added(api_endpoint.clone()))
+                ApiChange::ApiEndpoint(Change::<ApiEndpoint>::Added(Box::new(api_endpoint.clone())))
             })
             .collect()
     }
@@ -672,7 +705,7 @@ impl InfrastructureMap {
     pub fn init_tables(&self) -> Vec<OlapChange> {
         self.tables
             .values()
-            .map(|table| OlapChange::Table(Change::<Table>::Added(table.clone())))
+            .map(|table| OlapChange::Table(TableChange::Added(table.clone())))
             .collect()
     }
 
@@ -682,7 +715,7 @@ impl InfrastructureMap {
             .values()
             .map(|topic_to_table_sync_process| {
                 ProcessChange::TopicToTableSyncProcess(Change::<TopicToTableSyncProcess>::Added(
-                    topic_to_table_sync_process.clone(),
+                    Box::new(topic_to_table_sync_process.clone()),
                 ))
             })
             .collect();
@@ -692,7 +725,7 @@ impl InfrastructureMap {
             .values()
             .map(|topic_to_table_sync_process| {
                 ProcessChange::TopicToTopicSyncProcess(Change::<TopicToTopicSyncProcess>::Added(
-                    topic_to_table_sync_process.clone(),
+                    Box::new(topic_to_table_sync_process.clone()),
                 ))
             })
             .collect();
@@ -702,9 +735,9 @@ impl InfrastructureMap {
             .function_processes
             .values()
             .map(|function_process| {
-                ProcessChange::FunctionProcess(Change::<FunctionProcess>::Added(
+                ProcessChange::FunctionProcess(Change::<FunctionProcess>::Added(Box::new(
                     function_process.clone(),
-                ))
+                )))
             })
             .collect();
 
@@ -712,13 +745,13 @@ impl InfrastructureMap {
 
         // TODO Change this when we have multiple processes for aggregations
         topic_to_table_process_changes.push(ProcessChange::OlapProcess(
-            Change::<OlapProcess>::Added(OlapProcess {}),
+            Change::<OlapProcess>::Added(Box::new(OlapProcess {})),
         ));
 
         topic_to_table_process_changes.push(ProcessChange::ConsumptionApiWebServer(Change::<
             ConsumptionApiWebServer,
         >::Added(
-            ConsumptionApiWebServer {},
+            Box::new(ConsumptionApiWebServer {}),
         )));
 
         topic_to_table_process_changes
@@ -749,13 +782,51 @@ impl InfrastructureMap {
     }
 }
 
+pub fn compute_table_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
+    let mut diff = Vec::new();
+
+    // Check for added or modified columns
+    for after_col in &after.columns {
+        match before.columns.iter().find(|c| c.name == after_col.name) {
+            // If the column is in the before table, but different, then it is modified
+            Some(before_col) if before_col != after_col => {
+                diff.push(ColumnChange::Updated {
+                    before: before_col.clone(),
+                    after: after_col.clone(),
+                });
+            }
+            // If the column is not in the before table, then it is added
+            None => {
+                diff.push(ColumnChange::Added(after_col.clone()));
+            }
+            _ => {}
+        }
+    }
+
+    // Check for dropped columns
+    for before_col in &before.columns {
+        if !after.columns.iter().any(|c| c.name == before_col.name) {
+            diff.push(ColumnChange::Removed(before_col.clone()));
+        }
+    }
+
+    diff
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
 
     use crate::{
         framework::{
-            core::primitive_map::PrimitiveMap, data_model::model::DataModel,
+            core::{
+                infrastructure::table::{Column, ColumnType, Table},
+                infrastructure_map::{
+                    compute_table_diff, ColumnChange, PrimitiveSignature, PrimitiveTypes,
+                },
+                primitive_map::PrimitiveMap,
+            },
+            data_model::model::DataModel,
             languages::SupportedLanguages,
         },
         project::Project,
@@ -817,5 +888,89 @@ mod tests {
         let diffs = infra_map.diff(&new_infra_map);
 
         print!("Diffs: {:?}", diffs);
+    }
+
+    #[test]
+    fn test_compute_table_diff() {
+        let before = Table {
+            name: "test_table".to_string(),
+            columns: vec![
+                Column {
+                    name: "id".to_string(),
+                    data_type: ColumnType::Int,
+                    required: true,
+                    unique: true,
+                    primary_key: true,
+                    default: None,
+                },
+                Column {
+                    name: "name".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+                Column {
+                    name: "to_be_removed".to_string(),
+                    data_type: ColumnType::String,
+                    required: false,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+            ],
+            order_by: vec!["id".to_string()],
+            version: "1.0".to_string(),
+            source_primitive: PrimitiveSignature {
+                name: "test_primitive".to_string(),
+                primitive_type: PrimitiveTypes::DataModel,
+            },
+        };
+
+        let after = Table {
+            name: "test_table".to_string(),
+            columns: vec![
+                Column {
+                    name: "id".to_string(),
+                    data_type: ColumnType::BigInt, // Changed type
+                    required: true,
+                    unique: true,
+                    primary_key: true,
+                    default: None,
+                },
+                Column {
+                    name: "name".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+                Column {
+                    name: "age".to_string(), // New column
+                    data_type: ColumnType::Int,
+                    required: false,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+            ],
+            order_by: vec!["id".to_string(), "name".to_string()], // Changed order_by
+            version: "1.1".to_string(),
+            source_primitive: PrimitiveSignature {
+                name: "test_primitive".to_string(),
+                primitive_type: PrimitiveTypes::DataModel,
+            },
+        };
+
+        let diff = compute_table_diff(&before, &after);
+
+        assert_eq!(diff.len(), 3);
+        assert!(
+            matches!(&diff[0], ColumnChange::Updated { before, after } if before.name == "id" && matches!(after.data_type, ColumnType::BigInt))
+        );
+        assert!(matches!(&diff[1], ColumnChange::Added(col) if col.name == "age"));
+        assert!(matches!(&diff[2], ColumnChange::Removed(col) if col.name == "to_be_removed"));
     }
 }

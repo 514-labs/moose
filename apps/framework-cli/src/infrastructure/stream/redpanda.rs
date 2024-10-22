@@ -1,7 +1,7 @@
 use crate::framework::core::infrastructure_map::{Change, StreamingChange};
 use crate::project::Project;
 use log::{error, info, warn};
-use rdkafka::admin::ResourceSpecifier;
+use rdkafka::admin::{AlterConfig, ResourceSpecifier};
 use rdkafka::config::RDKafkaLogLevel;
 use rdkafka::consumer::stream_consumer::StreamConsumer;
 use rdkafka::consumer::Consumer;
@@ -48,16 +48,43 @@ pub async fn execute_changes(
             }
 
             StreamingChange::Topic(Change::Updated { before, after }) => {
-                if !project.is_production {
-                    info!("Replacing topic: {:?} with: {:?}", before, after);
-                    delete_topics(&project.redpanda_config, vec![before.id()]).await?;
-                    create_topics(&project.redpanda_config, vec![after.id()]).await?;
-                } else {
-                    return Err(RedpandaChangesError::NotSupported(format!(
-                        "Updating topic {} is not supported in production mode",
-                        before.id()
-                    )));
+                if before.retention_period != after.retention_period {
+                    info!("Updating topic: {:?} with: {:?}", before, after);
+                    update_topic_config(&project.redpanda_config, &before.id(), after).await?;
                 }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn update_topic_config(
+    redpanda_config: &RedpandaConfig,
+    id: &str,
+    after: &crate::framework::core::infrastructure::topic::Topic,
+) -> anyhow::Result<()> {
+    info!("Updating topic config for: {}", id);
+
+    let admin_client: AdminClient<_> = config_client(redpanda_config)
+        .create()
+        .expect("Redpanda Admin Client creation failed");
+
+    let options = AdminOptions::new().operation_timeout(Some(Duration::from_secs(5)));
+
+    let retention_ms = after.retention_period.as_millis().to_string();
+
+    let topic = ResourceSpecifier::Topic(id);
+    let config = AlterConfig::new(topic).set("retention.ms", retention_ms.as_str());
+
+    let result = admin_client.alter_configs(&[config], &options).await?;
+
+    for res in result {
+        match res {
+            Ok(_) => info!("Topic {} config updated successfully", id),
+            Err((_, err)) => {
+                error!("Failed to update config for topic {}: {}", id, err);
+                return Err(err.into());
             }
         }
     }

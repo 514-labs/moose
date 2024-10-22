@@ -78,6 +78,7 @@ export const Heading = ({
   children,
   level = HeadingLevel.l1,
   longForm,
+  id,
 }: HeadingProps) => {
   return (
     <h3
@@ -86,6 +87,7 @@ export const Heading = ({
         longForm ? longFormHeadingBase : textBase,
         className,
       )}
+      id={id}
     >
       {children}
     </h3>

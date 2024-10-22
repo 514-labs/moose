@@ -13,16 +13,16 @@ import Image from "next/image";
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
-    h1: SuperDisplay,
-    h2: Display,
-    h3: Heading,
-    h4: ({ children }) => (
-      <Heading className="font-medium" longForm level={HeadingLevel.l4}>
+    h1: ({ children, id }) => <SuperDisplay id={id}>{children}</SuperDisplay>,
+    h2: ({ children, id }) => <Display id={id}>{children}</Display>,
+    h3: ({ children, id }) => <Heading id={id}>{children}</Heading>,
+    h4: ({ id, children }) => (
+      <Heading className="font-medium" longForm level={HeadingLevel.l4} id={id}>
         {children}
       </Heading>
     ),
-    h5: ({ children }) => (
-      <Heading className="font-medium" longForm level={HeadingLevel.l5}>
+    h5: ({ id, children }) => (
+      <Heading className="font-medium" longForm level={HeadingLevel.l5} id={id}>
         {children}
       </Heading>
     ),

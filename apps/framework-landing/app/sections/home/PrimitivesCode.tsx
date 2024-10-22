@@ -23,7 +23,6 @@ import {
   FullWidthContentContainer,
   Grid,
   Section,
-  HalfWidthContentContainer,
 } from "@514labs/design-system-components/components/containers";
 
 import {

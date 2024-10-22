@@ -1,10 +1,5 @@
 import Link from "next/link";
-import {
-  Grid,
-  HalfWidthContentContainer,
-  Section,
-} from "@514labs/design-system-components/components/containers";
-import { CTABar } from "../../page";
+import { Section } from "@514labs/design-system-components/components/containers";
 import {
   Heading,
   HeadingLevel,

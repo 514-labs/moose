@@ -257,42 +257,42 @@ const infrastructure = [
     title: "Ingest API",
     infra: "Webserver",
     icon: HardDriveDownload,
-    primitive: "models",
+    primitive: ["models"],
     order: "order-first",
   },
   {
     title: "Topics",
     infra: "Streams",
     icon: RectangleEllipsis,
-    primitive: "models",
+    primitive: ["models", "functions"],
     order: "order-2",
   },
   {
     title: "Tables",
     infra: "OLAP DB",
     icon: Table,
-    primitive: "models",
+    primitive: ["models", "blocks"],
     order: "order-4",
   },
   {
-    title: "Tasks",
+    title: "Processes",
     infra: "Orchestrator",
     icon: Code,
-    primitive: "functions",
+    primitive: ["functions"],
     order: "order-3",
   },
   {
     title: "Views",
     infra: "OLAP DB",
     icon: Box,
-    primitive: "blocks",
+    primitive: ["blocks"],
     order: "order-5",
   },
   {
     title: "Egress API",
     infra: "Webserver",
     icon: HardDriveUpload,
-    primitive: "apis",
+    primitive: ["apis"],
     order: "order-6",
   },
 ];
@@ -306,8 +306,10 @@ export const PrimitivesCode = () => {
         level={HeadingLevel.l2}
         className="justify-center align-center text-center mb-24 sm:text-5xl"
       >
-        Write code, get infra. Moose uses framework-defined infrastucture to
-        keep you focused.
+        Write code, get infra.{" "}
+        <span className="text-muted-foreground">
+          Moose uses framework-defined infrastucture to keep you focused.
+        </span>
       </Heading>
       <FullWidthContentContainer className="w-full justify-center">
         <Tabs defaultValue="models">
@@ -327,7 +329,7 @@ export const PrimitivesCode = () => {
           {Object.keys(content).map((tab) => (
             <TabsContent key={tab} value={tab}>
               <Grid>
-                <div className="col-span-* md:col-span-7 w-full flex flex-col gap-2">
+                <div className="col-span-12 md:col-span-7 w-full flex flex-col gap-2">
                   <Heading level={HeadingLevel.l4}>
                     Develop application logic
                   </Heading>
@@ -371,7 +373,7 @@ export const PrimitivesCode = () => {
                   </div>
                 </div>
 
-                <div className="sm:col-span-12 md:col-span-5 flex flex-col gap-2 w-full">
+                <div className="col-span-12 md:col-span-5 flex flex-col gap-2 w-full">
                   <Heading className="col-span-5" level={HeadingLevel.l4}>
                     Moose derives infra
                   </Heading>
@@ -379,9 +381,10 @@ export const PrimitivesCode = () => {
                     {infrastructure.map((infra) => (
                       <div
                         key={infra.title}
+                        // Start of Selection
                         className={cn(
                           "flex flex-row items-start justify-start gap-4 rounded-2xl p-1",
-                          tab === infra.primitive ? "bg-muted" : "",
+                          infra.primitive.includes(tab) ? "bg-primary/10" : "",
                           infra.order,
                         )}
                       >

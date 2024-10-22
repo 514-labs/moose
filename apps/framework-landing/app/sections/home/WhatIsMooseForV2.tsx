@@ -23,7 +23,7 @@ export const WhatIsMooseFor = () => {
         >
           Use Cases.{" "}
           <span className="text-muted-foreground">
-            What Moose is really great for.
+            Where Moose really shines
           </span>
         </Heading>
       </FullWidthContentContainer>

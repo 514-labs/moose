@@ -49,10 +49,13 @@ impl FunctionProcess {
             // This probably should be a reference to the topic ingested from the
             // infra map instead of using a convention for the topic name.
             // Leaving it as is for compatibility with the current code.
-            target_topic: get_latest_topic(topics, &function.target_data_model.name)
-                .unwrap_or_else(|| function.target_data_model.name.clone()),
+            target_topic: get_latest_topic(
+                topics,
+                &function.target_data_model.as_ref().unwrap().name,
+            )
+            .unwrap_or_else(|| function.target_data_model.as_ref().unwrap().name.clone()),
 
-            target_columns: function.target_data_model.columns.clone(),
+            target_columns: function.target_data_model.as_ref().unwrap().columns.clone(),
             target_topic_config: HashMap::from([
                 ("max.message.bytes".to_string(), (1024 * 1024).to_string()),
                 ("message.max.bytes".to_string(), (1024 * 1024).to_string()),
@@ -81,7 +84,7 @@ impl FunctionProcess {
 
             target_topic: target_topic.name.clone(),
 
-            target_columns: function.target_data_model.columns.clone(),
+            target_columns: function.target_data_model.as_ref().unwrap().columns.clone(),
             target_topic_config: HashMap::from([
                 ("max.message.bytes".to_string(), (1024 * 1024).to_string()),
                 ("message.max.bytes".to_string(), (1024 * 1024).to_string()),

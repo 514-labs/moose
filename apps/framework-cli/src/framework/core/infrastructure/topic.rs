@@ -35,14 +35,13 @@ impl Topic {
         }
     }
 
-    pub fn from_migration_function(function: &StreamingFunction) -> (Topic, Topic) {
+    pub fn from_migration_function(function: &StreamingFunction) -> (Topic, Option<Topic>) {
         let name = |suffix: &str| {
             format!(
-                "{}_{}_{}_{}_{}",
+                "{}_{}_{}_{}",
                 function.source_data_model.name,
                 function.source_data_model.version.replace('.', "_"),
-                function.target_data_model.name,
-                function.target_data_model.version.replace('.', "_"),
+                function.id(),
                 suffix,
             )
         };
@@ -58,16 +57,19 @@ impl Topic {
             },
         };
 
-        let target_topic = Topic {
-            name: name("output"),
-            version: function.target_data_model.version.clone(),
-            retention_period: Topic::default_duration(),
-            columns: function.target_data_model.columns.clone(),
-            source_primitive: PrimitiveSignature {
-                name: function.id(),
-                primitive_type: PrimitiveTypes::Function,
-            },
-        };
+        let target_topic = function
+            .target_data_model
+            .as_ref()
+            .map(|target_data_model| Topic {
+                name: name("output"),
+                version: target_data_model.version.clone(),
+                retention_period: Topic::default_duration(),
+                columns: target_data_model.columns.clone(),
+                source_primitive: PrimitiveSignature {
+                    name: function.id(),
+                    primitive_type: PrimitiveTypes::Function,
+                },
+            });
 
         (source_topic, target_topic)
     }

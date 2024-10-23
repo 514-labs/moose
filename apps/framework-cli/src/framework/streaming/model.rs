@@ -33,7 +33,7 @@ pub struct StreamingFunction {
     pub name: String,
 
     pub source_data_model: DataModel,
-    pub target_data_model: DataModel,
+    pub target_data_model: Option<DataModel>,
 
     pub executable: PathBuf,
 
@@ -43,10 +43,13 @@ pub struct StreamingFunction {
 impl StreamingFunction {
     // Should the version of the data models be included in the id?
     pub fn id(&self) -> String {
-        format!(
-            "{}_{}_{}_{}",
-            self.name, self.source_data_model.name, self.target_data_model.name, self.version
-        )
+        let base_id = format!("{}_{}", self.name, self.source_data_model.name,);
+
+        if let Some(target) = &self.target_data_model {
+            format!("{}_{}_{}", base_id, target.name, self.version)
+        } else {
+            format!("{}_{}", base_id, self.version)
+        }
     }
 
     pub fn is_ts(&self) -> bool {
@@ -58,7 +61,12 @@ impl StreamingFunction {
     }
 
     pub fn is_migration(&self) -> bool {
-        self.source_data_model.version != self.target_data_model.version
+        self.source_data_model.version
+            != self
+                .target_data_model
+                .as_ref()
+                .map(|t| t.version.as_str())
+                .unwrap_or("")
             && self.executable.extension().unwrap().to_str().unwrap() != SQL_FILE_EXTENSION
     }
 }

@@ -26,14 +26,12 @@ pub async fn get_all_current_streaming_functions(
     get_all_streaming_functions(data_models, project.cur_version(), &functions_path).await
 }
 
-pub fn parse_streaming_function(file_name_no_extension: &str) -> Option<(&str, &str)> {
+pub fn parse_streaming_function(file_name_no_extension: &str) -> Option<(&str, Option<&str>)> {
     let split: Vec<&str> = file_name_no_extension.split("__").collect();
-    if split.len() == 2 {
-        let source_data_model_name = split[0];
-        let target_data_model_name = split[1];
-        Some((source_data_model_name, target_data_model_name))
-    } else {
-        None
+    match split.len() {
+        1 => Some((split[0], None)),
+        2 => Some((split[0], Some(split[1]))),
+        _ => None,
     }
 }
 
@@ -93,17 +91,22 @@ async fn get_all_streaming_functions(
                                 continue;
                             };
 
-                            let target_data_model = if let Some(target_data_model) =
-                                data_models.get(target_data_model_name, current_version)
-                            {
-                                target_data_model
-                            } else {
-                                warn!(
-                                    "Data model {} not found in the data model set",
-                                    target_data_model_name
-                                );
-                                continue;
-                            };
+                            let target_data_model =
+                                if let Some(target_name) = target_data_model_name {
+                                    if let Some(target_data_model) =
+                                        data_models.get(target_name, current_version)
+                                    {
+                                        Some(target_data_model.clone())
+                                    } else {
+                                        warn!(
+                                            "Data model {} not found in the data model set",
+                                            target_name
+                                        );
+                                        continue;
+                                    }
+                                } else {
+                                    None
+                                };
 
                             let function = StreamingFunction {
                                 name: potential_function_file_name.clone(),
@@ -177,7 +180,7 @@ async fn get_all_streaming_functions(
                     let func = StreamingFunction {
                         name: file_name.clone(),
                         source_data_model: source_data_model.clone(),
-                        target_data_model: target_data_model.clone(),
+                        target_data_model: Some(target_data_model.clone()),
                         executable: function_file.path().to_path_buf(),
                         version: current_version.to_string(),
                     };
@@ -216,7 +219,7 @@ fn build_migration_function(
     StreamingFunction {
         name: file_name.to_string(),
         source_data_model: source_data_model.clone(),
-        target_data_model: target_data_model.clone(),
+        target_data_model: Some(target_data_model.clone()),
         executable: executable.to_path_buf(),
         version: current_version.to_string(),
     }

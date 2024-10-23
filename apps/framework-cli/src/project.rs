@@ -591,7 +591,7 @@ impl Project {
                         functions_map
                             .entry(input.to_string())
                             .or_insert_with(Vec::new)
-                            .push(output.to_string())
+                            .push(output.unwrap().to_string())
                     });
                 } else if let Some((input_model, output_models)) =
                     self.process_function_input(&entry)

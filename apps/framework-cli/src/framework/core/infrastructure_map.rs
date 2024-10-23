@@ -288,12 +288,12 @@ impl InfrastructureMap {
                 let function_process = FunctionProcess::from_migration_function(
                     function,
                     &source_topic,
-                    &target_topic,
+                    &target_topic.clone().unwrap(),
                 );
 
                 let sync_process = TopicToTableSyncProcess::new(
-                    &target_topic,
-                    &function.target_data_model.to_table(),
+                    &target_topic.clone().unwrap(),
+                    &function.target_data_model.as_ref().unwrap().to_table(),
                 );
                 topic_to_table_sync_processes.insert(sync_process.id(), sync_process);
 
@@ -310,7 +310,9 @@ impl InfrastructureMap {
                     },
                 );
                 topics.insert(source_topic.id(), source_topic);
-                topics.insert(target_topic.id(), target_topic);
+                if let Some(target) = target_topic.clone() {
+                    topics.insert(target.id(), target.clone());
+                }
 
                 function_processes.insert(function_process.id(), function_process);
             } else {

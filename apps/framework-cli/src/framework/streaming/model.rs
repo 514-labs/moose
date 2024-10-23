@@ -61,12 +61,12 @@ impl StreamingFunction {
     }
 
     pub fn is_migration(&self) -> bool {
-        self.source_data_model.version
-            != self
-                .target_data_model
-                .as_ref()
-                .map(|t| t.version.as_str())
-                .unwrap_or("")
-            && self.executable.extension().unwrap().to_str().unwrap() != SQL_FILE_EXTENSION
+        match &self.target_data_model {
+            Some(target) => {
+                self.source_data_model.version != target.version
+                    && self.executable.extension().unwrap().to_str().unwrap() != SQL_FILE_EXTENSION
+            }
+            None => false,
+        }
     }
 }

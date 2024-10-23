@@ -75,8 +75,11 @@ impl ApiEndpoint {
     pub fn id(&self) -> String {
         // TODO have a proper version object that standardizes transformations
         format!(
-            "{:?}_{}_{}",
-            self.api_type,
+            "{}_{}_{}",
+            match self.api_type {
+                APIType::INGRESS { .. } => "INGRESS",
+                APIType::EGRESS => "EGRESS",
+            },
             self.name,
             self.version.replace('.', "_")
         )

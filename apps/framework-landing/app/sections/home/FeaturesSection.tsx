@@ -6,55 +6,60 @@ import {
 } from "@514labs/design-system-components/components/containers";
 import {
   Heading,
-  Text,
-  SmallText,
   HeadingLevel,
 } from "@514labs/design-system-components/typography";
+import { IconCard } from "@514labs/design-system-components/components";
 import React from "react";
 
-import { Box, Network, Share2, Terminal, Code2, Server } from "lucide-react";
+import {
+  Terminal,
+  FileCheck,
+  Eye,
+  Database,
+  HardDrive,
+  GitFork,
+} from "lucide-react";
 
 export const FeaturesSection = () => {
   const content = {
-    title: "Your tools, your workflows",
-    subtitle:
-      "Moose brings software developer ergonomics to the data & analytics stack",
+    title: "Features",
+    subtitle: "",
     features: [
       {
-        title: "Python and TypeScript",
+        title: "Local & Production Parity",
         description:
-          "Write code in your native language with your favorite IDE plug-ins",
-        icon: <Code2 strokeWidth={1} />,
+          "Run and test your entire app locally, then deploy with a single command",
+        icon: HardDrive,
       },
       {
-        title: "Local Dev Server",
+        title: "Built-In Infrastructure",
         description:
-          "Run your application locally and see the impact of code changes in real-time",
-        icon: <Server strokeWidth={1} />,
-      },
-      {
-        title: "Git-Based Workflows",
-        description:
-          "Integrate with existing version control and code collaboration workflows",
-        icon: <Share2 strokeWidth={1} />,
-      },
-      {
-        title: "OLAP Migrations",
-        description:
-          "Keep versions of your data synchronized through automated schema migrations",
-        icon: <Network strokeWidth={1} />,
+          "Leverage ClickHouse for analytics storage and Redpanda for data streaming",
+        icon: GitFork,
       },
       {
         title: "Powerful CLI",
         description:
-          "Use terminal commands to automate setup and build processes",
-        icon: <Terminal strokeWidth={1} />,
+          "Interact with your app primitives and infra without leaving your terminal",
+        icon: Terminal,
       },
       {
-        title: "Deploy with Docker",
+        title: "Schema Versioning",
         description:
-          "Package your application for deployment in any environment from the CLI",
-        icon: <Box strokeWidth={1} />,
+          "Set up automated migrations and version syncs for schema changes",
+        icon: Database,
+      },
+      {
+        title: "Task Orchestration",
+        description:
+          "Manage recurring jobs and batch operations through a cron scheduler",
+        icon: FileCheck,
+      },
+      {
+        title: "Monitoring & Observability",
+        description:
+          "Keep tabs on app performance with built-in metrics and logging",
+        icon: Eye,
       },
     ],
   };
@@ -81,15 +86,12 @@ export const FeaturesSection = () => {
         <Grid className="gap-y-10">
           {content.features.map((feature, index) => {
             return (
-              <ThirdWidthContentContainer
-                key={index}
-                className="flex flex-col gap-5 border p-5 rounded-3xl"
-              >
-                {feature.icon}
-                <Text className="my-0">{feature.title}</Text>
-                <SmallText className="my-0 text-muted-foreground text-[20px]">
-                  {feature.description}
-                </SmallText>
+              <ThirdWidthContentContainer key={index} className="flex flex-col">
+                <IconCard
+                  title={feature.title}
+                  Icon={feature.icon}
+                  description={feature.description}
+                />
               </ThirdWidthContentContainer>
             );
           })}

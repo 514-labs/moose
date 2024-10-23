@@ -7,7 +7,7 @@ const mooseTheme = {
   name: "moose-theme",
   type: "dark",
   fg: "#E0E0E0",
-  bg: "#1C1C1C",
+  bg: "#000000",
   settings: [
     {
       scope: ["comment", "punctuation.definition.comment"],
@@ -119,7 +119,7 @@ export default function CodeBlock({
           {
             name: "moose-theme",
             fg: "#E0E0E0",
-            bg: "#1c1c1c",
+            bg: "#000000",
             settings: mooseTheme.settings,
           },
         ],
@@ -139,15 +139,15 @@ export default function CodeBlock({
   return (
     <div
       className={cn(
-        "overflow-y-auto w-full h-[350px] bg-muted rounded-lg",
+        "overflow-y-scroll h-full w-full rounded-2xl border",
         className,
       )}
     >
-      <div className="w-full text-sm text-muted-foreground bg-muted p-3 font-mono">
+      <div className="w-full text-sm text-muted-foreground p-3 font-mono">
         {filename}
       </div>
       <div
-        className="px-3 text-sm bg-muted"
+        className="flex-grow px-3 text-sm overflow-auto h-full" // Ensure it fills the height and scrolls
         dangerouslySetInnerHTML={{ __html: highlightedCode }}
       />
     </div>

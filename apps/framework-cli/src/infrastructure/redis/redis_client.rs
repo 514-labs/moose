@@ -3,54 +3,14 @@
 //! This module provides a Redis client implementation with support for leader election,
 //! presence updates, and message passing (Sending) and message queuing.
 //!
-//! # Example Usage
-//!
-//! ```rust
-//! use your_crate_name::infrastructure::redis::RedisClient;
-//!
-//! #[tokio::main]
-//! async fn main() -> Result<(), Box<dyn std::error::Error>> {
-//!     // Initialize the Redis client
-//!     let mut client = RedisClient::new("my_service").await?;
-//!
-//!     // Start periodic tasks (presence updates and lock renewal)
-//!     client.start_periodic_tasks().await;
-//!
-//!     // Attempt to gain leadership
-//!     let is_leader = client.attempt_leadership().await?;
-//!     println!("Is leader: {}", is_leader);
-//!
-//!     // Send a message to another instance
-//!     client.send_message_to_instance("Hello", "target_instance_id").await?;
-//!
-//!     // Broadcast a message to all instances
-//!     client.broadcast_message("Broadcast message").await?;
-//!
-//!     // Post a message to the queue
-//!     client.post_queue_message("New task").await?;
-//!
-//!     // Get a message from the queue
-//!     if let Some(message) = client.get_queue_message().await? {
-//!         println!("Received message: {}", message);
-//!         // Process the message...
-//!         client.mark_queue_message(&message, true).await?;
-//!     }
-//!
-//!     // The client will automatically stop periodic tasks and release the lock (if leader)
-//!     // when it goes out of scope due to the Drop implementation
-//!
-//!     Ok(())
-//! }
-//! ```
-//!
-//! Note: Make sure to set the MOOSE_REDIS_URL environment variable or the client will default to "redis://127.0.0.1:6379".
+//! Note: Make sure to set the MOOSE_REDIS_URL environment variable or the client will
+//! default to "redis://127.0.0.1:6379".
 use crate::framework::core::infrastructure_map::InfrastructureMap;
 use anyhow::{Context, Result};
-use log::{error, info};
+use log::{error, info, warn};
 use protobuf::Message;
-use redis::aio::Connection as AsyncConnection;
-use redis::{AsyncCommands, ToRedisArgs};
-use redis::{Client, Script};
+use redis::aio::Connection as RedisConnection;
+use redis::{AsyncCommands, Client, RedisError, Script, ToRedisArgs};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -58,11 +18,19 @@ use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
+use tokio_stream::StreamExt;
 use uuid::Uuid;
 
 // Internal constants that we don't expose to the user
 const KEY_EXPIRATION_TTL: u64 = 3; // 3 seconds
 const PRESENCE_UPDATE_INTERVAL: u64 = 1; // 1 second
+
+// type alias for the callback function
+use std::future::Future;
+use std::pin::Pin;
+
+type MessageCallback =
+    Arc<dyn Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct RedisConfig {
@@ -98,13 +66,15 @@ pub struct RedisLock {
 }
 
 pub struct RedisClient {
-    connection: Arc<Mutex<AsyncConnection>>,
-    pub_sub: Arc<Mutex<AsyncConnection>>,
+    connection: Arc<Mutex<RedisConnection>>,
+    pub_sub: Arc<Mutex<RedisConnection>>,
     redis_config: RedisConfig,
     service_name: String,
     instance_id: String,
     locks: HashMap<String, RedisLock>,
     presence_task: Option<JoinHandle<()>>,
+    message_callbacks: Arc<Mutex<Vec<MessageCallback>>>,
+    listener_task: Mutex<Option<JoinHandle<()>>>,
 }
 
 impl RedisClient {
@@ -138,7 +108,7 @@ impl RedisClient {
             Err(e) => error!("Redis connection failed: {}", e),
         }
 
-        Ok(Self {
+        let client = Self {
             connection: Arc::new(Mutex::new(connection)),
             pub_sub: Arc::new(Mutex::new(pub_sub)),
             redis_config,
@@ -146,7 +116,23 @@ impl RedisClient {
             service_name,
             locks: HashMap::new(),
             presence_task: None,
-        })
+            message_callbacks: Arc::new(Mutex::new(Vec::new())),
+            listener_task: Mutex::new(None),
+        };
+
+        // Start the message listener as part of initialization
+        match client.start_message_listener().await {
+            Ok(_) => info!("Successfully started message listener"),
+            Err(e) => error!("Failed to start message listener: {}", e),
+        }
+
+        info!(
+            "<RedisClient> Started {}::{}",
+            client.get_service_name(),
+            client.get_instance_id()
+        );
+
+        Ok(client)
     }
 
     pub async fn presence_update(&mut self) -> Result<()> {
@@ -432,6 +418,90 @@ impl RedisClient {
 
         Ok(())
     }
+
+    pub async fn register_message_handler(&self, callback: Arc<dyn Fn(String) + Send + Sync>) {
+        self.message_callbacks
+            .lock()
+            .await
+            .push(Arc::new(move |message: String| {
+                let callback = Arc::clone(&callback);
+                Box::pin(async move {
+                    (callback)(message);
+                }) as Pin<Box<dyn Future<Output = ()> + Send>>
+            }));
+    }
+
+    async fn start_message_listener(&self) -> Result<(), RedisError> {
+        let instance_channel = format!(
+            "{}::{}::{}::msgchannel",
+            self.redis_config.key_prefix, self.service_name, self.instance_id
+        );
+        let broadcast_channel = format!(
+            "{}::{}::msgchannel",
+            self.redis_config.key_prefix, self.service_name
+        );
+
+        info!(
+            "<RedisClient> Listening for messages on channels: {} and {}",
+            instance_channel, broadcast_channel
+        );
+
+        // Create a separate PubSub connection for listening to messages
+        let client = match Client::open(self.redis_config.url.clone()) {
+            Ok(client) => client,
+            Err(e) => {
+                error!("<RedisClient> Failed to open Redis client: {}", e);
+                return Err(e);
+            }
+        };
+
+        let pubsub_conn = match client.get_async_connection().await {
+            Ok(conn) => conn,
+            Err(e) => {
+                error!(
+                    "<RedisClient> Failed to get async connection for PubSub: {}",
+                    e
+                );
+                return Err(e);
+            }
+        };
+
+        let mut pubsub = pubsub_conn.into_pubsub();
+
+        pubsub
+            .subscribe(&[&instance_channel, &broadcast_channel])
+            .await
+            .map_err(|e| {
+                error!("<RedisClient> Failed to subscribe to channels: {}", e);
+                e
+            })?;
+
+        let callback = self.message_callbacks.clone();
+
+        let listener_task = tokio::spawn(async move {
+            loop {
+                let mut pubsub_stream = pubsub.on_message();
+
+                while let Some(msg) = pubsub_stream.next().await {
+                    if let Ok(payload) = msg.get_payload::<String>() {
+                        info!("<RedisClient> Received pubsub message: {}", payload);
+                        let callbacks = callback.lock().await.clone();
+                        for cb in callbacks {
+                            cb(payload.clone()).await;
+                        }
+                    } else {
+                        warn!("<RedisClient> Failed to get payload from message");
+                    }
+                }
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            }
+        });
+
+        // Store the listener task
+        *self.listener_task.lock().await = Some(listener_task);
+
+        Ok(())
+    }
 }
 
 impl Clone for RedisClient {
@@ -444,6 +514,8 @@ impl Clone for RedisClient {
             service_name: self.service_name.clone(),
             locks: self.locks.clone(),
             presence_task: None,
+            message_callbacks: Arc::clone(&self.message_callbacks),
+            listener_task: Mutex::new(None),
         }
     }
 }
@@ -467,12 +539,16 @@ impl Drop for RedisClient {
         } else {
             error!("Failed to get current runtime handle in RedisClient::drop");
         }
+        if let Ok(mut guard) = self.listener_task.try_lock() {
+            if let Some(task) = guard.take() {
+                task.abort();
+            }
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use std::time::Duration;
     use tokio;

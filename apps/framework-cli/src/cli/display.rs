@@ -6,7 +6,7 @@ use spinners::{Spinner, Spinners};
 use std::sync::{Arc, RwLock};
 use tokio::macros::support::Future;
 
-use crate::framework::core::infrastructure_map::InitialDataLoadChange;
+use crate::framework::core::infrastructure_map::{InitialDataLoadChange, TableChange};
 use crate::framework::core::{
     infrastructure_map::{ApiChange, Change, OlapChange, ProcessChange, StreamingChange},
     plan::InfraPlan,
@@ -298,14 +298,21 @@ pub fn show_changes(infra_plan: &InfraPlan) {
         .olap_changes
         .iter()
         .for_each(|change| match change {
-            OlapChange::Table(Change::Added(infra)) => {
+            OlapChange::Table(TableChange::Added(infra)) => {
                 infra_added(&infra.expanded_display());
             }
-            OlapChange::Table(Change::Removed(infra)) => {
+            OlapChange::Table(TableChange::Removed(infra)) => {
                 infra_removed(&infra.short_display());
             }
-            OlapChange::Table(Change::Updated { before, after: _ }) => {
-                infra_updated(&before.expanded_display());
+            OlapChange::Table(TableChange::Updated {
+                name,
+                column_changes,
+                order_by_change,
+            }) => {
+                infra_updated(&format!(
+                    "Table {} with colume changes: {:?} and order by changes: {:?}",
+                    name, column_changes, order_by_change
+                ));
             }
             OlapChange::View(Change::Added(infra)) => {
                 infra_added(&infra.expanded_display());

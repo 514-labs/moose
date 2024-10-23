@@ -11,7 +11,7 @@ use std::{
     io::{Error, ErrorKind},
     path::PathBuf,
 };
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use tokio::time::sleep;
 
 use crate::framework::controller::{
@@ -334,7 +334,7 @@ async fn watch(
     syncing_process_registry: &mut SyncingProcessesRegistry,
     project_registries: &mut ProcessRegistries,
     metrics: Arc<Metrics>,
-    redis_client: RedisClient,
+    redis_client: Arc<Mutex<RedisClient>>,
 ) -> Result<(), anyhow::Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
 
@@ -395,6 +395,8 @@ async fn watch(
                             .await?;
 
                             redis_client
+                                .lock()
+                                .await
                                 .set_infrastructure_map(&plan_result.target_infra_map)
                                 .await?;
 
@@ -594,7 +596,7 @@ impl FileWatcher {
         syncing_process_registry: SyncingProcessesRegistry,
         project_registries: ProcessRegistries,
         metrics: Arc<Metrics>,
-        redis_client: &RedisClient,
+        redis_client: Arc<Mutex<RedisClient>>,
     ) -> Result<(), Error> {
         show_message!(MessageType::Info, {
             Message {

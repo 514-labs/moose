@@ -2,7 +2,7 @@ use super::infrastructure::api_endpoint::{APIType, ApiEndpoint};
 use super::infrastructure::consumption_webserver::ConsumptionApiWebServer;
 use super::infrastructure::function_process::FunctionProcess;
 use super::infrastructure::olap_process::OlapProcess;
-use super::infrastructure::table::Table;
+use super::infrastructure::table::{Column, Table};
 use super::infrastructure::topic::Topic;
 use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicToTopicSyncProcess};
 use super::infrastructure::view::View;
@@ -57,6 +57,30 @@ impl PrimitiveTypes {
 }
 
 #[derive(Debug, Clone)]
+pub enum ColumnChange {
+    Added(Column),
+    Removed(Column),
+    Updated { before: Column, after: Column },
+}
+
+#[derive(Debug, Clone)]
+pub struct OrderByChange {
+    pub before: Vec<String>,
+    pub after: Vec<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum TableChange {
+    Added(Table),
+    Removed(Table),
+    Updated {
+        name: String,
+        column_changes: Vec<ColumnChange>,
+        order_by_change: OrderByChange,
+    },
+}
+
+#[derive(Debug, Clone)]
 pub enum Change<T> {
     Added(Box<T>),
     Removed(Box<T>),
@@ -74,7 +98,7 @@ pub enum InfraChange {
 
 #[derive(Debug, Clone)]
 pub enum OlapChange {
-    Table(Change<Table>),
+    Table(TableChange),
     View(Change<View>),
 }
 
@@ -429,19 +453,22 @@ impl InfrastructureMap {
         for (id, table) in &self.tables {
             if let Some(target_table) = target_map.tables.get(id) {
                 if table != target_table {
+                    let column_changes = compute_table_diff(table, target_table);
                     changes
                         .olap_changes
-                        .push(OlapChange::Table(Change::<Table>::Updated {
-                            before: Box::new(table.clone()),
-                            after: Box::new(target_table.clone()),
+                        .push(OlapChange::Table(TableChange::Updated {
+                            name: table.name.clone(),
+                            column_changes,
+                            order_by_change: OrderByChange {
+                                before: table.order_by.clone(),
+                                after: target_table.order_by.clone(),
+                            },
                         }));
                 }
             } else {
                 changes
                     .olap_changes
-                    .push(OlapChange::Table(Change::<Table>::Removed(Box::new(
-                        table.clone(),
-                    ))));
+                    .push(OlapChange::Table(TableChange::Removed(table.clone())));
             }
         }
 
@@ -449,9 +476,7 @@ impl InfrastructureMap {
             if !self.tables.contains_key(id) {
                 changes
                     .olap_changes
-                    .push(OlapChange::Table(Change::<Table>::Added(Box::new(
-                        table.clone(),
-                    ))));
+                    .push(OlapChange::Table(TableChange::Added(table.clone())));
             }
         }
 
@@ -708,7 +733,7 @@ impl InfrastructureMap {
     pub fn init_tables(&self) -> Vec<OlapChange> {
         self.tables
             .values()
-            .map(|table| OlapChange::Table(Change::<Table>::Added(Box::new(table.clone()))))
+            .map(|table| OlapChange::Table(TableChange::Added(table.clone())))
             .collect()
     }
 
@@ -835,13 +860,51 @@ impl InfrastructureMap {
     }
 }
 
+pub fn compute_table_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
+    let mut diff = Vec::new();
+
+    // Check for added or modified columns
+    for after_col in &after.columns {
+        match before.columns.iter().find(|c| c.name == after_col.name) {
+            // If the column is in the before table, but different, then it is modified
+            Some(before_col) if before_col != after_col => {
+                diff.push(ColumnChange::Updated {
+                    before: before_col.clone(),
+                    after: after_col.clone(),
+                });
+            }
+            // If the column is not in the before table, then it is added
+            None => {
+                diff.push(ColumnChange::Added(after_col.clone()));
+            }
+            _ => {}
+        }
+    }
+
+    // Check for dropped columns
+    for before_col in &before.columns {
+        if !after.columns.iter().any(|c| c.name == before_col.name) {
+            diff.push(ColumnChange::Removed(before_col.clone()));
+        }
+    }
+
+    diff
+}
+
 #[cfg(test)]
 mod tests {
     use std::path::{Path, PathBuf};
 
     use crate::{
         framework::{
-            core::primitive_map::PrimitiveMap, data_model::model::DataModel,
+            core::{
+                infrastructure::table::{Column, ColumnType, Table},
+                infrastructure_map::{
+                    compute_table_diff, ColumnChange, PrimitiveSignature, PrimitiveTypes,
+                },
+                primitive_map::PrimitiveMap,
+            },
+            data_model::model::DataModel,
             languages::SupportedLanguages,
         },
         project::Project,
@@ -903,5 +966,89 @@ mod tests {
         let diffs = infra_map.diff(&new_infra_map);
 
         print!("Diffs: {:?}", diffs);
+    }
+
+    #[test]
+    fn test_compute_table_diff() {
+        let before = Table {
+            name: "test_table".to_string(),
+            columns: vec![
+                Column {
+                    name: "id".to_string(),
+                    data_type: ColumnType::Int,
+                    required: true,
+                    unique: true,
+                    primary_key: true,
+                    default: None,
+                },
+                Column {
+                    name: "name".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+                Column {
+                    name: "to_be_removed".to_string(),
+                    data_type: ColumnType::String,
+                    required: false,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+            ],
+            order_by: vec!["id".to_string()],
+            version: "1.0".to_string(),
+            source_primitive: PrimitiveSignature {
+                name: "test_primitive".to_string(),
+                primitive_type: PrimitiveTypes::DataModel,
+            },
+        };
+
+        let after = Table {
+            name: "test_table".to_string(),
+            columns: vec![
+                Column {
+                    name: "id".to_string(),
+                    data_type: ColumnType::BigInt, // Changed type
+                    required: true,
+                    unique: true,
+                    primary_key: true,
+                    default: None,
+                },
+                Column {
+                    name: "name".to_string(),
+                    data_type: ColumnType::String,
+                    required: true,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+                Column {
+                    name: "age".to_string(), // New column
+                    data_type: ColumnType::Int,
+                    required: false,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                },
+            ],
+            order_by: vec!["id".to_string(), "name".to_string()], // Changed order_by
+            version: "1.1".to_string(),
+            source_primitive: PrimitiveSignature {
+                name: "test_primitive".to_string(),
+                primitive_type: PrimitiveTypes::DataModel,
+            },
+        };
+
+        let diff = compute_table_diff(&before, &after);
+
+        assert_eq!(diff.len(), 3);
+        assert!(
+            matches!(&diff[0], ColumnChange::Updated { before, after } if before.name == "id" && matches!(after.data_type, ColumnType::BigInt))
+        );
+        assert!(matches!(&diff[1], ColumnChange::Added(col) if col.name == "age"));
+        assert!(matches!(&diff[2], ColumnChange::Removed(col) if col.name == "to_be_removed"));
     }
 }

@@ -8,7 +8,6 @@ use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicTo
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
 use crate::framework::controller::{InitialDataLoad, InitialDataLoadStatus};
-use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::proto::infrastructure_map::InfrastructureMap as ProtoInfrastructureMap;
 use anyhow::Result;
@@ -783,17 +782,6 @@ impl InfrastructureMap {
         let json = fs::read_to_string(path)?;
         let infra_map = serde_json::from_str(&json)?;
         Ok(infra_map)
-    }
-
-    pub async fn store_in_redis(&self, redis_client: &RedisClient) -> Result<()> {
-        use anyhow::Context;
-        let encoded: Vec<u8> = self.to_proto().write_to_bytes()?;
-        redis_client
-            .set("infrastructure_map", &encoded)
-            .await
-            .context("Failed to store InfrastructureMap in Redis")?;
-
-        Ok(())
     }
 
     pub fn to_proto(&self) -> ProtoInfrastructureMap {

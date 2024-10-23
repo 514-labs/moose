@@ -44,8 +44,10 @@
 //! ```
 //!
 //! Note: Make sure to set the MOOSE_REDIS_URL environment variable or the client will default to "redis://127.0.0.1:6379".
+use crate::framework::core::infrastructure_map::InfrastructureMap;
 use anyhow::{Context, Result};
 use log::{error, info};
+use protobuf::Message;
 use redis::aio::Connection as AsyncConnection;
 use redis::{AsyncCommands, ToRedisArgs};
 use redis::{Client, Script};
@@ -400,7 +402,7 @@ impl RedisClient {
         Ok(())
     }
 
-    pub async fn set<K: ToRedisArgs + Send + Sync, V: ToRedisArgs + Send + Sync>(
+    async fn set<K: ToRedisArgs + Send + Sync, V: ToRedisArgs + Send + Sync>(
         &self,
         key: K,
         value: V,
@@ -411,6 +413,23 @@ impl RedisClient {
             .set::<K, V, ()>(key, value)
             .await
             .context("Failed to set value in Redis")?;
+        Ok(())
+    }
+
+    pub async fn set_infrastructure_map(
+        &self,
+        infrastructure_map: &InfrastructureMap,
+    ) -> Result<()> {
+        let encoded: Vec<u8> = infrastructure_map.to_proto().write_to_bytes()?;
+
+        let key = format!(
+            "{}::{}::infrastructure_map",
+            self.redis_config.key_prefix, self.service_name
+        );
+        self.set(key, &encoded)
+            .await
+            .context("Failed to store InfrastructureMap in Redis")?;
+
         Ok(())
     }
 }

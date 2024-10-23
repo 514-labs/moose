@@ -391,16 +391,8 @@ fn generate_column_alter_statements(
                     basic_field_type_to_string(&clickhouse_column.column_type)?;
 
                 statements.push(format!(
-                    "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {}{}",
-                    db_name,
-                    table_name,
-                    clickhouse_column.name,
-                    column_type_string,
-                    if clickhouse_column.required {
-                        " NOT NULL"
-                    } else {
-                        ""
-                    }
+                    "ALTER TABLE `{}`.`{}` ADD COLUMN `{}` {}",
+                    db_name, table_name, clickhouse_column.name, column_type_string
                 ));
             }
             ColumnChange::Removed(col) => {

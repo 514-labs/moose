@@ -16,10 +16,12 @@ use crate::infrastructure::stream::redpanda::{
     send_with_back_pressure, wait_for_delivery, RedpandaConfig,
 };
 use crate::project::Project;
+use crate::proto::infrastructure_map::InitialDataLoad as ProtoInitialDataLoad;
 use clickhouse_rs::errors::codes::UNKNOWN_TABLE;
 use clickhouse_rs::ClientHandle;
 use futures::StreamExt;
 use log::{debug, error, info, warn};
+use protobuf::MessageField;
 use rdkafka::producer::DeliveryFuture;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, VecDeque};
@@ -80,6 +82,18 @@ impl InitialDataLoad {
             "Initial data load: from table {} to topic {}",
             self.table.name, self.topic
         )
+    }
+
+    pub fn to_proto(&self) -> ProtoInitialDataLoad {
+        ProtoInitialDataLoad {
+            table: MessageField::some(self.table.to_proto()),
+            topic: self.topic.clone(),
+            progress: match self.status {
+                InitialDataLoadStatus::InProgress(i) => Some(i as u64),
+                InitialDataLoadStatus::Completed => None,
+            },
+            special_fields: Default::default(),
+        }
     }
 }
 

@@ -1,13 +1,15 @@
-use serde::{Deserialize, Serialize};
-use std::time::Duration;
-
 use crate::framework::{
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
     data_model::model::DataModel,
     streaming::model::StreamingFunction,
 };
+use protobuf::MessageField;
+use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
 use super::table::Column;
+
+use crate::proto::infrastructure_map::Topic as ProtoTopic;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Topic {
@@ -101,5 +103,18 @@ impl Topic {
 
     fn default_duration() -> Duration {
         Duration::from_secs(60 * 60 * 24 * 7)
+    }
+
+    pub fn to_proto(&self) -> ProtoTopic {
+        ProtoTopic {
+            version: self.version.clone(),
+            name: self.name.clone(),
+            retention_period: MessageField::some(
+                protobuf::well_known_types::duration::Duration::from(self.retention_period),
+            ),
+            columns: self.columns.iter().map(|c| c.to_proto()).collect(),
+            source_primitive: MessageField::some(self.source_primitive.to_proto()),
+            special_fields: Default::default(),
+        }
     }
 }

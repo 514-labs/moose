@@ -1,0 +1,188 @@
+syntax = "proto3";
+
+package moose.proto;
+
+import "google/protobuf/duration.proto";
+
+message InfrastructureMap {
+  map<string, Topic> topics = 1;
+  map<string, ApiEndpoint> api_endpoints = 2;
+  map<string, Table> tables = 3;
+  map<string, View> views = 4;
+  map<string, TopicToTableSyncProcess> topic_to_table_sync_processes = 5;
+  map<string, TopicToTopicSyncProcess> topic_to_topic_sync_processes = 6;
+  map<string, FunctionProcess> function_processes = 7;
+
+  //  add then when they have fields in rust
+  //  OlapProcess block_db_processes = 8;
+  //  ConsumptionApiWebServer consumption_api_web_server = 9;
+  map<string, InitialDataLoad> initial_data_loads = 10;
+}
+
+message Topic {
+  string version = 1;
+  string name = 2;
+  google.protobuf.Duration retention_period = 3;
+  repeated Column columns = 4;
+  PrimitiveSignature source_primitive = 5;
+}
+
+message ApiEndpoint {
+  string name = 1;
+  oneof api_type {
+    IngressDetails ingress = 2;
+    EgressDetails egress = 3;
+  }
+  string path = 4;
+  Method method = 5;
+  string version = 6;
+  PrimitiveSignature source_primitive = 7;
+}
+
+message IngressDetails {
+  string target_topic = 1;
+  EndpointIngestionFormat format = 2;
+}
+
+message EgressDetails {
+  // nothing right now
+}
+
+enum EndpointIngestionFormat {
+  JSON = 0;
+  JSON_ARRAY = 1;
+}
+
+enum Method {
+  GET = 0;
+  POST = 1;
+  PUT = 2;
+  DELETE = 3;
+}
+
+message Table {
+  string name = 1;
+  repeated Column columns = 2;
+  repeated string order_by = 3;
+  string version = 4;
+  PrimitiveSignature source_primitive = 5;
+}
+
+message View {
+  string name = 1;
+  string version = 2;
+  oneof view_type {
+    TableAlias table_alias = 3;
+  }
+}
+
+message TableAlias {
+  string source_table_name = 1;
+}
+
+message TopicToTableSyncProcess {
+  string source_topic_id = 1;
+  string target_table_id = 2;
+  repeated Column columns = 3;
+  string version = 4;
+  PrimitiveSignature source_primitive = 5;
+}
+
+message TopicToTopicSyncProcess {
+  string source_topic_id = 1;
+  string target_topic_id = 2;
+  PrimitiveSignature source_primitive = 3;
+}
+
+message FunctionProcess {
+  string name = 1;
+  string source_topic = 2;
+  repeated Column source_columns = 3;
+  string target_topic = 4;
+  map<string, string> target_topic_config = 5;
+  repeated Column target_columns = 6;
+  string executable = 7;
+  string version = 8;
+  PrimitiveSignature source_primitive = 9;
+}
+
+message InitialDataLoad {
+  Table table = 1;
+  string topic = 2;
+  // unset means completed
+  optional uint64 progress = 3;
+}
+
+message Column {
+  string name = 1;
+  ColumnType data_type = 2;
+  bool required = 3;
+  bool unique = 4;
+  bool primary_key = 5;
+  ColumnDefaults default = 6;
+}
+
+enum SimpleColumnType {
+  STRING = 0;
+  BOOLEAN = 1;
+  INT = 2;
+  BIGINT = 3;
+  FLOAT = 4;
+  DECIMAL = 5;
+  DATETIME = 6;
+
+  JSON_COLUMN = 14;
+  BYTES = 15;
+}
+
+message ColumnType {
+  oneof t {
+    SimpleColumnType simple = 1;
+    DataEnum enum = 2;
+    ColumnType array = 3;
+    Nested nested = 4;
+  }
+}
+
+message DataEnum {
+  string name = 1;
+  repeated EnumMember values = 2;
+}
+
+message Nested {
+  string name = 1;
+  repeated Column columns = 2;
+  bool jwt = 3;
+}
+
+message EnumMember {
+  string name = 1;
+  EnumValue value = 2;
+}
+
+message EnumValue {
+  oneof value {
+    int32 int_value = 1;
+    string string_value = 2;
+  }
+}
+
+enum ColumnDefaults {
+  NONE = 0;
+  AUTO_INCREMENT = 1;
+  CUID = 2;
+  UUID = 3;
+  NOW = 4;
+}
+
+message PrimitiveSignature {
+  string name = 1;
+  PrimitiveTypes primitive_type = 2;
+}
+
+enum PrimitiveTypes {
+  DATA_MODEL = 0;
+  FUNCTION = 1;
+  DB_BLOCK = 2;
+  CONSUMPTION_API = 3;
+}

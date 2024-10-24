@@ -11,7 +11,7 @@ use std::{
     io::{Error, ErrorKind},
     path::PathBuf,
 };
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 use tokio::time::sleep;
 
 use crate::framework::controller::{
@@ -37,6 +37,7 @@ use crate::infrastructure::processes::consumption_registry::ConsumptionProcessRe
 use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
+use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::{self, fetch_topics};
 use crate::metrics::Metrics;
 use crate::project::AggregationSet;
@@ -333,6 +334,7 @@ async fn watch(
     syncing_process_registry: &mut SyncingProcessesRegistry,
     project_registries: &mut ProcessRegistries,
     metrics: Arc<Metrics>,
+    redis_client: Arc<Mutex<RedisClient>>,
 ) -> Result<(), anyhow::Error> {
     let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
 
@@ -391,6 +393,12 @@ async fn watch(
                                 &plan_result.target_infra_map,
                             )
                             .await?;
+
+                            plan_result
+                                .target_infra_map
+                                .store_in_redis(&*redis_client.lock().await)
+                                .await?;
+
                             let mut infra_ptr = infrastructure_map.write().await;
                             *infra_ptr = plan_result.target_infra_map
                         }
@@ -587,6 +595,7 @@ impl FileWatcher {
         syncing_process_registry: SyncingProcessesRegistry,
         project_registries: ProcessRegistries,
         metrics: Arc<Metrics>,
+        redis_client: Arc<Mutex<RedisClient>>,
     ) -> Result<(), Error> {
         show_message!(MessageType::Info, {
             Message {
@@ -599,6 +608,7 @@ impl FileWatcher {
         let mut syncing_process_registry = syncing_process_registry;
         let mut project_registry = project_registries;
         let features = features.clone();
+        let redis_client = redis_client.clone();
 
         tokio::spawn(async move {
             watch(
@@ -612,6 +622,7 @@ impl FileWatcher {
                 &mut syncing_process_registry,
                 &mut project_registry,
                 metrics,
+                redis_client,
             )
             .await
             .unwrap()

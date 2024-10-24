@@ -8,7 +8,7 @@
 use anyhow::{Context, Result};
 use log::{error, info, warn};
 use redis::aio::Connection as RedisConnection;
-use redis::{AsyncCommands, Client, RedisError, Script};
+use redis::{AsyncCommands, Client, RedisError, Script, ToRedisArgs};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -133,11 +133,21 @@ impl RedisClient {
         Ok(client)
     }
 
+    pub fn service_prefix(&self, keys: &[&str]) -> String {
+        format!(
+            "{}::{}::{}",
+            self.redis_config.key_prefix,
+            self.service_name,
+            keys.join("::")
+        )
+    }
+
+    pub fn instance_prefix(&self, key: &str) -> String {
+        self.service_prefix(&[&self.instance_id, key])
+    }
+
     pub async fn presence_update(&mut self) -> Result<()> {
-        let key = format!(
-            "{}::{}::{}::presence",
-            self.redis_config.key_prefix, self.service_name, self.instance_id
-        );
+        let key = self.instance_prefix("presence");
 
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
@@ -154,10 +164,7 @@ impl RedisClient {
     }
 
     pub async fn register_lock(&mut self, name: &str, ttl: i64) -> Result<()> {
-        let lock_key = format!(
-            "{}::{}::{}::lock",
-            self.redis_config.key_prefix, self.service_name, name
-        );
+        let lock_key = self.service_prefix(&[&self.service_name, "lock"]);
         let lock = RedisLock { key: lock_key, ttl };
         self.locks.insert(name.to_string(), lock);
         Ok(())
@@ -259,10 +266,7 @@ impl RedisClient {
         message: &str,
         target_instance_id: &str,
     ) -> Result<()> {
-        let channel = format!(
-            "{}::{}::{}::msgchannel",
-            self.redis_config.key_prefix, self.service_name, target_instance_id
-        );
+        let channel = self.service_prefix(&[target_instance_id, "msgchannel"]);
         let _: () = self
             .pub_sub
             .lock()
@@ -274,10 +278,7 @@ impl RedisClient {
     }
 
     pub async fn broadcast_message(&mut self, message: &str) -> Result<()> {
-        let channel = format!(
-            "{}::{}::msgchannel",
-            self.redis_config.key_prefix, self.service_name
-        );
+        let channel = self.service_prefix(&["msgchannel"]);
         let _: () = self
             .pub_sub
             .lock()
@@ -289,14 +290,8 @@ impl RedisClient {
     }
 
     pub async fn get_queue_message(&self) -> Result<Option<String>> {
-        let source_queue = format!(
-            "{}::{}::mqrecieved",
-            self.redis_config.key_prefix, self.service_name
-        );
-        let destination_queue = format!(
-            "{}::{}::mqprocess",
-            self.redis_config.key_prefix, self.service_name
-        );
+        let source_queue = self.service_prefix(&["mqrecieved"]);
+        let destination_queue = self.service_prefix(&["mqprocess"]);
         self.connection
             .lock()
             .await
@@ -306,10 +301,7 @@ impl RedisClient {
     }
 
     pub async fn post_queue_message(&self, message: &str) -> Result<()> {
-        let queue = format!(
-            "{}::{}::mqrecieved",
-            self.redis_config.key_prefix, self.service_name
-        );
+        let queue = self.service_prefix(&["mqrecieved"]);
         let _: () = self
             .connection
             .lock()
@@ -321,14 +313,8 @@ impl RedisClient {
     }
 
     pub async fn mark_queue_message(&mut self, message: &str, success: bool) -> Result<()> {
-        let in_progress_queue = format!(
-            "{}::{}::mqinprogress",
-            self.redis_config.key_prefix, self.service_name
-        );
-        let incomplete_queue = format!(
-            "{}::{}::mqincomplete",
-            self.redis_config.key_prefix, self.service_name
-        );
+        let in_progress_queue = self.service_prefix(&["mqinprogress"]);
+        let incomplete_queue = self.service_prefix(&["mqincomplete"]);
 
         if success {
             let _: () = self
@@ -386,6 +372,20 @@ impl RedisClient {
         Ok(())
     }
 
+    pub async fn set_with_service_prefix<V: ToRedisArgs + Send + Sync>(
+        &self,
+        key: &str,
+        value: V,
+    ) -> Result<()> {
+        self.connection
+            .lock()
+            .await
+            .set::<_, V, ()>(self.service_prefix(&[key]), value)
+            .await
+            .context("Failed to set value in Redis")?;
+        Ok(())
+    }
+
     pub async fn register_message_handler(&self, callback: Arc<dyn Fn(String) + Send + Sync>) {
         self.message_callbacks
             .lock()
@@ -399,14 +399,8 @@ impl RedisClient {
     }
 
     async fn start_message_listener(&self) -> Result<(), RedisError> {
-        let instance_channel = format!(
-            "{}::{}::{}::msgchannel",
-            self.redis_config.key_prefix, self.service_name, self.instance_id
-        );
-        let broadcast_channel = format!(
-            "{}::{}::msgchannel",
-            self.redis_config.key_prefix, self.service_name
-        );
+        let instance_channel = self.instance_prefix("msgchannel");
+        let broadcast_channel = self.service_prefix(&["msgchannel"]);
 
         info!(
             "<RedisClient> Listening for messages on channels: {} and {}",
@@ -516,7 +510,6 @@ impl Drop for RedisClient {
 
 #[cfg(test)]
 mod tests {
-
     use super::*;
     use std::time::Duration;
     use tokio;

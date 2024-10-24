@@ -462,10 +462,9 @@ pub async fn start_development_mode(
         )
         .await?;
 
-        redis_client
-            .lock()
-            .await
-            .set_infrastructure_map(&plan_result.target_infra_map)
+        plan_result
+            .target_infra_map
+            .store_in_redis(&*redis_client.lock().await)
             .await?;
 
         let infra_map: &'static RwLock<InfrastructureMap> =
@@ -684,10 +683,10 @@ pub async fn start_production_mode(
             &plan_result.target_infra_map,
         )
         .await?;
-        redis_client
-            .lock()
-            .await
-            .set_infrastructure_map(&plan_result.target_infra_map)
+
+        plan_result
+            .target_infra_map
+            .store_in_redis(&*redis_client.lock().await)
             .await?;
 
         let infra_map: &'static InfrastructureMap =

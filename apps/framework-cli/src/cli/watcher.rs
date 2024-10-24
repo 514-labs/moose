@@ -394,10 +394,9 @@ async fn watch(
                             )
                             .await?;
 
-                            redis_client
-                                .lock()
-                                .await
-                                .set_infrastructure_map(&plan_result.target_infra_map)
+                            plan_result
+                                .target_infra_map
+                                .store_in_redis(&*redis_client.lock().await)
                                 .await?;
 
                             let mut infra_ptr = infrastructure_map.write().await;

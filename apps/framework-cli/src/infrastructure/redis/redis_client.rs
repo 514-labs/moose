@@ -372,15 +372,15 @@ impl RedisClient {
         Ok(())
     }
 
-    pub async fn set<K: ToRedisArgs + Send + Sync, V: ToRedisArgs + Send + Sync>(
+    pub async fn set_with_service_prefix<V: ToRedisArgs + Send + Sync>(
         &self,
-        key: K,
+        key: &str,
         value: V,
     ) -> Result<()> {
         self.connection
             .lock()
             .await
-            .set::<K, V, ()>(key, value)
+            .set::<_, V, ()>(self.service_prefix(&[key]), value)
             .await
             .context("Failed to set value in Redis")?;
         Ok(())

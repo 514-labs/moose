@@ -814,10 +814,7 @@ impl InfrastructureMap {
         use anyhow::Context;
         let encoded: Vec<u8> = self.to_proto().write_to_bytes()?;
         redis_client
-            .set(
-                redis_client.service_prefix(&["infrastructure_map"]),
-                &encoded,
-            )
+            .set_with_service_prefix("infrastructure_map", &encoded)
             .await
             .context("Failed to store InfrastructureMap in Redis")?;
 

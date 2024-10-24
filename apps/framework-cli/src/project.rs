@@ -588,10 +588,12 @@ impl Project {
                     )
                     .iter()
                     .for_each(|(input, output)| {
-                        functions_map
-                            .entry(input.to_string())
-                            .or_insert_with(Vec::new)
-                            .push(output.unwrap().to_string())
+                        if let Some(output_str) = output {
+                            functions_map
+                                .entry(input.to_string())
+                                .or_insert_with(Vec::new)
+                                .push(output_str.to_string());
+                        }
                     });
                 } else if let Some((input_model, output_models)) =
                     self.process_function_input(&entry)

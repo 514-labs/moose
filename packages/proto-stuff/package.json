@@ -1,0 +1,21 @@
+{
+  "name": "@514labs/moose-proto",
+  "version": "0.0.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "gen": "protoc --ts_out src/gen --proto_path ../protobuf ../protobuf/infrastructure_map.proto",
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@protobuf-ts/runtime": "2.9.4"
+  },
+  "devDependencies": {
+    "@protobuf-ts/plugin": "2.9.4",
+    "tsup": "^8.0.2"
+  }
+}

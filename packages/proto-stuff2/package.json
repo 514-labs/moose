@@ -1,0 +1,22 @@
+{
+  "name": "@514labs/moose-stuff",
+  "version": "0.0.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "gen": "buf generate",
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.2.0"
+  },
+  "devDependencies": {
+    "@bufbuild/buf": "1.45.0",
+    "@bufbuild/protoc-gen-es": "2.2.0",
+    "tsup": "^8.0.2"
+  }
+}

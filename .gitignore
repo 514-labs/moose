@@ -62,3 +62,10 @@ Session.vim
 
 # just in case we use npm by mistake
 apps/framework-internal-app/package-lock.json
+
+# Python virtual environments
+**/venv/
+.venv/
+env/
+.env/
+ENV/

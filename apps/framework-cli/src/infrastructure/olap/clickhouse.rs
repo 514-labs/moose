@@ -10,14 +10,15 @@ use queries::{
     drop_view_query, update_view_query, ClickhouseEngine,
 };
 use serde::{Deserialize, Serialize};
+use std::time::Duration;
 
+use self::config::ClickHouseConfig;
+use self::model::ClickHouseSystemTable;
 use crate::framework::core::infrastructure::view::ViewType;
 use crate::framework::core::infrastructure_map::{Change, ColumnChange, OlapChange, TableChange};
 use crate::infrastructure::olap::clickhouse::model::{ClickHouseSystemTableRow, ClickHouseTable};
 use crate::project::Project;
-
-use self::config::ClickHouseConfig;
-use self::model::ClickHouseSystemTable;
+use crate::utilities::retry::retry;
 
 pub mod client;
 pub mod config;
@@ -86,7 +87,13 @@ pub async fn execute_changes(
                 }
 
                 for statement in alter_statements {
-                    run_query(&statement, &configured_client).await?;
+                    retry(
+                        || run_query(&statement, &configured_client),
+                        |_,e | {
+                            matches!(e, clickhouse::error::Error::BadResponse(msg) if msg.starts_with("Code: 517.") && msg.contains("You can retry this error"))
+                        },
+                        Duration::from_secs(1)
+                    ).await?;
                 }
             }
             OlapChange::View(Change::Added(view)) => match &view.view_type {

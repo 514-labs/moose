@@ -313,7 +313,7 @@ impl RedisClient {
     }
 
     pub async fn mark_queue_message(&mut self, message: &str, success: bool) -> Result<()> {
-        let in_progress_queue = self.service_prefix(&["mqinprogress"]);
+        let in_progress_queue = self.service_prefix(&["mqprocess"]);
         let incomplete_queue = self.service_prefix(&["mqincomplete"]);
 
         if success {

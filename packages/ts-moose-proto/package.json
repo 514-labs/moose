@@ -1,0 +1,22 @@
+{
+  "name": "@514labs/moose-proto",
+  "version": "0.0.0",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "gen": "rimraf generated && mkdir generated && protoc --ts_out generated --proto_path ../protobuf ../protobuf/infrastructure_map.proto",
+    "build": "tsup"
+  },
+  "dependencies": {
+    "@protobuf-ts/runtime": "^2.9.4",
+    "rimraf": "^6.0.1"
+  },
+  "devDependencies": {
+    "@protobuf-ts/plugin": "^2.9.4",
+    "tsup": "^8.0.2"
+  }
+}

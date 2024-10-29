@@ -62,3 +62,5 @@ Session.vim
 
 # just in case we use npm by mistake
 apps/framework-internal-app/package-lock.json
+
+packages/ts-moose-proto/generated/

@@ -126,6 +126,8 @@ pub struct Project {
 pub struct JwtConfig {
     #[serde(default)]
     pub enforce_on_all_consumptions_apis: bool,
+    #[serde(default)]
+    pub enforce_on_all_ingest_apis: bool,
     pub secret: String,
     pub issuer: String,
     pub audience: String,

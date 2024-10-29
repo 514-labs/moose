@@ -111,7 +111,6 @@ jobs:
 
       - name: Publish the NPM Moose Protobuf package
         shell: bash
-        if: contains(join(github.event.commits, ','), 'packages/protobuf') || contains(join(github.event.commits, ','), 'packages/ts-moose-proto')
         run: ./packages/ts-moose-proto/scripts/release-lib.sh ${{ needs.version.outputs.version }}
 
   package-and-publish-templates:

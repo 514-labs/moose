@@ -90,7 +90,7 @@ impl RedisClient {
             .await
             .context("Failed to establish Redis pub/sub connection")?;
 
-        let instance_id = Uuid::new_v4().to_string();
+        let instance_id = std::env::var("HOSTNAME").unwrap_or_else(|_| Uuid::new_v4().to_string());
 
         info!(
             "Initializing Redis client for {} with instance ID: {}",

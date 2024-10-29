@@ -92,6 +92,7 @@ impl FunctionProcessRegistry {
                 let function_process = FunctionProcess::from_migration_function(
                     streaming_function,
                     &source_topic,
+                    // Migration functions always have a target topic
                     &target_topic.unwrap(),
                 );
                 self.start(&function_process)?;

@@ -308,7 +308,7 @@ export const PrimitivesCode = () => {
       >
         Write code, get infra.{" "}
         <span className="text-muted-foreground">
-          Moose uses framework-defined infrastucture to keep you focused.
+          Moose uses framework-defined infrastructure to keep you focused.
         </span>
       </Heading>
       <FullWidthContentContainer className="w-full justify-center">

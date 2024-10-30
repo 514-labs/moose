@@ -307,6 +307,7 @@ pub fn create_idempotent_producer(config: &RedpandaConfig) -> FutureProducer {
     client_config
         .set("message.timeout.ms", (5 * 60 * 1000).to_string())
         .set("enable.idempotence", true.to_string())
+        .set("acks", "all")
         .set("enable.gapless.guarantee", true.to_string());
     client_config.create().expect("Failed to create producer")
 }
@@ -318,6 +319,14 @@ pub fn create_producer(config: RedpandaConfig) -> ConfiguredProducer {
         "message.timeout.ms",
         config.clone().message_timeout_ms.to_string(),
     );
+    // This means that all the In Sync replicas need to acknowledge the message
+    // before the message is considered sent.
+    // Idempotence implies acks = all but idempotence is a stronger garantee (exactly once)
+    // We currently only want at least once delivery
+    client_config.set("acks", "all");
+    // This is the maximum number of retries that will be made before the timeout.
+    client_config.set("retries", "2147483647");
+
     let producer = client_config.create().expect("Failed to create producer");
     ConfiguredProducer { producer, config }
 }
@@ -348,15 +357,18 @@ pub async fn fetch_topics(
 ) -> Result<Vec<String>, rdkafka::error::KafkaError> {
     let client_config = config_client(config);
     let producer: FutureProducer = client_config.create().expect("Failed to create producer");
+
     let metadata = producer
         .client()
         .fetch_metadata(None, Duration::from_secs(5))?;
+
     let topics = metadata
         .topics()
         .iter()
         .filter(|t| t.name().starts_with(&config.get_namespace_prefix()))
         .map(|t| t.name().to_string())
         .collect();
+
     Ok(topics)
 }
 
@@ -368,10 +380,12 @@ pub fn create_subscriber(config: &RedpandaConfig, group_id: &str, topic: &str) -
         .set("enable.partition.eof", "false")
         .set("enable.auto.commit", "true")
         .set("auto.commit.interval.ms", "1000")
+        .set("enable.auto.offset.store", "false")
         // to read records sent before subscriber is created
         .set("auto.offset.reset", "earliest")
         // Groupid
-        .set("group.id", config.prefix_with_namespace(group_id));
+        .set("group.id", config.prefix_with_namespace(group_id))
+        .set("isolation.level", "read_committed");
 
     let consumer: StreamConsumer = client_config.create().expect("Failed to create consumer");
 
@@ -420,6 +434,7 @@ async fn maybe_dequeue(topic: &str, queue: &mut VecDeque<DeliveryFuture>) {
         }
     }
 }
+
 pub async fn send_with_back_pressure(
     queue: &mut VecDeque<DeliveryFuture>,
     producer: &FutureProducer,

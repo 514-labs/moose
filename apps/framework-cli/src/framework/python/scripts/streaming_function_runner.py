@@ -222,6 +222,7 @@ for message in consumer:
                 # and immediately returns. This allows the producer to batch together individual records
                 bytes_count += len(json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))
                 producer.send(target_topic, json.dumps(item, cls=EnhancedJSONEncoder).encode('utf-8'))
+                
                 count_out += 1
     except Exception as e:
         cli_log(CliLogData(action="Function", message=str(e), message_type="Error"))

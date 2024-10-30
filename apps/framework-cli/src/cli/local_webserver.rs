@@ -202,7 +202,10 @@ async fn create_client(
         .status(status)
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Allow-Method", "GET, POST")
-        .header("Access-Control-Allow-Headers", "Content-Type")
+        .header(
+            "Access-Control-Allow-Headers",
+            "Authorization, Content-Type",
+        )
         .body(Full::new(Bytes::from(body)))
         .unwrap())
 }
@@ -275,7 +278,7 @@ fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
         .header("Access-Control-Allow-Methods", "POST, OPTIONS")
         .header(
             "Access-Control-Allow-Headers",
-            "Content-Type, Baggage, Sentry-Trace",
+            "Authorization, Content-Type, Baggage, Sentry-Trace",
         )
         .body(Full::new(Bytes::from("Success")))
         .unwrap();
@@ -561,12 +564,14 @@ async fn check_authorization(
         .and_then(|header_str| header_str.strip_prefix("Bearer "));
 
     if let Some(config) = jwt_config.as_ref() {
-        return validate_jwt(
-            bearer_token,
-            &config.secret,
-            &config.issuer,
-            &config.audience,
-        );
+        if config.enforce_on_all_ingest_apis {
+            return validate_jwt(
+                bearer_token,
+                &config.secret,
+                &config.issuer,
+                &config.audience,
+            );
+        }
     }
 
     if let Some(key) = api_key.as_ref() {

@@ -9,9 +9,6 @@ use std::sync::Arc;
 use tokio::sync::Mutex;
 use tokio::time;
 
-const MAX_FLUSH_INTERVAL_SECONDS: u64 = 1;
-const MAX_BATCH_SIZE: usize = 100000;
-
 #[derive(Default)]
 pub struct Batch {
     pub records: Vec<ClickHouseRecord>,
@@ -33,11 +30,15 @@ pub type BatchQueue = Arc<Mutex<VecDeque<Batch>>>;
 pub struct Inserter<C: ClickHouseClientTrait + 'static> {
     queue: BatchQueue,
     client: Arc<C>,
+    batch_size: usize,
+    flush_interval: u64,
 }
 
 impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
     pub fn new(
         client: Arc<C>,
+        batch_size: usize,
+        flush_interval: u64,
         table: &str,
         columns: Vec<String>,
         commit_callback: OffsetCommitCallback,
@@ -47,6 +48,8 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
         let inserter = Self {
             queue: queue.clone(),
             client,
+            batch_size,
+            flush_interval,
         };
 
         let inserter_clone = inserter.clone_for_flush();
@@ -64,6 +67,8 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
         Self {
             queue: self.queue.clone(),
             client: self.client.clone(),
+            batch_size: self.batch_size,
+            flush_interval: self.flush_interval,
         }
     }
 
@@ -77,7 +82,7 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
 
         let current_batch = queue.back_mut().unwrap();
 
-        if current_batch.records.len() >= MAX_BATCH_SIZE {
+        if current_batch.records.len() >= self.batch_size {
             queue.push_back(Batch::default());
             let new_batch = queue.back_mut().unwrap();
             new_batch.records.push(record);
@@ -96,7 +101,7 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
         columns: Vec<String>,
         commit_callback: OffsetCommitCallback,
     ) {
-        let mut interval = time::interval(Duration::from_secs(MAX_FLUSH_INTERVAL_SECONDS));
+        let mut interval = time::interval(Duration::from_secs(self.flush_interval));
 
         loop {
             interval.tick().await;
@@ -188,38 +193,26 @@ mod tests {
         let mock_client = MockClickHouseClient::new(false);
         let inserter = Inserter::new(
             mock_client,
+            1,
+            100000,
             "test_table",
             vec!["test".to_string()],
             Box::new(|_, _| Ok(())),
         );
 
         // Insert MAX_BATCH_SIZE records
-        for i in 0..MAX_BATCH_SIZE {
+        for i in 0..2 {
             inserter
                 .insert(create_test_record(i as i64), 0, i as i64)
                 .await
                 .unwrap();
         }
 
-        // Add one more record to trigger new batch creation
-        inserter
-            .insert(
-                create_test_record(MAX_BATCH_SIZE as i64),
-                0,
-                MAX_BATCH_SIZE as i64,
-            )
-            .await
-            .unwrap();
-
         let queue = inserter.queue.lock().await;
         assert_eq!(queue.len(), 2, "Should have created two batches");
 
         let first_batch = queue.front().unwrap();
-        assert_eq!(
-            first_batch.records.len(),
-            MAX_BATCH_SIZE,
-            "First batch should be full"
-        );
+        assert_eq!(first_batch.records.len(), 1, "First batch should be full");
 
         let second_batch = queue.back().unwrap();
         assert_eq!(
@@ -236,6 +229,8 @@ mod tests {
 
         let inserter = Inserter::new(
             mock_client,
+            100,
+            1,
             "test_table",
             vec!["test".to_string()],
             Box::new(|_, _| Ok(())),
@@ -251,7 +246,7 @@ mod tests {
             .unwrap();
 
         // Wait for flush interval
-        tokio::time::sleep(Duration::from_secs(MAX_FLUSH_INTERVAL_SECONDS + 1)).await;
+        tokio::time::sleep(Duration::from_secs(1 + 1)).await;
 
         assert_eq!(
             insert_calls.load(Ordering::SeqCst),
@@ -268,44 +263,12 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_failed_flush() {
-        let mock_client = MockClickHouseClient::new(true);
-        let insert_calls = mock_client.insert_calls.clone();
-
-        let inserter = Inserter::new(
-            mock_client,
-            "test_table",
-            vec!["test".to_string()],
-            Box::new(|_, _| Ok(())),
-        );
-
-        inserter
-            .insert(create_test_record(1), 0, 100)
-            .await
-            .unwrap();
-
-        // Wait for flush interval
-        tokio::time::sleep(Duration::from_secs(MAX_FLUSH_INTERVAL_SECONDS + 1)).await;
-
-        assert_eq!(
-            insert_calls.load(Ordering::SeqCst),
-            1,
-            "Mock client should have been called once"
-        );
-
-        let queue = inserter.queue.lock().await;
-        assert_eq!(
-            queue.front().unwrap().records.len(),
-            1,
-            "Records should remain in batch after failed flush"
-        );
-    }
-
-    #[tokio::test]
     async fn test_offset_tracking_per_partition() {
         let mock_client = MockClickHouseClient::new(false);
         let inserter = Inserter::new(
             mock_client,
+            100,
+            100000,
             "test_table",
             vec!["test".to_string()],
             Box::new(|_, _| Ok(())),

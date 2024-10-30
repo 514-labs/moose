@@ -34,6 +34,8 @@ use crate::metrics::{MetricEvent, Metrics};
 
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
 const VERSION_SYNC_GROUP_ID: &str = "version_sync_flow_sync";
+const MAX_FLUSH_INTERVAL_SECONDS: u64 = 1;
+const MAX_BATCH_SIZE: usize = 100000;
 
 struct TableSyncingProcess {
     process: JoinHandle<anyhow::Result<()>>,
@@ -379,6 +381,8 @@ async fn sync_kafka_to_clickhouse(
     let client = Arc::new(ClickHouseClient::new(&clickhouse_config).unwrap());
     let inserter = Inserter::<ClickHouseClient>::new(
         client,
+        MAX_BATCH_SIZE,
+        MAX_FLUSH_INTERVAL_SECONDS,
         &target_table_name,
         clickhouse_columns,
         Box::new(move |partition, offset| {

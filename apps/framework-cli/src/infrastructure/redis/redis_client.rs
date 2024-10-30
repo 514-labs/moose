@@ -164,7 +164,7 @@ impl RedisClient {
     }
 
     pub async fn register_lock(&mut self, name: &str, ttl: i64) -> Result<()> {
-        let lock_key = self.service_prefix(&[&self.service_name, "lock"]);
+        let lock_key = self.service_prefix(&["lock"]);
         let lock = RedisLock { key: lock_key, ttl };
         self.locks.insert(name.to_string(), lock);
         Ok(())

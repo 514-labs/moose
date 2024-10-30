@@ -8,10 +8,11 @@
     "dist"
   ],
   "scripts": {
-    "gen": "rimraf generated && mkdir generated && protoc --ts_out generated --proto_path ../protobuf ../protobuf/infrastructure_map.proto",
+    "gen": "rimraf generated && mkdir generated && buf generate",
     "build": "tsup"
   },
   "dependencies": {
+    "@bufbuild/buf": "^1.45.0",
     "@protobuf-ts/runtime": "^2.9.4",
     "rimraf": "^6.0.1"
   },

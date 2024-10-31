@@ -64,7 +64,7 @@ def run(client: MooseClient, params):
 
     # Play around with the prompt with Joj to get the best results
     ai_response = instructor_client.chat.completions.create(
-        model="gpt-4o",
+        model="llama3.2",
         response_model=CoachingOutput,
         messages=[
             {"role": "system", "content": """

@@ -404,20 +404,22 @@ async fn watch(
                                     *infra_ptr = plan_result.target_infra_map
                                 }
                                 Err(e) => {
+                                    let error: anyhow::Error = e.into();
                                     show_message!(MessageType::Error, {
                                         Message {
                                             action: "\nFailed".to_string(),
-                                            details: format!("Executing changes to the infrastructure failed:\n {}", e),
+                                            details: format!("Executing changes to the infrastructure failed:\n{:?}", error) 
                                         }
                                     });
                                 }
                             }
                         }
                         Err(e) => {
+                            let error: anyhow::Error = e.into();
                             show_message!(MessageType::Error, {
                                 Message {
                                     action: "\nFailed".to_string(),
-                                    details: format!("Planning changes to the infrastructure failed:\n {}", e),
+                                    details: format!("Planning changes to the infrastructure failed:\n{:?}", error),
                                 }
                             });
                         }

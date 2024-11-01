@@ -71,6 +71,7 @@ pub struct OrderByChange {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum TableChange {
     Added(Table),
     Removed(Table),
@@ -100,6 +101,7 @@ pub enum InfraChange {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum OlapChange {
     Table(TableChange),
     View(Change<View>),

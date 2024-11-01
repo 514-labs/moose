@@ -119,12 +119,12 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
                         debug!("Inserted {} records", batch_size,);
 
                         for (partition, offset) in &batch.partition_offsets {
-                            let _ = commit_callback(*partition, *offset).map_err(|err| {
+                            if let Err(err) = commit_callback(*partition, *offset) {
                                 error!(
                                     "Error committing offset for partition {}: {:?}",
                                     partition, err
                                 );
-                            });
+                            }
                         }
 
                         queue.pop_front();

@@ -308,11 +308,18 @@ pub fn show_changes(infra_plan: &InfraPlan) {
                 name,
                 column_changes,
                 order_by_change,
+                before,
+                after,
             }) => {
-                infra_updated(&format!(
-                    "Table {} with colume changes: {:?} and order by changes: {:?}",
-                    name, column_changes, order_by_change
-                ));
+                if after.deduplicate != before.deduplicate {
+                    infra_removed(&before.expanded_display());
+                    infra_added(&after.expanded_display());
+                } else {
+                    infra_updated(&format!(
+                        "Table {} with colume changes: {:?} and order by changes: {:?}",
+                        name, column_changes, order_by_change
+                    ));
+                }
             }
             OlapChange::View(Change::Added(infra)) => {
                 infra_added(&infra.expanded_display());

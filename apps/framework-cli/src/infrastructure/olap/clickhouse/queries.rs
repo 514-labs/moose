@@ -110,7 +110,7 @@ pub fn create_alias_for_table(
 static CREATE_TABLE_TEMPLATE: &str = r#"
 CREATE TABLE IF NOT EXISTS `{{db_name}}`.`{{table_name}}`
 (
-{{#each fields}} `{{field_name}}` {{{field_type}}} {{field_nullable}}{{#unless @last}},{{/unless}} 
+{{#each fields}} `{{field_name}}` {{{field_type}}} {{field_nullable}}{{#unless @last}},{{/unless}}
 {{/each}}
 )
 ENGINE = {{engine}}
@@ -120,6 +120,7 @@ ENGINE = {{engine}}
 
 pub enum ClickhouseEngine {
     MergeTree,
+    ReplacingMergeTree,
 }
 
 pub fn create_table_query(
@@ -132,6 +133,14 @@ pub fn create_table_query(
 
     let (engine, ignore_primary_key) = match engine {
         ClickhouseEngine::MergeTree => ("MergeTree".to_string(), false),
+        ClickhouseEngine::ReplacingMergeTree => {
+            if table.order_by.is_empty() {
+                return Err(ClickhouseError::InvalidParameters {
+                    message: "ReplacingMergeTree requires an order by clause".to_string(),
+                });
+            }
+            ("ReplacingMergeTree".to_string(), false)
+        }
     };
 
     let primary_key = if ignore_primary_key {
@@ -425,4 +434,172 @@ mod tests {
 
     #[test]
     fn test_nested_nested_generator() {}
+
+    #[test]
+    fn test_create_table_query_basic() {
+        let table = ClickHouseTable {
+            version: "1".to_string(),
+            name: "test_table".to_string(),
+            columns: vec![
+                ClickHouseColumn {
+                    name: "id".to_string(),
+                    column_type: ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int32),
+                    required: true,
+                    primary_key: true,
+                    unique: false,
+                    default: None,
+                },
+                ClickHouseColumn {
+                    name: "name".to_string(),
+                    column_type: ClickHouseColumnType::String,
+                    required: false,
+                    primary_key: false,
+                    unique: false,
+                    default: None,
+                },
+            ],
+            order_by: vec![],
+        };
+
+        let query = create_table_query("test_db", table, ClickhouseEngine::MergeTree).unwrap();
+        let expected = r#"
+CREATE TABLE IF NOT EXISTS `test_db`.`test_table`
+(
+ `id` Int32 NOT NULL,
+ `name` String NULL
+)
+ENGINE = MergeTree
+PRIMARY KEY (`id`) 
+"#;
+        assert_eq!(query.trim(), expected.trim());
+    }
+
+    #[test]
+    fn test_create_table_query_replacing_merge_tree() {
+        let table = ClickHouseTable {
+            version: "1".to_string(),
+            name: "test_table".to_string(),
+            columns: vec![ClickHouseColumn {
+                name: "id".to_string(),
+                column_type: ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int32),
+                required: true,
+                primary_key: true,
+                unique: false,
+                default: None,
+            }],
+            order_by: vec!["id".to_string()],
+        };
+
+        let query =
+            create_table_query("test_db", table, ClickhouseEngine::ReplacingMergeTree).unwrap();
+        let expected = r#"
+CREATE TABLE IF NOT EXISTS `test_db`.`test_table`
+(
+ `id` Int32 NOT NULL
+)
+ENGINE = ReplacingMergeTree
+PRIMARY KEY (`id`) 
+ORDER BY (`id`) "#;
+        assert_eq!(query.trim(), expected.trim());
+    }
+
+    #[test]
+    fn test_create_table_query_replacing_merge_tree_error() {
+        let table = ClickHouseTable {
+            version: "1".to_string(),
+            name: "test_table".to_string(),
+            columns: vec![ClickHouseColumn {
+                name: "id".to_string(),
+                column_type: ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int32),
+                required: true,
+                primary_key: true,
+                unique: false,
+                default: None,
+            }],
+            order_by: vec![],
+        };
+
+        let result = create_table_query("test_db", table, ClickhouseEngine::ReplacingMergeTree);
+        assert!(matches!(
+            result,
+            Err(ClickhouseError::InvalidParameters { message }) if message == "ReplacingMergeTree requires an order by clause"
+        ));
+    }
+
+    #[test]
+    fn test_create_table_query_complex() {
+        let table = ClickHouseTable {
+            version: "1".to_string(),
+            name: "test_table".to_string(),
+            columns: vec![
+                ClickHouseColumn {
+                    name: "id".to_string(),
+                    column_type: ClickHouseColumnType::ClickhouseInt(ClickHouseInt::Int32),
+                    required: true,
+                    primary_key: true,
+                    unique: false,
+                    default: None,
+                },
+                ClickHouseColumn {
+                    name: "nested_data".to_string(),
+                    column_type: ClickHouseColumnType::Nested(vec![
+                        ClickHouseColumn {
+                            name: "field1".to_string(),
+                            column_type: ClickHouseColumnType::String,
+                            required: true,
+                            primary_key: false,
+                            unique: false,
+                            default: None,
+                        },
+                        ClickHouseColumn {
+                            name: "field2".to_string(),
+                            column_type: ClickHouseColumnType::Boolean,
+                            required: false,
+                            primary_key: false,
+                            unique: false,
+                            default: None,
+                        },
+                    ]),
+                    required: true,
+                    primary_key: false,
+                    unique: false,
+                    default: None,
+                },
+                ClickHouseColumn {
+                    name: "status".to_string(),
+                    column_type: ClickHouseColumnType::Enum(DataEnum {
+                        name: "Status".to_string(),
+                        values: vec![
+                            EnumMember {
+                                name: "Active".to_string(),
+                                value: EnumValue::Int(1),
+                            },
+                            EnumMember {
+                                name: "Inactive".to_string(),
+                                value: EnumValue::Int(2),
+                            },
+                        ],
+                    }),
+                    required: true,
+                    primary_key: false,
+                    unique: false,
+                    default: None,
+                },
+            ],
+            order_by: vec!["id".to_string()],
+        };
+
+        let query = create_table_query("test_db", table, ClickhouseEngine::MergeTree).unwrap();
+        let expected = r#"
+CREATE TABLE IF NOT EXISTS `test_db`.`test_table`
+(
+ `id` Int32 NOT NULL,
+ `nested_data` Nested(field1 String, field2 Nullable(Boolean)) NOT NULL,
+ `status` Enum('Active' = 1,'Inactive' = 2) NOT NULL
+)
+ENGINE = MergeTree
+PRIMARY KEY (`id`) 
+ORDER BY (`id`) "#;
+        assert_eq!(query.trim(), expected.trim());
+    }
 }

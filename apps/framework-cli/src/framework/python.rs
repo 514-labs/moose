@@ -1,6 +1,7 @@
 pub mod aggregation;
 pub mod checker;
 pub mod consumption;
+pub mod datamodel_config;
 pub mod executor;
 pub mod parser;
 pub mod streaming;

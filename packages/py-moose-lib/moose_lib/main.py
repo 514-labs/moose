@@ -35,6 +35,7 @@ class IngestionConfig:
 class StorageConfig:
     enabled: Optional[bool] = None
     order_by_fields: Optional[list[str]] = None
+    deduplicate: Optional[bool] = None
 
 
 @dataclass

@@ -379,16 +379,19 @@ async fn manage_leadership_lock(
             client.attempt_lock("leadership").await?
         };
         if acquired_lock {
-            let mut client = redis_client.lock().await;
-            client.broadcast_message("<new_leader>").await?;
-
             info!("Obtained leadership lock, performing leadership tasks");
+
             let project_clone = project.clone();
             tokio::spawn(async move {
                 if let Err(e) = leadership_tasks(project_clone).await {
                     error!("Error executing leadership tasks: {}", e);
                 }
             });
+
+            let mut client = redis_client.lock().await;
+            if let Err(e) = client.broadcast_message("leader.new").await {
+                error!("Failed to broadcast new leader message: {}", e);
+            }
         }
     }
     Ok(())

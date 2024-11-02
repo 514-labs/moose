@@ -389,7 +389,7 @@ async fn manage_leadership_lock(
             });
 
             let mut client = redis_client.lock().await;
-            if let Err(e) = client.broadcast_message("<new_leader>").await {
+            if let Err(e) = client.broadcast_message("leader.new").await {
                 error!("Failed to broadcast new leader message: {}", e);
             }
         }

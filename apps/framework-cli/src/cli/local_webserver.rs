@@ -983,6 +983,7 @@ impl Webserver {
             is_prod: project.is_production,
             metrics: metrics.clone(),
         };
+
         let management_service = ManagementService {
             path_prefix: project.http_server_config.normalized_path_prefix(),
             is_prod: project.is_production,

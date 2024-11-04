@@ -15,6 +15,8 @@ use super::model::ClickHouseRecord;
 
 use log::error;
 
+use async_trait::async_trait;
+
 pub struct ClickHouseClient {
     client: Client<HttpConnector, Full<Bytes>>,
     ssl_client: Client<HttpsConnector<HttpConnector>, Full<Bytes>>,
@@ -189,4 +191,27 @@ fn query_param(query: &str) -> anyhow::Result<String> {
     let encoded = serde_urlencoded::to_string(params)?;
 
     Ok(encoded)
+}
+
+#[async_trait]
+pub trait ClickHouseClientTrait: Send + Sync {
+    async fn insert(
+        &self,
+        table: &str,
+        columns: &[String],
+        records: &[ClickHouseRecord],
+    ) -> anyhow::Result<()>;
+}
+
+#[async_trait]
+impl ClickHouseClientTrait for ClickHouseClient {
+    async fn insert(
+        &self,
+        table: &str,
+        columns: &[String],
+        records: &[ClickHouseRecord],
+    ) -> anyhow::Result<()> {
+        // Call the actual implementation
+        self.insert(table, columns, records).await
+    }
 }

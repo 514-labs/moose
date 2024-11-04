@@ -8,7 +8,7 @@ use std::sync::Arc;
 use log::debug;
 use log::error;
 use log::info;
-use rdkafka::consumer::StreamConsumer;
+use rdkafka::consumer::{Consumer, StreamConsumer};
 use rdkafka::producer::{DeliveryFuture, FutureProducer};
 use rdkafka::Message;
 use serde_json::Value;
@@ -18,6 +18,7 @@ use tokio::task::JoinHandle;
 use crate::framework::core::code_loader::FrameworkObjectVersions;
 use crate::framework::core::infrastructure::table::Column;
 use crate::framework::core::infrastructure::table::ColumnType;
+use crate::infrastructure::olap::clickhouse::client::ClickHouseClient;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::errors::ClickhouseError;
 use crate::infrastructure::olap::clickhouse::inserter::Inserter;
@@ -33,6 +34,8 @@ use crate::metrics::{MetricEvent, Metrics};
 
 const TABLE_SYNC_GROUP_ID: &str = "clickhouse_sync";
 const VERSION_SYNC_GROUP_ID: &str = "version_sync_flow_sync";
+const MAX_FLUSH_INTERVAL_SECONDS: u64 = 1;
+const MAX_BATCH_SIZE: usize = 100000;
 
 struct TableSyncingProcess {
     process: JoinHandle<anyhow::Result<()>>,
@@ -320,7 +323,11 @@ async fn sync_kafka_to_kafka(
     target_topic_name: String,
     metrics: Arc<Metrics>,
 ) {
-    let subscriber = create_subscriber(&kafka_config, VERSION_SYNC_GROUP_ID, &source_topic_name);
+    let subscriber: Arc<StreamConsumer> = Arc::new(create_subscriber(
+        &kafka_config,
+        VERSION_SYNC_GROUP_ID,
+        &source_topic_name,
+    ));
     let producer = create_producer(kafka_config.clone());
 
     // there is no concurrency on this queue, the mutex is to satisfy the borrow checker
@@ -330,7 +337,7 @@ async fn sync_kafka_to_kafka(
     iterate_subscriber(
         subscriber,
         source_topic_name,
-        |payload| {
+        |payload, _, _| {
             let producer: &FutureProducer = &producer.producer;
             let queue = &queue;
             Box::pin(async move {
@@ -357,15 +364,31 @@ async fn sync_kafka_to_clickhouse(
     target_table_columns: Vec<ClickHouseColumn>,
     metrics: Arc<Metrics>,
 ) -> anyhow::Result<()> {
-    let subscriber: StreamConsumer =
-        create_subscriber(&kafka_config, TABLE_SYNC_GROUP_ID, &source_topic_name);
+    let subscriber: Arc<StreamConsumer> = Arc::new(create_subscriber(
+        &kafka_config,
+        TABLE_SYNC_GROUP_ID,
+        &source_topic_name,
+    ));
 
     let clickhouse_columns = target_table_columns
         .iter()
         .map(|column| column.name.clone())
         .collect();
 
-    let inserter = Inserter::new(clickhouse_config, &target_table_name, clickhouse_columns);
+    let topic_clone = source_topic_name.clone();
+    let subscriber_clone = subscriber.clone();
+
+    let client = Arc::new(ClickHouseClient::new(&clickhouse_config).unwrap());
+    let inserter = Inserter::<ClickHouseClient>::new(
+        client,
+        MAX_BATCH_SIZE,
+        MAX_FLUSH_INTERVAL_SECONDS,
+        &target_table_name,
+        clickhouse_columns,
+        Box::new(move |partition, offset| {
+            subscriber_clone.store_offset(&topic_clone, partition, offset)
+        }),
+    );
 
     // WARNING: the code below is very performance sensitive
     // it is run for every message that needs to be written to clickhouse. As such we should
@@ -380,7 +403,7 @@ async fn sync_kafka_to_clickhouse(
     iterate_subscriber(
         subscriber,
         source_topic_name,
-        |payload_str| {
+        |payload_str, partition, offset| {
             // allow the async block to move the borrows
             let inserter = &inserter;
             let source_topic_columns = &source_topic_columns;
@@ -390,7 +413,7 @@ async fn sync_kafka_to_clickhouse(
                     if let Ok(clickhouse_record) =
                         mapper_json_to_clickhouse_record(source_topic_columns, json_value)
                     {
-                        let res = inserter.insert(clickhouse_record).await;
+                        let res = inserter.insert(clickhouse_record, partition, offset).await;
 
                         if let Err(e) = res {
                             error!("Error adding records to the queue to be inserted: {}", e);
@@ -406,13 +429,13 @@ async fn sync_kafka_to_clickhouse(
 }
 
 async fn iterate_subscriber<'a, F>(
-    subscriber: StreamConsumer,
+    subscriber: Arc<StreamConsumer>,
     source_topic_name: String,
     action: F,
     metrics: Arc<Metrics>,
 ) where
     // we shouldn't need the boxing, but i can't make the borrow checker happy
-    F: Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>>,
+    F: Fn(String, i32, i64) -> Pin<Box<dyn Future<Output = ()> + Send + 'a>>,
 {
     loop {
         match subscriber.recv().await {
@@ -437,7 +460,12 @@ async fn iterate_subscriber<'a, F>(
                             })
                             .await;
 
-                        action(payload_str.to_string()).await;
+                        action(
+                            payload_str.to_string(),
+                            message.partition(),
+                            message.offset(),
+                        )
+                        .await;
                     }
                     Err(_) => {
                         error!(

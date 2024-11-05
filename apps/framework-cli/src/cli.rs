@@ -368,6 +368,7 @@ async fn top_command_handler(
                 project_name: project_arc.name().to_string(),
                 export_metrics: settings.telemetry.export_metrics,
                 metric_endpoints: settings.metric.endpoints.clone(),
+                write_metrics_to_file: settings.features.metrics_v2,
             });
 
             let arc_metrics = Arc::new(metrics);
@@ -555,6 +556,7 @@ async fn top_command_handler(
                 project_name: project_arc.name().to_string(),
                 export_metrics: settings.telemetry.export_metrics,
                 metric_endpoints: settings.metric.endpoints.clone(),
+                write_metrics_to_file: settings.features.metrics_v2,
             });
 
             let arc_metrics = Arc::new(metrics);

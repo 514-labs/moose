@@ -95,6 +95,7 @@ pub struct TelemetryMetadata {
     pub is_production: bool,
     pub project_name: String,
     pub export_metrics: bool,
+    pub write_metrics_to_file: bool,
 }
 
 #[derive(Clone)]
@@ -179,8 +180,12 @@ impl Metrics {
         };
         let metrics = Metrics {
             tx_events,
-            telemetry_metadata,
-            metrics_inserter: MetricsInserter::new(metric_labels, metric_endpoints),
+            telemetry_metadata: telemetry_metadata.clone(),
+            metrics_inserter: MetricsInserter::new(
+                metric_labels,
+                metric_endpoints,
+                telemetry_metadata.write_metrics_to_file,
+            ),
             registry: Arc::new(Mutex::new(Registry::default())),
         };
         (metrics, rx_events)

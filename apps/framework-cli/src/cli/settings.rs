@@ -50,13 +50,17 @@ impl Default for Telemetry {
 
 #[derive(Deserialize, Debug, Clone)]
 pub struct Features {
+    #[serde(default = "Features::default_core_v2")]
     pub core_v2: bool,
+    #[serde(default = "Features::default_metrics_v2")]
+    pub metrics_v2: bool,
 }
 
 impl Default for Features {
     fn default() -> Self {
         Self {
             core_v2: Self::default_core_v2(),
+            metrics_v2: Self::default_metrics_v2(),
         }
     }
 }
@@ -64,6 +68,10 @@ impl Default for Features {
 impl Features {
     fn default_core_v2() -> bool {
         true
+    }
+
+    fn default_metrics_v2() -> bool {
+        false
     }
 }
 

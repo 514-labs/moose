@@ -200,11 +200,14 @@ async fn write_events_to_file(
         .open(&file_path)
         .await?;
 
+    let mut buffer = String::new();
     for event in events.iter() {
-        let mut event_str = serde_json::to_string(event)?;
-        event_str.push('\n');
-        file.write_all(event_str.as_bytes()).await?;
+        let event_str = serde_json::to_string(event)?;
+        buffer.push_str(&event_str);
+        buffer.push('\n');
     }
+
+    file.write_all(buffer.as_bytes()).await?;
 
     Ok(())
 }

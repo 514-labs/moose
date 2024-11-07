@@ -516,7 +516,7 @@ pub async fn check_table(
             .retain_mut(|column| match db_columns.remove(&column.name) {
                 None => false,
                 Some((t, required)) => {
-                    column.required = *required;
+                    column.required = required;
 
                     column.data_type = t.to_std_column_type();
                     true

@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::num::TryFromIntError;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -18,11 +18,13 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Map, Value};
 
 use crate::framework::core::code_loader::FrameworkObjectVersions;
-use crate::framework::core::infrastructure::table::EnumValue;
+use crate::framework::core::infrastructure::table::{Column, EnumValue, Table};
 use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::framework::data_model::model::DataModel;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
-use crate::infrastructure::olap::clickhouse::model::{ClickHouseColumnType, ClickHouseTable};
+use crate::infrastructure::olap::clickhouse::model::{
+    ClickHouseColumn, ClickHouseColumnType, ClickHouseTable,
+};
 
 pub fn get_pool(click_house_config: &ClickHouseConfig) -> clickhouse_rs::Pool {
     let address = format!(
@@ -410,4 +412,129 @@ pub async fn retrieve_infrastructure_map(
         1 => Ok(serde_json::from_str(inframap_string.first().unwrap())?),
         len => panic!("LIMIT 1 but got {} rows: {:?}", len, inframap_string),
     }
+}
+
+pub async fn check_table(
+    client: &mut ClientHandle,
+    db_name: &str,
+    tables: &HashMap<String, Table>,
+) -> Result<HashMap<String, Table>, clickhouse_rs::errors::Error> {
+    let columns_query = format!(
+        r#"
+        SELECT
+            table,
+            name,
+            type,
+            is_in_primary_key
+        FROM system.columns 
+        WHERE database = '{}'
+        "#,
+        db_name
+    );
+
+    let block = client.query(&columns_query).fetch_all().await?;
+
+    let mut table_columns = HashMap::<String, HashMap<String, (ClickHouseColumnType, bool)>>::new();
+
+    fn add_to_nested(
+        existing_columns: &mut Vec<ClickHouseColumn>,
+        inner_name: &str,
+        t: ClickHouseColumnType,
+        required: bool,
+    ) {
+        match inner_name.split_once('.') {
+            None => existing_columns.push(ClickHouseColumn {
+                name: inner_name.to_string(),
+                column_type: t,
+                required,
+                unique: false,
+                primary_key: false,
+                default: None,
+            }),
+            Some((nested, nested_inner)) => {
+                let existing_nested = match existing_columns.iter_mut().find(|c| c.name == nested) {
+                    None => {
+                        existing_columns.push(ClickHouseColumn {
+                            name: nested.to_string(),
+                            column_type: ClickHouseColumnType::Nested(vec![]),
+                            required: true,
+                            unique: false,
+                            primary_key: false,
+                            default: None,
+                        });
+                        existing_columns.last_mut().unwrap()
+                    }
+                    Some(nested_column) => nested_column,
+                };
+                if let ClickHouseColumnType::Nested(v) = &mut existing_nested.column_type {
+                    add_to_nested(v, nested_inner, t, required);
+                } else {
+                    unreachable!()
+                }
+            }
+        }
+    }
+
+    for row in block.rows() {
+        let table: String = row.get("table")?;
+
+        let name: String = row.get("name")?;
+        let type_str: String = row.get("type")?;
+
+        if let Some((t, required)) = ClickHouseColumnType::from_type_str(&type_str) {
+            let columns = table_columns.entry(table).or_default();
+
+            match name.split_once('.') {
+                None => {
+                    columns.insert(name, (t, required));
+                }
+                Some((nested, nested_inner)) => {
+                    let adsf = columns
+                        .entry(nested.to_string())
+                        .or_insert((ClickHouseColumnType::Nested(vec![]), true));
+                    if let (ClickHouseColumnType::Nested(v), true) = adsf {
+                        add_to_nested(v, nested_inner, t, required)
+                    }
+                }
+            }
+        }
+    }
+
+    let mut existing_tables = tables.clone();
+
+    for table in tables.values() {
+        let mut db_columns = match table_columns.remove(&table.name) {
+            None => {
+                existing_tables.remove(&table.id());
+                continue;
+            }
+            Some(columns) => columns,
+        };
+        let existing_table = existing_tables.get_mut(&table.id()).unwrap();
+        existing_table
+            .columns
+            .retain_mut(|column| match db_columns.remove(&column.name) {
+                None => false,
+                Some((t, required)) => {
+                    column.required = *required;
+
+                    column.data_type = t.to_std_column_type();
+                    true
+                }
+            });
+        db_columns
+            .into_iter()
+            .for_each(|(col_name, (t, required))| {
+                existing_table.columns.push(Column {
+                    name: col_name,
+                    data_type: t.to_std_column_type(),
+                    required,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                })
+            })
+    }
+
+    Ok(existing_tables)
 }

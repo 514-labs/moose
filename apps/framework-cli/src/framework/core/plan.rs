@@ -2,6 +2,7 @@ use super::{
     infrastructure_map::{InfraChanges, InfrastructureMap},
     primitive_map::PrimitiveMap,
 };
+use crate::cli::display::show_olap_changes;
 use crate::framework::controller::{
     check_topic_fully_populated, InitialDataLoad, InitialDataLoadStatus,
 };
@@ -63,7 +64,10 @@ pub async fn plan_changes(
         // we check the actual configurations and compare it to the stored state
         let mut current = retrieve_infrastructure_map(client, &project.clickhouse_config).await?;
 
-        // currently we check only the initial data load statuses
+        // currently we check only
+        // - the initial data load statuses and,
+        // - table changes
+
         let existing_data_loads: &mut HashMap<String, InitialDataLoad> = match &mut current {
             None => &mut HashMap::new(),
             Some(existing) => &mut existing.initial_data_loads,
@@ -100,6 +104,28 @@ pub async fn plan_changes(
                     };
                 }
             };
+        }
+
+        if let Some(current) = &mut current {
+            let real_current_table =
+                crate::infrastructure::olap::clickhouse_alt_client::check_table(
+                    client,
+                    &project.clickhouse_config.db_name,
+                    &mut current.tables,
+                )
+                .await?;
+
+            let mut detected_table_changes = vec![];
+            InfrastructureMap::diff_tables(
+                &current.tables,
+                &real_current_table,
+                &mut detected_table_changes,
+            );
+
+            if !detected_table_changes.is_empty() {
+                print!("Detected changes not reflected in the latest infrastructure map:");
+                show_olap_changes(&detected_table_changes);
+            }
         }
 
         current

@@ -1,18 +1,12 @@
-use crate::cli::settings::user_directory;
+use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::metrics::MetricEvent;
-use chrono::Utc;
 use reqwest::Client;
 use serde_json::json;
 use std::sync::Arc;
 use std::time::Duration;
-use std::time::SystemTime;
-use tokio::fs;
-use tokio::fs::OpenOptions;
-use tokio::io::AsyncWriteExt;
 use tokio::sync::Mutex;
 use tokio::time;
 
-const METRICS_DIR: &str = "metrics";
 const MAX_FLUSH_INTERVAL_SECONDS: u64 = 10;
 const MAX_BATCH_SIZE: usize = 1000;
 
@@ -27,7 +21,7 @@ impl MetricsInserter {
     pub fn new(
         metric_labels: Option<serde_json::Map<String, serde_json::Value>>,
         metric_endpoints: Option<serde_json::Map<String, serde_json::Value>>,
-        write_metrics_to_file: bool,
+        redis_client: Option<Arc<Mutex<RedisClient>>>,
     ) -> Self {
         let buffer = Arc::new(Mutex::new(Vec::new()));
 
@@ -35,7 +29,7 @@ impl MetricsInserter {
             buffer.clone(),
             metric_labels.clone(),
             metric_endpoints.clone(),
-            write_metrics_to_file,
+            redis_client.clone(),
         ));
 
         Self { buffer }
@@ -52,7 +46,7 @@ async fn flush(
     buffer: BatchEvents,
     metric_labels: Option<serde_json::Map<String, serde_json::Value>>,
     metric_endpoints: Option<serde_json::Map<String, serde_json::Value>>,
-    write_metrics_to_file: bool,
+    redis_client: Option<Arc<Mutex<RedisClient>>>,
 ) {
     let mut interval = time::interval(Duration::from_secs(MAX_FLUSH_INTERVAL_SECONDS));
     let client = Client::new();
@@ -62,10 +56,6 @@ async fn flush(
         let mut buffer_owned = buffer.lock().await;
         if buffer_owned.is_empty() {
             continue;
-        }
-
-        if write_metrics_to_file {
-            clean_old_metric_files();
         }
 
         let mut event_groups: std::collections::HashMap<&str, Vec<serde_json::Value>> =
@@ -171,9 +161,18 @@ async fn flush(
                 }
             };
 
-            if write_metrics_to_file {
-                if let Err(e) = write_events_to_file(event_type, &events).await {
-                    eprintln!("Failed to write metrics to file: {}", e);
+            if let Some(redis_client) = &redis_client {
+                let message = json!({
+                    "type": event_type,
+                    "events": events
+                });
+                if let Ok(events_json) = serde_json::to_string(&message) {
+                    redis_client
+                        .lock()
+                        .await
+                        .post_queue_message(&events_json, Some("metrics"))
+                        .await
+                        .ok();
                 }
             } else {
                 let _ = client.post(route).json(&events).send().await;
@@ -181,76 +180,5 @@ async fn flush(
         }
 
         buffer_owned.clear();
-    }
-}
-
-async fn write_events_to_file(
-    event_type: &str,
-    events: &[serde_json::Value],
-) -> anyhow::Result<()> {
-    let dir_path = user_directory().join(METRICS_DIR).join(event_type);
-    fs::create_dir_all(&dir_path).await?;
-
-    let date_str = Utc::now().format("%Y-%m-%d").to_string();
-    let file_path = dir_path.join(format!("{}.txt", date_str));
-
-    let mut file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(&file_path)
-        .await?;
-
-    let mut buffer = String::new();
-    for event in events.iter() {
-        let event_str = serde_json::to_string(event)?;
-        buffer.push_str(&event_str);
-        buffer.push('\n');
-    }
-
-    file.write_all(buffer.as_bytes()).await?;
-
-    Ok(())
-}
-
-fn clean_old_metric_files() {
-    let cut_off = SystemTime::now() - Duration::from_secs(7 * 24 * 60 * 60);
-    let metrics_dir = user_directory().join(METRICS_DIR);
-
-    if let Ok(dir) = metrics_dir.read_dir() {
-        for entry in dir.flatten() {
-            let sub_dir = match entry.path().read_dir() {
-                Ok(sub_dir) => sub_dir,
-                Err(_) => {
-                    eprintln!("Failed to read subdirectory: {:?}", entry.path());
-                    continue;
-                }
-            };
-
-            for file_entry in sub_dir.flatten() {
-                if file_entry
-                    .path()
-                    .extension()
-                    .map_or(false, |ext| ext == "txt")
-                {
-                    match file_entry.metadata().and_then(|md| md.modified()) {
-                        Ok(t) if t < cut_off => {
-                            if let Err(e) = std::fs::remove_file(file_entry.path()) {
-                                eprintln!("Failed to remove file {:?}: {}", file_entry.path(), e);
-                            }
-                        }
-                        Ok(_) => {}
-                        Err(e) => {
-                            eprintln!(
-                                "Failed to read modification time for {:?}. {}",
-                                file_entry.path(),
-                                e
-                            );
-                        }
-                    }
-                }
-            }
-        }
-    } else {
-        eprintln!("Failed to read metrics directory");
     }
 }

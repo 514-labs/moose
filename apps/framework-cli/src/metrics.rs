@@ -15,6 +15,7 @@ use std::time::Duration;
 use tokio::sync::Mutex;
 use tokio::time;
 
+use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::metrics_inserter::MetricsInserter;
 use crate::utilities::constants::{CLI_VERSION, CONTEXT, CTX_SESSION_ID};
 use crate::utilities::decode_object;
@@ -95,7 +96,6 @@ pub struct TelemetryMetadata {
     pub is_production: bool,
     pub project_name: String,
     pub export_metrics: bool,
-    pub write_metrics_to_file: bool,
 }
 
 #[derive(Clone)]
@@ -160,6 +160,7 @@ pub struct MessagesOutCounterLabels {
 impl Metrics {
     pub fn new(
         telemetry_metadata: TelemetryMetadata,
+        redis_client: Option<Arc<Mutex<RedisClient>>>,
     ) -> (Metrics, tokio::sync::mpsc::Receiver<MetricEvent>) {
         let (tx_events, rx_events) = tokio::sync::mpsc::channel(32);
         let metric_labels = match telemetry_metadata
@@ -181,11 +182,7 @@ impl Metrics {
         let metrics = Metrics {
             tx_events,
             telemetry_metadata: telemetry_metadata.clone(),
-            metrics_inserter: MetricsInserter::new(
-                metric_labels,
-                metric_endpoints,
-                telemetry_metadata.write_metrics_to_file,
-            ),
+            metrics_inserter: MetricsInserter::new(metric_labels, metric_endpoints, redis_client),
             registry: Arc::new(Mutex::new(Registry::default())),
         };
         (metrics, rx_events)

@@ -111,7 +111,7 @@ pub async fn plan_changes(
                 crate::infrastructure::olap::clickhouse_alt_client::check_table(
                     client,
                     &project.clickhouse_config.db_name,
-                    &mut current.tables,
+                    &current.tables,
                 )
                 .await?;
 

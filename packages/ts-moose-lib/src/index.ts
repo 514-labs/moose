@@ -29,6 +29,7 @@ export type DataModelConfig<T> = Partial<{
   storage: {
     enabled?: boolean;
     order_by_fields?: (keyof T)[];
+    deduplicate?: boolean;
   };
 }>;
 

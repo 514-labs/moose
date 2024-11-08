@@ -15,6 +15,8 @@ pub struct Table {
     pub name: String,
     pub columns: Vec<Column>,
     pub order_by: Vec<String>,
+    #[serde(default)]
+    pub deduplicate: bool,
 
     pub version: String,
     pub source_primitive: PrimitiveSignature,
@@ -29,7 +31,7 @@ impl Table {
 
     pub fn expanded_display(&self) -> String {
         format!(
-            "Table: {} Version {} - {} - {}",
+            "Table: {} Version {} - {} - {} - deduplicate: {}",
             self.name,
             self.version,
             self.columns
@@ -37,7 +39,8 @@ impl Table {
                 .map(|c| format!("{}: {}", c.name, c.data_type))
                 .collect::<Vec<String>>()
                 .join(", "),
-            self.order_by.join(",")
+            self.order_by.join(","),
+            self.deduplicate
         )
     }
 

@@ -71,6 +71,7 @@ pub struct OrderByChange {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum TableChange {
     Added(Table),
     Removed(Table),
@@ -78,6 +79,8 @@ pub enum TableChange {
         name: String,
         column_changes: Vec<ColumnChange>,
         order_by_change: OrderByChange,
+        before: Table,
+        after: Table,
     },
 }
 
@@ -98,6 +101,7 @@ pub enum InfraChange {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum OlapChange {
     Table(TableChange),
     View(Change<View>),
@@ -466,6 +470,8 @@ impl InfrastructureMap {
                                 before: table.order_by.clone(),
                                 after: target_table.order_by.clone(),
                             },
+                            before: table.clone(),
+                            after: target_table.clone(),
                         }));
                 }
             } else {
@@ -986,6 +992,7 @@ mod tests {
     fn test_compute_table_diff() {
         let before = Table {
             name: "test_table".to_string(),
+            deduplicate: false,
             columns: vec![
                 Column {
                     name: "id".to_string(),
@@ -1022,6 +1029,7 @@ mod tests {
 
         let after = Table {
             name: "test_table".to_string(),
+            deduplicate: false,
             columns: vec![
                 Column {
                     name: "id".to_string(),

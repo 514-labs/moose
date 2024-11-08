@@ -6,5 +6,9 @@ pub enum ClickhouseError {
     UnsupportedDataType {
         type_name: String,
     },
+    #[error("Clickhouse - Invalid parameters: {message}")]
+    InvalidParameters {
+        message: String,
+    },
     QueryRender(#[from] handlebars::RenderError),
 }

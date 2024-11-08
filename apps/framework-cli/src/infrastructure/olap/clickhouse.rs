@@ -75,25 +75,54 @@ pub async fn execute_changes(
                 name,
                 column_changes,
                 order_by_change,
+                before,
+                after,
             }) => {
-                log::info!("Updating table: {:?}", name);
-                let mut alter_statements =
-                    generate_column_alter_statements(column_changes, db_name, name)?;
+                if before.deduplicate != after.deduplicate {
+                    log::info!("Deduplicate parameter changed for table: {:?}", name);
+                    log::info!(
+                        "Deleting table: {:?} and recreating it with the proper Clickhouse engine",
+                        name
+                    );
 
-                if order_by_change.before != order_by_change.after {
-                    let order_by_alter_statement =
-                        generate_order_by_alter_statement(&order_by_change.after, db_name, name);
-                    alter_statements.push(order_by_alter_statement);
-                }
+                    let dropped_table = std_table_to_clickhouse_table(before)?;
+                    let drop_query = drop_table_query(db_name, dropped_table)?;
+                    run_query(&drop_query, &configured_client).await?;
 
-                for statement in alter_statements {
-                    retry(
-                        || run_query(&statement, &configured_client),
-                        |_,e | {
-                            matches!(e, clickhouse::error::Error::BadResponse(msg) if msg.starts_with("Code: 517.") && msg.contains("You can retry this error"))
+                    let clickhouse_table = std_table_to_clickhouse_table(after)?;
+                    let create_data_table_query = create_table_query(
+                        db_name,
+                        clickhouse_table,
+                        if after.deduplicate {
+                            ClickhouseEngine::ReplacingMergeTree
+                        } else {
+                            ClickhouseEngine::MergeTree
                         },
-                        Duration::from_secs(1)
-                    ).await?;
+                    )?;
+                    run_query(&create_data_table_query, &configured_client).await?;
+                } else {
+                    log::info!("Updating table: {:?}", name);
+                    let mut alter_statements =
+                        generate_column_alter_statements(column_changes, db_name, name)?;
+
+                    if order_by_change.before != order_by_change.after {
+                        let order_by_alter_statement = generate_order_by_alter_statement(
+                            &order_by_change.after,
+                            db_name,
+                            name,
+                        );
+                        alter_statements.push(order_by_alter_statement);
+                    }
+
+                    for statement in alter_statements {
+                        retry(
+                            || run_query(&statement, &configured_client),
+                            |_,e | {
+                                matches!(e, clickhouse::error::Error::BadResponse(msg) if msg.starts_with("Code: 517.") && msg.contains("You can retry this error"))
+                            },
+                            Duration::from_secs(1)
+                        ).await?;
+                    }
                 }
             }
             OlapChange::View(Change::Added(view)) => match &view.view_type {

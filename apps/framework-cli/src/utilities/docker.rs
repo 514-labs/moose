@@ -169,7 +169,6 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
             "CLICKHOUSE_HOST_PORT",
             project.clickhouse_config.host_port.to_string(),
         )
-        .env("CLICKHOUSE_VERSION", "24.1.3") // https://github.com/ClickHouse/ClickHouse/issues/60020
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;

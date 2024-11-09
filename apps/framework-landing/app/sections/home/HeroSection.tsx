@@ -5,7 +5,7 @@ import { cn } from "@514labs/design-system-components/utils";
 
 export const HeroSection = ({ className }: { className?: string }) => {
   const content = {
-    title: "Turn data into products. No Tedium. Plumbing included.",
+    title: "Turn data into products. No tedium. Plumbing included.",
     description:
       "Moose is a data engineering framework for Typescript or Python devs & AI agents that need to ship data-intensive products fast",
     primaryCTA: "Get started",

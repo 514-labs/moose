@@ -7,11 +7,13 @@
 
 [Moose](https://www.getmoose.dev/) is an open-source data engineering framework designed to drastically accellerate AI-enabled software developers, as you prototype and scale data-intensive features and applications.
 
-To learn more and/or get started using Moose, check out the documentation: [https://docs.getmoose.dev/](https://docs.getmoose.dev/)
+# Get started with Moose
+
+Get up and running with your own Moose project in minutes by using our [Quick Start Tutorial](https://docs.getmoose.dev/quickstart). We also have our [Docs](https://docs.getmoose.dev/) where you can pick your path, learn more about Moose, and learn what types of applications can be built with Moose.
 
 # Beta release
 
-Moose is beta software and is in active development. Multiple public companies across the globe are using Moose in production. We’d love for you to get your hands on it and try it out. If you're interested in using Moose in production, or if you just want to chat, you can reach us at [hello@moosejs.dev](mailto:hello@moosejs.dev) or in the Moose developer community below.
+Moose is beta software and is in active development. Multiple public companies across the globe are using Moose in production. We’d love for you to [get your hands on it and try it out](https://docs.getmoose.dev/quickstart). If you're interested in using Moose in production, or if you just want to chat, you can reach us at [hello@moosejs.dev](mailto:hello@moosejs.dev) or in the Moose developer community below.
 
 # Community
 

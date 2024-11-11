@@ -359,7 +359,8 @@ async fn watch(
         sleep(Duration::from_secs(1)).await;
         let bucketed_events = receiver_ack.send_replace(EventBuckets::default());
         rx.mark_unchanged();
-        // so that updates done between receiver_ack.send_replace and rx.mark_unchanged is not lost
+        // so that updates done between receiver_ack.send_replace and rx.mark_unchanged
+        // can be picked up the next rx.changed call
         if !rx.borrow().is_empty() {
             rx.mark_changed();
         }

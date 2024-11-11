@@ -80,12 +80,11 @@
 //!
 
 use crate::infrastructure::redis::redis_client::RedisClient;
+use log::{debug, error, info};
 use std::collections::{HashMap, HashSet};
 use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
-
-use log::{debug, error, info};
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::{interval, Duration};
 
@@ -111,7 +110,9 @@ use crate::infrastructure::processes::aggregations_registry::AggregationProcessR
 use crate::infrastructure::processes::consumption_registry::ConsumptionProcessRegistry;
 use crate::infrastructure::processes::cron_registry::CronRegistry;
 use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
-use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
+use crate::infrastructure::processes::kafka_clickhouse_sync::{
+    clickhouse_writing_pause_button, SyncingProcessesRegistry,
+};
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
 use crate::infrastructure::stream::redpanda::fetch_topics;
 use crate::project::Project;
@@ -339,10 +340,19 @@ async fn process_pubsub_message(
             );
         }
     } else {
-        info!(
-            "<Routines> This instance is not the leader and received pubsub message: {}",
-            message
-        );
+        // this assumes that the leader is not doing inserts during migration
+        if message.contains("<migration_start>") {
+            clickhouse_writing_pause_button().send(true)?;
+            info!("Pausing write to CH");
+        } else if message.contains("<migration_end>") {
+            clickhouse_writing_pause_button().send(false)?;
+            info!("Resuming write to CH");
+        } else {
+            info!(
+                "<Routines> This instance is not the leader and received pubsub message: {}",
+                message
+            );
+        }
     }
     Ok(())
 }
@@ -805,7 +815,7 @@ pub async fn plan(project: &Project) -> anyhow::Result<()> {
     Ok(())
 }
 
-// This is deprectaed with CORE V2
+// This is deprecated with CORE V2
 pub async fn initialize_project_state(
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,

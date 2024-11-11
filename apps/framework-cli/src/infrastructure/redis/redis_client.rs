@@ -247,7 +247,7 @@ impl RedisClient {
                 .await
                 .context("Failed to check lock")?;
 
-            Ok(value == Some(self.instance_id.clone()))
+            Ok(value.is_some_and(|id| id == self.instance_id))
         } else {
             Err(anyhow::anyhow!("Lock not registered"))
         }
@@ -393,7 +393,7 @@ impl RedisClient {
             .push(Arc::new(move |message: String| {
                 let callback = Arc::clone(&callback);
                 Box::pin(async move {
-                    (callback)(message);
+                    callback(message);
                 }) as Pin<Box<dyn Future<Output = ()> + Send>>
             }));
     }

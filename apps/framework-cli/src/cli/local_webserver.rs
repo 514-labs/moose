@@ -206,6 +206,7 @@ async fn create_client(
             "Access-Control-Allow-Headers",
             "Authorization, Content-Type",
         )
+        .header("Content-Type", "application/json")
         .body(Full::new(Bytes::from(body)))
         .unwrap())
 }

@@ -15,6 +15,9 @@ class CoachingOutput(BaseModel):
     analysis_message: str = Field(description="A short message that is data-driven based on the query")
 # Patch the Instructor client with the OpenAI client 
 # Locally running LLM - can be replaced with OpenAI/Anthropic/Gemini etc.
+
+# AI is running a local Ollama instance
+# Time stamp is hardcoded for now
 instructor_client = instructor.from_openai(
     OpenAI(
         base_url="http://localhost:11434/v1",
@@ -59,8 +62,6 @@ def run(client: MooseClient, params):
             "coaching_message": "",
             "analysis_message": ""
         }
-    # Extract structured data from natural language
-    cli_log(CliLogData(message=f'sql_response: {sql_response}'))
 
     # Play around with the prompt with Joj to get the best results
     ai_response = instructor_client.chat.completions.create(

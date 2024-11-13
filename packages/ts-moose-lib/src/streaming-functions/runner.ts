@@ -1,3 +1,4 @@
+import { Readable } from "node:stream";
 import { Consumer, Kafka, KafkaMessage, Producer, SASLOptions } from "kafkajs";
 import { Buffer } from "node:buffer";
 import process from "node:process";
@@ -33,6 +34,10 @@ interface Logger {
   error: (message: string) => void;
   warn: (message: string) => void;
 }
+
+const MAX_STREAMING_CONCURRENCY = process.env.MAX_STREAMING_CONCURRENCY
+  ? parseInt(process.env.MAX_STREAMING_CONCURRENCY)
+  : 100;
 
 const parseArgs = (): StreamingFunctionArgs => {
   const SOURCE_TOPIC = process.argv[3];
@@ -268,11 +273,11 @@ const startConsumer = async (
       });
       logger.log(`Received ${batch.messages.length} message(s)`);
       const messages = (
-        await Promise.all(
-          batch.messages.map((message) =>
-            handleMessage(logger, streamingFunction, message),
-          ),
-        )
+        await Readable.from(batch.messages)
+          .map((message) => handleMessage(logger, streamingFunction, message), {
+            concurrency: MAX_STREAMING_CONCURRENCY,
+          })
+          .toArray()
       ).flat();
 
       const filteredMessages = messages.filter((msg) => msg !== null);

@@ -135,6 +135,7 @@ pub mod logs;
 pub mod ls;
 pub mod metrics_console;
 pub mod migrate;
+pub mod peek;
 pub mod ps;
 pub mod streaming;
 pub mod templates;

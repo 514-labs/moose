@@ -233,6 +233,49 @@ pub async fn select_all_as_json<'a>(
     Ok(Box::pin(stream))
 }
 
+pub async fn select_some_as_json<'a>(
+    db_name: &str,
+    table: &'a ClickHouseTable,
+    client: &'a mut ClientHandle,
+    limit: i64,
+) -> Result<BoxStream<'a, Result<Value, clickhouse_rs::errors::Error>>, clickhouse_rs::errors::Error>
+{
+    let enum_mapping: Vec<Option<Vec<&str>>> = table
+        .columns
+        .iter()
+        .map(|c| column_type_to_enum_mapping(&c.column_type))
+        .collect();
+
+    let key_columns = table
+        .columns
+        .iter()
+        .filter_map(|c| {
+            if c.primary_key {
+                Some(c.name.as_str())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let order_by = if key_columns.is_empty() {
+        "".to_string()
+    } else {
+        format!("ORDER BY {}", key_columns.join(", "))
+    };
+
+    let query = &format!(
+        "select * from \"{}\".\"{}\" {} limit {}",
+        db_name, table.name, order_by, limit
+    );
+    let stream = client
+        .query(query)
+        .stream()
+        .map(move |row| row_to_json(&row?, &enum_mapping));
+
+    Ok(Box::pin(stream))
+}
+
 async fn create_state_table(
     client: &mut ClientHandle,
     click_house_config: &ClickHouseConfig,

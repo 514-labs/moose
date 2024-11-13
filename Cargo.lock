@@ -638,6 +638,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "cron"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eee8b2b4516038bc0f1d3c9934bcb4a13dd316e04abbc63c96757a6d75978532"
+dependencies = [
+ "chrono",
+ "nom",
+ "once_cell",
+]
+
+[[package]]
 name = "crossbeam"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1938,6 +1949,7 @@ dependencies = [
  "console",
  "constant_time_eq",
  "convert_case 0.6.0",
+ "cron 0.13.0",
  "crossterm",
  "crypto-hash",
  "csv",
@@ -3779,7 +3791,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7b9480125554f0ace1c3c3797a24b5cc56c6a7cd82c739db35fb54c4dc046f3"
 dependencies = [
  "chrono",
- "cron",
+ "cron 0.12.1",
  "num-derive",
  "num-traits",
  "tokio",

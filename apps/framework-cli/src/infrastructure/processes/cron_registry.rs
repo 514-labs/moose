@@ -8,11 +8,18 @@ use std::collections::HashSet;
 use std::env;
 use std::path::Path;
 use std::process::Command;
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler};
+
+// here we use the cron crate to parse the cron expression.
+// The tokio_cron_scheduler is a wrapper around the cron
+// crate that allows for scheduling jobs but doesn't directly
+//expose the cron parsing functionality.
+use cron::Schedule;
 
 #[derive(Error, Debug)]
 pub enum CronError {
@@ -33,6 +40,8 @@ pub struct CronMetric {
     pub job_id: String,
     pub run_id: u32,
     pub timestamp: u64,
+    pub last_run: u64,
+    pub next_run: u64,
     pub success: bool,
     pub error_message: Option<String>,
     pub error_code: Option<i32>,
@@ -127,6 +136,7 @@ impl CronRegistry {
             let metrics = self.metrics.clone();
             let job_id_for_metric = job_id.clone();
 
+            let cron_spec_clone = cron_spec.clone();
             self.add_job(&cron_spec, move || {
                 let metrics = metrics.clone();
                 let mut success = true;
@@ -210,11 +220,16 @@ impl CronRegistry {
                     .unwrap()
                     .as_secs();
 
-                let run_id = (timestamp % 100_000) as u32;
+                // Calculate next run using the cron expression
+                let schedule = Schedule::from_str(&cron_spec_clone)
+                    .map_err(|e| format!("Invalid cron expression: {}", e))?;
+                let next_run = schedule.upcoming(chrono::Utc).next().unwrap().timestamp() as u64;
 
                 let metric = CronMetric {
                     job_id: job_id_for_metric.clone(),
-                    run_id,
+                    run_id: (timestamp % 100_000) as u32,
+                    last_run: timestamp,
+                    next_run,
                     timestamp,
                     success,
                     error_message: error_msg,

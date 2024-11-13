@@ -41,8 +41,16 @@ pub async fn peek(
     let table = infra
         .tables
         .iter()
-        .find(|(key, _)| key.starts_with(&data_model_name))
-        .map(|(_, table)| table)
+        .find_map(|(key, table)| {
+            if key
+                .to_lowercase()
+                .starts_with(&data_model_name.to_lowercase())
+            {
+                Some(table)
+            } else {
+                None
+            }
+        })
         .ok_or_else(|| {
             RoutineFailure::error(Message::new(
                 "Failed".to_string(),
@@ -75,12 +83,9 @@ pub async fn peek(
 
     while let Some(result) = stream.next().await {
         if let Ok(value) = result {
-            if let Ok(json) = serde_json::to_string(&value) {
-                println!("{}", json);
-                success_count += 1;
-            } else {
-                log::error!("Failed to serialize JSON");
-            }
+            let json = serde_json::to_string(&value).unwrap();
+            println!("{}", json);
+            success_count += 1;
         } else {
             log::error!("Failed to read row");
         }

@@ -8,12 +8,16 @@ use crate::project::Project;
 use super::{RoutineFailure, RoutineSuccess};
 
 use futures::StreamExt;
+use std::path::PathBuf;
 use std::sync::Arc;
+use tokio::fs::File;
+use tokio::io::AsyncWriteExt;
 
 pub async fn peek(
     project: Arc<Project>,
     data_model_name: String,
     limit: u8,
+    file: Option<PathBuf>,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let pool = get_pool(&project.clickhouse_config);
     let mut client = pool.get_handle().await.map_err(|_| {
@@ -61,7 +65,7 @@ pub async fn peek(
     let table = std_table_to_clickhouse_table(table).map_err(|_| {
         RoutineFailure::error(Message::new(
             "Failed".to_string(),
-            "Error fetching ClickHouse table".to_string(),
+            "Error fetching table".to_string(),
         ))
     })?;
 
@@ -81,21 +85,51 @@ pub async fn peek(
 
     let mut success_count = 0;
 
-    while let Some(result) = stream.next().await {
-        if let Ok(value) = result {
-            let json = serde_json::to_string(&value).unwrap();
-            println!("{}", json);
-            success_count += 1;
-        } else {
-            log::error!("Failed to read row");
+    if let Some(file_path) = file {
+        let mut file = File::create(&file_path).await.map_err(|_| {
+            RoutineFailure::error(Message::new(
+                "Failed".to_string(),
+                "Error creating file".to_string(),
+            ))
+        })?;
+
+        while let Some(result) = stream.next().await {
+            if let Ok(value) = result {
+                let json = serde_json::to_string(&value).unwrap();
+                file.write_all(format!("{}\n", json).as_bytes())
+                    .await
+                    .map_err(|_| {
+                        RoutineFailure::error(Message::new(
+                            "Failed".to_string(),
+                            "Error writing to file".to_string(),
+                        ))
+                    })?;
+                success_count += 1;
+            } else {
+                log::error!("Failed to read row");
+            }
         }
+
+        Ok(RoutineSuccess::success(Message::new(
+            "Peeked".to_string(),
+            format!("{} rows written to {:?}", success_count, file_path),
+        )))
+    } else {
+        while let Some(result) = stream.next().await {
+            if let Ok(value) = result {
+                println!("{}", serde_json::to_string(&value).unwrap());
+                success_count += 1;
+            } else {
+                log::error!("Failed to read row");
+            }
+        }
+
+        // Just a newline for output cleanliness
+        println!();
+
+        Ok(RoutineSuccess::success(Message::new(
+            "Peeked".to_string(),
+            format!("{} rows", success_count),
+        )))
     }
-
-    // Just a newline for output cleanliness
-    println!();
-
-    Ok(RoutineSuccess::success(Message::new(
-        "Peeked".to_string(),
-        format!("{} rows", success_count),
-    )))
 }

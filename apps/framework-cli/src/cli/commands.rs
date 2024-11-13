@@ -119,6 +119,9 @@ pub enum Commands {
         /// Limit the number of rows to view
         #[arg(short, long, default_value = "5")]
         limit: u8,
+        /// Output to a file
+        #[arg(short, long)]
+        file: Option<PathBuf>,
     },
 }
 

@@ -975,13 +975,14 @@ async fn top_command_handler(
         Commands::Peek {
             data_model_name,
             limit,
+            file,
         } => {
             info!("Running peek command");
 
             let project = load_project()?;
             let project_arc = Arc::new(project);
 
-            peek(project_arc, data_model_name.clone(), *limit).await
+            peek(project_arc, data_model_name.clone(), *limit, file.clone()).await
         }
     }
 }

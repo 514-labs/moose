@@ -31,6 +31,7 @@ pub struct CronJob {
 #[derive(Debug, Clone)]
 pub struct CronMetric {
     pub job_id: String,
+    pub run_id: u32,
     pub timestamp: u64,
     pub success: bool,
     pub error_message: Option<String>,
@@ -209,8 +210,11 @@ impl CronRegistry {
                     .unwrap()
                     .as_secs();
 
+                let run_id = (timestamp % 100_000) as u32;
+
                 let metric = CronMetric {
                     job_id: job_id_for_metric.clone(),
+                    run_id,
                     timestamp,
                     success,
                     error_message: error_msg,

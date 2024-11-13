@@ -34,6 +34,7 @@ pub struct CronMetric {
     pub timestamp: u64,
     pub success: bool,
     pub error_message: Option<String>,
+    pub error_code: Option<i32>,
 }
 
 pub struct CronRegistry {
@@ -129,6 +130,7 @@ impl CronRegistry {
                 let metrics = metrics.clone();
                 let mut success = true;
                 let mut error_msg = None;
+                let mut error_code = None;
 
                 if let Some(ref path) = script_path {
                     // Execute the script based on file extension
@@ -174,9 +176,10 @@ impl CronRegistry {
                             }
                             if !output.status.success() {
                                 success = false;
+                                error_code = output.status.code();
                                 error_msg = Some(format!(
                                     "Script exited with status code {}",
-                                    output.status.code().unwrap_or(-1)
+                                    error_code.unwrap()
                                 ));
                                 error!("<cron> {}", error_msg.as_ref().unwrap());
                             }
@@ -211,6 +214,7 @@ impl CronRegistry {
                     timestamp,
                     success,
                     error_message: error_msg,
+                    error_code,
                 };
 
                 tokio::spawn(async move {

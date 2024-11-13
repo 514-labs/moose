@@ -174,9 +174,11 @@ impl CronRegistry {
                             }
                             if !output.status.success() {
                                 success = false;
-                                error_msg =
-                                    Some(format!("Script exited with status: {}", output.status));
-                                error!("<cron> Script exited with status:\n {}", output.status);
+                                error_msg = Some(format!(
+                                    "Script exited with status code {}",
+                                    output.status.code().unwrap_or(-1)
+                                ));
+                                error!("<cron> {}", error_msg.as_ref().unwrap());
                             }
                         }
                         Err(e) => {

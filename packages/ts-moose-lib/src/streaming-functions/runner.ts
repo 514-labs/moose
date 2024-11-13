@@ -27,6 +27,8 @@ interface StreamingFunctionArgs {
   saslMechanism?: string;
   securityProtocol?: string;
 }
+const has_no_output_topic = (args: StreamingFunctionArgs) =>
+  args.targetTopic === "";
 
 interface Logger {
   logPrefix: string;
@@ -272,18 +274,22 @@ const startConsumer = async (
         message: `${logger.logPrefix} ${batch.messages.length} message(s)`,
       });
       logger.log(`Received ${batch.messages.length} message(s)`);
-      const messages = (
-        await Readable.from(batch.messages)
-          .map((message) => handleMessage(logger, streamingFunction, message), {
-            concurrency: MAX_STREAMING_CONCURRENCY,
-          })
-          .toArray()
-      ).flat();
+      const messages = await Readable.from(batch.messages)
+        .map((message) => handleMessage(logger, streamingFunction, message), {
+          concurrency: MAX_STREAMING_CONCURRENCY,
+        })
+        .toArray();
+
+      if (has_no_output_topic(args)) {
+        return;
+      }
 
       // readable.map is used for parallel map with a concurrency limit,
       // but Readable does not accept null values
       // so the return type in handleMessage cannot contain null
-      const filteredMessages = messages.filter((msg) => msg !== undefined);
+      const filteredMessages = messages
+        .flat()
+        .filter((msg) => msg !== undefined);
 
       if (filteredMessages.length > 0) {
         await sendMessages(
@@ -365,7 +371,9 @@ export const runStreamingFunctions = async (): Promise<void> => {
   });
 
   try {
-    await startProducer(logger, producer);
+    if (!has_no_output_topic(args)) {
+      await startProducer(logger, producer);
+    }
 
     try {
       const targetTopicConfig = JSON.parse(args.targetTopicConfig) as Record<

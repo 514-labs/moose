@@ -133,10 +133,10 @@ const handleMessage = async (
   logger: Logger,
   streamingFunction: StreamingFunction,
   message: KafkaMessage,
-): Promise<SlimKafkaMessage[] | null> => {
+): Promise<SlimKafkaMessage[] | undefined> => {
   if (message.value === undefined || message.value === null) {
     logger.log(`Received message with no value, skipping...`);
-    return null;
+    return undefined;
   }
 
   try {
@@ -159,7 +159,7 @@ const handleMessage = async (
     }
   }
 
-  return null;
+  return undefined;
 };
 
 const sendMessages = async (
@@ -280,7 +280,10 @@ const startConsumer = async (
           .toArray()
       ).flat();
 
-      const filteredMessages = messages.filter((msg) => msg !== null);
+      // readable.map is used for parallel map with a concurrency limit,
+      // but Readable does not accept null values
+      // so the return type in handleMessage cannot contain null
+      const filteredMessages = messages.filter((msg) => msg !== undefined);
 
       if (filteredMessages.length > 0) {
         await sendMessages(

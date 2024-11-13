@@ -30,6 +30,7 @@ impl DataModel {
             name: format!("{}_{}", self.name, self.version.replace('.', "_")),
             columns: self.columns.clone(),
             order_by: self.config.storage.order_by_fields.clone(),
+            deduplicate: self.config.storage.deduplicate,
             version: self.version.clone(),
             source_primitive: PrimitiveSignature {
                 name: self.name.clone(),

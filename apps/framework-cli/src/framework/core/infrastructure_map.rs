@@ -71,6 +71,7 @@ pub struct OrderByChange {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum TableChange {
     Added(Table),
     Removed(Table),
@@ -78,6 +79,8 @@ pub enum TableChange {
         name: String,
         column_changes: Vec<ColumnChange>,
         order_by_change: OrderByChange,
+        before: Table,
+        after: Table,
     },
 }
 
@@ -98,6 +101,7 @@ pub enum InfraChange {
 }
 
 #[derive(Debug, Clone)]
+#[allow(clippy::large_enum_variant)]
 pub enum OlapChange {
     Table(TableChange),
     View(Change<View>),
@@ -189,6 +193,8 @@ impl InfrastructureMap {
                             before: table.order_by.clone(),
                             after: target_table.order_by.clone(),
                         },
+                        before: table.clone(),
+                        after: target_table.clone(),
                     }));
                 }
             } else {
@@ -251,7 +257,9 @@ impl InfrastructureMap {
         let function_processes = std::mem::take(&mut self.function_processes);
         for mut process in function_processes.into_values() {
             process.source_topic = redpanda_config.prefix_with_namespace(&process.source_topic);
-            process.target_topic = redpanda_config.prefix_with_namespace(&process.target_topic);
+            if !process.target_topic.is_empty() {
+                process.target_topic = redpanda_config.prefix_with_namespace(&process.target_topic);
+            }
             self.function_processes.insert(process.id(), process);
         }
         let initial_data_loads = std::mem::take(&mut self.initial_data_loads);
@@ -988,6 +996,7 @@ mod tests {
     fn test_compute_table_diff() {
         let before = Table {
             name: "test_table".to_string(),
+            deduplicate: false,
             columns: vec![
                 Column {
                     name: "id".to_string(),
@@ -1024,6 +1033,7 @@ mod tests {
 
         let after = Table {
             name: "test_table".to_string(),
+            deduplicate: false,
             columns: vec![
                 Column {
                     name: "id".to_string(),

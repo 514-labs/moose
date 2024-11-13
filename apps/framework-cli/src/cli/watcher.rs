@@ -377,7 +377,7 @@ async fn watch(
                             info!("Plan Changes: {:?}", plan_result.changes);
 
                             display::show_changes(&plan_result);
-                            framework::core::execute::execute_online_change(
+                            match framework::core::execute::execute_online_change(
                                 &project,
                                 &plan_result,
                                 route_update_channel.clone(),
@@ -385,28 +385,41 @@ async fn watch(
                                 project_registries,
                                 metrics.clone(),
                             )
-                            .await?;
+                            .await
+                            {
+                                Ok(_) => {
+                                    store_infrastructure_map(
+                                        &mut clickhouse_client_v2,
+                                        &project.clickhouse_config,
+                                        &plan_result.target_infra_map,
+                                    )
+                                    .await?;
 
-                            store_infrastructure_map(
-                                &mut clickhouse_client_v2,
-                                &project.clickhouse_config,
-                                &plan_result.target_infra_map,
-                            )
-                            .await?;
+                                    plan_result
+                                        .target_infra_map
+                                        .store_in_redis(&*redis_client.lock().await)
+                                        .await?;
 
-                            plan_result
-                                .target_infra_map
-                                .store_in_redis(&*redis_client.lock().await)
-                                .await?;
-
-                            let mut infra_ptr = infrastructure_map.write().await;
-                            *infra_ptr = plan_result.target_infra_map
+                                    let mut infra_ptr = infrastructure_map.write().await;
+                                    *infra_ptr = plan_result.target_infra_map
+                                }
+                                Err(e) => {
+                                    let error: anyhow::Error = e.into();
+                                    show_message!(MessageType::Error, {
+                                        Message {
+                                            action: "\nFailed".to_string(),
+                                            details: format!("Executing changes to the infrastructure failed:\n{:?}", error) 
+                                        }
+                                    });
+                                }
+                            }
                         }
                         Err(e) => {
+                            let error: anyhow::Error = e.into();
                             show_message!(MessageType::Error, {
                                 Message {
                                     action: "\nFailed".to_string(),
-                                    details: format!("\n {}", e),
+                                    details: format!("Planning changes to the infrastructure failed:\n{:?}", error),
                                 }
                             });
                         }

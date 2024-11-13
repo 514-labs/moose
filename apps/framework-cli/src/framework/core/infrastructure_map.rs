@@ -225,7 +225,9 @@ impl InfrastructureMap {
         let function_processes = std::mem::take(&mut self.function_processes);
         for mut process in function_processes.into_values() {
             process.source_topic = redpanda_config.prefix_with_namespace(&process.source_topic);
-            process.target_topic = redpanda_config.prefix_with_namespace(&process.target_topic);
+            if !process.target_topic.is_empty() {
+                process.target_topic = redpanda_config.prefix_with_namespace(&process.target_topic);
+            }
             self.function_processes.insert(process.id(), process);
         }
         let initial_data_loads = std::mem::take(&mut self.initial_data_loads);

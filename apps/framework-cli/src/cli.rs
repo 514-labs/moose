@@ -39,6 +39,7 @@ use crate::cli::routines::dev::copy_old_schema;
 use crate::cli::routines::initialize::initialize_project;
 use crate::cli::routines::logs::{follow_logs, show_logs};
 use crate::cli::routines::migrate::generate_migration;
+use crate::cli::routines::peek::peek;
 use crate::cli::routines::streaming::create_streaming_function_file;
 use crate::cli::routines::templates;
 use crate::cli::routines::version::bump_version;
@@ -970,6 +971,18 @@ async fn top_command_handler(
                 "Imported".to_string(),
                 "".to_string(),
             )))
+        }
+        Commands::Peek {
+            data_model_name,
+            limit,
+            file,
+        } => {
+            info!("Running peek command");
+
+            let project = load_project()?;
+            let project_arc = Arc::new(project);
+
+            peek(project_arc, data_model_name.clone(), *limit, file.clone()).await
         }
     }
 }

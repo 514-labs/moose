@@ -244,6 +244,15 @@ impl CronRegistry {
                     elapsed_time,
                 };
 
+                info!(
+                    "<cron> Metrics for job {}: success={}, elapsed={}ms, next_run={}, error={:?}",
+                    metric.job_id,
+                    metric.success,
+                    metric.elapsed_time,
+                    metric.next_run,
+                    metric.error_message
+                );
+
                 tokio::spawn(async move {
                     let mut metrics = metrics.lock().await;
                     metrics.push(metric);

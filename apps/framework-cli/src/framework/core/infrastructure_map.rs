@@ -920,6 +920,7 @@ pub fn compute_table_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
 mod tests {
     use std::path::{Path, PathBuf};
 
+    use crate::framework::versions::Version;
     use crate::{
         framework::{
             core::{
@@ -967,7 +968,7 @@ mod tests {
 
         let new_data_model = DataModel {
             name: data_model_name.to_string(),
-            version: data_model_version.to_string(),
+            version: Version::from_string(data_model_version.to_string()),
             config: Default::default(),
             columns: vec![],
             abs_file_path: PathBuf::new(),
@@ -1025,7 +1026,7 @@ mod tests {
                 },
             ],
             order_by: vec!["id".to_string()],
-            version: "1.0".to_string(),
+            version: Version::from_string("1.0".to_string()),
             source_primitive: PrimitiveSignature {
                 name: "test_primitive".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,
@@ -1062,7 +1063,7 @@ mod tests {
                 },
             ],
             order_by: vec!["id".to_string(), "name".to_string()], // Changed order_by
-            version: "1.1".to_string(),
+            version: Version::from_string("1.1".to_string()),
             source_primitive: PrimitiveSignature {
                 name: "test_primitive".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,

@@ -348,9 +348,9 @@ fn builds_field_context(columns: &[ClickHouseColumn]) -> Result<Vec<Value>, Clic
 mod tests {
     use std::vec;
 
-    use crate::framework::core::infrastructure::table::{DataEnum, EnumMember};
-
     use super::*;
+    use crate::framework::core::infrastructure::table::{DataEnum, EnumMember};
+    use crate::framework::versions::Version;
 
     #[test]
     fn test_nested_query_generator() {
@@ -438,7 +438,7 @@ mod tests {
     #[test]
     fn test_create_table_query_basic() {
         let table = ClickHouseTable {
-            version: "1".to_string(),
+            version: Version::from_string("1".to_string()),
             name: "test_table".to_string(),
             columns: vec![
                 ClickHouseColumn {
@@ -477,7 +477,7 @@ PRIMARY KEY (`id`)
     #[test]
     fn test_create_table_query_replacing_merge_tree() {
         let table = ClickHouseTable {
-            version: "1".to_string(),
+            version: Version::from_string("1".to_string()),
             name: "test_table".to_string(),
             columns: vec![ClickHouseColumn {
                 name: "id".to_string(),
@@ -506,7 +506,7 @@ ORDER BY (`id`) "#;
     #[test]
     fn test_create_table_query_replacing_merge_tree_error() {
         let table = ClickHouseTable {
-            version: "1".to_string(),
+            version: Version::from_string("1".to_string()),
             name: "test_table".to_string(),
             columns: vec![ClickHouseColumn {
                 name: "id".to_string(),
@@ -529,7 +529,7 @@ ORDER BY (`id`) "#;
     #[test]
     fn test_create_table_query_complex() {
         let table = ClickHouseTable {
-            version: "1".to_string(),
+            version: Version::from_string("1".to_string()),
             name: "test_table".to_string(),
             columns: vec![
                 ClickHouseColumn {

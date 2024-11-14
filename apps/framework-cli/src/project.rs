@@ -36,7 +36,7 @@ use crate::framework::typescript::templates::{
 use crate::framework::typescript::templates::{
     VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
 };
-use crate::framework::versions::sort_versions;
+use crate::framework::versions::Version;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::processes::cron_registry::CronJob;
 use crate::infrastructure::redis::redis_client::RedisConfig;
@@ -44,6 +44,7 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
 use crate::project::typescript_project::TypescriptProject;
 use config::{Config, ConfigError, Environment, File};
+use itertools::Itertools;
 use log::debug;
 use python_project::PythonProject;
 use serde::Deserialize;
@@ -114,7 +115,7 @@ pub struct Project {
     pub is_production: bool,
 
     #[serde(default = "HashMap::new")]
-    pub supported_old_versions: HashMap<String, String>,
+    pub supported_old_versions: HashMap<Version<'static>, String>,
     #[serde(default)]
     pub jwt: Option<JwtConfig>,
 
@@ -561,7 +562,11 @@ impl Project {
     }
 
     pub fn old_versions_sorted(&self) -> Vec<String> {
-        sort_versions(self.supported_old_versions.keys())
+        self.supported_old_versions
+            .keys()
+            .sorted()
+            .map(|v| v.to_string())
+            .collect()
     }
 
     pub fn versions(&self) -> Vec<String> {

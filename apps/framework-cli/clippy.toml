@@ -1,0 +1,1 @@
+ignore-interior-mutability = ["moose_cli::framework::versions::Version"]

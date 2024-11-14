@@ -25,7 +25,7 @@ pub async fn create_streaming_function_file(
                     .datamodels
                     .iter()
                     .filter_map(|dm| {
-                        if dm.version == project.cur_version() {
+                        if dm.version.as_str() == project.cur_version() {
                             Some((dm.name.clone(), dm.clone()))
                         } else {
                             None

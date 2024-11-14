@@ -1,3 +1,5 @@
+use crate::framework::versions::Version;
+
 pub mod aggregation;
 pub mod checker;
 pub mod consumption;
@@ -8,6 +10,6 @@ pub mod streaming;
 pub mod templates;
 pub mod utils;
 
-pub fn version_to_identifier(version: &str) -> String {
-    format!("v{}", version.replace('.', "_"))
+pub fn version_to_identifier(version: &Version) -> String {
+    format!("v{}", version.as_suffix())
 }

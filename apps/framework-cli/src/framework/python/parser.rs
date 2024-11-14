@@ -27,6 +27,7 @@ use crate::framework::core::infrastructure::table::{
 
 use crate::framework::core::infrastructure::table::{EnumMember, EnumValue};
 use crate::framework::python::utils::ColumnBuilder;
+use crate::framework::versions::Version;
 use num_traits::cast::ToPrimitive;
 
 #[derive(Debug, Clone, thiserror::Error)]
@@ -237,7 +238,7 @@ fn python_class_to_framework_datamodel(
 
     Ok(DataModel {
         abs_file_path: file_path,
-        version: version.to_string(),
+        version: Version::from_string(version.to_string()),
         columns,
         name: class_name,
         config: Default::default(),

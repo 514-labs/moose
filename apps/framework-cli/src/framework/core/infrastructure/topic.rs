@@ -1,3 +1,5 @@
+use super::table::Column;
+use crate::framework::versions::Version;
 use crate::framework::{
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
     data_model::model::DataModel,
@@ -7,13 +9,11 @@ use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-use super::table::Column;
-
 use crate::proto::infrastructure_map::Topic as ProtoTopic;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Topic {
-    pub version: String,
+    pub version: Version<'static>,
     pub name: String,
     pub retention_period: Duration,
 
@@ -42,7 +42,7 @@ impl Topic {
             format!(
                 "{}_{}_{}_{}",
                 function.source_data_model.name,
-                function.source_data_model.version.replace('.', "_"),
+                function.source_data_model.version.as_suffix(),
                 function.id(),
                 suffix,
             )
@@ -85,7 +85,7 @@ impl Topic {
             | PrimitiveTypes::DBBlock
             | PrimitiveTypes::ConsumptionAPI => {
                 // TODO have a proper version object that standardizes transformations
-                format!("{}_{}", self.name, self.version.replace('.', "_"))
+                format!("{}_{}", self.name, self.version.as_suffix())
             }
         }
     }
@@ -109,7 +109,7 @@ impl Topic {
 
     pub fn to_proto(&self) -> ProtoTopic {
         ProtoTopic {
-            version: self.version.clone(),
+            version: self.version.to_string(),
             name: self.name.clone(),
             retention_period: MessageField::some(
                 protobuf::well_known_types::duration::Duration::from(self.retention_period),

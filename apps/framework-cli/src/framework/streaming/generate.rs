@@ -167,10 +167,11 @@ fn get_import_path(data_model: Either<&DataModel, &str>, project: &Project) -> S
     }
 }
 fn get_data_model_import_path(data_model: &DataModel, project: &Project) -> String {
-    match data_model
-        .abs_file_path
-        .strip_prefix(project.old_version_location(&data_model.version).unwrap())
-    {
+    match data_model.abs_file_path.strip_prefix(
+        project
+            .old_version_location(data_model.version.as_str())
+            .unwrap(),
+    ) {
         Ok(relative_path) => match project.language {
             SupportedLanguages::Typescript => {
                 format!(
@@ -185,7 +186,7 @@ fn get_data_model_import_path(data_model: &DataModel, project: &Project) -> Stri
             ),
         },
         Err(_) => {
-            assert_eq!(data_model.version, project.cur_version());
+            assert_eq!(data_model.version.as_str(), project.cur_version());
             match project.language {
                 SupportedLanguages::Typescript => format!(
                     "datamodels/{}",

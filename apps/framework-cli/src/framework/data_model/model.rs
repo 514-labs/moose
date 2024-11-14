@@ -8,7 +8,7 @@ use std::path::PathBuf;
 use crate::framework::core::infrastructure::table::{Column, Table};
 use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
 use crate::framework::data_model::DuplicateModelError;
-use crate::framework::versions::{find_previous_version, parse_version};
+use crate::framework::versions::{find_previous_version, parse_version, Version};
 
 use super::config::DataModelConfig;
 
@@ -19,7 +19,7 @@ pub struct DataModel {
     #[serde(default)]
     pub config: DataModelConfig,
     pub abs_file_path: PathBuf,
-    pub version: String,
+    pub version: Version<'static>,
 }
 
 impl DataModel {
@@ -27,7 +27,7 @@ impl DataModel {
     // multiple sources. The Aim will be to have DB Blocks provision some tables as well.
     pub fn to_table(&self) -> Table {
         Table {
-            name: format!("{}_{}", self.name, self.version.replace('.', "_")),
+            name: format!("{}_{}", self.name, self.version.as_suffix()),
             columns: self.columns.clone(),
             order_by: self.config.storage.order_by_fields.clone(),
             deduplicate: self.config.storage.deduplicate,
@@ -53,7 +53,7 @@ impl DataModel {
     }
 
     pub fn id(&self) -> String {
-        DataModel::model_id(&self.name, &self.version.replace('.', "_"))
+        DataModel::model_id(&self.name, &self.version.as_suffix())
     }
 
     pub fn model_id(name: &str, version: &str) -> String {

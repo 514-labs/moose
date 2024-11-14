@@ -42,14 +42,20 @@ pub async fn peek(
             ))
         })?;
 
+    // ¯\_(ツ)_/¯
+    let dm_with_version = format!(
+        "{}.{}.{}",
+        data_model_name,
+        project.cur_version(),
+        project.cur_version()
+    )
+    .replace('.', "_");
+
     let table = infra
         .tables
         .iter()
         .find_map(|(key, table)| {
-            if key
-                .to_lowercase()
-                .starts_with(&data_model_name.to_lowercase())
-            {
+            if key.to_lowercase() == dm_with_version.to_lowercase() {
                 Some(table)
             } else {
                 None

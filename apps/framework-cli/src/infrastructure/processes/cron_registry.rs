@@ -45,6 +45,7 @@ pub struct CronMetric {
     pub success: bool,
     pub error_message: Option<String>,
     pub error_code: Option<i32>,
+    pub elapsed_time: u64,
 }
 
 pub struct CronRegistry {
@@ -142,6 +143,7 @@ impl CronRegistry {
                 let mut success = true;
                 let mut error_msg = None;
                 let mut error_code = None;
+                let start_time = SystemTime::now();
 
                 if let Some(ref path) = script_path {
                     // Execute the script based on file extension
@@ -225,6 +227,11 @@ impl CronRegistry {
                     .map_err(|e| format!("Invalid cron expression: {}", e))?;
                 let next_run = schedule.upcoming(chrono::Utc).next().unwrap().timestamp() as u64;
 
+                let elapsed_time = SystemTime::now()
+                    .duration_since(start_time)
+                    .unwrap_or_default()
+                    .as_millis() as u64;
+
                 let metric = CronMetric {
                     job_id: job_id_for_metric.clone(),
                     run_id: (timestamp % 100_000) as u32,
@@ -234,6 +241,7 @@ impl CronRegistry {
                     success,
                     error_message: error_msg,
                     error_code,
+                    elapsed_time,
                 };
 
                 tokio::spawn(async move {

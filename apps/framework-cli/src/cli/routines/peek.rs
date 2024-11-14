@@ -44,12 +44,11 @@ pub async fn peek(
 
     // ¯\_(ツ)_/¯
     let dm_with_version = format!(
-        "{}.{}.{}",
+        "{}_{}_{}",
         data_model_name,
-        project.cur_version(),
-        project.cur_version()
-    )
-    .replace('.', "_");
+        project.cur_version().replace('.', "_"),
+        project.cur_version().replace('.', "_")
+    );
 
     let table = infra
         .tables

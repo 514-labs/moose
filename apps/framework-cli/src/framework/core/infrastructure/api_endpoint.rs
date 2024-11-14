@@ -44,7 +44,7 @@ pub struct ApiEndpoint {
     pub path: PathBuf,
     pub method: Method,
 
-    pub version: Version<'static>,
+    pub version: Version,
     pub source_primitive: PrimitiveSignature,
 }
 
@@ -132,7 +132,7 @@ impl From<EndpointFile> for ApiEndpoint {
             api_type: APIType::EGRESS,
             path: value.path.clone(),
             method: Method::GET,
-            version: Version::new("0.0.0"),
+            version: Version::from_string("0.0.0".to_string()),
             source_primitive: PrimitiveSignature {
                 name: value.path.to_string_lossy().to_string(),
                 primitive_type: PrimitiveTypes::ConsumptionAPI,

@@ -20,7 +20,7 @@ pub struct TopicToTableSyncProcess {
 
     pub columns: Vec<Column>,
 
-    pub version: Version<'static>,
+    pub version: Version,
     pub source_primitive: PrimitiveSignature,
 }
 

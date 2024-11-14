@@ -1,21 +1,19 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
-use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::fmt::{Debug, Display, Formatter};
 use std::hash::{Hash, Hasher};
-use std::sync::{Arc, OnceLock};
 
 #[derive(Clone)]
-pub struct Version<'a> {
-    version: Cow<'a, str>,
-    parsed: Arc<OnceLock<Vec<i32>>>,
+pub struct Version {
+    version: String,
+    parsed: Vec<i32>,
 }
-impl Hash for Version<'_> {
+impl Hash for Version {
     fn hash<H: Hasher>(&self, state: &mut H) {
         Hash::hash(&self.version, state)
     }
 }
-impl Serialize for Version<'_> {
+impl Serialize for Version {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -24,7 +22,7 @@ impl Serialize for Version<'_> {
     }
 }
 
-impl<'de> Deserialize<'de> for Version<'static> {
+impl<'de> Deserialize<'de> for Version {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: Deserializer<'de>,
@@ -33,28 +31,20 @@ impl<'de> Deserialize<'de> for Version<'static> {
     }
 }
 
-impl Debug for Version<'_> {
+impl Debug for Version {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         Debug::fmt(&self.version, f)
     }
 }
-impl Display for Version<'_> {
+impl Display for Version {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         Display::fmt(&self.version, f)
     }
 }
-impl Version<'_> {
-    pub fn from_string(version: String) -> Version<'static> {
-        Version {
-            version: Cow::Owned(version),
-            parsed: Arc::new(OnceLock::new()),
-        }
-    }
-    pub fn new(version: &str) -> Version {
-        Version {
-            version: Cow::Borrowed(version),
-            parsed: Arc::new(OnceLock::new()),
-        }
+impl Version {
+    pub fn from_string(version: String) -> Version {
+        let parsed = parse_version(&version);
+        Version { version, parsed }
     }
     pub fn as_str(&self) -> &str {
         &self.version
@@ -65,25 +55,25 @@ impl Version<'_> {
     }
 
     pub fn parsed(&self) -> &[i32] {
-        self.parsed.get_or_init(|| parse_version(&self.version))
+        &self.parsed
     }
 }
 
-impl Eq for Version<'_> {}
+impl Eq for Version {}
 
-impl PartialEq<Self> for Version<'_> {
+impl PartialEq<Self> for Version {
     fn eq(&self, other: &Self) -> bool {
         self.parsed == other.parsed
     }
 }
 
-impl PartialOrd<Self> for Version<'_> {
+impl PartialOrd<Self> for Version {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl Ord for Version<'_> {
+impl Ord for Version {
     fn cmp(&self, other: &Self) -> Ordering {
         Ord::cmp(&self.parsed(), &other.parsed())
     }

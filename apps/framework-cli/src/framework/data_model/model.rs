@@ -19,7 +19,7 @@ pub struct DataModel {
     #[serde(default)]
     pub config: DataModelConfig,
     pub abs_file_path: PathBuf,
-    pub version: Version<'static>,
+    pub version: Version,
 }
 
 impl DataModel {

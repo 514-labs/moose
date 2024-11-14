@@ -14,7 +14,7 @@ pub enum ViewType {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct View {
     pub name: String,
-    pub version: Version<'static>,
+    pub version: Version,
     pub view_type: ViewType,
 }
 

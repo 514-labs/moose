@@ -19,7 +19,7 @@ pub struct Table {
     #[serde(default)]
     pub deduplicate: bool,
 
-    pub version: Version<'static>,
+    pub version: Version,
     pub source_primitive: PrimitiveSignature,
 }
 

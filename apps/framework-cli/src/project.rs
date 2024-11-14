@@ -115,7 +115,7 @@ pub struct Project {
     pub is_production: bool,
 
     #[serde(default = "HashMap::new")]
-    pub supported_old_versions: HashMap<Version<'static>, String>,
+    pub supported_old_versions: HashMap<Version, String>,
     #[serde(default)]
     pub jwt: Option<JwtConfig>,
 

@@ -13,7 +13,7 @@ use crate::proto::infrastructure_map::Topic as ProtoTopic;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Topic {
-    pub version: Version<'static>,
+    pub version: Version,
     pub name: String,
     pub retention_period: Duration,
 

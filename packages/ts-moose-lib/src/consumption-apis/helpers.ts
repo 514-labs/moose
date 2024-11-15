@@ -9,6 +9,7 @@
  */
 
 import { ClickHouseClient } from "@clickhouse/client-web";
+import { randomUUID } from "node:crypto";
 
 export const mapToClickHouseType = (value: Value) => {
   if (typeof value === "number") {
@@ -128,10 +129,10 @@ function emptyIfUndefined(value: string | undefined): string {
 
 export class MooseClient {
   client: ClickHouseClient;
-  query_id: string;
-  constructor(client: ClickHouseClient, query_id: string) {
+  query_id_prefix: string;
+  constructor(client: ClickHouseClient, query_id_prefix: string) {
     this.client = client;
-    this.query_id = query_id;
+    this.query_id_prefix = query_id_prefix;
   }
 
   async query(sql: Sql) {
@@ -162,7 +163,7 @@ export class MooseClient {
       query,
       query_params,
       format: "JSONEachRow",
-      query_id: this.query_id,
+      query_id: this.query_id_prefix + randomUUID(),
     });
   }
 }

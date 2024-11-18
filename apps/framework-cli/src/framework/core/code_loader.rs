@@ -315,6 +315,7 @@ async fn crawl_schema(
 #[cfg(test)]
 mod tests {
     use crate::framework::languages::SupportedLanguages;
+    use crate::framework::versions::Version;
 
     #[tokio::test]
     async fn test_get_all_framework_objects() {
@@ -329,7 +330,7 @@ mod tests {
 
         let mut framework_objects = HashMap::new();
         let aggregations = AggregationSet {
-            current_version: "0.0".to_string(),
+            current_version: Version::from_string("0.0".to_string()),
             names: HashSet::new(),
         };
 

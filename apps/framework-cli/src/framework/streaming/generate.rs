@@ -325,7 +325,7 @@ export default function run(source: UserActivity): ParsedActivity | null {
         let mut project = PROJECT.clone();
         match project.language_project_config {
             LanguageProjectConfig::Typescript(ref mut t) => {
-                t.version = "0.1".to_string();
+                t.version = Version::from_string("0.1".to_string());
             }
             LanguageProjectConfig::Python(_) => {}
         }
@@ -385,7 +385,7 @@ export default function run(source: UserActivityOld): UserActivity | null {
         let mut project = PROJECT.clone();
         project.language_project_config = LanguageProjectConfig::Python(PythonProject {
             name: "test".to_string(),
-            version: "0.1".to_string(),
+            version: Version::from_string("0.1".to_string()),
             dependencies: vec![],
         });
         project.language = SupportedLanguages::Python;

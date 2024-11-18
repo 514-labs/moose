@@ -93,7 +93,7 @@ mod tests {
         let project = PythonProject::load(&test_project_dir).unwrap();
 
         assert_eq!(project.name, "test_project");
-        assert_eq!(project.version, "0.0");
+        assert_eq!(project.version.as_str(), "0.0");
         assert_eq!(
             project.dependencies,
             vec![

@@ -40,6 +40,7 @@ use crate::cli::routines::initialize::initialize_project;
 use crate::cli::routines::logs::{follow_logs, show_logs};
 use crate::cli::routines::migrate::generate_migration;
 use crate::cli::routines::peek::peek;
+use crate::cli::routines::setup_redis_client;
 use crate::cli::routines::streaming::create_streaming_function_file;
 use crate::cli::routines::templates;
 use crate::cli::routines::version::bump_version;
@@ -359,31 +360,50 @@ async fn top_command_handler(
                 &settings,
             );
 
-            let (metrics, rx_events) = Metrics::new(TelemetryMetadata {
-                anonymous_telemetry_enabled: settings.telemetry.enabled,
-                machine_id: settings.telemetry.machine_id.clone(),
-                metric_labels: settings.metric.labels.clone(),
-                is_moose_developer: settings.telemetry.is_moose_developer,
-                is_production: project_arc.is_production,
-                project_name: project_arc.name().to_string(),
-                export_metrics: settings.telemetry.export_metrics,
-                metric_endpoints: settings.metric.endpoints.clone(),
-            });
+            check_project_name(&project_arc.name())?;
+            run_local_infrastructure(&project_arc)?.show();
+
+            let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Dev".to_string(),
+                    details: format!("Failed to setup redis client: {:?}", e),
+                })
+            })?;
+
+            let (metrics, rx_events) = Metrics::new(
+                TelemetryMetadata {
+                    anonymous_telemetry_enabled: settings.telemetry.enabled,
+                    machine_id: settings.telemetry.machine_id.clone(),
+                    metric_labels: settings.metric.labels.clone(),
+                    is_moose_developer: settings.telemetry.is_moose_developer,
+                    is_production: project_arc.is_production,
+                    project_name: project_arc.name().to_string(),
+                    export_metrics: settings.telemetry.export_metrics,
+                    metric_endpoints: settings.metric.endpoints.clone(),
+                },
+                if settings.features.metrics_v2 {
+                    Some(redis_client.clone())
+                } else {
+                    None
+                },
+            );
 
             let arc_metrics = Arc::new(metrics);
             arc_metrics.start_listening_to_metrics(rx_events).await;
 
-            check_project_name(&project_arc.name())?;
-            run_local_infrastructure(&project_arc)?.show();
-
-            routines::start_development_mode(project_arc, &settings.features, arc_metrics)
-                .await
-                .map_err(|e| {
-                    RoutineFailure::error(Message {
-                        action: "Dev".to_string(),
-                        details: format!("Failed to start development mode: {:?}", e),
-                    })
-                })?;
+            routines::start_development_mode(
+                project_arc,
+                &settings.features,
+                arc_metrics,
+                redis_client,
+            )
+            .await
+            .map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Dev".to_string(),
+                    details: format!("Failed to start development mode: {:?}", e),
+                })
+            })?;
 
             wait_for_usage_capture(capture_handle).await;
 
@@ -546,16 +566,32 @@ async fn top_command_handler(
             project.set_is_production_env(true);
             let project_arc = Arc::new(project);
 
-            let (metrics, rx_events) = Metrics::new(TelemetryMetadata {
-                anonymous_telemetry_enabled: settings.telemetry.enabled,
-                machine_id: settings.telemetry.machine_id.clone(),
-                metric_labels: settings.metric.labels.clone(),
-                is_moose_developer: settings.telemetry.is_moose_developer,
-                is_production: project_arc.is_production,
-                project_name: project_arc.name().to_string(),
-                export_metrics: settings.telemetry.export_metrics,
-                metric_endpoints: settings.metric.endpoints.clone(),
-            });
+            check_project_name(&project_arc.name())?;
+
+            let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Prod".to_string(),
+                    details: format!("Failed to setup redis client: {:?}", e),
+                })
+            })?;
+
+            let (metrics, rx_events) = Metrics::new(
+                TelemetryMetadata {
+                    anonymous_telemetry_enabled: settings.telemetry.enabled,
+                    machine_id: settings.telemetry.machine_id.clone(),
+                    metric_labels: settings.metric.labels.clone(),
+                    is_moose_developer: settings.telemetry.is_moose_developer,
+                    is_production: project_arc.is_production,
+                    project_name: project_arc.name().to_string(),
+                    export_metrics: settings.telemetry.export_metrics,
+                    metric_endpoints: settings.metric.endpoints.clone(),
+                },
+                if settings.features.metrics_v2 {
+                    Some(redis_client.clone())
+                } else {
+                    None
+                },
+            );
 
             let arc_metrics = Arc::new(metrics);
             arc_metrics.start_listening_to_metrics(rx_events).await;
@@ -566,16 +602,19 @@ async fn top_command_handler(
                 &settings,
             );
 
-            check_project_name(&project_arc.name())?;
-
-            routines::start_production_mode(project_arc, settings.features, arc_metrics)
-                .await
-                .map_err(|e| {
-                    RoutineFailure::error(Message {
-                        action: "Prod".to_string(),
-                        details: format!("Failed to start production mode: {:?}", e),
-                    })
-                })?;
+            routines::start_production_mode(
+                project_arc,
+                settings.features,
+                arc_metrics,
+                redis_client,
+            )
+            .await
+            .map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Prod".to_string(),
+                    details: format!("Failed to start production mode: {:?}", e),
+                })
+            })?;
 
             wait_for_usage_capture(capture_handle).await;
 

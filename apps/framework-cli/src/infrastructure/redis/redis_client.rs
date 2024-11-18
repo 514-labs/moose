@@ -289,9 +289,15 @@ impl RedisClient {
         Ok(())
     }
 
-    pub async fn get_queue_message(&self) -> Result<Option<String>> {
-        let source_queue = self.service_prefix(&["mqrecieved"]);
-        let destination_queue = self.service_prefix(&["mqprocess"]);
+    pub async fn get_queue_message(&self, feature_name: Option<&str>) -> Result<Option<String>> {
+        let source_queue = match feature_name {
+            Some(name) => self.service_prefix(&[name, "mqrecieved"]),
+            None => self.service_prefix(&["mqrecieved"]),
+        };
+        let destination_queue = match feature_name {
+            Some(name) => self.service_prefix(&[name, "mqprocess"]),
+            None => self.service_prefix(&["mqprocess"]),
+        };
         self.connection
             .lock()
             .await
@@ -300,8 +306,15 @@ impl RedisClient {
             .context("Failed to get queue message")
     }
 
-    pub async fn post_queue_message(&self, message: &str) -> Result<()> {
-        let queue = self.service_prefix(&["mqrecieved"]);
+    pub async fn post_queue_message(
+        &self,
+        message: &str,
+        feature_name: Option<&str>,
+    ) -> Result<()> {
+        let queue = match feature_name {
+            Some(name) => self.service_prefix(&[name, "mqrecieved"]),
+            None => self.service_prefix(&["mqrecieved"]),
+        };
         let _: () = self
             .connection
             .lock()
@@ -312,9 +325,20 @@ impl RedisClient {
         Ok(())
     }
 
-    pub async fn mark_queue_message(&mut self, message: &str, success: bool) -> Result<()> {
-        let in_progress_queue = self.service_prefix(&["mqprocess"]);
-        let incomplete_queue = self.service_prefix(&["mqincomplete"]);
+    pub async fn mark_queue_message(
+        &mut self,
+        message: &str,
+        success: bool,
+        feature_name: Option<&str>,
+    ) -> Result<()> {
+        let in_progress_queue = match feature_name {
+            Some(name) => self.service_prefix(&[name, "mqprocess"]),
+            None => self.service_prefix(&["mqprocess"]),
+        };
+        let incomplete_queue = match feature_name {
+            Some(name) => self.service_prefix(&[name, "mqincomplete"]),
+            None => self.service_prefix(&["mqincomplete"]),
+        };
 
         if success {
             let _: () = self

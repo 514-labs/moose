@@ -58,7 +58,7 @@ use crate::framework::core::infrastructure_map::InfrastructureMap;
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::sdk::ingest::generate_sdk;
-use crate::framework::versions::{parse_version, version_to_string};
+use crate::framework::versions::version_to_string;
 use crate::metrics::TelemetryMetadata;
 use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
@@ -662,14 +662,14 @@ async fn top_command_handler(
 
             let new_version = match new_version {
                 None => {
-                    let current = parse_version(project_arc.cur_version());
+                    let current = project_arc.cur_version().parsed();
                     let bump_location = if current.len() > 1 { 1 } else { 0 };
 
                     let new_version = current
-                        .into_iter()
+                        .iter()
                         .enumerate()
                         .map(|(i, v)| match i.cmp(&bump_location) {
-                            Ordering::Less => v,
+                            Ordering::Less => *v,
                             Ordering::Equal => v + 1,
                             Ordering::Greater => 0,
                         })

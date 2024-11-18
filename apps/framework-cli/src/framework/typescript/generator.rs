@@ -334,9 +334,12 @@ pub fn generate_sdk(
             (current_version_ts_objects, enums)
         }
         Either::Right(primitive_map) => {
-            let current_version_ts_objects =
-                collect_ts_objects_from_primitive_map(primitive_map, project.cur_version())?;
-            let enums = collect_enums_from_primitive_map(primitive_map, project.cur_version());
+            let current_version_ts_objects = collect_ts_objects_from_primitive_map(
+                primitive_map,
+                project.cur_version().as_str(),
+            )?;
+            let enums =
+                collect_enums_from_primitive_map(primitive_map, project.cur_version().as_str());
             (current_version_ts_objects, enums)
         }
     };
@@ -356,7 +359,7 @@ pub fn generate_sdk(
     }
 
     let index_code = typescript::templates::render_ingest_client(
-        project.cur_version(),
+        project.cur_version().as_str(),
         &current_version_ts_objects,
     )?;
     fs::write(sdk_dir.join("index.ts"), index_code)?;

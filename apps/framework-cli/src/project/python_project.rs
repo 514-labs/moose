@@ -3,6 +3,7 @@ use std::path::Path;
 use config::ConfigError;
 use serde::{Deserialize, Serialize};
 
+use crate::framework::versions::Version;
 use crate::{
     framework::python::{
         parser::{get_project_from_file, PythonParserError},
@@ -25,7 +26,7 @@ pub enum PythonProjectError {
 #[serde(rename_all = "camelCase")]
 pub struct PythonProject {
     pub name: String,
-    pub version: String,
+    pub version: Version,
 
     pub dependencies: Vec<String>,
 }
@@ -34,7 +35,7 @@ impl Default for PythonProject {
     fn default() -> Self {
         Self {
             name: "new_project".to_string(),
-            version: "0.0".to_string(),
+            version: Version::from_string("0.0".to_string()),
             dependencies: vec![
                 "kafka-python-ng==2.2.2".to_string(),
                 "clickhouse_connect==0.7.16".to_string(),

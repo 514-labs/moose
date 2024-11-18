@@ -186,7 +186,7 @@ fn get_data_model_import_path(data_model: &DataModel, project: &Project) -> Stri
             ),
         },
         Err(_) => {
-            assert_eq!(data_model.version.as_str(), project.cur_version());
+            assert_eq!(&data_model.version, project.cur_version());
             match project.language {
                 SupportedLanguages::Typescript => format!(
                     "datamodels/{}",

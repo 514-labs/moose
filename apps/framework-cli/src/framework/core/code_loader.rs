@@ -151,7 +151,7 @@ pub async fn get_framework_objects_from_schema_file(
     let mut indexed_models = HashMap::new();
 
     for model in framework_objects.models {
-        if aggregations.current_version == version
+        if aggregations.current_version.as_str() == version
             && aggregations.names.contains(model.name.clone().trim())
         {
             return Err(DataModelError::Other {
@@ -299,7 +299,7 @@ async fn crawl_schema(
         project,
         &mut framework_objects,
         &schema_dir,
-        project.cur_version(),
+        project.cur_version().as_str(),
         &aggregations,
     )
     .await?;

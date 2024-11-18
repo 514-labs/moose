@@ -654,7 +654,7 @@ fn setup_parse(ast: &ast::Suite) -> Result<PythonProject, PythonParserError> {
     project.version = match &func.args.get(1) {
         Some(Expr::Constant(c)) => {
             if let Constant::Str(s) = &c.value {
-                s.clone()
+                Version::from_string(s.clone())
             } else {
                 project.version
             }
@@ -664,7 +664,7 @@ fn setup_parse(ast: &ast::Suite) -> Result<PythonProject, PythonParserError> {
             .iter()
             .find_map(|keyword| {
                 if keyword.arg.clone().unwrap() == Identifier::new("version") {
-                    get_keyword_string_value(keyword)
+                    get_keyword_string_value(keyword).map(Version::from_string)
                 } else {
                     None
                 }

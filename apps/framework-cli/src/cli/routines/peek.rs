@@ -43,12 +43,8 @@ pub async fn peek(
         })?;
 
     // ¯\_(ツ)_/¯
-    let dm_with_version = format!(
-        "{}_{}_{}",
-        data_model_name,
-        project.cur_version().replace('.', "_"),
-        project.cur_version().replace('.', "_")
-    );
+    let version_suffix = project.cur_version().as_suffix();
+    let dm_with_version = format!("{}_{}_{}", data_model_name, version_suffix, version_suffix);
 
     let table = infra
         .tables

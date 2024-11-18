@@ -135,7 +135,7 @@ pub struct JwtConfig {
 }
 
 pub struct AggregationSet {
-    pub current_version: String,
+    pub current_version: Version,
     pub names: HashSet<String>,
 }
 
@@ -420,7 +420,7 @@ impl Project {
 
     // Will start to be more useful when we version more than just the data models
     pub fn versioned_data_model_dir(&self, version: &str) -> Result<PathBuf, ProjectFileError> {
-        if version == self.cur_version() {
+        if version == self.cur_version().as_str() {
             Ok(self.data_models_dir())
         } else {
             Ok(self.old_version_location(version)?)
@@ -554,10 +554,10 @@ impl Project {
         Ok(())
     }
 
-    pub fn cur_version(&self) -> &str {
+    pub fn cur_version(&self) -> &Version {
         match &self.language_project_config {
             LanguageProjectConfig::Typescript(package_json) => &package_json.version,
-            LanguageProjectConfig::Python(package_json) => &package_json.version,
+            LanguageProjectConfig::Python(proj) => &proj.version,
         }
     }
 

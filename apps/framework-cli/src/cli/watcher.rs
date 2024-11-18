@@ -52,6 +52,7 @@ use crate::{
 };
 
 async fn process_data_models_changes(
+    // old v1 code
     project: Arc<Project>,
     paths: HashSet<PathBuf>,
     framework_object_versions: &mut FrameworkObjectVersions,
@@ -97,7 +98,7 @@ async fn process_data_models_changes(
             let obj_in_new_file = get_framework_objects_from_schema_file(
                 &project,
                 &path,
-                project.cur_version(),
+                project.cur_version().as_str(),
                 &aggregations,
             )
             .await?;

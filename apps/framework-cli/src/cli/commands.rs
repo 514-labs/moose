@@ -113,6 +113,16 @@ pub enum Commands {
         version: Option<String>,
     },
     DataModel(DataModelArgs),
+    /// View some data from a data model
+    Peek {
+        data_model_name: String,
+        /// Limit the number of rows to view
+        #[arg(short, long, default_value = "5")]
+        limit: u8,
+        /// Output to a file
+        #[arg(short, long)]
+        file: Option<PathBuf>,
+    },
 }
 
 #[derive(Debug, Args)]

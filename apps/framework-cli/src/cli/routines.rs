@@ -135,6 +135,7 @@ pub mod logs;
 pub mod ls;
 pub mod metrics_console;
 pub mod migrate;
+pub mod peek;
 pub mod ps;
 pub mod streaming;
 pub mod templates;
@@ -268,7 +269,7 @@ impl RoutineController {
     }
 }
 
-async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<RedisClient>>> {
+pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<RedisClient>>> {
     let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
     let redis_client = Arc::new(Mutex::new(redis_client));
 
@@ -409,6 +410,7 @@ pub async fn start_development_mode(
     project: Arc<Project>,
     features: &Features,
     metrics: Arc<Metrics>,
+    redis_client: Arc<Mutex<RedisClient>>,
 ) -> anyhow::Result<()> {
     show_message!(
         MessageType::Info,
@@ -417,8 +419,6 @@ pub async fn start_development_mode(
             details: "development mode".to_string(),
         }
     );
-
-    let redis_client = setup_redis_client(project.clone()).await?;
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(
@@ -627,6 +627,7 @@ pub async fn start_production_mode(
     project: Arc<Project>,
     features: Features,
     metrics: Arc<Metrics>,
+    redis_client: Arc<Mutex<RedisClient>>,
 ) -> anyhow::Result<()> {
     show_message!(
         MessageType::Success,
@@ -640,7 +641,6 @@ pub async fn start_production_mode(
         panic!("Crashing for testing purposes");
     }
 
-    let redis_client = setup_redis_client(project.clone()).await?;
     let server_config = project.http_server_config.clone();
     info!("Server config: {:?}", server_config);
     let web_server = Webserver::new(

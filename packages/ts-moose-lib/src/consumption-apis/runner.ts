@@ -40,6 +40,8 @@ const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
   console.log(`${req.method} ${req.url} ${res.statusCode}`);
 };
 
+const modulesCache = new Map<string, any>();
+
 const apiHandler =
   (publicKey: jose.KeyLike | undefined, clickhouseClient: ClickHouseClient) =>
   async (req: http.IncomingMessage, res: http.ServerResponse) => {
@@ -97,7 +99,11 @@ const apiHandler =
         {},
       );
 
-      const userFuncModule = require(pathName);
+      let userFuncModule = modulesCache.get(pathName);
+      if (userFuncModule === undefined) {
+        userFuncModule = require(pathName);
+        modulesCache.set(pathName, userFuncModule);
+      }
 
       const result = await userFuncModule.default(paramsObject, {
         client: new MooseClient(clickhouseClient, fileName),

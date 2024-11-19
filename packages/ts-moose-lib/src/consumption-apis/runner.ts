@@ -40,10 +40,8 @@ const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
   console.log(`${req.method} ${req.url} ${res.statusCode}`);
 };
 
-let clickhouseClient!: ClickHouseClient;
-
 const apiHandler =
-  (publicKey: jose.KeyLike | undefined) =>
+  (publicKey: jose.KeyLike | undefined, clickhouseClient: ClickHouseClient) =>
   async (req: http.IncomingMessage, res: http.ServerResponse) => {
     try {
       const url = new URL(req.url || "", "https://localhost");
@@ -148,7 +146,7 @@ const apiHandler =
 export const runConsumptionApis = async () => {
   console.log("Starting API service");
 
-  clickhouseClient = getClickhouseClient(clickhouseConfig);
+  const clickhouseClient = getClickhouseClient(clickhouseConfig);
 
   let publicKey: jose.KeyLike | undefined;
 
@@ -157,7 +155,7 @@ export const runConsumptionApis = async () => {
     publicKey = await jose.importSPKI(JWT_SECRET, "RS256");
   }
 
-  const server = http.createServer(apiHandler(publicKey));
+  const server = http.createServer(apiHandler(publicKey, clickhouseClient));
 
   process.on("SIGTERM", async () => {
     console.log("Received SIGTERM, shutting down...");

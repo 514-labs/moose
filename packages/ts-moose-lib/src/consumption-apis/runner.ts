@@ -3,7 +3,6 @@ import process from "node:process";
 import { getClickhouseClient } from "../commons";
 import { MooseClient, sql } from "./helpers";
 import * as jose from "jose";
-import * as Sentry from "@sentry/node";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;

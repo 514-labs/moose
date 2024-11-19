@@ -15,6 +15,10 @@ use tracing_subscriber::prelude::*;
 // REF: https://docs.sentry.io/platforms/rust/#asynchronous
 fn main() {
     let sentry_dsn_opt = std::env::var("SENTRY_DSN");
+    let sentry_trace_sample_rate = std::env::var("SENTRY_TRACE_SAMPLE_RATE")
+        .unwrap_or_else(|_| "1.0".to_string())
+        .parse::<f32>()
+        .expect("Failed to parse SENTRY_TRACE_SAMPLE_RATE");
 
     // The guard needs to be kept in scope for the entire duration of the program.
     // If the guard is dropped, then the transport that was initialized shuts down
@@ -30,7 +34,7 @@ fn main() {
             sentry_dsn,
             sentry::ClientOptions {
                 release: sentry::release_name!(),
-                traces_sample_rate: 1.0,
+                traces_sample_rate: sentry_trace_sample_rate,
                 environment: Some(environment.into()),
                 ..Default::default()
             },

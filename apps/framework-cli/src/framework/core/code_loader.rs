@@ -314,20 +314,80 @@ async fn crawl_schema(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use crate::framework::languages::SupportedLanguages;
     use crate::framework::versions::Version;
+    use crate::project::Project;
+    use ctor::ctor;
+    use lazy_static::lazy_static;
+    use std::collections::HashSet;
+    use std::fs;
+    use std::path::PathBuf;
+    use std::process::Command;
+
+    #[ctor]
+    fn setup() {
+        let node_modules_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/test_project")
+            .join("node_modules");
+        if node_modules_path.exists() {
+            fs::remove_dir_all(&node_modules_path).expect("Failed to clean up node_modules");
+        }
+    }
+
+    fn pnpm_moose_lib(cmd_action: fn(&mut Command) -> &mut Command) {
+        let mut cmd = Command::new("pnpm");
+        cmd_action(&mut cmd)
+            .arg("--filter=moose-lib")
+            .current_dir("../../")
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+    }
+
+    lazy_static! {
+        static ref TEST_PROJECT: Project = {
+            pnpm_moose_lib(|cmd| cmd.arg("i").arg("--frozen-lockfile"));
+
+            pnpm_moose_lib(|cmd| cmd.arg("run").arg("build"));
+
+            Command::new("npm")
+                .arg("i")
+                .current_dir("./tests/test_project")
+                .spawn()
+                .unwrap()
+                .wait()
+                .unwrap();
+
+            Command::new("npm")
+                .arg("link")
+                .current_dir("../../packages/ts-moose-lib")
+                .spawn()
+                .unwrap()
+                .wait()
+                .unwrap();
+
+            Command::new("npm")
+                .arg("link")
+                .arg("@514labs/moose-lib")
+                .current_dir("./tests/test_project")
+                .spawn()
+                .unwrap()
+                .wait()
+                .unwrap();
+
+            Project::new(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("tests/test_project"),
+                "testing".to_string(),
+                SupportedLanguages::Typescript,
+            )
+        };
+    }
 
     #[tokio::test]
+    #[serial_test::serial(tspc)]
     async fn test_get_all_framework_objects() {
-        use super::*;
-        let manifest_location = env!("CARGO_MANIFEST_DIR");
-
-        let project = Project::new(
-            &PathBuf::from(manifest_location).join("tests/test_project"),
-            "testing".to_string(),
-            SupportedLanguages::Typescript,
-        );
-
         let mut framework_objects = HashMap::new();
         let aggregations = AggregationSet {
             current_version: Version::from_string("0.0".to_string()),
@@ -335,9 +395,9 @@ mod tests {
         };
 
         let result = get_all_framework_objects(
-            &project,
+            &TEST_PROJECT,
             &mut framework_objects,
-            &project
+            &TEST_PROJECT
                 .data_models_dir()
                 .join("separate_dir_to_test_get_all"),
             "0.0",

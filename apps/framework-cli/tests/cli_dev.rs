@@ -9,7 +9,7 @@ use std::time;
 use std::time::Duration;
 
 struct CargoDev {
-    dir: TempDir,
+    _dir: TempDir,
     dev: Child,
 }
 
@@ -58,7 +58,7 @@ fn setup_dev() -> Result<CargoDev, anyhow::Error> {
     // }
 
     Ok(CargoDev {
-        dir: temp,
+        _dir: temp,
         dev: dev_process,
     })
 }
@@ -71,33 +71,9 @@ fn teardown_dev(mut dev_state: CargoDev) {
 fn should_properly_get_data_in_storage() -> Result<(), anyhow::Error> {
     let dev = setup_dev()?;
 
-    let test_steps = || -> Result<(), anyhow::Error> {
-        fs::copy(
-            "tests/psl/simple.prisma",
-            format!(
-                "{}/app/datamodels/users.prisma",
-                dev.dir.path().to_str().unwrap()
-            ),
-        )?;
-
-        // TODO Add the test in which we look for the result of copying the file
-        // with the API used to show the console.
-        // TODO add sending an event to the server and seeing the data getting ingested
-        // by the storage layer
-
-        // thread::sleep(*ACCEPTABLE_PERFORMANCE);
-
-        // let resp = reqwest::blocking::get("http://localhost:4000/console")?
-        //     .json::<HashMap<String, String>>()?;
-
-        // println!("{:#?}", resp);
-
-        Ok(())
-    };
-
-    let test_res = test_steps();
+    // Add test steps here
 
     teardown_dev(dev);
 
-    test_res
+    Ok(())
 }

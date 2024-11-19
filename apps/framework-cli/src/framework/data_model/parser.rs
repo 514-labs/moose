@@ -3,7 +3,7 @@ use crate::utilities::constants;
 use crate::{
     framework::{
         core::{code_loader::MappingError, infrastructure::table::DataEnum},
-        prisma, python, typescript,
+        python, typescript,
     },
     project::Project,
 };
@@ -15,7 +15,6 @@ use std::path::Path;
 #[error("Failed to parse the data model file")]
 #[non_exhaustive]
 pub enum DataModelParsingError {
-    PrismaParsingError(#[from] prisma::parser::PrismaParsingError),
     TypescriptParsingError(#[from] typescript::parser::TypescriptParsingError),
     PythonParsingError(#[from] python::parser::PythonParserError),
     MappingError(#[from] MappingError),
@@ -45,9 +44,6 @@ pub fn parse_data_model_file(
     {
         if let Some(ext) = file_path.extension() {
             match ext.to_str() {
-                Some("prisma") => Ok(prisma::parser::extract_data_model_from_file(
-                    file_path, version,
-                )?),
                 Some(constants::TYPESCRIPT_FILE_EXTENSION) => Ok(
                     // we're not using parser, but TS compiler plugin
                     // this way we can/should retrieve all data models in one tspc invocation

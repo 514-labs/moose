@@ -285,10 +285,7 @@ impl EventBuckets {
             | EventKind::Other => {}
         };
         for path in event.paths {
-            if !path.ext_is_supported_lang() &&
-                // todo: remove this extension when we drop prisma support
-                !path.extension().is_some_and(|ext| ext == "prisma")
-            {
+            if !path.ext_is_supported_lang() {
                 continue;
             }
 

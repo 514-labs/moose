@@ -151,7 +151,7 @@ pub async fn get_framework_objects_from_schema_file(
     let mut indexed_models = HashMap::new();
 
     for model in framework_objects.models {
-        if aggregations.current_version == version
+        if aggregations.current_version.as_str() == version
             && aggregations.names.contains(model.name.clone().trim())
         {
             return Err(DataModelError::Other {
@@ -299,7 +299,7 @@ async fn crawl_schema(
         project,
         &mut framework_objects,
         &schema_dir,
-        project.cur_version(),
+        project.cur_version().as_str(),
         &aggregations,
     )
     .await?;
@@ -315,6 +315,7 @@ async fn crawl_schema(
 #[cfg(test)]
 mod tests {
     use crate::framework::languages::SupportedLanguages;
+    use crate::framework::versions::Version;
 
     #[tokio::test]
     async fn test_get_all_framework_objects() {
@@ -329,7 +330,7 @@ mod tests {
 
         let mut framework_objects = HashMap::new();
         let aggregations = AggregationSet {
-            current_version: "0.0".to_string(),
+            current_version: Version::from_string("0.0".to_string()),
             names: HashSet::new(),
         };
 

@@ -1,6 +1,7 @@
 use super::errors::ClickhouseError;
 use super::queries::{create_table_query, drop_table_query};
 use crate::framework::core::infrastructure::table::DataEnum;
+use crate::framework::versions::Version;
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
@@ -261,7 +262,7 @@ pub struct ClickHouseSystemTable {
 #[derive(Debug, Clone)]
 pub struct ClickHouseTable {
     pub name: String,
-    pub version: String,
+    pub version: Version,
     pub columns: Vec<ClickHouseColumn>,
     pub order_by: Vec<String>,
 }

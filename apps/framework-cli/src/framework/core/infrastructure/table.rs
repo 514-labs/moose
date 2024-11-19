@@ -5,6 +5,7 @@ use serde::{Deserialize, Deserializer, Serialize};
 use std::fmt;
 
 use crate::framework::core::infrastructure_map::PrimitiveSignature;
+use crate::framework::versions::Version;
 use crate::proto::infrastructure_map::column_type;
 use crate::proto::infrastructure_map::ColumnType as ProtoColumnType;
 use crate::proto::infrastructure_map::Table as ProtoTable;
@@ -18,7 +19,7 @@ pub struct Table {
     #[serde(default)]
     pub deduplicate: bool,
 
-    pub version: String,
+    pub version: Version,
     pub source_primitive: PrimitiveSignature,
 }
 
@@ -26,7 +27,7 @@ impl Table {
     // This is only to be used in the context of the new core
     // currently name includes the version, here we are separating that out.
     pub fn id(&self) -> String {
-        format!("{}_{}", self.name, self.version.replace('.', "_"))
+        format!("{}_{}", self.name, self.version.as_suffix())
     }
 
     pub fn expanded_display(&self) -> String {
@@ -53,7 +54,7 @@ impl Table {
             name: self.name.clone(),
             columns: self.columns.iter().map(|c| c.to_proto()).collect(),
             order_by: self.order_by.clone(),
-            version: self.version.clone(),
+            version: self.version.to_string(),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
             special_fields: Default::default(),
         }

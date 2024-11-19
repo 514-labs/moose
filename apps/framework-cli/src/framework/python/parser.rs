@@ -27,6 +27,7 @@ use crate::framework::core::infrastructure::table::{
 
 use crate::framework::core::infrastructure::table::{EnumMember, EnumValue};
 use crate::framework::python::utils::ColumnBuilder;
+use crate::framework::versions::Version;
 use num_traits::cast::ToPrimitive;
 
 #[derive(Debug, Clone, thiserror::Error)]
@@ -237,7 +238,7 @@ fn python_class_to_framework_datamodel(
 
     Ok(DataModel {
         abs_file_path: file_path,
-        version: version.to_string(),
+        version: Version::from_string(version.to_string()),
         columns,
         name: class_name,
         config: Default::default(),
@@ -653,7 +654,7 @@ fn setup_parse(ast: &ast::Suite) -> Result<PythonProject, PythonParserError> {
     project.version = match &func.args.get(1) {
         Some(Expr::Constant(c)) => {
             if let Constant::Str(s) = &c.value {
-                s.clone()
+                Version::from_string(s.clone())
             } else {
                 project.version
             }
@@ -663,7 +664,7 @@ fn setup_parse(ast: &ast::Suite) -> Result<PythonProject, PythonParserError> {
             .iter()
             .find_map(|keyword| {
                 if keyword.arg.clone().unwrap() == Identifier::new("version") {
-                    get_keyword_string_value(keyword)
+                    get_keyword_string_value(keyword).map(Version::from_string)
                 } else {
                     None
                 }

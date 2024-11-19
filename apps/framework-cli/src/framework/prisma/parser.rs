@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use crate::framework::core::infrastructure::table::{
     is_enum_type, Column, ColumnDefaults, ColumnType, DataEnum, EnumMember, EnumValue,
 };
+use crate::framework::versions::Version;
 use crate::{framework::data_model::model::DataModel, framework::data_model::parser::FileObjects};
 use diagnostics::{Diagnostics, FileId};
 use schema_ast::ast::{Attribute, Field, WithName};
@@ -114,7 +115,7 @@ fn prisma_model_to_datamodel(
         name: schema_name,
         config: Default::default(),
         abs_file_path: file_path.to_path_buf(),
-        version: version.to_string(),
+        version: Version::from_string(version.to_string()),
     })
 }
 

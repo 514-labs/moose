@@ -2,7 +2,6 @@ use crate::cli::display::Message;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::framework::core::code_loader::load_framework_objects;
 use crate::framework::languages::SupportedLanguages;
-use crate::framework::versions::parse_version;
 use crate::infrastructure::olap::clickhouse::version_sync::{
     generate_streaming_function_migration, get_all_version_syncs,
 };
@@ -13,11 +12,7 @@ pub async fn generate_migration(
     language: SupportedLanguages,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     // TODO: replace this with PrimitiveMap
-    let previous_version = match project
-        .supported_old_versions
-        .keys()
-        .max_by_key(|v| parse_version(v))
-    {
+    let previous_version = match project.supported_old_versions.keys().max() {
         None => {
             return Ok(RoutineSuccess::info(Message {
                 action: "No".to_string(),
@@ -44,7 +39,7 @@ pub async fn generate_migration(
     let new_vs_list = generate_streaming_function_migration(
         &fo_versions,
         &version_syncs,
-        previous_version,
+        previous_version.as_str(),
         project,
     );
 

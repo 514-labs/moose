@@ -16,7 +16,7 @@ use tracing_subscriber::prelude::*;
 fn main() {
     let sentry_dsn_opt = std::env::var("SENTRY_DSN");
     let sentry_trace_sample_rate = std::env::var("SENTRY_TRACE_SAMPLE_RATE")
-        .unwrap_or_else(|_| "1.0".to_string())
+        .unwrap_or_else(|_| "0.01".to_string())
         .parse::<f32>()
         .expect("Failed to parse SENTRY_TRACE_SAMPLE_RATE");
 

@@ -7,9 +7,10 @@ const SENTRY_PROFILE_SAMPLE_RATE = process.env["SENTRY_PROFILE_SAMPLE_RATE"];
 const MOOSE_ENVIRONMENT = process.env["MOOSE_ENVIRONMENT"];
 
 const sentryTraceSampleRate =
-  (SENTRY_TRACE_SAMPLE_RATE && parseFloat(SENTRY_TRACE_SAMPLE_RATE)) || 1.0;
+  (SENTRY_TRACE_SAMPLE_RATE && parseFloat(SENTRY_TRACE_SAMPLE_RATE)) || 0.01;
 const sentryProfileSampleRate =
-  (SENTRY_PROFILE_SAMPLE_RATE && parseFloat(SENTRY_PROFILE_SAMPLE_RATE)) || 0.1;
+  (SENTRY_PROFILE_SAMPLE_RATE && parseFloat(SENTRY_PROFILE_SAMPLE_RATE)) ||
+  0.01;
 
 if (SENTRY_DSN) {
   // Ensure to call this before importing any other modules!

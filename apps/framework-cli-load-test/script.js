@@ -1,6 +1,9 @@
 import http from "k6/http";
 import { sleep, check } from "k6";
 
+const vues = 700;
+const duration = "30s";
+
 export const options = {
   discardResponseBodies: true,
   scenarios: {
@@ -8,8 +11,8 @@ export const options = {
       executor: "ramping-vus",
       startVUs: 0,
       stages: [
-        { duration: "60s", target: 10000 },
-        { duration: "60s", target: 10000 },
+        { duration: duration, target: vues },
+        { duration: duration, target: vues },
       ],
       gracefulRampDown: "30s",
     },

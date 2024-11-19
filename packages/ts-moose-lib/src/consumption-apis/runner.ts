@@ -3,6 +3,7 @@ import process from "node:process";
 import { getClickhouseClient } from "../commons";
 import { MooseClient, sql } from "./helpers";
 import * as jose from "jose";
+import * as Sentry from "@sentry/node";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
@@ -148,7 +149,8 @@ const apiHandler =
 export const runConsumptionApis = async () => {
   console.log("Starting API service");
 
-  let publicKey;
+  let publicKey: jose.KeyLike | undefined;
+
   if (JWT_SECRET) {
     console.log("Importing JWT public key...");
     publicKey = await jose.importSPKI(JWT_SECRET, "RS256");

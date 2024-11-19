@@ -118,6 +118,7 @@ impl Default for LocalWebserverConfig {
     }
 }
 
+#[tracing::instrument(skip(consumption_apis, req, is_prod), fields(uri = %req.uri(), method = %req.method(), headers = ?req.headers()))]
 async fn create_client(
     req: Request<hyper::body::Incoming>,
     host: String,
@@ -165,6 +166,7 @@ async fn create_client(
                         .join(", ")
                 );
             }
+
             return Ok(Response::builder()
                 .status(StatusCode::NOT_FOUND)
                 .body(Full::new(Bytes::from("Consumption API not found.")))
@@ -198,17 +200,19 @@ async fn create_client(
     let status = res.status();
     let body = res.collect().await.unwrap().to_bytes().to_vec();
 
-    Ok(Response::builder()
+    let returned_response = Response::builder()
         .status(status)
         .header("Access-Control-Allow-Origin", "*")
         .header("Access-Control-Allow-Method", "GET, POST")
         .header(
             "Access-Control-Allow-Headers",
-            "Authorization, Content-Type",
+            "Authorization, Content-Type, sentry-trace, baggage",
         )
         .header("Content-Type", "application/json")
         .body(Full::new(Bytes::from(body)))
-        .unwrap())
+        .unwrap();
+
+    Ok(returned_response)
 }
 
 #[derive(Clone)]

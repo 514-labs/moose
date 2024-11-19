@@ -10,6 +10,8 @@ register({
   experimentalTsImportSpecifiers: true,
 });
 
+import "./instrumentation";
+
 import { runBlocks } from "./blocks/runner";
 import { runAggregations } from "./blocks/aggregation";
 import { runConsumptionApis } from "./consumption-apis/runner";

@@ -3,6 +3,7 @@ import process from "node:process";
 import { getClickhouseClient } from "../commons";
 import { MooseClient, sql } from "./helpers";
 import * as jose from "jose";
+import { ClickHouseClient } from "@clickhouse/client-web";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
@@ -39,8 +40,10 @@ const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
   console.log(`${req.method} ${req.url} ${res.statusCode}`);
 };
 
+const modulesCache = new Map<string, any>();
+
 const apiHandler =
-  (publicKey: jose.KeyLike | undefined) =>
+  (publicKey: jose.KeyLike | undefined, clickhouseClient: ClickHouseClient) =>
   async (req: http.IncomingMessage, res: http.ServerResponse) => {
     try {
       const url = new URL(req.url || "", "https://localhost");
@@ -96,13 +99,14 @@ const apiHandler =
         {},
       );
 
-      const userFuncModule = require(pathName);
+      let userFuncModule = modulesCache.get(pathName);
+      if (userFuncModule === undefined) {
+        userFuncModule = require(pathName);
+        modulesCache.set(pathName, userFuncModule);
+      }
 
       const result = await userFuncModule.default(paramsObject, {
-        client: new MooseClient(
-          getClickhouseClient(clickhouseConfig),
-          fileName,
-        ),
+        client: new MooseClient(clickhouseClient, fileName),
         sql: sql,
         jwt: jwtPayload,
       });
@@ -148,6 +152,8 @@ const apiHandler =
 export const runConsumptionApis = async () => {
   console.log("Starting API service");
 
+  const clickhouseClient = getClickhouseClient(clickhouseConfig);
+
   let publicKey: jose.KeyLike | undefined;
 
   if (JWT_SECRET) {
@@ -155,7 +161,7 @@ export const runConsumptionApis = async () => {
     publicKey = await jose.importSPKI(JWT_SECRET, "RS256");
   }
 
-  const server = http.createServer(apiHandler(publicKey));
+  const server = http.createServer(apiHandler(publicKey, clickhouseClient));
 
   process.on("SIGTERM", async () => {
     console.log("Received SIGTERM, shutting down...");

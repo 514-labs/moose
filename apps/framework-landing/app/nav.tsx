@@ -178,7 +178,7 @@ export const Nav = () => {
       subject: "moose blog",
     },
     {
-      content: "Get Moose",
+      content: "Get Started",
       href: "https://docs.getmoose.dev/quickstart",
       eventName: "nav-link",
       subject: "moose docs quickstart",

@@ -3,6 +3,7 @@ import process from "node:process";
 import { getClickhouseClient } from "../commons";
 import { MooseClient, sql } from "./helpers";
 import * as jose from "jose";
+import { ClickHouseClient } from "@clickhouse/client-web";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
@@ -38,6 +39,8 @@ const createPath = (path: string) => `${CONSUMPTION_DIR_PATH}${path}.ts`;
 const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
   console.log(`${req.method} ${req.url} ${res.statusCode}`);
 };
+
+let clickhouseClient!: ClickHouseClient;
 
 const apiHandler =
   (publicKey: jose.KeyLike | undefined) =>
@@ -99,10 +102,7 @@ const apiHandler =
       const userFuncModule = require(pathName);
 
       const result = await userFuncModule.default(paramsObject, {
-        client: new MooseClient(
-          getClickhouseClient(clickhouseConfig),
-          fileName,
-        ),
+        client: new MooseClient(clickhouseClient, fileName),
         sql: sql,
         jwt: jwtPayload,
       });
@@ -147,6 +147,8 @@ const apiHandler =
 
 export const runConsumptionApis = async () => {
   console.log("Starting API service");
+
+  clickhouseClient = getClickhouseClient(clickhouseConfig);
 
   let publicKey: jose.KeyLike | undefined;
 

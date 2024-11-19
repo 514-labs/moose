@@ -657,6 +657,7 @@ fn get_path_without_prefix(path: PathBuf, path_prefix: Option<String>) -> PathBu
         .to_path_buf()
 }
 
+#[tracing::instrument(skip(consumption_apis, jwt_config, configured_producer, metrics, request))]
 #[allow(clippy::too_many_arguments)]
 async fn router(
     current_version: String,

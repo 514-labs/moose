@@ -9,7 +9,7 @@ import React from "react";
 
 export const SecondaryCTASection = () => {
   const content = {
-    title: "Host your Moose projects with Bóreal",
+    title: "Host your Moose projects with Boréal",
     description: "No need to configure or secure any infrastructure.",
     ctas: [
       {

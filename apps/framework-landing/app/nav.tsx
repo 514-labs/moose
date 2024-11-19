@@ -154,6 +154,12 @@ export const Nav = () => {
       subject: "host with boreal",
     },
     {
+      content: "Docs",
+      href: "https://docs.getmoose.dev",
+      eventName: "nav-link",
+      subject: "moose docs",
+    },
+    {
       content: "GitHub",
       href: "https://github.com/514-labs/moose",
       eventName: "nav-link",
@@ -161,7 +167,7 @@ export const Nav = () => {
     },
     {
       content: "Slack",
-      href: "https://join.slack.com/t/moose-community/shared_invite/zt-2345678901-23456789012345678901234567890123",
+      href: "https://join.slack.com/t/moose-community/shared_invite/zt-2ununhuzp-IyBVZtN42UEqnkPjQnjdfA",
       eventName: "nav-link",
       subject: "moose slack",
     },
@@ -173,9 +179,9 @@ export const Nav = () => {
     },
     {
       content: "Get Moose",
-      href: "https://docs.getmoose.dev",
+      href: "https://docs.getmoose.dev/quickstart",
       eventName: "nav-link",
-      subject: "moose docs",
+      subject: "moose docs quickstart",
       emphasized: true,
     },
   ];

@@ -8,7 +8,7 @@
  * @returns 'FLoat', 'Int', 'Bool', 'String'
  */
 
-import { ClickHouseClient } from "@clickhouse/client-web";
+import { createClient, ClickHouseClient } from "@clickhouse/client-web";
 import { randomUUID } from "node:crypto";
 
 export const mapToClickHouseType = (value: Value) => {
@@ -127,44 +127,80 @@ function emptyIfUndefined(value: string | undefined): string {
   return value === undefined ? "" : value;
 }
 
+export class ClickHouseConnectionPool {
+  private pool: ClickHouseClient[] = [];
+  private maxSize: number;
+  private config: any;
+
+  constructor(config: any, maxSize = 10) {
+    this.maxSize = maxSize;
+    this.config = config;
+  }
+
+  async getConnection(): Promise<ClickHouseClient> {
+    if (this.pool.length > 0) {
+      return this.pool.pop()!;
+    }
+    return createClient(this.config);
+  }
+
+  async releaseConnection(client: ClickHouseClient) {
+    if (this.pool.length < this.maxSize) {
+      this.pool.push(client);
+    } else {
+      await client.close();
+    }
+  }
+}
+
 export class MooseClient {
-  client: ClickHouseClient;
+  private pool: ClickHouseConnectionPool;
   query_id_prefix: string;
-  constructor(client: ClickHouseClient, query_id_prefix: string) {
-    this.client = client;
+
+  constructor(pool: ClickHouseConnectionPool, query_id_prefix: string) {
+    this.pool = pool;
     this.query_id_prefix = query_id_prefix;
   }
 
   async query(sql: Sql) {
-    const parameterizedStubs = sql.values.map((v, i) =>
-      createClickhouseParameter(i, v),
-    );
+    const client = await this.pool.getConnection();
+    try {
+      const parameterizedStubs = sql.values.map((v, i) =>
+        createClickhouseParameter(i, v),
+      );
 
-    const query = sql.strings
-      .map((s, i) =>
-        s != "" ? `${s}${emptyIfUndefined(parameterizedStubs[i])}` : "",
-      )
-      .join("");
+      const query = sql.strings
+        .map((s, i) =>
+          s != "" ? `${s}${emptyIfUndefined(parameterizedStubs[i])}` : "",
+        )
+        .join("");
 
-    const query_params = sql.values.reduce(
-      (acc: Record<string, unknown>, v, i) => ({
-        ...acc,
-        [`p${i}`]: getValueFromParameter(v),
-      }),
-      {},
-    );
+      const query_params = sql.values.reduce(
+        (acc: Record<string, unknown>, v, i) => ({
+          ...acc,
+          [`p${i}`]: getValueFromParameter(v),
+        }),
+        {},
+      );
 
-    // We are not using the result of the ping
-    // but this ensures that if the clickhouse cloud service is idle, we
-    // wake it up.
-    this.client.ping();
+      // We are not using the result of the ping
+      // but this ensures that if the clickhouse cloud service is idle, we
+      // wake it up.
+      client.ping();
 
-    return this.client.query({
-      query,
-      query_params,
-      format: "JSONEachRow",
-      query_id: this.query_id_prefix + randomUUID(),
-    });
+      const result = await client.query({
+        query,
+        query_params,
+        format: "JSONEachRow",
+        query_id: this.query_id_prefix + randomUUID(),
+      });
+
+      await this.pool.releaseConnection(client);
+      return result;
+    } catch (error) {
+      await this.pool.releaseConnection(client);
+      throw error;
+    }
   }
 }
 

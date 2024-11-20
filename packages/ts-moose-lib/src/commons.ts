@@ -54,7 +54,7 @@ export const getClickhouseClient = ({
     useSSL === "1" || useSSL.toLowerCase() === "true" ? "https" : "http";
   console.log(`Connecting to Clickhouse at ${protocol}://${host}:${port}`);
   return createClient({
-    host: `${protocol}://${host}:${port}`,
+    url: `${protocol}://${host}:${port}`,
     username: username,
     password: password,
     database: database,

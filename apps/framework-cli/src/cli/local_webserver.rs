@@ -40,6 +40,7 @@ use rdkafka::message::OwnedMessage;
 use rdkafka::producer::future_producer::OwnedDeliveryResult;
 use rdkafka::producer::{DeliveryFuture, FutureRecord};
 use rdkafka::util::Timeout;
+use reqwest::Client;
 use serde::Serialize;
 use serde::{Deserialize, Deserializer};
 use serde_json::Deserializer as JsonDeserializer;
@@ -63,7 +64,6 @@ use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
 use tokio::net::TcpListener;
-use tokio::net::TcpStream;
 use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
@@ -119,7 +119,8 @@ impl Default for LocalWebserverConfig {
 }
 
 #[tracing::instrument(skip(consumption_apis, req, is_prod), fields(uri = %req.uri(), method = %req.method(), headers = ?req.headers()))]
-async fn create_client(
+async fn get_consumption_api_res(
+    http_client: Arc<Client>,
     req: Request<hyper::body::Incoming>,
     host: String,
     consumption_apis: &RwLock<HashSet<String>>,
@@ -137,22 +138,21 @@ async fn create_client(
             )))?);
     }
 
-    let url = format!("http://{}:{}", host, 4001).parse::<hyper::Uri>()?;
+    let url = format!(
+        "http://{}:{}{}",
+        host,
+        4001,
+        req.uri().path().strip_prefix("/consumption").unwrap_or("")
+    );
 
-    let host = url.host().expect("uri has no host");
-    let port = url.port_u16().unwrap();
-    let address = format!("{}:{}", host, port);
-    let path = req.uri().to_string();
-    let cleaned_path = path.strip_prefix("/consumption").unwrap_or(&path);
-
-    debug!("Creating client for route: {:?}", cleaned_path);
+    debug!("Creating client for route: {:?}", url);
     {
         let consumption_apis = consumption_apis.read().await;
         let consumption_name = req
             .uri()
             .path()
             .strip_prefix("/consumption/")
-            .unwrap_or(cleaned_path);
+            .unwrap_or(req.uri().path());
 
         if !consumption_apis.contains(consumption_name) {
             if !is_prod {
@@ -174,31 +174,18 @@ async fn create_client(
         }
     }
 
-    let stream = TcpStream::connect(address).await?;
-    let io = TokioIo::new(stream);
-    let (mut sender, conn) = hyper::client::conn::http1::handshake(io).await?;
+    let mut client_req = reqwest::Request::new(req.method().clone(), url.parse()?);
 
-    tokio::task::spawn(async move {
-        if let Err(err) = conn.await {
-            println!("Connection failed: {:?}", err);
-        }
-    });
-
-    let authority = url.authority().unwrap().clone();
-
-    let mut new_req: Request<Full<Bytes>> = Request::builder()
-        .uri(cleaned_path)
-        .header(hyper::header::HOST, authority.as_str())
-        .body(Full::new(Bytes::new()))?;
-
-    let headers = new_req.headers_mut();
+    // Copy headers
+    let headers = client_req.headers_mut();
     for (key, value) in req.headers() {
         headers.insert(key, value.clone());
     }
 
-    let res = sender.send_request(new_req).await?;
+    // Send request
+    let res = http_client.execute(client_req).await?;
     let status = res.status();
-    let body = res.collect().await.unwrap().to_bytes().to_vec();
+    let body = res.bytes().await?;
 
     let returned_response = Response::builder()
         .status(status)
@@ -209,7 +196,7 @@ async fn create_client(
             "Authorization, Content-Type, sentry-trace, baggage",
         )
         .header("Content-Type", "application/json")
-        .body(Full::new(Bytes::from(body)))
+        .body(Full::new(body))
         .unwrap();
 
     Ok(returned_response)
@@ -226,6 +213,7 @@ struct RouteService {
     current_version: String,
     is_prod: bool,
     metrics: Arc<Metrics>,
+    http_client: Arc<Client>,
 }
 #[derive(Clone)]
 struct ManagementService<I: InfraMapProvider + Clone> {
@@ -250,6 +238,7 @@ impl Service<Request<Incoming>> for RouteService {
             self.host.clone(),
             self.is_prod,
             self.metrics.clone(),
+            self.http_client.clone(),
             RouterRequest {
                 req,
                 route_table: self.route_table,
@@ -667,6 +656,7 @@ async fn router(
     host: String,
     is_prod: bool,
     metrics: Arc<Metrics>,
+    http_client: Arc<Client>,
     request: RouterRequest,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let now = Instant::now();
@@ -714,7 +704,7 @@ async fn router(
         }
 
         (&hyper::Method::GET, ["consumption", _rt]) => {
-            match create_client(req, host, consumption_apis, is_prod).await {
+            match get_consumption_api_res(http_client, req, host, consumption_apis, is_prod).await {
                 Ok(response) => Ok(response),
                 Err(e) => {
                     debug!("Error: {:?}", e);
@@ -977,6 +967,8 @@ impl Webserver {
         let mut sigint =
             tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt()).unwrap();
 
+        let http_client = Arc::new(reqwest::Client::new());
+
         let route_service = RouteService {
             host: self.host.clone(),
             path_prefix: project.http_server_config.normalized_path_prefix(),
@@ -986,6 +978,7 @@ impl Webserver {
             current_version: project.cur_version().to_string(),
             configured_producer: producer,
             is_prod: project.is_production,
+            http_client: http_client,
             metrics: metrics.clone(),
         };
 

@@ -30,7 +30,7 @@ export const options = {
 // about authoring k6 scripts.
 //
 export default function () {
-  let res = http.get("http://[::1]:4001/dailyActiveUsers");
+  let res = http.get("http://[::1]:4000/consumption/dailyActiveUsers");
   check(res, { "status was 200": (r) => r.status == 200 });
 
   sleep(0.25);

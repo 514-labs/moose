@@ -139,10 +139,13 @@ async fn get_consumption_api_res(
     }
 
     let url = format!(
-        "http://{}:{}{}",
+        "http://{}:{}{}{}",
         host,
         4001,
-        req.uri().path().strip_prefix("/consumption").unwrap_or("")
+        req.uri().path().strip_prefix("/consumption").unwrap_or(""),
+        req.uri()
+            .query()
+            .map_or("".to_string(), |q| format!("?{}", q))
     );
 
     debug!("Creating client for route: {:?}", url);

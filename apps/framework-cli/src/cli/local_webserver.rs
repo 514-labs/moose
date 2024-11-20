@@ -978,7 +978,7 @@ impl Webserver {
             current_version: project.cur_version().to_string(),
             configured_producer: producer,
             is_prod: project.is_production,
-            http_client: http_client,
+            http_client,
             metrics: metrics.clone(),
         };
 

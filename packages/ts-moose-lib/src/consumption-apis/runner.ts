@@ -1,9 +1,11 @@
 import http from "http";
 import process from "node:process";
+import cluster from "node:cluster";
 import { getClickhouseClient } from "../commons";
 import { MooseClient, sql } from "./helpers";
 import * as jose from "jose";
 import { ClickHouseClient } from "@clickhouse/client-web";
+import { Cluster } from "../cluster-utils";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
@@ -152,26 +154,28 @@ const apiHandler =
 export const runConsumptionApis = async () => {
   console.log("Starting API service");
 
-  const clickhouseClient = getClickhouseClient(clickhouseConfig);
+  const consumptionCluster = new Cluster({
+    workerStart: async () => {
+      const clickhouseClient = getClickhouseClient(clickhouseConfig);
+      let publicKey: jose.KeyLike | undefined;
+      if (JWT_SECRET) {
+        console.log("Importing JWT public key...");
+        publicKey = await jose.importSPKI(JWT_SECRET, "RS256");
+      }
 
-  let publicKey: jose.KeyLike | undefined;
+      const server = http.createServer(apiHandler(publicKey, clickhouseClient));
+      server.listen(4001, () => {
+        console.log("Server running on port 4001");
+      });
 
-  if (JWT_SECRET) {
-    console.log("Importing JWT public key...");
-    publicKey = await jose.importSPKI(JWT_SECRET, "RS256");
-  }
-
-  const server = http.createServer(apiHandler(publicKey, clickhouseClient));
-
-  process.on("SIGTERM", async () => {
-    console.log("Received SIGTERM, shutting down...");
-    server.close(() => {
-      console.log("Consumption webserver shutdown...");
-      process.exit(0);
-    });
+      return server;
+    },
+    workerStop: async (server) => {
+      return new Promise<void>((resolve) => {
+        server.close(() => resolve());
+      });
+    },
   });
 
-  server.listen(4001, () => {
-    console.log("Server running on port 4001");
-  });
+  consumptionCluster.start();
 };

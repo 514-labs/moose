@@ -34,7 +34,7 @@ fern = { version = "0.7", features = ["date-based"] }
 humantime = "2.1.0"
 uuid = { version = "1.6", features = ["v4"] }
 crypto-hash = "0.3.4"
-serde_json = "1.0.108"
+serde_json = { version = "1.0.133", features = ["preserve_order"] }
 serde_urlencoded = "0.7"
 base64 = "0.22.0"
 async-recursion = "1.1.0"

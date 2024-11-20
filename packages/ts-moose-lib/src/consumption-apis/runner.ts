@@ -4,7 +4,7 @@ import cluster from "node:cluster";
 import { getClickhouseClient } from "../commons";
 import { MooseClient, sql } from "./helpers";
 import * as jose from "jose";
-import { ClickHouseClient } from "@clickhouse/client-web";
+import { ClickHouseClient } from "@clickhouse/client";
 import { Cluster } from "../cluster-utils";
 
 export const antiCachePath = (path: string) =>

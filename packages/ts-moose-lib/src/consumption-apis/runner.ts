@@ -171,8 +171,8 @@ export const runConsumptionApis = async () => {
       return server;
     },
     workerStop: async (server) => {
-      return new Promise<undefined>((resolve) => {
-        server.close(() => resolve(undefined));
+      return new Promise<void>((resolve) => {
+        server.close(() => resolve());
       });
     },
   });

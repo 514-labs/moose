@@ -2,17 +2,30 @@ import cluster from "node:cluster";
 import { availableParallelism } from "node:os";
 import { exit } from "node:process";
 
+/**
+ * Class for managing a cluster of worker processes
+ * C represents the type of output from worker startup
+ */
 export class Cluster<C> {
+  // Tracks if shutdown is currently in progress
   private shutdownInProgress: boolean = false;
+  // Tracks if workers exited cleanly during shutdown
   private hasCleanWorkerExit: boolean = true;
 
+  // String identifying if this is primary or worker process
   private processStr = `${cluster.isPrimary ? "primary" : "worker"} process ${process.pid}`;
 
+  // Functions for starting and stopping workers
   private workerStart: () => Promise<C>;
   private workerStop: (c: C) => Promise<void>;
 
+  // Result from starting worker, needed for cleanup
   private startOutput: C | undefined;
 
+  /**
+   * Creates a new cluster manager
+   * @param options Object containing worker lifecycle functions
+   */
   constructor(options: {
     workerStart: () => Promise<C>;
     workerStop: (c: C) => Promise<void>;
@@ -21,11 +34,15 @@ export class Cluster<C> {
     this.workerStop = options.workerStop;
   }
 
+  /**
+   * Starts the cluster by spawning worker processes
+   */
   async start() {
     const cpuCount = availableParallelism();
     // Always use at least 1 CPU and leave some capacity for the other services.
     const usedCpuCount = Math.max(1, Math.round(Math.floor(cpuCount * 0.7)));
 
+    // Set up signal handlers for graceful shutdown
     process.on("SIGTERM", this.gracefulClusterShutdown("SIGTERM"));
     process.on("SIGINT", this.gracefulClusterShutdown("SIGINT"));
 
@@ -36,14 +53,18 @@ export class Cluster<C> {
     }
   }
 
+  /**
+   * Spawns the requested number of worker processes and sets up event handlers
+   */
   bootWorkers = async (numWorkers: number) => {
     console.info(`Setting ${numWorkers} workers...`);
 
+    // Create the worker processes
     for (let i = 0; i < numWorkers; i++) {
-      cluster.fork(); //create the workers
+      cluster.fork();
     }
 
-    //Setting up lifecycle event listeners for worker processes
+    // Set up event handlers for worker lifecycle events
     cluster.on("online", (worker) => {
       console.info(`worker process ${worker.process.pid} is online`);
     });
@@ -52,6 +73,7 @@ export class Cluster<C> {
       console.info(
         `worker ${worker.process.pid} exited with code ${code} and signal ${signal}`,
       );
+      // Track if any workers exit with non-zero code during shutdown
       if (this.shutdownInProgress && code != 0) {
         this.hasCleanWorkerExit = false;
       }
@@ -62,7 +84,11 @@ export class Cluster<C> {
     });
   };
 
+  /**
+   * Creates a handler function for graceful shutdown on a given signal
+   */
   gracefulClusterShutdown = (signal: NodeJS.Signals) => async () => {
+    // Prevent multiple concurrent shutdowns
     if (this.shutdownInProgress) {
       return;
     }
@@ -76,9 +102,11 @@ export class Cluster<C> {
 
     try {
       if (cluster.isPrimary) {
+        // Primary process shuts down all workers
         await this.shutdownWorkers(signal);
         console.info(`${this.processStr} - worker shutdown successful`);
       } else {
+        // Worker process runs cleanup and exits
         await this.workerStop(this.startOutput!);
         console.info(`${this.processStr} shutdown successful`);
         this.hasCleanWorkerExit ? exit(0) : exit(1);
@@ -89,6 +117,9 @@ export class Cluster<C> {
     }
   };
 
+  /**
+   * Gracefully shuts down all worker processes
+   */
   shutdownWorkers = (signal: NodeJS.Signals) => {
     return new Promise<void>((resolve, reject) => {
       // This is only necessary for the primary process
@@ -96,6 +127,7 @@ export class Cluster<C> {
         return resolve();
       }
 
+      // Nothing to do if no workers exist
       if (!cluster.workers) {
         return resolve();
       }
@@ -105,10 +137,11 @@ export class Cluster<C> {
         return resolve();
       }
 
+      // Track number of workers still alive and times function has run
       let workersAlive = 0;
       let funcRun = 0;
 
-      // Count the number of alive workers and keep looping until the number is zero.
+      // Function to check worker status and terminate if needed
       const cleanWorkers = () => {
         ++funcRun;
         workersAlive = 0;
@@ -119,7 +152,7 @@ export class Cluster<C> {
             if (!worker.isDead()) {
               ++workersAlive;
               if (funcRun == 1) {
-                //On the first execution of the function, send the received signal to all the workers
+                // Only send kill signal on first run
                 worker.kill(signal);
               }
             }
@@ -127,11 +160,13 @@ export class Cluster<C> {
 
         console.info(workersAlive + " workers alive");
         if (workersAlive == 0) {
-          //Clear the interval when all workers are dead
+          // All workers terminated, resolve promise
           clearInterval(interval);
           return resolve();
         }
       };
+
+      // Check worker status every 500ms
       const interval = setInterval(cleanWorkers, 500);
     });
   };

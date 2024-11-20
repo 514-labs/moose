@@ -158,7 +158,7 @@ export class MooseClient {
       query,
       query_params,
       format: "JSONEachRow",
-      session_id: this.query_id_prefix + randomUUID(),
+      query_id: this.query_id_prefix + randomUUID(),
     });
   }
 }

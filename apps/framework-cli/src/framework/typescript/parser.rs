@@ -47,7 +47,8 @@ pub fn extract_data_model_from_file(
                 "plugins": [{
                     "transform": "../node_modules/@514labs/moose-lib/dist/dataModels/toDataModels.js"
                 }],
-                "strict":true
+                "strict":true,
+                "esModuleInterop": true
             },
             "include":[path]
         })

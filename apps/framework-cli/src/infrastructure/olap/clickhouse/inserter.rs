@@ -3,6 +3,7 @@ use crate::infrastructure::olap::clickhouse::model::ClickHouseRecord;
 use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
 
+use crate::infrastructure::processes::kafka_clickhouse_sync;
 use log::{debug, error};
 use rdkafka::error::KafkaError;
 use std::sync::Arc;
@@ -102,8 +103,13 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
         commit_callback: OffsetCommitCallback,
     ) {
         let mut interval = time::interval(Duration::from_secs(self.flush_interval));
+        let mut pause_receiver = kafka_clickhouse_sync::clickhouse_writing_pause_listener();
 
         loop {
+            if *pause_receiver.borrow() {
+                pause_receiver.changed().await.unwrap();
+                continue;
+            }
             interval.tick().await;
             let mut queue = self.queue.lock().await;
 

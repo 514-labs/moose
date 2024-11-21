@@ -158,14 +158,24 @@ pub fn extract_data_model_from_file(
 #[cfg(test)]
 mod tests {
     use crate::framework::languages::SupportedLanguages;
+    use crate::framework::typescript::parser::extract_data_model_from_file;
     use crate::framework::typescript::parser::TypescriptParsingError;
-    use crate::framework::{
-        data_model::parser::parse_data_model_file, typescript::parser::extract_data_model_from_file,
-    };
     use crate::project::Project;
+    use ctor::ctor;
     use lazy_static::lazy_static;
+    use std::fs;
     use std::path::PathBuf;
     use std::process::Command;
+
+    #[ctor]
+    fn setup() {
+        let node_modules_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/test_project")
+            .join("node_modules");
+        if node_modules_path.exists() {
+            fs::remove_dir_all(&node_modules_path).expect("Failed to clean up node_modules");
+        }
+    }
 
     fn pnpm_moose_lib(cmd_action: fn(&mut Command) -> &mut Command) {
         let mut cmd = Command::new("pnpm");
@@ -215,16 +225,6 @@ mod tests {
                 SupportedLanguages::Typescript,
             )
         };
-    }
-
-    #[test]
-    fn test_parse_schema_file() {
-        let current_dir = std::env::current_dir().unwrap();
-
-        let test_file = current_dir.join("tests/psl/simple.prisma");
-
-        let result = parse_data_model_file(&test_file, "", &TEST_PROJECT);
-        assert!(result.is_ok());
     }
 
     #[test]

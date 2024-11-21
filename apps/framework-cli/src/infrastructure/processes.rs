@@ -110,23 +110,13 @@ pub async fn execute_changes(
                 process_registry.functions.stop(before).await?;
                 process_registry.functions.start(after)?;
             }
-            ProcessChange::OlapProcess(Change::Added(olap_process)) => {
-                log::info!("Starting Aggregation process: {:?}", olap_process.id());
-                process_registry.aggregations.start(olap_process)?;
-                process_registry.blocks.start(olap_process)?;
-            }
-            ProcessChange::OlapProcess(Change::Removed(olap_process)) => {
-                log::info!("Stopping Aggregation process: {:?}", olap_process.id());
-                process_registry.aggregations.stop(olap_process).await?;
-                process_registry.blocks.stop(olap_process).await?;
-            }
-            ProcessChange::OlapProcess(Change::Updated { before, after }) => {
-                log::info!("Updating Aggregation process: {:?}", before.id());
-                process_registry.aggregations.stop(before).await?;
-                process_registry.blocks.stop(before).await?;
-                process_registry.aggregations.start(after)?;
-                process_registry.blocks.start(after)?;
-            }
+            // Olap process changes are conditional on the leader moose instance
+            ProcessChange::OlapProcess(Change::Added(_)) => {}
+            ProcessChange::OlapProcess(Change::Removed(_)) => {}
+            ProcessChange::OlapProcess(Change::Updated {
+                before: _,
+                after: _,
+            }) => {}
             ProcessChange::ConsumptionApiWebServer(Change::Added(_)) => {
                 log::info!("Starting Consumption webserver process");
                 process_registry.consumption.start()?;
@@ -143,6 +133,32 @@ pub async fn execute_changes(
                 process_registry.consumption.stop().await?;
                 process_registry.consumption.start()?;
             }
+        }
+    }
+
+    Ok(())
+}
+
+pub async fn execute_olap_changes(
+    process_registry: &mut ProcessRegistries,
+    olap_changes: &[ProcessChange],
+) -> Result<(), SyncProcessChangesError> {
+    for change in olap_changes.iter() {
+        match change {
+            ProcessChange::OlapProcess(Change::Added(olap_process)) => {
+                log::info!("Starting Blocks process: {:?}", olap_process.id());
+                process_registry.blocks.start(olap_process)?;
+            }
+            ProcessChange::OlapProcess(Change::Removed(olap_process)) => {
+                log::info!("Stopping Blocks process: {:?}", olap_process.id());
+                process_registry.blocks.stop(olap_process).await?;
+            }
+            ProcessChange::OlapProcess(Change::Updated { before, after }) => {
+                log::info!("Updating Blocks process: {:?}", before.id());
+                process_registry.blocks.stop(before).await?;
+                process_registry.blocks.start(after)?;
+            }
+            _ => {}
         }
     }
 

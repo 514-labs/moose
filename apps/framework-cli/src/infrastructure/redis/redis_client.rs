@@ -164,6 +164,7 @@ impl RedisClient {
     }
 
     pub async fn register_lock(&mut self, name: &str, ttl: i64) -> Result<()> {
+        info!("<RedisClient> Registering lock {}", name);
         let lock_key = self.service_prefix(&["lock"]);
         let lock = RedisLock { key: lock_key, ttl };
         self.locks.insert(name.to_string(), lock);
@@ -171,25 +172,15 @@ impl RedisClient {
     }
 
     pub async fn attempt_lock(&self, name: &str) -> Result<bool> {
+        info!("<RedisClient> Attempting to lock {}", name);
         if let Some(lock) = self.locks.get(name) {
-            let result: bool = self
-                .connection
-                .lock()
-                .await
+            let result = redis::pipe()
+                .atomic()
                 .set_nx(&lock.key, &self.instance_id)
+                .expire(&lock.key, lock.ttl)
+                .query_async::<_, bool>(&mut *self.connection.lock().await)
                 .await
                 .context("Failed to attempt lock")?;
-
-            if result {
-                let _: () = self
-                    .connection
-                    .lock()
-                    .await
-                    .expire(&lock.key, lock.ttl)
-                    .await
-                    .context("Failed to set expiration on lock")?;
-            }
-
             Ok(result)
         } else {
             Err(anyhow::anyhow!("Lock not registered"))
@@ -213,6 +204,7 @@ impl RedisClient {
     }
 
     pub async fn release_lock(&self, name: &str) -> Result<()> {
+        info!("<RedisClient> Releasing lock {}", name);
         if let Some(lock) = self.locks.get(name) {
             let script = Script::new(
                 r"
@@ -233,6 +225,7 @@ impl RedisClient {
 
             Ok(())
         } else {
+            info!("<RedisClient> Unable to release {} lock", name);
             Err(anyhow::anyhow!("Lock not registered"))
         }
     }

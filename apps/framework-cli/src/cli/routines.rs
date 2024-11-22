@@ -297,9 +297,6 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
         .register_lock("leadership", 10)
         .await?;
 
-    // Start the leadership lock management task
-    start_leadership_lock_task(redis_client.clone(), project.clone());
-
     let redis_client_clone = redis_client.clone();
     let callback = Arc::new(move |message: String| {
         let redis_client = redis_client_clone.clone();
@@ -309,6 +306,9 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
             }
         });
     });
+
+    // Start the leadership lock management task
+    start_leadership_lock_task(redis_client.clone(), project.clone());
 
     redis_client
         .lock()
@@ -364,7 +364,11 @@ fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Ar
         loop {
             interval.tick().await;
             if let Err(e) = manage_leadership_lock(&redis_client, &project).await {
-                error!("Error managing leadership lock: {}", e);
+                if !e.to_string().contains("Failed to attempt lock") {
+                    // Failed to attempt lock is expected if we don't have the lock we'll retry by design
+                    // so if not that, log the error
+                    error!("<RedisClient> Error managing leadership lock: {}", e);
+                }
             }
         }
     });
@@ -387,21 +391,29 @@ async fn manage_leadership_lock(
         // We don't have the lock, try to acquire it
         let acquired_lock = {
             let client = redis_client.lock().await;
-            client.attempt_lock("leadership").await?
+            let result = client.attempt_lock("leadership").await?;
+            info!(
+                "<RedisClient> Lock for leadership attempt result: {}",
+                result
+            );
+            result
         };
         if acquired_lock {
-            info!("Obtained leadership lock, performing leadership tasks");
+            info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
 
             let project_clone = project.clone();
             tokio::spawn(async move {
                 if let Err(e) = leadership_tasks(project_clone).await {
-                    error!("Error executing leadership tasks: {}", e);
+                    error!("<RedisClient> Error executing leadership tasks: {}", e);
                 }
             });
 
             let mut client = redis_client.lock().await;
             if let Err(e) = client.broadcast_message("leader.new").await {
-                error!("Failed to broadcast new leader message: {}", e);
+                error!(
+                    "<RedisClient> Failed to broadcast new leader message: {}",
+                    e
+                );
             }
         }
     }

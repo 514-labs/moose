@@ -148,7 +148,7 @@ const MobileNav = ({ content }: { content: NavLink[] }) => {
 export const Nav = () => {
   const mooseNavLinks = [
     {
-      content: "Host with Boreal",
+      content: "Host with Boréal",
       href: "https://boreal.cloud",
       eventName: "nav-link",
       subject: "host with boreal",

@@ -32,9 +32,9 @@ export default function Home() {
       <DemoSection />
       <MooseValuePropSection />
       <PrimitivesCode />
+      <WhatIsMooseFor />
       <MooseIngressProp />
       <MooseEgressProp />
-      <WhatIsMooseFor />
       <SecondaryCTASection />
       <FooterSection />
     </main>

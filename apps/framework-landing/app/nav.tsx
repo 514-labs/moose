@@ -148,10 +148,16 @@ const MobileNav = ({ content }: { content: NavLink[] }) => {
 export const Nav = () => {
   const mooseNavLinks = [
     {
-      content: "Host with Boreal",
+      content: "Host with Boréal",
       href: "https://boreal.cloud",
       eventName: "nav-link",
       subject: "host with boreal",
+    },
+    {
+      content: "Docs",
+      href: "https://docs.getmoose.dev",
+      eventName: "nav-link",
+      subject: "moose docs",
     },
     {
       content: "GitHub",
@@ -161,7 +167,7 @@ export const Nav = () => {
     },
     {
       content: "Slack",
-      href: "https://join.slack.com/t/moose-community/shared_invite/zt-2345678901-23456789012345678901234567890123",
+      href: "https://join.slack.com/t/moose-community/shared_invite/zt-2ununhuzp-IyBVZtN42UEqnkPjQnjdfA",
       eventName: "nav-link",
       subject: "moose slack",
     },
@@ -172,10 +178,10 @@ export const Nav = () => {
       subject: "moose blog",
     },
     {
-      content: "Get Moose",
-      href: "https://docs.getmoose.dev",
+      content: "Get Started",
+      href: "https://docs.getmoose.dev/quickstart",
       eventName: "nav-link",
-      subject: "moose docs",
+      subject: "moose docs quickstart",
       emphasized: true,
     },
   ];

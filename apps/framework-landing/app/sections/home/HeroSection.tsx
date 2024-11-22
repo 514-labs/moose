@@ -7,7 +7,7 @@ export const HeroSection = ({ className }: { className?: string }) => {
   const content = {
     title: "Turn data into products. No tedium. Plumbing included.",
     description:
-      "Moose is a data engineering framework for Typescript or Python devs & AI agents that need to ship data-intensive products fast",
+      "Moose is an open-source data engineering framework for Typescript or Python devs & AI agents that need to ship data-intensive products fast",
     primaryCTA: "Get started",
     primaryCTAUrl: "https://docs.getmoose.dev/quickstart",
     secondaryCTA: "View Docs",
@@ -33,18 +33,6 @@ export const HeroSection = ({ className }: { className?: string }) => {
             size="lg"
           >
             {content.primaryCTA}
-          </TrackButton>
-        </Link>
-        <Link className="max-md:grow flex-1" href={content.secondaryCTAUrl}>
-          <TrackButton
-            name="hero-seconday-cta"
-            subject={content.secondaryCTA}
-            targetUrl={content.secondaryCTAUrl}
-            className="w-full"
-            size="lg"
-            variant="outline"
-          >
-            {content.secondaryCTA}
           </TrackButton>
         </Link>
       </div>

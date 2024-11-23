@@ -93,7 +93,7 @@ impl RedisClient {
         let instance_id = std::env::var("HOSTNAME").unwrap_or_else(|_| Uuid::new_v4().to_string());
 
         info!(
-            "Initializing Redis client for {} with instance ID: {}",
+            "<RedisClient> Initializing Redis client for {} with instance ID: {}",
             service_name, instance_id
         );
 
@@ -102,8 +102,8 @@ impl RedisClient {
             .query_async::<_, String>(&mut connection)
             .await
         {
-            Ok(response) => info!("Redis connection successful: {}", response),
-            Err(e) => error!("Redis connection failed: {}", e),
+            Ok(response) => info!("<RedisClient> Redis connection successful: {}", response),
+            Err(e) => error!("<RedisClient> Redis connection failed: {}", e),
         }
 
         let client = Self {
@@ -120,8 +120,8 @@ impl RedisClient {
 
         // Start the message listener as part of initialization
         match client.start_message_listener().await {
-            Ok(_) => info!("Successfully started message listener"),
-            Err(e) => error!("Failed to start message listener: {}", e),
+            Ok(_) => info!("<RedisClient> Successfully started message listener"),
+            Err(e) => error!("<RedisClient> Failed to start message listener: {}", e),
         }
 
         info!(
@@ -172,7 +172,6 @@ impl RedisClient {
     }
 
     pub async fn attempt_lock(&self, name: &str) -> Result<bool> {
-        info!("<RedisClient> Attempting to lock {}", name);
         if let Some(lock) = self.locks.get(name) {
             let result = redis::pipe()
                 .atomic()

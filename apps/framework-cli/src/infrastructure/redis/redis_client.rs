@@ -173,14 +173,28 @@ impl RedisClient {
 
     pub async fn attempt_lock(&self, name: &str) -> Result<bool> {
         if let Some(lock) = self.locks.get(name) {
-            let result = redis::pipe()
+            // Lock the connection for exclusive access
+            let mut conn = self.connection.lock().await;
+
+            // Execute the pipeline and capture the results
+            let (setnx_result, _): (i32, i32) = redis::pipe()
                 .atomic()
-                .set_nx(&lock.key, &self.instance_id)
-                .expire(&lock.key, lock.ttl)
-                .query_async::<_, bool>(&mut *self.connection.lock().await)
+                .cmd("SETNX")
+                .arg(&lock.key)
+                .arg(&self.instance_id)
+                .cmd("EXPIRE")
+                .arg(&lock.key)
+                .arg(lock.ttl)
+                .query_async(&mut *conn)
                 .await
                 .context("Failed to attempt lock")?;
-            Ok(result)
+
+            // Check if the lock was acquired
+            if setnx_result == 1 {
+                Ok(true)
+            } else {
+                Ok(false)
+            }
         } else {
             Err(anyhow::anyhow!("Lock not registered"))
         }

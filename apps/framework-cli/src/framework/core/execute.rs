@@ -92,7 +92,7 @@ pub async fn execute_initial_infra_change(
     {
         log::info!("Executing changes for leader instance");
 
-        processes::execute_olap_changes(&mut process_registries, &changes).await?;
+        processes::execute_leader_changes(&mut process_registries, &changes).await?;
 
         migration::execute_changes(project, &plan.changes.initial_data_loads, clickhouse_client)
             .await

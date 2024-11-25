@@ -38,6 +38,7 @@ pub enum SyncProcessChangesError {
 
 /// This method dispatches the execution of the changes to the right streaming engine.
 /// When we have multiple streams (Redpanda, RabbitMQ ...) this is where it goes.
+/// This method executes changes that are allowed on any instance.
 pub async fn execute_changes(
     syncing_registry: &mut SyncingProcessesRegistry,
     process_registry: &mut ProcessRegistries,
@@ -110,7 +111,7 @@ pub async fn execute_changes(
                 process_registry.functions.stop(before).await?;
                 process_registry.functions.start(after)?;
             }
-            // Olap process changes are conditional on the leader moose instance
+            // Olap process changes are conditional on the leader instance
             ProcessChange::OlapProcess(Change::Added(_)) => {}
             ProcessChange::OlapProcess(Change::Removed(_)) => {}
             ProcessChange::OlapProcess(Change::Updated {
@@ -139,11 +140,12 @@ pub async fn execute_changes(
     Ok(())
 }
 
-pub async fn execute_olap_changes(
+/// This method executes changes that are only allowed on the leader instance.
+pub async fn execute_leader_changes(
     process_registry: &mut ProcessRegistries,
-    olap_changes: &[ProcessChange],
+    changes: &[ProcessChange],
 ) -> Result<(), SyncProcessChangesError> {
-    for change in olap_changes.iter() {
+    for change in changes.iter() {
         match change {
             ProcessChange::OlapProcess(Change::Added(olap_process)) => {
                 log::info!("Starting Blocks process: {:?}", olap_process.id());

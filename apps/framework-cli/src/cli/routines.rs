@@ -144,6 +144,9 @@ mod util;
 pub mod validate;
 pub mod version;
 
+const LEADERSHIP_LOCK_RENEWAL_INTERVAL: u64 = 2;
+const LEADERSHIP_LOCK_TTL: u64 = LEADERSHIP_LOCK_RENEWAL_INTERVAL * 3; // best practice to set lock expiration to 2-3x the renewal interval
+
 #[derive(Debug, Clone)]
 #[must_use = "The message should be displayed."]
 pub struct RoutineSuccess {
@@ -294,7 +297,7 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
     redis_client
         .lock()
         .await
-        .register_lock("leadership", 10)
+        .register_lock("leadership", LEADERSHIP_LOCK_TTL as i64)
         .await?;
 
     let redis_client_clone = redis_client.clone();
@@ -360,7 +363,7 @@ async fn process_pubsub_message(
 
 fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Arc<Project>) {
     tokio::spawn(async move {
-        let mut interval = interval(Duration::from_secs(5)); // Adjust the interval as needed
+        let mut interval = interval(Duration::from_secs(LEADERSHIP_LOCK_RENEWAL_INTERVAL)); // Adjust the interval as needed
         loop {
             interval.tick().await;
             if let Err(e) = manage_leadership_lock(&redis_client, &project).await {
@@ -376,17 +379,7 @@ async fn manage_leadership_lock(
 ) -> Result<(), anyhow::Error> {
     let (has_lock, is_new_acquisition) = {
         let client = redis_client.lock().await;
-        let had_lock = client.has_lock("leadership").await?;
-
-        if had_lock {
-            // We have the lock, renew it
-            let renewed = client.renew_lock("leadership").await?;
-            (renewed, false)
-        } else {
-            // We don't have the lock, try to acquire it
-            let acquired = client.attempt_lock("leadership").await?;
-            (acquired, acquired) // If we acquired the lock, mark it as a new acquisition
-        }
+        client.check_and_renew_lock("leadership").await?
     };
 
     if has_lock && is_new_acquisition {

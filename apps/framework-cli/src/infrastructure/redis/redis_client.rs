@@ -173,28 +173,39 @@ impl RedisClient {
 
     pub async fn attempt_lock(&self, name: &str) -> Result<bool> {
         if let Some(lock) = self.locks.get(name) {
-            // Lock the connection for exclusive access
-            let mut conn = self.connection.lock().await;
+            // This script atomically:
+            // 1. Checks if the key exists
+            // 2. If it doesn't exist, sets it with our instance_id and TTL
+            // 3. If it does exist, checks if we own it
+            // 4. Returns 1 if we acquired/own the lock, 0 otherwise
+            let script = redis::Script::new(
+                r#"
+                local current = redis.call('GET', KEYS[1])
+                if current == false then
+                    -- Key doesn't exist, set it with our ID and TTL
+                    redis.call('SET', KEYS[1], ARGV[1])
+                    redis.call('EXPIRE', KEYS[1], ARGV[2])
+                    return 1
+                elseif current == ARGV[1] then
+                    -- We already own the lock
+                    redis.call('EXPIRE', KEYS[1], ARGV[2])
+                    return 1
+                else
+                    -- Someone else owns the lock
+                    return 0
+                end
+            "#,
+            );
 
-            // Execute the pipeline and capture the results
-            let (setnx_result, _): (i32, i32) = redis::pipe()
-                .atomic()
-                .cmd("SETNX")
-                .arg(&lock.key)
+            let result: i32 = script
+                .key(&lock.key)
                 .arg(&self.instance_id)
-                .cmd("EXPIRE")
-                .arg(&lock.key)
                 .arg(lock.ttl)
-                .query_async(&mut *conn)
+                .invoke_async(&mut *self.connection.lock().await)
                 .await
                 .context("Failed to attempt lock")?;
 
-            // Check if the lock was acquired
-            if setnx_result == 1 {
-                Ok(true)
-            } else {
-                Ok(false)
-            }
+            Ok(result == 1)
         } else {
             Err(anyhow::anyhow!("Lock not registered"))
         }
@@ -492,6 +503,41 @@ impl RedisClient {
         *self.listener_task.lock().await = Some(listener_task);
 
         Ok(())
+    }
+
+    pub async fn check_and_renew_lock(&self, name: &str) -> Result<(bool, bool)> {
+        if let Some(lock) = self.locks.get(name) {
+            let script = Script::new(
+                r#"
+                local current = redis.call('GET', KEYS[1])
+                if current == false then
+                    -- Key doesn't exist, acquire it
+                    redis.call('SET', KEYS[1], ARGV[1])
+                    redis.call('EXPIRE', KEYS[1], ARGV[2])
+                    return {1, 1}  -- has_lock=true, is_new=true
+                elseif current == ARGV[1] then
+                    -- We own it, renew it
+                    redis.call('EXPIRE', KEYS[1], ARGV[2])
+                    return {1, 0}  -- has_lock=true, is_new=false
+                else
+                    -- Someone else owns it
+                    return {0, 0}  -- has_lock=false, is_new=false
+                end
+            "#,
+            );
+
+            let result: Vec<i32> = script
+                .key(&lock.key)
+                .arg(&self.instance_id)
+                .arg(lock.ttl)
+                .invoke_async(&mut *self.connection.lock().await)
+                .await
+                .context("Failed to check and renew lock")?;
+
+            Ok((result[0] == 1, result[1] == 1))
+        } else {
+            Err(anyhow::anyhow!("Lock not registered"))
+        }
     }
 }
 

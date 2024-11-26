@@ -999,15 +999,23 @@ impl Webserver {
                         with_spinner("Stopping containers", || {
                              let _ = docker::stop_containers(&project);
                         }, true);
+                    } else {
+                        log::info!("Received sigint, waiting for in-flight requests to complete");
+                        tokio::time::sleep(Duration::from_secs(30)).await;
                     }
+
                     std::process::exit(0);
                 }
                 _ = sigterm.recv() => {
                     if !project.is_production {
                         with_spinner("Stopping containers", || {
                             let _ = docker::stop_containers(&project);
-                       }, true);
+                        }, true);
+                    } else {
+                        log::info!("Received sigterm, waiting for in-flight requests to complete");
+                        tokio::time::sleep(Duration::from_secs(30)).await;
                     }
+
                     std::process::exit(0);
                 }
                 listener_result = listener.accept() => {

@@ -1,3 +1,4 @@
+use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::metrics::MetricEvent;
 use reqwest::Client;
 use serde_json::json;
@@ -20,6 +21,7 @@ impl MetricsInserter {
     pub fn new(
         metric_labels: Option<serde_json::Map<String, serde_json::Value>>,
         metric_endpoints: Option<serde_json::Map<String, serde_json::Value>>,
+        redis_client: Option<Arc<Mutex<RedisClient>>>,
     ) -> Self {
         let buffer = Arc::new(Mutex::new(Vec::new()));
 
@@ -27,6 +29,7 @@ impl MetricsInserter {
             buffer.clone(),
             metric_labels.clone(),
             metric_endpoints.clone(),
+            redis_client.clone(),
         ));
 
         Self { buffer }
@@ -43,6 +46,7 @@ async fn flush(
     buffer: BatchEvents,
     metric_labels: Option<serde_json::Map<String, serde_json::Value>>,
     metric_endpoints: Option<serde_json::Map<String, serde_json::Value>>,
+    redis_client: Option<Arc<Mutex<RedisClient>>>,
 ) {
     let mut interval = time::interval(Duration::from_secs(MAX_FLUSH_INTERVAL_SECONDS));
     let client = Client::new();
@@ -157,7 +161,22 @@ async fn flush(
                 }
             };
 
-            let _ = client.post(route).json(&events).send().await;
+            if let Some(redis_client) = &redis_client {
+                let message = json!({
+                    "type": event_type,
+                    "events": events
+                });
+                if let Ok(events_json) = serde_json::to_string(&message) {
+                    redis_client
+                        .lock()
+                        .await
+                        .post_queue_message(&events_json, Some("metrics"))
+                        .await
+                        .ok();
+                }
+            } else {
+                let _ = client.post(route).json(&events).send().await;
+            }
         }
 
         buffer_owned.clear();

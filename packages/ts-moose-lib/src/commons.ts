@@ -1,7 +1,7 @@
-import { createClient } from "@clickhouse/client-web";
 import fs from "node:fs";
 import path from "node:path";
 import http from "http";
+import { createClient } from "@clickhouse/client";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
@@ -58,6 +58,7 @@ export const getClickhouseClient = ({
     username: username,
     password: password,
     database: database,
+    application: "moose",
   });
 };
 

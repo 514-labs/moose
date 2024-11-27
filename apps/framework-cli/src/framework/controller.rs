@@ -507,6 +507,7 @@ pub async fn set_up_topic_and_tables_and_route(
 
 #[allow(clippy::too_many_arguments)]
 pub async fn process_objects(
+    // old v1 code
     framework_objects: &HashMap<String, FrameworkObject>,
     previous_version: &Option<(String, HashMap<String, FrameworkObject>)>,
     project: Arc<Project>,
@@ -515,7 +516,7 @@ pub async fn process_objects(
     route_table: &mut HashMap<PathBuf, RouteMeta>,
     version: &str,
 ) -> anyhow::Result<()> {
-    let is_latest = version == project.cur_version();
+    let is_latest = version == project.cur_version().as_str();
 
     for (_, fo) in framework_objects.iter() {
         let ingest_route = schema_file_path_to_ingest_route(

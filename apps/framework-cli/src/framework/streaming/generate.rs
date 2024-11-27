@@ -167,10 +167,11 @@ fn get_import_path(data_model: Either<&DataModel, &str>, project: &Project) -> S
     }
 }
 fn get_data_model_import_path(data_model: &DataModel, project: &Project) -> String {
-    match data_model
-        .abs_file_path
-        .strip_prefix(project.old_version_location(&data_model.version).unwrap())
-    {
+    match data_model.abs_file_path.strip_prefix(
+        project
+            .old_version_location(data_model.version.as_str())
+            .unwrap(),
+    ) {
         Ok(relative_path) => match project.language {
             SupportedLanguages::Typescript => {
                 format!(
@@ -185,7 +186,7 @@ fn get_data_model_import_path(data_model: &DataModel, project: &Project) -> Stri
             ),
         },
         Err(_) => {
-            assert_eq!(data_model.version, project.cur_version());
+            assert_eq!(&data_model.version, project.cur_version());
             match project.language {
                 SupportedLanguages::Typescript => format!(
                     "datamodels/{}",
@@ -227,6 +228,7 @@ mod tests {
     use super::*;
     use crate::framework::core::infrastructure::table::Column;
     use crate::framework::languages::SupportedLanguages;
+    use crate::framework::versions::Version;
     use crate::project::python_project::PythonProject;
     use crate::project::{LanguageProjectConfig, Project};
     use lazy_static::lazy_static;
@@ -279,7 +281,7 @@ export default function run(source: Foo): Bar | null {
                 name: "UserActivity".to_string(),
                 config: Default::default(),
                 abs_file_path: PROJECT.data_models_dir().join("models.ts"),
-                version: "0.0".to_string(),
+                version: Version::from_string("0.0".to_string()),
             }),
             Either::Left(&DataModel {
                 columns: to_columns(vec![
@@ -291,7 +293,7 @@ export default function run(source: Foo): Bar | null {
                 name: "ParsedActivity".to_string(),
                 config: Default::default(),
                 abs_file_path: PROJECT.data_models_dir().join("models.ts"),
-                version: "0.0".to_string(),
+                version: Version::from_string("0.0".to_string()),
             }),
         );
 
@@ -323,7 +325,7 @@ export default function run(source: UserActivity): ParsedActivity | null {
         let mut project = PROJECT.clone();
         match project.language_project_config {
             LanguageProjectConfig::Typescript(ref mut t) => {
-                t.version = "0.1".to_string();
+                t.version = Version::from_string("0.1".to_string());
             }
             LanguageProjectConfig::Python(_) => {}
         }
@@ -343,7 +345,7 @@ export default function run(source: UserActivity): ParsedActivity | null {
                     .old_version_location("0.0")
                     .unwrap()
                     .join("models.ts"),
-                version: "0.0".to_string(),
+                version: Version::from_string("0.0".to_string()),
             }),
             Either::Left(&DataModel {
                 columns: to_columns(vec![
@@ -356,7 +358,7 @@ export default function run(source: UserActivity): ParsedActivity | null {
                 name: "UserActivity".to_string(),
                 config: Default::default(),
                 abs_file_path: project.data_models_dir().join("models.ts"),
-                version: "0.1".to_string(),
+                version: Version::from_string("0.1".to_string()),
             }),
         );
 
@@ -383,7 +385,7 @@ export default function run(source: UserActivityOld): UserActivity | null {
         let mut project = PROJECT.clone();
         project.language_project_config = LanguageProjectConfig::Python(PythonProject {
             name: "test".to_string(),
-            version: "0.1".to_string(),
+            version: Version::from_string("0.1".to_string()),
             dependencies: vec![],
         });
         project.language = SupportedLanguages::Python;
@@ -403,7 +405,7 @@ export default function run(source: UserActivityOld): UserActivity | null {
                     .old_version_location("0.0")
                     .unwrap()
                     .join("models.ts"),
-                version: "0.0".to_string(),
+                version: Version::from_string("0.0".to_string()),
             }),
             Either::Left(&DataModel {
                 columns: to_columns(vec![
@@ -416,7 +418,7 @@ export default function run(source: UserActivityOld): UserActivity | null {
                 name: "UserActivity".to_string(),
                 config: Default::default(),
                 abs_file_path: project.data_models_dir().join("models.ts"),
-                version: "0.1".to_string(),
+                version: Version::from_string("0.1".to_string()),
             }),
         );
 

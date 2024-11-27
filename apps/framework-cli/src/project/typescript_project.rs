@@ -1,9 +1,9 @@
 use std::{collections::HashMap, path::Path};
 
+use crate::framework::versions::Version;
+use crate::utilities::constants::PACKAGE_JSON;
 use config::{Config, ConfigError, File};
 use serde::{Deserialize, Serialize};
-
-use crate::utilities::constants::PACKAGE_JSON;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to create or delete project files")]
@@ -17,7 +17,7 @@ pub enum TSProjectFileError {
 #[serde(rename_all = "camelCase")]
 pub struct TypescriptProject {
     pub name: String,
-    pub version: String,
+    pub version: Version,
     pub scripts: HashMap<String, String>,
     pub dependencies: HashMap<String, String>,
     pub dev_dependencies: HashMap<String, String>,
@@ -27,7 +27,7 @@ impl Default for TypescriptProject {
     fn default() -> Self {
         Self {
             name: "new_project".to_string(),
-            version: "0.0".to_string(),
+            version: Version::from_string("0.0".to_string()),
             // For local development of the CLI,
             // change `moose-cli` to `<REPO_PATH>/target/debug/moose-cli`
             scripts: HashMap::from([

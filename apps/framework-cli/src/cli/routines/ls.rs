@@ -27,7 +27,7 @@ pub async fn list_db(
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let target_version = version
         .clone()
-        .unwrap_or_else(|| project.cur_version().to_owned());
+        .unwrap_or_else(|| project.cur_version().to_string());
 
     let mut output_table = if features.core_v2 {
         let pool = get_pool(&project.clickhouse_config);
@@ -63,7 +63,7 @@ pub async fn list_db(
             .api_endpoints
             .values()
             .filter_map(|endpoint| {
-                if endpoint.version == project.cur_version() {
+                if &endpoint.version == project.cur_version() {
                     Some((
                         endpoint.name.clone(),
                         vec![

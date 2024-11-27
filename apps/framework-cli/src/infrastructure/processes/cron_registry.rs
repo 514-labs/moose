@@ -8,10 +8,18 @@ use std::collections::HashSet;
 use std::env;
 use std::path::Path;
 use std::process::Command;
+use std::str::FromStr;
 use std::sync::Arc;
+use std::time::{SystemTime, UNIX_EPOCH};
 use thiserror::Error;
 use tokio::sync::Mutex;
 use tokio_cron_scheduler::{Job, JobScheduler};
+
+// here we use the cron crate to parse the cron expression.
+// The tokio_cron_scheduler is a wrapper around the cron
+// crate that allows for scheduling jobs but doesn't directly
+//expose the cron parsing functionality.
+use cron::Schedule;
 
 #[derive(Error, Debug)]
 pub enum CronError {
@@ -27,10 +35,24 @@ pub struct CronJob {
     url: Option<String>,
 }
 
+#[derive(Debug, Clone)]
+pub struct CronMetric {
+    pub job_id: String,
+    pub run_id: u32,
+    pub timestamp: u64,
+    pub last_run: u64,
+    pub next_run: u64,
+    pub success: bool,
+    pub error_message: Option<String>,
+    pub error_code: Option<i32>,
+    pub elapsed_time: u64,
+}
+
 pub struct CronRegistry {
     scheduler: Arc<Mutex<JobScheduler>>,
     registered_jobs: Arc<Mutex<HashSet<String>>>,
     jobs_registered: Arc<Mutex<bool>>,
+    metrics: Arc<Mutex<Vec<CronMetric>>>,
 }
 
 impl CronRegistry {
@@ -41,6 +63,7 @@ impl CronRegistry {
             scheduler: Arc::new(Mutex::new(scheduler)),
             registered_jobs: Arc::new(Mutex::new(HashSet::new())),
             jobs_registered: Arc::new(Mutex::new(false)),
+            metrics: Arc::new(Mutex::new(Vec::new())),
         })
     }
 
@@ -111,7 +134,17 @@ impl CronRegistry {
             }
 
             let project_path_clone = project_path.clone();
+            let metrics = self.metrics.clone();
+            let job_id_for_metric = job_id.clone();
+
+            let cron_spec_clone = cron_spec.clone();
             self.add_job(&cron_spec, move || {
+                let metrics = metrics.clone();
+                let mut success = true;
+                let mut error_msg = None;
+                let mut error_code = None;
+                let start_time = SystemTime::now();
+
                 if let Some(ref path) = script_path {
                     // Execute the script based on file extension
                     let extension = Path::new(path)
@@ -155,10 +188,20 @@ impl CronRegistry {
                                 error!("<cron> Script stderr\n{}", stderr);
                             }
                             if !output.status.success() {
-                                error!("<cron> Script exited with status:\n {}", output.status);
+                                success = false;
+                                error_code = output.status.code();
+                                error_msg = Some(format!(
+                                    "Script exited with status code {}",
+                                    error_code.unwrap()
+                                ));
+                                error!("<cron> {}", error_msg.as_ref().unwrap());
                             }
                         }
-                        Err(e) => error!("<cron> Failed to execute script: {}", e),
+                        Err(e) => {
+                            success = false;
+                            error_msg = Some(e.to_string());
+                            error!("<cron> Failed to execute script: {}", e);
+                        }
                     }
                 } else if let Some(ref url) = url.clone() {
                     info!("<cron> Calling URL: {}", url);
@@ -172,6 +215,49 @@ impl CronRegistry {
                         }
                     });
                 }
+
+                // Record metrics
+                let timestamp = SystemTime::now()
+                    .duration_since(UNIX_EPOCH)
+                    .unwrap()
+                    .as_secs();
+
+                // Calculate next run using the cron expression
+                let schedule = Schedule::from_str(&cron_spec_clone)
+                    .map_err(|e| format!("Invalid cron expression: {}", e))?;
+                let next_run = schedule.upcoming(chrono::Utc).next().unwrap().timestamp() as u64;
+
+                let elapsed_time = SystemTime::now()
+                    .duration_since(start_time)
+                    .unwrap_or_default()
+                    .as_millis() as u64;
+
+                let metric = CronMetric {
+                    job_id: job_id_for_metric.clone(),
+                    run_id: (timestamp % 100_000) as u32,
+                    last_run: timestamp,
+                    next_run,
+                    timestamp,
+                    success,
+                    error_message: error_msg,
+                    error_code,
+                    elapsed_time,
+                };
+
+                info!(
+                    "<cron> Metrics for job {}: success={}, elapsed={}ms, next_run={}, error={:?}",
+                    metric.job_id,
+                    metric.success,
+                    metric.elapsed_time,
+                    metric.next_run,
+                    metric.error_message
+                );
+
+                tokio::spawn(async move {
+                    let mut metrics = metrics.lock().await;
+                    metrics.push(metric);
+                });
+
                 Ok(())
             })
             .await?;
@@ -184,5 +270,7 @@ impl CronRegistry {
         Ok(())
     }
 
-    // Remove the load_jobs function as it's no longer needed
+    pub async fn get_metrics(&self) -> Vec<CronMetric> {
+        self.metrics.lock().await.clone()
+    }
 }

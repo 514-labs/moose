@@ -93,7 +93,7 @@ impl RedisClient {
         let instance_id = std::env::var("HOSTNAME").unwrap_or_else(|_| Uuid::new_v4().to_string());
 
         info!(
-            "Initializing Redis client for {} with instance ID: {}",
+            "<RedisClient> Initializing Redis client for {} with instance ID: {}",
             service_name, instance_id
         );
 
@@ -102,8 +102,8 @@ impl RedisClient {
             .query_async::<_, String>(&mut connection)
             .await
         {
-            Ok(response) => info!("Redis connection successful: {}", response),
-            Err(e) => error!("Redis connection failed: {}", e),
+            Ok(response) => info!("<RedisClient> Redis connection successful: {}", response),
+            Err(e) => error!("<RedisClient> Redis connection failed: {}", e),
         }
 
         let client = Self {
@@ -120,8 +120,8 @@ impl RedisClient {
 
         // Start the message listener as part of initialization
         match client.start_message_listener().await {
-            Ok(_) => info!("Successfully started message listener"),
-            Err(e) => error!("Failed to start message listener: {}", e),
+            Ok(_) => info!("<RedisClient> Successfully started message listener"),
+            Err(e) => error!("<RedisClient> Failed to start message listener: {}", e),
         }
 
         info!(
@@ -164,6 +164,7 @@ impl RedisClient {
     }
 
     pub async fn register_lock(&mut self, name: &str, ttl: i64) -> Result<()> {
+        info!("<RedisClient> Registering lock {}", name);
         let lock_key = self.service_prefix(&["lock"]);
         let lock = RedisLock { key: lock_key, ttl };
         self.locks.insert(name.to_string(), lock);
@@ -172,25 +173,39 @@ impl RedisClient {
 
     pub async fn attempt_lock(&self, name: &str) -> Result<bool> {
         if let Some(lock) = self.locks.get(name) {
-            let result: bool = self
-                .connection
-                .lock()
-                .await
-                .set_nx(&lock.key, &self.instance_id)
+            // This script atomically:
+            // 1. Checks if the key exists
+            // 2. If it doesn't exist, sets it with our instance_id and TTL
+            // 3. If it does exist, checks if we own it
+            // 4. Returns 1 if we acquired/own the lock, 0 otherwise
+            let script = redis::Script::new(
+                r#"
+                local current = redis.call('GET', KEYS[1])
+                if current == false then
+                    -- Key doesn't exist, set it with our ID and TTL
+                    redis.call('SET', KEYS[1], ARGV[1])
+                    redis.call('EXPIRE', KEYS[1], ARGV[2])
+                    return 1
+                elseif current == ARGV[1] then
+                    -- We already own the lock
+                    redis.call('EXPIRE', KEYS[1], ARGV[2])
+                    return 1
+                else
+                    -- Someone else owns the lock
+                    return 0
+                end
+            "#,
+            );
+
+            let result: i32 = script
+                .key(&lock.key)
+                .arg(&self.instance_id)
+                .arg(lock.ttl)
+                .invoke_async(&mut *self.connection.lock().await)
                 .await
                 .context("Failed to attempt lock")?;
 
-            if result {
-                let _: () = self
-                    .connection
-                    .lock()
-                    .await
-                    .expire(&lock.key, lock.ttl)
-                    .await
-                    .context("Failed to set expiration on lock")?;
-            }
-
-            Ok(result)
+            Ok(result == 1)
         } else {
             Err(anyhow::anyhow!("Lock not registered"))
         }
@@ -213,6 +228,7 @@ impl RedisClient {
     }
 
     pub async fn release_lock(&self, name: &str) -> Result<()> {
+        info!("<RedisClient> Releasing lock {}", name);
         if let Some(lock) = self.locks.get(name) {
             let script = Script::new(
                 r"
@@ -233,6 +249,7 @@ impl RedisClient {
 
             Ok(())
         } else {
+            info!("<RedisClient> Unable to release {} lock", name);
             Err(anyhow::anyhow!("Lock not registered"))
         }
     }
@@ -247,7 +264,7 @@ impl RedisClient {
                 .await
                 .context("Failed to check lock")?;
 
-            Ok(value == Some(self.instance_id.clone()))
+            Ok(value.is_some_and(|id| id == self.instance_id))
         } else {
             Err(anyhow::anyhow!("Lock not registered"))
         }
@@ -289,9 +306,15 @@ impl RedisClient {
         Ok(())
     }
 
-    pub async fn get_queue_message(&self) -> Result<Option<String>> {
-        let source_queue = self.service_prefix(&["mqrecieved"]);
-        let destination_queue = self.service_prefix(&["mqprocess"]);
+    pub async fn get_queue_message(&self, feature_name: Option<&str>) -> Result<Option<String>> {
+        let source_queue = match feature_name {
+            Some(name) => self.service_prefix(&[name, "mqrecieved"]),
+            None => self.service_prefix(&["mqrecieved"]),
+        };
+        let destination_queue = match feature_name {
+            Some(name) => self.service_prefix(&[name, "mqprocess"]),
+            None => self.service_prefix(&["mqprocess"]),
+        };
         self.connection
             .lock()
             .await
@@ -300,8 +323,15 @@ impl RedisClient {
             .context("Failed to get queue message")
     }
 
-    pub async fn post_queue_message(&self, message: &str) -> Result<()> {
-        let queue = self.service_prefix(&["mqrecieved"]);
+    pub async fn post_queue_message(
+        &self,
+        message: &str,
+        feature_name: Option<&str>,
+    ) -> Result<()> {
+        let queue = match feature_name {
+            Some(name) => self.service_prefix(&[name, "mqrecieved"]),
+            None => self.service_prefix(&["mqrecieved"]),
+        };
         let _: () = self
             .connection
             .lock()
@@ -312,9 +342,20 @@ impl RedisClient {
         Ok(())
     }
 
-    pub async fn mark_queue_message(&mut self, message: &str, success: bool) -> Result<()> {
-        let in_progress_queue = self.service_prefix(&["mqprocess"]);
-        let incomplete_queue = self.service_prefix(&["mqincomplete"]);
+    pub async fn mark_queue_message(
+        &mut self,
+        message: &str,
+        success: bool,
+        feature_name: Option<&str>,
+    ) -> Result<()> {
+        let in_progress_queue = match feature_name {
+            Some(name) => self.service_prefix(&[name, "mqprocess"]),
+            None => self.service_prefix(&["mqprocess"]),
+        };
+        let incomplete_queue = match feature_name {
+            Some(name) => self.service_prefix(&[name, "mqincomplete"]),
+            None => self.service_prefix(&["mqincomplete"]),
+        };
 
         if success {
             let _: () = self
@@ -393,7 +434,7 @@ impl RedisClient {
             .push(Arc::new(move |message: String| {
                 let callback = Arc::clone(&callback);
                 Box::pin(async move {
-                    (callback)(message);
+                    callback(message);
                 }) as Pin<Box<dyn Future<Output = ()> + Send>>
             }));
     }
@@ -462,6 +503,41 @@ impl RedisClient {
         *self.listener_task.lock().await = Some(listener_task);
 
         Ok(())
+    }
+
+    pub async fn check_and_renew_lock(&self, name: &str) -> Result<(bool, bool)> {
+        if let Some(lock) = self.locks.get(name) {
+            let script = Script::new(
+                r#"
+                local current = redis.call('GET', KEYS[1])
+                if current == false then
+                    -- Key doesn't exist, acquire it
+                    redis.call('SET', KEYS[1], ARGV[1])
+                    redis.call('EXPIRE', KEYS[1], ARGV[2])
+                    return {1, 1}  -- has_lock=true, is_new=true
+                elseif current == ARGV[1] then
+                    -- We own it, renew it
+                    redis.call('EXPIRE', KEYS[1], ARGV[2])
+                    return {1, 0}  -- has_lock=true, is_new=false
+                else
+                    -- Someone else owns it
+                    return {0, 0}  -- has_lock=false, is_new=false
+                end
+            "#,
+            );
+
+            let result: Vec<i32> = script
+                .key(&lock.key)
+                .arg(&self.instance_id)
+                .arg(lock.ttl)
+                .invoke_async(&mut *self.connection.lock().await)
+                .await
+                .context("Failed to check and renew lock")?;
+
+            Ok((result[0] == 1, result[1] == 1))
+        } else {
+            Err(anyhow::anyhow!("Lock not registered"))
+        }
     }
 }
 

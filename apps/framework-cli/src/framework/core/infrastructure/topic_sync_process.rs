@@ -7,6 +7,7 @@ use super::{
 };
 use crate::framework::core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes};
 use crate::framework::streaming::model::StreamingFunction;
+use crate::framework::versions::Version;
 use crate::proto::infrastructure_map::{
     TopicToTableSyncProcess as ProtoTopicToTableSyncProcess,
     TopicToTopicSyncProcess as ProtoTopicToTopicSyncProcess,
@@ -19,7 +20,7 @@ pub struct TopicToTableSyncProcess {
 
     pub columns: Vec<Column>,
 
-    pub version: String,
+    pub version: Version,
     pub source_primitive: PrimitiveSignature,
 }
 
@@ -52,7 +53,7 @@ impl TopicToTableSyncProcess {
             "{}_{}_{}",
             self.source_topic_id,
             self.target_table_id,
-            self.version.replace('.', "_")
+            self.version.as_suffix()
         )
     }
 
@@ -75,7 +76,7 @@ impl TopicToTableSyncProcess {
             source_topic_id: self.source_topic_id.clone(),
             target_table_id: self.target_table_id.clone(),
             columns: self.columns.iter().map(|c| c.to_proto()).collect(),
-            version: self.version.clone(),
+            version: self.version.to_string(),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
             special_fields: Default::default(),
         }

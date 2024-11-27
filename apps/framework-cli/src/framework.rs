@@ -7,7 +7,6 @@ pub mod controller;
 pub mod core;
 pub mod data_model;
 pub mod languages;
-pub mod prisma;
 pub mod python;
 pub mod sdk;
 pub mod streaming;

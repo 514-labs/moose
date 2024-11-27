@@ -64,7 +64,7 @@ pub fn run_containers(project: &Project) -> Result<RoutineSuccess, RoutineFailur
 
 pub fn copy_old_schema(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
     for (version, commit_hash) in project.supported_old_versions.iter() {
-        let dest = project.old_version_location(version).unwrap();
+        let dest = project.old_version_location(version.as_str()).unwrap();
 
         fs::create_dir_all(dest.clone()).map_err(|err| {
             RoutineFailure::new(

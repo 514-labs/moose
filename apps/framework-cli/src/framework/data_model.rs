@@ -41,13 +41,13 @@ impl DuplicateModelError {
         versions: &mut HashMap<String, DataModel>,
         dm: DataModel,
     ) -> Result<(), Self> {
-        let maybe_existing = versions.insert(dm.version.clone(), dm);
+        let maybe_existing = versions.insert(dm.version.to_string(), dm);
         match maybe_existing {
             None => Ok(()),
             Some(other_dm) => Err(DuplicateModelError {
                 model_name: other_dm.name,
                 file_path: versions
-                    .get(&other_dm.version)
+                    .get(other_dm.version.as_str())
                     .unwrap()
                     .abs_file_path
                     .clone(),
@@ -73,7 +73,7 @@ impl std::error::Error for DuplicateModelError {}
 
 pub fn is_schema_file(path: &Path) -> bool {
     path.extension()
-        .map(|extension| extension == "prisma" || extension == "ts" || extension == "py")
+        .map(|extension| extension == "ts" || extension == "py")
         .unwrap_or(false)
         // TODO: There's logic that looks at version history which may have
         // .generated.ts files. Those files need to be ignored. We don't have

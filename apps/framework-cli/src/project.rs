@@ -36,7 +36,7 @@ use crate::framework::typescript::templates::{
 use crate::framework::typescript::templates::{
     VSCODE_EXTENSIONS_TEMPLATE, VSCODE_SETTINGS_TEMPLATE,
 };
-use crate::framework::versions::sort_versions;
+use crate::framework::versions::Version;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::processes::cron_registry::CronJob;
 use crate::infrastructure::redis::redis_client::RedisConfig;
@@ -44,6 +44,7 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
 use crate::project::typescript_project::TypescriptProject;
 use config::{Config, ConfigError, Environment, File};
+use itertools::Itertools;
 use log::debug;
 use python_project::PythonProject;
 use serde::Deserialize;
@@ -114,7 +115,7 @@ pub struct Project {
     pub is_production: bool,
 
     #[serde(default = "HashMap::new")]
-    pub supported_old_versions: HashMap<String, String>,
+    pub supported_old_versions: HashMap<Version, String>,
     #[serde(default)]
     pub jwt: Option<JwtConfig>,
 
@@ -134,7 +135,7 @@ pub struct JwtConfig {
 }
 
 pub struct AggregationSet {
-    pub current_version: String,
+    pub current_version: Version,
     pub names: HashSet<String>,
 }
 
@@ -419,7 +420,7 @@ impl Project {
 
     // Will start to be more useful when we version more than just the data models
     pub fn versioned_data_model_dir(&self, version: &str) -> Result<PathBuf, ProjectFileError> {
-        if version == self.cur_version() {
+        if version == self.cur_version().as_str() {
             Ok(self.data_models_dir())
         } else {
             Ok(self.old_version_location(version)?)
@@ -553,15 +554,19 @@ impl Project {
         Ok(())
     }
 
-    pub fn cur_version(&self) -> &str {
+    pub fn cur_version(&self) -> &Version {
         match &self.language_project_config {
             LanguageProjectConfig::Typescript(package_json) => &package_json.version,
-            LanguageProjectConfig::Python(package_json) => &package_json.version,
+            LanguageProjectConfig::Python(proj) => &proj.version,
         }
     }
 
     pub fn old_versions_sorted(&self) -> Vec<String> {
-        sort_versions(self.supported_old_versions.keys())
+        self.supported_old_versions
+            .keys()
+            .sorted()
+            .map(|v| v.to_string())
+            .collect()
     }
 
     pub fn versions(&self) -> Vec<String> {

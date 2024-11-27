@@ -52,6 +52,7 @@ use crate::{
 };
 
 async fn process_data_models_changes(
+    // old v1 code
     project: Arc<Project>,
     paths: HashSet<PathBuf>,
     framework_object_versions: &mut FrameworkObjectVersions,
@@ -97,7 +98,7 @@ async fn process_data_models_changes(
             let obj_in_new_file = get_framework_objects_from_schema_file(
                 &project,
                 &path,
-                project.cur_version(),
+                project.cur_version().as_str(),
                 &aggregations,
             )
             .await?;
@@ -284,10 +285,7 @@ impl EventBuckets {
             | EventKind::Other => {}
         };
         for path in event.paths {
-            if !path.ext_is_supported_lang() &&
-                // todo: remove this extension when we drop prisma support
-                !path.extension().is_some_and(|ext| ext == "prisma")
-            {
+            if !path.ext_is_supported_lang() {
                 continue;
             }
 
@@ -359,7 +357,8 @@ async fn watch(
         sleep(Duration::from_secs(1)).await;
         let bucketed_events = receiver_ack.send_replace(EventBuckets::default());
         rx.mark_unchanged();
-        // so that updates done between receiver_ack.send_replace and rx.mark_unchanged is not lost
+        // so that updates done between receiver_ack.send_replace and rx.mark_unchanged
+        // can be picked up the next rx.changed call
         if !rx.borrow().is_empty() {
             rx.mark_changed();
         }

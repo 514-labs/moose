@@ -23,7 +23,7 @@ pub async fn get_all_current_streaming_functions(
     data_models: &DataModelSet,
 ) -> Result<Vec<StreamingFunction>, FunctionError> {
     let functions_path = project.streaming_func_dir();
-    get_all_streaming_functions(data_models, project.cur_version(), &functions_path).await
+    get_all_streaming_functions(data_models, project.cur_version().as_str(), &functions_path).await
 }
 
 pub fn parse_streaming_function(file_name_no_extension: &str) -> Option<(&str, Option<&str>)> {

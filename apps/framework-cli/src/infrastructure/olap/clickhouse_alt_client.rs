@@ -193,11 +193,11 @@ fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
     }
 }
 
-pub async fn select_all_as_json<'a>(
+async fn select_as_json<'a>(
     db_name: &str,
     table: &'a ClickHouseTable,
     client: &'a mut ClientHandle,
-    offset: i64,
+    limit_offset_clause: &str,
 ) -> Result<BoxStream<'a, Result<Value, clickhouse_rs::errors::Error>>, clickhouse_rs::errors::Error>
 {
     let enum_mapping: Vec<Option<Vec<&str>>> = table
@@ -217,22 +217,44 @@ pub async fn select_all_as_json<'a>(
             }
         })
         .collect::<Vec<_>>();
+
     let order_by = if key_columns.is_empty() {
         "".to_string()
     } else {
         format!("ORDER BY {}", key_columns.join(", "))
     };
+
     let query = &format!(
-        "select * from \"{}\".\"{}\" {} offset {}",
-        db_name, table.name, order_by, offset
+        "select * from \"{}\".\"{}\" {} {}",
+        db_name, table.name, order_by, limit_offset_clause
     );
-    info!("<DCM> Initial data load query: {}", query);
+    info!("select_as_json query: {}", query);
     let stream = client
         .query(query)
         .stream()
         .map(move |row| row_to_json(&row?, &enum_mapping));
-    info!("<DCM> Got initial data load stream.");
+    info!("select_as_json got data load stream.");
     Ok(Box::pin(stream))
+}
+
+pub async fn select_all_as_json<'a>(
+    db_name: &str,
+    table: &'a ClickHouseTable,
+    client: &'a mut ClientHandle,
+    offset: i64,
+) -> Result<BoxStream<'a, Result<Value, clickhouse_rs::errors::Error>>, clickhouse_rs::errors::Error>
+{
+    select_as_json(db_name, table, client, &format!("offset {}", offset)).await
+}
+
+pub async fn select_some_as_json<'a>(
+    db_name: &str,
+    table: &'a ClickHouseTable,
+    client: &'a mut ClientHandle,
+    limit: i64,
+) -> Result<BoxStream<'a, Result<Value, clickhouse_rs::errors::Error>>, clickhouse_rs::errors::Error>
+{
+    select_as_json(db_name, table, client, &format!("limit {}", limit)).await
 }
 
 async fn create_state_table(

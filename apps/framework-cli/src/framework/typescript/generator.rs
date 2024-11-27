@@ -334,9 +334,12 @@ pub fn generate_sdk(
             (current_version_ts_objects, enums)
         }
         Either::Right(primitive_map) => {
-            let current_version_ts_objects =
-                collect_ts_objects_from_primitive_map(primitive_map, project.cur_version())?;
-            let enums = collect_enums_from_primitive_map(primitive_map, project.cur_version());
+            let current_version_ts_objects = collect_ts_objects_from_primitive_map(
+                primitive_map,
+                project.cur_version().as_str(),
+            )?;
+            let enums =
+                collect_enums_from_primitive_map(primitive_map, project.cur_version().as_str());
             (current_version_ts_objects, enums)
         }
     };
@@ -356,7 +359,7 @@ pub fn generate_sdk(
     }
 
     let index_code = typescript::templates::render_ingest_client(
-        project.cur_version(),
+        project.cur_version().as_str(),
         &current_version_ts_objects,
     )?;
     fs::write(sdk_dir.join("index.ts"), index_code)?;
@@ -379,7 +382,7 @@ pub fn generate_sdk(
             Either::Left(framework_object_versions) => {
                 let models = match framework_object_versions
                     .previous_version_models
-                    .get(version)
+                    .get(version.as_str())
                 {
                     None => continue,
                     Some(models) => models,
@@ -391,8 +394,8 @@ pub fn generate_sdk(
             }
             Either::Right(primitive_map) => {
                 let current_version_ts_objects =
-                    collect_ts_objects_from_primitive_map(primitive_map, version)?;
-                let enums = collect_enums_from_primitive_map(primitive_map, version);
+                    collect_ts_objects_from_primitive_map(primitive_map, version.as_str())?;
+                let enums = collect_enums_from_primitive_map(primitive_map, version.as_str());
                 if current_version_ts_objects.is_empty() {
                     continue;
                 }
@@ -400,7 +403,7 @@ pub fn generate_sdk(
             }
         };
 
-        let version_dir = sdk_dir.join(version);
+        let version_dir = sdk_dir.join(version.as_str());
         fs::create_dir_all(&version_dir)?;
 
         if !version_enums.is_empty() {
@@ -408,7 +411,8 @@ pub fn generate_sdk(
             fs::write(version_dir.join("enums.ts"), enums_code)?;
         }
 
-        let client_code = typescript::templates::render_ingest_client(version, &ts_objects)?;
+        let client_code =
+            typescript::templates::render_ingest_client(version.as_str(), &ts_objects)?;
         fs::write(version_dir.join("index.ts"), client_code)?;
 
         for obj in ts_objects.iter() {
@@ -428,7 +432,7 @@ fn collect_ts_objects_from_primitive_map(
 ) -> Result<Vec<TypescriptObjects>, TypescriptGeneratorError> {
     primitive_map
         .data_models_iter()
-        .filter(|model| model.version == version)
+        .filter(|model| model.version.as_str() == version)
         .map(|model| {
             std_table_to_typescript_interface(model.to_table(), &model.name)
                 .map(TypescriptObjects::new)
@@ -442,7 +446,7 @@ fn collect_enums_from_primitive_map(
 ) -> HashSet<TSEnum> {
     primitive_map
         .data_models_iter()
-        .filter(|model| model.version == version)
+        .filter(|model| model.version.as_str() == version)
         .flat_map(|model| {
             model.columns.iter().filter_map(|column| {
                 if let ColumnType::Enum(enum_type) = &column.data_type {

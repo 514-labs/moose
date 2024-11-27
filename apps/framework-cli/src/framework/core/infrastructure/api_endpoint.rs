@@ -2,13 +2,13 @@ use protobuf::{EnumOrUnknown, MessageField};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+use super::{topic::Topic, DataLineage, InfrastructureSignature};
+use crate::framework::versions::Version;
 use crate::framework::{
     consumption::model::EndpointFile,
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
     data_model::{config::EndpointIngestionFormat, model::DataModel},
 };
-
-use super::{topic::Topic, DataLineage, InfrastructureSignature};
 
 use crate::proto::infrastructure_map::api_endpoint::Api_type as ProtoApiType;
 use crate::proto::infrastructure_map::Method as ProtoMethod;
@@ -44,7 +44,7 @@ pub struct ApiEndpoint {
     pub path: PathBuf,
     pub method: Method,
 
-    pub version: String,
+    pub version: Version,
     pub source_primitive: PrimitiveSignature,
 }
 
@@ -62,7 +62,7 @@ impl ApiEndpoint {
             // explicit in ingest path and we have not seen people use that functionality yet.
             path: PathBuf::from("ingest")
                 .join(data_model.name.clone())
-                .join(data_model.version.clone()),
+                .join(data_model.version.as_str()),
             method: Method::POST,
             version: data_model.version.clone(),
             source_primitive: PrimitiveSignature {
@@ -81,7 +81,7 @@ impl ApiEndpoint {
                 APIType::EGRESS => "EGRESS",
             },
             self.name,
-            self.version.replace('.', "_")
+            self.version.as_suffix()
         )
     }
 
@@ -113,7 +113,7 @@ impl ApiEndpoint {
             api_type: Some(self.api_type.to_proto()),
             path: self.path.to_string_lossy().to_string(),
             method: EnumOrUnknown::new(self.method.to_proto()),
-            version: self.version.clone(),
+            version: self.version.to_string(),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
             special_fields: Default::default(),
         }
@@ -132,7 +132,7 @@ impl From<EndpointFile> for ApiEndpoint {
             api_type: APIType::EGRESS,
             path: value.path.clone(),
             method: Method::GET,
-            version: "0.0.0".to_string(),
+            version: Version::from_string("0.0.0".to_string()),
             source_primitive: PrimitiveSignature {
                 name: value.path.to_string_lossy().to_string(),
                 primitive_type: PrimitiveTypes::ConsumptionAPI,

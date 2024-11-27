@@ -72,10 +72,12 @@ pub async fn execute_initial_infra_change(
     );
     let mut process_registries = ProcessRegistries::new(project);
 
+    // Execute changes that are allowed on any instance
+    let changes = plan.target_infra_map.init_processes();
     processes::execute_changes(
         &mut syncing_processes_registry,
         &mut process_registries,
-        &plan.target_infra_map.init_processes(),
+        &changes,
         metrics,
     )
     .await?;
@@ -88,12 +90,15 @@ pub async fn execute_initial_infra_change(
         .await
         .map_err(ExecutionError::LeadershipCheckFailed)?
     {
-        // Execute migration changes only if we have the leadership lock
+        log::info!("Executing changes for leader instance");
+
+        processes::execute_leader_changes(&mut process_registries, &changes).await?;
+
         migration::execute_changes(project, &plan.changes.initial_data_loads, clickhouse_client)
             .await
             .map_err(|e| ExecutionError::MigrationError(e.to_string()))?;
     } else {
-        log::info!("Skipping migration changes as this instance does not have the leadership lock");
+        log::info!("Skipping migration & olap process changes as this instance does not have the leadership lock");
     }
 
     Ok((syncing_processes_registry, process_registries))

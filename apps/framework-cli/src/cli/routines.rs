@@ -80,12 +80,11 @@
 //!
 
 use crate::infrastructure::redis::redis_client::RedisClient;
+use log::{debug, error, info};
 use std::collections::{HashMap, HashSet};
 use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
-
-use log::{debug, error, info};
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::{interval, Duration};
 
@@ -111,7 +110,9 @@ use crate::infrastructure::processes::aggregations_registry::AggregationProcessR
 use crate::infrastructure::processes::consumption_registry::ConsumptionProcessRegistry;
 use crate::infrastructure::processes::cron_registry::CronRegistry;
 use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
-use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
+use crate::infrastructure::processes::kafka_clickhouse_sync::{
+    clickhouse_writing_pause_button, SyncingProcessesRegistry,
+};
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
 use crate::infrastructure::stream::redpanda::fetch_topics;
 use crate::project::Project;
@@ -135,12 +136,16 @@ pub mod logs;
 pub mod ls;
 pub mod metrics_console;
 pub mod migrate;
+pub mod peek;
 pub mod ps;
 pub mod streaming;
 pub mod templates;
 mod util;
 pub mod validate;
 pub mod version;
+
+const LEADERSHIP_LOCK_RENEWAL_INTERVAL: u64 = 2;
+const LEADERSHIP_LOCK_TTL: u64 = LEADERSHIP_LOCK_RENEWAL_INTERVAL * 3; // best practice to set lock expiration to 2-3x the renewal interval
 
 #[derive(Debug, Clone)]
 #[must_use = "The message should be displayed."]
@@ -268,7 +273,7 @@ impl RoutineController {
     }
 }
 
-async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<RedisClient>>> {
+pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<RedisClient>>> {
     let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
     let redis_client = Arc::new(Mutex::new(redis_client));
 
@@ -292,11 +297,8 @@ async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<R
     redis_client
         .lock()
         .await
-        .register_lock("leadership", 10)
+        .register_lock("leadership", LEADERSHIP_LOCK_TTL as i64)
         .await?;
-
-    // Start the leadership lock management task
-    start_leadership_lock_task(redis_client.clone(), project.clone());
 
     let redis_client_clone = redis_client.clone();
     let callback = Arc::new(move |message: String| {
@@ -307,6 +309,9 @@ async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<R
             }
         });
     });
+
+    // Start the leadership lock management task
+    start_leadership_lock_task(redis_client.clone(), project.clone());
 
     redis_client
         .lock()
@@ -339,21 +344,30 @@ async fn process_pubsub_message(
             );
         }
     } else {
-        info!(
-            "<Routines> This instance is not the leader and received pubsub message: {}",
-            message
-        );
+        // this assumes that the leader is not doing inserts during migration
+        if message.contains("<migration_start>") {
+            clickhouse_writing_pause_button().send(true)?;
+            info!("Pausing write to CH");
+        } else if message.contains("<migration_end>") {
+            clickhouse_writing_pause_button().send(false)?;
+            info!("Resuming write to CH");
+        } else {
+            info!(
+                "<Routines> This instance is not the leader and received pubsub message: {}",
+                message
+            );
+        }
     }
     Ok(())
 }
 
 fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Arc<Project>) {
     tokio::spawn(async move {
-        let mut interval = interval(Duration::from_secs(5)); // Adjust the interval as needed
+        let mut interval = interval(Duration::from_secs(LEADERSHIP_LOCK_RENEWAL_INTERVAL)); // Adjust the interval as needed
         loop {
             interval.tick().await;
             if let Err(e) = manage_leadership_lock(&redis_client, &project).await {
-                error!("Error managing leadership lock: {}", e);
+                error!("<RedisClient> Error managing leadership lock: {:#}", e);
             }
         }
     });
@@ -363,35 +377,27 @@ async fn manage_leadership_lock(
     redis_client: &Arc<Mutex<RedisClient>>,
     project: &Arc<Project>,
 ) -> Result<(), anyhow::Error> {
-    let has_lock = {
+    let (has_lock, is_new_acquisition) = {
         let client = redis_client.lock().await;
-        client.has_lock("leadership").await?
+        client.check_and_renew_lock("leadership").await?
     };
 
-    if has_lock {
-        // We have the lock, renew it
-        let client = redis_client.lock().await;
-        client.renew_lock("leadership").await?;
-    } else {
-        // We don't have the lock, try to acquire it
-        let acquired_lock = {
-            let client = redis_client.lock().await;
-            client.attempt_lock("leadership").await?
-        };
-        if acquired_lock {
-            info!("Obtained leadership lock, performing leadership tasks");
+    if has_lock && is_new_acquisition {
+        info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
 
-            let project_clone = project.clone();
-            tokio::spawn(async move {
-                if let Err(e) = leadership_tasks(project_clone).await {
-                    error!("Error executing leadership tasks: {}", e);
-                }
-            });
-
-            let mut client = redis_client.lock().await;
-            if let Err(e) = client.broadcast_message("leader.new").await {
-                error!("Failed to broadcast new leader message: {}", e);
+        let project_clone = project.clone();
+        tokio::spawn(async move {
+            if let Err(e) = leadership_tasks(project_clone).await {
+                error!("<RedisClient> Error executing leadership tasks: {}", e);
             }
+        });
+
+        let mut client = redis_client.lock().await;
+        if let Err(e) = client.broadcast_message("leader.new").await {
+            error!(
+                "<RedisClient> Failed to broadcast new leader message: {}",
+                e
+            );
         }
     }
     Ok(())
@@ -409,6 +415,7 @@ pub async fn start_development_mode(
     project: Arc<Project>,
     features: &Features,
     metrics: Arc<Metrics>,
+    redis_client: Arc<Mutex<RedisClient>>,
 ) -> anyhow::Result<()> {
     show_message!(
         MessageType::Info,
@@ -417,8 +424,6 @@ pub async fn start_development_mode(
             details: "development mode".to_string(),
         }
     );
-
-    let redis_client = setup_redis_client(project.clone()).await?;
 
     let server_config = project.http_server_config.clone();
     let web_server = Webserver::new(
@@ -627,6 +632,7 @@ pub async fn start_production_mode(
     project: Arc<Project>,
     features: Features,
     metrics: Arc<Metrics>,
+    redis_client: Arc<Mutex<RedisClient>>,
 ) -> anyhow::Result<()> {
     show_message!(
         MessageType::Success,
@@ -640,7 +646,6 @@ pub async fn start_production_mode(
         panic!("Crashing for testing purposes");
     }
 
-    let redis_client = setup_redis_client(project.clone()).await?;
     let server_config = project.http_server_config.clone();
     info!("Server config: {:?}", server_config);
     let web_server = Webserver::new(
@@ -805,7 +810,7 @@ pub async fn plan(project: &Project) -> anyhow::Result<()> {
     Ok(())
 }
 
-// This is deprectaed with CORE V2
+// This is deprecated with CORE V2
 pub async fn initialize_project_state(
     project: Arc<Project>,
     route_table: &mut HashMap<PathBuf, RouteMeta>,

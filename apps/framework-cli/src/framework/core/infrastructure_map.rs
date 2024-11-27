@@ -284,7 +284,10 @@ impl InfrastructureMap {
         for data_model in primitive_map.data_models_iter() {
             if primitive_map
                 .datamodels
-                .has_data_model_changed_with_previous_version(&data_model.name, &data_model.version)
+                .has_data_model_changed_with_previous_version(
+                    &data_model.name,
+                    data_model.version.as_str(),
+                )
             {
                 let topic = Topic::from_data_model(data_model);
                 let api_endpoint = ApiEndpoint::from_data_model(data_model, &topic);
@@ -315,7 +318,7 @@ impl InfrastructureMap {
         for data_model in data_models_that_have_not_changed_with_new_version {
             match primitive_map
                 .datamodels
-                .find_earliest_similar_version(&data_model.name, &data_model.version)
+                .find_earliest_similar_version(&data_model.name, data_model.version.as_str())
             {
                 Some(previous_version_model) => {
                     // This will be already created with the previous data model.
@@ -919,6 +922,7 @@ pub fn compute_table_diff(before: &Table, after: &Table) -> Vec<ColumnChange> {
 mod tests {
     use std::path::{Path, PathBuf};
 
+    use crate::framework::versions::Version;
     use crate::{
         framework::{
             core::{
@@ -966,7 +970,7 @@ mod tests {
 
         let new_data_model = DataModel {
             name: data_model_name.to_string(),
-            version: data_model_version.to_string(),
+            version: Version::from_string(data_model_version.to_string()),
             config: Default::default(),
             columns: vec![],
             abs_file_path: PathBuf::new(),
@@ -1024,7 +1028,7 @@ mod tests {
                 },
             ],
             order_by: vec!["id".to_string()],
-            version: "1.0".to_string(),
+            version: Version::from_string("1.0".to_string()),
             source_primitive: PrimitiveSignature {
                 name: "test_primitive".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,
@@ -1061,7 +1065,7 @@ mod tests {
                 },
             ],
             order_by: vec!["id".to_string(), "name".to_string()], // Changed order_by
-            version: "1.1".to_string(),
+            version: Version::from_string("1.1".to_string()),
             source_primitive: PrimitiveSignature {
                 name: "test_primitive".to_string(),
                 primitive_type: PrimitiveTypes::DataModel,

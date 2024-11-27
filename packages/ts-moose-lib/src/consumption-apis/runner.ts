@@ -1,8 +1,11 @@
 import http from "http";
 import process from "node:process";
+import cluster from "node:cluster";
 import { getClickhouseClient } from "../commons";
 import { MooseClient, sql } from "./helpers";
 import * as jose from "jose";
+import { ClickHouseClient } from "@clickhouse/client";
+import { Cluster } from "../cluster-utils";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
@@ -39,8 +42,10 @@ const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
   console.log(`${req.method} ${req.url} ${res.statusCode}`);
 };
 
+const modulesCache = new Map<string, any>();
+
 const apiHandler =
-  (publicKey: jose.KeyLike | undefined) =>
+  (publicKey: jose.KeyLike | undefined, clickhouseClient: ClickHouseClient) =>
   async (req: http.IncomingMessage, res: http.ServerResponse) => {
     try {
       const url = new URL(req.url || "", "https://localhost");
@@ -96,13 +101,14 @@ const apiHandler =
         {},
       );
 
-      const userFuncModule = require(pathName);
+      let userFuncModule = modulesCache.get(pathName);
+      if (userFuncModule === undefined) {
+        userFuncModule = require(pathName);
+        modulesCache.set(pathName, userFuncModule);
+      }
 
       const result = await userFuncModule.default(paramsObject, {
-        client: new MooseClient(
-          getClickhouseClient(clickhouseConfig),
-          fileName,
-        ),
+        client: new MooseClient(clickhouseClient, fileName),
         sql: sql,
         jwt: jwtPayload,
       });
@@ -148,23 +154,28 @@ const apiHandler =
 export const runConsumptionApis = async () => {
   console.log("Starting API service");
 
-  let publicKey;
-  if (JWT_SECRET) {
-    console.log("Importing JWT public key...");
-    publicKey = await jose.importSPKI(JWT_SECRET, "RS256");
-  }
+  const consumptionCluster = new Cluster({
+    workerStart: async () => {
+      const clickhouseClient = getClickhouseClient(clickhouseConfig);
+      let publicKey: jose.KeyLike | undefined;
+      if (JWT_SECRET) {
+        console.log("Importing JWT public key...");
+        publicKey = await jose.importSPKI(JWT_SECRET, "RS256");
+      }
 
-  const server = http.createServer(apiHandler(publicKey));
+      const server = http.createServer(apiHandler(publicKey, clickhouseClient));
+      server.listen(4001, () => {
+        console.log("Server running on port 4001");
+      });
 
-  process.on("SIGTERM", async () => {
-    console.log("Received SIGTERM, shutting down...");
-    server.close(() => {
-      console.log("Consumption webserver shutdown...");
-      process.exit(0);
-    });
+      return server;
+    },
+    workerStop: async (server) => {
+      return new Promise<void>((resolve) => {
+        server.close(() => resolve());
+      });
+    },
   });
 
-  server.listen(4001, () => {
-    console.log("Server running on port 4001");
-  });
+  consumptionCluster.start();
 };

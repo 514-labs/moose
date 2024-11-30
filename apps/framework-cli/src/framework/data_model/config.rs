@@ -54,7 +54,7 @@ impl Default for StorageConfig {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Default, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
 pub struct DataModelConfig {
     #[serde(default)]
     pub ingestion: IngestionConfig,
@@ -62,6 +62,16 @@ pub struct DataModelConfig {
     pub storage: StorageConfig,
     #[serde(default = "default_parallelism")]
     pub parallelism: usize,
+}
+
+impl Default for DataModelConfig {
+    fn default() -> Self {
+        Self {
+            ingestion: IngestionConfig::default(),
+            storage: StorageConfig::default(),
+            parallelism: default_parallelism(),
+        }
+    }
 }
 
 fn default_parallelism() -> usize {

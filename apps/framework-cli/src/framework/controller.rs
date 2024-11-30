@@ -9,63 +9,30 @@ use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
 use crate::infrastructure::olap::clickhouse::queries::create_alias_for_table;
 use crate::infrastructure::olap::clickhouse::queries::create_alias_query_from_table;
-use crate::infrastructure::olap::clickhouse::version_sync::{VersionSync, VersionSyncType};
+use crate::infrastructure::olap::clickhouse::version_sync::VersionSync;
 use crate::infrastructure::olap::clickhouse::ConfiguredDBClient;
 use crate::infrastructure::stream::redpanda;
 use crate::infrastructure::stream::redpanda::{
     send_with_back_pressure, wait_for_delivery, RedpandaConfig,
 };
-use crate::project::Project;
 use crate::proto::infrastructure_map::InitialDataLoad as ProtoInitialDataLoad;
 use clickhouse_rs::errors::codes::UNKNOWN_TABLE;
 use clickhouse_rs::ClientHandle;
 use futures::StreamExt;
-use log::{debug, error, info, warn};
+use log::error;
+use log::{debug, info};
 use protobuf::MessageField;
 use rdkafka::producer::DeliveryFuture;
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, VecDeque};
-use std::io::Error;
-use std::io::ErrorKind;
+use std::collections::VecDeque;
 use std::path::Path;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 #[derive(Debug, Clone)]
 pub struct RouteMeta {
     pub topic_name: String,
     pub data_model: DataModel,
     pub format: EndpointIngestionFormat,
-}
-
-pub async fn create_or_replace_version_sync(
-    project: &Project,
-    version_sync: &VersionSync,
-    configured_client: &ConfiguredDBClient,
-) -> anyhow::Result<()> {
-    let drop_function_query = version_sync.drop_function_query();
-    olap::clickhouse::run_query(&drop_function_query, configured_client).await?;
-
-    if !project.is_production {
-        let drop_trigger_query = version_sync.drop_trigger_query();
-        olap::clickhouse::run_query(&drop_trigger_query, configured_client).await?;
-    }
-
-    match version_sync.sync_type {
-        VersionSyncType::Sql(_) => create_sql_version_sync(version_sync, configured_client).await?,
-        _ => {
-            create_streaming_function_version_sync_topics(project, version_sync).await?;
-            initial_data_load(
-                &version_sync.source_table,
-                configured_client,
-                &version_sync.topic_name("input"),
-                &project.redpanda_config,
-            )
-            .await?;
-        }
-    };
-
-    Ok(())
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -224,21 +191,6 @@ pub async fn create_sql_version_sync(
     Ok(())
 }
 
-pub async fn create_streaming_function_version_sync_topics(
-    project: &Project,
-    version_sync: &VersionSync,
-) -> anyhow::Result<()> {
-    let input_topic = version_sync.topic_name("input");
-    let output_topic = version_sync.topic_name("output");
-
-    redpanda::create_topics(
-        &project.redpanda_config.clone(),
-        vec![input_topic, output_topic],
-    )
-    .await?;
-    Ok(())
-}
-
 pub(crate) async fn drop_table(
     db_name: &str,
     table: &ClickHouseTable,
@@ -312,34 +264,6 @@ pub async fn create_or_replace_latest_table_alias(
     Ok(())
 }
 
-pub(crate) async fn create_or_replace_tables(
-    table: &ClickHouseTable,
-    configured_client: &ConfiguredDBClient,
-    is_production: bool,
-) -> anyhow::Result<()> {
-    info!("<DCM> Creating table: {:?}", table.name);
-    let create_data_table_query =
-        table.create_data_table_query(&configured_client.config.db_name)?;
-
-    olap::clickhouse::check_ready(configured_client)
-        .await
-        .map_err(|e| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Failed to connect to clickhouse: {}", e),
-            )
-        })?;
-
-    // Clickhouse doesn't support dropping a view if it doesn't exist, so we need to drop it first in case the schema has changed
-    if !is_production {
-        drop_table(&configured_client.config.db_name, table, configured_client).await?;
-    }
-
-    olap::clickhouse::run_query(&create_data_table_query, configured_client).await?;
-
-    Ok(())
-}
-
 pub fn schema_file_path_to_ingest_route(
     base_path: &Path,
     path: &Path,
@@ -357,185 +281,4 @@ pub fn schema_file_path_to_ingest_route(
     debug!("route: {:?}", route);
 
     PathBuf::from("ingest").join(route).join(version)
-}
-
-pub async fn set_up_topic_and_tables_and_route(
-    project: &Project,
-    fo: &FrameworkObject,
-    previous_version: &Option<(String, HashMap<String, FrameworkObject>)>,
-    configured_client: &ConfiguredDBClient,
-    route_table: &mut HashMap<PathBuf, RouteMeta>,
-    ingest_route: PathBuf,
-    is_latest: bool,
-) -> anyhow::Result<()> {
-    let topic = fo.topic.clone();
-
-    let previous_fo_opt = match previous_version {
-        None => None,
-        Some((_, previous_models)) => previous_models.get(&fo.data_model.name),
-    };
-
-    let topic_name = match (
-        previous_fo_opt,
-        &fo.table,
-        &previous_fo_opt.and_then(|previous_fo| previous_fo.table.clone()),
-    ) {
-        // This is in the case where the user deactivates the storage for a data model
-        (Some(previous_fo), None, _) if previous_fo.data_model.columns == fo.data_model.columns => {
-            info!(
-                "Data model {} has not changed, Storage is deactivated, using previous version table {} and topic {}",
-                fo.data_model.name,
-                previous_fo
-                    .table
-                    .clone()
-                    .map(|table| { table.name })
-                    .unwrap_or("None".to_string()),
-                previous_fo.topic
-            );
-
-            // In this case no need for a topic on the current table since it is all the same as the previous table.
-            match redpanda::delete_topics(&project.redpanda_config, vec![topic]).await {
-                Ok(_) => info!("Topics deleted successfully"),
-                Err(e) => warn!("Failed to delete topics: {}", e),
-            }
-
-            // In the case where we use a view here, we need to use the previous topic that was set
-            // That topic may be the topic of n - 2 version of the data model. Right now the Route object
-            // is where this is kept.
-            // this is a gross way to find the previous ingest route
-            let previous_version = previous_version.as_ref().unwrap().0.as_str();
-            let old_base_path = project.old_version_location(previous_version)?;
-            let old_ingest_route = schema_file_path_to_ingest_route(
-                &old_base_path,
-                &previous_fo.original_file_path,
-                fo.data_model.name.clone(),
-                previous_version,
-            );
-
-            route_table
-                .get(&old_ingest_route)
-                .unwrap()
-                // this might be chained multiple times,
-                // so we cannot just use the previous.table.name
-                .topic_name
-                .clone()
-        }
-
-        // In the case where the previous version of the data model and the new version of the data model are the same
-        // we just need to use pointers to the old table and topic
-        (Some(previous_fo), Some(current_table), Some(previous_table))
-            if previous_fo.data_model.columns == fo.data_model.columns =>
-        {
-            info!(
-                "Data model {} has not changed, using previous version table {} and topic {}",
-                fo.data_model.name,
-                previous_fo
-                    .table
-                    .clone()
-                    .map(|table| { table.name })
-                    .unwrap_or("None".to_string()),
-                previous_fo.topic
-            );
-            // In this case no need for a topic on the current table since it is all the same as the previous table.
-            match redpanda::delete_topics(&project.redpanda_config, vec![topic]).await {
-                Ok(_) => info!("Topics deleted successfully"),
-                Err(e) => warn!("Failed to delete topics: {}", e),
-            }
-
-            create_or_replace_table_alias(
-                current_table,
-                previous_table,
-                configured_client,
-                project.is_production,
-            )
-            .await?;
-
-            // In the case where we use a view here, we need to use the previous topic that was set
-            // That topic may be the topic of n - 2 version of the data model. Right now the Route object
-            // is where this is kept.
-            // this is a gross way to find the previous ingest route
-            let previous_version = previous_version.as_ref().unwrap().0.as_str();
-            let old_base_path = project.old_version_location(previous_version)?;
-            let old_ingest_route = schema_file_path_to_ingest_route(
-                &old_base_path,
-                &previous_fo.original_file_path,
-                fo.data_model.name.clone(),
-                previous_version,
-            );
-
-            route_table
-                .get(&old_ingest_route)
-                .unwrap()
-                // this might be chained multiple times,
-                // so we cannot just use the previous.table.name
-                .topic_name
-                .clone()
-        }
-        _ => {
-            match redpanda::create_topics(&project.redpanda_config, vec![topic]).await {
-                Ok(_) => info!("Topics created successfully"),
-                Err(e) => warn!("Failed to create topics: {}", e),
-            }
-
-            if let Some(table) = &fo.table {
-                debug!("Creating table: {:?}", table.name);
-
-                create_or_replace_tables(table, configured_client, project.is_production).await?;
-
-                debug!("Table created: {:?}", table.name);
-            }
-
-            fo.topic.clone()
-        }
-    };
-
-    if is_latest && fo.data_model.config.storage.enabled {
-        create_or_replace_latest_table_alias(fo, configured_client).await?;
-    }
-
-    route_table.insert(
-        ingest_route.clone(),
-        RouteMeta {
-            topic_name,
-            data_model: fo.data_model.clone(),
-            format: fo.data_model.config.ingestion.format,
-        },
-    );
-
-    Ok(())
-}
-
-#[allow(clippy::too_many_arguments)]
-pub async fn process_objects(
-    // old v1 code
-    framework_objects: &HashMap<String, FrameworkObject>,
-    previous_version: &Option<(String, HashMap<String, FrameworkObject>)>,
-    project: Arc<Project>,
-    schema_dir: &Path,
-    configured_client: &ConfiguredDBClient,
-    route_table: &mut HashMap<PathBuf, RouteMeta>,
-    version: &str,
-) -> anyhow::Result<()> {
-    let is_latest = version == project.cur_version().as_str();
-
-    for (_, fo) in framework_objects.iter() {
-        let ingest_route = schema_file_path_to_ingest_route(
-            schema_dir,
-            &fo.original_file_path,
-            fo.data_model.name.clone(),
-            version,
-        );
-
-        set_up_topic_and_tables_and_route(
-            &project,
-            fo,
-            previous_version,
-            configured_client,
-            route_table,
-            ingest_route.clone(),
-            is_latest,
-        )
-        .await?;
-    }
-    Ok(())
 }

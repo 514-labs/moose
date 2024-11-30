@@ -82,45 +82,24 @@
 use crate::infrastructure::redis::redis_client::RedisClient;
 use log::{debug, error, info};
 use std::collections::{HashMap, HashSet};
-use std::ops::DerefMut;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::{interval, Duration};
 
-use crate::cli::watcher::{
-    process_aggregations_changes, process_consumption_changes, process_streaming_func_changes,
-};
-use crate::framework::core::code_loader::{
-    load_framework_objects, FrameworkObject, FrameworkObjectVersions, SchemaVersion,
-};
 use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::plan::plan_changes;
 
-use crate::cli::routines::streaming::verify_streaming_functions_against_datamodels;
-use crate::framework::controller::{create_or_replace_version_sync, process_objects, RouteMeta};
+use crate::framework::controller::RouteMeta;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
-use crate::framework::core::primitive_map::PrimitiveMap;
-use crate::infrastructure::olap;
-use crate::infrastructure::olap::clickhouse::version_sync::{get_all_version_syncs, VersionSync};
-use crate::infrastructure::olap::clickhouse_alt_client::{
-    get_pool, store_current_state, store_infrastructure_map,
-};
-use crate::infrastructure::processes::aggregations_registry::AggregationProcessRegistry;
-use crate::infrastructure::processes::consumption_registry::ConsumptionProcessRegistry;
+use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_infrastructure_map};
 use crate::infrastructure::processes::cron_registry::CronRegistry;
-use crate::infrastructure::processes::functions_registry::FunctionProcessRegistry;
-use crate::infrastructure::processes::kafka_clickhouse_sync::{
-    clickhouse_writing_pause_button, SyncingProcessesRegistry,
-};
-use crate::infrastructure::processes::process_registry::ProcessRegistries;
-use crate::infrastructure::stream::redpanda::fetch_topics;
+use crate::infrastructure::processes::kafka_clickhouse_sync::clickhouse_writing_pause_button;
 use crate::project::Project;
 
 use super::super::metrics::Metrics;
-use super::display::{self, with_spinner_async};
+use super::display;
 use super::local_webserver::Webserver;
-use super::settings::Features;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
 
@@ -413,7 +392,6 @@ async fn leadership_tasks(project: Arc<Project>) -> Result<(), anyhow::Error> {
 // Starts the file watcher and the webserver
 pub async fn start_development_mode(
     project: Arc<Project>,
-    features: &Features,
     metrics: Arc<Metrics>,
     redis_client: Arc<Mutex<RedisClient>>,
 ) -> anyhow::Result<()> {
@@ -435,189 +413,63 @@ pub async fn start_development_mode(
     let consumption_apis: &'static RwLock<HashSet<String>> =
         Box::leak(Box::new(RwLock::new(HashSet::new())));
 
-    if features.core_v2 {
-        let route_table = HashMap::<PathBuf, RouteMeta>::new();
-        let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
-            Box::leak(Box::new(RwLock::new(route_table)));
+    let route_table = HashMap::<PathBuf, RouteMeta>::new();
+    let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
+        Box::leak(Box::new(RwLock::new(route_table)));
 
-        let route_update_channel = web_server
-            .spawn_api_update_listener(route_table, consumption_apis)
-            .await;
+    let route_update_channel = web_server
+        .spawn_api_update_listener(route_table, consumption_apis)
+        .await;
 
-        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
 
-        let plan_result = plan_changes(&mut client, &project).await?;
-        info!("Plan Changes: {:?}", plan_result.changes);
-        let api_changes_channel = web_server
-            .spawn_api_update_listener(route_table, consumption_apis)
-            .await;
-        let (syncing_registry, process_registry) = execute_initial_infra_change(
-            &project,
-            &plan_result,
-            api_changes_channel,
-            metrics.clone(),
-            &mut client,
-            &redis_client,
-        )
-        .await?;
-        // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
+    let plan_result = plan_changes(&mut client, &project).await?;
+    info!("Plan Changes: {:?}", plan_result.changes);
+    let api_changes_channel = web_server
+        .spawn_api_update_listener(route_table, consumption_apis)
+        .await;
+    let (syncing_registry, process_registry) = execute_initial_infra_change(
+        &project,
+        &plan_result,
+        api_changes_channel,
+        metrics.clone(),
+        &mut client,
+        &redis_client,
+    )
+    .await?;
+    // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
 
-        // Storing the result of the changes in the table
-        store_infrastructure_map(
-            &mut client,
-            &project.clickhouse_config,
-            &plan_result.target_infra_map,
-        )
-        .await?;
+    // Storing the result of the changes in the table
+    store_infrastructure_map(
+        &mut client,
+        &project.clickhouse_config,
+        &plan_result.target_infra_map,
+    )
+    .await?;
 
-        plan_result
-            .target_infra_map
-            .store_in_redis(&*redis_client.lock().await)
-            .await?;
-
-        let infra_map: &'static RwLock<InfrastructureMap> =
-            Box::leak(Box::new(RwLock::new(plan_result.target_infra_map)));
-
-        let file_watcher = FileWatcher::new();
-        file_watcher.start(
-            project.clone(),
-            features,
-            None,
-            route_table,          // Deprecated way of updating the routes,
-            route_update_channel, // The new way of updating the routes
-            infra_map,
-            consumption_apis,
-            syncing_registry,
-            process_registry,
-            metrics.clone(),
-            redis_client.clone(),
-        )?;
-
-        info!("Starting web server...");
-        web_server
-            .start(route_table, consumption_apis, infra_map, project, metrics)
-            .await;
-    } else {
-        let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
-        info!("<DCM> Initializing project state");
-
-        let (framework_object_versions, version_syncs) =
-            initialize_project_state(project.clone(), &mut route_table).await?;
-
-        let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
-            Box::leak(Box::new(RwLock::new(route_table)));
-
-        let route_update_channel = web_server
-            .spawn_api_update_listener(route_table, consumption_apis)
-            .await;
-
-        let mut syncing_processes_registry = SyncingProcessesRegistry::new(
-            project.redpanda_config.clone(),
-            project.clickhouse_config.clone(),
-        );
-
-        let _ = syncing_processes_registry
-            .start_all(&framework_object_versions, &version_syncs, metrics.clone())
-            .await;
-
-        let topics = fetch_topics(&project.redpanda_config).await?;
-
-        let mut function_process_registry = FunctionProcessRegistry::new(
-            project.redpanda_config.clone(),
-            project.project_location.clone(),
-        );
-        // Once the below function is optimized to act on events, this
-        // will need to get refactored out.
-
-        process_streaming_func_changes(
-            &project,
-            &framework_object_versions.to_data_model_set(),
-            &mut function_process_registry,
-            &topics,
-        )
+    plan_result
+        .target_infra_map
+        .store_in_redis(&*redis_client.lock().await)
         .await?;
 
-        let mut blocks_process_registry = AggregationProcessRegistry::new(
-            project.language,
-            project.blocks_dir(),
-            project.project_location.clone(),
-            project.clickhouse_config.clone(),
-            false,
-        );
-        process_aggregations_changes(&mut blocks_process_registry).await?;
+    let infra_map: &'static RwLock<InfrastructureMap> =
+        Box::leak(Box::new(RwLock::new(plan_result.target_infra_map)));
 
-        let mut aggregations_process_registry = AggregationProcessRegistry::new(
-            project.language,
-            project.aggregations_dir(),
-            project.project_location.clone(),
-            project.clickhouse_config.clone(),
-            true,
-        );
-        process_aggregations_changes(&mut aggregations_process_registry).await?;
+    let file_watcher = FileWatcher::new();
+    file_watcher.start(
+        project.clone(),
+        route_update_channel,
+        infra_map,
+        syncing_registry,
+        process_registry,
+        metrics.clone(),
+        redis_client.clone(),
+    )?;
 
-        let mut consumption_process_registry = ConsumptionProcessRegistry::new(
-            project.language,
-            project.clickhouse_config.clone(),
-            project.jwt.clone(),
-            project.consumption_dir(),
-            project.project_location.clone(),
-        );
-        process_consumption_changes(
-            &project,
-            &mut consumption_process_registry,
-            consumption_apis.write().await.deref_mut(),
-        )
-        .await?;
-
-        {
-            let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
-            let aggregations = project.get_aggregations();
-            store_current_state(
-                &mut client,
-                &framework_object_versions,
-                &aggregations,
-                &project.clickhouse_config,
-            )
-            .await?
-        }
-
-        let project_registries = ProcessRegistries {
-            functions: function_process_registry,
-            aggregations: aggregations_process_registry,
-            blocks: blocks_process_registry,
-            consumption: consumption_process_registry,
-        };
-
-        let dummy_infra_map: &'static RwLock<InfrastructureMap> = Box::leak(Box::new(RwLock::new(
-            InfrastructureMap::new(PrimitiveMap::default()),
-        )));
-
-        let file_watcher = FileWatcher::new();
-        file_watcher.start(
-            project.clone(),
-            features,
-            Some(framework_object_versions),
-            route_table,          // Deprecated way of updating the routes,
-            route_update_channel, // The new way of updating the routes
-            dummy_infra_map,      // never updated
-            consumption_apis,
-            syncing_processes_registry,
-            project_registries,
-            metrics.clone(),
-            redis_client.clone(),
-        )?;
-
-        info!("Starting web server...");
-        web_server
-            .start(
-                route_table,
-                consumption_apis,
-                dummy_infra_map,
-                project,
-                metrics,
-            )
-            .await;
-    };
+    info!("Starting web server...");
+    web_server
+        .start(route_table, consumption_apis, infra_map, project, metrics)
+        .await;
 
     {
         let mut redis_client = redis_client.lock().await;
@@ -630,7 +482,6 @@ pub async fn start_development_mode(
 // Starts the webserver in production mode
 pub async fn start_production_mode(
     project: Arc<Project>,
-    features: Features,
     metrics: Arc<Metrics>,
     redis_client: Arc<Mutex<RedisClient>>,
 ) -> anyhow::Result<()> {
@@ -658,129 +509,50 @@ pub async fn start_production_mode(
     let consumption_apis: &'static RwLock<HashSet<String>> =
         Box::leak(Box::new(RwLock::new(HashSet::new())));
     info!("Consumption APIs initialized");
-    if features.core_v2 {
-        let route_table = HashMap::<PathBuf, RouteMeta>::new();
 
-        debug!("Route table: {:?}", route_table);
-        let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
-            Box::leak(Box::new(RwLock::new(route_table)));
+    let route_table = HashMap::<PathBuf, RouteMeta>::new();
 
-        let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
-        info!("Clickhouse client initialized");
+    debug!("Route table: {:?}", route_table);
+    let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
+        Box::leak(Box::new(RwLock::new(route_table)));
 
-        let plan_result = plan_changes(&mut client, &project).await?;
-        info!("Plan Changes: {:?}", plan_result.changes);
-        let api_changes_channel = web_server
-            .spawn_api_update_listener(route_table, consumption_apis)
-            .await;
-        execute_initial_infra_change(
-            &project,
-            &plan_result,
-            api_changes_channel,
-            metrics.clone(),
-            &mut client,
-            &redis_client,
-        )
-        .await?;
-        // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
+    let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
+    info!("Clickhouse client initialized");
 
-        // Storing the result of the changes in the table
-        store_infrastructure_map(
-            &mut client,
-            &project.clickhouse_config,
-            &plan_result.target_infra_map,
-        )
-        .await?;
+    let plan_result = plan_changes(&mut client, &project).await?;
+    info!("Plan Changes: {:?}", plan_result.changes);
+    let api_changes_channel = web_server
+        .spawn_api_update_listener(route_table, consumption_apis)
+        .await;
+    execute_initial_infra_change(
+        &project,
+        &plan_result,
+        api_changes_channel,
+        metrics.clone(),
+        &mut client,
+        &redis_client,
+    )
+    .await?;
+    // TODO - need to add a lock on the table to prevent concurrent updates as migrations are going through.
 
-        plan_result
-            .target_infra_map
-            .store_in_redis(&*redis_client.lock().await)
-            .await?;
+    // Storing the result of the changes in the table
+    store_infrastructure_map(
+        &mut client,
+        &project.clickhouse_config,
+        &plan_result.target_infra_map,
+    )
+    .await?;
 
-        let infra_map: &'static InfrastructureMap =
-            Box::leak(Box::new(plan_result.target_infra_map));
-
-        web_server
-            .start(route_table, consumption_apis, infra_map, project, metrics)
-            .await;
-    } else {
-        info!("<DCM> Initializing project state");
-        let mut route_table = HashMap::<PathBuf, RouteMeta>::new();
-
-        let (framework_object_versions, version_syncs) =
-            initialize_project_state(project.clone(), &mut route_table).await?;
-
-        debug!("Route table: {:?}", route_table);
-        let route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>> =
-            Box::leak(Box::new(RwLock::new(route_table)));
-
-        let topics = fetch_topics(&project.redpanda_config).await?;
-        let mut syncing_processes_registry = SyncingProcessesRegistry::new(
-            project.redpanda_config.clone(),
-            project.clickhouse_config.clone(),
-        );
-        let _ = syncing_processes_registry
-            .start_all(&framework_object_versions, &version_syncs, metrics.clone())
-            .await;
-
-        let mut function_process_registry = FunctionProcessRegistry::new(
-            project.redpanda_config.clone(),
-            project.project_location.clone(),
-        );
-        // Once the below function is optimized to act on events, this
-        // will need to get refactored out.
-        process_streaming_func_changes(
-            &project,
-            &framework_object_versions.to_data_model_set(),
-            &mut function_process_registry,
-            &topics,
-        )
-        .await?;
-        let mut blocks_process_registry = AggregationProcessRegistry::new(
-            project.language,
-            project.blocks_dir(),
-            project.project_location.clone(),
-            project.clickhouse_config.clone(),
-            false,
-        );
-        process_aggregations_changes(&mut blocks_process_registry).await?;
-        let mut aggregations_process_registry = AggregationProcessRegistry::new(
-            project.language,
-            project.aggregations_dir(),
-            project.project_location.clone(),
-            project.clickhouse_config.clone(),
-            true,
-        );
-        process_aggregations_changes(&mut aggregations_process_registry).await?;
-
-        let mut consumption_process_registry = ConsumptionProcessRegistry::new(
-            project.language,
-            project.clickhouse_config.clone(),
-            project.jwt.clone(),
-            project.consumption_dir(),
-            project.project_location.clone(),
-        );
-        process_consumption_changes(
-            &project,
-            &mut consumption_process_registry,
-            consumption_apis.write().await.deref_mut(),
-        )
+    plan_result
+        .target_infra_map
+        .store_in_redis(&*redis_client.lock().await)
         .await?;
 
-        let dummy_infra_map: &'static InfrastructureMap =
-            Box::leak(Box::new(InfrastructureMap::new(PrimitiveMap::default())));
+    let infra_map: &'static InfrastructureMap = Box::leak(Box::new(plan_result.target_infra_map));
 
-        info!("Starting web server...");
-        web_server
-            .start(
-                route_table,
-                consumption_apis,
-                dummy_infra_map,
-                project,
-                metrics,
-            )
-            .await;
-    }
+    web_server
+        .start(route_table, consumption_apis, infra_map, project, metrics)
+        .await;
 
     {
         let mut redis_client = redis_client.lock().await;
@@ -808,89 +580,4 @@ pub async fn plan(project: &Project) -> anyhow::Result<()> {
     }
 
     Ok(())
-}
-
-// This is deprecated with CORE V2
-pub async fn initialize_project_state(
-    project: Arc<Project>,
-    route_table: &mut HashMap<PathBuf, RouteMeta>,
-) -> anyhow::Result<(FrameworkObjectVersions, Vec<VersionSync>)> {
-    let old_versions = project.old_versions_sorted();
-
-    let configured_client = olap::clickhouse::create_client(project.clickhouse_config.clone());
-
-    info!("<DCM> Checking for old version directories...");
-
-    let mut framework_object_versions = load_framework_objects(&project).await?;
-
-    with_spinner_async(
-        "Processing versions",
-        async {
-            // TODO: enforce linearity, if 1.1 is linked to 2.0, 1.2 cannot be added
-            let mut previous_version: Option<(String, HashMap<String, FrameworkObject>)> = None;
-            for version in old_versions {
-                let schema_version: &mut SchemaVersion = framework_object_versions
-                    .previous_version_models
-                    .get_mut(&version)
-                    .unwrap();
-
-                process_objects(
-                    &schema_version.models,
-                    &previous_version,
-                    project.clone(),
-                    &schema_version.base_path,
-                    &configured_client,
-                    route_table,
-                    &version,
-                )
-                .await?;
-
-                previous_version = Some((version, schema_version.models.clone()));
-            }
-
-            let result = process_objects(
-                &framework_object_versions.current_models.models,
-                &previous_version,
-                project.clone(),
-                &framework_object_versions.current_models.base_path,
-                &configured_client,
-                route_table,
-                &framework_object_versions.current_version,
-            )
-            .await;
-
-            match result {
-                Ok(_) => {
-                    info!("<DCM> Schema directory crawl completed successfully");
-                    Ok(())
-                }
-                Err(e) => {
-                    debug!("<DCM> Schema directory crawl failed");
-                    debug!("<DCM> Error: {:?}", e);
-                    Err(e)
-                }
-            }
-        },
-        !project.is_production,
-    )
-    .await?;
-
-    info!("<DCM> Crawling version syncs");
-    let version_syncs = with_spinner_async::<_, anyhow::Result<Vec<VersionSync>>>(
-        "Setting up version syncs",
-        async {
-            let version_syncs = get_all_version_syncs(&project, &framework_object_versions)?;
-            for vs in &version_syncs {
-                debug!("<DCM> Creating version sync: {:?}", vs);
-                create_or_replace_version_sync(&project, vs, &configured_client).await?;
-            }
-            Ok(version_syncs)
-        },
-        !project.is_production,
-    )
-    .await?;
-
-    let _ = verify_streaming_functions_against_datamodels(&project, &framework_object_versions);
-
-    Ok((framework_object_versions, version_syncs))
 }

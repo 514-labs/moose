@@ -391,19 +391,14 @@ async fn top_command_handler(
             let arc_metrics = Arc::new(metrics);
             arc_metrics.start_listening_to_metrics(rx_events).await;
 
-            routines::start_development_mode(
-                project_arc,
-                &settings.features,
-                arc_metrics,
-                redis_client,
-            )
-            .await
-            .map_err(|e| {
-                RoutineFailure::error(Message {
-                    action: "Dev".to_string(),
-                    details: format!("Failed to start development mode: {:?}", e),
-                })
-            })?;
+            routines::start_development_mode(project_arc, arc_metrics, redis_client)
+                .await
+                .map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Dev".to_string(),
+                        details: format!("Failed to start development mode: {:?}", e),
+                    })
+                })?;
 
             wait_for_usage_capture(capture_handle).await;
 
@@ -602,19 +597,14 @@ async fn top_command_handler(
                 &settings,
             );
 
-            routines::start_production_mode(
-                project_arc,
-                settings.features,
-                arc_metrics,
-                redis_client,
-            )
-            .await
-            .map_err(|e| {
-                RoutineFailure::error(Message {
-                    action: "Prod".to_string(),
-                    details: format!("Failed to start production mode: {:?}", e),
-                })
-            })?;
+            routines::start_production_mode(project_arc, arc_metrics, redis_client)
+                .await
+                .map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Prod".to_string(),
+                        details: format!("Failed to start production mode: {:?}", e),
+                    })
+                })?;
 
             wait_for_usage_capture(capture_handle).await;
 

@@ -60,6 +60,12 @@ pub struct DataModelConfig {
     pub ingestion: IngestionConfig,
     #[serde(default)]
     pub storage: StorageConfig,
+    #[serde(default = "default_parallelism")]
+    pub parallelism: usize,
+}
+
+fn default_parallelism() -> usize {
+    1
 }
 
 #[derive(Debug, thiserror::Error)]

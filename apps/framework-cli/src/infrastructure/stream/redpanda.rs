@@ -1,7 +1,8 @@
+use crate::framework::core::infrastructure::topic::Topic;
 use crate::framework::core::infrastructure_map::{Change, StreamingChange};
 use crate::project::Project;
 use log::{error, info, warn};
-use rdkafka::admin::{AlterConfig, ResourceSpecifier};
+use rdkafka::admin::{AlterConfig, NewPartitions, ResourceSpecifier};
 use rdkafka::config::RDKafkaLogLevel;
 use rdkafka::consumer::stream_consumer::StreamConsumer;
 use rdkafka::consumer::Consumer;
@@ -39,7 +40,7 @@ pub async fn execute_changes(
         match change {
             StreamingChange::Topic(Change::Added(topic)) => {
                 info!("Creating topic: {:?}", topic.id());
-                create_topics(&project.redpanda_config, vec![topic.id()]).await?;
+                create_topics(&project.redpanda_config, vec![topic]).await?;
             }
 
             StreamingChange::Topic(Change::Removed(topic)) => {
@@ -52,6 +53,55 @@ pub async fn execute_changes(
                     info!("Updating topic: {:?} with: {:?}", before, after);
                     update_topic_config(&project.redpanda_config, &before.id(), after).await?;
                 }
+
+                if before.partition_count > after.partition_count {
+                    warn!(
+                        "{:?} Cannot decrease a partion size, ignoring the change",
+                        before
+                    );
+                } else if before.partition_count < after.partition_count {
+                    info!(
+                        "Setting partitions count for topic: {:?} with: {:?}",
+                        before.id(),
+                        after.partition_count
+                    );
+                    add_partitions(
+                        &project.redpanda_config,
+                        &before.id(),
+                        after.partition_count,
+                    )
+                    .await?;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+async fn add_partitions(
+    redpanda_config: &RedpandaConfig,
+    id: &str,
+    partition_count: usize,
+) -> anyhow::Result<()> {
+    info!("Adding partitions to topic: {}", id);
+
+    let admin_client: AdminClient<_> = config_client(redpanda_config)
+        .create()
+        .expect("Redpanda Admin Client creation failed");
+
+    let options = AdminOptions::new().operation_timeout(Some(Duration::from_secs(5)));
+    let new_partitions = NewPartitions::new(id, partition_count);
+    let result = admin_client
+        .create_partitions([&new_partitions], &options)
+        .await?;
+
+    for res in result {
+        match res {
+            Ok(_) => info!("Topic {} set with {} partitions", id, partition_count),
+            Err((_, err)) => {
+                error!("Failed to add partitions to topic {}: {}", id, err);
+                return Err(err.into());
             }
         }
     }
@@ -98,7 +148,7 @@ async fn update_topic_config(
 // TODO: We need to make this a proper client so that we don't have
 // to reinstantiate the client every time we want to use it
 
-pub async fn create_topics(config: &RedpandaConfig, topics: Vec<String>) -> anyhow::Result<()> {
+pub async fn create_topics(config: &RedpandaConfig, topics: Vec<&Topic>) -> anyhow::Result<()> {
     info!("Creating topics: {:?}", topics);
 
     let admin_client: AdminClient<_> = config_client(config)
@@ -108,22 +158,22 @@ pub async fn create_topics(config: &RedpandaConfig, topics: Vec<String>) -> anyh
     // Prepare the AdminOptions
     let options = AdminOptions::new().operation_timeout(Some(std::time::Duration::from_secs(5)));
 
-    let retention_ms = config.retention_ms.to_string();
-
-    for topic_name in &topics {
+    for topic in &topics {
         // Create a new topic with 1 partition and replication factor 1
-        let topic = NewTopic::new(
-            topic_name,
-            1,
+        let new_topic = NewTopic::new(
+            &topic.name,
+            topic.partition_count as i32,
             TopicReplication::Fixed(config.replication_factor),
         );
 
+        let topic_retention = topic.retention_period.as_millis().to_string();
+
         // Set some topic configurations
-        let topic = topic
-            .set("retention.ms", retention_ms.as_str())
+        let new_topic = new_topic
+            .set("retention.ms", &topic_retention)
             .set("segment.bytes", "10000");
 
-        let result_list = admin_client.create_topics(&[topic], &options).await?;
+        let result_list = admin_client.create_topics(&[new_topic], &options).await?;
 
         for result in result_list {
             match result {

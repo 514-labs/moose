@@ -61,6 +61,7 @@ impl FunctionProcessRegistry {
                 &function_process.target_topic_config_json(),
                 &function_process.executable,
                 &self.project_path,
+                function_process.parallel_process_count,
             )?)
         } else {
             Err(FunctionRegistryError::UnsupportedFunctionLanguage {

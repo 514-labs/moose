@@ -1,6 +1,7 @@
 import cluster from "node:cluster";
 import { availableParallelism } from "node:os";
 import { exit } from "node:process";
+import { Worker } from "node:cluster";
 
 /**
  * Class for managing a cluster of worker processes
@@ -16,40 +17,74 @@ export class Cluster<C> {
   private processStr = `${cluster.isPrimary ? "primary" : "worker"} process ${process.pid}`;
 
   // Functions for starting and stopping workers
-  private workerStart: () => Promise<C>;
+  private workerStart: (w: Worker, paralelism: number) => Promise<C>;
   private workerStop: (c: C) => Promise<void>;
 
   // Result from starting worker, needed for cleanup
   private startOutput: C | undefined;
+  private maxCpuUsageRatio: number;
+  private usedCpuCount: number;
 
   /**
    * Creates a new cluster manager
    * @param options Object containing worker lifecycle functions
    */
   constructor(options: {
-    workerStart: () => Promise<C>;
+    workerStart: (w: Worker, paralelism: number) => Promise<C>;
     workerStop: (c: C) => Promise<void>;
+    maxCpuUsageRatio?: number;
+    maxWorkerCount?: number;
   }) {
     this.workerStart = options.workerStart;
     this.workerStop = options.workerStop;
+    if (
+      options.maxCpuUsageRatio &&
+      (options.maxCpuUsageRatio > 1 || options.maxCpuUsageRatio < 0)
+    ) {
+      throw new Error("maxCpuUsageRatio must be between 0 and 1");
+    }
+    this.maxCpuUsageRatio = options.maxCpuUsageRatio || 0.7;
+    this.usedCpuCount = this.computeCPUUsageCount(
+      this.maxCpuUsageRatio,
+      options.maxWorkerCount,
+    );
+  }
+
+  computeCPUUsageCount(cpuUsageRatio: number, maxWorkerCount?: number) {
+    const cpuCount = availableParallelism();
+    const maxWorkers = maxWorkerCount || cpuCount;
+    // Always use at least 1 CPU and leave some capacity for the other services.
+    // As long as all the services are running on the same machine, we should
+    // move this to the rust side. The Rust side could be doing the resource control.
+    // Or we could have a separate service that manages the resources.
+    // This is a temporary solution.
+    return Math.min(
+      maxWorkers,
+      Math.max(1, Math.floor(cpuCount * cpuUsageRatio)),
+    );
   }
 
   /**
    * Starts the cluster by spawning worker processes
    */
   async start() {
-    const cpuCount = availableParallelism();
-    // Always use at least 1 CPU and leave some capacity for the other services.
-    const usedCpuCount = Math.max(1, Math.round(Math.floor(cpuCount * 0.7)));
-
     // Set up signal handlers for graceful shutdown
     process.on("SIGTERM", this.gracefulClusterShutdown("SIGTERM"));
     process.on("SIGINT", this.gracefulClusterShutdown("SIGINT"));
 
     if (cluster.isPrimary) {
-      await this.bootWorkers(usedCpuCount);
+      await this.bootWorkers(this.usedCpuCount);
     } else {
-      this.startOutput = await this.workerStart();
+      if (!cluster.worker) {
+        throw new Error(
+          "Worker is not defined, it should be defined in worker process",
+        );
+      }
+
+      this.startOutput = await this.workerStart(
+        cluster.worker,
+        this.usedCpuCount,
+      );
     }
   }
 
@@ -73,6 +108,12 @@ export class Cluster<C> {
       console.info(
         `worker ${worker.process.pid} exited with code ${code} and signal ${signal}`,
       );
+
+      if (!this.shutdownInProgress) {
+        // Unexpected worker death - restart it in a 10 seconds
+        setTimeout(() => cluster.fork(), 10000);
+      }
+
       // Track if any workers exit with non-zero code during shutdown
       if (this.shutdownInProgress && code != 0) {
         this.hasCleanWorkerExit = false;

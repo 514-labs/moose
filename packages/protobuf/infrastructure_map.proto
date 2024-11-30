@@ -25,6 +25,7 @@ message Topic {
   google.protobuf.Duration retention_period = 3;
   repeated Column columns = 4;
   PrimitiveSignature source_primitive = 5;
+  optional int32 partition_count = 6;
 }
 
 message ApiEndpoint {
@@ -104,6 +105,7 @@ message FunctionProcess {
   string executable = 7;
   string version = 8;
   PrimitiveSignature source_primitive = 9;
+  optional int32 parallel_process_count = 10;
 }
 
 message InitialDataLoad {

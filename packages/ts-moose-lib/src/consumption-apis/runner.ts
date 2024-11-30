@@ -1,6 +1,5 @@
 import http from "http";
 import process from "node:process";
-import cluster from "node:cluster";
 import { getClickhouseClient } from "../commons";
 import { MooseClient, sql } from "./helpers";
 import * as jose from "jose";

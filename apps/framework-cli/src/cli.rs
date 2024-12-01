@@ -70,11 +70,6 @@ use self::routines::clean::CleanProject;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
 struct Cli {
-    // TODD: Add a config file option
-    /// Sets a custom config file
-    // #[arg(short, long, value_name = "FILE")]
-    // config: Option<PathBuf>,
-
     /// Turn debugging information on
     #[arg(short, long)]
     debug: bool,

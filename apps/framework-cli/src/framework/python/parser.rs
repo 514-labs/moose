@@ -60,7 +60,7 @@ pub enum PythonParserError {
 /// # First pass: AST processing functions
 /// These functions are responsible for processing the AST and extracting the relevant nodes to
 /// turn into data model objects
-
+///
 /// ## Get AST from File
 /// This function reads the python schema file and turns it into an AST
 fn get_ast_from_file(path: &Path) -> Result<ast::Suite, PythonParserError> {

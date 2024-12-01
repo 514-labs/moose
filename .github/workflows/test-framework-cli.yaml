@@ -7,6 +7,7 @@ on:
       - "!main"
     paths:
       - ".github/workflows/test-framework-cli.yaml"
+      - "apps/framework-cli-e2e/**"
       - "apps/framework-cli/**"
       - "packages/**"
 

@@ -234,6 +234,7 @@ impl FileWatcher {
         Self {}
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn start(
         &self,
         project: Arc<Project>,

@@ -92,23 +92,27 @@ pub async fn execute_changes(
                     update_topic_config(&project.redpanda_config, &before.id(), after).await?;
                 }
 
-                if before.partition_count > after.partition_count {
-                    warn!(
-                        "{:?} Cannot decrease a partion size, ignoring the change",
-                        before
-                    );
-                } else if before.partition_count < after.partition_count {
-                    info!(
-                        "Setting partitions count for topic: {:?} with: {:?}",
-                        before.id(),
-                        after.partition_count
-                    );
-                    add_partitions(
-                        &project.redpanda_config,
-                        &before.id(),
-                        after.partition_count,
-                    )
-                    .await?;
+                match before.partition_count.cmp(&after.partition_count) {
+                    std::cmp::Ordering::Greater => {
+                        warn!(
+                            "{:?} Cannot decrease a partion size, ignoring the change",
+                            before
+                        );
+                    }
+                    std::cmp::Ordering::Less => {
+                        info!(
+                            "Setting partitions count for topic: {:?} with: {:?}",
+                            before.id(),
+                            after.partition_count
+                        );
+                        add_partitions(
+                            &project.redpanda_config,
+                            &before.id(),
+                            after.partition_count,
+                        )
+                        .await?;
+                    }
+                    std::cmp::Ordering::Equal => {}
                 }
             }
         }

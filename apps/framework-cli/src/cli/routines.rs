@@ -79,6 +79,7 @@
 //! - Organize routines better in the file hiearchy
 //!
 
+use crate::framework::core::plan_validator;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use log::{debug, error, info};
 use std::collections::{HashMap, HashSet};
@@ -423,14 +424,18 @@ pub async fn start_development_mode(
 
     let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
 
-    let plan_result = plan_changes(&mut client, &project).await?;
-    info!("Plan Changes: {:?}", plan_result.changes);
+    let plan = plan_changes(&mut client, &project).await?;
+    info!("Plan Changes: {:?}", plan.changes);
+
+    plan_validator::validate(&plan)?;
+
     let api_changes_channel = web_server
         .spawn_api_update_listener(route_table, consumption_apis)
         .await;
+
     let (syncing_registry, process_registry) = execute_initial_infra_change(
         &project,
-        &plan_result,
+        &plan,
         api_changes_channel,
         metrics.clone(),
         &mut client,
@@ -443,17 +448,16 @@ pub async fn start_development_mode(
     store_infrastructure_map(
         &mut client,
         &project.clickhouse_config,
-        &plan_result.target_infra_map,
+        &plan.target_infra_map,
     )
     .await?;
 
-    plan_result
-        .target_infra_map
+    plan.target_infra_map
         .store_in_redis(&*redis_client.lock().await)
         .await?;
 
     let infra_map: &'static RwLock<InfrastructureMap> =
-        Box::leak(Box::new(RwLock::new(plan_result.target_infra_map)));
+        Box::leak(Box::new(RwLock::new(plan.target_infra_map)));
 
     let file_watcher = FileWatcher::new();
     file_watcher.start(
@@ -519,14 +523,18 @@ pub async fn start_production_mode(
     let mut client = get_pool(&project.clickhouse_config).get_handle().await?;
     info!("Clickhouse client initialized");
 
-    let plan_result = plan_changes(&mut client, &project).await?;
-    info!("Plan Changes: {:?}", plan_result.changes);
+    let plan = plan_changes(&mut client, &project).await?;
+    info!("Plan Changes: {:?}", plan.changes);
+
+    plan_validator::validate(&plan)?;
+
     let api_changes_channel = web_server
         .spawn_api_update_listener(route_table, consumption_apis)
         .await;
+
     execute_initial_infra_change(
         &project,
-        &plan_result,
+        &plan,
         api_changes_channel,
         metrics.clone(),
         &mut client,
@@ -539,16 +547,15 @@ pub async fn start_production_mode(
     store_infrastructure_map(
         &mut client,
         &project.clickhouse_config,
-        &plan_result.target_infra_map,
+        &plan.target_infra_map,
     )
     .await?;
 
-    plan_result
-        .target_infra_map
+    plan.target_infra_map
         .store_in_redis(&*redis_client.lock().await)
         .await?;
 
-    let infra_map: &'static InfrastructureMap = Box::leak(Box::new(plan_result.target_infra_map));
+    let infra_map: &'static InfrastructureMap = Box::leak(Box::new(plan.target_infra_map));
 
     web_server
         .start(route_table, consumption_apis, infra_map, project, metrics)

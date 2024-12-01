@@ -107,8 +107,6 @@ impl EventBuckets {
     }
 }
 
-// TODO Remove when route table is removed
-#[allow(clippy::too_many_arguments)]
 async fn watch(
     project: Arc<Project>,
     route_update_channel: tokio::sync::mpsc::Sender<ApiChange>,
@@ -145,7 +143,7 @@ async fn watch(
             rx.mark_changed();
         }
 
-        with_spinner_async(
+        let _ = with_spinner_async(
             "Processing Infrastructure changes from file watcher",
             async {
                 let plan_result =
@@ -154,6 +152,8 @@ async fn watch(
                 match plan_result {
                     Ok(plan_result) => {
                         info!("Plan Changes: {:?}", plan_result.changes);
+
+                        framework::core::plan_validator::validate(&plan_result)?;
 
                         display::show_changes(&plan_result);
                         match framework::core::execute::execute_online_change(
@@ -215,11 +215,13 @@ async fn watch(
         )
         .await
         .map_err(|e: anyhow::Error| {
-            Error::new(
-                ErrorKind::Other,
-                format!("Processing error occurred: {}", e),
-            )
-        })?;
+            show_message!(MessageType::Error, {
+                Message {
+                    action: "Failed".to_string(),
+                    details: format!("Processing Infrastructure changes failed:\n{:?}", e),
+                }
+            });
+        });
     }
 
     Ok(())

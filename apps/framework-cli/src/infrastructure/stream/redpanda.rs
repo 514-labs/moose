@@ -20,11 +20,49 @@ use std::time::Duration;
 
 #[derive(Debug, thiserror::Error)]
 pub enum RedpandaChangesError {
-    #[error("Not Supported {0}")]
+    #[error("Not Supported - {0}")]
     NotSupported(String),
 
     #[error("Anyhow Error")]
     Other(#[from] anyhow::Error),
+}
+
+/// Validates changes to streaming configurations, particularly focused on topic partition counts
+///
+/// # Arguments
+/// * `changes` - A slice of streaming changes to validate
+///
+/// # Returns
+/// * `Ok(())` if all changes are valid
+/// * `Err(RedpandaChangesError)` if any changes are invalid
+///
+/// # Errors
+/// * Returns error if attempting to create a topic with 0 partitions
+/// * Returns error if attempting to decrease partition count on an existing topic
+pub fn validate_changes(changes: &[StreamingChange]) -> Result<(), RedpandaChangesError> {
+    for change in changes.iter() {
+        match change {
+            StreamingChange::Topic(Change::Added(topic)) => {
+                if topic.partition_count == 0 {
+                    return Err(RedpandaChangesError::NotSupported(
+                        "Partition count cannot be 0".to_string(),
+                    ));
+                }
+            }
+
+            StreamingChange::Topic(Change::Updated { before, after }) => {
+                if before.partition_count > after.partition_count {
+                    return Err(RedpandaChangesError::NotSupported(format!(
+                        "Cannot decrease parallelism from {:?} to {:?}",
+                        before.partition_count, after.partition_count
+                    )));
+                }
+            }
+            _ => {}
+        }
+    }
+
+    Ok(())
 }
 
 pub async fn execute_changes(
@@ -517,5 +555,87 @@ pub async fn send_with_back_pressure(
                 return;
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::framework::versions::Version;
+
+    #[test]
+    fn test_validate_changes_zero_partitions() {
+        let topic = Topic {
+            version: Version::from_string("1.0.0".to_string()),
+            name: "test_topic".to_string(),
+            retention_period: Duration::from_secs(60),
+            partition_count: 0,
+            columns: vec![],
+            source_primitive: crate::framework::core::infrastructure_map::PrimitiveSignature {
+                name: "test".to_string(),
+                primitive_type:
+                    crate::framework::core::infrastructure_map::PrimitiveTypes::DataModel,
+            },
+        };
+
+        let changes = vec![StreamingChange::Topic(Change::Added(Box::new(topic)))];
+
+        assert!(validate_changes(&changes).is_err());
+    }
+
+    #[test]
+    fn test_validate_changes_decrease_partitions() {
+        let before = Topic {
+            version: Version::from_string("1.0.0".to_string()),
+            name: "test_topic".to_string(),
+            retention_period: Duration::from_secs(60),
+            partition_count: 3,
+            columns: vec![],
+            source_primitive: crate::framework::core::infrastructure_map::PrimitiveSignature {
+                name: "test".to_string(),
+                primitive_type:
+                    crate::framework::core::infrastructure_map::PrimitiveTypes::DataModel,
+            },
+        };
+
+        let after = Topic {
+            partition_count: 1,
+            ..before.clone()
+        };
+
+        let changes = vec![StreamingChange::Topic(Change::Updated {
+            before: Box::new(before),
+            after: Box::new(after),
+        })];
+
+        assert!(validate_changes(&changes).is_err());
+    }
+
+    #[test]
+    fn test_validate_changes_valid() {
+        let before = Topic {
+            version: Version::from_string("1.0.0".to_string()),
+            name: "test_topic".to_string(),
+            retention_period: Duration::from_secs(60),
+            partition_count: 1,
+            columns: vec![],
+            source_primitive: crate::framework::core::infrastructure_map::PrimitiveSignature {
+                name: "test".to_string(),
+                primitive_type:
+                    crate::framework::core::infrastructure_map::PrimitiveTypes::DataModel,
+            },
+        };
+
+        let after = Topic {
+            partition_count: 3,
+            ..before.clone()
+        };
+
+        let changes = vec![StreamingChange::Topic(Change::Updated {
+            before: Box::new(before),
+            after: Box::new(after),
+        })];
+
+        assert!(validate_changes(&changes).is_ok());
     }
 }

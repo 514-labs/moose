@@ -144,7 +144,7 @@ describe("framework-cli", () => {
     });
 
     console.log("Server started, waiting before sending test request...");
-    await setTimeoutAsync(1000);
+    await setTimeoutAsync(5000);
 
     const eventId = randomUUID();
 

@@ -117,6 +117,21 @@ pub async fn execute_changes(
     Ok(())
 }
 
+/// Adds new partitions to an existing Redpanda/Kafka topic
+///
+/// # Arguments
+/// * `redpanda_config` - Configuration for connecting to Redpanda/Kafka cluster
+/// * `id` - Name/ID of the topic to add partitions to
+/// * `partition_count` - The total number of partitions the topic should have after the operation
+///
+/// # Returns
+/// * `Ok(())` if partitions were added successfully
+/// * `Err(anyhow::Error)` if operation failed
+///
+/// # Errors
+/// * Returns error if admin client creation fails
+/// * Returns error if partition creation request fails
+/// * Returns error if operation times out (after 5 seconds)
 async fn add_partitions(
     redpanda_config: &RedpandaConfig,
     id: &str,

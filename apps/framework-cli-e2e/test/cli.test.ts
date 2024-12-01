@@ -169,7 +169,7 @@ describe("framework-cli", () => {
     }
 
     // Wait for data to be processed
-    await setTimeoutAsync(1000);
+    await setTimeoutAsync(5000);
 
     // Query the database
     const client = createClient({

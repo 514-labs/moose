@@ -73,6 +73,20 @@ export class Cluster<C> {
     process.on("SIGINT", this.gracefulClusterShutdown("SIGINT"));
 
     if (cluster.isPrimary) {
+      const parentPid = process.ppid; // Parent process ID
+
+      // Kill onself if parent process is dead
+      setInterval(() => {
+        try {
+          // Check if the process is still alive
+          // This won't acutally kill the process, just check if it's alive
+          process.kill(parentPid, 0);
+        } catch (e) {
+          console.log("Parent process has exited.");
+          this.gracefulClusterShutdown("SIGTERM")();
+        }
+      }, 1000);
+
       await this.bootWorkers(this.usedCpuCount);
     } else {
       if (!cluster.worker) {

@@ -80,7 +80,7 @@ jobs:
 
   test-ubuntu:
     name: Test Suite (Ubuntu)
-    runs-on: ubuntu-20.04-8core
+    runs-on: ubuntu-4
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"

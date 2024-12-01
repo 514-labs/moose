@@ -80,11 +80,11 @@ jobs:
 
   test-ubuntu:
     name: Test Suite (Ubuntu)
+    runs-on: ubuntu-20.04-8core
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
       RUST_BACKTRACE: full
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
     steps:

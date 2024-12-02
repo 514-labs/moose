@@ -354,8 +354,6 @@ impl InfrastructureMap {
 
                 function_processes.insert(function_process.id(), function_process);
             } else {
-                let topics: Vec<String> = topics.values().map(|t| t.id()).collect();
-
                 let function_process = FunctionProcess::from_function(function, &topics);
                 function_processes.insert(function_process.id(), function_process);
             }

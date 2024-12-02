@@ -4,12 +4,7 @@ use log::info;
 use tokio::process::Child;
 
 use crate::{
-    framework::{
-        core::infrastructure::{function_process::FunctionProcess, topic::Topic},
-        python,
-        streaming::model::StreamingFunction,
-        typescript,
-    },
+    framework::{core::infrastructure::function_process::FunctionProcess, python, typescript},
     infrastructure::stream::redpanda::RedpandaConfig,
     utilities::system::{kill_child, KillProcessError},
 };
@@ -75,32 +70,6 @@ impl FunctionProcessRegistry {
         }?;
 
         self.registry.insert(function_process.id(), child);
-
-        Ok(())
-    }
-
-    // This is a legacy method that takes in directly a streaming function
-    // to accommodate the current way of spinning up streaming functions
-    pub fn start_all(
-        &mut self,
-        functions: &[StreamingFunction],
-        topics: &[String],
-    ) -> Result<(), FunctionRegistryError> {
-        for streaming_function in functions {
-            if streaming_function.is_migration() {
-                let (source_topic, target_topic) =
-                    Topic::from_migration_function(streaming_function);
-                let function_process = FunctionProcess::from_migration_function(
-                    streaming_function,
-                    &source_topic,
-                    // Migration functions always have a target topic
-                    &target_topic.unwrap(),
-                );
-                self.start(&function_process)?;
-            } else {
-                self.start(&FunctionProcess::from_function(streaming_function, topics))?;
-            }
-        }
 
         Ok(())
     }

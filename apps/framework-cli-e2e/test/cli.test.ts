@@ -144,8 +144,8 @@ describe("framework-cli", () => {
     });
 
     console.log("Server started, waiting before sending test request...");
+    await setTimeoutAsync(5000);
 
-    console.log("Sending test request...");
     const eventId = randomUUID();
 
     const response = await fetch("http://localhost:4000/ingest/UserActivity", {

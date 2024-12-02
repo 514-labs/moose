@@ -1,3 +1,11 @@
+/// # Config
+/// Module to handle reading the config file from the user's home directory and configuring the CLI
+///
+/// ## Suggested Improvements
+/// - add a config file option to the CLI
+/// - add a config file generator to the CLI
+/// - add a config file validation and error handling
+///
 use config::{Config, ConfigError, Environment, File};
 use home::home_dir;
 use log::warn;
@@ -9,15 +17,6 @@ use uuid::Uuid;
 use super::display::{Message, MessageType};
 use super::logger::LoggerSettings;
 use crate::utilities::constants::{CLI_CONFIG_FILE, CLI_USER_DIRECTORY};
-
-/// # Config
-/// Module to handle reading the config file from the user's home directory and configuring the CLI
-///
-/// ## Suggested Improvements
-/// - add a config file option to the CLI
-/// - add a config file generator to the CLI
-/// - add a config file validation and error handling
-///
 
 const ENVIRONMENT_VARIABLE_PREFIX: &str = "MOOSE";
 

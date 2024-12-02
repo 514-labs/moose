@@ -31,6 +31,7 @@ export type DataModelConfig<T> = Partial<{
     order_by_fields?: (keyof T)[];
     deduplicate?: boolean;
   };
+  parallelism?: number;
 }>;
 
 export * from "./blocks/helpers";

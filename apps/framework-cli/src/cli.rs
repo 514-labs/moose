@@ -70,11 +70,6 @@ use self::routines::clean::CleanProject;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
 struct Cli {
-    // TODD: Add a config file option
-    /// Sets a custom config file
-    // #[arg(short, long, value_name = "FILE")]
-    // config: Option<PathBuf>,
-
     /// Turn debugging information on
     #[arg(short, long)]
     debug: bool,
@@ -391,19 +386,14 @@ async fn top_command_handler(
             let arc_metrics = Arc::new(metrics);
             arc_metrics.start_listening_to_metrics(rx_events).await;
 
-            routines::start_development_mode(
-                project_arc,
-                &settings.features,
-                arc_metrics,
-                redis_client,
-            )
-            .await
-            .map_err(|e| {
-                RoutineFailure::error(Message {
-                    action: "Dev".to_string(),
-                    details: format!("Failed to start development mode: {:?}", e),
-                })
-            })?;
+            routines::start_development_mode(project_arc, arc_metrics, redis_client)
+                .await
+                .map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Dev".to_string(),
+                        details: format!("Failed to start development mode: {:?}", e),
+                    })
+                })?;
 
             wait_for_usage_capture(capture_handle).await;
 
@@ -602,19 +592,14 @@ async fn top_command_handler(
                 &settings,
             );
 
-            routines::start_production_mode(
-                project_arc,
-                settings.features,
-                arc_metrics,
-                redis_client,
-            )
-            .await
-            .map_err(|e| {
-                RoutineFailure::error(Message {
-                    action: "Prod".to_string(),
-                    details: format!("Failed to start production mode: {:?}", e),
-                })
-            })?;
+            routines::start_production_mode(project_arc, arc_metrics, redis_client)
+                .await
+                .map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Prod".to_string(),
+                        details: format!("Failed to start production mode: {:?}", e),
+                    })
+                })?;
 
             wait_for_usage_capture(capture_handle).await;
 

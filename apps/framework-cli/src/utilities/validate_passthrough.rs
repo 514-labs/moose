@@ -38,7 +38,7 @@ where
 }
 
 struct DummyWrapper<'a, T>(&'a mut T); // workaround so that implementations don't clash
-impl<'a, S> SerializeValue for DummyWrapper<'a, S>
+impl<S> SerializeValue for DummyWrapper<'_, S>
 where
     S: SerializeSeq,
 {
@@ -123,7 +123,7 @@ struct ValueVisitor<'a, S: SerializeValue> {
     context: ParentContext<'a>,
     jwt_claims: Option<&'a Value>,
 }
-impl<'de, 'a, S: SerializeValue> DeserializeSeed<'de> for &mut ValueVisitor<'a, S> {
+impl<'de, S: SerializeValue> DeserializeSeed<'de> for &mut ValueVisitor<'_, S> {
     type Value = ();
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -133,7 +133,7 @@ impl<'de, 'a, S: SerializeValue> DeserializeSeed<'de> for &mut ValueVisitor<'a, 
         deserializer.deserialize_any(self)
     }
 }
-impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
+impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
     type Value = ();
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
@@ -314,7 +314,7 @@ impl<'de, 'a, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'a, S> {
     }
 }
 
-impl<'a, S: SerializeValue> ValueVisitor<'a, S> {
+impl<S: SerializeValue> ValueVisitor<'_, S> {
     fn get_path(&self) -> String {
         add_path_component(
             parent_context_to_string(self.context.parent),
@@ -323,7 +323,7 @@ impl<'a, S: SerializeValue> ValueVisitor<'a, S> {
     }
 }
 
-impl<'a, 'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'a, 'de, A> {
+impl<'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'_, 'de, A> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -367,7 +367,7 @@ struct MapAccessSerializer<'de, 'a, A: MapAccess<'de>> {
     _phantom_data: &'de PhantomData<()>,
 }
 
-impl<'de, 'a, A: MapAccess<'de>> Serialize for MapAccessSerializer<'de, 'a, A> {
+impl<'de, A: MapAccess<'de>> Serialize for MapAccessSerializer<'de, '_, A> {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -477,7 +477,7 @@ fn parent_context_to_string(parent_context: Option<&ParentContext>) -> String {
     }
 }
 
-impl<'de, 'a> Visitor<'de> for &mut DataModelVisitor<'a> {
+impl<'de> Visitor<'de> for &mut DataModelVisitor<'_> {
     type Value = Vec<u8>;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {
@@ -498,7 +498,7 @@ impl<'de, 'a> Visitor<'de> for &mut DataModelVisitor<'a> {
         Ok(vec)
     }
 }
-impl<'de, 'a> DeserializeSeed<'de> for &mut DataModelVisitor<'a> {
+impl<'de> DeserializeSeed<'de> for &mut DataModelVisitor<'_> {
     type Value = Vec<u8>;
 
     fn deserialize<D>(self, deserializer: D) -> Result<Self::Value, D::Error>
@@ -511,7 +511,7 @@ impl<'de, 'a> DeserializeSeed<'de> for &mut DataModelVisitor<'a> {
 pub struct DataModelArrayVisitor<'a> {
     pub inner: DataModelVisitor<'a>,
 }
-impl<'de, 'a> Visitor<'de> for &mut DataModelArrayVisitor<'a> {
+impl<'de> Visitor<'de> for &mut DataModelArrayVisitor<'_> {
     type Value = Vec<Vec<u8>>;
 
     fn expecting(&self, formatter: &mut Formatter) -> std::fmt::Result {

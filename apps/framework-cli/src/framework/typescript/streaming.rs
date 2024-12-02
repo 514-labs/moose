@@ -18,14 +18,17 @@ pub fn run(
     target_topic_config: &str,
     streaming_function_file: &Path,
     project_path: &Path,
+    max_subscriber_count: usize,
     // TODO Remove the anyhow type here
 ) -> Result<Child, std::io::Error> {
+    let subscriber_count_str = max_subscriber_count.to_string();
     let mut args = vec![
         source_topic,
         target_topic,
         target_topic_config,
         streaming_function_file.to_str().unwrap(),
         &redpanda_config.broker,
+        &subscriber_count_str,
     ];
 
     info!(

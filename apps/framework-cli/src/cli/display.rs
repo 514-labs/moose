@@ -288,8 +288,8 @@ pub fn show_changes(infra_plan: &InfraPlan) {
             StreamingChange::Topic(Change::Removed(infra)) => {
                 infra_removed(&infra.short_display());
             }
-            StreamingChange::Topic(Change::Updated { before, after: _ }) => {
-                infra_updated(&before.expanded_display());
+            StreamingChange::Topic(Change::Updated { before: _, after }) => {
+                infra_updated(&after.expanded_display());
             }
         });
 

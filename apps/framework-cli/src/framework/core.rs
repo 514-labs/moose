@@ -12,8 +12,8 @@
 /// │  Python      ├──┐                ┌─►  ClickHouse  │
 /// │              │  │  ┌──────────┐  │ │              │
 /// └──────────────┘  │  │          │  │ └──────────────┘
-///                   │  │          │  │                 
-///                   ├──►   Core   ├──┤                 
+///                   │  │          │  │
+///                   ├──►   Core   ├──┤
 /// ┌──────────────┐  │  │          │  │ ┌──────────────┐
 /// │              │  │  │          │  │ │              │
 /// │  Typescript  ├──┘  └──────────┘  └►│   Kafka      │
@@ -26,4 +26,5 @@ pub mod execute;
 pub mod infrastructure;
 pub mod infrastructure_map;
 pub mod plan;
+pub mod plan_validator;
 pub mod primitive_map;

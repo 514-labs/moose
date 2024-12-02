@@ -1,7 +1,7 @@
 use super::{RoutineFailure, RoutineSuccess};
 use crate::cli::display::{Message, MessageType};
 use crate::cli::settings::Features;
-use crate::framework::core::code_loader::{load_framework_objects, FrameworkObjectVersions};
+use crate::framework::core::code_loader::load_framework_objects;
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::data_model::model::DataModel;
 use crate::framework::languages::SupportedLanguages;
@@ -99,6 +99,7 @@ pub async fn create_streaming_function_file(
             err,
         )
     })?;
+
     function_file
         .write_all(function_file_content.as_bytes())
         .map_err(|err| {
@@ -127,64 +128,6 @@ pub async fn create_streaming_function_file(
             details: "streaming function".to_string(),
         },
     })
-}
-
-pub fn verify_streaming_functions_against_datamodels(
-    project: &Project,
-    framework_object_versions: &FrameworkObjectVersions,
-) -> anyhow::Result<()> {
-    let functions = project.get_functions();
-    let functions_dir = project.streaming_func_dir();
-
-    let mut functions_with_missing_models = Vec::<String>::new();
-    for (source, destinations) in functions {
-        if !framework_object_versions
-            .current_models
-            .models
-            .contains_key(&source)
-        {
-            functions_with_missing_models.push(format!("{}/{}", functions_dir.display(), source));
-        }
-
-        destinations.iter().for_each(|destination| {
-            if !framework_object_versions
-                .current_models
-                .models
-                .contains_key(destination)
-            {
-                functions_with_missing_models.push(format!(
-                    "{}/{}/{}",
-                    functions_dir.display(),
-                    source,
-                    destination
-                ));
-            }
-        });
-    }
-
-    if !functions_with_missing_models.is_empty() {
-        functions_with_missing_models.sort();
-        show_message!(
-            MessageType::Error,
-            Message {
-                action: "Function".to_string(),
-                details: "These functions sources/destinations have missing data models. Add the data models or rename the streaming functions".to_string(),
-            }
-        );
-        functions_with_missing_models
-            .iter()
-            .for_each(|function_path| {
-                show_message!(
-                    MessageType::Error,
-                    Message {
-                        action: "".to_string(),
-                        details: function_path.to_string(),
-                    }
-                );
-            });
-    }
-
-    Ok(())
 }
 
 fn verify_datamodels_with_grep(project: &Project, source: &str, destination: &str) {

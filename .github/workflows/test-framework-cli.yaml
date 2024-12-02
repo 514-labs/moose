@@ -7,6 +7,7 @@ on:
       - "!main"
     paths:
       - ".github/workflows/test-framework-cli.yaml"
+      - "apps/framework-cli-e2e/**"
       - "apps/framework-cli/**"
       - "packages/**"
 
@@ -79,11 +80,11 @@ jobs:
 
   test-ubuntu:
     name: Test Suite (Ubuntu)
+    runs-on: ubuntu-4
     env:
       SCCACHE_GHA_ENABLED: "true"
       RUSTC_WRAPPER: "sccache"
       RUST_BACKTRACE: full
-    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
     steps:

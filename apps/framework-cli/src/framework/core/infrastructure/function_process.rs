@@ -32,11 +32,18 @@ pub struct FunctionProcess {
 
     pub executable: PathBuf,
 
+    #[serde(default = "FunctionProcess::default_parallel_process_count")]
+    pub parallel_process_count: usize,
+
     pub version: String,
     pub source_primitive: PrimitiveSignature,
 }
 
 impl FunctionProcess {
+    pub fn default_parallel_process_count() -> usize {
+        1
+    }
+
     pub fn from_function(function: &StreamingFunction, topics: &[String]) -> Self {
         FunctionProcess {
             name: function.name.clone(),
@@ -72,6 +79,8 @@ impl FunctionProcess {
 
             executable: function.executable.clone(),
 
+            parallel_process_count: function.source_data_model.config.parallelism,
+
             version: function.version.clone(),
             source_primitive: PrimitiveSignature {
                 name: function.name.clone(),
@@ -101,6 +110,8 @@ impl FunctionProcess {
 
             executable: function.executable.clone(),
 
+            parallel_process_count: source_topic.partition_count,
+
             version: function.version.clone(),
             source_primitive: PrimitiveSignature {
                 name: function.name.clone(),
@@ -126,8 +137,8 @@ impl FunctionProcess {
 
     pub fn expanded_display(&self) -> String {
         format!(
-            "Reloading Function: from topic {} to topic {} - Version: {}",
-            self.source_topic, self.target_topic, self.version
+            "Reloading Function: from topic {} to topic {} - Version: {} with {} instances",
+            self.source_topic, self.target_topic, self.version, self.parallel_process_count
         )
     }
 
@@ -148,6 +159,7 @@ impl FunctionProcess {
             target_topic_config: self.target_topic_config.clone(),
             target_columns: self.target_columns.iter().map(|c| c.to_proto()).collect(),
             executable: self.executable.to_str().unwrap_or_default().to_string(),
+            parallel_process_count: Some(self.parallel_process_count as i32),
             version: self.version.clone(),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
             special_fields: Default::default(),

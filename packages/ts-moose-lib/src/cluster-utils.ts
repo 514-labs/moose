@@ -3,6 +3,15 @@ import { availableParallelism } from "node:os";
 import { exit } from "node:process";
 import { Worker } from "node:cluster";
 
+const DEFAULT_MAX_CPU_USAGE_RATIO = 0.7;
+// Time to restart the worker when it exits unexpectedly
+// This value is not too high to avoid the worker to be stuck in a bad state
+// but also not too low to avoid restarting the worker too often
+const RESTART_TIME_MS = 10000;
+const SIGTERM = "SIGTERM";
+const SIGINT = "SIGINT";
+const SHUTDOWN_WORKERS_INTERVAL = 500;
+
 /**
  * Manages a cluster of worker processes, handling their lifecycle including startup,
  * shutdown, and error handling.
@@ -51,7 +60,8 @@ export class Cluster<C> {
     ) {
       throw new Error("maxCpuUsageRatio must be between 0 and 1");
     }
-    this.maxCpuUsageRatio = options.maxCpuUsageRatio || 0.7;
+    this.maxCpuUsageRatio =
+      options.maxCpuUsageRatio || DEFAULT_MAX_CPU_USAGE_RATIO;
     this.usedCpuCount = this.computeCPUUsageCount(
       this.maxCpuUsageRatio,
       options.maxWorkerCount,
@@ -82,8 +92,8 @@ export class Cluster<C> {
    * @throws {Error} If worker is undefined in worker process
    */
   async start() {
-    process.on("SIGTERM", this.gracefulClusterShutdown("SIGTERM"));
-    process.on("SIGINT", this.gracefulClusterShutdown("SIGINT"));
+    process.on(SIGTERM, this.gracefulClusterShutdown(SIGTERM));
+    process.on(SIGINT, this.gracefulClusterShutdown(SIGINT));
 
     if (cluster.isPrimary) {
       const parentPid = process.ppid;
@@ -93,7 +103,7 @@ export class Cluster<C> {
           process.kill(parentPid, 0);
         } catch (e) {
           console.log("Parent process has exited.");
-          this.gracefulClusterShutdown("SIGTERM")();
+          this.gracefulClusterShutdown(SIGTERM)();
         }
       }, 1000);
 
@@ -136,7 +146,7 @@ export class Cluster<C> {
       );
 
       if (!this.shutdownInProgress) {
-        setTimeout(() => cluster.fork(), 10000);
+        setTimeout(() => cluster.fork(), RESTART_TIME_MS);
       }
 
       if (this.shutdownInProgress && code != 0) {
@@ -232,7 +242,7 @@ export class Cluster<C> {
         }
       };
 
-      const interval = setInterval(cleanWorkers, 500);
+      const interval = setInterval(cleanWorkers, SHUTDOWN_WORKERS_INTERVAL);
     });
   };
 }

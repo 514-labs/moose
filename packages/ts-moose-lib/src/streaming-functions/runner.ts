@@ -474,51 +474,46 @@ const startConsumer = async (
       });
       logger.log(`Received ${batch.messages.length} message(s)`);
 
-      // If parallelism is set to 1, we don't know if there is not a lot of resources that have to be
-      // shared with other processes, if so we need to limit to concurrency to not hog the CPU
-      // and the memory. If the parallelism is greater than one however, we can assume that there is
-      // plenty of resources and we can starve the CPUs we have access to, to get the most out of it.
-      const chunkSize =
-        parallelism !== 1 ? batch.messages.length : MAX_STREAMING_CONCURRENCY;
+      let index = 0;
+      const processedMessages: (SlimKafkaMessage[] | undefined)[] =
+        await Readable.from(batch.messages)
+          .map(
+            async (message) => {
+              index++;
+              if (
+                (batch.messages.length > DEFAULT_MAX_STREAMING_CONCURRENCY &&
+                  index % DEFAULT_MAX_STREAMING_CONCURRENCY) ||
+                index - 1 === batch.messages.length
+              ) {
+                await heartbeat();
+              }
+              return handleMessage(logger, streamingFunction, message);
+            },
+            {
+              concurrency: MAX_STREAMING_CONCURRENCY,
+            },
+          )
+          .toArray();
 
-      let processedMessages: (SlimKafkaMessage[] | undefined)[];
-      for (const chunk of chunks(batch.messages, chunkSize)) {
-        processedMessages = await Promise.all(
-          chunk.map(async (message, index) => {
-            if (
-              (chunkSize > DEFAULT_MAX_STREAMING_CONCURRENCY &&
-                index % DEFAULT_MAX_STREAMING_CONCURRENCY) ||
-              index - 1 === chunkSize
-            ) {
-              await heartbeat();
-            }
-            return handleMessage(logger, streamingFunction, message);
-          }),
+      const filteredMessages = processedMessages
+        .flat()
+        .filter((msg) => msg !== undefined);
+
+      if (has_no_output_topic(args) || processedMessages.length === 0) {
+        return;
+      }
+
+      await heartbeat();
+
+      if (filteredMessages.length > 0) {
+        await sendMessages(
+          logger,
+          metrics,
+          args,
+          producer,
+          filteredMessages as SlimKafkaMessage[],
+          maxMessageSize,
         );
-
-        await heartbeat();
-
-        // If there is no out topic we don't send the messages. This is the case
-        // when the streaming function is used to do some side effects.
-        if (processedMessages.length > 0 && !has_no_output_topic(args)) {
-          // We remove all the empty return and flatten the array
-          const filteredMessages = processedMessages
-            .flat()
-            .filter((msg) => msg !== undefined);
-
-          await heartbeat();
-
-          if (filteredMessages.length > 0) {
-            await sendMessages(
-              logger,
-              metrics,
-              args,
-              producer,
-              filteredMessages as SlimKafkaMessage[],
-              maxMessageSize,
-            );
-          }
-        }
       }
     },
   });

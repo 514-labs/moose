@@ -325,6 +325,7 @@ const sendMessages = async (
 
       if (chunkSize + messageSize > maxMessageSize) {
         // Send the current chunk before adding the new message
+        // We are not setting the key, so that should not take any size in the payload
         await producer.send({ topic: args.targetTopic, messages: chunks });
         logger.log(
           `Sent ${chunks.length} transformed data to ${args.targetTopic}`,

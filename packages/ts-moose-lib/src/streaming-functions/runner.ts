@@ -18,6 +18,10 @@ const HEARTBEAT_INTERVAL_CONSUMER = 3000;
 const RETRY_FACTOR_PRODUCER = 0.2;
 const DEFAULT_MAX_STREAMING_CONCURRENCY = 100;
 const RETRY_INITIAL_TIME_MS = 100;
+// https://github.com/a0x8o/kafka/blob/master/clients/src/main/java/org/apache/kafka/common/record/AbstractRecords.java#L124
+// According to the above, the overhead should be 12 + 22 bytes - 34 bytes.
+// We put 50 to be safe.
+const KAFKAJS_BYTE_MESSAGE_OVERHEAD = 50;
 
 /**
  * Data structure for metrics logging containing counts and metadata
@@ -315,10 +319,13 @@ const sendMessages = async (
     let chunkSize = 0;
 
     for (const message of messages) {
-      const messageSize = Buffer.byteLength(message.value, "utf8");
+      const messageSize =
+        Buffer.byteLength(message.value, "utf8") +
+        KAFKAJS_BYTE_MESSAGE_OVERHEAD;
 
       if (chunkSize + messageSize > maxMessageSize) {
         // Send the current chunk before adding the new message
+        // We are not setting the key, so that should not take any size in the payload
         await producer.send({ topic: args.targetTopic, messages: chunks });
         logger.log(
           `Sent ${chunks.length} transformed data to ${args.targetTopic}`,

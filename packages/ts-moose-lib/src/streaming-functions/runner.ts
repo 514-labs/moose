@@ -332,14 +332,14 @@ const sendMessages = async (
 
         // Start a new chunk
         chunks = [message];
-        chunkSize = messageSize + KAFKAJS_BYTE_MESSAGE_OVERHEAD;
+        chunkSize = messageSize;
       } else {
         // Add the new message to the current chunk
         chunks.push(message);
         chunks.forEach(
           (chunk) => (metrics.bytes += Buffer.byteLength(chunk.value, "utf8")),
         );
-        chunkSize += messageSize + KAFKAJS_BYTE_MESSAGE_OVERHEAD;
+        chunkSize += messageSize;
       }
     }
 

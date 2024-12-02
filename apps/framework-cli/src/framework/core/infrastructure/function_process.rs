@@ -3,10 +3,8 @@ use crate::{
         core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
         streaming::model::StreamingFunction,
     },
-    infrastructure::stream::redpanda::RedpandaConfig,
     utilities::constants::{PYTHON_FILE_EXTENSION, TYPESCRIPT_FILE_EXTENSION},
 };
-use itertools::sorted;
 use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf};
@@ -44,7 +42,7 @@ impl FunctionProcess {
         1
     }
 
-    pub fn from_function(function: &StreamingFunction, topics: &[String]) -> Self {
+    pub fn from_function(function: &StreamingFunction, topics: &HashMap<String, Topic>) -> Self {
         FunctionProcess {
             name: function.name.clone(),
 
@@ -171,18 +169,12 @@ impl FunctionProcess {
  * This function retrieves the latest topic for a given data model
  * This should be eventually retired for proper DCM management for functions.
  */
-fn get_latest_topic(topics: &[String], data_model: &str) -> Option<String> {
+fn get_latest_topic(topics: &HashMap<String, Topic>, data_model: &str) -> Option<String> {
     // Ths algorithm is not super efficient. We probably should have a
     // good way to retrieve the topics for a given data model from the state
-    sorted(
-        // FIXME: this will put version no. `3.11` before `3.9`
-        topics
-            .iter()
-            .filter(|&topic| {
-                RedpandaConfig::get_topic_without_namespace(topic).starts_with(data_model)
-            })
-            .collect::<Vec<&String>>(),
-    )
-    .last()
-    .map(|topic| topic.to_string())
+    topics
+        .values()
+        .filter(|t| t.source_primitive.name == data_model)
+        .max_by_key(|t| &t.version)
+        .map(|t| t.id())
 }

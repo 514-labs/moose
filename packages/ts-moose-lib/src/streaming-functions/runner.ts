@@ -20,8 +20,8 @@ const DEFAULT_MAX_STREAMING_CONCURRENCY = 100;
 const RETRY_INITIAL_TIME_MS = 100;
 // https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/record/AbstractRecords.java#L124
 // According to the above, the overhead should be 12 + 22 bytes - 34 bytes.
-// We put 100 to be safe.
-const KAFKAJS_BYTE_MESSAGE_OVERHEAD = 100;
+// We put 500 to be safe.
+const KAFKAJS_BYTE_MESSAGE_OVERHEAD = 500;
 
 //Dummy change
 
@@ -43,25 +43,6 @@ interface Metrics {
   count_in: number;
   count_out: number;
   bytes: number;
-}
-
-/**
- * Creates a generator that yields chunks of an array with a specified size
- * @param array - The input array to be split into chunks
- * @param chunkSize - The size of each chunk
- * @returns Generator that yields arrays containing chunks of the input array
- * @example
- * ```ts
- * const arr = [1, 2, 3, 4, 5];
- * for (const chunk of chunks(arr, 2)) {
- *   console.log(chunk); // [1,2], [3,4], [5]
- * }
- * ```
- */
-function* chunks<T>(array: T[], chunkSize: number): Generator<T[]> {
-  for (let i = 0; i < array.length; i += chunkSize) {
-    yield array.slice(i, i + chunkSize);
-  }
 }
 
 /**

@@ -20,8 +20,8 @@ const DEFAULT_MAX_STREAMING_CONCURRENCY = 100;
 const RETRY_INITIAL_TIME_MS = 100;
 // https://github.com/a0x8o/kafka/blob/master/clients/src/main/java/org/apache/kafka/common/record/AbstractRecords.java#L124
 // According to the above, the overhead should be 12 + 22 bytes - 34 bytes.
-// We put 50 to be safe.
-const KAFKAJS_BYTE_MESSAGE_OVERHEAD = 50;
+// We put 100 to be safe.
+const KAFKAJS_BYTE_MESSAGE_OVERHEAD = 100;
 
 /**
  * Data structure for metrics logging containing counts and metadata
@@ -324,11 +324,14 @@ const sendMessages = async (
         KAFKAJS_BYTE_MESSAGE_OVERHEAD;
 
       if (chunkSize + messageSize > maxMessageSize) {
+        logger.log(
+          `Sending ${messageSize} bytes of a transformed record batch to ${args.targetTopic}`,
+        );
         // Send the current chunk before adding the new message
         // We are not setting the key, so that should not take any size in the payload
         await producer.send({ topic: args.targetTopic, messages: chunks });
         logger.log(
-          `Sent ${chunks.length} transformed data to ${args.targetTopic}`,
+          `Sent ${chunks.length} transformed records to ${args.targetTopic}`,
         );
 
         // Start a new chunk
@@ -658,16 +661,26 @@ export const runStreamingFunctions = async (): Promise<void> => {
       });
 
       try {
+        const targetTopicConfig = JSON.parse(args.targetTopicConfig) as Record<
+          string,
+          unknown
+        >;
+
+        const maxMessageSize = getMaxMessageSize(targetTopicConfig);
+
+        producer.on(producer.events.REQUEST, (event) => {
+          if (event.payload.size > maxMessageSize) {
+            logger.error(
+              `Message size ${event.payload.size} exceeds max message size ${maxMessageSize}`,
+            );
+          }
+        });
+
         if (!has_no_output_topic(args)) {
           await startProducer(logger, producer);
         }
 
         try {
-          const targetTopicConfig = JSON.parse(
-            args.targetTopicConfig,
-          ) as Record<string, unknown>;
-          const maxMessageSize = getMaxMessageSize(targetTopicConfig);
-
           await startConsumer(
             logger,
             metrics,

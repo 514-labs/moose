@@ -1,5 +1,5 @@
-pub mod aggregation;
 pub mod bin;
+pub mod blocks;
 pub mod checker;
 pub mod consumption;
 pub mod export_collectors;

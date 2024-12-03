@@ -16,7 +16,7 @@ use crate::framework::{
 use crate::utilities::PathExt;
 use crate::{
     framework::{
-        aggregations::model::Aggregation,
+        blocks::model::Blocks,
         consumption::model::Consumption,
         data_model::{
             self,
@@ -66,10 +66,10 @@ pub struct PrimitiveMap {
     pub datamodels: DataModelSet,
     pub functions: Vec<StreamingFunction>,
 
-    // We are currently not loading aggregations 1 by 1 in the CLI, we should load them individually to be able
+    // We are currently not loading blocks 1 by 1 in the CLI, we should load them individually to be able
     // to start/stop them individually. Right now we are starting all of them at once through the language specific
-    // aggregation runner. We are loading aggregations as 1 unique aggregation as a default.
-    pub aggregation: Aggregation,
+    // blocks runner. We are loading blocks as 1 unique blocks as a default.
+    pub blocks: Blocks,
 
     // We are currently not loading individual consumption endpoints in the CLI and we probably will not need to
     // Since this is a local webserver without side effects, keeping track of what is up and running is not necessary
@@ -183,7 +183,7 @@ impl PrimitiveMap {
             }
         }
 
-        // TODO Add validation that aggregations and data model names do not overlap
+        // TODO Add validation that blocks and data model names do not overlap
         Ok(())
     }
 

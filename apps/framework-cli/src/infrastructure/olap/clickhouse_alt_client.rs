@@ -1,4 +1,4 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use std::num::TryFromIntError;
 use std::path::PathBuf;
 use std::str::FromStr;
@@ -276,17 +276,15 @@ ORDER BY timestamp"#,
 pub async fn store_current_state(
     client: &mut ClientHandle,
     framework_object_versions: &FrameworkObjectVersions,
-    aggregations: &HashSet<String>,
     click_house_config: &ClickHouseConfig,
 ) -> Result<(), StateStorageError> {
     create_state_table(client, click_house_config).await?;
 
     let data = clickhouse_rs::Block::new().column(
         "state",
-        vec![serde_json::to_string(&ApplicationState::from((
+        vec![serde_json::to_string(&ApplicationState::from(
             framework_object_versions,
-            aggregations,
-        )))?],
+        ))?],
     );
     client
         .insert(
@@ -340,7 +338,6 @@ pub enum StateStorageError {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ApplicationState {
     pub models: Vec<(String, Vec<Model>)>,
-    pub aggregations: HashSet<String>,
 }
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Model {
@@ -348,8 +345,8 @@ pub struct Model {
     pub original_file_path: PathBuf,
 }
 
-impl From<(&FrameworkObjectVersions, &HashSet<String>)> for ApplicationState {
-    fn from((versions, aggregations): (&FrameworkObjectVersions, &HashSet<String>)) -> Self {
+impl From<&FrameworkObjectVersions> for ApplicationState {
+    fn from(versions: &FrameworkObjectVersions) -> Self {
         let models = versions
             .previous_version_models
             .iter()
@@ -369,10 +366,7 @@ impl From<(&FrameworkObjectVersions, &HashSet<String>)> for ApplicationState {
                 (version.clone(), models)
             })
             .collect();
-        ApplicationState {
-            models,
-            aggregations: aggregations.clone(),
-        }
+        ApplicationState { models }
     }
 }
 

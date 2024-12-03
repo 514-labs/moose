@@ -16,7 +16,7 @@ use crate::{
         DuplicateModelError,
     },
     infrastructure::olap::{self, clickhouse::model::ClickHouseTable},
-    project::{AggregationSet, Project},
+    project::Project,
 };
 
 use super::{
@@ -116,7 +116,6 @@ pub async fn get_all_framework_objects(
     framework_objects: &mut HashMap<String, FrameworkObject>,
     schema_dir: &Path,
     version: &str,
-    aggregations: &AggregationSet,
 ) -> anyhow::Result<()> {
     if schema_dir.is_dir() {
         for entry in std::fs::read_dir(schema_dir)? {
@@ -124,13 +123,11 @@ pub async fn get_all_framework_objects(
             let path = entry.path();
             if path.is_dir() {
                 debug!("<DCM> Processing directory: {:?}", path);
-                get_all_framework_objects(project, framework_objects, &path, version, aggregations)
-                    .await?;
+                get_all_framework_objects(project, framework_objects, &path, version).await?;
             } else if is_schema_file(&path) {
                 debug!("<DCM> Processing file: {:?}", path);
                 let objects =
-                    get_framework_objects_from_schema_file(project, &path, version, aggregations)
-                        .await?;
+                    get_framework_objects_from_schema_file(project, &path, version).await?;
                 for fo in objects {
                     DuplicateModelError::try_insert(framework_objects, fo, &path)?;
                 }
@@ -145,23 +142,11 @@ pub async fn get_framework_objects_from_schema_file(
     project: &Project,
     path: &Path,
     version: &str,
-    aggregations: &AggregationSet,
 ) -> Result<Vec<FrameworkObject>, DataModelError> {
     let framework_objects = parse_data_model_file(path, version, project)?;
     let mut indexed_models = HashMap::new();
 
     for model in framework_objects.models {
-        if aggregations.current_version.as_str() == version
-            && aggregations.names.contains(model.name.clone().trim())
-        {
-            return Err(DataModelError::Other {
-                message: format!(
-                    "Model & aggregation {} cannot have the same name",
-                    model.name
-                ),
-            });
-        }
-
         indexed_models.insert(model.name.clone().trim().to_lowercase(), model);
     }
 
@@ -256,25 +241,13 @@ async fn crawl_schema(
         project.data_models_dir().clone(),
     );
 
-    let aggregations = AggregationSet {
-        current_version: project.cur_version().to_owned(),
-        names: project.get_aggregations(),
-    };
-
     for version in old_versions.iter() {
         let path = project.old_version_location(version)?;
 
         debug!("<DCM> Processing old version directory: {:?}", path);
 
         let mut framework_objects = HashMap::new();
-        get_all_framework_objects(
-            project,
-            &mut framework_objects,
-            &path,
-            version,
-            &aggregations,
-        )
-        .await?;
+        get_all_framework_objects(project, &mut framework_objects, &path, version).await?;
 
         let schema_version = SchemaVersion {
             base_path: path,
@@ -288,11 +261,6 @@ async fn crawl_schema(
 
     let schema_dir = project.data_models_dir();
 
-    let aggregations = AggregationSet {
-        current_version: project.cur_version().to_owned(),
-        names: project.get_aggregations(),
-    };
-
     info!("<DCM> Starting schema directory crawl...");
     let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
     get_all_framework_objects(
@@ -300,7 +268,6 @@ async fn crawl_schema(
         &mut framework_objects,
         &schema_dir,
         project.cur_version().as_str(),
-        &aggregations,
     )
     .await?;
 
@@ -389,10 +356,6 @@ mod tests {
     #[serial_test::serial(tspc)]
     async fn test_get_all_framework_objects() {
         let mut framework_objects = HashMap::new();
-        let aggregations = AggregationSet {
-            current_version: Version::from_string("0.0".to_string()),
-            names: HashSet::new(),
-        };
 
         let result = get_all_framework_objects(
             &TEST_PROJECT,
@@ -401,7 +364,6 @@ mod tests {
                 .data_models_dir()
                 .join("separate_dir_to_test_get_all"),
             "0.0",
-            &aggregations,
         )
         .await;
 

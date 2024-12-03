@@ -1,14 +1,14 @@
 #[derive(Debug, thiserror::Error)]
 #[non_exhaustive]
-pub enum AggregationError {
-    #[error("Failed to start/stop the aggregation process")]
+pub enum BlocksError {
+    #[error("Failed to start/stop the blocks process")]
     IoError(#[from] std::io::Error),
 }
 
 #[derive(Debug, Clone, Default)]
-pub struct Aggregation {}
+pub struct Blocks {}
 
-impl Aggregation {
+impl Blocks {
     pub fn id(&self) -> String {
         "onlyone".to_string()
     }

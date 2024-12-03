@@ -391,8 +391,8 @@ impl InfrastructureMap {
             }
         }
 
-        // TODO update here when we have several aggregation processes
-        let block_db_processes = OlapProcess::from_aggregation(&primitive_map.aggregation);
+        // TODO update here when we have several blocks processes
+        let block_db_processes = OlapProcess::from_blocks(&primitive_map.blocks);
 
         // consumption api endpoints
         let consumption_api_web_server = ConsumptionApiWebServer {};
@@ -671,11 +671,11 @@ impl InfrastructureMap {
         }
 
         // =================================================================
-        //                             Aggregation Processes
+        //                             Blocks Processes
         // =================================================================
 
         // Until we refactor to have multiple processes, we will consider that we need to restart
-        // the process all the times and the aggregations changes all the time.
+        // the process all the times and the blocks changes all the time.
         // Once we do the other refactor, we will be able to compare the changes and only restart
         // the process if there are changes
 
@@ -785,7 +785,7 @@ impl InfrastructureMap {
 
         topic_to_table_process_changes.append(&mut function_process_changes);
 
-        // TODO Change this when we have multiple processes for aggregations
+        // TODO Change this when we have multiple processes for blocks
         topic_to_table_process_changes.push(ProcessChange::OlapProcess(
             Change::<OlapProcess>::Added(Box::new(OlapProcess {})),
         ));

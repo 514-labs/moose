@@ -1,9 +1,8 @@
 use serde::{Deserialize, Serialize};
 
-use crate::framework::aggregations::model::Aggregation;
+use crate::framework::blocks::model::Blocks;
 
-// This is mostly a place holder to be hydrated when we move to different processes to execute individual aggregations/
-// blocks
+// This is mostly a place holder to be hydrated when we move to different processes to execute individual blocks
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OlapProcess {}
 
@@ -12,12 +11,12 @@ impl OlapProcess {
         "onlyone".to_string()
     }
 
-    pub fn from_aggregation(_aggregation: &Aggregation) -> Self {
+    pub fn from_blocks(_blocks: &Blocks) -> Self {
         OlapProcess {}
     }
 
     pub fn expanded_display(&self) -> String {
-        "Reloading Aggregations".to_string()
+        "Reloading Blocks".to_string()
     }
 
     pub fn short_display(&self) -> String {

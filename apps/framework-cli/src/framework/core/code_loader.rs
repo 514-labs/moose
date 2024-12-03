@@ -283,11 +283,9 @@ async fn crawl_schema(
 mod tests {
     use super::*;
     use crate::framework::languages::SupportedLanguages;
-    use crate::framework::versions::Version;
     use crate::project::Project;
     use ctor::ctor;
     use lazy_static::lazy_static;
-    use std::collections::HashSet;
     use std::fs;
     use std::path::PathBuf;
     use std::process::Command;

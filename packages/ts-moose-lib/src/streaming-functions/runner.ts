@@ -18,7 +18,7 @@ const HEARTBEAT_INTERVAL_CONSUMER = 3000;
 const RETRY_FACTOR_PRODUCER = 0.2;
 const DEFAULT_MAX_STREAMING_CONCURRENCY = 100;
 const RETRY_INITIAL_TIME_MS = 100;
-// https://github.com/a0x8o/kafka/blob/master/clients/src/main/java/org/apache/kafka/common/record/AbstractRecords.java#L124
+// https://github.com/apache/kafka/blob/trunk/clients/src/main/java/org/apache/kafka/common/record/AbstractRecords.java#L124
 // According to the above, the overhead should be 12 + 22 bytes - 34 bytes.
 // We put 100 to be safe.
 const KAFKAJS_BYTE_MESSAGE_OVERHEAD = 100;
@@ -325,7 +325,7 @@ const sendMessages = async (
 
       if (chunkSize + messageSize > maxMessageSize) {
         logger.log(
-          `Sending ${messageSize} bytes of a transformed record batch to ${args.targetTopic}`,
+          `Sending ${chunkSize} bytes of a transformed record batch to ${args.targetTopic}`,
         );
         // Send the current chunk before adding the new message
         // We are not setting the key, so that should not take any size in the payload
@@ -351,6 +351,9 @@ const sendMessages = async (
 
     // Send the last chunk
     if (chunks.length > 0) {
+      logger.log(
+        `Sending ${chunkSize} bytes of a transformed record batch to ${args.targetTopic}`,
+      );
       await producer.send({ topic: args.targetTopic, messages: chunks });
       logger.log(
         `Sent final ${chunks.length} transformed data to ${args.targetTopic}`,
@@ -669,11 +672,7 @@ export const runStreamingFunctions = async (): Promise<void> => {
         const maxMessageSize = getMaxMessageSize(targetTopicConfig);
 
         producer.on(producer.events.REQUEST, (event) => {
-          if (event.payload.size > maxMessageSize) {
-            logger.error(
-              `Message size ${event.payload.size} exceeds max message size ${maxMessageSize}`,
-            );
-          }
+          logger.log(`Sending message size with ${event.payload.size}`);
         });
 
         if (!has_no_output_topic(args)) {

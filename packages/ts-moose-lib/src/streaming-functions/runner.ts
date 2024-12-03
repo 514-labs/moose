@@ -672,11 +672,7 @@ export const runStreamingFunctions = async (): Promise<void> => {
         const maxMessageSize = getMaxMessageSize(targetTopicConfig);
 
         producer.on(producer.events.REQUEST, (event) => {
-          if (event.payload.size > maxMessageSize) {
-            logger.error(
-              `Message size ${event.payload.size} exceeds max message size ${maxMessageSize}`,
-            );
-          }
+          logger.log(`Sending message size with ${event.payload.size}`);
         });
 
         if (!has_no_output_topic(args)) {

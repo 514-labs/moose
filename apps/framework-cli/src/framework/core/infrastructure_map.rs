@@ -177,6 +177,38 @@ pub struct InfrastructureMap {
 }
 
 impl InfrastructureMap {
+    pub fn diff_tables(
+        self_tables: &HashMap<String, Table>,
+        target_tables: &HashMap<String, Table>,
+        olap_changes: &mut Vec<OlapChange>,
+    ) {
+        for (id, table) in self_tables {
+            if let Some(target_table) = target_tables.get(id) {
+                if table != target_table {
+                    let column_changes = compute_table_diff(table, target_table);
+                    olap_changes.push(OlapChange::Table(TableChange::Updated {
+                        name: table.name.clone(),
+                        column_changes,
+                        order_by_change: OrderByChange {
+                            before: table.order_by.clone(),
+                            after: target_table.order_by.clone(),
+                        },
+                        before: table.clone(),
+                        after: target_table.clone(),
+                    }));
+                }
+            } else {
+                olap_changes.push(OlapChange::Table(TableChange::Removed(table.clone())));
+            }
+        }
+
+        for (id, table) in target_tables {
+            if !self_tables.contains_key(id) {
+                olap_changes.push(OlapChange::Table(TableChange::Added(table.clone())));
+            }
+        }
+    }
+
     // we want to add the prefix as soon as possible
     // to avoid worrying whether the topic name is prefixed
     // we dump the infra map during build, when the prefix is unavailable
@@ -460,37 +492,7 @@ impl InfrastructureMap {
         //                              Tables
         // =================================================================
 
-        for (id, table) in &self.tables {
-            if let Some(target_table) = target_map.tables.get(id) {
-                if table != target_table {
-                    let column_changes = compute_table_diff(table, target_table);
-                    changes
-                        .olap_changes
-                        .push(OlapChange::Table(TableChange::Updated {
-                            name: table.name.clone(),
-                            column_changes,
-                            order_by_change: OrderByChange {
-                                before: table.order_by.clone(),
-                                after: target_table.order_by.clone(),
-                            },
-                            before: table.clone(),
-                            after: target_table.clone(),
-                        }));
-                }
-            } else {
-                changes
-                    .olap_changes
-                    .push(OlapChange::Table(TableChange::Removed(table.clone())));
-            }
-        }
-
-        for (id, table) in &target_map.tables {
-            if !self.tables.contains_key(id) {
-                changes
-                    .olap_changes
-                    .push(OlapChange::Table(TableChange::Added(table.clone())));
-            }
-        }
+        Self::diff_tables(&self.tables, &target_map.tables, &mut changes.olap_changes);
 
         // =================================================================
         //                              Views

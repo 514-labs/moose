@@ -269,6 +269,43 @@ pub fn show_table(headers: Vec<String>, rows: Vec<Vec<String>>) {
     );
 }
 
+pub fn show_olap_changes(olap_changes: &[OlapChange]) {
+    olap_changes.iter().for_each(|change| match change {
+        OlapChange::Table(TableChange::Added(infra)) => {
+            infra_added(&infra.expanded_display());
+        }
+        OlapChange::Table(TableChange::Removed(infra)) => {
+            infra_removed(&infra.short_display());
+        }
+        OlapChange::Table(TableChange::Updated {
+            name,
+            column_changes,
+            order_by_change,
+            before,
+            after,
+        }) => {
+            if after.deduplicate != before.deduplicate {
+                infra_removed(&before.expanded_display());
+                infra_added(&after.expanded_display());
+            } else {
+                infra_updated(&format!(
+                    "Table {} with column changes: {:?} and order by changes: {:?}",
+                    name, column_changes, order_by_change
+                ));
+            }
+        }
+        OlapChange::View(Change::Added(infra)) => {
+            infra_added(&infra.expanded_display());
+        }
+        OlapChange::View(Change::Removed(infra)) => {
+            infra_removed(&infra.short_display());
+        }
+        OlapChange::View(Change::Updated { before, after: _ }) => {
+            infra_updated(&before.expanded_display());
+        }
+    });
+}
+
 pub fn show_changes(infra_plan: &InfraPlan) {
     TERM.write()
         .unwrap()
@@ -293,44 +330,7 @@ pub fn show_changes(infra_plan: &InfraPlan) {
             }
         });
 
-    infra_plan
-        .changes
-        .olap_changes
-        .iter()
-        .for_each(|change| match change {
-            OlapChange::Table(TableChange::Added(infra)) => {
-                infra_added(&infra.expanded_display());
-            }
-            OlapChange::Table(TableChange::Removed(infra)) => {
-                infra_removed(&infra.short_display());
-            }
-            OlapChange::Table(TableChange::Updated {
-                name,
-                column_changes,
-                order_by_change,
-                before,
-                after,
-            }) => {
-                if after.deduplicate != before.deduplicate {
-                    infra_removed(&before.expanded_display());
-                    infra_added(&after.expanded_display());
-                } else {
-                    infra_updated(&format!(
-                        "Table {} with colume changes: {:?} and order by changes: {:?}",
-                        name, column_changes, order_by_change
-                    ));
-                }
-            }
-            OlapChange::View(Change::Added(infra)) => {
-                infra_added(&infra.expanded_display());
-            }
-            OlapChange::View(Change::Removed(infra)) => {
-                infra_removed(&infra.short_display());
-            }
-            OlapChange::View(Change::Updated { before, after: _ }) => {
-                infra_updated(&before.expanded_display());
-            }
-        });
+    show_olap_changes(&infra_plan.changes.olap_changes);
 
     infra_plan
         .changes

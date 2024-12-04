@@ -1,9 +1,10 @@
 use super::errors::ClickhouseError;
 use super::queries::{create_table_query, drop_table_query};
-use crate::framework::core::infrastructure::table::DataEnum;
+use crate::framework::core::infrastructure::table::{Column, ColumnType, DataEnum, Nested};
 use crate::framework::versions::Version;
 use crate::infrastructure::olap::clickhouse::queries::ClickhouseEngine;
 use chrono::{DateTime, FixedOffset};
+use regex::Regex;
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fmt;
@@ -47,6 +48,118 @@ pub enum ClickHouseColumnType {
 impl fmt::Display for ClickHouseColumnType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}", self)
+    }
+}
+
+impl ClickHouseColumnType {
+    pub fn to_std_column_type(&self) -> ColumnType {
+        match self {
+            ClickHouseColumnType::String => ColumnType::String,
+            ClickHouseColumnType::Boolean => ColumnType::Boolean,
+            ClickHouseColumnType::ClickhouseInt(_) => ColumnType::Int,
+            ClickHouseColumnType::ClickhouseFloat(_) => ColumnType::Float,
+            ClickHouseColumnType::Decimal => ColumnType::Decimal,
+            ClickHouseColumnType::DateTime => ColumnType::DateTime,
+            ClickHouseColumnType::Json => ColumnType::Json,
+            ClickHouseColumnType::Bytes => ColumnType::Bytes,
+            ClickHouseColumnType::Array(inner_type) => {
+                ColumnType::Array(Box::new(inner_type.to_std_column_type()))
+            }
+            ClickHouseColumnType::Enum(enum_def) => ColumnType::Enum(enum_def.clone()),
+            ClickHouseColumnType::Nested(columns) => ColumnType::Nested(Nested {
+                name: "Unknown".to_string(),
+                columns: columns
+                    .iter()
+                    .map(|col| Column {
+                        name: col.name.clone(),
+                        data_type: col.column_type.to_std_column_type(),
+                        required: col.required,
+                        unique: col.unique,
+                        primary_key: col.primary_key,
+                        default: None,
+                    })
+                    .collect(),
+                jwt: false,
+            }),
+        }
+    }
+
+    pub fn from_type_str(type_str: &str) -> Option<(Self, bool)> {
+        // When we select from `system.columns`, the `Nested` columns are dotted names
+        // so it's not handled here
+        // unless we change the translation to `Tuple`
+        let result = match type_str {
+            "String" => Self::String,
+            "Bool" | "Boolean" => Self::Boolean,
+            // Integer types
+            "Int8" => Self::ClickhouseInt(ClickHouseInt::Int8),
+            "Int16" => Self::ClickhouseInt(ClickHouseInt::Int16),
+            "Int32" => Self::ClickhouseInt(ClickHouseInt::Int32),
+            "Int64" => Self::ClickhouseInt(ClickHouseInt::Int64),
+            "Int128" => Self::ClickhouseInt(ClickHouseInt::Int128),
+            "Int256" => Self::ClickhouseInt(ClickHouseInt::Int256),
+            "UInt8" => Self::ClickhouseInt(ClickHouseInt::UInt8),
+            "UInt16" => Self::ClickhouseInt(ClickHouseInt::UInt16),
+            "UInt32" => Self::ClickhouseInt(ClickHouseInt::UInt32),
+            "UInt64" => Self::ClickhouseInt(ClickHouseInt::UInt64),
+            "UInt128" => Self::ClickhouseInt(ClickHouseInt::UInt128),
+            "UInt256" => Self::ClickhouseInt(ClickHouseInt::UInt256),
+            // Float types
+            "Float32" => Self::ClickhouseFloat(ClickHouseFloat::Float32),
+            "Float64" => Self::ClickhouseFloat(ClickHouseFloat::Float64),
+
+            // Other types
+            t if t.starts_with("Decimal") => Self::Decimal,
+            "DateTime" | "DateTime('UTC')" | "DateTime64" | "Date" => Self::DateTime,
+            "JSON" => Self::Json,
+
+            // recursively parsing Nullable and Array
+            t if t.starts_with("Nullable(") => {
+                let inner = t.trim_start_matches("Nullable(").trim_end_matches(')');
+                match Self::from_type_str(inner) {
+                    None => return None,
+                    Some((inner_t, _)) => return Some((inner_t, false)),
+                }
+            }
+            t if t.starts_with("Array(") => {
+                let inner = t.trim_start_matches("Array(").trim_end_matches(')');
+                match Self::from_type_str(inner) {
+                    None => return None,
+                    Some((inner_t, _)) => Self::Array(Box::new(inner_t)),
+                }
+            }
+
+            t if t.starts_with("Enum8(") || t.starts_with("Enum16(") => {
+                let enum_content = type_str
+                    .trim_start_matches("Enum8(")
+                    .trim_start_matches("Enum16(")
+                    .trim_end_matches(')');
+
+                // Use regex to match enum values, handling potential commas in the names
+                let re = Regex::new(r"'([^']*)'\s*=\s*(\d+)").unwrap();
+                let values = re
+                    .captures_iter(enum_content)
+                    .map(|cap| {
+                        let name = cap[1].to_string();
+                        let value = cap[2].parse::<u8>().unwrap_or(0);
+
+                        crate::framework::core::infrastructure::table::EnumMember {
+                            name: name.clone(),
+                            value: crate::framework::core::infrastructure::table::EnumValue::Int(
+                                value,
+                            ),
+                        }
+                    })
+                    .collect::<Vec<_>>();
+
+                Self::Enum(DataEnum {
+                    name: "Unknown".to_string(),
+                    values,
+                })
+            }
+            _ => return None,
+        };
+        Some((result, true))
     }
 }
 

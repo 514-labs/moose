@@ -117,11 +117,19 @@ pub async fn execute_changes(
                     for statement in alter_statements {
                         retry(
                             || run_query(&statement, &configured_client),
-                            |_,e | {
-                                matches!(e, clickhouse::error::Error::BadResponse(msg) if msg.starts_with("Code: 517.") && msg.contains("You can retry this error"))
+                            |_, e| match e {
+                                clickhouse::error::Error::BadResponse(msg)
+                                    if (msg.starts_with("Code: 517.")
+                                        && msg.contains("You can retry this error")) =>
+                                {
+                                    info!("Retrying error {}", e);
+                                    true
+                                }
+                                _ => false,
                             },
-                            Duration::from_secs(1)
-                        ).await?;
+                            Duration::from_secs(1),
+                        )
+                        .await?;
                     }
                 }
             }

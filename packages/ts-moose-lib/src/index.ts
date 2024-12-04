@@ -1,9 +1,5 @@
 import { JWTPayload } from "jose";
 import { MooseClient, sql } from "./consumption-apis/helpers";
-export interface Aggregation {
-  select: string;
-  orderBy: string;
-}
 
 export type Key<T extends string | number | Date> = T;
 

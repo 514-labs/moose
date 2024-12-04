@@ -3,26 +3,24 @@ use std::path::Path;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 
-use crate::framework::aggregations::model::AggregationError;
+use crate::framework::blocks::model::BlocksError;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 
 use super::bin;
 
 const BLOCKS_RUNNER_BIN: &str = "blocks";
-const AGGREGATIONS_RUNNER_BIN: &str = "aggregations";
 
 // TODO: Abstract away ClickhouseConfig to support other databases
 // TODO: Bubble up compilation errors to the user
 pub fn run(
     clickhouse_config: ClickHouseConfig,
-    aggregations_path: &Path,
-    is_blocks: bool,
+    blocks_path: &Path,
     project_path: &Path,
-) -> Result<Child, AggregationError> {
+) -> Result<Child, BlocksError> {
     let host_port = clickhouse_config.host_port.to_string();
     let use_ssl = clickhouse_config.use_ssl.to_string();
     let args = vec![
-        aggregations_path.to_str().unwrap(),
+        blocks_path.to_str().unwrap(),
         &clickhouse_config.db_name,
         &clickhouse_config.host,
         &host_port,
@@ -31,21 +29,17 @@ pub fn run(
         &use_ssl,
     ];
 
-    let mut aggregation_process = if is_blocks {
-        bin::run(BLOCKS_RUNNER_BIN, project_path, &args)?
-    } else {
-        bin::run(AGGREGATIONS_RUNNER_BIN, project_path, &args)?
-    };
+    let mut blocks_process = bin::run(BLOCKS_RUNNER_BIN, project_path, &args)?;
 
-    let stdout = aggregation_process
+    let stdout = blocks_process
         .stdout
         .take()
-        .expect("Aggregation process did not have a handle to stdout");
+        .expect("Blocks process did not have a handle to stdout");
 
-    let stderr = aggregation_process
+    let stderr = blocks_process
         .stderr
         .take()
-        .expect("Aggregation process did not have a handle to stderr");
+        .expect("Blocks process did not have a handle to stderr");
 
     let mut stdout_reader = BufReader::new(stdout).lines();
     let mut stderr_reader = BufReader::new(stderr).lines();
@@ -62,5 +56,5 @@ pub fn run(
         }
     });
 
-    Ok(aggregation_process)
+    Ok(blocks_process)
 }

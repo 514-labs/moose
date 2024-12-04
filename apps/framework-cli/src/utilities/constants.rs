@@ -25,7 +25,6 @@ pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS: &str = "clickhouse/configs
 
 pub const SCHEMAS_DIR: &str = "datamodels";
 pub const FUNCTIONS_DIR: &str = "functions";
-pub const AGGREGATIONS_DIR: &str = "aggregations";
 pub const BLOCKS_DIR: &str = "blocks";
 pub const CONSUMPTION_DIR: &str = "apis";
 pub const VSCODE_DIR: &str = ".vscode";

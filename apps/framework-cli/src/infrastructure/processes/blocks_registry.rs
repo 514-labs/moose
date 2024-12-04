@@ -5,29 +5,26 @@ use tokio::process::Child;
 
 use crate::{
     framework::{
-        aggregations::model::AggregationError, core::infrastructure::olap_process::OlapProcess,
+        blocks::model::BlocksError, core::infrastructure::olap_process::OlapProcess,
         languages::SupportedLanguages, python, typescript,
     },
     infrastructure::olap::clickhouse::config::ClickHouseConfig,
 };
 
-// to be changed to BlocksProcessRegistry and remove is_aggregation
-pub struct AggregationProcessRegistry {
+pub struct BlocksProcessRegistry {
     registry: HashMap<String, Child>,
     language: SupportedLanguages,
     dir: PathBuf,
     project_path: PathBuf,
     clickhouse_config: ClickHouseConfig,
-    is_aggregation: bool,
 }
 
-impl AggregationProcessRegistry {
+impl BlocksProcessRegistry {
     pub fn new(
         language: SupportedLanguages,
         dir: PathBuf,
         project_path: PathBuf,
         clickhouse_config: ClickHouseConfig,
-        is_aggregation: bool,
     ) -> Self {
         Self {
             registry: HashMap::new(),
@@ -35,26 +32,21 @@ impl AggregationProcessRegistry {
             dir,
             project_path,
             clickhouse_config,
-            is_aggregation,
         }
     }
 
-    pub fn start(&mut self, olap_process: &OlapProcess) -> Result<(), AggregationError> {
-        // TODO remove this when we remove aggregations all together
+    pub fn start(&mut self, olap_process: &OlapProcess) -> Result<(), BlocksError> {
         if self.dir.exists() {
-            info!("Starting aggregation {:?}...", olap_process);
+            info!("Starting blocks {:?}...", olap_process);
             let child = match self.language {
-                SupportedLanguages::Typescript => typescript::aggregation::run(
+                SupportedLanguages::Typescript => typescript::blocks::run(
                     self.clickhouse_config.clone(),
                     &self.dir,
-                    !self.is_aggregation,
                     &self.project_path,
                 )?,
-                SupportedLanguages::Python => python::aggregation::run(
-                    self.clickhouse_config.clone(),
-                    &self.dir,
-                    !self.is_aggregation,
-                )?,
+                SupportedLanguages::Python => {
+                    python::blocks::run(self.clickhouse_config.clone(), &self.dir)?
+                }
             };
 
             self.registry.insert(olap_process.id(), child);
@@ -63,9 +55,9 @@ impl AggregationProcessRegistry {
         Ok(())
     }
 
-    pub async fn stop(&mut self, _olap_process: &OlapProcess) -> Result<(), AggregationError> {
+    pub async fn stop(&mut self, _olap_process: &OlapProcess) -> Result<(), BlocksError> {
         if self.dir.exists() {
-            info!("Stopping aggregation...");
+            info!("Stopping blocks...");
 
             for child in self.registry.values_mut() {
                 child.kill().await?;

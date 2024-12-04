@@ -6,7 +6,7 @@ use process_registry::ProcessRegistries;
 
 use crate::{
     framework::{
-        aggregations::model::AggregationError,
+        blocks::model::BlocksError,
         core::infrastructure_map::{Change, ProcessChange},
     },
     metrics::Metrics,
@@ -14,7 +14,7 @@ use crate::{
 
 use super::olap::clickhouse::{errors::ClickhouseError, mapper::std_columns_to_clickhouse_columns};
 
-pub mod aggregations_registry;
+pub mod blocks_registry;
 pub mod consumption_registry;
 pub mod cron_registry;
 pub mod functions_registry;
@@ -29,8 +29,8 @@ pub enum SyncProcessChangesError {
     #[error("Failed in the function registry")]
     FunctionRegistry(#[from] functions_registry::FunctionRegistryError),
 
-    #[error("Failed in the aggregation registry")]
-    OlapProcess(#[from] AggregationError),
+    #[error("Failed in the blocks registry")]
+    OlapProcess(#[from] BlocksError),
 
     #[error("Failed in the consumption registry")]
     ConsumptionProcess(#[from] ConsumptionError),

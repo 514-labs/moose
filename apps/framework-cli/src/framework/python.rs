@@ -1,6 +1,6 @@
 use crate::framework::versions::Version;
 
-pub mod aggregation;
+pub mod blocks;
 pub mod checker;
 pub mod consumption;
 pub mod datamodel_config;

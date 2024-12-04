@@ -12,7 +12,6 @@
 //! ```
 
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::io::Write;
 pub mod python_project;
 pub mod typescript_project;
@@ -57,16 +56,16 @@ use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
 use crate::utilities::constants::PROJECT_CONFIG_FILE;
 use crate::utilities::constants::PY_BLOCKS_FILE;
 use crate::utilities::constants::README_PREFIX;
-use crate::utilities::constants::{
-    AGGREGATIONS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, OLD_PROJECT_CONFIG_FILE,
-    SAMPLE_STREAMING_FUNCTION_DEST, SAMPLE_STREAMING_FUNCTION_SOURCE, TS_FLOW_FILE,
-};
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{BLOCKS_DIR, TS_BLOCKS_FILE};
 use crate::utilities::constants::{
     CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS, ENVIRONMENT_VARIABLE_PREFIX,
 };
 use crate::utilities::constants::{CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS, TSCONFIG_JSON};
+use crate::utilities::constants::{
+    CONSUMPTION_DIR, FUNCTIONS_DIR, OLD_PROJECT_CONFIG_FILE, SAMPLE_STREAMING_FUNCTION_DEST,
+    SAMPLE_STREAMING_FUNCTION_SOURCE, TS_FLOW_FILE,
+};
 use crate::utilities::constants::{PYTHON_INIT_FILE, PY_API_FILE, TS_API_FILE};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 use crate::utilities::git::GitConfig;
@@ -132,11 +131,6 @@ pub struct JwtConfig {
     pub secret: String,
     pub issuer: String,
     pub audience: String,
-}
-
-pub struct AggregationSet {
-    pub current_version: Version,
-    pub names: HashSet<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -446,13 +440,6 @@ impl Project {
         functions_dir
     }
 
-    pub fn aggregations_dir(&self) -> PathBuf {
-        let aggregations_dir = self.app_dir().join(AGGREGATIONS_DIR);
-
-        debug!("Aggregations dir: {:?}", aggregations_dir);
-        aggregations_dir
-    }
-
     pub fn blocks_dir(&self) -> PathBuf {
         let blocks_dir = self.app_dir().join(BLOCKS_DIR);
 
@@ -611,22 +598,6 @@ impl Project {
         }
 
         functions_map
-    }
-
-    pub fn get_aggregations(&self) -> HashSet<String> {
-        match std::fs::read_dir(self.aggregations_dir()) {
-            Ok(files) => files
-                .filter_map(Result::ok)
-                .filter_map(|entry| entry.file_name().to_str().map(String::from))
-                .filter_map(|file_name| {
-                    file_name
-                        .strip_suffix(".ts")
-                        .or_else(|| file_name.strip_suffix(".py"))
-                        .map(|file_name| file_name.to_string())
-                })
-                .collect::<HashSet<_>>(),
-            Err(_) => HashSet::new(),
-        }
     }
 
     fn process_function_input(&self, entry: &std::fs::DirEntry) -> Option<(String, Vec<String>)> {

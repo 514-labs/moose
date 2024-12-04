@@ -48,15 +48,15 @@ pub fn run(
         enforce_on_all_consumptions_apis,
     ];
 
-    let mut aggregation_process =
+    let mut consumption_process =
         executor::run_python_program(executor::PythonProgram::ConsumptionRunner { args })?;
 
-    let stdout = aggregation_process
+    let stdout = consumption_process
         .stdout
         .take()
         .expect("Consumption process did not have a handle to stdout");
 
-    let stderr = aggregation_process
+    let stderr = consumption_process
         .stderr
         .take()
         .expect("Consumption process did not have a handle to stderr");
@@ -76,5 +76,5 @@ pub fn run(
         }
     });
 
-    Ok(aggregation_process)
+    Ok(consumption_process)
 }

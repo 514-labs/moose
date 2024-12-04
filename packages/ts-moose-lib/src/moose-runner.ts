@@ -13,7 +13,6 @@ register({
 import "./instrumentation";
 
 import { runBlocks } from "./blocks/runner";
-import { runAggregations } from "./blocks/aggregation";
 import { runConsumptionApis } from "./consumption-apis/runner";
 import { runStreamingFunctions } from "./streaming-functions/runner";
 import { runExportSerializer } from "./moduleExportSerializer";
@@ -26,9 +25,6 @@ switch (process.argv[2]) {
     break;
   case "blocks":
     runBlocks();
-    break;
-  case "aggregations":
-    runAggregations();
     break;
   case "consumption-apis":
     runConsumptionApis();

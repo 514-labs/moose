@@ -1,13 +1,12 @@
 use crate::project::Project;
 
-use super::aggregations_registry::AggregationProcessRegistry;
+use super::blocks_registry::BlocksProcessRegistry;
 use super::consumption_registry::ConsumptionProcessRegistry;
 use super::functions_registry::FunctionProcessRegistry;
 
 pub struct ProcessRegistries {
     pub functions: FunctionProcessRegistry,
-    pub aggregations: AggregationProcessRegistry,
-    pub blocks: AggregationProcessRegistry,
+    pub blocks: BlocksProcessRegistry,
     pub consumption: ConsumptionProcessRegistry,
 }
 
@@ -17,19 +16,11 @@ impl ProcessRegistries {
             project.redpanda_config.clone(),
             project.project_location.clone(),
         );
-        let aggregations = AggregationProcessRegistry::new(
-            project.language,
-            project.aggregations_dir(),
-            project.project_location.clone(),
-            project.clickhouse_config.clone(),
-            true,
-        );
-        let blocks = AggregationProcessRegistry::new(
+        let blocks = BlocksProcessRegistry::new(
             project.language,
             project.blocks_dir(),
             project.project_location.clone(),
             project.clickhouse_config.clone(),
-            false,
         );
         let consumption = ConsumptionProcessRegistry::new(
             project.language,
@@ -41,7 +32,6 @@ impl ProcessRegistries {
 
         Self {
             functions,
-            aggregations,
             blocks,
             consumption,
         }

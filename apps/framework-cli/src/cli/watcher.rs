@@ -22,9 +22,7 @@ use crate::infrastructure::processes::process_registry::ProcessRegistries;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::metrics::Metrics;
 use crate::project::Project;
-use crate::utilities::constants::{
-    AGGREGATIONS_DIR, BLOCKS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, SCHEMAS_DIR,
-};
+use crate::utilities::constants::{BLOCKS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, SCHEMAS_DIR};
 use crate::utilities::PathExt;
 
 struct EventListener {
@@ -50,7 +48,7 @@ impl EventHandler for EventListener {
 #[derive(Default, Debug)]
 struct EventBuckets {
     functions: HashSet<PathBuf>,
-    aggregations: HashSet<PathBuf>,
+    blocks: HashSet<PathBuf>,
     data_models: HashSet<PathBuf>,
     consumption: HashSet<PathBuf>,
 }
@@ -58,7 +56,7 @@ struct EventBuckets {
 impl EventBuckets {
     pub fn is_empty(&self) -> bool {
         self.functions.is_empty()
-            && self.aggregations.is_empty()
+            && self.blocks.is_empty()
             && self.data_models.is_empty()
             && self.consumption.is_empty()
     }
@@ -82,11 +80,11 @@ impl EventBuckets {
                 .any(|component| component.eq_ignore_ascii_case(FUNCTIONS_DIR))
             {
                 self.functions.insert(path);
-            } else if path.iter().any(|component| {
-                component.eq_ignore_ascii_case(AGGREGATIONS_DIR)
-                    || component.eq_ignore_ascii_case(BLOCKS_DIR)
-            }) {
-                self.aggregations.insert(path);
+            } else if path
+                .iter()
+                .any(|component| component.eq_ignore_ascii_case(BLOCKS_DIR))
+            {
+                self.blocks.insert(path);
             } else if path
                 .iter()
                 .any(|component| component.eq_ignore_ascii_case(SCHEMAS_DIR))
@@ -101,7 +99,7 @@ impl EventBuckets {
         }
 
         info!("Functions: {:?}", self.functions);
-        info!("Aggregations/Blocks: {:?}", self.aggregations);
+        info!("Blocks: {:?}", self.blocks);
         info!("Data Models: {:?}", self.data_models);
         info!("Consumption: {:?}", self.consumption);
     }

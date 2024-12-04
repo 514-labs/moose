@@ -3,18 +3,14 @@ use std::path::Path;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 
-use crate::framework::aggregations::model::AggregationError;
+use crate::framework::blocks::model::BlocksError;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 
 use super::executor;
 
-pub fn run(
-    clickhouse_config: ClickHouseConfig,
-    aggregations_path: &Path,
-    is_blocks: bool,
-) -> Result<Child, AggregationError> {
+pub fn run(clickhouse_config: ClickHouseConfig, blocks_path: &Path) -> Result<Child, BlocksError> {
     let args = vec![
-        aggregations_path.to_str().unwrap().to_string(),
+        blocks_path.to_str().unwrap().to_string(),
         clickhouse_config.db_name,
         clickhouse_config.host,
         clickhouse_config.host_port.to_string(),
@@ -23,21 +19,18 @@ pub fn run(
         clickhouse_config.use_ssl.to_string(),
     ];
 
-    let mut aggregation_process = if is_blocks {
-        executor::run_python_program(executor::PythonProgram::BlocksRunner { args })?
-    } else {
-        executor::run_python_program(executor::PythonProgram::AggregationsRunner { args })?
-    };
+    let mut blocks_process =
+        executor::run_python_program(executor::PythonProgram::BlocksRunner { args })?;
 
-    let stdout = aggregation_process
+    let stdout = blocks_process
         .stdout
         .take()
-        .expect("Aggregation process did not have a handle to stdout");
+        .expect("Blocks process did not have a handle to stdout");
 
-    let stderr = aggregation_process
+    let stderr = blocks_process
         .stderr
         .take()
-        .expect("Aggregation process did not have a handle to stderr");
+        .expect("Blocks process did not have a handle to stderr");
 
     let mut stdout_reader = BufReader::new(stdout).lines();
     let mut stderr_reader = BufReader::new(stderr).lines();
@@ -54,5 +47,5 @@ pub fn run(
         }
     });
 
-    Ok(aggregation_process)
+    Ok(blocks_process)
 }

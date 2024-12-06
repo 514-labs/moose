@@ -86,6 +86,7 @@ const buildSaslConfig = (
 };
 
 export const metricsLog: (log: CliLogData) => void = (log) => {
+  console.log("metricsLog", log);
   const req = http.request({
     port: 5001,
     method: "POST",
@@ -203,7 +204,7 @@ const sendMessages = async (
     if (chunks.length > 0) {
       await producer.send({ topic: args.targetTopic, messages: chunks });
       logger.log(
-        `Sent final ${chunks.length} transformed data to ${args.targetTopic}`,
+        `Sen ${chunks.length} transformed data to ${args.targetTopic}`,
       );
     }
   } catch (e) {
@@ -219,6 +220,7 @@ let count_out = 0;
 let bytes = 0;
 
 const sendMessageMetrics = (logger: Logger) => {
+  console.log("count_in", count_in, "count_out", count_out, "bytes", bytes);
   if (count_in > 0 || count_out > 0 || bytes > 0) {
     metricsLog({
       count_in: count_in,

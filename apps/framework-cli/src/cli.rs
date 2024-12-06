@@ -363,13 +363,6 @@ async fn top_command_handler(
             check_project_name(&project_arc.name())?;
             run_local_infrastructure(&project_arc)?.show();
 
-            let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {
-                RoutineFailure::error(Message {
-                    action: "Dev".to_string(),
-                    details: format!("Failed to setup redis client: {:?}", e),
-                })
-            })?;
-
             let (metrics, rx_events) = Metrics::new(
                 TelemetryMetadata {
                     anonymous_telemetry_enabled: settings.telemetry.enabled,
@@ -381,15 +374,20 @@ async fn top_command_handler(
                     export_metrics: settings.telemetry.export_metrics,
                     metric_endpoints: settings.metric.endpoints.clone(),
                 },
-                if settings.features.metrics_v2 {
-                    Some(redis_client.clone())
-                } else {
-                    None
-                },
+                None,
             );
 
             let arc_metrics = Arc::new(metrics);
             arc_metrics.start_listening_to_metrics(rx_events).await;
+
+            let redis_client = setup_redis_client(project_arc.clone(), arc_metrics.clone())
+                .await
+                .map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Dev".to_string(),
+                        details: format!("Failed to setup redis client: {:?}", e),
+                    })
+                })?;
 
             routines::start_development_mode(
                 project_arc,
@@ -568,13 +566,6 @@ async fn top_command_handler(
 
             check_project_name(&project_arc.name())?;
 
-            let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {
-                RoutineFailure::error(Message {
-                    action: "Prod".to_string(),
-                    details: format!("Failed to setup redis client: {:?}", e),
-                })
-            })?;
-
             let (metrics, rx_events) = Metrics::new(
                 TelemetryMetadata {
                     anonymous_telemetry_enabled: settings.telemetry.enabled,
@@ -586,15 +577,20 @@ async fn top_command_handler(
                     export_metrics: settings.telemetry.export_metrics,
                     metric_endpoints: settings.metric.endpoints.clone(),
                 },
-                if settings.features.metrics_v2 {
-                    Some(redis_client.clone())
-                } else {
-                    None
-                },
+                None,
             );
 
             let arc_metrics = Arc::new(metrics);
             arc_metrics.start_listening_to_metrics(rx_events).await;
+
+            let redis_client = setup_redis_client(project_arc.clone(), arc_metrics.clone())
+                .await
+                .map_err(|e| {
+                    RoutineFailure::error(Message {
+                        action: "Prod".to_string(),
+                        details: format!("Failed to setup redis client: {:?}", e),
+                    })
+                })?;
 
             let capture_handle = crate::utilities::capture::capture_usage(
                 ActivityType::ProdCommand,

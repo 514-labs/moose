@@ -313,6 +313,7 @@ async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
 
 async fn metrics_log_route(req: Request<Incoming>, metrics: Arc<Metrics>) -> Response<Full<Bytes>> {
     debug!("Received metrics log route");
+    println!("Received metrics log route");
 
     let body = to_reader(req).await;
     let parsed: Result<MetricEvent, serde_json::Error> = serde_json::from_reader(body);

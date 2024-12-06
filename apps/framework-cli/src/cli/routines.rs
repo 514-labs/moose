@@ -270,7 +270,10 @@ impl RoutineController {
     }
 }
 
-pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<RedisClient>>> {
+pub async fn setup_redis_client(
+    project: Arc<Project>,
+    metrics: Arc<Metrics>,
+) -> anyhow::Result<Arc<Mutex<RedisClient>>> {
     let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
     let redis_client = Arc::new(Mutex::new(redis_client));
 
@@ -298,7 +301,7 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
         .await?;
 
     // Start the leadership lock management task
-    start_leadership_lock_task(redis_client.clone(), project.clone());
+    start_leadership_lock_task(redis_client.clone(), project.clone(), metrics.clone());
 
     let redis_client_clone = redis_client.clone();
     let callback = Arc::new(move |message: String| {
@@ -358,12 +361,16 @@ async fn process_pubsub_message(
     Ok(())
 }
 
-fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Arc<Project>) {
+fn start_leadership_lock_task(
+    redis_client: Arc<Mutex<RedisClient>>,
+    project: Arc<Project>,
+    metrics: Arc<Metrics>,
+) {
     tokio::spawn(async move {
         let mut interval = interval(Duration::from_secs(5)); // Adjust the interval as needed
         loop {
             interval.tick().await;
-            if let Err(e) = manage_leadership_lock(&redis_client, &project).await {
+            if let Err(e) = manage_leadership_lock(&redis_client, &project, &metrics).await {
                 error!("Error managing leadership lock: {}", e);
             }
         }
@@ -373,6 +380,7 @@ fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Ar
 async fn manage_leadership_lock(
     redis_client: &Arc<Mutex<RedisClient>>,
     project: &Arc<Project>,
+    metrics: &Arc<Metrics>,
 ) -> Result<(), anyhow::Error> {
     let has_lock = {
         let client = redis_client.lock().await;
@@ -393,8 +401,9 @@ async fn manage_leadership_lock(
             info!("Obtained leadership lock, performing leadership tasks");
 
             let project_clone = project.clone();
+            let metrics_clone = metrics.clone();
             tokio::spawn(async move {
-                if let Err(e) = leadership_tasks(project_clone).await {
+                if let Err(e) = leadership_tasks(project_clone, metrics_clone).await {
                     error!("Error executing leadership tasks: {}", e);
                 }
             });
@@ -408,9 +417,12 @@ async fn manage_leadership_lock(
     Ok(())
 }
 
-async fn leadership_tasks(project: Arc<Project>) -> Result<(), anyhow::Error> {
+async fn leadership_tasks(
+    project: Arc<Project>,
+    metrics: Arc<Metrics>,
+) -> Result<(), anyhow::Error> {
     let cron_registry = CronRegistry::new().await?;
-    cron_registry.register_jobs(&project).await?;
+    cron_registry.register_jobs(&project, metrics).await?;
     cron_registry.start().await?;
     Ok(())
 }

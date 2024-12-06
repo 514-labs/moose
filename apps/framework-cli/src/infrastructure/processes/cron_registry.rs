@@ -1,3 +1,5 @@
+use crate::metrics::MetricEvent;
+use crate::metrics::Metrics;
 use crate::project::Project;
 use crate::utilities::constants::TSCONFIG_JSON;
 use anyhow::{anyhow, Result};
@@ -100,7 +102,11 @@ impl CronRegistry {
         Ok(())
     }
 
-    pub async fn register_jobs(&self, project: &Project) -> Result<()> {
+    pub async fn register_jobs(
+        &self,
+        project: &Project,
+        metrics_sender: Arc<Metrics>,
+    ) -> Result<()> {
         let mut jobs_registered = self.jobs_registered.lock().await;
         if *jobs_registered {
             info!("<cron> Jobs have already been registered, skipping");
@@ -138,6 +144,8 @@ impl CronRegistry {
             let job_id_for_metric = job_id.clone();
 
             let cron_spec_clone = cron_spec.clone();
+
+            let metrics_sender = metrics_sender.clone();
             self.add_job(&cron_spec, move || {
                 let metrics = metrics.clone();
                 let mut success = true;
@@ -244,14 +252,18 @@ impl CronRegistry {
                     elapsed_time,
                 };
 
-                info!(
-                    "<cron> Metrics for job {}: success={}, elapsed={}ms, next_run={}, error={:?}",
-                    metric.job_id,
-                    metric.success,
-                    metric.elapsed_time,
-                    metric.next_run,
-                    metric.error_message
-                );
+                let metric_clone = metric.clone();
+                metrics_sender.send_metric_event(MetricEvent::CronJobEvent {
+                    job_id: metric_clone.job_id,
+                    run_id: metric_clone.run_id,
+                    timestamp: metric_clone.timestamp,
+                    last_run: metric_clone.last_run,
+                    next_run: metric_clone.next_run,
+                    success: metric_clone.success,
+                    error_message: metric_clone.error_message.clone(),
+                    error_code: metric_clone.error_code,
+                    elapsed_time: metric_clone.elapsed_time,
+                });
 
                 tokio::spawn(async move {
                     let mut metrics = metrics.lock().await;

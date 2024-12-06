@@ -84,6 +84,17 @@ pub enum MetricEvent {
         consumer_group: String,
         topic_name: String,
     },
+    CronJobEvent {
+        job_id: String,
+        run_id: u32,
+        timestamp: u64,
+        last_run: u64,
+        next_run: u64,
+        success: bool,
+        error_message: Option<String>,
+        error_code: Option<i32>,
+        elapsed_time: u64,
+    },
 }
 
 #[derive(Clone)]
@@ -108,6 +119,7 @@ pub struct Metrics {
 
 #[derive(Clone, Debug)]
 pub struct Statistics {
+    pub cron_job_event_count: Counter,
     pub http_latency_histogram_aggregate: Histogram,
     pub http_latency_histogram: Family<HTTPLabel, Histogram>,
     pub http_ingested_latency_sum_ms: Counter,
@@ -202,6 +214,7 @@ impl Metrics {
         mut rx_events: tokio::sync::mpsc::Receiver<MetricEvent>,
     ) {
         let data = Arc::new(Statistics {
+            cron_job_event_count: Counter::default(),
             http_ingested_request_count: Counter::default(),
             http_ingested_total_bytes: Counter::default(),
             http_ingested_latency_sum_ms: Counter::default(),
@@ -452,6 +465,9 @@ impl Metrics {
                             .inc_by(bytes);
                         data.streaming_functions_processed_bytes_total_count
                             .inc_by(bytes);
+                    }
+                    MetricEvent::CronJobEvent { .. } => {
+                        data.cron_job_event_count.inc();
                     }
                 };
 

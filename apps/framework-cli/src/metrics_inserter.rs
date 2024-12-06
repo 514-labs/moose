@@ -63,6 +63,7 @@ async fn flush(
 
         for chunk in buffer_owned.chunks(MAX_BATCH_SIZE) {
             for event in chunk {
+                println!("Inserting event: {:?}", event);
                 let (event_type, payload) = match event {
                     MetricEvent::IngestedEvent {
                         timestamp,
@@ -134,6 +135,30 @@ async fn flush(
                             "bytes": bytes,
                             "consumer_group": consumer_group,
                             "topic_name": topic_name,
+                        }),
+                    ),
+                    MetricEvent::CronJobEvent {
+                        job_id,
+                        run_id,
+                        timestamp,
+                        last_run,
+                        next_run,
+                        success,
+                        error_message,
+                        error_code,
+                        elapsed_time,
+                    } => (
+                        "CronJobEvent",
+                        &json!({
+                            "job_id": job_id,
+                            "run_id": run_id,
+                            "timestamp": timestamp,
+                            "last_run": last_run,
+                            "next_run": next_run,
+                            "success": success,
+                            "error_message": error_message,
+                            "error_code": error_code,
+                            "elapsed_time": elapsed_time,
                         }),
                     ),
                 };

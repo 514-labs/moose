@@ -114,7 +114,7 @@ fn check_invalid_table(dm: &DataModel) -> Result<(), PrimitiveMapLoadingError> {
     if no_ordering {
         Err(DataModelError::Other {
             message: format!(
-                "Missing `Key` field  or order_by_fields in data model {}. Key must be a top level field.",
+                "Missing `Key` field or order_by_fields in data model {}. Key must be a top level field.",
                 dm.name
             ),
         })?

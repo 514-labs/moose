@@ -176,11 +176,11 @@ fn clean_old_logs() {
 #[derive(thiserror::Error, Debug)]
 pub enum LoggerError {
     #[error("Error Initializing fern logger")]
-    InitError(#[from] fern::InitError),
+    Init(#[from] fern::InitError),
     #[error("Error setting up otel logger")]
-    ExporterError(#[from] opentelemetry_sdk::logs::LogError),
+    Exporter(#[from] opentelemetry_sdk::logs::LogError),
     #[error("Error setting up default logger")]
-    LogSetupError(#[from] log::SetLoggerError),
+    LogSetup(#[from] log::SetLoggerError),
 }
 
 pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), LoggerError> {

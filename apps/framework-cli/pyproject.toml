@@ -1,12 +1,20 @@
 [build-system]
-requires = ["maturin==1.7.0"] 
-build-backend = "maturin" 
+requires = ["maturin==1.7.0"]
+build-backend = "maturin"
 
 [project]
-name = "moose-cli" 
-description = "Moose CLI" 
-requires-python = ">=3.7" 
+name = "moose-cli"
+description = "Moose CLI"
+requires-python = ">=3.7"
 
 [tool.maturin]
-bindings = "bin" 
-strip = true 
+bindings = "bin"
+strip = true
+
+[tool.maturin.target.x86_64-apple-darwin]
+# macOS deployment target SDK version
+macos-deployment-target = "14.0"
+
+[tool.maturin.target.aarch64-apple-darwin]
+# macOS deployment target SDK version
+macos-deployment-target = "14.0"

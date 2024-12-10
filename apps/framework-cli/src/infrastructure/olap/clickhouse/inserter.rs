@@ -142,7 +142,7 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
                     }
                     Err(e) => {
                         error!(
-                            "Error inserting records {} to {}: {:?}",
+                            "Error inserting {} records to {}: {:?}",
                             batch_size, table, e
                         );
                     }

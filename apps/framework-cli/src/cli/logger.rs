@@ -104,16 +104,7 @@ where
     D: serde::Deserializer<'de>,
 {
     let s: Option<String> = Option::deserialize(deserializer)?;
-    match s {
-        Some(s) => match s.parse() {
-            Ok(uri) => Ok(Some(uri)),
-            Err(e) => {
-                error!("Failed to parse URI: {}", e);
-                Ok(None)
-            }
-        },
-        None => Ok(None),
-    }
+    Ok(s.and_then(|s| s.parse().ok()))
 }
 
 fn default_log_file() -> String {

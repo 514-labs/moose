@@ -90,6 +90,7 @@ pub struct MooseActivity {
     pub ip: Option<String>,
 }
 
+// This is needed because the UUID is not serializable by default
 fn serialize_uuid<S>(id: &Uuid, serializer: S) -> Result<S::Ok, S::Error>
 where
     S: serde::Serializer,

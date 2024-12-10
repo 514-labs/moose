@@ -1,11 +1,12 @@
+use crate::framework::consumption::model::ConsumptionQueryParam;
+use crate::framework::python::executor::{run_python_program, PythonProgram};
+use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
+use crate::infrastructure::processes::consumption_registry::ConsumptionError;
+use crate::project::JwtConfig;
 use log::{error, info};
 use std::path::Path;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
-
-use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
-use crate::infrastructure::processes::consumption_registry::ConsumptionError;
-use crate::project::JwtConfig;
 
 use super::executor;
 
@@ -77,4 +78,25 @@ pub fn run(
     });
 
     Ok(consumption_process)
+}
+
+pub async fn load_python_query_param(
+    path: &Path,
+) -> Result<Vec<ConsumptionQueryParam>, std::io::Error> {
+    let args = vec![path.file_name().unwrap().to_str().unwrap().to_string()];
+    let process = run_python_program(PythonProgram::LoadApiParam { args })?;
+    let output = process.wait_with_output().await?;
+
+    if !output.status.success() {
+        return Err(std::io::Error::other(
+            String::from_utf8_lossy(&output.stderr).to_string(),
+        ));
+    }
+    let raw_string_stdout = String::from_utf8_lossy(&output.stdout);
+
+    let config = serde_json::from_str::<crate::framework::consumption::loader::QueryParamOutput>(
+        &raw_string_stdout,
+    )
+    .map_err(std::io::Error::other)?;
+    Ok(config.params)
 }

@@ -1,6 +1,6 @@
 use super::model::{Consumption, ConsumptionQueryParam, EndpointFile};
 use crate::framework::languages::SupportedLanguages;
-use crate::framework::python::executor::{run_python_program, PythonProgram};
+use crate::framework::python::consumption::load_python_query_param;
 use crate::project::Project;
 use crate::utilities::PathExt;
 use serde::Deserialize;
@@ -17,8 +17,8 @@ pub enum ConsumptionLoaderError {
 }
 
 #[derive(Debug, Deserialize)]
-struct QueryParamOutput {
-    params: Vec<ConsumptionQueryParam>,
+pub struct QueryParamOutput {
+    pub params: Vec<ConsumptionQueryParam>,
 }
 
 pub async fn load_consumption(project: &Project) -> Result<Consumption, ConsumptionLoaderError> {
@@ -38,25 +38,6 @@ pub async fn load_consumption(project: &Project) -> Result<Consumption, Consumpt
     }
 
     Ok(Consumption { endpoint_files })
-}
-
-async fn load_python_query_param(
-    path: &Path,
-) -> Result<Vec<ConsumptionQueryParam>, std::io::Error> {
-    let args = vec![path.file_name().unwrap().to_str().unwrap().to_string()];
-    let process = run_python_program(PythonProgram::LoadApiParam { args })?;
-    let output = process.wait_with_output().await?;
-
-    if !output.status.success() {
-        return Err(std::io::Error::other(
-            String::from_utf8_lossy(&output.stderr).to_string(),
-        ));
-    }
-    let raw_string_stdout = String::from_utf8_lossy(&output.stdout);
-
-    let config = serde_json::from_str::<QueryParamOutput>(&raw_string_stdout)
-        .map_err(std::io::Error::other)?;
-    Ok(config.params)
 }
 
 async fn build_endpoint_file(

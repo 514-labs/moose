@@ -161,25 +161,25 @@ jobs:
         build:
           - {
               NAME: linux-x64-glibc,
-              OS: ubuntu-20.04,
+              OS: ubuntu-20.04-8core,
               TOOLCHAIN: stable,
               TARGET: x86_64-unknown-linux-gnu,
             }
           - {
               NAME: linux-arm64-glibc,
-              OS: ubuntu-20.04,
+              OS: ubuntu-20.04-8core,
               TOOLCHAIN: stable,
               TARGET: aarch64-unknown-linux-gnu,
             }
           - {
               NAME: darwin-x64,
-              OS: macos-12-large,
+              OS: macos-14-large,
               TOOLCHAIN: stable,
               TARGET: x86_64-apple-darwin,
             }
           - {
               NAME: darwin-arm64,
-              OS: macos-12-large,
+              OS: macos-14-large,
               TOOLCHAIN: stable,
               TARGET: aarch64-apple-darwin,
             }

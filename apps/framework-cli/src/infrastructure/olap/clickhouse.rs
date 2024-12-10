@@ -43,6 +43,27 @@ pub enum ClickhouseChangesError {
     NotSupported(String),
 }
 
+/// Executes a series of changes to the ClickHouse database schema
+///
+/// # Arguments
+///
+/// * `project` - The Project configuration containing ClickHouse connection details
+/// * `changes` - A slice of OlapChange representing schema changes to apply
+///
+/// # Returns
+///
+/// * `Result<(), ClickhouseChangesError>` - Ok(()) if all changes were successful, or a ClickhouseChangesError if any operation failed
+///
+/// # Details
+///
+/// Handles the following types of changes:
+/// - Adding/removing/updating tables
+/// - Adding/removing/updating views
+/// - Column modifications
+/// - Order by clause changes
+/// - Table engine changes (via deduplication settings)
+///
+/// Will retry certain operations that return specific ClickHouse error codes indicating retry is possible.
 pub async fn execute_changes(
     project: &Project,
     changes: &[OlapChange],

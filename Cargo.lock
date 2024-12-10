@@ -2182,11 +2182,8 @@ dependencies = [
  "async-trait",
  "bytes",
  "http 1.1.0",
- "http-body-util",
- "hyper 1.4.1",
- "hyper-util",
  "opentelemetry",
- "tokio",
+ "reqwest",
 ]
 
 [[package]]

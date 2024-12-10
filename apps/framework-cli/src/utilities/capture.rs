@@ -71,7 +71,9 @@ pub enum ActivityType {
 
 #[derive(Debug, Clone, Serialize)]
 pub struct MooseActivity {
+    #[serde(serialize_with = "serialize_uuid")]
     pub id: Uuid,
+
     pub project: String,
     #[serde(rename = "activityType")]
     pub activity_type: ActivityType,
@@ -86,6 +88,13 @@ pub struct MooseActivity {
     pub machine_id: String,
 
     pub ip: Option<String>,
+}
+
+fn serialize_uuid<S>(id: &Uuid, serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: serde::Serializer,
+{
+    serializer.serialize_str(&id.to_string())
 }
 
 pub fn capture_usage(

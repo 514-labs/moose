@@ -37,7 +37,7 @@ use log::{info, LevelFilter, Metadata, Record};
 use opentelemetry::logs::Logger;
 use opentelemetry::KeyValue;
 use opentelemetry_appender_log::OpenTelemetryLogBridge;
-use opentelemetry_otlp::{Protocol, WithExportConfig};
+use opentelemetry_otlp::{Protocol, WithExportConfig, WithHttpConfig};
 use opentelemetry_sdk::logs::LoggerProvider;
 use opentelemetry_sdk::Resource;
 use opentelemetry_semantic_conventions::resource::SERVICE_NAME;
@@ -95,7 +95,25 @@ pub struct LoggerSettings {
     #[serde(default = "default_log_format")]
     pub format: LogFormat,
 
+    #[serde(deserialize_with = "parsing_url")]
     pub export_to: Option<Uri>,
+}
+
+fn parsing_url<'de, D>(deserializer: D) -> Result<Option<Uri>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: Option<String> = Option::deserialize(deserializer)?;
+    match s {
+        Some(s) => match s.parse() {
+            Ok(uri) => Ok(Some(uri)),
+            Err(e) => {
+                error!("Failed to parse URI: {}", e);
+                Ok(None)
+            }
+        },
+        None => Ok(None),
+    }
 }
 
 fn default_log_file() -> String {
@@ -214,9 +232,13 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
     let output_config = match &settings.export_to {
         None => output_config,
         Some(otel_endpoint) => {
+            let string_uri = otel_endpoint.to_string();
+            let reqwest_client = reqwest::Client::new();
+
             let open_telemetry_exporter = opentelemetry_otlp::LogExporter::builder()
                 .with_http()
-                .with_endpoint(otel_endpoint)
+                .with_http_client(reqwest_client)
+                .with_endpoint(string_uri)
                 .with_protocol(Protocol::HttpJson)
                 .with_timeout(Duration::from_millis(5000))
                 .build()?;

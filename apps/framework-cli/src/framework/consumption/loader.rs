@@ -23,14 +23,16 @@ struct QueryParamOutput {
 
 pub async fn load_consumption(project: &Project) -> Result<Consumption, ConsumptionLoaderError> {
     let mut endpoint_files = Vec::new();
-    for f in walkdir::WalkDir::new(project.consumption_dir()).into_iter() {
-        if let Ok(f) = f {
-            if f.file_type().is_file() && f.path().ext_is_supported_lang() {
-                let result = build_endpoint_file(project, f.path()).await;
-                log::debug!("build_endpoint_file result: {:?}", result);
-                if let Some(file) = result.ok().flatten() {
-                    endpoint_files.push(file);
-                }
+    for f in walkdir::WalkDir::new(project.consumption_dir())
+        .into_iter()
+        // drop Err cases
+        .flatten()
+    {
+        if f.file_type().is_file() && f.path().ext_is_supported_lang() {
+            let result = build_endpoint_file(project, f.path()).await;
+            log::debug!("build_endpoint_file result: {:?}", result);
+            if let Some(file) = result.ok().flatten() {
+                endpoint_files.push(file);
             }
         }
     }
@@ -53,7 +55,7 @@ async fn load_python_query_param(
     let raw_string_stdout = String::from_utf8_lossy(&output.stdout);
 
     let config = serde_json::from_str::<QueryParamOutput>(&raw_string_stdout)
-        .map_err(|e| std::io::Error::other(e))?;
+        .map_err(std::io::Error::other)?;
     Ok(config.params)
 }
 

@@ -7,7 +7,7 @@ use log::{debug, info};
 use mapper::{std_column_to_clickhouse_column, std_table_to_clickhouse_table};
 use queries::{
     basic_field_type_to_string, create_table_query, create_view_query, drop_table_query,
-    drop_view_query, update_view_query, ClickhouseEngine,
+    drop_view_query, update_view_query,
 };
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
@@ -60,8 +60,7 @@ pub async fn execute_changes(
                 log::info!("Creating table: {:?}", table.id());
 
                 let clickhouse_table = std_table_to_clickhouse_table(table)?;
-                let create_data_table_query =
-                    create_table_query(db_name, clickhouse_table, ClickhouseEngine::MergeTree)?;
+                let create_data_table_query = create_table_query(db_name, clickhouse_table)?;
                 run_query(&create_data_table_query, &configured_client).await?;
             }
             OlapChange::Table(TableChange::Removed(table)) => {
@@ -90,15 +89,7 @@ pub async fn execute_changes(
                     run_query(&drop_query, &configured_client).await?;
 
                     let clickhouse_table = std_table_to_clickhouse_table(after)?;
-                    let create_data_table_query = create_table_query(
-                        db_name,
-                        clickhouse_table,
-                        if after.deduplicate {
-                            ClickhouseEngine::ReplacingMergeTree
-                        } else {
-                            ClickhouseEngine::MergeTree
-                        },
-                    )?;
+                    let create_data_table_query = create_table_query(db_name, clickhouse_table)?;
                     run_query(&create_data_table_query, &configured_client).await?;
                 } else {
                     log::info!("Updating table: {:?}", name);

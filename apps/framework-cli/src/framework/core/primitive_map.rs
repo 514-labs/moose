@@ -150,7 +150,7 @@ impl PrimitiveMap {
                 .cloned()
                 .collect();
 
-        primitive_map.consumption = load_consumption(project)?;
+        primitive_map.consumption = load_consumption(project).await?;
 
         log::debug!("Loaded Versioned primitive map: {:?}", primitive_map);
 

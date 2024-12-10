@@ -1,25 +1,20 @@
-import asyncio
-import dataclasses
-from dataclasses import dataclass
-from datetime import datetime, timezone
-
-from clickhouse_connect import get_client
-from string import Formatter
-from importlib import import_module
-from clickhouse_connect.driver.client import Client
 import argparse
+import dataclasses
+import json
 import os
 import sys
-import json
+import traceback
+from datetime import datetime, timezone, date
+from http.server import HTTPServer, BaseHTTPRequestHandler
+from importlib import import_module
+from string import Formatter
+from typing import Optional, Dict, Any
+from urllib.parse import urlparse, parse_qs
+from moose_lib.query_param import QueryField, ArrayType, convert_consumption_api_param, parse_scalar_value
 
 import jwt
-from jwt import InvalidTokenError
-from typing import Optional, Dict, Any
-
-from http.server import HTTPServer, BaseHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
-
-
+from clickhouse_connect import get_client
+from clickhouse_connect.driver.client import Client
 
 parser = argparse.ArgumentParser(description='Run Consumption Server')
 parser.add_argument('consumption_dir_path', type=str,
@@ -36,7 +31,6 @@ parser.add_argument('jwt_secret', type=str, help='JWT secret')
 parser.add_argument('jwt_issuer', type=str, help='JWT issuer')
 parser.add_argument('jwt_audience', type=str, help='JWT audience')
 parser.add_argument('jwt_enforce_all', type=str, help='Auto-handle requests without JWT')
-
 
 args = parser.parse_args()
 
@@ -56,12 +50,47 @@ jwt_enforce_all = args.jwt_enforce_all
 sys.path.append(consumption_dir_path)
 
 
+def map_params_to_dataclass(params:  dict[str, list[str]], fields: list[QueryField], cls: type) -> Any:
+    # Initialize an empty dict for the constructor arguments
+    constructor_args = {}
+
+    # Get field definitions from the dataclass
+    for field_def in fields:
+        field_name = field_def.name
+
+        # Skip if field not in params
+        if field_name not in params:
+            continue
+
+        # Get the value(s) from the params list
+        values = params[field_name]
+        if not values:
+            continue
+
+        # Get the field type, handling Optional types
+        field_type = field_def.data_type
+
+        if isinstance(field_type, ArrayType):
+            constructor_args[field_name] = [parse_scalar_value(v, field_type.element_type) for v in values]
+
+        if len(values) != 1:
+            raise ValueError(f"Expected a single element for {field_name}")
+        [v] = values
+        constructor_args[field_name] = parse_scalar_value(v, field_type)
+
+    # Create and return instance of the dataclass
+    return cls(**constructor_args)
+
+
+
 # TODO: move this to python moose lib
 class EnhancedJSONEncoder(json.JSONEncoder):
     def default(self, o):
         if isinstance(o, datetime):
             if o.tzinfo is None:
                 o = o.replace(tzinfo=timezone.utc)
+            return o.isoformat()
+        if isinstance(o, date):
             return o.isoformat()
         if dataclasses.is_dataclass(o):
             return dataclasses.asdict(o)
@@ -118,8 +147,7 @@ def handler_with_client(ch_client):
             module_name = parsed_path.path.lstrip('/')
             try:
                 module = import_module(module_name)
-                # get the flow definition
-                print(module_name)
+                fields_and_class = convert_consumption_api_param(module)
 
                 if has_jwt_config():
                     jwt_payload: Optional[Dict[str, Any]] = None
@@ -135,30 +163,35 @@ def handler_with_client(ch_client):
                         response_message = bytes(json.dumps({"error": "Unauthorized"}), 'utf-8')
                     else:
                         query_params = parse_qs(parsed_path.query)
+                        if fields_and_class is not None:
+                            (cls, fields) = fields_and_class
+                            query_params = map_params_to_dataclass(query_params, fields, cls)
                         response = module.run(ch_client, query_params, jwt_payload)
-
                         if hasattr(response, 'status') and hasattr(response, 'body'):
-                            self.send_response(response.status)
                             response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
+                            self.send_response(response.status)
                         else:
-                            self.send_response(200)
                             response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
+                            self.send_response(200)
 
                 else:
                     query_params = parse_qs(parsed_path.query)
+                    if fields_and_class is not None:
+                        (cls, fields) = fields_and_class
+                        query_params = map_params_to_dataclass(query_params, fields, cls)
                     response = module.run(ch_client, query_params)
-                
                     if hasattr(response, 'status') and hasattr(response, 'body'):
-                        self.send_response(response.status)
                         response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
+                        self.send_response(response.status)
                     else:
-                        self.send_response(200)
                         response_message = bytes(json.dumps(response, cls=EnhancedJSONEncoder), 'utf-8')
+                        self.send_response(200)
 
                 self.end_headers()
                 self.wfile.write(response_message)
 
             except Exception as e:
+                traceback.print_exc()
                 self.send_response(500)
                 self.end_headers()
                 self.wfile.write(str(e).encode())

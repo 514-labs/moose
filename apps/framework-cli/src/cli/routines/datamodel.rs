@@ -11,8 +11,8 @@ use std::io::BufReader;
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum CustomValue {
     UnionTypes(Vec<CustomValue>),
-    // if the array is (which we don't really support),
-    // then the inner CustomValue is UnionTypes
+    // if the array is heterogeneous (which we don't really support),
+    // then the inner CustomValue is `UnionTypes`
     JsonArray(Box<CustomValue>),
     JsonObject(IndexMap<String, CustomValue>),
     JsonPrimitive(JsonPrimitive),

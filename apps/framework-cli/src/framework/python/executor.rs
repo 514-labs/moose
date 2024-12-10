@@ -30,11 +30,13 @@ pub enum PythonProgram {
     StreamingFunctionRunner { args: Vec<String> },
     BlocksRunner { args: Vec<String> },
     ConsumptionRunner { args: Vec<String> },
+    LoadApiParam { args: Vec<String> },
 }
 
 pub static STREAMING_FUNCTION_RUNNER: &str = include_str!("scripts/streaming_function_runner.py");
 pub static BLOCKS_RUNNER: &str = include_str!("scripts/blocks_runner.py");
 pub static CONSUMPTION_RUNNER: &str = include_str!("scripts/consumption_runner.py");
+pub static LOAD_API_PARAMS: &str = include_str!("scripts/load_api_params.py");
 
 const PYTHON_PATH: &str = "PYTHONPATH";
 fn python_path_with_version() -> String {
@@ -50,16 +52,11 @@ fn python_path_with_version() -> String {
 
 /// Executes a Python program in a subprocess
 pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Error> {
-    let get_args = match program.clone() {
-        PythonProgram::StreamingFunctionRunner { args } => args,
-        PythonProgram::BlocksRunner { args } => args,
-        PythonProgram::ConsumptionRunner { args } => args,
-    };
-
-    let program_string = match program {
-        PythonProgram::StreamingFunctionRunner { .. } => STREAMING_FUNCTION_RUNNER,
-        PythonProgram::BlocksRunner { .. } => BLOCKS_RUNNER,
-        PythonProgram::ConsumptionRunner { .. } => CONSUMPTION_RUNNER,
+    let (get_args, program_string) = match program.clone() {
+        PythonProgram::StreamingFunctionRunner { args } => (args, STREAMING_FUNCTION_RUNNER),
+        PythonProgram::BlocksRunner { args } => (args, BLOCKS_RUNNER),
+        PythonProgram::ConsumptionRunner { args } => (args, CONSUMPTION_RUNNER),
+        PythonProgram::LoadApiParam { args } => (args, LOAD_API_PARAMS),
     };
 
     Command::new("python3")

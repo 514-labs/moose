@@ -153,26 +153,41 @@ impl InfraChanges {
     }
 }
 
+/// Represents the complete infrastructure map of the system, containing all components and their relationships
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfrastructureMap {
-    // primitive_map: PrimitiveMap,
+    /// Collection of topics indexed by topic ID
     pub topics: HashMap<String, Topic>,
+
+    /// Collection of API endpoints indexed by endpoint ID
     pub api_endpoints: HashMap<String, ApiEndpoint>,
+
+    /// Collection of database tables indexed by table name
     pub tables: HashMap<String, Table>,
+
+    /// Collection of database views indexed by view name
     pub views: HashMap<String, View>,
 
+    /// Processes that sync data from topics to tables
     pub topic_to_table_sync_processes: HashMap<String, TopicToTableSyncProcess>,
+
+    /// Processes that sync data between topics
     #[serde(default = "HashMap::new")]
     pub topic_to_topic_sync_processes: HashMap<String, TopicToTopicSyncProcess>,
+
+    /// Collection of function processes that transform data
     pub function_processes: HashMap<String, FunctionProcess>,
 
+    /// Process handling OLAP database operations
     // TODO change to a hashmap of processes when we have several
     pub block_db_processes: OlapProcess,
 
+    /// Web server handling consumption API endpoints
     // Not sure if we will want to change that or not in the future to be able to tell
     // the new consumption endpoints that were added or removed.
     pub consumption_api_web_server: ConsumptionApiWebServer,
 
+    /// Collection of initial data loads indexed by load ID
     pub initial_data_loads: HashMap<String, InitialDataLoad>,
 }
 

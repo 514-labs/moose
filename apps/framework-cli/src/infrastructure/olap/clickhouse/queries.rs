@@ -114,10 +114,11 @@ CREATE TABLE IF NOT EXISTS `{{db_name}}`.`{{table_name}}`
 {{/each}}
 )
 ENGINE = {{engine}}
-{{#if primary_key_string}}PRIMARY KEY ({{primary_key_string}}) {{/if}}
-{{#if order_by_string}}ORDER BY ({{order_by_string}}) {{/if}}
+{{#if primary_key_string}}PRIMARY KEY ({{primary_key_string}}){{/if}}
+{{#if order_by_string}}ORDER BY ({{order_by_string}}){{/if}}
 "#;
 
+#[derive(Debug, Clone)]
 pub enum ClickhouseEngine {
     MergeTree,
     ReplacingMergeTree,
@@ -126,12 +127,11 @@ pub enum ClickhouseEngine {
 pub fn create_table_query(
     db_name: &str,
     table: ClickHouseTable,
-    engine: ClickhouseEngine,
 ) -> Result<String, ClickhouseError> {
     let mut reg = Handlebars::new();
     reg.register_escape_fn(no_escape);
 
-    let (engine, ignore_primary_key) = match engine {
+    let (engine, ignore_primary_key) = match table.engine {
         ClickhouseEngine::MergeTree => ("MergeTree".to_string(), false),
         ClickhouseEngine::ReplacingMergeTree => {
             if table.order_by.is_empty() {
@@ -459,9 +459,10 @@ mod tests {
                 },
             ],
             order_by: vec![],
+            engine: ClickhouseEngine::MergeTree,
         };
 
-        let query = create_table_query("test_db", table, ClickhouseEngine::MergeTree).unwrap();
+        let query = create_table_query("test_db", table).unwrap();
         let expected = r#"
 CREATE TABLE IF NOT EXISTS `test_db`.`test_table`
 (
@@ -469,7 +470,7 @@ CREATE TABLE IF NOT EXISTS `test_db`.`test_table`
  `name` String NULL
 )
 ENGINE = MergeTree
-PRIMARY KEY (`id`) 
+PRIMARY KEY (`id`)
 "#;
         assert_eq!(query.trim(), expected.trim());
     }
@@ -488,17 +489,17 @@ PRIMARY KEY (`id`)
                 default: None,
             }],
             order_by: vec!["id".to_string()],
+            engine: ClickhouseEngine::ReplacingMergeTree,
         };
 
-        let query =
-            create_table_query("test_db", table, ClickhouseEngine::ReplacingMergeTree).unwrap();
+        let query = create_table_query("test_db", table).unwrap();
         let expected = r#"
 CREATE TABLE IF NOT EXISTS `test_db`.`test_table`
 (
  `id` Int32 NOT NULL
 )
 ENGINE = ReplacingMergeTree
-PRIMARY KEY (`id`) 
+PRIMARY KEY (`id`)
 ORDER BY (`id`) "#;
         assert_eq!(query.trim(), expected.trim());
     }
@@ -516,10 +517,11 @@ ORDER BY (`id`) "#;
                 unique: false,
                 default: None,
             }],
+            engine: ClickhouseEngine::ReplacingMergeTree,
             order_by: vec![],
         };
 
-        let result = create_table_query("test_db", table, ClickhouseEngine::ReplacingMergeTree);
+        let result = create_table_query("test_db", table);
         assert!(matches!(
             result,
             Err(ClickhouseError::InvalidParameters { message }) if message == "ReplacingMergeTree requires an order by clause"
@@ -586,10 +588,11 @@ ORDER BY (`id`) "#;
                     default: None,
                 },
             ],
+            engine: ClickhouseEngine::MergeTree,
             order_by: vec!["id".to_string()],
         };
 
-        let query = create_table_query("test_db", table, ClickhouseEngine::MergeTree).unwrap();
+        let query = create_table_query("test_db", table).unwrap();
         let expected = r#"
 CREATE TABLE IF NOT EXISTS `test_db`.`test_table`
 (
@@ -598,7 +601,7 @@ CREATE TABLE IF NOT EXISTS `test_db`.`test_table`
  `status` Enum('Active' = 1,'Inactive' = 2) NOT NULL
 )
 ENGINE = MergeTree
-PRIMARY KEY (`id`) 
+PRIMARY KEY (`id`)
 ORDER BY (`id`) "#;
         assert_eq!(query.trim(), expected.trim());
     }

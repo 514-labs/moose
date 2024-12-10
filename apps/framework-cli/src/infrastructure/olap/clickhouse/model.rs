@@ -378,11 +378,12 @@ pub struct ClickHouseTable {
     pub version: Version,
     pub columns: Vec<ClickHouseColumn>,
     pub order_by: Vec<String>,
+    pub engine: ClickhouseEngine,
 }
 
 impl ClickHouseTable {
     pub fn create_data_table_query(&self, db_name: &str) -> Result<String, ClickhouseError> {
-        create_table_query(db_name, self.clone(), ClickhouseEngine::MergeTree)
+        create_table_query(db_name, self.clone())
     }
 
     pub fn drop_data_table_query(&self, db_name: &str) -> Result<String, ClickhouseError> {

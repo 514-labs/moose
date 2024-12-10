@@ -6,6 +6,7 @@ use crate::infrastructure::olap::clickhouse::model::{
 
 use super::errors::ClickhouseError;
 use super::model::sanitize_column_name;
+use super::queries::ClickhouseEngine;
 
 pub fn std_column_to_clickhouse_column(
     column: Column,
@@ -81,10 +82,18 @@ pub fn std_columns_to_clickhouse_columns(
 
 pub fn std_table_to_clickhouse_table(table: &Table) -> Result<ClickHouseTable, ClickhouseError> {
     let columns = std_columns_to_clickhouse_columns(&table.columns)?;
+
+    let clickhouse_engine = if table.deduplicate {
+        ClickhouseEngine::ReplacingMergeTree
+    } else {
+        ClickhouseEngine::MergeTree
+    };
+
     Ok(ClickHouseTable {
         name: table.name.clone(),
         version: table.version.clone(),
         columns,
         order_by: table.order_by.clone(),
+        engine: clickhouse_engine,
     })
 }

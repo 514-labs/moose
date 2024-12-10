@@ -31,7 +31,7 @@ convert_case = "0.6.0"
 log = "0.4"
 fern = { version = "0.7", features = ["date-based"] }
 humantime = "2.1.0"
-uuid = { version = "1.6", features = ["v4"] }
+uuid = { version = "1.6", features = ["v4", "serde"] }
 crypto-hash = "0.3.4"
 serde_json = { version = "1.0.133", features = ["preserve_order"] }
 serde_urlencoded = "0.7"

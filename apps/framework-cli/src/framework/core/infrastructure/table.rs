@@ -222,7 +222,7 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
         let mut columns = None;
         let mut jwt = None;
         while let Some(key) = map.next_key::<String>()? {
-            if key == "elementType" {
+            if key == "elementType" || key == "element_type" {
                 return Ok(ColumnType::Array(Box::new(
                     map.next_value::<ColumnType>().map_err(|e| {
                         A::Error::custom(format!("Array inner type deserialization error {}.", e))

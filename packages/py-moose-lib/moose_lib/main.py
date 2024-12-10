@@ -1,5 +1,5 @@
 from clickhouse_connect.driver.client import Client
-from dataclasses import dataclass, asdict
+from dataclasses import dataclass, asdict, fields
 from enum import Enum
 from string import Formatter
 from typing import Any, Callable, Dict, Generic, Optional, TypeVar, Union, overload

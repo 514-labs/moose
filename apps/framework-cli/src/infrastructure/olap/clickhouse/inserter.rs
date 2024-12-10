@@ -4,7 +4,7 @@ use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
 
 use crate::infrastructure::processes::kafka_clickhouse_sync;
-use log::{debug, error};
+use log::{error, info};
 use rdkafka::error::KafkaError;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -111,6 +111,7 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
                 continue;
             }
             interval.tick().await;
+
             let mut queue = self.queue.lock().await;
 
             if queue.is_empty() || queue.front().map_or(true, |batch| batch.records.is_empty()) {
@@ -122,13 +123,13 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
 
                 match self.client.insert(&table, &columns, &batch.records).await {
                     Ok(_) => {
-                        debug!("Inserted {} records", batch_size,);
+                        info!("Inserted {} records to {}", batch_size, table);
 
                         for (partition, offset) in &batch.partition_offsets {
                             if let Err(err) = commit_callback(*partition, *offset) {
                                 error!(
-                                    "Error committing offset for partition {}: {:?}",
-                                    partition, err
+                                    "Error committing offset {} for partition {}: {:?}",
+                                    offset, partition, err
                                 );
                             }
                         }
@@ -140,8 +141,10 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
                         }
                     }
                     Err(e) => {
-                        error!("Error inserting records to {}: {:?}", table, e);
-                        debug!("Failed batch size: {}", batch_size);
+                        error!(
+                            "Error inserting {} records to {}: {:?}",
+                            batch_size, table, e
+                        );
                     }
                 }
             }

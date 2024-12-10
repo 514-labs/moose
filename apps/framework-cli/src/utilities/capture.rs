@@ -72,6 +72,7 @@ pub enum ActivityType {
 #[derive(Debug, Clone, Serialize)]
 pub struct MooseActivity {
     pub id: Uuid,
+
     pub project: String,
     #[serde(rename = "activityType")]
     pub activity_type: ActivityType,

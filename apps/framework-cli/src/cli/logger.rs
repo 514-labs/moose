@@ -31,14 +31,13 @@
 //! ```
 //!
 
+use hyper::Uri;
 use log::{error, warn};
 use log::{info, LevelFilter, Metadata, Record};
 use opentelemetry::logs::Logger;
 use opentelemetry::KeyValue;
 use opentelemetry_appender_log::OpenTelemetryLogBridge;
-use opentelemetry_http::hyper::HyperClient;
-use opentelemetry_otlp::{Protocol, WithExportConfig};
-use opentelemetry_sdk::logs::Config;
+use opentelemetry_otlp::{Protocol, WithExportConfig, WithHttpConfig};
 use opentelemetry_sdk::logs::LoggerProvider;
 use opentelemetry_sdk::Resource;
 use opentelemetry_semantic_conventions::resource::SERVICE_NAME;
@@ -96,7 +95,16 @@ pub struct LoggerSettings {
     #[serde(default = "default_log_format")]
     pub format: LogFormat,
 
-    pub export_to: Option<reqwest::Url>,
+    #[serde(deserialize_with = "parsing_url")]
+    pub export_to: Option<Uri>,
+}
+
+fn parsing_url<'de, D>(deserializer: D) -> Result<Option<Uri>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let s: Option<String> = Option::deserialize(deserializer)?;
+    Ok(s.and_then(|s| s.parse().ok()))
 }
 
 fn default_log_file() -> String {
@@ -155,7 +163,18 @@ fn clean_old_logs() {
     }
 }
 
-pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), fern::InitError> {
+// Error that rolls up all the possible errors that can occur during logging setup
+#[derive(thiserror::Error, Debug)]
+pub enum LoggerError {
+    #[error("Error Initializing fern logger")]
+    Init(#[from] fern::InitError),
+    #[error("Error setting up otel logger")]
+    Exporter(#[from] opentelemetry_sdk::logs::LogError),
+    #[error("Error setting up default logger")]
+    LogSetup(#[from] log::SetLoggerError),
+}
+
+pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), LoggerError> {
     clean_old_logs();
 
     let session_id = CONTEXT.get(CTX_SESSION_ID).unwrap();
@@ -204,20 +223,16 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
     let output_config = match &settings.export_to {
         None => output_config,
         Some(otel_endpoint) => {
-            let https = hyper_tls_0_5::HttpsConnector::new();
-            let client = hyper_0_14::Client::builder().build::<_, hyper_0_14::Body>(https);
+            let string_uri = otel_endpoint.to_string();
+            let reqwest_client = reqwest::Client::new();
 
-            let otel_exporter = opentelemetry_otlp::new_exporter()
-                .http()
-                .with_endpoint(otel_endpoint.clone())
+            let open_telemetry_exporter = opentelemetry_otlp::LogExporter::builder()
+                .with_http()
+                .with_http_client(reqwest_client)
+                .with_endpoint(string_uri)
                 .with_protocol(Protocol::HttpJson)
-                .with_http_client(HyperClient::new_with_timeout(
-                    client,
-                    Duration::from_millis(5000),
-                ))
                 .with_timeout(Duration::from_millis(5000))
-                .build_log_exporter()
-                .unwrap();
+                .build()?;
 
             let mut resource_attributes = vec![
                 KeyValue::new(SERVICE_NAME, "moose-cli"),
@@ -243,8 +258,8 @@ pub fn setup_logging(settings: &LoggerSettings, machine_id: &str) -> Result<(), 
             }
 
             let logger_provider = LoggerProvider::builder()
-                .with_config(Config::default().with_resource(Resource::new(resource_attributes)))
-                .with_batch_exporter(otel_exporter, opentelemetry_sdk::runtime::Tokio)
+                .with_resource(Resource::new(resource_attributes))
+                .with_batch_exporter(open_telemetry_exporter, opentelemetry_sdk::runtime::Tokio)
                 .build();
 
             let logger: Box<dyn log::Log> = Box::new(TargetToKvLogger {

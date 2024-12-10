@@ -134,12 +134,7 @@ impl RedisClient {
     }
 
     pub fn service_prefix(&self, keys: &[&str]) -> String {
-        format!(
-            "{}::{}::{}",
-            self.redis_config.key_prefix,
-            self.service_name,
-            keys.join("::")
-        )
+        format!("{}::{}", self.redis_config.key_prefix, keys.join("::"))
     }
 
     pub fn instance_prefix(&self, key: &str) -> String {

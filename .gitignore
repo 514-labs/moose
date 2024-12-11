@@ -69,3 +69,6 @@ apps/framework-internal-app/package-lock.json
 env/
 .env/
 ENV/
+
+
+.vite/

@@ -1085,7 +1085,7 @@ async fn shutdown(project: &Project, graceful: GracefulShutdown) -> ! {
         with_spinner(
             "Stopping containers",
             || {
-                let _ = docker::stop_containers(&project);
+                let _ = docker::stop_containers(project);
             },
             true,
         );

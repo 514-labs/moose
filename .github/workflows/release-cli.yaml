@@ -101,17 +101,33 @@ jobs:
         shell: bash
         run: ./packages/ts-moose-lib/scripts/release-lib.sh ${{ needs.version.outputs.version }}
 
+      - name: Wait for @514labs/ts-moose-lib to be available
+        shell: bash
+        run: ./scripts/wait-for-npm-package.sh @514labs/ts-moose-lib ${{ needs.version.outputs.version }}
+
       - name: Publish the NPM Moose design-system package
         shell: bash
         run: ./packages/design-system-base/scripts/release.sh ${{ needs.version.outputs.version }}
+
+      - name: Wait for @514labs/design-system-base to be available
+        shell: bash
+        run: ./scripts/wait-for-npm-package.sh @514labs/design-system-base ${{ needs.version.outputs.version }}
 
       - name: Publish the NPM Moose event-capture package
         shell: bash
         run: ./packages/event-capture/scripts/release.sh ${{ needs.version.outputs.version }}
 
+      - name: Wait for d@514labs/event-capture to be available
+        shell: bash
+        run: ./scripts/wait-for-npm-package.sh @514labs/event-capture ${{ needs.version.outputs.version }}
+
       - name: Publish the NPM Moose Protobuf package
         shell: bash
         run: ./packages/ts-moose-proto/scripts/release-lib.sh ${{ needs.version.outputs.version }}
+
+      - name: Wait for @514labs/moose-proto to be available
+        shell: bash
+        run: ./scripts/wait-for-npm-package.sh @514labs/moose-proto ${{ needs.version.outputs.version }}
 
   package-and-publish-templates:
     name: Package and Publish Templates
@@ -298,9 +314,29 @@ jobs:
         shell: bash
         run: pnpm --filter ...create-moose-app  --filter ...@514labs/moose-cli install
 
+      - name: Wait for @514labs/moose-cli-darwin-x64 to be available
+        shell: bash
+        run: ./scripts/wait-for-npm-package.sh @514labs/moose-cli-linux-x64 ${{ needs.version.outputs.version }}
+
+      - name: Wait for @514labs/moose-cli-darwin-arm64 to be available
+        shell: bash
+        run: ./scripts/wait-for-npm-package.sh @514labs/moose-cli-darwin-arm64 ${{ needs.version.outputs.version }}
+
+      - name: Wait for @514labs/moose-cli-linux-arm64 to be available
+        shell: bash
+        run: ./scripts/wait-for-npm-package.sh @514labs/moose-cli-linux-x64 ${{ needs.version.outputs.version }}
+
+      - name: Wait for @514labs/moose-cli-linux-x64 to be available
+        shell: bash
+        run: ./scripts/wait-for-npm-package.sh @514labs/moose-cli-linux-x64 ${{ needs.version.outputs.version }}
+
       - name: Publish the NPM Moose CLI package
         shell: bash
         run: ./apps/moose-cli-npm/scripts/release-cli.sh ${{ needs.version.outputs.version }}
+
+      - name: Wait for @514labs/moose-cli to be available
+        shell: bash
+        run: ./scripts/wait-for-npm-package.sh @514labs/moose-cli ${{ needs.version.outputs.version }}
 
       - name: Publish the NPM Moose create app package
         shell: bash

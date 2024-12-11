@@ -33,8 +33,8 @@ use hyper::Response;
 use hyper::StatusCode;
 use hyper_util::rt::TokioIo;
 use hyper_util::{rt::TokioExecutor, server::conn::auto};
-use log::error;
 use log::{debug, log};
+use log::{error, info, warn};
 use rdkafka::error::KafkaError;
 use rdkafka::message::OwnedMessage;
 use rdkafka::producer::future_producer::OwnedDeliveryResult;
@@ -48,6 +48,7 @@ use tokio::spawn;
 
 use crate::framework::data_model::model::DataModel;
 use crate::utilities::validate_passthrough::{DataModelArrayVisitor, DataModelVisitor};
+use hyper_util::server::graceful::GracefulShutdown;
 use lazy_static::lazy_static;
 use log::Level::{Debug, Trace};
 use std::collections::{HashMap, HashSet};
@@ -59,7 +60,6 @@ use std::net::SocketAddr;
 use std::ops::Deref;
 use std::path::PathBuf;
 use std::pin::Pin;
-use std::process::exit;
 use std::sync::Arc;
 use std::time::Duration;
 use std::time::Instant;
@@ -992,23 +992,19 @@ impl Webserver {
             infra_map,
         };
 
+        let graceful = GracefulShutdown::new();
+        let conn_builder: &'static _ =
+            Box::leak(Box::new(auto::Builder::new(TokioExecutor::new())));
+
         loop {
             tokio::select! {
                 _ = sigint.recv() => {
-                    if !project.is_production {
-                        with_spinner("Stopping containers", || {
-                             let _ = docker::stop_containers(&project);
-                        }, true);
-                    }
-                    std::process::exit(0);
+                    info!("SIGINT received, shutting down");
+                    break; // break the loop and no more connections will be accepted
                 }
                 _ = sigterm.recv() => {
-                    if !project.is_production {
-                        with_spinner("Stopping containers", || {
-                            let _ = docker::stop_containers(&project);
-                       }, true);
-                    }
-                    std::process::exit(0);
+                    info!("SIGTERM received, shutting down");
+                    break;
                 }
                 listener_result = listener.accept() => {
                     let (stream, _) = listener_result.unwrap();
@@ -1016,14 +1012,15 @@ impl Webserver {
 
                     let route_service = route_service.clone();
 
+                    let conn = conn_builder.serve_connection(
+                        io,
+                        route_service,
+                    );
+                    let watched = graceful.watch(conn);
                     tokio::task::spawn(async move {
-                        if let Err(e) = auto::Builder::new(TokioExecutor::new()).serve_connection(
-                                io,
-                                route_service,
-                            ).await {
-                                error!("server error: {}", e);
-                            }
-
+                        if let Err(e) = watched.await {
+                            error!("server error: {}", e);
+                        }
                     });
                 }
                 listener_result = management_listener.accept() => {
@@ -1032,18 +1029,21 @@ impl Webserver {
 
                     let management_service = management_service.clone();
 
+                    let conn = conn_builder.serve_connection(
+                        io,
+                        management_service,
+                    );
+                    let watched = graceful.watch(conn);
                     tokio::task::spawn(async move {
-                        if let Err(e) = auto::Builder::new(TokioExecutor::new()).serve_connection(
-                                io,
-                                management_service,
-                            ).await {
-                                error!("server error: {}", e);
-                            }
-
+                        if let Err(e) = watched.await {
+                            error!("server error: {}", e);
+                        }
                     });
                 }
             }
         }
+
+        shutdown(&project, graceful).await;
     }
 }
 
@@ -1065,8 +1065,30 @@ fn handle_listener_err(port: u16, e: std::io::Error) -> ! {
     match e.kind() {
         ErrorKind::AddrInUse => {
             eprintln!("Port {} already in use.", port);
-            exit(1)
+            std::process::exit(1)
         }
         _ => panic!("Failed to listen to port {}: {:?}", port, e),
     }
+}
+
+async fn shutdown(project: &Project, graceful: GracefulShutdown) -> ! {
+    tokio::select! {
+            _ = graceful.shutdown() => {
+                info!("all connections gracefully closed");
+            },
+            _ = tokio::time::sleep(std::time::Duration::from_secs(10)) => {
+                warn!("timed out wait for all connections to close");
+        }
+    }
+
+    if !project.is_production {
+        with_spinner(
+            "Stopping containers",
+            || {
+                let _ = docker::stop_containers(project);
+            },
+            true,
+        );
+    }
+    std::process::exit(0);
 }

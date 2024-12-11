@@ -1000,7 +1000,7 @@ impl Webserver {
             tokio::select! {
                 _ = sigint.recv() => {
                     info!("SIGINT received, shutting down");
-                    break;
+                    break; // break the loop and no more connections will be accepted
                 }
                 _ = sigterm.recv() => {
                     info!("SIGTERM received, shutting down");

@@ -103,7 +103,7 @@ jobs:
 
       - name: Wait for @514labs/ts-moose-lib to be available
         shell: bash
-        run: ./scripts/wait-for-npm-package.sh @514labs/ts-moose-lib ${{ needs.version.outputs.version }}
+        run: ./scripts/wait-for-npm-package.sh @514labs/moose-lib ${{ needs.version.outputs.version }}
 
       - name: Publish the NPM Moose design-system package
         shell: bash

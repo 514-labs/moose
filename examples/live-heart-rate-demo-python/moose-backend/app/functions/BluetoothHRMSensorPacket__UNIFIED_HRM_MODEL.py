@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 bluetooth_device_dict = {
     1111: {
         'user_id': 6,
-        'user_name': 'Arman',
+        'user_name': 'Chris',
     }
 }
 

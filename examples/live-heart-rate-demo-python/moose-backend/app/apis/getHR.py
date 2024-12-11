@@ -1,11 +1,11 @@
 # This file is where you can define your API templates for consuming your data
 # All query_params are passed in as strings, and are used within the sql tag to parameterize you queries
 from datetime import datetime, timedelta, timezone
-from moose_lib import MooseClient, cli_log, CliLogData
+from moose_lib import MooseClient
 
 def run(client: MooseClient, params):
     input_timestamp = params.get("timestamp", [datetime.now(timezone.utc).isoformat()])
-    cli_log(CliLogData(message=f'input_timestamp: {input_timestamp}'))
+    # cli_log(CliLogData(message=f'input_timestamp: {input_timestamp}'))
     # Convert the string timestamp to a datetime object
     dt = datetime.fromisoformat(input_timestamp[0].replace('Z', '+00:00'))
     

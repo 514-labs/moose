@@ -43,7 +43,7 @@ async def scan():
     devices = await BleakScanner.discover()
     for device in devices:
         print(f"Found device: {device.name} - Address: {device.address} - device: {device.details}")
-        if device.name and "oura" in device.name.lower():
+        if device.name and "polar" in device.name.lower():
             return device
     return None
 
@@ -124,7 +124,7 @@ def heartrate_callback(data):
         "heart_rate": bpm,
         "rr_interval_ms": rr_interval,
     }
-    # post_to_moose(payload)
+    post_to_moose(payload)
     print(payload)
 
         

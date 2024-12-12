@@ -26,7 +26,7 @@ device_dict = {
     },
     12348: {
         'user_id': 4,
-        'user_name': 'Chris',
+        'user_name': 'Arman',
     },
     12349: {
         'user_id': 5,

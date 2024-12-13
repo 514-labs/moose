@@ -95,7 +95,7 @@ pub struct LoggerSettings {
     #[serde(default = "default_log_format")]
     pub format: LogFormat,
 
-    #[serde(deserialize_with = "parsing_url")]
+    #[serde(deserialize_with = "parsing_url", default = "Option::default")]
     pub export_to: Option<Uri>,
 }
 

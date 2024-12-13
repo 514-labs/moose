@@ -177,6 +177,8 @@ macro_rules! show_message {
         show_message!(@inner $message_type, $message, true);
     };
 
+    // Print message to terminal, but don't output to log file
+    // i.e. moose logs (so it doesn't recursively log)
     ($message_type:expr, $message:expr, $no_log:expr) => {
         show_message!(@inner $message_type, $message, false);
     };

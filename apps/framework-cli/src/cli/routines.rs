@@ -384,10 +384,8 @@ async fn manage_leadership_lock(
                 e
             );
         }
-    } else {
-        if IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
-            IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
-        }
+    } else if IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
+        IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
     }
     Ok(())
 }

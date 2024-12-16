@@ -348,9 +348,12 @@ async fn process_pubsub_message(
 fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Arc<Project>) {
     tokio::spawn(async move {
         let mut interval = interval(Duration::from_secs(LEADERSHIP_LOCK_RENEWAL_INTERVAL)); // Adjust the interval as needed
+
+        let cron_registry = CronRegistry::new().await.unwrap();
+
         loop {
             interval.tick().await;
-            if let Err(e) = manage_leadership_lock(&redis_client, &project).await {
+            if let Err(e) = manage_leadership_lock(&redis_client, &project, &cron_registry).await {
                 error!("<RedisClient> Error managing leadership lock: {:#}", e);
             }
         }
@@ -360,6 +363,7 @@ fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Ar
 async fn manage_leadership_lock(
     redis_client: &Arc<Mutex<RedisClient>>,
     project: &Arc<Project>,
+    cron_registry: &CronRegistry,
 ) -> Result<(), anyhow::Error> {
     let (has_lock, is_new_acquisition) = {
         let client = redis_client.lock().await;
@@ -370,9 +374,9 @@ async fn manage_leadership_lock(
         info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
 
         let project_clone = project.clone();
-
+        let cron_registry: CronRegistry = cron_registry.clone();
         tokio::spawn(async move {
-            if let Err(e) = leadership_tasks(project_clone).await {
+            if let Err(e) = leadership_tasks(project_clone, cron_registry).await {
                 error!("<RedisClient> Error executing leadership tasks: {}", e);
             }
         });
@@ -390,8 +394,10 @@ async fn manage_leadership_lock(
     Ok(())
 }
 
-async fn leadership_tasks(project: Arc<Project>) -> Result<(), anyhow::Error> {
-    let cron_registry = CronRegistry::new().await?;
+async fn leadership_tasks(
+    project: Arc<Project>,
+    cron_registry: CronRegistry,
+) -> Result<(), anyhow::Error> {
     cron_registry.register_jobs(&project).await?;
     cron_registry.start().await?;
     Ok(())

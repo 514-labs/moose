@@ -8,6 +8,7 @@ use crate::project::Project;
 use super::{RoutineFailure, RoutineSuccess};
 
 use futures::StreamExt;
+use log::info;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::fs::File;
@@ -118,7 +119,9 @@ pub async fn peek(
     } else {
         while let Some(result) = stream.next().await {
             if let Ok(value) = result {
-                println!("{}", serde_json::to_string(&value).unwrap());
+                let message = serde_json::to_string(&value).unwrap();
+                println!("{}", message);
+                info!("{}", message);
                 success_count += 1;
             } else {
                 log::error!("Failed to read row");

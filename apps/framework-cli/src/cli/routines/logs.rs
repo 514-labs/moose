@@ -35,7 +35,8 @@ pub fn show_logs(log_file_path: String, filter: String) -> Result<RoutineSuccess
             Message {
                 action: "Log".to_string(),
                 details: line.to_string(),
-            }
+            },
+            true
         );
     }
 
@@ -81,7 +82,8 @@ pub fn follow_logs(
                     Message {
                         action: "Log".to_string(),
                         details: line.clone(),
-                    }
+                    },
+                    true
                 );
             }
         }

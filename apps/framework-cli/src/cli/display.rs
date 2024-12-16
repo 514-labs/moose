@@ -1,6 +1,7 @@
 use comfy_table::{modifiers::UTF8_ROUND_CORNERS, presets::UTF8_FULL, ContentArrangement, Table};
 use console::{pad_str, style};
 use lazy_static::lazy_static;
+use log::info;
 use serde::Deserialize;
 use spinners::{Spinner, Spinners};
 use std::sync::{Arc, RwLock};
@@ -102,6 +103,8 @@ pub fn infra_added(message: &str) {
             message
         ))
         .expect("failed to write message to terminal");
+
+    info!("+ {}", message.trim());
 }
 
 pub fn infra_removed(message: &str) {
@@ -116,6 +119,8 @@ pub fn infra_removed(message: &str) {
             message
         ))
         .expect("failed to write message to terminal");
+
+    info!("- {}", message.trim());
 }
 
 pub fn infra_updated(message: &str) {
@@ -130,93 +135,52 @@ pub fn infra_updated(message: &str) {
             message
         ))
         .expect("failed to write message to terminal");
+
+    info!("~ {}", message.trim());
 }
 
 macro_rules! show_message {
-    ($message_type:expr, $message:expr) => {
+    (@inner $message_type:expr, $message:expr, $log:expr) => {
         use crate::cli::display::TERM;
         use console::{pad_str, style};
 
         let padder = 14;
+        let action = $message.action.clone();
+        let details = $message.details.clone();
 
-        match $message_type {
-            MessageType::Info => {
-                let mut command_terminal = TERM.write().unwrap();
-                command_terminal
-                    .term
-                    .write_line(&format!(
-                        "{} {}",
-                        style(pad_str(
-                            $message.action.as_str(),
-                            padder,
-                            console::Alignment::Right,
-                            Some("...")
-                        ))
-                        .cyan()
-                        .bold(),
-                        $message.details
-                    ))
-                    .expect("failed to write message to terminal");
-                command_terminal.counter += 1;
+        {
+            let mut command_terminal = TERM.write().unwrap();
+            let color = match $message_type {
+                MessageType::Info => style(pad_str(action.as_str(), padder, console::Alignment::Right, Some("..."))).cyan().bold(),
+                MessageType::Success => style(pad_str(action.as_str(), padder, console::Alignment::Right, Some("..."))).green().bold(),
+                MessageType::Error => style(pad_str(action.as_str(), padder, console::Alignment::Right, Some("..."))).red().bold(),
+                MessageType::Highlight => style(pad_str(action.as_str(), padder, console::Alignment::Center, Some("..."))).on_green().bold(),
+            };
+
+            command_terminal
+                .term
+                .write_line(&format!("{} {}", color, details))
+                .expect("failed to write message to terminal");
+            command_terminal.counter += 1;
+
+            if $log {
+                use log::info;
+
+                let log_action = action.replace("\n", " ");
+                let log_details = details.replace("\n", " ");
+                info!("{}", format!("{} {}", log_action.trim(), log_details.trim()));
             }
-            MessageType::Success => {
-                let mut command_terminal = TERM.write().unwrap();
-                command_terminal
-                    .term
-                    .write_line(&format!(
-                        "{} {}",
-                        style(pad_str(
-                            $message.action.as_str(),
-                            padder,
-                            console::Alignment::Right,
-                            Some("...")
-                        ))
-                        .green()
-                        .bold(),
-                        $message.details
-                    ))
-                    .expect("failed to write message to terminal");
-                command_terminal.counter += 1;
-            }
-            MessageType::Error => {
-                let mut command_terminal = TERM.write().unwrap();
-                command_terminal
-                    .term
-                    .write_line(&format!(
-                        "{} {}",
-                        style(pad_str(
-                            $message.action.as_str(),
-                            padder,
-                            console::Alignment::Right,
-                            Some("...")
-                        ))
-                        .red()
-                        .bold(),
-                        $message.details
-                    ))
-                    .expect("failed to write message to terminal");
-                command_terminal.counter += 1;
-            }
-            MessageType::Highlight => {
-                let mut command_terminal = TERM.write().unwrap();
-                command_terminal
-                    .term
-                    .write_line(&format!(
-                        "{} {}",
-                        style(pad_str(
-                            $message.action.as_str(),
-                            padder,
-                            console::Alignment::Center,
-                            Some("...")
-                        ))
-                        .on_green()
-                        .bold(),
-                        style($message.details.as_str()).white().bright()
-                    ))
-                    .expect("failed to write message to terminal");
-                command_terminal.counter += 1;
-            }
-        };
+        }
+    };
+
+    ($message_type:expr, $message:expr) => {
+        show_message!(@inner $message_type, $message, true);
+    };
+
+    // Print message to terminal, but don't output to log file
+    // i.e. moose logs (so it doesn't recursively log)
+    ($message_type:expr, $message:expr, $no_log:expr) => {
+        show_message!(@inner $message_type, $message, false);
     };
 }
 
@@ -377,7 +341,7 @@ pub fn show_changes(infra_plan: &InfraPlan) {
                 infra_added("Starting Consumption WebServer...");
             }
             ProcessChange::ConsumptionApiWebServer(Change::Removed(_)) => {
-                infra_removed("Stoping Consumption WebServer...");
+                infra_removed("Stopping Consumption WebServer...");
             }
             ProcessChange::ConsumptionApiWebServer(Change::Updated { .. }) => {
                 infra_updated("Reloading Consumption WebServer...");

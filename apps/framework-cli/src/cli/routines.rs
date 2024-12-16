@@ -366,32 +366,29 @@ async fn manage_leadership_lock(
         client.check_and_renew_lock("leadership").await?
     };
 
-    if has_lock {
-        if is_new_acquisition && !IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
-            info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
+    if has_lock && is_new_acquisition {
+        info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
 
-            IS_RUNNING_LEADERSHIP_TASKS.store(true, Ordering::SeqCst);
-            let project_clone = project.clone();
+        let project_clone = project.clone();
 
-            tokio::spawn(async move {
-                if let Err(e) = leadership_tasks(project_clone).await {
-                    error!("<RedisClient> Error executing leadership tasks: {}", e);
-                }
-            });
-
-            let mut client = redis_client.lock().await;
-            if let Err(e) = client.broadcast_message("leader.new").await {
-                error!(
-                    "<RedisClient> Failed to broadcast new leader message: {}",
-                    e
-                );
+        tokio::spawn(async move {
+            if let Err(e) = leadership_tasks(project_clone).await {
+                error!("<RedisClient> Error executing leadership tasks: {}", e);
             }
+        });
+
+        let mut client = redis_client.lock().await;
+        if let Err(e) = client.broadcast_message("leader.new").await {
+            error!(
+                "<RedisClient> Failed to broadcast new leader message: {}",
+                e
+            );
         }
     } else {
-        // If we lost the lock, reset the leadership tasks flag
-        IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
+        if IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
+            IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
+        }
     }
-
     Ok(())
 }
 

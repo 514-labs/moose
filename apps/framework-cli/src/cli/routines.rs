@@ -389,8 +389,7 @@ async fn manage_leadership_lock(
             );
         }
     } else if IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
-        // Stop the CronRegistry first
-        if let Err(e) = CronRegistry::new().await?.stop().await {
+        if let Err(e) = cron_registry.stop().await {
             error!("<RedisClient> Failed to stop CronRegistry: {}", e);
         }
         // Then mark leadership tasks as not running

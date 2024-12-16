@@ -1,13 +1,12 @@
 use crate::project::Project;
 use crate::utilities::constants::TSCONFIG_JSON;
 use anyhow::{anyhow, Result};
-use log::{error, info};
+use log::{error, info, warn};
 use reqwest;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::env;
 use std::path::Path;
-use std::process::Command;
 use std::str::FromStr;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -20,6 +19,8 @@ use tokio_cron_scheduler::{Job, JobScheduler};
 // crate that allows for scheduling jobs but doesn't directly
 //expose the cron parsing functionality.
 use cron::Schedule;
+use futures::future::BoxFuture;
+use tokio::process::Command;
 
 #[derive(Error, Debug)]
 pub enum CronError {
@@ -69,14 +70,16 @@ impl CronRegistry {
 
     pub async fn add_job<F>(&self, cron_expression: &str, task: F) -> Result<()>
     where
-        F: Fn() -> Result<(), String> + Send + Sync + 'static,
+        F: Fn() -> BoxFuture<'static, Result<(), String>> + Send + Sync + 'static,
     {
         let task = Arc::new(task);
 
         let job = Job::new_async(cron_expression, move |_uuid, _l| {
             let task = task.clone();
             Box::pin(async move {
-                let _ = task();
+                if let Err(e) = task().await {
+                    warn!("Cron failed: {}", e)
+                };
             })
         })
         .map_err(|e| anyhow!(e))?;
@@ -139,112 +142,122 @@ impl CronRegistry {
 
             let cron_spec_clone = cron_spec.clone();
             self.add_job(&cron_spec, move || {
+                // TODO: clean up the clones
                 let metrics = metrics.clone();
-                let mut success = true;
-                let mut error_msg = None;
-                let mut error_code = None;
-                let start_time = SystemTime::now();
+                let script_path = script_path.clone();
+                let project_path_clone = project_path_clone.clone();
+                let url = url.clone();
+                let cron_spec_clone = cron_spec_clone.clone();
+                let job_id_for_metric = job_id_for_metric.clone();
 
-                if let Some(ref path) = script_path {
-                    // Execute the script based on file extension
-                    let extension = Path::new(path)
-                        .extension()
-                        .and_then(std::ffi::OsStr::to_str)
-                        .unwrap_or("");
+                Box::pin(async move {
+                    let mut success = true;
+                    let mut error_msg = None;
+                    let mut error_code = None;
+                    let start_time = SystemTime::now();
 
-                    let output = match extension {
-                        "js" => Command::new("node").arg(path).output(),
-                        "ts" => {
-                            let path =
-                                env::var("PATH").unwrap_or_else(|_| "/usr/local/bin".to_string());
-                            let bin_path = format!(
-                                "{}:{}/node_modules/.bin",
-                                path,
-                                project_path_clone.to_str().unwrap()
-                            );
-                            let ts_script_path =
-                                project_path_clone.join(script_path.as_ref().unwrap());
-                            Command::new("moose-exec")
-                                .arg(ts_script_path.to_str().unwrap())
-                                .env("TS_NODE_PROJECT", project_path_clone.join(TSCONFIG_JSON))
-                                .env("PATH", bin_path)
-                                .output()
+                    if let Some(ref path) = script_path {
+                        // Execute the script based on file extension
+                        let extension = Path::new(path)
+                            .extension()
+                            .and_then(std::ffi::OsStr::to_str)
+                            .unwrap_or("");
+
+                        let output = match extension {
+                            "js" => Command::new("node").arg(path).output().await,
+                            "ts" => {
+                                let path = env::var("PATH")
+                                    .unwrap_or_else(|_| "/usr/local/bin".to_string());
+                                let bin_path = format!(
+                                    "{}:{}/node_modules/.bin",
+                                    path,
+                                    project_path_clone.to_str().unwrap()
+                                );
+                                let ts_script_path =
+                                    project_path_clone.join(script_path.as_ref().unwrap());
+                                Command::new("moose-exec")
+                                    .arg(ts_script_path.to_str().unwrap())
+                                    .env("TS_NODE_PROJECT", project_path_clone.join(TSCONFIG_JSON))
+                                    .env("PATH", bin_path)
+                                    .output()
+                                    .await
+                            }
+                            "py" => Command::new("python3").arg(path).output().await,
+                            _ => Err(std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                "Unsupported file type",
+                            )),
+                        };
+
+                        match output {
+                            Ok(output) => {
+                                let stdout = String::from_utf8_lossy(&output.stdout);
+                                let stderr = String::from_utf8_lossy(&output.stderr);
+                                if !stdout.is_empty() {
+                                    info!("<cron> Script stdout:\n{}", stdout);
+                                }
+                                if !stderr.is_empty() {
+                                    error!("<cron> Script stderr\n{}", stderr);
+                                }
+                                if !output.status.success() {
+                                    success = false;
+                                    error_code = output.status.code();
+                                    error_msg = Some(format!(
+                                        "Script exited with status code {}",
+                                        error_code.unwrap()
+                                    ));
+                                    error!("<cron> {}", error_msg.as_ref().unwrap());
+                                }
+                            }
+                            Err(e) => {
+                                success = false;
+                                error_msg = Some(e.to_string());
+                                error!("<cron> Failed to execute script: {}", e);
+                            }
                         }
-                        "py" => Command::new("python3").arg(path).output(),
-                        _ => Err(std::io::Error::new(
-                            std::io::ErrorKind::Other,
-                            "Unsupported file type",
-                        )),
+                    } else if let Some(ref url) = url.clone() {
+                        info!("<cron> Calling URL: {}", url);
+                        let url = url.to_string();
+                        tokio::spawn(async move {
+                            match reqwest::get(&url).await {
+                                Ok(response) => {
+                                    info!("<cron> URL response status: {}", response.status())
+                                }
+                                Err(e) => error!("<cron> Failed to call URL: {}", e),
+                            }
+                        });
+                    }
+
+                    // Record metrics
+                    let timestamp = SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_secs();
+
+                    // Calculate next run using the cron expression
+                    let schedule = Schedule::from_str(&cron_spec_clone)
+                        .map_err(|e| format!("Invalid cron expression: {}", e))?;
+                    let next_run =
+                        schedule.upcoming(chrono::Utc).next().unwrap().timestamp() as u64;
+
+                    let elapsed_time = SystemTime::now()
+                        .duration_since(start_time)
+                        .unwrap_or_default()
+                        .as_millis() as u64;
+
+                    let metric = CronMetric {
+                        job_id: job_id_for_metric.clone(),
+                        run_id: (timestamp % 100_000) as u32,
+                        last_run: timestamp,
+                        next_run,
+                        timestamp,
+                        success,
+                        error_message: error_msg,
+                        error_code,
+                        elapsed_time,
                     };
 
-                    match output {
-                        Ok(output) => {
-                            let stdout = String::from_utf8_lossy(&output.stdout);
-                            let stderr = String::from_utf8_lossy(&output.stderr);
-                            if !stdout.is_empty() {
-                                info!("<cron> Script stdout:\n{}", stdout);
-                            }
-                            if !stderr.is_empty() {
-                                error!("<cron> Script stderr\n{}", stderr);
-                            }
-                            if !output.status.success() {
-                                success = false;
-                                error_code = output.status.code();
-                                error_msg = Some(format!(
-                                    "Script exited with status code {}",
-                                    error_code.unwrap()
-                                ));
-                                error!("<cron> {}", error_msg.as_ref().unwrap());
-                            }
-                        }
-                        Err(e) => {
-                            success = false;
-                            error_msg = Some(e.to_string());
-                            error!("<cron> Failed to execute script: {}", e);
-                        }
-                    }
-                } else if let Some(ref url) = url.clone() {
-                    info!("<cron> Calling URL: {}", url);
-                    let url = url.to_string();
-                    tokio::spawn(async move {
-                        match reqwest::get(&url).await {
-                            Ok(response) => {
-                                info!("<cron> URL response status: {}", response.status())
-                            }
-                            Err(e) => error!("<cron> Failed to call URL: {}", e),
-                        }
-                    });
-                }
-
-                // Record metrics
-                let timestamp = SystemTime::now()
-                    .duration_since(UNIX_EPOCH)
-                    .unwrap()
-                    .as_secs();
-
-                // Calculate next run using the cron expression
-                let schedule = Schedule::from_str(&cron_spec_clone)
-                    .map_err(|e| format!("Invalid cron expression: {}", e))?;
-                let next_run = schedule.upcoming(chrono::Utc).next().unwrap().timestamp() as u64;
-
-                let elapsed_time = SystemTime::now()
-                    .duration_since(start_time)
-                    .unwrap_or_default()
-                    .as_millis() as u64;
-
-                let metric = CronMetric {
-                    job_id: job_id_for_metric.clone(),
-                    run_id: (timestamp % 100_000) as u32,
-                    last_run: timestamp,
-                    next_run,
-                    timestamp,
-                    success,
-                    error_message: error_msg,
-                    error_code,
-                    elapsed_time,
-                };
-
-                info!(
+                    info!(
                     "<cron> Metrics for job {}: success={}, elapsed={}ms, next_run={}, error={:?}",
                     metric.job_id,
                     metric.success,
@@ -253,12 +266,13 @@ impl CronRegistry {
                     metric.error_message
                 );
 
-                tokio::spawn(async move {
-                    let mut metrics = metrics.lock().await;
-                    metrics.push(metric);
-                });
+                    tokio::spawn(async move {
+                        let mut metrics = metrics.lock().await;
+                        metrics.push(metric);
+                    });
 
-                Ok(())
+                    Ok(())
+                })
             })
             .await?;
 

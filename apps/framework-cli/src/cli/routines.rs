@@ -389,6 +389,11 @@ async fn manage_leadership_lock(
             );
         }
     } else if IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
+        // Stop the CronRegistry first
+        if let Err(e) = CronRegistry::new().await?.stop().await {
+            error!("<RedisClient> Failed to stop CronRegistry: {}", e);
+        }
+        // Then mark leadership tasks as not running
         IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
     }
     Ok(())
@@ -488,6 +493,14 @@ pub async fn start_development_mode(
         .start(route_table, consumption_apis, infra_map, project, metrics)
         .await;
 
+    // Only stop CronRegistry if we're the leader
+    let has_lock = redis_client.lock().await.has_lock("leadership").await?;
+    if has_lock {
+        if let Err(e) = CronRegistry::new().await?.stop().await {
+            error!("Failed to stop CronRegistry: {}", e);
+        }
+    }
+
     {
         let mut redis_client = redis_client.lock().await;
         let _ = redis_client.stop_periodic_tasks();
@@ -573,6 +586,14 @@ pub async fn start_production_mode(
     web_server
         .start(route_table, consumption_apis, infra_map, project, metrics)
         .await;
+
+    // Only stop CronRegistry if we're the leader
+    let has_lock = redis_client.lock().await.has_lock("leadership").await?;
+    if has_lock {
+        if let Err(e) = CronRegistry::new().await?.stop().await {
+            error!("Failed to stop CronRegistry: {}", e);
+        }
+    }
 
     {
         let mut redis_client = redis_client.lock().await;

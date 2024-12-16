@@ -49,6 +49,7 @@ pub struct CronMetric {
     pub elapsed_time: u64,
 }
 
+#[derive(Clone)] // data behind arc mutex, safe to clone
 pub struct CronRegistry {
     scheduler: Arc<Mutex<JobScheduler>>,
     registered_jobs: Arc<Mutex<HashSet<String>>>,

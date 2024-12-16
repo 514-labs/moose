@@ -492,14 +492,6 @@ pub async fn start_development_mode(
         .start(route_table, consumption_apis, infra_map, project, metrics)
         .await;
 
-    // Only stop CronRegistry if we're the leader
-    let has_lock = redis_client.lock().await.has_lock("leadership").await?;
-    if has_lock {
-        if let Err(e) = CronRegistry::new().await?.stop().await {
-            error!("Failed to stop CronRegistry: {}", e);
-        }
-    }
-
     {
         let mut redis_client = redis_client.lock().await;
         let _ = redis_client.stop_periodic_tasks();
@@ -585,14 +577,6 @@ pub async fn start_production_mode(
     web_server
         .start(route_table, consumption_apis, infra_map, project, metrics)
         .await;
-
-    // Only stop CronRegistry if we're the leader
-    let has_lock = redis_client.lock().await.has_lock("leadership").await?;
-    if has_lock {
-        if let Err(e) = CronRegistry::new().await?.stop().await {
-            error!("Failed to stop CronRegistry: {}", e);
-        }
-    }
 
     {
         let mut redis_client = redis_client.lock().await;

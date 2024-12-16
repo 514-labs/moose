@@ -344,9 +344,11 @@ async fn process_pubsub_message(
 fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Arc<Project>) {
     tokio::spawn(async move {
         let mut interval = interval(Duration::from_secs(LEADERSHIP_LOCK_RENEWAL_INTERVAL)); // Adjust the interval as needed
+
+        let cron_registry = CronRegistry::new().await.unwrap();
+
         loop {
             interval.tick().await;
-            let cron_registry = CronRegistry::new().await.unwrap();
             if let Err(e) = manage_leadership_lock(&redis_client, &project, &cron_registry).await {
                 error!("<RedisClient> Error managing leadership lock: {:#}", e);
             }

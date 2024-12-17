@@ -378,10 +378,11 @@ async fn manage_leadership_lock(
         let project_clone = project.clone();
         let cron_registry: CronRegistry = cron_registry.clone();
         tokio::spawn(async move {
-            if let Err(e) = leadership_tasks(project_clone, cron_registry).await {
+            let result = leadership_tasks(project_clone, cron_registry).await;
+            if let Err(e) = result {
                 error!("<RedisClient> Error executing leadership tasks: {}", e);
-                IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
             }
+            IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
         });
 
         let mut client = redis_client.lock().await;

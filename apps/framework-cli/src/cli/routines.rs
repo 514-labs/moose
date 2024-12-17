@@ -84,6 +84,7 @@ use crate::infrastructure::redis::redis_client::RedisClient;
 use log::{debug, error, info};
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::{interval, Duration};
@@ -124,8 +125,11 @@ mod util;
 pub mod validate;
 pub mod version;
 
-const LEADERSHIP_LOCK_RENEWAL_INTERVAL: u64 = 2;
+const LEADERSHIP_LOCK_RENEWAL_INTERVAL: u64 = 5; // 5 seconds
 const LEADERSHIP_LOCK_TTL: u64 = LEADERSHIP_LOCK_RENEWAL_INTERVAL * 3; // best practice to set lock expiration to 2-3x the renewal interval
+
+// Static flag to track if leadership tasks are running
+static IS_RUNNING_LEADERSHIP_TASKS: AtomicBool = AtomicBool::new(false);
 
 #[derive(Debug, Clone)]
 #[must_use = "The message should be displayed."]
@@ -369,12 +373,16 @@ async fn manage_leadership_lock(
     if has_lock && is_new_acquisition {
         info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
 
+        IS_RUNNING_LEADERSHIP_TASKS.store(true, Ordering::SeqCst);
+
         let project_clone = project.clone();
         let cron_registry: CronRegistry = cron_registry.clone();
         tokio::spawn(async move {
-            if let Err(e) = leadership_tasks(project_clone, cron_registry).await {
+            let result = leadership_tasks(project_clone, cron_registry).await;
+            if let Err(e) = result {
                 error!("<RedisClient> Error executing leadership tasks: {}", e);
             }
+            IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
         });
 
         let mut client = redis_client.lock().await;
@@ -384,6 +392,12 @@ async fn manage_leadership_lock(
                 e
             );
         }
+    } else if IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
+        if let Err(e) = cron_registry.stop().await {
+            error!("<RedisClient> Failed to stop CronRegistry: {}", e);
+        }
+        // Then mark leadership tasks as not running
+        IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
     }
     Ok(())
 }

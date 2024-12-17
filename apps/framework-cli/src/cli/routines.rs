@@ -373,11 +373,14 @@ async fn manage_leadership_lock(
     if has_lock && is_new_acquisition {
         info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
 
+        IS_RUNNING_LEADERSHIP_TASKS.store(true, Ordering::SeqCst);
+
         let project_clone = project.clone();
         let cron_registry: CronRegistry = cron_registry.clone();
         tokio::spawn(async move {
             if let Err(e) = leadership_tasks(project_clone, cron_registry).await {
                 error!("<RedisClient> Error executing leadership tasks: {}", e);
+                IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
             }
         });
 

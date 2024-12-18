@@ -5,7 +5,10 @@ import os
 import sys
 import traceback
 from datetime import datetime, timezone, date
+
+from http import HTTPStatus
 from http.server import HTTPServer, BaseHTTPRequestHandler
+
 from importlib import import_module
 from string import Formatter
 from typing import Optional, Dict, Any
@@ -142,6 +145,18 @@ def has_jwt_config() -> bool:
 
 def handler_with_client(ch_client):
     class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
+        def log_request(self, code = "-", size = "-"):
+            """instead of calling log_message which goes to stderr by default,
+            this implementation goes to stdout, but is otherwise the same.
+            """
+            if isinstance(code, HTTPStatus):
+                code = code.value
+            sys.stdout.write('%s - - [%s] "%s" %s %s\n' %
+                             (self.address_string(),
+                              self.log_date_time_string(),
+                              self.requestline,
+                              str(code),
+                              str(size)))
         def do_GET(self):
             parsed_path = urlparse(self.path)
             module_name = parsed_path.path.lstrip('/')

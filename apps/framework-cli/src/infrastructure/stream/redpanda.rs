@@ -217,8 +217,9 @@ pub async fn create_topics(config: &RedpandaConfig, topics: Vec<&Topic>) -> anyh
 
     for topic in &topics {
         // Create a new topic with 1 partition and replication factor 1
+        let topic_name = topic.id();
         let new_topic = NewTopic::new(
-            &topic.name,
+            &topic_name,
             topic.partition_count as i32,
             TopicReplication::Fixed(config.replication_factor),
         );

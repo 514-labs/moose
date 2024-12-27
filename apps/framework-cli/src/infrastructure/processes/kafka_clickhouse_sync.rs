@@ -1,3 +1,4 @@
+use futures::TryFutureExt;
 use log::debug;
 use log::error;
 use log::info;
@@ -10,7 +11,6 @@ use std::collections::HashSet;
 use std::collections::{HashMap, VecDeque};
 use std::sync::{Arc, LazyLock};
 use tokio::select;
-use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 use crate::framework::core::code_loader::FrameworkObjectVersions;
@@ -282,15 +282,25 @@ fn spawn_sync_process_core(
     target_table_columns: Vec<ClickHouseColumn>,
     metrics: Arc<Metrics>,
 ) -> TableSyncingProcess {
-    let syncing_process = tokio::spawn(sync_kafka_to_clickhouse(
-        kafka_config,
-        clickhouse_config,
-        source_topic_name.clone(),
-        source_topic_columns,
-        target_table_name.clone(),
-        target_table_columns,
-        metrics,
-    ));
+    let target_table_name_clone = target_table_name.clone();
+
+    let syncing_process = tokio::spawn(
+        sync_kafka_to_clickhouse(
+            kafka_config,
+            clickhouse_config,
+            source_topic_name.clone(),
+            source_topic_columns,
+            target_table_name.clone(),
+            target_table_columns,
+            metrics,
+        )
+        .inspect_err(move |e| {
+            error!(
+                "Sync process to table {} failed with error {:?}",
+                target_table_name_clone, e
+            )
+        }),
+    );
 
     TableSyncingProcess {
         process: syncing_process,
@@ -332,8 +342,7 @@ async fn sync_kafka_to_kafka(
     ));
     let producer = create_producer(kafka_config.clone());
 
-    // there is no concurrency on this queue, the mutex is to satisfy the borrow checker
-    let queue: Mutex<VecDeque<DeliveryFuture>> = Mutex::new(VecDeque::new());
+    let mut queue: VecDeque<DeliveryFuture> = VecDeque::new();
     let target_topic_name = &target_topic_name;
 
     loop {
@@ -360,7 +369,7 @@ async fn sync_kafka_to_kafka(
                             .await;
 
                         send_with_back_pressure(
-                            &mut *queue.lock().await,
+                            &mut queue,
                             &producer.producer,
                             target_topic_name,
                             payload_str.to_string(),

@@ -252,7 +252,6 @@ impl FileWatcher {
 
         let mut syncing_process_registry = syncing_process_registry;
         let mut project_registry = project_registries;
-        let redis_client = redis_client.clone();
 
         tokio::spawn(async move {
             watch(

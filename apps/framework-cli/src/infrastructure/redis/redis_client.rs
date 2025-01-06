@@ -160,7 +160,7 @@ impl RedisClient {
 
     pub async fn register_lock(&mut self, name: &str, ttl: i64) -> Result<()> {
         info!("<RedisClient> Registering lock {}", name);
-        let lock_key = self.service_prefix(&["lock"]);
+        let lock_key = self.service_prefix(&[name, "lock"]);
         let lock = RedisLock { key: lock_key, ttl };
         self.locks.insert(name.to_string(), lock);
         Ok(())
@@ -222,7 +222,7 @@ impl RedisClient {
         }
     }
 
-    pub async fn release_lock(&self, name: &str) -> Result<()> {
+    pub async fn release_lock(&mut self, name: &str) -> Result<()> {
         info!("<RedisClient> Releasing lock {}", name);
         if let Some(lock) = self.locks.get(name) {
             let script = Script::new(
@@ -241,7 +241,7 @@ impl RedisClient {
                 .invoke_async(&mut *self.connection.lock().await)
                 .await
                 .context("Failed to release lock")?;
-
+            self.locks.remove(name);
             Ok(())
         } else {
             info!("<RedisClient> Unable to release {} lock", name);
@@ -537,6 +537,10 @@ impl RedisClient {
 }
 
 impl Clone for RedisClient {
+    // FIXME: some state (the stateful connection) is shared,
+    // some state (the locks map) is not,
+    // some state (the listener task) is gone
+    // this is not a good abstraction for cloning
     fn clone(&self) -> Self {
         Self {
             connection: Arc::clone(&self.connection),
@@ -556,18 +560,20 @@ impl Drop for RedisClient {
     fn drop(&mut self) {
         info!("RedisClient is being dropped");
         if let Ok(rt) = tokio::runtime::Handle::try_current() {
-            let mut self_clone = self.clone();
-            rt.spawn(async move {
-                if let Err(e) = self_clone.stop_periodic_tasks() {
-                    error!("Error stopping periodic tasks: {}", e);
-                }
-                let lock_names: Vec<_> = self_clone.locks.keys().cloned().collect();
-                for name in lock_names {
-                    if let Err(e) = self_clone.release_lock(&name).await {
-                        error!("Error releasing lock {}: {}", name, e);
+            if let Err(e) = self.stop_periodic_tasks() {
+                error!("Error stopping periodic tasks: {}", e);
+            }
+            if !self.locks.is_empty() {
+                let mut self_clone = self.clone();
+                rt.spawn(async move {
+                    let lock_names: Vec<_> = self_clone.locks.keys().cloned().collect();
+                    for name in lock_names {
+                        if let Err(e) = self_clone.release_lock(&name).await {
+                            error!("Error releasing lock {}: {}", name, e);
+                        }
                     }
-                }
-            });
+                });
+            }
         } else {
             error!("Failed to get current runtime handle in RedisClient::drop");
         }

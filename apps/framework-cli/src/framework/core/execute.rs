@@ -122,6 +122,7 @@ pub async fn execute_online_change(
         .await
         .map_err(Box::new)?;
 
+    processes::execute_leader_changes(process_registries, &plan.changes.processes_changes).await?;
     processes::execute_changes(
         sync_processes_registry,
         process_registries,

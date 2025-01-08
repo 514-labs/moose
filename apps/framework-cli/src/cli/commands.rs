@@ -123,6 +123,8 @@ pub enum Commands {
         #[arg(short, long)]
         file: Option<PathBuf>,
     },
+    /// Manage data processing workflows
+    Workflow(WorkflowArgs),
 }
 
 #[derive(Debug, Args)]
@@ -233,4 +235,46 @@ pub struct DataModelInitArgs {
     /// Name of your sample file
     #[arg(short, long)]
     pub sample: String,
+}
+
+#[derive(Debug, Args)]
+#[command(arg_required_else_help = true)]
+pub struct WorkflowArgs {
+    #[command(subcommand)]
+    pub command: Option<WorkflowCommands>,
+}
+
+#[derive(Debug, Subcommand)]
+pub enum WorkflowCommands {
+    /// Initialize a new workflow
+    Init {
+        /// Name of your workflow
+        name: String,
+
+        /// Language for the workflow scripts
+        #[arg(value_enum, short, long, default_value_t = SupportedLanguages::Python)]
+        language: SupportedLanguages,
+
+        /// Comma-separated list of step names
+        #[arg(long)]
+        steps: Option<String>,
+
+        /// Individual step names (can be specified multiple times)
+        #[arg(long)]
+        step: Option<Vec<String>>,
+    },
+    /// Run a workflow
+    Run {
+        /// Name of the workflow to run
+        name: String,
+    },
+    /// Resume a workflow from a specific step
+    Resume {
+        /// Name of the workflow to resume
+        name: String,
+
+        /// Step to resume from
+        #[arg(long)]
+        from: String,
+    },
 }

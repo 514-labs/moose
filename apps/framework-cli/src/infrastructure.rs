@@ -18,6 +18,7 @@ pub mod api;
 pub mod ingest;
 pub mod migration;
 pub mod olap;
+pub mod orchestration;
 pub mod processes;
 pub mod redis;
 pub mod stream;

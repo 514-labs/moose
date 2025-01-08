@@ -1,0 +1,246 @@
+{
+  "_id": "workflow-orchestration",
+  "_type": "feature",
+  "_createdAt": "2024-03-20T00:00:00Z",
+  "_updatedAt": "2024-03-20T00:00:00Z",
+  "_rev": "1",
+  "slug": "workflow-orchestration",
+  "productNameRef": "moose",
+  "hero": "Write Workflows in Any Language",
+  "subHero": "Build reliable data pipelines using your preferred programming languages and tools, powered by enterprise-grade orchestration",
+  "heading": "Language-Agnostic Workflow Orchestration",
+  "subheading": "From simple scripts to complex data pipelines",
+  "text": "MOOSE Scripts Orchestrator provides a simple, file-based convention for defining and running workflow pipelines. Support for multiple programming languages, seamless DataFrame operations, and enterprise-grade reliability features powered by Temporal under the hood.",
+  "imgAlt": "Visual showing multiple programming language logos (Python, TypeScript, Scala) connected in a workflow pipeline, with DataFrame transformations and monitoring dashboards",
+  "headlines": [
+    {
+      "heading": "Write in Your Language of Choice",
+      "subheading": "Python, TypeScript, Scala - use what you know best",
+      "_key": "language-choice"
+    },
+    {
+      "heading": "Enterprise-Grade Reliability",
+      "subheading": "Built-in monitoring, restartability, and error handling",
+      "_key": "reliability"
+    },
+    {
+      "heading": "Developer Experience First",
+      "subheading": "Simple conventions, powerful capabilities",
+      "_key": "dx"
+    }
+  ],
+  "badge": {
+    "text": "Beta",
+    "variant": "secondary"
+  },
+  "ctas": [
+    {
+      "label": "Quick Start",
+      "quickStartScript": "moose workflow init my-workflow"
+    },
+    {
+      "label": "Documentation",
+      "href": "/docs/workflow-orchestration"
+    }
+  ],
+  "bulletPoints": [
+    "Write workflows in Python, TypeScript, Scala, or other supported languages",
+    "Seamless DataFrame operations across language boundaries",
+    "File-based convention for simple workflow definition",
+    "Built-in monitoring, reliability, and error handling",
+    "Local development with hot reload and debugging"
+  ],
+  "label": {
+    "text": "Workflow Orchestration",
+    "icon": "git-branch"
+  },
+  "subfeature": [
+    {
+      "subfeatureNameRef": "multi-language-support"
+    },
+    {
+      "subfeatureNameRef": "developer-experience"
+    },
+    {
+      "subfeatureNameRef": "reliability-features"
+    },
+    {
+      "subfeatureNameRef": "workflow-configuration"
+    }
+  ]
+}
+
+{
+  "_id": "multi-language-support",
+  "_type": "subfeature",
+  "_createdAt": "2024-03-20T00:00:00Z",
+  "_updatedAt": "2024-03-20T00:00:00Z",
+  "_rev": "1",
+  "slug": "multi-language-support",
+  "featureNameRef": "workflow-orchestration",
+  "hero": "True Multi-Language Support",
+  "subHero": "Write each workflow step in your preferred language while maintaining type safety and DataFrame compatibility",
+  "heading": "Language-Native Development",
+  "subheading": "No compromises on features or tooling",
+  "text": "Develop workflow steps using native language features including type definitions, testing frameworks, and data processing libraries. Seamless conversion between languages maintains type safety and DataFrame compatibility.",
+  "imgAlt": "Split screen showing equivalent workflow steps written in Python and TypeScript with type definitions and DataFrame operations",
+  "headlines": [
+    {
+      "heading": "Native Language Features",
+      "subheading": "Use dataclasses, interfaces, and case classes",
+      "_key": "native-features"
+    },
+    {
+      "heading": "DataFrame Compatibility",
+      "subheading": "Work with pandas, spark, and dask seamlessly",
+      "_key": "dataframe-compat"
+    }
+  ],
+  "badge": {
+    "text": "Beta",
+    "variant": "secondary"
+  },
+  "bulletPoints": [
+    "Native language type definitions and features",
+    "Transparent type conversion between steps",
+    "DataFrame support across languages",
+    "Language-specific testing utilities",
+    "One language per workflow support"
+  ],
+  "label": {
+    "text": "Multi-Language Support",
+    "icon": "code"
+  }
+}
+
+{
+  "_id": "developer-experience",
+  "_type": "subfeature",
+  "_createdAt": "2024-03-20T00:00:00Z",
+  "_updatedAt": "2024-03-20T00:00:00Z",
+  "_rev": "1",
+  "slug": "developer-experience",
+  "featureNameRef": "workflow-orchestration",
+  "hero": "Exceptional Developer Experience",
+  "subHero": "Powerful CLI commands and local development features that make workflow development a breeze",
+  "heading": "Developer-First Design",
+  "subheading": "From initialization to deployment",
+  "text": "Comprehensive CLI tooling and local development features including hot reload, step-by-step debugging, and type checking across language boundaries. Simple commands for workflow initialization, testing, and deployment.",
+  "imgAlt": "Terminal interface showing CLI commands and local development features including hot reload and debugging",
+  "headlines": [
+    {
+      "heading": "Powerful CLI",
+      "subheading": "Everything you need at your fingertips",
+      "_key": "cli"
+    },
+    {
+      "heading": "Local Development",
+      "subheading": "Hot reload and step-by-step debugging",
+      "_key": "local-dev"
+    }
+  ],
+  "badge": {
+    "text": "Beta",
+    "variant": "secondary"
+  },
+  "bulletPoints": [
+    "Comprehensive CLI commands",
+    "Hot reload during development",
+    "Local testing with sample data",
+    "Step-by-step debugging",
+    "Type checking across languages",
+    "Automatic code generation"
+  ],
+  "label": {
+    "text": "Developer Experience",
+    "icon": "terminal"
+  }
+}
+
+{
+  "_id": "reliability-features",
+  "_type": "subfeature",
+  "_createdAt": "2024-03-20T00:00:00Z",
+  "_updatedAt": "2024-03-20T00:00:00Z",
+  "_rev": "1",
+  "slug": "reliability-features",
+  "featureNameRef": "workflow-orchestration",
+  "hero": "Enterprise-Grade Reliability",
+  "subHero": "Built-in features for idempotency, restartability, and comprehensive monitoring",
+  "heading": "Production-Ready Workflows",
+  "subheading": "Reliable by design",
+  "text": "Leverage Temporal's powerful reliability features including automatic deduplication, checkpointing, and state management. Comprehensive monitoring and error handling ensure your workflows run smoothly in production.",
+  "imgAlt": "Dashboard showing workflow monitoring, error handling, and reliability features including checkpointing and state management",
+  "headlines": [
+    {
+      "heading": "Built-in Reliability",
+      "subheading": "Idempotency and restartability included",
+      "_key": "reliability"
+    },
+    {
+      "heading": "Comprehensive Monitoring",
+      "subheading": "Full visibility into your workflows",
+      "_key": "monitoring"
+    }
+  ],
+  "badge": {
+    "text": "Beta",
+    "variant": "secondary"
+  },
+  "bulletPoints": [
+    "Automatic deduplication",
+    "DataFrame operation checkpointing",
+    "Resume from any step",
+    "Comprehensive metrics",
+    "Error reporting and handling",
+    "State management through Temporal"
+  ],
+  "label": {
+    "text": "Reliability Features",
+    "icon": "shield"
+  }
+}
+
+{
+  "_id": "workflow-configuration",
+  "_type": "subfeature",
+  "_createdAt": "2024-03-20T00:00:00Z",
+  "_updatedAt": "2024-03-20T00:00:00Z",
+  "_rev": "1",
+  "slug": "workflow-configuration",
+  "featureNameRef": "workflow-orchestration",
+  "hero": "Simple Yet Powerful Configuration",
+  "subHero": "Configure workflows using simple TOML files with support for scheduling, resources, and alerts",
+  "heading": "Declarative Configuration",
+  "subheading": "Everything you need in one place",
+  "text": "Define workflow behavior, scheduling, resource requirements, and alerting using simple TOML configuration files. Support for environment variables and flexible alert channels ensures smooth operation in any environment.",
+  "imgAlt": "TOML configuration file showing workflow settings including scheduling, resources, and alert configuration",
+  "headlines": [
+    {
+      "heading": "Simple Configuration",
+      "subheading": "TOML-based workflow definition",
+      "_key": "config"
+    },
+    {
+      "heading": "Flexible Alerting",
+      "subheading": "Multiple notification channels",
+      "_key": "alerts"
+    }
+  ],
+  "badge": {
+    "text": "Beta",
+    "variant": "secondary"
+  },
+  "bulletPoints": [
+    "Simple TOML configuration",
+    "Scheduling support",
+    "Resource management",
+    "Alert configuration",
+    "Environment variable support",
+    "Flexible notification channels"
+  ],
+  "label": {
+    "text": "Workflow Configuration",
+    "icon": "settings"
+  }
+}

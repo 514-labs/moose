@@ -114,6 +114,19 @@ ARG FRAMEWORK_VERSION="0.0.0"
 RUN curl -Lo /usr/local/bin/moose https://github.com/514-labs/moose/releases/download/v${FRAMEWORK_VERSION}/moose-cli-x86_64-unknown-linux-gnu
 RUN chmod +x /usr/local/bin/moose
 
+# Install Temporal
+RUN curl -sSf https://temporal.download/cli.sh | sh
+
+# Install Docker Compose for Temporal
+RUN apt-get update && apt-get install -y docker-compose
+
+# Copy Temporal docker-compose file
+COPY temporal/docker-compose.yml /etc/temporal/docker-compose.yml
+
+# Add Temporal to supervisord config
+COPY temporal/run-temporal.sh /run-temporal.sh
+RUN chmod +x /run-temporal.sh
+
 # Run it all
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 

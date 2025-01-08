@@ -51,25 +51,26 @@ class StargazerIngester:
 
     def ingest_stargazers(self, stargazers: List[Dict]) -> int:
         """Ingest stargazers into the system"""
-        ingested_count = 0
+        stargazer_data = [
+            {
+                "starred_at": stargazer["starred_at"],
+                "login": stargazer["user"]["login"], 
+                "avatar_url": stargazer["user"]["avatar_url"],
+                "repos_url": stargazer["user"]["repos_url"]
+            }
+            for stargazer in stargazers
+        ]
         
-        for stargazer in stargazers:
-            response = requests.post(
-                f"{self.base_url}/ingest/HistoricalStargazer",
-                json={
-                    "starred_at": stargazer["starred_at"],
-                    "login": stargazer["user"]["login"],
-                    "avatar_url": stargazer["user"]["avatar_url"],
-                    "repos_url": stargazer["user"]["repos_url"]
-                }
-            )
-            if response.ok:
-                ingested_count += 1
-                print(f"({ingested_count}) Ingested {stargazer['user']['login']} - starred at {stargazer['starred_at']}")
-            else:
-                print(f"Failed to ingest {stargazer['user']['login']}: {response.status_code}")
+        response = requests.post(
+            f"{self.base_url}/ingest/HistoricalStargazer",
+            json=stargazer_data
+        )
+        if response.ok:
+            print(f"Ingested {len(stargazers)} stargazers")
+        else:
+            print(f"Failed to ingest {len(stargazers)} stargazers: {response.status_code}")
 
-        return ingested_count
+        return len(stargazers)
 
 def get_ingest_url(env: str) -> str:
     """Determine the ingest URL based on environment"""

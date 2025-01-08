@@ -2,7 +2,7 @@
 from setuptools import setup
 
 setup(
-    name='github-star-analytics-python',
+    name='github-star-analytics-py',
     version='0.0',
     install_requires=[
         "kafka-python-ng==2.2.2",
@@ -10,5 +10,6 @@ setup(
         "requests==2.32.3",
         "moose-cli",
         "moose-lib",
+        "python-dotenv",
     ],
 )

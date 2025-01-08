@@ -6,7 +6,7 @@ import { Zap } from "lucide-react";
 
 <LanguageSwitcher />
 
-With the `TopProgrammingLanguages` Materialzied View created in the previous step, you can build a [Consumption API](/consumption-apis) to fetch data from this view and make it available for your other applications.
+With the `TopLanguages` Materialzied View created in the previous step, you can build a [Consumption API](/consumption-apis) to fetch data from this view and make it available for your other applications.
 
 <Callout type="info">
   A Consumption API enables you to create specific API endpoints that allow your
@@ -17,7 +17,7 @@ With the `TopProgrammingLanguages` Materialzied View created in the previous ste
 
 In this module, you will implement a Consumption API that will:
 
-- Dynamically generate and execute a query to extract analyzed data from the `TopProgrammingLanguages` materialized view
+- Dynamically generate and execute a query to extract analyzed data from the `TopLanguages` materialized view
 - Return a ranked list of programming languages based on either:
   - The number of repositories using the language
   - The total number of kilobytes of code written in the language
@@ -162,7 +162,7 @@ export default async function handle(
           countMerge(total_projects) AS total_projects, 
           sumMerge(total_repo_size_kb) AS total_repo_size_kb, 
           avgMerge(average_repo_size_kb) AS average_repo_size_kb 
-        FROM TopProgrammingLanguages 
+        FROM TopLanguages 
         GROUP BY language 
         ORDER BY ${rankBy} DESC`
   );
@@ -171,16 +171,32 @@ export default async function handle(
 </TypeScript>
 
 <Python>
-```py filename="/app/apis/ranked_languages.py" copy {9-37}
+```py filename="/app/apis/ranked_languages.py" copy
 from moose_lib import MooseClient
-from typing import Optional
+from dataclasses import dataclass
+# Define the expected query parameters for this API endpoint
+# rank_by: Determines how to sort the results, defaults to sorting by total number of projects
+@dataclass
+class QueryParams:
+    rank_by: str = "total_projects"
 
-def run(client: MooseClient, params, jwt_payload: Optional[dict] = None):
-    rank_by = params.get("rank_by", ["total_projects"])[0] 
-
+def run(client: MooseClient, params: QueryParams):
+    # Extract the rank_by parameter from the request
+    rank_by = params.rank_by
+    
+    # Validate that rank_by is one of the allowed values
+    # Can sort by:
+    # - total_projects: Number of repos using each language
+    # - total_repo_size_kb: Total KB of code in each language
+    # - avg_repo_size_kb: Average KB per repo for each language
     if rank_by not in ["total_projects", "total_repo_size_kb", "avg_repo_size_kb"]:
         raise ValueError("Invalid rank_by value. Must be one of: total_projects, total_repo_size_kb, avg_repo_size_kb")
     
+    # Build and execute query to get ranked programming languages
+    # Uses aggregate functions to:
+    # - countMerge: Get final count of projects per language
+    # - sumMerge: Get total KB of code per language
+    # - avgMerge: Get average KB per repo per language
     query = f'''
     SELECT 
         language, 
@@ -188,17 +204,19 @@ def run(client: MooseClient, params, jwt_payload: Optional[dict] = None):
         sumMerge(total_repo_size_kb) AS total_repo_size_kb, 
         avgMerge(avg_repo_size_kb) AS avg_repo_size_kb 
     FROM 
-        TopProgrammingLanguages 
+        TopLanguages 
     GROUP BY 
         language 
     ORDER BY 
         {rank_by} DESC
     '''
+    # Execute the query, passing rank_by as a parameter for safety
     return client.query(query, { "rank_by": rank_by })
+
 ```
 </Python>
 
-This function will return a ranked list of programming languages based on the <TypeScript NodeType="span">`rankBy`</TypeScript><Python NodeType="span">`rank_by`</Python> parameter. If an invalid value is passed in for <TypeScript NodeType="span">`rankBy`</TypeScript><Python NodeType="span">`rank_by`</Python>, the function will throw an error. If no value is passed in for <TypeScript NodeType="span">`rankBy`</TypeScript><Python NodeType="span">`rank_by`</Python>, the function will use the default value of <TypeScript NodeType="span">`total_projects`</TypeScript><Python NodeType="span">`total_projects`</Python>.
+The function returns ranked programming languages based on the <TypeScript NodeType="span">`rankBy`</TypeScript><Python NodeType="span">`rank_by`</Python> parameter, defaulting to `total_projects` if not specified. Invalid parameter values will throw an error.
 
 - Use the parameter `?rankBy=total_repo_size_kb` to rank results by the total number of bytes written in each language across all the people who starred your repo.
 
@@ -250,7 +268,7 @@ curl -X GET  https://[YOUR_FORWARDING_URL]/consumption/ranked_languages\?rank_by
 
 <ZoomImg src="/thunder-client.png" />
 
-Try changing the query parameters to see the results change. _The query parameters do not need to be backslashed in the URL, for example:_
+Try changing the query parameters to see the results change. The query parameters do not need to be backslashed in the URL, for example:_
 
 <TypeScript>
 ```txt copy

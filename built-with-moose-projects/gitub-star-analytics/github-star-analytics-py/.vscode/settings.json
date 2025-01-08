@@ -12,5 +12,6 @@
       "name": "moose clickhouse"
     }
   ],
-  "python.analysis.extraPaths": [".moose/versions"]
+  "python.analysis.extraPaths": [".moose/versions"],
+  "python.analysis.typeCheckingMode": "basic"
 }

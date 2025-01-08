@@ -1,4 +1,4 @@
-import { Callout, ZoomImg, Python, TypeScript, LanguageSwitcher } from "../../components";
+import { Callout, ZoomImg, Python, TypeScript, LanguageSwitcher, ToggleBlock } from "../../components";
 import { Steps, FileTree } from "nextra/components";
 
 # Getting Started with Moose
@@ -103,24 +103,6 @@ You should expect to see the following printed to your terminal:
 
 <ZoomImg src="/moose-dev-terminal.png" />
 
-<Callout type="danger" title="Troubleshooting">
-  If you encounter any issues starting the dev server, run the following command to check for common configuration problems:
-
-  <Python>
-  ```bash filename="Terminal" copy
-  moose-cli check
-  ```
-  </Python>
-
-  <TypeScript>
-  ```bash filename="Terminal" copy
-  npx moose-cli check
-  ```
-  </TypeScript>
-
-  This will verify your environment setup, including Python/Node version compatibility and other requirements.
-</Callout>
-
 <Callout type="success">
   You have set up a Moose instance at `http://localhost:4000`
   
@@ -136,6 +118,24 @@ It provides the following infrastructure:
 <br/>
 As you develop, the dev server automatically updates with your latest changes, providing a real-time view of your Moose application locally.
 </Callout>
+
+<ToggleBlock openText="Troubleshooting: Can't start the dev server?" closeText="Hide Troubleshooting">
+  If you encounter any issues starting the dev server, run the following command to check for common configuration problems:
+
+  <Python>
+  ```bash filename="Terminal" copy
+  moose-cli check
+  ```
+  </Python>
+
+  <TypeScript>
+  ```bash filename="Terminal" copy
+  npx moose-cli check
+  ```
+  </TypeScript>
+
+  This will verify your environment setup, including Python/Node version compatibility and other requirements.
+</ToggleBlock>
 
 ### Open Project in IDE
 

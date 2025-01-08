@@ -158,6 +158,16 @@ export default {
 
 <Python>
 ```py filename="app/blocks/TopLanguages.py" copy
+from moose_lib import (
+    AggregationCreateOptions,
+    AggregationDropOptions,
+    Blocks,
+    ClickHouseEngines,
+    TableCreateOptions,
+    create_aggregation,
+    drop_aggregation,
+)
+
 # Names for the materialized view and underlying table that will store aggregated language stats
 MV_NAME = "TopLanguages_MV"
 TABLE_NAME = "TopLanguages"

@@ -17,6 +17,7 @@ message InfrastructureMap {
   //  OlapProcess block_db_processes = 8;
   //  ConsumptionApiWebServer consumption_api_web_server = 9;
   map<string, InitialDataLoad> initial_data_loads = 10;
+  map<string, OrchestrationWorker> orchestration_workers = 11;
 }
 
 message Topic {
@@ -193,4 +194,8 @@ enum PrimitiveTypes {
   FUNCTION = 1;
   DB_BLOCK = 2;
   CONSUMPTION_API = 3;
+}
+
+message OrchestrationWorker {
+  string supported_language = 1;
 }

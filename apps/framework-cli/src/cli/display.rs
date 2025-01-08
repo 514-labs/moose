@@ -346,6 +346,18 @@ pub fn show_changes(infra_plan: &InfraPlan) {
             ProcessChange::ConsumptionApiWebServer(Change::Updated { .. }) => {
                 infra_updated("Reloading Consumption WebServer...");
             }
+            ProcessChange::OrchestrationWorker(Change::Added(_)) => {
+                infra_added("Starting Orchestration worker...");
+            }
+            ProcessChange::OrchestrationWorker(Change::Removed(_)) => {
+                infra_removed("Stopping Orchestration worker...");
+            }
+            ProcessChange::OrchestrationWorker(Change::Updated {
+                before: _,
+                after: _,
+            }) => {
+                infra_updated("Reloading Orchestration worker...");
+            }
         });
 
     infra_plan

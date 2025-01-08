@@ -157,6 +157,7 @@ pub fn extract_data_model_from_file(
 
 #[cfg(test)]
 mod tests {
+
     use crate::framework::languages::SupportedLanguages;
     use crate::framework::typescript::parser::extract_data_model_from_file;
     use crate::framework::typescript::parser::TypescriptParsingError;
@@ -172,8 +173,17 @@ mod tests {
         let node_modules_path = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("tests/test_project")
             .join("node_modules");
+
         if node_modules_path.exists() {
             fs::remove_dir_all(&node_modules_path).expect("Failed to clean up node_modules");
+        }
+
+        let moose_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("tests/test_project")
+            .join(".moose");
+
+        if moose_dir.exists() {
+            fs::remove_dir_all(&moose_dir).expect("Failed to clean up .moose");
         }
     }
 

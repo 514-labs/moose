@@ -1,3 +1,4 @@
+use crate::cli::settings::Settings;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use clickhouse_rs::ClientHandle;
 use std::sync::Arc;
@@ -47,6 +48,7 @@ pub enum ExecutionError {
 
 pub async fn execute_initial_infra_change(
     project: &Project,
+    settings: &Settings,
     plan: &InfraPlan,
     api_changes_channel: Sender<ApiChange>,
     metrics: Arc<Metrics>,
@@ -70,10 +72,10 @@ pub async fn execute_initial_infra_change(
         project.redpanda_config.clone(),
         project.clickhouse_config.clone(),
     );
-    let mut process_registries = ProcessRegistries::new(project);
+    let mut process_registries = ProcessRegistries::new(project, settings);
 
     // Execute changes that are allowed on any instance
-    let changes = plan.target_infra_map.init_processes();
+    let changes = plan.target_infra_map.init_processes(project);
     processes::execute_changes(
         &mut syncing_processes_registry,
         &mut process_registries,

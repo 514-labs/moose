@@ -4,6 +4,7 @@ pub mod api_endpoint;
 pub mod consumption_webserver;
 pub mod function_process;
 pub mod olap_process;
+pub mod orchestration_worker;
 pub mod table;
 pub mod topic;
 pub mod topic_sync_process;

@@ -109,6 +109,24 @@ moose-cli dev
   storage and querying.
 </Callout>
 
+<Callout type="danger" title="Troubleshooting">
+  If you encounter any issues starting the dev server, run the following command to check for common configuration problems:
+
+  <Python>
+  ```bash filename="Terminal" copy
+  moose-cli check
+  ```
+  </Python>
+
+  <TypeScript>
+  ```bash filename="Terminal" copy
+  npx moose-cli check
+  ```
+  </TypeScript>
+
+  This will verify your environment setup, including Python/Node version compatibility and other requirements.
+</Callout>
+
 ### Check that the infrastructure is set up correctly
 <Callout type="warning" title="Open a new terminal session">
   Make sure to `cd` into your Moose project directory before running the command.

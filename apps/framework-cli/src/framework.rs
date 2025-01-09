@@ -8,6 +8,7 @@ pub mod core;
 pub mod data_model;
 pub mod languages;
 pub mod python;
+pub mod scripts;
 pub mod sdk;
 pub mod streaming;
 pub mod typescript;

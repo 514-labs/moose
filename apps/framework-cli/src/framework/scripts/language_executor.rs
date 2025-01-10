@@ -5,6 +5,13 @@ use std::process::Command;
 
 use crate::framework::languages::SupportedLanguages;
 
+#[derive(Debug, serde::Deserialize)]
+struct PythonError {
+    error: String,
+    details: String,
+    file: Option<String>,
+}
+
 async fn execute_python_script(
     script_path: &PathBuf,
     input_data: Option<serde_json::Value>,
@@ -20,18 +27,30 @@ async fn execute_python_script(
 
     command.arg(&wrapper_path).arg(script_path);
 
-    // Add input data as environment variable
     if let Some(input) = input_data {
         command.env("MOOSE_INPUT", serde_json::to_string(&input)?);
     }
 
-    // Execute the script
     let output = command
         .output()
         .map_err(|e| anyhow::anyhow!("Failed to execute script: {}", e))?;
 
     if !output.status.success() {
         let error = String::from_utf8_lossy(&output.stderr);
+
+        // Try to parse as structured error
+        if let Ok(python_error) = serde_json::from_str::<PythonError>(&error) {
+            match python_error.error.as_str() {
+                "InvalidFileType" => {
+                    return Err(anyhow::anyhow!(
+                        "Invalid file type: {}",
+                        python_error.details
+                    ))
+                }
+                _ => return Err(anyhow::anyhow!("Script failed: {}", python_error.details)),
+            }
+        }
+
         return Err(anyhow::anyhow!("Script failed: {}", error));
     }
 
@@ -63,28 +82,131 @@ mod tests {
     use tempfile::tempdir;
 
     #[tokio::test]
-    async fn test_script_execution() -> Result<()> {
-        // Create a temporary directory for our test script
+    async fn test_sequential_workflow() -> Result<()> {
         let temp_dir = tempdir()?;
 
-        // Create a simple test script
-        let script_path = temp_dir.path().join("test_script.py");
+        // Create scripts directory structure
+        fs::create_dir(temp_dir.path().join("scripts"))?;
+
         fs::write(
-            &script_path,
+            temp_dir.path().join("scripts").join("1.extract.py"),
             r#"
 from moose_lib import task
 
 @task
-def test_task():
-    return {"result": 42}
-"#,
+def extract():
+    return {"step": "extract", "data": [1, 2, 3]}
+            "#,
         )?;
 
-        // Execute script
-        let result = execute_script(SupportedLanguages::Python, &script_path, None).await?;
+        fs::write(
+            temp_dir.path().join("scripts").join("2.transform.py"),
+            r#"
+from moose_lib import task
 
-        // Verify result
-        assert_eq!(result, Some(serde_json::json!({"result": 42})));
+@task
+def transform():
+    return {"step": "transform", "data": [2, 4, 6]}
+            "#,
+        )?;
+
+        let result = execute_script(
+            SupportedLanguages::Python,
+            &temp_dir.path().join("scripts"),
+            None,
+        )
+        .await?;
+
+        assert!(result.is_some());
+        let results = result.unwrap();
+        assert_eq!(results.as_array().unwrap().len(), 2);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_parallel_workflow() -> Result<()> {
+        let temp_dir = tempdir()?;
+
+        // Create scripts directory structure with parallel steps
+        fs::create_dir_all(temp_dir.path().join("scripts/2.parallel"))?;
+
+        fs::write(
+            temp_dir.path().join("scripts").join("1.extract.py"),
+            r#"
+from moose_lib import task
+
+@task
+def extract():
+    return {"step": "extract", "data": [1, 2, 3]}
+            "#,
+        )?;
+
+        fs::write(
+            temp_dir
+                .path()
+                .join("scripts/2.parallel")
+                .join("process_a.py"),
+            r#"
+from moose_lib import task
+
+@task
+def process_a():
+    return {"step": "process_a", "data": [2, 4, 6]}
+            "#,
+        )?;
+
+        fs::write(
+            temp_dir
+                .path()
+                .join("scripts/2.parallel")
+                .join("process_b.py"),
+            r#"
+from moose_lib import task
+
+@task
+def process_b():
+    return {"step": "process_b", "data": [3, 6, 9]}
+            "#,
+        )?;
+
+        let result = execute_script(
+            SupportedLanguages::Python,
+            &temp_dir.path().join("scripts"),
+            None,
+        )
+        .await?;
+
+        assert!(result.is_some());
+        let results = result.unwrap();
+        assert_eq!(results.as_array().unwrap().len(), 3);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_invalid_file_type() -> Result<()> {
+        let temp_dir = tempdir()?;
+
+        // Create a TypeScript file in Python scripts
+        fs::create_dir(temp_dir.path().join("scripts"))?;
+        fs::write(
+            temp_dir.path().join("scripts").join("1.process.ts"),
+            "console.log('This should fail');",
+        )?;
+
+        let result = execute_script(
+            SupportedLanguages::Python,
+            &temp_dir.path().join("scripts"),
+            None,
+        )
+        .await;
+
+        assert!(result.is_err());
+        assert!(result
+            .unwrap_err()
+            .to_string()
+            .contains("Invalid file type"));
 
         Ok(())
     }

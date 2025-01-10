@@ -28,13 +28,17 @@ The MOOSE Scripts Orchestrator provides a file-based convention for defining and
 Workflows are defined through directory structure and file naming:
 ```
 workflows/
-├── daily-etl/ # Workflow name
+├── daily-etl/ # Workflow name (this is in py)
 │ ├── 1.extract.py # Sequential step
-│ ├── 2.transform.ts # Different language
-│ ├── parallel/ # Parallel steps
+│ ├── 2.transform.py # Different language
+│ ├── 3.parallel/ # Parallel steps
 │ │ ├── process-a.py
-│ │ └── process-b.rs
-│ └── 3.load.scala
+│ │ └── process-b.py
+│ └── 4.load.scala
+├── monthly-etl/ # Workflow name (this is in ts)
+│ ├── 1.extract.ts
+│ ├── 2.transform.ts
+│ └── 3.load.ts
 ├── shared/ # Shared code
 │ └── utils.py
 └── config.toml # Workflow configuration
@@ -45,11 +49,12 @@ workflows/
 - Transparent type conversion between steps
 - DataFrame support across languages
 - Language-specific testing utilities
+- One language per workflow is supported
 
 Example in Python:
 ```python
 from dataclasses import dataclass
-from moose import task
+from moose_lib import task
 import pandas as pd
 
 @dataclass

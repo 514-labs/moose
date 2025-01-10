@@ -33,3 +33,10 @@ export type DataModelConfig<T> = Partial<{
 export * from "./blocks/helpers";
 export * from "./commons";
 export * from "./consumption-apis/helpers";
+
+export { createConsumptionApi } from "./consumption-apis/runner";
+export type { ConsumptionApiConfig } from "./consumption-apis/runner";
+export type {
+  QueryFieldDefinition,
+  QueryParamMetadata,
+} from "./consumption-apis/types";

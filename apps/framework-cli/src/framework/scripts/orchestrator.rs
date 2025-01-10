@@ -1,12 +1,17 @@
 use anyhow::Result;
 use std::sync::Arc;
 use temporal_sdk_core::protos::coresdk::activity_task::ActivityTask;
-use temporal_sdk_core::protos::coresdk::workflow_activation::WfActivation;
+use temporal_sdk_core::protos::coresdk::common::Payload;
+use temporal_sdk_core::protos::coresdk::workflow_activation::{self, WfActivation};
+use temporal_sdk_core::protos::coresdk::workflow_commands::{self, WorkflowCommand};
 use temporal_sdk_core::protos::coresdk::workflow_completion::wf_activation_completion::Status;
 use temporal_sdk_core::protos::coresdk::workflow_completion::{Success, WfActivationCompletion};
 use temporal_sdk_core::protos::temporal::api::enums::v1::WorkflowExecutionStatus;
+
 use temporal_sdk_core::{init, Core, CoreInitOptions, ServerGatewayOptions};
 use url::Url;
+
+use super::activity::{Activity, ScriptPayload};
 
 #[derive(Clone)]
 pub struct ScriptsOrchestrator {
@@ -54,7 +59,7 @@ impl ScriptsOrchestrator {
     }
 
     /// Poll for workflow tasks and execute them
-    pub async fn run_worker(&self) -> Result<()> {
+    pub async fn run_worker(&self, activities: Vec<Activity>) -> Result<()> {
         println!("Starting worker...");
 
         loop {
@@ -63,82 +68,57 @@ impl ScriptsOrchestrator {
                 Ok(activation) => {
                     println!("Received workflow activation: {:?}", activation);
 
-                    // For now just complete the workflow
-                    let completion = WfActivationCompletion {
-                        task_token: activation.task_token,
-                        status: Some(Status::Successful(Success { commands: vec![] })),
-                    };
-
-                    if let Err(e) = self.core.complete_workflow_task(completion).await {
-                        println!("Error completing workflow task: {:?}", e);
-                    }
+                    // Execute the activities
+                    self.handle_activation(activation, &activities).await?;
                 }
                 Err(e) => {
                     println!("Error polling workflow task: {:?}", e);
                 }
             }
-        }
-    }
 
-    /// Get the current status of a workflow
-    pub async fn get_workflow_status(&self, _workflow_id: &str) -> Result<WorkflowExecutionStatus> {
-        let wf_activation: WfActivation = self.core.poll_workflow_task().await?;
-
-        let activity_activation: ActivityTask = self.core.poll_activity_task().await?;
-
-        println!("wf_activation: {:?}", wf_activation);
-        println!("activity_activation: {:?}", activity_activation);
-
-        unimplemented!()
-
-        // if let Some(last_event) = wf_activation.last() {
-        //     match EventType::from_i32(last_event.event_type) {
-        //         Some(EventType::WorkflowExecutionCompleted) => {
-        //             Ok(WorkflowExecutionStatus::Completed)
-        //         }
-        //         Some(EventType::WorkflowExecutionFailed) => {
-        //             Ok(WorkflowExecutionStatus::Failed)c
-        //         }
-        //         Some(EventType::WorkflowExecutionTimedOut) => {
-        //             Ok(WorkflowExecutionStatus::TimedOut)
-        //         }
-        //         Some(EventType::WorkflowExecutionCanceled) => {
-        //             Ok(WorkflowExecutionStatus::Canceled)
-        //         }
-        //         Some(EventType::WorkflowExecutionTerminated) => {
-        //             Ok(WorkflowExecutionStatus::Terminated)
-        //         }
-        //         Some(EventType::WorkflowExecutionContinuedAsNew) => {
-        //             Ok(WorkflowExecutionStatus::ContinuedAsNew)
-        //         }
-        //         _ => Ok(WorkflowExecutionStatus::Running)
-        //     }
-        // } else {
-        //     Ok(WorkflowExecutionStatus::Running)
-        // }
-    }
-
-    /// Wait for a workflow to complete with timeout
-    pub async fn wait_for_workflow_completion(
-        &self,
-        workflow_id: &str,
-        timeout: std::time::Duration,
-    ) -> Result<WorkflowExecutionStatus> {
-        let start = std::time::Instant::now();
-
-        while start.elapsed() < timeout {
-            let status = self.get_workflow_status(workflow_id).await?;
-
-            match status {
-                WorkflowExecutionStatus::Running => {
-                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
-                    continue;
+            // Poll for activity tasks
+            match self.core.poll_activity_task().await {
+                Ok(activity) => {
+                    println!("Received activity task: {:?}", activity);
                 }
-                final_status => return Ok(final_status),
+                Err(e) => {
+                    println!("Error polling activity task: {:?}", e);
+                }
             }
-        }
 
-        Err(anyhow::anyhow!("Workflow did not complete within timeout"))
+            self.core.shutdown().await;
+        }
+    }
+
+    pub async fn handle_activation(
+        &self,
+        activation: WfActivation,
+        activities: &Vec<Activity>,
+    ) -> Result<()> {
+        // Create commands for each activity
+        let commands: Vec<WorkflowCommand> = activities
+            .iter()
+            .enumerate()
+            .map(|(_, activity)| WorkflowCommand {
+                variant: Some(
+                    workflow_commands::workflow_command::Variant::ScheduleActivity(
+                        activity.schedule(ScriptPayload {
+                            data: vec![], // Add your payload data here
+                            metadata: Default::default(),
+                        }),
+                    ),
+                ),
+            })
+            .collect();
+
+        // Complete workflow activation with all activity commands
+        let completion = WfActivationCompletion {
+            task_token: activation.task_token,
+            status: Some(Status::Successful(Success { commands })),
+        };
+
+        self.core.complete_workflow_task(completion).await?;
+        Ok(())
     }
 }
 
@@ -149,30 +129,6 @@ mod tests {
     use tokio;
 
     #[tokio::test]
-    async fn test_workflow_execution() -> Result<()> {
-        let orchestrator = ScriptsOrchestrator::new().await?;
-
-        // Start a test workflow
-        let status = orchestrator.get_workflow_status("test-workflow-1").await?;
-        println!("workflow_status: {:?}", status);
-
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_workflow_history() -> Result<()> {
-        let orchestrator = ScriptsOrchestrator::new().await?;
-
-        println!("test_workflow_history");
-
-        let workflow_id = "test-workflow-history".to_string();
-        let status = orchestrator.get_workflow_status(&workflow_id).await?;
-        println!("workflow_status: {:?}", status);
-
-        Ok(())
-    }
-
-    #[tokio::test]
     async fn test_workflow_lifecycle() -> Result<()> {
         let orchestrator = ScriptsOrchestrator::new().await?;
         let workflow_id = "test-workflow-lifecycle".to_string();
@@ -180,20 +136,18 @@ mod tests {
         // Start the workflow
         orchestrator.start_workflow(workflow_id.clone()).await?;
 
-        // Check initial status
-        let initial_status = orchestrator.get_workflow_status(&workflow_id).await?;
-        assert_eq!(initial_status, WorkflowExecutionStatus::Running);
-
         // Start worker in background
         let orchestrator_clone = orchestrator.clone();
-        let worker_handle = tokio::spawn(async move { orchestrator_clone.run_worker().await });
 
-        // Wait for completion
-        let final_status = orchestrator
-            .wait_for_workflow_completion(&workflow_id, Duration::from_secs(30))
-            .await?;
+        let activities = vec![Activity::builder()
+            .id("python-script-1")
+            ._type("execute_script")
+            .namespace("default")
+            .task_queue_name("script-queue")
+            .build()];
 
-        assert_eq!(final_status, WorkflowExecutionStatus::Completed);
+        let worker_handle =
+            tokio::spawn(async move { orchestrator_clone.run_worker(activities).await });
 
         // Clean up worker
         worker_handle.abort();

@@ -27,6 +27,7 @@ pub const SCHEMAS_DIR: &str = "datamodels";
 pub const FUNCTIONS_DIR: &str = "functions";
 pub const BLOCKS_DIR: &str = "blocks";
 pub const CONSUMPTION_DIR: &str = "apis";
+pub const SCRIPTS_DIR: &str = "scripts";
 pub const VSCODE_DIR: &str = ".vscode";
 pub const SAMPLE_STREAMING_FUNCTION_SOURCE: &str = "UserActivity";
 pub const SAMPLE_STREAMING_FUNCTION_DEST: &str = "ParsedActivity";

@@ -80,12 +80,6 @@ export const processWithDuckDB = task<string, any>(
 
 ## Key Features
 
-### Automatic Framework Detection
-- Intelligent detection of data processing frameworks
-- Optimal resource allocation based on framework
-- Framework-specific optimizations
-- Seamless switching between frameworks
-
 ### Scale-Based Optimization
 ```toml
 [data.processing]
@@ -102,7 +96,7 @@ max_memory = "64Gi"
 ```
 
 ### Framework Interoperability
-- Convert between framework-specific DataFrames
+- Frameowork agnostic DataFrames (using Ibis (python only))
 - Preserve schema and data types
 - Minimize memory overhead
 - Optimize performance
@@ -194,15 +188,3 @@ track_data_throughput = true
    - Rapid Prototyping: Pandas
    - Production Performance: Polars/PySpark
    - SQL Workflows: DuckDB
-
-### Automatic Framework Selection
-```python
-from moose_lib import auto_framework
-
-@task
-def smart_processing(data_path: str):
-    # Automatically selects optimal framework
-    framework = auto_framework.detect(data_path)
-    df = framework.read_data(data_path)
-    return framework.process(df)
-```

@@ -22,27 +22,40 @@ Writing scripts and orchestrating them is a core part of the data engineering wo
 
 ## Core Features
 
-### [File-Based Convention](./subfeatures/workflow-file-based-convention.md)
+### File-Based Convention
 Intuitive directory structure for workflow organization:
 ```
 workflows/
-├── daily-etl/                # Workflow name
+├── daily-etl/               # Workflow name
 │ ├── 1.extract.py           # Sequential step
 │ ├── 2.transform.py         # Next step
 │ ├── 3.parallel/            # Parallel execution
 │ │ ├── process-a.py         # Runs in parallel
 │ │ └── process-b.py         # Runs in parallel
-│ └── 4.load.scala           # Final step
+│ ├── 4.load.scala           # Next step
+| └── 5.send-report          # Final step
+|   └── child.toml           # Child workflow configuration
+├── send-report/             # Workflow name
+│ ├── 1.prepare.py
+│ ├── 2.package.py
+│ └── 3.send.py
 ├── monthly-etl/ # Workflow name (this is in ts)
 │ ├── 1.extract.ts
 │ ├── 2.transform.ts
 │ └── 3.load.ts
 ├── shared/                  # Shared utilities
-│ └── utils.py              # Common code
-└── config.toml             # Workflow config
+│ └── utils.py               # Common code
+└── config.toml              # Workflow config
 ```
 
-### [Multi-Language Support](./subfeatures/workflow-multilanguage-support.md)
+#### Parallel Execution execution
+
+#### Workflow composition
+Enable workflows to be composed with other workflows
+
+This is done by referencing the workflow name as a step in the workflow.
+
+### Multi-Language Support
 Native language support with type safety:
 ```python
 @dataclass
@@ -61,20 +74,62 @@ def extract() -> ExtractedData:
     )
 ```
 
-### [Big and Small Data Framework Support](./subfeatures/workflow-big-and-small-data-support.md)
-Automatic framework selection based on data scale:
+### Big and Small Data Framework Supportworkflow-big-and-small-data-support.md)
+Seamless support for both big and small data frameworks with automatic framework selection:
+
 ```python
-from moose_lib import auto_framework
+# Framework-specific processing with type safety
+from moose_lib import task
+import pandas as pd
+import polars as pl
+import pyspark.sql as spark
+import duckdb
 
 @task
-def smart_processing(data_path: str):
-    # Automatically selects optimal framework
-    framework = auto_framework.detect(data_path)
-    df = framework.read_data(data_path)
-    return framework.process(df)
+def process_with_pandas(data_path: str) -> pd.DataFrame:
+    # Ideal for smaller datasets with rich functionality
+    df = pd.read_csv(data_path)
+    return df.groupby('category').agg({'amount': ['sum', 'mean']})
+
+@task
+def process_with_polars(data_path: str) -> pl.DataFrame:
+    # Fast processing for medium-sized data
+    df = pl.scan_csv(data_path)
+    return df.groupby('category').agg([
+        pl.col('amount').sum(),
+        pl.col('amount').mean()
+    ]).collect()
+
+@task
+def process_with_spark(data_path: str) -> spark.DataFrame:
+    # Distributed processing for big data
+    spark = SparkSession.builder.getOrCreate()
+    df = spark.read.csv(data_path)
+    return df.groupBy('category').agg({'amount': 'sum'})
 ```
 
-### [Workflow Configuration](./subfeatures/workflow-configuration.md)
+
+Scale-based configuration:
+```toml
+[data.processing]
+# Automatically switch processing framework based on data size
+auto_scale = true
+small_data_threshold = "1GB"
+medium_data_threshold = "10GB"
+
+[resources]
+# Dynamic resource allocation
+auto_allocate = true
+min_memory = "1Gi"
+max_memory = "64Gi"
+```
+
+Framework selection guide:
+- Small Data (<1GB): Pandas for rich functionality and rapid development
+- Medium Data (1-10GB): Polars/DuckDB for fast processing
+- Large Data (>10GB): PySpark for distributed computing
+
+### Workflow Configuration
 Powerful TOML-based configuration:
 ```toml
 # Basic workflow configuration
@@ -94,7 +149,7 @@ min_memory = "1Gi"
 max_memory = "64Gi"
 ```
 
-### [Developer Experience](./subfeatures/workflow-developer-experience.md)
+### Developer Experience
 Comprehensive development tools:
 ```bash
 # Initialize and develop
@@ -106,7 +161,7 @@ moose workflow run <NAME> --input <FILE>
 moose workflow resume <NAME> --from <STEP>
 ```
 
-### [Reliability Features](./subfeatures/workflow-reliability.md)
+### Reliability Features
 Enterprise-grade reliability:
 ```toml
 [monitoring]
@@ -128,7 +183,6 @@ on_duration_threshold = "1h"
 - Schema compatibility checking
 
 ### Framework Integration
-- Automatic framework detection and switching
 - Optimized data transfer between frameworks
 - Resource-aware execution planning
 - Framework-specific optimizations

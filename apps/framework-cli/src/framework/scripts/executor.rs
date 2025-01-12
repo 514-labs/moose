@@ -2,66 +2,9 @@ use anyhow::Result;
 use std::fs;
 use std::path::PathBuf;
 use std::process::Command;
+mod python;
 
 use crate::framework::languages::SupportedLanguages;
-
-#[derive(Debug, serde::Deserialize)]
-struct PythonError {
-    error: String,
-    details: String,
-    file: Option<String>,
-}
-
-async fn execute_python_script(
-    script_path: &PathBuf,
-    input_data: Option<serde_json::Value>,
-) -> Result<Option<serde_json::Value>> {
-    println!("Executing script: {:?}", script_path);
-
-    let mut command = Command::new("python");
-
-    // Create temporary wrapper file
-    let temp_dir = tempfile::tempdir()?;
-    let wrapper_path = temp_dir.path().join("wrapper.py");
-    fs::write(&wrapper_path, include_str!("./wrappers/python_wrapper.py"))?;
-
-    command.arg(&wrapper_path).arg(script_path);
-
-    if let Some(input) = input_data {
-        command.env("MOOSE_INPUT", serde_json::to_string(&input)?);
-    }
-
-    let output = command
-        .output()
-        .map_err(|e| anyhow::anyhow!("Failed to execute script: {}", e))?;
-
-    if !output.status.success() {
-        let error = String::from_utf8_lossy(&output.stderr);
-
-        // Try to parse as structured error
-        if let Ok(python_error) = serde_json::from_str::<PythonError>(&error) {
-            match python_error.error.as_str() {
-                "InvalidFileType" => {
-                    return Err(anyhow::anyhow!(
-                        "Invalid file type: {}",
-                        python_error.details
-                    ))
-                }
-                _ => return Err(anyhow::anyhow!("Script failed: {}", python_error.details)),
-            }
-        }
-
-        return Err(anyhow::anyhow!("Script failed: {}", error));
-    }
-
-    // Parse output
-    let stdout = String::from_utf8_lossy(&output.stdout);
-    if stdout.trim().is_empty() {
-        Ok(None)
-    } else {
-        Ok(Some(serde_json::from_str(&stdout)?))
-    }
-}
 
 /// Execute a specific script
 async fn execute_script(
@@ -70,7 +13,7 @@ async fn execute_script(
     input_data: Option<serde_json::Value>,
 ) -> Result<Option<serde_json::Value>> {
     match language {
-        SupportedLanguages::Python => execute_python_script(script_path, input_data).await,
+        SupportedLanguages::Python => python::execute_python_script(script_path, input_data).await,
         _ => Err(anyhow::anyhow!("Unsupported language: {:?}", language)),
     }
 }
@@ -207,6 +150,125 @@ def process_b():
             .unwrap_err()
             .to_string()
             .contains("Invalid file type"));
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_child_workflow() -> Result<()> {
+        let temp_dir = tempdir()?;
+
+        // Create one sequential workflow called daily-etl
+        let daily_etl_dir = temp_dir.path().join("daily-etl");
+        fs::create_dir(&daily_etl_dir)?;
+
+        // Add extract task
+        fs::write(
+            &daily_etl_dir.join("1.extract.py"),
+            r#"
+from moose_lib import task
+
+@task
+def extract():
+    return {"step": "extract", "data": [1, 2, 3]}
+        "#,
+        )?;
+
+        // Add transform task
+        fs::write(
+            &daily_etl_dir.join("2.transform.py"),
+            r#"
+from moose_lib import task
+
+@task
+def transform():
+    return {"step": "transform", "data": [2, 4, 6]}
+        "#,
+        )?;
+
+        // Create send-report directory and its child workflow marker
+        fs::create_dir_all(&daily_etl_dir.join("3.send-report"))?;
+        fs::write(
+            &daily_etl_dir.join("3.send-report").join("child.toml"),
+            r#"
+# This file indicates that this directory should be treated as a child workflow
+workflow = "send-report"  # References the workflow to execute
+        "#,
+        )?;
+
+        // Create the send-report workflow directory
+        let send_report_dir = temp_dir.path().join("send-report");
+        fs::create_dir_all(&send_report_dir)?;
+
+        // Create first step in send report workflow
+        fs::write(
+            &send_report_dir.join("1.prepare.py"),
+            r#"
+from moose_lib import task
+
+@task
+def prepare():
+    return {"step": "prepare", "data": [2, 4, 6]}
+        "#,
+        )?;
+
+        // Create second step in send report workflow
+        fs::write(
+            &send_report_dir.join("2.package.py"),
+            r#"
+from moose_lib import task
+
+@task
+def package():
+    return {"step": "package", "data": [2, 4, 6]}
+        "#,
+        )?;
+
+        // Run the workflow
+        let result = execute_script(SupportedLanguages::Python, &daily_etl_dir, None).await?;
+
+        // Verify the results
+        assert!(result.is_some());
+        let results = result.unwrap();
+        let results_array = results.as_array().unwrap();
+
+        // We expect three top-level results:
+        // 1. extract result
+        // 2. transform result
+        // 3. send-report child workflow results (which itself is an array of two results)
+        assert_eq!(results_array.len(), 3);
+
+        // Verify extract step
+        let extract_result = &results_array[0];
+        assert_eq!(
+            extract_result["step"],
+            serde_json::Value::String("extract".to_string())
+        );
+
+        // Verify transform step
+        let transform_result = &results_array[1];
+        assert_eq!(
+            transform_result["step"],
+            serde_json::Value::String("transform".to_string())
+        );
+
+        // Verify send-report child workflow results
+        let send_report_results = results_array[2].as_array().unwrap();
+        assert_eq!(send_report_results.len(), 2); // prepare and package steps
+
+        // Verify prepare step in child workflow
+        let prepare_result = &send_report_results[0];
+        assert_eq!(
+            prepare_result["step"],
+            serde_json::Value::String("prepare".to_string())
+        );
+
+        // Verify package step in child workflow
+        let package_result = &send_report_results[1];
+        assert_eq!(
+            package_result["step"],
+            serde_json::Value::String("package".to_string())
+        );
 
         Ok(())
     }

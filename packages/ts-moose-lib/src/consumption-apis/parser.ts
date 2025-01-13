@@ -64,10 +64,20 @@ export class QueryParamParser {
   ): Record<string, any> {
     logToFile(`Starting parameter validation...`);
     logToFile(`Raw params received: ${JSON.stringify(params)}`);
-    logToFile(`Metadata fields: ${JSON.stringify(metadata.fields)}`);
 
     const result: Record<string, any> = {};
 
+    // Add required field validation
+    for (const field of metadata.fields) {
+      if (field.required && !(field.name in params)) {
+        const error = new Error(`Missing required field: ${field.name}`);
+        (error as any).type = "VALIDATION_ERROR";
+        logToFile(`Throwing validation error: ${error.message}`);
+        throw error;
+      }
+    }
+
+    // First pass: Convert basic types
     for (const field of metadata.fields) {
       logToFile(`Validating field: ${field.name} (${field.type})`);
       if (field.name in params) {
@@ -76,7 +86,6 @@ export class QueryParamParser {
           `Processing field ${field.name} with values: ${JSON.stringify(values)}`,
         );
 
-        // Handle empty arrays
         if (!values || values.length === 0) {
           continue;
         }
@@ -98,6 +107,19 @@ export class QueryParamParser {
         }
       } else {
         logToFile(`Field ${field.name} not found in params`);
+      }
+    }
+
+    // Second pass: Validate with Typia if validator exists
+    if (metadata.typiaValidator) {
+      const isValid = metadata.typiaValidator(result);
+      if (!isValid) {
+        const error = new Error(
+          `Validation error: Invalid type for parameters`,
+        );
+        (error as any).type = "VALIDATION_ERROR";
+        logToFile(`Throwing typia validation error: ${error.message}`);
+        throw error;
       }
     }
 

@@ -59,16 +59,41 @@ export interface ConsumptionApiConfig {
   params: QueryParamMetadata;
 }
 
-export function createConsumptionApi(
-  config: ConsumptionApiConfig,
-  handle: (params: any, utils: ConsumptionUtil) => Promise<any>,
+export function createConsumptionApi<T extends object>(
+  configOrHandle:
+    | ConsumptionApiConfig
+    | ((params: any, utils: ConsumptionUtil) => Promise<any>),
+  handleFn?: (params: T, utils: ConsumptionUtil) => Promise<any>,
 ) {
+  // Legacy format: function was passed directly
+  if (typeof configOrHandle === "function") {
+    return async function (
+      rawParams: Record<string, string[]>,
+      utils: ConsumptionUtil,
+    ) {
+      // Convert array values to single values for backward compatibility
+      const legacyParams = Object.entries(rawParams).reduce(
+        (acc, [key, values]) => {
+          acc[key] = values[0]; // Take first value only
+          return acc;
+        },
+        {} as Record<string, string>,
+      );
+
+      return configOrHandle(legacyParams, utils);
+    };
+  }
+
+  // New format: config + handle function
+  const config = configOrHandle;
+  const handle = handleFn!;
+
   return async function (
     rawParams: Record<string, string[]>,
     utils: ConsumptionUtil,
   ) {
     const params = QueryParamParser.mapParamsToType(rawParams, config.params);
-    return handle(params, utils);
+    return handle(params as T, utils);
   };
 }
 

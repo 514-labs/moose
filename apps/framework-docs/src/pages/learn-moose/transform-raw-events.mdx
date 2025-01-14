@@ -205,7 +205,7 @@ export default function run(source: RawStarEvent): StargazerProjectInfo | null {
 
 <Python>
 ```py filename="functions/RawStarEvent__StargazerProjectInfo.py" copy
-# Add your models & start the development server to import these types
+# Import your Moose data models to use in the streaming function
 from app.datamodels.RawStarEvent import RawStarEvent
 from app.datamodels.StargazerProjectInfo import StargazerProjectInfo
 from moose_lib import StreamingFunction
@@ -289,7 +289,7 @@ async function callGitHubAPI(url: string): Promise<any> {
 Replace the boilerplace `fn()` function with the following code to enrich the data:
 
 ```python filename="functions/RawStarEvent__StargazerProjectInfo.py" copy
-# Add your models & start the development server to import these types
+# Import your Moose data models to use in the streaming function
 from app.datamodels.RawStarEvent import RawStarEvent
 from app.datamodels.StargazerProjectInfo import StargazerProjectInfo
 from moose_lib import StreamingFunction, cli_log, CliLogData

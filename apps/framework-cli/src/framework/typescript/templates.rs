@@ -33,7 +33,7 @@ export default function run(source: UserActivity): ParsedActivity {
 "#;
 
 pub static TS_BASE_STREAMING_FUNCTION_TEMPLATE: &str = r#"
-// Add your models & start the development server to import these types
+// Import your Moose data models to use in the streaming function
 {{source_import}}
 {{destination_import}}
 

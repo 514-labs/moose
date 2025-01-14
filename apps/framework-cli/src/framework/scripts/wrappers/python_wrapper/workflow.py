@@ -11,6 +11,8 @@ class WorkflowState:
     completed_steps: List[str]
     current_step: Optional[str]
     failed_step: Optional[str]
+    script_path: Optional[str]
+    input_data: Optional[Dict]
 
 @workflow.defn(sandboxed=False)
 class ScriptWorkflow:
@@ -19,12 +21,18 @@ class ScriptWorkflow:
             completed_steps=[],
             current_step=None,
             failed_step=None,
+            script_path=Optional[str],
+            input_data=None,
         )
 
-    @workflow.signal
-    async def resume_execution(self) -> None:
+    @workflow.signal(name="resume")
+    async def resume_execution(self) -> Dict:
         """Signal to resume workflow after a step has been fixed"""
         self._state.failed_step = None
+        script_path = self._state.script_path
+        input_data = self._state.input_data
+
+        return await workflow.continue_as_new(args=[script_path, input_data])
 
     @workflow.query
     def get_workflow_state(self) -> WorkflowState:
@@ -61,6 +69,8 @@ class ScriptWorkflow:
             parent_dir = os.path.basename(os.path.dirname(script_path))
             base_name = os.path.splitext(os.path.basename(script_path))[0]
             activity_name = f"{parent_dir}/{base_name}"
+            self._state.script_path = script_path
+            self._state.input_data = input_data
             result = await self._execute_activity_with_state(
                 activity_name, script_path, input_data
             )

@@ -123,7 +123,7 @@ shared = ["utils", "constants"]
 ### Creating New Workflows
 ```bash
 # Initialize new workflow
-moose workflow init my-workflow
+moose-cli workflow init my-workflow
 
 # Generated structure
 my-workflow/
@@ -135,19 +135,19 @@ my-workflow/
 ### Adding Steps
 ```bash
 # Add new step
-moose workflow add-step my-workflow "process-data"
+moose-cli workflow add-step my-workflow "process-data"
 
 # Add parallel steps
-moose workflow add-parallel my-workflow "process-subset"
+moose-cli workflow add-parallel my-workflow "process-subset"
 ```
 
 ### Templates
 ```bash
 # Use workflow template
-moose workflow init my-workflow --template etl
+moose-cli workflow init my-workflow --template etl
 
 # Custom templates
-moose workflow init my-workflow --template ./my-template
+moose-cli workflow init my-workflow --template ./my-template
 ```
 
 ## Best Practices

@@ -4,10 +4,13 @@ use super::languages::SupportedLanguages;
 
 pub mod activity;
 mod collector;
+pub mod config;
 pub mod executor;
+pub mod generator;
 pub mod orchestrator;
 
 use crate::framework::python::templates::PYTHON_BASE_SCRIPT_TEMPLATE;
+use crate::framework::scripts::config::WorkflowConfig;
 use crate::framework::typescript::templates::TS_BASE_SCRIPT_TEMPLATE;
 use crate::utilities::constants::SCRIPTS_DIR;
 use anyhow::Result;
@@ -113,6 +116,14 @@ impl Workflow {
     ) -> Result<(), anyhow::Error> {
         let workflow_dir = std::env::current_dir()?.join(SCRIPTS_DIR).join(name);
         std::fs::create_dir_all(&workflow_dir)?;
+
+        // Create config.toml with workflow name and steps
+        let config = if scripts.is_empty() {
+            WorkflowConfig::new(name.to_string())
+        } else {
+            WorkflowConfig::with_steps(name.to_string(), scripts.to_vec())
+        };
+        config.save(workflow_dir.join("config.toml"))?;
 
         // Create each script with an order number
         for (index, script_name) in scripts.iter().enumerate() {

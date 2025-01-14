@@ -153,12 +153,13 @@ max_memory = "64Gi"
 Comprehensive development tools:
 ```bash
 # Initialize and develop
-moose workflow init <NAME>
-moose workflow dev <NAME>
+moose-cli workflow init <NAME>
+moose-cli workflow init <NAME> --steps=<STEP_NAME>,<STEP_NAME>,<STEP_NAME>
+moose-cli workflow init <NAME> --step <STEP_NAME> --step <STEP_NAME> --step <STEP_NAME>
 
 # Testing and debugging
-moose workflow run <NAME> --input <FILE>
-moose workflow resume <NAME> --from <STEP>
+moose-cli workflow run <NAME> --input <FILE>
+moose-cli workflow resume <NAME> --from <STEP>
 ```
 
 ### Reliability Features

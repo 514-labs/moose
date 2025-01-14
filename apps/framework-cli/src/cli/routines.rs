@@ -1,4 +1,11 @@
-//! # Routines
+//! # Routines [Deprecation warning]
+//!
+//! *****
+//! Routines that get run by a CLI should simply be a function that returns a routine success or routine failure. Do not use
+//! the Routine and Routine controller structs and traits
+//! *****
+//!
+//!
 //! This module is used to define routines that can be run by the CLI. Routines are a collection of operations that are run in
 //! sequence. They can be run silently or explicitly. When run explicitly, they display messages to the user. When run silently,
 //! they do not display any messages to the user.
@@ -119,6 +126,7 @@ pub mod metrics_console;
 pub mod migrate;
 pub mod peek;
 pub mod ps;
+pub mod scripts;
 pub mod streaming;
 pub mod templates;
 mod util;

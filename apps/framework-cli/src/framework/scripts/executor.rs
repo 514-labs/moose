@@ -7,13 +7,13 @@ mod python;
 use crate::framework::languages::SupportedLanguages;
 
 /// Execute a specific script
-async fn execute_script(
+pub(crate) async fn execute_workflow(
     language: SupportedLanguages,
     script_path: &PathBuf,
     input_data: Option<serde_json::Value>,
 ) -> Result<Option<serde_json::Value>> {
     match language {
-        SupportedLanguages::Python => python::execute_python_script(script_path, input_data).await,
+        SupportedLanguages::Python => python::execute_workflow(script_path, input_data).await,
         _ => Err(anyhow::anyhow!("Unsupported language: {:?}", language)),
     }
 }
@@ -53,7 +53,7 @@ def transform():
             "#,
         )?;
 
-        let result = execute_script(
+        let result = execute_workflow(
             SupportedLanguages::Python,
             &temp_dir.path().join("scripts"),
             None,
@@ -113,7 +113,7 @@ def process_b():
             "#,
         )?;
 
-        let result = execute_script(
+        let result = execute_workflow(
             SupportedLanguages::Python,
             &temp_dir.path().join("scripts"),
             None,
@@ -138,7 +138,7 @@ def process_b():
             "console.log('This should fail');",
         )?;
 
-        let result = execute_script(
+        let result = execute_workflow(
             SupportedLanguages::Python,
             &temp_dir.path().join("scripts"),
             None,
@@ -225,7 +225,7 @@ def package():
         )?;
 
         // Run the workflow
-        let result = execute_script(SupportedLanguages::Python, &daily_etl_dir, None).await?;
+        let result = execute_workflow(SupportedLanguages::Python, &daily_etl_dir, None).await?;
 
         // Verify the results
         assert!(result.is_some());

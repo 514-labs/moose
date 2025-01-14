@@ -13,7 +13,7 @@ use crate::cli::routines::consumption::create_consumption_file;
 use clap::Parser;
 use commands::{
     BlockCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
-    GenerateCommand,
+    GenerateCommand, WorkflowCommands,
 };
 use config::ConfigError;
 use display::with_spinner_async;
@@ -66,6 +66,7 @@ use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 use crate::utilities::git::is_git_repo;
 
 use self::routines::clean::CleanProject;
+use crate::cli::routines::scripts::init_workflow;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
@@ -1008,6 +1009,26 @@ async fn top_command_handler(
 
             peek(project_arc, data_model_name.clone(), *limit, file.clone()).await
         }
+        Commands::Workflow(workflow_args) => match &workflow_args.command {
+            Some(WorkflowCommands::Init {
+                name,
+                language,
+                steps,
+                step,
+            }) => init_workflow(name, *language, steps.clone(), step.clone()).await,
+            Some(WorkflowCommands::Run { .. }) => Err(RoutineFailure::error(Message {
+                action: "Workflow Run".to_string(),
+                details: "Not implemented yet".to_string(),
+            })),
+            Some(WorkflowCommands::Resume { .. }) => Err(RoutineFailure::error(Message {
+                action: "Workflow Resume".to_string(),
+                details: "Not implemented yet".to_string(),
+            })),
+            None => Err(RoutineFailure::error(Message {
+                action: "Workflow".to_string(),
+                details: "No subcommand provided".to_string(),
+            })),
+        },
     }
 }
 

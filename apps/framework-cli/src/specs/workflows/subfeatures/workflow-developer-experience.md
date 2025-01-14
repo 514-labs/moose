@@ -8,31 +8,31 @@ Comprehensive developer tooling and local development features that make workflo
 ### Workflow Management
 ```bash
 # Initialize new workflow
-moose workflow init <NAME>
+moose-cli workflow init <NAME>
 
 # Run workflow
-moose workflow run <NAME>
+moose-cli workflow run <NAME>
 
 # Development mode with hot reload
-moose workflow dev <NAME>
+moose-cli workflow dev <NAME>
 
 # Deploy workflow
-moose workflow deploy <NAME> --env <ENV>
+moose-cli workflow deploy <NAME> --env <ENV>
 ```
 
 ### Testing and Debugging
 ```bash
 # Run with test data
-moose workflow run <NAME> --input <FILE>
+moose-cli workflow run <NAME> --input <FILE>
 
 # Resume from specific step
-moose workflow resume <NAME> --from <STEP>
+moose-cli workflow resume <NAME> --from <STEP>
 
 # View workflow status
-moose workflow status <NAME>
+moose-cli workflow status <NAME>
 
 # List all workflows
-moose workflow ls
+moose-cli workflow ls
 ```
 
 ## Local Development Features

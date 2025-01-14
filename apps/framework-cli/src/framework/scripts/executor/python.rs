@@ -10,7 +10,7 @@ struct PythonError {
     file: Option<String>,
 }
 
-pub async fn execute_python_script(
+pub async fn execute_workflow(
     script_path: &PathBuf,
     input_data: Option<serde_json::Value>,
 ) -> Result<Option<serde_json::Value>> {

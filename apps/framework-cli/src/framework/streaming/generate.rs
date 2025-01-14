@@ -253,7 +253,7 @@ mod tests {
         assert_eq!(
             result,
             r#"
-// Add your models & start the development server to import these types
+// Import your Moose data models to use in the streaming function
 import { Foo, Bar } from "datamodels/models";
 
 
@@ -301,7 +301,7 @@ export default function run(source: Foo): Bar | null {
         assert_eq!(
             result,
             r#"
-// Add your models & start the development server to import these types
+// Import your Moose data models to use in the streaming function
 import { UserActivity, ParsedActivity } from "datamodels/models";
 
 
@@ -366,7 +366,7 @@ export default function run(source: UserActivity): ParsedActivity | null {
         assert_eq!(
             result,
             r#"
-// Add your models & start the development server to import these types
+// Import your Moose data models to use in the streaming function
 import { UserActivity as UserActivityOld } from "versions/0.0/models";
 import { UserActivity } from "datamodels/models";
 
@@ -426,7 +426,7 @@ export default function run(source: UserActivityOld): UserActivity | null {
         assert_eq!(
             result,
             r#"
-# Add your models & start the development server to import these types
+# Import your Moose data models to use in the streaming function
 from v0_0.models import UserActivity as UserActivityOld
 from app.datamodels.models import UserActivity
 from moose_lib import StreamingFunction

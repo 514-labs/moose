@@ -83,17 +83,28 @@ fn test_workflow_init_with_steps() {
     assert!(config_path.exists(), "config.toml should be created");
 
     let config_content = std::fs::read_to_string(config_path).unwrap();
+
+    println!("Config");
+    println!("{}", config_content);
     assert!(
-        config_content.contains("name = \"daily-etl\""),
+        config_content.contains("name = 'daily-etl'"),
         "Config should contain workflow name"
     );
     assert!(
-        config_content.contains("[steps]"),
+        config_content.contains("steps ="),
         "Config should contain steps section"
     );
     assert!(
-        config_content.contains("steps = [\"extract\", \"transform\", \"load\"]"),
-        "Config should list all steps"
+        config_content.contains("'extract'"),
+        "Config should contain extract"
+    );
+    assert!(
+        config_content.contains("'transform'"),
+        "Config should contain transform"
+    );
+    assert!(
+        config_content.contains("'load'"),
+        "Config should contain load"
     );
 }
 

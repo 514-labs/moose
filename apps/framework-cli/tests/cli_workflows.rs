@@ -174,12 +174,53 @@ fn test_workflow_init_with_multiple_step_flags() {
         .arg("load")
         .assert();
 
-    assert
-        .failure()
-        .stderr(predicate::str::contains("Not implemented"));
+    // Check for success and workflow directory creation
+    assert.success();
 
-    // Once implemented, should check for:
-    // 1. workflows/daily-etl directory created
-    // 2. 1.extract.py, 2.transform.py, 3.load.py created
-    // 3. config.toml created with proper structure
+    let workflow_dir = temp_dir.path().join("scripts").join("daily-etl");
+    assert!(
+        workflow_dir.exists(),
+        "Workflow directory should be created"
+    );
+    assert!(workflow_dir.is_dir(), "Workflow path should be a directory");
+
+    // Check step files are created
+    let step_files = ["1.extract.py", "2.transform.py", "3.load.py"];
+    for step_file in step_files.iter() {
+        let file_path = workflow_dir.join(step_file);
+        assert!(file_path.exists(), "Step file {} should exist", step_file);
+
+        let content = std::fs::read_to_string(&file_path).unwrap();
+        assert!(
+            content.contains("@task"),
+            "Step file {} should contain @task decorator",
+            step_file
+        );
+    }
+
+    // Check config.toml exists and has correct content
+    let config_path = workflow_dir.join("config.toml");
+    assert!(config_path.exists(), "config.toml should be created");
+
+    let config_content = std::fs::read_to_string(config_path).unwrap();
+    assert!(
+        config_content.contains("name = 'daily-etl'"),
+        "Config should contain workflow name"
+    );
+    assert!(
+        config_content.contains("steps ="),
+        "Config should contain steps section"
+    );
+    assert!(
+        config_content.contains("'extract'"),
+        "Config should contain extract step"
+    );
+    assert!(
+        config_content.contains("'transform'"),
+        "Config should contain transform step"
+    );
+    assert!(
+        config_content.contains("'load'"),
+        "Config should contain load step"
+    );
 }

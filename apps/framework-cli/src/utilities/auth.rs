@@ -30,7 +30,7 @@ fn decode_token<T: for<'de> Deserialize<'de>>(
 }
 
 pub fn validate_jwt(token: Option<&str>, public_key: &str, issuer: &str, audience: &str) -> bool {
-    token.map_or(false, |t| {
+    token.is_some_and(|t| {
         let validation = create_validation(issuer, audience);
         decode_token::<Claims>(t, public_key, &validation).is_ok()
     })

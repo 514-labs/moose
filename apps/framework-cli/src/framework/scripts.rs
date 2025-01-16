@@ -168,6 +168,69 @@ impl Workflow {
 
         Ok(())
     }
+
+    /// Start the workflow execution locally
+    pub async fn start(&self) -> Result<Option<serde_json::Value>, anyhow::Error> {
+        executor::execute_workflow(self.language.clone(), &self.path, None).await
+    }
+
+    /// Check if this workflow is currently running
+    pub async fn is_running(&self) -> Result<bool, anyhow::Error> {
+        orchestrator::is_workflow_running(&self.name)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to check workflow status: {}", e))
+    }
+}
+
+// A collection of workflows
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Workflows {
+    workflows: Vec<Workflow>,
+}
+
+impl Workflows {
+    pub fn from_dir(dir: PathBuf) -> Result<Self, anyhow::Error> {
+        let mut workflows = Vec::new();
+
+        // Read all entries in the directory
+        for entry in std::fs::read_dir(&dir)? {
+            let entry = entry?;
+            let path = entry.path();
+
+            // If it's a directory, try to create a workflow from it
+            if path.is_dir() {
+                if let Ok(workflow) = Workflow::from_dir(path) {
+                    workflows.push(workflow);
+                }
+            }
+        }
+
+        Ok(Self { workflows })
+    }
+
+    /// Get all workflows
+    pub fn get_defined_workflows(&self) -> &Vec<Workflow> {
+        &self.workflows
+    }
+
+    /// Get a specific workflow by name
+    pub fn get_defined_workflow(&self, name: &str) -> Option<&Workflow> {
+        self.workflows.iter().find(|w| w.name == name)
+    }
+
+    /// Get all running workflows
+    pub async fn get_running_workflows(&self) -> Result<Vec<Workflow>, anyhow::Error> {
+        let mut running_workflows = Vec::new();
+
+        for workflow in &self.workflows {
+            match orchestrator::is_workflow_running(&workflow.name).await {
+                Ok(true) => running_workflows.push(workflow.clone()),
+                Ok(false) | Err(_) => continue, // Skip workflows that aren't found or have errors
+            }
+        }
+
+        Ok(running_workflows)
+    }
 }
 
 // A script is a file that contains a temporal activity.
@@ -183,15 +246,6 @@ pub struct Script {
 }
 
 impl Script {
-    fn new(path: PathBuf, order: Option<u32>, name: String, language: SupportedLanguages) -> Self {
-        Self {
-            path,
-            order,
-            name,
-            language,
-        }
-    }
-
     /// Creates a script from a file path, supporting two naming conventions:
     /// - Ordered scripts: "<order>.<script-name>.<language-ext>" (e.g. "1.extract.py")
     /// - Unordered scripts: "<script-name>.<language-ext>" (e.g. "extract.py")
@@ -309,7 +363,14 @@ mod tests {
 
     #[test]
     fn test_invalid_script_name() {
-        assert!(Script::from_file(PathBuf::from("a.invalid.py")).is_err());
+        // Test a file with no extension
+        assert!(Script::from_file(PathBuf::from("invalid")).is_err());
+
+        // Test a file with unsupported extension
+        assert!(Script::from_file(PathBuf::from("script.xyz")).is_err());
+
+        // Test a completely empty filename
+        assert!(Script::from_file(PathBuf::from("")).is_err());
     }
 
     #[test]
@@ -410,6 +471,110 @@ mod tests {
         assert!(child_script_names.contains(&&"package".to_string()));
         assert!(child_script_names.contains(&&"send".to_string()));
         assert_eq!(child_workflow.scripts.len(), 3);
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_workflows_from_dir() -> Result<(), anyhow::Error> {
+        let temp_dir = tempdir()?;
+        let scripts_dir = temp_dir.path().join("scripts");
+        std::fs::create_dir_all(&scripts_dir)?;
+
+        // Create two workflow directories
+        let workflow1_dir = scripts_dir.join("workflow1");
+        let workflow2_dir = scripts_dir.join("workflow2");
+        std::fs::create_dir_all(&workflow1_dir)?;
+        std::fs::create_dir_all(&workflow2_dir)?;
+
+        // Add a script to each workflow
+        std::fs::write(
+            workflow1_dir.join("1.test.py"),
+            r#"
+from moose_lib import task
+
+@task
+def test():
+    return {"step": "test1"}
+            "#,
+        )?;
+
+        std::fs::write(
+            workflow2_dir.join("1.test.py"),
+            r#"
+from moose_lib import task
+
+@task
+def test():
+    return {"step": "test2"}
+            "#,
+        )?;
+
+        let workflows = Workflows::from_dir(scripts_dir)?;
+        assert_eq!(workflows.get_defined_workflows().len(), 2);
+
+        // Test getting specific workflow
+        let workflow1 = workflows.get_defined_workflow("workflow1");
+        assert!(workflow1.is_some());
+        assert_eq!(workflow1.unwrap().name, "workflow1");
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_running_workflows() -> Result<(), anyhow::Error> {
+        let temp_dir = tempdir()?;
+        let scripts_dir = temp_dir.path().join("scripts");
+        std::fs::create_dir_all(&scripts_dir)?;
+
+        // Create a workflow directory
+        let workflow_dir = scripts_dir.join("test-workflow-get-running");
+        std::fs::create_dir_all(&workflow_dir)?;
+
+        // Add a script that runs long enough
+        std::fs::write(
+            workflow_dir.join("1.test.py"),
+            r#"
+from moose_lib import task
+import time
+
+@task
+def test():
+    time.sleep(5)  # Longer sleep to ensure registration
+    return {"step": "test"}
+        "#,
+        )?;
+
+        let workflows = Workflows::from_dir(scripts_dir)?;
+
+        // Initially should have no running workflows
+        let initial_running = workflows.get_running_workflows().await?;
+        assert!(
+            initial_running.is_empty(),
+            "Expected no running workflows initially"
+        );
+
+        // Start the workflow
+        if let Some(workflow) = workflows
+            .get_defined_workflow("test-workflow-get-running")
+            .cloned()
+        {
+            // Start workflow in background
+            tokio::spawn(async move {
+                workflow.start().await.unwrap();
+            });
+
+            // Wait and retry a few times for the workflow to be registered
+            for _ in 0..5 {
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                let running = workflows.get_running_workflows().await?;
+                if running.len() == 1 {
+                    assert_eq!(running[0].name, "test-workflow-get-running");
+                    return Ok(());
+                }
+            }
+            panic!("Workflow did not start after waiting");
+        }
 
         Ok(())
     }

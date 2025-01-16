@@ -1,7 +1,7 @@
 use anyhow::Result;
 use std::fs;
 use std::path::PathBuf;
-use std::process::Command;
+use tokio::process::Command;
 
 #[derive(Debug, serde::Deserialize)]
 struct PythonError {
@@ -55,6 +55,7 @@ pub async fn execute_workflow(
 
     let output = command
         .output()
+        .await
         .map_err(|e| anyhow::anyhow!("Failed to execute script: {}", e))?;
 
     if !output.status.success() {

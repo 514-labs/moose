@@ -35,22 +35,6 @@ pub struct Workflow {
 }
 
 impl Workflow {
-    fn new(
-        name: String,
-        path: PathBuf,
-        scripts: Vec<Script>,
-        language: SupportedLanguages,
-        children: Vec<Workflow>,
-    ) -> Self {
-        Self {
-            name,
-            path,
-            scripts,
-            language,
-            children,
-        }
-    }
-
     /// Creates a workflow from a directory
     pub fn from_dir(dir: PathBuf) -> Result<Self, anyhow::Error> {
         let name = dir

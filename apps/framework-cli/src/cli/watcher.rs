@@ -181,7 +181,7 @@ async fn watch(
                                 let mut infra_ptr = infrastructure_map.write().await;
                                 *infra_ptr = plan_result.target_infra_map;
 
-                                openapi(&project).await?
+                                let _openapi_file = openapi(&project).await?;
                             }
                             Err(e) => {
                                 let error: anyhow::Error = e.into();

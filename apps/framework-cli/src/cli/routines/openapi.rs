@@ -11,6 +11,7 @@ use serde_yaml;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::Write;
+use std::path::PathBuf;
 use std::sync::Arc;
 
 #[derive(Serialize, Deserialize)]
@@ -95,7 +96,7 @@ pub enum OpenAPIError {
     Save(String),
 }
 
-pub async fn openapi(project: &Arc<Project>) -> Result<(), OpenAPIError> {
+pub async fn openapi(project: &Arc<Project>) -> Result<PathBuf, OpenAPIError> {
     let mut client = get_pool(&project.clickhouse_config)
         .get_handle()
         .await
@@ -111,7 +112,7 @@ pub async fn openapi(project: &Arc<Project>) -> Result<(), OpenAPIError> {
     save_openapi_to_file(&openapi_spec, &openapi_file.to_string_lossy())
         .map_err(|e| OpenAPIError::Save(e.to_string()))?;
 
-    Ok(())
+    Ok(openapi_file)
 }
 
 fn generate_openapi_spec(project: &Arc<Project>, infra_map: &InfrastructureMap) -> OpenAPI {
@@ -148,8 +149,12 @@ fn generate_openapi_spec(project: &Arc<Project>, infra_map: &InfrastructureMap) 
                         ColumnType::Array(_) => (
                             "array".to_string(),
                             Some(serde_json::Value::Array(vec![serde_json::Value::String(
-                                "example".to_string(),
+                                "add array items here".to_string(),
                             )])),
+                        ),
+                        ColumnType::Nested(_) => (
+                            "object".to_string(),
+                            Some(serde_json::Value::Object(serde_json::Map::new())),
                         ),
                         _ => (
                             "string".to_string(),

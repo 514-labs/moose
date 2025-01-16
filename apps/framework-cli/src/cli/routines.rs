@@ -474,7 +474,7 @@ pub async fn start_development_mode(
     )
     .await?;
 
-    openapi(&project).await?;
+    let openapi_file = openapi(&project).await?;
 
     plan.target_infra_map
         .store_in_redis(&*redis_client.lock().await)
@@ -496,7 +496,14 @@ pub async fn start_development_mode(
 
     info!("Starting web server...");
     web_server
-        .start(route_table, consumption_apis, infra_map, project, metrics)
+        .start(
+            route_table,
+            consumption_apis,
+            infra_map,
+            project,
+            metrics,
+            Some(openapi_file),
+        )
         .await;
 
     {
@@ -582,7 +589,14 @@ pub async fn start_production_mode(
     let infra_map: &'static InfrastructureMap = Box::leak(Box::new(plan.target_infra_map));
 
     web_server
-        .start(route_table, consumption_apis, infra_map, project, metrics)
+        .start(
+            route_table,
+            consumption_apis,
+            infra_map,
+            project,
+            metrics,
+            None,
+        )
         .await;
 
     {

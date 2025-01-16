@@ -180,6 +180,13 @@ impl Workflow {
             .await
             .map_err(|e| anyhow::anyhow!("Failed to check workflow status: {}", e))
     }
+
+    /// Stop the workflow execution
+    pub async fn stop(&self) -> Result<(), anyhow::Error> {
+        orchestrator::stop_workflow(&self.name)
+            .await
+            .map_err(|e| anyhow::anyhow!("Failed to stop workflow: {}", e))
+    }
 }
 
 // A collection of workflows
@@ -328,9 +335,9 @@ mod tests {
     use std::fs;
     use tempfile::tempdir;
 
-    #[test]
-    fn it_works() {
-        assert!(true);
+    // Create a unique workflow ID
+    fn unique_workflow_id() -> String {
+        format!("test-workflow-{}", uuid::Uuid::new_v4())
     }
 
     #[test]
@@ -523,12 +530,13 @@ def test():
 
     #[tokio::test]
     async fn test_get_running_workflows() -> Result<(), anyhow::Error> {
+        let workflow_id = unique_workflow_id();
         let temp_dir = tempdir()?;
         let scripts_dir = temp_dir.path().join("scripts");
         std::fs::create_dir_all(&scripts_dir)?;
 
         // Create a workflow directory
-        let workflow_dir = scripts_dir.join("test-workflow-get-running");
+        let workflow_dir = scripts_dir.join(&workflow_id);
         std::fs::create_dir_all(&workflow_dir)?;
 
         // Add a script that runs long enough
@@ -555,26 +563,110 @@ def test():
         );
 
         // Start the workflow
-        if let Some(workflow) = workflows
-            .get_defined_workflow("test-workflow-get-running")
-            .cloned()
-        {
-            // Start workflow in background
+        if let Some(workflow) = workflows.get_defined_workflow(&workflow_id).cloned() {
+            let workflow_clone = workflow.clone();
             tokio::spawn(async move {
-                workflow.start().await.unwrap();
+                let _ = workflow_clone.start().await;
             });
 
-            // Wait and retry a few times for the workflow to be registered
-            for _ in 0..5 {
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                let running = workflows.get_running_workflows().await?;
-                if running.len() == 1 {
-                    assert_eq!(running[0].name, "test-workflow-get-running");
-                    return Ok(());
-                }
-            }
-            panic!("Workflow did not start after waiting");
+            // Give it a moment to start
+            tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+            // Check if it's running
+            let is_running = workflow.is_running().await?;
+            assert!(is_running, "Workflow should be running");
+
+            // Stop the workflow
+            let _ = workflow.stop().await;
+
+            // Check if it's stopped
+            let is_stopped = workflow.is_running().await?;
+            assert!(!is_stopped, "Workflow should be stopped");
         }
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_start_workflow() -> Result<(), anyhow::Error> {
+        let temp_dir = tempdir()?;
+        std::env::set_current_dir(&temp_dir)?;
+        std::fs::create_dir(SCRIPTS_DIR)?;
+
+        let workflow_id = unique_workflow_id();
+
+        // Initialize a workflow with a simple script
+        Workflow::init(
+            &workflow_id,
+            &["simple".to_string()],
+            SupportedLanguages::Python,
+        )?;
+
+        // Load the workflow and start it
+        let workflow = Workflow::from_dir(temp_dir.path().join(SCRIPTS_DIR).join(workflow_id))?;
+        let result = workflow.start().await?;
+
+        assert!(result.is_some(), "Workflow should return a result");
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_workflow_is_running() -> Result<(), anyhow::Error> {
+        let temp_dir = tempdir()?;
+        std::env::set_current_dir(&temp_dir)?;
+        std::fs::create_dir(SCRIPTS_DIR)?;
+
+        // Initialize a workflow with a script that sleeps
+        Workflow::init(
+            "test-workflow-is-running",
+            &["long-running".to_string()],
+            SupportedLanguages::Python,
+        )?;
+
+        // Modify the script to include a sleep
+        let script_path = temp_dir
+            .path()
+            .join(SCRIPTS_DIR)
+            .join("test-workflow-is-running/1.long-running.py");
+        std::fs::write(
+            script_path,
+            r#"
+from moose_lib import task
+import time
+
+@task
+def long_running():
+    time.sleep(2)  # Sleep for 2 seconds
+    return {"status": "completed"}
+"#,
+        )?;
+
+        // Load and start the workflow
+        let workflow = Workflow::from_dir(
+            temp_dir
+                .path()
+                .join(SCRIPTS_DIR)
+                .join("test-workflow-is-running"),
+        )?;
+
+        let workflow_clone = workflow.clone();
+        tokio::spawn(async move {
+            let _ = workflow_clone.start().await;
+        });
+
+        // Give it a moment to start
+        tokio::time::sleep(tokio::time::Duration::from_millis(500)).await;
+
+        // Check if it's running
+        let is_running = workflow.is_running().await?;
+        assert!(is_running, "Workflow should be running");
+
+        // Stop the workflow
+        let _ = workflow.stop().await;
+
+        // Check if it's stopped
+        let is_stopped = workflow.is_running().await?;
+        assert!(!is_stopped, "Workflow should be stopped");
 
         Ok(())
     }

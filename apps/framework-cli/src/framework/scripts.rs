@@ -9,10 +9,12 @@ pub mod executor;
 pub mod generator;
 pub mod orchestrator;
 
-use crate::framework::python::templates::PYTHON_BASE_SCRIPT_TEMPLATE;
 use crate::framework::scripts::config::WorkflowConfig;
 use crate::framework::typescript::templates::TS_BASE_SCRIPT_TEMPLATE;
 use crate::utilities::constants::SCRIPTS_DIR;
+use crate::{
+    framework::python::templates::PYTHON_BASE_SCRIPT_TEMPLATE, utilities::constants::APP_DIR,
+};
 use anyhow::Result;
 use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
@@ -114,7 +116,10 @@ impl Workflow {
         scripts: &[String],
         language: SupportedLanguages,
     ) -> Result<(), anyhow::Error> {
-        let workflow_dir = std::env::current_dir()?.join(SCRIPTS_DIR).join(name);
+        let workflow_dir = std::env::current_dir()?
+            .join(APP_DIR)
+            .join(SCRIPTS_DIR)
+            .join(name);
         std::fs::create_dir_all(&workflow_dir)?;
 
         // Create config.toml with workflow name and steps

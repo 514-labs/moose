@@ -45,6 +45,8 @@ pub async fn init_workflow(
 
 #[cfg(test)]
 mod tests {
+    use crate::utilities::constants::APP_DIR;
+
     use super::*;
     use std::fs;
     use tempfile::TempDir;
@@ -66,10 +68,14 @@ mod tests {
 
         assert!(result.message.details.contains("daily-etl"));
 
-        let workflow_dir = temp_dir.path().join(SCRIPTS_DIR).join("daily-etl");
+        let workflow_dir = temp_dir
+            .path()
+            .join(APP_DIR)
+            .join(SCRIPTS_DIR)
+            .join("daily-etl");
         assert!(
             workflow_dir.exists(),
-            "Workflow directory should be created"
+            "Workflow directory should be created in app/scripts"
         );
 
         let config_path = workflow_dir.join("config.toml");
@@ -91,7 +97,11 @@ mod tests {
 
         assert!(result.message.details.contains("daily-etl"));
 
-        let workflow_dir = temp_dir.path().join(SCRIPTS_DIR).join("daily-etl");
+        let workflow_dir = temp_dir
+            .path()
+            .join(APP_DIR)
+            .join(SCRIPTS_DIR)
+            .join("daily-etl");
 
         for (i, step) in ["extract", "transform", "load"].iter().enumerate() {
             let file_path = workflow_dir.join(format!("{}.{}.py", i + 1, step));
@@ -107,8 +117,16 @@ mod tests {
         let temp_dir = setup();
 
         // Create a file where the workflow directory should be to cause a failure
-        fs::create_dir_all(temp_dir.path().join(SCRIPTS_DIR)).unwrap();
-        fs::write(temp_dir.path().join(SCRIPTS_DIR).join("daily-etl"), "").unwrap();
+        fs::create_dir_all(temp_dir.path().join(APP_DIR).join(SCRIPTS_DIR)).unwrap();
+        fs::write(
+            temp_dir
+                .path()
+                .join(APP_DIR)
+                .join(SCRIPTS_DIR)
+                .join("daily-etl"),
+            "",
+        )
+        .unwrap();
 
         let result = init_workflow("daily-etl", SupportedLanguages::Python, None, None).await;
 

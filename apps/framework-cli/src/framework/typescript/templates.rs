@@ -137,21 +137,43 @@ export default {
 "#;
 
 pub static TS_BASE_CONSUMPTION_TEMPLATE: &str = r#"
-import { ConsumptionUtil } from "@514labs/moose-lib";
+import { ConsumptionUtil, createConsumptionApi } from "@514labs/moose-lib";
 
-// This file is where you can define your API templates for consuming your data
-// All query_params are passed in as strings, and are used within the sql tag to parameterize you queries
-export interface QueryParams {
-    
-}
-  
-export default async function handle(
-  {}: QueryParams,
-  { client, sql }: ConsumptionUtil
+const config = {
+    params: {
+        fields: [
+            {
+                name: "limit",
+                type: "number",
+                required: false
+            },
+            {
+                name: "minDailyActiveUsers",
+                type: "number",
+                required: true
+            }
+        ]
+    }
+};
+
+async function handleConsumption(
+    params: {
+        limit?: number;
+        minDailyActiveUsers: number;
+    },
+    { client, sql }: ConsumptionUtil
 ) {
+    const { limit = 10, minDailyActiveUsers } = params;
 
-    return client.query(sql`SELECT 1`);
+    return client.query(sql`
+        SELECT date, dailyActiveUsers
+        FROM DailyActiveUsers
+        WHERE dailyActiveUsers >= ${minDailyActiveUsers}
+        LIMIT ${limit}
+    `);
 }
+
+export default createConsumptionApi(config, handleConsumption);
 "#;
 
 pub static TS_BASE_MODEL_TEMPLATE: &str = r#"

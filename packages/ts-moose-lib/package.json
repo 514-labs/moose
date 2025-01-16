@@ -19,8 +19,8 @@
     "build": "tsup"
   },
   "dependencies": {
-    "@clickhouse/client-web": "1.5.0",
     "@clickhouse/client": "1.8.1",
+    "@clickhouse/client-web": "1.5.0",
     "@sentry/node": "^8.38.0",
     "@sentry/profiling-node": "^8.38.0",
     "fastq": "1.17.1",
@@ -28,7 +28,8 @@
     "kafkajs": "2.2.4",
     "ts-node": "10.9.2",
     "ts-patch": "~3.2.0",
-    "typescript": "~5.4.0"
+    "typescript": "~5.4.0",
+    "typia": "^7.6.0"
   },
   "devDependencies": {
     "@repo/ts-config": "workspace:*",

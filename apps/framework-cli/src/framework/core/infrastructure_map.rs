@@ -245,7 +245,7 @@ impl InfrastructureMap {
                     ref mut target_topic,
                     ..
                 } => *target_topic = redpanda_config.prefix_with_namespace(target_topic),
-                APIType::EGRESS => {}
+                APIType::EGRESS { .. } => {}
             }
             self.api_endpoints.insert(api_endpoint.id(), api_endpoint);
         }

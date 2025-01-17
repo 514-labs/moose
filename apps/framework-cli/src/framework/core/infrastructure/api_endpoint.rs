@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use super::{topic::Topic, DataLineage, InfrastructureSignature};
 use crate::framework::versions::Version;
 use crate::framework::{
-    consumption::model::EndpointFile,
+    consumption::model::{ConsumptionQueryParam, EndpointFile},
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
     data_model::{config::EndpointIngestionFormat, model::DataModel},
 };
@@ -26,7 +26,9 @@ pub enum APIType {
         data_model: Option<DataModel>,
         format: EndpointIngestionFormat,
     },
-    EGRESS,
+    EGRESS {
+        query_params: Vec<ConsumptionQueryParam>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -78,7 +80,7 @@ impl ApiEndpoint {
             "{}_{}_{}",
             match self.api_type {
                 APIType::INGRESS { .. } => "INGRESS",
-                APIType::EGRESS => "EGRESS",
+                APIType::EGRESS { .. } => "EGRESS",
             },
             self.name,
             self.version.as_suffix()
@@ -99,7 +101,7 @@ impl ApiEndpoint {
     fn format(&self) -> Option<EndpointIngestionFormat> {
         match self.api_type {
             APIType::INGRESS { format, .. } => Some(format),
-            APIType::EGRESS => None,
+            APIType::EGRESS { .. } => None,
         }
     }
 
@@ -129,7 +131,9 @@ impl From<EndpointFile> for ApiEndpoint {
                 .unwrap()
                 .to_string_lossy()
                 .to_string(),
-            api_type: APIType::EGRESS,
+            api_type: APIType::EGRESS {
+                query_params: value.query_params,
+            },
             path: value.path.clone(),
             method: Method::GET,
             version: Version::from_string("0.0.0".to_string()),
@@ -157,7 +161,7 @@ impl DataLineage for ApiEndpoint {
                     id: target_topic.clone(),
                 }]
             }
-            APIType::EGRESS => vec![],
+            APIType::EGRESS { .. } => vec![],
         }
     }
 }
@@ -177,7 +181,7 @@ impl APIType {
                 }),
                 special_fields: Default::default(),
             }),
-            APIType::EGRESS => ProtoApiType::Egress(Default::default()),
+            APIType::EGRESS { .. } => ProtoApiType::Egress(Default::default()),
         }
     }
 }

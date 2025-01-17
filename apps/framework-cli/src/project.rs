@@ -37,11 +37,13 @@ use crate::framework::typescript::templates::{
 };
 use crate::framework::versions::Version;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
+use crate::infrastructure::orchestration::temporal::TemporalConfig;
 use crate::infrastructure::processes::cron_registry::CronJob;
 use crate::infrastructure::redis::redis_client::RedisConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
 use crate::project::typescript_project::TypescriptProject;
+use crate::utilities::constants::CLI_DEV_TEMPORAL_DYNAMIC_CONFIG_DIR;
 use config::{Config, ConfigError, Environment, File};
 use itertools::Itertools;
 use log::debug;
@@ -102,6 +104,9 @@ pub struct Project {
     pub redis_config: RedisConfig,
     #[serde(default)]
     pub git_config: GitConfig,
+
+    #[serde(default)]
+    pub temporal_config: TemporalConfig,
 
     // This part of the configuration for the project is dynamic and not saved
     // to disk. It is loaded from the language specific configuration file or the currently
@@ -183,6 +188,7 @@ impl Project {
             clickhouse_config: ClickHouseConfig::default(),
             redis_config: RedisConfig::default(),
             http_server_config: LocalWebserverConfig::default(),
+            temporal_config: TemporalConfig::default(),
             language_project_config,
             supported_old_versions: HashMap::new(),
             git_config: GitConfig::default(),
@@ -519,6 +525,23 @@ impl Project {
     pub fn create_internal_redpanda_volume(&self) -> anyhow::Result<()> {
         let redpanda_dir = self.internal_dir()?;
         std::fs::create_dir_all(redpanda_dir.join(CLI_DEV_REDPANDA_VOLUME_DIR))?;
+        Ok(())
+    }
+
+    pub fn create_internal_temporal_volume(&self) -> anyhow::Result<()> {
+        let temporal_dir = self.internal_dir()?;
+
+        // Get string content of development-sql.yaml
+        let dynamic_config_content =
+            include_str!("../deploy/temporal/config/dynamicconfig/development-sql.yaml");
+
+        std::fs::create_dir_all(temporal_dir.join(CLI_DEV_TEMPORAL_DYNAMIC_CONFIG_DIR))?;
+        std::fs::write(
+            temporal_dir
+                .join(CLI_DEV_TEMPORAL_DYNAMIC_CONFIG_DIR)
+                .join("development-sql.yaml"),
+            dynamic_config_content,
+        )?;
         Ok(())
     }
 

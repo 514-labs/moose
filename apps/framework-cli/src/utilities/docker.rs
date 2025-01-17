@@ -155,8 +155,19 @@ lazy_static! {
 pub fn start_containers(project: &Project) -> anyhow::Result<()> {
     project.create_internal_redpanda_volume()?;
     project.create_internal_clickhouse_volume()?;
+    project.create_internal_temporal_volume()?;
 
-    let child = compose_command(project)
+    let temporal_env_vars = project.temporal_config.to_env_vars();
+    println!("Debug: Temporal env vars: {:?}", temporal_env_vars);
+
+    let mut child = compose_command(project);
+
+    // Add all temporal environment variables
+    for (key, value) in temporal_env_vars {
+        child.env(key, value);
+    }
+
+    child
         .arg("up")
         .arg("-d")
         .env("DB_NAME", project.clickhouse_config.db_name.clone())
@@ -168,7 +179,9 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
         .env(
             "CLICKHOUSE_HOST_PORT",
             project.clickhouse_config.host_port.to_string(),
-        )
+        );
+
+    let child = child
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;

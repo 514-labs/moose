@@ -29,6 +29,7 @@ use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
 use routines::plan;
 use routines::ps::show_processes;
+use routines::scripts::run_workflow;
 use settings::{read_settings, Settings};
 use std::cmp::Ordering;
 use std::path::Path;
@@ -1016,10 +1017,7 @@ async fn top_command_handler(
                 steps,
                 step,
             }) => init_workflow(name, *language, steps.clone(), step.clone()).await,
-            Some(WorkflowCommands::Run { .. }) => Err(RoutineFailure::error(Message {
-                action: "Workflow Run".to_string(),
-                details: "Not implemented yet".to_string(),
-            })),
+            Some(WorkflowCommands::Run { name }) => run_workflow(name).await,
             Some(WorkflowCommands::Resume { .. }) => Err(RoutineFailure::error(Message {
                 action: "Workflow Resume".to_string(),
                 details: "Not implemented yet".to_string(),

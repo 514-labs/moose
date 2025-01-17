@@ -267,10 +267,6 @@ pub enum WorkflowCommands {
     Run {
         /// Name of the workflow to run
         name: String,
-
-        /// Input file for the workflow
-        #[arg(short, long)]
-        input: PathBuf,
     },
     /// Resume a workflow from a specific step
     Resume {

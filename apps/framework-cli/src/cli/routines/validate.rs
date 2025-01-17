@@ -1,6 +1,8 @@
 use super::{RoutineFailure, RoutineSuccess};
 use crate::project::Project;
-use crate::utilities::constants::{CLICKHOUSE_CONTAINER_NAME, REDPANDA_CONTAINER_NAME};
+use crate::utilities::constants::{
+    CLICKHOUSE_CONTAINER_NAME, REDPANDA_CONTAINER_NAME, TEMPORAL_CONTAINER_NAME,
+};
 use crate::utilities::docker::ContainerRow;
 use crate::{cli::display::Message, utilities::docker};
 use std::thread::sleep;
@@ -55,6 +57,10 @@ pub fn validate_clickhouse_run(project: &Project) -> Result<RoutineSuccess, Rout
 
 pub fn validate_redpanda_run(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
     validate_container_run(project, REDPANDA_CONTAINER_NAME, None)
+}
+
+pub fn validate_temporal_run(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
+    validate_container_run(project, TEMPORAL_CONTAINER_NAME, Some("healthy"))
 }
 
 pub fn validate_redpanda_cluster(project_name: String) -> Result<RoutineSuccess, RoutineFailure> {

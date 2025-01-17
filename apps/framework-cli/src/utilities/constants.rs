@@ -22,6 +22,7 @@ pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS: &str = "clickhouse/logs";
 pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA: &str = "clickhouse/data";
 pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS: &str = "clickhouse/configs/scripts";
 pub const CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS: &str = "clickhouse/configs/users";
+pub const CLI_DEV_TEMPORAL_DYNAMIC_CONFIG_DIR: &str = "temporal/dynamicconfig";
 
 pub const SCHEMAS_DIR: &str = "datamodels";
 pub const FUNCTIONS_DIR: &str = "functions";
@@ -34,6 +35,7 @@ pub const SAMPLE_STREAMING_FUNCTION_DEST: &str = "ParsedActivity";
 
 pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb-1";
 pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";
+pub const TEMPORAL_CONTAINER_NAME: &str = "temporal";
 
 pub const REDPANDA_HOSTS: [&str; 2] = ["redpanda", "localhost"];
 

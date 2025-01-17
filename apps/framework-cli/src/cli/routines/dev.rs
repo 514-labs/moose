@@ -1,5 +1,8 @@
 use super::{
-    validate::{validate_clickhouse_run, validate_redpanda_cluster, validate_redpanda_run},
+    validate::{
+        validate_clickhouse_run, validate_redpanda_cluster, validate_redpanda_run,
+        validate_temporal_run,
+    },
     RoutineFailure, RoutineSuccess,
 };
 use crate::cli::display::with_spinner;
@@ -26,6 +29,7 @@ pub fn run_local_infrastructure(project: &Project) -> Result<RoutineSuccess, Rou
     validate_clickhouse_run(project)?.show();
     validate_redpanda_run(project)?.show();
     validate_redpanda_cluster(project.name())?.show();
+    validate_temporal_run(project)?.show();
 
     Ok(RoutineSuccess::success(Message::new(
         "Successfully".to_string(),

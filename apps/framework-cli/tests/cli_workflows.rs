@@ -51,7 +51,11 @@ fn test_workflow_init_with_steps() {
     // Check for success and workflow directory creation
     assert.success();
 
-    let workflow_dir = temp_dir.path().join("scripts").join("daily-etl");
+    let workflow_dir = temp_dir
+        .path()
+        .join("app")
+        .join("scripts")
+        .join("daily-etl");
     assert!(
         workflow_dir.exists(),
         "Workflow directory should be created"
@@ -84,8 +88,6 @@ fn test_workflow_init_with_steps() {
 
     let config_content = std::fs::read_to_string(config_path).unwrap();
 
-    println!("Config");
-    println!("{}", config_content);
     assert!(
         config_content.contains("name = 'daily-etl'"),
         "Config should contain workflow name"
@@ -108,28 +110,39 @@ fn test_workflow_init_with_steps() {
     );
 }
 
-#[test]
-fn test_workflow_run() {
-    let temp_dir = TempDir::new().unwrap();
-    let mut cmd = Command::cargo_bin("moose-cli").unwrap();
+#[tokio::test]
+async fn test_workflow_run() -> Result<(), Box<dyn std::error::Error>> {
+    let temp_dir = TempDir::new()?;
+    let app_scripts_dir = temp_dir.path().join("app").join("scripts");
+    std::fs::create_dir_all(&app_scripts_dir)?;
+    std::env::set_current_dir(&temp_dir)?;
 
-    let assert = cmd
-        .current_dir(temp_dir.path())
+    // First initialize a workflow with steps
+    let mut init_cmd = Command::cargo_bin("moose-cli")?;
+    init_cmd
+        .current_dir(&temp_dir)
+        .arg("workflow")
+        .arg("init")
+        .arg("test-etl")
+        .arg("--steps=extract,transform,load")
+        .assert()
+        .success();
+
+    // Verify workflow directory exists
+    let workflow_dir = app_scripts_dir.join("test-etl");
+    assert!(workflow_dir.exists(), "Workflow directory should exist");
+
+    // Run the workflow
+    let mut run_cmd = Command::cargo_bin("moose-cli")?;
+    run_cmd
+        .current_dir(&temp_dir)
         .arg("workflow")
         .arg("run")
-        .arg("daily-etl")
-        .arg("--input")
-        .arg("test-data.csv")
-        .assert();
+        .arg("test-etl")
+        .assert()
+        .success();
 
-    assert
-        .failure()
-        .stderr(predicate::str::contains("Not implemented"));
-
-    // Once implemented, should check for:
-    // 1. Workflow execution started
-    // 2. Input file properly passed
-    // 3. Execution status reported
+    Ok(())
 }
 
 #[test]

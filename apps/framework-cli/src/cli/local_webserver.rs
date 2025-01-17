@@ -908,7 +908,7 @@ impl Webserver {
                                     },
                                 );
                             }
-                            APIType::EGRESS => {
+                            APIType::EGRESS { .. } => {
                                 consumption_apis
                                     .write()
                                     .await
@@ -922,7 +922,7 @@ impl Webserver {
                             APIType::INGRESS { .. } => {
                                 route_table.remove(&api_endpoint.path);
                             }
-                            APIType::EGRESS => {
+                            APIType::EGRESS { .. } => {
                                 consumption_apis
                                     .write()
                                     .await
@@ -949,7 +949,7 @@ impl Webserver {
                                     },
                                 );
                             }
-                            APIType::EGRESS => {
+                            APIType::EGRESS { .. } => {
                                 // Nothing to do, we don't need to update the route table
                             }
                         }

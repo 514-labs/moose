@@ -36,15 +36,34 @@ struct Server {
 }
 
 #[derive(Serialize, Deserialize)]
+struct Parameter {
+    name: String,
+    #[serde(rename = "in")]
+    in_: String,
+    required: bool,
+    schema: ParameterSchema,
+    example: Option<serde_json::Value>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct ParameterSchema {
+    #[serde(rename = "type")]
+    schema_type: String,
+}
+
+#[derive(Serialize, Deserialize)]
 struct PathItem {
-    #[serde(rename = "post")]
+    #[serde(skip_serializing_if = "Option::is_none")]
     post: Option<Operation>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    get: Option<Operation>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct Operation {
     summary: String,
-    #[serde(rename = "requestBody")]
+    parameters: Vec<Parameter>,
+    #[serde(rename = "requestBody", skip_serializing_if = "Option::is_none")]
     request_body: Option<RequestBody>,
     responses: HashMap<String, Response>,
 }
@@ -120,111 +139,178 @@ fn generate_openapi_spec(project: &Arc<Project>, infra_map: &InfrastructureMap) 
     let mut schemas = HashMap::new();
 
     for api_endpoint in infra_map.api_endpoints.values() {
-        if let APIType::INGRESS {
-            data_model: Some(data_model),
-            ..
-        } = &api_endpoint.api_type
-        {
-            let (properties, required) = data_model.columns.iter().fold(
-                (HashMap::new(), Vec::new()),
-                |(mut props, mut req), column| {
-                    let (property_type, example) = match column.data_type {
-                        ColumnType::Boolean => {
-                            ("boolean".to_string(), Some(serde_json::Value::Bool(true)))
-                        }
-                        ColumnType::Int | ColumnType::BigInt => (
-                            "integer".to_string(),
-                            Some(serde_json::Value::Number(1.into())),
-                        ),
-                        ColumnType::Float | ColumnType::Decimal => (
-                            "number".to_string(),
-                            Some(serde_json::Value::Number(
-                                serde_json::Number::from_f64(1.0).unwrap(),
-                            )),
-                        ),
-                        ColumnType::DateTime => (
-                            "string".to_string(),
-                            Some(serde_json::Value::String(Local::now().to_rfc3339())),
-                        ),
-                        ColumnType::Array(_) => (
-                            "array".to_string(),
-                            Some(serde_json::Value::Array(vec![serde_json::Value::String(
-                                "add array items here".to_string(),
-                            )])),
-                        ),
-                        ColumnType::Nested(_) => (
-                            "object".to_string(),
-                            Some(serde_json::Value::Object(serde_json::Map::new())),
-                        ),
-                        _ => (
-                            "string".to_string(),
-                            Some(serde_json::Value::String("stringValue".to_string())),
-                        ),
-                    };
-
-                    props.insert(
-                        column.name.clone(),
-                        Property {
-                            property_type,
-                            example,
-                        },
-                    );
-                    if column.required {
-                        req.push(column.name.clone());
-                    }
-                    (props, req)
-                },
-            );
-
-            let schema = Schema {
-                schema_type: "object".to_string(),
-                properties,
-                required,
-            };
-            schemas.insert(data_model.name.clone(), schema.clone());
-
-            let path_item = PathItem {
-                post: Some(Operation {
-                    summary: format!("Ingress endpoint for {}", api_endpoint.name),
-                    request_body: Some(RequestBody {
-                        content: {
-                            let mut content = HashMap::new();
-                            content.insert("application/json".to_string(), MediaType { schema });
-                            content
-                        },
-                    }),
-                    responses: {
-                        let mut responses = HashMap::new();
-                        responses.insert(
-                            "200".to_string(),
-                            Response {
-                                description: "Successful operation".to_string(),
+        match &api_endpoint.api_type {
+            APIType::INGRESS {
+                data_model: Some(data_model),
+                ..
+            } => {
+                let (properties, required) = data_model.columns.iter().fold(
+                    (HashMap::new(), Vec::new()),
+                    |(mut props, mut req), column| {
+                        let (property_type, example) = map_column_type(&column.data_type);
+                        props.insert(
+                            column.name.clone(),
+                            Property {
+                                property_type,
+                                example,
                             },
                         );
-                        responses
+                        if column.required {
+                            req.push(column.name.clone());
+                        }
+                        (props, req)
                     },
-                }),
-            };
+                );
 
-            paths.insert(
-                format!("/{}", api_endpoint.path.to_string_lossy()),
-                path_item,
-            );
+                let schema = Schema {
+                    schema_type: "object".to_string(),
+                    properties,
+                    required,
+                };
+                schemas.insert(data_model.name.clone(), schema.clone());
+
+                let path_item = PathItem {
+                    post: Some(Operation {
+                        summary: format!("Ingress endpoint for {}", api_endpoint.name),
+                        parameters: vec![],
+                        request_body: Some(RequestBody {
+                            content: {
+                                let mut content = HashMap::new();
+                                content
+                                    .insert("application/json".to_string(), MediaType { schema });
+                                content
+                            },
+                        }),
+                        responses: {
+                            let mut responses = HashMap::new();
+                            responses.insert(
+                                "200".to_string(),
+                                Response {
+                                    description: "Successful operation".to_string(),
+                                },
+                            );
+                            responses
+                        },
+                    }),
+                    get: None,
+                };
+
+                paths.insert(
+                    format!("/{}", api_endpoint.path.to_string_lossy()),
+                    path_item,
+                );
+            }
+            APIType::EGRESS { query_params } => {
+                let path_item = PathItem {
+                    post: None,
+                    get: Some(Operation {
+                        summary: format!("Egress endpoint for {}", api_endpoint.name),
+                        parameters: query_params
+                            .iter()
+                            .map(|param| {
+                                let (schema_type, example) = map_query_param_type(&param.data_type);
+                                Parameter {
+                                    name: param.name.clone(),
+                                    in_: "query".to_string(),
+                                    required: param.required,
+                                    schema: ParameterSchema { schema_type },
+                                    example,
+                                }
+                            })
+                            .collect(),
+                        request_body: None,
+                        responses: {
+                            let mut responses = HashMap::new();
+                            responses.insert(
+                                "200".to_string(),
+                                Response {
+                                    description: "Successful operation".to_string(),
+                                },
+                            );
+                            responses
+                        },
+                    }),
+                };
+
+                paths.insert(
+                    format!("/consumption/{}", api_endpoint.path.to_string_lossy()),
+                    path_item,
+                );
+            }
+            _ => {}
         }
     }
 
     OpenAPI {
         openapi: "3.0.0".to_string(),
         info: Info {
-            title: "Generated API".to_string(),
-            version: "1.0.0".to_string(),
+            title: format!("{} API", project.name()),
+            version: project.cur_version().to_string(),
         },
         servers: vec![Server {
             url: project.http_server_config.url(),
-            description: Some("Ingress endpoint".to_string()),
+            description: Some("Server URL".to_string()),
         }],
         paths,
         components: Components { schemas },
+    }
+}
+
+fn map_column_type(column_type: &ColumnType) -> (String, Option<serde_json::Value>) {
+    match column_type {
+        ColumnType::Boolean => ("boolean".to_string(), Some(serde_json::Value::Bool(true))),
+        ColumnType::Int | ColumnType::BigInt => (
+            "integer".to_string(),
+            Some(serde_json::Value::Number(1.into())),
+        ),
+        ColumnType::Float | ColumnType::Decimal => (
+            "number".to_string(),
+            Some(serde_json::Value::Number(
+                serde_json::Number::from_f64(1.0).unwrap(),
+            )),
+        ),
+        ColumnType::DateTime => (
+            "string".to_string(),
+            Some(serde_json::Value::String(Local::now().to_rfc3339())),
+        ),
+        ColumnType::Array(_) => (
+            "array".to_string(),
+            Some(serde_json::Value::Array(vec![serde_json::Value::String(
+                "add array items here".to_string(),
+            )])),
+        ),
+        ColumnType::Nested(_) => (
+            "object".to_string(),
+            Some(serde_json::Value::Object(serde_json::Map::new())),
+        ),
+        _ => (
+            "string".to_string(),
+            Some(serde_json::Value::String("stringValue".to_string())),
+        ),
+    }
+}
+
+fn map_query_param_type(data_type: &ColumnType) -> (String, Option<serde_json::Value>) {
+    match data_type {
+        ColumnType::Boolean => ("boolean".to_string(), Some(serde_json::Value::Bool(true))),
+        ColumnType::Int | ColumnType::BigInt => (
+            "integer".to_string(),
+            Some(serde_json::Value::Number(1.into())),
+        ),
+        ColumnType::Float | ColumnType::Decimal => (
+            "number".to_string(),
+            Some(serde_json::Value::Number(
+                serde_json::Number::from_f64(1.0).unwrap(),
+            )),
+        ),
+        ColumnType::DateTime => (
+            "string".to_string(),
+            Some(serde_json::Value::String(Local::now().to_rfc3339())),
+        ),
+        _ => (
+            "string".to_string(),
+            Some(serde_json::Value::String("stringValue".to_string())),
+        ),
     }
 }
 

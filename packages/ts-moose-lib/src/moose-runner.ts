@@ -5,9 +5,27 @@
 // It regiters ts-node to be able to interpret user code.
 
 import { register } from "ts-node";
+
+// Only register ts-patch during development
+if (process.env.NODE_ENV === "development") {
+  require("ts-patch/register");
+}
+
 register({
   esm: true,
   experimentalTsImportSpecifiers: true,
+  transpileOnly: true,
+  compiler: "ts-patch/compiler",
+  compilerOptions: {
+    plugins: [
+      {
+        transform: "typia/lib/transform",
+        after: true,
+        transformProgram: true,
+      },
+    ],
+    experimentalDecorators: true,
+  },
 });
 
 import "./instrumentation";

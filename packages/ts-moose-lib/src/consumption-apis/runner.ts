@@ -8,15 +8,11 @@ import { Cluster } from "../cluster-utils";
 import { QueryParamMetadata } from "./types";
 import { QueryParamParser } from "./parser";
 import { ConsumptionUtil } from "../index";
-import fs from "fs";
-import path from "path";
-import os from "os";
-
-const logToFile = (message: string) => {
-  const logPath = path.join(os.homedir(), "moose-runner-debug.log");
-  const timestamp = new Date().toISOString();
-  fs.appendFileSync(logPath, `${timestamp}: ${message}\n`);
-};
+import typia, { tags } from "typia";
+import { logToConsole } from "./hlogger";
+import { ApiResponse } from "./types";
+import { register } from "ts-node";
+import { resolve } from "path";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
@@ -51,6 +47,7 @@ const createPath = (path: string) => `${CONSUMPTION_DIR_PATH}${path}.ts`;
 
 const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
   console.log(`${req.method} ${req.url} ${res.statusCode}`);
+  logToConsole(`httpLogger: ${req.method} ${req.url} ${res.statusCode}`);
 };
 
 const modulesCache = new Map<string, any>();
@@ -59,47 +56,87 @@ export interface ConsumptionApiConfig {
   params: QueryParamMetadata;
 }
 
-export function createConsumptionApi<T extends object>(
-  configOrHandle:
-    | ConsumptionApiConfig
-    | ((params: any, utils: ConsumptionUtil) => Promise<any>),
-  handleFn?: (params: T, utils: ConsumptionUtil) => Promise<any>,
+export function createConsumptionApi<T extends object, R = any>(
+  handler: (params: T, utils: ConsumptionUtil) => Promise<R>,
 ) {
-  // Legacy format: function was passed directly
-  if (typeof configOrHandle === "function") {
-    return async function (
-      rawParams: Record<string, string[]>,
-      utils: ConsumptionUtil,
-    ) {
-      // Convert array values to single values for backward compatibility
-      const legacyParams = Object.entries(rawParams).reduce(
-        (acc, [key, values]) => {
-          acc[key] = values[0]; // Take first value only
-          return acc;
-        },
-        {} as Record<string, string>,
-      );
+  let validator;
+  let validate;
 
-      return configOrHandle(legacyParams, utils);
-    };
+  try {
+    logToConsole(`>>> ${handler}`);
+
+    validator = typia.createIs<T>();
+    validate = typia.createValidate<T>();
+    logToConsole(
+      `createConsumptionApi: validator: ${JSON.stringify(validator)}`,
+    );
+  } catch (error) {
+    logToConsole(
+      `createConsumptionApi: Fatal building validator: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    throw error;
   }
-
-  // New format: config + handle function
-  const config = configOrHandle;
-  const handle = handleFn!;
 
   return async function (
     rawParams: Record<string, string[]>,
     utils: ConsumptionUtil,
   ) {
-    const params = QueryParamParser.mapParamsToType(rawParams, config.params);
-    return handle(params as T, utils);
+    const processedParams = Object.fromEntries(
+      Object.entries(rawParams).map(([key, values]) => [
+        key,
+        values.length === 1
+          ? isNaN(Number(values[0]))
+            ? values[0]
+            : Number(values[0])
+          : values,
+      ]),
+    );
+
+    try {
+      logToConsole(
+        `createConsumptionApi: Processed params: ${JSON.stringify(processedParams)}`,
+      );
+      if (!validator(processedParams)) {
+        logToConsole(
+          `createConsumptionApi: Validation error: Invalid parameters`,
+        );
+        throw new Error("Invalid parameters");
+      }
+
+      const result = await handler(processedParams as T, utils);
+
+      return {
+        status: 200,
+        body: {
+          success: true,
+          data: result,
+        },
+      };
+    } catch (error) {
+      logToConsole(
+        `createConsumptionApi: Validation error: ${error instanceof Error ? error.message : String(error)}`,
+      );
+
+      return {
+        status: 400,
+        body: {
+          success: false,
+          error: {
+            code: "VALIDATION_ERROR",
+            message:
+              error instanceof Error ? error.message : "Invalid parameters",
+            details: validate(processedParams),
+          },
+        },
+      };
+    }
   };
 }
 
 const apiHandler =
   (publicKey: jose.KeyLike | undefined, clickhouseClient: ClickHouseClient) =>
   async (req: http.IncomingMessage, res: http.ServerResponse) => {
+    logToConsole(`apiHandler: Starting API handler`);
     try {
       const url = new URL(req.url || "", "https://localhost");
       const fileName = url.pathname;
@@ -137,7 +174,7 @@ const apiHandler =
       }
 
       const pathName = createPath(fileName);
-
+      logToConsole(`apiHandler: Path name: ${pathName}`);
       const paramsObject = Array.from(url.searchParams.entries()).reduce(
         (obj: { [key: string]: string[] }, [key, value]) => {
           if (obj[key]) {
@@ -150,71 +187,208 @@ const apiHandler =
         {},
       );
 
-      let userFuncModule = modulesCache.get(pathName);
-      if (userFuncModule === undefined) {
-        userFuncModule = require(pathName);
-        modulesCache.set(pathName, userFuncModule);
+      logToConsole(`apiHandler: paramsObject: ${JSON.stringify(paramsObject)}`);
+
+      let userFuncModule;
+      try {
+        logToConsole(
+          `apiHandler: About to register ts-node with typia transformer`,
+        );
+        register({
+          transpileOnly: true,
+          compiler: "ts-patch/compiler",
+          compilerOptions: {
+            plugins: [
+              {
+                transform: "typia/lib/transform",
+                after: true,
+                transformProgram: true,
+              },
+            ],
+            experimentalDecorators: true,
+          },
+        });
+        logToConsole(
+          `apiHandler: Successfully registered ts-node with typia transformer`,
+        );
+
+        const absolutePath = resolve(pathName);
+        logToConsole(`apiHandler: Loading module from: ${absolutePath}`);
+
+        // Clear require cache for this file to ensure fresh load
+        delete require.cache[absolutePath];
+
+        logToConsole(`apiHandler: pre require: ${absolutePath}`);
+        userFuncModule = require(absolutePath);
+        logToConsole(`apiHandler: post require: ${absolutePath}`);
+
+        if (!userFuncModule) {
+          throw new Error(`Module at ${absolutePath} returned undefined`);
+        }
+
+        logToConsole(`apiHandler: Module loaded successfully`);
+
+        if (userFuncModule === undefined) {
+          logToConsole(`apiHandler: Adding to modulesCache: ${pathName}`);
+          modulesCache.set(pathName, userFuncModule);
+        }
+      } catch (error) {
+        logToConsole(
+          `apiHandler: Error registering ts-node: ${error instanceof Error ? error.stack : String(error)}`,
+        );
+        throw error;
       }
 
       try {
+        logToConsole(`apiHandler: About to load module from path: ${fileName}`);
+        const fullPath = process.cwd() + fileName;
+        logToConsole(`apiHandler: Full module path: ${fullPath}`);
+
+        // Log the module cache state
+        logToConsole(
+          `apiHandler: Module cache state before require: ${Object.keys(require.cache).join(", ")}`,
+        );
+
+        userFuncModule = require(fullPath);
+
+        logToConsole(
+          `apiHandler: Successfully loaded module. Exports: ${Object.keys(userFuncModule).join(", ")}`,
+        );
+      } catch (error) {
+        logToConsole(
+          `apiHandler: Error loading module: ${
+            error instanceof Error ? error.stack : String(error)
+          }`,
+        );
+        throw error;
+      }
+
+      try {
+        logToConsole(`apiHandler: Calling userFuncModule`);
         const result = await userFuncModule.default(paramsObject, {
           client: new MooseClient(clickhouseClient, fileName),
           sql: sql,
           jwt: jwtPayload,
         });
 
-        let body: string;
-        let status: number | undefined;
+        // If result is already an API response shape, return it as is
+        if ("status" in result && "body" in result) {
+          res.statusCode = result.status;
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(result.body));
+          return;
+        }
 
-        // TODO investigate why these prototypes are different
+        let response: ApiResponse;
+
         if (Object.getPrototypeOf(result).constructor.name === "ResultSet") {
-          body = JSON.stringify(await result.json());
+          response = {
+            success: true,
+            data: await result.json(),
+          };
+        } else if ("body" in result && "status" in result) {
+          // Handle an existing custom response format
+          response = {
+            success: result.status < 400,
+            ...(result.status < 400
+              ? { data: result.body }
+              : { error: result.body }),
+          };
+          res.statusCode = result.status;
         } else {
-          if ("body" in result && "status" in result) {
-            body = JSON.stringify(result.body);
-            status = result.status;
-          } else {
-            body = JSON.stringify(result);
-          }
+          response = {
+            success: true,
+            data: result,
+          };
         }
 
-        if (status) {
-          res.writeHead(status, { "Content-Type": "application/json" });
-          httpLogger(req, res);
-        } else {
-          res.writeHead(200, { "Content-Type": "application/json" });
-          httpLogger(req, res);
-        }
-
-        res.end(body);
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(response));
+        logToConsole(`apiHandler: Response: ${JSON.stringify(response)}`);
       } catch (error: unknown) {
-        logToFile(`API Error: ${String(error)}`);
+        logToConsole(`API Error: ${String(error)}`);
+
+        let response: ApiResponse;
+
         if (
           error instanceof Error &&
           (error as any).type === "VALIDATION_ERROR"
         ) {
-          res.writeHead(400, { "Content-Type": "application/json" });
-          res.end(JSON.stringify({ error: error.message }));
-          return;
+          response = {
+            success: false,
+            error: {
+              code: "VALIDATION_ERROR",
+              message: error.message,
+            },
+          };
+          res.statusCode = 400;
+        } else {
+          response = {
+            success: false,
+            error: {
+              code: "INTERNAL_ERROR",
+              message:
+                error instanceof Error
+                  ? error.message
+                  : "An unexpected error occurred",
+              details:
+                process.env.NODE_ENV === "development" ? error : undefined,
+            },
+          };
+          res.statusCode = 500;
         }
-        throw error; // Re-throw other errors
+
+        res.setHeader("Content-Type", "application/json");
+        res.end(JSON.stringify(response));
+        logToConsole(`apiHandler: Response: ${JSON.stringify(response)}`);
+        return;
       }
     } catch (error: any) {
-      console.log(error);
-      if (error instanceof Error) {
-        res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: error.message }));
-        httpLogger(req, res);
-      } else {
-        res.writeHead(500, { "Content-Type": "application/json" });
-        res.end(JSON.stringify({ error: String(error) }));
-        httpLogger(req, res);
-      }
+      logToConsole(
+        `Fatal error: ${error instanceof Error ? error.stack : String(error)}`,
+      );
+      const response: ApiResponse = {
+        success: false,
+        error: {
+          code: "SYSTEM_ERROR",
+          message: "A system error occurred",
+          details:
+            process.env.NODE_ENV === "development" ? error.message : undefined,
+        },
+      };
+      res.statusCode = 500;
+      res.setHeader("Content-Type", "application/json");
+      res.end(JSON.stringify(response));
+      httpLogger(req, res);
     }
   };
 
 export const runConsumptionApis = async () => {
   console.log("Starting API service");
+  logToConsole("Starting API service");
+
+  // Add logging for project configuration
+  const fs = require("fs");
+  const path = require("path");
+
+  try {
+    const projectRoot = process.cwd();
+    logToConsole(`Project root: ${projectRoot}`);
+
+    const tsconfigPath = path.join(projectRoot, "tsconfig.json");
+    logToConsole(`Looking for tsconfig at: ${tsconfigPath}`);
+
+    if (fs.existsSync(tsconfigPath)) {
+      const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, "utf8"));
+      logToConsole(`Found tsconfig.json: ${JSON.stringify(tsconfig, null, 2)}`);
+    } else {
+      logToConsole("No tsconfig.json found in project root");
+    }
+  } catch (error) {
+    logToConsole(
+      `Error checking project configuration: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
 
   const consumptionCluster = new Cluster({
     workerStart: async () => {

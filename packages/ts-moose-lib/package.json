@@ -16,7 +16,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
-    "build": "tsup"
+    "build": "tsup",
+    "prepare": "ts-patch install -s"
   },
   "dependencies": {
     "@clickhouse/client": "1.8.1",
@@ -26,9 +27,8 @@
     "fastq": "1.17.1",
     "jose": "5.9.2",
     "kafkajs": "2.2.4",
-    "ts-node": "10.9.2",
-    "ts-patch": "~3.2.0",
-    "typescript": "~5.4.0",
+    "ts-node": "^10.9.1",
+    "ts-patch": "^3.3.0",
     "typia": "^7.6.0"
   },
   "devDependencies": {
@@ -37,6 +37,21 @@
     "@typescript-eslint/eslint-plugin": "^5.62.0",
     "@typescript-eslint/parser": "^5.62.0",
     "eslint": "^8.46.0",
-    "tsup": "^8.0.2"
+    "tsup": "^8.0.2",
+    "typescript": "~5.7.3",
+    "ts-patch": "^3.3.0",
+    "typia": "^7.6.0"
+  },
+  "peerDependencies": {
+    "ts-patch": "^3.3.0",
+    "typia": "^7.6.0"
+  },
+  "peerDependenciesMeta": {
+    "ts-patch": {
+      "optional": false
+    },
+    "typia": {
+      "optional": false
+    }
   }
 }

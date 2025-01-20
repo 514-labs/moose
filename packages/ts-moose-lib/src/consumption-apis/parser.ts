@@ -1,58 +1,31 @@
-import { QueryFieldDefinition } from "./types";
-
 import { QueryParamMetadata } from "./types";
-
-import fs from "fs";
-
-const logToFile = (message: string) => {
-  const logPath = "/Users/cjus/moose-parser-debug.log";
-  const timestamp = new Date().toISOString();
-  try {
-    if (!fs.existsSync(logPath)) {
-      fs.writeFileSync(logPath, ""); // Create file if it doesn't exist
-    }
-    fs.appendFileSync(logPath, `${timestamp}: ${message}\n`);
-  } catch (error) {
-    console.error("Failed to write to log file:", error);
-  }
-};
+import { logToConsole } from "./hlogger";
+import typia from "typia";
 
 export class QueryParamParser {
-  static parseValue(value: string, fieldDef: QueryFieldDefinition): any {
-    logToFile(
-      `Parsing value: ${value} for field: ${fieldDef.name} of type: ${fieldDef.type}`,
+  static parseValue(value: string, type: string): any {
+    logToConsole(
+      `QueryParamParser.parseValue: Parsing value: ${value} of type: ${type}`,
     );
-    switch (fieldDef.type) {
+    switch (type) {
       case "number": {
         if (!/^-?\d+(\.\d+)?$/.test(value)) {
-          const error = new Error(
-            `Invalid number format for ${fieldDef.name}: ${value}`,
-          );
+          const error = new Error(`Invalid number format: ${value}`);
           (error as any).type = "VALIDATION_ERROR";
-          logToFile(`Throwing validation error: ${error.message}`);
           throw error;
         }
         const num = Number(value);
         if (isNaN(num)) {
-          const error = new Error(
-            `Invalid number value for ${fieldDef.name}: ${value}`,
-          );
+          const error = new Error(`Invalid number value: ${value}`);
           (error as any).type = "VALIDATION_ERROR";
-          logToFile(`Throwing validation error: ${error.message}`);
           throw error;
         }
-        return num;
+        return Number(num);
       }
       case "boolean":
         return value.toLowerCase() === "true";
       case "date":
         return new Date(value);
-      case "array":
-        return value
-          .split(",")
-          .map((v) =>
-            fieldDef.elementType ? this.parseValue(v, fieldDef.elementType) : v,
-          );
       default:
         return value;
     }
@@ -62,68 +35,31 @@ export class QueryParamParser {
     params: Record<string, string[]>,
     metadata: QueryParamMetadata,
   ): Record<string, any> {
-    logToFile(`Starting parameter validation...`);
-    logToFile(`Raw params received: ${JSON.stringify(params)}`);
-
     const result: Record<string, any> = {};
 
-    // Add required field validation
-    for (const field of metadata.fields) {
-      if (field.required && !(field.name in params)) {
-        const error = new Error(`Missing required field: ${field.name}`);
-        (error as any).type = "VALIDATION_ERROR";
-        logToFile(`Throwing validation error: ${error.message}`);
-        throw error;
-      }
+    for (const [key, values] of Object.entries(params)) {
+      if (!values || values.length === 0) continue;
+
+      // Take the first value and pass it through directly
+      result[key] = values[0];
     }
 
-    // First pass: Convert basic types
-    for (const field of metadata.fields) {
-      logToFile(`Validating field: ${field.name} (${field.type})`);
-      if (field.name in params) {
-        const values = params[field.name];
-        logToFile(
-          `Processing field ${field.name} with values: ${JSON.stringify(values)}`,
-        );
-
-        if (!values || values.length === 0) {
-          continue;
-        }
-
-        if (field.type === "array") {
-          result[field.name] = values.map((v) =>
-            this.parseValue(
-              v,
-              field.elementType || { name: "", type: "string", required: true },
-            ),
-          );
-        } else {
-          if (values.length !== 1) {
-            const error = new Error(`Expected single value for ${field.name}`);
-            (error as any).type = "VALIDATION_ERROR";
-            throw error;
-          }
-          result[field.name] = this.parseValue(values[0], field);
-        }
-      } else {
-        logToFile(`Field ${field.name} not found in params`);
-      }
-    }
-
-    // Second pass: Validate with Typia if validator exists
     if (metadata.typiaValidator) {
-      const isValid = metadata.typiaValidator(result);
-      if (!isValid) {
-        const error = new Error(
+      try {
+        metadata.typiaValidator(result);
+      } catch (error) {
+        const validationError = new Error(
           `Validation error: Invalid type for parameters`,
         );
-        (error as any).type = "VALIDATION_ERROR";
-        logToFile(`Throwing typia validation error: ${error.message}`);
-        throw error;
+        (validationError as any).type = "VALIDATION_ERROR";
+        logToConsole(
+          `mapParamsToType: Validation error: Invalid type for parameters`,
+        );
+        throw validationError;
       }
     }
 
-    logToFile(`Final validated result: ${JSON.stringify(result)}`);
+    logToConsole(`mapParamsToType: Result: ${JSON.stringify(result)}`);
     return result;
   }
 }

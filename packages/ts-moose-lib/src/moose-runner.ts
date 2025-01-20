@@ -11,23 +11,30 @@ if (process.env.NODE_ENV === "development") {
   require("ts-patch/register");
 }
 
-register({
-  esm: true,
-  experimentalTsImportSpecifiers: true,
-  transpileOnly: true,
-  compiler: "ts-patch/compiler",
-  compilerOptions: {
-    plugins: [
-      {
-        transform: "typia/lib/transform",
-        after: true,
-        transformProgram: true,
-      },
-    ],
-    experimentalDecorators: true,
-  },
-});
-
+if (process.argv[2] == "consumption-apis") {
+  register({
+    esm: true,
+    experimentalTsImportSpecifiers: true,
+    transpileOnly: true,
+    compiler: "ts-patch/compiler",
+    compilerOptions: {
+      plugins: [
+        {
+          transform:
+            "./node_modules/@514labs/moose-lib/dist/consumption-apis/insertTypiaValidation.js",
+          after: true,
+          transformProgram: true,
+        },
+      ],
+      experimentalDecorators: true,
+    },
+  });
+} else {
+  register({
+    esm: true,
+    experimentalTsImportSpecifiers: true,
+  });
+}
 import "./instrumentation";
 
 import { runBlocks } from "./blocks/runner";

@@ -212,19 +212,19 @@ const apiHandler =
           `apiHandler: Successfully registered ts-node with typia transformer`,
         );
 
-        const absolutePath = resolve(pathName);
-        logToConsole(`apiHandler: Loading module from: ${absolutePath}`);
+        // const absolutePath = resolve(pathName);
+        // logToConsole(`apiHandler: Loading module from: ${absolutePath}`);
 
         // Clear require cache for this file to ensure fresh load
-        delete require.cache[absolutePath];
+        // delete require.cache[absolutePath];
 
-        logToConsole(`apiHandler: pre require: ${absolutePath}`);
-        userFuncModule = require(absolutePath);
-        logToConsole(`apiHandler: post require: ${absolutePath}`);
+        // logToConsole(`apiHandler: pre require: ${absolutePath}`);
+        userFuncModule = require(pathName);
+        // logToConsole(`apiHandler: post require: ${absolutePath}`);
 
-        if (!userFuncModule) {
-          throw new Error(`Module at ${absolutePath} returned undefined`);
-        }
+        // if (!userFuncModule) {
+        //   throw new Error(`Module at ${absolutePath} returned undefined`);
+        // }
 
         logToConsole(`apiHandler: Module loaded successfully`);
 
@@ -239,29 +239,29 @@ const apiHandler =
         throw error;
       }
 
-      try {
-        logToConsole(`apiHandler: About to load module from path: ${fileName}`);
-        const fullPath = process.cwd() + fileName;
-        logToConsole(`apiHandler: Full module path: ${fullPath}`);
-
-        // Log the module cache state
-        logToConsole(
-          `apiHandler: Module cache state before require: ${Object.keys(require.cache).join(", ")}`,
-        );
-
-        userFuncModule = require(fullPath);
-
-        logToConsole(
-          `apiHandler: Successfully loaded module. Exports: ${Object.keys(userFuncModule).join(", ")}`,
-        );
-      } catch (error) {
-        logToConsole(
-          `apiHandler: Error loading module: ${
-            error instanceof Error ? error.stack : String(error)
-          }`,
-        );
-        throw error;
-      }
+      // try {
+      //   logToConsole(`apiHandler: About to load module from path: ${fileName}`);
+      //   const fullPath = process.cwd() + fileName;
+      //   logToConsole(`apiHandler: Full module path: ${fullPath}`);
+      //
+      //   // Log the module cache state
+      //   logToConsole(
+      //     `apiHandler: Module cache state before require: ${Object.keys(require.cache).join(", ")}`,
+      //   );
+      //
+      //   userFuncModule = require(fullPath);
+      //
+      //   logToConsole(
+      //     `apiHandler: Successfully loaded module. Exports: ${Object.keys(userFuncModule).join(", ")}`,
+      //   );
+      // } catch (error) {
+      //   logToConsole(
+      //     `apiHandler: Error loading module: ${
+      //       error instanceof Error ? error.stack : String(error)
+      //     }`,
+      //   );
+      //   throw error;
+      // }
 
       try {
         logToConsole(`apiHandler: Calling userFuncModule`);

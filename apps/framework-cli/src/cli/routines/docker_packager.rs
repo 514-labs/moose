@@ -34,6 +34,11 @@ RUN apt-get update && apt-get upgrade -y
 # Install tail and locales package
 RUN apt-get install -y locales coreutils curl
 
+RUN echo "deb http://deb.debian.org/debian/ unstable main" >> /etc/apt/sources.list \
+    && apt-get update \
+    && apt-get install -y libc6/unstable \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 # Generate locale files
 RUN locale-gen en_US.UTF-8
 ENV LANG en_US.UTF-8
@@ -45,6 +50,8 @@ ENV DOCKER_IMAGE true
 # Install Moose
 ARG FRAMEWORK_VERSION="0.0.0"
 ARG DOWNLOAD_URL
+RUN echo "DOWNLOAD_URL: ${DOWNLOAD_URL}"
+RUN ldd --version
 RUN curl -Lo /usr/local/bin/moose ${DOWNLOAD_URL}
 RUN chmod +x /usr/local/bin/moose
 
@@ -272,7 +279,7 @@ pub fn build_dockerfile(
     // so we set it to a recent version for the purpose of local dev testing.
     let mut cli_version = constants::CLI_VERSION;
     if cli_version == "0.0.1" {
-        cli_version = "0.3.655";
+        cli_version = "0.3.756";
     }
 
     let build_all = is_amd64 == is_arm64;

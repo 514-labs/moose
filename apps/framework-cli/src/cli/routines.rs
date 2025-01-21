@@ -89,11 +89,11 @@ use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
 use tokio::time::{interval, Duration};
 
-use crate::framework::core::execute::execute_initial_infra_change;
-use crate::framework::core::plan::plan_changes;
-
+use crate::cli::routines::openapi::openapi;
 use crate::framework::controller::RouteMeta;
+use crate::framework::core::execute::execute_initial_infra_change;
 use crate::framework::core::infrastructure_map::InfrastructureMap;
+use crate::framework::core::plan::plan_changes;
 use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_infrastructure_map};
 use crate::infrastructure::processes::cron_registry::CronRegistry;
 use crate::infrastructure::processes::kafka_clickhouse_sync::clickhouse_writing_pause_button;
@@ -117,6 +117,7 @@ pub mod logs;
 pub mod ls;
 pub mod metrics_console;
 pub mod migrate;
+pub mod openapi;
 pub mod peek;
 pub mod ps;
 pub mod streaming;
@@ -473,6 +474,8 @@ pub async fn start_development_mode(
     )
     .await?;
 
+    let openapi_file = openapi(&project).await?;
+
     plan.target_infra_map
         .store_in_redis(&*redis_client.lock().await)
         .await?;
@@ -493,7 +496,14 @@ pub async fn start_development_mode(
 
     info!("Starting web server...");
     web_server
-        .start(route_table, consumption_apis, infra_map, project, metrics)
+        .start(
+            route_table,
+            consumption_apis,
+            infra_map,
+            project,
+            metrics,
+            Some(openapi_file),
+        )
         .await;
 
     {
@@ -579,7 +589,14 @@ pub async fn start_production_mode(
     let infra_map: &'static InfrastructureMap = Box::leak(Box::new(plan.target_infra_map));
 
     web_server
-        .start(route_table, consumption_apis, infra_map, project, metrics)
+        .start(
+            route_table,
+            consumption_apis,
+            infra_map,
+            project,
+            metrics,
+            None,
+        )
         .await;
 
     {

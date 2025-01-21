@@ -36,7 +36,7 @@ RUN apt-get install -y locales coreutils curl
 
 RUN echo "deb http://deb.debian.org/debian/ unstable main" >> /etc/apt/sources.list \
     && apt-get update \
-    && apt-get install -y libc6/unstable \
+    && apt-get install -y libc6=2.40-5 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Generate locale files

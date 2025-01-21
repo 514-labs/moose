@@ -9,12 +9,11 @@ pub mod executor;
 pub mod generator;
 pub mod orchestrator;
 
+use crate::framework::python::templates::PYTHON_BASE_SCRIPT_TEMPLATE;
 use crate::framework::scripts::config::WorkflowConfig;
 use crate::framework::typescript::templates::TS_BASE_SCRIPT_TEMPLATE;
+use crate::project::Project;
 use crate::utilities::constants::SCRIPTS_DIR;
-use crate::{
-    framework::python::templates::PYTHON_BASE_SCRIPT_TEMPLATE, utilities::constants::APP_DIR,
-};
 use anyhow::Result;
 use handlebars::Handlebars;
 use serde::{Deserialize, Serialize};
@@ -95,15 +94,10 @@ impl Workflow {
     }
 
     /// Initialize a new workflow with a list of scripts
-    pub fn init(
-        name: &str,
-        scripts: &[String],
-        language: SupportedLanguages,
-    ) -> Result<(), anyhow::Error> {
-        let workflow_dir = std::env::current_dir()?
-            .join(APP_DIR)
-            .join(SCRIPTS_DIR)
-            .join(name);
+    pub fn init(project: &Project, name: &str, scripts: &[String]) -> Result<(), anyhow::Error> {
+        let scripts_dir = project.scripts_dir();
+        let workflow_dir = scripts_dir.join(name);
+
         std::fs::create_dir_all(&workflow_dir)?;
 
         // Create config.toml with workflow name and steps
@@ -119,7 +113,7 @@ impl Workflow {
             Script::init(
                 script_name,
                 Some((index + 1) as u32),
-                language,
+                project.language,
                 &workflow_dir,
             )?;
         }
@@ -386,17 +380,22 @@ mod tests {
     }
 
     #[test]
-    fn test_workflow_init() {
-        let temp_dir = tempdir().unwrap();
-        std::env::set_current_dir(&temp_dir).unwrap();
-        std::fs::create_dir(SCRIPTS_DIR).unwrap();
+    fn test_workflow_init() -> Result<(), anyhow::Error> {
+        let temp_dir = tempdir()?;
+        std::env::set_current_dir(&temp_dir)?;
+        std::fs::create_dir(SCRIPTS_DIR)?;
+
+        let project = Project::new(
+            temp_dir.path(),
+            "project-name".to_string(),
+            SupportedLanguages::Python,
+        );
 
         Workflow::init(
+            &project,
             "daily-etl",
             &["extract".to_string(), "transform".to_string()],
-            SupportedLanguages::Python,
-        )
-        .unwrap();
+        )?;
 
         assert!(temp_dir.path().join(SCRIPTS_DIR).join("daily-etl").exists());
         assert!(temp_dir
@@ -404,11 +403,14 @@ mod tests {
             .join(SCRIPTS_DIR)
             .join("daily-etl/1.extract.py")
             .exists());
+
         assert!(temp_dir
             .path()
             .join(SCRIPTS_DIR)
             .join("daily-etl/2.transform.py")
             .exists());
+
+        Ok(())
     }
 
     #[test]
@@ -580,6 +582,7 @@ def test():
     async fn test_start_workflow() -> Result<(), anyhow::Error> {
         let temp_dir = tempdir()?;
         let scripts_dir = temp_dir.path().join(SCRIPTS_DIR);
+
         std::fs::create_dir_all(&scripts_dir)?; // Create all directories in path
         std::env::set_current_dir(&temp_dir)?;
 
@@ -587,9 +590,13 @@ def test():
 
         // Initialize a workflow with a simple script
         Workflow::init(
-            &workflow_id,
+            &Project::new(
+                temp_dir.path(),
+                "project-name".to_string(),
+                SupportedLanguages::Python,
+            ),
+            "daily-etl",
             &["simple".to_string()],
-            SupportedLanguages::Python,
         )?;
 
         // Load the workflow and start it
@@ -611,9 +618,13 @@ def test():
 
         // Initialize a workflow with a script that sleeps
         Workflow::init(
-            &workflow_id,
+            &Project::new(
+                temp_dir.path(),
+                "project-name".to_string(),
+                SupportedLanguages::Python,
+            ),
+            "daily-etl",
             &["long-running".to_string()],
-            SupportedLanguages::Python,
         )?;
 
         // Modify the script to include a sleep

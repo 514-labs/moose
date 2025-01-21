@@ -44,6 +44,7 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
 use crate::project::typescript_project::TypescriptProject;
 use crate::utilities::constants::CLI_DEV_TEMPORAL_DYNAMIC_CONFIG_DIR;
+use crate::utilities::constants::SCRIPTS_DIR;
 use config::{Config, ConfigError, Environment, File};
 use itertools::Itertools;
 use log::debug;
@@ -404,6 +405,17 @@ impl Project {
             std::fs::create_dir_all(&app_dir).expect("Failed to create app directory");
         }
         app_dir
+    }
+
+    pub fn scripts_dir(&self) -> PathBuf {
+        let mut scripts_dir = self.app_dir();
+        scripts_dir.push(SCRIPTS_DIR);
+
+        if !scripts_dir.exists() {
+            std::fs::create_dir_all(&scripts_dir).expect("Failed to create scripts directory");
+        }
+
+        scripts_dir
     }
 
     pub fn data_models_dir(&self) -> PathBuf {

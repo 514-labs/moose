@@ -251,10 +251,6 @@ pub enum WorkflowCommands {
         /// Name of your workflow
         name: String,
 
-        /// Language for the workflow scripts
-        #[arg(value_enum, short, long, default_value_t = SupportedLanguages::Python)]
-        language: SupportedLanguages,
-
         /// Comma-separated list of step names
         #[arg(long)]
         steps: Option<String>,

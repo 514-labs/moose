@@ -1,13 +1,13 @@
 use anyhow::Result;
 
-use crate::framework::{
-    languages::SupportedLanguages,
-    scripts::{config::WorkflowConfig, Workflow},
+use crate::{
+    framework::scripts::{config::WorkflowConfig, Workflow},
+    project::Project,
 };
 
 pub fn handle_workflow_init(
+    project: &Project,
     name: &str,
-    language: SupportedLanguages,
     steps: Option<String>,
     step: Option<Vec<String>>,
 ) -> Result<()> {
@@ -20,7 +20,7 @@ pub fn handle_workflow_init(
 
     // Initialize workflow with steps if provided
     if let Some(steps) = step_vec {
-        Workflow::init(name, &steps, language)?;
+        Workflow::init(project, name, &steps)?;
 
         // Create and save workflow config
         let config = WorkflowConfig::with_steps(name.to_string(), steps);
@@ -31,7 +31,7 @@ pub fn handle_workflow_init(
         config.save(config_path)?;
     } else {
         // Initialize empty workflow
-        Workflow::init(name, &[], language)?;
+        Workflow::init(project, name, &[])?;
 
         // Create and save basic workflow config
         let config = WorkflowConfig::new(name.to_string());
@@ -47,25 +47,28 @@ pub fn handle_workflow_init(
 
 #[cfg(test)]
 mod tests {
+    use crate::framework::languages::SupportedLanguages;
+
     use super::*;
     use std::fs;
     use tempfile::TempDir;
 
-    fn setup() -> TempDir {
+    fn setup() -> Project {
         let temp_dir = TempDir::new().unwrap();
-        std::env::set_current_dir(&temp_dir).unwrap();
-        temp_dir
+        let project_name = "daily-etl".to_string();
+        let project = Project::new(temp_dir.path(), project_name, SupportedLanguages::Python);
+        project
     }
 
     #[test]
     fn test_handle_workflow_init_basic() {
-        let temp_dir = setup();
+        let project = setup();
 
         // Test basic workflow initialization
-        handle_workflow_init("daily-etl", SupportedLanguages::Python, None, None).unwrap();
+        handle_workflow_init(&project, "daily-ETL", None, None).unwrap();
 
         // Check directory structure
-        let workflow_dir = temp_dir.path().join("workflows").join("daily-etl");
+        let workflow_dir = project.scripts_dir().join("workflows").join("daily-etl");
         assert!(
             workflow_dir.exists(),
             "Workflow directory should be created"
@@ -84,18 +87,18 @@ mod tests {
 
     #[test]
     fn test_handle_workflow_init_with_steps_string() {
-        let temp_dir = setup();
+        let project = setup();
 
         // Test workflow initialization with steps string
         handle_workflow_init(
+            &project,
             "daily-etl",
-            SupportedLanguages::Python,
             Some("extract,transform,load".to_string()),
             None,
         )
         .unwrap();
 
-        let workflow_dir = temp_dir.path().join("workflows").join("daily-etl");
+        let workflow_dir = project.scripts_dir().join("workflows").join("daily-etl");
 
         // Check step files
         let expected_files = ["1.extract.py", "2.transform.py", "3.load.py"];
@@ -124,12 +127,12 @@ mod tests {
 
     #[test]
     fn test_handle_workflow_init_with_step_vec() {
-        let temp_dir = setup();
+        let project = setup();
 
         // Test workflow initialization with step vector
         handle_workflow_init(
+            &project,
             "daily-etl",
-            SupportedLanguages::Python,
             None,
             Some(vec![
                 "extract".to_string(),
@@ -139,7 +142,7 @@ mod tests {
         )
         .unwrap();
 
-        let workflow_dir = temp_dir.path().join("workflows").join("daily-etl");
+        let workflow_dir = project.scripts_dir().join("workflows").join("daily-etl");
 
         // Check step files
         let expected_files = ["1.extract.py", "2.transform.py", "3.load.py"];

@@ -1,15 +1,14 @@
 use anyhow::Result;
-use std::path::PathBuf;
 
 use crate::cli::display::Message;
 use crate::cli::routines::{RoutineFailure, RoutineSuccess};
-use crate::framework::languages::SupportedLanguages;
 use crate::framework::scripts::Workflow;
-use crate::utilities::constants::{APP_DIR, SCRIPTS_DIR};
+use crate::project::Project;
+use crate::utilities::constants::SCRIPTS_DIR;
 
 pub async fn init_workflow(
+    project: &Project,
     name: &str,
-    language: SupportedLanguages,
     steps: Option<String>,
     step: Option<Vec<String>>,
 ) -> Result<RoutineSuccess, RoutineFailure> {
@@ -21,11 +20,11 @@ pub async fn init_workflow(
     };
 
     // Initialize the workflow using the existing Workflow::init method
-    Workflow::init(name, &step_vec, language).map_err(|e| {
+    Workflow::init(project, name, &step_vec).map_err(|e| {
         RoutineFailure::new(
             Message {
                 action: "Workflow Init Failed".to_string(),
-                details: format!("Could not initialize workflow '{}': {}", name, e),
+                details: format!("Could not initialize workflow '{}': {}", project.name(), e),
             },
             e,
         )
@@ -41,9 +40,10 @@ pub async fn init_workflow(
     }))
 }
 
-pub async fn run_workflow(name: &str) -> Result<RoutineSuccess, RoutineFailure> {
+pub async fn run_workflow(project: &Project, name: &str) -> Result<RoutineSuccess, RoutineFailure> {
     // Workflow directory is in app/scripts
-    let workflow_dir = PathBuf::from(APP_DIR).join(SCRIPTS_DIR).join(name);
+    let workflow_dir = project.scripts_dir().join(name);
+
     let workflow = Workflow::from_dir(workflow_dir.clone()).map_err(|e| {
         RoutineFailure::new(
             Message {
@@ -75,34 +75,35 @@ pub async fn run_workflow(name: &str) -> Result<RoutineSuccess, RoutineFailure> 
 
 #[cfg(test)]
 mod tests {
-    use crate::utilities::constants::APP_DIR;
+    use crate::framework::languages::SupportedLanguages;
+    use crate::project::Project;
 
     use super::*;
     use std::fs;
     use tempfile::TempDir;
 
-    fn setup() -> TempDir {
+    fn setup() -> Project {
         let temp_dir = TempDir::new().unwrap();
-        std::env::set_current_dir(&temp_dir).unwrap();
-        std::fs::create_dir_all(SCRIPTS_DIR).unwrap();
-        temp_dir
+        let project = Project::new(
+            temp_dir.path(),
+            "project-name".to_string(),
+            SupportedLanguages::Python,
+        );
+        project
     }
 
     #[tokio::test]
     async fn test_workflow_init_basic() {
-        let temp_dir = setup();
+        let project = setup();
 
-        let result = init_workflow("daily-etl", SupportedLanguages::Python, None, None)
+        let result = init_workflow(&project, "daily-etl", None, None)
             .await
             .unwrap();
 
         assert!(result.message.details.contains("daily-etl"));
 
-        let workflow_dir = temp_dir
-            .path()
-            .join(APP_DIR)
-            .join(SCRIPTS_DIR)
-            .join("daily-etl");
+        let workflow_dir = project.app_dir().join(SCRIPTS_DIR).join("daily-etl");
+
         assert!(
             workflow_dir.exists(),
             "Workflow directory should be created in app/scripts"
@@ -114,11 +115,11 @@ mod tests {
 
     #[tokio::test]
     async fn test_workflow_init_with_steps() {
-        let temp_dir = setup();
+        let project = setup();
 
         let result = init_workflow(
+            &project,
             "daily-etl",
-            SupportedLanguages::Python,
             Some("extract,transform,load".to_string()),
             None,
         )
@@ -127,11 +128,7 @@ mod tests {
 
         assert!(result.message.details.contains("daily-etl"));
 
-        let workflow_dir = temp_dir
-            .path()
-            .join(APP_DIR)
-            .join(SCRIPTS_DIR)
-            .join("daily-etl");
+        let workflow_dir = project.app_dir().join(SCRIPTS_DIR).join("daily-etl");
 
         for (i, step) in ["extract", "transform", "load"].iter().enumerate() {
             let file_path = workflow_dir.join(format!("{}.{}.py", i + 1, step));
@@ -144,35 +141,31 @@ mod tests {
 
     #[tokio::test]
     async fn test_workflow_init_failure() {
-        let temp_dir = setup();
+        let project = setup();
 
         // Create a file where the workflow directory should be to cause a failure
-        fs::create_dir_all(temp_dir.path().join(APP_DIR).join(SCRIPTS_DIR)).unwrap();
-        fs::write(
-            temp_dir
-                .path()
-                .join(APP_DIR)
-                .join(SCRIPTS_DIR)
-                .join("daily-etl"),
-            "",
-        )
-        .unwrap();
+        fs::create_dir_all(project.app_dir().join(SCRIPTS_DIR)).unwrap();
+        fs::write(project.app_dir().join(SCRIPTS_DIR).join("daily-etl"), "").unwrap();
 
-        let result = init_workflow("daily-etl", SupportedLanguages::Python, None, None).await;
+        let result = init_workflow(&project, "daily-etl", None, None).await;
 
         assert!(result.is_err());
         let err = result.unwrap_err();
         assert_eq!(err.message.action, "Workflow Init Failed");
     }
 
+    // Test is ignored because it requires temporal as a dependency
+    #[ignore]
     #[tokio::test]
     async fn test_run_workflow() {
-        let temp_dir = setup();
+        let project = setup();
+
+        const WORKFLOW_NAME: &str = "daily-etl";
 
         // First initialize a workflow
         let _ = init_workflow(
-            "test-workflow",
-            SupportedLanguages::Python,
+            &project,
+            WORKFLOW_NAME,
             Some("extract,transform,load".to_string()),
             None,
         )
@@ -180,15 +173,11 @@ mod tests {
         .unwrap();
 
         // Verify workflow exists
-        let workflow_dir = temp_dir
-            .path()
-            .join(APP_DIR)
-            .join(SCRIPTS_DIR)
-            .join("test-workflow");
+        let workflow_dir = project.app_dir().join(SCRIPTS_DIR).join(WORKFLOW_NAME);
         assert!(workflow_dir.exists(), "Workflow directory should exist");
 
         // Run the workflow
-        let result = run_workflow("test-workflow").await;
+        let result = run_workflow(&project, WORKFLOW_NAME).await;
         println!("Result: {:?}", result);
         assert!(result.is_ok(), "Workflow should run successfully");
 

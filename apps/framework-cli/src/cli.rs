@@ -1010,23 +1010,24 @@ async fn top_command_handler(
 
             peek(project_arc, data_model_name.clone(), *limit, file.clone()).await
         }
-        Commands::Workflow(workflow_args) => match &workflow_args.command {
-            Some(WorkflowCommands::Init {
-                name,
-                language,
-                steps,
-                step,
-            }) => init_workflow(name, *language, steps.clone(), step.clone()).await,
-            Some(WorkflowCommands::Run { name }) => run_workflow(name).await,
-            Some(WorkflowCommands::Resume { .. }) => Err(RoutineFailure::error(Message {
-                action: "Workflow Resume".to_string(),
-                details: "Not implemented yet".to_string(),
-            })),
-            None => Err(RoutineFailure::error(Message {
-                action: "Workflow".to_string(),
-                details: "No subcommand provided".to_string(),
-            })),
-        },
+        Commands::Workflow(workflow_args) => {
+            let project = load_project()?;
+
+            match &workflow_args.command {
+                Some(WorkflowCommands::Init { name, steps, step }) => {
+                    init_workflow(&project, name, steps.clone(), step.clone()).await
+                }
+                Some(WorkflowCommands::Run { name }) => run_workflow(&project, name).await,
+                Some(WorkflowCommands::Resume { .. }) => Err(RoutineFailure::error(Message {
+                    action: "Workflow Resume".to_string(),
+                    details: "Not implemented yet".to_string(),
+                })),
+                None => Err(RoutineFailure::error(Message {
+                    action: "Workflow".to_string(),
+                    details: "No subcommand provided".to_string(),
+                })),
+            }
+        }
     }
 }
 

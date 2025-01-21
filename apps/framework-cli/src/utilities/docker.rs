@@ -158,7 +158,6 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
     project.create_internal_temporal_volume()?;
 
     let temporal_env_vars = project.temporal_config.to_env_vars();
-    println!("Debug: Temporal env vars: {:?}", temporal_env_vars);
 
     let mut child = compose_command(project);
 

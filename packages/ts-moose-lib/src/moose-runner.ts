@@ -15,15 +15,16 @@ if (process.argv[2] == "consumption-apis") {
   register({
     esm: true,
     experimentalTsImportSpecifiers: true,
-    transpileOnly: true,
     compiler: "ts-patch/compiler",
     compilerOptions: {
       plugins: [
         {
           transform:
             "./node_modules/@514labs/moose-lib/dist/consumption-apis/insertTypiaValidation.js",
-          after: true,
           transformProgram: true,
+        },
+        {
+          transform: "typia/lib/transform",
         },
       ],
       experimentalDecorators: true,

@@ -13,6 +13,7 @@ import { logToConsole } from "./hlogger";
 import { ApiResponse } from "./types";
 import { register } from "ts-node";
 import { resolve } from "path";
+import { URLSearchParams } from "url";
 
 export const antiCachePath = (path: string) =>
   `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
@@ -58,79 +59,53 @@ export interface ConsumptionApiConfig {
 
 export function createConsumptionApi<T extends object, R = any>(
   handler: (params: T, utils: ConsumptionUtil) => Promise<R>,
-) {
-  let validator;
-  let validate;
-
-  try {
-    logToConsole(`>>> ${handler}`);
-
-    validator = typia.createIs<T>();
-    validate = typia.createValidate<T>();
-    logToConsole(
-      `createConsumptionApi: validator: ${JSON.stringify(validator)}`,
-    );
-  } catch (error) {
-    logToConsole(
-      `createConsumptionApi: Fatal building validator: ${error instanceof Error ? error.message : String(error)}`,
-    );
-    throw error;
-  }
-
-  return async function (
-    rawParams: Record<string, string[]>,
-    utils: ConsumptionUtil,
-  ) {
-    const processedParams = Object.fromEntries(
-      Object.entries(rawParams).map(([key, values]) => [
-        key,
-        values.length === 1
-          ? isNaN(Number(values[0]))
-            ? values[0]
-            : Number(values[0])
-          : values,
-      ]),
-    );
-
-    try {
-      logToConsole(
-        `createConsumptionApi: Processed params: ${JSON.stringify(processedParams)}`,
-      );
-      if (!validator(processedParams)) {
-        logToConsole(
-          `createConsumptionApi: Validation error: Invalid parameters`,
-        );
-        throw new Error("Invalid parameters");
-      }
-
-      const result = await handler(processedParams as T, utils);
-
-      return {
-        status: 200,
-        body: {
-          success: true,
-          data: result,
-        },
-      };
-    } catch (error) {
-      logToConsole(
-        `createConsumptionApi: Validation error: ${error instanceof Error ? error.message : String(error)}`,
-      );
-
-      return {
-        status: 400,
-        body: {
-          success: false,
-          error: {
-            code: "VALIDATION_ERROR",
-            message:
-              error instanceof Error ? error.message : "Invalid parameters",
-            details: validate(processedParams),
-          },
-        },
-      };
-    }
-  };
+): (rawParams: Record<string, string[]>, utils: ConsumptionUtil) => Promise<R> {
+  throw new Error("somehow compiler plugins are not there");
+  //
+  // return async function (
+  //   rawParams: Record<string, string[]>,
+  //   utils: ConsumptionUtil,
+  // ) {
+  //   // TODO: rawParams comes from URLSearchParams.entries()
+  //   const processedParams = new URLSearchParams(rawParams)
+  //
+  //   // const processedParams = Object.fromEntries(
+  //   //   Object.entries(rawParams).map(([key, values]) => [
+  //   //     key,
+  //   //     values.length === 1
+  //   //       ? isNaN(Number(values[0]))
+  //   //         ? values[0]
+  //   //         : Number(values[0])
+  //   //       : values,
+  //   //   ]),
+  //   // );
+  //
+  //   try {
+  //     logToConsole(
+  //       `createConsumptionApi: Processed params: ${JSON.stringify(processedParams)}`,
+  //     );
+  //
+  //     const result = await handler(
+  //       // magic in insertTypiaValidation
+  //       processedParams as T,
+  //       utils
+  //     );
+  //
+  //     return {
+  //       status: 200,
+  //       body: {
+  //         success: true,
+  //         data: result,
+  //       },
+  //     };
+  //   } catch (error) {
+  //     logToConsole(
+  //       `createConsumptionApi: Validation error: ${error instanceof Error ? error.message : String(error)}`,
+  //     );
+  //
+  //     throw error
+  //   }
+  // };
 }
 
 const apiHandler =
@@ -191,26 +166,26 @@ const apiHandler =
 
       let userFuncModule;
       try {
-        logToConsole(
-          `apiHandler: About to register ts-node with typia transformer`,
-        );
-        register({
-          transpileOnly: true,
-          compiler: "ts-patch/compiler",
-          compilerOptions: {
-            plugins: [
-              {
-                transform: "typia/lib/transform",
-                after: true,
-                transformProgram: true,
-              },
-            ],
-            experimentalDecorators: true,
-          },
-        });
-        logToConsole(
-          `apiHandler: Successfully registered ts-node with typia transformer`,
-        );
+        // logToConsole(
+        //   `apiHandler: About to register ts-node with typia transformer`,
+        // );
+        // register({
+        //   transpileOnly: true,
+        //   compiler: "ts-patch/compiler",
+        //   compilerOptions: {
+        //     plugins: [
+        //       {
+        //         transform: "typia/lib/transform",
+        //         after: true,
+        //         transformProgram: true,
+        //       },
+        //     ],
+        //     experimentalDecorators: true,
+        //   },
+        // });
+        // logToConsole(
+        //   `apiHandler: Successfully registered ts-node with typia transformer`,
+        // );
 
         // const absolutePath = resolve(pathName);
         // logToConsole(`apiHandler: Loading module from: ${absolutePath}`);
@@ -306,6 +281,7 @@ const apiHandler =
         res.end(JSON.stringify(response));
         logToConsole(`apiHandler: Response: ${JSON.stringify(response)}`);
       } catch (error: unknown) {
+        console.log(error);
         logToConsole(`API Error: ${String(error)}`);
 
         let response: ApiResponse;

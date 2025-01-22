@@ -11,7 +11,6 @@ pub const TSCONFIG_JSON: &str = "tsconfig.json";
 pub const SETUP_PY: &str = "setup.py";
 pub const OLD_PROJECT_CONFIG_FILE: &str = "project.toml";
 pub const PROJECT_CONFIG_FILE: &str = "moose.config.toml";
-pub const OPENAPI_FILE: &str = "openapi.yaml";
 pub const PROJECT_NAME_ALLOW_PATTERN: &str = r"^[a-zA-Z0-9_-]+$";
 
 pub const CLI_CONFIG_FILE: &str = "config.toml";

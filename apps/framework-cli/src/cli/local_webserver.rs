@@ -54,7 +54,6 @@ use log::Level::{Debug, Trace};
 use std::collections::{HashMap, HashSet};
 use std::env;
 use std::env::VarError;
-use std::fs;
 use std::future::Future;
 use std::io::ErrorKind;
 use std::net::SocketAddr;
@@ -225,7 +224,6 @@ struct ManagementService<I: InfraMapProvider + Clone> {
     is_prod: bool,
     metrics: Arc<Metrics>,
     infra_map: I,
-    openapi_path: Option<PathBuf>,
 }
 
 impl Service<Request<Incoming>> for RouteService {
@@ -265,7 +263,6 @@ impl<I: InfraMapProvider + Clone + Send + 'static> Service<Request<Incoming>>
             self.metrics.clone(),
             // here we're either cloning the reference or the RwLock
             self.infra_map.clone(),
-            self.openapi_path.clone(),
             req,
         ))
     }
@@ -355,39 +352,6 @@ async fn metrics_route(metrics: Arc<Metrics>) -> Result<Response<Full<Bytes>>, h
         .unwrap();
 
     Ok(response)
-}
-
-async fn openapi_route(
-    is_prod: bool,
-    openapi_path: Option<PathBuf>,
-) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
-    if is_prod {
-        return Ok(Response::builder()
-            .status(StatusCode::FORBIDDEN)
-            .body(Full::new(Bytes::from(
-                "OpenAPI spec not available in production",
-            )))
-            .unwrap());
-    }
-
-    if let Some(path) = openapi_path {
-        match fs::read_to_string(path) {
-            Ok(contents) => Ok(Response::builder()
-                .status(StatusCode::OK)
-                .header("Content-Type", "application/yaml")
-                .body(Full::new(Bytes::from(contents)))
-                .unwrap()),
-            Err(_) => Ok(Response::builder()
-                .status(StatusCode::NOT_FOUND)
-                .body(Full::new(Bytes::from("Failed to read OpenAPI spec file")))
-                .unwrap()),
-        }
-    } else {
-        Ok(Response::builder()
-            .status(StatusCode::NOT_FOUND)
-            .body(Full::new(Bytes::from("OpenAPI spec file not found")))
-            .unwrap())
-    }
 }
 
 fn bad_json_response(e: serde_json::Error) -> Response<Full<Bytes>> {
@@ -810,7 +774,6 @@ async fn management_router<I: InfraMapProvider>(
     is_prod: bool,
     metrics: Arc<Metrics>,
     infra_map: I,
-    openapi_path: Option<PathBuf>,
     req: Request<Incoming>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let level = if req.uri().path().ends_with(METRICS_LOGS_PATH) {
@@ -841,7 +804,6 @@ async fn management_router<I: InfraMapProvider>(
                 .status(StatusCode::INTERNAL_SERVER_ERROR)
                 .body(Full::new(Bytes::from(res)))
         }
-        (&hyper::Method::GET, "openapi.yaml") => openapi_route(is_prod, openapi_path).await,
         _ => route_not_found_response(),
     };
 
@@ -908,7 +870,7 @@ impl Webserver {
                                     },
                                 );
                             }
-                            APIType::EGRESS { .. } => {
+                            APIType::EGRESS => {
                                 consumption_apis
                                     .write()
                                     .await
@@ -922,7 +884,7 @@ impl Webserver {
                             APIType::INGRESS { .. } => {
                                 route_table.remove(&api_endpoint.path);
                             }
-                            APIType::EGRESS { .. } => {
+                            APIType::EGRESS => {
                                 consumption_apis
                                     .write()
                                     .await
@@ -949,7 +911,7 @@ impl Webserver {
                                     },
                                 );
                             }
-                            APIType::EGRESS { .. } => {
+                            APIType::EGRESS => {
                                 // Nothing to do, we don't need to update the route table
                             }
                         }
@@ -970,7 +932,6 @@ impl Webserver {
         infra_map: I,
         project: Arc<Project>,
         metrics: Arc<Metrics>,
-        openapi_path: Option<PathBuf>,
     ) {
         //! Starts the local webserver
         let socket = self.socket().await;
@@ -1029,7 +990,6 @@ impl Webserver {
             is_prod: project.is_production,
             metrics,
             infra_map,
-            openapi_path,
         };
 
         let graceful = GracefulShutdown::new();

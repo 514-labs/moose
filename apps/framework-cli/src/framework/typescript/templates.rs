@@ -94,49 +94,6 @@ export default {
 
 pub static TS_BASE_APIS_SAMPLE: &str = r#"
 // Here is a sample api configuration that creates an API which serves the daily active users materialized view
-import { ConsumptionUtil } from "@514labs/moose-lib";
-
-interface QueryParams {
-  limit: string;
-  minDailyActiveUsers: string;
-}
-
-export default async function handle(
-  { limit = "10", minDailyActiveUsers = "0" }: QueryParams,
-  { client, sql }: ConsumptionUtil
-) {
-  return client.query(
-    sql`SELECT 
-      date,
-      uniqMerge(dailyActiveUsers) as dailyActiveUsers
-  FROM DailyActiveUsers
-  GROUP BY date 
-  HAVING dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
-  ORDER BY date 
-  LIMIT ${parseInt(limit)}`
-  );
-}
-"#;
-
-pub static TS_BASE_BLOCK_TEMPLATE: &str = r#"
-// This file is where you can define your SQL queries to shape and manipulate batches
-// of data using Blocks. There is a collection of helper functions to create SQL queries
-// within the @514labs/moose-lib package. 
-
-// Blocks can also manage materialized views to store the results of your queries for 
-// improved performance. A materialized view is the recommended approach for aggregating
-// data. For more information on the types of aggregate functions you can run on your existing data, 
-// consult the Clickhouse documentation: https://clickhouse.com/docs/en/sql-reference/aggregate-functions
-
-import { Blocks } from "@514labs/moose-lib";
-
-export default {
-  teardown: [],
-  setup: [],
-} as Blocks;
-"#;
-
-pub static TS_BASE_CONSUMPTION_TEMPLATE: &str = r#"
 import { createConsumptionApi } from "@514labs/moose-lib";
 
 interface DailyActiveUsersParams {
@@ -160,6 +117,38 @@ export default createConsumptionApi<DailyActiveUsersParams>(
       LIMIT ${limit}`;
 
     return client.query(query);
+  }
+);
+"#;
+
+pub static TS_BASE_BLOCK_TEMPLATE: &str = r#"
+// This file is where you can define your SQL queries to shape and manipulate batches
+// of data using Blocks. There is a collection of helper functions to create SQL queries
+// within the @514labs/moose-lib package. 
+
+// Blocks can also manage materialized views to store the results of your queries for 
+// improved performance. A materialized view is the recommended approach for aggregating
+// data. For more information on the types of aggregate functions you can run on your existing data, 
+// consult the Clickhouse documentation: https://clickhouse.com/docs/en/sql-reference/aggregate-functions
+
+import { Blocks } from "@514labs/moose-lib";
+
+export default {
+  teardown: [],
+  setup: [],
+} as Blocks;
+"#;
+
+pub static TS_BASE_CONSUMPTION_TEMPLATE: &str = r#"
+import { createConsumptionApi } from "@514labs/moose-lib";
+
+// This file is where you can define your API templates for consuming your data
+interface QueryParams {}
+
+// createConsumptionApi uses compile time code generation to generate a parser for QueryParams
+export default createConsumptionApi<QueryParams>(
+  async (params, { client, sql }) => {
+    return client.query(sql`SELECT 1`);
   }
 );
 "#;

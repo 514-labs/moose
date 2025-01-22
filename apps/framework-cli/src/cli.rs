@@ -551,6 +551,8 @@ async fn top_command_handler(
         },
         Commands::Prod {} => {
             info!("Running prod command");
+            info!("Moose Version: {}", CLI_VERSION);
+
             let mut project = load_project()?;
 
             project.set_is_production_env(true);

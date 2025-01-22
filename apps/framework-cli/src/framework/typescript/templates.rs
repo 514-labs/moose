@@ -137,43 +137,31 @@ export default {
 "#;
 
 pub static TS_BASE_CONSUMPTION_TEMPLATE: &str = r#"
-import { ConsumptionUtil, createConsumptionApi } from "@514labs/moose-lib";
+import { createConsumptionApi } from "@514labs/moose-lib";
 
-const config = {
-    params: {
-        fields: [
-            {
-                name: "limit",
-                type: "number",
-                required: false
-            },
-            {
-                name: "minDailyActiveUsers",
-                type: "number",
-                required: true
-            }
-        ]
-    }
-};
-
-async function handleConsumption(
-    params: {
-        limit?: number;
-        minDailyActiveUsers: number;
-    },
-    { client, sql }: ConsumptionUtil
-) {
-    const { limit = 10, minDailyActiveUsers } = params;
-
-    return client.query(sql`
-        SELECT date, dailyActiveUsers
-        FROM DailyActiveUsers
-        WHERE dailyActiveUsers >= ${minDailyActiveUsers}
-        LIMIT ${limit}
-    `);
+interface DailyActiveUsersParams {
+  limit?: number;
+  minDailyActiveUsers: number;
 }
 
-export default createConsumptionApi(config, handleConsumption);
+export default createConsumptionApi<DailyActiveUsersParams>(
+  async ({ limit = 10, minDailyActiveUsers }, { client, sql }) => {
+    console.log("limit", limit, typeof limit);
+    console.log("minDailyActiveUsers", minDailyActiveUsers, typeof minDailyActiveUsers);
+
+    const query = sql`
+      SELECT
+        date,
+        uniqMerge(dailyActiveUsers) as daily_users
+      FROM DailyActiveUsers
+      GROUP BY date
+      HAVING daily_users >= ${minDailyActiveUsers}
+      ORDER BY date DESC
+      LIMIT ${limit}`;
+
+    return client.query(query);
+  }
+);
 "#;
 
 pub static TS_BASE_MODEL_TEMPLATE: &str = r#"

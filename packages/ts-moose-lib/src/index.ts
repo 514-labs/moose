@@ -35,7 +35,6 @@ export * from "./commons";
 export * from "./consumption-apis/helpers";
 
 export { createConsumptionApi } from "./consumption-apis/runner";
-export type { ConsumptionApiConfig } from "./consumption-apis/runner";
 export type {
   QueryFieldDefinition,
   QueryParamMetadata,

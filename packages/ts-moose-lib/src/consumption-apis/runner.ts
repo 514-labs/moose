@@ -9,7 +9,6 @@ import { QueryParamMetadata } from "./types";
 import { QueryParamParser } from "./parser";
 import { ConsumptionUtil } from "../index";
 import typia, { tags } from "typia";
-import { logToConsole } from "./hlogger";
 import { ApiResponse } from "./types";
 import { register } from "ts-node";
 import { resolve } from "path";
@@ -48,14 +47,9 @@ const createPath = (path: string) => `${CONSUMPTION_DIR_PATH}${path}.ts`;
 
 const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
   console.log(`${req.method} ${req.url} ${res.statusCode}`);
-  logToConsole(`httpLogger: ${req.method} ${req.url} ${res.statusCode}`);
 };
 
 const modulesCache = new Map<string, any>();
-
-export interface ConsumptionApiConfig {
-  params: QueryParamMetadata;
-}
 
 export function createConsumptionApi<T extends object, R = any>(
   handler: (params: T, utils: ConsumptionUtil) => Promise<R>,

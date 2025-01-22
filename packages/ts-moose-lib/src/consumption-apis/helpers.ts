@@ -10,7 +10,6 @@
 
 import { ClickHouseClient } from "@clickhouse/client";
 import { randomUUID } from "node:crypto";
-import { logToConsole } from "./hlogger";
 
 export const mapToClickHouseType = (value: Value) => {
   if (typeof value === "number") {
@@ -137,19 +136,15 @@ export class MooseClient {
   }
 
   async query(sql: Sql) {
-    const parameterizedStubs = sql.values.map((v, i) => {
-      const param = createClickhouseParameter(i, v);
-      logToConsole(`Parameter ${i}: value=${v} (${typeof v}) -> ${param}`);
-      return param;
-    });
+    const parameterizedStubs = sql.values.map((v, i) =>
+      createClickhouseParameter(i, v),
+    );
 
     const query = sql.strings
       .map((s, i) =>
         s != "" ? `${s}${emptyIfUndefined(parameterizedStubs[i])}` : "",
       )
       .join("");
-
-    logToConsole(`Final query: ${query}`);
 
     const query_params = sql.values.reduce(
       (acc: Record<string, unknown>, v, i) => ({

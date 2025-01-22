@@ -112,7 +112,7 @@ const transformCreateConsumptionApi = (
       ),
     ),
     // return (params, utils) => {
-    //   assertGuard(params)
+    //   const processedParams = assertGuard(new URLSearchParams(params))
     //   return handlerFunc(params, utils)
     // }
     factory.createReturnStatement(

@@ -1,4 +1,4 @@
-// Add your models & start the development server to import these types
+// Import your Moose data models to use in the streaming function
 import { Log } from "../../../datamodels/models";
 import { RawLog, AnyValue, KeyValue } from "../../../otel"; // not great
 

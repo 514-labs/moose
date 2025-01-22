@@ -66,7 +66,7 @@ my_function = StreamingFunction(
 "#;
 
 pub static PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE: &str = r#"
-# Add your models & start the development server to import these types
+# Import your Moose data models to use in the streaming function
 {{source_import}}
 {{destination_import}}
 from moose_lib import StreamingFunction

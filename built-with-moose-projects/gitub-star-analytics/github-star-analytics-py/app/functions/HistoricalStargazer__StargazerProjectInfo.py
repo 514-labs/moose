@@ -1,5 +1,5 @@
 
-# Add your models & start the development server to import these types
+# Import your Moose data models to use in the streaming function
 from app.datamodels.HistoricalStargazer import HistoricalStargazer
 from app.datamodels.StargazerProjectInfo import StargazerProjectInfo
 from moose_lib import StreamingFunction, cli_log, CliLogData

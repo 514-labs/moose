@@ -36,6 +36,10 @@ pub async fn execute_workflow(
         include_str!("../wrappers/python_wrapper/activity.py"),
     )?;
     fs::write(
+        wrapper_dir.join("logger.py"),
+        include_str!("../wrappers/python_wrapper/logger.py"),
+    )?;
+    fs::write(
         wrapper_dir.join("worker.py"),
         include_str!("../wrappers/python_wrapper/worker.py"),
     )?;
@@ -61,7 +65,6 @@ pub async fn execute_workflow(
 
     if !output.status.success() {
         let error = String::from_utf8_lossy(&output.stderr);
-
         // Try to parse as structured error
         if let Ok(python_error) = serde_json::from_str::<PythonError>(&error) {
             match python_error.error.as_str() {

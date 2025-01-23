@@ -5,6 +5,7 @@ import os
 import asyncio
 from dataclasses import dataclass
 from .activity import ScriptExecutionInput
+from .logger import initialize_logger
 
 @dataclass
 class WorkflowState:
@@ -62,8 +63,15 @@ class ScriptWorkflow:
 
     @workflow.run
     async def run(self, script_path: str, input_data: Optional[Dict] = None) -> List[Any]:
+        workflow_id = workflow.info().workflow_id
+        run_id = workflow.info().run_id
+        initialize_logger(workflow_id, run_id)
+
         results = []
         parallel_tasks = []
+
+        workflow.logger.info("Hello from python scripts executor")
+        workflow.logger.info("Starting scripts: %s" % (script_path))
         
         if os.path.isfile(script_path) and script_path.endswith(".py"):
             parent_dir = os.path.basename(os.path.dirname(script_path))

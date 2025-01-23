@@ -1,5 +1,5 @@
-import ts, { TypeChecker, factory, CallExpression } from "typescript";
-import type { PluginConfig, TransformerExtras } from "ts-patch";
+import ts, { factory } from "typescript";
+import type { PluginConfig } from "ts-patch";
 import path from "path";
 
 const avoidTypiaNameClash = "____moose____typia";
@@ -33,37 +33,31 @@ const iife = (statements: ts.Statement[]): ts.CallExpression =>
 
 const isCreateConsumptionApi = (
   node: ts.Node,
-  checker: TypeChecker,
-): node is CallExpression => {
+  checker: ts.TypeChecker,
+): node is ts.CallExpression => {
   if (!ts.isCallExpression(node)) {
-    console.log("not CallExpression");
     return false;
   }
 
   const declaration: ts.Declaration | undefined =
     checker.getResolvedSignature(node)?.declaration;
   if (!declaration) {
-    console.log("no declaration");
     return false;
   }
 
   const location: string = path.resolve(declaration.getSourceFile().fileName);
-  console.log("location", location);
   if (location.indexOf("@514labs/moose-lib") == -1) return false;
 
   const { name } = checker.getTypeAtLocation(declaration).symbol;
-
-  console.log("name", name);
 
   return name == "createConsumptionApi";
 };
 
 const transformCreateConsumptionApi = (
   node: ts.Node,
-  checker: TypeChecker,
+  checker: ts.TypeChecker,
 ): ts.Node => {
   if (!isCreateConsumptionApi(node, checker)) {
-    console.log("not createConsumptionApi");
     return node;
   }
 
@@ -95,7 +89,7 @@ const transformCreateConsumptionApi = (
         ts.NodeFlags.Const,
       ),
     ),
-
+    // the user provided function
     // const handlerFunc = async(...) => ...
     factory.createVariableStatement(
       undefined,
@@ -141,7 +135,6 @@ const transformCreateConsumptionApi = (
         factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
         factory.createBlock(
           [
-            // const processedParams = assertGuard(new URLSearchParams(params))
             factory.createVariableStatement(
               undefined,
               factory.createVariableDeclarationList(
@@ -225,21 +218,21 @@ export default function transformProgram(
     .getRootFileNames()
     .map(tsInstance.server.toNormalizedPath);
 
-  /* Transform AST */
   const transformedSource = tsInstance.transform(
-    /* sourceFiles */ program
+    program
       .getSourceFiles()
       .filter((sourceFile) =>
         rootFileNames.includes(sourceFile.fileName as any),
       ),
-    /* transformers */ [transformAst(program).bind(tsInstance)],
+    [transform(program.getTypeChecker())],
     compilerOptions,
   ).transformed;
 
-  /* Render modified files and create new SourceFiles for them to use in host's cache */
   const { printFile } = tsInstance.createPrinter();
   for (const sourceFile of transformedSource) {
+    console.log("sourceFile.kind", sourceFile.kind);
     const { fileName, languageVersion } = sourceFile;
+    // console.log("sourceFile", sourceFile)
     const updatedSourceFile = tsInstance.createSourceFile(
       fileName,
       printFile(sourceFile),
@@ -249,57 +242,30 @@ export default function transformProgram(
     compilerHost.fileCache.set(fileName, updatedSourceFile);
   }
 
-  /* Re-create Program instance */
   return tsInstance.createProgram(rootFileNames, compilerOptions, compilerHost);
 }
 
-const transformAst = (program: ts.Program) =>
-  function (this: typeof ts, context: ts.TransformationContext) {
-    const tsInstance = this;
-
-    /* Transformer Function */
-    return (sourceFile: ts.SourceFile) => {
-      console.log("version sourceFile", (sourceFile as any).version);
-
-      const recurse = (node: ts.Node, checker: TypeChecker): ts.Node =>
-        ts.visitEachChild(
-          transformCreateConsumptionApi(node, program.getTypeChecker()),
-          (child) => recurse(child, checker),
-          undefined,
-        );
-      const transformed = ts.visitEachChild(
-        sourceFile,
-        (node) => recurse(node, program.getTypeChecker()),
+const transform =
+  (typeChecker: ts.TypeChecker) =>
+  (_context: ts.TransformationContext) =>
+  (sourceFile: ts.SourceFile): ts.SourceFile => {
+    console.log("sourceFile.kind", sourceFile.kind);
+    const recurse = (node: ts.Node): ts.Node =>
+      ts.visitEachChild(
+        transformCreateConsumptionApi(node, typeChecker),
+        recurse,
         undefined,
       );
+    const transformed = ts.visitEachChild(sourceFile, recurse, undefined);
+    console.log("transformed.kind", transformed.kind);
 
-      console.log("version transformed", (transformed as any).version);
+    // prepend the import statement to the file's statements
+    const withTypiaImport = factory.createNodeArray([
+      importTypia,
+      ...transformed.statements,
+    ]);
 
-      // Prepend the new statement to the file's statements
-      const updatedStatements = ts.factory.createNodeArray([
-        importTypia,
-        ...transformed.statements,
-      ]);
-
-      // Return the updated source file
-      const withImport = ts.factory.updateSourceFile(
-        transformed,
-        updatedStatements,
-      );
-
-      console.log("version withImport", (withImport as any).version);
-      // (withImport as any).version = (sourceFile as any).version
-      return withImport;
-      //
-      // return tsInstance.visitEachChild(sourceFile, visit, context);
-      //
-      // /* Visitor Function */
-      // function visit(node: ts.Node): ts.Node {
-      //   if (node.kind === ts.SyntaxKind.NumberKeyword)
-      //     return context.factory.createKeywordTypeNode(
-      //       tsInstance.SyntaxKind.StringKeyword,
-      //     );
-      //   else return tsInstance.visitEachChild(node, visit, context);
-      // }
-    };
+    const asdf = factory.updateSourceFile(transformed, withTypiaImport);
+    console.log("asdf.kind", asdf.kind);
+    return asdf;
   };

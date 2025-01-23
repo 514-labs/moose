@@ -5,17 +5,7 @@ import { MooseClient, sql } from "./helpers";
 import * as jose from "jose";
 import { ClickHouseClient } from "@clickhouse/client";
 import { Cluster } from "../cluster-utils";
-import { QueryParamMetadata } from "./types";
-import { QueryParamParser } from "./parser";
 import { ConsumptionUtil } from "../index";
-import typia, { tags } from "typia";
-import { ApiResponse } from "./types";
-import { register } from "ts-node";
-import { resolve } from "path";
-import { URLSearchParams } from "url";
-
-export const antiCachePath = (path: string) =>
-  `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
 
 const [
   ,
@@ -105,7 +95,6 @@ export function createConsumptionApi<T extends object, R = any>(
 const apiHandler =
   (publicKey: jose.KeyLike | undefined, clickhouseClient: ClickHouseClient) =>
   async (req: http.IncomingMessage, res: http.ServerResponse) => {
-    logToConsole(`apiHandler: Starting API handler`);
     try {
       const url = new URL(req.url || "", "https://localhost");
       const fileName = url.pathname;
@@ -143,7 +132,6 @@ const apiHandler =
       }
 
       const pathName = createPath(fileName);
-      logToConsole(`apiHandler: Path name: ${pathName}`);
       const paramsObject = Array.from(url.searchParams.entries()).reduce(
         (obj: { [key: string]: string[] }, [key, value]) => {
           if (obj[key]) {
@@ -156,55 +144,11 @@ const apiHandler =
         {},
       );
 
-      logToConsole(`apiHandler: paramsObject: ${JSON.stringify(paramsObject)}`);
-
       let userFuncModule;
       try {
-        // logToConsole(
-        //   `apiHandler: About to register ts-node with typia transformer`,
-        // );
-        // register({
-        //   transpileOnly: true,
-        //   compiler: "ts-patch/compiler",
-        //   compilerOptions: {
-        //     plugins: [
-        //       {
-        //         transform: "typia/lib/transform",
-        //         after: true,
-        //         transformProgram: true,
-        //       },
-        //     ],
-        //     experimentalDecorators: true,
-        //   },
-        // });
-        // logToConsole(
-        //   `apiHandler: Successfully registered ts-node with typia transformer`,
-        // );
-
-        // const absolutePath = resolve(pathName);
-        // logToConsole(`apiHandler: Loading module from: ${absolutePath}`);
-
-        // Clear require cache for this file to ensure fresh load
-        // delete require.cache[absolutePath];
-
-        // logToConsole(`apiHandler: pre require: ${absolutePath}`);
         userFuncModule = require(pathName);
-        // logToConsole(`apiHandler: post require: ${absolutePath}`);
-
-        // if (!userFuncModule) {
-        //   throw new Error(`Module at ${absolutePath} returned undefined`);
-        // }
-
-        logToConsole(`apiHandler: Module loaded successfully`);
-
-        if (userFuncModule === undefined) {
-          logToConsole(`apiHandler: Adding to modulesCache: ${pathName}`);
-          modulesCache.set(pathName, userFuncModule);
-        }
       } catch (error) {
-        logToConsole(
-          `apiHandler: Error registering ts-node: ${error instanceof Error ? error.stack : String(error)}`,
-        );
+        console.log("error loading user's module", error);
         throw error;
       }
 
@@ -233,7 +177,6 @@ const apiHandler =
       // }
 
       try {
-        logToConsole(`apiHandler: Calling userFuncModule`);
         const result = await userFuncModule.default(paramsObject, {
           client: new MooseClient(clickhouseClient, fileName),
           sql: sql,
@@ -248,7 +191,7 @@ const apiHandler =
           return;
         }
 
-        let response: ApiResponse;
+        let response: any;
 
         if (Object.getPrototypeOf(result).constructor.name === "ResultSet") {
           response = {
@@ -273,12 +216,10 @@ const apiHandler =
 
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(response));
-        logToConsole(`apiHandler: Response: ${JSON.stringify(response)}`);
       } catch (error: unknown) {
         console.log(error);
-        logToConsole(`API Error: ${String(error)}`);
 
-        let response: ApiResponse;
+        let response: any;
 
         if (
           error instanceof Error &&
@@ -310,14 +251,10 @@ const apiHandler =
 
         res.setHeader("Content-Type", "application/json");
         res.end(JSON.stringify(response));
-        logToConsole(`apiHandler: Response: ${JSON.stringify(response)}`);
         return;
       }
     } catch (error: any) {
-      logToConsole(
-        `Fatal error: ${error instanceof Error ? error.stack : String(error)}`,
-      );
-      const response: ApiResponse = {
+      const response: any = {
         success: false,
         error: {
           code: "SYSTEM_ERROR",
@@ -335,29 +272,18 @@ const apiHandler =
 
 export const runConsumptionApis = async () => {
   console.log("Starting API service");
-  logToConsole("Starting API service");
 
   // Add logging for project configuration
   const fs = require("fs");
   const path = require("path");
 
-  try {
-    const projectRoot = process.cwd();
-    logToConsole(`Project root: ${projectRoot}`);
+  const projectRoot = process.cwd();
 
-    const tsconfigPath = path.join(projectRoot, "tsconfig.json");
-    logToConsole(`Looking for tsconfig at: ${tsconfigPath}`);
+  const tsconfigPath = path.join(projectRoot, "tsconfig.json");
 
-    if (fs.existsSync(tsconfigPath)) {
-      const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, "utf8"));
-      logToConsole(`Found tsconfig.json: ${JSON.stringify(tsconfig, null, 2)}`);
-    } else {
-      logToConsole("No tsconfig.json found in project root");
-    }
-  } catch (error) {
-    logToConsole(
-      `Error checking project configuration: ${error instanceof Error ? error.message : String(error)}`,
-    );
+  if (fs.existsSync(tsconfigPath)) {
+    const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, "utf8"));
+  } else {
   }
 
   const consumptionCluster = new Cluster({

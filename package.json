@@ -8,9 +8,6 @@
     "prepare": "husky install",
     "format": "prettier --write './apps/**/*.{ts,tsx}'"
   },
-  "dependencies": {
-    "@514labs/moose-lib": "workspace:*"
-  },
   "devDependencies": {
     "@repo/eslint-config-custom": "workspace:*",
     "@repo/ts-config": "workspace:*",

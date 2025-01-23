@@ -103,9 +103,6 @@ interface DailyActiveUsersParams {
 
 export default createConsumptionApi<DailyActiveUsersParams>(
   async ({ limit = 10, minDailyActiveUsers }, { client, sql }) => {
-    console.log("limit", limit, typeof limit);
-    console.log("minDailyActiveUsers", minDailyActiveUsers, typeof minDailyActiveUsers);
-
     const query = sql`
       SELECT
         date,

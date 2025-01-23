@@ -34,9 +34,11 @@ RUN apt-get update && apt-get upgrade -y
 # Install tail and locales package
 RUN apt-get install -y locales coreutils curl
 
+# moose depends on libc 2.40+, not available in stable
+# This uses unstable, but unpinned because they delete older versions
 RUN echo "deb http://deb.debian.org/debian/ unstable main" >> /etc/apt/sources.list \
     && apt-get update \
-    && apt-get install -y libc6=2.40-5 \
+    && apt-get install -y libc6 \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Generate locale files
@@ -279,7 +281,7 @@ pub fn build_dockerfile(
     // so we set it to a recent version for the purpose of local dev testing.
     let mut cli_version = constants::CLI_VERSION;
     if cli_version == "0.0.1" {
-        cli_version = "0.3.756";
+        cli_version = "0.3.759";
     }
 
     let build_all = is_amd64 == is_arm64;

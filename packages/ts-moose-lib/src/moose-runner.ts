@@ -6,12 +6,9 @@
 
 import { register } from "ts-node";
 
-// Only register ts-patch during development
-if (process.env.NODE_ENV === "development") {
-  require("ts-patch/register");
-}
-
 if (process.argv[2] == "consumption-apis") {
+  require("ts-patch/register");
+
   register({
     esm: true,
     experimentalTsImportSpecifiers: true,
@@ -27,7 +24,6 @@ if (process.argv[2] == "consumption-apis") {
           transform: "typia/lib/transform",
         },
       ],
-      experimentalDecorators: true,
     },
   });
 } else {

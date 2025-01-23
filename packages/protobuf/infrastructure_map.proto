@@ -46,7 +46,13 @@ message IngressDetails {
 }
 
 message EgressDetails {
-  // nothing right now
+  repeated ConsumptionQueryParam query_params = 1;
+}
+
+message ConsumptionQueryParam {
+  string name = 1;
+  ColumnType data_type = 2;
+  bool required = 3;
 }
 
 enum EndpointIngestionFormat {

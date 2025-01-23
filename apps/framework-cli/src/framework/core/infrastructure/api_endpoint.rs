@@ -5,7 +5,7 @@ use std::path::PathBuf;
 use super::{topic::Topic, DataLineage, InfrastructureSignature};
 use crate::framework::versions::Version;
 use crate::framework::{
-    consumption::model::EndpointFile,
+    consumption::model::{ConsumptionQueryParam, EndpointFile},
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
     data_model::{config::EndpointIngestionFormat, model::DataModel},
 };
@@ -13,7 +13,8 @@ use crate::framework::{
 use crate::proto::infrastructure_map::api_endpoint::Api_type as ProtoApiType;
 use crate::proto::infrastructure_map::Method as ProtoMethod;
 use crate::proto::infrastructure_map::{
-    ApiEndpoint as ProtoApiEndpoint, EndpointIngestionFormat as ProtoIngressFormat, IngressDetails,
+    ApiEndpoint as ProtoApiEndpoint, EgressDetails, EndpointIngestionFormat as ProtoIngressFormat,
+    IngressDetails,
 };
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -26,7 +27,9 @@ pub enum APIType {
         data_model: Option<DataModel>,
         format: EndpointIngestionFormat,
     },
-    EGRESS,
+    EGRESS {
+        query_params: Vec<ConsumptionQueryParam>,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -78,7 +81,7 @@ impl ApiEndpoint {
             "{}_{}_{}",
             match self.api_type {
                 APIType::INGRESS { .. } => "INGRESS",
-                APIType::EGRESS => "EGRESS",
+                APIType::EGRESS { .. } => "EGRESS",
             },
             self.name,
             self.version.as_suffix()
@@ -99,7 +102,7 @@ impl ApiEndpoint {
     fn format(&self) -> Option<EndpointIngestionFormat> {
         match self.api_type {
             APIType::INGRESS { format, .. } => Some(format),
-            APIType::EGRESS => None,
+            APIType::EGRESS { .. } => None,
         }
     }
 
@@ -129,7 +132,9 @@ impl From<EndpointFile> for ApiEndpoint {
                 .unwrap()
                 .to_string_lossy()
                 .to_string(),
-            api_type: APIType::EGRESS,
+            api_type: APIType::EGRESS {
+                query_params: value.query_params,
+            },
             path: value.path.clone(),
             method: Method::GET,
             version: Version::from_string("0.0.0".to_string()),
@@ -157,7 +162,7 @@ impl DataLineage for ApiEndpoint {
                     id: target_topic.clone(),
                 }]
             }
-            APIType::EGRESS => vec![],
+            APIType::EGRESS { .. } => vec![],
         }
     }
 }
@@ -177,7 +182,10 @@ impl APIType {
                 }),
                 special_fields: Default::default(),
             }),
-            APIType::EGRESS => ProtoApiType::Egress(Default::default()),
+            APIType::EGRESS { query_params } => ProtoApiType::Egress(EgressDetails {
+                query_params: query_params.iter().map(|param| param.to_proto()).collect(),
+                special_fields: Default::default(),
+            }),
         }
     }
 }

@@ -22,6 +22,7 @@ if (process.argv[2] == "consumption-apis") {
           transform: "typia/lib/transform",
         },
       ],
+      experimentalDecorators: true,
     },
   });
 } else {

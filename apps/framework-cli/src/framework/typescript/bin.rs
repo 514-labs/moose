@@ -32,7 +32,12 @@ pub fn run(
 
     command
         .env("TS_NODE_PROJECT", project_path.join(TSCONFIG_JSON))
-        .env("PATH", bin_path);
+        .env("PATH", bin_path)
+        .env("TS_NODE_COMPILER_HOST", "true")
+        .env("TS_NODE_EMIT", "true");
+    if binary_command == "consumption-apis" {
+        command.env("TS_NODE_COMPILER", "ts-patch/compiler");
+    }
 
     for arg in args {
         command.arg(arg);

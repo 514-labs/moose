@@ -5,11 +5,37 @@
 // It regiters ts-node to be able to interpret user code.
 
 import { register } from "ts-node";
-register({
-  esm: true,
-  experimentalTsImportSpecifiers: true,
-});
 
+// Only register ts-patch during development
+if (process.env.NODE_ENV === "development") {
+  require("ts-patch/register");
+}
+
+if (process.argv[2] == "consumption-apis") {
+  register({
+    esm: true,
+    experimentalTsImportSpecifiers: true,
+    compiler: "ts-patch/compiler",
+    compilerOptions: {
+      plugins: [
+        {
+          transform:
+            "./node_modules/@514labs/moose-lib/dist/consumption-apis/insertTypiaValidation.js",
+          transformProgram: true,
+        },
+        {
+          transform: "typia/lib/transform",
+        },
+      ],
+      experimentalDecorators: true,
+    },
+  });
+} else {
+  register({
+    esm: true,
+    experimentalTsImportSpecifiers: true,
+  });
+}
 import "./instrumentation";
 
 import { runBlocks } from "./blocks/runner";

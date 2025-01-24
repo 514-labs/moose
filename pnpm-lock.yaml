@@ -283,7 +283,7 @@ importers:
     dependencies:
       '@514labs/moose-lib':
         specifier: latest
-        version: 0.3.759(@types/node@20.12.12)
+        version: 0.3.760(@types/node@20.12.12)
       '@clickhouse/client-web':
         specifier: 1.1.0
         version: 1.1.0
@@ -302,7 +302,7 @@ importers:
     devDependencies:
       '@514labs/moose-cli':
         specifier: latest
-        version: 0.3.759
+        version: 0.3.760
       '@types/async':
         specifier: ^3.2.24
         version: 3.2.24
@@ -928,8 +928,8 @@ packages:
     cpu: [arm64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-arm64@0.3.759':
-    resolution: {integrity: sha512-j1dU6+P708W8BEbmNYU5ZXiyitTMUYH6PeRXOLYp0Vxre/0MyrBBqaMHGylIk6h+e7mqhYOjIrFsciL3o6VaLg==}
+  '@514labs/moose-cli-darwin-arm64@0.3.760':
+    resolution: {integrity: sha512-eUsx0U2lz3CEwW3CSNQnKiX9W6CSKVoJsgtt6PcW8C1eCJrgua2aLtxJHeNkWNnRGDVRcy8q3lVzAh2UfE6GqQ==}
     cpu: [arm64]
     os: [darwin]
 
@@ -938,8 +938,8 @@ packages:
     cpu: [x64]
     os: [darwin]
 
-  '@514labs/moose-cli-darwin-x64@0.3.759':
-    resolution: {integrity: sha512-OwAIhZVMs2mSXddX61j2Ew9Do332GP7Jb5XtA0sZUIE3ehf4ktx9oZJhriXYo3tq3xVKkNP/uSI0rB0LE4z6Ug==}
+  '@514labs/moose-cli-darwin-x64@0.3.760':
+    resolution: {integrity: sha512-cEj/EbzB6D/kIXtS1pCXIfSEuFKSkDcGmNv4wfI37wZ0mswQioNtVZnP+JBD6wrQLmAk/BdIGpKlg79OBUsR2w==}
     cpu: [x64]
     os: [darwin]
 
@@ -948,8 +948,8 @@ packages:
     cpu: [arm64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-arm64@0.3.759':
-    resolution: {integrity: sha512-Lqk+rXH4tsoxZhhIsqPVAZLD00W/lOABZrX004zyGKznz1apxFXWNTk04u8JwekWyZKXGDwgWwbv0OT4cav43w==}
+  '@514labs/moose-cli-linux-arm64@0.3.760':
+    resolution: {integrity: sha512-/DTH7vwZt5f10JuwXOXE7yC6xYA8b47wjIt6fU9uQ01jVSncdIZBQhvFuiH49HKZVlZd31yC8B7kKwTIK8gf7g==}
     cpu: [arm64]
     os: [linux]
 
@@ -958,8 +958,8 @@ packages:
     cpu: [x64]
     os: [linux]
 
-  '@514labs/moose-cli-linux-x64@0.3.759':
-    resolution: {integrity: sha512-dbAs0NpK+vc72A1cd+s9OJKqrm9edeLx2UY0rJ3xs/ncCK1/r3kanamrF353wNQqlkJvMIl/RCsH+Qyh7fUbsg==}
+  '@514labs/moose-cli-linux-x64@0.3.760':
+    resolution: {integrity: sha512-DSN0x896Ij284bjSrDWJkIOaq9SK9Brn8M+UTR7hI+cUsu7Uo7I3r0qR5cDfb9x2GY/Fc93Azz7DOb/k89z0eA==}
     cpu: [x64]
     os: [linux]
 
@@ -967,12 +967,12 @@ packages:
     resolution: {integrity: sha512-jMgq+waG6tGqmJQD8r+9fw0cnQUbChJH6jUNP4wtgBYMsfDu+sEJPFwn5aHrWl69kRg5oy/yA8eHeW/Ttmk5fA==}
     hasBin: true
 
-  '@514labs/moose-cli@0.3.759':
-    resolution: {integrity: sha512-Qzm1989HCPiFGIOTbI3T/CKdnEIaI5KpszXWr3ncC/7AdELoldTqzTjmPAO1Z7L3yHsWfatJE6BemxQtwXhBBg==}
+  '@514labs/moose-cli@0.3.760':
+    resolution: {integrity: sha512-KjJ4KvTIj7qOHaPLnTr0mTlbC7Rf741j/o/dwenpVC2nSWnrVS+5HD06X2BCnbTq1cDw3e6YKy0a4RPKfANyTw==}
     hasBin: true
 
-  '@514labs/moose-lib@0.3.759':
-    resolution: {integrity: sha512-ryqbXL9ALw3SBnntc0CVvI6dMogdgHNIyqanby1E/AUHVZwvXklmZ7Wl9jhghleZ+nkmBuZcGfNtDCfzbfjo8A==}
+  '@514labs/moose-lib@0.3.760':
+    resolution: {integrity: sha512-5EinAcfLjBsxphHNmh5XloP0JIxaqWwYLgNNYXvpVamkYw/iVjaQaSQM3bZErFKY5g7zWDJ4/aF5IT7JjU/99Q==}
     hasBin: true
 
   '@adobe/css-tools@4.3.3':
@@ -8618,25 +8618,25 @@ snapshots:
   '@514labs/moose-cli-darwin-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-arm64@0.3.759':
+  '@514labs/moose-cli-darwin-arm64@0.3.760':
     optional: true
 
   '@514labs/moose-cli-darwin-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-darwin-x64@0.3.759':
+  '@514labs/moose-cli-darwin-x64@0.3.760':
     optional: true
 
   '@514labs/moose-cli-linux-arm64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-arm64@0.3.759':
+  '@514labs/moose-cli-linux-arm64@0.3.760':
     optional: true
 
   '@514labs/moose-cli-linux-x64@0.3.205':
     optional: true
 
-  '@514labs/moose-cli-linux-x64@0.3.759':
+  '@514labs/moose-cli-linux-x64@0.3.760':
     optional: true
 
   '@514labs/moose-cli@0.3.205':
@@ -8646,14 +8646,14 @@ snapshots:
       '@514labs/moose-cli-linux-arm64': 0.3.205
       '@514labs/moose-cli-linux-x64': 0.3.205
 
-  '@514labs/moose-cli@0.3.759':
+  '@514labs/moose-cli@0.3.760':
     optionalDependencies:
-      '@514labs/moose-cli-darwin-arm64': 0.3.759
-      '@514labs/moose-cli-darwin-x64': 0.3.759
-      '@514labs/moose-cli-linux-arm64': 0.3.759
-      '@514labs/moose-cli-linux-x64': 0.3.759
+      '@514labs/moose-cli-darwin-arm64': 0.3.760
+      '@514labs/moose-cli-darwin-x64': 0.3.760
+      '@514labs/moose-cli-linux-arm64': 0.3.760
+      '@514labs/moose-cli-linux-x64': 0.3.760
 
-  '@514labs/moose-lib@0.3.759(@types/node@20.12.12)':
+  '@514labs/moose-lib@0.3.760(@types/node@20.12.12)':
     dependencies:
       '@clickhouse/client': 1.8.1
       '@clickhouse/client-web': 1.5.0
@@ -8738,8 +8738,8 @@ snapshots:
       '@aws-crypto/sha1-browser': 3.0.0
       '@aws-crypto/sha256-browser': 3.0.0
       '@aws-crypto/sha256-js': 3.0.0
-      '@aws-sdk/client-sso-oidc': 3.574.0(@aws-sdk/client-sts@3.574.0)
-      '@aws-sdk/client-sts': 3.574.0
+      '@aws-sdk/client-sso-oidc': 3.574.0
+      '@aws-sdk/client-sts': 3.574.0(@aws-sdk/client-sso-oidc@3.574.0)
       '@aws-sdk/core': 3.572.0
       '@aws-sdk/credential-provider-node': 3.572.0(@aws-sdk/client-sso-oidc@3.574.0)(@aws-sdk/client-sts@3.574.0)
       '@aws-sdk/middleware-bucket-endpoint': 3.568.0
@@ -8796,11 +8796,11 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@aws-sdk/client-sso-oidc@3.574.0(@aws-sdk/client-sts@3.574.0)':
+  '@aws-sdk/client-sso-oidc@3.574.0':
     dependencies:
       '@aws-crypto/sha256-browser': 3.0.0
       '@aws-crypto/sha256-js': 3.0.0
-      '@aws-sdk/client-sts': 3.574.0
+      '@aws-sdk/client-sts': 3.574.0(@aws-sdk/client-sso-oidc@3.574.0)
       '@aws-sdk/core': 3.572.0
       '@aws-sdk/credential-provider-node': 3.572.0(@aws-sdk/client-sso-oidc@3.574.0)(@aws-sdk/client-sts@3.574.0)
       '@aws-sdk/middleware-host-header': 3.567.0
@@ -8839,7 +8839,6 @@ snapshots:
       '@smithy/util-utf8': 2.3.0
       tslib: 2.6.2
     transitivePeerDependencies:
-      - '@aws-sdk/client-sts'
       - aws-crt
 
   '@aws-sdk/client-sso@3.572.0':
@@ -8885,11 +8884,11 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@aws-sdk/client-sts@3.574.0':
+  '@aws-sdk/client-sts@3.574.0(@aws-sdk/client-sso-oidc@3.574.0)':
     dependencies:
       '@aws-crypto/sha256-browser': 3.0.0
       '@aws-crypto/sha256-js': 3.0.0
-      '@aws-sdk/client-sso-oidc': 3.574.0(@aws-sdk/client-sts@3.574.0)
+      '@aws-sdk/client-sso-oidc': 3.574.0
       '@aws-sdk/core': 3.572.0
       '@aws-sdk/credential-provider-node': 3.572.0(@aws-sdk/client-sso-oidc@3.574.0)(@aws-sdk/client-sts@3.574.0)
       '@aws-sdk/middleware-host-header': 3.567.0
@@ -8928,6 +8927,7 @@ snapshots:
       '@smithy/util-utf8': 2.3.0
       tslib: 2.6.2
     transitivePeerDependencies:
+      - '@aws-sdk/client-sso-oidc'
       - aws-crt
 
   '@aws-sdk/core@3.572.0':
@@ -8961,7 +8961,7 @@ snapshots:
 
   '@aws-sdk/credential-provider-ini@3.572.0(@aws-sdk/client-sso-oidc@3.574.0)(@aws-sdk/client-sts@3.574.0)':
     dependencies:
-      '@aws-sdk/client-sts': 3.574.0
+      '@aws-sdk/client-sts': 3.574.0(@aws-sdk/client-sso-oidc@3.574.0)
       '@aws-sdk/credential-provider-env': 3.568.0
       '@aws-sdk/credential-provider-process': 3.572.0
       '@aws-sdk/credential-provider-sso': 3.572.0(@aws-sdk/client-sso-oidc@3.574.0)
@@ -9018,7 +9018,7 @@ snapshots:
 
   '@aws-sdk/credential-provider-web-identity@3.568.0(@aws-sdk/client-sts@3.574.0)':
     dependencies:
-      '@aws-sdk/client-sts': 3.574.0
+      '@aws-sdk/client-sts': 3.574.0(@aws-sdk/client-sso-oidc@3.574.0)
       '@aws-sdk/types': 3.567.0
       '@smithy/property-provider': 2.2.0
       '@smithy/types': 2.12.0
@@ -9134,7 +9134,7 @@ snapshots:
 
   '@aws-sdk/token-providers@3.572.0(@aws-sdk/client-sso-oidc@3.574.0)':
     dependencies:
-      '@aws-sdk/client-sso-oidc': 3.574.0(@aws-sdk/client-sts@3.574.0)
+      '@aws-sdk/client-sso-oidc': 3.574.0
       '@aws-sdk/types': 3.567.0
       '@smithy/property-provider': 2.2.0
       '@smithy/shared-ini-file-loader': 2.4.0

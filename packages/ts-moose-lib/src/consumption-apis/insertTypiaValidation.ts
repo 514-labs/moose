@@ -1,5 +1,5 @@
 import ts, { factory } from "typescript";
-import type { PluginConfig } from "ts-patch";
+import type { PluginConfig, ProgramTransformerExtras } from "ts-patch";
 import path from "path";
 
 const avoidTypiaNameClash = "____moose____typia";
@@ -207,7 +207,7 @@ export default function transformProgram(
   program: ts.Program,
   host: ts.CompilerHost | undefined,
   config: PluginConfig,
-  { ts: tsInstance }: ts.ProgramTransformerExtras,
+  { ts: tsInstance }: ProgramTransformerExtras,
 ): ts.Program {
   const compilerOptions = program.getCompilerOptions();
 

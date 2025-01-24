@@ -225,6 +225,8 @@ jobs:
           target: ${{ matrix.build.TARGET }}
           args: --release --features rdkafka/cmake-build --locked --target ${{ matrix.build.TARGET }} --out dist
           sccache: "true"
+          # https://github.com/briansmith/ring/issues/1728#issuecomment-1758180655
+          manylinux: ${{ matrix.build.TARGET == 'aarch64-unknown-linux-gnu' && '2_28' || '' }}
           working-directory: ./apps/framework-cli
 
       - name: Upload wheels
@@ -258,13 +260,12 @@ jobs:
             ./target/${{ matrix.build.TARGET }}/release/moose-cli-${{ matrix.build.TARGET }}
 
   release-python:
-    name: Release
+    name: Release Python Wheels
     runs-on: ubuntu-latest
     needs: [build-and-publish-binaries]
     if: ${{ !inputs.dry-run }}
     steps:
       - uses: actions/download-artifact@v4
-
       - name: Publish to PyPI
         uses: PyO3/maturin-action@v1
         with:

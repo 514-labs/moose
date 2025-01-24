@@ -211,8 +211,6 @@ export default function transformProgram(
 ): ts.Program {
   const compilerOptions = program.getCompilerOptions();
 
-  console.log("compilerOptions", compilerOptions);
-
   const compilerHost = getPatchedHost(host, tsInstance, compilerOptions);
   const rootFileNames = program
     .getRootFileNames()
@@ -230,9 +228,7 @@ export default function transformProgram(
 
   const { printFile } = tsInstance.createPrinter();
   for (const sourceFile of transformedSource) {
-    console.log("sourceFile.kind", sourceFile.kind);
     const { fileName, languageVersion } = sourceFile;
-    // console.log("sourceFile", sourceFile)
     const updatedSourceFile = tsInstance.createSourceFile(
       fileName,
       printFile(sourceFile),
@@ -249,7 +245,6 @@ const transform =
   (typeChecker: ts.TypeChecker) =>
   (_context: ts.TransformationContext) =>
   (sourceFile: ts.SourceFile): ts.SourceFile => {
-    console.log("sourceFile.kind", sourceFile.kind);
     const recurse = (node: ts.Node): ts.Node =>
       ts.visitEachChild(
         transformCreateConsumptionApi(node, typeChecker),
@@ -257,7 +252,6 @@ const transform =
         undefined,
       );
     const transformed = ts.visitEachChild(sourceFile, recurse, undefined);
-    console.log("transformed.kind", transformed.kind);
 
     // prepend the import statement to the file's statements
     const withTypiaImport = factory.createNodeArray([
@@ -265,7 +259,5 @@ const transform =
       ...transformed.statements,
     ]);
 
-    const asdf = factory.updateSourceFile(transformed, withTypiaImport);
-    console.log("asdf.kind", asdf.kind);
-    return asdf;
+    return factory.updateSourceFile(transformed, withTypiaImport);
   };

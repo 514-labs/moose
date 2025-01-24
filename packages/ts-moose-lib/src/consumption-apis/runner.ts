@@ -42,54 +42,14 @@ const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
 const modulesCache = new Map<string, any>();
 
 export function createConsumptionApi<T extends object, R = any>(
-  handler: (params: T, utils: ConsumptionUtil) => Promise<R>,
-): (rawParams: Record<string, string[]>, utils: ConsumptionUtil) => Promise<R> {
-  throw new Error("somehow compiler plugins are not there");
-  //
-  // return async function (
-  //   rawParams: Record<string, string[]>,
-  //   utils: ConsumptionUtil,
-  // ) {
-  //   // TODO: rawParams comes from URLSearchParams.entries()
-  //   const processedParams = new URLSearchParams(rawParams)
-  //
-  //   // const processedParams = Object.fromEntries(
-  //   //   Object.entries(rawParams).map(([key, values]) => [
-  //   //     key,
-  //   //     values.length === 1
-  //   //       ? isNaN(Number(values[0]))
-  //   //         ? values[0]
-  //   //         : Number(values[0])
-  //   //       : values,
-  //   //   ]),
-  //   // );
-  //
-  //   try {
-  //     logToConsole(
-  //       `createConsumptionApi: Processed params: ${JSON.stringify(processedParams)}`,
-  //     );
-  //
-  //     const result = await handler(
-  //       // magic in insertTypiaValidation
-  //       processedParams as T,
-  //       utils
-  //     );
-  //
-  //     return {
-  //       status: 200,
-  //       body: {
-  //         success: true,
-  //         data: result,
-  //       },
-  //     };
-  //   } catch (error) {
-  //     logToConsole(
-  //       `createConsumptionApi: Validation error: ${error instanceof Error ? error.message : String(error)}`,
-  //     );
-  //
-  //     throw error
-  //   }
-  // };
+  _handler: (params: T, utils: ConsumptionUtil) => Promise<R>,
+): (
+  rawParams: Record<string, string[] | string>,
+  utils: ConsumptionUtil,
+) => Promise<R> {
+  throw new Error(
+    "This should be compiled-time replaced by compiler plugins to add parsing.",
+  );
 }
 
 const apiHandler =
@@ -133,48 +93,32 @@ const apiHandler =
 
       const pathName = createPath(fileName);
       const paramsObject = Array.from(url.searchParams.entries()).reduce(
-        (obj: { [key: string]: string[] }, [key, value]) => {
-          if (obj[key]) {
-            obj[key].push(value);
+        (obj: { [key: string]: string[] | string }, [key, value]) => {
+          const existingValue = obj[key];
+          if (existingValue) {
+            if (Array.isArray(existingValue)) {
+              existingValue.push(value);
+            } else {
+              obj[key] = [existingValue, value];
+            }
           } else {
-            obj[key] = [value];
+            obj[key] = value;
           }
           return obj;
         },
         {},
       );
 
-      let userFuncModule;
-      try {
-        userFuncModule = require(pathName);
-      } catch (error) {
-        console.log("error loading user's module", error);
-        throw error;
+      let userFuncModule = modulesCache.get(pathName);
+      if (userFuncModule === undefined) {
+        try {
+          userFuncModule = require(pathName);
+          modulesCache.set(pathName, userFuncModule);
+        } catch (error) {
+          console.log("error loading user's module", error);
+          throw error;
+        }
       }
-
-      // try {
-      //   logToConsole(`apiHandler: About to load module from path: ${fileName}`);
-      //   const fullPath = process.cwd() + fileName;
-      //   logToConsole(`apiHandler: Full module path: ${fullPath}`);
-      //
-      //   // Log the module cache state
-      //   logToConsole(
-      //     `apiHandler: Module cache state before require: ${Object.keys(require.cache).join(", ")}`,
-      //   );
-      //
-      //   userFuncModule = require(fullPath);
-      //
-      //   logToConsole(
-      //     `apiHandler: Successfully loaded module. Exports: ${Object.keys(userFuncModule).join(", ")}`,
-      //   );
-      // } catch (error) {
-      //   logToConsole(
-      //     `apiHandler: Error loading module: ${
-      //       error instanceof Error ? error.stack : String(error)
-      //     }`,
-      //   );
-      //   throw error;
-      // }
 
       try {
         const result = await userFuncModule.default(paramsObject, {
@@ -272,19 +216,6 @@ const apiHandler =
 
 export const runConsumptionApis = async () => {
   console.log("Starting API service");
-
-  // Add logging for project configuration
-  const fs = require("fs");
-  const path = require("path");
-
-  const projectRoot = process.cwd();
-
-  const tsconfigPath = path.join(projectRoot, "tsconfig.json");
-
-  if (fs.existsSync(tsconfigPath)) {
-    const tsconfig = JSON.parse(fs.readFileSync(tsconfigPath, "utf8"));
-  } else {
-  }
 
   const consumptionCluster = new Cluster({
     workerStart: async () => {

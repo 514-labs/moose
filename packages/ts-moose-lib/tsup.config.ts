@@ -10,7 +10,7 @@ export default defineConfig({
     "src/moose-exec.ts",
   ],
   format: ["cjs", "esm"],
-  dts: true,
+  dts: true, // Generate declaration file (.d.ts)
   outDir: "dist",
   splitting: false,
   sourcemap: true,

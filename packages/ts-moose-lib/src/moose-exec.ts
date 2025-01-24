@@ -1,16 +1,11 @@
 #!/usr/bin/env node
 
 import { register } from "ts-node";
-import "ts-patch/register";
 
 // Register ts-node to interpret TypeScript code
 register({
   esm: true,
   experimentalSpecifierResolution: "node",
-  transpileOnly: true,
-  compilerOptions: {
-    plugins: [{ transform: "typia/lib/transform" }],
-  },
 });
 
 // Get the script path from the command line arguments

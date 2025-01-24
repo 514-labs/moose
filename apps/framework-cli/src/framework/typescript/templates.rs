@@ -106,11 +106,11 @@ export default createConsumptionApi<DailyActiveUsersParams>(
     const query = sql`
       SELECT
         date,
-        uniqMerge(dailyActiveUsers) as daily_users
+        uniqMerge(dailyActiveUsers) as dailyActiveUsers
       FROM DailyActiveUsers
       GROUP BY date
-      HAVING daily_users >= ${minDailyActiveUsers}
-      ORDER BY date DESC
+      HAVING dailyActiveUsers >= ${minDailyActiveUsers}
+      ORDER BY date
       LIMIT ${limit}`;
 
     return client.query(query);

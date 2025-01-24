@@ -4,7 +4,7 @@ use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
 
 use crate::infrastructure::processes::kafka_clickhouse_sync;
-use log::{error, info};
+use log::{info, warn};
 use rdkafka::error::KafkaError;
 use std::sync::Arc;
 use tokio::sync::Mutex;
@@ -14,6 +14,9 @@ use tokio::time;
 pub struct Batch {
     pub records: Vec<ClickHouseRecord>,
     pub partition_offsets: HashMap<i32, i64>,
+
+    // Map the partions to the number of messages in the batch
+    pub messages_sizes: HashMap<i32, i64>,
 }
 
 impl Batch {
@@ -22,6 +25,27 @@ impl Batch {
             .entry(partition)
             .and_modify(|e| *e = (*e).max(offset))
             .or_insert(offset);
+
+        self.messages_sizes
+            .entry(partition)
+            .and_modify(|e| *e += 1)
+            .or_insert(1);
+    }
+
+    fn offsets_to_string(&self) -> String {
+        self.partition_offsets
+            .iter()
+            .map(|(partition, offset)| format!("Partition {}: {}", partition, offset))
+            .collect::<Vec<String>>()
+            .join(", ")
+    }
+
+    fn messages_sizes_to_string(&self) -> String {
+        self.messages_sizes
+            .iter()
+            .map(|(partition, size)| format!("Partition {}: {}", partition, size))
+            .collect::<Vec<String>>()
+            .join(", ")
     }
 }
 
@@ -119,15 +143,18 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
             }
 
             if let Some(batch) = queue.front() {
-                let batch_size = batch.records.len();
-
                 match self.client.insert(&table, &columns, &batch.records).await {
                     Ok(_) => {
-                        info!("Inserted {} records to {}", batch_size, table);
+                        info!(
+                            "Batch Insert records - table='{}';insert_sizes='{}';offsets='{}'",
+                            table,
+                            batch.messages_sizes_to_string(),
+                            batch.offsets_to_string()
+                        );
 
                         for (partition, offset) in &batch.partition_offsets {
                             if let Err(err) = commit_callback(*partition, *offset) {
-                                error!(
+                                warn!(
                                     "Error committing offset {} for partition {}: {:?}",
                                     offset, partition, err
                                 );
@@ -141,9 +168,12 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
                         }
                     }
                     Err(e) => {
-                        error!(
-                            "Error inserting {} records to {}: {:?}",
-                            batch_size, table, e
+                        warn!(
+                            "Transient Failure - table='{}';insert_sizes='{}';offsets='{}';error='{}'",
+                            table,
+                            batch.messages_sizes_to_string(),
+                            batch.offsets_to_string(),
+                            e
                         );
                     }
                 }

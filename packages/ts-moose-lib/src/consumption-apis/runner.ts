@@ -6,6 +6,7 @@ import * as jose from "jose";
 import { ClickHouseClient } from "@clickhouse/client";
 import { Cluster } from "../cluster-utils";
 import { ConsumptionUtil } from "../index";
+import { TypeGuardError } from "typia";
 
 const [
   ,
@@ -111,106 +112,57 @@ const apiHandler =
 
       let userFuncModule = modulesCache.get(pathName);
       if (userFuncModule === undefined) {
-        try {
-          userFuncModule = require(pathName);
-          modulesCache.set(pathName, userFuncModule);
-        } catch (error) {
-          console.log("error loading user's module", error);
-          throw error;
+        userFuncModule = require(pathName);
+        modulesCache.set(pathName, userFuncModule);
+      }
+
+      const result = await userFuncModule.default(paramsObject, {
+        client: new MooseClient(clickhouseClient, fileName),
+        sql: sql,
+        jwt: jwtPayload,
+      });
+
+      let body: string;
+      let status: number | undefined;
+
+      // TODO investigate why these prototypes are different
+      if (Object.getPrototypeOf(result).constructor.name === "ResultSet") {
+        body = JSON.stringify(await result.json());
+      } else {
+        if ("body" in result && "status" in result) {
+          body = JSON.stringify(result.body);
+          status = result.status;
+        } else {
+          body = JSON.stringify(result);
         }
       }
 
-      try {
-        const result = await userFuncModule.default(paramsObject, {
-          client: new MooseClient(clickhouseClient, fileName),
-          sql: sql,
-          jwt: jwtPayload,
-        });
-
-        // If result is already an API response shape, return it as is
-        if ("status" in result && "body" in result) {
-          res.statusCode = result.status;
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify(result.body));
-          return;
-        }
-
-        let response: any;
-
-        if (Object.getPrototypeOf(result).constructor.name === "ResultSet") {
-          response = {
-            success: true,
-            data: await result.json(),
-          };
-        } else if ("body" in result && "status" in result) {
-          // Handle an existing custom response format
-          response = {
-            success: result.status < 400,
-            ...(result.status < 400
-              ? { data: result.body }
-              : { error: result.body }),
-          };
-          res.statusCode = result.status;
-        } else {
-          response = {
-            success: true,
-            data: result,
-          };
-        }
-
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify(response));
-      } catch (error: unknown) {
-        console.log(error);
-
-        let response: any;
-
-        if (
-          error instanceof Error &&
-          (error as any).type === "VALIDATION_ERROR"
-        ) {
-          response = {
-            success: false,
-            error: {
-              code: "VALIDATION_ERROR",
-              message: error.message,
-            },
-          };
-          res.statusCode = 400;
-        } else {
-          response = {
-            success: false,
-            error: {
-              code: "INTERNAL_ERROR",
-              message:
-                error instanceof Error
-                  ? error.message
-                  : "An unexpected error occurred",
-              details:
-                process.env.NODE_ENV === "development" ? error : undefined,
-            },
-          };
-          res.statusCode = 500;
-        }
-
-        res.setHeader("Content-Type", "application/json");
-        res.end(JSON.stringify(response));
-        return;
+      if (status) {
+        res.writeHead(status, { "Content-Type": "application/json" });
+        httpLogger(req, res);
+      } else {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        httpLogger(req, res);
       }
+
+      res.end(body);
     } catch (error: any) {
-      const response: any = {
-        success: false,
-        error: {
-          code: "SYSTEM_ERROR",
-          message: "A system error occurred",
-          details:
-            process.env.NODE_ENV === "development" ? error.message : undefined,
-        },
-      };
-      res.statusCode = 500;
-      res.setHeader("Content-Type", "application/json");
-      res.end(JSON.stringify(response));
-      httpLogger(req, res);
+      console.log("error in path ", req.url, error);
+
+      if (error instanceof TypeGuardError) {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: error.message }));
+        httpLogger(req, res);
+      }
+      if (error instanceof Error) {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: error.message }));
+        httpLogger(req, res);
+      } else {
+        res.writeHead(500, { "Content-Type": "application/json" });
+        res.end();
+        httpLogger(req, res);
+      }
     }
   };
 

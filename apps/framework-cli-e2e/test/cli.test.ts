@@ -84,7 +84,7 @@ describe("framework-cli", () => {
     const packageJsonPath = path.join(TEST_PROJECT_DIR, "package.json");
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 
-    packageJson.dependencies["@514labs/moose"] = `file:${MOOSE_LIB_PATH}`;
+    packageJson.dependencies["@514labs/moose-lib"] = `file:${MOOSE_LIB_PATH}`;
 
     fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
 

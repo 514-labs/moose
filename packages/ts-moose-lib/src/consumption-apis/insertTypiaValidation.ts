@@ -46,7 +46,12 @@ const isCreateConsumptionApi = (
   }
 
   const location: string = path.resolve(declaration.getSourceFile().fileName);
-  if (location.indexOf("@514labs/moose-lib") == -1) return false;
+  if (
+    !location.includes("@514labs/moose-lib") &&
+    // workaround for e2e test
+    !location.includes("packages/ts-moose-lib/dist")
+  )
+    return false;
 
   const { name } = checker.getTypeAtLocation(declaration).symbol;
 

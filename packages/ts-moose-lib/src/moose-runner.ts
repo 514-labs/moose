@@ -2,13 +2,11 @@
 
 // This file is use to run the proper runners for moose based on the
 // the arguments passed to the file.
-// It regiters ts-node to be able to interpret user code.
+// It registers ts-node to be able to interpret user code.
 
 import { register } from "ts-node";
 
 if (process.argv[2] == "consumption-apis") {
-  require("ts-patch/register");
-
   register({
     esm: true,
     experimentalTsImportSpecifiers: true,

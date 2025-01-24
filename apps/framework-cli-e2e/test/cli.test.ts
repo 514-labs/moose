@@ -205,7 +205,7 @@ describe("framework-cli", () => {
 
     console.log("Sending consumption request...");
     const consumptionResponse = await fetch(
-      "http://localhost:4000/consumption/dailyActiveUsers",
+      "http://localhost:4000/consumption/dailyActiveUsers?minDailyActiveUsers=1",
     );
 
     if (consumptionResponse.ok) {

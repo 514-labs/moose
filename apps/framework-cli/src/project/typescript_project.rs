@@ -35,7 +35,11 @@ impl Default for TypescriptProject {
                 ("moose".to_string(), "moose-cli".to_string()),
                 ("build".to_string(), "moose-cli build --docker".to_string()),
             ]),
-            dependencies: HashMap::from([("@514labs/moose-lib".to_string(), "latest".to_string())]),
+            dependencies: HashMap::from([
+                ("@514labs/moose-lib".to_string(), "latest".to_string()),
+                ("ts-patch".to_string(), "^3.3.0".to_string()),
+                ("typia".to_string(), "^7.6.0".to_string()),
+            ]),
             dev_dependencies: HashMap::from([
                 ("@514labs/moose-cli".to_string(), "latest".to_string()),
                 ("@types/node".to_string(), "^20.12.12".to_string()),

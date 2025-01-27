@@ -1,7 +1,3 @@
-use protobuf::{EnumOrUnknown, MessageField};
-use serde::{Deserialize, Serialize};
-use std::path::PathBuf;
-
 use super::{topic::Topic, DataLineage, InfrastructureSignature};
 use crate::framework::versions::Version;
 use crate::framework::{
@@ -9,13 +5,17 @@ use crate::framework::{
     core::infrastructure_map::{PrimitiveSignature, PrimitiveTypes},
     data_model::{config::EndpointIngestionFormat, model::DataModel},
 };
-
 use crate::proto::infrastructure_map::api_endpoint::Api_type as ProtoApiType;
 use crate::proto::infrastructure_map::Method as ProtoMethod;
 use crate::proto::infrastructure_map::{
     ApiEndpoint as ProtoApiEndpoint, EgressDetails, EndpointIngestionFormat as ProtoIngressFormat,
     IngressDetails,
 };
+use protobuf::{EnumOrUnknown, MessageField};
+use serde::de::Error;
+use serde::{Deserialize, Deserializer, Serialize};
+use serde_json::Value;
+use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub enum APIType {
@@ -43,6 +43,7 @@ pub enum Method {
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct ApiEndpoint {
     pub name: String,
+    #[serde(deserialize_with = "APIType::backwards_compatible_deserialize")]
     pub api_type: APIType,
     pub path: PathBuf,
     pub method: Method,
@@ -186,6 +187,19 @@ impl APIType {
                 query_params: query_params.iter().map(|param| param.to_proto()).collect(),
                 special_fields: Default::default(),
             }),
+        }
+    }
+
+    fn backwards_compatible_deserialize<'de, D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let json = Value::deserialize(deserializer)?;
+        match json {
+            Value::String(s) if s == "EGRESS" => Ok(APIType::EGRESS {
+                query_params: vec![],
+            }),
+            _ => serde_json::from_value(json).map_err(D::Error::custom),
         }
     }
 }

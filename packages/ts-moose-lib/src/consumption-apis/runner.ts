@@ -6,7 +6,6 @@ import * as jose from "jose";
 import { ClickHouseClient } from "@clickhouse/client";
 import { Cluster } from "../cluster-utils";
 import { ConsumptionUtil } from "../index";
-import { TypeGuardError } from "typia";
 
 const [
   ,
@@ -148,8 +147,8 @@ const apiHandler =
       res.end(body);
     } catch (error: any) {
       console.log("error in path ", req.url, error);
-
-      if (error instanceof TypeGuardError) {
+      // todo: same workaround as ResultSet
+      if (Object.getPrototypeOf(error).constructor.name === "TypeGuardError") {
         res.writeHead(400, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: error.message }));
         httpLogger(req, res);

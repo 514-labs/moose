@@ -29,8 +29,10 @@ describe("framework-cli", () => {
     }
   });
 
-  const removeTestProj = () =>
+  const removeTestProj = () => {
+    console.log(`deleting ${TEST_PROJECT_DIR}`);
     fs.rmSync(TEST_PROJECT_DIR, { recursive: true, force: true });
+  };
 
   after(async function () {
     if (devProcess && !devProcess.killed) {

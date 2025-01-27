@@ -16,6 +16,7 @@ use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
 
 use super::display::{self, with_spinner_async, Message, MessageType};
 
+use crate::cli::routines::openapi::openapi;
 use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_infrastructure_map};
 use crate::infrastructure::processes::kafka_clickhouse_sync::SyncingProcessesRegistry;
 use crate::infrastructure::processes::process_registry::ProcessRegistries;
@@ -176,6 +177,9 @@ async fn watch(
                                     .target_infra_map
                                     .store_in_redis(&*redis_client.lock().await)
                                     .await?;
+
+                                let _openapi_file =
+                                    openapi(&project, &plan_result.target_infra_map).await?;
 
                                 let mut infra_ptr = infrastructure_map.write().await;
                                 *infra_ptr = plan_result.target_infra_map

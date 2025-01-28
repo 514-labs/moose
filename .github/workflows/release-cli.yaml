@@ -215,6 +215,8 @@ jobs:
 
       - name: Install Protoc (Needed for Temporal)
         uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Verify Protoc Installation
         run: |

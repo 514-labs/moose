@@ -213,6 +213,9 @@ jobs:
       - name: Run sccache-cache
         uses: mozilla-actions/sccache-action@v0.0.3
 
+      - name: Install Protoc (Needed for Temporal)
+        uses: arduino/setup-protoc@v3
+
       - name: Install Set Version
         run: |
           cargo install cargo-edit

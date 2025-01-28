@@ -215,14 +215,12 @@ jobs:
 
       - name: Install Protoc (Needed for Temporal)
         uses: arduino/setup-protoc@v3
-        if: ${{ matrix.build.TARGET != 'aarch64-unknown-linux-gnu' }}
 
-      - name: Install Protoc for aarch64
-        if: ${{ matrix.build.TARGET == 'aarch64-unknown-linux-gnu' }}
+      - name: Verify Protoc Installation
         run: |
-          wget https://github.com/protocolbuffers/protobuf/releases/download/v24.4/protoc-24.4-linux-aarch_64.zip
-          unzip protoc-24.4-linux-aarch_64.zip -d $HOME/.local
-          echo "$HOME/.local/bin" >> $GITHUB_PATH
+          which protoc
+          protoc --version
+          echo "PROTOC=$(which protoc)" >> $GITHUB_ENV
 
       - name: Install Set Version
         run: |

@@ -1,7 +1,5 @@
 use super::{RoutineFailure, RoutineSuccess};
 use crate::cli::display::{Message, MessageType};
-use crate::cli::settings::Features;
-use crate::framework::core::code_loader::load_framework_objects;
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::data_model::model::DataModel;
 use crate::framework::languages::SupportedLanguages;
@@ -14,53 +12,30 @@ use std::{fs, io::Write, process::Stdio};
 
 pub async fn create_streaming_function_file(
     project: &Project,
-    features: &Features,
     source: String,
     destination: String,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let (models, error_occurred) = if features.core_v2 {
-        match PrimitiveMap::load(project).await {
-            Ok(primitives) => {
-                let data_model_map: HashMap<String, DataModel> = primitives
-                    .datamodels
-                    .iter()
-                    .filter_map(|dm| {
-                        if &dm.version == project.cur_version() {
-                            Some((dm.name.clone(), dm.clone()))
-                        } else {
-                            None
-                        }
-                    })
-                    .collect();
-                (data_model_map, false)
-            }
-            Err(err) => {
-                debug!(
-                    "Failed to load primitives while creating streaming function: {:?}",
-                    err
-                );
-                (HashMap::new(), true)
-            }
+    let (models, error_occurred) = match PrimitiveMap::load(project).await {
+        Ok(primitives) => {
+            let data_model_map: HashMap<String, DataModel> = primitives
+                .datamodels
+                .iter()
+                .filter_map(|dm| {
+                    if &dm.version == project.cur_version() {
+                        Some((dm.name.clone(), dm.clone()))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            (data_model_map, false)
         }
-    } else {
-        let framework_objects = load_framework_objects(project).await;
-        match framework_objects {
-            Ok(framework_objects) => (
-                framework_objects
-                    .current_models
-                    .models
-                    .into_iter()
-                    .map(|(name, fo)| (name, fo.data_model))
-                    .collect(),
-                false,
-            ),
-            Err(err) => {
-                debug!(
-                    "Failed to crawl schema while creating streaming function: {:?}",
-                    err
-                );
-                (HashMap::new(), true)
-            }
+        Err(err) => {
+            debug!(
+                "Failed to load primitives while creating streaming function: {:?}",
+                err
+            );
+            (HashMap::new(), true)
         }
     };
 

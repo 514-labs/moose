@@ -1,16 +1,19 @@
+use handlebars::Handlebars;
 use lazy_static::lazy_static;
 use log::{error, info};
 use regex::Regex;
 use serde::{Deserialize, Serialize};
+use serde_json::json;
 use serde_json::{from_slice, from_str};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use tokio::io::{AsyncBufReadExt, BufReader};
 
+use crate::cli::settings::Settings;
 use crate::project::Project;
 use crate::utilities::constants::REDPANDA_CONTAINER_NAME;
 
-static COMPOSE_FILE: &str = include_str!("docker-compose.yml");
+static COMPOSE_FILE: &str = include_str!("docker-compose.yml.hbs");
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to create or delete project files")]
@@ -153,10 +156,16 @@ lazy_static! {
 }
 
 pub fn start_containers(project: &Project) -> anyhow::Result<()> {
-    project.create_internal_redpanda_volume()?;
-    project.create_internal_clickhouse_volume()?;
+    let temporal_env_vars = project.temporal_config.to_env_vars();
 
-    let child = compose_command(project)
+    let mut child = compose_command(project);
+
+    // Add all temporal environment variables
+    for (key, value) in temporal_env_vars {
+        child.env(key, value);
+    }
+
+    child
         .arg("up")
         .arg("-d")
         .env("DB_NAME", project.clickhouse_config.db_name.clone())
@@ -168,7 +177,9 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
         .env(
             "CLICKHOUSE_HOST_PORT",
             project.clickhouse_config.host_port.to_string(),
-        )
+        );
+
+    let child = child
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()?;
@@ -263,9 +274,25 @@ fn get_container_id(container_name: &str) -> anyhow::Result<String> {
     }
 }
 
-pub fn create_compose_file(project: &Project) -> Result<(), DockerError> {
+pub fn create_compose_file(project: &Project, settings: &Settings) -> Result<(), DockerError> {
     let compose_file = project.internal_dir()?.join("docker-compose.yml");
-    Ok(std::fs::write(compose_file, COMPOSE_FILE)?)
+
+    // Initialize handlebars
+    let mut handlebars = Handlebars::new();
+    // Don't escape HTML characters in the output
+    handlebars.register_escape_fn(handlebars::no_escape);
+
+    // Create template data
+    let data = json!({
+        "scripts_feature": settings.features.scripts
+    });
+
+    // Render the template
+    let rendered = handlebars
+        .render_template(COMPOSE_FILE, &data)
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+
+    Ok(std::fs::write(compose_file, rendered)?)
 }
 
 pub fn run_rpk_cluster_info(project_name: &str, attempts: usize) -> anyhow::Result<()> {

@@ -37,11 +37,13 @@ use crate::framework::typescript::templates::{
 };
 use crate::framework::versions::Version;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
+use crate::infrastructure::orchestration::temporal::TemporalConfig;
 use crate::infrastructure::processes::cron_registry::CronJob;
 use crate::infrastructure::redis::redis_client::RedisConfig;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 
 use crate::project::typescript_project::TypescriptProject;
+use crate::utilities::constants::SCRIPTS_DIR;
 use config::{Config, ConfigError, Environment, File};
 use itertools::Itertools;
 use log::debug;
@@ -49,19 +51,14 @@ use python_project::PythonProject;
 use serde::Deserialize;
 use serde::Serialize;
 
-use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA;
-use crate::utilities::constants::CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS;
-use crate::utilities::constants::CLI_DEV_REDPANDA_VOLUME_DIR;
 use crate::utilities::constants::CLI_INTERNAL_VERSIONS_DIR;
+use crate::utilities::constants::ENVIRONMENT_VARIABLE_PREFIX;
 use crate::utilities::constants::PROJECT_CONFIG_FILE;
 use crate::utilities::constants::PY_BLOCKS_FILE;
 use crate::utilities::constants::README_PREFIX;
+use crate::utilities::constants::TSCONFIG_JSON;
 use crate::utilities::constants::{APP_DIR, APP_DIR_LAYOUT, CLI_PROJECT_INTERNAL_DIR, SCHEMAS_DIR};
 use crate::utilities::constants::{BLOCKS_DIR, TS_BLOCKS_FILE};
-use crate::utilities::constants::{
-    CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS, ENVIRONMENT_VARIABLE_PREFIX,
-};
-use crate::utilities::constants::{CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS, TSCONFIG_JSON};
 use crate::utilities::constants::{
     CONSUMPTION_DIR, FUNCTIONS_DIR, OLD_PROJECT_CONFIG_FILE, SAMPLE_STREAMING_FUNCTION_DEST,
     SAMPLE_STREAMING_FUNCTION_SOURCE, TS_FLOW_FILE,
@@ -102,6 +99,9 @@ pub struct Project {
     pub redis_config: RedisConfig,
     #[serde(default)]
     pub git_config: GitConfig,
+
+    #[serde(default)]
+    pub temporal_config: TemporalConfig,
 
     // This part of the configuration for the project is dynamic and not saved
     // to disk. It is loaded from the language specific configuration file or the currently
@@ -183,6 +183,7 @@ impl Project {
             clickhouse_config: ClickHouseConfig::default(),
             redis_config: RedisConfig::default(),
             http_server_config: LocalWebserverConfig::default(),
+            temporal_config: TemporalConfig::default(),
             language_project_config,
             supported_old_versions: HashMap::new(),
             git_config: GitConfig::default(),
@@ -410,6 +411,17 @@ impl Project {
         app_dir
     }
 
+    pub fn scripts_dir(&self) -> PathBuf {
+        let mut scripts_dir = self.app_dir();
+        scripts_dir.push(SCRIPTS_DIR);
+
+        if !scripts_dir.exists() {
+            std::fs::create_dir_all(&scripts_dir).expect("Failed to create scripts directory");
+        }
+
+        scripts_dir
+    }
+
     pub fn data_models_dir(&self) -> PathBuf {
         let mut schemas_dir = self.app_dir();
         schemas_dir.push(SCHEMAS_DIR);
@@ -513,23 +525,6 @@ impl Project {
     pub fn delete_internal_dir(&self) -> Result<(), ProjectFileError> {
         let internal_dir = self.internal_dir()?;
         Ok(std::fs::remove_dir_all(internal_dir)?)
-    }
-
-    pub fn create_internal_clickhouse_volume(&self) -> anyhow::Result<()> {
-        let clikhouse_dir = self.internal_dir()?;
-
-        std::fs::create_dir_all(clikhouse_dir.join(CLI_DEV_CLICKHOUSE_VOLUME_DIR_LOGS))?;
-        std::fs::create_dir_all(clikhouse_dir.join(CLI_DEV_CLICKHOUSE_VOLUME_DIR_DATA))?;
-        std::fs::create_dir_all(clikhouse_dir.join(CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_SCRIPTS))?;
-        std::fs::create_dir_all(clikhouse_dir.join(CLI_DEV_CLICKHOUSE_VOLUME_DIR_CONFIG_USERS))?;
-
-        Ok(())
-    }
-
-    pub fn create_internal_redpanda_volume(&self) -> anyhow::Result<()> {
-        let redpanda_dir = self.internal_dir()?;
-        std::fs::create_dir_all(redpanda_dir.join(CLI_DEV_REDPANDA_VOLUME_DIR))?;
-        Ok(())
     }
 
     pub fn old_version_location(&self, version: &str) -> Result<PathBuf, ProjectFileError> {

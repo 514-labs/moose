@@ -1,0 +1,150 @@
+volumes:
+  redpanda-0: null
+  clickhouse-0-data: null
+  clickhouse-0-logs: null
+  clickhouse-0-users: null
+  redis-data:
+  {{#if scripts_feature}}
+  temporal-data:
+  postgresql-data:
+  {{/if}}
+
+{{#if scripts_feature}}
+configs:
+  temporal-config:
+    # Using the "content" property to inline the config
+    content: |
+      limit.maxIDLength:
+        - value: 255
+          constraints: {}
+      system.forceSearchAttributesCacheRefreshOnRead:
+        - value: true # Dev setup only. Please don't turn this on in production.
+          constraints: {}
+{{/if}}
+
+services:
+  redis:
+    image: redis:latest
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+  redpanda:
+    image: docker.redpanda.com/redpandadata/redpanda:latest
+    ports:
+      - "9092:9092"
+      - "19092:19092"
+      - "9644:9644"
+    volumes:
+      - redpanda-0:/var/lib/redpanda/data
+    command:
+      - redpanda
+      - start
+      - --kafka-addr=internal://0.0.0.0:9092,external://0.0.0.0:19092
+      - --advertise-kafka-addr=internal://redpanda:9092,external://localhost:19092
+      - --pandaproxy-addr=internal://0.0.0.0:8082,external://0.0.0.0:18082
+      - --advertise-pandaproxy-addr=internal://redpanda:8082,external://localhost:18082
+      - --mode=dev-container
+      - --smp=1
+      - --memory=2G
+      - --node-id=0
+    healthcheck:
+      test:
+        ["CMD-SHELL", "rpk cluster health | grep -E 'Healthy:.+true' || exit 1"]
+      interval: 15s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+  clickhousedb:
+    image: docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-latest}
+    volumes:
+      - clickhouse-0-data:/var/lib/clickhouse/
+      - clickhouse-0-logs:/var/log/clickhouse-server/
+      - clickhouse-0-users:/etc/clickhouse-server/users.d
+    environment:
+      - CLICKHOUSE_DB=${DB_NAME:-local}
+      - CLICKHOUSE_USER=${CLICKHOUSE_USER:-panda}
+      - CLICKHOUSE_PASSWORD=${CLICKHOUSE_PASSWORD:-pandapass}
+      - CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT=1
+    ports:
+      - "${CLICKHOUSE_HOST_PORT:-18123}:8123"
+      - "9000:9000"
+    healthcheck:
+      test: ["CMD-SHELL", "clickhouse-client -q 'select version()'"]
+      interval: 5s
+      retries: 2
+      start_period: 20s
+      timeout: 20s
+    ulimits:
+      nofile:
+        soft: 20000
+        hard: 40000
+
+  {{#if scripts_feature}}
+  postgresql:
+    container_name: temporal-postgresql
+    environment:
+      POSTGRES_PASSWORD: ${TEMPORAL_DB_PASSWORD:-temporal}
+      POSTGRES_USER: ${TEMPORAL_DB_USER:-temporal}
+    image: postgres:${POSTGRESQL_VERSION:-13}
+    networks:
+      temporal-network:
+        aliases:
+          - postgresql
+    ports:
+      - ${TEMPORAL_DB_PORT:-5432}:5432
+    volumes:
+      - postgresql-data:/var/lib/postgresql/data
+  temporal:
+    container_name: temporal
+    depends_on:
+      - postgresql
+    environment:
+      - DB=postgres12
+      - DB_PORT=${TEMPORAL_DB_PORT:-5432}
+      - POSTGRES_USER=${TEMPORAL_DB_USER:-temporal}
+      - POSTGRES_PWD=${TEMPORAL_DB_PASSWORD:-temporal}
+      - POSTGRES_SEEDS=postgresql
+      - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/config/dynamicconfig/development-sql.yaml
+    image: temporalio/auto-setup:${TEMPORAL_VERSION:-1.22.3}
+    networks:
+      - temporal-network
+    ports:
+      - ${TEMPORAL_PORT:-7233}:7233
+    configs:
+      - source: temporal-config
+        target: /etc/temporal/config/dynamicconfig/development-sql.yaml
+    volumes:
+      - temporal-data:/etc/temporal/config
+
+  temporal-admin-tools:
+    container_name: temporal-admin-tools
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:${TEMPORAL_PORT:-7233}
+      - TEMPORAL_CLI_ADDRESS=temporal:${TEMPORAL_PORT:-7233}
+    image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION:-1.22.3}
+    networks:
+      - temporal-network
+    stdin_open: true
+    tty: true
+  temporal-ui:
+    container_name: temporal-ui
+    depends_on:
+      - temporal
+    environment:
+      - TEMPORAL_ADDRESS=temporal:${TEMPORAL_PORT:-7233}
+      - TEMPORAL_CORS_ORIGINS=${TEMPORAL_UI_CORS_ORIGINS:-http://localhost:3000}
+    image: temporalio/ui:${TEMPORAL_UI_VERSION:-2.21.3}
+    networks:
+      - temporal-network
+    ports:
+      - ${TEMPORAL_UI_PORT:-8080}:8080
+
+networks:
+  temporal-network:
+    driver: bridge
+    name: temporal-network
+  {{/if}}

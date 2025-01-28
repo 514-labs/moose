@@ -1,4 +1,11 @@
-//! # Routines
+//! # Routines [Deprecation warning]
+//!
+//! *****
+//! Routines that get run by a CLI should simply be a function that returns a routine success or routine failure. Do not use
+//! the Routine and Routine controller structs and traits
+//! *****
+//!
+//!
 //! This module is used to define routines that can be run by the CLI. Routines are a collection of operations that are run in
 //! sequence. They can be run silently or explicitly. When run explicitly, they display messages to the user. When run silently,
 //! they do not display any messages to the user.
@@ -102,6 +109,7 @@ use crate::project::Project;
 use super::super::metrics::Metrics;
 use super::display;
 use super::local_webserver::Webserver;
+use super::settings::Settings;
 use super::watcher::FileWatcher;
 use super::{Message, MessageType};
 
@@ -120,6 +128,7 @@ pub mod migrate;
 pub mod openapi;
 pub mod peek;
 pub mod ps;
+pub mod scripts;
 pub mod streaming;
 pub mod templates;
 mod util;
@@ -417,6 +426,7 @@ pub async fn start_development_mode(
     project: Arc<Project>,
     metrics: Arc<Metrics>,
     redis_client: Arc<Mutex<RedisClient>>,
+    settings: &Settings,
 ) -> anyhow::Result<()> {
     show_message!(
         MessageType::Info,
@@ -457,6 +467,7 @@ pub async fn start_development_mode(
 
     let (syncing_registry, process_registry) = execute_initial_infra_change(
         &project,
+        settings,
         &plan,
         api_changes_channel,
         metrics.clone(),
@@ -516,6 +527,7 @@ pub async fn start_development_mode(
 
 // Starts the webserver in production mode
 pub async fn start_production_mode(
+    settings: &Settings,
     project: Arc<Project>,
     metrics: Arc<Metrics>,
     redis_client: Arc<Mutex<RedisClient>>,
@@ -565,6 +577,7 @@ pub async fn start_production_mode(
 
     execute_initial_infra_change(
         &project,
+        settings,
         &plan,
         api_changes_channel,
         metrics.clone(),

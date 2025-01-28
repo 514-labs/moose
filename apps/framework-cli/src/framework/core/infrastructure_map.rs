@@ -2,6 +2,7 @@ use super::infrastructure::api_endpoint::{APIType, ApiEndpoint};
 use super::infrastructure::consumption_webserver::ConsumptionApiWebServer;
 use super::infrastructure::function_process::FunctionProcess;
 use super::infrastructure::olap_process::OlapProcess;
+use super::infrastructure::orchestration_worker::OrchestrationWorker;
 use super::infrastructure::table::{Column, Table};
 use super::infrastructure::topic::Topic;
 use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicToTopicSyncProcess};
@@ -10,6 +11,7 @@ use super::primitive_map::PrimitiveMap;
 use crate::framework::controller::{InitialDataLoad, InitialDataLoadStatus};
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
+use crate::project::Project;
 use crate::proto::infrastructure_map::InfrastructureMap as ProtoInfrastructureMap;
 use anyhow::Result;
 use protobuf::{EnumOrUnknown, Message};
@@ -124,6 +126,7 @@ pub enum ProcessChange {
     FunctionProcess(Change<FunctionProcess>),
     OlapProcess(Change<OlapProcess>),
     ConsumptionApiWebServer(Change<ConsumptionApiWebServer>),
+    OrchestrationWorker(Change<OrchestrationWorker>),
 }
 
 #[derive(Debug, Clone, Default)]
@@ -189,6 +192,10 @@ pub struct InfrastructureMap {
 
     /// Collection of initial data loads indexed by load ID
     pub initial_data_loads: HashMap<String, InitialDataLoad>,
+
+    /// Collection of orchestration workers indexed by worker ID
+    #[serde(default = "HashMap::new")]
+    pub orchestration_workers: HashMap<String, OrchestrationWorker>,
 }
 
 impl InfrastructureMap {
@@ -284,7 +291,7 @@ impl InfrastructureMap {
         }
     }
 
-    pub fn new(primitive_map: PrimitiveMap) -> InfrastructureMap {
+    pub fn new(project: &Project, primitive_map: PrimitiveMap) -> InfrastructureMap {
         let mut tables = HashMap::new();
         let mut views = HashMap::new();
         let mut topics = HashMap::new();
@@ -415,6 +422,11 @@ impl InfrastructureMap {
             api_endpoints.insert(api_endpoint.id(), api_endpoint.into());
         }
 
+        // Orchestration workers
+        let mut orchestration_workers = HashMap::new();
+        let orchestration_worker = OrchestrationWorker::new(project.language);
+        orchestration_workers.insert(orchestration_worker.id(), orchestration_worker);
+
         InfrastructureMap {
             // primitive_map,
             topics,
@@ -427,6 +439,7 @@ impl InfrastructureMap {
             block_db_processes,
             consumption_api_web_server,
             initial_data_loads,
+            orchestration_workers,
         }
     }
 
@@ -720,6 +733,44 @@ impl InfrastructureMap {
                 after: Box::new(ConsumptionApiWebServer {}),
             }));
 
+        // =================================================================
+        //                      Orchestration Workers
+        // =================================================================
+
+        for (id, orchestration_worker) in &self.orchestration_workers {
+            if let Some(target_orchestration_worker) = target_map.orchestration_workers.get(id) {
+                // Until we track individual files changes, we want workers to be restarted for every change
+                changes
+                    .processes_changes
+                    .push(ProcessChange::OrchestrationWorker(Change::<
+                        OrchestrationWorker,
+                    >::Updated {
+                        before: Box::new(orchestration_worker.clone()),
+                        after: Box::new(target_orchestration_worker.clone()),
+                    }));
+            } else {
+                changes
+                    .processes_changes
+                    .push(ProcessChange::OrchestrationWorker(Change::<
+                        OrchestrationWorker,
+                    >::Removed(
+                        Box::new(orchestration_worker.clone()),
+                    )));
+            }
+        }
+
+        for (id, orchestration_worker) in &target_map.orchestration_workers {
+            if !self.orchestration_workers.contains_key(id) {
+                changes
+                    .processes_changes
+                    .push(ProcessChange::OrchestrationWorker(Change::<
+                        OrchestrationWorker,
+                    >::Added(
+                        Box::new(orchestration_worker.clone()),
+                    )));
+            }
+        }
+
         changes
     }
 
@@ -727,9 +778,9 @@ impl InfrastructureMap {
      * Generates all the changes that need to be made to the infrastructure in the case of the
      * infrastructure not having anything in place. ie everything needs to be created.
      */
-    pub fn init(&self) -> InfraChanges {
+    pub fn init(&self, project: &Project) -> InfraChanges {
         let olap_changes = self.init_tables();
-        let processes_changes = self.init_processes();
+        let processes_changes = self.init_processes(project);
         let api_changes = self.init_api_endpoints();
         let streaming_engine_changes = self.init_topics();
         let initial_data_loads = self.init_data_loads();
@@ -766,8 +817,8 @@ impl InfrastructureMap {
             .collect()
     }
 
-    pub fn init_processes(&self) -> Vec<ProcessChange> {
-        let mut topic_to_table_process_changes: Vec<ProcessChange> = self
+    pub fn init_processes(&self, project: &Project) -> Vec<ProcessChange> {
+        let mut process_changes: Vec<ProcessChange> = self
             .topic_to_table_sync_processes
             .values()
             .map(|topic_to_table_sync_process| {
@@ -786,7 +837,7 @@ impl InfrastructureMap {
                 ))
             })
             .collect();
-        topic_to_table_process_changes.append(&mut topic_to_topic_process_changes);
+        process_changes.append(&mut topic_to_topic_process_changes);
 
         let mut function_process_changes: Vec<ProcessChange> = self
             .function_processes
@@ -798,20 +849,28 @@ impl InfrastructureMap {
             })
             .collect();
 
-        topic_to_table_process_changes.append(&mut function_process_changes);
+        process_changes.append(&mut function_process_changes);
 
         // TODO Change this when we have multiple processes for blocks
-        topic_to_table_process_changes.push(ProcessChange::OlapProcess(
-            Change::<OlapProcess>::Added(Box::new(OlapProcess {})),
-        ));
+        process_changes.push(ProcessChange::OlapProcess(Change::<OlapProcess>::Added(
+            Box::new(OlapProcess {}),
+        )));
 
-        topic_to_table_process_changes.push(ProcessChange::ConsumptionApiWebServer(Change::<
+        process_changes.push(ProcessChange::ConsumptionApiWebServer(Change::<
             ConsumptionApiWebServer,
         >::Added(
             Box::new(ConsumptionApiWebServer {}),
         )));
 
-        topic_to_table_process_changes
+        process_changes.push(ProcessChange::OrchestrationWorker(Change::<
+            OrchestrationWorker,
+        >::Added(
+            Box::new(OrchestrationWorker {
+                supported_language: project.language,
+            }),
+        )));
+
+        process_changes
     }
 
     pub fn init_data_loads(&self) -> Vec<InitialDataLoadChange> {
@@ -891,6 +950,11 @@ impl InfrastructureMap {
                 .iter()
                 .map(|(k, v)| (k.clone(), v.to_proto()))
                 .collect(),
+            orchestration_workers: self
+                .orchestration_workers
+                .iter()
+                .map(|(k, v)| (k.clone(), v.to_proto()))
+                .collect(),
             special_fields: Default::default(),
         }
     }
@@ -963,7 +1027,7 @@ mod tests {
         println!("{:?}", primitive_map);
         assert!(primitive_map.is_ok());
 
-        let infra_map = super::InfrastructureMap::new(primitive_map.unwrap());
+        let infra_map = super::InfrastructureMap::new(&project, primitive_map.unwrap());
         println!("{:?}", infra_map);
     }
 
@@ -1001,8 +1065,8 @@ mod tests {
         println!("Base Primitive Map: {:?} \n", primitive_map);
         println!("Target Primitive Map {:?} \n", new_target_primitive_map);
 
-        let infra_map = super::InfrastructureMap::new(primitive_map);
-        let new_infra_map = super::InfrastructureMap::new(new_target_primitive_map);
+        let infra_map = super::InfrastructureMap::new(&project, primitive_map);
+        let new_infra_map = super::InfrastructureMap::new(&project, new_target_primitive_map);
 
         let diffs = infra_map.diff(&new_infra_map);
 

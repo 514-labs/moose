@@ -186,6 +186,25 @@ setup_queries = create_aggregation(aggregation_options)
 block = Blocks(teardown=teardown_queries, setup=setup_queries)
 "#;
 
+pub static PYTHON_BASE_SCRIPT_TEMPLATE: &str = r#"from moose_lib import task
+
+@task
+def {{name}}():  # The name of your script
+    """
+    Description of what this script does
+    """
+    # The body of your script goes here
+
+    # The return value is the output of the script.
+    # The return value should be a dictionary with at least:
+    # - step: the step name (e.g., "extract", "transform")
+    # - data: the actual data being passed to the next step
+    return {
+        "step": "{{name}}",  # The step name is the name of the script
+        "data": None     # The data being passed to the next step (4MB limit)
+    }
+"#;
+
 pub fn render_setup_py(project: PythonProject) -> Result<String, PythonRenderingError> {
     let reg = Handlebars::new();
 

@@ -4,16 +4,11 @@ use std::{
 };
 
 use super::{RoutineFailure, RoutineSuccess};
-use crate::cli::settings::Features;
 use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, retrieve_infrastructure_map};
 use crate::{
     cli::display::{show_table, Message},
     infrastructure::{
-        olap::{
-            self,
-            clickhouse::model::ClickHouseSystemTable,
-            clickhouse_alt_client::{get_state, ApplicationState},
-        },
+        olap::{self, clickhouse::model::ClickHouseSystemTable},
         stream::redpanda::{self, RedpandaConfig},
     },
     project::Project,
@@ -21,7 +16,6 @@ use crate::{
 
 pub async fn list_db(
     project: Arc<Project>,
-    features: &Features,
     version: &Option<String>,
     limit: &u16,
 ) -> Result<RoutineSuccess, RoutineFailure> {
@@ -29,59 +23,53 @@ pub async fn list_db(
         .clone()
         .unwrap_or_else(|| project.cur_version().to_string());
 
-    let mut output_table = if features.core_v2 {
-        let pool = get_pool(&project.clickhouse_config);
-        let mut client = pool.get_handle().await.map_err(|e| {
+    let pool = get_pool(&project.clickhouse_config);
+    let mut client = pool.get_handle().await.map_err(|e| {
+        RoutineFailure::new(
+            Message {
+                action: "Fail".to_string(),
+                details: "to connect to state storage".to_string(),
+            },
+            e,
+        )
+    })?;
+    let infra = retrieve_infrastructure_map(&mut client, &project.clickhouse_config)
+        .await
+        // temporarily have some duplicate code with get_current_state
+        .map_err(|e| {
             RoutineFailure::new(
                 Message {
-                    action: "Fail".to_string(),
-                    details: "to connect to state storage".to_string(),
+                    action: "Failed".to_string(),
+                    details: "Error retrieving current state".to_string(),
                 },
                 e,
             )
+        })?
+        .ok_or_else(|| {
+            RoutineFailure::error(Message::new(
+                "Failed".to_string(),
+                "No Moose state found".to_string(),
+            ))
         })?;
-        let infra = retrieve_infrastructure_map(&mut client, &project.clickhouse_config)
-            .await
-            // temporarily have some duplicate code with get_current_state
-            .map_err(|e| {
-                RoutineFailure::new(
-                    Message {
-                        action: "Failed".to_string(),
-                        details: "Error retrieving current state".to_string(),
-                    },
-                    e,
-                )
-            })?
-            .ok_or_else(|| {
-                RoutineFailure::error(Message::new(
-                    "Failed".to_string(),
-                    "No Moose state found".to_string(),
+
+    let mut output_table = infra
+        .api_endpoints
+        .values()
+        .filter_map(|endpoint| {
+            if &endpoint.version == project.cur_version() {
+                Some((
+                    endpoint.name.clone(),
+                    vec![
+                        endpoint.path.to_string_lossy().to_string(),
+                        String::new(),
+                        String::new(),
+                    ],
                 ))
-            })?;
-
-        infra
-            .api_endpoints
-            .values()
-            .filter_map(|endpoint| {
-                if &endpoint.version == project.cur_version() {
-                    Some((
-                        endpoint.name.clone(),
-                        vec![
-                            endpoint.path.to_string_lossy().to_string(),
-                            String::new(),
-                            String::new(),
-                        ],
-                    ))
-                } else {
-                    None
-                }
-            })
-            .collect()
-    } else {
-        let current_state = get_current_state(&project).await?;
-
-        map_models_to_resources(&current_state, &target_version)
-    };
+            } else {
+                None
+            }
+        })
+        .collect();
 
     add_tables_views(&project, &target_version, &mut output_table).await;
 
@@ -122,49 +110,6 @@ pub async fn list_streaming(
         "".to_string(),
         "".to_string(),
     )))
-}
-
-async fn get_current_state(project: &Project) -> Result<ApplicationState, RoutineFailure> {
-    get_state(&project.clickhouse_config)
-        .await
-        .map_err(|_| {
-            RoutineFailure::error(Message::new(
-                "Failed".to_string(),
-                "Error retrieving current state".to_string(),
-            ))
-        })?
-        .ok_or_else(|| {
-            RoutineFailure::error(Message::new(
-                "Failed".to_string(),
-                "No Moose state found".to_string(),
-            ))
-        })
-}
-
-fn map_models_to_resources(
-    current_state: &ApplicationState,
-    target_version: &str,
-) -> HashMap<String, Vec<String>> {
-    current_state
-        .models
-        .iter()
-        .find(|&(project_version, _)| project_version == target_version)
-        .map(|(_, models)| {
-            let mut map = HashMap::new();
-            for model in models {
-                // Map of data model to ingest point, table, and view
-                map.insert(
-                    model.data_model.name.clone(),
-                    vec![
-                        format!("ingest/{}/{}", model.data_model.name, target_version),
-                        "".to_string(),
-                        "".to_string(),
-                    ],
-                );
-            }
-            map
-        })
-        .unwrap_or_else(HashMap::new)
 }
 
 fn sort_and_limit(output_table: HashMap<String, Vec<String>>, limit: &u16) -> Vec<Vec<String>> {

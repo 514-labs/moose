@@ -1,9 +1,12 @@
 use super::{
-    validate::{validate_clickhouse_run, validate_redpanda_cluster, validate_redpanda_run},
+    validate::{
+        validate_clickhouse_run, validate_redpanda_cluster, validate_redpanda_run,
+        validate_temporal_run,
+    },
     RoutineFailure, RoutineSuccess,
 };
-use crate::cli::display::with_spinner;
 use crate::cli::routines::util::ensure_docker_running;
+use crate::cli::{display::with_spinner, settings::Settings};
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::python;
 use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
@@ -15,8 +18,11 @@ use log::debug;
 use std::fs;
 use std::io::ErrorKind;
 
-pub fn run_local_infrastructure(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
-    create_docker_compose_file(project)?.show();
+pub fn run_local_infrastructure(
+    project: &Project,
+    settings: &Settings,
+) -> Result<RoutineSuccess, RoutineFailure> {
+    create_docker_compose_file(project, settings)?.show();
 
     copy_old_schema(project)?.show();
 
@@ -26,6 +32,9 @@ pub fn run_local_infrastructure(project: &Project) -> Result<RoutineSuccess, Rou
     validate_clickhouse_run(project)?.show();
     validate_redpanda_run(project)?.show();
     validate_redpanda_cluster(project.name())?.show();
+    if settings.features.scripts {
+        validate_temporal_run(project)?.show();
+    }
 
     Ok(RoutineSuccess::success(Message::new(
         "Successfully".to_string(),
@@ -110,8 +119,11 @@ pub fn copy_old_schema(project: &Project) -> Result<RoutineSuccess, RoutineFailu
     )))
 }
 
-pub fn create_docker_compose_file(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
-    let output = docker::create_compose_file(project);
+pub fn create_docker_compose_file(
+    project: &Project,
+    settings: &Settings,
+) -> Result<RoutineSuccess, RoutineFailure> {
+    let output = docker::create_compose_file(project, settings);
 
     match output {
         Ok(_) => Ok(RoutineSuccess::success(Message::new(

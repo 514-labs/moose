@@ -54,7 +54,7 @@ pub async fn plan_changes(
             error!("Docker Build images should have the infrastructure map already created and embedded");
         }
         let primitive_map = PrimitiveMap::load(project).await?;
-        InfrastructureMap::new(primitive_map)
+        InfrastructureMap::new(project, primitive_map)
     };
 
     target_infra_map.with_topic_namespace(&project.redpanda_config);
@@ -133,7 +133,7 @@ pub async fn plan_changes(
 
     let changes = match &current_infra_map {
         Some(current_infra_map) => current_infra_map.diff(&target_infra_map),
-        None => target_infra_map.init(),
+        None => target_infra_map.init(project),
     };
 
     Ok(InfraPlan {

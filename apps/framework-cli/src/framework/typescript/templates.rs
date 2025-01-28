@@ -171,6 +171,30 @@ export interface ParsedActivity {
 
 "#;
 
+pub static TS_BASE_SCRIPT_TEMPLATE: &str = r#"import { task } from 'moose-lib'
+
+interface {{name}}Result {
+    step: string;
+    data: any;
+}
+
+export const {{name}} = task(async (): Promise<{{name}}Result> => {
+    /**
+     * Description of what this script does
+     */
+    // The body of your script goes here
+
+    // The return value is the output of the script.
+    // The return value should be a dictionary with at least:
+    // - step: the step name (e.g., "extract", "transform")
+    // - data: the actual data being passed to the next step
+    return {
+        step: "{{name}}",  // The step name is the name of the script
+        data: null     // The data being passed to the next step (4MB limit)
+    }
+})
+"#;
+
 pub static VSCODE_EXTENSIONS_TEMPLATE: &str = r#"
 {
     "recommendations": [

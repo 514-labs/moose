@@ -2,6 +2,7 @@ use std::sync::Arc;
 
 use consumption_registry::ConsumptionError;
 use kafka_clickhouse_sync::SyncingProcessesRegistry;
+use orchestration_workers_registry::OrchestrationWorkersRegistryError;
 use process_registry::ProcessRegistries;
 
 use crate::{
@@ -19,6 +20,7 @@ pub mod consumption_registry;
 pub mod cron_registry;
 pub mod functions_registry;
 pub mod kafka_clickhouse_sync;
+pub mod orchestration_workers_registry;
 pub mod process_registry;
 
 #[derive(Debug, thiserror::Error)]
@@ -34,6 +36,9 @@ pub enum SyncProcessChangesError {
 
     #[error("Failed in the consumption registry")]
     ConsumptionProcess(#[from] ConsumptionError),
+
+    #[error("Failed in the orchestration workers registry")]
+    OrchestrationWorkersRegistry(#[from] OrchestrationWorkersRegistryError),
 }
 
 /// This method dispatches the execution of the changes to the right streaming engine.
@@ -133,6 +138,25 @@ pub async fn execute_changes(
                 log::info!("Re-Starting Consumption webserver process");
                 process_registry.consumption.stop().await?;
                 process_registry.consumption.start()?;
+            }
+            ProcessChange::OrchestrationWorker(Change::Added(new_orchestration_worker)) => {
+                log::info!("Starting Orchestration worker process");
+                process_registry
+                    .orchestration_workers
+                    .start(new_orchestration_worker)
+                    .await?;
+            }
+            ProcessChange::OrchestrationWorker(Change::Removed(old_orchestration_worker)) => {
+                log::info!("Stopping Orchestration worker process");
+                process_registry
+                    .orchestration_workers
+                    .stop(old_orchestration_worker)
+                    .await?;
+            }
+            ProcessChange::OrchestrationWorker(Change::Updated { before, after }) => {
+                log::info!("Restarting Orchestration worker process: {:?}", before.id());
+                process_registry.orchestration_workers.stop(before).await?;
+                process_registry.orchestration_workers.start(after).await?;
             }
         }
     }

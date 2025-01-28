@@ -13,12 +13,11 @@ use crate::cli::routines::consumption::create_consumption_file;
 use clap::Parser;
 use commands::{
     BlockCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
-    GenerateCommand,
+    GenerateCommand, WorkflowCommands,
 };
 use config::ConfigError;
 use display::with_spinner_async;
 use home::home_dir;
-use itertools::Either;
 use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
@@ -29,6 +28,7 @@ use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
 use routines::plan;
 use routines::ps::show_processes;
+use routines::scripts::run_workflow;
 use settings::{read_settings, Settings};
 use std::cmp::Ordering;
 use std::path::Path;
@@ -66,6 +66,7 @@ use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 use crate::utilities::git::is_git_repo;
 
 use self::routines::clean::CleanProject;
+use crate::cli::routines::scripts::init_workflow;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
@@ -266,7 +267,7 @@ async fn top_command_handler(
             })?;
 
             if *write_infra_map {
-                let infra_map = InfrastructureMap::new(primitive_map);
+                let infra_map = InfrastructureMap::new(&project_arc, primitive_map);
 
                 let json_path = project_arc
                     .internal_dir()
@@ -356,7 +357,7 @@ async fn top_command_handler(
             );
 
             check_project_name(&project_arc.name())?;
-            run_local_infrastructure(&project_arc)?.show();
+            run_local_infrastructure(&project_arc, &settings)?.show();
 
             let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {
                 RoutineFailure::error(Message {
@@ -386,7 +387,7 @@ async fn top_command_handler(
             let arc_metrics = Arc::new(metrics);
             arc_metrics.start_listening_to_metrics(rx_events).await;
 
-            routines::start_development_mode(project_arc, arc_metrics, redis_client)
+            routines::start_development_mode(project_arc, arc_metrics, redis_client, &settings)
                 .await
                 .map_err(|e| {
                     RoutineFailure::error(Message {
@@ -495,43 +496,20 @@ async fn top_command_handler(
                 with_spinner_async(
                     "Generating SDK",
                     async {
-                        let framework_objects = if settings.features.core_v2 {
-                            let objects = PrimitiveMap::load(&project).await.map_err(|e| {
-                                RoutineFailure::error(Message {
-                                    action: "Generate".to_string(),
-                                    details: format!(
-                                        "Failed to load initial project state: {:?}",
-                                        e
-                                    ),
-                                })
-                            })?;
-                            Either::Right(objects)
-                        } else {
-                            let objects = load_framework_objects(&project).await.map_err(|e| {
-                                RoutineFailure::error(Message {
-                                    action: "Generate".to_string(),
-                                    details: format!(
-                                        "Failed to load initial project state: {:?}",
-                                        e
-                                    ),
-                                })
-                            })?;
-                            Either::Left(objects)
-                        };
-
-                        generate_sdk(
-                            language,
-                            &project,
-                            framework_objects.as_ref(),
-                            destination,
-                            packaged,
-                        )
-                        .map_err(|e| {
+                        let primitive_map = PrimitiveMap::load(&project).await.map_err(|e| {
                             RoutineFailure::error(Message {
                                 action: "Generate".to_string(),
-                                details: format!("Failed to generate SDK: {:?}", e),
+                                details: format!("Failed to load initial project state: {:?}", e),
                             })
-                        })
+                        })?;
+
+                        generate_sdk(language, &project, &primitive_map, destination, packaged)
+                            .map_err(|e| {
+                                RoutineFailure::error(Message {
+                                    action: "Generate".to_string(),
+                                    details: format!("Failed to generate SDK: {:?}", e),
+                                })
+                            })
                     },
                     true,
                 )
@@ -594,7 +572,7 @@ async fn top_command_handler(
                 &settings,
             );
 
-            routines::start_production_mode(project_arc, arc_metrics, redis_client)
+            routines::start_production_mode(&settings, project_arc, arc_metrics, redis_client)
                 .await
                 .map_err(|e| {
                     RoutineFailure::error(Message {
@@ -715,7 +693,6 @@ async fn top_command_handler(
                     check_project_name(&project_arc.name())?;
                     let result = create_streaming_function_file(
                         &project_arc,
-                        &settings.features,
                         init.source.clone(),
                         init.destination.clone(),
                     )
@@ -900,7 +877,7 @@ async fn top_command_handler(
             let res = if *streaming {
                 list_streaming(project_arc, limit).await
             } else {
-                list_db(project_arc, &settings.features, version, limit).await
+                list_db(project_arc, version, limit).await
             };
 
             wait_for_usage_capture(capture_handle).await;
@@ -1009,6 +986,31 @@ async fn top_command_handler(
             let project_arc = Arc::new(project);
 
             peek(project_arc, data_model_name.clone(), *limit, file.clone()).await
+        }
+        Commands::Workflow(workflow_args) => {
+            if !settings.features.scripts {
+                return Err(RoutineFailure::error(Message {
+                    action: "Workflow".to_string(),
+                    details: "Feature not enabled, to turn on go to ~/.moose/config.toml and set 'scripts' to true under the 'features' section".to_string(),
+                }));
+            }
+
+            let project = load_project()?;
+
+            match &workflow_args.command {
+                Some(WorkflowCommands::Init { name, steps, step }) => {
+                    init_workflow(&project, name, steps.clone(), step.clone()).await
+                }
+                Some(WorkflowCommands::Run { name }) => run_workflow(&project, name).await,
+                Some(WorkflowCommands::Resume { .. }) => Err(RoutineFailure::error(Message {
+                    action: "Workflow Resume".to_string(),
+                    details: "Not implemented yet".to_string(),
+                })),
+                None => Err(RoutineFailure::error(Message {
+                    action: "Workflow".to_string(),
+                    details: "No subcommand provided".to_string(),
+                })),
+            }
         }
     }
 }

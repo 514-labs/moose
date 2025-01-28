@@ -74,14 +74,13 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
         while let Ok(Some(line)) = stdout_reader.next_line().await {
             let parts: Vec<&str> = line.split('|').collect();
             if parts.len() >= 3 {
-                let level = parts[0];
-                let name = parts[1];
-                let message = parts[2];
+                let level = parts[0].trim();
+                let message = parts[2].trim();
                 match level {
-                    "INFO" => info!("{}-{}", name, message),
-                    "WARNING" => warn!("{}-{}", name, message),
-                    "ERROR" => error!("{}-{}", name, message),
-                    _ => info!("{}-{}", name, message),
+                    "INFO" => info!("{}", message),
+                    "WARNING" => warn!("{}", message),
+                    "ERROR" => error!("{}", message),
+                    _ => info!("{}", message),
                 }
             }
         }

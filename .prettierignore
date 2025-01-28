@@ -3,3 +3,4 @@ apps/framework-cli/tests/test_project
 *.md
 
 pnpm-lock.yaml
+docker-compose.yml.hbs

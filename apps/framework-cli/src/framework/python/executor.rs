@@ -1,10 +1,18 @@
 //! # Executes Python code in a subprocess.
 //! This module provides a Python executor that can run Python code in a subprocess
 
+use std::collections::HashMap;
 use std::path::Path;
 use std::process::Stdio;
 
 use crate::utilities::constants::{CLI_INTERNAL_VERSIONS_DIR, CLI_PROJECT_INTERNAL_DIR};
+
+use temporal_sdk_core::protos::temporal::api::common::v1::{Payload, Payloads, WorkflowType};
+use temporal_sdk_core::protos::temporal::api::enums::v1::{TaskQueueKind, WorkflowIdReusePolicy};
+
+use temporal_sdk_core::protos::temporal::api::taskqueue::v1::TaskQueue;
+use temporal_sdk_core::protos::temporal::api::workflowservice::v1::workflow_service_client::WorkflowServiceClient;
+use temporal_sdk_core::protos::temporal::api::workflowservice::v1::StartWorkflowExecutionRequest;
 use tokio::process::{Child, Command};
 
 pub enum PythonSerializers {
@@ -31,12 +39,14 @@ pub enum PythonProgram {
     BlocksRunner { args: Vec<String> },
     ConsumptionRunner { args: Vec<String> },
     LoadApiParam { args: Vec<String> },
+    OrchestrationWorker { args: Vec<String> },
 }
 
-pub static STREAMING_FUNCTION_RUNNER: &str = include_str!("scripts/streaming_function_runner.py");
-pub static BLOCKS_RUNNER: &str = include_str!("scripts/blocks_runner.py");
-pub static CONSUMPTION_RUNNER: &str = include_str!("scripts/consumption_runner.py");
-pub static LOAD_API_PARAMS: &str = include_str!("scripts/load_api_params.py");
+pub static STREAMING_FUNCTION_RUNNER: &str = include_str!("wrappers/streaming_function_runner.py");
+pub static BLOCKS_RUNNER: &str = include_str!("wrappers/blocks_runner.py");
+pub static CONSUMPTION_RUNNER: &str = include_str!("wrappers/consumption_runner.py");
+pub static LOAD_API_PARAMS: &str = include_str!("wrappers/load_api_params.py");
+pub static ORCHESTRATION_WORKER: &str = include_str!("wrappers/scripts/worker-main.py");
 
 const PYTHON_PATH: &str = "PYTHONPATH";
 fn python_path_with_version() -> String {
@@ -47,6 +57,10 @@ fn python_path_with_version() -> String {
     paths.push_str(CLI_PROJECT_INTERNAL_DIR);
     paths.push('/');
     paths.push_str(CLI_INTERNAL_VERSIONS_DIR);
+
+    paths.push(':');
+    paths.push_str(CLI_PROJECT_INTERNAL_DIR);
+
     paths
 }
 
@@ -57,6 +71,7 @@ pub fn run_python_program(program: PythonProgram) -> Result<Child, std::io::Erro
         PythonProgram::BlocksRunner { args } => (args, BLOCKS_RUNNER),
         PythonProgram::ConsumptionRunner { args } => (args, CONSUMPTION_RUNNER),
         PythonProgram::LoadApiParam { args } => (args, LOAD_API_PARAMS),
+        PythonProgram::OrchestrationWorker { args } => (args, ORCHESTRATION_WORKER),
     };
 
     Command::new("python3")
@@ -93,6 +108,71 @@ pub fn add_optional_arg(args: &mut Vec<String>, flag: &str, value: &Option<Strin
         args.push(flag.to_string());
         args.push(val.to_string());
     }
+}
+
+const WORKFLOW_TYPE: &str = "ScriptWorkflow";
+const DEFAULT_TEMPORTAL_NAMESPACE: &str = "default";
+const PYTHON_TASK_QUEUE: &str = "python-script-queue";
+const MOOSE_CLI_IDENTITY: &str = "moose-cli";
+
+#[derive(Debug, thiserror::Error)]
+pub enum WorkflowExecutionError {
+    #[error("Temportal connection error: {0}")]
+    TemporalConnectionError(#[from] tonic::transport::Error),
+
+    #[error("Temportal client error: {0}")]
+    TemporalClientError(#[from] tonic::Status),
+}
+
+pub async fn execute_python_workflow(
+    workflow_id: &str,
+    execution_path: &Path,
+) -> Result<(), WorkflowExecutionError> {
+    // Initialize core with proper options
+    // TODO: Make this configurable
+    let endpoint = tonic::transport::Endpoint::from_static("http://localhost:7233");
+
+    let mut client = WorkflowServiceClient::connect(endpoint).await?;
+
+    let request = tonic::Request::new(StartWorkflowExecutionRequest {
+        namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+        workflow_id: workflow_id.to_string(),
+        workflow_type: Some(WorkflowType {
+            name: WORKFLOW_TYPE.to_string(),
+        }),
+        task_queue: Some(TaskQueue {
+            name: PYTHON_TASK_QUEUE.to_string(),
+            kind: TaskQueueKind::Normal as i32,
+        }),
+        input: Some(Payloads {
+            payloads: vec![Payload {
+                metadata: HashMap::from([(
+                    String::from("encoding"),
+                    String::from("json/plain").into_bytes(),
+                )]),
+                data: serde_json::to_string(execution_path)
+                    .unwrap()
+                    .as_bytes()
+                    .to_vec(),
+            }],
+        }),
+        workflow_execution_timeout: None,
+        workflow_run_timeout: None,
+        workflow_task_timeout: None,
+        identity: MOOSE_CLI_IDENTITY.to_string(),
+        request_id: uuid::Uuid::new_v4().to_string(),
+        search_attributes: None,
+        header: None,
+        workflow_id_reuse_policy: WorkflowIdReusePolicy::AllowDuplicate as i32,
+        retry_policy: None,
+        cron_schedule: "".to_string(),
+        memo: None,
+    });
+
+    client.start_workflow_execution(request).await?;
+
+    // Return None since we're not waiting for result
+    Ok(())
 }
 
 // TESTs

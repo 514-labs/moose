@@ -1,5 +1,4 @@
 use convert_case::{Case, Casing};
-use itertools::Either;
 use serde::Serialize;
 use std::collections::HashSet;
 use std::fs;
@@ -7,7 +6,6 @@ use std::hash::Hash;
 use std::path::Path;
 use std::{fmt, path::PathBuf};
 
-use crate::framework::core::code_loader::{FrameworkObjectVersions, SchemaVersion};
 use crate::framework::core::primitive_map::PrimitiveMap;
 use crate::framework::typescript;
 use crate::{
@@ -285,32 +283,9 @@ pub fn std_table_to_typescript_interface(
     })
 }
 
-fn collect_ts_objects(
-    framework_objects: &SchemaVersion,
-) -> Result<Vec<TypescriptObjects>, TypescriptGeneratorError> {
-    let mut ts_objects: Vec<TypescriptObjects> = Vec::new();
-
-    for model in framework_objects.get_all_models() {
-        let interface = std_table_to_typescript_interface(model.to_table(), &model.name)?;
-        ts_objects.push(TypescriptObjects::new(interface));
-    }
-
-    Ok(ts_objects)
-}
-
-fn collect_enums(framework_objects: &SchemaVersion) -> HashSet<TSEnum> {
-    let mut enums: HashSet<TSEnum> = HashSet::new();
-
-    for enum_type in framework_objects.get_all_enums() {
-        enums.insert(map_std_enum_to_ts(enum_type.clone()));
-    }
-
-    enums
-}
-
 pub fn generate_sdk(
     project: &Project,
-    framework_objects: Either<&FrameworkObjectVersions, &PrimitiveMap>,
+    primitive_map: &PrimitiveMap,
     sdk_dir: &Path,
     packaged: &bool,
 ) -> Result<(), TypescriptGeneratorError> {
@@ -318,7 +293,7 @@ pub fn generate_sdk(
     //!
     //! # Arguments
     //! - `project` - The project to generate the SDK for.
-    //! - `framework_objects` - Either FrameworkObjectVersions or PrimitiveMap to generate the SDK for.
+    //! - `primitive_map` - The primitive map to generate the SDK for.
     //! - `sdk_dir` - Where to write the generated SDK.
     //! - `packaged` - Whether or not to generate a full fledged package or just the source files in the
     //!                language of choice.
@@ -326,23 +301,9 @@ pub fn generate_sdk(
     //! # Returns
     //! - `Result<(), TypescriptGeneratorError>` - A result indicating success or failure.
 
-    let (current_version_ts_objects, enums) = match framework_objects {
-        Either::Left(framework_object_versions) => {
-            let current_version_ts_objects =
-                collect_ts_objects(&framework_object_versions.current_models)?;
-            let enums = collect_enums(&framework_object_versions.current_models);
-            (current_version_ts_objects, enums)
-        }
-        Either::Right(primitive_map) => {
-            let current_version_ts_objects = collect_ts_objects_from_primitive_map(
-                primitive_map,
-                project.cur_version().as_str(),
-            )?;
-            let enums =
-                collect_enums_from_primitive_map(primitive_map, project.cur_version().as_str());
-            (current_version_ts_objects, enums)
-        }
-    };
+    let current_version_ts_objects =
+        collect_ts_objects_from_primitive_map(primitive_map, project.cur_version().as_str())?;
+    let enums = collect_enums_from_primitive_map(primitive_map, project.cur_version().as_str());
 
     std::fs::remove_dir_all(sdk_dir).or_else(|err| match err.kind() {
         std::io::ErrorKind::NotFound => Ok(()),
@@ -378,30 +339,11 @@ pub fn generate_sdk(
     }
 
     for version in project.supported_old_versions.keys() {
-        let (ts_objects, version_enums) = match framework_objects {
-            Either::Left(framework_object_versions) => {
-                let models = match framework_object_versions
-                    .previous_version_models
-                    .get(version.as_str())
-                {
-                    None => continue,
-                    Some(models) => models,
-                };
-
-                let current_version_ts_objects = collect_ts_objects(models)?;
-                let enums = collect_enums(models);
-                (current_version_ts_objects, enums)
-            }
-            Either::Right(primitive_map) => {
-                let current_version_ts_objects =
-                    collect_ts_objects_from_primitive_map(primitive_map, version.as_str())?;
-                let enums = collect_enums_from_primitive_map(primitive_map, version.as_str());
-                if current_version_ts_objects.is_empty() {
-                    continue;
-                }
-                (current_version_ts_objects, enums)
-            }
-        };
+        let ts_objects = collect_ts_objects_from_primitive_map(primitive_map, version.as_str())?;
+        let version_enums = collect_enums_from_primitive_map(primitive_map, version.as_str());
+        if ts_objects.is_empty() {
+            continue;
+        }
 
         let version_dir = sdk_dir.join(version.as_str());
         fs::create_dir_all(&version_dir)?;

@@ -29,8 +29,10 @@ describe("framework-cli", () => {
     }
   });
 
-  const removeTestProj = () =>
+  const removeTestProj = () => {
+    console.log(`deleting ${TEST_PROJECT_DIR}`);
     fs.rmSync(TEST_PROJECT_DIR, { recursive: true, force: true });
+  };
 
   after(async function () {
     if (devProcess && !devProcess.killed) {
@@ -84,7 +86,7 @@ describe("framework-cli", () => {
     const packageJsonPath = path.join(TEST_PROJECT_DIR, "package.json");
     const packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
 
-    packageJson.dependencies["@514labs/moose"] = `file:${MOOSE_LIB_PATH}`;
+    packageJson.dependencies["@514labs/moose-lib"] = `file:${MOOSE_LIB_PATH}`;
 
     fs.writeFileSync(packageJsonPath, JSON.stringify(packageJson, null, 2));
 
@@ -205,7 +207,7 @@ describe("framework-cli", () => {
 
     console.log("Sending consumption request...");
     const consumptionResponse = await fetch(
-      "http://localhost:4000/consumption/dailyActiveUsers",
+      "http://localhost:4000/consumption/dailyActiveUsers?minDailyActiveUsers=1",
     );
 
     if (consumptionResponse.ok) {

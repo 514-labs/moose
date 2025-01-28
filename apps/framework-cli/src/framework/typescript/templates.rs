@@ -94,28 +94,28 @@ export default {
 
 pub static TS_BASE_APIS_SAMPLE: &str = r#"
 // Here is a sample api configuration that creates an API which serves the daily active users materialized view
-import { ConsumptionUtil } from "@514labs/moose-lib";
+import { createConsumptionApi } from "@514labs/moose-lib";
 
-interface QueryParams {
-  limit: string;
-  minDailyActiveUsers: string;
+interface DailyActiveUsersParams {
+  limit?: number;
+  minDailyActiveUsers: number;
 }
 
-export default async function handle(
-  { limit = "10", minDailyActiveUsers = "0" }: QueryParams,
-  { client, sql }: ConsumptionUtil
-) {
-  return client.query(
-    sql`SELECT 
-      date,
-      uniqMerge(dailyActiveUsers) as dailyActiveUsers
-  FROM DailyActiveUsers
-  GROUP BY date 
-  HAVING dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
-  ORDER BY date 
-  LIMIT ${parseInt(limit)}`
-  );
-}
+export default createConsumptionApi<DailyActiveUsersParams>(
+  async ({ limit = 10, minDailyActiveUsers }, { client, sql }) => {
+    const query = sql`
+      SELECT
+        date,
+        uniqMerge(dailyActiveUsers) as dailyActiveUsers
+      FROM DailyActiveUsers
+      GROUP BY date
+      HAVING dailyActiveUsers >= ${minDailyActiveUsers}
+      ORDER BY date
+      LIMIT ${limit}`;
+
+    return client.query(query);
+  }
+);
 "#;
 
 pub static TS_BASE_BLOCK_TEMPLATE: &str = r#"
@@ -137,21 +137,17 @@ export default {
 "#;
 
 pub static TS_BASE_CONSUMPTION_TEMPLATE: &str = r#"
-import { ConsumptionUtil } from "@514labs/moose-lib";
+import { createConsumptionApi } from "@514labs/moose-lib";
 
 // This file is where you can define your API templates for consuming your data
-// All query_params are passed in as strings, and are used within the sql tag to parameterize you queries
-export interface QueryParams {
-    
-}
-  
-export default async function handle(
-  {}: QueryParams,
-  { client, sql }: ConsumptionUtil
-) {
+interface QueryParams {}
 
+// createConsumptionApi uses compile time code generation to generate a parser for QueryParams
+export default createConsumptionApi<QueryParams>(
+  async (params, { client, sql }) => {
     return client.query(sql`SELECT 1`);
-}
+  }
+);
 "#;
 
 pub static TS_BASE_MODEL_TEMPLATE: &str = r#"

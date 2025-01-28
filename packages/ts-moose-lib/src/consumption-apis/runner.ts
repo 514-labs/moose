@@ -5,9 +5,7 @@ import { MooseClient, sql } from "./helpers";
 import * as jose from "jose";
 import { ClickHouseClient } from "@clickhouse/client";
 import { Cluster } from "../cluster-utils";
-
-export const antiCachePath = (path: string) =>
-  `${path}?num=${Math.random().toString()}&time=${Date.now()}`;
+import { ConsumptionUtil } from "../index";
 
 const [
   ,
@@ -42,6 +40,17 @@ const httpLogger = (req: http.IncomingMessage, res: http.ServerResponse) => {
 };
 
 const modulesCache = new Map<string, any>();
+
+export function createConsumptionApi<T extends object, R = any>(
+  _handler: (params: T, utils: ConsumptionUtil) => Promise<R>,
+): (
+  rawParams: Record<string, string[] | string>,
+  utils: ConsumptionUtil,
+) => Promise<R> {
+  throw new Error(
+    "This should be compiled-time replaced by compiler plugins to add parsing.",
+  );
+}
 
 const apiHandler =
   (publicKey: jose.KeyLike | undefined, clickhouseClient: ClickHouseClient) =>
@@ -83,14 +92,14 @@ const apiHandler =
       }
 
       const pathName = createPath(fileName);
-
       const paramsObject = Array.from(url.searchParams.entries()).reduce(
-        (obj: { [key: string]: any }, [key, value]) => {
-          if (obj[key]) {
-            if (Array.isArray(obj[key])) {
-              obj[key].push(value);
+        (obj: { [key: string]: string[] | string }, [key, value]) => {
+          const existingValue = obj[key];
+          if (existingValue) {
+            if (Array.isArray(existingValue)) {
+              existingValue.push(value);
             } else {
-              obj[key] = [obj[key], value];
+              obj[key] = [existingValue, value];
             }
           } else {
             obj[key] = value;
@@ -137,7 +146,13 @@ const apiHandler =
 
       res.end(body);
     } catch (error: any) {
-      console.log(error);
+      console.log("error in path ", req.url, error);
+      // todo: same workaround as ResultSet
+      if (Object.getPrototypeOf(error).constructor.name === "TypeGuardError") {
+        res.writeHead(400, { "Content-Type": "application/json" });
+        res.end(JSON.stringify({ error: error.message }));
+        httpLogger(req, res);
+      }
       if (error instanceof Error) {
         res.writeHead(500, { "Content-Type": "application/json" });
         res.end(JSON.stringify({ error: error.message }));

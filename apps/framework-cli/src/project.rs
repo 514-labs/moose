@@ -299,7 +299,17 @@ impl Project {
                                 "paths": {
                                   "datamodels/*": ["./app/datamodels/*"],
                                   "versions/*": ["./.moose/versions/*"]
-                                }
+                                },
+                                "plugins": [
+                                    {
+                                        "transform": "./node_modules/@514labs/moose-lib/dist/consumption-apis/insertTypiaValidation.js",
+                                        "transformProgram": true
+                                    },
+                                    {
+                                        "transform": "typia/lib/transform"
+                                    }
+                                ],
+                                "strictNullChecks": true
                             }
                         }
                     ))

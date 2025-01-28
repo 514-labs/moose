@@ -10,7 +10,7 @@ const script = runInThisContext(`
     (function (exports, require, module, __filename, __dirname) {
       ${js}
     });
-  `);
+`);
 
 script.call(
   exports,

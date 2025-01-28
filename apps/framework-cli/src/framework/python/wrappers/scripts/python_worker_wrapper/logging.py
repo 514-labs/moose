@@ -12,7 +12,6 @@ handler.setFormatter(Formatter("%(levelname)s | %(name)s | %(message)s"))
 log = getLogger(logger_name)
 log.setLevel(INFO)
 log.handlers = [handler]
-log.propagate = False
 
 class ForwardingHandler(StreamHandler):
     def emit(self, record):
@@ -24,4 +23,3 @@ class ForwardingHandler(StreamHandler):
 temporal_logger = getLogger("temporalio")
 temporal_logger.setLevel(DEBUG)
 temporal_logger.handlers = [ForwardingHandler()]
-# temporal_logger.propagate = False

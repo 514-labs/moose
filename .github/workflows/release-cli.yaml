@@ -253,7 +253,7 @@ jobs:
               PROTOC_VERSION=24.3
               PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
 
-              yum install -y curl unzip
+              dnf install -y curl unzip
               mkdir -p /usr/local/bin
               mkdir -p /usr/local/include
               curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP

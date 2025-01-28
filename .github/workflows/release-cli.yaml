@@ -217,6 +217,7 @@ jobs:
         uses: arduino/setup-protoc@v3
         with:
           repo-token: ${{ secrets.GITHUB_TOKEN }}
+          version: "23.x"
 
       - name: Verify Protoc Installation
         run: |

@@ -2,11 +2,9 @@ use std::path::{Path, PathBuf};
 
 use super::languages::SupportedLanguages;
 
-pub mod activity;
 mod collector;
 pub mod config;
 pub mod executor;
-pub mod orchestrator;
 
 use crate::framework::python::templates::PYTHON_BASE_SCRIPT_TEMPLATE;
 use crate::framework::scripts::config::WorkflowConfig;
@@ -155,20 +153,6 @@ impl Workflow {
     pub async fn start(&self) -> Result<(), anyhow::Error> {
         Ok(executor::execute_workflow(self.language, &self.name, &self.path).await?)
     }
-
-    /// Check if this workflow is currently running
-    pub async fn is_running(&self) -> Result<bool, anyhow::Error> {
-        orchestrator::is_workflow_running(&self.name)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to check workflow status: {}", e))
-    }
-
-    /// Stop the workflow execution
-    pub async fn stop(&self) -> Result<(), anyhow::Error> {
-        orchestrator::stop_workflow(&self.name)
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to stop workflow: {}", e))
-    }
 }
 
 // A collection of workflows
@@ -205,20 +189,6 @@ impl Workflows {
     /// Get a specific workflow by name
     pub fn get_defined_workflow(&self, name: &str) -> Option<&Workflow> {
         self.workflows.iter().find(|w| w.name == name)
-    }
-
-    /// Get all running workflows
-    pub async fn get_running_workflows(&self) -> Result<Vec<Workflow>, anyhow::Error> {
-        let mut running_workflows = Vec::new();
-
-        for workflow in &self.workflows {
-            match orchestrator::is_workflow_running(&workflow.name).await {
-                Ok(true) => running_workflows.push(workflow.clone()),
-                Ok(false) | Err(_) => continue, // Skip workflows that aren't found or have errors
-            }
-        }
-
-        Ok(running_workflows)
     }
 }
 

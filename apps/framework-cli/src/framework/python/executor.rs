@@ -170,6 +170,7 @@ pub async fn execute_python_workflow(
     execution_path: &Path,
     schedule: Option<String>,
 ) -> Result<(), WorkflowExecutionError> {
+    // TODO: Make this configurable
     let endpoint = tonic::transport::Endpoint::from_static("http://localhost:7233");
     let mut client = WorkflowServiceClient::connect(endpoint).await?;
 

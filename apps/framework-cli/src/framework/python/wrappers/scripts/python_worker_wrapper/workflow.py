@@ -5,6 +5,7 @@ import os
 import asyncio
 from dataclasses import dataclass
 from .activity import ScriptExecutionInput
+from .logging import log
 
 @dataclass
 class WorkflowState:
@@ -121,6 +122,8 @@ class ScriptWorkflow:
         """
         results = []
         parallel_tasks = []
+
+        log.info(f"Running workflow with path: {path} and input_data: {input_data}")
         
         if os.path.isfile(path) and path.endswith(".py"):
             parent_dir = os.path.basename(os.path.dirname(path))

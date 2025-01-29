@@ -126,14 +126,52 @@ pub enum WorkflowExecutionError {
     TemporalClientError(#[from] tonic::Status),
 }
 
+/// Parses various schedule formats into a valid Temporal cron expression
+///
+/// # Arguments
+/// * `schedule` - Optional string containing the schedule format
+///
+/// # Returns
+/// A String containing the parsed cron expression or empty string if invalid
+///
+/// # Formats Supported
+/// * Standard cron expressions (e.g., "* * * * *")
+/// * Interval notation (e.g., "*/5 * * * *")
+/// * Simple duration formats:
+///   - "5m" → "*/5 * * * *" (every 5 minutes)
+///   - "2h" → "0 */2 * * *" (every 2 hours)
+///
+/// Falls back to empty string (no schedule) if format is invalid
+fn parse_schedule(schedule: Option<String>) -> String {
+    schedule
+        .filter(|s| !s.is_empty())
+        .map(|s| match s.as_str() {
+            // Handle interval-based formats
+            s if s.contains('/') => s.to_string(),
+            // Handle standard cron expressions
+            s if s.contains('*') || s.contains(' ') => s.to_string(),
+            // Convert simple duration to cron (e.g., "5m" -> "*/5 * * * *")
+            s if s.ends_with('m') => {
+                let mins = s.trim_end_matches('m');
+                format!("*/{} * * * *", mins)
+            }
+            s if s.ends_with('h') => {
+                let hours = s.trim_end_matches('h');
+                format!("0 */{} * * *", hours)
+            }
+            // Default to original string if format is unrecognized
+            s => s.to_string(),
+        })
+        .unwrap_or_default()
+}
+
 pub async fn execute_python_workflow(
     workflow_id: &str,
     execution_path: &Path,
+    schedule: Option<String>,
 ) -> Result<(), WorkflowExecutionError> {
-    // Initialize core with proper options
     // TODO: Make this configurable
     let endpoint = tonic::transport::Endpoint::from_static("http://localhost:7233");
-
     let mut client = WorkflowServiceClient::connect(endpoint).await?;
 
     let request = tonic::Request::new(StartWorkflowExecutionRequest {
@@ -168,7 +206,7 @@ pub async fn execute_python_workflow(
         header: None,
         workflow_id_reuse_policy: WorkflowIdReusePolicy::AllowDuplicate as i32,
         retry_policy: None,
-        cron_schedule: "".to_string(),
+        cron_schedule: parse_schedule(schedule),
         memo: None,
         workflow_id_conflict_policy: WorkflowIdConflictPolicy::Unspecified as i32,
         request_eager_execution: false,
@@ -181,8 +219,6 @@ pub async fn execute_python_workflow(
     });
 
     client.start_workflow_execution(request).await?;
-
-    // Return None since we're not waiting for result
     Ok(())
 }
 

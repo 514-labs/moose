@@ -43,7 +43,7 @@ impl WorkflowConfig {
 
 // Default values functions
 fn default_schedule() -> String {
-    "0 0 * * *".to_string()
+    "".to_string() // Empty string means no schedule
 }
 
 fn default_retries() -> u32 {

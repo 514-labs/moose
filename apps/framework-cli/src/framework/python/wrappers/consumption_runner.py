@@ -2,6 +2,7 @@ import argparse
 import dataclasses
 import json
 import os
+import subprocess
 import sys
 import traceback
 from datetime import datetime, timezone, date
@@ -100,11 +101,11 @@ class EnhancedJSONEncoder(json.JSONEncoder):
         return super().default(o)
 
 
-class MooseClient:
+class QueryClient:
     def __init__(self, ch_client: Client):
         self.ch_client = ch_client
 
-    def query(self, input, variables):
+    def execute(self, input, variables):
         params = {}
         values = {}
 
@@ -122,15 +123,63 @@ class MooseClient:
                 params[variable_name] = f'{{p{i}: {t}}}'
                 values[f'p{i}'] = value
         clickhouse_query = input.format_map(params)
-       
-        # We are not using the result of the ping
-        # but this ensures that if the clickhouse cloud service is idle, we 
-        # wake it up, before we send the query.
-        self.ch_client.ping()
 
         val = self.ch_client.query(clickhouse_query, values)
 
         return list(val.named_results())
+
+class WorkflowClient:
+    def execute(self, name: str, input_data: Any) -> None:
+        moose_cli = "/usr/local/bin/moose-cli"
+
+        try:
+            version_command = [moose_cli, "--version"]
+            process = subprocess.Popen(version_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+            stdout, stderr = process.communicate()
+
+            if process.returncode != 0:
+                print(f"WorkflowClient - failed to get moose-cli version: {stderr.strip()}")
+                return
+
+            print(f"WorkflowClient - moose-cli version: {stdout.strip()}")
+        except FileNotFoundError:
+            print("WorkflowClient - moose-cli not found. Please ensure it is installed and the path is correct.")
+            print(f"WorkflowClient - current PATH: {os.environ.get('PATH')}")
+            return
+        except Exception as e:
+            print(f"WorkflowClient - an error occurred while checking moose-cli version: {str(e)}")
+            print(f"WorkflowClient - current PATH: {os.environ.get('PATH')}")
+            return
+        
+        try:
+            input_data_json = json.dumps(input_data, cls=EnhancedJSONEncoder)
+            workflow_command = [moose_cli, "workflow", "run", name, "--input", input_data_json]
+            print(f"WorkflowClient - executing command: {workflow_command} with input: {input_data_json}")
+
+            try:
+                process = subprocess.Popen(workflow_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+                stdout, stderr = process.communicate()
+                if stdout:
+                    print("WorkflowClient - command output:", stdout)
+                    return {
+                        "status": 200,
+                        "body": stdout
+                    }
+                if stderr:
+                    print("WorkflowClient - command error:", stderr)
+                    return {
+                        "status": 400,
+                        "body": stderr
+                    }
+            except Exception as e:
+                print(f"WorkflowClient - an error occurred while running the command: {e}")
+        except (TypeError, ValueError) as e:
+            print(f"WorkflowClient - failed to convert input data to JSON: {e}")
+
+class MooseClient:
+    def __init__(self, ch_client: Client):
+        self.query = QueryClient(ch_client)
+        self.workflow = WorkflowClient()
 
 def verify_jwt(token: str) -> Optional[Dict[str, Any]]:
     try:

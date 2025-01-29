@@ -99,33 +99,23 @@ class ConsumptionApiResult:
     status: int
     body: Any
 
-class MooseClient:
+class QueryClient:
     def __init__(self, ch_client: Client):
         self.ch_client = ch_client
 
-    def query(self, input, variables):
-        params = {}
-        values = {}
+    def execute(self, input, variables):
+        # No impl for the interface
+        pass
 
-        for i, (_, variable_name, _, _) in enumerate(Formatter().parse(input)):
-            if variable_name:
-                value = variables[variable_name]
-                if isinstance(value, list) and len(value) == 1:
-                    # handling passing the value of the query string dict directly to variables
-                    value = value[0]
+class WorkflowClient:
+    def execute(self, name: str, input_data: Any) -> None:
+        # No impl for the interface
+        pass
 
-                t = 'String' if isinstance(value, str) else \
-                    'Int64' if isinstance(value, int) else \
-                        'Float64' if isinstance(value, float) else "String"  # unknown type
-
-                params[variable_name] = f'{{p{i}: {t}}}'
-                values[f'p{i}'] = value
-        clickhouse_query = input.format_map(params)
-
-        val = self.ch_client.query(clickhouse_query, values)
-
-        return list(val.named_results())
-
+class MooseClient:
+    def __init__(self, ch_client: Client):
+        self.query = QueryClient(ch_client)
+        self.workflow = WorkflowClient()
 
 class Sql:
     def __init__(self, raw_strings: list[str], raw_values: list['RawValue']):

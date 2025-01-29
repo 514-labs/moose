@@ -169,10 +169,34 @@ pub async fn execute_python_workflow(
     workflow_id: &str,
     execution_path: &Path,
     schedule: Option<String>,
+    input_data: Option<String>,
 ) -> Result<(), WorkflowExecutionError> {
     // TODO: Make this configurable
     let endpoint = tonic::transport::Endpoint::from_static("http://localhost:7233");
     let mut client = WorkflowServiceClient::connect(endpoint).await?;
+
+    let mut payloads = vec![Payload {
+        metadata: HashMap::from([(
+            String::from("encoding"),
+            String::from("json/plain").into_bytes(),
+        )]),
+        data: serde_json::to_string(execution_path)
+            .unwrap()
+            .as_bytes()
+            .to_vec(),
+    }];
+
+    if let Some(data) = input_data {
+        let input_data_json_value: serde_json::Value = serde_json::from_str(&data).unwrap();
+        let serialized_data = serde_json::to_string(&input_data_json_value).unwrap();
+        payloads.push(Payload {
+            metadata: HashMap::from([(
+                String::from("encoding"),
+                String::from("json/plain").into_bytes(),
+            )]),
+            data: serialized_data.as_bytes().to_vec(),
+        });
+    }
 
     let request = tonic::Request::new(StartWorkflowExecutionRequest {
         namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
@@ -185,18 +209,7 @@ pub async fn execute_python_workflow(
             kind: TaskQueueKind::Normal as i32,
             normal_name: PYTHON_TASK_QUEUE.to_string(),
         }),
-        input: Some(Payloads {
-            payloads: vec![Payload {
-                metadata: HashMap::from([(
-                    String::from("encoding"),
-                    String::from("json/plain").into_bytes(),
-                )]),
-                data: serde_json::to_string(execution_path)
-                    .unwrap()
-                    .as_bytes()
-                    .to_vec(),
-            }],
-        }),
+        input: Some(Payloads { payloads }),
         workflow_execution_timeout: None,
         workflow_run_timeout: None,
         workflow_task_timeout: None,

@@ -8,7 +8,9 @@ use std::process::Stdio;
 use crate::utilities::constants::{CLI_INTERNAL_VERSIONS_DIR, CLI_PROJECT_INTERNAL_DIR};
 
 use temporal_sdk_core::protos::temporal::api::common::v1::{Payload, Payloads, WorkflowType};
-use temporal_sdk_core::protos::temporal::api::enums::v1::{TaskQueueKind, WorkflowIdReusePolicy};
+use temporal_sdk_core::protos::temporal::api::enums::v1::{
+    TaskQueueKind, WorkflowIdConflictPolicy, WorkflowIdReusePolicy,
+};
 
 use temporal_sdk_core::protos::temporal::api::taskqueue::v1::TaskQueue;
 use temporal_sdk_core::protos::temporal::api::workflowservice::v1::workflow_service_client::WorkflowServiceClient;
@@ -143,6 +145,7 @@ pub async fn execute_python_workflow(
         task_queue: Some(TaskQueue {
             name: PYTHON_TASK_QUEUE.to_string(),
             kind: TaskQueueKind::Normal as i32,
+            normal_name: PYTHON_TASK_QUEUE.to_string(),
         }),
         input: Some(Payloads {
             payloads: vec![Payload {
@@ -167,6 +170,14 @@ pub async fn execute_python_workflow(
         retry_policy: None,
         cron_schedule: "".to_string(),
         memo: None,
+        workflow_id_conflict_policy: WorkflowIdConflictPolicy::Unspecified as i32,
+        request_eager_execution: false,
+        continued_failure: None,
+        last_completion_result: None,
+        workflow_start_delay: None,
+        completion_callbacks: vec![],
+        user_metadata: None,
+        links: vec![],
     });
 
     client.start_workflow_execution(request).await?;

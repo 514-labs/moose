@@ -107,7 +107,7 @@ services:
       - POSTGRES_PWD=${TEMPORAL_DB_PASSWORD:-temporal}
       - POSTGRES_SEEDS=postgresql
       - DYNAMIC_CONFIG_FILE_PATH=/etc/temporal/config/dynamicconfig/development-sql.yaml
-    image: temporalio/auto-setup:${TEMPORAL_VERSION:-1.22.3}
+    image: temporalio/auto-setup:${TEMPORAL_VERSION:-1.26}
     networks:
       - temporal-network
     ports:
@@ -125,7 +125,7 @@ services:
     environment:
       - TEMPORAL_ADDRESS=temporal:${TEMPORAL_PORT:-7233}
       - TEMPORAL_CLI_ADDRESS=temporal:${TEMPORAL_PORT:-7233}
-    image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION:-1.22.3}
+    image: temporalio/admin-tools:${TEMPORAL_ADMINTOOLS_VERSION:-1.26}
     networks:
       - temporal-network
     stdin_open: true
@@ -137,7 +137,7 @@ services:
     environment:
       - TEMPORAL_ADDRESS=temporal:${TEMPORAL_PORT:-7233}
       - TEMPORAL_CORS_ORIGINS=${TEMPORAL_UI_CORS_ORIGINS:-http://localhost:3000}
-    image: temporalio/ui:${TEMPORAL_UI_VERSION:-2.21.3}
+    image: temporalio/ui:${TEMPORAL_UI_VERSION:-2.34}
     networks:
       - temporal-network
     ports:

@@ -4,7 +4,6 @@ use std::collections::{HashMap, VecDeque};
 use std::time::Duration;
 
 use crate::infrastructure::processes::kafka_clickhouse_sync;
-use futures::FutureExt;
 use log::{info, warn};
 use rdkafka::error::KafkaError;
 use std::sync::Arc;
@@ -142,7 +141,7 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
             .front()
             .is_some_and(|new| new.records.len() + batch.records.len() <= self.batch_size)
         {
-            let mut new_batch = queue.front_mut().unwrap();
+            let new_batch = queue.front_mut().unwrap();
 
             // prepending batch.records to the new batch
             batch.records.append(&mut new_batch.records);
@@ -190,7 +189,7 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
             }
             interval.tick().await;
 
-            if let Some(batch) = self.get_front_batch() {
+            if let Some(batch) = self.get_front_batch().await {
                 match self.client.insert(&table, &columns, &batch.records).await {
                     Ok(_) => {
                         info!(
@@ -210,7 +209,6 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
                         }
                     }
                     Err(e) => {
-                        self.return_batch_to_queue(batch).await;
                         warn!(
                             "Transient Failure - table='{}';insert_sizes='{}';offsets='{}';error='{}'",
                             table,
@@ -218,6 +216,7 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
                             batch.offsets_to_string(),
                             e
                         );
+                        self.return_batch_to_queue(batch).await;
                     }
                 }
             }

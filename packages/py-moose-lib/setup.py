@@ -14,5 +14,6 @@ setup(
     packages=find_packages(),
     install_requires=[
         'pyjwt[crypto]==2.9.0',
+        'asyncio==3.4.3',
     ],
 )

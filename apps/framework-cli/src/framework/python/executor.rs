@@ -198,6 +198,7 @@ pub async fn execute_python_workflow(
         });
     }
 
+    // Test workflow executor from consumption api if this changes significantly
     let request = tonic::Request::new(StartWorkflowExecutionRequest {
         namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
         workflow_id: workflow_id.to_string(),

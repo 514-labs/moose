@@ -1,4 +1,5 @@
-from clickhouse_connect.driver.client import Client
+from clickhouse_connect.driver.client import Client as ClickhouseClient
+from temporalio.client import Client as TemporalClient
 from dataclasses import dataclass, asdict, fields
 from enum import Enum
 from string import Formatter
@@ -100,7 +101,7 @@ class ConsumptionApiResult:
     body: Any
 
 class QueryClient:
-    def __init__(self, ch_client: Client):
+    def __init__(self, ch_client: ClickhouseClient):
         self.ch_client = ch_client
 
     def execute(self, input, variables):
@@ -108,14 +109,17 @@ class QueryClient:
         pass
 
 class WorkflowClient:
-    def execute(self, name: str, input_data: Any) -> None:
+    def __init__(self, temporal_client: TemporalClient):
+        self.temporal_client = temporal_client
+
+    def execute(self, name: str, input_data: Any) -> Dict[str, Any]:
         # No impl for the interface
         pass
 
 class MooseClient:
-    def __init__(self, ch_client: Client):
+    def __init__(self, ch_client: ClickhouseClient, temporal_client: TemporalClient):
         self.query = QueryClient(ch_client)
-        self.workflow = WorkflowClient()
+        self.workflow = WorkflowClient(temporal_client)
 
 class Sql:
     def __init__(self, raw_strings: list[str], raw_values: list['RawValue']):

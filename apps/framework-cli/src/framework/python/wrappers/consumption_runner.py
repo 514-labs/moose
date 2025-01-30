@@ -1,4 +1,5 @@
 import argparse
+import asyncio
 import dataclasses
 import json
 import os
@@ -18,7 +19,10 @@ from moose_lib.query_param import QueryField, ArrayType, convert_consumption_api
 
 import jwt
 from clickhouse_connect import get_client
-from clickhouse_connect.driver.client import Client
+from clickhouse_connect.driver.client import Client as ClickhouseClient
+
+from temporalio.client import Client as TemporalClient
+
 
 parser = argparse.ArgumentParser(description='Run Consumption Server')
 parser.add_argument('consumption_dir_path', type=str,
@@ -102,7 +106,7 @@ class EnhancedJSONEncoder(json.JSONEncoder):
 
 
 class QueryClient:
-    def __init__(self, ch_client: Client):
+    def __init__(self, ch_client: ClickhouseClient):
         self.ch_client = ch_client
 
     def execute(self, input, variables):
@@ -123,7 +127,7 @@ class QueryClient:
                 params[variable_name] = f'{{p{i}: {t}}}'
                 values[f'p{i}'] = value
         clickhouse_query = input.format_map(params)
-        
+       
         # We are not using the result of the ping
         # but this ensures that if the clickhouse cloud service is idle, we 
         # wake it up, before we send the query.
@@ -134,57 +138,37 @@ class QueryClient:
         return list(val.named_results())
 
 class WorkflowClient:
-    def execute(self, name: str, input_data: Any) -> None:
-        moose_cli = "/usr/local/bin/moose-cli"
+    def __init__(self, temporal_client: TemporalClient):
+        self.temporal_client = temporal_client
 
+    # Test workflow executor in rust if this changes significantly
+    def execute(self, name: str, input_data: Any) -> Dict[str, Any]:
         try:
-            version_command = [moose_cli, "--version"]
-            process = subprocess.Popen(version_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-            stdout, stderr = process.communicate()
-
-            if process.returncode != 0:
-                print(f"WorkflowClient - failed to get moose-cli version: {stderr.strip()}")
-                return
-
-            print(f"WorkflowClient - moose-cli version: {stdout.strip()}")
-        except FileNotFoundError:
-            print("WorkflowClient - moose-cli not found. Please ensure it is installed and the path is correct.")
-            print(f"WorkflowClient - current PATH: {os.environ.get('PATH')}")
-            return
+            asyncio.run(self._start_workflow_async(name, input_data))
+            print(f"WorkflowClient - started workflow: {name}")
+            return {
+                "status": 200,
+                "body": f"Workflow started: {name}"
+            }
         except Exception as e:
-            print(f"WorkflowClient - an error occurred while checking moose-cli version: {str(e)}")
-            print(f"WorkflowClient - current PATH: {os.environ.get('PATH')}")
-            return
-        
-        try:
-            input_data_json = json.dumps(input_data, cls=EnhancedJSONEncoder)
-            workflow_command = [moose_cli, "workflow", "run", name, "--input", input_data_json]
-            print(f"WorkflowClient - executing command: {workflow_command} with input: {input_data_json}")
-
-            try:
-                process = subprocess.Popen(workflow_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
-                stdout, stderr = process.communicate()
-                if stdout:
-                    print("WorkflowClient - command output:", stdout)
-                    return {
-                        "status": 200,
-                        "body": stdout
-                    }
-                if stderr:
-                    print("WorkflowClient - command error:", stderr)
-                    return {
-                        "status": 400,
-                        "body": stderr
-                    }
-            except Exception as e:
-                print(f"WorkflowClient - an error occurred while running the command: {e}")
-        except (TypeError, ValueError) as e:
-            print(f"WorkflowClient - failed to convert input data to JSON: {e}")
+            print(f"WorkflowClient - error while starting workflow: {e}")
+            return {
+                "status": 400,
+                "body": str(e)
+            }
+    
+    async def _start_workflow_async(self, name: str, input_data: Any):
+        await self.temporal_client.start_workflow(
+            "ScriptWorkflow",
+            args=[f"{os.getcwd()}/app/scripts/{name}", input_data],
+            id=name,
+            task_queue="python-script-queue",
+        )
 
 class MooseClient:
-    def __init__(self, ch_client: Client):
+    def __init__(self, ch_client: ClickhouseClient, temporal_client: TemporalClient):
         self.query = QueryClient(ch_client)
-        self.workflow = WorkflowClient()
+        self.workflow = WorkflowClient(temporal_client)
 
 def verify_jwt(token: str) -> Optional[Dict[str, Any]]:
     try:
@@ -197,7 +181,7 @@ def verify_jwt(token: str) -> Optional[Dict[str, Any]]:
 def has_jwt_config() -> bool:
     return jwt_secret and jwt_issuer and jwt_audience
 
-def handler_with_client(ch_client):
+def handler_with_client(moose_client):
     class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         def log_request(self, code = "-", size = "-"):
             """instead of calling log_message which goes to stderr by default,
@@ -235,7 +219,7 @@ def handler_with_client(ch_client):
                         if fields_and_class is not None:
                             (cls, fields) = fields_and_class
                             query_params = map_params_to_dataclass(query_params, fields, cls)
-                        response = module.run(ch_client, query_params, jwt_payload)
+                        response = module.run(moose_client, query_params, jwt_payload)
                         if hasattr(response, 'status') and hasattr(response, 'body'):
                             response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
                             self.send_response(response.status)
@@ -248,7 +232,7 @@ def handler_with_client(ch_client):
                     if fields_and_class is not None:
                         (cls, fields) = fields_and_class
                         query_params = map_params_to_dataclass(query_params, fields, cls)
-                    response = module.run(ch_client, query_params)
+                    response = module.run(moose_client, query_params)
                     if hasattr(response, 'status') and hasattr(response, 'body'):
                         response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
                         self.send_response(response.status)
@@ -286,13 +270,19 @@ def walk_dir(dir, file_extension):
 
     return file_list
 
+async def get_temporal_client():
+    return await TemporalClient.connect("localhost:7233")
 
 def main():
     print(f"Connecting to Clickhouse at {interface}://{host}:{port}")
-
     ch_client = get_client(interface=interface, host=host,
                            port=port, database=db, username=user, password=password)
-    moose_client = MooseClient(ch_client)
+
+    print("Connecting to Temporal")
+    # Need to await on temporal client calls but this main function is sync
+    temporal_client = asyncio.run(get_temporal_client())
+
+    moose_client = MooseClient(ch_client, temporal_client)
 
     server_address = ('', 4001)
     handler = handler_with_client(moose_client)

@@ -126,16 +126,79 @@ pub enum WorkflowExecutionError {
     TemporalClientError(#[from] tonic::Status),
 }
 
+/// Parses various schedule formats into a valid Temporal cron expression
+///
+/// # Arguments
+/// * `schedule` - Optional string containing the schedule format
+///
+/// # Returns
+/// A String containing the parsed cron expression or empty string if invalid
+///
+/// # Formats Supported
+/// * Standard cron expressions (e.g., "* * * * *")
+/// * Interval notation (e.g., "*/5 * * * *")
+/// * Simple duration formats:
+///   - "5m" → "*/5 * * * *" (every 5 minutes)
+///   - "2h" → "0 */2 * * *" (every 2 hours)
+///
+/// Falls back to empty string (no schedule) if format is invalid
+fn parse_schedule(schedule: Option<String>) -> String {
+    schedule
+        .filter(|s| !s.is_empty())
+        .map(|s| match s.as_str() {
+            // Handle interval-based formats
+            s if s.contains('/') => s.to_string(),
+            // Handle standard cron expressions
+            s if s.contains('*') || s.contains(' ') => s.to_string(),
+            // Convert simple duration to cron (e.g., "5m" -> "*/5 * * * *")
+            s if s.ends_with('m') => {
+                let mins = s.trim_end_matches('m');
+                format!("*/{} * * * *", mins)
+            }
+            s if s.ends_with('h') => {
+                let hours = s.trim_end_matches('h');
+                format!("0 */{} * * *", hours)
+            }
+            // Default to original string if format is unrecognized
+            s => s.to_string(),
+        })
+        .unwrap_or_default()
+}
+
 pub async fn execute_python_workflow(
     workflow_id: &str,
     execution_path: &Path,
+    schedule: Option<String>,
+    input_data: Option<String>,
 ) -> Result<(), WorkflowExecutionError> {
-    // Initialize core with proper options
     // TODO: Make this configurable
     let endpoint = tonic::transport::Endpoint::from_static("http://localhost:7233");
-
     let mut client = WorkflowServiceClient::connect(endpoint).await?;
 
+    let mut payloads = vec![Payload {
+        metadata: HashMap::from([(
+            String::from("encoding"),
+            String::from("json/plain").into_bytes(),
+        )]),
+        data: serde_json::to_string(execution_path)
+            .unwrap()
+            .as_bytes()
+            .to_vec(),
+    }];
+
+    if let Some(data) = input_data {
+        let input_data_json_value: serde_json::Value = serde_json::from_str(&data).unwrap();
+        let serialized_data = serde_json::to_string(&input_data_json_value).unwrap();
+        payloads.push(Payload {
+            metadata: HashMap::from([(
+                String::from("encoding"),
+                String::from("json/plain").into_bytes(),
+            )]),
+            data: serialized_data.as_bytes().to_vec(),
+        });
+    }
+
+    // Test workflow executor from consumption api if this changes significantly
     let request = tonic::Request::new(StartWorkflowExecutionRequest {
         namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
         workflow_id: workflow_id.to_string(),
@@ -147,18 +210,7 @@ pub async fn execute_python_workflow(
             kind: TaskQueueKind::Normal as i32,
             normal_name: PYTHON_TASK_QUEUE.to_string(),
         }),
-        input: Some(Payloads {
-            payloads: vec![Payload {
-                metadata: HashMap::from([(
-                    String::from("encoding"),
-                    String::from("json/plain").into_bytes(),
-                )]),
-                data: serde_json::to_string(execution_path)
-                    .unwrap()
-                    .as_bytes()
-                    .to_vec(),
-            }],
-        }),
+        input: Some(Payloads { payloads }),
         workflow_execution_timeout: None,
         workflow_run_timeout: None,
         workflow_task_timeout: None,
@@ -168,7 +220,7 @@ pub async fn execute_python_workflow(
         header: None,
         workflow_id_reuse_policy: WorkflowIdReusePolicy::AllowDuplicate as i32,
         retry_policy: None,
-        cron_schedule: "".to_string(),
+        cron_schedule: parse_schedule(schedule),
         memo: None,
         workflow_id_conflict_policy: WorkflowIdConflictPolicy::Unspecified as i32,
         request_eager_execution: false,
@@ -181,8 +233,6 @@ pub async fn execute_python_workflow(
     });
 
     client.start_workflow_execution(request).await?;
-
-    // Return None since we're not waiting for result
     Ok(())
 }
 

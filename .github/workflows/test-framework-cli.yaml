@@ -23,6 +23,12 @@ jobs:
       RUSTC_WRAPPER: "sccache"
     runs-on: ubuntu-latest
     steps:
+      - name: Install Protoc (Needed for Temporal)
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          version: "23.x"
+
       - name: Checkout sources
         uses: actions/checkout@v4
 
@@ -50,6 +56,12 @@ jobs:
     strategy:
       fail-fast: false
     steps:
+      - name: Install Protoc (Needed for Temporal)
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          version: "23.x"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -88,6 +100,12 @@ jobs:
     strategy:
       fail-fast: false
     steps:
+      - name: Install Protoc (Needed for Temporal)
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          version: "23.x"
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -128,6 +146,12 @@ jobs:
       RUSTC_WRAPPER: "sccache"
     runs-on: ubuntu-latest
     steps:
+      - name: Install Protoc (Needed for Temporal)
+        uses: arduino/setup-protoc@v3
+        with:
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          version: "23.x"
+
       - name: Checkout sources
         uses: actions/checkout@v2
 

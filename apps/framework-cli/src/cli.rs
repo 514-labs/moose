@@ -1001,7 +1001,9 @@ async fn top_command_handler(
                 Some(WorkflowCommands::Init { name, steps, step }) => {
                     init_workflow(&project, name, steps.clone(), step.clone()).await
                 }
-                Some(WorkflowCommands::Run { name }) => run_workflow(&project, name).await,
+                Some(WorkflowCommands::Run { name, input }) => {
+                    run_workflow(&project, name, input.clone()).await
+                }
                 Some(WorkflowCommands::Resume { .. }) => Err(RoutineFailure::error(Message {
                     action: "Workflow Resume".to_string(),
                     details: "Not implemented yet".to_string(),

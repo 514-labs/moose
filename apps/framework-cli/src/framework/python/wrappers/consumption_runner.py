@@ -54,6 +54,7 @@ jwt_secret = args.jwt_secret
 jwt_issuer = args.jwt_issuer
 jwt_audience = args.jwt_audience
 jwt_enforce_all = args.jwt_enforce_all
+
 sys.path.append(consumption_dir_path)
 
 

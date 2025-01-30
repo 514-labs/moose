@@ -60,10 +60,10 @@ export const Display = ({
 
 export enum HeadingLevel {
   l1 = "text-primary text-3xl sm:text-5xl 3xl:text-6xl",
-  l2 = "text-primary text-2xl sm:text-4xl 3xl:text-5xl",
-  l3 = "text-primary text-xl sm:text-3xl 3xl:text-4xl",
-  l4 = "text-primary text-lg sm:text-2xl 3xl:text-3xl",
-  l5 = "text-muted-foreground text-base sm:text-xl 3xl:text-2xl",
+  l2 = "text-primary text-xl sm:text-3xl 3xl:text-4xl",
+  l3 = "text-primary text-lg sm:text-2xl 3xl:text-3xl",
+  l4 = "text-primary text-base sm:text-xl 3xl:text-2xl",
+  l5 = "text-muted-foreground text-sm sm:text-lg 3xl:text-xl",
 }
 
 interface HeadingProps extends ComponentPropsWithoutRef<"h3"> {
@@ -93,9 +93,8 @@ export const Heading = ({
     </h3>
   );
 };
-
 const smallBodyBase =
-  "text-primary leading-normal 2xl:leading-normal sm:text-base 2xl:text-lg 3xl:text-xl";
+  "text-primary leading-none 2xl:leading-none text-sm sm:text-sm 2xl:text-base 3xl:text-lg";
 
 export const SmallText = ({
   className,

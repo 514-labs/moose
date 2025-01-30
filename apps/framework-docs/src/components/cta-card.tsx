@@ -12,6 +12,7 @@ import Link from "next/link";
 import {
   Heading,
   HeadingLevel,
+  SmallText,
   Text,
 } from "@514labs/design-system-components/typography";
 import { cn } from "@514labs/design-system-components/utils";
@@ -23,6 +24,7 @@ interface CTACardProps {
   ctaLabel: string;
   Icon: React.ElementType;
   className: string;
+  cardName: string;
   variant: "default" | "gradient";
 }
 
@@ -31,6 +33,7 @@ export function CTACard({
   description,
   ctaLink,
   ctaLabel,
+  cardName,
   Icon,
   className,
   variant = "default",
@@ -38,22 +41,11 @@ export function CTACard({
   return (
     <Card className={cn("rounded-3xl h-full flex flex-col", className)}>
       <CardHeader>
-        <div
-          className={cn(
-            "w-fit rounded-[20px] p-[2px]",
-            variant === "gradient"
-              ? "bg-gradient-to-b from-pink from-4.65% to-background to-93.24% border-transparent"
-              : "bg-muted",
-          )}
-        >
-          <div
-            className={cn(
-              "rounded-[18px] w-fit p-[2px]",
-              variant === "gradient" ? "bg-gradientDarkPink" : "bg-muted",
-            )}
-          >
-            <Icon className="m-3 h-[24px] w-[24px] text-white" />
-          </div>
+        <div className="flex gap-2">
+          <Icon className="h-[20px] w-[20px] text-purple-400" />
+          <SmallText className="text-primary text-purple-400 my-0">
+            {cardName}
+          </SmallText>
         </div>
       </CardHeader>
       <CardContent className="flex-grow">

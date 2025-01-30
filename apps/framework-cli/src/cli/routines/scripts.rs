@@ -40,7 +40,11 @@ pub async fn init_workflow(
     }))
 }
 
-pub async fn run_workflow(project: &Project, name: &str) -> Result<RoutineSuccess, RoutineFailure> {
+pub async fn run_workflow(
+    project: &Project,
+    name: &str,
+    input: Option<String>,
+) -> Result<RoutineSuccess, RoutineFailure> {
     // Workflow directory is in app/scripts
     let workflow_dir = project.scripts_dir().join(name);
 
@@ -58,7 +62,7 @@ pub async fn run_workflow(project: &Project, name: &str) -> Result<RoutineSucces
             e,
         )
     })?;
-    workflow.start().await.map_err(|e| {
+    workflow.start(input).await.map_err(|e| {
         RoutineFailure::new(
             Message {
                 action: "Workflow Start Failed".to_string(),
@@ -177,7 +181,7 @@ mod tests {
         assert!(workflow_dir.exists(), "Workflow directory should exist");
 
         // Run the workflow
-        let result = run_workflow(&project, WORKFLOW_NAME).await;
+        let result = run_workflow(&project, WORKFLOW_NAME, None).await;
         println!("Result: {:?}", result);
         assert!(result.is_ok(), "Workflow should run successfully");
 

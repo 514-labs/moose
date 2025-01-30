@@ -263,6 +263,10 @@ pub enum WorkflowCommands {
     Run {
         /// Name of the workflow to run
         name: String,
+
+        /// JSON input parameters for the workflow
+        #[arg(short, long)]
+        input: Option<String>,
     },
     /// Resume a workflow from a specific step
     Resume {

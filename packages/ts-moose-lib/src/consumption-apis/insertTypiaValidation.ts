@@ -2,6 +2,8 @@ import ts, { factory, isInterfaceDeclaration, TypeNode } from "typescript";
 import type { PluginConfig, ProgramTransformerExtras } from "ts-patch";
 import path from "path";
 // import { dumpParamType } from "./queryParam";
+import { MetadataFactory } from "typia/lib/factories/MetadataFactory";
+import { MetadataCollection } from "typia/lib/factories/MetadataCollection";
 
 const avoidTypiaNameClash = "____moose____typia";
 
@@ -69,6 +71,23 @@ const transformCreateConsumptionApi = (
 
   const handlerFunc = node.arguments[0];
   const paramType = node.typeArguments!![0];
+
+  //
+  // const stuff = MetadataFactory.analyze({
+  //   checker,
+  //   transformer: undefined,
+  //   options: {
+  //     escape: true,
+  //     constant: true,
+  //     absorb: false,
+  //     validate: undefined,
+  //   },
+  //   collection: new MetadataCollection(undefined),
+  //   type: checker.getTypeFromTypeNode(paramType),
+  // })
+  // if (stuff.success) {
+  //   console.log("stuff.data.objects", JSON.stringify(stuff.data.toJSON()))
+  // }
 
   return iife([
     // const assertGuard = ____moose____typia.http.createAssertQuery<T>()

@@ -1,7 +1,7 @@
 import ts, { factory, isInterfaceDeclaration, TypeNode } from "typescript";
 import type { PluginConfig, ProgramTransformerExtras } from "ts-patch";
 import path from "path";
-import { dumpParamType } from "./queryParam";
+// import { dumpParamType } from "./queryParam";
 
 const avoidTypiaNameClash = "____moose____typia";
 
@@ -70,11 +70,8 @@ const transformCreateConsumptionApi = (
   const handlerFunc = node.arguments[0];
   const paramType = node.typeArguments!![0];
 
-  const fields = dumpParamType(paramType, checker);
-  console.log("fields", fields);
-
   return iife([
-    // const assertGuard = typia.http.createAssertQuery<T>()
+    // const assertGuard = ____moose____typia.http.createAssertQuery<T>()
     factory.createVariableStatement(
       undefined,
       factory.createVariableDeclarationList(
@@ -115,75 +112,109 @@ const transformCreateConsumptionApi = (
         ts.NodeFlags.Const,
       ),
     ),
-    // return (params, utils) => {
+    // const wrappedFunc = (params, utils) => {
     //   const processedParams = assertGuard(new URLSearchParams(params))
     //   return handlerFunc(params, utils)
     // }
-    factory.createReturnStatement(
-      factory.createArrowFunction(
-        undefined,
-        undefined,
+    factory.createVariableStatement(
+      undefined,
+      factory.createVariableDeclarationList(
         [
-          factory.createParameterDeclaration(
+          factory.createVariableDeclaration(
+            factory.createIdentifier("wrappedFunc"),
             undefined,
             undefined,
-            factory.createIdentifier("params"),
-            undefined,
-            undefined,
-            undefined,
-          ),
-          factory.createParameterDeclaration(
-            undefined,
-            undefined,
-            factory.createIdentifier("utils"),
-            undefined,
-            undefined,
-            undefined,
-          ),
-        ],
-        undefined,
-        factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
-        factory.createBlock(
-          [
-            factory.createVariableStatement(
+            factory.createArrowFunction(
               undefined,
-              factory.createVariableDeclarationList(
+              undefined,
+              [
+                factory.createParameterDeclaration(
+                  undefined,
+                  undefined,
+                  factory.createIdentifier("params"),
+                  undefined,
+                  undefined,
+                  undefined,
+                ),
+                factory.createParameterDeclaration(
+                  undefined,
+                  undefined,
+                  factory.createIdentifier("utils"),
+                  undefined,
+                  undefined,
+                  undefined,
+                ),
+              ],
+              undefined,
+              factory.createToken(ts.SyntaxKind.EqualsGreaterThanToken),
+              factory.createBlock(
                 [
-                  factory.createVariableDeclaration(
-                    factory.createIdentifier("processedParams"),
+                  factory.createVariableStatement(
                     undefined,
-                    undefined,
+                    factory.createVariableDeclarationList(
+                      [
+                        factory.createVariableDeclaration(
+                          factory.createIdentifier("processedParams"),
+                          undefined,
+                          undefined,
+                          factory.createCallExpression(
+                            factory.createIdentifier("assertGuard"),
+                            undefined,
+                            [
+                              factory.createNewExpression(
+                                factory.createIdentifier("URLSearchParams"),
+                                undefined,
+                                [factory.createIdentifier("params")],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                      ts.NodeFlags.Const,
+                    ),
+                  ),
+                  factory.createReturnStatement(
                     factory.createCallExpression(
-                      factory.createIdentifier("assertGuard"),
+                      factory.createIdentifier("handlerFunc"),
                       undefined,
                       [
-                        factory.createNewExpression(
-                          factory.createIdentifier("URLSearchParams"),
-                          undefined,
-                          [factory.createIdentifier("params")],
-                        ),
+                        factory.createIdentifier("processedParams"),
+                        factory.createIdentifier("utils"),
                       ],
                     ),
                   ),
                 ],
-                ts.NodeFlags.Const,
+                true,
               ),
             ),
-            factory.createReturnStatement(
-              factory.createCallExpression(
-                factory.createIdentifier("handlerFunc"),
-                undefined,
-                [
-                  factory.createIdentifier("processedParams"),
-                  factory.createIdentifier("utils"),
-                ],
-              ),
+          ),
+        ],
+        ts.NodeFlags.Const,
+      ),
+    ),
+    // wrappedFunc["moose_input_schema"] = ____moose____typia.json.schemas<[T]>()
+    factory.createExpressionStatement(
+      factory.createBinaryExpression(
+        factory.createElementAccessExpression(
+          factory.createIdentifier("wrappedFunc"),
+          factory.createStringLiteral("moose_input_schema"),
+        ),
+        factory.createToken(ts.SyntaxKind.EqualsToken),
+        factory.createCallExpression(
+          factory.createPropertyAccessExpression(
+            factory.createPropertyAccessExpression(
+              factory.createIdentifier(avoidTypiaNameClash),
+              factory.createIdentifier("json"),
             ),
-          ],
-          true,
+            factory.createIdentifier("schemas"),
+          ),
+          [factory.createTupleTypeNode([paramType])],
+          [],
         ),
       ),
     ),
+
+    factory.createReturnStatement(factory.createIdentifier("wrappedFunc")),
   ]);
 };
 function getPatchedHost(

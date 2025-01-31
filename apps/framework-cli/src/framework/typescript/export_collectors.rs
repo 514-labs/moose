@@ -61,8 +61,6 @@ async fn collect_exports(
         let mut raw_string_stdout: String = String::new();
         stdout.read_to_string(&mut raw_string_stdout).await?;
 
-        println!("raw_string_stdout {}", raw_string_stdout);
-
         Ok(serde_json::from_str(&raw_string_stdout)?)
     }
 }
@@ -155,7 +153,7 @@ pub async fn get_func_types(
                         Some("number") => ColumnType::Float,
                         Some("integer") => ColumnType::Int,
                         Some("boolean") => ColumnType::Boolean,
-                        // no recursion here, query param does not support nested arrays anyway
+                        // no recursion here, query param does not support nested arrays
                         Some("array") => {
                             let inner_type = match type_object
                                 .unwrap()

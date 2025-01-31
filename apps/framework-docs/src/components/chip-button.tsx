@@ -2,7 +2,7 @@ import {
   SmallTextEmbed,
   TextEmbed,
 } from "@514labs/design-system-components/typography";
-import { Badge } from "@514labs/design-system-components/components";
+import { Button } from "@514labs/design-system-components/components";
 import Link from "next/link";
 
 interface ChipProps {
@@ -10,17 +10,17 @@ interface ChipProps {
   href: string;
 }
 
-export function ChipBadge({ label, href }: ChipProps) {
+export function ChipButton({ label, href }: ChipProps) {
   return (
     <Link href={href}>
-      <Badge
+      <Button
         variant="outline"
         className="hover:bg-muted cursor-pointer border-muted-foreground"
       >
         <SmallTextEmbed className="px-1.5 py-1 my-0 font-normal text-muted-foreground">
           {label}
         </SmallTextEmbed>
-      </Badge>
+      </Button>
     </Link>
   );
 }

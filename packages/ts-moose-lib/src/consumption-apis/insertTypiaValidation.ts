@@ -1,6 +1,7 @@
-import ts, { factory } from "typescript";
+import ts, { factory, isInterfaceDeclaration, TypeNode } from "typescript";
 import type { PluginConfig, ProgramTransformerExtras } from "ts-patch";
 import path from "path";
+import { dumpParamType } from "./queryParam";
 
 const avoidTypiaNameClash = "____moose____typia";
 
@@ -67,6 +68,10 @@ const transformCreateConsumptionApi = (
   }
 
   const handlerFunc = node.arguments[0];
+  const paramType = node.typeArguments!![0];
+
+  const fields = dumpParamType(paramType, checker);
+  console.log("fields", fields);
 
   return iife([
     // const assertGuard = typia.http.createAssertQuery<T>()
@@ -86,7 +91,7 @@ const transformCreateConsumptionApi = (
                 ),
                 factory.createIdentifier("createAssertQuery"),
               ),
-              [node.typeArguments!![0]],
+              [paramType],
               [],
             ),
           ),

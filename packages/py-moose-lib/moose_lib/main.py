@@ -117,9 +117,12 @@ class WorkflowClient:
         pass
 
 class MooseClient:
-    def __init__(self, ch_client: ClickhouseClient, temporal_client: TemporalClient):
+    def __init__(self, ch_client: ClickhouseClient, temporal_client: Optional[TemporalClient] = None):
         self.query = QueryClient(ch_client)
-        self.workflow = WorkflowClient(temporal_client)
+        if temporal_client:
+            self.workflow = WorkflowClient(temporal_client)
+        else:
+            self.workflow = None
 
 class Sql:
     def __init__(self, raw_strings: list[str], raw_values: list['RawValue']):

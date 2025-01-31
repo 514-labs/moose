@@ -166,9 +166,12 @@ class WorkflowClient:
         )
 
 class MooseClient:
-    def __init__(self, ch_client: ClickhouseClient, temporal_client: TemporalClient):
+    def __init__(self, ch_client: ClickhouseClient, temporal_client: Optional[TemporalClient] = None):
         self.query = QueryClient(ch_client)
-        self.workflow = WorkflowClient(temporal_client)
+        if temporal_client:
+            self.workflow = WorkflowClient(temporal_client)
+        else:
+            self.workflow = None
 
 def verify_jwt(token: str) -> Optional[Dict[str, Any]]:
     try:
@@ -278,10 +281,15 @@ def main():
     ch_client = get_client(interface=interface, host=host,
                            port=port, database=db, username=user, password=password)
 
-    print("Connecting to Temporal")
-    # Need to await on temporal client calls but this main function is sync
-    temporal_client = asyncio.run(get_temporal_client())
-
+    temporal_client = None
+    try:
+        # TODO: try to connect since it's still behind a feature flag
+        print("Connecting to Temporal")
+        # Need to await on temporal client calls but this main function is sync
+        temporal_client = asyncio.run(get_temporal_client())
+    except Exception as e:
+        print(f"Failed to connect to Temporal. Is the feature flag enabled? {e}")
+    
     moose_client = MooseClient(ch_client, temporal_client)
 
     server_address = ('', 4001)

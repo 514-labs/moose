@@ -165,7 +165,7 @@ pub async fn get_func_types(
                                 Some("number") => ColumnType::Float,
                                 Some("integer") => ColumnType::Int,
                                 Some("boolean") => ColumnType::Boolean,
-                                Some("string") | _ => ColumnType::String,
+                                _ => ColumnType::String,
                             };
                             ColumnType::Array(Box::new(inner_type))
                         }

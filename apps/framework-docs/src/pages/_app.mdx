@@ -1,10 +1,55 @@
 import "@514labs/design-system-base/globals.css";
 import RootLayout from "../components/layouts";
+import { useEffect } from 'react'
+import { useRouter } from 'next/router'
+import Router from 'next/router'
+import posthog from 'posthog-js'
+import { PostHogProvider } from 'posthog-js/react'
+
 
 export default function App({ Component, pageProps }) {
+  const router = useRouter();
+
+  useEffect(() => {
+    // Wait until Next.js router is ready to ensure query params are populated.
+    if (!router.isReady) return;
+
+    // Extract cross-site tracking params from Next.js router query.
+    // These are added by TrackLink as 'ph_distinct_id' and 'ph_session_id'.
+    const { ph_distinct_id, ph_session_id } = router.query;
+    let bootstrapData = {};
+
+    if (ph_distinct_id || ph_session_id) {
+      bootstrapData = {
+        ...(ph_distinct_id && { distinct_id: ph_distinct_id }),
+        ...(ph_session_id && { session_id: ph_session_id }),
+      };
+    }
+
+    posthog.init(process.env.NEXT_PUBLIC_POSTHOG_KEY, {
+      api_host: process.env.NEXT_PUBLIC_POSTHOG_HOST || 'https://us.i.posthog.com',
+      ui_host: 'https://us.posthog.com',
+      bootstrap: bootstrapData, // Bootstrap with IDs from the URL if provided.
+      // Enable debug mode in development
+      loaded: (posthogInstance) => {
+        if (process.env.NODE_ENV === 'development') posthogInstance.debug()
+      }
+    })
+
+    const handleRouteChange = () => posthog?.capture('$pageview')
+
+    Router.events.on('routeChangeComplete', handleRouteChange);
+
+    return () => {
+      Router.events.off('routeChangeComplete', handleRouteChange);
+    }
+  }, [router.isReady])
+
   return (
-    <RootLayout>
-      <Component {...pageProps} />
-    </RootLayout>
+    <PostHogProvider client={posthog}>
+      <RootLayout>
+        <Component {...pageProps} />
+      </RootLayout>
+    </PostHogProvider>
   );
 }

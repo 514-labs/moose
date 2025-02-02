@@ -10,6 +10,7 @@ import {
 } from "@514labs/design-system-components/typography";
 
 import { cn } from "@514labs/design-system-components/utils";
+import { Card } from "@514labs/design-system-components/components";
 
 interface ColumnProps {
   heading: string;
@@ -35,5 +36,9 @@ export function Column({ heading, body, list, className }: ColumnProps) {
 }
 
 export function Columns({ children }: { children: React.ReactNode }) {
-  return <Grid className="mt-4 md:gap-x-0 border rounded-3xl">{children}</Grid>;
+  return (
+    <Card className="mt-4 md:gap-x-0">
+      <Grid>{children}</Grid>
+    </Card>
+  );
 }

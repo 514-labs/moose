@@ -39,9 +39,9 @@ export function CTACard({
   variant = "default",
 }: CTACardProps) {
   return (
-    <Card className={cn("rounded-3xl h-full flex flex-col", className)}>
+    <Card className={cn("h-full flex flex-col", className)}>
       <CardHeader>
-        <div className="flex gap-2">
+        <div className="flex gap-2 items-center">
           <Icon className="h-[20px] w-[20px] text-purple-400" />
           <SmallText className="text-primary text-purple-400 my-0">
             {cardName}

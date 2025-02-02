@@ -36,3 +36,4 @@ yarn-error.log*
 # Sentry Auth Token
 .sentryclirc
 
+.env*.local

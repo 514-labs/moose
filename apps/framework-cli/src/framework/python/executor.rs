@@ -5,9 +5,12 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::process::Stdio;
 
+use crate::framework::scripts::config::WorkflowConfig;
 use crate::utilities::constants::{CLI_INTERNAL_VERSIONS_DIR, CLI_PROJECT_INTERNAL_DIR};
 
-use temporal_sdk_core::protos::temporal::api::common::v1::{Payload, Payloads, WorkflowType};
+use temporal_sdk_core::protos::temporal::api::common::v1::{
+    Payload, Payloads, RetryPolicy, WorkflowType,
+};
 use temporal_sdk_core::protos::temporal::api::enums::v1::{
     TaskQueueKind, WorkflowIdConflictPolicy, WorkflowIdReusePolicy,
 };
@@ -124,6 +127,9 @@ pub enum WorkflowExecutionError {
 
     #[error("Temportal client error: {0}")]
     TemporalClientError(#[from] tonic::Status),
+
+    #[error("Timeout error: {0}")]
+    TimeoutError(String),
 }
 
 /// Parses various schedule formats into a valid Temporal cron expression
@@ -142,33 +148,60 @@ pub enum WorkflowExecutionError {
 ///   - "2h" → "0 */2 * * *" (every 2 hours)
 ///
 /// Falls back to empty string (no schedule) if format is invalid
-fn parse_schedule(schedule: Option<String>) -> String {
-    schedule
-        .filter(|s| !s.is_empty())
-        .map(|s| match s.as_str() {
-            // Handle interval-based formats
-            s if s.contains('/') => s.to_string(),
-            // Handle standard cron expressions
-            s if s.contains('*') || s.contains(' ') => s.to_string(),
-            // Convert simple duration to cron (e.g., "5m" -> "*/5 * * * *")
-            s if s.ends_with('m') => {
-                let mins = s.trim_end_matches('m');
-                format!("*/{} * * * *", mins)
-            }
-            s if s.ends_with('h') => {
-                let hours = s.trim_end_matches('h');
-                format!("0 */{} * * *", hours)
-            }
-            // Default to original string if format is unrecognized
-            s => s.to_string(),
-        })
-        .unwrap_or_default()
+fn parse_schedule(schedule: &str) -> String {
+    if schedule.is_empty() {
+        return String::new();
+    }
+
+    match schedule {
+        // Handle interval-based formats
+        s if s.contains('/') => s.to_string(),
+        // Handle standard cron expressions
+        s if s.contains('*') || s.contains(' ') => s.to_string(),
+        // Convert simple duration to cron (e.g., "5m" -> "*/5 * * * *")
+        s if s.ends_with('m') => {
+            let mins = s.trim_end_matches('m');
+            format!("*/{} * * * *", mins)
+        }
+        s if s.ends_with('h') => {
+            let hours = s.trim_end_matches('h');
+            format!("0 */{} * * *", hours)
+        }
+        // Default to original string if format is unrecognized
+        s => s.to_string(),
+    }
+}
+
+fn parse_timeout_to_seconds(timeout: &str) -> Result<i64, WorkflowExecutionError> {
+    if timeout.is_empty() {
+        return Err(WorkflowExecutionError::TimeoutError(
+            "Timeout string is empty".to_string(),
+        ));
+    }
+
+    let (value, unit) = timeout.split_at(timeout.len() - 1);
+    let value: u64 = value
+        .parse()
+        .map_err(|_| WorkflowExecutionError::TimeoutError("Invalid number format".to_string()))?;
+
+    let seconds =
+        match unit {
+            "h" => value * 3600,
+            "m" => value * 60,
+            "s" => value,
+            _ => return Err(WorkflowExecutionError::TimeoutError(
+                "Invalid time unit. Must be h, m, or s for hours, minutes, or seconds respectively"
+                    .to_string(),
+            )),
+        };
+
+    Ok(seconds as i64)
 }
 
 pub(crate) async fn execute_python_workflow(
     workflow_id: &str,
     execution_path: &Path,
-    schedule: Option<String>,
+    config: &WorkflowConfig,
     input: Option<String>,
 ) -> Result<String, WorkflowExecutionError> {
     // TODO: Make this configurable
@@ -212,15 +245,22 @@ pub(crate) async fn execute_python_workflow(
         }),
         input: Some(Payloads { payloads }),
         workflow_execution_timeout: None,
-        workflow_run_timeout: None,
+        workflow_run_timeout: Some(prost_wkt_types::Duration {
+            seconds: parse_timeout_to_seconds(&config.timeout)?,
+            nanos: 0,
+        }),
         workflow_task_timeout: None,
         identity: MOOSE_CLI_IDENTITY.to_string(),
         request_id: uuid::Uuid::new_v4().to_string(),
         search_attributes: None,
         header: None,
         workflow_id_reuse_policy: WorkflowIdReusePolicy::AllowDuplicate as i32,
-        retry_policy: None,
-        cron_schedule: parse_schedule(schedule),
+        retry_policy: Some(RetryPolicy {
+            // The number of retries a workflow run will be attempted
+            maximum_attempts: config.retries as i32,
+            ..Default::default()
+        }),
+        cron_schedule: parse_schedule(&config.schedule),
         memo: None,
         workflow_id_conflict_policy: WorkflowIdConflictPolicy::Unspecified as i32,
         request_eager_execution: false,

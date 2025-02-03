@@ -158,6 +158,7 @@ class WorkflowClient:
             }
     
     async def _start_workflow_async(self, name: str, input_data: Any):
+        # TODO: add retry & timeout
         await self.temporal_client.start_workflow(
             "ScriptWorkflow",
             args=[f"{os.getcwd()}/app/scripts/{name}", input_data],

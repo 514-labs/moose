@@ -2489,6 +2489,7 @@ dependencies = [
  "prometheus-client",
  "prometheus-parse",
  "prost-types",
+ "prost-wkt-types",
  "protobuf 3.7.1",
  "protobuf-codegen",
  "ratatui",

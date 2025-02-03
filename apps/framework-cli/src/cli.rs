@@ -28,7 +28,13 @@ use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
 use routines::plan;
 use routines::ps::show_processes;
+use routines::scripts::init_workflow;
+use routines::scripts::list_workflows;
+use routines::scripts::pause_workflow;
 use routines::scripts::run_workflow;
+use routines::scripts::terminate_workflow;
+use routines::scripts::unpause_workflow;
+
 use settings::{read_settings, Settings};
 use std::cmp::Ordering;
 use std::path::Path;
@@ -66,7 +72,10 @@ use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 use crate::utilities::git::is_git_repo;
 
 use self::routines::clean::CleanProject;
-use crate::cli::routines::scripts::init_workflow;
+
+use anyhow::{Error, Result};
+use temporal_sdk_core_protos::temporal::api::workflowservice::v1::workflow_service_client::WorkflowServiceClient;
+use tonic::transport::{Channel, Uri};
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
@@ -1004,10 +1013,18 @@ async fn top_command_handler(
                 Some(WorkflowCommands::Run { name, input }) => {
                     run_workflow(&project, name, input.clone()).await
                 }
+                Some(WorkflowCommands::List { status, limit }) => {
+                    list_workflows(&project, status.clone(), *limit).await
+                }
                 Some(WorkflowCommands::Resume { .. }) => Err(RoutineFailure::error(Message {
                     action: "Workflow Resume".to_string(),
                     details: "Not implemented yet".to_string(),
                 })),
+                Some(WorkflowCommands::Terminate { name }) => {
+                    terminate_workflow(&project, name).await
+                }
+                Some(WorkflowCommands::Pause { name }) => pause_workflow(&project, name).await,
+                Some(WorkflowCommands::Unpause { name }) => unpause_workflow(&project, name).await,
                 None => Err(RoutineFailure::error(Message {
                     action: "Workflow".to_string(),
                     details: "No subcommand provided".to_string(),
@@ -1054,6 +1071,13 @@ pub async fn cli_run() {
             exit(1);
         }
     };
+}
+
+pub async fn connect_to_temporal() -> Result<WorkflowServiceClient<Channel>> {
+    let endpoint: Uri = "http://localhost:7233".parse().unwrap();
+    WorkflowServiceClient::connect(endpoint).await.map_err(|_| {
+        Error::msg("Could not connect to Temporal. Please ensure the Temporal server is running.")
+    })
 }
 
 #[cfg(test)]

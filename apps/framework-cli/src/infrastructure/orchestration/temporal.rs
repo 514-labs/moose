@@ -1,4 +1,10 @@
+use crate::cli::connect_to_temporal;
+use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
+use temporal_sdk_core_protos::temporal::api::workflowservice::v1::workflow_service_client::WorkflowServiceClient;
+use tonic::transport::Channel;
+
+pub const DEFAULT_TEMPORTAL_NAMESPACE: &str = "default";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TemporalConfig {
@@ -116,4 +122,11 @@ impl Default for TemporalConfig {
             postgresql_version: default_postgresql_version(),
         }
     }
+}
+
+pub async fn get_temporal_client() -> Result<WorkflowServiceClient<Channel>> {
+    connect_to_temporal().await.map_err(|e| {
+        eprintln!("{}", e);
+        Error::msg(format!("{}", e))
+    })
 }

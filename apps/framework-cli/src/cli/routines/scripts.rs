@@ -54,7 +54,6 @@ pub async fn run_workflow(
     name: &str,
     input: Option<String>,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    // Workflow directory is in app/scripts
     let workflow_dir = project.scripts_dir().join(name);
 
     let workflow: Workflow = Workflow::from_dir(workflow_dir.clone()).map_err(|e| {
@@ -71,7 +70,9 @@ pub async fn run_workflow(
             e,
         )
     })?;
-    workflow.start(input).await.map_err(|e| {
+
+    // Update the start method to return String instead of ()
+    let run_id: String = workflow.start(input).await.map_err(|e| {
         RoutineFailure::new(
             Message {
                 action: "Workflow Start Failed".to_string(),
@@ -80,9 +81,20 @@ pub async fn run_workflow(
             e,
         )
     })?;
+
+    let dashboard_url = format!(
+        "http://localhost:8080/namespaces/{}/workflows/{}/{}/history",
+        DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+        name,
+        run_id
+    );
+
     Ok(RoutineSuccess::success(Message {
-        action: "Workflow Started".to_string(),
-        details: format!("Workflow '{}' started successfully", name),
+        action: "Workflow".to_string(),
+        details: format!(
+            "Workflow '{}' started successfully.\nView it in the Temporal dashboard: {}",
+            name, dashboard_url
+        ),
     }))
 }
 

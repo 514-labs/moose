@@ -23,7 +23,7 @@ pub(crate) async fn execute_workflow(
     workflow_id: &str,
     execution_path: &Path,
     input: Option<String>,
-) -> Result<(), WorkflowExecutionError> {
+) -> Result<String, WorkflowExecutionError> {
     let config_path = execution_path.join("config.toml");
     let config_content = std::fs::read_to_string(config_path).map_err(|e| {
         WorkflowExecutionError::ConfigError(format!("Failed to read config.toml: {}", e))
@@ -35,11 +35,14 @@ pub(crate) async fn execute_workflow(
 
     match language {
         SupportedLanguages::Python => {
-            Ok(
+            let run_id =
                 execute_python_workflow(workflow_id, execution_path, Some(config.schedule), input)
-                    .await?,
-            )
+                    .await?;
+            Ok(run_id)
         }
-        _ => todo!("Unsupported language {}", language),
+        _ => Err(WorkflowExecutionError::ConfigError(format!(
+            "Unsupported language {}",
+            language
+        ))),
     }
 }

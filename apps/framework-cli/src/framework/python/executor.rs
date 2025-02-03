@@ -165,12 +165,12 @@ fn parse_schedule(schedule: Option<String>) -> String {
         .unwrap_or_default()
 }
 
-pub async fn execute_python_workflow(
+pub(crate) async fn execute_python_workflow(
     workflow_id: &str,
     execution_path: &Path,
     schedule: Option<String>,
-    input_data: Option<String>,
-) -> Result<(), WorkflowExecutionError> {
+    input: Option<String>,
+) -> Result<String, WorkflowExecutionError> {
     // TODO: Make this configurable
     let endpoint = tonic::transport::Endpoint::from_static("http://localhost:7233");
     let mut client = WorkflowServiceClient::connect(endpoint).await?;
@@ -186,7 +186,7 @@ pub async fn execute_python_workflow(
             .to_vec(),
     }];
 
-    if let Some(data) = input_data {
+    if let Some(data) = input {
         let input_data_json_value: serde_json::Value = serde_json::from_str(&data).unwrap();
         let serialized_data = serde_json::to_string(&input_data_json_value).unwrap();
         payloads.push(Payload {
@@ -232,8 +232,9 @@ pub async fn execute_python_workflow(
         links: vec![],
     });
 
-    client.start_workflow_execution(request).await?;
-    Ok(())
+    let response = client.start_workflow_execution(request).await?;
+    let run_id = response.into_inner().run_id;
+    Ok(run_id)
 }
 
 // TESTs

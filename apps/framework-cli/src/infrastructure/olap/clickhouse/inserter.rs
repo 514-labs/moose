@@ -15,7 +15,7 @@ pub struct Batch {
     pub records: Vec<ClickHouseRecord>,
     pub partition_offsets: HashMap<i32, i64>,
 
-    // Map the partions to the number of messages in the batch
+    // Map the partitions to the number of messages in the batch
     pub messages_sizes: HashMap<i32, i64>,
 }
 
@@ -120,6 +120,59 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
         Ok(())
     }
 
+    async fn get_front_batch(&self) -> Option<Batch> {
+        let mut queue = self.queue.lock().await;
+
+        if queue.is_empty() || queue.front().is_none_or(|batch| batch.records.is_empty()) {
+            None
+        } else {
+            let batch = queue.pop_front();
+
+            if queue.is_empty() {
+                queue.push_back(Batch::default())
+            }
+            batch
+        }
+    }
+
+    async fn return_batch_to_queue(&self, mut batch: Batch) {
+        let mut queue = self.queue.lock().await;
+        if queue
+            .front()
+            .is_some_and(|new| new.records.len() + batch.records.len() <= self.batch_size)
+        {
+            let new_batch = queue.front_mut().unwrap();
+
+            // prepending batch.records to the new batch
+            batch.records.append(&mut new_batch.records);
+            std::mem::swap(&mut batch.records, &mut new_batch.records);
+
+            batch
+                .partition_offsets
+                .into_iter()
+                .for_each(|(partition, offset)| {
+                    // no need to update if non-empty as the new batch must be newer than the old batch
+                    new_batch
+                        .partition_offsets
+                        .entry(partition)
+                        .or_insert(offset);
+                });
+
+            batch
+                .messages_sizes
+                .into_iter()
+                .for_each(|(partition, size)| {
+                    new_batch
+                        .partition_offsets
+                        .entry(partition)
+                        .and_modify(|e| *e += size)
+                        .or_insert(size);
+                })
+        } else {
+            queue.push_front(batch);
+        }
+    }
+
     async fn flush(
         &self,
         table: String,
@@ -136,13 +189,7 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
             }
             interval.tick().await;
 
-            let mut queue = self.queue.lock().await;
-
-            if queue.is_empty() || queue.front().map_or(true, |batch| batch.records.is_empty()) {
-                continue;
-            }
-
-            if let Some(batch) = queue.front() {
+            if let Some(batch) = self.get_front_batch().await {
                 match self.client.insert(&table, &columns, &batch.records).await {
                     Ok(_) => {
                         info!(
@@ -160,12 +207,6 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
                                 );
                             }
                         }
-
-                        queue.pop_front();
-
-                        if queue.is_empty() {
-                            queue.push_back(Batch::default());
-                        }
                     }
                     Err(e) => {
                         warn!(
@@ -175,6 +216,7 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
                             batch.offsets_to_string(),
                             e
                         );
+                        self.return_batch_to_queue(batch).await;
                     }
                 }
             }

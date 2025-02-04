@@ -6,7 +6,7 @@ import os
 import subprocess
 import sys
 import traceback
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 
 from http import HTTPStatus
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -22,6 +22,7 @@ from clickhouse_connect import get_client
 from clickhouse_connect.driver.client import Client as ClickhouseClient
 
 from temporalio.client import Client as TemporalClient
+from temporalio.common import RetryPolicy
 
 
 parser = argparse.ArgumentParser(description='Run Consumption Server')
@@ -140,6 +141,8 @@ class QueryClient:
 class WorkflowClient:
     def __init__(self, temporal_client: TemporalClient):
         self.temporal_client = temporal_client
+        self.configs = self.load_consolidated_configs()
+        print(f"WorkflowClient - configs: {self.configs}")
 
     # Test workflow executor in rust if this changes significantly
     def execute(self, name: str, input_data: Any) -> Dict[str, Any]:
@@ -158,13 +161,47 @@ class WorkflowClient:
             }
     
     async def _start_workflow_async(self, name: str, input_data: Any):
-        # TODO: add retry & timeout
+        if 'retries' not in self.configs.get(name, {}):
+            raise ValueError(f"Missing 'retries' configuration for workflow: {name}")
+        retry_count = self.configs[name]['retries']
+        retry_policy = RetryPolicy(
+            maximum_attempts=retry_count
+        )
+
+        if 'timeout' not in self.configs.get(name, {}):
+            raise ValueError(f"Missing 'timeout' configuration for workflow: {name}")
+        timeout_str = self.configs[name]['timeout']
+        run_timeout = self.parse_timeout_to_timedelta(timeout_str)
+
+        print(f"WorkflowClient - starting workflow: {name} with retry policy: {retry_policy} and timeout: {run_timeout}")
         await self.temporal_client.start_workflow(
             "ScriptWorkflow",
             args=[f"{os.getcwd()}/app/scripts/{name}", input_data],
             id=name,
             task_queue="python-script-queue",
+            retry_policy=retry_policy,
+            run_timeout=run_timeout
         )
+
+    def load_consolidated_configs(self):
+        try:
+            file_path = os.path.join(os.getcwd(), ".moose", "workflow_configs.json")
+            with open(file_path, 'r') as file:
+                data = json.load(file)
+                config_map = {config['name']: config for config in data}
+                return config_map
+        except Exception as e:
+            raise ValueError(f"Error loading file {file_path}: {e}")
+
+    def parse_timeout_to_timedelta(self, timeout_str: str) -> timedelta:
+        if timeout_str.endswith('h'):
+            return timedelta(hours=int(timeout_str[:-1]))
+        elif timeout_str.endswith('m'):
+            return timedelta(minutes=int(timeout_str[:-1]))
+        elif timeout_str.endswith('s'):
+            return timedelta(seconds=int(timeout_str[:-1]))
+        else:
+            raise ValueError(f"Unsupported timeout format: {timeout_str}")
 
 class MooseClient:
     def __init__(self, ch_client: ClickhouseClient, temporal_client: Optional[TemporalClient] = None):

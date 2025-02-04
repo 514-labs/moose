@@ -277,4 +277,29 @@ pub enum WorkflowCommands {
         #[arg(long)]
         from: String,
     },
+    /// List running workflows
+    List {
+        /// Filter workflows by status (running, completed, failed)
+        #[arg(short, long)]
+        status: Option<String>,
+
+        /// Limit the number of workflows shown
+        #[arg(short, long, default_value = "10")]
+        limit: u32,
+    },
+    /// Terminate a workflow
+    Terminate {
+        /// Name of the workflow to terminate
+        name: String,
+    },
+    /// Pause a workflow
+    Pause {
+        /// Name of the workflow to pause
+        name: String,
+    },
+    /// Unpause a workflow
+    Unpause {
+        /// Name of the workflow to unpause
+        name: String,
+    },
 }

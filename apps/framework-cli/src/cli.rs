@@ -73,9 +73,7 @@ use crate::utilities::git::is_git_repo;
 
 use self::routines::clean::CleanProject;
 
-use anyhow::{Error, Result};
-use temporal_sdk_core_protos::temporal::api::workflowservice::v1::workflow_service_client::WorkflowServiceClient;
-use tonic::transport::{Channel, Uri};
+use anyhow::Result;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None, arg_required_else_help(true), next_display_order = None)]
@@ -1071,13 +1069,6 @@ pub async fn cli_run() {
             exit(1);
         }
     };
-}
-
-pub async fn connect_to_temporal() -> Result<WorkflowServiceClient<Channel>> {
-    let endpoint: Uri = "http://localhost:7233".parse().unwrap();
-    WorkflowServiceClient::connect(endpoint).await.map_err(|_| {
-        Error::msg("Could not connect to Temporal. Please ensure the Temporal server is running.")
-    })
 }
 
 #[cfg(test)]

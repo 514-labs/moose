@@ -1,6 +1,8 @@
-use crate::framework::core::infrastructure::api_endpoint::APIType;
-use crate::framework::core::infrastructure::table::ColumnType;
+use crate::framework::consumption::model::ConsumptionQueryParam;
+use crate::framework::core::infrastructure::api_endpoint::{APIType, ApiEndpoint};
+use crate::framework::core::infrastructure::table::{Column, ColumnType};
 use crate::framework::core::infrastructure_map::InfrastructureMap;
+use crate::framework::data_model::model::DataModel;
 use crate::project::Project;
 use crate::utilities::constants::OPENAPI_FILE;
 
@@ -69,15 +71,22 @@ struct Operation {
 
 #[derive(Serialize, Deserialize)]
 struct RequestBody {
+    required: bool,
     content: HashMap<String, MediaType>,
 }
 
 #[derive(Serialize, Deserialize)]
 struct MediaType {
-    schema: Schema,
+    schema: MediaTypeSchema,
 }
 
 #[derive(Serialize, Deserialize, Clone)]
+struct MediaTypeSchema {
+    #[serde(rename = "$ref")]
+    ref_: String,
+}
+
+#[derive(Serialize, Deserialize)]
 struct Schema {
     #[serde(rename = "type")]
     schema_type: String,
@@ -85,11 +94,24 @@ struct Schema {
     required: Vec<String>,
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize)]
 struct Property {
-    #[serde(rename = "type")]
-    property_type: String,
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    property_type: Option<String>,
+    #[serde(rename = "$ref", skip_serializing_if = "Option::is_none")]
+    ref_: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     example: Option<serde_json::Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    items: Option<PropertyItem>,
+}
+
+#[derive(Serialize, Deserialize)]
+struct PropertyItem {
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    type_: Option<String>,
+    #[serde(rename = "$ref", skip_serializing_if = "Option::is_none")]
+    ref_: Option<String>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -125,99 +147,29 @@ fn generate_openapi_spec(project: &Arc<Project>, infra_map: &InfrastructureMap) 
     let mut schemas = HashMap::new();
 
     for api_endpoint in infra_map.api_endpoints.values() {
+        if let APIType::INGRESS {
+            data_model: Some(data_model),
+            ..
+        } = &api_endpoint.api_type
+        {
+            build_data_model_schema(data_model, &mut schemas);
+        }
+    }
+
+    for api_endpoint in infra_map.api_endpoints.values() {
         match &api_endpoint.api_type {
             APIType::INGRESS {
                 data_model: Some(data_model),
                 ..
             } => {
-                let (properties, required) = data_model.columns.iter().fold(
-                    (HashMap::new(), Vec::new()),
-                    |(mut props, mut req), column| {
-                        let (property_type, example) = map_column_type(&column.data_type);
-                        props.insert(
-                            column.name.clone(),
-                            Property {
-                                property_type,
-                                example,
-                            },
-                        );
-                        if column.required {
-                            req.push(column.name.clone());
-                        }
-                        (props, req)
-                    },
-                );
-
-                let schema = Schema {
-                    schema_type: "object".to_string(),
-                    properties,
-                    required,
-                };
-                schemas.insert(data_model.name.clone(), schema.clone());
-
-                let path_item = PathItem {
-                    post: Some(Operation {
-                        summary: format!("Ingress endpoint for {}", api_endpoint.name),
-                        parameters: vec![],
-                        request_body: Some(RequestBody {
-                            content: {
-                                let mut content = HashMap::new();
-                                content
-                                    .insert("application/json".to_string(), MediaType { schema });
-                                content
-                            },
-                        }),
-                        responses: {
-                            let mut responses = HashMap::new();
-                            responses.insert(
-                                "200".to_string(),
-                                Response {
-                                    description: "Successful operation".to_string(),
-                                },
-                            );
-                            responses
-                        },
-                    }),
-                    get: None,
-                };
-
+                let path_item = create_ingress_path_item(api_endpoint, data_model);
                 paths.insert(
                     format!("/{}", api_endpoint.path.to_string_lossy()),
                     path_item,
                 );
             }
             APIType::EGRESS { query_params } => {
-                let path_item = PathItem {
-                    post: None,
-                    get: Some(Operation {
-                        summary: format!("Egress endpoint for {}", api_endpoint.name),
-                        parameters: query_params
-                            .iter()
-                            .map(|param| {
-                                let (schema_type, example) = map_query_param_type(&param.data_type);
-                                Parameter {
-                                    name: param.name.clone(),
-                                    in_: "query".to_string(),
-                                    required: param.required,
-                                    schema: ParameterSchema { schema_type },
-                                    example,
-                                }
-                            })
-                            .collect(),
-                        request_body: None,
-                        responses: {
-                            let mut responses = HashMap::new();
-                            responses.insert(
-                                "200".to_string(),
-                                Response {
-                                    description: "Successful operation".to_string(),
-                                },
-                            );
-                            responses
-                        },
-                    }),
-                };
-
+                let path_item = create_egress_path_item(api_endpoint, query_params);
                 paths.insert(
                     format!("/consumption/{}", api_endpoint.path.to_string_lossy()),
                     path_item,
@@ -240,6 +192,144 @@ fn generate_openapi_spec(project: &Arc<Project>, infra_map: &InfrastructureMap) 
         paths,
         components: Components { schemas },
     }
+}
+
+fn create_ingress_path_item(api_endpoint: &ApiEndpoint, data_model: &DataModel) -> PathItem {
+    PathItem {
+        post: Some(Operation {
+            summary: format!("Ingress endpoint for {}", api_endpoint.name),
+            parameters: vec![],
+            request_body: Some(RequestBody {
+                required: true,
+                content: {
+                    let mut content = HashMap::new();
+                    content.insert(
+                        "application/json".to_string(),
+                        MediaType {
+                            schema: MediaTypeSchema {
+                                ref_: format!("#/components/schemas/{}", data_model.name),
+                            },
+                        },
+                    );
+                    content
+                },
+            }),
+            responses: create_default_responses(),
+        }),
+        get: None,
+    }
+}
+
+fn create_egress_path_item(
+    api_endpoint: &ApiEndpoint,
+    query_params: &[ConsumptionQueryParam],
+) -> PathItem {
+    PathItem {
+        post: None,
+        get: Some(Operation {
+            summary: format!("Egress endpoint for {}", api_endpoint.name),
+            parameters: query_params
+                .iter()
+                .map(|param| {
+                    let (schema_type, example) = map_query_param_type(&param.data_type);
+                    Parameter {
+                        name: param.name.clone(),
+                        in_: "query".to_string(),
+                        required: param.required,
+                        schema: ParameterSchema { schema_type },
+                        example,
+                    }
+                })
+                .collect(),
+            request_body: None,
+            responses: create_default_responses(),
+        }),
+    }
+}
+
+fn create_default_responses() -> HashMap<String, Response> {
+    let mut responses = HashMap::new();
+    responses.insert(
+        "200".to_string(),
+        Response {
+            description: "Successful operation".to_string(),
+        },
+    );
+    responses
+}
+
+fn build_data_model_schema(data_model: &DataModel, schemas: &mut HashMap<String, Schema>) {
+    build_schema(&data_model.columns, data_model.name.clone(), schemas);
+}
+
+fn build_schema(columns: &Vec<Column>, parent_name: String, schemas: &mut HashMap<String, Schema>) {
+    let mut properties = HashMap::new();
+    let mut required = Vec::new();
+
+    for column in columns {
+        let property = match &column.data_type {
+            ColumnType::Nested(fields) => {
+                let component_name = format!("{}_{}", parent_name, column.name);
+                build_schema(&fields.columns, component_name.clone(), schemas);
+                Property {
+                    property_type: None,
+                    ref_: Some(format!("#/components/schemas/{}", component_name)),
+                    example: None,
+                    items: None,
+                }
+            }
+            ColumnType::Array(column_type) => {
+                if let ColumnType::Nested(fields) = &**column_type {
+                    let component_name = format!("{}_{}", parent_name, column.name);
+                    build_schema(&fields.columns, component_name.clone(), schemas);
+                    Property {
+                        property_type: Some("array".to_string()),
+                        ref_: None,
+                        example: None,
+                        items: Some(PropertyItem {
+                            type_: None,
+                            ref_: Some(format!("#/components/schemas/{}", component_name)),
+                        }),
+                    }
+                } else {
+                    let (property_type, _) = map_column_type(column_type);
+                    Property {
+                        property_type: Some("array".to_string()),
+                        ref_: None,
+                        example: None,
+                        items: Some(PropertyItem {
+                            type_: Some(property_type),
+                            ref_: None,
+                        }),
+                    }
+                }
+            }
+            _ => {
+                let (property_type, example) = map_column_type(&column.data_type);
+                Property {
+                    property_type: Some(property_type),
+                    ref_: None,
+                    example,
+                    items: None,
+                }
+            }
+        };
+
+        properties.insert(column.name.clone(), property);
+
+        if column.required {
+            required.push(column.name.clone());
+        }
+    }
+
+    schemas.insert(
+        parent_name.clone(),
+        Schema {
+            schema_type: "object".to_string(),
+            properties,
+            required,
+        },
+    );
 }
 
 fn map_column_type(column_type: &ColumnType) -> (String, Option<serde_json::Value>) {

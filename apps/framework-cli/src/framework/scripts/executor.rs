@@ -36,8 +36,7 @@ pub(crate) async fn execute_workflow(
     match language {
         SupportedLanguages::Python => {
             let run_id =
-                execute_python_workflow(workflow_id, execution_path, Some(config.schedule), input)
-                    .await?;
+                execute_python_workflow(workflow_id, execution_path, &config, input).await?;
             Ok(run_id)
         }
         _ => Err(WorkflowExecutionError::ConfigError(format!(

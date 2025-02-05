@@ -38,6 +38,7 @@ pub struct ScriptCollector {
 
 impl ScriptCollector {
     /// Creates a new `ScriptCollector`.
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             scripts_by_language: HashMap::new(),
@@ -94,6 +95,7 @@ pub struct WorkflowCollector {
 }
 
 impl WorkflowCollector {
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             workflows_by_language: HashMap::new(),
@@ -137,10 +139,24 @@ impl Collector for WorkflowCollector {
     }
 }
 
+pub fn serialize_configs(
+    collector: &WorkflowCollector,
+    language: SupportedLanguages,
+    output_path: PathBuf,
+) {
+    if let Some(workflows) = collector.items().get(&language) {
+        let configs: Vec<_> = workflows.iter().map(|w| w.config.clone()).collect();
+        if let Ok(serialized_configs) = serde_json::to_string_pretty(&configs) {
+            let _ = fs::write(output_path, serialized_configs);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::framework::languages::SupportedLanguages;
+    use crate::framework::scripts::WorkflowConfig;
     use std::fs::File;
     use std::io::Write;
     use tempfile::tempdir;
@@ -192,6 +208,10 @@ mod tests {
         let workflow_dir = temp_dir.path().join("test-workflow");
         fs::create_dir(&workflow_dir)?;
 
+        let workflow_config_path = workflow_dir.join("config.toml");
+        let workflow_config = WorkflowConfig::new("test-workflow".to_string());
+        workflow_config.save(workflow_config_path)?;
+
         // Create some script files
         fs::write(workflow_dir.join("1.extract.py"), "print('Extract step')")?;
         fs::write(
@@ -225,6 +245,7 @@ mod tests {
         let workflow = &python_workflows[0];
         assert_eq!(workflow.name, "test-workflow");
         assert_eq!(workflow.scripts.len(), 4); // 2 main + 2 parallel scripts
+        assert_eq!(workflow.config.name, workflow.name);
 
         Ok(())
     }

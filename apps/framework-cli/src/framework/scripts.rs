@@ -2,7 +2,7 @@ use std::path::{Path, PathBuf};
 
 use super::languages::SupportedLanguages;
 
-mod collector;
+pub mod collector;
 pub mod config;
 pub mod executor;
 
@@ -26,6 +26,7 @@ pub struct Workflow {
     name: String,
     path: PathBuf,
     scripts: Vec<Script>,
+    config: WorkflowConfig,
     language: SupportedLanguages,
     children: Vec<Workflow>,
 }
@@ -42,13 +43,16 @@ impl Workflow {
         let mut scripts = Vec::new();
         let mut children = Vec::new();
         let mut primary_language = None;
+        let mut config = None;
 
         for entry in std::fs::read_dir(&dir)? {
             let entry = entry?;
             let path = entry.path();
 
             if path.is_file() {
-                if let Ok(script) = Script::from_file(path) {
+                if path.file_name().and_then(|n| n.to_str()) == Some("config.toml") {
+                    config = Some(WorkflowConfig::from_file(path)?);
+                } else if let Ok(script) = Script::from_file(path) {
                     if primary_language.is_none() {
                         primary_language = Some(script.language);
                     }
@@ -85,6 +89,7 @@ impl Workflow {
             name,
             path: dir,
             scripts,
+            config: config.ok_or_else(|| anyhow::anyhow!("No config.toml found"))?,
             language: primary_language.ok_or_else(|| anyhow::anyhow!("No valid scripts found"))?,
             children,
         })
@@ -393,6 +398,10 @@ mod tests {
         let daily_etl_dir = temp_dir.path().join("daily-etl");
         fs::create_dir(&daily_etl_dir)?;
 
+        let daily_etl_config_path = daily_etl_dir.join("config.toml");
+        let daily_etl_config = WorkflowConfig::new("daily-etl".to_string());
+        daily_etl_config.save(daily_etl_config_path)?;
+
         // Create main scripts
         fs::write(daily_etl_dir.join("1.extract.py"), "# Extract")?;
         fs::write(daily_etl_dir.join("2.transform.py"), "# Transform")?;
@@ -414,6 +423,9 @@ mod tests {
         // Create separate send-report workflow at root level
         let send_report_dir = temp_dir.path().join("send-report");
         fs::create_dir(&send_report_dir)?;
+        let send_report_config_path = send_report_dir.join("config.toml");
+        let send_report_config = WorkflowConfig::new("send-report".to_string());
+        send_report_config.save(send_report_config_path)?;
         fs::write(send_report_dir.join("1.prepare.py"), "# Prepare report")?;
         fs::write(send_report_dir.join("2.package.py"), "# Package report")?;
         fs::write(send_report_dir.join("3.send.py"), "# Send report")?;
@@ -479,6 +491,14 @@ def test():
     return {"step": "test2"}
             "#,
         )?;
+
+        let workflow1_config_path = workflow1_dir.join("config.toml");
+        let workflow1_config = WorkflowConfig::new("workflow1".to_string());
+        workflow1_config.save(workflow1_config_path)?;
+
+        let workflow2_config_path = workflow2_dir.join("config.toml");
+        let workflow2_config = WorkflowConfig::new("workflow2".to_string());
+        workflow2_config.save(workflow2_config_path)?;
 
         let workflows = Workflows::from_dir(scripts_dir)?;
         assert_eq!(workflows.get_defined_workflows().len(), 2);

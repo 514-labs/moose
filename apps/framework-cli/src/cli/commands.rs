@@ -310,5 +310,9 @@ pub enum WorkflowCommands {
         /// Optional run ID (defaults to most recent)
         #[arg(long)]
         id: Option<String>,
+
+        /// Verbose output
+        #[arg(long)]
+        verbose: bool,
     },
 }

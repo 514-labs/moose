@@ -10,10 +10,12 @@ use crate::infrastructure::orchestration::temporal::{
 use crate::project::Project;
 use crate::utilities::constants::{APP_DIR, SCRIPTS_DIR};
 use chrono::{DateTime, Utc};
+use temporal_sdk_core_protos::temporal::api::common::v1::WorkflowExecution;
 use temporal_sdk_core_protos::temporal::api::enums::v1::WorkflowExecutionStatus;
 use temporal_sdk_core_protos::temporal::api::workflowservice::v1::{
-    DescribeWorkflowExecutionRequest, ListWorkflowExecutionsRequest,
-    SignalWorkflowExecutionRequest, TerminateWorkflowExecutionRequest,
+    DescribeWorkflowExecutionRequest, GetWorkflowExecutionHistoryRequest,
+    ListWorkflowExecutionsRequest, SignalWorkflowExecutionRequest,
+    TerminateWorkflowExecutionRequest,
 };
 
 pub async fn init_workflow(
@@ -359,6 +361,7 @@ pub async fn get_workflow_status(
     _project: &Project,
     name: &str,
     run_id: Option<String>,
+    verbose: bool,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let mut client = get_temporal_client().await.map_err(|_| {
         RoutineFailure::error(Message {
@@ -446,14 +449,81 @@ pub async fn get_workflow_status(
 
     let execution_time = Utc::now().signed_duration_since(start_time);
 
-    let details = format!(
-        "Status: {}\nRun ID: {}\nStatus: {} {}\nExecution Time: {}s\n",
+    let mut details = format!(
+        "Workflow Status: {}\nRun ID: {}\nStatus: {} {}\nExecution Time: {}s\n",
         name,
         execution_id,
         info.status().as_str_name(),
         status_emoji,
         execution_time.num_seconds()
     );
+
+    if verbose {
+        details.push_str("\nFetching workflow history...\n");
+
+        let history_request = GetWorkflowExecutionHistoryRequest {
+            namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+            execution: Some(WorkflowExecution {
+                workflow_id: name.to_string(),
+                run_id: execution_id.clone(),
+            }),
+            ..Default::default()
+        };
+
+        details.push_str(&format!("Request: {:?}\n", history_request));
+
+        let history_response = client
+            .get_workflow_execution_history(history_request)
+            .await
+            .map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Workflow".to_string(),
+                    details: format!(
+                        "Could not fetch history for workflow '{}': {}\n",
+                        name,
+                        e.message()
+                    ),
+                })
+            })?;
+
+        details.push_str("Got history response\n");
+
+        if let Some(history) = history_response.into_inner().history {
+            details.push_str(&format!("Found {} events\n", history.events.len()));
+
+            details.push_str("\nEvent History:\n");
+            for event in history.events {
+                details.push_str(&format!("Processing event: {:?}\n", event));
+
+                let code = event.event_type;
+                if let Ok(event_type) =
+                    temporal_sdk_core_protos::temporal::api::enums::v1::EventType::try_from(code)
+                {
+                    details.push_str(&format!("- {}\n", event_type.as_str_name()));
+
+                    // Handle specific event types for additional details
+                    match event_type {
+                        temporal_sdk_core_protos::temporal::api::enums::v1::EventType::WorkflowExecutionFailed => {
+                            if let Some(attributes) = event.attributes {
+                                if let temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::WorkflowExecutionFailedEventAttributes(failed_event) = attributes {
+                                    if let Some(failure) = failed_event.failure {
+                                        details.push_str(&format!("  Error: {}\n", failure.message));
+                                    }
+                                }
+                            }
+                        },
+                        _ => {}
+                    }
+                } else {
+                    details.push_str(&format!("Failed to convert event type: {}\n", code));
+                }
+            }
+        } else {
+            details.push_str("No history found in response\n");
+        }
+    } else {
+        details.push_str("Verbose flag not set\n");
+    }
 
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),

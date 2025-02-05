@@ -189,6 +189,7 @@ pub async fn list_workflows(
             if let Some(execution_info) = execution.execution {
                 table_data.push(vec![
                     execution_info.workflow_id,
+                    execution_info.run_id,
                     status,
                     execution.start_time.map_or("-".to_string(), |t| {
                         chrono::DateTime::from_timestamp(t.seconds, t.nanos as u32)
@@ -203,6 +204,7 @@ pub async fn list_workflows(
     show_table(
         vec![
             "Workflow Name".to_string(),
+            "Run ID".to_string(),
             "Status".to_string(),
             "Started At".to_string(),
         ],

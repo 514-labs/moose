@@ -6,7 +6,11 @@
 
 import { register } from "ts-node";
 
-if (process.argv[2] == "consumption-apis") {
+// We register ts-node to be able to interpret TS user code.
+if (
+  process.argv[2] == "consumption-apis" ||
+  process.argv[2] == "consumption-type-serializer"
+) {
   register({
     esm: true,
     experimentalTsImportSpecifiers: true,
@@ -37,8 +41,7 @@ import { runBlocks } from "./blocks/runner";
 import { runConsumptionApis } from "./consumption-apis/runner";
 import { runStreamingFunctions } from "./streaming-functions/runner";
 import { runExportSerializer } from "./moduleExportSerializer";
-
-// We register ts-node to be able to interpret TS user code.
+import { runConsumptionTypeSerializer } from "./consumption-apis/exportTypeSerializer";
 
 switch (process.argv[2]) {
   case "export-serializer":
@@ -52,6 +55,9 @@ switch (process.argv[2]) {
     break;
   case "streaming-functions":
     runStreamingFunctions();
+    break;
+  case "consumption-type-serializer":
+    runConsumptionTypeSerializer();
     break;
   default:
     console.error("Invalid argument");

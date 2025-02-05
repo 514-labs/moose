@@ -302,4 +302,13 @@ pub enum WorkflowCommands {
         /// Name of the workflow to unpause
         name: String,
     },
+    /// Get the status of a workflow
+    Status {
+        /// Name of the workflow
+        name: String,
+
+        /// Optional run ID (defaults to most recent)
+        #[arg(long)]
+        id: Option<String>,
+    },
 }

@@ -9,10 +9,11 @@ use crate::infrastructure::orchestration::temporal::{
 };
 use crate::project::Project;
 use crate::utilities::constants::{APP_DIR, SCRIPTS_DIR};
+use chrono::{DateTime, Utc};
 use temporal_sdk_core_protos::temporal::api::enums::v1::WorkflowExecutionStatus;
 use temporal_sdk_core_protos::temporal::api::workflowservice::v1::{
-    ListWorkflowExecutionsRequest, SignalWorkflowExecutionRequest,
-    TerminateWorkflowExecutionRequest,
+    DescribeWorkflowExecutionRequest, ListWorkflowExecutionsRequest,
+    SignalWorkflowExecutionRequest, TerminateWorkflowExecutionRequest,
 };
 
 pub async fn init_workflow(
@@ -349,6 +350,112 @@ pub async fn unpause_workflow(
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),
         details: format!("'{}' unpaused successfully\n", name),
+    }))
+}
+
+pub async fn get_workflow_status(
+    _project: &Project,
+    name: &str,
+    run_id: Option<String>,
+) -> Result<RoutineSuccess, RoutineFailure> {
+    let mut client = get_temporal_client().await.map_err(|_| {
+        RoutineFailure::error(Message {
+            action: "Workflow".to_string(),
+            details: "Could not connect to Temporal.\n".to_string(),
+        })
+    })?;
+
+    // If no run_id provided, get the most recent one
+    let execution_id = if let Some(id) = run_id {
+        id
+    } else {
+        // List workflows to get most recent
+        let request = ListWorkflowExecutionsRequest {
+            namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+            page_size: 1,
+            query: format!("WorkflowId = '{}'", name),
+            ..Default::default()
+        };
+
+        let response = client
+            .list_workflow_executions(request)
+            .await
+            .map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Workflow".to_string(),
+                    details: format!("Could not find workflow '{}': {}\n", name, e.message()),
+                })
+            })?;
+
+        let executions = response.into_inner().executions;
+        if executions.is_empty() {
+            return Err(RoutineFailure::error(Message {
+                action: "Workflow".to_string(),
+                details: format!("No executions found for workflow '{}'\n", name),
+            }));
+        }
+
+        executions[0].execution.as_ref().unwrap().run_id.clone()
+    };
+
+    // Get workflow details
+    let request = DescribeWorkflowExecutionRequest {
+        namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+        execution: Some(
+            temporal_sdk_core_protos::temporal::api::common::v1::WorkflowExecution {
+                workflow_id: name.to_string(),
+                run_id: execution_id.clone(),
+            },
+        ),
+    };
+
+    let response = client
+        .describe_workflow_execution(request)
+        .await
+        .map_err(|e| {
+            RoutineFailure::error(Message {
+                action: "Workflow".to_string(),
+                details: format!(
+                    "Could not get status for workflow '{}': {}\n",
+                    name,
+                    e.message()
+                ),
+            })
+        })?;
+
+    let info = response.into_inner().workflow_execution_info.unwrap();
+
+    // Format the output
+    let status_emoji = match WorkflowExecutionStatus::try_from(info.status) {
+        Ok(status) => match status {
+            WorkflowExecutionStatus::Running => "⏳",
+            WorkflowExecutionStatus::Completed => "✅",
+            WorkflowExecutionStatus::Failed => "❌",
+            _ => "❓",
+        },
+        Err(_) => "❓",
+    };
+
+    let start_time = DateTime::<Utc>::from_timestamp(
+        info.start_time.as_ref().unwrap().seconds,
+        info.start_time.as_ref().unwrap().nanos as u32,
+    )
+    .unwrap();
+
+    let execution_time = Utc::now().signed_duration_since(start_time);
+
+    let details = format!(
+        "Status: {}\nRun ID: {}\nStatus: {} {}\nExecution Time: {}s\n",
+        name,
+        execution_id,
+        info.status().as_str_name(),
+        status_emoji,
+        execution_time.num_seconds()
+    );
+
+    Ok(RoutineSuccess::success(Message {
+        action: "Workflow".to_string(),
+        details,
     }))
 }
 

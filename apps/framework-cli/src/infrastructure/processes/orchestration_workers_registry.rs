@@ -7,10 +7,15 @@ use crate::{
     cli::settings::Settings,
     framework::{
         core::infrastructure::orchestration_worker::OrchestrationWorker,
-        languages::SupportedLanguages, python,
+        languages::SupportedLanguages,
+        python,
+        scripts::collector::{serialize_configs, Collector, WorkflowCollector},
     },
     project::Project,
-    utilities::system::{kill_child, KillProcessError},
+    utilities::{
+        constants::WORKFLOW_CONFIGS,
+        system::{kill_child, KillProcessError},
+    },
 };
 
 /// Error types that can occur when managing orchestration workers
@@ -69,6 +74,17 @@ impl OrchestrationWorkersRegistry {
         );
 
         if orchestration_worker.supported_language == SupportedLanguages::Python {
+            let mut collector = WorkflowCollector::new();
+            if collector.collect(self.project.scripts_dir()).is_ok() {
+                if let Ok(internal_dir) = self.project.internal_dir() {
+                    serialize_configs(
+                        &collector,
+                        SupportedLanguages::Python,
+                        internal_dir.join(WORKFLOW_CONFIGS),
+                    )
+                }
+            }
+
             let child = python::scripts_worker::start_worker(&self.project).await?;
             self.workers.insert(orchestration_worker.id(), child);
         } else {

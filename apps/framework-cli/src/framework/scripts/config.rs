@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug, Serialize, Deserialize, Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct WorkflowConfig {
     // Basic workflow configuration
     pub name: String,
@@ -38,6 +38,12 @@ impl WorkflowConfig {
         let content = toml::to_string_pretty(self)
             .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
         std::fs::write(path, content)
+    }
+
+    pub fn from_file(path: PathBuf) -> Result<Self, anyhow::Error> {
+        let content = std::fs::read_to_string(path)?;
+        let config: WorkflowConfig = toml::from_str(&content)?;
+        Ok(config)
     }
 }
 

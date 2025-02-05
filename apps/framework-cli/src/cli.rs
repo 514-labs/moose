@@ -28,12 +28,10 @@ use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
 use routines::plan;
 use routines::ps::show_processes;
-use routines::scripts::init_workflow;
-use routines::scripts::list_workflows;
-use routines::scripts::pause_workflow;
-use routines::scripts::run_workflow;
-use routines::scripts::terminate_workflow;
-use routines::scripts::unpause_workflow;
+use routines::scripts::{
+    get_workflow_status, init_workflow, list_workflows, pause_workflow, run_workflow,
+    terminate_workflow, unpause_workflow,
+};
 
 use settings::{read_settings, Settings};
 use std::cmp::Ordering;
@@ -1023,6 +1021,9 @@ async fn top_command_handler(
                 }
                 Some(WorkflowCommands::Pause { name }) => pause_workflow(&project, name).await,
                 Some(WorkflowCommands::Unpause { name }) => unpause_workflow(&project, name).await,
+                Some(WorkflowCommands::Status { name, id }) => {
+                    get_workflow_status(&project, name, id.clone()).await
+                }
                 None => Err(RoutineFailure::error(Message {
                     action: "Workflow".to_string(),
                     details: "No subcommand provided".to_string(),

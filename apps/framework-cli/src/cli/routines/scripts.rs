@@ -489,33 +489,49 @@ pub async fn get_workflow_status(
         details.push_str("Got history response\n");
 
         if let Some(history) = history_response.into_inner().history {
-            details.push_str(&format!("Found {} events\n", history.events.len()));
+            details.push_str(&format!("\nFound {} events\n\n", history.events.len()));
+            details.push_str("Event History:\n");
 
-            details.push_str("\nEvent History:\n");
             for event in history.events {
-                details.push_str(&format!("Processing event: {:?}\n", event));
-
                 let code = event.event_type;
                 if let Ok(event_type) =
                     temporal_sdk_core_protos::temporal::api::enums::v1::EventType::try_from(code)
                 {
-                    details.push_str(&format!("- {}\n", event_type.as_str_name()));
+                    let timestamp = event.event_time.map_or(String::from("unknown time"), |ts| {
+                        chrono::DateTime::from_timestamp(ts.seconds, ts.nanos as u32)
+                            .map_or("invalid time".to_string(), |dt| dt.to_rfc3339())
+                    });
 
-                    // Handle specific event types for additional details
-                    match event_type {
-                        temporal_sdk_core_protos::temporal::api::enums::v1::EventType::WorkflowExecutionFailed => {
-                            if let Some(attributes) = event.attributes {
-                                if let temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::WorkflowExecutionFailedEventAttributes(failed_event) = attributes {
-                                    if let Some(failure) = failed_event.failure {
+                    // Format the basic event info
+                    details.push_str(&format!("\n[{}] {}\n", timestamp, event_type.as_str_name()));
+
+                    // Add relevant details based on event type
+                    match &event.attributes {
+                        Some(attrs) => {
+                            match attrs {
+                                temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskScheduledEventAttributes(attr) => {
+                                    if let Some(activity_type) = &attr.activity_type {
+                                        details.push_str(&format!("  Activity: {}\n", activity_type.name));
+                                    }
+                                },
+                                temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskCompletedEventAttributes(attr) => {
+                                    if let Some(result) = &attr.result {
+                                        details.push_str(&format!("  Result: {:?}\n", result));
+                                    }
+                                },
+                                temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::WorkflowExecutionFailedEventAttributes(attr) => {
+                                    if let Some(failure) = &attr.failure {
                                         details.push_str(&format!("  Error: {}\n", failure.message));
                                     }
-                                }
+                                },
+                                temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::WorkflowExecutionCompletedEventAttributes(_) => {
+                                    details.push_str("  Workflow completed successfully\n");
+                                },
+                                _ => {} // Skip other attribute types
                             }
-                        },
-                        _ => {}
+                        }
+                        None => {}
                     }
-                } else {
-                    details.push_str(&format!("Failed to convert event type: {}\n", code));
                 }
             }
         } else {

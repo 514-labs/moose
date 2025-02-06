@@ -139,6 +139,7 @@ pub fn infra_updated(message: &str) {
     info!("~ {}", message.trim());
 }
 
+#[macro_export]
 macro_rules! show_message {
     (@inner $message_type:expr, $message:expr, $log:expr) => {
         use crate::cli::display::TERM;
@@ -182,11 +183,6 @@ macro_rules! show_message {
     ($message_type:expr, $message:expr, $no_log:expr) => {
         show_message!(@inner $message_type, $message, false);
     };
-}
-
-pub fn show_message_wrapper(message_type: MessageType, message: Message) {
-    // Is there a way for other modules to call this macro?
-    show_message!(message_type, message, true);
 }
 
 pub fn with_spinner<F, R>(message: &str, f: F, activate: bool) -> R

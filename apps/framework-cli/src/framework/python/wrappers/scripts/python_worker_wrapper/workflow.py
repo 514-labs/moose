@@ -97,7 +97,7 @@ class ScriptWorkflow:
                 ScriptExecutionInput(script_path=script_path, input_data=input_data),
                 start_to_close_timeout=timedelta(minutes=10),
                 # Hardcoded to one attempt for faster iteration for now
-                # TODO: Figure out how to allow the user to configure this
+                # TODO: Make this user configurable
                 retry_policy=RetryPolicy(
                     maximum_attempts=1,
                 ),

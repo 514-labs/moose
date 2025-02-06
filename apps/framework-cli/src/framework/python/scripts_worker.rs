@@ -4,8 +4,9 @@ use std::fs;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 
-use crate::cli::display::{show_message_wrapper, Message, MessageType};
+use crate::cli::display::{Message, MessageType};
 use crate::project::{Project, ProjectFileError};
+use crate::show_message;
 use crate::utilities::constants::PYTHON_WORKER_WRAPPER_PACKAGE_NAME;
 
 use super::executor::{run_python_program, PythonProgram};
@@ -82,12 +83,13 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
                     "WARNING" => warn!("{}", message),
                     "ERROR" => {
                         error!("{}", message);
-                        show_message_wrapper(
+                        show_message!(
                             MessageType::Error,
                             Message {
                                 action: "WorkflowActivityError".to_string(),
                                 details: message.to_string(),
                             },
+                            true
                         );
                     }
                     _ => info!("{}", message),
@@ -99,12 +101,13 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
     tokio::spawn(async move {
         while let Ok(Some(line)) = stderr_reader.next_line().await {
             error!("{}", line);
-            show_message_wrapper(
+            show_message!(
                 MessageType::Error,
                 Message {
                     action: "WorkflowActivityError".to_string(),
                     details: line.to_string(),
                 },
+                true
             );
         }
     });

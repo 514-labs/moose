@@ -117,6 +117,11 @@ services:
         target: /etc/temporal/config/dynamicconfig/development-sql.yaml
     volumes:
       - temporal-data:/etc/temporal/config
+    healthcheck:
+      test: ["CMD-SHELL", "tctl --address temporal:${TEMPORAL_PORT:-7233} workflow list"]
+      interval: 1s
+      retries: 30
+      timeout: 5s
 
   temporal-admin-tools:
     container_name: temporal-admin-tools

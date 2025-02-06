@@ -8,7 +8,7 @@
  * @returns 'FLoat', 'Int', 'Bool', 'String'
  */
 
-import { ClickHouseClient } from "@clickhouse/client";
+import { ClickHouseClient, ResultSet } from "@clickhouse/client";
 import { randomUUID } from "node:crypto";
 
 export const mapToClickHouseType = (value: Value) => {
@@ -135,7 +135,9 @@ export class MooseClient {
     this.query_id_prefix = query_id_prefix;
   }
 
-  async query(sql: Sql) {
+  async query<T = any>(
+    sql: Sql,
+  ): Promise<ResultSet<"JSONEachRow"> & { __query_result_t?: T[] }> {
     const parameterizedStubs = sql.values.map((v, i) =>
       createClickhouseParameter(i, v),
     );

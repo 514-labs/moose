@@ -3,6 +3,7 @@ use crate::proto::infrastructure_map::ConsumptionQueryParam as ProtoConsumptionQ
 use hex::encode;
 use protobuf::MessageField;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use sha2::{digest::Output, Sha256};
 use std::path::PathBuf;
 
@@ -29,6 +30,7 @@ pub struct EndpointFile {
     pub path: PathBuf,
     pub hash: Output<Sha256>,
     pub query_params: Vec<ConsumptionQueryParam>,
+    pub output_schema: Value,
 }
 
 impl EndpointFile {

@@ -1,6 +1,8 @@
 import ts, { factory } from "typescript";
 import type { PluginConfig, ProgramTransformerExtras } from "ts-patch";
 import path from "path";
+import fs from "node:fs";
+import process from "process";
 
 const avoidTypiaNameClash = "____moose____typia";
 
@@ -58,6 +60,39 @@ const isCreateConsumptionApi = (
   return name == "createConsumptionApi";
 };
 
+const getParamType = (
+  funcType: ts.Type,
+  checker: ts.TypeChecker,
+): ts.TypeNode | undefined => {
+  const sig = funcType.getCallSignatures()[0];
+  const firstParam = sig && sig.getParameters()[0];
+  const t = firstParam && checker.getTypeOfSymbol(firstParam);
+  return t && checker.typeToTypeNode(t, undefined, undefined);
+};
+
+const typeToOutputSchema = (t: ts.Type, checker: ts.TypeChecker): ts.Type => {
+  if (
+    t.isIntersection() &&
+    t.types.some((inner) => inner.getSymbol()?.name === "ResultSet")
+  ) {
+    const queryResultSymbol = t.getProperty("__query_result_t");
+    if (queryResultSymbol) {
+      return checker.getNonNullableType(
+        checker.getTypeOfSymbol(queryResultSymbol),
+      );
+    } else {
+      return checker.getAnyType();
+    }
+  } else if (
+    t.getProperty("status") !== undefined &&
+    t.getProperty("body") !== undefined
+  ) {
+    return checker.getTypeOfSymbol(t.getProperty("body")!);
+  } else {
+    return t;
+  }
+};
+
 const transformCreateConsumptionApi = (
   node: ts.Node,
   checker: ts.TypeChecker,
@@ -67,7 +102,34 @@ const transformCreateConsumptionApi = (
   }
 
   const handlerFunc = node.arguments[0];
-  const paramType = node.typeArguments!![0];
+  const paramType =
+    (node.typeArguments && node.typeArguments[0]) ||
+    getParamType(checker.getTypeAtLocation(handlerFunc), checker);
+
+  if (paramType === undefined) {
+    throw new Error("Unknown type for params");
+  }
+
+  const handlerType = checker.getTypeAtLocation(handlerFunc);
+  const returnType = handlerType.getCallSignatures()[0]?.getReturnType();
+  const awaitedType = checker.getAwaitedType(returnType) || returnType;
+
+  const queryResultType = awaitedType.isUnion()
+    ? factory.createUnionTypeNode(
+        awaitedType.types.flatMap((t) => {
+          const typeNode = checker.typeToTypeNode(
+            typeToOutputSchema(t, checker),
+            undefined,
+            undefined,
+          );
+          return typeNode === undefined ? [] : [typeNode];
+        }),
+      )
+    : checker.typeToTypeNode(
+        typeToOutputSchema(awaitedType, checker),
+        undefined,
+        undefined,
+      );
 
   const wrappedFunc = factory.createArrowFunction(
     undefined,
@@ -160,7 +222,8 @@ const transformCreateConsumptionApi = (
       ),
     ),
     // the user provided function
-    // const handlerFunc = async(...) => ...
+    // the Parameters of createConsumptionApi is a trick to avoid extra imports
+    // const handlerFunc: Parameters<typeof createConsumptionApi<DailyActiveUsersParams>>[0] = async(...) => ...
     factory.createVariableStatement(
       undefined,
       factory.createVariableDeclarationList(
@@ -168,7 +231,18 @@ const transformCreateConsumptionApi = (
           factory.createVariableDeclaration(
             factory.createIdentifier("handlerFunc"),
             undefined,
-            undefined,
+            factory.createIndexedAccessTypeNode(
+              factory.createTypeReferenceNode(
+                factory.createIdentifier("Parameters"),
+                [
+                  factory.createTypeQueryNode(
+                    factory.createIdentifier("createConsumptionApi"),
+                    [paramType],
+                  ),
+                ],
+              ),
+              factory.createLiteralTypeNode(factory.createNumericLiteral("0")),
+            ),
             handlerFunc,
           ),
         ],
@@ -210,6 +284,33 @@ const transformCreateConsumptionApi = (
             factory.createIdentifier("schemas"),
           ),
           [factory.createTupleTypeNode([paramType])],
+          [],
+        ),
+      ),
+    ),
+
+    // wrappedFunc["moose_output_schema"] = ____moose____typia.json.schemas<[Output]>()
+    factory.createExpressionStatement(
+      factory.createBinaryExpression(
+        factory.createElementAccessExpression(
+          factory.createIdentifier("wrappedFunc"),
+          factory.createStringLiteral("moose_output_schema"),
+        ),
+        factory.createToken(ts.SyntaxKind.EqualsToken),
+        factory.createCallExpression(
+          factory.createPropertyAccessExpression(
+            factory.createPropertyAccessExpression(
+              factory.createIdentifier(avoidTypiaNameClash),
+              factory.createIdentifier("json"),
+            ),
+            factory.createIdentifier("schemas"),
+          ),
+          [
+            factory.createTupleTypeNode([
+              queryResultType ||
+                factory.createKeywordTypeNode(ts.SyntaxKind.AnyKeyword),
+            ]),
+          ],
           [],
         ),
       ),
@@ -271,9 +372,18 @@ export default function transformProgram(
   const { printFile } = tsInstance.createPrinter();
   for (const sourceFile of transformedSource) {
     const { fileName, languageVersion } = sourceFile;
+    const newFile = printFile(sourceFile);
+    const path = fileName.split("/").pop() || fileName;
+    fs.mkdirSync(`${process.cwd()}/.moose/api-compile-step/`, {
+      recursive: true,
+    });
+    fs.writeFileSync(
+      `${process.cwd()}/.moose/api-compile-step/${path}`,
+      newFile,
+    );
     const updatedSourceFile = tsInstance.createSourceFile(
       fileName,
-      printFile(sourceFile),
+      newFile,
       languageVersion,
     );
     (updatedSourceFile as any).version = (sourceFile as any).version;

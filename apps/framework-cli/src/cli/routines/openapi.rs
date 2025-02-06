@@ -6,6 +6,7 @@ use crate::utilities::constants::OPENAPI_FILE;
 
 use chrono::Local;
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use serde_yaml;
 use std::collections::HashMap;
 use std::fs::File;
@@ -95,6 +96,8 @@ struct Property {
 #[derive(Serialize, Deserialize)]
 struct Response {
     description: String,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    content: HashMap<String, Value>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -173,6 +176,7 @@ fn generate_openapi_spec(project: &Arc<Project>, infra_map: &InfrastructureMap) 
                                 "200".to_string(),
                                 Response {
                                     description: "Successful operation".to_string(),
+                                    content: HashMap::new(),
                                 },
                             );
                             responses
@@ -186,7 +190,10 @@ fn generate_openapi_spec(project: &Arc<Project>, infra_map: &InfrastructureMap) 
                     path_item,
                 );
             }
-            APIType::EGRESS { query_params } => {
+            APIType::EGRESS {
+                query_params,
+                output_schema,
+            } => {
                 let path_item = PathItem {
                     post: None,
                     get: Some(Operation {
@@ -211,6 +218,12 @@ fn generate_openapi_spec(project: &Arc<Project>, infra_map: &InfrastructureMap) 
                                 "200".to_string(),
                                 Response {
                                     description: "Successful operation".to_string(),
+                                    content: HashMap::from([(
+                                        "application/json".to_string(),
+                                        json!({
+                                            "schema": output_schema,
+                                        }),
+                                    )]),
                                 },
                             );
                             responses

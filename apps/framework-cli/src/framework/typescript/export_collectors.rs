@@ -1,7 +1,7 @@
 use super::bin;
 use crate::framework::consumption::model::ConsumptionQueryParam;
-use crate::framework::core::infrastructure::table::ColumnType;
 use crate::framework::data_model::config::{ConfigIdentifier, DataModelConfig};
+use crate::framework::typescript::consumption::{extract_intput_param, extract_schema};
 use log::debug;
 use serde_json::Value;
 use std::collections::{HashMap, HashSet};
@@ -61,7 +61,8 @@ async fn collect_exports(
         let mut raw_string_stdout: String = String::new();
         stdout.read_to_string(&mut raw_string_stdout).await?;
 
-        Ok(serde_json::from_str(&raw_string_stdout)?)
+        Ok(serde_json::from_str(&raw_string_stdout)
+            .inspect_err(|_| debug!("Invalid JSON from exports: {}", raw_string_stdout))?)
     }
 }
 
@@ -100,7 +101,7 @@ pub async fn get_data_model_configs(
 pub async fn get_func_types(
     file: &Path,
     project_path: &Path,
-) -> Result<Vec<ConsumptionQueryParam>, ExportCollectorError> {
+) -> Result<(Vec<ConsumptionQueryParam>, Value), ExportCollectorError> {
     let exports = collect_exports(
         EXPORT_FUNC_TYPE_BIN,
         EXPORT_FUNC_TYPE_PROCESS,
@@ -109,85 +110,22 @@ pub async fn get_func_types(
     )
     .await?;
 
-    debug!("Schema for path {}", exports);
+    debug!("Schema for path {:?} {}", file, exports);
 
-    let converted = match exports {
-        Value::Null => vec![],
-        Value::Object(map) => {
-            let schema = map
-                .get("components")
-                .and_then(|o| o.as_object())
-                .and_then(|m| m.get("schemas"))
-                .and_then(|o| o.as_object())
-                .ok_or_else(|| ExportCollectorError::Other {
-                    message: "Unexpected schema shape.".to_string(),
-                })?;
-            let (_name, schema) = if schema.len() == 1 {
-                schema.iter().next().unwrap()
-            } else {
-                return Err(ExportCollectorError::Other {
-                    message: "More than one schema.".to_string(),
-                });
-            };
-
-            let required_keys = schema
-                .as_object()
-                .and_then(|m| m.get("required"))
-                .and_then(|v| v.as_array());
-
-            schema
-                .as_object()
-                .and_then(|m| m.get("properties"))
-                .and_then(|o| o.as_object())
-                .ok_or_else(|| ExportCollectorError::Other {
-                    message: "Missing properties in schema.".to_string(),
-                })?
-                .iter()
-                .map(|(k, v)| {
-                    let type_object = v.as_object();
-                    let data_type = match type_object
-                        .and_then(|m| m.get("type"))
-                        .and_then(|v| v.as_str())
-                    {
-                        Some("string") => ColumnType::String,
-                        Some("number") => ColumnType::Float,
-                        Some("integer") => ColumnType::Int,
-                        Some("boolean") => ColumnType::Boolean,
-                        // no recursion here, query param does not support nested arrays
-                        Some("array") => {
-                            let inner_type = match type_object
-                                .unwrap()
-                                .get("items")
-                                .and_then(|v| v.as_object())
-                                .and_then(|m| m.get("type"))
-                                .and_then(|v| v.as_str())
-                            {
-                                Some("number") => ColumnType::Float,
-                                Some("integer") => ColumnType::Int,
-                                Some("boolean") => ColumnType::Boolean,
-                                _ => ColumnType::String,
-                            };
-                            ColumnType::Array(Box::new(inner_type))
-                        }
-
-                        unexpected => {
-                            debug!("unexpected type {:?} for field {k}", unexpected);
-                            ColumnType::String
-                        }
-                    };
-
-                    ConsumptionQueryParam {
-                        name: k.to_string(),
-                        data_type,
-                        required: required_keys
-                            .is_some_and(|arr| arr.iter().any(|v| v.as_str() == Some(k))),
-                    }
-                })
-                .collect()
-        }
+    let (input_params, output_schema) = match exports {
+        Value::Object(mut map) => (
+            extract_intput_param(&map)?,
+            match map.remove("outputSchema") {
+                None => Value::Null,
+                Some(Value::Object(schema)) => extract_schema(&schema)?.clone(),
+                Some(_) => Err(ExportCollectorError::Other {
+                    message: "output schema must be an object".to_string(),
+                })?,
+            },
+        ),
         _ => Err(ExportCollectorError::Other {
             message: "Expected an object as the root of the exports".to_string(),
         })?,
     };
-    Ok(converted)
+    Ok((input_params, output_schema))
 }

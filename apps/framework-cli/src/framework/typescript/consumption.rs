@@ -1,11 +1,14 @@
-use log::{error, info};
-use std::path::Path;
-use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::Child;
-
+use crate::framework::consumption::model::ConsumptionQueryParam;
+use crate::framework::core::infrastructure::table::ColumnType;
+use crate::framework::typescript::export_collectors::ExportCollectorError;
 use crate::infrastructure::olap::clickhouse::config::ClickHouseConfig;
 use crate::infrastructure::processes::consumption_registry::ConsumptionError;
 use crate::project::JwtConfig;
+use log::{debug, error, info};
+use serde_json::{Map, Value};
+use std::path::Path;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::Child;
 
 use super::bin;
 
@@ -84,4 +87,113 @@ pub fn run(
     });
 
     Ok(consumption_process)
+}
+
+fn schema_to_params_list(
+    schema: &Value,
+) -> Result<Vec<ConsumptionQueryParam>, ExportCollectorError> {
+    let required_keys = schema
+        .as_object()
+        .and_then(|m| m.get("required"))
+        .and_then(|v| v.as_array());
+
+    let converted = schema
+        .as_object()
+        .and_then(|m| m.get("properties"))
+        .and_then(|o| o.as_object())
+        .ok_or_else(|| ExportCollectorError::Other {
+            message: "Missing properties in schema.".to_string(),
+        })?
+        .iter()
+        .map(|(k, v)| {
+            let type_object = v.as_object();
+            let data_type = match type_object
+                .and_then(|m| m.get("type"))
+                .and_then(|v| v.as_str())
+            {
+                Some("string") => ColumnType::String,
+                Some("number") => ColumnType::Float,
+                Some("integer") => ColumnType::Int,
+                Some("boolean") => ColumnType::Boolean,
+                // no recursion here, query param does not support nested arrays
+                Some("array") => {
+                    let inner_type = match type_object
+                        .unwrap()
+                        .get("items")
+                        .and_then(|v| v.as_object())
+                        .and_then(|m| m.get("type"))
+                        .and_then(|v| v.as_str())
+                    {
+                        Some("number") => ColumnType::Float,
+                        Some("integer") => ColumnType::Int,
+                        Some("boolean") => ColumnType::Boolean,
+                        _ => ColumnType::String,
+                    };
+                    ColumnType::Array(Box::new(inner_type))
+                }
+
+                unexpected => {
+                    debug!("unexpected type {:?} for field {k}", unexpected);
+                    ColumnType::String
+                }
+            };
+
+            ConsumptionQueryParam {
+                name: k.to_string(),
+                data_type,
+                required: required_keys
+                    .is_some_and(|arr| arr.iter().any(|v| v.as_str() == Some(k))),
+            }
+        })
+        .collect();
+    Ok(converted)
+}
+
+pub fn extract_schema(json_schema: &Map<String, Value>) -> Result<&Value, ExportCollectorError> {
+    let schemas = json_schema
+        .get("schemas")
+        .and_then(|o| o.as_array())
+        .ok_or_else(|| ExportCollectorError::Other {
+            message: "Unexpected schema shape.".to_string(),
+        })?;
+
+    let schema = if schemas.len() == 1 {
+        schemas.iter().next().unwrap()
+    } else {
+        return Err(ExportCollectorError::Other {
+            message: format!("Unexpected number of schemas: {}", schemas.len()),
+        });
+    };
+
+    let schema_deref = if let Some(Value::String(s)) = schema.get("$ref") {
+        let components_schemas = json_schema
+            .get("components")
+            .and_then(|o| o.as_object())
+            .and_then(|m| m.get("schemas"))
+            .and_then(|o| o.as_object())
+            .ok_or_else(|| ExportCollectorError::Other {
+                message: "Unexpected schema shape.".to_string(),
+            })?;
+        components_schemas
+            .get(s.strip_prefix("#/components/schemas/").unwrap_or(s))
+            .ok_or_else(|| ExportCollectorError::Other {
+                message: format!("Schema {s} not found."),
+            })?
+    } else {
+        schema
+    };
+    Ok(schema_deref)
+}
+
+pub fn extract_intput_param(
+    map: &Map<String, Value>,
+) -> Result<Vec<ConsumptionQueryParam>, ExportCollectorError> {
+    let input_schema = map
+        .get("inputSchema")
+        .and_then(|o| o.as_object())
+        .ok_or_else(|| ExportCollectorError::Other {
+            message: "inputSchema field should be an object.".to_string(),
+        })?;
+
+    schema_to_params_list(extract_schema(input_schema)?)
 }

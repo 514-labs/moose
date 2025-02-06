@@ -6,6 +6,7 @@ use crate::framework::typescript::export_collectors::ExportCollectorError;
 use crate::project::Project;
 use crate::utilities::PathExt;
 use serde::Deserialize;
+use serde_json::Value;
 use sha2::{Digest, Sha256};
 use std::{fs, path::Path};
 
@@ -58,21 +59,25 @@ async fn build_endpoint_file(
         let mut path = path.to_path_buf();
         path.set_extension("");
 
-        let query_params = match project.language {
+        let (query_params, output_schema) = match project.language {
             SupportedLanguages::Typescript => {
                 typescript::export_collectors::get_func_types(&path, &project.project_location)
                     .await
                     .map_err(ConsumptionLoaderError::FailedToLoadTypescriptParams)?
             }
-            SupportedLanguages::Python => load_python_query_param(&path)
-                .await
-                .map_err(ConsumptionLoaderError::FailedToLoadPythonParams)?,
+            SupportedLanguages::Python => {
+                let params = load_python_query_param(&path)
+                    .await
+                    .map_err(ConsumptionLoaderError::FailedToLoadPythonParams)?;
+                (params, Value::Null)
+            }
         };
 
         Ok(Some(EndpointFile {
             path,
             hash,
             query_params,
+            output_schema,
         }))
     } else {
         Ok(None)

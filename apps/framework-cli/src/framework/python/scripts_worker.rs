@@ -4,6 +4,7 @@ use std::fs;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Child;
 
+use crate::cli::display::{show_message_wrapper, Message, MessageType};
 use crate::project::{Project, ProjectFileError};
 use crate::utilities::constants::PYTHON_WORKER_WRAPPER_PACKAGE_NAME;
 
@@ -79,7 +80,16 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
                 match level {
                     "INFO" => info!("{}", message),
                     "WARNING" => warn!("{}", message),
-                    "ERROR" => error!("{}", message),
+                    "ERROR" => {
+                        error!("{}", message);
+                        show_message_wrapper(
+                            MessageType::Error,
+                            Message {
+                                action: "WorkflowActivityError".to_string(),
+                                details: message.to_string(),
+                            },
+                        );
+                    }
                     _ => info!("{}", message),
                 }
             }
@@ -89,6 +99,13 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
     tokio::spawn(async move {
         while let Ok(Some(line)) = stderr_reader.next_line().await {
             error!("{}", line);
+            show_message_wrapper(
+                MessageType::Error,
+                Message {
+                    action: "WorkflowActivityError".to_string(),
+                    details: line.to_string(),
+                },
+            );
         }
     });
 

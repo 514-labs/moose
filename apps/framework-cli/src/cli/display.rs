@@ -184,6 +184,11 @@ macro_rules! show_message {
     };
 }
 
+pub fn show_message_wrapper(message_type: MessageType, message: Message) {
+    // Is there a way for other modules to call this macro?
+    show_message!(message_type, message, true);
+}
+
 pub fn with_spinner<F, R>(message: &str, f: F, activate: bool) -> R
 where
     F: FnOnce() -> R,

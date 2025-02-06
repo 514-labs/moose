@@ -1,5 +1,6 @@
 from datetime import timedelta
 from temporalio import workflow
+from temporalio.common import RetryPolicy
 from typing import Optional, Dict, List, Any
 import os
 import asyncio
@@ -95,6 +96,11 @@ class ScriptWorkflow:
                 activity_name,
                 ScriptExecutionInput(script_path=script_path, input_data=input_data),
                 start_to_close_timeout=timedelta(minutes=10),
+                # Hardcoded to one attempt for faster iteration for now
+                # TODO: Figure out how to allow the user to configure this
+                retry_policy=RetryPolicy(
+                    maximum_attempts=1,
+                ),
             )
             self._state.completed_steps.append(activity_name)
             return result

@@ -10,10 +10,12 @@ use crate::infrastructure::orchestration::temporal::{
 use crate::project::Project;
 use crate::utilities::constants::{APP_DIR, SCRIPTS_DIR};
 use chrono::{DateTime, Utc};
+use temporal_sdk_core_protos::temporal::api::common::v1::WorkflowExecution;
 use temporal_sdk_core_protos::temporal::api::enums::v1::WorkflowExecutionStatus;
 use temporal_sdk_core_protos::temporal::api::workflowservice::v1::{
-    DescribeWorkflowExecutionRequest, ListWorkflowExecutionsRequest,
-    SignalWorkflowExecutionRequest, TerminateWorkflowExecutionRequest,
+    DescribeWorkflowExecutionRequest, GetWorkflowExecutionHistoryRequest,
+    ListWorkflowExecutionsRequest, SignalWorkflowExecutionRequest,
+    TerminateWorkflowExecutionRequest,
 };
 
 pub async fn init_workflow(
@@ -189,6 +191,7 @@ pub async fn list_workflows(
             if let Some(execution_info) = execution.execution {
                 table_data.push(vec![
                     execution_info.workflow_id,
+                    execution_info.run_id,
                     status,
                     execution.start_time.map_or("-".to_string(), |t| {
                         chrono::DateTime::from_timestamp(t.seconds, t.nanos as u32)
@@ -203,6 +206,7 @@ pub async fn list_workflows(
     show_table(
         vec![
             "Workflow Name".to_string(),
+            "Run ID".to_string(),
             "Status".to_string(),
             "Started At".to_string(),
         ],
@@ -357,6 +361,7 @@ pub async fn get_workflow_status(
     _project: &Project,
     name: &str,
     run_id: Option<String>,
+    verbose: bool,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     let mut client = get_temporal_client().await.map_err(|_| {
         RoutineFailure::error(Message {
@@ -444,14 +449,97 @@ pub async fn get_workflow_status(
 
     let execution_time = Utc::now().signed_duration_since(start_time);
 
-    let details = format!(
-        "Status: {}\nRun ID: {}\nStatus: {} {}\nExecution Time: {}s\n",
+    let mut details = format!(
+        "Workflow Status: {}\nRun ID: {}\nStatus: {} {}\nExecution Time: {}s\n",
         name,
         execution_id,
         info.status().as_str_name(),
         status_emoji,
         execution_time.num_seconds()
     );
+
+    if verbose {
+        details.push_str("\nFetching workflow history...\n");
+
+        let history_request = GetWorkflowExecutionHistoryRequest {
+            namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
+            execution: Some(WorkflowExecution {
+                workflow_id: name.to_string(),
+                run_id: execution_id.clone(),
+            }),
+            ..Default::default()
+        };
+
+        details.push_str(&format!("Request: {:?}\n", history_request));
+
+        let history_response = client
+            .get_workflow_execution_history(history_request)
+            .await
+            .map_err(|e| {
+                RoutineFailure::error(Message {
+                    action: "Workflow".to_string(),
+                    details: format!(
+                        "Could not fetch history for workflow '{}': {}\n",
+                        name,
+                        e.message()
+                    ),
+                })
+            })?;
+
+        details.push_str("Got history response\n");
+
+        if let Some(history) = history_response.into_inner().history {
+            details.push_str(&format!("\nFound {} events\n\n", history.events.len()));
+            details.push_str("Event History:\n");
+
+            for event in history.events {
+                let code = event.event_type;
+                if let Ok(event_type) =
+                    temporal_sdk_core_protos::temporal::api::enums::v1::EventType::try_from(code)
+                {
+                    let timestamp = event.event_time.map_or(String::from("unknown time"), |ts| {
+                        chrono::DateTime::from_timestamp(ts.seconds, ts.nanos as u32)
+                            .map_or("invalid time".to_string(), |dt| dt.to_rfc3339())
+                    });
+
+                    // Format the basic event info
+                    details.push_str(&format!("\n[{}] {}\n", timestamp, event_type.as_str_name()));
+
+                    // Add relevant details based on event type
+                    match &event.attributes {
+                        Some(attrs) => {
+                            match attrs {
+                                temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskScheduledEventAttributes(attr) => {
+                                    if let Some(activity_type) = &attr.activity_type {
+                                        details.push_str(&format!("  Activity: {}\n", activity_type.name));
+                                    }
+                                },
+                                temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskCompletedEventAttributes(attr) => {
+                                    if let Some(result) = &attr.result {
+                                        details.push_str(&format!("  Result: {:?}\n", result));
+                                    }
+                                },
+                                temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::WorkflowExecutionFailedEventAttributes(attr) => {
+                                    if let Some(failure) = &attr.failure {
+                                        details.push_str(&format!("  Error: {}\n", failure.message));
+                                    }
+                                },
+                                temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::WorkflowExecutionCompletedEventAttributes(_) => {
+                                    details.push_str("  Workflow completed successfully\n");
+                                },
+                                _ => {} // Skip other attribute types
+                            }
+                        }
+                        None => {}
+                    }
+                }
+            }
+        } else {
+            details.push_str("No history found in response\n");
+        }
+    } else {
+        details.push_str("Verbose flag not set\n");
+    }
 
     Ok(RoutineSuccess::success(Message {
         action: "Workflow".to_string(),

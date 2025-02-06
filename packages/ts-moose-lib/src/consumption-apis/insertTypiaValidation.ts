@@ -373,14 +373,19 @@ export default function transformProgram(
   for (const sourceFile of transformedSource) {
     const { fileName, languageVersion } = sourceFile;
     const newFile = printFile(sourceFile);
-    const path = fileName.split("/").pop() || fileName;
-    fs.mkdirSync(`${process.cwd()}/.moose/api-compile-step/`, {
-      recursive: true,
-    });
-    fs.writeFileSync(
-      `${process.cwd()}/.moose/api-compile-step/${path}`,
-      newFile,
-    );
+
+    try {
+      const path = fileName.split("/").pop() || fileName;
+      const dir = `${process.cwd()}/.moose/api-compile-step/`;
+      fs.mkdirSync(dir, {
+        recursive: true,
+      });
+      fs.writeFileSync(`${dir}/${path}`, newFile);
+    } catch (e) {
+      // this file is just for debugging purposes
+      // TODO even printing in std err will fail the import process
+    }
+
     const updatedSourceFile = tsInstance.createSourceFile(
       fileName,
       newFile,

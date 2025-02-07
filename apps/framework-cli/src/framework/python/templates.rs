@@ -188,7 +188,7 @@ block = Blocks(teardown=teardown_queries, setup=setup_queries)
 
 pub static PYTHON_BASE_SCRIPT_TEMPLATE: &str = r#"from moose_lib import task
 
-@task
+@task()
 def {{name}}():  # The name of your script
     """
     Description of what this script does

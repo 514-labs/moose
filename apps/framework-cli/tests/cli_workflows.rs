@@ -241,8 +241,8 @@ fn test_workflow_init_with_steps() {
         // Check file content includes basic template
         let content = std::fs::read_to_string(&file_path).unwrap();
         assert!(
-            content.contains("@task"),
-            "Step file {} should contain @task decorator",
+            content.contains("@task()"),
+            "Step file {} should contain @task() decorator",
             step_file
         );
     }
@@ -439,8 +439,8 @@ fn test_workflow_init_with_multiple_step_flags() {
 
         let content = std::fs::read_to_string(&file_path).unwrap();
         assert!(
-            content.contains("@task"),
-            "Step file {} should contain @task decorator",
+            content.contains("@task()"),
+            "Step file {} should contain @task() decorator",
             step_file
         );
     }

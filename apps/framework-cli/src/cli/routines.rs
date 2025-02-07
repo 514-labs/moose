@@ -435,9 +435,17 @@ async fn leadership_tasks(
     project: Arc<Project>,
     cron_registry: CronRegistry,
 ) -> Result<(), anyhow::Error> {
+    info!("<RedisClient> Starting leadership tasks");
+
     info!("<RedisClient> Registering jobs with CronRegistry");
     match cron_registry.register_jobs(&project).await {
-        Ok(_) => info!("<RedisClient> Successfully registered jobs"),
+        Ok(_) => {
+            info!("<RedisClient> Successfully registered jobs");
+            info!(
+                "<RedisClient> Registered cron jobs: {:?}",
+                project.cron_jobs
+            );
+        }
         Err(e) => {
             error!("<RedisClient> Failed to register jobs: {:#}", e);
             return Err(e);
@@ -446,13 +454,17 @@ async fn leadership_tasks(
 
     info!("<RedisClient> Starting CronRegistry");
     match cron_registry.start().await {
-        Ok(_) => info!("<RedisClient> Successfully started CronRegistry"),
+        Ok(_) => {
+            info!("<RedisClient> Successfully started CronRegistry");
+            info!("<RedisClient> CronRegistry is now running and should execute jobs");
+        }
         Err(e) => {
             error!("<RedisClient> Failed to start CronRegistry: {:#}", e);
             return Err(e);
         }
     }
 
+    info!("<RedisClient> Leadership tasks completed successfully");
     Ok(())
 }
 

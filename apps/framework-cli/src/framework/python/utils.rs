@@ -7,7 +7,7 @@ use tokio::process::Command;
 
 #[derive(Default)]
 pub struct ColumnBuilder {
-    pub name: Option<String>,
+    pub name: String,
     pub data_type: Option<ColumnType>,
     pub required: Option<bool>,
     pub unique: Option<bool>,
@@ -18,17 +18,22 @@ pub struct ColumnBuilder {
 }
 
 impl ColumnBuilder {
+    pub fn new(name: String) -> Self {
+        Self {
+            name,
+            ..Self::default()
+        }
+    }
     pub fn build(self) -> Result<Column, PythonParserError> {
-        let name = self.name.ok_or(PythonParserError::ClassParseError {
-            message: "Class builder property, name, not set properly".to_string(),
-        })?;
+        let name = self.name;
 
-        let data_type = self
-            .data_type
-            .ok_or(PythonParserError::UnsupportedDataTypeError {
-                type_name: "Class builder property, data_type, unsupported or not set properly"
-                    .to_string(),
-            })?;
+        let data_type =
+            self.data_type
+                .ok_or_else(|| PythonParserError::UnsupportedDataTypeError {
+                    field_name: name.clone(),
+                    type_name: "Class builder property, data_type, unsupported or not set properly"
+                        .to_string(),
+                })?;
 
         let required = self.required.unwrap_or(true);
 

@@ -701,7 +701,13 @@ async fn router(
     let now = Instant::now();
 
     let req = request.req;
-    let req_bytes = req.body().size_hint().exact().unwrap();
+    let req_bytes = match req.body().size_hint().exact() {
+        Some(bytes) => bytes,
+        None => {
+            debug!("Could not get exact size hint from request body");
+            0 // Default to 0 if we can't get the exact size
+        }
+    };
 
     let route_table = request.route_table;
 

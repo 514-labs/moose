@@ -13,7 +13,8 @@ import { Python, TypeScript } from "./src/components/language-wrappers";
 export default {
   logo: () => (
     <div className="flex flex-row items-center content-center w-[288px]">
-      <Logo property="Moose" subProperty="Docs" className="bg-gradient" />
+      <SmallText className="text-primary">Moose</SmallText>
+      <SmallText className="text-muted-foreground mx-1">Docs</SmallText>
     </div>
   ),
   project: {

@@ -53,6 +53,7 @@ flate2 = "1.0"
 tar = "0.4"
 pathdiff = "0.2.1"
 rustpython-parser = "0.3.1"
+rustpython-ast = { version = "0.3.1" , features = ["unparse"]}
 walkdir = "2"
 comfy-table = "7.1.1"
 ratatui = "0.27.0"
@@ -101,12 +102,14 @@ opentelemetry-otlp = { version = "0.27.0", default-features = false, features = 
 opentelemetry-http = { version = "0.27.0", features = ["reqwest"] }
 prometheus-client = "0.22.2"
 serde_yaml = "0.9.34"
-temporal-sdk-core =  {git = "https://github.com/temporalio/sdk-core.git", rev = "b94b2fc172c2740705b3454a0e04b856fe426233"}
+temporal-sdk-core = { git = "https://github.com/temporalio/sdk-core.git", rev = "b94b2fc172c2740705b3454a0e04b856fe426233" }
+temporal-sdk-core-protos = { git = "https://github.com/temporalio/sdk-core.git", rev = "b94b2fc172c2740705b3454a0e04b856fe426233" }
 prost-types = "0.13.0"
 tonic = { version = "0.12", features = ["transport", "prost", "codegen"] }
 url = "2.5.4"
 tempfile = "3.15.0"
 http = "1.2.0"
+prost-wkt-types = "0.6.0"
 
 [dev-dependencies]
 clickhouse = { version = "0.11.5", features = ["uuid", "test-util"] }

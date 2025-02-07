@@ -122,6 +122,10 @@ pub enum Commands {
         /// Output to a file
         #[arg(short, long)]
         file: Option<PathBuf>,
+
+        /// peek from the topic instead of the table
+        #[arg(long)]
+        topic: bool,
     },
     /// Manage data processing workflows
     Workflow(WorkflowArgs),
@@ -276,5 +280,47 @@ pub enum WorkflowCommands {
         /// Step to resume from
         #[arg(long)]
         from: String,
+    },
+    /// List running workflows
+    List {
+        /// Filter workflows by status (running, completed, failed)
+        #[arg(short, long)]
+        status: Option<String>,
+
+        /// Limit the number of workflows shown
+        #[arg(short, long, default_value = "10")]
+        limit: u32,
+    },
+    /// Terminate a workflow
+    Terminate {
+        /// Name of the workflow to terminate
+        name: String,
+    },
+    /// Pause a workflow
+    Pause {
+        /// Name of the workflow to pause
+        name: String,
+    },
+    /// Unpause a workflow
+    Unpause {
+        /// Name of the workflow to unpause
+        name: String,
+    },
+    /// Get the status of a workflow
+    Status {
+        /// Name of the workflow
+        name: String,
+
+        /// Optional run ID (defaults to most recent)
+        #[arg(long)]
+        id: Option<String>,
+
+        /// Verbose output
+        #[arg(long)]
+        verbose: bool,
+
+        /// Output in JSON format
+        #[arg(long)]
+        json: bool,
     },
 }

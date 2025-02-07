@@ -52,7 +52,7 @@ export function Callout({ type, title, children }: CalloutProps) {
   return (
     <Card
       className={cn(
-        "callout border b-[1px] rounded-3xl my-5 flex items-start w-full p-4 space-x-2",
+        "callout border b-[1px] my-5 flex items-start w-full p-4 space-x-2",
         variantProps.color,
         variantProps.border,
       )}

@@ -1,4 +1,9 @@
+use anyhow::{Error, Result};
 use serde::{Deserialize, Serialize};
+use temporal_sdk_core_protos::temporal::api::workflowservice::v1::workflow_service_client::WorkflowServiceClient;
+use tonic::transport::{Channel, Uri};
+
+pub const DEFAULT_TEMPORTAL_NAMESPACE: &str = "default";
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct TemporalConfig {
@@ -116,4 +121,18 @@ impl Default for TemporalConfig {
             postgresql_version: default_postgresql_version(),
         }
     }
+}
+
+async fn connect_to_temporal() -> Result<WorkflowServiceClient<Channel>> {
+    let endpoint: Uri = "http://localhost:7233".parse().unwrap();
+    WorkflowServiceClient::connect(endpoint).await.map_err(|_| {
+        Error::msg("Could not connect to Temporal. Please ensure the Temporal server is running.")
+    })
+}
+
+pub async fn get_temporal_client() -> Result<WorkflowServiceClient<Channel>> {
+    connect_to_temporal().await.map_err(|e| {
+        eprintln!("{}", e);
+        Error::msg(format!("{}", e))
+    })
 }

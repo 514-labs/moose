@@ -35,7 +35,7 @@
     --accent-moo-indigo-foreground: 0 0% 3.9%;
     --accent-moo-purple: 158 100% 77%;
     --accent-moo-purple-foreground: 0 0% 3.9%;
-    --accent-moo-pink: 288 100% 58%;
+    --accent-moo-pink: 270 95% 75%;
     --accent-moo-pink-foreground: 0 0% 3.9%;
     --accent-moo-yellow: 65 100% 50%;
     --accent-moo-yellow-foreground: 0 0% 100%;
@@ -144,6 +144,7 @@
 }
 
 .docs a {
+  text-decoration: none;
   color: hsl(var(--accent-moo-pink));
 }
 
@@ -181,7 +182,7 @@
 }
 
 .docs main > p {
-  line-height: 1.75rem;
+  line-height: 1.5rem;
 }
 
 .docs div.nextra-breadcrumb {

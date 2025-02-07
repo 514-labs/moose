@@ -2,12 +2,12 @@ import {
   CTACard,
   CTACards,
   ZoomImg,
-  ChipBadge,
+  ChipButton,
   Columns,
   Column,
   Separator,
 } from "../components";
-import { Zap, GraduationCap } from "lucide-react";
+import { FolderPlus, Scroll } from "lucide-react";
 import {
   Grid,
   HalfWidthContentContainer,
@@ -30,7 +30,8 @@ Choose the method that best suits your learning style for getting started with M
     description="Get up and running with your own Moose project in minutes"
     ctaLink="/quickstart"
     ctaLabel="Quick Start"
-    Icon={Zap}
+    cardName="Quick Start"
+    Icon={FolderPlus}
     variant="gradient"
   />
   <CTACard
@@ -38,7 +39,8 @@ Choose the method that best suits your learning style for getting started with M
     description="Build an end-to-end Moose app through a guided tutorial"
     ctaLink="/learn-moose"
     ctaLabel="Try Tutorial"
-    Icon={GraduationCap}
+    Icon={Scroll}
+    cardName="Try it out"
     variant="gradient"
   />
 </CTACards>
@@ -83,7 +85,7 @@ Moose is designed for any TypeScript or Python developer, regardless of your bac
 
 We include some example applications in the [templates section](/templates/product-analytics/), so you can see how Moose can be used to build a variety of applications:
 
-<ChipBadge href="/templates/product-analytics" label="Product Analytics" />
+<ChipButton href="/templates/product-analytics" label="Product Analytics" />
 
 ## How does Moose work?
 

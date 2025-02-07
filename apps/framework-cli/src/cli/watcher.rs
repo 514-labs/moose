@@ -23,7 +23,9 @@ use crate::infrastructure::processes::process_registry::ProcessRegistries;
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::metrics::Metrics;
 use crate::project::Project;
-use crate::utilities::constants::{BLOCKS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, SCHEMAS_DIR};
+use crate::utilities::constants::{
+    BLOCKS_DIR, CONSUMPTION_DIR, FUNCTIONS_DIR, SCHEMAS_DIR, SCRIPTS_DIR,
+};
 use crate::utilities::PathExt;
 
 struct EventListener {
@@ -52,6 +54,7 @@ struct EventBuckets {
     blocks: HashSet<PathBuf>,
     data_models: HashSet<PathBuf>,
     consumption: HashSet<PathBuf>,
+    scripts: HashSet<PathBuf>,
 }
 
 impl EventBuckets {
@@ -60,6 +63,7 @@ impl EventBuckets {
             && self.blocks.is_empty()
             && self.data_models.is_empty()
             && self.consumption.is_empty()
+            && self.scripts.is_empty()
     }
 
     pub fn insert(&mut self, event: Event) {
@@ -96,6 +100,11 @@ impl EventBuckets {
                 .any(|component| component.eq_ignore_ascii_case(CONSUMPTION_DIR))
             {
                 self.consumption.insert(path);
+            } else if path
+                .iter()
+                .any(|component| component.eq_ignore_ascii_case(SCRIPTS_DIR))
+            {
+                self.scripts.insert(path);
             }
         }
 
@@ -103,6 +112,7 @@ impl EventBuckets {
         info!("Blocks: {:?}", self.blocks);
         info!("Data Models: {:?}", self.data_models);
         info!("Consumption: {:?}", self.consumption);
+        info!("Scripts: {:?}", self.scripts);
     }
 }
 

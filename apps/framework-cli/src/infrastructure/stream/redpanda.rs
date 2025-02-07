@@ -480,22 +480,32 @@ pub async fn fetch_topics(
     Ok(topics)
 }
 
-pub fn create_subscriber(config: &RedpandaConfig, group_id: &str, topic: &str) -> StreamConsumer {
+pub fn create_consumer(config: &RedpandaConfig, extra_config: &[(&str, &str)]) -> StreamConsumer {
     let mut client_config = config_client(config);
 
-    client_config
-        .set("session.timeout.ms", "6000")
-        .set("enable.partition.eof", "false")
-        .set("enable.auto.commit", "true")
-        .set("auto.commit.interval.ms", "1000")
-        .set("enable.auto.offset.store", "false")
-        // to read records sent before subscriber is created
-        .set("auto.offset.reset", "earliest")
-        // Groupid
-        .set("group.id", config.prefix_with_namespace(group_id))
-        .set("isolation.level", "read_committed");
+    extra_config.iter().for_each(|(k, v)| {
+        client_config.set(*k, *v);
+    });
+    client_config.create().expect("Failed to create consumer")
+}
 
-    let consumer: StreamConsumer = client_config.create().expect("Failed to create consumer");
+pub fn create_subscriber(config: &RedpandaConfig, group_id: &str, topic: &str) -> StreamConsumer {
+    let group_id = config.prefix_with_namespace(group_id);
+    let consumer = create_consumer(
+        config,
+        &[
+            ("session.timeout.ms", "6000"),
+            ("enable.partition.eof", "false"),
+            ("enable.auto.commit", "true"),
+            ("auto.commit.interval.ms", "1000"),
+            ("enable.auto.offset.store", "false"),
+            // to read records sent before subscriber is created
+            ("auto.offset.reset", "earliest"),
+            // Groupid
+            ("group.id", &group_id),
+            ("isolation.level", "read_committed"),
+        ],
+    );
 
     let topics = [topic];
 

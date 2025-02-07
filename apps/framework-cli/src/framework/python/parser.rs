@@ -396,7 +396,7 @@ fn process_subscript_node(
             "list" => {
                 let col_type = ColumnType::Array(Box::new(process_slice(
                     &subscript.slice,
-                    &column,
+                    column,
                     enums,
                     python_classes,
                     nested_classes,

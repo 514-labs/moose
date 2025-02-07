@@ -73,27 +73,34 @@ impl CronRegistry {
     where
         F: Fn() -> BoxFuture<'static, Result<(), String>> + Send + Sync + 'static,
     {
+        info!("<cron> Adding new job with expression: {}", cron_expression);
         let task = Arc::new(task);
 
         let job = Job::new_async(cron_expression, move |_uuid, _l| {
             let task = task.clone();
+            info!("<cron> Job triggered, executing task");
             Box::pin(async move {
-                if let Err(e) = task().await {
-                    warn!("Cron failed: {}", e)
-                };
+                match task().await {
+                    Ok(_) => info!("<cron> Task completed successfully"),
+                    Err(e) => warn!("<cron> Task failed: {}", e),
+                }
             })
         })
         .map_err(|e| anyhow!(e))?;
 
+        info!("<cron> Adding job to scheduler");
         let scheduler = self.scheduler.lock().await;
         scheduler.add(job).await.map_err(|e| anyhow!(e))?;
+        info!("<cron> Job added successfully");
 
         Ok(())
     }
 
     pub async fn start(&self) -> Result<()> {
+        info!("<cron> Starting scheduler");
         let scheduler = self.scheduler.lock().await;
         scheduler.start().await.map_err(|e| anyhow!(e))?;
+        info!("<cron> Scheduler started successfully");
         Ok(())
     }
 
@@ -176,6 +183,8 @@ impl CronRegistry {
                                 );
                                 let ts_script_path =
                                     project_path_clone.join(script_path.as_ref().unwrap());
+
+                                info!("<cron> Executing TypeScript script: {:?}", ts_script_path);
                                 Command::new("moose-exec")
                                     .arg(ts_script_path.to_str().unwrap())
                                     .env("TS_NODE_PROJECT", project_path_clone.join(TSCONFIG_JSON))

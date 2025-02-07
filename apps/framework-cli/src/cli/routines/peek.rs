@@ -10,15 +10,16 @@ use super::{RoutineFailure, RoutineSuccess};
 use crate::infrastructure::olap::clickhouse::model::ClickHouseTable;
 use crate::infrastructure::stream::redpanda::create_consumer;
 use futures::stream::BoxStream;
-use futures::StreamExt;
 use log::info;
 use rdkafka::consumer::{Consumer, StreamConsumer};
 use rdkafka::{Message as KafkaMessage, Offset, TopicPartitionList};
 use serde_json::Value;
 use std::path::PathBuf;
 use std::sync::Arc;
+use std::time::Duration;
 use tokio::fs::File;
 use tokio::io::AsyncWriteExt;
+use tokio_stream::StreamExt;
 
 pub async fn peek(
     project: Arc<Project>,
@@ -105,7 +106,12 @@ pub async fn peek(
                         message?.payload().unwrap_or(&[]),
                     )?)
                 })
-                .take(limit.into()),
+                .take(limit.into())
+                // ends the stream if the next message takes 1 second
+                // i.e. the kafka queue has less than `limit` records
+                .timeout(Duration::from_secs(1))
+                .take_while(Result::is_ok)
+                .map(Result::unwrap),
         )
     } else {
         // ¯\_(ツ)_/¯
@@ -155,59 +161,60 @@ pub async fn peek(
 
     let mut success_count = 0;
 
-    if let Some(file_path) = file {
-        let mut file = File::create(&file_path).await.map_err(|_| {
-            RoutineFailure::error(Message::new(
-                "Failed".to_string(),
-                "Error creating file".to_string(),
-            ))
-        })?;
+    let (mut file, success_message): (Option<File>, Box<dyn Fn(i32) -> String>) =
+        if let Some(file_path) = file {
+            (
+                Some(File::create(&file_path).await.map_err(|_| {
+                    RoutineFailure::error(Message::new(
+                        "Failed".to_string(),
+                        "Error creating file".to_string(),
+                    ))
+                })?),
+                Box::new(move |success_count| {
+                    format!("{} rows written to {:?}", success_count, file_path)
+                }),
+            )
+        } else {
+            (
+                None,
+                Box::new(|success_count| {
+                    // Just a newline for output cleanliness
+                    println!();
+                    format!("{} rows", success_count)
+                }),
+            )
+        };
 
-        while let Some(result) = stream.next().await {
-            match result {
-                Ok(value) => {
-                    let json = serde_json::to_string(&value).unwrap();
-                    file.write_all(format!("{}\n", json).as_bytes())
-                        .await
-                        .map_err(|_| {
-                            RoutineFailure::error(Message::new(
-                                "Failed".to_string(),
-                                "Error writing to file".to_string(),
-                            ))
-                        })?;
-                    success_count += 1;
+    while let Some(result) = stream.next().await {
+        match result {
+            Ok(value) => {
+                let json = serde_json::to_string(&value).unwrap();
+                match &mut file {
+                    None => {
+                        println!("{}", json);
+                        info!("{}", json);
+                    }
+                    Some(ref mut file) => {
+                        file.write_all(format!("{}\n", json).as_bytes())
+                            .await
+                            .map_err(|_| {
+                                RoutineFailure::error(Message::new(
+                                    "Failed".to_string(),
+                                    "Error writing to file".to_string(),
+                                ))
+                            })?;
+                    }
                 }
-                Err(e) => {
-                    log::error!("Failed to read row {}", e);
-                }
+                success_count += 1;
+            }
+            Err(e) => {
+                log::error!("Failed to read row {}", e);
             }
         }
-
-        Ok(RoutineSuccess::success(Message::new(
-            "Peeked".to_string(),
-            format!("{} rows written to {:?}", success_count, file_path),
-        )))
-    } else {
-        while let Some(result) = stream.next().await {
-            match result {
-                Ok(value) => {
-                    let message = serde_json::to_string(&value).unwrap();
-                    println!("{}", message);
-                    info!("{}", message);
-                    success_count += 1;
-                }
-                Err(e) => {
-                    log::error!("Failed to read row {}", e);
-                }
-            }
-        }
-
-        // Just a newline for output cleanliness
-        println!();
-
-        Ok(RoutineSuccess::success(Message::new(
-            "Peeked".to_string(),
-            format!("{} rows", success_count),
-        )))
     }
+
+    Ok(RoutineSuccess::success(Message::new(
+        "Peeked".to_string(),
+        success_message(success_count),
+    )))
 }

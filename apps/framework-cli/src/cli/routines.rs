@@ -380,17 +380,41 @@ async fn manage_leadership_lock(
         client.check_and_renew_lock("leadership").await?
     };
 
+    // If we lost leadership or connection, ensure cleanup
+    if !has_lock && IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
+        info!("<RedisClient> Lost leadership, cleaning up tasks");
+        if let Err(e) = cron_registry.stop().await {
+            error!(
+                "<RedisClient> Failed to stop CronRegistry during cleanup: {:#}",
+                e
+            );
+        }
+        IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
+        info!("<RedisClient> Leadership tasks cleanup completed");
+    }
+
+    // Only start leadership tasks if we have a new lock acquisition
     if has_lock && is_new_acquisition {
         info!("<RedisClient> Obtained leadership lock, performing leadership tasks");
 
+        // Ensure any previous tasks are stopped before starting new ones
+        if let Err(e) = cron_registry.stop().await {
+            error!(
+                "<RedisClient> Failed to stop previous CronRegistry: {:#}",
+                e
+            );
+        }
+
+        info!("<RedisClient> Starting new leadership tasks");
         IS_RUNNING_LEADERSHIP_TASKS.store(true, Ordering::SeqCst);
 
         let project_clone = project.clone();
         let cron_registry: CronRegistry = cron_registry.clone();
         tokio::spawn(async move {
+            info!("<RedisClient> Registering and starting leadership tasks");
             let result = leadership_tasks(project_clone, cron_registry).await;
             if let Err(e) = result {
-                error!("<RedisClient> Error executing leadership tasks: {}", e);
+                error!("<RedisClient> Error executing leadership tasks: {:#}", e);
             }
             IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
         });
@@ -398,17 +422,12 @@ async fn manage_leadership_lock(
         let mut client = redis_client.lock().await;
         if let Err(e) = client.broadcast_message("leader.new").await {
             error!(
-                "<RedisClient> Failed to broadcast new leader message: {}",
+                "<RedisClient> Failed to broadcast new leader message: {:#}",
                 e
             );
         }
-    } else if IS_RUNNING_LEADERSHIP_TASKS.load(Ordering::SeqCst) {
-        if let Err(e) = cron_registry.stop().await {
-            error!("<RedisClient> Failed to stop CronRegistry: {}", e);
-        }
-        // Then mark leadership tasks as not running
-        IS_RUNNING_LEADERSHIP_TASKS.store(false, Ordering::SeqCst);
     }
+
     Ok(())
 }
 
@@ -416,8 +435,24 @@ async fn leadership_tasks(
     project: Arc<Project>,
     cron_registry: CronRegistry,
 ) -> Result<(), anyhow::Error> {
-    cron_registry.register_jobs(&project).await?;
-    cron_registry.start().await?;
+    info!("<RedisClient> Registering jobs with CronRegistry");
+    match cron_registry.register_jobs(&project).await {
+        Ok(_) => info!("<RedisClient> Successfully registered jobs"),
+        Err(e) => {
+            error!("<RedisClient> Failed to register jobs: {:#}", e);
+            return Err(e);
+        }
+    }
+
+    info!("<RedisClient> Starting CronRegistry");
+    match cron_registry.start().await {
+        Ok(_) => info!("<RedisClient> Successfully started CronRegistry"),
+        Err(e) => {
+            error!("<RedisClient> Failed to start CronRegistry: {:#}", e);
+            return Err(e);
+        }
+    }
+
     Ok(())
 }
 

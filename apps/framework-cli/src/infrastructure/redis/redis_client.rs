@@ -445,14 +445,21 @@ impl RedisClient {
                             Ok(_) => {
                                 let was_disconnected = *self.connection_status.lock().await
                                     == ConnectionStatus::Disconnected;
+
+                                // Stop any existing tasks before replacing connections
+                                if was_disconnected {
+                                    self.stop_periodic_tasks()?;
+                                }
+
                                 // Replace both connections
                                 *self.connection.lock().await = new_connection;
                                 *self.pub_sub.lock().await = new_pubsub;
                                 *self.connection_status.lock().await = ConnectionStatus::Connected;
 
-                                // Restart message listener if we were previously disconnected
+                                // Restart tasks if we were previously disconnected
                                 if was_disconnected {
                                     info!("<RedisClient> Successfully reconnected to Redis");
+                                    self.start_periodic_tasks();
                                     if let Err(e) = self.start_message_listener().await {
                                         error!(
                                             "<RedisClient> Failed to restart message listener: {}",
@@ -595,15 +602,25 @@ impl RedisClient {
             "#,
             );
 
-            let result: Vec<i32> = script
+            match script
                 .key(&lock.key)
                 .arg(&self.instance_id)
                 .arg(lock.ttl)
                 .invoke_async(&mut *self.connection.lock().await)
                 .await
-                .context("Failed to check and renew lock")?;
-
-            Ok((result[0] == 1, result[1] == 1))
+            {
+                Ok(result) => {
+                    let result: Vec<i32> = result;
+                    if result[0] == 1 && result[1] == 1 {
+                        info!("<RedisClient> Acquired new lock for {}", name);
+                    }
+                    Ok((result[0] == 1, result[1] == 1))
+                }
+                Err(e) => {
+                    error!("<RedisClient> Failed to check/renew lock {}: {}", name, e);
+                    Err(anyhow::anyhow!("Failed to check and renew lock: {}", e))
+                }
+            }
         } else {
             Err(anyhow::anyhow!("Lock not registered"))
         }

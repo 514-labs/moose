@@ -314,5 +314,9 @@ pub enum WorkflowCommands {
         /// Verbose output
         #[arg(long)]
         verbose: bool,
+
+        /// Output in JSON format
+        #[arg(long)]
+        json: bool,
     },
 }

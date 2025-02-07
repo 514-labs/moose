@@ -63,6 +63,13 @@ pub struct RedisLock {
     ttl: i64,
 }
 
+// Add new enum for connection status
+#[derive(Debug, Clone, PartialEq)]
+pub enum ConnectionStatus {
+    Connected,
+    Disconnected,
+}
+
 pub struct RedisClient {
     connection: Arc<Mutex<RedisConnection>>,
     pub_sub: Arc<Mutex<RedisConnection>>,
@@ -73,6 +80,8 @@ pub struct RedisClient {
     presence_task: Option<JoinHandle<()>>,
     message_callbacks: Arc<Mutex<Vec<MessageCallback>>>,
     listener_task: Mutex<Option<JoinHandle<()>>>,
+    // Add new field
+    connection_status: Arc<Mutex<ConnectionStatus>>,
 }
 
 impl RedisClient {
@@ -116,6 +125,8 @@ impl RedisClient {
             presence_task: None,
             message_callbacks: Arc::new(Mutex::new(Vec::new())),
             listener_task: Mutex::new(None),
+            // Initialize connection status
+            connection_status: Arc::new(Mutex::new(ConnectionStatus::Connected)),
         };
 
         // Start the message listener as part of initialization
@@ -143,19 +154,30 @@ impl RedisClient {
 
     pub async fn presence_update(&mut self) -> Result<()> {
         let key = self.instance_prefix("presence");
-
         let now = SystemTime::now()
             .duration_since(UNIX_EPOCH)
             .context("Failed to get current time")?
             .as_secs()
             .to_string();
 
-        self.connection
+        match self
+            .connection
             .lock()
             .await
-            .set_ex(&key, &now, KEY_EXPIRATION_TTL)
+            .set_ex::<&str, &str, ()>(&key, &now, KEY_EXPIRATION_TTL)
             .await
-            .context("Failed to update presence")
+        {
+            Ok(_) => {
+                let was_disconnected =
+                    *self.connection_status.lock().await == ConnectionStatus::Disconnected;
+                *self.connection_status.lock().await = ConnectionStatus::Connected;
+                if was_disconnected {
+                    info!("<RedisClient> Successfully reconnected to Redis");
+                }
+                Ok(())
+            }
+            Err(e) => self.handle_redis_error(e).await,
+        }
     }
 
     pub async fn register_lock(&mut self, name: &str, ttl: i64) -> Result<()> {
@@ -385,6 +407,12 @@ impl RedisClient {
                     interval.tick().await;
                     if let Err(e) = presence_client.presence_update().await {
                         error!("Error updating presence: {}", e);
+                        // Try to reconnect if disconnected
+                        if !presence_client.is_connected().await {
+                            if let Err(e) = presence_client.check_connection().await {
+                                error!("Failed to reconnect to Redis: {}", e);
+                            }
+                        }
                     }
                 }
             }
@@ -401,11 +429,57 @@ impl RedisClient {
     }
 
     pub async fn check_connection(&mut self) -> Result<()> {
-        redis::cmd("PING")
-            .query_async::<_, String>(&mut *self.connection.lock().await)
-            .await
-            .context("Failed to ping Redis server")?;
-        Ok(())
+        // Try to create a new client and connections
+        match Client::open(self.redis_config.url.clone()) {
+            Ok(client) => {
+                match (
+                    client.get_async_connection().await,
+                    client.get_async_connection().await,
+                ) {
+                    (Ok(mut new_connection), Ok(new_pubsub)) => {
+                        // Test the new connection
+                        match redis::cmd("PING")
+                            .query_async::<_, String>(&mut new_connection)
+                            .await
+                        {
+                            Ok(_) => {
+                                let was_disconnected = *self.connection_status.lock().await
+                                    == ConnectionStatus::Disconnected;
+                                // Replace both connections
+                                *self.connection.lock().await = new_connection;
+                                *self.pub_sub.lock().await = new_pubsub;
+                                *self.connection_status.lock().await = ConnectionStatus::Connected;
+
+                                // Restart message listener if we were previously disconnected
+                                if was_disconnected {
+                                    info!("<RedisClient> Successfully reconnected to Redis");
+                                    if let Err(e) = self.start_message_listener().await {
+                                        error!(
+                                            "<RedisClient> Failed to restart message listener: {}",
+                                            e
+                                        );
+                                    }
+                                }
+                                Ok(())
+                            }
+                            Err(e) => {
+                                *self.connection_status.lock().await =
+                                    ConnectionStatus::Disconnected;
+                                Err(anyhow::anyhow!("Redis connection test failed: {}", e))
+                            }
+                        }
+                    }
+                    (_, _) => {
+                        *self.connection_status.lock().await = ConnectionStatus::Disconnected;
+                        Err(anyhow::anyhow!("Failed to establish Redis connections"))
+                    }
+                }
+            }
+            Err(e) => {
+                *self.connection_status.lock().await = ConnectionStatus::Disconnected;
+                Err(anyhow::anyhow!("Failed to create Redis client: {}", e))
+            }
+        }
     }
 
     pub async fn set_with_service_prefix<V: ToRedisArgs + Send + Sync>(
@@ -534,6 +608,23 @@ impl RedisClient {
             Err(anyhow::anyhow!("Lock not registered"))
         }
     }
+
+    // Change from blocking to async
+    pub async fn is_connected(&self) -> bool {
+        matches!(
+            *self.connection_status.lock().await,
+            ConnectionStatus::Connected
+        )
+    }
+
+    // Helper method to handle Redis errors
+    async fn handle_redis_error(&self, error: RedisError) -> Result<()> {
+        if error.is_connection_dropped() || error.is_connection_refusal() {
+            *self.connection_status.lock().await = ConnectionStatus::Disconnected;
+            error!("<RedisClient> Lost connection to Redis: {}", error);
+        }
+        Err(anyhow::anyhow!("Redis error: {}", error))
+    }
 }
 
 impl Clone for RedisClient {
@@ -552,6 +643,8 @@ impl Clone for RedisClient {
             presence_task: None,
             message_callbacks: Arc::clone(&self.message_callbacks),
             listener_task: Mutex::new(None),
+            // Clone connection status
+            connection_status: Arc::clone(&self.connection_status),
         }
     }
 }

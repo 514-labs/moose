@@ -9,6 +9,7 @@ use crate::infrastructure::orchestration::temporal::{
 };
 use crate::project::Project;
 use crate::utilities::constants::{APP_DIR, SCRIPTS_DIR};
+use crate::utilities::decode_object::decode_base64_to_json;
 use chrono::{DateTime, Utc};
 use temporal_sdk_core_protos::temporal::api::common::v1::WorkflowExecution;
 use temporal_sdk_core_protos::temporal::api::enums::v1::WorkflowExecutionStatus;
@@ -459,8 +460,6 @@ pub async fn get_workflow_status(
     );
 
     if verbose {
-        details.push_str("\nFetching workflow history...\n");
-
         let history_request = GetWorkflowExecutionHistoryRequest {
             namespace: DEFAULT_TEMPORTAL_NAMESPACE.to_string(),
             execution: Some(WorkflowExecution {
@@ -486,10 +485,8 @@ pub async fn get_workflow_status(
                 })
             })?;
 
-        details.push_str("Got history response\n");
-
         if let Some(history) = history_response.into_inner().history {
-            details.push_str(&format!("\nFound {} events\n\n", history.events.len()));
+            details.push_str(&format!("\nFound {} events\n", history.events.len()));
             details.push_str("Event History:\n");
 
             for event in history.events {
@@ -502,8 +499,8 @@ pub async fn get_workflow_status(
                             .map_or("invalid time".to_string(), |dt| dt.to_rfc3339())
                     });
 
-                    // Format the basic event info
-                    details.push_str(&format!("\n[{}] {}\n", timestamp, event_type.as_str_name()));
+                    // Format the basic event info with bullet point
+                    details.push_str(&format!("  • [{}] {}", timestamp, event_type.as_str_name()));
 
                     // Add relevant details based on event type
                     match &event.attributes {
@@ -511,27 +508,68 @@ pub async fn get_workflow_status(
                             match attrs {
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskScheduledEventAttributes(attr) => {
                                     if let Some(activity_type) = &attr.activity_type {
-                                        details.push_str(&format!("  Activity: {}\n", activity_type.name));
+                                        details.push_str(&format!("\n    Activity: {}", activity_type.name));
                                     }
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::ActivityTaskCompletedEventAttributes(attr) => {
                                     if let Some(result) = &attr.result {
-                                        details.push_str(&format!("  Result: {:?}\n", result));
+                                        details.push_str("\n    Result: ");
+                                        for payload in &result.payloads {
+                                            match String::from_utf8(payload.data.clone()) {
+                                                Ok(data_str) => {
+                                                    // Try parsing as JSON first
+                                                    match serde_json::from_str::<serde_json::Value>(&data_str) {
+                                                        Ok(json) => {
+                                                            // Pretty print JSON and indent each line
+                                                            let json_str = serde_json::to_string_pretty(&json).unwrap_or_default();
+                                                            let indented = json_str
+                                                                .lines()
+                                                                .map(|line| format!("      {}", line))
+                                                                .collect::<Vec<_>>()
+                                                                .join("\n");
+                                                            details.push_str(&format!("\n{}", indented));
+                                                        },
+                                                        Err(_) => {
+                                                            // If not valid JSON, try base64 decoding
+                                                            match decode_base64_to_json(&data_str) {
+                                                                Ok(decoded) => {
+                                                                    // Pretty print decoded JSON and indent each line
+                                                                    let json_str = serde_json::to_string_pretty(&decoded).unwrap_or_default();
+                                                                    let indented = json_str
+                                                                        .lines()
+                                                                        .map(|line| format!("      {}", line))
+                                                                        .collect::<Vec<_>>()
+                                                                        .join("\n");
+                                                                    details.push_str(&format!("\n{}", indented));
+                                                                },
+                                                                Err(e) => {
+                                                                    details.push_str(&format!("Failed to parse payload: {}", e));
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                },
+                                                Err(_) => {
+                                                    details.push_str(&format!("Invalid UTF-8 in payload: {:?}", payload));
+                                                }
+                                            }
+                                        }
                                     }
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::WorkflowExecutionFailedEventAttributes(attr) => {
                                     if let Some(failure) = &attr.failure {
-                                        details.push_str(&format!("  Error: {}\n", failure.message));
+                                        details.push_str(&format!("\n    Error: {}", failure.message));
                                     }
                                 },
                                 temporal_sdk_core_protos::temporal::api::history::v1::history_event::Attributes::WorkflowExecutionCompletedEventAttributes(_) => {
-                                    details.push_str("  Workflow completed successfully\n");
+                                    details.push_str("\n    Workflow completed successfully");
                                 },
-                                _ => {} // Skip other attribute types
+                                _ => {}
                             }
                         }
                         None => {}
                     }
+                    details.push_str("\n");
                 }
             }
         } else {

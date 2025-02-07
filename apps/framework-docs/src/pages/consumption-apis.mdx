@@ -4,107 +4,356 @@ import { Tabs, FileTree } from "nextra/components";
 # Introduction to Consumption APIs
 <LanguageSwitcher />
 
-Consumption APIs offer a powerful and flexible way to create custom API endpoints, allowing your applications to access and retrieve data from your OLAP database. These APIs act as the final layer in your Moose application, dynamically generating and executing SQL queries based on parameters received from incoming requests from your data consumers.
+Consumption APIs make it easy to build type-safe endpoints for surfacing data from your OLAP database. As a developer, you'll write simple, strongly-typed functions that automatically handle:
+- URL parameter parsing and type conversion
+- SQL query construction and execution
+- Response formatting
 
-## Core Concepts
+No need to write boilerplate for parameter validation, type conversion, or error handling - the framework handles these for you.
 
-### File and Folder Conventions
+## Getting Started
 
-Consumption APIs are defined as individual <TypeScript NodeType="span">`.ts`</TypeScript><Python NodeType="span">`.py`</Python> files within the `/apis` folder of your Moose application. These files are automatically mapped to API endpoints based on their filenames.
+### File and Folder Structure
+
+Create your API endpoints by adding <TypeScript NodeType="span">`.ts`</TypeScript><Python NodeType="span">`.py`</Python> files to the `/apis` folder. Each file automatically becomes an API endpoint:
+
 <TypeScript>
 <FileTree>
 <FileTree.Folder name="app" open>
-<FileTree.Folder name="datamodels"/>
-<FileTree.Folder name="functions" />
-<FileTree.Folder name="blocks" />
 <FileTree.Folder name="apis" open>
-<FileTree.File name="myMooseApi.ts" />
+<FileTree.File name="getFoo.ts" />
+<FileTree.File name="getBar.ts" />
 </FileTree.Folder>
 </FileTree.Folder>
 </FileTree>
 </TypeScript>
-<Python>
 
+<Python>
 <FileTree>
 <FileTree.Folder name="app" open>
-<FileTree.Folder name="apis" />
-<FileTree.File name="myMooseApi.py" />
+<FileTree.Folder name="apis" open>
+<FileTree.File name="getFoo.py" />
+<FileTree.File name="getBar.py" />
+</FileTree.Folder>
 </FileTree.Folder>
 </FileTree>
 </Python>
 
-
-<Callout type="info" title="Example">
-  A file named <TypeScript NodeType="span">`myMooseApi.ts`</TypeScript><Python NodeType="span">`myMooseApi.py`</Python> would correspond to the `/consumption/myMooseApi`
-  endpoint.
+<Callout type="info" title="Automatic Endpoint Mapping">
+Your files are automatically mapped to `/consumption/` endpoints:
+- <TypeScript NodeType="span">`getFoo.ts`</TypeScript><Python NodeType="span">`get_foo.py`</Python> → `/consumption/getFoo`
+- <TypeScript NodeType="span">`getBar.ts`</TypeScript><Python NodeType="span">`get_bar.py`</Python> → `/consumption/getBar`
 </Callout>
 
-### Consumption API Definition
+### Creating a New API Endpoint
 
-Each API file contains a route handler function that processes requests to its corresponding endpoint. This function is responsible for:
-
-1. Parsing query parameters from the incoming request
-2. Dynamically constructing SQL queries based on these parameters
-3. Executing the queries against your database
-4. Processing and formatting the results before sending the response
-
+The fastest way to create a new Consumption API endpoint is using the Moose CLI:
 
 <TypeScript>
- This route handler function must be the default export of the file:
-  ```ts filename="/apis/dailyActiveUsers.ts" copy {8}
-  import { ConsumptionUtil } from "@514labs/moose-lib";
+```bash
+npx moose-cli consumption init getBar
+```
+</TypeScript>
 
-interface QueryParams {
-limit: string;
-minDailyActiveUsers: string;
-}
+<Python>
+```bash
+moose-cli consumption init get_bar
+```
+</Python>
 
-export default async function handle(
-{ limit = "10", minDailyActiveUsers = "0" }: QueryParams,
-{ client, sql }: ConsumptionUtil,
-) {
-return client.query(
-sql`SELECT 
-          date,
-          dailyActiveUsers
-      FROM DailyActiveUsers
-      WHERE dailyActiveUsers >= ${parseInt(minDailyActiveUsers)}
-      LIMIT ${parseInt(limit)}`,
+This command will:
+1. Create a new file <TypeScript NodeType="span">`getBar.ts`</TypeScript><Python NodeType="span">`get_bar.py`</Python> in your `/apis` directory
+2. Scaffold the basic API structure with type definitions
+3. Add example query parameters and SQL query
+
+####  Basic API Template
+The generated template is a basic API endpoint that you can customize to your needs:
+
+<TypeScript>
+```ts filename="/apis/getBar.ts"
+
+import { createConsumptionApi } from "@514labs/moose-lib";
+
+// This file is where you can define your API templates for consuming your data
+interface QueryParams {}
+
+// createConsumptionApi uses compile time code generation to generate a parser for QueryParams
+export default createConsumptionApi<QueryParams>(
+  async (params, { client, sql }) => {
+    return client.query(sql`SELECT 1`);
+  }
 );
-}
 
 ```
 </TypeScript>
 
 <Python>
-Consumption APIs are defined as a function named `run()` in the file:
-```python filename="/apis/dailyActiveUsers.py" copy {1}
-def run(client, params):
-    minDailyActiveUsers = int(params.get('minDailyActiveUsers', [0])[0])
-    limit = int(params.get('limit', [10])[0])
+```python filename="/apis/get_bar.py"
+# This file is where you can define your API templates for consuming your data
+# All query_params are passed in as strings, and are used within the sql tag to parameterize you queries
 
-    return client.query(
-        '''SELECT
-            date,
-            uniqMerge(dailyActiveUsers) as dailyActiveUsers
-        FROM DailyActiveUsers
-        GROUP BY date
-        HAVING dailyActiveUsers >= {minDailyActiveUsers}
-        ORDER BY date
-        LIMIT {limit}''',
-        {
-            "minDailyActiveUsers": minDailyActiveUsers,
-            "limit": limit
-        }
-    )
+from moose_lib import MooseClient
+
+@dataclass
+class QueryParams:
+    ## Define your query parameters here
+
+def run(client: MooseClient, params: QueryParams):
+    return client.query("SELECT 1", { })
 
 ```
 </Python>
 
-#### Query Parameters and Dynamic Data Retrieval
+You can then customize this template by:
+- Defining your query parameters
+- Writing your SQL query
+- Adding any necessary data transformations
 
-Query parameters play a crucial role in Consumption APIs, allowing for dynamic and flexible data retrieval. When defining your route handler function, you can specify the query parameters it accepts. These parameters are then passed to the function as arguments, mapped directly from the URL query parameters of the incoming HTTP `GET` request.
+### Implementing the API Logic
 
-### Orchestration
+Each API endpoint is defined by a single function that handles incoming requests. This function receives typed query parameters and returns database query results.
 
-At the heart of Moose's Consumption APIs is an HTTP server that manages incoming `GET` requests. When a request is made to the `/consumption/<endpoint-name>` path, Moose automatically routes it to the corresponding handler file in your project's `/apis` directory, and executes the function defined within that file.
+<TypeScript>
+```ts filename="/apis/getBar.ts"
+import {
+  createConsumptionApi,
+  ConsumptionHelpers as CH,
+} from "@514labs/moose-lib";
+
+interface QueryParams {
+  n_days?: number;
+  sort_by?: "total_value" | "unique_ids";
+}
+
+export default createConsumptionApi<QueryParams>(
+  async (
+    { n_days = 10, sort_by = "total_value" }: QueryParams,
+    { client, sql }
+  ) => {
+    const query = sql`
+        SELECT 
+            date,
+            sumMerge(total_value) as total_value,
+            uniqMerge(unique_ids) as unique_ids
+        FROM BarAggregated
+        GROUP BY date
+        ORDER BY 
+            ${CH.column(sort_by)} DESC
+        LIMIT ${n_days}
+        `;
+    return client.query(query);
+  }
+);
+```
+
+Key components:
+1. `QueryParams` interface defines the expected URL parameters and their types
+2. `createConsumptionApi` helper provides type safety and automatic parameter parsing
+3. Built-in `client` and `sql` utilities for safe query construction
+4. `ConsumptionHelpers` (CH) for secure parameter injection of SQL identifiers
+</TypeScript>
+
+<Python>
+```python filename="/apis/getBar.py"
+from dataclasses import dataclass
+from moose_lib import MooseClient
+
+@dataclass
+class QueryParams:
+    n_days: int = 10  # Number of top days to return
+    sort_by: str = "total_value"  # Either "total_value" or "unique_ids"
+
+def run(client: MooseClient, params: QueryParams):
+    # Define the base query to get aggregated metrics
+    base_query = """
+    SELECT 
+        date,
+        sumMerge(total_value) as total_value,
+        uniqMerge(unique_ids) as unique_ids
+    FROM BarAggregated
+    GROUP BY date
+    """
+    
+    # Define sort order based on params
+    sort_orders = {
+        "total_value": "ORDER BY total_value DESC, unique_ids DESC",
+        "unique_ids": "ORDER BY unique_ids DESC, total_value DESC"
+    }
+    
+    # Construct final query with sort order and limit
+    query = f"""
+    {base_query}
+    {sort_orders[params.sort_by]}
+    LIMIT {params.n_days}
+    """
+    
+    return client.query.execute(query, {"n_days": params.n_days})
+```
+
+Key components:
+1. `QueryParams` dataclass defines the expected URL parameters and their types
+2. Type hints and default values provide automatic parameter parsing
+3. Built-in `MooseClient` for database interactions
+4. Safe query construction using parameterized queries
+</Python>
+
+### Query Parameters
+
+Query parameters allow your APIs to accept dynamic inputs through URL parameters. These parameters are automatically parsed and type-converted before reaching your handler function.
+
+<TypeScript>
+<Callout type="info" title="Query Parameter Interface">
+Use an interface to define the expected parameters and their types. You can use Union types to allow multiple valid values or define more complex types.
+</Callout>
+```ts
+// Define expected parameters and their types
+interface QueryParams {
+  n_days?: number;          // Optional number parameter
+  sort_by?: "total_value" | "unique_ids";  // String union type
+}
+
+// URL: /consumption/getBar?n_days=5&sort_by=unique_ids
+// Automatically provides:
+{
+  n_days: 5,               // Converted to number
+  sort_by: "unique_ids"    // Type-checked
+}
+```
+
+Benefits:
+- Automatic type conversion from URL strings
+- Runtime type validation
+- IDE autocompletion
+- Type safety throughout your codebase
+</TypeScript>
+
+<Python>
+Python Consumption APIs use dataclasses to define and validate query parameters:
+
+```python
+@dataclass
+class QueryParams:
+    n_days: int = 10  # Optional with default value
+    sort_by: str = "total_value"  # Optional with default value
+
+# URL: /consumption/getBar?n_days=5&sort_by=unique_ids
+# Automatically provides:
+params = QueryParams(
+    n_days=5,           # Converted to int
+    sort_by="unique_ids"  # Validated as str
+)
+```
+
+Benefits:
+- Automatic type conversion from URL strings
+- Runtime type validation
+- Type hints for IDE support
+- Default values for optional parameters
+- Clean, declarative parameter definition
+</Python>
+
+<TypeScript>
+#### Advanced: Query Parameter Validation with Typia Tags
+
+Moose leverages [Typia](https://typia.io/) to enforce runtime validation on query parameters using plain TypeScript interfaces. This enables you to use [**all the advanced Typia tags**](https://typia.io/docs/validators/tags/) in your query parameter interfaces to enhance your type definitions and enforce runtime validations.
+
+<Callout type="warning">
+Note: This section applies only to TypeScript projects. Python support for advanced validation using Pydantic will be available soon.
+</Callout>
+
+##### How It Works
+
+1. **Auto-Generated Validators:** By annotating your TypeScript interface with Typia tags (e.g., `Type`, `Format`, `ExclusiveMinimum`), Moose automatically generates the code needed to validate query parameters at runtime.
+
+2. **Type-Safe Constraints:** For instance, specifying: `userId: number & typia.tags.Type<"uint32">` ensures that the `userId` query parameter must be a 32-bit unsigned integer.
+
+
+
+##### Example
+
+Below is a practical example demonstrating how to use Typia tags within your consumption API endpoint to enforce validations on query parameters:
+
+```ts
+import { createConsumptionApi } from "@514labs/moose-lib";
+import typia from "typia";
+
+// Define an interface strictly for query parameters using Typia tags for validation.
+interface QueryParams {
+  // Validate that `userId` is a 32-bit unsigned integer.
+  userId: number & typia.tags.Type<"uint32">;
+
+  // Ensure that `email` is formatted correctly as an email address.
+  email: string & typia.tags.Format<"email">;
+
+  // Optional `age`: if provided, it must be greater than 17.
+  age?: number & typia.tags.ExclusiveMinimum<17>;
+}
+
+export default createConsumptionApi<QueryParams>(
+  async (params, { client, sql }) => {
+    // The query parameters are auto-validated against the Typia constraints.
+    const query = sql`
+      SELECT *
+      FROM Users
+      WHERE userId = ${params.userId}
+        AND email = ${params.email}
+        ${params.age ? sql`AND age > ${params.age}` : sql``}
+    `;
+    return client.query(query);
+  }
+);
+```
+</TypeScript>
+### Safe SQL Construction
+
+<TypeScript>
+The framework provides utilities for safely constructing SQL queries with dynamic parameters:
+
+```ts
+// Using template literals with the sql helper
+const query = sql`
+    SELECT *
+    FROM MyTable
+    ORDER BY ${CH.column(sort_by)} DESC
+    LIMIT ${n_days}
+`;
+
+// ConsumptionHelpers (CH) prevent SQL injection
+CH.column(sort_by)  // Safely interpolates column names
+```
+</TypeScript>
+
+<Python>
+The framework provides safe query construction through parameterization:
+
+```python
+# Define valid sort orders
+sort_orders = {
+    "total_value": "ORDER BY total_value DESC",
+    "unique_ids": "ORDER BY unique_ids DESC"
+}
+
+# Safe query construction using f-strings for structure
+# and parameterized values for user input
+query = f"""
+    {base_query}
+    {sort_orders[params.sort_by]}
+    LIMIT {params.n_days}
+"""
+
+# Execute with parameters
+client.query.execute(query, {"n_days": params.n_days})
+```
+</Python>
+
+<Callout type="info" title="HTTP Methods">
+Consumption APIs support only GET requests to ensure optimized data retrieval.
+</Callout>
+
+## Tips & Best Practices
+
+- **Testing Your APIs:** Use tools like Postman, Thunder Client, or cURL to test your endpoints.
+- **Utilize Default Values:** Leverage defaults in your interfaces or dataclasses to reduce manual parsing.
+- **Write Safe SQL:** Always use the provided SQL helpers or parameterized queries to avoid injection vulnerabilities.
+
+

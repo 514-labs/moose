@@ -1022,9 +1022,12 @@ async fn top_command_handler(
                 }
                 Some(WorkflowCommands::Pause { name }) => pause_workflow(&project, name).await,
                 Some(WorkflowCommands::Unpause { name }) => unpause_workflow(&project, name).await,
-                Some(WorkflowCommands::Status { name, id }) => {
-                    get_workflow_status(&project, name, id.clone()).await
-                }
+                Some(WorkflowCommands::Status {
+                    name,
+                    id,
+                    verbose,
+                    json,
+                }) => get_workflow_status(&project, name, id.clone(), *verbose, *json).await,
                 None => Err(RoutineFailure::error(Message {
                     action: "Workflow".to_string(),
                     details: "No subcommand provided".to_string(),

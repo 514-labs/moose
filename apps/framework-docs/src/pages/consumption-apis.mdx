@@ -8,6 +8,7 @@ Consumption APIs make it easy to build type-safe endpoints for surfacing data fr
 - URL parameter parsing and type conversion
 - SQL query construction and execution
 - Response formatting
+- Automatically generated OpenAPI documentation
 
 No need to write boilerplate for parameter validation, type conversion, or error handling - the framework handles these for you.
 
@@ -357,7 +358,7 @@ Consumption APIs support only GET requests to ensure optimized data retrieval.
 - **Write Safe SQL:** Always use the provided SQL helpers or parameterized queries to avoid injection vulnerabilities.
 - **Automatic API Documentation:** Take advantage of the auto generated OpenAPI specification, hosted on your local dev server at [http://localhost:5001/openapi.yaml](http://localhost:5001/openapi.yaml), for interactive API documentation and easier client integration.
 
-## OpenAPI Documentation & Interactive API Experience
+## Automatically Generated OpenAPI Documentation
 
 The framework automatically generates an up-to-date OpenAPI specification during local development. This spec provides a comprehensive overview of all consumption API endpoints, including:
 

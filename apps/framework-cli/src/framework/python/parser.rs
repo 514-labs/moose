@@ -9,16 +9,16 @@
 //! The file objects are all the data model objects that are extracted from the python schema file
 //! and it's associsted supporting objects such as enums.
 
+use std::fmt::Debug;
 use std::path::{Path, PathBuf};
-
-use rustpython_parser::{
-    ast::{self, Constant, Expr, ExprName, Identifier, Keyword, Stmt, StmtClassDef},
-    Parse,
-};
 
 use crate::{
     framework::data_model::{model::DataModel, parser::FileObjects},
     project::python_project::PythonProject,
+};
+use rustpython_parser::{
+    ast::{self, Constant, Expr, ExprName, Identifier, Keyword, Stmt, StmtClassDef},
+    Parse,
 };
 
 use crate::framework::core::infrastructure::table::{
@@ -37,8 +37,9 @@ pub enum PythonParserError {
     FileNotFound {
         path: PathBuf,
     },
-    #[error("Python Parser - Unsupported data type: {type_name}")]
+    #[error("Python Parser - Unsupported data type in {field_name}: {type_name}")]
     UnsupportedDataTypeError {
+        field_name: String,
         type_name: String,
     },
     #[error("Python Parser - Error parsing class node: {message}")]
@@ -248,6 +249,7 @@ fn python_class_to_framework_datamodel(
 /// ### Name Node to Base Column Type
 /// This function converts an AST expr name to a base column type
 fn name_node_to_base_column_type(
+    field_name: &str,
     name_node: ast::ExprName,
 ) -> Result<ColumnType, PythonParserError> {
     match name_node.id.to_string().as_str() {
@@ -257,6 +259,7 @@ fn name_node_to_base_column_type(
         "bool" => Ok(ColumnType::Boolean),
         "datetime" => Ok(ColumnType::DateTime),
         _ => Err(PythonParserError::UnsupportedDataTypeError {
+            field_name: field_name.to_string(),
             type_name: name_node.id.to_string(),
         }),
     }
@@ -324,17 +327,14 @@ fn class_attribute_node_to_column_builder(
     python_classes: &[&StmtClassDef],
     nested_classes: &[Identifier],
 ) -> Result<ColumnBuilder, PythonParserError> {
-    let mut column = ColumnBuilder::default();
-    match *attribute_node.target.clone() {
-        Expr::Name(name) => {
-            column.name = Some(name.id.to_string());
-        }
+    let mut column = match *attribute_node.target.clone() {
+        Expr::Name(name) => ColumnBuilder::new(name.id.to_string()),
         _ => {
             return Err(PythonParserError::ClassParseError {
                 message: "Name not found".to_string(),
             })
         }
-    }
+    };
     match *attribute_node.annotation.clone() {
         // Handles the case where the annotation is a straight name such as str, int, float, bool, datetime
         // this also includes enums and other custom types that are named in the schema, such as nested classes
@@ -352,7 +352,8 @@ fn class_attribute_node_to_column_builder(
 
         _ => {
             return Err(PythonParserError::UnsupportedDataTypeError {
-                type_name: "Unsupported data type".to_string(),
+                field_name: column.name.clone(),
+                type_name: format!("{}", attribute_node.annotation),
             })
         }
     }
@@ -371,18 +372,20 @@ fn process_subscript_node(
 ) -> Result<(), PythonParserError> {
     fn process_slice(
         slice: &Expr,
+        column: &ColumnBuilder,
         enums: &[FrameworkEnum],
         python_classes: &[&StmtClassDef],
         nested_classes: &[Identifier],
     ) -> Result<ColumnType, PythonParserError> {
         match slice {
-            Expr::Name(name) => match name_node_to_base_column_type(name.clone()) {
+            Expr::Name(name) => match name_node_to_base_column_type(&column.name, name.clone()) {
                 Ok(col_type) => Ok(col_type),
                 Err(_) => {
                     handle_complex_named_type(name.clone(), enums, python_classes, nested_classes)
                 }
             },
             _ => Err(PythonParserError::UnsupportedDataTypeError {
+                field_name: column.name.clone(),
                 type_name: "Unsupported data type".to_string(),
             }),
         }
@@ -393,6 +396,7 @@ fn process_subscript_node(
             "list" => {
                 let col_type = ColumnType::Array(Box::new(process_slice(
                     &subscript.slice,
+                    &column,
                     enums,
                     python_classes,
                     nested_classes,
@@ -400,15 +404,25 @@ fn process_subscript_node(
                 column.data_type = Some(col_type);
             }
             "Key" => {
-                let col_type =
-                    process_slice(&subscript.slice, enums, python_classes, nested_classes)?;
+                let col_type = process_slice(
+                    &subscript.slice,
+                    column,
+                    enums,
+                    python_classes,
+                    nested_classes,
+                )?;
                 column.data_type = Some(col_type);
                 column.required = Some(true);
                 column.primary_key = Some(true);
             }
             "JWT" => {
-                let mut col_type =
-                    process_slice(&subscript.slice, enums, python_classes, nested_classes)?;
+                let mut col_type = process_slice(
+                    &subscript.slice,
+                    column,
+                    enums,
+                    python_classes,
+                    nested_classes,
+                )?;
 
                 if let ColumnType::Nested(ref mut nested) = col_type {
                     nested.jwt = true;
@@ -418,21 +432,28 @@ fn process_subscript_node(
                 column.required = Some(true);
             }
             "Optional" => {
-                let col_type =
-                    process_slice(&subscript.slice, enums, python_classes, nested_classes)?;
+                let col_type = process_slice(
+                    &subscript.slice,
+                    column,
+                    enums,
+                    python_classes,
+                    nested_classes,
+                )?;
                 column.data_type = Some(col_type);
                 column.required = Some(false);
             }
 
-            _ => {
+            unsupported_name => {
                 return Err(PythonParserError::UnsupportedDataTypeError {
-                    type_name: "Unsupported data type".to_string(),
+                    field_name: column.name.clone(),
+                    type_name: unsupported_name.to_string(),
                 })
             }
         },
         _ => {
             return Err(PythonParserError::UnsupportedDataTypeError {
-                type_name: "Unsupported data type".to_string(),
+                field_name: column.name.clone(),
+                type_name: subscript.value.to_string(),
             })
         }
     };
@@ -447,7 +468,7 @@ fn process_name_node(
     nested_classes: &[Identifier],
     column: &mut ColumnBuilder,
 ) -> Result<(), PythonParserError> {
-    let col_type = match name_node_to_base_column_type(name.clone()) {
+    let col_type = match name_node_to_base_column_type(&column.name, name.clone()) {
         Ok(col_type) => col_type,
         Err(_e) => handle_complex_named_type(name, enums, python_classes, nested_classes)?,
     };
@@ -481,6 +502,7 @@ fn body_node_to_column(
         _ => {
             println!("failed parsing {:?} ", body_node);
             Err(PythonParserError::UnsupportedDataTypeError {
+                field_name: "".to_string(),
                 type_name: "Unsupported data type".to_string(),
             })
         }

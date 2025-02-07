@@ -122,6 +122,10 @@ pub enum Commands {
         /// Output to a file
         #[arg(short, long)]
         file: Option<PathBuf>,
+
+        /// peek from the topic instead of the table
+        #[arg(long)]
+        topic: bool,
     },
     /// Manage data processing workflows
     Workflow(WorkflowArgs),

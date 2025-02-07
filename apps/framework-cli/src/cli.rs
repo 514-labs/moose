@@ -984,13 +984,14 @@ async fn top_command_handler(
             data_model_name,
             limit,
             file,
+            topic,
         } => {
             info!("Running peek command");
 
             let project = load_project()?;
             let project_arc = Arc::new(project);
 
-            peek(project_arc, data_model_name.clone(), *limit, file.clone()).await
+            peek(project_arc, data_model_name, *limit, file.clone(), *topic).await
         }
         Commands::Workflow(workflow_args) => {
             if !settings.features.scripts {

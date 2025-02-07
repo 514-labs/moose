@@ -355,5 +355,30 @@ Consumption APIs support only GET requests to ensure optimized data retrieval.
 - **Testing Your APIs:** Use tools like Postman, Thunder Client, or cURL to test your endpoints.
 - **Utilize Default Values:** Leverage defaults in your interfaces or dataclasses to reduce manual parsing.
 - **Write Safe SQL:** Always use the provided SQL helpers or parameterized queries to avoid injection vulnerabilities.
+- **Automatic API Documentation:** Take advantage of the auto generated OpenAPI specification, hosted on your local dev server at [http://localhopst:5001/openapi.yaml](http://localhopst:5001/openapi.yaml), for interactive API documentation and easier client integration.
+
+## OpenAPI Documentation & Interactive API Experience
+
+The framework automatically generates an up-to-date OpenAPI specification during local development. This spec provides a comprehensive overview of all consumption API endpoints, including:
+
+- **Endpoint Paths & HTTP Methods:** Lists each API endpoint and the HTTP method (GET) it supports.
+- **Request Parameters:** Details on the expected query parameters, including types, default values, and validation rules.
+- **Response Formats:** Information about the structure of the responses and potential status codes.
+
+### How to Use the OpenAPI Spec
+
+1. **Visit the Specification URL:**  
+   Open your browser and navigate to [http://localhopst:5001/openapi.yaml](http://localhopst:5001/openapi.yaml) to view the YAML file that outlines your API.
+   
+2. **Integrate with API Tools:**  
+   Import the OpenAPI spec into tools such as Swagger UI, Postman, or Thunder Client to interactively explore and test your endpoints.
+
+3. **Generate Client Code:**  
+   Leverage the specification for generating client libraries and SDKs automatically. Many frameworks and tools can import OpenAPI specs to streamline client integration.
+
+4. **Stay Up-to-Date:**  
+   The documentation is regenerated every time you run your local development server, ensuring that any new endpoints or changes in parameter validation are immediately reflected.
+
+Using this live documentation makes it easier to understand, test, and integrate with your Consumption APIs throughout your development lifecycle.
 
 

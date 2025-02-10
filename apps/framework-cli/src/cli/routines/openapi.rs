@@ -251,18 +251,22 @@ fn create_egress_path_item(
                 })
                 .collect(),
             request_body: None,
-            responses: HashMap::from([(
-                "200".to_string(),
-                Response {
-                    description: "Successful operation".to_string(),
-                    content: HashMap::from([(
-                        "application/json".to_string(),
-                        json!({
-                            "schema": output_schema,
-                        }),
-                    )]),
-                },
-            )]),
+            responses: if output_schema != Value::Null {
+                HashMap::from([(
+                    "200".to_string(),
+                    Response {
+                        description: "Successful operation".to_string(),
+                        content: HashMap::from([(
+                            "application/json".to_string(),
+                            json!({
+                                "schema": output_schema,
+                            }),
+                        )]),
+                    },
+                )])
+            } else {
+                create_default_responses()
+            },
         }),
     }
 }

@@ -29,6 +29,8 @@ pub enum APIType {
     },
     EGRESS {
         query_params: Vec<ConsumptionQueryParam>,
+        #[serde(default)]
+        output_schema: Value,
     },
 }
 
@@ -135,6 +137,7 @@ impl From<EndpointFile> for ApiEndpoint {
                 .to_string(),
             api_type: APIType::EGRESS {
                 query_params: value.query_params,
+                output_schema: value.output_schema,
             },
             path: value.path.clone(),
             method: Method::GET,
@@ -183,8 +186,12 @@ impl APIType {
                 }),
                 special_fields: Default::default(),
             }),
-            APIType::EGRESS { query_params } => ProtoApiType::Egress(EgressDetails {
+            APIType::EGRESS {
+                query_params,
+                output_schema,
+            } => ProtoApiType::Egress(EgressDetails {
                 query_params: query_params.iter().map(|param| param.to_proto()).collect(),
+                output_schema: output_schema.to_string(),
                 special_fields: Default::default(),
             }),
         }
@@ -198,6 +205,7 @@ impl APIType {
         match json {
             Value::String(s) if s == "EGRESS" => Ok(APIType::EGRESS {
                 query_params: vec![],
+                output_schema: Value::Null,
             }),
             _ => serde_json::from_value(json).map_err(D::Error::custom),
         }

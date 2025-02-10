@@ -48,6 +48,8 @@ message IngressDetails {
 
 message EgressDetails {
   repeated ConsumptionQueryParam query_params = 1;
+  // might be worth it to use google.protobuf.Value
+  string output_schema = 2;
 }
 
 message ConsumptionQueryParam {

@@ -8,6 +8,7 @@ use crate::utilities::constants::OPENAPI_FILE;
 
 use chrono::Local;
 use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
 use serde_yaml;
 use std::collections::HashMap;
 use std::fs::File;
@@ -117,6 +118,8 @@ struct PropertyItem {
 #[derive(Serialize, Deserialize)]
 struct Response {
     description: String,
+    #[serde(skip_serializing_if = "HashMap::is_empty")]
+    content: HashMap<String, Value>,
 }
 
 #[derive(Serialize, Deserialize)]
@@ -168,8 +171,13 @@ fn generate_openapi_spec(project: &Arc<Project>, infra_map: &InfrastructureMap) 
                     path_item,
                 );
             }
-            APIType::EGRESS { query_params } => {
-                let path_item = create_egress_path_item(api_endpoint, query_params);
+
+            APIType::EGRESS {
+                query_params,
+                output_schema,
+            } => {
+                let path_item =
+                    create_egress_path_item(api_endpoint, output_schema.clone(), query_params);
                 paths.insert(
                     format!("/consumption/{}", api_endpoint.path.to_string_lossy()),
                     path_item,
@@ -222,6 +230,7 @@ fn create_ingress_path_item(api_endpoint: &ApiEndpoint, data_model: &DataModel) 
 
 fn create_egress_path_item(
     api_endpoint: &ApiEndpoint,
+    output_schema: Value,
     query_params: &[ConsumptionQueryParam],
 ) -> PathItem {
     PathItem {
@@ -242,7 +251,22 @@ fn create_egress_path_item(
                 })
                 .collect(),
             request_body: None,
-            responses: create_default_responses(),
+            responses: if output_schema != Value::Null {
+                HashMap::from([(
+                    "200".to_string(),
+                    Response {
+                        description: "Successful operation".to_string(),
+                        content: HashMap::from([(
+                            "application/json".to_string(),
+                            json!({
+                                "schema": output_schema,
+                            }),
+                        )]),
+                    },
+                )])
+            } else {
+                create_default_responses()
+            },
         }),
     }
 }
@@ -253,6 +277,7 @@ fn create_default_responses() -> HashMap<String, Response> {
         "200".to_string(),
         Response {
             description: "Successful operation".to_string(),
+            content: HashMap::new(),
         },
     );
     responses

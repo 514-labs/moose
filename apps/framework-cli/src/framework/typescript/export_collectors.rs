@@ -1,13 +1,18 @@
+use super::bin;
+use crate::framework::consumption::model::ConsumptionQueryParam;
+use crate::framework::data_model::config::{ConfigIdentifier, DataModelConfig};
+use crate::framework::typescript::consumption::{extract_intput_param, extract_schema};
+use log::debug;
+use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
-
-use serde_json::Value;
 use tokio::io::AsyncReadExt;
 
-use super::bin;
-use crate::framework::data_model::config::{ConfigIdentifier, DataModelConfig};
-
 const EXPORT_SERIALIZER_BIN: &str = "export-serializer";
+const EXPORT_FUNC_TYPE_BIN: &str = "consumption-type-serializer";
+
+const EXPORT_CONFIG_PROCESS: &str = "Data model config";
+const EXPORT_FUNC_TYPE_PROCESS: &str = "API schema";
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to run code")]
@@ -21,21 +26,26 @@ pub enum ExportCollectorError {
     },
 }
 
-async fn collect_exports(file: &Path, project_path: &Path) -> Result<Value, ExportCollectorError> {
+async fn collect_exports(
+    command_name: &str,
+    process_name: &str,
+    file: &Path,
+    project_path: &Path,
+) -> Result<Value, ExportCollectorError> {
     let file_path_str = file.to_str().ok_or(ExportCollectorError::Other {
         message: "Did not get a proper file path to load exports from".to_string(),
     })?;
 
     let args = vec![file_path_str];
-    let process = bin::run(EXPORT_SERIALIZER_BIN, project_path, &args)?;
+    let process = bin::run(command_name, project_path, &args)?;
 
     let mut stdout = process
         .stdout
-        .expect("Data model config process did not have a handle to stdout");
+        .unwrap_or_else(|| panic!("{process_name} process did not have a handle to stdout"));
 
     let mut stderr = process
         .stderr
-        .expect("Data model config process did not have a handle to stderr");
+        .unwrap_or_else(|| panic!("{process_name} process did not have a handle to stderr"));
 
     let mut raw_string_stderr: String = String::new();
     stderr.read_to_string(&mut raw_string_stderr).await?;
@@ -51,7 +61,8 @@ async fn collect_exports(file: &Path, project_path: &Path) -> Result<Value, Expo
         let mut raw_string_stdout: String = String::new();
         stdout.read_to_string(&mut raw_string_stdout).await?;
 
-        Ok(serde_json::from_str(&raw_string_stdout)?)
+        Ok(serde_json::from_str(&raw_string_stdout)
+            .inspect_err(|_| debug!("Invalid JSON from exports: {}", raw_string_stdout))?)
     }
 }
 
@@ -60,7 +71,13 @@ pub async fn get_data_model_configs(
     project_path: &Path,
     enums: HashSet<&str>,
 ) -> Result<HashMap<ConfigIdentifier, DataModelConfig>, ExportCollectorError> {
-    let exports = collect_exports(file, project_path).await?;
+    let exports = collect_exports(
+        EXPORT_SERIALIZER_BIN,
+        EXPORT_CONFIG_PROCESS,
+        file,
+        project_path,
+    )
+    .await?;
 
     match exports {
         Value::Object(map) => {
@@ -79,4 +96,36 @@ pub async fn get_data_model_configs(
             message: "Expected an object as the root of the exports".to_string(),
         }),
     }
+}
+
+pub async fn get_func_types(
+    file: &Path,
+    project_path: &Path,
+) -> Result<(Vec<ConsumptionQueryParam>, Value), ExportCollectorError> {
+    let exports = collect_exports(
+        EXPORT_FUNC_TYPE_BIN,
+        EXPORT_FUNC_TYPE_PROCESS,
+        file,
+        project_path,
+    )
+    .await?;
+
+    debug!("Schema for path {:?} {}", file, exports);
+
+    let (input_params, output_schema) = match exports {
+        Value::Object(mut map) => (
+            extract_intput_param(&map)?,
+            match map.remove("outputSchema") {
+                None => Value::Null,
+                Some(Value::Object(schema)) => extract_schema(&schema)?.clone(),
+                Some(_) => Err(ExportCollectorError::Other {
+                    message: "output schema must be an object".to_string(),
+                })?,
+            },
+        ),
+        _ => Err(ExportCollectorError::Other {
+            message: "Expected an object as the root of the exports".to_string(),
+        })?,
+    };
+    Ok((input_params, output_schema))
 }

@@ -233,6 +233,16 @@ pub fn show_table(headers: Vec<String>, rows: Vec<Vec<String>>) {
     );
 }
 
+pub fn batch_inserted(count: usize, table_name: &str) {
+    show_message!(
+        MessageType::Info,
+        Message {
+            action: "[DB]".to_string(),
+            details: format!("{count} rows successfully written to DB table ({table_name})"),
+        }
+    );
+}
+
 pub fn show_olap_changes(olap_changes: &[OlapChange]) {
     olap_changes.iter().for_each(|change| match change {
         OlapChange::Table(TableChange::Added(infra)) => {

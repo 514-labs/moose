@@ -49,10 +49,13 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
         python_worker_lib_dir.join("workflow.py"),
         include_str!("./wrappers/scripts/python_worker_wrapper/workflow.py"),
     )?;
-
     fs::write(
         python_worker_lib_dir.join("logging.py"),
         include_str!("./wrappers/scripts/python_worker_wrapper/logging.py"),
+    )?;
+    fs::write(
+        python_worker_lib_dir.join("types.py"),
+        include_str!("./wrappers/scripts/python_worker_wrapper/types.py"),
     )?;
 
     let mut worker_process = run_python_program(PythonProgram::OrchestrationWorker {

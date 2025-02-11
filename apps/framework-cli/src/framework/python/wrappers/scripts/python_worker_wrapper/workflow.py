@@ -9,6 +9,8 @@ import importlib.util
 import sys
 from .activity import ScriptExecutionInput
 from .logging import log
+from .types import WorkflowStepResult
+import functools
 
 @dataclass
 class WorkflowState:
@@ -137,77 +139,63 @@ class ScriptWorkflow:
             raise
 
     @workflow.run
-    async def run(self, path: str, input_data: Optional[Dict] = None) -> List[Any]:
-        """Main workflow execution logic.
-        
-        Handles different execution patterns based on file system structure:
-        - Single script execution
-        - Sequential script execution from a directory
-        - Parallel script execution from specially named directories
-        - Child workflow execution based on directory structure
-        
-        Args:
-            path: Path to script file or directory containing scripts
-            input_data: Optional data to pass to all scripts
-            
-        Returns:
-            List[Any]: List of results from all executed activities/workflows
-        """
+    async def run(self, path: str, input_data: Optional[Dict] = None) -> List[WorkflowStepResult]:
         results = []
-        parallel_tasks = []
-
-        log.info(f"Running workflow with path: {path} and input_data: {input_data}")
+        current_data = input_data
         
         if os.path.isfile(path) and path.endswith(".py"):
-            parent_dir = os.path.basename(os.path.dirname(path))
-            base_name = os.path.splitext(os.path.basename(path))[0]
-            activity_name = f"{parent_dir}/{base_name}"
-            self._state.script_path = path
-            self._state.input_data = input_data
-            result = await self._execute_activity_with_state(
-                activity_name, path, input_data
-            )
+            # Single script execution
+            activity_name = f"{os.path.basename(os.path.dirname(path))}/{os.path.splitext(os.path.basename(path))[0]}"
+            result = await self._execute_activity_with_state(activity_name, path, current_data)
             return [result]
         
+        # Sequential execution with data passing
         for item in sorted(os.listdir(path)):
             full_path = os.path.join(path, item)
             
             if os.path.isfile(full_path) and item.endswith(".py"):
-                parent_dir = os.path.basename(os.path.dirname(full_path))
-                base_name = os.path.splitext(item)[0]
-                activity_name = f"{parent_dir}/{base_name}"
-                result = await self._execute_activity_with_state(
-                    activity_name, full_path, input_data
-                )
+                activity_name = f"{os.path.basename(os.path.dirname(full_path))}/{os.path.splitext(item)[0]}"
+                result = await self._execute_activity_with_state(activity_name, full_path, current_data)
                 results.append(result)
+                current_data = result  # Pass result to next step
             
             elif os.path.isdir(full_path) and "parallel" in item:
+                # Handle parallel execution
+                parallel_tasks = []
                 for script_file in sorted(os.listdir(full_path)):
                     if script_file.endswith(".py"):
-                        script_full = os.path.join(full_path, script_file)
-                        parent_dir = os.path.basename(os.path.dirname(script_full))
-                        base_name = os.path.splitext(script_file)[0]
-                        activity_name = f"{parent_dir}/{base_name}"
-                        task = self._execute_activity_with_state(
-                            activity_name, script_full, input_data
-                        )
+                        script_path = os.path.join(full_path, script_file)
+                        activity_name = f"{os.path.basename(full_path)}/{os.path.splitext(script_file)[0]}"
+                        task = self._execute_activity_with_state(activity_name, script_path, current_data)
                         parallel_tasks.append(task)
-            
-            elif os.path.isdir(full_path) and os.path.isfile(os.path.join(full_path, "child.toml")):
-                workflow_name = os.path.basename(full_path).split(".", 1)[1] if "." in os.path.basename(full_path) else os.path.basename(full_path)
-                ScriptWorkflow.__name__ = workflow_name
-                child_workflow_id = f"{workflow.info().workflow_id}:{workflow_name}"
                 
-                child_result = await workflow.execute_child_workflow(
-                    ScriptWorkflow.run,
-                    args=[os.path.join(os.path.dirname(path), workflow_name), input_data],
-                    id=child_workflow_id
-                )
-                
-                results.append(child_result)
-        
-        if parallel_tasks:
-            parallel_results = await asyncio.gather(*parallel_tasks)
-            results.extend(parallel_results)
+                if parallel_tasks:
+                    parallel_results = await asyncio.gather(*parallel_tasks)
+                    results.extend(parallel_results)
+                    # Merge parallel results if needed
+                    current_data = {
+                        "data": {k: v for result in parallel_results for k, v in result["data"].items()}
+                    }
         
         return results
+
+def task(retries: int = 3):
+    def decorator(func):
+        func._is_moose_task = True
+        func._retries = retries
+        
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            result = func(*args, **kwargs)
+            
+            # Ensure proper return format
+            if not isinstance(result, dict):
+                raise ValueError("Task must return a dictionary with 'step' and 'data' keys")
+            
+            if "step" not in result or "data" not in result:
+                raise ValueError("Task result must contain 'step' and 'data' keys")
+                
+            return result
+            
+        return wrapper
+    return decorator

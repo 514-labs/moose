@@ -57,6 +57,10 @@ pub async fn start_worker(project: &Project) -> Result<Child, WorkerProcessError
         python_worker_lib_dir.join("types.py"),
         include_str!("./wrappers/scripts/python_worker_wrapper/types.py"),
     )?;
+    fs::write(
+        python_worker_lib_dir.join("serialization.py"),
+        include_str!("./wrappers/scripts/python_worker_wrapper/serialization.py"),
+    )?;
 
     let mut worker_process = run_python_program(PythonProgram::OrchestrationWorker {
         args: vec![scripts_dir.to_string_lossy().to_string()],

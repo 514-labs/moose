@@ -1,67 +1,121 @@
+import { Callout, LanguageSwitcher, TypeScript, Python } from "../components";
 import { FileTree, Tabs } from "nextra/components";
-import { LanguageSwitcher, TypeScript, Python, Callout } from "../components";
 
-# Introduction to Data Models
+
+# Data Modeling
 
 <LanguageSwitcher />
 
-Data Models are the backbone of your Moose application, enabling you to define the schemas for the data your application supports. Moose takes these definitions and automatically configures the entire data infrastructure, including:
 
-- **Typed SDK**: Captures data from upstream data sources or producers
-- **Ingestion API Endpoint**: Receives data from upstream sources, including but not limited to the SDK
-- **Streaming Topic**: Buffers incoming data from the ingestion server, handling peak loads without data loss
-- **Database Landing Table**: Stores ingested data in a structured format
-- **Database View**: Facilitates access and querying of the underlying data
+Moose Data Models allow you to define the schema and shape of your data and automatically provision ingest APIs, streaming topics, and OLAP-backed storage tables—all from simple type definitions.
 
-Each component is strongly typed and kept in sync with the Data Model schema defined in your Moose application's source code.
-
-## Core Concepts
-
-### File and Folder Conventions
-
-Data Models must be placed in the `/datamodels` directory of your Moose application. The directory structure should look like this:
 
 <TypeScript>
-  <FileTree className="w-full">
-    <FileTree.Folder name="app" open>
-      <FileTree.Folder name="datamodels" open>
-        <FileTree.File name="models.ts" />
-      </FileTree.Folder>
-      <FileTree.Folder name="..." />
-    </FileTree.Folder>
-  </FileTree>
-</TypeScript>
+```typescript filename="datamodels/MyDataModel.ts" copy
+import { Key } from "moose-lib";
 
-<Python>
-  <FileTree className="w-full">
-    <FileTree.Folder name="app" open>
-      <FileTree.Folder name="datamodels" open>
-        <FileTree.File name="models.py" />
-      </FileTree.Folder>
-      <FileTree.Folder name="..." />
-    </FileTree.Folder>
-  </FileTree>
-</Python>
-
-### Data Model Definiton
-
-<TypeScript>
-Data Models are represented as `interfaces`, and must be exported from a `.ts` file (using `export` keyword):
-
-```ts filename="datamodels/models.ts" copy
-import { Key } from "@514labs/moose-lib";
-
-export interface UserActivity {
-  eventId: Key<string>;
-  timestamp: string;
-  userId: string;
-  activity: string;
+export interface MyDataModel {
+  primaryKey: Key<string>;
+  someString: string;
+  someNumber: number;
+  someBoolean: boolean;
+  someDate: Date;
+  someArray: string[];
 }
 ```
 </TypeScript>
 
 <Python>
-Data Models are defined as Python dataclasses using the `@dataclass` decorator and must be located within a `.py` file. To ensure Moose automatically detects and registers the dataclass as a Data Model, apply the `@moose_data_model` decorator to your dataclass:
+```python filename="datamodels/MyDataModel.py" copy
+from moose_lib import Key, moose_data_model
+from dataclasses import dataclass
+
+@moose_data_model
+@dataclass
+class MyDataModel:
+    primary_key: Key[str]
+    some_string: str
+    some_number: int
+    some_boolean: bool
+    some_list: list[str]
+```
+</Python>
+
+## Quick Start
+
+Data Models are defined in the `/datamodels` directory of your Moose application. This folder is automatically created when you initialize a new Moose application.
+
+To create a new Data Model, either create a new file in the `/datamodels` directory or run the following command:
+
+<TypeScript>
+```bash filename="Terminal" copy
+npx moose-cli data-model init MyDataModel --sample <PATH_TO_SAMPLE_DATA>
+```
+
+The CLI will create a new file in the `/datamodels` directory with the name of the Data Model:
+
+  <FileTree className="w-full">
+    <FileTree.Folder name="app" open>
+      <FileTree.Folder name="datamodels" open>
+        <FileTree.File name="MyDataModel.ts" />
+      </FileTree.Folder>
+    </FileTree.Folder>
+  </FileTree>
+</TypeScript>
+
+<Python>
+```bash filename="Terminal" copy
+moose-cli data-model init MyDataModel --sample <PATH_TO_SAMPLE_DATA>
+```
+
+The CLI will create a new file in the `/datamodels` directory with the name of the Data Model:
+
+  <FileTree className="w-full">
+    <FileTree.Folder name="app" open>
+      <FileTree.Folder name="datamodels" open>
+        <FileTree.File name="MyDataModel.py" />
+      </FileTree.Folder>
+    </FileTree.Folder>
+  </FileTree>
+</Python>
+
+<Callout type="info" title="Automatically Infer Data Model">
+If you have a `.json` or `.csv` file with sample data representing the structure of the data you want to ingest, you can use the `--sample` flag. The CLI will then infer the Data Model schema from the provided file and create the Data Model for you.
+</Callout>
+
+---
+
+## Data Model Definition
+
+<TypeScript>
+Data Models are written as TypeScript interfaces. To have Moose recognize your Data Model, you must export them from a `.ts` file. For example:
+
+<Callout type="info" title="Importing the Key type:">
+  Import the `Key` type from the `moose_lib` package.
+</Callout>
+
+```ts filename="datamodels/models.ts" copy
+import { Key } from "@514labs/moose-lib";
+
+export interface MyFirstDataModel {
+  primaryKey: Key<string>;
+  someString: string;
+  someNumber: number;
+  someBoolean: boolean; 
+  someDate: Date;
+  someArray: string[];
+  someOptionalString?: string; // Optional fields are marked with a `?`
+}
+```
+
+<Callout type="info" title="Note">
+You can define multiple data models in the same file. Each exported interface is automatically recognized by Moose.
+</Callout>
+
+</TypeScript>
+
+<Python>
+Data Models are defined as Python dataclasses using the `@dataclass` decorator. To ensure Moose automatically detects and registers the dataclass as a Data Model, apply the `@moose_data_model` decorator to your dataclass:
 
 <Callout type="info" title="Importing the moose_data_model decorator:">
   Import the `@moose_data_model` decorator from the `moose_lib` package.
@@ -74,29 +128,28 @@ from typing import List
 
 @moose_data_model
 @dataclass
-class UserActivity:
-    event_id: Key[str]
-    timestamp: str
-    user_id: str
-    activity: str
-
+class MyFirstDataModel:
+    primary_key: Key[str]
+    some_string: str
+    some_number: int
+    some_boolean: bool
+    some_date: datetime.datetime
+    some_array: List[str]
+    some_optional_string: Optional[str] # Optional fields are marked with a `?`
 ```
-</Python>
 
-<Callout type="info" title="Notes">
-  - You can define multiple Data Models within a single file.
-  - The file name is flexible, but it must have a <TypeScript NodeType="span">`.ts`</TypeScript> or <Python NodeType="span">`.py`</Python> extension.
-  - Moose automatically detects and generates the necessary infrastructure for any <TypeScript NodeType="span">exported interfaces</TypeScript><Python NodeType="span">dataclasses decorated with the `@moose_data_model` decorator</Python> that adhere to the prescribed file and folder structure conventions.
+<Callout type="info" title="Note">
+You can define multiple data models in the same file. Each dataclass decorated with `@moose_data_model` is automatically recognized by Moose.
 </Callout>
 
-### How Moose Interprets Data Models
+</Python>
 
-Moose will automatically detect and use any <TypeScript NodeType="span">exported interfaces</TypeScript><Python NodeType="span">dataclasses decorated with the `@moose_data_model` decorator</Python> that adhere to the file and folder conventions. The property names and data types in the Data Model are interpreted and translated into the infrastructure components (SDK, Ingestion API, Streaming Topic, Database Landing Table, Database View).
+---
 
 
+## Basic Usage and Examples
 
-## Data Model Examples
-
+Below you will find several examples showing the different ways you can define Data Models.
 
 ### Basic Data Model
 
@@ -109,6 +162,7 @@ Moose will automatically detect and use any <TypeScript NodeType="span">exported
   "example_array": [1, 2, 3]
 }
 ```
+
 <TypeScript>
 ```ts filename="datamodels/models.ts" copy
 import { Key } from "@514labs/moose-lib";
@@ -140,6 +194,7 @@ class BasicDataModel:
 </Python>
 
 ### Optional Fields
+
 ```json filename="sample.json" copy
 [
   {
@@ -159,6 +214,7 @@ class BasicDataModel:
   }
 ]
 ```
+
 <TypeScript>
 ```ts filename="datamodels/models.ts" copy {9}
 import { Key } from "@514labs/moose-lib";
@@ -188,11 +244,12 @@ class DataModelWithOptionalField:
     example_number: int
     example_boolean: bool
     example_array: list[int]
-    example_optional_string: Optional[str] # Use the Optional type to mark a field as optional
+    example_optional_string: Optional[str] # Use the Optional type
 ```
 </Python>
 
 ### Nested Fields
+
 ```json filename="sample.json" copy
 {
   "example_UUID": "123e4567-e89b-12d3-a456-426614174000",
@@ -207,6 +264,7 @@ class DataModelWithOptionalField:
   }
 }
 ```
+
 <TypeScript>
 <Tabs items={["Defining a Separate Interface", "Defining a Nested Object in the Same Interface"]}>
   <Tabs.Tab>
@@ -229,8 +287,9 @@ export interface DataModelWithNestedObject {
   example_nested_object: NestedObject; // Reference nested object interface
 }
 ```
-</Tabs.Tab>
-<Tabs.Tab>
+  </Tabs.Tab>
+
+  <Tabs.Tab>
 ```ts filename="datamodels/models.ts" copy {9-13}
 import { Key } from "@514labs/moose-lib";
 
@@ -247,7 +306,7 @@ export interface DataModelWithInlineNestedObject {
   };
 }
 ```
-</Tabs.Tab>
+  </Tabs.Tab>
 </Tabs>
 </TypeScript>
 
@@ -262,7 +321,7 @@ class ExampleNestedObject:
     example_nested_boolean: bool
     example_nested_array: list[int]
 
-@moose_data_model ## Only register the outer dataclass
+@moose_data_model  # Only register the outer dataclass
 @dataclass
 class DataModelWithNestedObject:
     example_UUID: Key[str]
@@ -270,9 +329,457 @@ class DataModelWithNestedObject:
     example_number: int
     example_boolean: bool
     example_array: list[int]
-    example_nested_object: ExampleNestedObject
+    example_nested_object: ExampleNestedObject # Use the nested dataclass instead of a dict
 ```
-The `example_nested_object` field in the Data Model is a nested object that is defined using the `ExampleNestedObject` dataclass. The `@moose_data_model` decorator is used to register the `DataModelWithNestedObject` dataclass with Moose.
 </Python>
 
-Moose offers a CLI helper to help automatically generate a Data Model and infer its schema based on a sample JSON file containing the data you want to ingest. The next section will provide more details on how to use this helper.
+---
+
+## Field Types
+
+The schema defines the names and data types of the properties in your Data Model. Moose uses this schema to automatically set up the data infrastructure, ensuring that only data conforming to the schema can be ingested, buffered, and stored.
+
+### Key Type
+The <Python NodeType="span">`Key[T: (str, int)]`</Python><TypeScript NodeType="span">`Key<T>`</TypeScript> type is specific to Moose and is used to define a [primary key](https://clickhouse.com/docs/en/engines/table-engines/mergetree-family/mergetree#primary-keys-and-indexes-in-queries) in the OLAP storage table for your Data Model. If your Data Model requires a composite key, you can apply the `Key` type to multiple columns.
+<Callout type="warning" title="Key Type is Required">
+If you do not specify a `Key` type, you must set up a `DataModelConfig` to specify the properties that will be used for the `order_by_fields`. Learn more in the configuration section below.
+</Callout>
+
+### Supported Field Types
+The table below shows the supported field types for your Data Model and the mapping for how Moose will store them in ClickHouse:
+<TypeScript>
+| Clickhouse | TypeScript | Moose |
+| :--------- | :--------- | :---- |
+| String     | string     | ✅    |
+| Boolean    | boolean    | ✅    |
+| Int64      | number     | ✅    |
+| Int256     | BigInt     | ❌    |
+| Float64    | number     | ✅    |
+| Decimal    | number     | ✅    |
+| DateTime   | Date       | ✅    |
+| Json       | Object     | ✅    |
+| Bytes      | bytes      | ❌    |
+| Enum       | Enum       | ✅    |
+| Array      | Array      | ✅    |
+| nullable   | nullable   | ✅    |
+
+<Callout type="info" title="Disclaimer">
+  All TypeScript number types are mapped to Float64
+</Callout>
+</TypeScript>
+
+<Python>
+| Clickhouse | Python            | Moose | 
+| :--------- | :---------------- | :---- | 
+| String     | str               | ✅    | 
+| Boolean    | bool              | ✅    | 
+| Int64      | int               | ✅    |
+| Int256     | int               | ❌    |
+| Float64    | float             | ✅    |
+| Decimal    | float             | ✅    | 
+| DateTime   | datetime.datetime | ✅    |
+| Json       | dict              | ❌    | 
+| Bytes      | bytes             | ❌    | 
+| Array      | list[]            | ✅    | 
+| nullable   | Optional[T]       | ✅    |
+
+<Callout type="warning" title="Use Nested Dataclasses Instead of dicts">
+  Moose does not support using `dict` types for Data Models. Instead, use nested 
+  dataclasses to define your Data Model.
+</Callout>
+
+
+</Python>
+
+
+
+---
+
+
+## Ingestion and Storage Configuration
+
+Moose provides sensible defaults for ingesting and storing your data, but you can override these behaviors by exporting a `DataModelConfig`:
+
+### Default Configuration
+When you do not create a custom `DataModelConfig`, Moose will use the following defaults:
+- Ingestion expects a single JSON object per request.
+- A ClickHouse table is automatically created with no explicit `ORDER BY` fields (the Data Model is defined with a `Key`).
+- Deduplication is disabled.
+
+<TypeScript>
+```ts filename="datamodels/DefaultDataModel.ts"
+import { Key, DataModelConfig, IngestionFormat } from "@514labs/moose-lib";
+
+export interface DefaultDataModel {
+  id: Key<string>;
+  value: number;
+  timestamp: Date;
+}
+
+// If you omit this config entirely, Moose will still behave the same way as just exporting the DefaultDataModel interface:
+// - single JSON ingestion
+// - storage enabled
+// - deduplication disabled
+// - no ORDER BY fields
+export const DefaultDataModelConfig: DataModelConfig<DefaultDataModel> = {
+  ingestion: {
+    format: IngestionFormat.JSON,
+  },
+  storage: {
+    enabled: true,
+    deduplicate: false,
+  },
+};
+
+```
+</TypeScript>
+
+<Python>
+```py filename="datamodels/DefaultDataModel.py"
+from dataclasses import dataclass
+from moose_lib import Key, moose_data_model, DataModelConfig, IngestionConfig, IngestionFormat, StorageConfig
+
+# If you omit this config entirely, Moose will still behave the same way as just defining the 
+# DefaultDataModel dataclass without any config arguments supplied to the @moose_data_model decorator:
+# - single JSON ingestion
+# - storage enabled
+# - no ORDER BY fields
+default_config = DataModelConfig(
+    ingestion=IngestionConfig(
+        format=IngestionFormat.JSON
+    ),
+    storage=StorageConfig(enabled=True)
+)
+
+## default_config is not necessary if you don't need to customize ingestion or storage
+@moose_data_model(default_config)
+@dataclass
+class DefaultDataModel:
+    id: Key[str]
+    value: float
+    timestamp: datetime
+```
+</Python>
+
+### Enabling Batch Ingestion
+Set the `ingestion` parameter to `IngestionFormat.JSON_ARRAY` to enable batch ingestion:
+
+<TypeScript>
+```ts filename="datamodels/models.ts"
+import {
+  Key,
+  DataModelConfig,
+  IngestionFormat
+} from "@514labs/moose-lib";
+
+export interface BatchDataModel {
+  batchId: Key<string>;
+  metric: number;
+}
+
+export const BatchDataModelConfig: DataModelConfig<BatchDataModel> = {
+  ingestion: {
+    format: IngestionFormat.JSON_ARRAY // accept an array of JSON objects in the request
+  }
+};
+```
+</TypeScript>
+
+
+<Python>
+```py filename="datamodels/models.py"
+from dataclasses import dataclass
+from moose_lib import (
+    Key,
+    moose_data_model,
+    DataModelConfig,
+    IngestionConfig,
+    IngestionFormat
+)
+
+@moose_data_model(
+    DataModelConfig(
+        ingestion=IngestionConfig(
+            format=IngestionFormat.JSON_ARRAY
+        )
+    )
+)
+@dataclass
+class BatchDataModel:
+    batch_id: Key[str]
+    metric: float
+```
+</Python>
+
+### Disabling Storage
+If you do not want to persist the data in OLAP storage, disable storage with the `storage` parameter. This will prevent Moose from creating a table in ClickHouse, but the ingestion endpoint and streaming topic will still be created. This is useful for ephemeral or streaming-only use cases:
+
+<TypeScript>
+```ts filename="datamodels/NoStorageModel.ts"
+import { Key, DataModelConfig, StorageConfig } from "@514labs/moose-lib";
+
+export interface NoStorageModel {
+  id: Key<string>;
+  data: string;
+}
+
+export const NoStorageConfig: DataModelConfig<NoStorageModel> = {
+  storage: {
+    enabled: false // no table creation in OLAP storage
+  }
+};
+```
+</TypeScript>
+<Python>
+```py filename="datamodels/NoStorageModel.py"
+from dataclasses import dataclass
+from moose_lib import (
+    Key,
+    moose_data_model,
+    DataModelConfig,
+    StorageConfig
+)
+
+no_storage_config = DataModelConfig(
+    storage=StorageConfig(enabled=False)  # no table creation in OLAP storage
+)
+
+@moose_data_model(no_storage_config)
+@dataclass
+class NoStorageModel:
+    id: Key[str]
+    data: str
+```
+</Python>
+### Setting Up Deduplication
+Use the `deduplicate` parameter to enable deduplication. This will remove duplicate data from the table with the same `order_by_fields`.
+
+<Callout type="warning" title="Important">
+  You must use the `order_by_fields` parameter to specify the columns that will be used for deduplication. Moose will preserve the latest inserted row using the `order_by_fields` as the sort key.
+</Callout>
+
+<TypeScript>
+```ts filename="datamodels/DeduplicatedModel.ts"
+import { DataModelConfig, StorageConfig } from "@514labs/moose-lib";
+
+export interface DeduplicatedModel {
+  timestamp: Date;
+  data: string;
+}
+
+export const DeduplicatedModelConfig: DataModelConfig<DeduplicatedModel> = {
+  storage: { 
+    enabled: true, 
+    deduplicate: true, // uses ReplacingMergeTree Clickhouse engine, which preserves the highest priority row based on the order_by_fields
+    order_by_fields: ["timestamp"] // deduplication is based on the timestamp column
+  }
+};
+```
+</TypeScript>
+
+<Python>
+```py filename="datamodels/DeduplicatedModel.py"
+from dataclasses import dataclass
+from moose_lib import (
+    moose_data_model,
+    DataModelConfig, 
+    StorageConfig
+)
+
+deduplicated_config = DataModelConfig(
+    storage=StorageConfig(
+        enabled=True,
+        deduplicate=True,
+        order_by_fields=["timestamp"]
+    )
+)
+
+@moose_data_model(deduplicated_config)
+@dataclass
+class DeduplicatedModel:
+    timestamp: datetime
+    data: str
+```
+</Python>
+
+### Specifying `ORDER BY` Fields
+
+When you want to optimize queries on specific columns, set `order_by_fields`. If you don’t have a `Key`, specifying `order_by_fields` is required to avoid ingesting data with no indexing.
+
+<TypeScript>
+```ts filename="datamodels/OrderedModel.ts"
+import { Key, DataModelConfig, StorageConfig } from "@514labs/moose-lib";
+
+export interface OrderedModel {
+  primaryKey: Key<string>;
+  value: number;
+  createdAt: Date;
+}
+
+export const OrderedModelConfig: DataModelConfig<OrderedModel> = {
+  storage: {
+    enabled: true,
+    order_by_fields: ["createdAt"] // optimize queries by creation date
+  }
+};
+```
+</TypeScript>
+
+<Python>
+```py filename="datamodels/OrderedModel.py"
+from dataclasses import dataclass
+from datetime import datetime
+from moose_lib import (
+    Key,
+    moose_data_model,
+    DataModelConfig,
+    StorageConfig
+)
+
+ordered_config = DataModelConfig(
+    storage=StorageConfig(
+        enabled=True,
+        order_by_fields=["some_date", "some_string"]  # optimize queries by some_date and some_string
+    )
+)
+
+@moose_data_model(ordered_config)
+@dataclass
+class OrderedModel:
+    some_string: str
+    some_number: float
+    some_date: datetime
+```
+</Python>
+
+### Combining Customizations
+
+You can mix ingestion and storage settings in one config. Below is a complete example that:
+- Accepts batch JSON.
+- Disables storage (e.g., ephemeral or streaming-only use case).
+- Includes an explicit `ORDER BY` for the scenario where you may enable storage later.
+
+<TypeScript>
+```ts filename="datamodels/models.ts"
+import {
+  Key,
+  DataModelConfig,
+  IngestionFormat,
+  StorageConfig,
+  IngestionConfig,
+} from "@514labs/moose-lib";
+
+export interface HybridModel {
+  id: string;
+  score: number;
+  eventTime: Date;
+}
+
+export const HybridConfig: DataModelConfig<HybridModel> = {
+  ingestion: {
+    format: IngestionFormat.JSON_ARRAY
+  },
+  storage: {
+    enabled: false,         // disable table creation now ...
+  }
+};
+```
+</TypeScript>
+
+<Python>
+```py filename="datamodels/models.py"
+from dataclasses import dataclass
+from datetime import datetime
+from moose_lib import (
+    Key,
+    moose_data_model,
+    DataModelConfig,
+    IngestionConfig,
+    IngestionFormat,
+    StorageConfig
+)
+
+hybrid_config = DataModelConfig(
+    ingestion=IngestionConfig(format=IngestionFormat.JSON_ARRAY),
+    storage=StorageConfig(
+        enabled=False,  # table creation off
+    )
+)
+
+@moose_data_model(hybrid_config)
+@dataclass
+class HybridModel:
+    id: str
+    score: float
+    event_time: datetime
+```
+</Python>
+
+---
+
+## Data Change Management (DCM)
+
+Data schemas evolve over time, both in production and consumption. While traditional schema management tools work well for transactional databases, they fall short in addressing the unique challenges of analytics data:
+
+- Event-based and often immutable data
+- Decoupled producers and consumers
+- Different evolution speeds between data production and consumption
+
+Moose's Data Change Management (DCM) is designed to tackle these analytics-specific issues by allowing multiple versions of your Data Model to coexist in production simultaneously.
+
+<Callout type="warning" title="Pre-Alpha Warning">
+  Data change management is in pre-alpha. We are releasing it to get feedback on
+  its direction. We intend to polish it up in the coming weeks and months [using
+  the community's
+  feedback](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg).
+</Callout>
+
+### Core Concepts of DCM
+
+**Multiple Versions**  
+DCM enables the simultaneous operation of multiple versions of your Data Model. This approach allows you to evolve your data schema without disrupting existing producers or consumers with breaking changes.
+
+<Callout type="info" title="Versioning">
+  DCM is built on top of decades of best practices in software development,
+  where API versions are a common pattern. The same way you can consume an API
+  at version 1.0, 1.1, 1.2, etc., you can consume a data model at version 1.0,
+  1.1, 1.2, etc.
+</Callout>
+
+#### Versioning
+
+- The latest version corresponds to the most recent commit on the `main` branch.
+- Previous versions are tracked in the `moose.config.toml` file.
+- Each version has its own set of infrastructure (tables, ingestion endpoints, topics).
+
+#### Continuous Migrations
+
+To ensure data consistency across versions, Moose implements continuous migrations:
+
+- Data ingested into older versions is automatically migrated to the latest version.
+- This process runs in near real-time within the database.
+- Migrations are defined in your programming language, which can be customized as needed.
+
+#### Initial Data Migrations
+
+When a new version is created:
+
+- An initial data migration populates the new version with data from the previous version.
+- This process temporarily pauses related infrastructure to prevent data duplication.
+- Once complete, normal data flow resumes.
+
+![DCM diagram](/img-diagram-dcm-dark.svg)
+
+---
+
+## Next Steps
+
+You now have a comprehensive overview of Data Models in Moose—covering everything from how to define models to how to configure them, as well as how to manage schema changes with Data Change Management (DCM). With these guides, you should be prepared to:
+
+1. Create new Data Models via the CLI or manually.  
+2. Adjust ingestion and storage configurations to suit your needs.  
+3. Leverage DCM to keep multiple data model versions in sync as your schema evolves.
+
+If you have further questions or feedback, feel free to reach out to the Moose community on [Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg).
+```
+

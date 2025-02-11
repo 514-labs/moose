@@ -10,6 +10,8 @@ import sys
 from .activity import ScriptExecutionInput
 from .logging import log
 from .types import WorkflowStepResult
+from .serialization import moose_json_decode
+import json
 import functools
 
 @dataclass
@@ -141,7 +143,22 @@ class ScriptWorkflow:
     @workflow.run
     async def run(self, path: str, input_data: Optional[Dict] = None) -> List[WorkflowStepResult]:
         results = []
-        current_data = input_data
+        
+        # Add logging to see what input data we receive
+        log.info(f"Initial input_data received: {input_data}")
+        
+        current_data = {}
+        if input_data:
+            try:
+                current_data = input_data.get("data", input_data)
+                current_data = json.loads(
+                    json.dumps(current_data),
+                    object_hook=moose_json_decode
+                )
+                log.info(f"Processed current_data: {current_data}")
+            except Exception as e:
+                log.error(f"Failed to decode input data: {e}")
+                raise
         
         if os.path.isfile(path) and path.endswith(".py"):
             # Single script execution

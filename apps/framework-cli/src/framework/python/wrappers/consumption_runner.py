@@ -174,6 +174,21 @@ class WorkflowClient:
         run_timeout = self.parse_timeout_to_timedelta(timeout_str)
 
         print(f"WorkflowClient - starting workflow: {name} with retry policy: {retry_policy} and timeout: {run_timeout}")
+        
+        # We should parse and encode the input_data here
+        if input_data:
+            try:
+                # First decode the JSON string if it's a string
+                if isinstance(input_data, str):
+                    input_data = json.loads(input_data)
+                
+                # Then encode with our custom encoder
+                input_data = json.loads(
+                    json.dumps({"data": input_data}, cls=EnhancedJSONEncoder)
+                )
+            except json.JSONDecodeError as e:
+                raise ValueError(f"Invalid JSON input data: {e}")
+
         await self.temporal_client.start_workflow(
             "ScriptWorkflow",
             args=[f"{os.getcwd()}/app/scripts/{name}", input_data],

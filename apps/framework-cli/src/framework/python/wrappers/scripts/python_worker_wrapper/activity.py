@@ -53,14 +53,12 @@ def create_activity_for_script(script_name: str) -> Callable:
             if not task_func:
                 raise ValueError("No @task() function found in script.")
             
-            # Execute with data from previous step if available
-            if execution_input.input_data and "data" in execution_input.input_data:
-                # Decode incoming data
-                input_data = json.loads(json.dumps(execution_input.input_data["data"]), 
-                                      object_hook=moose_json_decode)
-                result = task_func(data=input_data)
-            else:
-                result = task_func()
+            log.info(f"Activity received input: {execution_input.input_data}")
+            
+            # Pass the input data directly if it exists
+            input_data = execution_input.input_data if execution_input.input_data else {}
+            log.info(f"Processed input_data for task: {input_data}")
+            result = task_func(data=input_data)
             
             # Validate and encode result
             if not isinstance(result, dict):

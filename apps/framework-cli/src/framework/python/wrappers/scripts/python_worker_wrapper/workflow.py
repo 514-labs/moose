@@ -12,7 +12,6 @@ from .logging import log
 from .types import WorkflowStepResult
 from .serialization import moose_json_decode
 import json
-import functools
 
 @dataclass
 class WorkflowState:
@@ -195,24 +194,3 @@ class ScriptWorkflow:
                     }
         
         return results
-
-def task(retries: int = 3):
-    def decorator(func):
-        func._is_moose_task = True
-        func._retries = retries
-        
-        @functools.wraps(func)
-        def wrapper(*args, **kwargs):
-            result = func(*args, **kwargs)
-            
-            # Ensure proper return format
-            if not isinstance(result, dict):
-                raise ValueError("Task must return a dictionary with 'step' and 'data' keys")
-            
-            if "step" not in result or "data" not in result:
-                raise ValueError("Task result must contain 'step' and 'data' keys")
-                
-            return result
-            
-        return wrapper
-    return decorator

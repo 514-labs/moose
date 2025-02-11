@@ -15,7 +15,7 @@ pub struct Batch {
     pub records: Vec<ClickHouseRecord>,
     pub partition_offsets: HashMap<i32, i64>,
 
-    // Map the partions to the number of messages in the batch
+    // Map the partitions to the number of messages in the batch
     pub messages_sizes: HashMap<i32, i64>,
 }
 
@@ -151,6 +151,7 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
                             batch.messages_sizes_to_string(),
                             batch.offsets_to_string()
                         );
+                        crate::cli::display::batch_inserted(batch.records.len(), &table);
 
                         for (partition, offset) in &batch.partition_offsets {
                             if let Err(err) = commit_callback(*partition, *offset) {

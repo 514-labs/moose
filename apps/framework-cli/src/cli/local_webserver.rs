@@ -405,12 +405,12 @@ fn bad_json_response(e: serde_json::Error) -> Response<Full<Bytes>> {
         .unwrap()
 }
 
-fn success_response(uri: String) -> Response<Full<Bytes>> {
+fn success_response(data_model_name: &str) -> Response<Full<Bytes>> {
     show_message!(
         MessageType::Success,
         Message {
-            action: "SUCCESS".to_string(),
-            details: uri.clone(),
+            action: "[POST]".to_string(),
+            details: format!("Data received at ingest API sink for {data_model_name}"),
         }
     );
 
@@ -464,7 +464,6 @@ async fn handle_json_req(
 
     // TODO probably a refactor to be done here with the array json but it doesn't seem to be
     // straightforward to do it in a generic way.
-    let url = req.uri().to_string();
     let body = to_reader(req).await;
 
     let parsed = JsonDeserializer::from_reader(body).deserialize_any(&mut DataModelVisitor::new(
@@ -487,7 +486,7 @@ async fn handle_json_req(
         return internal_server_error_response();
     }
 
-    success_response(url)
+    success_response(&data_model.name)
 }
 
 async fn wait_for_batch_complete(
@@ -517,7 +516,6 @@ async fn handle_json_array_body(
 
     // TODO probably a refactor to be done here with the json but it doesn't seem to be
     // straightforward to do it in a generic way.
-    let url = req.uri().to_string();
     let number_of_bytes = req.body().size_hint().exact().unwrap();
     let body = to_reader(req).await;
 
@@ -564,7 +562,7 @@ async fn handle_json_array_body(
         return internal_server_error_response();
     }
 
-    success_response(url)
+    success_response(&data_model.name)
 }
 
 async fn validate_token(token: Option<&str>, key: &str) -> bool {

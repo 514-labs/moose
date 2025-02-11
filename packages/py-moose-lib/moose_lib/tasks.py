@@ -4,15 +4,17 @@ from .commons import Logger
 
 T = TypeVar('T')
 
-def task(func: Callable[..., T]) -> Callable[..., T]:
+def task(retries: int = 1) -> Callable[[Callable[..., T]], Callable[..., T]]:
     """Decorator to mark a function as a Moose task"""
-    @wraps(func)
-    def wrapper(*args, **kwargs) -> T:
-        # Mark this function as a Moose task
+    def decorator(func: Callable[..., T]) -> Callable[..., T]:
+        @wraps(func)
+        def wrapper(*args, **kwargs) -> T:
+            return func(*args, **kwargs)
+
+        # Add the marker to the wrapper
         wrapper._is_moose_task = True
+        wrapper._retries = retries
         wrapper.logger = Logger(is_moose_task=True)
-        return func(*args, **kwargs)
-    
-    # Add the marker to the wrapper
-    wrapper._is_moose_task = True
-    return wrapper
+        return wrapper
+
+    return decorator

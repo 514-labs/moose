@@ -1,9 +1,12 @@
+from dataclasses import dataclass
 from datetime import timedelta
 from temporalio import workflow
-from typing import Optional, Dict, List, Any
-import os
+from temporalio.common import RetryPolicy
+from typing import Any, Dict, List, Optional
 import asyncio
-from dataclasses import dataclass
+import os
+import importlib.util
+import sys
 from .activity import ScriptExecutionInput
 from .logging import log
 
@@ -67,7 +70,33 @@ class ScriptWorkflow:
             WorkflowState: Current state of the workflow execution
         """
         return self._state
-    
+
+    def _get_activity_retry(self, path: str) -> int:
+        """Load a Python script and get the retry argument."""
+        if not os.path.isfile(path):
+            raise ImportError(f"Expected a Python file, got directory or invalid path: {path}")
+        if not path.endswith(".py"):
+            raise ImportError(f"Not a Python file: {path}")
+        
+        spec = importlib.util.spec_from_file_location("script", path)
+        if not spec or not spec.loader:
+            raise ImportError(f"Could not load script: {path}")
+        
+        module = importlib.util.module_from_spec(spec)
+        log.info(f"Loaded module at {path} Successfully")
+
+        sys.modules["script"] = module
+        spec.loader.exec_module(module)
+        
+        retries = 1
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name)
+            if hasattr(attr, "_retries"):
+                retries = getattr(attr, "_retries")
+                log.info(f"Using retries in {attr_name}: {retries}")
+                break
+        
+        return retries
 
     async def _execute_activity_with_state(
         self, 
@@ -91,10 +120,14 @@ class ScriptWorkflow:
         self._state.current_step = activity_name
         
         try:
+            retries = self._get_activity_retry(script_path)
             result = await workflow.execute_activity(
                 activity_name,
                 ScriptExecutionInput(script_path=script_path, input_data=input_data),
                 start_to_close_timeout=timedelta(minutes=10),
+                retry_policy=RetryPolicy(
+                    maximum_attempts=retries,
+                ),
             )
             self._state.completed_steps.append(activity_name)
             return result

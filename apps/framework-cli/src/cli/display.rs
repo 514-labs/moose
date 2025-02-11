@@ -139,9 +139,10 @@ pub fn infra_updated(message: &str) {
     info!("~ {}", message.trim());
 }
 
+#[macro_export]
 macro_rules! show_message {
     (@inner $message_type:expr, $message:expr, $log:expr) => {
-        use crate::cli::display::TERM;
+        use $crate::cli::display::TERM;
         use console::{pad_str, style};
 
         let padder = 14;

@@ -754,7 +754,7 @@ mod tests {
             assert!(file_path.exists(), "Step file {} should exist", step);
 
             let content = fs::read_to_string(&file_path).unwrap();
-            assert!(content.contains("@task"));
+            assert!(content.contains("@task()"));
         }
     }
 

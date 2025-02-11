@@ -345,9 +345,9 @@ mod tests {
         )
         .unwrap();
         assert!(temp_dir.path().join("1.extract.py").exists());
-        // Make sure the file contains @task
+        // Make sure the file contains @task()
         let content = std::fs::read_to_string(temp_dir.path().join("1.extract.py")).unwrap();
-        assert!(content.contains("@task"));
+        assert!(content.contains("@task()"));
     }
 
     #[test]
@@ -475,7 +475,7 @@ mod tests {
             r#"
 from moose_lib import task
 
-@task
+@task()
 def test():
     return {"step": "test1"}
             "#,
@@ -486,7 +486,7 @@ def test():
             r#"
 from moose_lib import task
 
-@task
+@task()
 def test():
     return {"step": "test2"}
             "#,

@@ -49,7 +49,7 @@ def create_activity_for_script(script_name: str) -> Callable:
                     break
                 
             if not task_func:
-                raise ValueError("No @task function found in script.")
+                raise ValueError("No @task() function found in script.")
             
             # Execute
             if execution_input.input_data:

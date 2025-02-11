@@ -90,10 +90,6 @@ If you have a `.json` or `.csv` file with sample data representing the structure
 <TypeScript>
 Data Models are written as TypeScript interfaces. To have Moose recognize your Data Model, you must export them from a `.ts` file. For example:
 
-<Callout type="info" title="Importing the Key type:">
-  Import the `Key` type from the `moose_lib` package.
-</Callout>
-
 ```ts filename="datamodels/models.ts" copy
 import { Key } from "@514labs/moose-lib";
 
@@ -331,6 +327,97 @@ class DataModelWithNestedObject:
     example_array: list[int]
     example_nested_object: ExampleNestedObject # Use the nested dataclass instead of a dict
 ```
+</Python>
+
+### Using Enum in Data Models
+
+Moose supports the use of Enums in Data Models:
+
+<TypeScript>
+```ts filename="datamodels/DataModelWithEnum.ts" copy
+import { Key } from "@514labs/moose-lib";
+
+enum MyEnum {
+  VALUE_1 = "value1",
+  VALUE_2 = "value2",
+}
+
+export interface DataModelWithEnum {
+  example_UUID: Key<string>;
+  example_enum: MyEnum;
+}
+```
+</TypeScript>
+
+<Python>
+```py filename="datamodels/DataModelWithEnum.py" copy
+from moose_lib import Key, moose_data_model
+from enum import Enum
+
+class MyEnum(Enum):
+    VALUE_1 = "value1"
+    VALUE_2 = "value2"
+
+@moose_data_model
+@dataclass
+class DataModelWithEnum:
+    example_UUID: Key[str]
+    example_enum: MyEnum
+```
+</Python>
+
+### Inherritance
+
+Moose supports the use of inheritance in Data Models. This allows you to create a base Data Model and extend it with additional fields:
+
+<TypeScript>
+```ts filename="datamodels/models.ts" copy
+import { Key } from "@514labs/moose-lib";
+
+export interface BaseDataModel {
+  example_UUID: Key<string>;
+}
+
+export interface ExtendedDataModel extends BaseDataModel {
+  example_string: string;
+}
+
+// Schema of ExtendedDataModel:
+// {
+//   "example_UUID": "123e4567-e89b-12d3-a456-426614174000",
+//   "example_string": "string"
+// }
+```
+</TypeScript>
+
+<Python>
+
+<Callout type="warning" title="Inheritance is not supported in Python">
+  Inheritance is not supported in Python. Instead, you can use composition to achieve similar functionality. Support for inheritance is in the works.
+</Callout>
+
+```py filename="datamodels/models.py" copy
+from dataclasses import dataclass
+from moose_lib import moose_data_model, Key
+from typing import Optional
+
+@dataclass
+class BaseData:
+    # The fields that might have otherwise lived in a base class
+    id: Key[str]
+    created_at: str
+
+@moose_data_model
+@dataclass
+class CompositeDataModel:
+    # Use composition by embedding BaseData
+    base_data: BaseData
+
+    # The "extended" fields
+    user_name: str
+    email: Optional[str] = None 
+```
+
 </Python>
 
 ---

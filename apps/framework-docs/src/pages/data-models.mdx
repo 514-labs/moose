@@ -715,71 +715,7 @@ class HybridModel:
 ```
 </Python>
 
----
 
-## Data Change Management (DCM)
 
-Data schemas evolve over time, both in production and consumption. While traditional schema management tools work well for transactional databases, they fall short in addressing the unique challenges of analytics data:
 
-- Event-based and often immutable data
-- Decoupled producers and consumers
-- Different evolution speeds between data production and consumption
-
-Moose's Data Change Management (DCM) is designed to tackle these analytics-specific issues by allowing multiple versions of your Data Model to coexist in production simultaneously.
-
-<Callout type="warning" title="Pre-Alpha Warning">
-  Data change management is in pre-alpha. We are releasing it to get feedback on
-  its direction. We intend to polish it up in the coming weeks and months [using
-  the community's
-  feedback](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg).
-</Callout>
-
-### Core Concepts of DCM
-
-**Multiple Versions**  
-DCM enables the simultaneous operation of multiple versions of your Data Model. This approach allows you to evolve your data schema without disrupting existing producers or consumers with breaking changes.
-
-<Callout type="info" title="Versioning">
-  DCM is built on top of decades of best practices in software development,
-  where API versions are a common pattern. The same way you can consume an API
-  at version 1.0, 1.1, 1.2, etc., you can consume a data model at version 1.0,
-  1.1, 1.2, etc.
-</Callout>
-
-#### Versioning
-
-- The latest version corresponds to the most recent commit on the `main` branch.
-- Previous versions are tracked in the `moose.config.toml` file.
-- Each version has its own set of infrastructure (tables, ingestion endpoints, topics).
-
-#### Continuous Migrations
-
-To ensure data consistency across versions, Moose implements continuous migrations:
-
-- Data ingested into older versions is automatically migrated to the latest version.
-- This process runs in near real-time within the database.
-- Migrations are defined in your programming language, which can be customized as needed.
-
-#### Initial Data Migrations
-
-When a new version is created:
-
-- An initial data migration populates the new version with data from the previous version.
-- This process temporarily pauses related infrastructure to prevent data duplication.
-- Once complete, normal data flow resumes.
-
-![DCM diagram](/img-diagram-dcm-dark.svg)
-
----
-
-## Next Steps
-
-You now have a comprehensive overview of Data Models in Moose—covering everything from how to define models to how to configure them, as well as how to manage schema changes with Data Change Management (DCM). With these guides, you should be prepared to:
-
-1. Create new Data Models via the CLI or manually.  
-2. Adjust ingestion and storage configurations to suit your needs.  
-3. Leverage DCM to keep multiple data model versions in sync as your schema evolves.
-
-If you have further questions or feedback, feel free to reach out to the Moose community on [Slack](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg).
-```
 

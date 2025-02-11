@@ -37,5 +37,8 @@
   "moose-cli": "Moose CLI",
   "templates": "Templates",
   "faqs": "FAQs",
-  "usage-data": "Privacy"
+  "usage-data": "Privacy",
+  "schema-evolution": {
+    "display": "hidden"
+  }
 }

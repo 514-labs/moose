@@ -8,6 +8,8 @@ import traceback
 import importlib.util
 
 from .logging import log
+from .types import WorkflowStepResult
+from .serialization import MooseJSONEncoder, moose_json_decode
 
 
 @dataclass
@@ -19,7 +21,7 @@ def create_activity_for_script(script_name: str) -> Callable:
     """Return a new Activity function whose ActivityType = script_name."""
     
     @activity.defn(name=script_name)
-    async def dynamic_activity(execution_input: ScriptExecutionInput) -> Any:
+    async def dynamic_activity(execution_input: ScriptExecutionInput) -> WorkflowStepResult:
         """Load and execute a single Python script."""
         try:
             log.info(f"Executing activity {script_name} with input {execution_input}")
@@ -51,11 +53,26 @@ def create_activity_for_script(script_name: str) -> Callable:
             if not task_func:
                 raise ValueError("No @task() function found in script.")
             
-            # Execute
-            if execution_input.input_data:
-                return task_func(**execution_input.input_data)
-            else:
-                return task_func()
+            log.info(f"Activity received input: {execution_input.input_data}")
+            
+            # Pass the input data directly if it exists
+            input_data = execution_input.input_data if execution_input.input_data else {}
+            log.info(f"Processed input_data for task: {input_data}")
+            result = task_func(data=input_data)
+            
+            # Validate and encode result
+            if not isinstance(result, dict):
+                raise ValueError("Task must return a dictionary with 'step' and 'data' keys")
+            
+            if "step" not in result or "data" not in result:
+                raise ValueError("Task result must contain 'step' and 'data' keys")
+            
+            # Encode the result using our custom encoder
+            encoded_result = json.loads(
+                json.dumps(result, cls=MooseJSONEncoder)
+            )
+            
+            return encoded_result
             
         except Exception as e:
             # Standard error output

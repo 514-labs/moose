@@ -115,15 +115,16 @@ async function registerWorkflows(scriptDir: string): Promise<Worker | null> {
 
     const client = new WorkflowClient(connection);
 
-    for (const scriptPath of allScriptPaths) {
-      console.log(`Executing workflow for script: ${scriptPath}`);
-      const workflowId = await client.executeWorkflow(
-        scriptPath,
-        { data: {} }, // Empty initial data object
-        { retries: 3 },
-      );
-      console.log(`Started workflow ${workflowId} for script ${scriptPath}`);
-    }
+    // Example of how to execute a workflow
+    // for (const scriptPath of allScriptPaths) {
+    //   console.log(`Executing workflow for script: ${scriptPath}`);
+    //   const workflowId = await client.executeWorkflow(
+    //     scriptPath,
+    //     { data: {} }, // Empty initial data object
+    //     { retries: 3 },
+    //   );
+    //   console.log(`Started workflow ${workflowId} for script ${scriptPath}`);
+    // }
 
     console.log("Worker created successfully");
     return worker;

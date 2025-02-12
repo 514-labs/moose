@@ -2,6 +2,7 @@ import { Context } from "@temporalio/activity";
 import * as fs from "fs";
 import * as path from "path";
 import { WorkflowStepResult } from "./types";
+import { executeChild } from "@temporalio/workflow";
 
 export interface ScriptExecutionInput {
   scriptPath: string;
@@ -19,39 +20,17 @@ export const activities = {
 
       // Always provide data parameter, empty object if no input
       const processedInput = (inputData || {})?.data || {};
-      console.log(
-        `Processed input_data for task: ${JSON.stringify(processedInput)}`,
-      );
+      //   console.log(
+      //     `Processed input_data for task: ${JSON.stringify(processedInput)}, ${scriptPath}`,
+      //   );
 
-      if (!fs.existsSync(scriptPath)) {
-        throw new Error(`Script not found: ${scriptPath}`);
-      }
+      const scriptModule = await require(scriptPath);
+      //   console.log(`Script module: ${scriptModule}`);
 
-      // Import the script module
-      const scriptModule = await import(scriptPath);
+      const execResult = await scriptModule.default();
 
-      // Find the moose task
-      const taskFunction = Object.values(scriptModule).find(
-        (exp: any) => typeof exp === "function" && exp._isMooseTask,
-      );
-
-      if (!taskFunction) {
-        throw new Error("No @task() function found in script.");
-      }
-
-      // Execute the task with processed input
-      const result = await (taskFunction as Function)({ data: processedInput });
-
-      // Validate result
-      if (!result || typeof result !== "object") {
-        throw new Error(
-          "Task must return an object with step and data properties",
-        );
-      }
-
-      if (!result.step || !("data" in result)) {
-        throw new Error("Task result must contain step and data properties");
-      }
+      const result = await execResult.task();
+      //   console.log(`result: ${JSON.stringify(result)}`);
 
       return result;
     } catch (error) {
@@ -61,6 +40,15 @@ export const activities = {
         stack: error instanceof Error ? error.stack : undefined,
       };
       throw new Error(JSON.stringify(errorData));
+    }
+  },
+
+  async readDirectory(dirPath: string): Promise<string[]> {
+    try {
+      const files = fs.readdirSync(dirPath);
+      return files;
+    } catch (error) {
+      throw new Error(`Failed to read directory ${dirPath}: ${error}`);
     }
   },
 };

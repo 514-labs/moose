@@ -2,7 +2,7 @@ import { proxyActivities } from "@temporalio/workflow";
 import { WorkflowState } from "./types";
 import { mooseJsonEncode } from "./serialization";
 
-const { executeActivity } = proxyActivities({
+const { executeScript, readDirectory } = proxyActivities({
   startToCloseTimeout: "10 minutes",
 });
 
@@ -27,23 +27,23 @@ export async function ScriptWorkflow(
 
     if (path.endsWith(".ts") || path.endsWith(".js")) {
       const activityName = `${path.split("/").slice(-2, -1)[0]}/${path.split("/").slice(-1)[0].split(".")[0]}`;
-      const result = await executeActivity(activityName, {
-        args: [{ scriptPath: path, inputData: currentData }],
-        retry: { maximumAttempts: 3 },
+      const result = await executeScript({
+        scriptPath: path,
+        inputData: currentData,
       });
       return [result];
     }
 
     // Sequential execution
-    const items = await executeActivity(path);
+    const items = await readDirectory(path);
     for (const item of items.sort()) {
       const fullPath = `${path}/${item}`;
 
       if (item.endsWith(".ts") || item.endsWith(".js")) {
         const activityName = `${fullPath.split("/").slice(-2, -1)[0]}/${item.split(".")[0]}`;
-        const result = await executeActivity(activityName, {
-          args: [{ scriptPath: fullPath, inputData: currentData }],
-          retry: { maximumAttempts: 3 },
+        const result = await executeScript({
+          scriptPath: fullPath,
+          inputData: currentData,
         });
         results.push(result);
         currentData = result;
@@ -76,16 +76,15 @@ async function handleParallelExecution(
   currentData: any,
 ): Promise<any[]> {
   const parallelTasks = [];
-  const parallelFiles = await executeActivity(path);
+  const parallelFiles = await readDirectory(path);
 
   for (const scriptFile of parallelFiles.sort()) {
     if (scriptFile.endsWith(".ts") || scriptFile.endsWith(".js")) {
       const scriptPath = `${path}/${item}/${scriptFile}`;
-      const activityName = `${item}/${scriptFile.split(".")[0]}`;
       parallelTasks.push(
-        executeActivity(activityName, {
-          args: [{ scriptPath, inputData: currentData }],
-          retry: { maximumAttempts: 3 },
+        executeScript({
+          scriptPath,
+          inputData: currentData,
         }),
       );
     }

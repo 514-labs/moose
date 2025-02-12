@@ -3,6 +3,7 @@ import * as path from "path";
 import * as fs from "fs";
 import { createActivityForScript } from "./activity";
 import { WorkflowClient } from "./client";
+import { activities } from "./activity";
 
 // Maintain a global set of activity names we've already registered
 const ALREADY_REGISTERED = new Set<string>();
@@ -103,30 +104,37 @@ async function registerWorkflows(scriptDir: string): Promise<Worker | null> {
     const worker = await Worker.create({
       connection,
       taskQueue: "typescript-script-queue",
-      //FIXME: This is a hack to get the worker to run
       workflowsPath: path.resolve(__dirname, "scripts/workflow.js"),
-      activities: Object.fromEntries(
-        dynamicActivities.map((activity) => [
-          Object.keys(activity)[0],
-          Object.values(activity)[0],
-        ]),
-      ),
+      activities: {
+        ...activities,
+        ...Object.fromEntries(
+          dynamicActivities.map((activity) => [
+            Object.keys(activity)[0],
+            Object.values(activity)[0],
+          ]),
+        ),
+      },
     });
 
-    const client = new WorkflowClient(connection);
+    // Run the worker and wait for it
+    // await Promise.all([
+    //   worker.run(),
+    //   // Execute workflows after worker is running
+    //   (async () => {
+    //     await new Promise(resolve => setTimeout(resolve, 1000));
+    //     const client = new WorkflowClient(connection);
+    //     for (const scriptPath of allScriptPaths) {
+    //       console.log(`Executing workflow for script: ${scriptPath}`);
+    //       const workflowId = await client.executeWorkflow(
+    //         scriptPath,
+    //         { data: {} },
+    //         { retries: 3 }
+    //       );
+    //       console.log(`Started workflow ${workflowId} for script ${scriptPath}`);
+    //     }
+    //   })()
+    // ]);
 
-    // Example of how to execute a workflow
-    // for (const scriptPath of allScriptPaths) {
-    //   console.log(`Executing workflow for script: ${scriptPath}`);
-    //   const workflowId = await client.executeWorkflow(
-    //     scriptPath,
-    //     { data: {} }, // Empty initial data object
-    //     { retries: 3 },
-    //   );
-    //   console.log(`Started workflow ${workflowId} for script ${scriptPath}`);
-    // }
-
-    console.log("Worker created successfully");
     return worker;
   } catch (error) {
     console.log(`Error registering workflows: ${error}`);

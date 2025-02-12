@@ -1,6 +1,6 @@
-import { Callout } from "../../components";
+import { Callout } from "../components";
 
-# Introduction to Data Change Management (DCM)
+# Data Change Management (DCM)
 
 Data schemas evolve over time, both in production and consumption. While traditional schema management tools work well for transactional databases, they fall short in addressing the unique challenges of analytics data:
 
@@ -8,7 +8,7 @@ Data schemas evolve over time, both in production and consumption. While traditi
 - Decoupled producers and consumers
 - Different evolution speeds between data production and consumption
 
-Moose's Data Change Management (DCM) is designed to tackle these analytics-specific issues, by introducing a solution that lets you manage how multiple versions of your Data Model coexist in production simultaneously.
+Moose's Data Change Management (DCM) is designed to tackle these analytics-specific issues by allowing multiple versions of your Data Model to coexist in production simultaneously.
 
 <Callout type="warning" title="Pre-Alpha Warning">
   Data change management is in pre-alpha. We are releasing it to get feedback on
@@ -17,9 +17,10 @@ Moose's Data Change Management (DCM) is designed to tackle these analytics-speci
   feedback](https://join.slack.com/t/moose-community/shared_invite/zt-2fjh5n3wz-cnOmM9Xe9DYAgQrNu8xKxg).
 </Callout>
 
-## Core Concepts
+### Core Concepts of DCM
 
-Data Change Management (DCM) in Moose enables the simultaneous operation of multiple versions of your Data Model. This approach allows for evolving of your data schema without disrupting existing data producers or consumers with breaking changes.
+**Multiple Versions**  
+DCM enables the simultaneous operation of multiple versions of your Data Model. This approach allows you to evolve your data schema without disrupting existing producers or consumers with breaking changes.
 
 <Callout type="info" title="Versioning">
   DCM is built on top of decades of best practices in software development,
@@ -28,15 +29,13 @@ Data Change Management (DCM) in Moose enables the simultaneous operation of mult
   1.1, 1.2, etc.
 </Callout>
 
-### Versioning
-
-Moose uses a versioning system to manage different iterations of your data model:
+#### Versioning
 
 - The latest version corresponds to the most recent commit on the `main` branch.
 - Previous versions are tracked in the `moose.config.toml` file.
 - Each version has its own set of infrastructure (tables, ingestion endpoints, topics).
 
-### Continuous Migrations
+#### Continuous Migrations
 
 To ensure data consistency across versions, Moose implements continuous migrations:
 
@@ -44,7 +43,7 @@ To ensure data consistency across versions, Moose implements continuous migratio
 - This process runs in near real-time within the database.
 - Migrations are defined in your programming language, which can be customized as needed.
 
-### Initial Data Migrations
+#### Initial Data Migrations
 
 When a new version is created:
 
@@ -53,3 +52,5 @@ When a new version is created:
 - Once complete, normal data flow resumes.
 
 ![DCM diagram](/img-diagram-dcm-dark.svg)
+
+---

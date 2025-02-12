@@ -67,8 +67,8 @@ def convert_dataclass_definition(cls: type) -> list[QueryField]:
         required = field_def.default == field_def.default_factory == dataclasses.MISSING
 
         if hasattr(field_type, "__origin__"):
-            if field_type.__origin__ is Optional:
-                field_type = field_type.__args__[0]
+            if field_type.__origin__ is Union:
+                field_type = Union[*[arg for arg in field_type.__args__ if arg is not type(None)]]
                 required = False
             elif field_type.__origin__ is list:
                 element_type = field_type.__args__[0]

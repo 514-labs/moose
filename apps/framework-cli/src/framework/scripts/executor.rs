@@ -7,12 +7,17 @@ use super::config::WorkflowConfig;
 use crate::framework::{
     languages::SupportedLanguages,
     python::{self, executor::execute_python_workflow},
+    typescript::{self, executor::execute_typescript_workflow},
 };
+
+use crate::framework::scripts::errors::TemporalExecutionError;
+
+// TODO: Refactor with python executor
 
 #[derive(Debug, thiserror::Error)]
 pub enum WorkflowExecutionError {
     #[error("Temporal error: {0}")]
-    TemporalError(#[from] python::executor::WorkflowExecutionError),
+    TemporalError(#[from] TemporalExecutionError),
     #[error("Config error: {0}")]
     ConfigError(String),
 }
@@ -39,9 +44,10 @@ pub(crate) async fn execute_workflow(
                 execute_python_workflow(workflow_id, execution_path, &config, input).await?;
             Ok(run_id)
         }
-        _ => Err(WorkflowExecutionError::ConfigError(format!(
-            "Unsupported language {}",
-            language
-        ))),
+        SupportedLanguages::Typescript => {
+            let run_id =
+                execute_typescript_workflow(workflow_id, execution_path, &config, input).await?;
+            Ok(run_id)
+        }
     }
 }

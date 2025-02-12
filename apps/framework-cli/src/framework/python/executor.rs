@@ -6,6 +6,7 @@ use std::path::Path;
 use std::process::Stdio;
 
 use crate::framework::scripts::config::WorkflowConfig;
+use crate::framework::scripts::errors::TemporalExecutionError;
 use crate::utilities::constants::{CLI_INTERNAL_VERSIONS_DIR, CLI_PROJECT_INTERNAL_DIR};
 
 use temporal_sdk_core::protos::temporal::api::common::v1::{
@@ -120,18 +121,6 @@ const DEFAULT_TEMPORTAL_NAMESPACE: &str = "default";
 const PYTHON_TASK_QUEUE: &str = "python-script-queue";
 const MOOSE_CLI_IDENTITY: &str = "moose-cli";
 
-#[derive(Debug, thiserror::Error)]
-pub enum WorkflowExecutionError {
-    #[error("Temportal connection error: {0}")]
-    TemporalConnectionError(#[from] tonic::transport::Error),
-
-    #[error("Temportal client error: {0}")]
-    TemporalClientError(#[from] tonic::Status),
-
-    #[error("Timeout error: {0}")]
-    TimeoutError(String),
-}
-
 /// Parses various schedule formats into a valid Temporal cron expression
 ///
 /// # Arguments
@@ -172,9 +161,9 @@ fn parse_schedule(schedule: &str) -> String {
     }
 }
 
-fn parse_timeout_to_seconds(timeout: &str) -> Result<i64, WorkflowExecutionError> {
+fn parse_timeout_to_seconds(timeout: &str) -> Result<i64, TemporalExecutionError> {
     if timeout.is_empty() {
-        return Err(WorkflowExecutionError::TimeoutError(
+        return Err(TemporalExecutionError::TimeoutError(
             "Timeout string is empty".to_string(),
         ));
     }
@@ -182,14 +171,14 @@ fn parse_timeout_to_seconds(timeout: &str) -> Result<i64, WorkflowExecutionError
     let (value, unit) = timeout.split_at(timeout.len() - 1);
     let value: u64 = value
         .parse()
-        .map_err(|_| WorkflowExecutionError::TimeoutError("Invalid number format".to_string()))?;
+        .map_err(|_| TemporalExecutionError::TimeoutError("Invalid number format".to_string()))?;
 
     let seconds =
         match unit {
             "h" => value * 3600,
             "m" => value * 60,
             "s" => value,
-            _ => return Err(WorkflowExecutionError::TimeoutError(
+            _ => return Err(TemporalExecutionError::TimeoutError(
                 "Invalid time unit. Must be h, m, or s for hours, minutes, or seconds respectively"
                     .to_string(),
             )),
@@ -203,7 +192,7 @@ pub(crate) async fn execute_python_workflow(
     execution_path: &Path,
     config: &WorkflowConfig,
     input: Option<String>,
-) -> Result<String, WorkflowExecutionError> {
+) -> Result<String, TemporalExecutionError> {
     // TODO: Make this configurable
     let endpoint = tonic::transport::Endpoint::from_static("http://localhost:7233");
     let mut client = WorkflowServiceClient::connect(endpoint).await?;

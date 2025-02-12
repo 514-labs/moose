@@ -2,6 +2,7 @@ pub mod bin;
 pub mod blocks;
 pub mod checker;
 pub mod consumption;
+pub mod executor;
 pub mod export_collectors;
 pub mod generator;
 pub mod parser;

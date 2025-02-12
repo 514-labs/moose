@@ -4,6 +4,7 @@ use super::languages::SupportedLanguages;
 
 pub mod collector;
 pub mod config;
+pub mod errors;
 pub mod executor;
 
 use crate::framework::python::templates::PYTHON_BASE_SCRIPT_TEMPLATE;

@@ -1,18 +1,11 @@
-import {
-  proxyActivities,
-  defineQuery,
-  defineSignal,
-  WorkflowHandle,
-} from "@temporalio/workflow";
+import { proxyActivities } from "@temporalio/workflow";
 import { WorkflowState } from "./types";
 import { ScriptExecutionInput } from "./activity";
-import { RetryPolicy } from "@temporalio/common";
 
 const { executeActivity } = proxyActivities({
   startToCloseTimeout: "10 minutes",
 });
 
-@defineWorkflow()
 export class ScriptWorkflow {
   private state: WorkflowState = {
     completedSteps: [],
@@ -22,20 +15,18 @@ export class ScriptWorkflow {
     inputData: null,
   };
 
-  @defineQuery
   public getWorkflowState(): WorkflowState {
     return this.state;
   }
 
-  @defineSignal
   public async resumeExecution(): Promise<any> {
     this.state.failedStep = null;
     const { scriptPath, inputData } = this.state;
     return await executeActivity(scriptPath, {
       args: [{ scriptPath, inputData }],
-      retryPolicy: new RetryPolicy({
+      retry: {
         maximumAttempts: 3,
-      }),
+      },
     });
   }
 
@@ -49,9 +40,9 @@ export class ScriptWorkflow {
     try {
       const result = await executeActivity(activityName, {
         args: [{ scriptPath, inputData }],
-        retryPolicy: new RetryPolicy({
+        retry: {
           maximumAttempts: 3,
-        }),
+        },
       });
       this.state.completedSteps.push(activityName);
       return result;
@@ -61,7 +52,6 @@ export class ScriptWorkflow {
     }
   }
 
-  @defineRun
   public async run(path: string, inputData?: any): Promise<any[]> {
     const results: any[] = [];
     let currentData = inputData?.data || inputData || {};
@@ -124,20 +114,3 @@ export class ScriptWorkflow {
     return results;
   }
 }
-
-// Helper decorators
-const defineWorkflow = () => (target: any) => {
-  target.name = "ScriptWorkflow";
-};
-
-const defineQuery = () => (target: any, propertyKey: string) => {
-  // Implementation of defineQuery decorator
-};
-
-const defineSignal = () => (target: any, propertyKey: string) => {
-  // Implementation of defineSignal decorator
-};
-
-const defineRun = () => (target: any, propertyKey: string) => {
-  // Implementation of defineRun decorator
-};

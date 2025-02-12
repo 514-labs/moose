@@ -1,6 +1,7 @@
 import { proxyActivities } from "@temporalio/workflow";
 import { WorkflowState } from "./types";
 import { ScriptExecutionInput } from "./activity";
+import { mooseJsonEncode } from "./serialization";
 
 const { executeActivity } = proxyActivities({
   startToCloseTimeout: "10 minutes",
@@ -56,50 +57,40 @@ export class ScriptWorkflow {
     const results: any[] = [];
     let currentData = inputData?.data || inputData || {};
 
-    if (path.endsWith(".ts") || path.endsWith(".js")) {
-      const activityName = `${path.split("/").slice(-2, -1)[0]}/${path.split("/").slice(-1)[0].split(".")[0]}`;
-      const result = await this.executeActivityWithState(
-        activityName,
-        path,
-        currentData,
-      );
-      return [result];
-    }
+    try {
+      // Encode input data
+      currentData = JSON.parse(mooseJsonEncode({ data: currentData }));
 
-    // Sequential execution
-    const items = await executeActivity(path);
-    for (const item of items.sort()) {
-      const fullPath = `${path}/${item}`;
-
-      if (item.endsWith(".ts") || item.endsWith(".js")) {
-        const activityName = `${fullPath.split("/").slice(-2, -1)[0]}/${item.split(".")[0]}`;
+      if (path.endsWith(".ts") || path.endsWith(".js")) {
+        const activityName = `${path.split("/").slice(-2, -1)[0]}/${path.split("/").slice(-1)[0].split(".")[0]}`;
         const result = await this.executeActivityWithState(
           activityName,
-          fullPath,
+          path,
           currentData,
         );
-        results.push(result);
-        currentData = result;
-      } else if (item.includes("parallel")) {
-        const parallelTasks = [];
-        const parallelFiles = await executeActivity(path);
+        return [result];
+      }
 
-        for (const scriptFile of parallelFiles.sort()) {
-          if (scriptFile.endsWith(".ts") || scriptFile.endsWith(".js")) {
-            const scriptPath = `${path}/${item}/${scriptFile}`;
-            const activityName = `${item}/${scriptFile.split(".")[0]}`;
-            parallelTasks.push(
-              this.executeActivityWithState(
-                activityName,
-                scriptPath,
-                currentData,
-              ),
-            );
-          }
-        }
+      // Sequential execution
+      const items = await executeActivity(path);
+      for (const item of items.sort()) {
+        const fullPath = `${path}/${item}`;
 
-        if (parallelTasks.length > 0) {
-          const parallelResults = await Promise.all(parallelTasks);
+        if (item.endsWith(".ts") || item.endsWith(".js")) {
+          const activityName = `${fullPath.split("/").slice(-2, -1)[0]}/${item.split(".")[0]}`;
+          const result = await this.executeActivityWithState(
+            activityName,
+            fullPath,
+            currentData,
+          );
+          results.push(result);
+          currentData = result;
+        } else if (item.includes("parallel")) {
+          const parallelResults = await this.handleParallelExecution(
+            path,
+            item,
+            currentData,
+          );
           results.push(...parallelResults);
           currentData = {
             data: parallelResults.reduce(
@@ -109,8 +100,32 @@ export class ScriptWorkflow {
           };
         }
       }
+
+      return results;
+    } catch (error) {
+      this.state.failedStep = path;
+      throw error;
+    }
+  }
+
+  private async handleParallelExecution(
+    path: string,
+    item: string,
+    currentData: any,
+  ): Promise<any[]> {
+    const parallelTasks = [];
+    const parallelFiles = await executeActivity(path);
+
+    for (const scriptFile of parallelFiles.sort()) {
+      if (scriptFile.endsWith(".ts") || scriptFile.endsWith(".js")) {
+        const scriptPath = `${path}/${item}/${scriptFile}`;
+        const activityName = `${item}/${scriptFile.split(".")[0]}`;
+        parallelTasks.push(
+          this.executeActivityWithState(activityName, scriptPath, currentData),
+        );
+      }
     }
 
-    return results;
+    return parallelTasks.length > 0 ? Promise.all(parallelTasks) : [];
   }
 }

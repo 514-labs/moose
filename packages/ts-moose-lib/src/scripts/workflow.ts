@@ -25,7 +25,7 @@ export async function ScriptWorkflow(
     // Encode input data
     currentData = JSON.parse(mooseJsonEncode({ data: currentData }));
 
-    if (path.endsWith(".ts") || path.endsWith(".js")) {
+    if (path.endsWith(".ts")) {
       const activityName = `${path.split("/").slice(-2, -1)[0]}/${path.split("/").slice(-1)[0].split(".")[0]}`;
       const result = await executeScript({
         scriptPath: path,
@@ -39,7 +39,7 @@ export async function ScriptWorkflow(
     for (const item of items.sort()) {
       const fullPath = `${path}/${item}`;
 
-      if (item.endsWith(".ts") || item.endsWith(".js")) {
+      if (item.endsWith(".ts")) {
         const activityName = `${fullPath.split("/").slice(-2, -1)[0]}/${item.split(".")[0]}`;
         const result = await executeScript({
           scriptPath: fullPath,
@@ -79,7 +79,7 @@ async function handleParallelExecution(
   const parallelFiles = await readDirectory(path);
 
   for (const scriptFile of parallelFiles.sort()) {
-    if (scriptFile.endsWith(".ts") || scriptFile.endsWith(".js")) {
+    if (scriptFile.endsWith(".ts")) {
       const scriptPath = `${path}/${item}/${scriptFile}`;
       parallelTasks.push(
         executeScript({

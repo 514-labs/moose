@@ -5,13 +5,7 @@ export default defineConfig({
     "src/index.ts",
     "src/dataModels/toDataModels.ts",
     "src/consumption-apis/insertTypiaValidation.ts",
-    // FIXME: Consider which of these are needed
-    "src/scripts/runner.ts",
     "src/scripts/workflow.ts",
-    "src/scripts/activity.ts",
-    "src/scripts/task.ts",
-    "src/scripts/serialization.ts",
-    // continue adding other files as needed
     "src/moose-tspc.ts",
     "src/moose-runner.ts",
     "src/moose-exec.ts",

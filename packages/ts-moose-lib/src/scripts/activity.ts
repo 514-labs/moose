@@ -18,19 +18,11 @@ export const activities = {
 
       console.log(`Activity received input: ${JSON.stringify(inputData)}`);
 
-      // Always provide data parameter, empty object if no input
+      // TODO: Handle initial input data & passing data between steps
       const processedInput = (inputData || {})?.data || {};
-      //   console.log(
-      //     `Processed input_data for task: ${JSON.stringify(processedInput)}, ${scriptPath}`,
-      //   );
-
       const scriptModule = await require(scriptPath);
-      //   console.log(`Script module: ${scriptModule}`);
-
       const execResult = await scriptModule.default();
-
       const result = await execResult.task();
-      //   console.log(`result: ${JSON.stringify(result)}`);
 
       return result;
     } catch (error) {

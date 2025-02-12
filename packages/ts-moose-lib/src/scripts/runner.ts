@@ -2,7 +2,6 @@ import { Worker, NativeConnection } from "@temporalio/worker";
 import * as path from "path";
 import * as fs from "fs";
 import { createActivityForScript } from "./activity";
-import { WorkflowClient } from "./client";
 import { activities } from "./activity";
 
 // Maintain a global set of activity names we've already registered
@@ -45,7 +44,7 @@ function collectActivities(workflowDir: string): string[] {
 async function registerWorkflows(scriptDir: string): Promise<Worker | null> {
   console.log(`Registering workflows from ${scriptDir}`);
 
-  // Collect all TypeScript/JavaScript scripts
+  // Collect all TypeScript scripts
   const allScriptPaths: string[] = [];
 
   try {
@@ -61,13 +60,11 @@ async function registerWorkflows(scriptDir: string): Promise<Worker | null> {
     }
 
     if (allScriptPaths.length === 0) {
-      console.log(`No TypeScript/JavaScript scripts found in ${scriptDir}`);
+      console.log(`No scripts found in ${scriptDir}`);
       return null;
     }
 
-    console.log(
-      `Found ${allScriptPaths.length} TypeScript/JavaScript scripts in ${scriptDir}`,
-    );
+    console.log(`Found ${allScriptPaths.length} scripts in ${scriptDir}`);
 
     // Build dynamic activities
     const dynamicActivities: any[] = [];
@@ -94,7 +91,6 @@ async function registerWorkflows(scriptDir: string): Promise<Worker | null> {
     );
 
     // TODO: Make this configurable
-
     console.log("Connecting to Temporal server...");
     const connection = await NativeConnection.connect({
       address: "localhost:7233",
@@ -115,25 +111,6 @@ async function registerWorkflows(scriptDir: string): Promise<Worker | null> {
         ),
       },
     });
-
-    // Run the worker and wait for it
-    // await Promise.all([
-    //   worker.run(),
-    //   // Execute workflows after worker is running
-    //   (async () => {
-    //     await new Promise(resolve => setTimeout(resolve, 1000));
-    //     const client = new WorkflowClient(connection);
-    //     for (const scriptPath of allScriptPaths) {
-    //       console.log(`Executing workflow for script: ${scriptPath}`);
-    //       const workflowId = await client.executeWorkflow(
-    //         scriptPath,
-    //         { data: {} },
-    //         { retries: 3 }
-    //       );
-    //       console.log(`Started workflow ${workflowId} for script ${scriptPath}`);
-    //     }
-    //   })()
-    // ]);
 
     return worker;
   } catch (error) {

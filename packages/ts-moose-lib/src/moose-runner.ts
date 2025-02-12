@@ -42,7 +42,7 @@ import { runConsumptionApis } from "./consumption-apis/runner";
 import { runStreamingFunctions } from "./streaming-functions/runner";
 import { runExportSerializer } from "./moduleExportSerializer";
 import { runConsumptionTypeSerializer } from "./consumption-apis/exportTypeSerializer";
-import { runScripts } from "./scripts/runner";
+import { startWorker } from "./scripts/runner";
 
 switch (process.argv[2]) {
   case "export-serializer":
@@ -61,7 +61,7 @@ switch (process.argv[2]) {
     runConsumptionTypeSerializer();
     break;
   case "scripts":
-    runScripts();
+    startWorker(process.argv[3]);
     break;
   default:
     console.error(`Invalid argument: ${process.argv[2]}`);

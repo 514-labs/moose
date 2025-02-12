@@ -33,5 +33,6 @@ export type DataModelConfig<T> = Partial<{
 export * from "./blocks/helpers";
 export * from "./commons";
 export * from "./consumption-apis/helpers";
+export * from "./scripts/task";
 
 export { createConsumptionApi } from "./consumption-apis/runner";

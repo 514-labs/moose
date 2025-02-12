@@ -59,8 +59,22 @@ pub struct NetworkRow {
     pub scope: String,
 }
 
-pub fn list_containers(project: &Project) -> std::io::Result<Vec<ContainerRow>> {
-    let child = compose_command(project)
+/// Creates a new Command using the configured container CLI
+fn create_container_command(settings: &Settings) -> Command {
+    let cli = settings
+        .dev
+        .container_cli_path
+        .as_ref()
+        .map(|p| p.to_string_lossy().to_string())
+        .unwrap_or_else(|| "docker".to_string());
+    Command::new(cli)
+}
+
+pub fn list_containers(
+    project: &Project,
+    settings: &Settings,
+) -> std::io::Result<Vec<ContainerRow>> {
+    let child = compose_command(project, settings)
         .arg("ps")
         .arg("-a")
         .arg("--no-trunc")
@@ -89,8 +103,8 @@ pub fn list_containers(project: &Project) -> std::io::Result<Vec<ContainerRow>> 
     Ok(containers)
 }
 
-pub fn list_container_names() -> std::io::Result<Vec<String>> {
-    let child = Command::new("docker")
+pub fn list_container_names(settings: &Settings) -> std::io::Result<Vec<String>> {
+    let child = create_container_command(settings)
         .arg("ps")
         .arg("--format")
         .arg("{{json .Names}}")
@@ -117,8 +131,8 @@ pub fn list_container_names() -> std::io::Result<Vec<String>> {
     Ok(containers)
 }
 
-pub fn stop_containers(project: &Project) -> anyhow::Result<()> {
-    let child = compose_command(project)
+pub fn stop_containers(project: &Project, settings: &Settings) -> anyhow::Result<()> {
+    let child = compose_command(project, settings)
         .arg("down")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -137,8 +151,8 @@ pub fn stop_containers(project: &Project) -> anyhow::Result<()> {
     }
 }
 
-fn compose_command(project: &Project) -> Command {
-    let mut command = Command::new("docker");
+fn compose_command(project: &Project, settings: &Settings) -> Command {
+    let mut command = create_container_command(settings);
 
     command
         .arg("compose")
@@ -155,10 +169,10 @@ lazy_static! {
             .unwrap();
 }
 
-pub fn start_containers(project: &Project) -> anyhow::Result<()> {
+pub fn start_containers(project: &Project, settings: &Settings) -> anyhow::Result<()> {
     let temporal_env_vars = project.temporal_config.to_env_vars();
 
-    let mut child = compose_command(project);
+    let mut child = compose_command(project, settings);
 
     // Add all temporal environment variables
     for (key, value) in temporal_env_vars {
@@ -206,17 +220,28 @@ pub fn start_containers(project: &Project) -> anyhow::Result<()> {
     }
 }
 
-pub fn tail_container_logs(project: &Project, container_name: &str) -> anyhow::Result<()> {
+pub fn tail_container_logs(
+    project: &Project,
+    container_name: &str,
+    settings: &Settings,
+) -> anyhow::Result<()> {
     let full_container_name = format!("{}-{}", project.name().to_lowercase(), container_name);
-    let container_id = get_container_id(&full_container_name)?;
+    let container_id = get_container_id(&full_container_name, settings)?;
 
-    let mut child = tokio::process::Command::new("docker")
-        .arg("logs")
-        .arg("--follow")
-        .arg(container_id)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()?;
+    let mut child = tokio::process::Command::new(
+        settings
+            .dev
+            .container_cli_path
+            .as_ref()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| "docker".to_string()),
+    )
+    .arg("logs")
+    .arg("--follow")
+    .arg(container_id)
+    .stdout(Stdio::piped())
+    .stderr(Stdio::piped())
+    .spawn()?;
 
     let stdout = child.stdout.take().ok_or(anyhow::anyhow!(
         "Failed to get stdout for {}",
@@ -248,8 +273,8 @@ pub fn tail_container_logs(project: &Project, container_name: &str) -> anyhow::R
     Ok(())
 }
 
-fn get_container_id(container_name: &str) -> anyhow::Result<String> {
-    let child = Command::new("docker")
+fn get_container_id(container_name: &str, settings: &Settings) -> anyhow::Result<String> {
+    let child = create_container_command(settings)
         .arg("ps")
         .arg("-aqf")
         .arg(format!("name={}", container_name))
@@ -295,8 +320,12 @@ pub fn create_compose_file(project: &Project, settings: &Settings) -> Result<(),
     Ok(std::fs::write(compose_file, rendered)?)
 }
 
-pub fn run_rpk_cluster_info(project_name: &str, attempts: usize) -> anyhow::Result<()> {
-    let child = Command::new("docker")
+pub fn run_rpk_cluster_info(
+    project_name: &str,
+    attempts: usize,
+    settings: &Settings,
+) -> anyhow::Result<()> {
+    let child = create_container_command(settings)
         .arg("exec")
         .arg(format!(
             "{}-{}",
@@ -315,7 +344,7 @@ pub fn run_rpk_cluster_info(project_name: &str, attempts: usize) -> anyhow::Resu
     if !output.status.success() {
         if attempts > 0 {
             std::thread::sleep(std::time::Duration::from_secs(1));
-            Ok(run_rpk_cluster_info(project_name, attempts - 1)?)
+            Ok(run_rpk_cluster_info(project_name, attempts - 1, settings)?)
         } else {
             error!(
                 "Failed to run redpanda cluster info: {}",
@@ -328,8 +357,12 @@ pub fn run_rpk_cluster_info(project_name: &str, attempts: usize) -> anyhow::Resu
     }
 }
 
-pub fn run_rpk_command(project_name: &str, args: Vec<String>) -> std::io::Result<String> {
-    let child = Command::new("docker")
+pub fn run_rpk_command(
+    project_name: &str,
+    args: Vec<String>,
+    settings: &Settings,
+) -> std::io::Result<String> {
+    let child = create_container_command(settings)
         .arg("exec")
         .arg(format!("{}-{}", project_name, REDPANDA_CONTAINER_NAME))
         .arg("rpk")
@@ -370,8 +403,8 @@ pub fn run_rpk_command(project_name: &str, args: Vec<String>) -> std::io::Result
     }
 }
 
-pub fn check_status() -> std::io::Result<Vec<String>> {
-    let child = Command::new("docker")
+pub fn check_status(settings: &Settings) -> std::io::Result<Vec<String>> {
+    let child = create_container_command(settings)
         .arg("info")
         .arg("--format")
         .arg("{{json .ServerErrors}}")
@@ -397,8 +430,9 @@ pub fn buildx(
     version: &str,
     architecture: &str,
     binarylabel: &str,
+    settings: &Settings,
 ) -> std::io::Result<Vec<String>> {
-    let child = Command::new("docker")
+    let child = create_container_command(settings)
         .current_dir(directory)
         .arg("buildx")
         .arg("build")

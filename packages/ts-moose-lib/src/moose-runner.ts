@@ -42,6 +42,7 @@ import { runConsumptionApis } from "./consumption-apis/runner";
 import { runStreamingFunctions } from "./streaming-functions/runner";
 import { runExportSerializer } from "./moduleExportSerializer";
 import { runConsumptionTypeSerializer } from "./consumption-apis/exportTypeSerializer";
+import { startWorker } from "./scripts/runner";
 
 switch (process.argv[2]) {
   case "export-serializer":
@@ -59,7 +60,10 @@ switch (process.argv[2]) {
   case "consumption-type-serializer":
     runConsumptionTypeSerializer();
     break;
+  case "scripts":
+    startWorker(process.argv[3]);
+    break;
   default:
-    console.error("Invalid argument");
+    console.error(`Invalid argument: ${process.argv[2]}`);
     process.exit(1);
 }

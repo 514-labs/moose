@@ -1,8 +1,8 @@
 import { Worker, NativeConnection } from "@temporalio/worker";
 import * as path from "path";
 import * as fs from "fs";
-import { ScriptWorkflow } from "./workflow";
 import { createActivityForScript } from "./activity";
+import { WorkflowClient } from "./client";
 
 // Maintain a global set of activity names we've already registered
 const ALREADY_REGISTERED = new Set<string>();
@@ -103,9 +103,27 @@ async function registerWorkflows(scriptDir: string): Promise<Worker | null> {
     const worker = await Worker.create({
       connection,
       taskQueue: "typescript-script-queue",
-      workflowsPath: require.resolve("./workflow"),
-      activities: dynamicActivities,
+      //FIXME: This is a hack to get the worker to run
+      workflowsPath: path.resolve(__dirname, "scripts/workflow.js"),
+      activities: Object.fromEntries(
+        dynamicActivities.map((activity) => [
+          Object.keys(activity)[0],
+          Object.values(activity)[0],
+        ]),
+      ),
     });
+
+    const client = new WorkflowClient(connection);
+
+    for (const scriptPath of allScriptPaths) {
+      console.log(`Executing workflow for script: ${scriptPath}`);
+      const workflowId = await client.executeWorkflow(
+        scriptPath,
+        { data: {} }, // Empty initial data object
+        { retries: 3 },
+      );
+      console.log(`Started workflow ${workflowId} for script ${scriptPath}`);
+    }
 
     console.log("Worker created successfully");
     return worker;

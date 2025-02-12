@@ -1,8 +1,5 @@
-import { Context } from "@temporalio/activity";
 import * as fs from "fs";
-import * as path from "path";
 import { WorkflowStepResult } from "./types";
-import { executeChild } from "@temporalio/workflow";
 
 export interface ScriptExecutionInput {
   scriptPath: string;

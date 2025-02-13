@@ -1,0 +1,86 @@
+name: 'Sign Binaries'
+description: 'does what the name says. it signs the binaries.'
+author: '514 Labs'
+
+inputs:
+  target:
+    description: 'The build target architecture'
+    required: true
+  binary-path:
+    description: 'Path to the binary directory'
+    required: true
+  binary-name:
+    description: 'Name of the binary to sign'
+    required: true
+    default: 'moose-cli'
+  op-service-account-token:
+    description: '1Password service account token'
+    required: true
+  version:
+    description: 'Version of the binary being uploaded'
+    required: true
+
+runs:
+  using: "composite"
+  steps:
+    - uses: 1password/load-secrets-action@v1
+      id: op-load-secret
+      with:
+        export-env: true
+      env:
+        OP_SERVICE_ACCOUNT_TOKEN: ${{ inputs.op-service-account-token }}
+        GPG_SIGNING_KEY: "op://drqe7p6legi6ug2ijq2fnrkmjq/Fiveonefour labs Inc GPG signing key/password"
+        APPLE_SIGNING_CERTIFICATE_BASE64: "op://drqe7p6legi6ug2ijq2fnrkmjq/Apple Certificate - Aurora Signin/certificate"
+        APPLE_SIGNING_CERTIFICATE_PASSWORD: "op://drqe7p6legi6ug2ijq2fnrkmjq/Apple Certificate - Aurora Signin/password"
+        APPLE_SIGNING_KEYCHAIN_PASSWORD: "op://drqe7p6legi6ug2ijq2fnrkmjq/Apple Signing Keychain Password/password"
+
+    # Only run on Apple targets
+    - name: Setup Apple Code Signing and Import Certificate
+      if: ${{ inputs.target == 'aarch64-apple-darwin' || inputs.target == 'x86_64-apple-darwin' }}
+      shell: bash
+      working-directory: ${{ inputs.binary-path }}
+      run: |
+        CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
+        KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+
+        # Decode and write out the certificate
+        echo -n "$APPLE_SIGNING_CERTIFICATE_BASE64" | base64 --decode -o "$CERTIFICATE_PATH"
+
+        # Create and configure the keychain
+        security create-keychain -p "$APPLE_SIGNING_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+        security unlock-keychain -p "$APPLE_SIGNING_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+        security import "$CERTIFICATE_PATH" \
+          -P "$APPLE_SIGNING_CERTIFICATE_PASSWORD" \
+          -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+
+        security set-key-partition-list -S apple-tool:,apple: \
+          -k "$APPLE_SIGNING_KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+        security list-keychain -d user -s "$KEYCHAIN_PATH"
+
+    - name: Code Sign the Binary (macOS)
+      if: ${{ inputs.target == 'aarch64-apple-darwin' || inputs.target == 'x86_64-apple-darwin' }}
+      shell: bash
+      working-directory: ${{ inputs.binary-path }}
+      env:
+        SIGNING_IDENTITY: "Developer ID Application: Fiveonefour Labs Inc. (3F8AJ2AAY5)"
+      run: |
+        codesign --force --deep --sign "$SIGNING_IDENTITY" "./${{ inputs.binary-name }}"
+        codesign --verify --verbose=4 "./${{ inputs.binary-name }}"
+
+    # GPG Signing (All platforms)
+    - name: Configure GPG Key
+      shell: bash
+      run: |
+        echo -n "$GPG_SIGNING_KEY" | base64 --decode | gpg --import
+
+    - name: Sign Binary with GPG
+      shell: bash
+      working-directory: ${{ inputs.binary-path }}
+      run: |
+        shasum -a 256 "./${{ inputs.binary-name }}" > "./${{ inputs.binary-name }}.sha256"
+        gpg --batch --yes --detach-sign --armor \
+            --output "./${{ inputs.binary-name }}.sig" \
+            "./${{ inputs.binary-name }}"
+

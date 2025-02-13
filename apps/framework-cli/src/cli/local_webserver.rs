@@ -968,6 +968,7 @@ impl Webserver {
 
     // TODO - when we retire the the old core, we should remove routeTable from the start method and using only
     // the channel to update the routes
+    #[allow(clippy::too_many_arguments)]
     pub async fn start<I: InfraMapProvider + Clone + Send + 'static>(
         &self,
         settings: &Settings,

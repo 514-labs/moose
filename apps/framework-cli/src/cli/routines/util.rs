@@ -1,9 +1,9 @@
 use crate::cli::display::Message;
 use crate::cli::routines::RoutineFailure;
-use crate::utilities::docker;
+use crate::utilities::docker::DockerClient;
 
-pub fn ensure_docker_running() -> Result<(), RoutineFailure> {
-    let errors = docker::check_status().map_err(|err| {
+pub fn ensure_docker_running(docker_client: &DockerClient) -> Result<(), RoutineFailure> {
+    let errors = docker_client.check_status().map_err(|err| {
         RoutineFailure::new(
             Message::new("Failed".to_string(), "to run `docker info`".to_string()),
             err,

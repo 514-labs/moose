@@ -202,71 +202,6 @@ impl RoutineFailure {
     }
 }
 
-#[derive(Clone, Copy)]
-pub enum RunMode {
-    Explicit,
-}
-
-/// Routines are a collection of operations that are run in sequence.
-pub trait Routine {
-    fn run(&self, mode: RunMode) -> Result<RoutineSuccess, RoutineFailure> {
-        match mode {
-            RunMode::Explicit => self.run_explicit(),
-        }
-    }
-
-    // Runs the routine and returns a result without displaying any messages
-    fn run_silent(&self) -> Result<RoutineSuccess, RoutineFailure>;
-
-    // Runs the routine and displays messages to the user
-    fn run_explicit(&self) -> Result<RoutineSuccess, RoutineFailure> {
-        match self.run_silent() {
-            Ok(success) => {
-                show_message!(success.message_type, success.message.clone());
-                Ok(success)
-            }
-            Err(failure) => {
-                show_message!(
-                    failure.message_type,
-                    Message::new(
-                        failure.message.action.clone(),
-                        match &failure.error {
-                            None => {
-                                failure.message.details.clone()
-                            }
-                            Some(error) => {
-                                format!("{}: {}", failure.message.details.clone(), error)
-                            }
-                        },
-                    )
-                );
-                Err(failure)
-            }
-        }
-    }
-}
-
-pub struct RoutineController {
-    routines: Vec<Box<dyn Routine>>,
-}
-
-impl RoutineController {
-    pub fn new() -> Self {
-        Self { routines: vec![] }
-    }
-
-    pub fn add_routine(&mut self, routine: Box<dyn Routine>) {
-        self.routines.push(routine);
-    }
-
-    pub fn run_routines(&self, run_mode: RunMode) -> Vec<Result<RoutineSuccess, RoutineFailure>> {
-        self.routines
-            .iter()
-            .map(|routine| routine.run(run_mode))
-            .collect()
-    }
-}
-
 pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mutex<RedisClient>>> {
     let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
     let redis_client = Arc::new(Mutex::new(redis_client));
@@ -508,6 +443,7 @@ pub async fn start_development_mode(
     info!("Starting web server...");
     web_server
         .start(
+            settings,
             route_table,
             consumption_apis,
             infra_map,
@@ -603,6 +539,7 @@ pub async fn start_production_mode(
 
     web_server
         .start(
+            settings,
             route_table,
             consumption_apis,
             infra_map,

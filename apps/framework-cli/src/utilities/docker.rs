@@ -1,10 +1,10 @@
 use handlebars::Handlebars;
 use lazy_static::lazy_static;
-use log::{error, info};
+use log::{debug, error, info};
 use regex::Regex;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde_json::from_str;
 use serde_json::json;
-use serde_json::{from_slice, from_str};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -15,6 +15,9 @@ use crate::utilities::constants::REDPANDA_CONTAINER_NAME;
 
 static COMPOSE_FILE: &str = include_str!("docker-compose.yml.hbs");
 
+type ContainerName = String;
+type ContainerId = String;
+
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to create or delete project files")]
 #[non_exhaustive]
@@ -23,40 +26,17 @@ pub enum DockerError {
     IO(#[from] std::io::Error),
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct ContainerRow {
-    pub command: String,
-    pub created_at: String,
-    #[serde(rename = "ID")]
-    pub id: String,
-    pub image: String,
-    pub labels: String,
-    pub local_volumes: String,
-    pub mounts: String,
-    pub names: String,
-    pub networks: String,
-    pub ports: String,
-    pub running_for: String,
-    pub size: String,
-    pub state: String,
-    pub status: String,
-    pub health: String,
+#[derive(Debug, Deserialize)]
+struct DockerInfo {
+    #[serde(default)]
+    server_errors: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "PascalCase")]
-pub struct NetworkRow {
-    pub created_at: String,
-    pub driver: String,
-    #[serde(rename = "ID")]
-    pub id: String,
-    #[serde(rename = "IPv6")]
-    pub ipv6: String,
-    pub internal: String,
-    pub labels: String,
+#[derive(Debug, Deserialize)]
+pub struct DockerComposeContainerInfo {
     pub name: String,
-    pub scope: String,
+    #[serde(default)]
+    pub health: Option<String>,
 }
 
 /// Client for interacting with container runtime (docker/finch)
@@ -96,12 +76,14 @@ impl DockerClient {
     }
 
     /// Lists all containers for the project
-    pub fn list_containers(&self, project: &Project) -> std::io::Result<Vec<ContainerRow>> {
+    pub fn list_containers(
+        &self,
+        project: &Project,
+    ) -> std::io::Result<Vec<DockerComposeContainerInfo>> {
         let child = self
             .compose_command(project)
             .arg("ps")
             .arg("-a")
-            .arg("--no-trunc")
             .arg("--format")
             .arg("json")
             .stdout(Stdio::piped())
@@ -111,6 +93,9 @@ impl DockerClient {
         let output = child.wait_with_output()?;
 
         if !output.status.success() {
+            debug!("Could not list containers");
+            debug!("Error: {}", String::from_utf8_lossy(&output.stderr));
+            debug!("Output: {}", String::from_utf8_lossy(&output.stdout));
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 "Failed to list Docker containers",
@@ -118,22 +103,68 @@ impl DockerClient {
         }
 
         let output_str = String::from_utf8_lossy(&output.stdout);
-        let containers: Vec<ContainerRow> = output_str
-            .split('\n')
-            .filter(|line| !line.is_empty())
-            .map(|line| from_str(line).expect("Failed to parse container row"))
-            .collect();
+        let output_lines: Vec<&str> = output_str.trim().split('\n').collect();
 
-        Ok(containers)
+        // Handle both single array and multiple object formats
+        // Docker and Finch have different formats for the output
+        if output_str.trim().starts_with('[') {
+            // Finch format - array with Name property
+            let containers: Vec<serde_json::Value> = serde_json::from_str(&output_str)
+                .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+
+            Ok(containers
+                .into_iter()
+                .filter_map(|c| {
+                    c.get("Name").and_then(|n| {
+                        n.as_str().map(|name| DockerComposeContainerInfo {
+                            name: name.to_string(),
+                            health: c.get("Health").and_then(|h| h.as_str()).and_then(|h| {
+                                if h.is_empty() {
+                                    None
+                                } else {
+                                    Some(h.to_string())
+                                }
+                            }),
+                        })
+                    })
+                })
+                .collect())
+        } else {
+            // Docker format - newline delimited with Names property
+            let mut container_infos = Vec::new();
+            for line in output_lines {
+                if let Ok(container) = serde_json::from_str::<serde_json::Value>(line) {
+                    if let Some(name) = container.get("Names").and_then(|n| n.as_str()) {
+                        let health =
+                            container
+                                .get("Health")
+                                .and_then(|h| h.as_str())
+                                .and_then(|h| {
+                                    if h.is_empty() {
+                                        None
+                                    } else {
+                                        Some(h.to_string())
+                                    }
+                                });
+
+                        container_infos.push(DockerComposeContainerInfo {
+                            name: name.to_string(),
+                            health,
+                        });
+                    }
+                }
+            }
+            Ok(container_infos)
+        }
     }
 
     /// Lists names of all containers
-    pub fn list_container_names(&self) -> std::io::Result<Vec<String>> {
+    pub fn list_container_names(&self) -> std::io::Result<Vec<ContainerName>> {
         let child = self
             .create_command()
             .arg("ps")
             .arg("--format")
-            .arg("{{json .Names}}")
+            .arg("json")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
@@ -141,6 +172,9 @@ impl DockerClient {
         let output = child.wait_with_output()?;
 
         if !output.status.success() {
+            debug!("Could not list containers");
+            debug!("Error: {}", String::from_utf8_lossy(&output.stderr));
+            debug!("Output: {}", String::from_utf8_lossy(&output.stdout));
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
                 "Failed to list Docker container names",
@@ -148,13 +182,20 @@ impl DockerClient {
         }
 
         let output_str = String::from_utf8_lossy(&output.stdout);
-        let containers: Vec<String> = output_str
-            .split('\n')
-            .filter(|line| !line.is_empty())
-            .map(|line| from_str(line).expect("Failed to parse container row"))
-            .collect();
+        let output_lines: Vec<&str> = output_str.trim().split('\n').collect();
+        let mut container_names = Vec::new();
 
-        Ok(containers)
+        for line in output_lines {
+            if let Ok(container) = serde_json::from_str::<serde_json::Value>(line) {
+                if let Some(names) = container.get("Names") {
+                    if let Some(name) = names.as_str() {
+                        container_names.push(name.to_string());
+                    }
+                }
+            }
+        }
+
+        Ok(container_names)
     }
 
     /// Stops all containers for the project
@@ -232,12 +273,14 @@ impl DockerClient {
     }
 
     /// Gets the ID of a container by name
-    fn get_container_id(&self, container_name: &str) -> anyhow::Result<String> {
+    fn get_container_id(&self, container_name: &str) -> anyhow::Result<ContainerId> {
         let child = self
             .create_command()
             .arg("ps")
-            .arg("-aqf")
+            .arg("-af")
             .arg(format!("name={}", container_name))
+            .arg("--format")
+            .arg("json")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()?;
@@ -249,14 +292,27 @@ impl DockerClient {
                 "Failed to get container id: {}",
                 String::from_utf8_lossy(&output.stderr)
             );
-            Err(anyhow::anyhow!(format!(
+            return Err(anyhow::anyhow!(format!(
                 "Failed to get container id for {}",
                 container_name
-            )))
-        } else {
-            let container_id = String::from_utf8_lossy(&output.stdout).trim().to_string();
-            Ok(container_id)
+            )));
         }
+
+        let output_str = String::from_utf8_lossy(&output.stdout);
+        let output_lines: Vec<&str> = output_str.trim().split('\n').collect();
+
+        for line in output_lines {
+            if let Ok(container) = serde_json::from_str::<serde_json::Value>(line) {
+                if let Some(id) = container.get("ID").and_then(|id| id.as_str()) {
+                    return Ok(id.to_string());
+                }
+            }
+        }
+
+        Err(anyhow::anyhow!(
+            "No container found with name {}",
+            container_name
+        ))
     }
 
     /// Tails logs for a specific container
@@ -417,22 +473,29 @@ impl DockerClient {
             .create_command()
             .arg("info")
             .arg("--format")
-            .arg("{{json .ServerErrors}}")
+            .arg("json")
             .stdout(Stdio::piped())
-            .stderr(Stdio::null())
+            .stderr(Stdio::piped())
             .spawn()?;
 
         let output = child.wait_with_output()?;
 
         if !output.status.success() {
+            debug!(
+                "Failed to get Docker info: stdout: {}, stderr: {}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
             return Err(std::io::Error::new(
                 std::io::ErrorKind::Other,
-                "Failed to get Docker info",
+                String::from_utf8_lossy(&output.stderr),
             ));
         }
 
-        let errors: Option<Vec<String>> = from_slice(&output.stdout)?;
-        Ok(errors.unwrap_or_default())
+        let info: DockerInfo = serde_json::from_slice(&output.stdout)
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+
+        Ok(info.server_errors)
     }
 
     /// Runs buildx command
@@ -481,78 +544,6 @@ impl DockerClient {
             .collect();
         Ok(containers)
     }
-}
-
-// Re-export the old functions as deprecated to maintain backward compatibility
-#[deprecated(since = "0.1.0", note = "Use DockerClient instead")]
-pub fn list_containers(
-    project: &Project,
-    settings: &Settings,
-) -> std::io::Result<Vec<ContainerRow>> {
-    DockerClient::new(settings).list_containers(project)
-}
-
-#[deprecated(since = "0.1.0", note = "Use DockerClient instead")]
-pub fn list_container_names(settings: &Settings) -> std::io::Result<Vec<String>> {
-    DockerClient::new(settings).list_container_names()
-}
-
-#[deprecated(since = "0.1.0", note = "Use DockerClient instead")]
-pub fn stop_containers(project: &Project, settings: &Settings) -> anyhow::Result<()> {
-    DockerClient::new(settings).stop_containers(project)
-}
-
-#[deprecated(since = "0.1.0", note = "Use DockerClient instead")]
-pub fn start_containers(project: &Project, settings: &Settings) -> anyhow::Result<()> {
-    DockerClient::new(settings).start_containers(project)
-}
-
-#[deprecated(since = "0.1.0", note = "Use DockerClient instead")]
-pub fn tail_container_logs(
-    project: &Project,
-    container_name: &str,
-    settings: &Settings,
-) -> anyhow::Result<()> {
-    DockerClient::new(settings).tail_container_logs(project, container_name)
-}
-
-#[deprecated(since = "0.1.0", note = "Use DockerClient instead")]
-pub fn create_compose_file(project: &Project, settings: &Settings) -> Result<(), DockerError> {
-    DockerClient::new(settings).create_compose_file(project, settings)
-}
-
-#[deprecated(since = "0.1.0", note = "Use DockerClient instead")]
-pub fn run_rpk_cluster_info(
-    project_name: &str,
-    attempts: usize,
-    settings: &Settings,
-) -> anyhow::Result<()> {
-    DockerClient::new(settings).run_rpk_cluster_info(project_name, attempts)
-}
-
-#[deprecated(since = "0.1.0", note = "Use DockerClient instead")]
-pub fn run_rpk_command(
-    project_name: &str,
-    args: Vec<String>,
-    settings: &Settings,
-) -> std::io::Result<String> {
-    DockerClient::new(settings).run_rpk_command(project_name, args)
-}
-
-#[deprecated(since = "0.1.0", note = "Use DockerClient instead")]
-pub fn check_status(settings: &Settings) -> std::io::Result<Vec<String>> {
-    DockerClient::new(settings).check_status()
-}
-
-#[deprecated(since = "0.1.0", note = "Use DockerClient instead")]
-pub fn buildx(
-    directory: &PathBuf,
-    version: &str,
-    architecture: &str,
-    binarylabel: &str,
-    settings: &Settings,
-) -> std::io::Result<Vec<String>> {
-    DockerClient::new(settings).buildx(directory, version, architecture, binarylabel)
 }
 
 lazy_static! {

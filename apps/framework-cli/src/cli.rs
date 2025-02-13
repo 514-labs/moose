@@ -10,6 +10,7 @@ mod watcher;
 use super::metrics::Metrics;
 use crate::cli::routines::block::create_block_file;
 use crate::cli::routines::consumption::create_consumption_file;
+use crate::utilities::docker::DockerClient;
 use clap::Parser;
 use commands::{
     BlockCommands, Commands, ConsumptionCommands, DataModelCommands, FunctionCommands,
@@ -22,6 +23,7 @@ use log::{debug, info};
 use logger::setup_logging;
 use regex::Regex;
 use routines::auth::generate_hash_token;
+use routines::clean::clean_project;
 use routines::datamodel::parse_and_generate;
 use routines::docker_packager::{build_dockerfile, create_dockerfile};
 use routines::ls::{list_db, list_streaming};
@@ -52,7 +54,7 @@ use crate::cli::routines::{RoutineFailure, RoutineSuccess};
 use crate::cli::settings::user_directory;
 use crate::cli::{
     display::{Message, MessageType},
-    routines::{dev::run_local_infrastructure, RoutineController, RunMode},
+    routines::dev::run_local_infrastructure,
     settings::{init_config_file, setup_user_directory},
 };
 use crate::framework::bulk_import::import_csv_file;
@@ -68,8 +70,6 @@ use crate::project::Project;
 use crate::utilities::capture::{wait_for_usage_capture, ActivityType};
 use crate::utilities::constants::{CLI_VERSION, PROJECT_NAME_ALLOW_PATTERN};
 use crate::utilities::git::is_git_repo;
-
-use self::routines::clean::CleanProject;
 
 use anyhow::Result;
 
@@ -331,9 +331,10 @@ async fn top_command_handler(
                     &settings,
                 );
                 // TODO get rid of the routines and use functions instead
-
-                create_dockerfile(&project_arc)?.show();
-                let _: RoutineSuccess = build_dockerfile(&project_arc, *amd64, *arm64)?;
+                let docker_client = DockerClient::new(&settings);
+                create_dockerfile(&project_arc, &docker_client)?.show();
+                let _: RoutineSuccess =
+                    build_dockerfile(&project_arc, &docker_client, *amd64, *arm64)?;
 
                 wait_for_usage_capture(capture_handle).await;
 
@@ -361,8 +362,10 @@ async fn top_command_handler(
                 &settings,
             );
 
+            let docker_client = DockerClient::new(&settings);
+
             check_project_name(&project_arc.name())?;
-            run_local_infrastructure(&project_arc, &settings)?.show();
+            run_local_infrastructure(&project_arc, &settings, &docker_client)?.show();
 
             let redis_client = setup_redis_client(project_arc.clone()).await.map_err(|e| {
                 RoutineFailure::error(Message {
@@ -656,7 +659,6 @@ async fn top_command_handler(
             result
         }
         Commands::Clean {} => {
-            let run_mode = RunMode::Explicit {};
             let project = load_project()?;
             let project_arc = Arc::new(project);
 
@@ -668,10 +670,8 @@ async fn top_command_handler(
 
             check_project_name(&project_arc.name())?;
 
-            // TODO get rid of the routines and use functions instead
-            let mut controller = RoutineController::new();
-            controller.add_routine(Box::new(CleanProject::new(project_arc)));
-            controller.run_routines(run_mode);
+            let docker_client = DockerClient::new(&settings);
+            let _ = clean_project(&project_arc, &docker_client)?;
 
             wait_for_usage_capture(capture_handle).await;
 

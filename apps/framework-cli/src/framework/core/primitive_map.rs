@@ -84,7 +84,7 @@ fn check_no_empty_nested(
     field_name: Vec<String>,
 ) -> Result<(), PrimitiveMapLoadingError> {
     match column_type {
-        ColumnType::Array(inner) => check_no_empty_nested(inner, field_name),
+        ColumnType::Array { element_type, .. } => check_no_empty_nested(element_type, field_name),
         ColumnType::Nested(nested) => {
             if nested.columns.is_empty() {
                 Err(DataModelError::Other {

@@ -190,6 +190,7 @@ fn column_type_to_enum_mapping(t: &ClickHouseColumnType) -> Option<Vec<&str>> {
                     .collect::<Vec<_>>(),
             ),
         }),
+        ClickHouseColumnType::Nullable(inner) => column_type_to_enum_mapping(inner),
     }
 }
 
@@ -450,23 +451,29 @@ pub async fn check_table(
 
     let block = client.query(&columns_query).fetch_all().await?;
 
-    let mut table_columns = HashMap::<String, HashMap<String, (ClickHouseColumnType, bool)>>::new();
+    let mut table_columns = HashMap::<String, HashMap<String, ClickHouseColumnType>>::new();
 
     fn add_to_nested(
         existing_columns: &mut Vec<ClickHouseColumn>,
         inner_name: &str,
         t: ClickHouseColumnType,
-        required: bool,
     ) {
         match inner_name.split_once('.') {
-            None => existing_columns.push(ClickHouseColumn {
-                name: inner_name.to_string(),
-                column_type: t,
-                required,
-                unique: false,
-                primary_key: false,
-                default: None,
-            }),
+            None => {
+                let (column_type, required) = if let ClickHouseColumnType::Nullable(inner) = t {
+                    (*inner, false)
+                } else {
+                    (t, true)
+                };
+                existing_columns.push(ClickHouseColumn {
+                    name: inner_name.to_string(),
+                    column_type,
+                    required,
+                    unique: false,
+                    primary_key: false,
+                    default: None,
+                })
+            }
             Some((nested, nested_inner)) => {
                 let existing_nested = match existing_columns.iter_mut().find(|c| c.name == nested) {
                     None => {
@@ -483,7 +490,7 @@ pub async fn check_table(
                     Some(nested_column) => nested_column,
                 };
                 if let ClickHouseColumnType::Nested(v) = &mut existing_nested.column_type {
-                    add_to_nested(v, nested_inner, t, required);
+                    add_to_nested(v, nested_inner, t);
                 } else {
                     unreachable!()
                 }
@@ -497,19 +504,19 @@ pub async fn check_table(
         let name: String = row.get("name")?;
         let type_str: String = row.get("type")?;
 
-        if let Some((t, required)) = ClickHouseColumnType::from_type_str(&type_str) {
+        if let Some(t) = ClickHouseColumnType::from_type_str(&type_str) {
             let columns = table_columns.entry(table).or_default();
 
             match name.split_once('.') {
                 None => {
-                    columns.insert(name, (t, required));
+                    columns.insert(name, t);
                 }
                 Some((nested, nested_inner)) => {
-                    let adsf = columns
+                    let nested = columns
                         .entry(nested.to_string())
-                        .or_insert((ClickHouseColumnType::Nested(vec![]), true));
-                    if let (ClickHouseColumnType::Nested(v), true) = adsf {
-                        add_to_nested(v, nested_inner, t, required)
+                        .or_insert(ClickHouseColumnType::Nested(vec![]));
+                    if let ClickHouseColumnType::Nested(v) = nested {
+                        add_to_nested(v, nested_inner, t)
                     }
                 }
             }
@@ -531,25 +538,24 @@ pub async fn check_table(
             .columns
             .retain_mut(|column| match db_columns.remove(&column.name) {
                 None => false,
-                Some((t, required)) => {
+                Some(t) => {
+                    let (data_type, required) = t.to_std_column_type();
                     column.required = required;
-
-                    column.data_type = t.to_std_column_type();
+                    column.data_type = data_type;
                     true
                 }
             });
-        db_columns
-            .into_iter()
-            .for_each(|(col_name, (t, required))| {
-                existing_table.columns.push(Column {
-                    name: col_name,
-                    data_type: t.to_std_column_type(),
-                    required,
-                    unique: false,
-                    primary_key: false,
-                    default: None,
-                })
+        db_columns.into_iter().for_each(|(col_name, t)| {
+            let (data_type, required) = t.to_std_column_type();
+            existing_table.columns.push(Column {
+                name: col_name,
+                data_type,
+                required,
+                unique: false,
+                primary_key: false,
+                default: None,
             })
+        })
     }
 
     Ok(existing_tables)

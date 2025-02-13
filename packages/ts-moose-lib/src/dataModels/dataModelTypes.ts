@@ -5,7 +5,8 @@ export type EnumValues =
   | { name: string; value: { String: string } }[];
 export type DataEnum = { name: string; values: EnumValues };
 export type Nested = { name: string; columns: Column[]; jwt: boolean };
-export type DataType = string | DataEnum | { elementType: DataType } | Nested;
+export type ArrayType = { elementType: DataType; elementNullable: boolean };
+export type DataType = string | DataEnum | ArrayType | Nested;
 export interface Column {
   name: string;
   data_type: DataType;

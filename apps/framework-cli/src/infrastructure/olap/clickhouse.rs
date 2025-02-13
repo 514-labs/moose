@@ -495,7 +495,10 @@ mod tests {
     fn test_generate_column_alter_statements_with_array_float() {
         let diff = vec![ColumnChange::Added(Column {
             name: "prices".to_string(),
-            data_type: ColumnType::Array(Box::new(ColumnType::Float)),
+            data_type: ColumnType::Array {
+                element_type: Box::new(ColumnType::Float),
+                element_nullable: false,
+            },
             required: false,
             unique: false,
             primary_key: false,

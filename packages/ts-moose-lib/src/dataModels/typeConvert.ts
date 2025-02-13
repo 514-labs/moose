@@ -7,6 +7,7 @@ import ts, {
 } from "typescript";
 import { enumConvert, isEnum } from "./enumConvert";
 import {
+  ArrayType,
   Column,
   DataType,
   UnknownType,
@@ -27,6 +28,16 @@ const throwUnknownType = (
   typeName: string,
 ): never => {
   throw new UnknownType(t, fieldName, typeName);
+};
+
+const toArrayType = ([elementNullable, elementType]: [
+  boolean,
+  DataType,
+]): ArrayType => {
+  return {
+    elementNullable,
+    elementType,
+  };
 };
 
 const tsTypeToDataType = (
@@ -51,15 +62,15 @@ const tsTypeToDataType = (
           : nonNull == dateType(checker)
             ? "DateTime"
             : checker.isArrayType(nonNull)
-              ? {
-                  elementType: tsTypeToDataType(
+              ? toArrayType(
+                  tsTypeToDataType(
                     nonNull.getNumberIndexType()!,
                     checker,
                     fieldName,
                     typeName,
                     isJwt,
-                  )[1],
-                }
+                  ),
+                )
               : nonNull.isClassOrInterface() ||
                   (nonNull.flags & TypeFlags.Object) !== 0
                 ? {

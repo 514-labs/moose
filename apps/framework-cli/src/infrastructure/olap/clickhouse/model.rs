@@ -41,6 +41,7 @@ pub enum ClickHouseColumnType {
     Json,
     Bytes,
     Array(Box<ClickHouseColumnType>),
+    Nullable(Box<ClickHouseColumnType>),
     Enum(DataEnum),
     Nested(Vec<ClickHouseColumn>),
 }
@@ -52,8 +53,9 @@ impl fmt::Display for ClickHouseColumnType {
 }
 
 impl ClickHouseColumnType {
-    pub fn to_std_column_type(&self) -> ColumnType {
-        match self {
+    pub fn to_std_column_type(&self) -> (ColumnType, bool) {
+        let mut required = true;
+        let column_type = match self {
             ClickHouseColumnType::String => ColumnType::String,
             ClickHouseColumnType::Boolean => ColumnType::Boolean,
             ClickHouseColumnType::ClickhouseInt(_) => ColumnType::Int,
@@ -63,28 +65,40 @@ impl ClickHouseColumnType {
             ClickHouseColumnType::Json => ColumnType::Json,
             ClickHouseColumnType::Bytes => ColumnType::Bytes,
             ClickHouseColumnType::Array(inner_type) => {
-                ColumnType::Array(Box::new(inner_type.to_std_column_type()))
+                let (element_type, inner_required) = inner_type.to_std_column_type();
+                ColumnType::Array {
+                    element_type: Box::new(element_type),
+                    element_nullable: !inner_required,
+                }
             }
             ClickHouseColumnType::Enum(enum_def) => ColumnType::Enum(enum_def.clone()),
             ClickHouseColumnType::Nested(columns) => ColumnType::Nested(Nested {
                 name: "Unknown".to_string(),
                 columns: columns
                     .iter()
-                    .map(|col| Column {
-                        name: col.name.clone(),
-                        data_type: col.column_type.to_std_column_type(),
-                        required: col.required,
-                        unique: col.unique,
-                        primary_key: col.primary_key,
-                        default: None,
+                    .map(|col| {
+                        let (data_type, required) = col.column_type.to_std_column_type();
+                        Column {
+                            name: col.name.clone(),
+                            data_type,
+                            required: col.required && required,
+                            unique: col.unique,
+                            primary_key: col.primary_key,
+                            default: None,
+                        }
                     })
                     .collect(),
                 jwt: false,
             }),
-        }
+            ClickHouseColumnType::Nullable(inner) => {
+                required = false;
+                inner.to_std_column_type().0
+            }
+        };
+        (column_type, required)
     }
 
-    pub fn from_type_str(type_str: &str) -> Option<(Self, bool)> {
+    pub fn from_type_str(type_str: &str) -> Option<Self> {
         // When we select from `system.columns`, the `Nested` columns are dotted names
         // so it's not handled here
         // unless we change the translation to `Tuple`
@@ -118,14 +132,14 @@ impl ClickHouseColumnType {
                 let inner = t.trim_start_matches("Nullable(").trim_end_matches(')');
                 match Self::from_type_str(inner) {
                     None => return None,
-                    Some((inner_t, _)) => return Some((inner_t, false)),
+                    Some(inner_t) => Self::Nullable(Box::new(inner_t)),
                 }
             }
             t if t.starts_with("Array(") => {
                 let inner = t.trim_start_matches("Array(").trim_end_matches(')');
                 match Self::from_type_str(inner) {
                     None => return None,
-                    Some((inner_t, _)) => Self::Array(Box::new(inner_t)),
+                    Some(inner_t) => Self::Array(Box::new(inner_t)),
                 }
             }
 
@@ -159,7 +173,7 @@ impl ClickHouseColumnType {
             }
             _ => return None,
         };
-        Some((result, true))
+        Some(result)
     }
 }
 

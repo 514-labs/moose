@@ -47,6 +47,28 @@ jobs:
           generateReleaseNotes: true
           commit: ${{ github.sha }}
 
+      - name: Auth
+        uses: "google-github-actions/auth@v2"
+        with:
+          service_account: "mds-911@moose-hosting-node.iam.gserviceaccount.com"
+          workload_identity_provider: "projects/724152421890/locations/global/workloadIdentityPools/github-actions-pool/providers/github-actions-repos"
+
+      - name: 'Set up Cloud SDK'
+        uses: 'google-github-actions/setup-gcloud@v2'
+        with:
+          install_components: 'gsutil'
+
+      - name: Determine Version
+        run: |
+          if [ "${{ github.ref_name }}" = "main" ]; then
+            # Update latest version file and upload
+            echo "${{ steps.version.outputs.VERSION }}" > moose-cli.version
+            gsutil cp moose-cli.version gs://downloads.fiveonefour.com/stable/latest/
+          else
+            # Use branch name as version for dev builds
+            echo "version=${{ github.ref_name }}" >> $GITHUB_OUTPUT
+          fi
+
   build-and-publish-py-moose-lib:
     runs-on: ubuntu-latest
     if: ${{ !inputs.dry-run }}

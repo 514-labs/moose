@@ -238,30 +238,30 @@ jobs:
           cargo set-version ${{ needs.version.outputs.version }}
         working-directory: ./apps/framework-cli
 
-      # - name: Build wheels
-      #   uses: PyO3/maturin-action@v1
-      #   with:
-      #     target: ${{ matrix.build.TARGET }}
-      #     args: --release --features rdkafka/cmake-build --locked --target ${{ matrix.build.TARGET }} --out dist
-      #     sccache: "true"
-      #     # https://github.com/briansmith/ring/issues/1728#issuecomment-1758180655
-      #     manylinux: ${{ matrix.build.TARGET == 'aarch64-unknown-linux-gnu' && '2_28' || '' }}
-      #     working-directory: ./apps/framework-cli
-      #     # When running on manylinux we are inside a docker container and need to install protoc
-      #     before-script-linux: |
-      #       if [ -f /.dockerenv ]; then
-      #         echo "Running in Docker container, installing required dependencies..."
-      #         PROTOC_VERSION=24.3
-      #         PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        with:
+          target: ${{ matrix.build.TARGET }}
+          args: --release --features rdkafka/cmake-build --locked --target ${{ matrix.build.TARGET }} --out dist
+          sccache: "true"
+          # https://github.com/briansmith/ring/issues/1728#issuecomment-1758180655
+          manylinux: ${{ matrix.build.TARGET == 'aarch64-unknown-linux-gnu' && '2_28' || '' }}
+          working-directory: ./apps/framework-cli
+          # When running on manylinux we are inside a docker container and need to install protoc
+          before-script-linux: |
+            if [ -f /.dockerenv ]; then
+              echo "Running in Docker container, installing required dependencies..."
+              PROTOC_VERSION=24.3
+              PROTOC_ZIP=protoc-$PROTOC_VERSION-linux-x86_64.zip
 
-      #         apt install -y curl unzip
-      #         mkdir -p /usr/local/bin
-      #         mkdir -p /usr/local/include
-      #         curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP
-      #         unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
-      #         unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
-      #         rm -f $PROTOC_ZIP
-      #       fi
+              apt install -y curl unzip
+              mkdir -p /usr/local/bin
+              mkdir -p /usr/local/include
+              curl -OL https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$PROTOC_ZIP
+              unzip -o $PROTOC_ZIP -d /usr/local bin/protoc
+              unzip -o $PROTOC_ZIP -d /usr/local 'include/*'
+              rm -f $PROTOC_ZIP
+            fi
 
       # - name: Upload wheels
       #   uses: actions/upload-artifact@v4
@@ -292,6 +292,13 @@ jobs:
       #     replacesArtifacts: "false"
       #     artifacts: |
       #       ./target/${{ matrix.build.TARGET }}/release/moose-cli-${{ matrix.build.TARGET }}
+
+      - name: Debug binary location
+        run: |
+          pwd
+          ls -la .
+          ls -la target/${{ matrix.build.TARGET }}/release/
+          file target/${{ matrix.build.TARGET }}/release/moose-cli
 
       - name: Sign binaries
         uses: ./.github/actions/sign-binaries

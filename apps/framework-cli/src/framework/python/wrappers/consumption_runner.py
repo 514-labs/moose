@@ -78,6 +78,9 @@ class QueryClient:
     def __init__(self, ch_client: ClickhouseClient):
         self.ch_client = ch_client
 
+    def __call__(self, input, variables):
+        return self.execute(input, variables)
+
     def execute(self, input, variables):
         params = {}
         values = {}

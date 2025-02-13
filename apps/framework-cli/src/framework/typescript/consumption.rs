@@ -129,7 +129,10 @@ fn schema_to_params_list(
                         Some("boolean") => ColumnType::Boolean,
                         _ => ColumnType::String,
                     };
-                    ColumnType::Array(Box::new(inner_type))
+                    ColumnType::Array {
+                        element_type: Box::new(inner_type),
+                        element_nullable: false,
+                    }
                 }
 
                 unexpected => {

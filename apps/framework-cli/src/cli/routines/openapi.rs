@@ -108,9 +108,25 @@ struct Property {
 }
 
 #[derive(Serialize, Deserialize)]
+#[serde(untagged)]
+enum OpenApiType {
+    Simple(String),
+    Complex(Value),
+}
+
+fn nullable(simple_type: String) -> OpenApiType {
+    OpenApiType::Complex(json!({
+        "oneOf": [
+            {"type": "null"},
+            {"type": simple_type},
+        ]
+    }))
+}
+
+#[derive(Serialize, Deserialize)]
 struct PropertyItem {
     #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
-    type_: Option<String>,
+    type_: Option<OpenApiType>,
     #[serde(rename = "$ref", skip_serializing_if = "Option::is_none")]
     ref_: Option<String>,
 }
@@ -303,30 +319,34 @@ fn build_schema(columns: &Vec<Column>, parent_name: String, schemas: &mut HashMa
                     items: None,
                 }
             }
-            ColumnType::Array(column_type) => {
-                if let ColumnType::Nested(fields) = &**column_type {
+            ColumnType::Array {
+                element_type: column_type,
+                element_nullable,
+            } => {
+                let item_type = if let ColumnType::Nested(fields) = &**column_type {
                     let component_name = format!("{}_{}", parent_name, column.name);
                     build_schema(&fields.columns, component_name.clone(), schemas);
-                    Property {
-                        property_type: Some("array".to_string()),
-                        ref_: None,
-                        example: None,
-                        items: Some(PropertyItem {
-                            type_: None,
-                            ref_: Some(format!("#/components/schemas/{}", component_name)),
-                        }),
+                    PropertyItem {
+                        type_: None,
+                        ref_: Some(format!("#/components/schemas/{}", component_name)),
                     }
                 } else {
                     let (property_type, _) = map_column_type(column_type);
-                    Property {
-                        property_type: Some("array".to_string()),
+                    let t = if *element_nullable {
+                        nullable(property_type)
+                    } else {
+                        OpenApiType::Simple(property_type)
+                    };
+                    PropertyItem {
+                        type_: Some(t),
                         ref_: None,
-                        example: None,
-                        items: Some(PropertyItem {
-                            type_: Some(property_type),
-                            ref_: None,
-                        }),
                     }
+                };
+                Property {
+                    property_type: Some("array".to_string()),
+                    ref_: None,
+                    example: None,
+                    items: Some(item_type),
                 }
             }
             _ => {
@@ -374,7 +394,7 @@ fn map_column_type(column_type: &ColumnType) -> (String, Option<serde_json::Valu
             "string".to_string(),
             Some(serde_json::Value::String(Local::now().to_rfc3339())),
         ),
-        ColumnType::Array(_) => (
+        ColumnType::Array { .. } => (
             "array".to_string(),
             Some(serde_json::Value::Array(vec![serde_json::Value::String(
                 "add array items here".to_string(),

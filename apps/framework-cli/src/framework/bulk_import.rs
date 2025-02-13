@@ -57,7 +57,7 @@ pub async fn import_csv_file(
                             ColumnType::Decimal => {
                                 json_map.insert(key, json!(value.parse::<f64>()?));
                             }
-                            ColumnType::Array(_)
+                            ColumnType::Array { .. }
                             | ColumnType::Nested(_)
                             | ColumnType::Json
                             | ColumnType::Bytes => {

@@ -320,6 +320,11 @@ pub fn basic_field_type_to_string(
             let inner_type_string = basic_field_type_to_string(inner_type)?;
             Ok(format!("Array({})", inner_type_string))
         }
+        ClickHouseColumnType::Nullable(inner_type) => {
+            let inner_type_string = basic_field_type_to_string(inner_type)?;
+            // <column_name> String NULL is equivalent to <column_name> Nullable(String)
+            Ok(format!("Nullable({})", inner_type_string))
+        }
     }
 }
 
@@ -332,8 +337,11 @@ fn builds_field_context(columns: &[ClickHouseColumn]) -> Result<Vec<Value>, Clic
             Ok(json!({
                 "field_name": column.name,
                 "field_type": field_type,
-                // Clickhouse doesn't allow array fields to be nullable
-                "field_nullable": if column.required || column.is_array() {
+                "field_nullable": if let ClickHouseColumnType::Nullable(_) = column.column_type {
+                    // if type is Nullable, do not add extra specifier
+                    "".to_string()
+                } else if column.required || column.is_array() {
+                    // Clickhouse doesn't allow array fields to be nullable
                     "NOT NULL".to_string()
                 } else {
                     "NULL".to_string()

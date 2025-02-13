@@ -36,9 +36,17 @@ pub fn std_field_type_to_clickhouse_type_mapper(
         ColumnType::Decimal => Ok(ClickHouseColumnType::Decimal),
         ColumnType::DateTime => Ok(ClickHouseColumnType::DateTime),
         ColumnType::Enum(x) => Ok(ClickHouseColumnType::Enum(x)),
-        ColumnType::Array(inner_std_type) => {
-            let inner_clickhouse_type = std_field_type_to_clickhouse_type_mapper(*inner_std_type)?;
-            Ok(ClickHouseColumnType::Array(Box::new(inner_clickhouse_type)))
+        ColumnType::Array {
+            element_type,
+            element_nullable,
+        } => {
+            let inner_clickhouse_type = std_field_type_to_clickhouse_type_mapper(*element_type)?;
+            let with_nullable = if element_nullable {
+                ClickHouseColumnType::Nullable(Box::new(inner_clickhouse_type))
+            } else {
+                inner_clickhouse_type
+            };
+            Ok(ClickHouseColumnType::Array(Box::new(with_nullable)))
         }
         ColumnType::Nested(inner_nested) => {
             let column_types = inner_nested

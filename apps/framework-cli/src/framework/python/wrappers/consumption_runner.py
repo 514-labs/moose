@@ -15,7 +15,7 @@ from importlib import import_module
 from string import Formatter
 from typing import Optional, Dict, Any
 from urllib.parse import urlparse, parse_qs
-from moose_lib.query_param import QueryField, ArrayType, convert_consumption_api_param, parse_scalar_value
+from moose_lib.query_param import map_params_to_class, convert_consumption_api_param
 
 import jwt
 from clickhouse_connect import get_client
@@ -57,38 +57,6 @@ jwt_audience = args.jwt_audience
 jwt_enforce_all = args.jwt_enforce_all
 
 sys.path.append(consumption_dir_path)
-
-
-def map_params_to_dataclass(params:  dict[str, list[str]], fields: list[QueryField], cls: type) -> Any:
-    # Initialize an empty dict for the constructor arguments
-    constructor_args = {}
-
-    # Get field definitions from the dataclass
-    for field_def in fields:
-        field_name = field_def.name
-
-        # Skip if field not in params
-        if field_name not in params:
-            continue
-
-        # Get the value(s) from the params list
-        values = params[field_name]
-        if not values:
-            continue
-
-        # Get the field type, handling Optional types
-        field_type = field_def.data_type
-
-        if isinstance(field_type, ArrayType):
-            constructor_args[field_name] = [parse_scalar_value(v, field_type.element_type) for v in values]
-
-        if len(values) != 1:
-            raise ValueError(f"Expected a single element for {field_name}")
-        [v] = values
-        constructor_args[field_name] = parse_scalar_value(v, field_type)
-
-    # Create and return instance of the dataclass
-    return cls(**constructor_args)
 
 
 
@@ -274,7 +242,7 @@ def handler_with_client(moose_client):
                         query_params = parse_qs(parsed_path.query)
                         if fields_and_class is not None:
                             (cls, fields) = fields_and_class
-                            query_params = map_params_to_dataclass(query_params, fields, cls)
+                            query_params = map_params_to_class(query_params, fields, cls)
                         response = module.run(moose_client, query_params, jwt_payload)
                         if hasattr(response, 'status') and hasattr(response, 'body'):
                             response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')
@@ -287,7 +255,7 @@ def handler_with_client(moose_client):
                     query_params = parse_qs(parsed_path.query)
                     if fields_and_class is not None:
                         (cls, fields) = fields_and_class
-                        query_params = map_params_to_dataclass(query_params, fields, cls)
+                        query_params = map_params_to_class(query_params, fields, cls)
                     response = module.run(moose_client, query_params)
                     if hasattr(response, 'status') and hasattr(response, 'body'):
                         response_message = bytes(json.dumps(response.body, cls=EnhancedJSONEncoder), 'utf-8')

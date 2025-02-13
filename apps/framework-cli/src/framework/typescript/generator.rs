@@ -195,8 +195,12 @@ fn std_field_type_to_typescript_field_mapper(
         ColumnType::Float => Ok(InterfaceFieldType::Number),
         ColumnType::Decimal => Ok(InterfaceFieldType::Number),
         ColumnType::DateTime => Ok(InterfaceFieldType::Date),
-        ColumnType::Array(inner) => {
-            let inner_type = std_field_type_to_typescript_field_mapper(*inner)?;
+        ColumnType::Array {
+            element_type,
+            element_nullable: _,
+        } => {
+            // TODO: add `| null`
+            let inner_type = std_field_type_to_typescript_field_mapper(*element_type)?;
             Ok(InterfaceFieldType::Array(Box::new(inner_type)))
         }
         ColumnType::Bytes => Err(TypescriptGeneratorError::UnsupportedDataTypeError {

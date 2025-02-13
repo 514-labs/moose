@@ -5,14 +5,13 @@ use super::{
     },
     RoutineFailure, RoutineSuccess,
 };
-use crate::cli::routines::util::ensure_docker_running;
 use crate::cli::{display::with_spinner, settings::Settings};
 use crate::framework::languages::SupportedLanguages;
 use crate::framework::python;
 use crate::utilities::constants::CLI_PROJECT_INTERNAL_DIR;
-use crate::utilities::docker;
 use crate::utilities::git::dump_old_version_schema;
 use crate::{cli::display::Message, project::Project};
+use crate::{cli::routines::util::ensure_docker_running, utilities::docker::DockerClient};
 use lazy_static::lazy_static;
 use log::debug;
 use std::fs;
@@ -21,19 +20,20 @@ use std::io::ErrorKind;
 pub fn run_local_infrastructure(
     project: &Project,
     settings: &Settings,
+    docker_client: &DockerClient,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    create_docker_compose_file(project, settings)?.show();
+    create_docker_compose_file(project, settings, docker_client)?.show();
 
     copy_old_schema(project)?.show();
 
-    ensure_docker_running()?;
-    run_containers(project)?.show();
+    ensure_docker_running(docker_client)?;
+    run_containers(project, docker_client)?.show();
 
-    validate_clickhouse_run(project)?.show();
-    validate_redpanda_run(project)?.show();
-    validate_redpanda_cluster(project.name())?.show();
+    validate_clickhouse_run(project, docker_client)?.show();
+    validate_redpanda_run(project, docker_client)?.show();
+    validate_redpanda_cluster(project.name(), docker_client)?.show();
     if settings.features.scripts {
-        validate_temporal_run(project)?.show();
+        validate_temporal_run(project, docker_client)?.show();
     }
 
     Ok(RoutineSuccess::success(Message::new(
@@ -52,10 +52,13 @@ lazy_static! {
     );
 }
 
-pub fn run_containers(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
+pub fn run_containers(
+    project: &Project,
+    docker_client: &DockerClient,
+) -> Result<RoutineSuccess, RoutineFailure> {
     let docker_compose_res = with_spinner(
         "Starting local infrastructure",
-        || docker::start_containers(project),
+        || docker_client.start_containers(project),
         !project.is_production,
     );
 
@@ -122,8 +125,9 @@ pub fn copy_old_schema(project: &Project) -> Result<RoutineSuccess, RoutineFailu
 pub fn create_docker_compose_file(
     project: &Project,
     settings: &Settings,
+    docker_client: &DockerClient,
 ) -> Result<RoutineSuccess, RoutineFailure> {
-    let output = docker::create_compose_file(project, settings);
+    let output = docker_client.create_compose_file(project, settings);
 
     match output {
         Ok(_) => Ok(RoutineSuccess::success(Message::new(

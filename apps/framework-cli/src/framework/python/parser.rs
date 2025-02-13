@@ -894,6 +894,7 @@ mod tests {
 
         if let ColumnType::Array {
             element_type: inner_type,
+            element_nullable: false,
         } = &list_sub_field.data_type
         {
             if let ColumnType::Nested(ref nested) = **inner_type {

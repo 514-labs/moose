@@ -662,6 +662,7 @@ mod tests {
             name: "array_col".to_string(),
             data_type: ColumnType::Array {
                 element_type: Box::new(ColumnType::Int),
+                element_nullable: false,
             },
             required: true,
             unique: false,

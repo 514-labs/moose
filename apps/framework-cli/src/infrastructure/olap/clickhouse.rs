@@ -497,6 +497,7 @@ mod tests {
             name: "prices".to_string(),
             data_type: ColumnType::Array {
                 element_type: Box::new(ColumnType::Float),
+                element_nullable: false,
             },
             required: false,
             unique: false,

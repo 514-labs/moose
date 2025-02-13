@@ -410,10 +410,12 @@ mod tests {
 
         let array = ColumnType::Array {
             element_type: Box::new(t),
+            element_nullable: false,
         };
         serialize_and_deserialize(&array);
         let nested_array = ColumnType::Array {
             element_type: Box::new(array),
+            element_nullable: false,
         };
         serialize_and_deserialize(&nested_array);
     }

@@ -247,7 +247,7 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
         .await
         .register_message_handler(callback)
         .await;
-    redis_client.lock().await.start_periodic_tasks();
+    redis_client.lock().await.start_periodic_tasks().await;
 
     Ok(redis_client)
 }

@@ -1,16 +1,20 @@
-import { Worker, NativeConnection } from "@temporalio/worker";
+import { DefaultLogger, NativeConnection, Worker } from "@temporalio/worker";
 import * as path from "path";
 import * as fs from "fs";
 import { createActivityForScript } from "./activity";
 import { activities } from "./activity";
+import { initializeLogger } from "./logger";
 
 // Maintain a global set of activity names we've already registered
 const ALREADY_REGISTERED = new Set<string>();
 
 const EXCLUDE_DIRS = [".moose"];
 
-function collectActivities(workflowDir: string): string[] {
-  console.log(`Collecting activities from ${workflowDir}`);
+function collectActivities(
+  logger: DefaultLogger,
+  workflowDir: string,
+): string[] {
+  logger.info(`Collecting activities from ${workflowDir}`);
   const scriptPaths: string[] = [];
 
   function walkDir(dir: string) {
@@ -18,7 +22,7 @@ function collectActivities(workflowDir: string): string[] {
 
     // Skip excluded directories
     if (EXCLUDE_DIRS.some((excluded) => dir.includes(excluded))) {
-      console.log(`Skipping excluded directory: ${dir}`);
+      logger.info(`Skipping excluded directory: ${dir}`);
       return;
     }
 
@@ -29,20 +33,22 @@ function collectActivities(workflowDir: string): string[] {
 
       if (stat.isDirectory()) {
         walkDir(fullPath);
-      } else if (file.endsWith(".ts") || file.endsWith(".js")) {
+      } else if (file.endsWith(".ts")) {
         scriptPaths.push(fullPath);
-        console.log(`Found script: ${fullPath}`);
+        logger.info(`Found script: ${fullPath}`);
       }
     });
   }
 
   walkDir(workflowDir);
-  console.log(`Found ${scriptPaths.length} scripts`);
   return scriptPaths;
 }
 
-async function registerWorkflows(scriptDir: string): Promise<Worker | null> {
-  console.log(`Registering workflows from ${scriptDir}`);
+async function registerWorkflows(
+  logger: DefaultLogger,
+  scriptDir: string,
+): Promise<Worker | null> {
+  logger.info(`Registering workflows from ${scriptDir}`);
 
   // Collect all TypeScript scripts
   const allScriptPaths: string[] = [];
@@ -52,19 +58,19 @@ async function registerWorkflows(scriptDir: string): Promise<Worker | null> {
     const workflowDirs = fs.readdirSync(scriptDir);
     for (const workflowDir of workflowDirs) {
       const workflowDirFullPath = path.join(scriptDir, workflowDir);
-      console.log(`Checking workflow directory: ${workflowDirFullPath}`);
+      logger.info(`Checking workflow directory: ${workflowDirFullPath}`);
 
       if (fs.statSync(workflowDirFullPath).isDirectory()) {
-        allScriptPaths.push(...collectActivities(workflowDirFullPath));
+        allScriptPaths.push(...collectActivities(logger, workflowDirFullPath));
       }
     }
 
     if (allScriptPaths.length === 0) {
-      console.log(`No scripts found in ${scriptDir}`);
+      logger.info(`No scripts found in ${scriptDir}`);
       return null;
     }
 
-    console.log(`Found ${allScriptPaths.length} scripts in ${scriptDir}`);
+    logger.info(`Found ${allScriptPaths.length} scripts in ${scriptDir}`);
 
     // Build dynamic activities
     const dynamicActivities: any[] = [];
@@ -77,26 +83,25 @@ async function registerWorkflows(scriptDir: string): Promise<Worker | null> {
         const activity = await createActivityForScript(activityName);
         dynamicActivities.push(activity);
         ALREADY_REGISTERED.add(activityName);
-        console.log(`Registered activity ${activityName}`);
+        logger.info(`Registered activity ${activityName}`);
       }
     }
 
     if (dynamicActivities.length === 0) {
-      console.log(`No activities found in ${scriptDir}`);
+      logger.info(`No activities found in ${scriptDir}`);
       return null;
     }
 
-    console.log(
+    logger.info(
       `Found ${dynamicActivities.length} activity(ies) in ${scriptDir}`,
     );
 
     // TODO: Make this configurable
-    console.log("Connecting to Temporal server...");
+    logger.info("Connecting to Temporal server...");
     const connection = await NativeConnection.connect({
       address: "localhost:7233",
     });
 
-    console.log("Creating worker...");
     const worker = await Worker.create({
       connection,
       taskQueue: "typescript-script-queue",
@@ -114,7 +119,7 @@ async function registerWorkflows(scriptDir: string): Promise<Worker | null> {
 
     return worker;
   } catch (error) {
-    console.log(`Error registering workflows: ${error}`);
+    logger.error(`Error registering workflows: ${error}`);
     throw error;
   }
 }
@@ -127,21 +132,25 @@ async function registerWorkflows(scriptDir: string): Promise<Worker | null> {
  * @returns The started Temporal worker instance
  * @throws ValueError if no scripts are found to register
  */
-export async function startWorker(scriptDir: string): Promise<Worker> {
-  console.log(`Starting worker for script directory: ${scriptDir}`);
-  const worker = await registerWorkflows(scriptDir);
+export async function runScripts(scriptDir: string): Promise<Worker> {
+  // Not sure why temporal doesn't like importing the logger
+  // so have to pass it around
+  const logger = initializeLogger();
+
+  logger.info(`Starting worker for script directory: ${scriptDir}`);
+  const worker = await registerWorkflows(logger, scriptDir);
 
   if (!worker) {
     const msg = `No scripts found to register in ${scriptDir}`;
-    console.log(msg);
+    logger.error(msg);
     throw new Error(msg);
   }
 
-  console.log("Starting TypeScript worker...");
+  logger.info("Starting TypeScript worker...");
   try {
     await worker.run();
   } catch (error) {
-    console.log(`Worker failed to start: ${error}`);
+    logger.error(`Worker failed to start: ${error}`);
     throw error;
   }
 

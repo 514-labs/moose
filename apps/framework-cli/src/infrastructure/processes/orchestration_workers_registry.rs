@@ -32,7 +32,7 @@ pub enum OrchestrationWorkersRegistryError {
 
     /// Error that occurs when starting a typescript worker process fails
     #[error("Failed to start the typescript orchestration worker")]
-    TypescriptWorkerProcessError(#[from] typescript::scripts::WorkerProcessError),
+    TypescriptWorkerProcessError(#[from] typescript::scripts_worker::WorkerProcessError),
 }
 
 /// Registry that manages orchestration worker processes
@@ -93,7 +93,7 @@ impl OrchestrationWorkersRegistry {
             let child = python::scripts_worker::start_worker(&self.project).await?;
             self.workers.insert(orchestration_worker.id(), child);
         } else {
-            let child = typescript::scripts::start_worker(&self.project).await?;
+            let child = typescript::scripts_worker::start_worker(&self.project).await?;
             self.workers.insert(orchestration_worker.id(), child);
         }
         Ok(())

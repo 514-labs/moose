@@ -139,10 +139,9 @@ pub fn infra_updated(message: &str) {
     info!("~ {}", message.trim());
 }
 
-#[macro_export]
 macro_rules! show_message {
     (@inner $message_type:expr, $message:expr, $log:expr) => {
-        use $crate::cli::display::TERM;
+        use crate::cli::display::TERM;
         use console::{pad_str, style};
 
         let padder = 14;
@@ -232,6 +231,11 @@ pub fn show_table(headers: Vec<String>, rows: Vec<Vec<String>>) {
             details: format!("\n{}", table),
         }
     );
+}
+
+pub fn show_message_wrapper(message_type: MessageType, message: Message) {
+    // Probably shouldn't do macro_export so we just wrap it
+    show_message!(message_type, message, false);
 }
 
 pub fn batch_inserted(count: usize, table_name: &str) {

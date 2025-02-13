@@ -394,13 +394,18 @@ fn process_subscript_node(
     match &*subscript.value {
         Expr::Name(name) => match name.id.to_string().as_str() {
             "list" => {
-                let col_type = ColumnType::Array(Box::new(process_slice(
-                    &subscript.slice,
-                    column,
-                    enums,
-                    python_classes,
-                    nested_classes,
-                )?));
+                let col_type = ColumnType::Array {
+                    element_type: Box::new(process_slice(
+                        &subscript.slice,
+                        column,
+                        enums,
+                        python_classes,
+                        nested_classes,
+                    )?),
+                    // list[Optional[int]] fails
+                    // hardcoding false here, before we move from AST walking to runtime extraction
+                    element_nullable: false,
+                };
                 column.data_type = Some(col_type);
             }
             "Key" => {
@@ -887,7 +892,10 @@ mod tests {
 
         let list_sub_field = model.columns.iter().find(|c| c.name == "list_sub").unwrap();
 
-        if let ColumnType::Array(inner_type) = &list_sub_field.data_type {
+        if let ColumnType::Array {
+            element_type: inner_type,
+        } = &list_sub_field.data_type
+        {
             if let ColumnType::Nested(ref nested) = **inner_type {
                 assert_eq!(nested.name, "MySubModel");
                 assert_eq!(nested.columns.len(), 2);

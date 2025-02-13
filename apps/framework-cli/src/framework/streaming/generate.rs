@@ -150,7 +150,7 @@ fn get_default_value_for_type(column_type: &ColumnType, lang: SupportedLanguages
         (ColumnType::DateTime, SupportedLanguages::Typescript) => "new Date()".to_string(),
         (ColumnType::DateTime, SupportedLanguages::Python) => "datetime.now()".to_string(),
         (ColumnType::Enum(_), _) => "any".to_string(),
-        (ColumnType::Array(_), _) => "[]".to_string(),
+        (ColumnType::Array { .. }, _) => "[]".to_string(),
         (ColumnType::Nested(_), SupportedLanguages::Typescript) => "{}".to_string(),
         (ColumnType::Nested(inner), SupportedLanguages::Python) => format!("{}()", inner.name),
         (ColumnType::Json, _) => "{}".to_string(),

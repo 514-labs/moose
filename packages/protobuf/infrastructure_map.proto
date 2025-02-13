@@ -152,6 +152,8 @@ message ColumnType {
     DataEnum enum = 2;
     ColumnType array = 3;
     Nested nested = 4;
+
+    ColumnType array_of_nullable = 5;
   }
 }
 

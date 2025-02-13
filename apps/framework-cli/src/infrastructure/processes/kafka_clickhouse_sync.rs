@@ -562,7 +562,7 @@ fn mapper_json_to_clickhouse_record(
                     }
                     None => {
                         // Clickhouse doesn't like NULLABLE arrays so we are inserting an empty array instead.
-                        if let ColumnType::Array(_inner_type) = &column.data_type {
+                        if let ColumnType::Array { .. } = &column.data_type {
                             record.insert(key, ClickHouseValue::new_array(Vec::new()));
                         }
                         // Other values are ignored and the client will insert NULL instead
@@ -672,13 +672,24 @@ fn map_json_value_to_clickhouse_value(
                 })
             }
         }
-        ColumnType::Array(inner_column_type) => {
+        ColumnType::Array {
+            element_type,
+            element_nullable,
+        } => {
             if let Some(arr) = value.as_array() {
                 let mut array_values = Vec::new();
                 for value in arr.iter() {
-                    let clickhouse_value =
-                        map_json_value_to_clickhouse_value(inner_column_type, value)?;
-                    array_values.push(clickhouse_value);
+                    if *value == Value::Null {
+                        if !element_nullable {
+                            log::error!("Array of non nullable elements has a null value");
+                        }
+                        // We are adding the value anyway to match the number of arguments that clickhouse expects
+                        array_values.push(ClickHouseValue::new_null());
+                    } else {
+                        let clickhouse_value =
+                            map_json_value_to_clickhouse_value(element_type, value)?;
+                        array_values.push(clickhouse_value);
+                    }
                 }
 
                 Ok(ClickHouseValue::new_array(array_values))

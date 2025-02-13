@@ -144,7 +144,7 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
             ColumnType::String => formatter.write_str("a string value"),
             ColumnType::DateTime => formatter.write_str("a datetime value"),
             ColumnType::Enum(_) => formatter.write_str("an enum value"),
-            ColumnType::Array(_) => formatter.write_str("an array value"),
+            ColumnType::Array { .. } => formatter.write_str("an array value"),
             ColumnType::Nested(_) => formatter.write_str("a nested object"),
 
             ColumnType::BigInt | ColumnType::Decimal | ColumnType::Json | ColumnType::Bytes => {
@@ -275,10 +275,14 @@ impl<'de, S: SerializeValue> Visitor<'de> for &mut ValueVisitor<'_, S> {
         A: SeqAccess<'de>,
     {
         match self.t {
-            ColumnType::Array(ref inner_type) => {
+            ColumnType::Array {
+                element_type: ref inner_type,
+                element_nullable,
+            } => {
                 self.write_to
                     .serialize_value(&SeqAccessSerializer {
                         inner_type,
+                        inner_required: *element_nullable,
                         seq: RefCell::new(seq),
                         _phantom_data: &PHANTOM_DATA,
                         context: &self.context,
@@ -331,7 +335,7 @@ impl<'de, A: SeqAccess<'de>> Serialize for SeqAccessSerializer<'_, 'de, A> {
         let mut write_to = serializer.serialize_seq(None)?;
         let mut visitor = ValueVisitor {
             t: self.inner_type,
-            required: true,
+            required: self.inner_required,
             write_to: &mut DummyWrapper(&mut write_to),
             context: ParentContext {
                 parent: Some(self.context),
@@ -357,6 +361,7 @@ static PHANTOM_DATA: PhantomData<()> = PhantomData {};
 // as we put it into the output JSON
 struct SeqAccessSerializer<'a, 'de, A: SeqAccess<'de>> {
     inner_type: &'a ColumnType,
+    inner_required: bool,
     seq: RefCell<A>,
     _phantom_data: &'de PhantomData<()>,
     context: &'a ParentContext<'a>,
@@ -655,7 +660,9 @@ mod tests {
     fn test_array() {
         let columns = vec![Column {
             name: "array_col".to_string(),
-            data_type: ColumnType::Array(Box::new(ColumnType::Int)),
+            data_type: ColumnType::Array {
+                element_type: Box::new(ColumnType::Int),
+            },
             required: true,
             unique: false,
             primary_key: false,

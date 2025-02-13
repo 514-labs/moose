@@ -89,7 +89,10 @@ pub enum ColumnType {
     Decimal,
     DateTime,
     Enum(DataEnum),
-    Array(Box<ColumnType>),
+    Array {
+        element_type: Box<ColumnType>,
+        element_nullable: bool,
+    },
     Nested(Nested),
     Json,  // TODO: Eventually support for only views and tables (not topics)
     Bytes, // TODO: Explore if we ever need this type
@@ -106,7 +109,10 @@ impl fmt::Display for ColumnType {
             ColumnType::Decimal => write!(f, "Decimal"),
             ColumnType::DateTime => write!(f, "DateTime"),
             ColumnType::Enum(e) => write!(f, "Enum<{}>", e.name),
-            ColumnType::Array(inner) => write!(f, "Array<{}>", inner),
+            ColumnType::Array {
+                element_type: inner,
+                element_nullable: _,
+            } => write!(f, "Array<{}>", inner),
             ColumnType::Nested(n) => write!(f, "Nested<{}>", n.name),
             ColumnType::Json => write!(f, "Json"),
             ColumnType::Bytes => write!(f, "Bytes"),
@@ -130,9 +136,13 @@ impl Serialize for ColumnType {
                 state.serialize_field("values", &data_enum.values)?;
                 state.end()
             }
-            ColumnType::Array(inner) => {
+            ColumnType::Array {
+                element_type,
+                element_nullable,
+            } => {
                 let mut state = serializer.serialize_struct("Array", 1)?;
-                state.serialize_field("elementType", inner)?;
+                state.serialize_field("elementType", element_type)?;
+                state.serialize_field("elementNullable", element_nullable)?;
                 state.end()
             }
             ColumnType::Nested(nested) => {
@@ -221,13 +231,16 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
         let mut values = None;
         let mut columns = None;
         let mut jwt = None;
+
+        let mut element_type = None;
+        let mut element_nullable = None;
         while let Some(key) = map.next_key::<String>()? {
             if key == "elementType" || key == "element_type" {
-                return Ok(ColumnType::Array(Box::new(
-                    map.next_value::<ColumnType>().map_err(|e| {
-                        A::Error::custom(format!("Array inner type deserialization error {}.", e))
-                    })?,
-                )));
+                element_type = Some(map.next_value::<ColumnType>().map_err(|e| {
+                    A::Error::custom(format!("Array inner type deserialization error {}.", e))
+                })?)
+            } else if key == "elementNullable" || key == "element_nullable" {
+                element_nullable = Some(map.next_value::<bool>()?)
             } else if key == "name" {
                 name = Some(map.next_value::<String>()?);
             } else if key == "values" {
@@ -237,6 +250,13 @@ impl<'de> Visitor<'de> for ColumnTypeVisitor {
             } else if key == "jwt" {
                 jwt = Some(map.next_value::<bool>()?)
             }
+        }
+
+        if let Some(element_type) = element_type {
+            return Ok(ColumnType::Array {
+                element_type: Box::new(element_type),
+                element_nullable: element_nullable.unwrap_or(false),
+            });
         }
 
         let name = name.ok_or(A::Error::custom("Missing field: name."))?;
@@ -295,7 +315,14 @@ impl ColumnType {
             ColumnType::Decimal => column_type::T::Simple(SimpleColumnType::DECIMAL.into()),
             ColumnType::DateTime => column_type::T::Simple(SimpleColumnType::DATETIME.into()),
             ColumnType::Enum(data_enum) => column_type::T::Enum(data_enum.to_proto()),
-            ColumnType::Array(inner) => column_type::T::Array(Box::new(inner.to_proto())),
+            ColumnType::Array {
+                element_type,
+                element_nullable: false,
+            } => column_type::T::Array(Box::new(element_type.to_proto())),
+            ColumnType::Array {
+                element_type,
+                element_nullable: true,
+            } => column_type::T::ArrayOfNullable(Box::new(element_type.to_proto())),
             ColumnType::Nested(nested) => column_type::T::Nested(nested.to_proto()),
             ColumnType::Json => column_type::T::Simple(SimpleColumnType::JSON_COLUMN.into()),
             ColumnType::Bytes => column_type::T::Simple(SimpleColumnType::BYTES.into()),
@@ -381,9 +408,13 @@ mod tests {
     fn test_t(t: ColumnType) {
         serialize_and_deserialize(&t);
 
-        let array = ColumnType::Array(Box::new(t));
+        let array = ColumnType::Array {
+            element_type: Box::new(t),
+        };
         serialize_and_deserialize(&array);
-        let nested_array = ColumnType::Array(Box::new(array));
+        let nested_array = ColumnType::Array {
+            element_type: Box::new(array),
+        };
         serialize_and_deserialize(&nested_array);
     }
 

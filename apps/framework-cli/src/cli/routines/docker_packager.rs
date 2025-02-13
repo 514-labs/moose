@@ -6,7 +6,8 @@ use crate::utilities::constants::{
     APP_DIR, CLI_INTERNAL_VERSIONS_DIR, OLD_PROJECT_CONFIG_FILE, PACKAGE_JSON, PROJECT_CONFIG_FILE,
     SETUP_PY, TSCONFIG_JSON,
 };
-use crate::utilities::{constants, docker, system};
+use crate::utilities::docker::DockerClient;
+use crate::utilities::{constants, system};
 use crate::{cli::display::Message, project::Project};
 use log::{error, info};
 use std::fs;
@@ -96,7 +97,10 @@ EXPOSE 4000
 CMD ["moose", "prod"]
 "#;
 
-pub fn create_dockerfile(project: &Project) -> Result<RoutineSuccess, RoutineFailure> {
+pub fn create_dockerfile(
+    project: &Project,
+    docker_client: &DockerClient,
+) -> Result<RoutineSuccess, RoutineFailure> {
     let internal_dir = project.internal_dir().map_err(|err| {
         error!("Failed to get internal directory for project: {}", err);
         RoutineFailure::new(
@@ -108,7 +112,7 @@ pub fn create_dockerfile(project: &Project) -> Result<RoutineSuccess, RoutineFai
         )
     })?;
 
-    ensure_docker_running()?;
+    ensure_docker_running(docker_client)?;
 
     let versions_file_path = internal_dir.join("packager/versions/.gitkeep");
 
@@ -186,6 +190,7 @@ pub fn create_dockerfile(project: &Project) -> Result<RoutineSuccess, RoutineFai
 
 pub fn build_dockerfile(
     project: &Project,
+    docker_client: &DockerClient,
     is_amd64: bool,
     is_arm64: bool,
 ) -> Result<RoutineSuccess, RoutineFailure> {
@@ -200,7 +205,7 @@ pub fn build_dockerfile(
         )
     })?;
 
-    ensure_docker_running()?;
+    ensure_docker_running(docker_client)?;
     let file_path = internal_dir.join("packager/Dockerfile");
     info!("Building Dockerfile at: {:?}", file_path);
 
@@ -291,7 +296,7 @@ pub fn build_dockerfile(
         let buildx_result = with_spinner(
             "Creating docker linux/amd64 image",
             || {
-                docker::buildx(
+                docker_client.buildx(
                     &internal_dir.join("packager"),
                     cli_version,
                     "linux/amd64",
@@ -319,7 +324,7 @@ pub fn build_dockerfile(
         let buildx_result = with_spinner(
             "Creating docker linux/arm64 image",
             || {
-                docker::buildx(
+                docker_client.buildx(
                     &internal_dir.join("packager"),
                     cli_version,
                     "linux/arm64",

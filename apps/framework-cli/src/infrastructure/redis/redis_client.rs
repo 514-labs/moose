@@ -80,10 +80,33 @@ impl RedisClient {
         let client =
             Client::open(redis_config.url.clone()).context("Failed to create Redis client")?;
 
-        let mut connection = client
-            .get_async_connection()
-            .await
-            .context("Failed to establish Redis connection")?;
+        // TODO: this is a bandaid, we should use the redis connection manager instead
+        let mut connection = {
+            let mut attempts = 0;
+            let max_attempts = 10;
+            let mut delay_ms = 100;
+            let max_total_delay_ms = 10_000; // 10 seconds
+            let mut total_delay_ms = 0;
+
+            loop {
+                match client.get_async_connection().await {
+                    Ok(conn) => break conn,
+                    Err(e) => {
+                        attempts += 1;
+                        if attempts >= max_attempts || total_delay_ms >= max_total_delay_ms {
+                            return Err(anyhow::anyhow!("Failed to establish Redis connection after {} attempts over {}ms: {}", attempts, total_delay_ms, e));
+                        }
+
+                        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
+                        total_delay_ms += delay_ms;
+                        delay_ms = std::cmp::min(delay_ms * 2, 1000); // Cap max delay at 1s
+
+                        info!("<RedisClient> Connection attempt {} failed, retrying after {}ms. Error: {}", attempts, delay_ms, e);
+                    }
+                }
+            }
+        };
+        // End of thing to remove
 
         let pub_sub = client
             .get_async_connection()

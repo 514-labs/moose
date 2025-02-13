@@ -10,6 +10,7 @@ use crate::{
         languages::SupportedLanguages,
         python,
         scripts::collector::{serialize_configs, Collector, WorkflowCollector},
+        typescript,
     },
     project::Project,
     utilities::{
@@ -25,9 +26,13 @@ pub enum OrchestrationWorkersRegistryError {
     #[error("Kill process Error")]
     KillProcessError(#[from] KillProcessError),
 
-    /// Error that occurs when starting a worker process fails
-    #[error("Failed to start the orchestration worker")]
+    /// Error that occurs when starting a python worker process fails
+    #[error("Failed to start the python orchestration worker")]
     PythonWorkerProcessError(#[from] python::scripts_worker::WorkerProcessError),
+
+    /// Error that occurs when starting a typescript worker process fails
+    #[error("Failed to start the typescript orchestration worker")]
+    TypescriptWorkerProcessError(#[from] typescript::scripts::WorkerProcessError),
 }
 
 /// Registry that manages orchestration worker processes
@@ -88,10 +93,8 @@ impl OrchestrationWorkersRegistry {
             let child = python::scripts_worker::start_worker(&self.project).await?;
             self.workers.insert(orchestration_worker.id(), child);
         } else {
-            todo!(
-                "Orchestration worker not supported for language: {:?}",
-                orchestration_worker.supported_language
-            );
+            let child = typescript::scripts::start_worker(&self.project).await?;
+            self.workers.insert(orchestration_worker.id(), child);
         }
         Ok(())
     }

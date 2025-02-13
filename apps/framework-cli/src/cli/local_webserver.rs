@@ -1,6 +1,7 @@
 use super::display::Message;
 use super::display::MessageType;
 use super::routines::auth::validate_auth_token;
+use super::settings::Settings;
 use crate::metrics::MetricEvent;
 
 use crate::cli::display::with_spinner;
@@ -11,7 +12,6 @@ use crate::framework::core::infrastructure_map::Change;
 use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
 use crate::metrics::Metrics;
 use crate::utilities::auth::{get_claims, validate_jwt};
-use crate::utilities::docker;
 
 use crate::framework::data_model::config::EndpointIngestionFormat;
 use crate::infrastructure::stream::redpanda;
@@ -19,6 +19,7 @@ use crate::infrastructure::stream::redpanda::ConfiguredProducer;
 
 use crate::framework::typescript::bin::CliMessage;
 use crate::project::{JwtConfig, Project};
+use crate::utilities::docker::DockerClient;
 use bytes::Buf;
 use chrono::Utc;
 use http_body_util::BodyExt;
@@ -405,12 +406,12 @@ fn bad_json_response(e: serde_json::Error) -> Response<Full<Bytes>> {
         .unwrap()
 }
 
-fn success_response(uri: String) -> Response<Full<Bytes>> {
+fn success_response(data_model_name: &str) -> Response<Full<Bytes>> {
     show_message!(
         MessageType::Success,
         Message {
-            action: "SUCCESS".to_string(),
-            details: uri.clone(),
+            action: "[POST]".to_string(),
+            details: format!("Data received at ingest API sink for {data_model_name}"),
         }
     );
 
@@ -464,7 +465,6 @@ async fn handle_json_req(
 
     // TODO probably a refactor to be done here with the array json but it doesn't seem to be
     // straightforward to do it in a generic way.
-    let url = req.uri().to_string();
     let body = to_reader(req).await;
 
     let parsed = JsonDeserializer::from_reader(body).deserialize_any(&mut DataModelVisitor::new(
@@ -487,7 +487,7 @@ async fn handle_json_req(
         return internal_server_error_response();
     }
 
-    success_response(url)
+    success_response(&data_model.name)
 }
 
 async fn wait_for_batch_complete(
@@ -517,7 +517,6 @@ async fn handle_json_array_body(
 
     // TODO probably a refactor to be done here with the json but it doesn't seem to be
     // straightforward to do it in a generic way.
-    let url = req.uri().to_string();
     let number_of_bytes = req.body().size_hint().exact().unwrap();
     let body = to_reader(req).await;
 
@@ -564,7 +563,7 @@ async fn handle_json_array_body(
         return internal_server_error_response();
     }
 
-    success_response(url)
+    success_response(&data_model.name)
 }
 
 async fn validate_token(token: Option<&str>, key: &str) -> bool {
@@ -969,8 +968,10 @@ impl Webserver {
 
     // TODO - when we retire the the old core, we should remove routeTable from the start method and using only
     // the channel to update the routes
+    #[allow(clippy::too_many_arguments)]
     pub async fn start<I: InfraMapProvider + Clone + Send + 'static>(
         &self,
+        settings: &Settings,
         route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
         consumption_apis: &'static RwLock<HashSet<String>>,
         infra_map: I,
@@ -1089,7 +1090,7 @@ impl Webserver {
             }
         }
 
-        shutdown(&project, graceful).await;
+        shutdown(settings, &project, graceful).await;
     }
 }
 
@@ -1116,8 +1117,7 @@ fn handle_listener_err(port: u16, e: std::io::Error) -> ! {
         _ => panic!("Failed to listen to port {}: {:?}", port, e),
     }
 }
-
-async fn shutdown(project: &Project, graceful: GracefulShutdown) -> ! {
+async fn shutdown(settings: &Settings, project: &Project, graceful: GracefulShutdown) -> ! {
     tokio::select! {
             _ = graceful.shutdown() => {
                 info!("all connections gracefully closed");
@@ -1128,10 +1128,11 @@ async fn shutdown(project: &Project, graceful: GracefulShutdown) -> ! {
     }
 
     if !project.is_production {
+        let docker = DockerClient::new(settings);
         with_spinner(
             "Stopping containers",
             || {
-                let _ = docker::stop_containers(project);
+                let _ = docker.stop_containers(project);
             },
             true,
         );

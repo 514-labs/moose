@@ -1,11 +1,21 @@
 {
-    "version": "2.0.0",
-    "tasks": [{
-        "label": "CLI build",
-        "type": "shell",
-        "command": "cargo build",
-        "options": {
-            "cwd": "${workspaceRoot}/apps/framework-cli"
-        }
-    }]
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "CLI build",
+      "type": "shell",
+      "command": "cargo build",
+      "options": {
+        "cwd": "${workspaceRoot}/apps/framework-cli"
+      }
+    },
+    {
+      "label": "Moose lib build",
+      "type": "shell",
+      "command": "pnpm --filter=@514labs/moose-lib run build",
+      "options": {
+        "cwd": "${workspaceRoot}"
+      }
+    }
+  ]
 }

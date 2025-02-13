@@ -5,5 +5,6 @@ pub mod consumption;
 pub mod export_collectors;
 pub mod generator;
 pub mod parser;
+pub mod scripts;
 pub mod streaming;
 pub mod templates;

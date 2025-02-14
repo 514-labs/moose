@@ -132,7 +132,7 @@ async function registerWorkflows(
  * @returns The started Temporal worker instance
  * @throws ValueError if no scripts are found to register
  */
-export async function runScripts(scriptDir: string): Promise<Worker> {
+export async function runScripts(scriptDir: string): Promise<Worker | null> {
   // Not sure why temporal doesn't like importing the logger
   // so have to pass it around
   const logger = initializeLogger();
@@ -142,8 +142,8 @@ export async function runScripts(scriptDir: string): Promise<Worker> {
 
   if (!worker) {
     const msg = `No scripts found to register in ${scriptDir}`;
-    logger.error(msg);
-    throw new Error(msg);
+    logger.warn(msg);
+    return null;
   }
 
   logger.info("Starting TypeScript worker...");

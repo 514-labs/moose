@@ -625,9 +625,13 @@ async fn ingest_route(
         MessageType::Info,
         Message {
             action: "POST".to_string(),
-            details: route.to_str().unwrap().to_string().to_string(),
+            details: route.to_str().unwrap().to_string(),
         }
     );
+
+    debug!("Attempting to find route: {:?}", route);
+    let route_table_read = route_table.read().await;
+    debug!("Available routes: {:?}", route_table_read.keys());
 
     let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
 
@@ -639,8 +643,14 @@ async fn ingest_route(
             )));
     }
 
-    match route_table.read().await.get(&route) {
-        Some(route_meta) => match route_meta.format {
+    // Case-insensitive route matching
+    let route_str = route.to_str().unwrap().to_lowercase();
+    let matching_route = route_table_read
+        .iter()
+        .find(|(k, _)| k.to_str().unwrap_or("").to_lowercase().eq(&route_str));
+
+    match matching_route {
+        Some((_, route_meta)) => match route_meta.format {
             EndpointIngestionFormat::Json => Ok(handle_json_req(
                 &configured_producer,
                 &route_meta.topic_name,
@@ -660,7 +670,11 @@ async fn ingest_route(
         },
         None => {
             if !is_prod {
-                println!("Ingestion route {:?} not found.", route);
+                println!(
+                    "Ingestion route {:?} not found. Available routes: {:?}",
+                    route,
+                    route_table_read.keys()
+                );
             }
             Response::builder()
                 .status(StatusCode::NOT_FOUND)

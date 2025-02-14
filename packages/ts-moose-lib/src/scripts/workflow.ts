@@ -1,9 +1,13 @@
-import { proxyActivities } from "@temporalio/workflow";
+import { log as logger, proxyActivities } from "@temporalio/workflow";
 import { WorkflowState } from "./types";
 import { mooseJsonEncode } from "./serialization";
 
 const { executeScript, readDirectory } = proxyActivities({
   startToCloseTimeout: "10 minutes",
+  retry: {
+    // TODO: Use user's retry config
+    maximumAttempts: 3,
+  },
 });
 
 export async function ScriptWorkflow(
@@ -21,12 +25,15 @@ export async function ScriptWorkflow(
   const results: any[] = [];
   let currentData = inputData?.data || inputData || {};
 
+  logger.info(
+    `Starting workflow for ${path} with data: ${JSON.stringify(currentData)}`,
+  );
+
   try {
     // Encode input data
     currentData = JSON.parse(mooseJsonEncode({ data: currentData }));
 
     if (path.endsWith(".ts")) {
-      const activityName = `${path.split("/").slice(-2, -1)[0]}/${path.split("/").slice(-1)[0].split(".")[0]}`;
       const result = await executeScript({
         scriptPath: path,
         inputData: currentData,
@@ -40,7 +47,6 @@ export async function ScriptWorkflow(
       const fullPath = `${path}/${item}`;
 
       if (item.endsWith(".ts")) {
-        const activityName = `${fullPath.split("/").slice(-2, -1)[0]}/${item.split(".")[0]}`;
         const result = await executeScript({
           scriptPath: fullPath,
           inputData: currentData,

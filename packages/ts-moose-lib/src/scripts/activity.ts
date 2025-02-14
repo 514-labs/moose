@@ -1,3 +1,4 @@
+import { log as logger } from "@temporalio/activity";
 import * as fs from "fs";
 import { WorkflowStepResult } from "./types";
 
@@ -13,7 +14,7 @@ export const activities = {
     try {
       const { scriptPath, inputData } = input;
 
-      console.log(`Activity received input: ${JSON.stringify(inputData)}`);
+      logger.info(`Activity received input: ${JSON.stringify(inputData)}`);
 
       // TODO: Handle initial input data & passing data between steps
       const processedInput = (inputData || {})?.data || {};
@@ -28,7 +29,9 @@ export const activities = {
         details: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
       };
-      throw new Error(JSON.stringify(errorData));
+      const errorMsg = JSON.stringify(errorData);
+      logger.error(errorMsg);
+      throw new Error(errorMsg);
     }
   },
 
@@ -37,7 +40,9 @@ export const activities = {
       const files = fs.readdirSync(dirPath);
       return files;
     } catch (error) {
-      throw new Error(`Failed to read directory ${dirPath}: ${error}`);
+      const errorMsg = `Failed to read directory ${dirPath}: ${error}`;
+      logger.error(errorMsg);
+      throw new Error(errorMsg);
     }
   },
 };

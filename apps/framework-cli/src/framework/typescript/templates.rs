@@ -191,7 +191,7 @@ export default function createTask(input?: object) {
     return {
         task: {{name}},
         config: {
-            retries: 1,
+            retries: 3,
         }
     } as TaskDefinition;
 }

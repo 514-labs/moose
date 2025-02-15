@@ -29,7 +29,7 @@ export interface MyDataModel {
 ```python filename="datamodels/MyDataModel.py" copy
 from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
-
+from datetime import datetime
 @moose_data_model
 @dataclass
 class MyDataModel:
@@ -37,6 +37,7 @@ class MyDataModel:
     some_string: str
     some_number: int
     some_boolean: bool
+    some_date: datetime
     some_list: list[str]
 ```
 </Python>
@@ -121,6 +122,7 @@ Data Models are defined as Python dataclasses using the `@dataclass` decorator. 
 from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
 from typing import List
+from datetime import datetime
 
 @moose_data_model
 @dataclass
@@ -129,9 +131,9 @@ class MyFirstDataModel:
     some_string: str
     some_number: int
     some_boolean: bool
-    some_date: datetime.datetime
+    some_date: datetime
     some_array: List[str]
-    some_optional_string: Optional[str] # Optional fields are marked with a `?`
+    some_optional_string: Optional[str]
 ```
 
 <Callout type="info" title="Note">

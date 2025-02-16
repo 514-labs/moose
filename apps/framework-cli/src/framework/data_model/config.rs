@@ -3,6 +3,7 @@ use std::path::Path;
 
 use crate::framework::python::datamodel_config::execute_python_model_file_for_config;
 use crate::framework::typescript::export_collectors::get_data_model_configs;
+use crate::utilities::_true;
 use log::info;
 use serde::Deserialize;
 use serde::Serialize;
@@ -39,9 +40,6 @@ pub struct StorageConfig {
     pub order_by_fields: Vec<String>,
     #[serde(default)]
     pub deduplicate: bool,
-}
-const fn _true() -> bool {
-    true
 }
 
 impl Default for StorageConfig {

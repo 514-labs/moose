@@ -32,7 +32,7 @@ pub fn run_local_infrastructure(
     validate_clickhouse_run(project, docker_client)?.show();
     validate_redpanda_run(project, docker_client)?.show();
     validate_redpanda_cluster(project.name(), docker_client)?.show();
-    if settings.features.scripts {
+    if settings.features.scripts || project.features.workflows {
         validate_temporal_run(project, docker_client)?.show();
     }
 

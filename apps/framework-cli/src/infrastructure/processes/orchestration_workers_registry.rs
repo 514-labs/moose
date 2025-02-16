@@ -54,7 +54,7 @@ impl OrchestrationWorkersRegistry {
         Self {
             workers: HashMap::new(),
             project: project.clone(),
-            scripts_enabled: settings.features.scripts,
+            scripts_enabled: settings.features.scripts || project.features.workflows,
         }
     }
 

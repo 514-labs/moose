@@ -994,14 +994,14 @@ async fn top_command_handler(
             peek(project_arc, data_model_name, *limit, file.clone(), *topic).await
         }
         Commands::Workflow(workflow_args) => {
-            if !settings.features.scripts {
+            let project = load_project()?;
+
+            if !(settings.features.scripts || project.features.workflows) {
                 return Err(RoutineFailure::error(Message {
                     action: "Workflow".to_string(),
-                    details: "Feature not enabled, to turn on go to ~/.moose/config.toml and set 'scripts' to true under the 'features' section".to_string(),
+                    details: "Feature not enabled, to turn on go to moose.config.toml and set 'workflows' to true under the 'features' section".to_string(),
                 }));
             }
-
-            let project = load_project()?;
 
             match &workflow_args.command {
                 Some(WorkflowCommands::Init { name, steps, step }) => {

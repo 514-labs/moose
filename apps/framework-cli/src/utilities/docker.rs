@@ -374,7 +374,7 @@ impl DockerClient {
         handlebars.register_escape_fn(handlebars::no_escape);
 
         let data = json!({
-            "scripts_feature": settings.features.scripts
+            "scripts_feature": settings.features.scripts || project.features.workflows
         });
 
         let rendered = handlebars

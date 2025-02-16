@@ -8,13 +8,14 @@ use super::infrastructure::topic::Topic;
 use super::infrastructure::topic_sync_process::{TopicToTableSyncProcess, TopicToTopicSyncProcess};
 use super::infrastructure::view::View;
 use super::primitive_map::PrimitiveMap;
+use crate::cli::display::{show_message_wrapper, Message, MessageType};
 use crate::framework::controller::{InitialDataLoad, InitialDataLoadStatus};
 use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::Project;
 use crate::proto::infrastructure_map::InfrastructureMap as ProtoInfrastructureMap;
 use anyhow::Result;
-use protobuf::{EnumOrUnknown, Message};
+use protobuf::{EnumOrUnknown, Message as ProtoMessage};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
@@ -325,7 +326,10 @@ impl InfrastructureMap {
                     );
                 }
 
-                topics.insert(topic.id(), topic);
+                if project.features.streaming_engine {
+                    topics.insert(topic.id(), topic);
+                }
+
                 api_endpoints.insert(api_endpoint.id(), api_endpoint);
             } else {
                 // We wait to have processed all the datamodels to process the ones that don't have changes
@@ -369,47 +373,61 @@ impl InfrastructureMap {
             }
         }
 
-        for function in primitive_map.functions.iter() {
-            // Currently we are not creating 1 per function source and target.
-            // We reuse the topics that were created from the data models.
-            // Unless for streaming function migrations where we will have to create new topics.
+        if !project.features.streaming_engine && !primitive_map.functions.is_empty() {
+            log::error!("Streaming disabled. Functions are disabled.");
+            show_message_wrapper(
+                MessageType::Error,
+                Message {
+                    action: "Disabled".to_string(),
+                    details: format!(
+                        "Streaming is disabled but {} function(s) found.",
+                        primitive_map.functions.len()
+                    ),
+                },
+            );
+        } else {
+            for function in primitive_map.functions.iter() {
+                // Currently we are not creating 1 per function source and target.
+                // We reuse the topics that were created from the data models.
+                // Unless for streaming function migrations where we will have to create new topics.
 
-            if function.is_migration() {
-                let (source_topic, target_topic) = Topic::from_migration_function(function);
+                if function.is_migration() {
+                    let (source_topic, target_topic) = Topic::from_migration_function(function);
 
-                let function_process = FunctionProcess::from_migration_function(
-                    function,
-                    &source_topic,
-                    &target_topic.clone().unwrap(),
-                );
+                    let function_process = FunctionProcess::from_migration_function(
+                        function,
+                        &source_topic,
+                        &target_topic.clone().unwrap(),
+                    );
 
-                let sync_process = TopicToTableSyncProcess::new(
-                    &target_topic.clone().unwrap(),
-                    &function.target_data_model.as_ref().unwrap().to_table(),
-                );
-                topic_to_table_sync_processes.insert(sync_process.id(), sync_process);
+                    let sync_process = TopicToTableSyncProcess::new(
+                        &target_topic.clone().unwrap(),
+                        &function.target_data_model.as_ref().unwrap().to_table(),
+                    );
+                    topic_to_table_sync_processes.insert(sync_process.id(), sync_process);
 
-                let topic_sync = TopicToTopicSyncProcess::from_migration_function(function);
-                topic_to_topic_sync_processes.insert(topic_sync.id(), topic_sync);
+                    let topic_sync = TopicToTopicSyncProcess::from_migration_function(function);
+                    topic_to_topic_sync_processes.insert(topic_sync.id(), topic_sync);
 
-                initial_data_loads.insert(
-                    function_process.id(),
-                    InitialDataLoad {
-                        table: function.source_data_model.to_table(),
-                        topic: source_topic.name.clone(),
-                        // it doesn't mean it is completed, it means the desired state is Completed
-                        status: InitialDataLoadStatus::Completed,
-                    },
-                );
-                topics.insert(source_topic.id(), source_topic);
-                if let Some(target) = target_topic.clone() {
-                    topics.insert(target.id(), target.clone());
+                    initial_data_loads.insert(
+                        function_process.id(),
+                        InitialDataLoad {
+                            table: function.source_data_model.to_table(),
+                            topic: source_topic.name.clone(),
+                            // it doesn't mean it is completed, it means the desired state is Completed
+                            status: InitialDataLoadStatus::Completed,
+                        },
+                    );
+                    topics.insert(source_topic.id(), source_topic);
+                    if let Some(target) = target_topic.clone() {
+                        topics.insert(target.id(), target.clone());
+                    }
+
+                    function_processes.insert(function_process.id(), function_process);
+                } else {
+                    let function_process = FunctionProcess::from_function(function, &topics);
+                    function_processes.insert(function_process.id(), function_process);
                 }
-
-                function_processes.insert(function_process.id(), function_process);
-            } else {
-                let function_process = FunctionProcess::from_function(function, &topics);
-                function_processes.insert(function_process.id(), function_process);
             }
         }
 

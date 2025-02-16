@@ -15,5 +15,7 @@ setup(
     install_requires=[
         'pyjwt[crypto]==2.9.0',
         'asyncio==3.4.3',
+        "pydantic==2.10.6",
+        "temporalio==1.9.0",
     ],
 )

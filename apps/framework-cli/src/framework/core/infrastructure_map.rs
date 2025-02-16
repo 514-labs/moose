@@ -328,9 +328,8 @@ impl InfrastructureMap {
 
                 if project.features.streaming_engine {
                     topics.insert(topic.id(), topic);
+                    api_endpoints.insert(api_endpoint.id(), api_endpoint);
                 }
-
-                api_endpoints.insert(api_endpoint.id(), api_endpoint);
             } else {
                 // We wait to have processed all the datamodels to process the ones that don't have changes
                 // That way we can refer to infrastructure that was created by those older versions.
@@ -360,7 +359,9 @@ impl InfrastructureMap {
                         views.insert(view.id(), view);
                     }
 
-                    api_endpoints.insert(api_endpoint.id(), api_endpoint);
+                    if project.features.streaming_engine {
+                        api_endpoints.insert(api_endpoint.id(), api_endpoint);
+                    }
                 }
                 None => {
                     log::error!(

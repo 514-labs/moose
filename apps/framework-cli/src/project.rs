@@ -131,6 +131,7 @@ pub struct ProjectFeatures {
     #[serde(default = "_true")]
     pub streaming_engine: bool,
 
+    #[serde(default)]
     pub workflows: bool,
 }
 

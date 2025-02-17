@@ -1,6 +1,6 @@
-import { Tabs, Steps, Card } from "nextra/components";
+import { Tabs, Steps, Card, FileTree } from "nextra/components";
 import { Callout, CTACard, CTACards, ToggleBlock } from "../components";
-import { RectangleEllipsis, Square } from "lucide-react";
+import { RectangleEllipsis, Square, Workflow } from "lucide-react";
 import { LanguageSwitcher } from "../components/language-switcher";
 
 # Quick Start
@@ -34,20 +34,31 @@ git --version && python3 --version && docker --version
 ```
 </Python>
 
-### First, initialize your Moose project
+## First, initialize your Moose project
 
 <Steps>
-<Python>
+
 ### Install the Moose CLI
 
+<Python>
 Moose is installed as a Python package, so you can install it using pip:
 
 ```bash filename="Terminal" copy
 pip install moose-cli
 ```
+</Python>
+
+<TypeScript>
+Moose is installed as a Node package, so you can install it using npm:
+
+```bash filename="Terminal" copy
+npm install -g @514labs/moose-cli
+```
+</TypeScript>
 
 ### Initialize a New Moose Project via the CLI
 
+<Python>
 ```bash filename="Terminal" copy
 moose-cli init my-moose-app python
 ```
@@ -59,11 +70,12 @@ moose-cli init my-moose-app python
 </Python>
 
 <TypeScript>
-### Run `create-moose-app` in your terminal 
-
 ```bash filename="Terminal" copy
-npx create-moose-app@latest my-moose-app ts 
+npx moose-cli init my-moose-app ts 
 ```
+<Callout type="warning" title="Don't forget the ts flag!">
+  Don't forget to include the `ts` flag when initializing your project.
+</Callout>
 </TypeScript>
 
 This will automatically create a new project folder and initialize a skeleton Moose app with the entire project structure you need to get started.
@@ -145,7 +157,13 @@ moose-cli ls
 
 You should see the following ouput, which shows the ingestion points and tables that have been created for your project: 
 
-![moose-ls](/moose-ls.png)
+| Data Model | Ingestion Point | Table |
+| :--- | :--- | :--- |
+| Foo | /ingest/Foo | Foo_0_0 |
+| Bar | /ingest/Bar | Bar_0_0 |
+
+
+
 
 </Steps>
 
@@ -163,173 +181,163 @@ You should see the following ouput, which shows the ingestion points and tables 
   enabling you to explore and query your data immediately.
 </Callout>
 
-<TypeScript>
-#### Open `models.ts` and inspect the data models (located in `/app/datamodels`)
-</TypeScript>
-
-<Python>
-#### Open `models.py` and inspect the data models (located in `/app/datamodels`)
-</Python>
+#### Navigate to the `/app/datamodels` directory and inspect the data models
 
 <TypeScript>
+The starter project includes two sample data models, located in the `models.ts` file:
+
 ```ts filename="/app/datamodels/models.ts" copy
 import { Key } from "@514labs/moose-lib";
 
-export interface UserActivity {
-  eventId: Key<string>;
-  timestamp: string;
-  userId: string;
-  activity: string;
+export interface Foo {
+  primaryKey: Key<string>;
+  timestamp: Date;
+  optionalString?: string;
 }
 
-export interface ParsedActivity {
-  eventId: Key<string>;
-  timestamp: Date;
-  userId: string;
-  activity: string;
+export interface Bar {
+  primaryKey: Key<string>;
+  utcTimestamp: Date;
+  hasString: boolean;
+  stringLength: number;
 }
 ```
 </TypeScript>
 
 <Python>
+The starter project includes two sample data models, located in the `models.py` file:
+
 ```python filename="/datamodels/models.py" copy
 from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
 from datetime import datetime
+from typing import Optional
+@moose_data_model
+@dataclass
+class Foo:
+  primary_key: Key[str]
+  timestamp: datetime
+  optional_string: Optional[str]
 
 @moose_data_model
 @dataclass
-class UserActivity:
-eventId: Key[str]
-timestamp: str
-userId: str
-activity: str
-
-@moose_data_model
-@dataclass
-class ParsedActivity:
-eventId: Key[str]
-timestamp: datetime
-userId: str
-activity: str
+class Bar:
+  primary_key: Key[str]
+  utc_timestamp: datetime
+  has_string: bool
+  string_length: int
 ```
 </Python>
 
 <Callout type="info">
-The file defines `UserActivity` and `ParsedActivity` data models, which structure data for ingestion into your Moose infrastructure.
-<br/><br/>Moose automatically created database tables and ingestion points for these models, as seen in the `moose-ls` output.
+The file defines `Foo` and `Bar` data models, which structure data for ingestion into your Moose infrastructure.
+<br/><br/>Moose automatically created database tables and ingestion points for these models, as seen in the `moose ls` output.
 </Callout>
 </Steps>
 
 
-### Finally, ingest data into your application infrastructure
+## Finally, ingest data into your application infrastructure
 
 <Steps>
 
-### Send sample `UserActivity` data to the `/ingest/UserActivity` API endpoint on your local dev server (running on `localhost:4000`):
+### Locate your OpenAPI docs for your project
+Moose automatically generates OpenAPI docs for your project, which are located in the `openapi.yaml` file in the root of your project.
 
-<Tabs items={['curl', 'javascript', 'python']}>
-  <Tabs.Tab>
-  ```bash filename="Terminal" copy
-    curl -X POST \
-    -H "Content-Type: application/json" \
-    -d '{"eventId": "1234567890", "timestamp": "2019-01-01 00:00:01", "userId": "123456", "activity": "click"}' \
-    http://localhost:4000/ingest/UserActivity
-```
+<FileTree>
+<FileTree.Folder name="my-moose-app" open>
+<FileTree.Folder name=".moose" open>
+<FileTree.File name="openapi.yaml" />
+</FileTree.Folder>
+<FileTree.Folder name="app" open>
+<FileTree.Folder name="datamodels" />
+<FileTree.Folder name="functions" />
+<FileTree.Folder name="blocks" />
+<FileTree.Folder name="apis" />
+<FileTree.Folder name="scripts" />
+</FileTree.Folder>
+</FileTree.Folder>
+</FileTree>
 
-  </Tabs.Tab>
-  <Tabs.Tab>
-  If you have a Javascript enviroment, you can run the following code in a script file or in the console:
-  ```javascript filename="Your Javascript Code" copy
-  fetch('http://localhost:4000/ingest/UserActivity', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify({
-      eventId: '1234567890',
-      timestamp: '2019-01-01 00:00:01',
-      userId: '123456',
-      activity: 'click'
-    })
-  })
-```
-  </Tabs.Tab>
-  <Tabs.Tab>
-  If you have a Python enviroment, you can run the following code in a script file or in the console:
-  ```python filename="Your Python Code" copy
-  import requests
+If you are using VSCode, you can open the `openapi.yaml` file in the [OpenAPI (Swagger) Editor](https://marketplace.visualstudio.com/items?itemName=Arjun.swagger-viewer) extension.
 
-requests.post('http://localhost:4000/ingest/UserActivity', json={
-'eventId': '1234567890',
-'timestamp': '2019-01-01 00:00:01',
-'userId': '123456',
-'activity': 'click'
-})
 
-```
-</Tabs.Tab>
-</Tabs>
+### Ingest sample data to your `Foo` data model
+Open the `OpenAPI (Swagger) Editor` extension and navigate to the `Try it out` tab for the `POST /ingest/Foo` endpoint.
 
-### Check for confirmation messages in the CLI that the API endpoint received the data
-
-```txt filename="Terminal"
-POST /ingest/UserActivity/0.0
-SUCCESS /ingest/UserActivity/0.0
-```
-
-### Navigate to your preferred database explorer and connect to the Clickhouse database:
-<Tabs items={['Using the SQLTools VSCode Extension', 'Using Another Database Explorer']}>
-  <Tabs.Tab>
-    - Click the SQLTools database icon in your extensions tab. 
-    - You should see the Clickhouse icon followed by the connection details for the database running on your local dev server: `panda@localhost:18123/local`.
-    ![SQL Tools Setup](/sqltools.png)
-    - To create and run a new query, click the `New SQL File` icon.
-  </Tabs.Tab>
-<Tabs.Tab>
-- Open your database explorer (e.g. DBeaver, DataGrip, etc.) and navigate to the section for adding a new database connection.
-- Enter the connection details as follows:
-
-```text filename="moose.project.toml" copy
-[clickhouse config]
-  db_name = "local"
-  user = "panda"
-  password = "pandapass"
-  host = "localhost"
-  host_port = 18123
-```
-
-- Test and save the connection. You should now see the `local` database in your database explorer tool.
-
-<Callout type="info">
-  You can find all the infrastructure configuration details in the
-  `moose.project.toml` file in your project's root directory
+<Callout type="info" title="OpenAPI (Swagger) Editor">
+  If you don't have the `OpenAPI (Swagger) Editor` extension installed, you can install it from the VSCode marketplace.
 </Callout>
 
-</Tabs.Tab>
-</Tabs>
-
-### Query your database to confirm the data landed
-
-Navigate to your preferred database explorer tool and run the following query:
-```sql filename="DB Explorer" copy
-SELECT * FROM local.UserActivity_0_0
+Alternatively, you can use the following curl command:
+<TypeScript>
+```bash filename="Terminal" copy
+curl -X POST "http://localhost:4000/ingest/Foo" -H "Content-Type: application/json" -d '{"primaryKey": "1234567890", "timestamp": "2019-01-01 00:00:01", "optionalString": "hello world"}'
 ```
-You should see the data you ingested in the `UserActivity` table.
+</TypeScript>
+
+<Python>
+```bash filename="Terminal" copy
+curl -X POST "http://localhost:4000/ingest/Foo" -H "Content-Type: application/json" -d '{"primary_key": "1234567890", "timestamp": "2019-01-01 00:00:01", "optional_string": "hello world"}'
+```
+</Python>
+
+### Check CLI output for confirmation messages
+
+```txt filename="Terminal"
+POST ingest/Foo/0.0
+[POST] Data received at ingest API sink for Foo
+[DB] 1 rows successfully written to DB table (Foo_0_0)
+```
+
+### Run `moose peek` to confirm the data landed
+
+<TypeScript>
+```bash filename="Terminal" copy
+npx moose-cli peek Foo
+```
+</TypeScript>
+
+<Python>
+```bash filename="Terminal" copy
+moose-cli peek Foo
+```
+</Python>
+
+You should see the following output:
+
+<TypeScript>
+```txt filename="Terminal"
+{"primaryKey": "1234567890", "timestamp": "2019-01-01 00:00:01", "optionalString": "hello world"}
+```
+</TypeScript>
+
+<Python>
+```txt filename="Terminal"
+{"primary_key": "1234567890", "timestamp": "2019-01-01 00:00:01", "optional_string": "hello world"}
+```
+</Python>
+
 </Steps>
 
-### Next Steps
+## Next Steps
 <Callout type="success" title="Congratulations!">
   You've successfully set up a Moose project, ingested data, and confirmed that it landed in your database. You're now ready to dive deeper and explore all the exciting capabilities that Moose has to offer. Here are some suggested next steps:
 </Callout>
 
 #### Learn Other Moose Primitives
 
-<CTACards columns={2}>
+<CTACards columns={3}>
+<CTACard
+  title="Create an Ingestion Workflow"
+  description="Learn how to create a new Workflow to ingest data into your Moose project" 
+  ctaLink="/workflows"
+  ctaLabel="Learn More" 
+  Icon={Workflow}
+/>
 <CTACard 
-  title="Process Data with Streaming Functions"
-  description="Learn how to process UserActivity data into ParsedActivity data using Streaming Functions" 
-  ctaLink="/stream-processing"
+  title="Build Streaming Functions"
+  description="Learn how to build stream processing pipelines withå Streaming Functions" 
+  ctaLink="/streaming-functions"
   ctaLabel="Learn More" 
   Icon={RectangleEllipsis}
 />

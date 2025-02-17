@@ -1,0 +1,309 @@
+import { FileTree } from "nextra/components";
+import { Python, TypeScript, Callout } from "../components";
+
+# Workflow Orchestration
+
+Moose workflows enable developers to automate sequences of tasks in a maintainable, reliable way. A workflow is a series of steps that execute in order. Each workflow follows these conventions:
+
+- Workflows live in folders inside the `/app/scripts` subdirectory, with the folder name being the workflow name.
+- Steps are scripts with numerical prefixes (e.g., `1.first_step.py` for Python or `1.firstStep.ts` for TypeScript).
+- Configuration is managed through `config.toml` files.
+
+## Quickstart
+
+To create a new workflow, run the following command:
+
+<Python>
+```bash
+moose-cli workflow init example_workflow --steps firstStep,secondStep
+```
+</Python>
+
+<TypeScript>
+```bash
+npx moose-cli workflow init example_workflow --steps firstStep,secondStep
+```
+</TypeScript>
+
+## Workflow Structure
+
+A typical workflow looks like this:
+
+<Python>
+<FileTree>
+<FileTree.Folder name="app" open>
+<FileTree.Folder name="scripts" open>
+<FileTree.Folder name="example_workflow" open>
+<FileTree.File name="1.first_step.py" />
+<FileTree.File name="2.second_step.py" />
+<FileTree.File name="config.toml" />
+</FileTree.Folder>
+</FileTree.Folder>
+</FileTree.Folder>
+</FileTree>
+</Python>
+
+<TypeScript>
+<FileTree>
+<FileTree.Folder name="app" open>
+<FileTree.Folder name="scripts" open>
+<FileTree.Folder name="example_workflow" open>
+<FileTree.File name="1.first_step.ts" />
+<FileTree.File name="2.second_step.ts" />
+<FileTree.File name="config.toml" />
+</FileTree.Folder>
+</FileTree.Folder>
+</FileTree.Folder>
+</FileTree>
+</TypeScript>
+
+## Writing Workflow Steps
+
+### Python
+
+Steps are Python functions decorated with `@task`. Each step can receive inputs and return outputs:
+
+```python filename="app/scripts/example_workflow/1.first_step.py"
+from moose_lib import task, Logger
+
+@task
+def first_step(data: dict):
+    logger = Logger('Starting Step 1')
+    logger.info(f'Processing {data}')
+    
+    return {
+        "step": "first_step",
+        "data": {
+            "result": "Success",
+            "timestamp": datetime.now().isoformat()
+        }
+    }
+```
+
+### TypeScript
+
+Tasks are defined as asynchronous functions (of type `TaskFunction`) that perform some operations and return an object with two key properties: `step` and `data`.
+
+```typescript filename="app/scripts/example_workflow/1.firstStep.ts"
+import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
+
+const firstStep: TaskFunction = async () => {
+    return {
+        step: "firstStep",
+        data: {
+            result: "Success",
+            timestamp: new Date().toISOString()
+        }
+    };
+};
+
+export default createTask((input?: object): TaskDefinition => {
+    return {
+        task: firstStep,
+        config: {
+            retries: 3
+        }
+    } as TaskDefinition;
+});
+```
+
+## Data Flow Between Steps
+
+Steps communicate through their return values. Each step can return a dictionary containing a `data` key. The contents of this `data` key are automatically passed as input parameters to the next step in the workflow.
+
+- Only values inside the `data` object are passed to the next step.
+- Supported data types inside `data` include basic types, containers, and JSON-serializable custom classes.
+
+## Workflow Input Parameters
+
+Workflows can receive input parameters that are passed to their first step. These parameters can be provided through the CLI or via `MooseClient.workflows`.
+
+### CLI Example
+
+```bash
+moose-cli workflow run hello_world --input_value="test"
+```
+
+### API Example
+
+```python
+from moose_lib import MooseClient
+
+client = MooseClient()
+
+client.workflows.execute(
+    workflow="hello_world",
+    params={"input_value": "test"}
+)
+```
+
+## Configuration
+
+Control workflow behavior through `config.toml`:
+
+<Python>
+```toml filename="app/scripts/example_workflow/config.toml"
+name = "example_workflow"
+timeout = "1h"
+retries = 3
+schedule = "0 12 * * *"
+steps = [first_step, second_step]
+```
+</Python>
+
+<TypeScript filename="app/scripts/example_workflow/config.toml" >
+```toml
+name = "example_workflow"
+timeout = "1h"
+retries = 3
+schedule = "0 12 * * *"
+steps = [firstStep, secondStep]
+```
+</TypeScript>
+
+### Cron Scheduling Format
+
+The schedule field in `config.toml` uses standard cron expression syntax.
+
+## Triggering Workflows
+
+In addition to supporting scheduled workflows, Moose also supports triggering workflows via CLI and API.
+
+### CLI Trigger
+
+<Python>
+```bash
+moose-cli workflow run workflow_name
+```
+</Python>
+
+<TypeScript>
+```bash
+npx moose-cli workflow run workflow_name
+```
+</TypeScript>
+
+### API Trigger
+
+<Callout type="warning" title="Python Only">
+This feature is not yet available for TypeScript.
+</Callout>
+
+You can create an API to trigger workflows by using the `MooseClient` that is automatically instantiated and passed to your API route handler:
+
+<Python>
+```python
+from moose_lib import MooseClient
+from pydantic import BaseModel, Field
+
+class WorkflowParams(BaseModel):
+    input_value: str = Field(default="default")
+
+def run(client: MooseClient, params: WorkflowParams) -> dict:
+    return client.workflows.execute(
+        workflow="hello_world",
+        params=params
+    )
+```
+
+For more information on how to set up a Moose API, see the [Consumption API](/consumption-apis) documentation.
+</Python>
+
+<TypeScript>
+This feature is coming soon.
+</TypeScript>
+
+
+## Error Handling
+
+Moose provides multiple layers of error protection.
+
+### Step-Level Errors
+
+Moose automatically catches any runtime errors during step execution. Errors are logged for debugging, and the orchestrator will retry failed steps according to the retry count in `config.toml`.
+
+### Configuring Retry Behavior
+
+<Python>
+```python
+from moose_lib import task, Logger
+
+@task(retries=3) 
+def process_data(data: dict):
+    logger = Logger('process-task')
+    logger.info(f'Processing {data}')
+    
+    return {
+        "step": "process_data",
+        "data": {
+            "result": data.get("input_value").upper(),
+            "timestamp": datetime.now().isoformat()
+        }
+    }
+```
+</Python>
+
+<TypeScript>
+```typescript
+import { TaskFunction, TaskDefinition, createTask } from "@514labs/moose-lib";
+
+const firstStep: TaskFunction = async () => {
+    return {
+        step: "firstStep",
+        data: {
+            result: "Success",
+            timestamp: new Date().toISOString()
+        }
+    };
+};
+
+export default createTask((input?: object) => {
+    return {
+        task: firstStep,
+        config: {
+            retries: 3
+        }
+    } as TaskDefinition;
+});
+```
+</TypeScript>
+### Terminating Workflows
+
+To terminate a workflow before it has finished running, use the `workflow terminate` command.
+
+<Python>
+```bash
+moose-cli workflow terminate <workflow_name>
+```
+</Python>
+
+<TypeScript>
+```bash
+npx moose-cli workflow terminate <workflow_name>
+```
+</TypeScript>
+
+<Callout type="warning" title="Terminating Workflows">
+You cannot run the same workflow concurrently. Use the `terminate` command to stop the workflow before triggering it again.
+</Callout>
+
+## Best Practices
+
+- Write small, focused steps that do one thing well.
+- Log important information at each step.
+- Use meaningful names for workflows and steps.
+- Handle errors gracefully with appropriate recovery logic.
+- Store sensitive data in environment variables.
+- Document inputs and outputs for each step.
+
+## Troubleshooting
+
+| **Problem** | **Solution** |
+| --- | --- |
+| Workflow times out | Check timeout in config.toml and step performance |
+| Step missing data | Verify previous step's return value matches expected input type |
+
+## Next Steps
+
+- Learn more about [Consumption APIs](/consumption-apis)
+- Explore [Moose CLI](/moose-cli)

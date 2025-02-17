@@ -1,75 +1,160 @@
-import { FileTree, Tabs } from "nextra/components";
-import { Callout } from "../components";
-import { LanguageSwitcher, TypeScript, Python } from "../components";
+import { Callout, LanguageSwitcher, TypeScript, Python, ToggleBlock } from "../components";
+import { FileTree } from "nextra/components";
+import { Steps } from "nextra/components";
 
-# Introduction to Streaming Functions
+# Streaming Functions
 
 <LanguageSwitcher />
+Streaming Functions continuously transform, filter, and enrich data from a source Data Model to a destination Data Model in real-time. This enables you to build streaming pipelines that can trigger events, enrich data from external sources, or reshape payloads on the fly.
 
+- Streaming Functions continuously process data as it arrives in your source Data Model’s streaming topic.
+- After processing, the function returns data that Moose emits to the destination Data Model’s streaming topic. 
 
-Streaming Functions in Moose enable real-time data processing, allowing you to transform, enrich, filter, or trigger actions based on incoming data. These powerful functions can:
+<br/>
 
-- Map data between Data Models
-- Enrich data with external information
-- Filter out unwanted data
-- Implement arbitrary logic to handle and respond to incoming data
-
-They are defined as regular functions in <TypeScript NodeType="span">TypeScript</TypeScript><Python NodeType="span">Python</Python> files, and are executed in real-time as data flows into your Moose application.
-
-## Core Concepts
-
-Streaming Functions act as intermediares between two Data Models: a source and a destination. They are automatically triggered when new data arrives on the source Data Model's streaming topic. These functions transform the incoming data and output it in a format that matches the destination Data Model's schema.
-
-##### Key points:
-
-1. **Input**: Data from the source Data Model's streaming topic
-2. **Processing**: Custom logic defined in the Streaming Function
-3. **Output**: Data conforming to the destination Data Model's schema
-4. **Execution**: Automatic and real-time, triggered by new messages to the source Data Model's streaming topic
-
-### File and Folder Conventions
-
-Streaming Functions are defined in files within the `/functions` directory of your Moose app, following this naming pattern:
 <TypeScript>
-`SourceDataModel__DestinationDataModel.ts`
+```ts filename="/functions/Foo__Bar.ts" copy
+import { Foo, Bar } from "../datamodels/models.ts";
 
-<FileTree>
-  <FileTree.Folder name="my-moose-app" defaultOpen>
-    <FileTree.Folder name="functions" defaultOpen>
-      <FileTree.File name="SourceDataModel__DestinationDataModel.ts" />
-    </FileTree.Folder>
-  </FileTree.Folder>
-</FileTree>
+export default function transform(foo: Foo): Bar {
+  // Transformation logic
+  return {
+    primaryKey: foo.primaryKey,
+    utcTimestamp: foo.timestamp,
+    hasText: foo.optionalText !== null,
+    textLength: foo.optionalText ? foo.optionalText.length : 0,
+  } as Bar;
+}
+```
 </TypeScript>
 
+<Python>
+```python filename="/functions/Foo__Bar.py" copy
+from moose_lib import StreamingFunction
+from app.datamodels.models import Foo, Bar
+
+def transform(foo: Foo) -> Bar:
+  # Transformation logic
+  return Bar(
+    primary_key=foo.primary_key,
+    utc_timestamp=foo.timestamp,
+    has_text=foo.optional_text is not None,
+    text_length=len(foo.optional_text) if foo.optional_text else 0
+  )
+
+Foo__Bar = StreamingFunction(run=transform)
+```
+</Python>
+
+<ToggleBlock openText="Show Data Model Definitions" closeText="Hide Data Model Definitions">
+
+<TypeScript>
+```ts filename="app/datamodels/models.ts" copy
+import { Key } from "@514labs/moose-lib";
+
+export interface Foo {
+  primaryKey: Key<string>;
+  timestamp: Date;
+  optionalText?: string;
+}
+
+export interface Bar {
+  primaryKey: Key<string>;
+  utcTimestamp: Date;
+  hasText: boolean;
+  textLength: number;
+}
+
+```
+</TypeScript>
 
 <Python>
-`SourceDataModel__DestinationDataModel.py`
+```python filename="app/datamodels/models.py" copy
+from moose_lib import Key, moose_data_model
+from dataclasses import dataclass
+from datetime import datetime
 
+@moose_data_model
+@dataclass
+class Foo:
+    primary_key: Key[str]
+    timestamp: datetime
+    optional_text: Optional[str]
+
+@moose_data_model
+@dataclass
+class Bar:
+    primary_key: Key[str]
+    utc_timestamp: datetime
+    has_text: bool
+    text_length: int
+```
+</Python>
+</ToggleBlock>
+---
+
+
+## Quickstart
+
+The fastest way to get started with a new Streaming Function is to use the CLI:
+
+<TypeScript>
+```bash filename="Terminal" copy
+npx moose-cli function init --source <SOURCE_DATA_MODEL> --destination <DESTINATION_DATA_MODEL>
+```
+</TypeScript>
+
+<Python>
+```bash filename="Terminal" copy
+moose-cli function init --source <SOURCE_DATA_MODEL> --destination <DESTINATION_DATA_MODEL>
+```
+</Python>
+
+
+This generates a new file in your `/functions` directory with the following naming convention:
+
+ <TypeScript>
+ ```  
+ SourceDataModel__DestinationDataModel.ts
+ ```
+
+ <FileTree>
+ <FileTree.Folder name="app" open>
+  <FileTree.Folder name="functions" open>
+    <FileTree.File name="SourceDataModel__DestinationDataModel.ts" />
+  </FileTree.Folder>
+ </FileTree.Folder>
+</FileTree>
+ </TypeScript>
+
+ <Python>
+ ```
+ SourceDataModel__DestinationDataModel.py
+ ```
 <FileTree>
-  <FileTree.Folder name="my-moose-app" defaultOpen>
-    <FileTree.Folder name="functions" defaultOpen>
-      <FileTree.File name="AnotherSource__AnotherDestination.py" />
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="functions" open>
+      <FileTree.File name="SourceDataModel__DestinationDataModel.py" />
     </FileTree.Folder>
   </FileTree.Folder>
 </FileTree>
 </Python>
 
+You can alternatively create a new file manually in the `/functions` directory. The file name **must** follow the pattern of separating the source and destination data models with two underscores.
 
-<Callout type="warning" title="Naming Convention">
-  Use two underscores to separate the source and destination data models in the
-  file name. This convention allows Moose to automatically identify and execute
-  the Streaming Functions.
+<Callout type="warning" title="Make Sure the Data Models Exist">
+Run `moose ls` to see a list of available data models in your project.
 </Callout>
 
-### Streaming Function Definition
+### Implementing the Streaming Function
+
+Inside the file, you define a processing function as follows:
 
 <TypeScript>
-A Streaming Function is defined as the default export of its module:
 
 ```ts filename="/functions/SourceDataModel__DestinationDataModel.ts" copy
-import { SourceDataModel } from "../datamodels/path/to/SourceDataModel";
-import { DestinationDataModel } from "../datamodels/path/to/DestinationDataModel";
+import { SourceDataModel } from "../datamodels/SourceDataModel";
+import { DestinationDataModel } from "../datamodels/DestinationDataModel";
 
 export default function functionName(
   source: SourceDataModel,
@@ -78,48 +163,464 @@ export default function functionName(
 }
 ```
 
-
-The function accepts a single parameter `source` of type `SourceDataModel`. This is the data that Moose will pass to the function when it receives a new message on the streaming topic associated with the source Data Model.
-
-The return type can be:
-
-- An array of `DestinationDataModel` objects
-- A single `DestinationDataModel` object
-- `null` if no output should be produced
-
-The function body contains the processing logic. We will go into more detail on this in the next section.
-
-<Callout type="info" title="What About the Function Name?">
-  The function name itself is not important, as Moose identifies the function by
-  the file convention.
+<Callout type="info" title="Default Export">
+  The default export is critical because Moose uses it to identify the Streaming Function's
+  entry point.
 </Callout>
+
 </TypeScript>
 
 <Python>
-A Streaming Function is defined as a `StreamingFunction` object with a `run` attribute that is assigned the function:
+
+```py filename="/functions/SourceDataModel__DestinationDataModel.py" copy
+from app.datamodels.SourceDataModel import SourceDataModel
+from app.datamodels.DestinationDataModel import DestinationDataModel
+from moose_lib import StreamingFunction
+
+def functionName(source: SourceDataModel) -> DestinationDataModel | list[DestinationDataModel] | None:
+  # Transformation logic
+
+my_streaming_function = StreamingFunction(run=functionName)
+```
+
+<Callout type="info" title="Entry Point in Python">
+  Assign your function to the `run` parameter of the `StreamingFunction` class to designate
+  it as the entry point.
+</Callout>
+
+</Python>
+
+---
+
+## Streaming Function Examples with Referenced Data Models
+
+In your Streaming Function, you can apply any transformation logic you need—filtering, enriching, or reshaping the data. Below are some common scenarios.
+
+### Basic Data Manipulation
+
+Transform or combine the source data into a different structure before returning it to the destination:
+
+<TypeScript>
+```ts filename="/functions/SourceDataModel__ManipulatedDestinationDataModel.ts" copy 
+import { SourceDataModel } from "../datamodels/SourceDataModel";
+import { ManipulatedDestinationDataModel } from "../datamodels/ManipulatedDestinationDataModel";
+
+export default function manipulateData(source: SourceDataModel): ManipulatedDestinationDataModel {
+  // Manipulate multiple fields from the source data into the destination format.
+  return {
+    id: source.id,
+    summedNumber: source.numberField1 + source.numberField2,
+    uppercasedString: source.stringField.toUpperCase(),
+    utcMonth: source.dateField.getUTCMonth(),
+    utcYear: source.dateField.getUTCFullYear(),
+    utcDay: source.dateField.getUTCDate()
+  };
+}
+```
+
+<ToggleBlock openText="Show Data Model Definitions" closeText="Hide Data Model Definitions">
+```ts
+export interface SourceDataModel {
+  id: Key<string>;
+  numberField1: number;
+  numberField2: number;
+  stringField: string;
+  dateField: Date;
+}
+
+export interface ManipulatedDestinationDataModel {
+  id: Key<string>;
+  summedNumber: number;
+  uppercasedString: string;
+  utcMonth: number;
+  utcYear: number;
+  utcDay: number;
+}
+```
+</ToggleBlock>
+</TypeScript>
+
+<Python>
+```python filename="app/functions/SourceDataModel__ManipulatedDestinationDataModel.py" copy 
+from moose_lib import StreamingFunction
+from app.datamodels.SourceDataModel import SourceDataModel
+from app.datamodels.ManipulatedDestinationDataModel import ManipulatedDestinationDataModel
+
+def manipulate_data(source: SourceDataModel) -> ManipulatedDestinationDataModel:
+    # Manipulate multiple fields from the source data into the destination format.
+    return ManipulatedDestinationDataModel(
+        id=source.id,
+        summed_integer=source.integer_field1 + source.integer_field2,
+        uppercased_string=source.string_field.upper(),
+        utc_month=source.datetime_field.month,
+        utc_year=source.datetime_field.year,
+        utc_day=source.datetime_field.day,
+    )
+
+streaming_function = StreamingFunction(
+    run=manipulate_data
+)
+```
+
+<ToggleBlock openText="Show Data Model Definitions" closeText="Hide Data Model Definitions">
+```python
+from dataclasses import dataclass
+from datetime import datetime
+from moose_lib import moose_data_model, Key
+
+@moose_data_model
+@dataclass
+class SourceDataModel:
+    id: Key[str]
+    integer_field1: int
+    integer_field2: int
+    string_field: str
+    datetime_field: datetime
+
+@moose_data_model
+@dataclass
+class ManipulatedDestinationDataModel:
+    id: Key[str]
+    summed_integer: int
+    uppercased_string: str
+    utc_month: int
+    utc_year: int
+    utc_day: int
+```
+
+</ToggleBlock>
+
+</Python>
+
+### Data Validation and Filtering
+
+<TypeScript>
+Return `null` to discard invalid or unwanted data:
+
+```ts filename="/functions/SourceDataModel__ValidatedDestinationDataModel.ts" copy
+import { SourceDataModel } from "../datamodels/SourceDataModel";
+import { ValidatedDestinationDataModel } from "../datamodels/ValidatedDestinationDataModel";
+
+export default function validateData(source: SourceDataModel): ValidatedDestinationDataModel | null {
+  // Validate the source data before processing.
+  if (!source.requiredField) {
+    // Discard the data if validation fails.
+    return null;
+  }
+
+  return {
+    id: source.id,
+    validField: source.requiredField,
+    timestamp: source.timestamp,
+  };
+}
+```
+
+<ToggleBlock openText="Show Data Model Definitions" closeText="Hide Data Model Definitions">
+```ts
+export interface SourceDataModel {
+  id: Key<string>;
+  requiredField: string;
+  timestamp: Date;
+}
+
+export interface ValidatedDestinationDataModel {
+  id: Key<string>;
+  validField: string;
+  timestamp: Date;
+}
+```
+</ToggleBlock>
+</TypeScript>
+
+<Python>
+Return `None` to discard invalid or unwanted data:
+
+```python filename="/functions/SourceDataModel__ValidatedDestinationDataModel.py" copy 
+from moose_lib import StreamingFunction
+from app.datamodels.SourceDataModel import SourceDataModel
+from app.datamodels.ValidatedDestinationDataModel import ValidatedDestinationDataModel
+
+def validate_data(source: SourceDataModel) -> ValidatedDestinationDataModel | None:
+    # Validate the source data before processing.
+    if not source.required_field:
+        # Discard the data if validation fails.
+        return None
+
+    return ValidatedDestinationDataModel(
+        id=source.id,
+        valid_field=source.required_field,
+        timestamp=source.timestamp
+    )
+
+streaming_function = StreamingFunction(
+    run=validate_data
+)
+```
+
+<ToggleBlock openText="Show Data Model Definitions" closeText="Hide Data Model Definitions">
+```python
+from dataclasses import dataclass
+from datetime import datetime
+from moose_lib import moose_data_model, Key
+
+@moose_data_model
+@dataclass
+class SourceDataModel:
+    id: Key[str]
+    required_field: str
+    timestamp: datetime
+
+@moose_data_model
+@dataclass
+class ValidatedDestinationDataModel:
+    id: Key[str]
+    valid_field: str
+    timestamp: datetime
+``` 
+</ToggleBlock>
+</Python>
+
+### Data Augmentation with External API
+
+Include external data by calling APIs from within the function:
+
+<TypeScript>
+```ts filename="/functions/SourceDataModel__AugmentedDestinationDataModel.ts" copy
+import { SourceDataModel } from "../datamodels/SourceDataModel";
+import { AugmentedDestinationDataModel } from "../datamodels/AugmentedDestinationDataModel";
+
+export default async function augmentData(source: SourceDataModel): Promise<AugmentedDestinationDataModel> {
+  // Fetch additional information from an external API
+  const response = await fetch(`https://api.example.com/data/${source.id}`);
+  const extraData = await response.json();
+
+  // Combine source data with fetched extra data
+  return {
+    ...source,
+    extraField: extraData.field,
+    additionalInfo: extraData.info,
+  };
+}
+```
+<Callout type="info">
+  Remember to return a promise or to handle async requests properly,
+  so Moose can await the results of your fetch calls.
+</Callout>
+
+<ToggleBlock openText="Show Data Model Definitions" closeText="Hide Data Model Definitions">
+```ts
+export interface SourceDataModel {
+  id: Key<string>;
+  // Add other fields as needed
+}
+
+export interface AugmentedDestinationDataModel {  
+  id: Key<string>;
+  extraField: string;
+  additionalInfo: string;
+}
+```
+</ToggleBlock>
+
+</TypeScript>
+
+<Python>
+```python filename="/functions/SourceDataModel__AugmentedDestinationDataModel.py" copy {20}
+from moose_lib import StreamingFunction
+from app.datamodels.SourceDataModel import SourceDataModel
+from app.datamodels.AugmentedDestinationDataModel import AugmentedDestinationDataModel
+import requests
+
+def augment_data(source: SourceDataModel) -> AugmentedDestinationDataModel:
+    # Fetch additional information from an external API
+    response = requests.get(f"https://api.example.com/data/{source.id}")
+    extra_data = response.json()
+
+    # Combine source data with fetched extra data
+    return AugmentedDestinationDataModel(
+        id=source.id,
+        extra_field=extra_data['field'],
+        additional_info=extra_data['info'],
+        # Add other necessary fields here
+    )
+
+streaming_function = StreamingFunction(
+    run=augment_data
+)
+```
+
+<ToggleBlock openText="Show Data Model Definitions" closeText="Hide Data Model Definitions">
+```python
+from dataclasses import dataclass 
+from datetime import datetime
+from moose_lib import moose_data_model, Key
+
+@moose_data_model
+@dataclass
+class SourceDataModel:
+    id: Key[str]
+    # Add other fields as needed
+
+@moose_data_model
+@dataclass
+class AugmentedDestinationDataModel:
+    id: Key[str]  
+    extra_field: str
+    additional_info: str
+```
+</ToggleBlock>
+</Python>
+
+### Flattening and Unnesting Data
+
+<TypeScript>
+Return an array of destination Data Models to produce multiple rows from a single source entry:
+
+```ts filename="/functions/SourceDataModel__UnnestedDestinationDataModel.ts" copy
+import { SourceDataModel } from "../datamodels/SourceDataModel";
+import { UnnestedDestinationDataModel } from "../datamodels/UnnestedDestinationDataModel";
+
+export default function reshapeData(source: SourceDataModel): UnnestedDestinationDataModel[] {
+  // Unnest a list of strings into their own table rows
+  return source.nestedListOfObjects.map((object) => ({
+    parentId: source.id, // Keep the ID of the parent object
+    ...object,
+  }));
+}
+```
+
+<ToggleBlock openText="Show Data Model Definitions" closeText="Hide Data Model Definitions">
+```ts
+export interface SourceDataModel {
+  id: Key<string>;
+  nestedListOfObjects: {
+    fieldA: string;
+    fieldB: number;
+  }[];
+}
+
+export interface UnnestedDestinationDataModel {
+  parentId: Key<string>;
+  fieldA: string;
+  fieldB: number;
+}
+```
+</ToggleBlock>
+</TypeScript>
+
+<Python>
+Return a list of destination Data Models to produce multiple rows from a single source entry:
 
 ```python filename="/functions/SourceDataModel__DestinationDataModel.py" copy
 from moose_lib import StreamingFunction
-from app.datamodels.models import SourceDataModel, DestinationDataModel
+from app.datamodels.SourceDataModel import SourceDataModel
+from app.datamodels.DestinationDataModel import DestinationDataModel
 
-def function_name(source: SourceDataModel) -> DestinationDataModel:
-    # Transformation logic
-    pass
+def reshape_data(source: SourceDataModel) -> list[DestinationDataModel]:
+   
+   rows = []
+   for object in source.nested_list_of_objects:
+      rows.append(DestinationDataModel(
+         parent_id=source.id,
+         field_a=object.field_a,
+         field_b=object.field_b
+      ))
+
+    return rows
 
 streaming_function = StreamingFunction(
-    run=function_name
+    run=reshape_data
 )
-
 ```
 
-- The `StreamingFunction` object is how Moose identifies the entry point for the Streaming Function.
-- The `run` attribute is assigned the function that Moose will call when it receives a new message on the streaming topic associated with the source Data Model.
-- The function accepts a single parameter `source` of type `SourceDataModel`. This is the data that Moose will pass to the function when it receives a new message on the streaming topic associated with the source Data Model.
+<ToggleBlock openText="Show Data Model Definitions" closeText="Hide Data Model Definitions">
+```python
+from dataclasses import dataclass
+from datetime import datetime
+from moose_lib import moose_data_model, Key
 
-- The return type is `DestinationDataModel`. If a value is returned Moose automatically serializes it to JSON and writes it to the streaming topic associated with the destination Data Model.
-<Callout type="info" title="What About the Function Name?">
-  The function name itself is not important, as Moose identifies the function by
-  whatever is assigned to the `run` attribute of the `StreamingFunction` object.
-</Callout>
+@dataclass
+class NestedObject:
+    field_a: str
+    field_b: int
+
+@moose_data_model
+@dataclass
+class SourceDataModel:
+    id: Key[str]
+    nested_list_of_objects: list[NestedObject]
+
+@moose_data_model
+@dataclass
+class DestinationDataModel:
+    parent_id: Key[str]
+    field_a: str
+    field_b: int
+```
+</ToggleBlock>
 </Python>
+
+
+---
+
+## Testing a Streaming Function
+
+Once you have defined and saved your Streaming Function, you can verify it is working by following these steps:
+
+<Steps>
+
+### Send Test Data to the Source Data Model
+
+Ingest some test data into the **source** Data Model. When Moose processes new messages on the source’s streaming topic, your Streaming Function should be invoked.
+
+<Callout type="info" title="Need Help Ingesting Data?">
+  Check out the [Ingesting Data](/ingest-data) section of the documentation.
+</Callout>
+
+### Check CLI Output
+
+Monitor the terminal or logs. You should see a message indicating that Moose received and processed the data, for example:
+
+```txt
+Received SourceDataModel -> DestinationDataModel 1 message(s)
+```
+
+<Callout type="warning" title="Don't See This Message? Try These Steps:">
+  - Make sure the source and destination data models are correctly specified in your function file.
+  - Save the file after making changes.
+  - Check your function logic for errors.
+  - Run `moose logs --tail` to see logs in real time.
+</Callout>
+
+### Inspect the Destination Table
+
+After data is processed, check the **destination** Data Model’s table in the database to confirm the data has been correctly transformed.
+
+You can run the following command to preview the contents of the destination table:
+
+<TypeScript>
+```bash
+npx moose-cli peek <DESTINATION_DATA_MODEL>
+```
+</TypeScript>
+
+<Python>
+```bash
+moose-cli peek <DESTINATION_DATA_MODEL>
+```
+</Python>
+
+</Steps>
+
+---
+
+## Next Steps
+
+You now have a complete overview of how to **initialize**, **implement**, and **test** your Streaming Functions in Moose. Use them to filter, enrich, or transform incoming data in real-time, ensuring that only the most relevant data moves through your pipelines. For more advanced topics, explore:
+
+- [Data Modeling](/data-modeling)
+- [Ingesting Data](/ingest-data)
+- [Building APIs to Consume Data](/consumption-apis)
+
 

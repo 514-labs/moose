@@ -11,7 +11,7 @@ Moose Data Models allow you to define the schema and shape of your data and auto
 
 
 <TypeScript>
-```typescript filename="datamodels/MyDataModel.ts" copy
+```typescript filename="app/datamodels/MyDataModel.ts" copy
 import { Key } from "moose-lib";
 
 export interface MyDataModel {
@@ -26,10 +26,11 @@ export interface MyDataModel {
 </TypeScript>
 
 <Python>
-```python filename="datamodels/MyDataModel.py" copy
+```python filename="app/datamodels/MyDataModel.py" copy
 from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
 from datetime import datetime
+
 @moose_data_model
 @dataclass
 class MyDataModel:

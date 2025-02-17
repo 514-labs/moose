@@ -13,24 +13,21 @@ pub static PYTHON_BASE_MODEL_TEMPLATE: &str = r#"
 from moose_lib import Key, moose_data_model
 from dataclasses import dataclass
 from datetime import datetime
-
+from typing import Optional
+@moose_data_model
+@dataclass
+class Foo:
+    primary_key: Key[str]
+    timestamp: float
+    optional_text: Optional[str]
 
 @moose_data_model
 @dataclass
-class UserActivity:
-    eventId: Key[str]
-    timestamp: str
-    userId: str
-    activity: str
-
-
-@moose_data_model
-@dataclass
-class ParsedActivity:
-    eventId: Key[str]
-    timestamp: datetime
-    userId: str
-    activity: str
+class Bar:
+    primary_key: Key[str]
+    utc_timestamp: datetime
+    has_text: bool
+    text_length: int
 "#;
 
 pub static SETUP_PY_TEMPLATE: &str = r#"
@@ -49,20 +46,17 @@ setup(
 
 pub static PYTHON_BASE_STREAMING_FUNCTION_SAMPLE: &str = r#"
 from moose_lib import StreamingFunction
-from datetime import datetime
-from app.datamodels.models import UserActivity, ParsedActivity
+from app.datamodels.models import Foo, Bar
 
-def parse_activity(activity: UserActivity) -> ParsedActivity:
-    return ParsedActivity(
-        eventId=activity.eventId,
-        timestamp=datetime.fromisoformat(activity.timestamp),
-        userId=activity.userId,
-        activity=activity.activity,
+def transform(foo: Foo) -> Bar:
+    return Bar(
+        primary_key=foo.primary_key,
+        utc_timestamp=foo.timestamp,
+        has_text=foo.optional_text is not None,
+        text_length=len(foo.optional_text) if foo.optional_text else 0
     )
 
-my_function = StreamingFunction(
-    run=parse_activity
-)
+Foo__Bar = StreamingFunction(run=transform)
 "#;
 
 pub static PYTHON_BASE_STREAMING_FUNCTION_TEMPLATE: &str = r#"
@@ -83,35 +77,42 @@ my_function = StreamingFunction(
 
 pub static PYTHON_BASE_CONSUMPTION_TEMPLATE: &str = r#"
 # This file is where you can define your API templates for consuming your data
-# All query_params are passed in as strings, and are used within the sql tag to parameterize you queries
+#Query params are passed in as Pydantic models and are used within the sql tag to parameterize you queries
 
 from moose_lib import MooseClient
+from pydantic import BaseModel
 
-def run(client: MooseClient, params):
-    return client.query("SELECT 1", { })
+class QueryParams(BaseModel):
+    limit: Optional[int] = 10
+
+def run(client: MooseClient, params: QueryParams):
+    return client.query.execute("SELECT 1", {})
 "#;
 
 pub static PYTHON_BASE_API_SAMPLE: &str = r#"
 from moose_lib import MooseClient
+from pydantic import BaseModel, Field
+from datetime import datetime
+from typing import Optional
 
-def run(client: MooseClient, params):
-    minDailyActiveUsers = int(params.get('minDailyActiveUsers', [0])[0])
-    limit = int(params.get('limit', [10])[0])
-
-    return client.query(
-        '''SELECT
-            date,
-            uniqMerge(dailyActiveUsers) as dailyActiveUsers
-        FROM DailyActiveUsers
-        GROUP BY date
-        HAVING dailyActiveUsers >= {minDailyActiveUsers}
-        ORDER BY date
-        LIMIT {limit}''',
-        {
-            "minDailyActiveUsers": minDailyActiveUsers,
-            "limit": limit
-        }
+class QueryParams(BaseModel):
+    return_as: str = Field(
+        default="both",
+        pattern=r"^(both|count|percentage)$",
+        description="Must be one of: both, count, percentage"
     )
+    
+    
+def run(client: MooseClient, params: QueryParams):
+    query = "SELECT countMerge(total_rows) as total"
+    if params.return_as in ("both", "count"):
+        query += ", countMerge(rows_with_text) as count_with_text"
+    if params.return_as in ("both", "percentage"):
+        query += ", countMerge(rows_with_text) / total as percentage_with_text"
+    
+    query += " FROM BarAggregated"        
+   
+    return client.query.execute(query, {})
 "#;
 
 pub static PYTHON_BASE_BLOCKS_TEMPLATE: &str = r#"
@@ -139,57 +140,62 @@ block = Blocks(teardown=teardown_queries, setup=setup_queries)
 "#;
 
 pub static PYTHON_BASE_BLOCKS_SAMPLE: &str = r#"
-# Here is a sample aggregation query that calculates the number of daily active users
-# based on the number of unique users who complete a sign-in activity each day.
+# Here is a sample aggregation query that sets up a materialized view to store the results of the query
+# It uses Clickhouse's aggregate functions to count the number of rows and the number of rows with text
+# The materialized view is named BarAggregated_MV and the table is named BarAggregated
 
 from moose_lib import (
-    AggregationCreateOptions,
-    AggregationDropOptions,
-    Blocks,
-    ClickHouseEngines,
-    TableCreateOptions,
-    create_aggregation,
-    drop_aggregation,
+  Blocks, 
+  create_aggregation,
+  AggregationCreateOptions,
+  TableCreateOptions, 
+  drop_aggregation, 
+  AggregationDropOptions, 
+  ClickHouseEngines as CH
 )
 
-destination_table = "DailyActiveUsers"
-materialized_view = "DailyActiveUsers_mv"
+TABLE_NAME = "BarAggregated"
+MV_NAME = "BarAggregated_MV"
 
-select_sql = """
-SELECT 
-    toStartOfDay(timestamp) as date,
-    uniqState(userId) as dailyActiveUsers
-FROM ParsedActivity_0_0
-WHERE activity = 'Login' 
-GROUP BY toStartOfDay(timestamp)
+QUERY = """
+SELECT
+  toStartOfDay(utc_timestamp) as date,
+  countState(primary_key) as total_rows,
+  countIfState(has_text) as rows_with_text,
+  sumState(text_length) as total_text_length
+FROM Bar_0_0
+GROUP BY toStartOfDay(utc_timestamp)
 """
 
-teardown_queries = drop_aggregation(
-    AggregationDropOptions(materialized_view, destination_table)
+setup = create_aggregation(AggregationCreateOptions(
+    table_create_options=TableCreateOptions(
+      name=TABLE_NAME,
+      columns={
+        "date": "Date",
+        "total_rows": "AggregateFunction(count, String)",
+        "rows_with_text": "AggregateFunction(count, Int64)",
+        "total_text_length": "AggregateFunction(sum, Int64)"
+      },
+      engine=CH.AggregatingMergeTree,
+      order_by="date"
+    ),
+    materialized_view_name=MV_NAME,
+    select=QUERY
+))
+
+teardown = drop_aggregation(
+  options=AggregationDropOptions(
+    view_name=MV_NAME,
+    table_name=TABLE_NAME
+  )
 )
-
-table_options = TableCreateOptions(
-    name=destination_table,
-    columns={"date": "Date", "dailyActiveUsers": "AggregateFunction(uniq, String)"},
-    engine=ClickHouseEngines.MergeTree,
-    order_by="date",
-)
-
-aggregation_options = AggregationCreateOptions(
-    table_create_options=table_options,
-    materialized_view_name=materialized_view,
-    select=select_sql,
-)
-
-setup_queries = create_aggregation(aggregation_options)
-
-block = Blocks(teardown=teardown_queries, setup=setup_queries)
+block = Blocks(teardown=teardown, setup=setup)
 "#;
 
 pub static PYTHON_BASE_SCRIPT_TEMPLATE: &str = r#"from moose_lib import task
 
 @task()
-def {{name}}():  # The name of your script
+def {{name}}(data: dict):  # The name of your script
     """
     Description of what this script does
     """

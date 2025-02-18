@@ -6,17 +6,16 @@
 //! Note: Make sure to set the MOOSE_REDIS_URL environment variable or the client will
 //! default to "redis://127.0.0.1:6379".
 use anyhow::{Context, Result};
-use log::{error, info, warn};
-use redis::aio::Connection as RedisConnection;
-use redis::{AsyncCommands, Client, RedisError, Script, ToRedisArgs};
+use futures::StreamExt;
+use log::{error, info};
+use redis::aio::{ConnectionManager, PubSub};
+use redis::{AsyncCommands, Client, Script, ToRedisArgs};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
-use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
-use tokio_stream::StreamExt;
 use uuid::Uuid;
 
 // Internal constants that we don't expose to the user
@@ -30,9 +29,16 @@ use std::pin::Pin;
 type MessageCallback =
     Arc<dyn Fn(String) -> Pin<Box<dyn Future<Output = ()> + Send>> + Send + Sync>;
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
+/// The connection status of the Redis client.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ConnectionStatus {
+    Connected,
+    Disconnected,
+}
+
+/// Configuration required to connect to Redis.
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RedisConfig {
-    #[serde(default = "RedisConfig::default_url")]
     pub url: String,
     #[serde(default = "RedisConfig::default_key_prefix")]
     pub key_prefix: String,
@@ -64,8 +70,8 @@ pub struct RedisLock {
 }
 
 pub struct RedisClient {
-    connection: Arc<Mutex<RedisConnection>>,
-    pub_sub: Arc<Mutex<RedisConnection>>,
+    connection: Arc<Mutex<ConnectionManager>>,
+    pub_sub_connection: Arc<Mutex<PubSub>>,
     redis_config: RedisConfig,
     service_name: String,
     instance_id: String,
@@ -73,6 +79,7 @@ pub struct RedisClient {
     presence_task: Option<JoinHandle<()>>,
     message_callbacks: Arc<Mutex<Vec<MessageCallback>>>,
     listener_task: Mutex<Option<JoinHandle<()>>>,
+    connection_status: Arc<Mutex<ConnectionStatus>>,
 }
 
 impl RedisClient {
@@ -80,38 +87,16 @@ impl RedisClient {
         let client =
             Client::open(redis_config.url.clone()).context("Failed to create Redis client")?;
 
-        // TODO: this is a bandaid, we should use the redis connection manager instead
-        let mut connection = {
-            let mut attempts = 0;
-            let max_attempts = 10;
-            let mut delay_ms = 100;
-            let max_total_delay_ms = 10_000; // 10 seconds
-            let mut total_delay_ms = 0;
-
-            loop {
-                match client.get_async_connection().await {
-                    Ok(conn) => break conn,
-                    Err(e) => {
-                        attempts += 1;
-                        if attempts >= max_attempts || total_delay_ms >= max_total_delay_ms {
-                            return Err(anyhow::anyhow!("Failed to establish Redis connection after {} attempts over {}ms: {}", attempts, total_delay_ms, e));
-                        }
-
-                        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
-                        total_delay_ms += delay_ms;
-                        delay_ms = std::cmp::min(delay_ms * 2, 1000); // Cap max delay at 1s
-
-                        info!("<RedisClient> Connection attempt {} failed, retrying after {}ms. Error: {}", attempts, delay_ms, e);
-                    }
-                }
-            }
-        };
-        // End of thing to remove
-
-        let pub_sub = client
-            .get_async_connection()
+        // Create a connection manager for normal commands.
+        let connection_manager = ConnectionManager::new(client.clone())
             .await
-            .context("Failed to establish Redis pub/sub connection")?;
+            .context("Failed to create Redis connection manager")?;
+
+        // Create a separate pub/sub connection using get_async_pubsub
+        let pub_sub_connection = client
+            .get_async_pubsub()
+            .await
+            .context("Failed to create Redis pub/sub connection")?;
 
         let instance_id = std::env::var("HOSTNAME").unwrap_or_else(|_| Uuid::new_v4().to_string());
 
@@ -120,40 +105,190 @@ impl RedisClient {
             service_name, instance_id
         );
 
-        // Test Redis connection
+        let mut connection_test = connection_manager.clone();
         match redis::cmd("PING")
-            .query_async::<_, String>(&mut connection)
+            .query_async::<String>(&mut connection_test)
             .await
         {
             Ok(response) => info!("<RedisClient> Redis connection successful: {}", response),
             Err(e) => error!("<RedisClient> Redis connection failed: {}", e),
         }
 
-        let client = Self {
-            connection: Arc::new(Mutex::new(connection)),
-            pub_sub: Arc::new(Mutex::new(pub_sub)),
+        let mut client_instance = Self {
+            connection: Arc::new(Mutex::new(connection_manager)),
+            pub_sub_connection: Arc::new(Mutex::new(pub_sub_connection)),
             redis_config,
-            instance_id,
             service_name,
+            instance_id,
             locks: HashMap::new(),
             presence_task: None,
             message_callbacks: Arc::new(Mutex::new(Vec::new())),
             listener_task: Mutex::new(None),
+            connection_status: Arc::new(Mutex::new(ConnectionStatus::Connected)),
         };
 
-        // Start the message listener as part of initialization
-        match client.start_message_listener().await {
+        // Start periodic tasks (e.g., presence updates and reconnection monitoring)
+        client_instance.start_periodic_tasks().await;
+
+        // Optionally, start a message listener here.
+        match client_instance.start_message_listener().await {
             Ok(_) => info!("<RedisClient> Successfully started message listener"),
             Err(e) => error!("<RedisClient> Failed to start message listener: {}", e),
         }
 
         info!(
             "<RedisClient> Started {}::{}",
-            client.get_service_name(),
-            client.get_instance_id()
+            client_instance.get_service_name(),
+            client_instance.get_instance_id()
         );
 
-        Ok(client)
+        Ok(client_instance)
+    }
+
+    /// Starts background tasks that periodically update the client's "presence" and attempt
+    /// to reconnect if the connection is lost.
+    pub async fn start_periodic_tasks(&mut self) {
+        info!("Starting periodic tasks");
+
+        let client_clone = self.clone();
+        self.presence_task = Some(tokio::spawn(async move {
+            let mut interval = interval(Duration::from_secs(PRESENCE_UPDATE_INTERVAL));
+            loop {
+                interval.tick().await;
+                if let Err(e) = client_clone.presence_update().await {
+                    error!("Error updating presence: {}", e);
+                    // Mark connection as disconnected.
+                    {
+                        let mut status = client_clone.connection_status.lock().await;
+                        *status = ConnectionStatus::Disconnected;
+                    }
+                    // Attempt to reconnect.
+                    if let Err(e) = client_clone.check_connection().await {
+                        error!("Failed to reconnect to Redis: {}", e);
+                    }
+                }
+            }
+        }));
+
+        info!("Periodic tasks started");
+    }
+
+    pub async fn presence_update(&self) -> Result<(), anyhow::Error> {
+        if let Err(e) = self.check_connection_health().await {
+            error!("Connection health check failed: {}", e);
+            return Err(e);
+        }
+
+        let key = format!("presence:{}", self.instance_id);
+        let _: () = self
+            .connection
+            .lock()
+            .await
+            .set_ex(&key, "online", KEY_EXPIRATION_TTL)
+            .await?;
+
+        let mut status = self.connection_status.lock().await;
+        *status = ConnectionStatus::Connected;
+        Ok(())
+    }
+
+    /// Checks the connection by issuing a PING command.
+    /// If the PING succeeds, the connection status is updated to Connected.
+    pub async fn check_connection(&self) -> Result<()> {
+        info!("<RedisClient> Checking connection status...");
+        let mut conn = self.connection.lock().await;
+
+        match redis::cmd("PING").query_async::<String>(&mut *conn).await {
+            Ok(response) => {
+                info!("<RedisClient> Connection healthy: {}", response);
+                let mut status = self.connection_status.lock().await;
+                *status = ConnectionStatus::Connected;
+                Ok(())
+            }
+            Err(e) => {
+                error!("<RedisClient> Connection unhealthy: {}", e);
+                let mut status = self.connection_status.lock().await;
+                *status = ConnectionStatus::Disconnected;
+                Err(e.into())
+            }
+        }
+    }
+
+    async fn resubscribe_channels(&self, channels: &[String]) -> Result<()> {
+        let mut retries = 0;
+        let mut delay = Duration::from_secs(1);
+        while retries < 3 {
+            match self
+                .pub_sub_connection
+                .lock()
+                .await
+                .subscribe(channels)
+                .await
+            {
+                Ok(_) => return Ok(()),
+                Err(e) => {
+                    error!(
+                        "<RedisClient> Failed to resubscribe: {}, attempt {}/3",
+                        e,
+                        retries + 1
+                    );
+                    tokio::time::sleep(delay).await;
+                    delay *= 2; // Exponential backoff
+                    retries += 1;
+                }
+            }
+        }
+        Err(anyhow::anyhow!("Failed to resubscribe after 3 attempts"))
+    }
+
+    pub async fn start_message_listener(&self) -> Result<()> {
+        let instance_channel = self.instance_prefix("msgchannel");
+        let broadcast_channel = self.service_prefix(&["msgchannel"]);
+        let channels = vec![instance_channel.clone(), broadcast_channel.clone()];
+
+        loop {
+            info!("<RedisClient> Starting pub/sub listener...");
+
+            // Check connection health first
+            if let Err(e) = self.check_connection_health().await {
+                error!("<RedisClient> Connection check failed: {}", e);
+                tokio::time::sleep(Duration::from_secs(5)).await;
+                continue;
+            }
+            info!("<RedisClient> Connection healthy");
+
+            // Then attempt to resubscribe
+            if let Err(e) = self.resubscribe_channels(&channels).await {
+                error!("<RedisClient> Failed to resubscribe channels: {}", e);
+                tokio::time::sleep(Duration::from_secs(5)).await;
+                continue;
+            }
+            info!("<RedisClient> Successfully subscribed to channels");
+
+            let mut pubsub = self.pub_sub_connection.lock().await;
+            let mut stream = pubsub.on_message();
+            info!("<RedisClient> Message stream established");
+
+            while let Some(msg) = stream.next().await {
+                match msg.get_payload::<String>() {
+                    Ok(payload) => {
+                        info!("<RedisClient> Received message: {}", payload);
+                    }
+                    Err(e) => error!("<RedisClient> Failed to parse message: {}", e),
+                }
+            }
+
+            error!("<RedisClient> Message stream ended, attempting to reconnect...");
+            tokio::time::sleep(Duration::from_secs(5)).await;
+        }
+    }
+
+    pub fn get_service_name(&self) -> &str {
+        &self.service_name
+    }
+
+    pub fn get_instance_id(&self) -> &str {
+        &self.instance_id
     }
 
     pub fn service_prefix(&self, keys: &[&str]) -> String {
@@ -162,23 +297,6 @@ impl RedisClient {
 
     pub fn instance_prefix(&self, key: &str) -> String {
         self.service_prefix(&[&self.instance_id, key])
-    }
-
-    pub async fn presence_update(&mut self) -> Result<()> {
-        let key = self.instance_prefix("presence");
-
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .context("Failed to get current time")?
-            .as_secs()
-            .to_string();
-
-        self.connection
-            .lock()
-            .await
-            .set_ex(&key, &now, KEY_EXPIRATION_TTL)
-            .await
-            .context("Failed to update presence")
     }
 
     pub async fn register_lock(&mut self, name: &str, ttl: i64) -> Result<()> {
@@ -288,14 +406,6 @@ impl RedisClient {
         }
     }
 
-    pub fn get_instance_id(&self) -> &str {
-        &self.instance_id
-    }
-
-    pub fn get_service_name(&self) -> &str {
-        &self.service_name
-    }
-
     pub async fn send_message_to_instance(
         &self,
         message: &str,
@@ -303,7 +413,7 @@ impl RedisClient {
     ) -> Result<()> {
         let channel = self.service_prefix(&[target_instance_id, "msgchannel"]);
         let _: () = self
-            .pub_sub
+            .connection
             .lock()
             .await
             .publish(&channel, message)
@@ -315,7 +425,7 @@ impl RedisClient {
     pub async fn broadcast_message(&mut self, message: &str) -> Result<()> {
         let channel = self.service_prefix(&["msgchannel"]);
         let _: () = self
-            .pub_sub
+            .connection
             .lock()
             .await
             .publish(&channel, message)
@@ -397,37 +507,10 @@ impl RedisClient {
         Ok(())
     }
 
-    pub fn start_periodic_tasks(&mut self) {
-        info!("Starting periodic tasks");
-
-        self.presence_task = Some(tokio::spawn({
-            let mut presence_client = self.clone();
-            async move {
-                let mut interval = interval(Duration::from_secs(PRESENCE_UPDATE_INTERVAL));
-                loop {
-                    interval.tick().await;
-                    if let Err(e) = presence_client.presence_update().await {
-                        error!("Error updating presence: {}", e);
-                    }
-                }
-            }
-        }));
-
-        info!("Periodic tasks started");
-    }
-
     pub fn stop_periodic_tasks(&mut self) -> Result<()> {
         if let Some(task) = self.presence_task.take() {
             task.abort();
         }
-        Ok(())
-    }
-
-    pub async fn check_connection(&mut self) -> Result<()> {
-        redis::cmd("PING")
-            .query_async::<_, String>(&mut *self.connection.lock().await)
-            .await
-            .context("Failed to ping Redis server")?;
         Ok(())
     }
 
@@ -455,72 +538,6 @@ impl RedisClient {
                     callback(message);
                 }) as Pin<Box<dyn Future<Output = ()> + Send>>
             }));
-    }
-
-    async fn start_message_listener(&self) -> Result<(), RedisError> {
-        let instance_channel = self.instance_prefix("msgchannel");
-        let broadcast_channel = self.service_prefix(&["msgchannel"]);
-
-        info!(
-            "<RedisClient> Listening for messages on channels: {} and {}",
-            instance_channel, broadcast_channel
-        );
-
-        // Create a separate PubSub connection for listening to messages
-        let client = match Client::open(self.redis_config.url.clone()) {
-            Ok(client) => client,
-            Err(e) => {
-                error!("<RedisClient> Failed to open Redis client: {}", e);
-                return Err(e);
-            }
-        };
-
-        let pubsub_conn = match client.get_async_connection().await {
-            Ok(conn) => conn,
-            Err(e) => {
-                error!(
-                    "<RedisClient> Failed to get async connection for PubSub: {}",
-                    e
-                );
-                return Err(e);
-            }
-        };
-
-        let mut pubsub = pubsub_conn.into_pubsub();
-
-        pubsub
-            .subscribe(&[&instance_channel, &broadcast_channel])
-            .await
-            .map_err(|e| {
-                error!("<RedisClient> Failed to subscribe to channels: {}", e);
-                e
-            })?;
-
-        let callback = self.message_callbacks.clone();
-
-        let listener_task = tokio::spawn(async move {
-            loop {
-                let mut pubsub_stream = pubsub.on_message();
-
-                while let Some(msg) = pubsub_stream.next().await {
-                    if let Ok(payload) = msg.get_payload::<String>() {
-                        info!("<RedisClient> Received pubsub message: {}", payload);
-                        let callbacks = callback.lock().await.clone();
-                        for cb in callbacks {
-                            cb(payload.clone()).await;
-                        }
-                    } else {
-                        warn!("<RedisClient> Failed to get payload from message");
-                    }
-                }
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-            }
-        });
-
-        // Store the listener task
-        *self.listener_task.lock().await = Some(listener_task);
-
-        Ok(())
     }
 
     pub async fn check_and_renew_lock(&self, name: &str) -> Result<(bool, bool)> {
@@ -557,6 +574,34 @@ impl RedisClient {
             Err(anyhow::anyhow!("Lock not registered"))
         }
     }
+
+    async fn check_connection_health(&self) -> Result<()> {
+        let mut conn = self.connection.lock().await;
+        match redis::cmd("PING").query_async::<String>(&mut *conn).await {
+            Ok(_) => {
+                info!("<RedisClient> Connection healthy");
+                Ok(())
+            }
+            Err(e) => {
+                error!("<RedisClient> Connection unhealthy: {}", e);
+                self.attempt_reconnect().await
+            }
+        }
+    }
+
+    async fn attempt_reconnect(&self) -> Result<()> {
+        let client = Client::open(self.redis_config.url.clone())?;
+
+        // Attempt to recreate connection manager
+        let connection_manager = ConnectionManager::new(client.clone()).await?;
+        *self.connection.lock().await = connection_manager;
+
+        // Attempt to recreate pubsub connection
+        let pub_sub_connection = client.get_async_pubsub().await?;
+        *self.pub_sub_connection.lock().await = pub_sub_connection;
+
+        Ok(())
+    }
 }
 
 impl Clone for RedisClient {
@@ -567,7 +612,7 @@ impl Clone for RedisClient {
     fn clone(&self) -> Self {
         Self {
             connection: Arc::clone(&self.connection),
-            pub_sub: Arc::clone(&self.pub_sub),
+            pub_sub_connection: Arc::clone(&self.pub_sub_connection),
             redis_config: self.redis_config.clone(),
             instance_id: self.instance_id.clone(),
             service_name: self.service_name.clone(),
@@ -575,6 +620,7 @@ impl Clone for RedisClient {
             presence_task: None,
             message_callbacks: Arc::clone(&self.message_callbacks),
             listener_task: Mutex::new(None),
+            connection_status: Arc::clone(&self.connection_status),
         }
     }
 }

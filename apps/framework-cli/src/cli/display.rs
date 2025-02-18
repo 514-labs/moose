@@ -243,7 +243,7 @@ pub fn batch_inserted(count: usize, table_name: &str) {
         MessageType::Info,
         Message {
             action: "[DB]".to_string(),
-            details: format!("{count} rows successfully written to DB table ({table_name})"),
+            details: format!("{count} row(s) successfully written to DB table ({table_name})"),
         }
     );
 }

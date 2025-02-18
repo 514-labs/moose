@@ -162,24 +162,36 @@ async fn add_tables_views(
     target_version: &str,
     output_table: &mut HashMap<String, Vec<String>>,
 ) {
-    let system_tables = get_system_tables(project, target_version).await;
+    let mut system_tables = get_system_tables(project, target_version).await;
+
+    fn update_metadata(system_table: ClickHouseSystemTable, metadata: &mut [String]) {
+        match system_table.engine.as_str() {
+            "MergeTree" => {
+                if let Some(v) = metadata.get_mut(1) {
+                    *v = system_table.name;
+                }
+            }
+            "View" => {
+                if let Some(v) = metadata.get_mut(2) {
+                    *v = system_table.name;
+                }
+            }
+            _ => {}
+        }
+    }
 
     for (data_model, metadata) in output_table.iter_mut() {
-        if let Some(system_table) = system_tables.get(data_model) {
-            match system_table.engine.as_str() {
-                "MergeTree" => {
-                    if let Some(v) = metadata.get_mut(1) {
-                        v.clone_from(&system_table.name);
-                    }
-                }
-                "View" => {
-                    if let Some(v) = metadata.get_mut(2) {
-                        v.clone_from(&system_table.name);
-                    }
-                }
-                _ => {}
-            }
+        if let Some(system_table) = system_tables.remove(data_model) {
+            update_metadata(system_table, metadata);
         }
+    }
+
+    // handle system_tables that are not in output_table (i.e. tables with no ingestion endpoint)
+    for (data_model, system_table) in system_tables.into_iter() {
+        let mut metadata = vec!["".to_string(), "".to_string(), "".to_string()];
+        update_metadata(system_table, &mut metadata);
+
+        output_table.insert(data_model, metadata);
     }
 }
 

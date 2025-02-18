@@ -21,3 +21,7 @@ impl PathExt for Path {
         })
     }
 }
+
+pub const fn _true() -> bool {
+    true
+}

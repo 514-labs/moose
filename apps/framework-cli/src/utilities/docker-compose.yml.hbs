@@ -30,6 +30,7 @@ services:
     command: ["redis-server", "--appendonly", "yes"]
     volumes:
       - redis-data:/data
+  {{#if streaming_engine}}
   redpanda:
     image: docker.redpanda.com/redpandadata/redpanda:latest
     ports:
@@ -56,6 +57,7 @@ services:
       timeout: 3s
       retries: 5
       start_period: 5s
+  {{/if}}
   clickhousedb:
     image: docker.io/clickhouse/clickhouse-server:${CLICKHOUSE_VERSION:-latest}
     volumes:

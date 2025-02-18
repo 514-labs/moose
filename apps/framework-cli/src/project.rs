@@ -67,6 +67,7 @@ use crate::utilities::constants::{PYTHON_INIT_FILE, PY_API_FILE, TS_API_FILE};
 use crate::utilities::constants::{VSCODE_DIR, VSCODE_EXT_FILE, VSCODE_SETTINGS_FILE};
 use crate::utilities::git::GitConfig;
 use crate::utilities::PathExt;
+use crate::utilities::_true;
 
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to create or delete project files")]
@@ -120,6 +121,27 @@ pub struct Project {
 
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub cron_jobs: Vec<CronJob>,
+
+    #[serde(default)]
+    pub features: ProjectFeatures,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct ProjectFeatures {
+    #[serde(default = "_true")]
+    pub streaming_engine: bool,
+
+    #[serde(default)]
+    pub workflows: bool,
+}
+
+impl Default for ProjectFeatures {
+    fn default() -> Self {
+        ProjectFeatures {
+            streaming_engine: true,
+            workflows: false,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -189,6 +211,7 @@ impl Project {
             git_config: GitConfig::default(),
             jwt: None,
             cron_jobs: Vec::new(),
+            features: Default::default(),
         }
     }
 

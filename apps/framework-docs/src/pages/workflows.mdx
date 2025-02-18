@@ -15,13 +15,13 @@ Moose workflows enable developers to automate sequences of tasks in a maintainab
 To create a new workflow, run the following command:
 
 <Python>
-```bash
+```bash filename="Terminal" copy
 moose-cli workflow init example_workflow --steps first_step,second_step
 ```
 </Python>
 
 <TypeScript>
-```bash
+```bash filename="Terminal" copy
 npx moose-cli workflow init example_workflow --steps firstStep,secondStep
 ```
 </TypeScript>
@@ -69,7 +69,7 @@ from moose_lib import task, Logger
 
 @task
 def first_step(data: dict):
-    logger = Logger('Starting Step 1')
+    logger = Logger('first_step')
     logger.info(f'Processing {data}')
     
     return {
@@ -152,13 +152,13 @@ In addition to supporting scheduled workflows, Moose also supports triggering wo
 ### CLI Trigger
 
 <Python>
-```bash
+```bash filename="Terminal" copy
 moose-cli workflow run workflow_name
 ```
 </Python>
 
 <TypeScript>
-```bash
+```bash filename="Terminal" copy
 npx moose-cli workflow run workflow_name
 ```
 </TypeScript>
@@ -266,24 +266,3 @@ npx moose-cli workflow terminate <workflow_name>
 <Callout type="warning" title="Terminating Workflows">
 You cannot run the same workflow concurrently. Use the `terminate` command to stop the workflow before triggering it again.
 </Callout>
-
-## Best Practices
-
-- Write small, focused steps that do one thing well.
-- Log important information at each step.
-- Use meaningful names for workflows and steps.
-- Handle errors gracefully with appropriate recovery logic.
-- Store sensitive data in environment variables.
-- Document inputs and outputs for each step.
-
-## Troubleshooting
-
-| **Problem** | **Solution** |
-| --- | --- |
-| Workflow times out | Check timeout in config.toml and step performance |
-| Step missing data | Verify previous step's return value matches expected input type |
-
-## Next Steps
-
-- Learn more about [Consumption APIs](/consumption-apis)
-- Explore [Moose CLI](/moose-cli)

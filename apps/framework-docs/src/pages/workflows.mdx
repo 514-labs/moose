@@ -106,6 +106,7 @@ export default createTask((input?: object): TaskDefinition => {
             retries: 3
         }
     } as TaskDefinition;
+
 });
 ```
 </TypeScript>
@@ -145,6 +146,25 @@ steps = [firstStep, secondStep]
 
 The schedule field in `config.toml` uses standard cron expression syntax.
 
+```toml filename="app/scripts/example_workflow/config.toml"
+schedule = "0 12 * * *" # Runs at 12:00 PM every day
+```
+
+
+
+Below are some example cron expressions along with their scheduling details:
+
+| Cron Expression             | Description                                   |
+|-----------------------------|-----------------------------------------------|
+| <code>0 12 * * *</code>      | Runs at 12:00 PM every day                    |
+| <code>0 0 * * 0</code>       | Runs at 12:00 AM every Sunday                 |
+| <code>0 8 * * 1-5</code>      | Runs at 8:00 AM on weekdays (Monday to Friday)|
+| <code>* * * * *</code>        | Runs every minute                             |
+
+<Callout type="info" title="Cron Expression Visualizer">
+Use an online cron expression visualizer like [crontab.guru](https://crontab.guru/) to help you understand how the cron expression will schedule your workflow.
+</Callout>
+
 ## Triggering Workflows
 
 In addition to supporting scheduled workflows, Moose also supports triggering workflows via CLI and API.
@@ -182,8 +202,8 @@ class WorkflowParams(BaseModel):
 
 def run(client: MooseClient, params: WorkflowParams) -> dict:
     return client.workflows.execute(
-        workflow="hello_world",
-        params=params
+        workflow="example_workflow",
+        params={input_value: params.input_value}
     )
 ```
 

@@ -1,6 +1,7 @@
 from temporalio import activity
 from dataclasses import dataclass
 from typing import Optional, Any, Callable
+import asyncio
 import os
 import sys
 import json
@@ -58,7 +59,10 @@ def create_activity_for_script(script_name: str) -> Callable:
             # Pass the input data directly if it exists
             input_data = execution_input.input_data if execution_input.input_data else {}
             log.info(f"Processed input_data for task: {input_data}")
-            result = task_func(data=input_data)
+            if asyncio.iscoroutinefunction(task_func):
+                result = await task_func(data=input_data)
+            else:
+                result = task_func(data=input_data)
             
             # Validate and encode result
             if not isinstance(result, dict):

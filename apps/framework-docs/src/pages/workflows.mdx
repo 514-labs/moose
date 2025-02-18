@@ -60,7 +60,7 @@ A typical workflow looks like this:
 
 ## Writing Workflow Steps
 
-### Python
+<Python>
 
 Steps are Python functions decorated with `@task`. Each step can receive inputs and return outputs:
 
@@ -80,8 +80,9 @@ def first_step(data: dict):
         }
     }
 ```
+</Python>
 
-### TypeScript
+<TypeScript>
 
 Tasks are defined as asynchronous functions (of type `TaskFunction`) that perform some operations and return an object with two key properties: `step` and `data`.
 
@@ -107,7 +108,7 @@ export default createTask((input?: object): TaskDefinition => {
     } as TaskDefinition;
 });
 ```
-
+</TypeScript>
 ## Data Flow Between Steps
 
 Steps communicate through their return values. Each step can return a dictionary containing a `data` key. The contents of this `data` key are automatically passed as input parameters to the next step in the workflow.

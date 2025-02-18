@@ -169,10 +169,11 @@ npx moose-cli workflow run workflow_name
 This feature is not yet available for TypeScript.
 </Callout>
 
-You can create an API to trigger workflows by using the `MooseClient` that is automatically instantiated and passed to your API route handler:
 
 <Python>
-```python
+You can create an API to trigger workflows by using the `MooseClient` that is automatically instantiated and passed to your API route handler:
+
+```python filename="app/apis/trigger_workflow.py"
 from moose_lib import MooseClient
 from pydantic import BaseModel, Field
 

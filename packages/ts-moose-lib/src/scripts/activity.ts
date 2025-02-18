@@ -45,6 +45,21 @@ export const activities = {
       throw new Error(errorMsg);
     }
   },
+
+  async getActivityRetry(filePath: string): Promise<number> {
+    try {
+      const scriptModule = await require(filePath);
+      const execResult = await scriptModule.default();
+      const retriesConfig = execResult?.config?.retries;
+      const retries = typeof retriesConfig === "number" ? retriesConfig : 3;
+      logger.info(`Using retries in ${filePath}: ${retries}`);
+      return retries;
+    } catch (error) {
+      const errorMsg = `Failed to get task retry for ${filePath}: ${error}`;
+      logger.error(errorMsg);
+      throw new Error(errorMsg);
+    }
+  },
 };
 
 // Helper function to create activity for a specific script

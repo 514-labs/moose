@@ -2,11 +2,10 @@ import { log as logger, proxyActivities } from "@temporalio/workflow";
 import { WorkflowState } from "./types";
 import { mooseJsonEncode } from "./serialization";
 
-const { executeScript, readDirectory } = proxyActivities({
-  startToCloseTimeout: "10 minutes",
+const { getActivityRetry, readDirectory } = proxyActivities({
+  startToCloseTimeout: "1 minutes",
   retry: {
-    // TODO: Use user's retry config
-    maximumAttempts: 3,
+    maximumAttempts: 1,
   },
 });
 
@@ -34,6 +33,15 @@ export async function ScriptWorkflow(
     currentData = JSON.parse(mooseJsonEncode({ data: currentData }));
 
     if (path.endsWith(".ts")) {
+      const maximumAttempts = await getActivityRetry(path);
+
+      const { executeScript } = proxyActivities({
+        startToCloseTimeout: "10 minutes",
+        retry: {
+          maximumAttempts,
+        },
+      });
+
       const result = await executeScript({
         scriptPath: path,
         inputData: currentData,
@@ -47,6 +55,14 @@ export async function ScriptWorkflow(
       const fullPath = `${path}/${item}`;
 
       if (item.endsWith(".ts")) {
+        const maximumAttempts = await getActivityRetry(fullPath);
+        const { executeScript } = proxyActivities({
+          startToCloseTimeout: "10 minutes",
+          retry: {
+            maximumAttempts,
+          },
+        });
+
         const result = await executeScript({
           scriptPath: fullPath,
           inputData: currentData,
@@ -87,6 +103,14 @@ async function handleParallelExecution(
   for (const scriptFile of parallelFiles.sort()) {
     if (scriptFile.endsWith(".ts")) {
       const scriptPath = `${path}/${item}/${scriptFile}`;
+      const maximumAttempts = await getActivityRetry(scriptPath);
+
+      const { executeScript } = proxyActivities({
+        startToCloseTimeout: "10 minutes",
+        retry: {
+          maximumAttempts,
+        },
+      });
       parallelTasks.push(
         executeScript({
           scriptPath,

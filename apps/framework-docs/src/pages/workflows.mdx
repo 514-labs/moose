@@ -116,28 +116,6 @@ Steps communicate through their return values. Each step can return a dictionary
 - Only values inside the `data` object are passed to the next step.
 - Supported data types inside `data` include basic types, containers, and JSON-serializable custom classes.
 
-## Workflow Input Parameters
-
-Workflows can receive input parameters that are passed to their first step. These parameters can be provided through the CLI or via `MooseClient.workflows`.
-
-### CLI Example
-
-```bash
-moose-cli workflow run hello_world --input_value="test"
-```
-
-### API Example
-
-```python
-from moose_lib import MooseClient
-
-client = MooseClient()
-
-client.workflows.execute(
-    workflow="hello_world",
-    params={"input_value": "test"}
-)
-```
 
 ## Configuration
 

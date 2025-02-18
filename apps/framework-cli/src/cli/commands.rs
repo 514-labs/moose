@@ -272,12 +272,12 @@ pub enum WorkflowCommands {
         #[arg(short, long)]
         input: Option<String>,
     },
-    /// Resume a workflow from a specific step
+    /// Resume a workflow from a specific task
     Resume {
         /// Name of the workflow to resume
         name: String,
 
-        /// Step to resume from
+        /// Task to resume from
         #[arg(long)]
         from: String,
     },

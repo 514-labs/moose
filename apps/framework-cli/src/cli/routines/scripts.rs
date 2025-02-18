@@ -749,14 +749,14 @@ mod tests {
 
         let workflow_dir = project.app_dir().join(SCRIPTS_DIR).join("daily-etl");
 
-        for (i, step) in ["extract", "transform", "load"].iter().enumerate() {
-            let file_path = workflow_dir.join(format!("{}.{}.py", i + 1, step));
-            assert!(file_path.exists(), "Step file {} should exist", step);
+        for (i, task) in ["extract", "transform", "load"].iter().enumerate() {
+            let file_path = workflow_dir.join(format!("{}.{}.py", i + 1, task));
+            assert!(file_path.exists(), "Task file {} should exist", task);
 
             let content = fs::read_to_string(&file_path).unwrap();
             assert!(content.contains("@task()"));
 
-            let expected_string = format!(r#""task": "{}""#, step);
+            let expected_string = format!(r#""task": "{}""#, task);
             assert!(
                 content.contains(&expected_string),
                 "Content should contain '{}'",

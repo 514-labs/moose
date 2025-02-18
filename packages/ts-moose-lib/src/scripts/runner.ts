@@ -14,7 +14,7 @@ function collectActivities(
   logger: DefaultLogger,
   workflowDir: string,
 ): string[] {
-  logger.info(`Collecting activities from ${workflowDir}`);
+  logger.info(`Collecting tasks from ${workflowDir}`);
   const scriptPaths: string[] = [];
 
   function walkDir(dir: string) {
@@ -83,18 +83,16 @@ async function registerWorkflows(
         const activity = await createActivityForScript(activityName);
         dynamicActivities.push(activity);
         ALREADY_REGISTERED.add(activityName);
-        logger.info(`Registered activity ${activityName}`);
+        logger.info(`Registered task ${activityName}`);
       }
     }
 
     if (dynamicActivities.length === 0) {
-      logger.info(`No activities found in ${scriptDir}`);
+      logger.info(`No tasks found in ${scriptDir}`);
       return null;
     }
 
-    logger.info(
-      `Found ${dynamicActivities.length} activity(ies) in ${scriptDir}`,
-    );
+    logger.info(`Found ${dynamicActivities.length} task(s) in ${scriptDir}`);
 
     // TODO: Make this configurable
     logger.info("Connecting to Temporal server...");

@@ -54,7 +54,7 @@ def create_activity_for_script(script_name: str) -> Callable:
             if not task_func:
                 raise ValueError("No @task() function found in script.")
             
-            log.info(f"Activity received input: {execution_input.input_data}")
+            log.info(f"Task received input: {execution_input.input_data}")
             
             # Pass the input data directly if it exists
             input_data = execution_input.input_data if execution_input.input_data else {}
@@ -66,10 +66,10 @@ def create_activity_for_script(script_name: str) -> Callable:
             
             # Validate and encode result
             if not isinstance(result, dict):
-                raise ValueError("Task must return a dictionary with 'step' and 'data' keys")
+                raise ValueError("Task must return a dictionary with 'task' and 'data' keys")
             
-            if "step" not in result or "data" not in result:
-                raise ValueError("Task result must contain 'step' and 'data' keys")
+            if "task" not in result or "data" not in result:
+                raise ValueError("Task result must contain 'task' and 'data' keys")
             
             # Encode the result using our custom encoder
             encoded_result = json.loads(

@@ -15,9 +15,9 @@ def task(func: Callable[..., T] = None, *, retries: int = 3) -> Callable[..., T]
     def validate_result(result: Any) -> None:
         """Ensure proper return format"""
         if not isinstance(result, dict):
-            raise ValueError("Task must return a dictionary with 'step' and 'data' keys")
-        if "step" not in result or "data" not in result:
-            raise ValueError("Task result must contain 'step' and 'data' keys")
+            raise ValueError("Task must return a dictionary with 'task' and 'data' keys")
+        if "task" not in result or "data" not in result:
+            raise ValueError("Task result must contain 'task' and 'data' keys")
 
     def decorator(f: Callable[..., T]) -> Callable[..., T]:
         if asyncio.iscoroutinefunction(f):

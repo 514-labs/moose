@@ -1004,8 +1004,8 @@ async fn top_command_handler(
             let project = load_project()?;
 
             match &workflow_args.command {
-                Some(WorkflowCommands::Init { name, steps, step }) => {
-                    init_workflow(&project, name, steps.clone(), step.clone()).await
+                Some(WorkflowCommands::Init { name, tasks, task }) => {
+                    init_workflow(&project, name, tasks.clone(), task.clone()).await
                 }
                 Some(WorkflowCommands::Run { name, input }) => {
                     run_workflow(&project, name, input.clone()).await

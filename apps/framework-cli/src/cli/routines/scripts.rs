@@ -22,18 +22,18 @@ use temporal_sdk_core_protos::temporal::api::workflowservice::v1::{
 pub async fn init_workflow(
     project: &Project,
     name: &str,
-    steps: Option<String>,
-    step: Option<Vec<String>>,
+    tasks: Option<String>,
+    task: Option<Vec<String>>,
 ) -> Result<RoutineSuccess, RoutineFailure> {
     // Convert steps string to vector if present
-    let step_vec = if let Some(steps_str) = steps {
-        steps_str.split(',').map(|s| s.trim().to_string()).collect()
+    let task_vec = if let Some(tasks_str) = tasks {
+        tasks_str.split(',').map(|s| s.trim().to_string()).collect()
     } else {
-        step.unwrap_or_default()
+        task.unwrap_or_default()
     };
 
     // Initialize the workflow using the existing Workflow::init method
-    Workflow::init(project, name, &step_vec).map_err(|e| {
+    Workflow::init(project, name, &task_vec).map_err(|e| {
         RoutineFailure::new(
             Message {
                 action: "Workflow Init Failed".to_string(),
@@ -47,7 +47,7 @@ pub async fn init_workflow(
     Ok(RoutineSuccess::success(Message {
         action: "Created".to_string(),
         details: format!(
-            "Workflow '{}' initialized successfully\n\nNext Steps:\n1. cd {}/{}/{}\n2. Edit your workflow steps\n3. Run with: moose-cli workflow run {}",
+            "Workflow '{}' initialized successfully\n\nNext Steps:\n1. cd {}/{}/{}\n2. Edit your workflow tasks\n3. Run with: moose-cli workflow run {}",
             name, APP_DIR, SCRIPTS_DIR, name, name
         ),
     }))
@@ -733,7 +733,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_workflow_init_with_steps() {
+    async fn test_workflow_init_with_tasks() {
         let project = setup();
 
         let result = init_workflow(
@@ -749,12 +749,19 @@ mod tests {
 
         let workflow_dir = project.app_dir().join(SCRIPTS_DIR).join("daily-etl");
 
-        for (i, step) in ["extract", "transform", "load"].iter().enumerate() {
-            let file_path = workflow_dir.join(format!("{}.{}.py", i + 1, step));
-            assert!(file_path.exists(), "Step file {} should exist", step);
+        for (i, task) in ["extract", "transform", "load"].iter().enumerate() {
+            let file_path = workflow_dir.join(format!("{}.{}.py", i + 1, task));
+            assert!(file_path.exists(), "Task file {} should exist", task);
 
             let content = fs::read_to_string(&file_path).unwrap();
             assert!(content.contains("@task()"));
+
+            let expected_string = format!(r#""task": "{}""#, task);
+            assert!(
+                content.contains(&expected_string),
+                "Content should contain '{}'",
+                expected_string
+            );
         }
     }
 

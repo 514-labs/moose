@@ -1,5 +1,5 @@
 export interface TaskFunction {
-  (): Promise<{ step: string; data: Record<string, any> }>;
+  (): Promise<{ task: string; data: Record<string, any> }>;
 }
 
 export interface TaskConfig {

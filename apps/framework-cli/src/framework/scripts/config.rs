@@ -12,9 +12,9 @@ pub struct WorkflowConfig {
     #[serde(default = "default_timeout")]
     pub timeout: String,
 
-    // Optional steps configuration
+    // Optional tasks configuration
     #[serde(default)]
-    pub steps: Option<Vec<String>>,
+    pub tasks: Option<Vec<String>>,
 }
 
 impl WorkflowConfig {
@@ -24,13 +24,13 @@ impl WorkflowConfig {
             schedule: default_schedule(),
             retries: default_retries(),
             timeout: default_timeout(),
-            steps: None,
+            tasks: None,
         }
     }
 
-    pub fn with_steps(name: String, steps: Vec<String>) -> Self {
+    pub fn with_tasks(name: String, tasks: Vec<String>) -> Self {
         let mut config = Self::new(name);
-        config.steps = Some(steps);
+        config.tasks = Some(tasks);
         config
     }
 

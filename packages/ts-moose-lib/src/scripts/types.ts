@@ -6,7 +6,7 @@ export interface WorkflowState {
   inputData: any | null;
 }
 
-export interface WorkflowStepResult {
-  step: string;
+export interface WorkflowTaskResult {
+  task: string;
   data: any;
 }

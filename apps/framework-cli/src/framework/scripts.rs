@@ -103,11 +103,11 @@ impl Workflow {
 
         std::fs::create_dir_all(&workflow_dir)?;
 
-        // Create config.toml with workflow name and steps
+        // Create config.toml with workflow name and tasks
         let config = if scripts.is_empty() {
             WorkflowConfig::new(name.to_string())
         } else {
-            WorkflowConfig::with_steps(name.to_string(), scripts.to_vec())
+            WorkflowConfig::with_tasks(name.to_string(), scripts.to_vec())
         };
         config.save(workflow_dir.join("config.toml"))?;
 

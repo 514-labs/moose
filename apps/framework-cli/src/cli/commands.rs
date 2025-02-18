@@ -255,13 +255,13 @@ pub enum WorkflowCommands {
         /// Name of your workflow
         name: String,
 
-        /// Comma-separated list of step names
+        /// Comma-separated list of task names
         #[arg(long)]
-        steps: Option<String>,
+        tasks: Option<String>,
 
-        /// Individual step names (can be specified multiple times)
+        /// Individual task names (can be specified multiple times)
         #[arg(long)]
-        step: Option<Vec<String>>,
+        task: Option<Vec<String>>,
     },
     /// Run a workflow
     Run {

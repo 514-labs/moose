@@ -1,6 +1,6 @@
 import { log as logger } from "@temporalio/activity";
 import * as fs from "fs";
-import { WorkflowStepResult } from "./types";
+import { WorkflowTaskResult } from "./types";
 
 export interface ScriptExecutionInput {
   scriptPath: string;
@@ -10,11 +10,11 @@ export interface ScriptExecutionInput {
 export const activities = {
   async executeScript(
     input: ScriptExecutionInput,
-  ): Promise<WorkflowStepResult> {
+  ): Promise<WorkflowTaskResult> {
     try {
       const { scriptPath, inputData } = input;
 
-      logger.info(`Activity received input: ${JSON.stringify(inputData)}`);
+      logger.info(`Task received input: ${JSON.stringify(inputData)}`);
 
       // TODO: Handle initial input data & passing data between steps
       const processedInput = (inputData || {})?.data || {};

@@ -15,7 +15,7 @@ def collect_activities(workflow_dir: str) -> List[str]:
     """
     Recursively collect all Python files from the workflow directory and its subdirectories,
     """
-    log.info(f"Collecting activities from {workflow_dir}")
+    log.info(f"Collecting tasks from {workflow_dir}")
     script_paths = []
     for root, _, files in os.walk(workflow_dir):
         # Skip any folders named 'python_wrapper'
@@ -73,13 +73,13 @@ async def register_workflows(script_dir: str) -> Optional[Worker]:
                 act = create_activity_for_script(activity_name)
                 dynamic_activities.append(act)
                 _ALREADY_REGISTERED.add(activity_name)
-                log.info(f"Registered activity {activity_name}")
+                log.info(f"Registered task {activity_name}")
 
         if len(dynamic_activities) == 0:
-            log.warning(f"No activities found in {script_dir}")
+            log.warning(f"No tasks found in {script_dir}")
             return None
         else:
-            log.info(f"Found {len(dynamic_activities)} activity(ies) in {script_dir}")
+            log.info(f"Found {len(dynamic_activities)} task(s) in {script_dir}")
 
         # TODO: This should be configurable
         log.info("Connecting to Temporal server...")

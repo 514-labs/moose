@@ -179,10 +179,10 @@ const {{name}}: TaskFunction = async () => {
 
     // The return value is the output of the script.
     // The return value should be a dictionary with at least:
-    // - step: the step name (e.g., "extract", "transform")
-    // - data: the actual data being passed to the next step
+    // - task: the task name (e.g., "extract", "transform")
+    // - data: the actual data being passed to the next task
     return {
-        step: "{{name}}",
+        task: "{{name}}",
         data: {}
     };
 };

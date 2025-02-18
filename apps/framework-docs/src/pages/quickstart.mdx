@@ -32,12 +32,24 @@ git --version && node --version && docker --version
 ```bash filename="Terminal" copy 
 git --version && python3 --version && docker --version 
 ```
+
 </Python>
 
 ## First, initialize your Moose project
 
 <Steps>
+<Python>
+<Callout type="warning" title="Recommended: Use a Virtual Environment">
+To create and activate a virtual environment, you can run the following commands:
 
+  ```bash filename="Terminal" copy
+  python3 -m venv .venv
+  source .venv/bin/activate
+  ```
+
+  You can alternatively use your preferred Python package manager (e.g. `conda`, `uv`, `pyenv`, etc.) to create and activate a virtual environment.
+</Callout>
+</Python>
 ### Install the Moose CLI
 
 <Python>
@@ -63,19 +75,12 @@ npm install -g @514labs/moose-cli
 moose-cli init my-moose-app python
 ```
 
-<Callout type="warning" title="Don't forget the python flag!">
-  Don't forget to include the `python` flag when initializing your project.
-</Callout>
-
 </Python>
 
 <TypeScript>
 ```bash filename="Terminal" copy
 npx moose-cli init my-moose-app ts 
 ```
-<Callout type="warning" title="Don't forget the ts flag!">
-  Don't forget to include the `ts` flag when initializing your project.
-</Callout>
 </TypeScript>
 
 This will automatically create a new project folder and initialize a skeleton Moose app with the entire project structure you need to get started.
@@ -116,9 +121,11 @@ moose-cli dev
 
 <Callout type="info" title="What's happening?">
   The dev server dynamically configures and updates the infrastructure for
-  your application, including a web server for data ingestion and consumption, a
-  Redpanda platform for data buffering, and a Clickhouse database for data
-  storage and querying.
+  your entire project, including:
+  - Webserver for Ingesting/Consuming data
+  - Redpanda streaming platform
+  - Clickhouse database
+  - Temporal workflow engine
 </Callout>
 
 <ToggleBlock openText="Troubleshooting: Can't start the dev server?" closeText="Hide Troubleshooting">

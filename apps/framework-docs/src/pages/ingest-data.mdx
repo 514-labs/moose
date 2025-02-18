@@ -1,8 +1,9 @@
 import { Cards, Card, Tabs, FileTree } from "nextra/components";
-import { Callout } from "../components";
+import { Callout, LanguageSwitcher, Python, TypeScript } from "../components";
 
 # Ingesting Data
 
+<LanguageSwitcher />
 Once you've defined a Data Model, Moose makes it easy to ingest data from data sources that align to the schema of your Data Model. Moose automatically spins up an API endpoint for each Data Model that you can make an HTTP `POST` request to with data that matches the schema of the Data Model.
 
 You can ingest data from any HTTP-compatible data source, including webhooks, scripts, and any existing application that can make an HTTP `POST` request.

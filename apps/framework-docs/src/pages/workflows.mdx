@@ -1,8 +1,9 @@
 import { FileTree } from "nextra/components";
-import { Python, TypeScript, Callout } from "../components";
+import { Python, TypeScript, Callout, LanguageSwitcher } from "../components";
 
 # Workflow Orchestration
 
+<LanguageSwitcher />
 Moose workflows enable developers to automate sequences of tasks in a maintainable, reliable way. A workflow is a series of steps that execute in order. Each workflow follows these conventions:
 
 - Workflows live in folders inside the `/app/scripts` subdirectory, with the folder name being the workflow name.
@@ -15,7 +16,7 @@ To create a new workflow, run the following command:
 
 <Python>
 ```bash
-moose-cli workflow init example_workflow --steps firstStep,secondStep
+moose-cli workflow init example_workflow --steps first_step,second_step
 ```
 </Python>
 

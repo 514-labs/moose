@@ -64,3 +64,6 @@ Session.vim
 apps/framework-internal-app/package-lock.json
 
 packages/ts-moose-proto/generated/
+
+# ignore all scratch files and folders
+scratch*

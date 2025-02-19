@@ -150,14 +150,13 @@ describe("framework-cli", () => {
 
     const eventId = randomUUID();
 
-    const response = await fetch("http://localhost:4000/ingest/UserActivity", {
+    const response = await fetch("http://localhost:4000/ingest/Foo", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        eventId: eventId,
-        timestamp: "2019-01-01 00:00:01",
-        userId: "123456",
-        activity: "Login",
+        primaryKey: eventId,
+        timestamp: 1739990000,
+        optionalText: "Hello world",
       }),
     });
 
@@ -183,20 +182,17 @@ describe("framework-cli", () => {
 
     try {
       const result = await client.query({
-        query: "SELECT * FROM ParsedActivity_0_0",
+        query: "SELECT * FROM Foo_0_0",
         format: "JSONEachRow",
       });
       const rows: any[] = await result.json();
-      console.log("ParsedActivity data:", rows);
+      console.log("Foo data:", rows);
 
-      expect(rows).to.have.lengthOf(
-        1,
-        "Expected exactly one row in ParsedActivity",
-      );
+      expect(rows).to.have.lengthOf(1, "Expected exactly one row in Foo");
 
-      expect(rows[0].eventId).to.equal(
+      expect(rows[0].primaryKey).to.equal(
         eventId,
-        "EventId in ParsedActivity should match the generated UUID",
+        "PrimaryKey in Foo should match the generated UUID",
       );
     } catch (error) {
       console.error("Error querying ClickHouse:", error);
@@ -207,7 +203,7 @@ describe("framework-cli", () => {
 
     console.log("Sending consumption request...");
     const consumptionResponse = await fetch(
-      "http://localhost:4000/consumption/dailyActiveUsers?minDailyActiveUsers=1",
+      "http://localhost:4000/consumption/bar?orderBy=totalRows",
     );
 
     if (consumptionResponse.ok) {
@@ -215,8 +211,8 @@ describe("framework-cli", () => {
       let json = await consumptionResponse.json();
       expect(json).to.deep.equal([
         {
-          date: "2019-01-01",
-          dailyActiveUsers: "1",
+          dayOfMonth: 21,
+          totalRows: "1",
         },
       ]);
     } else {

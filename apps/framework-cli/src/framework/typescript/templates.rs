@@ -173,7 +173,9 @@ export interface ParsedActivity {
 
 pub static TS_BASE_SCRIPT_TEMPLATE: &str = r#"import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
-const {{name}}: TaskFunction = async () => {
+// The initial input data and data passed between tasks can be
+// defined in the task function parameter
+const {{name}}: TaskFunction = async (input?: any) => {
     // The body of your script goes here
     console.log("Hello world from {{name}}");
 
@@ -187,7 +189,7 @@ const {{name}}: TaskFunction = async () => {
     };
 };
 
-export default function createTask(input?: object) {
+export default function createTask() {
     return {
         task: {{name}},
         config: {

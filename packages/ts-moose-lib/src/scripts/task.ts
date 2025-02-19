@@ -1,5 +1,5 @@
 export interface TaskFunction {
-  (): Promise<{ task: string; data: Record<string, any> }>;
+  (input?: any): Promise<{ task: string; data: any }>;
 }
 
 export interface TaskConfig {

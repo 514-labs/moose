@@ -10,12 +10,16 @@
       }
     },
     {
-      "label": "Moose lib build",
+      "label": "TS moose lib build",
       "type": "shell",
       "command": "pnpm --filter=@514labs/moose-lib run build",
       "options": {
         "cwd": "${workspaceRoot}"
       }
+    },
+    {
+      "label": "Build all",
+      "dependsOn": ["CLI build", "TS moose lib build"]
     }
   ]
 }

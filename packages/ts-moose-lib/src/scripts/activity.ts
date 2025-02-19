@@ -16,11 +16,10 @@ export const activities = {
 
       logger.info(`Task received input: ${JSON.stringify(inputData)}`);
 
-      // TODO: Handle initial input data & passing data between steps
       const processedInput = (inputData || {})?.data || {};
       const scriptModule = await require(scriptPath);
       const execResult = await scriptModule.default();
-      const result = await execResult.task();
+      const result = await execResult.task(processedInput);
 
       return result;
     } catch (error) {

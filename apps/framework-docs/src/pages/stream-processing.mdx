@@ -5,12 +5,14 @@ import { Steps } from "nextra/components";
 # Streaming Functions
 
 <LanguageSwitcher />
-Streaming Functions continuously transform, filter, and enrich data from a source Data Model to a destination Data Model in real-time. This enables you to build streaming pipelines that can trigger events, enrich data from external sources, or reshape payloads on the fly.
+Streaming Functions enable real-time data transformation, filtering, and enrichment between source and destination Data Models. They allow you to build dynamic streaming pipelines that can integrate external data, reshape payloads, trigger events on the fly, or implement any other logic you need.
 
-- Streaming Functions continuously process data as it arrives in your source Data Model’s streaming topic.
-- After processing, the function returns data that Moose emits to the destination Data Model’s streaming topic. 
+- Streaming functions take a source Data Model as input and return a destination Data Model as output.
+- You can implement any logic within a streaming function, including using libraries and calling external APIs.
+- These functions are automatically triggered by new data points in the source Data Model's streaming topic.
+- The output is seamlessly forwarded to the destination Data Model's streaming topic.
 
-<br/>
+Example:
 
 <TypeScript>
 ```ts filename="/functions/Foo__Bar.ts" copy
@@ -165,7 +167,7 @@ export default function functionName(
 
 <Callout type="info" title="Default Export">
   The default export is critical because Moose uses it to identify the Streaming Function's
-  entry point.
+  entry point. The function name can be anything you want.
 </Callout>
 
 </TypeScript>
@@ -185,7 +187,7 @@ my_streaming_function = StreamingFunction(run=functionName)
 
 <Callout type="info" title="Entry Point in Python">
   Assign your function to the `run` parameter of the `StreamingFunction` class to designate
-  it as the entry point.
+  it as the entry point. The function name can be anything you want.
 </Callout>
 
 </Python>
@@ -572,7 +574,7 @@ Once you have defined and saved your Streaming Function, you can verify it is wo
 
 ### Send Test Data to the Source Data Model
 
-Ingest some test data into the **source** Data Model. When Moose processes new messages on the source’s streaming topic, your Streaming Function should be invoked.
+Ingest some test data into the **source** Data Model. When Moose processes new messages on the source's streaming topic, your Streaming Function should be invoked.
 
 <Callout type="info" title="Need Help Ingesting Data?">
   Check out the [Ingesting Data](/ingest-data) section of the documentation.
@@ -587,7 +589,7 @@ Received SourceDataModel -> DestinationDataModel 1 message(s)
 ```
 
 <Callout type="warning" title="Don't See This Message? Try These Steps:">
-  - Make sure the source and destination data models are correctly specified in your function file.
+  - Make sure your filename is correct and follows the naming convention of `SourceDataModel__DestinationDataModel` separated by two underscores.
   - Save the file after making changes.
   - Check your function logic for errors.
   - Run `moose logs --tail` to see logs in real time.
@@ -595,7 +597,7 @@ Received SourceDataModel -> DestinationDataModel 1 message(s)
 
 ### Inspect the Destination Table
 
-After data is processed, check the **destination** Data Model’s table in the database to confirm the data has been correctly transformed.
+After data is processed, check the **destination** Data Model's table in the database to confirm the data has been correctly transformed.
 
 You can run the following command to preview the contents of the destination table:
 

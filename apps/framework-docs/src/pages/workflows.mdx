@@ -4,11 +4,15 @@ import { Python, TypeScript, Callout, LanguageSwitcher } from "../components";
 # Workflow Orchestration
 
 <LanguageSwitcher />
-Moose workflows enable developers to automate sequences of tasks in a maintainable, reliable way. A workflow is a series of steps that execute in order. Each workflow follows these conventions:
+Moose workflows enable developers to automate sequences of tasks in a maintainable, reliable way. A workflow is a series of tasks that execute in order. Each workflow follows these conventions:
 
 - Workflows live in folders inside the `/app/scripts` subdirectory, with the folder name being the workflow name.
-- Steps are scripts with numerical prefixes (e.g., `1.first_step.py` for Python or `1.firstStep.ts` for TypeScript).
+- Tasks are scripts with numerical prefixes (e.g., <Python NodeType="span">`1.first_task.py`</Python><TypeScript NodeType="span">`1.firstTask.ts`</TypeScript>).
 - Configuration is managed through `config.toml` files.
+
+<Callout type="info" title="Powered by Temporal">
+This workflow abstraction is powered by Temporal under the hood. You can use the Temporal GUI to monitor your workflow runs as they execute, providing extra debugging capabilities.
+</Callout>
 
 ## Quickstart
 
@@ -16,13 +20,13 @@ To create a new workflow, run the following command:
 
 <Python>
 ```bash filename="Terminal" copy
-moose-cli workflow init example_workflow --steps first_step,second_step
+moose-cli workflow init example_workflow --tasks first_task,second_task
 ```
 </Python>
 
 <TypeScript>
 ```bash filename="Terminal" copy
-npx moose-cli workflow init example_workflow --steps firstStep,secondStep
+npx moose-cli workflow init ExampleWorkflow --tasks firstTask,secondTask
 ```
 </TypeScript>
 
@@ -35,8 +39,8 @@ A typical workflow looks like this:
 <FileTree.Folder name="app" open>
 <FileTree.Folder name="scripts" open>
 <FileTree.Folder name="example_workflow" open>
-<FileTree.File name="1.first_step.py" />
-<FileTree.File name="2.second_step.py" />
+<FileTree.File name="1.first_task.py" />
+<FileTree.File name="2.second_task.py" />
 <FileTree.File name="config.toml" />
 </FileTree.Folder>
 </FileTree.Folder>
@@ -48,9 +52,9 @@ A typical workflow looks like this:
 <FileTree>
 <FileTree.Folder name="app" open>
 <FileTree.Folder name="scripts" open>
-<FileTree.Folder name="example_workflow" open>
-<FileTree.File name="1.first_step.ts" />
-<FileTree.File name="2.second_step.ts" />
+<FileTree.Folder name="ExampleWorkflow" open>
+<FileTree.File name="1.firstTask.ts" />
+<FileTree.File name="2.secondTask.ts" />
 <FileTree.File name="config.toml" />
 </FileTree.Folder>
 </FileTree.Folder>
@@ -58,24 +62,27 @@ A typical workflow looks like this:
 </FileTree>
 </TypeScript>
 
-## Writing Workflow Steps
+## Writing Workflow Tasks
 
 <Python>
 
-Steps are Python functions decorated with `@task`. Each step can receive inputs and return outputs:
+Tasks are Python functions decorated with `@task`. Each task can receive inputs and return outputs:
 
-```python filename="app/scripts/example_workflow/1.first_step.py"
+```python filename="app/scripts/example_workflow/1.first_task.py"
 from moose_lib import task, Logger
 
 @task
-def first_step(data: dict):
-    logger = Logger('first_step')
-    logger.info(f'Processing {data}')
+def first_task(data: dict):
+    logger = Logger('first_task')
+    logger.info(f'Received data: {data}')
+    
+    # Example operation: Increment a counter
+    result = data.get("counter", 0) + 1
     
     return {
-        "step": "first_step",
+        "task": "first_task",
         "data": {
-            "result": "Success",
+            "counter": result,
             "timestamp": datetime.now().isoformat()
         }
     }
@@ -84,16 +91,21 @@ def first_step(data: dict):
 
 <TypeScript>
 
-Tasks are defined as asynchronous functions (of type `TaskFunction`) that perform some operations and return an object with two key properties: `step` and `data`.
+Tasks are defined as asynchronous functions (of type `TaskFunction`) that perform some operations and return an object with two key properties: `task` and `data`.
 
-```typescript filename="app/scripts/example_workflow/1.firstStep.ts"
+```typescript filename="app/scripts/example_workflow/1.firstTask.ts"
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
-const firstStep: TaskFunction = async () => {
+const firstTask: TaskFunction = async (data: any) => {
+    console.log(`Received data: ${JSON.stringify(data)}`);
+    
+    // Example operation: Increment a counter
+    const counter = (data.counter || 0) + 1;
+    
     return {
-        step: "firstStep",
+        task: "firstTask",
         data: {
-            result: "Success",
+            counter: counter,
             timestamp: new Date().toISOString()
         }
     };
@@ -101,46 +113,99 @@ const firstStep: TaskFunction = async () => {
 
 export default createTask((input?: object): TaskDefinition => {
     return {
-        task: firstStep,
-        config: {
-            retries: 3
-        }
+        task: firstTask,
     } as TaskDefinition;
-
 });
 ```
 </TypeScript>
-## Data Flow Between Steps
 
-Steps communicate through their return values. Each step can return a dictionary containing a `data` key. The contents of this `data` key are automatically passed as input parameters to the next step in the workflow.
+## Data Flow Between Tasks
 
-- Only values inside the `data` object are passed to the next step.
+Tasks communicate through their return values. Each task can return a dictionary containing a `data` key. The contents of this `data` key are automatically passed as input parameters to the next task in the workflow.
+
+- Only values inside the `data` object are passed to the next task.
 - Supported data types inside `data` include basic types, containers, and JSON-serializable custom classes.
 
+<Python>
 
-## Configuration
+```python filename="app/scripts/example_workflow/2.second_task.py"
+from moose_lib import task, Logger
+
+@task
+def second_task(data: dict):
+    logger = Logger('second_task')
+    logger.info(f'Received data: {data}')
+    
+    # Example operation: Double the counter value
+    result = data.get("counter", 0) * 2
+    
+    return {
+        "task": "second_task",
+        "data": {
+            "counter": result,
+            "timestamp": datetime.now().isoformat()
+        }
+    }
+```
+</Python>
+
+<TypeScript>
+
+```typescript filename="app/scripts/example_workflow/2.secondTask.ts"
+import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
+
+const secondTask: TaskFunction = async (data: any) => {
+    console.log(`Received data: ${JSON.stringify(data)}`);
+    
+    // Example operation: Double the counter value
+    const counter = (data.counter || 0) * 2;
+    
+    return {
+        task: "secondTask",
+        data: {
+            counter: counter,
+            timestamp: new Date().toISOString()
+        }
+    };
+};
+
+export default createTask((input?: object) => {
+    return {
+        task: secondTask,å
+    } as TaskDefinition;
+});
+```
+</TypeScript>
+
+## Workflow Configuration
 
 Control workflow behavior through `config.toml`:
-
 <Python>
 ```toml filename="app/scripts/example_workflow/config.toml"
-name = "example_workflow"
-timeout = "1h"
-retries = 3
-schedule = "0 12 * * *"
-steps = [first_step, second_step]
+name = "example_workflow" # Required. The name of the workflow.
+timeout = "1h" # Optional. If not specified, the default timeout is 1 hour.
+retries = 3 # Optional. If not specified, the default retry count is 3.
+schedule = "0 12 * * *" # Optional. If not specified, the workflow will not be scheduled.
+tasks = [first_task, second_task] # Required. The list of tasks to execute.
 ```
 </Python>
 
 <TypeScript filename="app/scripts/example_workflow/config.toml" >
 ```toml
-name = "example_workflow"
-timeout = "1h"
-retries = 3
-schedule = "0 12 * * *"
-steps = [firstStep, secondStep]
+name = "example_workflow" # Required. The name of the workflow.
+timeout = "1h" # Required. The timeout for the workflow.
+retries = 3 # Required. The number of retries for the workflow.
+schedule = "0 12 * * *" # Optional. If not specified, the workflow will not be scheduled.
+tasks = [firstTask, secondTask] # Required. The list of tasks to execute.
 ```
 </TypeScript>
+
+### Timeouts and Retries
+
+The `timeout` and `retries` fields in `config.toml` are optional. If not specified, the default values are 1 hour and 3 retries, respectively.
+
+- **Timeout**: If a workflow execution does not complete within the specified timeout period, it will be terminated and marked as failed. This ensures that workflows do not run indefinitely.
+- **Retries**: If a workflow task fails due to an error, it will be retried up to the specified number of retries. This allows for transient errors to be automatically handled without manual intervention.
 
 ### Cron Scheduling Format
 
@@ -219,9 +284,9 @@ This feature is coming soon.
 
 Moose provides multiple layers of error protection.
 
-### Step-Level Errors
+### Task-Level Errors
 
-Moose automatically catches any runtime errors during step execution. Errors are logged for debugging, and the orchestrator will retry failed steps according to the retry count in `config.toml`.
+Moose automatically catches any runtime errors during task execution. Errors are logged for debugging, and the orchestrator will retry failed tasks according to the retry count in `config.toml`.
 
 ### Configuring Retry Behavior
 
@@ -230,14 +295,14 @@ Moose automatically catches any runtime errors during step execution. Errors are
 from moose_lib import task, Logger
 
 @task(retries=3) 
-def process_data(data: dict):
-    logger = Logger('process-task')
+def first_task(data: dict):
+    logger = Logger('first_task')
     logger.info(f'Processing {data}')
     
     return {
-        "step": "process_data",
+        "task": "first_task",
         "data": {
-            "result": data.get("input_value").upper(),
+            "result": "Success",
             "timestamp": datetime.now().isoformat()
         }
     }
@@ -245,12 +310,12 @@ def process_data(data: dict):
 </Python>
 
 <TypeScript>
-```typescript
-import { TaskFunction, TaskDefinition, createTask } from "@514labs/moose-lib";
+```typescript filename="app/scripts/ExampleWorkflow/1.firstTask.ts" {16-18}
+import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
-const firstStep: TaskFunction = async () => {
+const firstTask: TaskFunction = async () => {
     return {
-        step: "firstStep",
+        task: "firstTask",
         data: {
             result: "Success",
             timestamp: new Date().toISOString()
@@ -260,9 +325,9 @@ const firstStep: TaskFunction = async () => {
 
 export default createTask((input?: object) => {
     return {
-        task: firstStep,
+        task: firstTask,
         config: {
-            retries: 3
+            retries: 3 // This is optional. If you don't explicitly set retries, it will default to 3. 
         }
     } as TaskDefinition;
 });
@@ -287,3 +352,21 @@ npx moose-cli workflow terminate <workflow_name>
 <Callout type="warning" title="Terminating Workflows">
 You cannot run the same workflow concurrently. Use the `terminate` command to stop the workflow before triggering it again.
 </Callout>
+
+### Workflow Status
+
+You can check the status of a workflow by using the `moose-cli workflow status` command.
+
+<Python>
+```bash
+moose-cli workflow status <workflow_name> [--verbose]
+```
+</Python>
+
+<TypeScript>
+```bash
+npx moose-cli workflow status <workflow_name> [--verbose]
+```
+</TypeScript>
+
+Adding the `--verbose` flag will provide more detailed information about the workflow's status, including task level inputs and outputs.

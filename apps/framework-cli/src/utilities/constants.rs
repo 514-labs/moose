@@ -32,8 +32,8 @@ pub const BLOCKS_DIR: &str = "blocks";
 pub const CONSUMPTION_DIR: &str = "apis";
 pub const SCRIPTS_DIR: &str = "scripts";
 pub const VSCODE_DIR: &str = ".vscode";
-pub const SAMPLE_STREAMING_FUNCTION_SOURCE: &str = "UserActivity";
-pub const SAMPLE_STREAMING_FUNCTION_DEST: &str = "ParsedActivity";
+pub const SAMPLE_STREAMING_FUNCTION_SOURCE: &str = "Foo";
+pub const SAMPLE_STREAMING_FUNCTION_DEST: &str = "Bar";
 
 pub const CLICKHOUSE_CONTAINER_NAME: &str = "clickhousedb-1";
 pub const REDPANDA_CONTAINER_NAME: &str = "redpanda-1";
@@ -57,11 +57,11 @@ pub const GITIGNORE: &str = ".gitignore";
 pub const TS_FLOW_FILE: &str = "flow.ts";
 pub const PY_FLOW_FILE: &str = "flow.py";
 
-pub const TS_BLOCKS_FILE: &str = "DailyActiveUsers.ts";
-pub const PY_BLOCKS_FILE: &str = "DailyActiveUsers.py";
+pub const TS_BLOCKS_FILE: &str = "Bar.ts";
+pub const PY_BLOCKS_FILE: &str = "Bar.py";
 
-pub const TS_API_FILE: &str = "dailyActiveUsers.ts";
-pub const PY_API_FILE: &str = "dailyActiveUsers.py";
+pub const TS_API_FILE: &str = "bar.ts";
+pub const PY_API_FILE: &str = "bar.py";
 
 pub const VSCODE_EXT_FILE: &str = "extensions.json";
 pub const VSCODE_SETTINGS_FILE: &str = "settings.json";

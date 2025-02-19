@@ -13,21 +13,21 @@ pub enum TypescriptRenderingError {
 }
 
 pub static TS_BASE_STREAMING_FUNCTION_SAMPLE: &str = r#"
-// Example streaming function: Converts local timestamps in UserActivity data to UTC.
+// Example streaming function: Reshapes Foo data to Bar format.
 
-// Imports: Source (UserActivity) and Destination (ParsedActivity) data models.
-import { ParsedActivity, UserActivity } from "datamodels/models";
+// Imports: Source (Foo) and Destination (Bar) data models.
+import { Foo, Bar } from "datamodels/models";
 
-// The 'run' function transforms UserActivity data to ParsedActivity format.
+
+// The 'run' function contains the logic that runs on each new data point in the Foo stream.
 // For more details on how Moose streaming functions work, see: https://docs.moosejs.com
-export default function run(source: UserActivity): ParsedActivity {
-  // Convert local timestamp to UTC and return new ParsedActivity object.
+export default function run(foo: Foo): Bar {
   return {
-    eventId: source.eventId,  // Retain original event ID.
-    userId: "puid" + source.userId,  // Example: Prefix user ID.
-    activity: source.activity,  // Copy activity unchanged.
-    timestamp: new Date(source.timestamp)  // Convert timestamp to UTC.
-  };
+    primaryKey: foo.primaryKey,
+    utcTimestamp: new Date(foo.timestamp),
+    textLength: foo.optionalText?.length ?? 0,
+    hasText: foo.optionalText !== null,
+  } as Bar;
 }
 
 "#;
@@ -46,74 +46,81 @@ export default function run(source: {{source}}): {{destination}} | null {
 "#;
 
 pub static TS_BASE_BLOCKS_SAMPLE: &str = r#"
-// Here is a sample aggregation query that calculates the number of daily active users
-// based on the number of unique users who complete a sign-in activity each day.
+// Example Block that creates a materialized view that aggregates daily statistics from Bar_0_0
 
-import {
-  createAggregation,
-  dropAggregation,
-  Blocks,
-  ClickHouseEngines,
-} from "@514labs/moose-lib";
+import { Blocks } from "@514labs/moose-lib"; // Import Blocks to structure setup/teardown queries
 
-const DESTINATION_TABLE = "DailyActiveUsers";
-const MATERIALIZED_VIEW = "DailyActiveUsers_mv";
-const SELECT_QUERY = `
-SELECT 
-    toStartOfDay(timestamp) as date,
-    uniqState(userId) as dailyActiveUsers
-FROM ParsedActivity_0_0 
-WHERE activity = 'Login' 
-GROUP BY toStartOfDay(timestamp) 
+const MV_NAME = "BarAggregated_MV";
+
+const MV_QUERY = `
+CREATE MATERIALIZED VIEW ${MV_NAME}
+ENGINE = MergeTree()
+ORDER BY dayOfMonth
+POPULATE
+AS
+SELECT
+  toDayOfMonth(utcTimestamp) as dayOfMonth,
+  count(primaryKey) as totalRows,
+  countIf(hasText) as rowsWithText,
+  sum(textLength) as totalTextLength,
+  max(textLength) as maxTextLength
+FROM Bar_0_0
+GROUP BY dayOfMonth
+`;
+
+const DROP_MV_QUERY = `
+DROP TABLE IF EXISTS ${MV_NAME}
 `;
 
 export default {
-  teardown: [
-    ...dropAggregation({
-      viewName: MATERIALIZED_VIEW,
-      tableName: DESTINATION_TABLE,
-    }),
-  ],
-  setup: [
-    ...createAggregation({
-      tableCreateOptions: {
-        name: DESTINATION_TABLE,
-        columns: {
-          date: "Date",
-          dailyActiveUsers: "AggregateFunction(uniq, String)",
-        },
-        engine: ClickHouseEngines.AggregatingMergeTree,
-        orderBy: "date",
-      },
-      materializedViewName: MATERIALIZED_VIEW,
-      select: SELECT_QUERY,
-    }),
-  ],
+  teardown: [DROP_MV_QUERY], // SQL to drop the materialized view if it exists
+  setup: [MV_QUERY], // SQL to create a materialized view that aggregates daily statistics from Bar_0_0
 } as Blocks;
+
 "#;
 
 pub static TS_BASE_APIS_SAMPLE: &str = r#"
-// Here is a sample api configuration that creates an API which serves the daily active users materialized view
-import { createConsumptionApi } from "@514labs/moose-lib";
+import {
+  createConsumptionApi,
+  ConsumptionHelpers as CH,
+} from "@514labs/moose-lib";
+import { tags } from "typia";
 
-interface DailyActiveUsersParams {
+// This file is where you can define your APIs to consume your data
+interface QueryParams {
+  orderBy: "totalRows" | "rowsWithText" | "maxTextLength" | "totalTextLength";
   limit?: number;
-  minDailyActiveUsers: number;
+  startDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>;
+  endDay?: number & tags.Type<"int32"> & tags.Minimum<1> & tags.Maximum<31>;
 }
 
-export default createConsumptionApi<DailyActiveUsersParams>(
-  async ({ limit = 10, minDailyActiveUsers }, { client, sql }) => {
+// createConsumptionApi uses compile time code generation to generate a parser for QueryParams
+export default createConsumptionApi<QueryParams>(
+  async (
+    { orderBy = "totalRows", limit = 5, startDay = 1, endDay = 31 },
+    { client, sql }
+  ) => {
     const query = sql`
-      SELECT
-        date,
-        uniqMerge(dailyActiveUsers) as dailyActiveUsers
-      FROM DailyActiveUsers
-      GROUP BY date
-      HAVING dailyActiveUsers >= ${minDailyActiveUsers}
-      ORDER BY date
-      LIMIT ${limit}`;
+      SELECT 
+        dayOfMonth,
+        ${CH.column(orderBy)}
+      FROM BarAggregated_MV
+      WHERE 
+        dayOfMonth >= ${startDay} 
+        AND dayOfMonth <= ${endDay}
+      ORDER BY ${CH.column(orderBy)} DESC
+      LIMIT ${limit}
+    `;
 
-    return client.query(query);
+    const data = await client.query<{
+      dayOfMonth: number;
+      totalRows?: number;
+      rowsWithText?: number;
+      maxTextLength?: number;
+      totalTextLength?: number;
+    }>(query);
+
+    return data;
   }
 );
 "#;
@@ -155,18 +162,17 @@ pub static TS_BASE_MODEL_TEMPLATE: &str = r#"
 
 import { Key } from "@514labs/moose-lib";
 
-export interface UserActivity {
-    eventId: Key<string>;
-    timestamp: string;
-    userId: string;
-    activity: string;
+export interface Foo {
+    primaryKey: Key<string>;
+    timestamp: number;
+    optionalText?: string;
 }
 
-export interface ParsedActivity {
-    eventId: Key<string>;
-    timestamp: Date;
-    userId: string;
-    activity: string;
+export interface Bar {
+    primaryKey: Key<string>;
+    utcTimestamp: Date;
+    hasText: boolean;
+    textLength: number;
 }
 
 "#;

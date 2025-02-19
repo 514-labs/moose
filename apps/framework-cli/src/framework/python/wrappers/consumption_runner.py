@@ -118,11 +118,11 @@ class WorkflowClient:
     # Test workflow executor in rust if this changes significantly
     def execute(self, name: str, input_data: Any) -> Dict[str, Any]:
         try:
-            asyncio.run(self._start_workflow_async(name, input_data))
+            run_id = asyncio.run(self._start_workflow_async(name, input_data))
             print(f"WorkflowClient - started workflow: {name}")
             return {
                 "status": 200,
-                "body": f"Workflow started: {name}"
+                "body": f"Workflow started: {name}. View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/{name}/{run_id}/history"
             }
         except Exception as e:
             print(f"WorkflowClient - error while starting workflow: {e}")
@@ -160,7 +160,7 @@ class WorkflowClient:
             except json.JSONDecodeError as e:
                 raise ValueError(f"Invalid JSON input data: {e}")
 
-        await self.temporal_client.start_workflow(
+        workflow_handle = await self.temporal_client.start_workflow(
             "ScriptWorkflow",
             args=[f"{os.getcwd()}/app/scripts/{name}", input_data],
             id=name,
@@ -168,6 +168,8 @@ class WorkflowClient:
             retry_policy=retry_policy,
             run_timeout=run_timeout
         )
+
+        return workflow_handle.result_run_id
 
     def load_consolidated_configs(self):
         try:

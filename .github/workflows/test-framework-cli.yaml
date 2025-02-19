@@ -179,3 +179,14 @@ jobs:
         with:
           command: clippy
           args: --manifest-path ./apps/framework-cli/Cargo.toml -- -D warnings
+
+  notify-slack-on-failure:
+    needs: [check, test-macos, test-ubuntu, lints]
+    runs-on: ubuntu-latest
+    if: failure() && github.ref == 'refs/heads/main'
+    steps:
+      - name: Notify Slack on failure
+        uses: 514-labs/slack-notification-action@1.0.0
+        with:
+          slack-bot-token: ${{ secrets.SLACK_BOT_TOKEN }}
+          slack-webhook-url: ${{ secrets.SLACK_GITHUB_ACTIONS_WEBHOOK_URL }}

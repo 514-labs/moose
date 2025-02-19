@@ -201,7 +201,7 @@ SELECT
   sum(text_length) as total_text_length,
   max(text_length) as max_text_length
 FROM Bar_0_0
-GROUP BY day_of_month
+GROUP BY toDayOfMonth(utc_timestamp)
 """
 
 # The query to drop the materialized view, which is executed when the block is torn down

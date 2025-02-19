@@ -96,26 +96,30 @@ Tasks are defined as asynchronous functions (of type `TaskFunction`) that perfor
 ```typescript filename="app/scripts/example_workflow/1.firstTask.ts"
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
-const firstTask: TaskFunction = async (data: any) => {
-    console.log(`Received data: ${JSON.stringify(data)}`);
+interface FirstTaskInput {
+    number: number;
+    name: string;
+}
+
+const firstTask: TaskFunction = async (input: FirstTaskInput) => {
     
-    // Example operation: Increment a counter
-    const counter = (data.counter || 0) + 1;
+    const counter = input.number + 1;
+    const greeting = `hello, ${input.name}!`;
     
     return {
         task: "firstTask",
         data: {
             counter: counter,
-            timestamp: new Date().toISOString()
+            greeting: greeting
         }
     };
 };
 
-export default createTask((input?: object): TaskDefinition => {
+export default createTask() => {
     return {
         task: firstTask,
     } as TaskDefinition;
-});
+};
 ```
 </TypeScript>
 
@@ -127,53 +131,111 @@ Tasks communicate through their return values. Each task can return a dictionary
 - Supported data types inside `data` include basic types, containers, and JSON-serializable custom classes.
 
 <Python>
+```python filename="app/scripts/example_workflow/1.first_task.py"
+@task
+def first_task(data: dict):
+    logger = Logger('first_task')
+    logger.info(f'Received data: {data}')
 
+    name = data.get("name", "no name")
+    greeting = f"hello, {name}!"
+    counter = 1
+
+
+    return {
+        "task": "first_task",
+        "data": {
+            "name": name,
+            "greeting": greeting,
+            "counter": counter
+        }
+    }
+```
 ```python filename="app/scripts/example_workflow/2.second_task.py"
 from moose_lib import task, Logger
 
 @task
 def second_task(data: dict):
-    logger = Logger('second_task')
-    logger.info(f'Received data: {data}')
     
-    # Example operation: Double the counter value
-    result = data.get("counter", 0) * 2
+    name = data.get("name", "no name")
+    greeting = data.get("greeting", "no greeting")
+    counter = data.get("counter", 0)
+
+    name_length = len(name)
+    expanded_greeting = f"{greeting} Your name is {name_length} characters long"
     
     return {
         "task": "second_task",
         "data": {
-            "counter": result,
-            "timestamp": datetime.now().isoformat()
+            "name": name,
+            "greeting": expanded_greeting,
+            "counter": counter,
+            "name_length": name_length
         }
     }
 ```
 </Python>
 
 <TypeScript>
-
-```typescript filename="app/scripts/example_workflow/2.secondTask.ts"
+```typescript filename="app/scripts/ExampleWorkflow/1.firstTask.ts"
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
-const secondTask: TaskFunction = async (data: any) => {
-    console.log(`Received data: ${JSON.stringify(data)}`);
+interface FirstTaskInput {
+    name: string;
+}
+
+const firstTask: TaskFunction = async (input: FirstTaskInput) => {
     
-    // Example operation: Double the counter value
-    const counter = (data.counter || 0) * 2;
+    const greeting = `hello, ${input.name}!`;
     
     return {
-        task: "secondTask",
+        task: "firstTask",
         data: {
-            counter: counter,
-            timestamp: new Date().toISOString()
+            name: input.name,
+            greeting: greeting,
+            counter: 1
         }
     };
 };
 
-export default createTask((input?: object) => {
+export default createTask() => {
     return {
-        task: secondTask,å
+        task: firstTask,
     } as TaskDefinition;
-});
+}; 
+```
+```typescript filename="app/scripts/example_workflow/2.secondTask.ts"
+import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
+
+interface SecondTaskInput {
+    name: string;
+    greeting: string;
+    counter: number;
+}
+
+const secondTask: TaskFunction = async (input: SecondTaskInput) => {
+    const nameLength = len(input.name)
+    const expandedGreeting = f"{input.greeting} Your name is {nameLength} characters long";
+
+    // Example operation: Double the counter value
+    const counter = input.counter + 1;
+    
+    return {
+        task: "secondTask",
+        data: {
+            name: input.name,
+            greeting: expandedGreeting,
+            counter: counter,
+            nameLength: nameLength
+        }
+    };
+};
+
+export default createTask() => {
+    return {
+        task: secondTask,
+    } as TaskDefinition;
+};
 ```
 </TypeScript>
 

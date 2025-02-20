@@ -1,0 +1,8 @@
+name = 'bt-hr-server'
+schedule = ''
+retries = 3
+timeout = '1h'
+steps = [
+    'connect_to_device',
+    'listen_for_data',
+]

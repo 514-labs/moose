@@ -5,8 +5,15 @@ node_modules
 .pnp
 .pnp.js
 
+# Python
+venv/
+.venv/
+*/venv/*
+*/virtualenv/*
+__pycache__/
 # testing
 coverage
+
 
 # next.js
 .next/

@@ -1,7 +1,7 @@
 use futures::TryFutureExt;
-use log::debug;
 use log::error;
 use log::info;
+use log::{debug, warn};
 use rdkafka::consumer::{Consumer, StreamConsumer};
 use rdkafka::producer::DeliveryFuture;
 use rdkafka::Message;
@@ -464,7 +464,7 @@ async fn sync_kafka_to_clickhouse(
             select! {
                 received = subscriber.recv() => match received {
                     Err(e) => {
-                        debug!("Error receiving message from {}: {}", source_topic_name, e);
+                        warn!("Error receiving message from {}: {}", source_topic_name, e);
                     }
 
                     Ok(message) => match message.payload() {

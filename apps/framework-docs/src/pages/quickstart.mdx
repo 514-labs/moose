@@ -1,7 +1,6 @@
 import { Tabs, Steps, Card, FileTree } from "nextra/components";
-import { Callout, CTACard, CTACards, ToggleBlock } from "../components";
+import { Callout, CTACard, CTACards, ToggleBlock, ZoomImg, Python, TypeScript, LanguageSwitcher } from "../components";
 import { RectangleEllipsis, Square, Workflow } from "lucide-react";
-import { LanguageSwitcher } from "../components/language-switcher";
 
 # Quick Start
 
@@ -359,3 +358,39 @@ You should see the following output:
 />
 
 </CTACards>
+
+## Bonus: Connect to Local ClickHouse Database
+
+For more advanced data exploration and validation, you can connect directly to your local ClickHouse database using your preferred database client. This allows you to perform complex queries and gain deeper insights into your data.
+
+### Connection Details
+
+You can find these connection details in the `moose.config.toml` file in the root of your project:
+```toml filename="moose.config.toml"
+[clickhouse_config]
+db_name = "local"
+user = "panda"
+password = "pandapass"
+use_ssl = false
+host = "localhost"
+host_port = 18123
+native_port = 9000
+```
+
+### Using the VSCode ClickHouse Extension
+If you are using VSCode, Moose includes a few recommended extensions that will help you connect to your ClickHouse database:
+- [SQLTools](https://marketplace.visualstudio.com/items?itemName=mtxr.sqltools)
+- [SQLTools ClickHouse Driver](https://marketplace.visualstudio.com/items?itemName=ultram4rine.sqltools-clickhouse-driver)
+
+When you first open your Moose project in VSCode (or any other IDE that is a fork of VSCode), you'll be prompted to install these recommended extensions. Doing so will automatically configure the connection details for the ClickHouse extension.
+<ZoomImg src="/vscode-install.png" />
+
+### Using a Database Client
+
+1. **Install a ClickHouse Client**: You can use any SQL client that supports ClickHouse, such as [DBeaver](https://dbeaver.io/), [DataGrip](https://www.jetbrains.com/datagrip/), or the [ClickHouse CLI](https://clickhouse.com/docs/en/interfaces/cli).
+2. **Configure Connection**: Use the connection details provided above to set up a new connection in your client.
+3. **Explore Your Data**: Once connected, you can run SQL queries to explore your data models, inspect tables, and perform data analysis.
+
+<Callout type="info" title="Tip">
+  Ensure that your Moose local dev server is running (`moose dev`) before attempting to connect to the ClickHouse database.
+</Callout>

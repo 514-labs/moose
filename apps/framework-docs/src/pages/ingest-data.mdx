@@ -1,5 +1,5 @@
-import { Cards, Card, Tabs, FileTree } from "nextra/components";
-import { Callout, LanguageSwitcher, Python, TypeScript } from "../components";
+import { Cards, Card, Tabs, FileTree, Steps } from "nextra/components";
+import { Callout, LanguageSwitcher, Python, TypeScript, ZoomImg } from "../components";
 
 # Ingesting Data
 
@@ -11,28 +11,30 @@ For each Data Model, an ingestion API endpoint is spun up at:
 http://localhost:4000/ingest/<DataModelName>
 ```
 
-For example, if you have a Data Model named `MyDataModel`, the ingestion endpoint will be `http://localhost:4000/ingest/MyDataModel`.
+For example, if you have a Data Model named `Foo`, the ingestion endpoint will be `http://localhost:4000/ingest/Foo`.
 
 <Python>
-```python filename="app/datamodels/MyDataModel.py"
+```python filename="app/datamodels/Foo.py"
 from moose_lib import moose_data_model, Key
 from dataclasses import dataclass
 
 @moose_data_model
 @dataclass
-class MyDataModel:
-  key: Key[str]
-  value: int
+class Foo:
+  primary_key: Key[str]
+  timestamp: float
+  optional_text: Optional[str]
 ```
 </Python>
 
 <TypeScript>
-```typescript filename="app/datamodels/MyDataModel.ts"
+```typescript filename="app/datamodels/Foo.ts"
 import { Key } from "@514labs/moose-lib";
 
-export interface MyDataModel {
-  key: Key<string>;
-  value: number;
+export interface Foo {
+  primaryKey: Key<string>;
+  timestamp: number;
+  optionalText?: string;
 }
 ```
 </TypeScript>
@@ -42,9 +44,10 @@ You can ingest data from any HTTP-compatible data source, including webhooks, sc
 
 ## OpenAPI Specification
 Moose generates and automatically updates an OpenAPI specification for all API endpoints in your project. This specification is located in the `openapi.yaml` file in the root of your project. It provides a comprehensive overview of the available endpoints, request and response formats, and includes example data for each Data Model schema so you can quickly get started.
+<ZoomImg src="/openapi.png" />
+
 
 ### Accessing OpenAPI Documentation
-
 
 #### Locating the File in Your Project
 To view and utilize the OpenAPI documentation:
@@ -77,37 +80,220 @@ The file is also automatically hosted on your local development server at `http:
 
 The OpenAPI spec includes example data for each Data Model schema, which can be used to construct requests. If using the Swagger UI, you can use the example data to construct requests by clicking the `Try it out` button.
 
-### Hitting the Ingestion API from a Script or Application
+<ZoomImg src="/openapi-try.png" />
 
-You can send data to the ingestion endpoints from your application, a script, or a tool like `curl`. Below are generic examples for sending data to an endpoint, which Moose automatically generates for each Data Model.
+## Ingesting Data with Moose Workflows
 
-For a data model named `YourDataModel`, the endpoint will be `http://localhost:4000/ingest/YourDataModel`
+[Moose Workflows](/workflows) are a powerful way to perform ETL jobs on data. You can use the ingestion API to load data into your Data Models from your workflow tasks. 
+
+### Quickstart Example
+Here is an example of an ingestion workflow that generates 1000 rows of data and ingests it into the `Foo` Data Model:
 
 <Python>
-```python filename="app/datamodels/YourDataModel.py"
+```python filename="app/datamodels/Foo.py"
 from moose_lib import moose_data_model, Key
 from dataclasses import dataclass
 
 @moose_data_model
 @dataclass
-class YourDataModel:
-  key: Key[str]
-  value: int
-  timestamp: datetime
+class Foo:
+  primary_key: Key[str]
+  timestamp: float
+  optional_text: Optional[str]
 ```
 </Python>
 
 <TypeScript>
-```typescript filename="app/datamodels/YourDataModel.ts"
+```typescript filename="app/datamodels/Foo.ts"
 import { Key } from "@514labs/moose-lib";
 
-export interface YourDataModel {
-  key: Key<string>;
-  value: number;
-  timestamp: Date;
+export interface Foo {
+  primaryKey: Key<string>;
+  timestamp: number;
+  optionalText?: string;
 }
 ```
 </TypeScript>
+
+<Steps>
+
+### Generate the Workflow
+Run the following command:
+
+<Python>
+```bash filename="Terminal" copy
+moose-cli workflow init example_ingest_workflow --tasks "ingest"
+```
+
+This will generate a new directory in the `scripts` directory called `example_ingest_workflow`, which contains the `1.ingest.py` file:
+
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="scripts" open>
+      <FileTree.Folder name="example_ingest_workflow" open>
+        <FileTree.File name="1.ingest.py" />
+      </FileTree.Folder>
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+</Python>
+
+<TypeScript>
+```bash filename="Terminal" copy
+npx moose-cli workflow init ExampleIngestWorkflow --tasks "ingest"
+```
+
+This will generate a new directory in the `scripts` directory called `ExampleIngestWorkflow`, which contains the `1.ingest.ts` file:
+
+<FileTree>
+  <FileTree.Folder name="app" open>
+    <FileTree.Folder name="scripts" open>
+      <FileTree.Folder name="ExampleIngestWorkflow" open>
+        <FileTree.File name="1.ingest.ts" />
+      </FileTree.Folder>
+    </FileTree.Folder>
+  </FileTree.Folder>
+</FileTree>
+</TypeScript>
+
+
+### Define the Ingestion Task Logic
+<Python>
+Paste the following code into the `1.ingest.py` file:
+
+```python filename="app/scripts/example_ingest_script/1.ingest.py"
+from moose_lib import task  
+import random
+import time
+import uuid
+import json
+import urllib.request
+from datetime import datetime
+
+@task
+def generate(data: dict):  # The name of your script
+    """
+    Description of what this script does
+    """
+    for i in range(1000):
+        # Generate random data
+        primary_key = str(uuid.uuid4())
+        # Generate random timestamp from last month
+        current_time = time.time()
+        one_month_ago = current_time - (30 * 24 * 60 * 60)  # 30 days in seconds
+        timestamp = random.uniform(one_month_ago, current_time)
+        
+        # Generate random optional text
+        words = [word.strip() for word in open('/usr/share/dict/words').readlines()]  # Standard Unix word list
+        optional_text = f"{random.choice(words)} {i}" if i % 2 == 0 else None
+
+        # Prepare request data
+        data = {
+            "primary_key": primary_key,
+            "timestamp": timestamp,
+            "optional_text": optional_text
+        }
+
+        # Send POST request using only stdlib
+        req = urllib.request.Request(
+            "http://localhost:4000/ingest/Foo",
+            data=json.dumps(data).encode('utf-8'),
+            headers={'Content-Type': 'application/json'}
+        )
+        urllib.request.urlopen(req)
+```
+</Python>
+
+<TypeScript>
+Paste the following code into the `1.ingest.ts` file:
+
+```typescript filename="app/scripts/ExampleIngestWorkflow/1.ingest.ts"
+import { TaskDefinition, TaskFunction } from "@514labs/moose-lib";
+import { Foo } from "../../datamodels/models";
+import fs from "fs";
+import { randomUUID } from "crypto";
+
+// Generate 1000 rows of random Foo data and ingest it into the Foo Data Model
+const ingest: TaskFunction = async (input: any) => {
+
+  // Read the Unix word list
+  const unixWords = fs.readFileSync("/usr/share/dict/words", "utf8").split("\n");
+
+  // Get a recent timestamp within the last n_days
+  const getRecentTimestamp = (n_days: number) => {
+    const millisecondsInDays = n_days * 24 * 60 * 60 * 1000;
+    const intervalStartDate = Date.now() - millisecondsInDays;
+    return intervalStartDate + Math.random() * millisecondsInDays;
+  };
+
+  // Get a random word from the word list
+  const getRandomWord = (words: string[]) => {
+    return words[Math.floor(Math.random() * words.length)];
+  };
+
+  // Generate 1000 rows of random Foo data and ingest it into the Foo Data Model
+  for (let i = 0; i < 1000; i++) {
+
+    const foo: Foo = {
+      primaryKey: randomUUID(),
+      timestamp: getRecentTimestamp(365),
+      optionalText: Math.random() < 0.5 ? getRandomWord(unixWords) : undefined,
+    };
+
+    await fetch("http://localhost:4000/ingest/Foo", {
+      method: "POST",
+      body: JSON.stringify(foo),
+    });
+  }
+
+  return {
+    task: "ingest",
+    data: "success",
+  };
+};
+
+export default function createTask() {
+  return {
+    task: ingest,
+  } as TaskDefinition;
+}
+
+```
+</TypeScript>
+
+### Run the Workflow
+To run the workflow, run the following command:
+
+<Python>
+```bash filename="Terminal" copy
+moose-cli workflow run example_ingest_workflow
+```
+</Python>
+
+<TypeScript>
+```bash filename="Terminal" copy
+npx moose-cli workflow run ExampleIngestWorkflow
+```
+</TypeScript>
+</Steps>
+
+### Example Snippets
+<TypeScript>
+```typescript filename="app/datamodels/Foo.ts"
+import { Key } from "@514labs/moose-lib";
+
+export interface Foo {
+  primaryKey: Key<string>;
+  timestamp: number;
+  optionalText?: string;
+}
+```
+</TypeScript>
+
+
+<Python>
+
+</Python>
 
 <Tabs items={['curl', 'javascript', 'python']}>
   <Tabs.Tab>

@@ -123,6 +123,7 @@ export default function createTask() {
 ```
 </TypeScript>
 
+
 ## Data Flow Between Tasks
 
 Tasks communicate through their return values. Each task can return a dictionary containing a `data` key. The contents of this `data` key are automatically passed as input parameters to the next task in the workflow.
@@ -132,6 +133,8 @@ Tasks communicate through their return values. Each task can return a dictionary
 
 <Python>
 ```python filename="app/scripts/example_workflow/1.first_task.py"
+from moose_lib import task, Logger
+
 @task
 def first_task(data: dict):
     logger = Logger('first_task')
@@ -156,7 +159,10 @@ from moose_lib import task, Logger
 
 @task
 def second_task(data: dict):
-    
+
+    logger = Logger('second_task')
+    logger.info(f'Received data: {data}')
+
     name = data.get("name", "no name")
     greeting = data.get("greeting", "no greeting")
     counter = data.get("counter", 0)
@@ -239,43 +245,190 @@ export default function createTask() {
 ```
 </TypeScript>
 
-## Workflow Configuration
+## Running Workflows
 
-Control workflow behavior through `config.toml`:
+As you develop workflows, you can run them directly using the Moose CLI:
+
 <Python>
-```toml filename="app/scripts/example_workflow/config.toml"
-name = "example_workflow" # Required. The name of the workflow.
-timeout = "1h" # Optional. If not specified, the default timeout is 1 hour.
-retries = 3 # Optional. If not specified, the default retry count is 3.
-schedule = "0 12 * * *" # Optional. If not specified, the workflow will not be scheduled.
-tasks = [first_task, second_task] # Required. The list of tasks to execute.
+```bash filename="Terminal" copy
+moose-cli workflow run example_workflow
+```
+The terminal will print the following:
+```txt filename="Terminal"
+      Workflow 'example_workflow' started successfully.
+View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/example_workflow/3a1cc066-33bf-49ce-8671-63ecdcb72f2a/history
 ```
 </Python>
 
-<TypeScript filename="app/scripts/example_workflow/config.toml" >
-```toml
-name = "example_workflow" # Required. The name of the workflow.
-timeout = "1h" # Required. The timeout for the workflow.
-retries = 3 # Required. The number of retries for the workflow.
-schedule = "0 12 * * *" # Optional. If not specified, the workflow will not be scheduled.
-tasks = [firstTask, secondTask] # Required. The list of tasks to execute.
+<TypeScript>
+```bash filename="Terminal" copy
+npx moose-cli workflow run ExampleWorkflow
+```
+The terminal will print the following:
+```txt filename="Terminal"
+      Workflow 'ExampleWorkflow' started successfully.
+View it in the Temporal dashboard: http://localhost:8080/namespaces/default/workflows/ExampleWorkflow/3a1cc066-33bf-49ce-8671-63ecdcb72f2a/history
 ```
 </TypeScript>
 
-### Timeouts and Retries
+Notice that you are given a URL to view the workflow in the Temporal dashboard. This is a helpful way to monitor the workflow execution in real time and debug any issues through a GUI.
 
-The `timeout` and `retries` fields in `config.toml` are optional. If not specified, the default values are 1 hour and 3 retries, respectively.
+### Debugging Workflows
+While the Temporal dashboard is a helpful tool for debugging, you can also leverage the Moose CLI to monitor and debug workflows. This is useful if you want to monitor a workflow without having to leave your terminal.
 
-- **Timeout**: If a workflow execution does not complete within the specified timeout period, it will be terminated and marked as failed. This ensures that workflows do not run indefinitely.
-- **Retries**: If a workflow task fails due to an error, it will be retried up to the specified number of retries. This allows for transient errors to be automatically handled without manual intervention.
+Use the `moose-cli workflow status` command to monitor a workflow:
 
-### Cron Scheduling Format
+<Python>
+```bash filename="Terminal" copy
+moose-cli workflow status example_workflow
+```
 
-The schedule field in `config.toml` uses standard cron expression syntax.
+This will print high level information about the workflow run:
 
+```txt filename="Terminal"
+      Workflow Workflow Status: example_workflow
+Run ID: 446eab6e-663d-4913-93fe-f79d6109391f
+Status: WORKFLOW_EXECUTION_STATUS_COMPLETED ✅
+Execution Time: 66s
+```
+</Python>
+
+<TypeScript>
+```bash filename="Terminal" copy
+npx moose-cli workflow status ExampleWorkflow
+```
+
+This will print high level information about the workflow run:
+
+```txt filename="Terminal"
+      Workflow Workflow Status: ExampleWorkflow
+Run ID: 446eab6e-663d-4913-93fe-f79d6109391f
+Status: WORKFLOW_EXECUTION_STATUS_COMPLETED ✅
+Execution Time: 66s
+```
+</TypeScript>
+
+If you want more detailed information about the workflow's status, including task level logs and inputs/outputs, you can use the `--verbose` flag:
+
+<Python>
+```bash filename="Terminal" copy
+moose-cli workflow status example_workflow --verbose
+```
+
+```txt filename="Terminal"
+      Workflow Workflow Status: example_workflow
+Run ID: 446eab6e-663d-4913-93fe-f79d6109391f
+Status: WORKFLOW_EXECUTION_STATUS_COMPLETED ✅
+Execution Time: 66s
+Request: GetWorkflowExecutionHistoryRequest { namespace: "default", execution: Some(WorkflowExecution { workflow_id: "example_workflow", run_id: "446eab6e-663d-4913-93fe-f79d6109391f" }), maximum_page_size: 0, next_page_token: [], wait_new_event: false, history_event_filter_type: Unspecified, skip_archival: false }
+
+Found 17 events
+Event History:
+  • [2025-02-21T14:16:56.234808764+00:00] EVENT_TYPE_WORKFLOW_EXECUTION_STARTED
+  • [2025-02-21T14:16:56.235132389+00:00] EVENT_TYPE_WORKFLOW_TASK_SCHEDULED
+  • [2025-02-21T14:16:56.259341847+00:00] EVENT_TYPE_WORKFLOW_TASK_STARTED
+  • [2025-02-21T14:16:56.329856180+00:00] EVENT_TYPE_WORKFLOW_TASK_COMPLETED
+  • [2025-02-21T14:16:56.329951889+00:00] EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
+    Activity: example_workflow/1.first_task
+  • [2025-02-21T14:16:56.333761680+00:00] EVENT_TYPE_ACTIVITY_TASK_STARTED
+  • [2025-02-21T14:16:56.497156055+00:00] EVENT_TYPE_ACTIVITY_TASK_COMPLETED
+    Result: 
+      {
+        "data": {
+          "counter": 1,
+          "greeting": "hello, no name!",
+          "name": "no name"
+        },
+        "task": "first_task"
+      }
+
+```
+
+</Python>   
+
+<TypeScript>
+```bash filename="Terminal" copy
+npx moose-cli workflow status ExampleWorkflow --verbose
+```
+
+```txt filename="Terminal"
+      Workflow Workflow Status: ExampleWorkflow
+Run ID: 446eab6e-663d-4913-93fe-f79d6109391f
+Status: WORKFLOW_EXECUTION_STATUS_COMPLETED ✅
+Execution Time: 66s
+Request: GetWorkflowExecutionHistoryRequest { namespace: "default", execution: Some(WorkflowExecution { workflow_id: "ExampleWorkflow", run_id: "446eab6e-663d-4913-93fe-f79d6109391f" }), maximum_page_size: 0, next_page_token: [], wait_new_event: false, history_event_filter_type: Unspecified, skip_archival: false }
+
+Found 17 events
+Event History:
+  • [2025-02-21T14:16:56.234808764+00:00] EVENT_TYPE_WORKFLOW_EXECUTION_STARTED
+  • [2025-02-21T14:16:56.235132389+00:00] EVENT_TYPE_WORKFLOW_TASK_SCHEDULED
+  • [2025-02-21T14:16:56.259341847+00:00] EVENT_TYPE_WORKFLOW_TASK_STARTED
+  • [2025-02-21T14:16:56.329856180+00:00] EVENT_TYPE_WORKFLOW_TASK_COMPLETED
+  • [2025-02-21T14:16:56.329951889+00:00] EVENT_TYPE_ACTIVITY_TASK_SCHEDULED
+    Activity: ExampleWorkflow/1.firstTask
+  • [2025-02-21T14:16:56.333761680+00:00] EVENT_TYPE_ACTIVITY_TASK_STARTED
+  • [2025-02-21T14:16:56.497156055+00:00] EVENT_TYPE_ACTIVITY_TASK_COMPLETED
+    Result: 
+      {
+        "data": {
+          "counter": 1,
+          "greeting": "hello, no name!",
+          "name": "no name"
+        },
+        "task": "firstTask"
+      }
+```
+</TypeScript>
+
+With this more detailed output, you can see the exact sequence of events and the inputs and outputs of each task. This is useful for debugging and understanding the workflow's behavior.
+The result of each task is included in the output, allowing you to inspect the data that was passed between task for debugging purposes.
+
+If your workflow fails due to some runtime error, you can use the event history timeline to identify the task that failed.
+
+## Scheduling Workflows
+Workflows can be configured to run on a schedule using cron expressions. The `schedule` field in `config.toml` is used to specify the schedule. This field is optional, and blank by default:
+<Python>
+```toml filename="app/scripts/example_workflow/config.toml" {4}
+name = "example_workflow"
+timeout = "1h"
+retries = 3
+schedule = "" ## DEFAULT: Blank
+tasks = [first_task, second_task]
+```
+</Python>
+
+<TypeScript>
+```toml filename="app/scripts/example_workflow/config.toml" {4} 
+name = "example_workflow"
+timeout = "1h"
+retries = 3
+schedule = "" ## DEFAULT: Blank
+tasks = [firstTask, secondTask]
+```
+</TypeScript>
+
+By setting a cron expression in this field, the workflow will be scheduled to run at the specified interval. The schedule field uses standard cron expression syntax:
+
+<Python>
 ```toml filename="app/scripts/example_workflow/config.toml"
 schedule = "0 12 * * *" # Runs at 12:00 PM every day
 ```
+</Python>
+
+<TypeScript>
+```toml filename="app/scripts/ExampleWorkflow/config.toml"
+schedule = "0 12 * * *" # Runs at 12:00 PM every day
+```
+</TypeScript>
+
+|------------------------------- Minute (0-59)
+|     |------------------------- Hour (0-23)
+|     |     |------------------- Day of the month (1-31)
+|     |     |     |------------- Month (1-12; or JAN to DEC)
+|     |     |     |     |------- Day of the week (0-6; or SUN to SAT; or 7 for Sunday)
+|     |     |     |     |
+|     |     |     |     |
+*     *     *     *     *
 
 Below are some example cron expressions along with their scheduling details:
 
@@ -290,30 +443,14 @@ Below are some example cron expressions along with their scheduling details:
 Use an online cron expression visualizer like [crontab.guru](https://crontab.guru/) to help you understand how the cron expression will schedule your workflow.
 </Callout>
 
-## Triggering Workflows
 
-In addition to supporting scheduled workflows, Moose also supports triggering workflows via CLI and API.
+If your dev server is running, you should see logs in the terminal when your scheduled workflow is executed to make sure your schedule is working as expected.
 
-### CLI Trigger
-
-<Python>
-```bash filename="Terminal" copy
-moose-cli workflow run workflow_name
-```
-</Python>
-
-<TypeScript>
-```bash filename="Terminal" copy
-npx moose-cli workflow run workflow_name
-```
-</TypeScript>
-
-### API Trigger
+### Advanced: Triggering Workflows Programmatically
 
 <Callout type="warning" title="Python Only">
 This feature is not yet available for TypeScript.
 </Callout>
-
 
 <Python>
 You can create an API to trigger workflows by using the `MooseClient` that is automatically instantiated and passed to your API route handler:
@@ -340,18 +477,53 @@ This feature is coming soon.
 </TypeScript>
 
 
-## Error Handling
 
-Moose provides multiple layers of error protection.
+## Error Detection and Handling
+Moose provides multiple layers of error protection, both at the workflow and task level:
 
-### Task-Level Errors
+### Workflow-Level Retries and Timeouts
 
-Moose automatically catches any runtime errors during task execution. Errors are logged for debugging, and the orchestrator will retry failed tasks according to the retry count in `config.toml`.
+Moose automatically catches any runtime errors during workflow execution. Errors are logged for debugging, and the orchestrator will retry failed tasks according to the retry count in `config.toml`.
 
-### Configuring Retry Behavior
+In your workflow's `config.toml` file, you can configure the following options to control workflow behavior, including timeouts and retries:
 
 <Python>
-```python
+```toml filename="app/scripts/example_workflow/config.toml" {2-3}
+name = "example_workflow" # Required. The name of the workflow. Matches the workflow folder name.
+timeout = "1h" # Required. Default: 1 hour
+retries = 3 # Required. Default: 3 retries
+schedule = "0 12 * * *" # Required. Default: Blank
+tasks = [first_task, second_task] # Required. The list of tasks to execute. Matches the task file names.
+```
+</Python>
+
+<TypeScript>
+```toml filename="app/scripts/example_workflow/config.toml" {2-3} 
+name = "example_workflow" # Required. The name of the workflow. Matches the workflow folder name.
+timeout = "1h" # Required. Default: 1 hour
+retries = 3 # Required. Default: 3 retries
+schedule = "0 12 * * *" # Required. Default: Blank
+tasks = [firstTask, secondTask] # Required. The list of tasks to execute. Matches the task file names.
+```
+</TypeScript>
+
+<Callout type="warning" title="Config.toml">
+When you initialize a new workflow, the `config.toml` file is automatically created with the default values.
+- workflow name: Matches the workflow name you specified when you initialized the workflow.
+- timeout: 1 hour
+- retries: 3
+- schedule: Blank
+- tasks: Matches the task names you specified in the `--tasks` flag when you initialized the workflow.
+</Callout>
+
+### Task-Level Errors and Retries
+
+For more granular control over task-level errors and retries, you can configure your individual tasks to have their own retry behavior:
+
+<Python>
+To configure a task to have its own retry behavior, you can use the `retries` parameter in the `@task` decorator:
+
+```python filename="app/scripts/example_workflow/1.first_task.py" {3}
 from moose_lib import task, Logger
 
 @task(retries=3) 
@@ -370,6 +542,8 @@ def first_task(data: dict):
 </Python>
 
 <TypeScript>
+To configure a task to have its own retry behavior, you can add a `config` object to the task definition, and specify a number of `retries` within that object:
+
 ```typescript filename="app/scripts/ExampleWorkflow/1.firstTask.ts" {16-18}
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
@@ -393,6 +567,76 @@ export default function createTask() {
 }
 ```
 </TypeScript>
+
+### Example: Workflow and Task Retry Interplay
+
+When configuring retries, it's important to understand how workflow-level and task-level retries interact. Consider the following scenario:
+
+<Python>
+- **Workflow Retry Policy**: 2 attempts
+```toml filename="app/scripts/example_workflow/config.toml" {2}
+retries = 2
+```
+
+- **Task Retry Policy**: 3 attempts
+```python filename="app/scripts/example_workflow/1.first_task.py" {3}
+@task(retries=3) 
+def first_task(data: dict):
+    raise Exception("This is a test error")
+    
+    return {
+        "task": "first_task",
+        "data": {}
+    }
+```
+</Python>
+
+<TypeScript>
+- **Workflow Retry Policy**: 2 attempts
+```toml filename="app/scripts/ExampleWorkflow/config.toml" {2}
+retries = 2
+```
+
+- **Task Retry Policy**: 3 attempts
+```typescript filename="app/scripts/ExampleWorkflow/1.firstTask.ts" {16-18}
+import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
+
+const firstTask: TaskFunction = async () => {
+    throw new Error("This is a test error");
+    return {
+        task: "firstTask",
+        data: {}
+    };
+};
+
+export default function createTask() {
+    return {
+        task: firstTask,
+        config: {
+            retries: 3 // This is optional. If you don't explicitly set retries, it will default to 3. 
+        }
+    } as TaskDefinition;
+}
+```
+</TypeScript>
+
+If the execution of the workflow encounters an error, the retry sequence would proceed as follows:
+
+1. **Workflow Attempt 1**
+   - **Task Attempt 1**: Task fails
+   - **Task Attempt 1**: Task fails
+   - **Task Attempt 2**: Task fails
+   - **Task Attempt 3**: Task fails
+   - Workflow attempt fails after exhausting task retries
+
+2. **Workflow Attempt 2**
+   - **Task Attempt 1**: Task fails
+   - **Task Attempt 2**: Task fails
+   - **Task Attempt 3**: Task fails
+   - Workflow attempt fails after exhausting task retries
+
+In this example, the workflow will make a total of 2 attempts, and each task within those attempts will retry up to 3 times before the workflow itself retries.
+
 ### Terminating Workflows
 
 To terminate a workflow before it has finished running, use the `workflow terminate` command.
@@ -412,21 +656,3 @@ npx moose-cli workflow terminate <workflow_name>
 <Callout type="warning" title="Terminating Workflows">
 You cannot run the same workflow concurrently. Use the `terminate` command to stop the workflow before triggering it again.
 </Callout>
-
-### Workflow Status
-
-You can check the status of a workflow by using the `moose-cli workflow status` command.
-
-<Python>
-```bash
-moose-cli workflow status <workflow_name> [--verbose]
-```
-</Python>
-
-<TypeScript>
-```bash
-npx moose-cli workflow status <workflow_name> [--verbose]
-```
-</TypeScript>
-
-Adding the `--verbose` flag will provide more detailed information about the workflow's status, including task level inputs and outputs.

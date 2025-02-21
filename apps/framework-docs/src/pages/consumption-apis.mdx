@@ -4,11 +4,14 @@ import { Tabs, FileTree } from "nextra/components";
 # Introduction to Consumption APIs
 <LanguageSwitcher />
 
-Consumption APIs make it easy to build type-safe endpoints for surfacing data from your OLAP database. As a developer, you'll write simple, strongly-typed functions that automatically handle:
+Consumption APIs make it easy to build type-safe endpoints for surfacing data from your OLAP database. These APIs can help power user-facing analytics, dashboards and other front-end components, or even enable AI tools to interact with your data.
+
+As a developer, you'll write simple, strongly-typed functions that automatically handle:
 - URL parameter parsing and type conversion
 - SQL query construction and execution
 - Response formatting
 - Automatically generated OpenAPI documentation
+
 
 No need to write boilerplate for parameter validation, type conversion, or error handling - the framework handles these for you.
 
@@ -33,8 +36,8 @@ Create your API endpoints by adding <TypeScript NodeType="span">`.ts`</TypeScrip
 <FileTree>
 <FileTree.Folder name="app" open>
 <FileTree.Folder name="apis" open>
-<FileTree.File name="getFoo.py" />
-<FileTree.File name="getBar.py" />
+<FileTree.File name="get_foo.py" />
+<FileTree.File name="get_bar.py" />
 </FileTree.Folder>
 </FileTree.Folder>
 </FileTree>
@@ -42,8 +45,14 @@ Create your API endpoints by adding <TypeScript NodeType="span">`.ts`</TypeScrip
 
 <Callout type="info" title="Automatic Endpoint Mapping">
 Your files are automatically mapped to `/consumption/` endpoints:
-- <TypeScript NodeType="span">`getFoo.ts`</TypeScript><Python NodeType="span">`get_foo.py`</Python> → `/consumption/getFoo`
-- <TypeScript NodeType="span">`getBar.ts`</TypeScript><Python NodeType="span">`get_bar.py`</Python> → `/consumption/getBar`
+<TypeScript>
+- `getFoo.ts` → `/consumption/getFoo`
+- `getBar.ts` → `/consumption/getBar`
+</TypeScript>
+<Python>
+- `get_foo.py` → `/consumption/get_foo`
+- `get_bar.py` → `/consumption/get_bar`
+</Python>
 </Callout>
 
 ### Creating a New API Endpoint
@@ -240,8 +249,8 @@ class QueryParams(BaseModel):
 # URL: /consumption/getBar?n_days=5&sort_by=unique_ids
 # Automatically provides:
 params = QueryParams(
-    n_days=5,           # Converted to int
-    sort_by="unique_ids"  # Validated as str
+    n_days=5,           // Converted to int
+    sort_by="unique_ids"  // Validated as str
 )
 ```
 

@@ -214,7 +214,7 @@ block = Blocks(teardown=[DROP_MV_QUERY], setup=[MV_QUERY])
 pub static PYTHON_BASE_SCRIPT_TEMPLATE: &str = r#"from moose_lib import task
 
 @task()
-def {{name}}(data: dict):  # The name of your script
+def {{name}}(input: dict):  # The name of your script
     """
     Description of what this script does
     """

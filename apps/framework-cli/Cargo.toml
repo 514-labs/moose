@@ -72,6 +72,7 @@ redis = { version = "0.24.0", features = [
     "tokio-comp",
     "aio",
     "tokio-native-tls-comp",
+    "connection-manager"
 ] }
 jsonwebtoken = "9.3.0"
 num-traits = "0.2.19"

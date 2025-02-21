@@ -7,10 +7,12 @@
 //! default to "redis://127.0.0.1:6379".
 use anyhow::{Context, Result};
 use log::{error, info, warn};
-use redis::aio::Connection as RedisConnection;
+use redis::aio::ConnectionManager;
 use redis::{AsyncCommands, Client, RedisError, Script, ToRedisArgs};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::sync::atomic::AtomicBool;
+use std::sync::atomic::Ordering;
 use std::sync::Arc;
 use std::time::{SystemTime, UNIX_EPOCH};
 use tokio::sync::Mutex;
@@ -64,8 +66,8 @@ pub struct RedisLock {
 }
 
 pub struct RedisClient {
-    connection: Arc<Mutex<RedisConnection>>,
-    pub_sub: Arc<Mutex<RedisConnection>>,
+    connection: Arc<Mutex<ConnectionManager>>,
+    pub_sub: Arc<Mutex<ConnectionManager>>,
     redis_config: RedisConfig,
     service_name: String,
     instance_id: String,
@@ -73,6 +75,7 @@ pub struct RedisClient {
     presence_task: Option<JoinHandle<()>>,
     message_callbacks: Arc<Mutex<Vec<MessageCallback>>>,
     listener_task: Mutex<Option<JoinHandle<()>>>,
+    connection_state: Arc<AtomicBool>,
 }
 
 impl RedisClient {
@@ -80,38 +83,13 @@ impl RedisClient {
         let client =
             Client::open(redis_config.url.clone()).context("Failed to create Redis client")?;
 
-        // TODO: this is a bandaid, we should use the redis connection manager instead
-        let mut connection = {
-            let mut attempts = 0;
-            let max_attempts = 10;
-            let mut delay_ms = 100;
-            let max_total_delay_ms = 10_000; // 10 seconds
-            let mut total_delay_ms = 0;
-
-            loop {
-                match client.get_async_connection().await {
-                    Ok(conn) => break conn,
-                    Err(e) => {
-                        attempts += 1;
-                        if attempts >= max_attempts || total_delay_ms >= max_total_delay_ms {
-                            return Err(anyhow::anyhow!("Failed to establish Redis connection after {} attempts over {}ms: {}", attempts, total_delay_ms, e));
-                        }
-
-                        tokio::time::sleep(Duration::from_millis(delay_ms)).await;
-                        total_delay_ms += delay_ms;
-                        delay_ms = std::cmp::min(delay_ms * 2, 1000); // Cap max delay at 1s
-
-                        info!("<RedisClient> Connection attempt {} failed, retrying after {}ms. Error: {}", attempts, delay_ms, e);
-                    }
-                }
-            }
-        };
-        // End of thing to remove
-
-        let pub_sub = client
-            .get_async_connection()
+        let mut connection = ConnectionManager::new(client.clone())
             .await
-            .context("Failed to establish Redis pub/sub connection")?;
+            .context("Failed to create Redis connection manager")?;
+
+        let pub_sub = ConnectionManager::new(client)
+            .await
+            .context("Failed to create Redis pub/sub connection manager")?;
 
         let instance_id = std::env::var("HOSTNAME").unwrap_or_else(|_| Uuid::new_v4().to_string());
 
@@ -129,6 +107,8 @@ impl RedisClient {
             Err(e) => error!("<RedisClient> Redis connection failed: {}", e),
         }
 
+        let connection_state = Arc::new(AtomicBool::new(true));
+
         let client = Self {
             connection: Arc::new(Mutex::new(connection)),
             pub_sub: Arc::new(Mutex::new(pub_sub)),
@@ -139,6 +119,7 @@ impl RedisClient {
             presence_task: None,
             message_callbacks: Arc::new(Mutex::new(Vec::new())),
             listener_task: Mutex::new(None),
+            connection_state,
         };
 
         // Start the message listener as part of initialization
@@ -398,7 +379,7 @@ impl RedisClient {
     }
 
     pub fn start_periodic_tasks(&mut self) {
-        info!("Starting periodic tasks");
+        info!("<RedisClient> Starting periodic tasks");
 
         self.presence_task = Some(tokio::spawn({
             let mut presence_client = self.clone();
@@ -407,13 +388,13 @@ impl RedisClient {
                 loop {
                     interval.tick().await;
                     if let Err(e) = presence_client.presence_update().await {
-                        error!("Error updating presence: {}", e);
+                        error!("<RedisClient> Error updating presence: {}", e);
                     }
                 }
             }
         }));
 
-        info!("Periodic tasks started");
+        info!("<RedisClient> Periodic tasks started");
     }
 
     pub fn stop_periodic_tasks(&mut self) -> Result<()> {
@@ -525,7 +506,7 @@ impl RedisClient {
 
     pub async fn check_and_renew_lock(&self, name: &str) -> Result<(bool, bool)> {
         if let Some(lock) = self.locks.get(name) {
-            let script = Script::new(
+            let script = redis::Script::new(
                 r#"
                 local current = redis.call('GET', KEYS[1])
                 if current == false then
@@ -557,6 +538,39 @@ impl RedisClient {
             Err(anyhow::anyhow!("Lock not registered"))
         }
     }
+
+    pub async fn start_connection_monitor(&self) -> JoinHandle<()> {
+        let connection = self.connection.clone();
+        let connection_state = self.connection_state.clone();
+
+        tokio::spawn(async move {
+            let mut interval = interval(Duration::from_secs(1));
+            loop {
+                interval.tick().await;
+
+                let mut conn = connection.lock().await;
+                match redis::cmd("PING")
+                    .query_async::<_, String>(&mut *conn)
+                    .await
+                {
+                    Ok(_) => {
+                        if !connection_state.load(Ordering::SeqCst) {
+                            info!("<RedisClient> Redis connection restored");
+                            connection_state.store(true, Ordering::SeqCst);
+                        }
+                    }
+                    Err(e) => {
+                        error!("<RedisClient> Redis connection lost: {}", e);
+                        connection_state.store(false, Ordering::SeqCst);
+                    }
+                }
+            }
+        })
+    }
+
+    pub fn is_connected(&self) -> bool {
+        self.connection_state.load(Ordering::SeqCst)
+    }
 }
 
 impl Clone for RedisClient {
@@ -575,16 +589,17 @@ impl Clone for RedisClient {
             presence_task: None,
             message_callbacks: Arc::clone(&self.message_callbacks),
             listener_task: Mutex::new(None),
+            connection_state: Arc::clone(&self.connection_state),
         }
     }
 }
 
 impl Drop for RedisClient {
     fn drop(&mut self) {
-        info!("RedisClient is being dropped");
+        info!("<RedisClient> is being dropped");
         if let Ok(rt) = tokio::runtime::Handle::try_current() {
             if let Err(e) = self.stop_periodic_tasks() {
-                error!("Error stopping periodic tasks: {}", e);
+                error!("<RedisClient> Error stopping periodic tasks: {}", e);
             }
             if !self.locks.is_empty() {
                 let mut self_clone = self.clone();
@@ -592,13 +607,13 @@ impl Drop for RedisClient {
                     let lock_names: Vec<_> = self_clone.locks.keys().cloned().collect();
                     for name in lock_names {
                         if let Err(e) = self_clone.release_lock(&name).await {
-                            error!("Error releasing lock {}: {}", name, e);
+                            error!("<RedisClient> Error releasing lock {}: {}", name, e);
                         }
                     }
                 });
             }
         } else {
-            error!("Failed to get current runtime handle in RedisClient::drop");
+            error!("<RedisClient> Failed to get current runtime handle in RedisClient::drop");
         }
         if let Ok(mut guard) = self.listener_task.try_lock() {
             if let Some(task) = guard.take() {

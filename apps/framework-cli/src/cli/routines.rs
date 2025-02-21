@@ -206,6 +206,12 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
     let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
     let redis_client = Arc::new(Mutex::new(redis_client));
 
+    // Start connection monitoring
+    {
+        let client = redis_client.lock().await;
+        client.start_connection_monitor().await;
+    }
+
     let (service_name, instance_id) = {
         let client = redis_client.lock().await;
         (
@@ -234,7 +240,7 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
         let redis_client = redis_client_clone.clone();
         tokio::spawn(async move {
             if let Err(e) = process_pubsub_message(message, redis_client).await {
-                error!("Error processing pubsub message: {}", e);
+                error!("<RedisClient> Error processing pubsub message: {}", e);
             }
         });
     });

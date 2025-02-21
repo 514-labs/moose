@@ -72,12 +72,12 @@ Tasks are Python functions decorated with `@task`. Each task can receive inputs 
 from moose_lib import task, Logger
 
 @task
-def first_task(data: dict):
+def first_task(input: dict):
     logger = Logger('first_task')
-    logger.info(f'Received data: {data}')
+    logger.info(f'Received data: {input}')
     
     # Example operation: Increment a counter
-    result = data.get("counter", 0) + 1
+    result = input.get("counter", 0) + 1
     
     return {
         "task": "first_task",
@@ -137,11 +137,11 @@ Tasks communicate through their return values. Each task can return a dictionary
 from moose_lib import task, Logger
 
 @task
-def first_task(data: dict):
+def first_task(input: dict):
     logger = Logger('first_task')
-    logger.info(f'Received data: {data}')
+    logger.info(f'Received input: {input}')
 
-    name = data.get("name", "no name")
+    name = input.get("name", "no name")
     greeting = f"hello, {name}!"
     counter = 1
 
@@ -159,14 +159,14 @@ def first_task(data: dict):
 from moose_lib import task, Logger
 
 @task
-def second_task(data: dict):
+def second_task(input: dict):
 
     logger = Logger('second_task')
-    logger.info(f'Received data: {data}')
+    logger.info(f'Received input: {input}')
 
-    name = data.get("name", "no name")
-    greeting = data.get("greeting", "no greeting")
-    counter = data.get("counter", 0)
+    name = input.get("name", "no name")
+    greeting = input.get("greeting", "no greeting")
+    counter = input.get("counter", 0)
 
     name_length = len(name)
     expanded_greeting = f"{greeting} Your name is {name_length} characters long"
@@ -542,19 +542,14 @@ For more granular control over task-level errors and retries, you can configure 
 To configure a task to have its own retry behavior, you can use the `retries` parameter in the `@task` decorator:
 
 ```python filename="app/scripts/example_workflow/1.first_task.py" {3}
-from moose_lib import task, Logger
+from moose_lib import task
 
 @task(retries=3) 
-def first_task(data: dict):
-    logger = Logger('first_task')
-    logger.info(f'Processing {data}')
-    
+def first_task(input: dict):
+    raise Exception("This is a test error")
     return {
         "task": "first_task",
-        "data": {
-            "result": "Success",
-            "timestamp": datetime.now().isoformat()
-        }
+        "data": {}
     }
 ```
 </Python>
@@ -566,12 +561,10 @@ To configure a task to have its own retry behavior, you can add a `config` objec
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
 const firstTask: TaskFunction = async () => {
+    throw new Error("This is a test error");
     return {
         task: "firstTask",
-        data: {
-            result: "Success",
-            timestamp: new Date().toISOString()
-        }
+        data: {}
     };
 };
 
@@ -599,7 +592,7 @@ retries = 2
 - **Task Retry Policy**: 3 attempts
 ```python filename="app/scripts/example_workflow/1.first_task.py" {3}
 @task(retries=3) 
-def first_task(data: dict):
+def first_task(input: dict):
     raise Exception("This is a test error")
     
     return {

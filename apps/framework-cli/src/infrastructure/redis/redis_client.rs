@@ -5,6 +5,7 @@
 //!
 //! Note: Make sure to set the MOOSE_REDIS_URL environment variable or the client will
 //! default to "redis://127.0.0.1:6379".
+use crate::utilities::retry::retry;
 use anyhow::{Context, Result};
 use futures::FutureExt;
 use log::{error, info, warn};
@@ -406,10 +407,30 @@ impl RedisClient {
     }
 
     pub async fn check_connection(&mut self) -> Result<()> {
-        redis::cmd("PING")
-            .query_async::<_, String>(&mut *self.connection.lock().await)
-            .await
-            .context("Failed to ping Redis server")?;
+        retry(
+            || async {
+                let result = std::panic::AssertUnwindSafe(async {
+                    redis::cmd("PING")
+                        .query_async::<_, String>(&mut *self.connection.lock().await)
+                        .await
+                })
+                .catch_unwind()
+                .await;
+
+                match result {
+                    Ok(Ok(_)) => Ok(()),
+                    Ok(Err(e)) => Err(e),
+                    Err(_) => Err(redis::RedisError::from(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Redis connection panicked",
+                    ))),
+                }
+            },
+            |attempts, _| attempts < 3,
+            Duration::from_secs(1),
+        )
+        .await
+        .context("Failed to ping Redis server")?;
         Ok(())
     }
 
@@ -548,30 +569,42 @@ impl RedisClient {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
             loop {
                 interval.tick().await;
-                let result = std::panic::AssertUnwindSafe(async {
-                    let mut conn = connection.lock().await;
-                    redis::cmd("PING")
-                        .query_async::<_, String>(&mut *conn)
-                        .await
-                })
-                .catch_unwind()
+
+                let result = retry(
+                    || async {
+                        let result = std::panic::AssertUnwindSafe(async {
+                            let mut conn = connection.lock().await;
+                            redis::cmd("PING")
+                                .query_async::<_, String>(&mut *conn)
+                                .await
+                        })
+                        .catch_unwind()
+                        .await;
+
+                        match result {
+                            Ok(Ok(_)) => Ok(()),
+                            Ok(Err(e)) => Err(e),
+                            Err(_) => Err(redis::RedisError::from(std::io::Error::new(
+                                std::io::ErrorKind::Other,
+                                "Redis connection panicked",
+                            ))),
+                        }
+                    },
+                    |attempts, _| attempts < 3,
+                    Duration::from_secs(1),
+                )
                 .await;
 
                 match result {
-                    Ok(Ok(_)) => {
+                    Ok(()) => {
                         if !connection_state.load(Ordering::SeqCst) {
                             info!("<RedisClient> Redis connection restored");
                             connection_state.store(true, Ordering::SeqCst);
                         }
                     }
-                    Ok(Err(e)) => {
+                    Err(e) => {
                         error!("<RedisClient> Redis connection lost: {}", e);
                         connection_state.store(false, Ordering::SeqCst);
-                    }
-                    Err(_) => {
-                        error!("<RedisClient> Redis connection monitor panicked. Restarting monitor...");
-                        connection_state.store(false, Ordering::SeqCst);
-                        // Optionally add a delay here before continuing the loop.
                     }
                 }
             }

@@ -115,7 +115,7 @@ const firstTask: TaskFunction = async (input: FirstTaskInput) => {
     };
 };
 
-export default createTask() => {
+export default function createTask() {
     return {
         task: firstTask,
     } as TaskDefinition;
@@ -198,7 +198,7 @@ const firstTask: TaskFunction = async (input: FirstTaskInput) => {
     };
 };
 
-export default createTask() => {
+export default function createTask() {
     return {
         task: firstTask,
     } as TaskDefinition;
@@ -214,8 +214,8 @@ interface SecondTaskInput {
 }
 
 const secondTask: TaskFunction = async (input: SecondTaskInput) => {
-    const nameLength = len(input.name)
-    const expandedGreeting = f"{input.greeting} Your name is {nameLength} characters long";
+    const nameLength = input.name.length;
+    const expandedGreeting = `${input.greeting} Your name is ${nameLength} characters long`;
 
     // Example operation: Double the counter value
     const counter = input.counter + 1;
@@ -231,7 +231,7 @@ const secondTask: TaskFunction = async (input: SecondTaskInput) => {
     };
 };
 
-export default createTask() => {
+export default function createTask() {
     return {
         task: secondTask,
     } as TaskDefinition;
@@ -383,14 +383,14 @@ const firstTask: TaskFunction = async () => {
     };
 };
 
-export default createTask((input?: object) => {
+export default function createTask() {
     return {
         task: firstTask,
         config: {
             retries: 3 // This is optional. If you don't explicitly set retries, it will default to 3. 
         }
     } as TaskDefinition;
-});
+}
 ```
 </TypeScript>
 ### Terminating Workflows

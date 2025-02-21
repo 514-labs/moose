@@ -71,6 +71,9 @@ use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
+use crate::framework::core::infrastructure_map::{OlapChange, TableChange};
+use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_infrastructure_map};
+
 pub struct RouterRequest {
     req: Request<hyper::body::Incoming>,
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
@@ -842,7 +845,15 @@ async fn router(
             )
             .await
         }
-
+        (&hyper::Method::POST, ["admin", "integrate-changes"]) => {
+            admin_integrate_changes_route(
+                req,
+                &project.authentication.admin_api_key,
+                &project,
+                &redis_client,
+            )
+            .await
+        }
         (&hyper::Method::GET, ["consumption", _rt]) => {
             match get_consumption_api_res(http_client, req, host, consumption_apis, is_prod).await {
                 Ok(response) => Ok(response),
@@ -1248,4 +1259,185 @@ async fn shutdown(settings: &Settings, project: &Project, graceful: GracefulShut
         );
     }
     std::process::exit(0);
+}
+
+#[derive(Debug, Deserialize)]
+struct IntegrateChangesRequest {
+    tables: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntegrateChangesResponse {
+    status: String,
+    message: String,
+    updated_tables: Vec<String>,
+}
+
+async fn admin_integrate_changes_route(
+    req: Request<hyper::body::Incoming>,
+    admin_api_key: &Option<String>,
+    project: &Project,
+    redis_client: &Arc<Mutex<RedisClient>>,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
+    let bearer_token = auth_header
+        .and_then(|header_value| header_value.to_str().ok())
+        .and_then(|header_str| header_str.strip_prefix("Bearer "));
+
+    // Check API key authentication
+    if let Some(key) = admin_api_key.as_ref() {
+        if !validate_token(bearer_token, key).await {
+            return Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
+                .body(Full::new(Bytes::from(
+                    "Unauthorized: Invalid or missing token",
+                )));
+        }
+    } else {
+        return Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .body(Full::new(Bytes::from(
+                "Unauthorized: Admin API key not configured",
+            )));
+    }
+
+    // Parse request body
+    let body = to_reader(req).await;
+    let request: IntegrateChangesRequest = match serde_json::from_reader(body) {
+        Ok(req) => req,
+        Err(e) => {
+            return Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Full::new(Bytes::from(format!(
+                    "Invalid request body: {}",
+                    e
+                ))));
+        }
+    };
+
+    // Create OLAP client and reality checker
+    let olap_client =
+        crate::infrastructure::olap::clickhouse::create_client(project.clickhouse_config.clone());
+    let reality_checker =
+        crate::framework::core::infra_reality_checker::InfraRealityChecker::new(olap_client);
+
+    // Load infrastructure map from Redis
+    let redis_guard = redis_client.lock().await;
+    let mut infra_map = match InfrastructureMap::get_from_redis(&redis_guard).await {
+        Ok(map) => map,
+        Err(e) => {
+            return Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Full::new(Bytes::from(format!(
+                    "Failed to get infrastructure map: {}",
+                    e
+                ))))
+        }
+    };
+
+    // Get reality check to find all available tables
+    match reality_checker.check_reality(project, &infra_map).await {
+        Ok(discrepancies) => {
+            let mut updated_tables = Vec::new();
+
+            // Filter tables that exist in reality but not in map
+            for table_name in request.tables {
+                if discrepancies.unmapped_tables.contains(&table_name) {
+                    // Get table definition from ClickHouse
+                    if let Some(table) = discrepancies
+                        .mismatched_tables
+                        .iter()
+                        .find(|change| match change {
+                            OlapChange::Table(change) => match change {
+                                TableChange::Added(table) => table.name == table_name,
+                                _ => false,
+                            },
+                            _ => false,
+                        })
+                        .and_then(|change| match change {
+                            OlapChange::Table(TableChange::Added(table)) => Some(table.clone()),
+                            _ => None,
+                        })
+                    {
+                        // Add table to inframap
+                        infra_map.tables.insert(table_name.clone(), table);
+                        updated_tables.push(table_name);
+                    }
+                }
+            }
+
+            // Store updated inframap in both Redis and ClickHouse
+            if !updated_tables.is_empty() {
+                // Store in Redis
+                if let Err(e) = infra_map.store_in_redis(&redis_guard).await {
+                    return Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Full::new(Bytes::from(format!(
+                            "Failed to store updated inframap in Redis: {}",
+                            e
+                        ))));
+                }
+
+                // Store in ClickHouse
+                let mut client = match get_pool(&project.clickhouse_config).get_handle().await {
+                    Ok(client) => client,
+                    Err(e) => {
+                        return Response::builder()
+                            .status(StatusCode::INTERNAL_SERVER_ERROR)
+                            .body(Full::new(Bytes::from(format!(
+                                "Failed to connect to ClickHouse: {}",
+                                e
+                            ))));
+                    }
+                };
+
+                if let Err(e) =
+                    store_infrastructure_map(&mut client, &project.clickhouse_config, &infra_map)
+                        .await
+                {
+                    return Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Full::new(Bytes::from(format!(
+                            "Failed to store updated inframap in ClickHouse: {}",
+                            e
+                        ))));
+                }
+
+                let response = IntegrateChangesResponse {
+                    status: "success".to_string(),
+                    message: "Successfully integrated changes into inframap".to_string(),
+                    updated_tables,
+                };
+
+                let response_json = match serde_json::to_string(&response) {
+                    Ok(json) => json,
+                    Err(e) => {
+                        return Response::builder()
+                            .status(StatusCode::INTERNAL_SERVER_ERROR)
+                            .body(Full::new(Bytes::from(format!(
+                                "Failed to serialize response: {}",
+                                e
+                            ))));
+                    }
+                };
+
+                Response::builder()
+                    .status(StatusCode::OK)
+                    .header("Content-Type", "application/json")
+                    .body(Full::new(Bytes::from(response_json)))
+            } else {
+                Response::builder()
+                    .status(StatusCode::BAD_REQUEST)
+                    .body(Full::new(Bytes::from(
+                        "None of the specified tables were found in reality check discrepancies",
+                    )))
+            }
+        }
+        Err(e) => Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .body(Full::new(Bytes::from(format!(
+                "Failed to check reality: {}",
+                e
+            )))),
+    }
 }

@@ -138,7 +138,7 @@ impl<C: ClickHouseClientTrait + 'static> Inserter<C> {
 
             let mut queue = self.queue.lock().await;
 
-            if queue.is_empty() || queue.front().map_or(true, |batch| batch.records.is_empty()) {
+            if queue.is_empty() || queue.front().is_none_or(|batch| batch.records.is_empty()) {
                 continue;
             }
 

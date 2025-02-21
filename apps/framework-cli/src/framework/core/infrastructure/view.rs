@@ -51,6 +51,14 @@ impl View {
             special_fields: Default::default(),
         }
     }
+
+    pub fn from_proto(proto: ProtoView) -> Self {
+        View {
+            name: proto.name,
+            version: Version::from_string(proto.version),
+            view_type: ViewType::from_proto(proto.view_type.unwrap()),
+        }
+    }
 }
 
 impl ViewType {
@@ -62,6 +70,14 @@ impl ViewType {
                     special_fields: Default::default(),
                 })
             }
+        }
+    }
+
+    pub fn from_proto(proto: ProtoViewType) -> Self {
+        match proto {
+            ProtoViewType::TableAlias(alias) => ViewType::TableAlias {
+                source_table_name: alias.source_table_name,
+            },
         }
     }
 }

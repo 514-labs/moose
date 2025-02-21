@@ -75,7 +75,7 @@ pub async fn plan_changes(
 
         for (id, load) in target_infra_map.initial_data_loads.iter() {
             match existing_data_loads.get(id) {
-                Some(load) if load.status == InitialDataLoadStatus::Completed => {}
+                Some(load) if matches!(load.status, InitialDataLoadStatus::Completed) => {}
                 // there might be existing loads that is not written to the DB
                 _ => {
                     match check_topic_fully_populated(
@@ -89,7 +89,6 @@ pub async fn plan_changes(
                     {
                         None => {
                             // None means completed
-                            // the load variable is the target state, which is to completed
                             existing_data_loads.insert(id.clone(), load.clone());
                         }
                         Some(progress) => {

@@ -59,6 +59,17 @@ impl Table {
             special_fields: Default::default(),
         }
     }
+
+    pub fn from_proto(proto: ProtoTable) -> Self {
+        Table {
+            name: proto.name,
+            columns: proto.columns.into_iter().map(Column::from_proto).collect(),
+            order_by: proto.order_by,
+            version: Version::from_string(proto.version),
+            source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
+            deduplicate: false, // TODO: Add to proto
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq, Hash)]
@@ -303,7 +314,26 @@ impl Column {
             special_fields: Default::default(),
         }
     }
+
+    pub fn from_proto(proto: crate::proto::infrastructure_map::Column) -> Self {
+        Column {
+            name: proto.name,
+            data_type: ColumnType::from_proto(proto.data_type.unwrap()),
+            required: proto.required,
+            unique: proto.unique,
+            primary_key: proto.primary_key,
+            default: match proto
+                .default
+                .enum_value()
+                .expect("Invalid default enum value")
+            {
+                ProtoColumnDefaults::NONE => None,
+                default => Some(ColumnDefaults::from_proto(default)),
+            },
+        }
+    }
 }
+
 impl ColumnType {
     pub fn to_proto(&self) -> ProtoColumnType {
         let t = match self {
@@ -332,6 +362,34 @@ impl ColumnType {
             special_fields: Default::default(),
         }
     }
+
+    pub fn from_proto(proto: ProtoColumnType) -> Self {
+        match proto.t.unwrap() {
+            column_type::T::Simple(simple) => {
+                match simple.enum_value().expect("Invalid simple type") {
+                    SimpleColumnType::STRING => ColumnType::String,
+                    SimpleColumnType::BOOLEAN => ColumnType::Boolean,
+                    SimpleColumnType::INT => ColumnType::Int,
+                    SimpleColumnType::BIGINT => ColumnType::BigInt,
+                    SimpleColumnType::FLOAT => ColumnType::Float,
+                    SimpleColumnType::DECIMAL => ColumnType::Decimal,
+                    SimpleColumnType::DATETIME => ColumnType::DateTime,
+                    SimpleColumnType::JSON_COLUMN => ColumnType::Json,
+                    SimpleColumnType::BYTES => ColumnType::Bytes,
+                }
+            }
+            column_type::T::Enum(data_enum) => ColumnType::Enum(DataEnum::from_proto(data_enum)),
+            column_type::T::Array(element_type) => ColumnType::Array {
+                element_type: Box::new(ColumnType::from_proto(*element_type)),
+                element_nullable: false,
+            },
+            column_type::T::ArrayOfNullable(element_type) => ColumnType::Array {
+                element_type: Box::new(ColumnType::from_proto(*element_type)),
+                element_nullable: true,
+            },
+            column_type::T::Nested(nested) => ColumnType::Nested(Nested::from_proto(nested)),
+        }
+    }
 }
 
 impl DataEnum {
@@ -340,6 +398,17 @@ impl DataEnum {
             name: self.name.clone(),
             values: self.values.iter().map(|v| v.to_proto()).collect(),
             special_fields: Default::default(),
+        }
+    }
+
+    pub fn from_proto(proto: crate::proto::infrastructure_map::DataEnum) -> Self {
+        DataEnum {
+            name: proto.name,
+            values: proto
+                .values
+                .into_iter()
+                .map(EnumMember::from_proto)
+                .collect(),
         }
     }
 }
@@ -353,6 +422,14 @@ impl Nested {
             special_fields: Default::default(),
         }
     }
+
+    pub fn from_proto(proto: crate::proto::infrastructure_map::Nested) -> Self {
+        Nested {
+            name: proto.name,
+            columns: proto.columns.into_iter().map(Column::from_proto).collect(),
+            jwt: proto.jwt,
+        }
+    }
 }
 
 impl EnumMember {
@@ -361,6 +438,13 @@ impl EnumMember {
             name: self.name.clone(),
             value: MessageField::some(self.value.to_proto()),
             special_fields: Default::default(),
+        }
+    }
+
+    pub fn from_proto(proto: crate::proto::infrastructure_map::EnumMember) -> Self {
+        EnumMember {
+            name: proto.name,
+            value: EnumValue::from_proto(proto.value.unwrap()),
         }
     }
 }
@@ -380,6 +464,17 @@ impl EnumValue {
             special_fields: Default::default(),
         }
     }
+
+    pub fn from_proto(proto: crate::proto::infrastructure_map::EnumValue) -> Self {
+        match proto.value.unwrap() {
+            crate::proto::infrastructure_map::enum_value::Value::IntValue(i) => {
+                EnumValue::Int(i as u8)
+            }
+            crate::proto::infrastructure_map::enum_value::Value::StringValue(s) => {
+                EnumValue::String(s)
+            }
+        }
+    }
 }
 
 impl ColumnDefaults {
@@ -389,6 +484,16 @@ impl ColumnDefaults {
             ColumnDefaults::CUID => ProtoColumnDefaults::CUID,
             ColumnDefaults::UUID => ProtoColumnDefaults::UUID,
             ColumnDefaults::Now => ProtoColumnDefaults::NOW,
+        }
+    }
+
+    pub fn from_proto(proto: ProtoColumnDefaults) -> Self {
+        match proto {
+            ProtoColumnDefaults::AUTO_INCREMENT => ColumnDefaults::AutoIncrement,
+            ProtoColumnDefaults::CUID => ColumnDefaults::CUID,
+            ProtoColumnDefaults::UUID => ColumnDefaults::UUID,
+            ProtoColumnDefaults::NOW => ColumnDefaults::Now,
+            ProtoColumnDefaults::NONE => panic!("NONE should be handled as Option::None"),
         }
     }
 }

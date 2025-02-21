@@ -38,8 +38,13 @@ pub struct RouteMeta {
 pub struct InitialDataLoad {
     pub table: Table,
     pub topic: String,
-
     pub status: InitialDataLoadStatus,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum InitialDataLoadStatus {
+    InProgress(i64),
+    Completed,
 }
 
 impl InitialDataLoad {
@@ -54,19 +59,25 @@ impl InitialDataLoad {
         ProtoInitialDataLoad {
             table: MessageField::some(self.table.to_proto()),
             topic: self.topic.clone(),
-            progress: match self.status {
-                InitialDataLoadStatus::InProgress(i) => Some(i as u64),
+            progress: match &self.status {
+                InitialDataLoadStatus::InProgress(i) => Some(*i as u64),
                 InitialDataLoadStatus::Completed => None,
             },
             special_fields: Default::default(),
         }
     }
-}
 
-#[derive(Debug, Clone, Serialize, Deserialize, Eq, PartialEq)]
-pub enum InitialDataLoadStatus {
-    InProgress(i64),
-    Completed,
+    pub fn from_proto(proto: ProtoInitialDataLoad) -> Self {
+        InitialDataLoad {
+            table: Table::from_proto(proto.table.unwrap()),
+            topic: proto.topic,
+            status: match proto.progress {
+                Some(i) if i >= 100 => InitialDataLoadStatus::Completed,
+                Some(i) => InitialDataLoadStatus::InProgress(i as i64),
+                None => InitialDataLoadStatus::Completed,
+            },
+        }
+    }
 }
 
 pub async fn initial_data_load(

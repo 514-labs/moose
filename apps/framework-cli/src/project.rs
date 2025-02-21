@@ -45,7 +45,6 @@ use crate::infrastructure::stream::redpanda::RedpandaConfig;
 use crate::project::typescript_project::TypescriptProject;
 use crate::utilities::constants::SCRIPTS_DIR;
 use config::{Config, ConfigError, Environment, File};
-use itertools::Itertools;
 use log::debug;
 use python_project::PythonProject;
 use serde::Deserialize;
@@ -615,19 +614,6 @@ impl Project {
         Ok(old_base_path)
     }
 
-    /// Deletes all old versions
-    pub fn delete_old_versions(&self) -> Result<(), ProjectFileError> {
-        let mut old_versions = self.internal_dir()?;
-        old_versions.push(CLI_INTERNAL_VERSIONS_DIR);
-
-        if old_versions.exists() {
-            std::fs::remove_dir_all(old_versions)?;
-        }
-
-        Ok(())
-    }
-
-    /// Returns the current version
     pub fn cur_version(&self) -> &Version {
         match &self.language_project_config {
             LanguageProjectConfig::Typescript(package_json) => &package_json.version,
@@ -635,20 +621,8 @@ impl Project {
         }
     }
 
-    /// Returns sorted list of old versions
-    pub fn old_versions_sorted(&self) -> Vec<String> {
-        self.supported_old_versions
-            .keys()
-            .sorted()
-            .map(|v| v.to_string())
-            .collect()
-    }
-
-    /// Returns all versions including current
     pub fn versions(&self) -> Vec<String> {
-        let mut versions = self.old_versions_sorted();
-        versions.push(self.cur_version().to_string());
-        versions
+        vec![self.cur_version().to_string()]
     }
 
     /// Returns a map of functions and their associated models

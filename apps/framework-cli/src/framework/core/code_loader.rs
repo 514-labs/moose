@@ -6,7 +6,6 @@ use std::{
 };
 
 use async_recursion::async_recursion;
-use log::{debug, info};
 
 use crate::{
     framework::data_model::{
@@ -105,11 +104,33 @@ impl SchemaVersion {
     }
 }
 
+// Used by moose-cli import command. This still uses core v1 code
 pub async fn load_framework_objects(project: &Project) -> anyhow::Result<FrameworkObjectVersions> {
-    let old_versions = project.old_versions_sorted();
-    crawl_schema(project, &old_versions).await
+    let mut framework_object_versions = FrameworkObjectVersions::new(
+        project.cur_version().to_string(),
+        project.data_models_dir().clone(),
+    );
+
+    let schema_dir = project.data_models_dir();
+
+    let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
+    get_all_framework_objects(
+        project,
+        &mut framework_objects,
+        &schema_dir,
+        project.cur_version().as_str(),
+    )
+    .await?;
+
+    framework_object_versions.current_models = SchemaVersion {
+        base_path: schema_dir.clone(),
+        models: framework_objects.clone(),
+    };
+
+    Ok(framework_object_versions)
 }
 
+// Used by moose-cli import command. This still uses core v1 code
 #[async_recursion]
 pub async fn get_all_framework_objects(
     project: &Project,
@@ -122,10 +143,8 @@ pub async fn get_all_framework_objects(
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
-                debug!("<DCM> Processing directory: {:?}", path);
                 get_all_framework_objects(project, framework_objects, &path, version).await?;
             } else if is_schema_file(&path) {
-                debug!("<DCM> Processing file: {:?}", path);
                 let objects =
                     get_framework_objects_from_schema_file(project, &path, version).await?;
                 for fo in objects {
@@ -137,7 +156,7 @@ pub async fn get_all_framework_objects(
     Ok(())
 }
 
-// core v1 code
+// Used by moose-cli import command. This still uses core v1 code
 pub async fn get_framework_objects_from_schema_file(
     project: &Project,
     path: &Path,
@@ -228,55 +247,6 @@ pub fn framework_object_mapper(
         topic,
         original_file_path: original_file_path.to_path_buf(),
     })
-}
-
-async fn crawl_schema(
-    project: &Project,
-    old_versions: &[String],
-) -> anyhow::Result<FrameworkObjectVersions> {
-    info!("<DCM> Checking for old version directories...");
-
-    let mut framework_object_versions = FrameworkObjectVersions::new(
-        project.cur_version().to_string(),
-        project.data_models_dir().clone(),
-    );
-
-    for version in old_versions.iter() {
-        let path = project.old_version_location(version)?;
-
-        debug!("<DCM> Processing old version directory: {:?}", path);
-
-        let mut framework_objects = HashMap::new();
-        get_all_framework_objects(project, &mut framework_objects, &path, version).await?;
-
-        let schema_version = SchemaVersion {
-            base_path: path,
-            models: framework_objects,
-        };
-
-        framework_object_versions
-            .previous_version_models
-            .insert(version.clone(), schema_version);
-    }
-
-    let schema_dir = project.data_models_dir();
-
-    info!("<DCM> Starting schema directory crawl...");
-    let mut framework_objects: HashMap<String, FrameworkObject> = HashMap::new();
-    get_all_framework_objects(
-        project,
-        &mut framework_objects,
-        &schema_dir,
-        project.cur_version().as_str(),
-    )
-    .await?;
-
-    framework_object_versions.current_models = SchemaVersion {
-        base_path: schema_dir.clone(),
-        models: framework_objects.clone(),
-    };
-
-    Ok(framework_object_versions)
 }
 
 #[cfg(test)]

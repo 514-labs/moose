@@ -32,7 +32,6 @@
 
 use clickhouse::Client;
 use clickhouse_rs::ClientHandle;
-use crypto_hash::{hex_digest, Algorithm};
 use errors::ClickhouseError;
 use itertools::Itertools;
 use log::{debug, info};
@@ -53,7 +52,7 @@ use crate::framework::core::infrastructure_map::{
     Change, ColumnChange, OlapChange, PrimitiveSignature, PrimitiveTypes, TableChange,
 };
 use crate::framework::versions::Version;
-use crate::infrastructure::olap::clickhouse::model::{ClickHouseSystemTableRow, ClickHouseTable};
+use crate::infrastructure::olap::clickhouse::model::ClickHouseSystemTableRow;
 use crate::infrastructure::olap::{OlapChangesError, OlapOperations};
 use crate::project::Project;
 use crate::utilities::retry::retry;
@@ -356,58 +355,6 @@ pub async fn check_ready(
     .await
 }
 
-/// Fetches all tables from the ClickHouse database
-///
-/// # Arguments
-/// * `configured_client` - The configured client to use
-///
-/// # Returns
-/// * `Result<Vec<ClickHouseSystemTable>, clickhouse::error::Error>` - List of system tables
-///
-/// # Details
-/// - Excludes system and information schema tables
-/// - Returns table metadata including UUID, name, engine
-/// - Orders results by table name
-///
-/// # Notes
-/// The order of columns in the query must match the order of fields in ClickHouseSystemTableRow
-pub async fn fetch_all_tables(
-    configured_client: &ConfiguredDBClient,
-) -> Result<Vec<ClickHouseSystemTable>, clickhouse::error::Error> {
-    let client = &configured_client.client;
-    let db_name = &configured_client.config.db_name;
-
-    // NOTE: The order of the columns in the query is important and must match the order of your struct fields.
-    let query = "SELECT uuid, database, name, dependencies_table, engine FROM system.tables WHERE (database != 'information_schema') AND (database != 'INFORMATION_SCHEMA') AND (database != 'system')";
-
-    debug!("<DCM> Fetching tables from: {:?}", db_name);
-
-    let tables = client
-        .query(query)
-        .fetch_all::<ClickHouseSystemTableRow>()
-        .await?
-        .into_iter()
-        .map(|row| row.to_table())
-        .collect();
-
-    debug!("<DCM> Fetched tables: {:?}", tables);
-
-    Ok(tables)
-}
-
-/// Fetches tables matching a specific version pattern
-///
-/// # Arguments
-/// * `configured_client` - The configured client to use
-/// * `version` - The version pattern to match against table names
-///
-/// # Returns
-/// * `Result<Vec<ClickHouseSystemTable>, clickhouse::error::Error>` - List of matching tables
-///
-/// # Details
-/// - Filters tables by database name and version pattern
-/// - Returns full table metadata
-/// - Uses parameterized query for safety
 pub async fn fetch_tables_with_version(
     configured_client: &ConfiguredDBClient,
     version: &str,
@@ -430,147 +377,12 @@ pub async fn fetch_tables_with_version(
     Ok(tables)
 }
 
-/// Deletes a table or view from the ClickHouse database
-///
-/// # Arguments
-/// * `table_or_view_name` - Name of the table or view to delete
-/// * `configured_client` - The configured client to use
-///
-/// # Returns
-/// * `Result<(), clickhouse::error::Error>` - Success if deletion completed
-///
-/// # Details
-/// - Properly escapes database and table/view names
-/// - Logs deletion operation for debugging
-/// - Works for both tables and views
-///
-/// # Example
-/// ```rust
-/// delete_table_or_view("my_table_1_0_0", &client).await?;
-/// ```
-pub async fn delete_table_or_view(
-    table_or_view_name: &str,
-    configured_client: &ConfiguredDBClient,
-) -> Result<(), clickhouse::error::Error> {
-    let client = &configured_client.client;
-    let db_name = &configured_client.config.db_name;
-
-    info!(
-        "<DCM> Deleting table or view: {}.{}",
-        db_name, table_or_view_name
-    );
-
-    client
-        .query(format!("DROP TABLE \"{db_name}\".\"{table_or_view_name}\"").as_str())
-        .execute()
-        .await
-}
-
-/// Retrieves the engine type for a specific table
-///
-/// # Arguments
-/// * `db_name` - Database name
-/// * `name` - Table name
-/// * `configured_client` - The configured client to use
-///
-/// # Returns
-/// * `anyhow::Result<Option<String>>` - The engine type if table exists
-///
-/// # Details
-/// - Uses parameterized query for safety
-/// - Returns None if table doesn't exist
-/// - Useful for determining table properties and capabilities
-///
-/// # Example
-/// ```rust
-/// let engine = get_engine("mydb", "mytable", &client).await?;
-/// if let Some(engine_type) = engine {
-///     println!("Table engine: {}", engine_type);
-/// }
-/// ```
-pub async fn get_engine(
-    db_name: &str,
-    name: &str,
-    configured_client: &ConfiguredDBClient,
-) -> anyhow::Result<Option<String>> {
-    let mut cursor = configured_client
-        .client
-        .query("SELECT engine FROM system.tables WHERE database = ? AND name = ?")
-        .bind(db_name)
-        .bind(name)
-        .fetch::<String>()?;
-
-    Ok(cursor.next().await?)
-}
-
-/// Checks if a table is newly created and empty
-///
-/// # Arguments
-/// * `table` - The table to check
-/// * `configured_client` - The configured client to use
-///
-/// # Returns
-/// * `Result<bool, clickhouse::error::Error>` - True if table is new and empty
-///
-/// # Details
-/// - Checks if table exists
-/// - Verifies table is not a view
-/// - Confirms table has zero rows
-/// - Used for initialization logic
-///
-/// # Example
-/// ```rust
-/// if check_is_table_new(&table, &client).await? {
-///     // Handle new table initialization
-/// }
-/// ```
-pub async fn check_is_table_new(
-    table: &ClickHouseTable,
-    configured_client: &ConfiguredDBClient,
-) -> Result<bool, clickhouse::error::Error> {
-    let client = &configured_client.client;
-
-    info!("<DCM> Checking if {} table is new", table.name.clone());
-    let result = client
-        .query("select engine, total_rows from system.tables where database = ? AND name = ?")
-        .bind(configured_client.config.db_name.clone())
-        .bind(table.name.clone())
-        .fetch_all::<TableDetail>()
-        .await?;
-
-    match result.len() {
-        // i keep getting 2 rows when I have this logic in the select query
-        1 => Ok(result[0].engine != "View" && result[0].total_rows == Some(0)),
-        _ => panic!("Expected 1 result, got {:?}", result),
-    }
-}
-
-/// Gets the number of rows in a table
-///
-/// # Arguments
-/// * `table_name` - Name of the table to check
-/// * `config` - ClickHouse configuration
-/// * `clickhouse` - Client handle for database operations
-///
-/// # Returns
-/// * `Result<i64, clickhouse_rs::errors::Error>` - Number of rows in the table
-///
-/// # Details
-/// - Uses COUNT(*) for accurate row count
-/// - Properly escapes table and database names
-/// - Handles empty tables correctly
-///
-/// # Example
-/// ```rust
-/// let size = check_table_size("users_1_0_0", &config, &mut client).await?;
-/// println!("Table has {} rows", size);
-/// ```
 pub async fn check_table_size(
     table_name: &str,
     config: &ClickHouseConfig,
     clickhouse: &mut ClientHandle,
 ) -> Result<i64, clickhouse_rs::errors::Error> {
-    info!("<DCM> Checking size of {} table", table_name);
+    info!("Checking size of {} table", table_name);
     let result = clickhouse
         .query(&format!(
             "select count(*) from \"{}\".\"{}\"",
@@ -588,139 +400,6 @@ pub async fn check_table_size(
     Ok(result as i64)
 }
 
-/// Retrieves a list of all table names in the database
-///
-/// # Arguments
-/// * `configured_client` - The configured client to use
-///
-/// # Returns
-/// * `Result<Vec<String>, clickhouse::error::Error>` - Sorted list of table names
-///
-/// # Details
-/// - Filters by specified database
-/// - Returns sorted list for consistency
-/// - Includes both tables and views
-/// - Logs operation for debugging
-///
-/// # Example
-/// ```rust
-/// let tables = fetch_table_names(&client).await?;
-/// for table in tables {
-///     println!("Found table: {}", table);
-/// }
-/// ```
-pub async fn fetch_table_names(
-    configured_client: &ConfiguredDBClient,
-) -> Result<Vec<String>, clickhouse::error::Error> {
-    let client = &configured_client.client;
-    let db_name = &configured_client.config.db_name;
-
-    debug!("Fetching tables from: {:?}", db_name);
-
-    let query = format!("SELECT name FROM system.tables WHERE (database = '{db_name}')");
-    let mut cursor = client.query(query.as_str()).fetch::<String>()?;
-    let mut tables = vec![];
-
-    while let Some(name) = cursor.next().await? {
-        tables.push(name);
-    }
-
-    tables.sort();
-
-    debug!("Fetched tables: {:?}", tables);
-
-    Ok(tables)
-}
-
-/// Retrieves the schema (columns and types) for a specific table
-///
-/// # Arguments
-/// * `configured_client` - The configured client to use
-/// * `table_name` - Name of the table to describe
-///
-/// # Returns
-/// * `Result<Vec<(String, String)>, clickhouse::error::Error>` - List of column name and type pairs
-///
-/// # Details
-/// - Returns sorted column list for consistency
-/// - Includes column names and their ClickHouse types
-/// - Uses system.columns for accurate metadata
-/// - Logs operation for debugging
-///
-/// # Example
-/// ```rust
-/// let schema = fetch_table_schema(&client, "users_1_0_0").await?;
-/// for (column, type_) in schema {
-///     println!("Column {} has type {}", column, type_);
-/// }
-/// ```
-pub async fn fetch_table_schema(
-    configured_client: &ConfiguredDBClient,
-    table_name: &str,
-) -> Result<Vec<(String, String)>, clickhouse::error::Error> {
-    let client = &configured_client.client;
-    let db_name = &configured_client.config.db_name;
-
-    debug!("Fetching columns from: {:?}", table_name);
-
-    let query = format!("SELECT name, type FROM system.columns WHERE (database = '{db_name}' AND table = '{table_name}')");
-    let mut cursor = client.query(query.as_str()).fetch::<(String, String)>()?;
-
-    let mut columns = vec![];
-
-    while let Some((name, column_type)) = cursor.next().await? {
-        columns.push((name, column_type));
-    }
-
-    columns.sort();
-
-    debug!("Fetched columns: {:?}", columns);
-
-    Ok(columns)
-}
-
-/// Generates a hash of the table schema for comparison
-///
-/// # Arguments
-/// * `columns` - List of column name and type pairs
-///
-/// # Returns
-/// * `Result<String, clickhouse::error::Error>` - SHA256 hash of the schema
-///
-/// # Details
-/// - Concatenates column names and types
-/// - Uses SHA256 for consistent hashing
-/// - Useful for detecting schema changes
-/// - Order-dependent for consistency
-///
-/// # Example
-/// ```rust
-/// let schema = fetch_table_schema(&client, "users_1_0_0").await?;
-/// let hash = table_schema_to_hash(schema)?;
-/// println!("Schema hash: {}", hash);
-/// ```
-pub fn table_schema_to_hash(
-    columns: Vec<(String, String)>,
-) -> Result<String, clickhouse::error::Error> {
-    let data = columns
-        .iter()
-        .map(|(name, column_type)| format!("{}{}", name, column_type))
-        .collect::<Vec<String>>()
-        .join("");
-
-    let hashed = hex_digest(Algorithm::SHA256, data.as_bytes());
-
-    Ok(hashed)
-}
-
-/// Represents details about a table in ClickHouse
-///
-/// # Fields
-/// * `engine` - The table's engine type
-/// * `total_rows` - Optional count of rows in the table
-///
-/// # Usage
-/// Used internally for table metadata operations and checks
 #[derive(Debug, Clone, Deserialize, Serialize, clickhouse::Row)]
 struct TableDetail {
     pub engine: String,

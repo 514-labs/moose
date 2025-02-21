@@ -25,10 +25,8 @@ pub enum ActivityType {
     BlockInitCommand,
     #[serde(rename = "buildCommand")]
     BuildCommand,
-    #[serde(rename = "bumpVersionCommand")]
-    PlanCommand,
     #[serde(rename = "planCommand")]
-    BumpVersionCommand,
+    PlanCommand,
     #[serde(rename = "cleanCommand")]
     CleanCommand,
     #[serde(rename = "consumptionInitCommand")]
@@ -65,8 +63,6 @@ pub enum ActivityType {
     GenerateHashCommand,
     #[serde(rename = "generateSDKCommand")]
     GenerateSDKCommand,
-    #[serde(rename = "generateMigrations")]
-    GenerateMigrations,
 }
 
 #[derive(Debug, Clone, Serialize)]

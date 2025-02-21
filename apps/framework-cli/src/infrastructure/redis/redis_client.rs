@@ -564,47 +564,52 @@ impl RedisClient {
     pub fn start_connection_monitor(&self) -> tokio::task::JoinHandle<()> {
         let connection = self.connection.clone();
         let connection_state = self.connection_state.clone();
+        let redis_config = self.redis_config.clone();
 
         tokio::spawn(async move {
             let mut interval = tokio::time::interval(Duration::from_secs(1));
             loop {
                 interval.tick().await;
 
-                let result = retry(
-                    || async {
-                        let result = std::panic::AssertUnwindSafe(async {
-                            let mut conn = connection.lock().await;
-                            redis::cmd("PING")
-                                .query_async::<_, String>(&mut *conn)
-                                .await
-                        })
-                        .catch_unwind()
-                        .await;
-
-                        match result {
-                            Ok(Ok(_)) => Ok(()),
-                            Ok(Err(e)) => Err(e),
-                            Err(_) => Err(redis::RedisError::from(std::io::Error::new(
-                                std::io::ErrorKind::Other,
-                                "Redis connection panicked",
-                            ))),
-                        }
-                    },
-                    |attempts, _| attempts < 3,
-                    Duration::from_secs(1),
-                )
+                let ping_result = std::panic::AssertUnwindSafe(async {
+                    let mut conn = connection.lock().await;
+                    redis::cmd("PING")
+                        .query_async::<_, String>(&mut *conn)
+                        .await
+                })
+                .catch_unwind()
                 .await;
 
-                match result {
-                    Ok(()) => {
+                match ping_result {
+                    Ok(Ok(_)) => {
                         if !connection_state.load(Ordering::SeqCst) {
                             info!("<RedisClient> Redis connection restored");
                             connection_state.store(true, Ordering::SeqCst);
                         }
                     }
-                    Err(e) => {
-                        error!("<RedisClient> Redis connection lost: {}", e);
+                    Ok(Err(_)) | Err(_) => {
+                        error!("<RedisClient> Redis connection lost, attempting reconnect");
                         connection_state.store(false, Ordering::SeqCst);
+
+                        // Try to establish a new connection
+                        if let Ok(client) = Client::open(redis_config.url.clone()) {
+                            match ConnectionManager::new(client).await {
+                                Ok(new_manager) => {
+                                    *connection.lock().await = new_manager;
+                                    info!("<RedisClient> Successfully reconnected");
+                                }
+                                Err(e) => {
+                                    error!(
+                                        "<RedisClient> Reconnection manager creation failed: {}",
+                                        e
+                                    );
+                                }
+                            }
+                        } else {
+                            error!("<RedisClient> Failed to open new client for reconnection");
+                        }
+
+                        tokio::time::sleep(Duration::from_secs(1)).await;
                     }
                 }
             }

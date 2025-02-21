@@ -6,6 +6,7 @@
 //! Note: Make sure to set the MOOSE_REDIS_URL environment variable or the client will
 //! default to "redis://127.0.0.1:6379".
 use anyhow::{Context, Result};
+use futures::FutureExt;
 use log::{error, info, warn};
 use redis::aio::ConnectionManager;
 use redis::{AsyncCommands, Client, RedisError, Script, ToRedisArgs};
@@ -19,7 +20,7 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 use tokio::time::{interval, Duration};
 use tokio_stream::StreamExt;
-use uuid::Uuid;
+use uuid::Uuid; // for catch_unwind
 
 // Internal constants that we don't expose to the user
 const KEY_EXPIRATION_TTL: u64 = 3; // 3 seconds
@@ -539,29 +540,38 @@ impl RedisClient {
         }
     }
 
-    pub async fn start_connection_monitor(&self) -> JoinHandle<()> {
+    pub fn start_connection_monitor(&self) -> tokio::task::JoinHandle<()> {
         let connection = self.connection.clone();
         let connection_state = self.connection_state.clone();
 
         tokio::spawn(async move {
-            let mut interval = interval(Duration::from_secs(1));
+            let mut interval = tokio::time::interval(Duration::from_secs(1));
             loop {
                 interval.tick().await;
+                let result = std::panic::AssertUnwindSafe(async {
+                    let mut conn = connection.lock().await;
+                    redis::cmd("PING")
+                        .query_async::<_, String>(&mut *conn)
+                        .await
+                })
+                .catch_unwind()
+                .await;
 
-                let mut conn = connection.lock().await;
-                match redis::cmd("PING")
-                    .query_async::<_, String>(&mut *conn)
-                    .await
-                {
-                    Ok(_) => {
+                match result {
+                    Ok(Ok(_)) => {
                         if !connection_state.load(Ordering::SeqCst) {
                             info!("<RedisClient> Redis connection restored");
                             connection_state.store(true, Ordering::SeqCst);
                         }
                     }
-                    Err(e) => {
+                    Ok(Err(e)) => {
                         error!("<RedisClient> Redis connection lost: {}", e);
                         connection_state.store(false, Ordering::SeqCst);
+                    }
+                    Err(_) => {
+                        error!("<RedisClient> Redis connection monitor panicked. Restarting monitor...");
+                        connection_state.store(false, Ordering::SeqCst);
+                        // Optionally add a delay here before continuing the loop.
                     }
                 }
             }

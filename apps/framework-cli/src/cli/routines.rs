@@ -94,7 +94,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use tokio::sync::{Mutex, RwLock};
-use tokio::time::{interval, Duration};
+use tokio::time::{interval, sleep, Duration as TokioDuration};
 
 use crate::cli::routines::openapi::openapi;
 use crate::framework::controller::RouteMeta;
@@ -206,11 +206,7 @@ pub async fn setup_redis_client(project: Arc<Project>) -> anyhow::Result<Arc<Mut
     let redis_client = RedisClient::new(project.name(), project.redis_config.clone()).await?;
     let redis_client = Arc::new(Mutex::new(redis_client));
 
-    // Start connection monitoring
-    {
-        let client = redis_client.lock().await;
-        client.start_connection_monitor().await;
-    }
+    spawn_connection_monitor(redis_client.clone());
 
     let (service_name, instance_id) = {
         let client = redis_client.lock().await;
@@ -298,7 +294,7 @@ async fn process_pubsub_message(
 
 fn start_leadership_lock_task(redis_client: Arc<Mutex<RedisClient>>, project: Arc<Project>) {
     tokio::spawn(async move {
-        let mut interval = interval(Duration::from_secs(LEADERSHIP_LOCK_RENEWAL_INTERVAL)); // Adjust the interval as needed
+        let mut interval = interval(TokioDuration::from_secs(LEADERSHIP_LOCK_RENEWAL_INTERVAL)); // Adjust the interval as needed
 
         let cron_registry = CronRegistry::new().await.unwrap();
 
@@ -581,4 +577,25 @@ pub async fn plan(project: &Project) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn spawn_connection_monitor(redis_client: Arc<Mutex<RedisClient>>) {
+    tokio::spawn(async move {
+        loop {
+            let handle = {
+                let client = redis_client.lock().await;
+                client.start_connection_monitor()
+            };
+            match handle.await {
+                Ok(_) => {
+                    info!("Connection monitor exited gracefully");
+                    break;
+                }
+                Err(err) => {
+                    error!("Connection monitor panicked: {:?}. Restarting...", err);
+                    sleep(TokioDuration::from_secs(1)).await;
+                }
+            }
+        }
+    });
 }

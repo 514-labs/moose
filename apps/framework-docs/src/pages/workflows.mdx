@@ -68,7 +68,7 @@ A typical workflow looks like this:
 
 Tasks are Python functions decorated with `@task`. Each task can receive inputs and return outputs:
 
-```python filename="app/scripts/example_workflow/1.first_task.py"
+```python filename="app/scripts/example_workflow/1.first_task.py" copy
 from moose_lib import task, Logger
 
 @task
@@ -93,7 +93,7 @@ def first_task(input: dict):
 
 Tasks are defined as asynchronous functions (of type `TaskFunction`) that perform some operations and return an object with two key properties: `task` and `data`.
 
-```typescript filename="app/scripts/example_workflow/1.firstTask.ts"
+```typescript filename="app/scripts/example_workflow/1.firstTask.ts" copy
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
 interface FirstTaskInput {
@@ -133,7 +133,7 @@ Tasks communicate through their return values. Each task can return a dictionary
 - Supported data types inside `data` include basic types, containers, and JSON-serializable custom classes.
 
 <Python>
-```python filename="app/scripts/example_workflow/1.first_task.py"
+```python filename="app/scripts/example_workflow/1.first_task.py" copy
 from moose_lib import task, Logger
 
 @task
@@ -155,7 +155,7 @@ def first_task(input: dict):
         }
     }
 ```
-```python filename="app/scripts/example_workflow/2.second_task.py"
+```python filename="app/scripts/example_workflow/2.second_task.py" copy
 from moose_lib import task, Logger
 
 @task
@@ -184,7 +184,7 @@ def second_task(input: dict):
 </Python>
 
 <TypeScript>
-```typescript filename="app/scripts/ExampleWorkflow/1.firstTask.ts"
+```typescript filename="app/scripts/ExampleWorkflow/1.firstTask.ts" copy
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
 interface FirstTaskInput {
@@ -211,7 +211,7 @@ export default function createTask() {
     } as TaskDefinition;
 }; 
 ```
-```typescript filename="app/scripts/example_workflow/2.secondTask.ts"
+```typescript filename="app/scripts/example_workflow/2.secondTask.ts" copy
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
 interface SecondTaskInput {

@@ -97,20 +97,19 @@ Tasks are defined as asynchronous functions (of type `TaskFunction`) that perfor
 import { TaskFunction, TaskDefinition } from "@514labs/moose-lib";
 
 interface FirstTaskInput {
-    number: number;
     name: string;
 }
 
 const firstTask: TaskFunction = async (input: FirstTaskInput) => {
-    
-    const counter = input.number + 1;
-    const greeting = `hello, ${input.name}!`;
+    const name = input.name ?? "world";
+    const greeting = `hello, ${name}!`;
     
     return {
         task: "firstTask",
         data: {
-            counter: counter,
-            greeting: greeting
+            name: name,
+            greeting: greeting,
+            counter: 1
         }
     };
 };
@@ -121,6 +120,8 @@ export default function createTask() {
     } as TaskDefinition;
 };
 ```
+
+The file must export a function that returns a `TaskDefinition` object. This object is used to register the task with the workflow. Inside this `TaskDefinition` object, you must specify the `task`, which is the function you defined above.
 </TypeScript>
 
 
@@ -191,13 +192,13 @@ interface FirstTaskInput {
 }
 
 const firstTask: TaskFunction = async (input: FirstTaskInput) => {
-    
-    const greeting = `hello, ${input.name}!`;
+    const name = input.name ?? "world";
+    const greeting = `hello, ${name}!`;
     
     return {
         task: "firstTask",
         data: {
-            name: input.name,
+            name: name,
             greeting: greeting,
             counter: 1
         }
@@ -273,7 +274,24 @@ View it in the Temporal dashboard: http://localhost:8080/namespaces/default/work
 
 Notice that you are given a URL to view the workflow in the Temporal dashboard. This is a helpful way to monitor the workflow execution in real time and debug any issues through a GUI.
 
-### Debugging Workflows
+### Passing Input to Workflows
+When you run a workflow, you can pass input to the workflow by using the `--input` flag.
+
+<Python>
+```bash filename="Terminal" copy
+moose-cli workflow run example_workflow --input '{"name": "John"}'
+```
+</Python>
+
+<TypeScript>
+```bash filename="Terminal" copy
+npx moose-cli workflow run ExampleWorkflow --input '{"name": "John"}'
+```
+</TypeScript>
+
+The input is passed to the workflow as a JSON string.
+
+## Debugging Workflows
 While the Temporal dashboard is a helpful tool for debugging, you can also leverage the Moose CLI to monitor and debug workflows. This is useful if you want to monitor a workflow without having to leave your terminal.
 
 Use the `moose-cli workflow status` command to monitor a workflow:

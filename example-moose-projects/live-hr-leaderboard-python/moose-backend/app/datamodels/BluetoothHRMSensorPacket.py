@@ -6,7 +6,7 @@ from datetime import datetime
 @moose_data_model 
 @dataclass
 class BluetoothHRMSensorPacket:
-    device_id: Key[str]
+    device_id: Key[int]
     timestamp_ns: float
     heart_rate: int
     rr_interval_ms: int 

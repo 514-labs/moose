@@ -27,7 +27,12 @@ impl DataModel {
     // multiple sources. The Aim will be to have DB Blocks provision some tables as well.
     pub fn to_table(&self) -> Table {
         Table {
-            name: format!("{}_{}", self.name, self.version.as_suffix()),
+            name: self
+                .config
+                .storage
+                .name
+                .clone()
+                .unwrap_or_else(|| format!("{}_{}", self.name, self.version.as_suffix())),
             columns: self.columns.clone(),
             order_by: self.config.storage.order_by_fields.clone(),
             deduplicate: self.config.storage.deduplicate,

@@ -72,8 +72,6 @@ use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
 use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
-use crate::framework::core::infrastructure::consumption_webserver::ConsumptionApiWebServer;
-use crate::framework::core::infrastructure::olap_process::OlapProcess;
 use crate::framework::core::infrastructure::table::Table;
 use crate::framework::core::infrastructure_map::{OlapChange, TableChange};
 use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_infrastructure_map};

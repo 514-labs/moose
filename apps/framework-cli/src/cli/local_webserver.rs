@@ -1334,13 +1334,22 @@ fn find_table_definition<'a>(
 
     if discrepancies
         .unmapped_tables
-        .contains(&table_name.to_string())
+        .iter()
+        .any(|table| table.name == table_name)
     {
         debug!(
             "Table {} is unmapped, looking for its definition",
             table_name
         );
-        // Look for added tables
+        // First try to find it in unmapped_tables
+        if let Some(table) = discrepancies
+            .unmapped_tables
+            .iter()
+            .find(|table| table.name == table_name)
+        {
+            return Some(table.clone());
+        }
+        // If not found in unmapped_tables, look for added tables
         discrepancies
             .mismatched_tables
             .iter()
@@ -1411,6 +1420,14 @@ async fn update_inframap_tables(
                     }
                 } else {
                     debug!("No changes needed for table {}", table_name);
+                    // Check if this table is in unmapped_tables
+                    if let Some(table) = discrepancies.unmapped_tables.iter().find(|t| t.name == table_name) {
+                        debug!("Found unmapped table {}, adding to inframap", table_name);
+                        infra_map.tables.insert(table.id(), table.clone());
+                        updated_tables.push(table_name);
+                    } else {
+                        debug!("Table {} is not unmapped", table_name);
+                    }
                 }
             }
         }
@@ -1615,7 +1632,7 @@ mod tests {
     async fn test_find_table_definition() {
         let table = create_test_table("test_table");
         let discrepancies = InfraDiscrepancies {
-            unmapped_tables: vec!["test_table".to_string()],
+            unmapped_tables: vec![table.clone()],
             missing_tables: vec![],
             mismatched_tables: vec![OlapChange::Table(TableChange::Added(table.clone()))],
         };
@@ -1631,7 +1648,7 @@ mod tests {
         let test_table = create_test_table(table_name);
 
         let discrepancies = InfraDiscrepancies {
-            unmapped_tables: vec![table_name.to_string()],
+            unmapped_tables: vec![test_table.clone()],
             missing_tables: vec![],
             mismatched_tables: vec![OlapChange::Table(TableChange::Added(test_table.clone()))],
         };
@@ -1645,5 +1662,31 @@ mod tests {
         assert_eq!(updated_tables.len(), 1);
         assert_eq!(updated_tables[0], table_name);
         assert!(infra_map.tables.contains_key(table_name));
+    }
+
+    #[tokio::test]
+    async fn test_update_inframap_tables_unmapped() {
+        let table_name = "unmapped_table";
+        let test_table = create_test_table(table_name);
+
+        let discrepancies = InfraDiscrepancies {
+            unmapped_tables: vec![test_table.clone()],
+            missing_tables: vec![],
+            mismatched_tables: vec![OlapChange::Table(TableChange::Added(test_table.clone()))],
+        };
+
+        let mut infra_map = create_test_infra_map();
+
+        let tables_to_update = vec![table_name.to_string()];
+        let updated_tables =
+            update_inframap_tables(tables_to_update, &discrepancies, &mut infra_map).await;
+
+        assert_eq!(updated_tables.len(), 1);
+        assert_eq!(updated_tables[0], table_name);
+        assert!(infra_map.tables.contains_key(&test_table.id()));
+        assert_eq!(
+            infra_map.tables.get(&test_table.id()).unwrap().name,
+            table_name
+        );
     }
 }

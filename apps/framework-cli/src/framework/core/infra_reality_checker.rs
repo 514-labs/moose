@@ -1,4 +1,5 @@
 use crate::{
+    framework::core::infrastructure::table::Table,
     framework::core::infrastructure_map::{InfrastructureMap, OlapChange},
     infrastructure::olap::{OlapChangesError, OlapOperations},
     project::Project,
@@ -22,7 +23,7 @@ pub enum RealityCheckError {
 #[derive(Debug)]
 pub struct InfraDiscrepancies {
     /// Tables that exist in reality but are not in the map
-    pub unmapped_tables: Vec<String>,
+    pub unmapped_tables: Vec<Table>,
     /// Tables that are in the map but don't exist in reality
     pub missing_tables: Vec<String>,
     /// Tables that exist in both but have structural differences
@@ -103,9 +104,9 @@ impl<T: OlapOperations> InfraRealityChecker<T> {
         );
 
         // Find unmapped tables (exist in reality but not in map)
-        let unmapped_tables: Vec<String> = actual_table_map
-            .keys()
-            .filter(|name| !mapped_table_map.contains_key(*name))
+        let unmapped_tables: Vec<Table> = actual_table_map
+            .values()
+            .filter(|table| !mapped_table_map.contains_key(&table.name))
             .cloned()
             .collect();
         debug!(
@@ -296,7 +297,7 @@ mod tests {
 
         // Should find one unmapped table
         assert_eq!(discrepancies.unmapped_tables.len(), 1);
-        assert_eq!(discrepancies.unmapped_tables[0], "test_table");
+        assert_eq!(discrepancies.unmapped_tables[0].name, "test_table");
         assert!(discrepancies.missing_tables.is_empty());
         assert!(discrepancies.mismatched_tables.is_empty());
 

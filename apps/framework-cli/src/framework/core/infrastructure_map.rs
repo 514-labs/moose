@@ -241,17 +241,74 @@ impl InfrastructureMap {
         for (id, table) in self_tables {
             if let Some(target_table) = target_tables.get(id) {
                 if table != target_table {
+                    // Debug logging to identify what's different
+                    if table.name != target_table.name {
+                        log::debug!(
+                            "Table {} differs in name: {} vs {}",
+                            id,
+                            table.name,
+                            target_table.name
+                        );
+                    }
+                    if table.columns != target_table.columns {
+                        log::debug!("Table {} differs in columns", id);
+                    }
+                    if table.order_by != target_table.order_by {
+                        log::debug!(
+                            "Table {} differs in order_by: {:?} vs {:?}",
+                            id,
+                            table.order_by,
+                            target_table.order_by
+                        );
+                    }
+                    if table.deduplicate != target_table.deduplicate {
+                        log::debug!(
+                            "Table {} differs in deduplicate: {} vs {}",
+                            id,
+                            table.deduplicate,
+                            target_table.deduplicate
+                        );
+                    }
+                    if table.version != target_table.version {
+                        log::debug!(
+                            "Table {} differs in version: {} vs {}",
+                            id,
+                            table.version,
+                            target_table.version
+                        );
+                    }
+                    if table.source_primitive != target_table.source_primitive {
+                        log::debug!(
+                            "Table {} differs in source_primitive: {:?} vs {:?}",
+                            id,
+                            table.source_primitive,
+                            target_table.source_primitive
+                        );
+                    }
+
                     let column_changes = compute_table_diff(table, target_table);
-                    olap_changes.push(OlapChange::Table(TableChange::Updated {
-                        name: table.name.clone(),
-                        column_changes,
-                        order_by_change: OrderByChange {
+                    let order_by_change = if table.order_by != target_table.order_by {
+                        OrderByChange {
                             before: table.order_by.clone(),
                             after: target_table.order_by.clone(),
-                        },
-                        before: table.clone(),
-                        after: target_table.clone(),
-                    }));
+                        }
+                    } else {
+                        OrderByChange {
+                            before: vec![],
+                            after: vec![],
+                        }
+                    };
+
+                    // Only push changes if there are actual differences to report
+                    if !column_changes.is_empty() || table.order_by != target_table.order_by {
+                        olap_changes.push(OlapChange::Table(TableChange::Updated {
+                            name: table.name.clone(),
+                            column_changes,
+                            order_by_change,
+                            before: table.clone(),
+                            after: target_table.clone(),
+                        }));
+                    }
                 }
             } else {
                 olap_changes.push(OlapChange::Table(TableChange::Removed(table.clone())));

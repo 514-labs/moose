@@ -188,6 +188,8 @@ impl InfraChanges {
     }
 }
 
+// TODO we should not expose the internals of the infrastructure map.
+// We should have apis to be able to change it.
 /// Represents the complete infrastructure map of the system, containing all components and their relationships
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfrastructureMap {

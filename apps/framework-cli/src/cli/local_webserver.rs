@@ -1390,16 +1390,25 @@ async fn update_inframap_tables(
         match find_table_definition(&table_name, discrepancies) {
             Some(table) => {
                 debug!("Updating table {} in inframap", table_name);
-                infra_map.tables.insert(table_name.clone(), table);
+                // Use table.id() as the key for the HashMap
+                infra_map.tables.insert(table.id(), table);
                 updated_tables.push(table_name);
             }
             None => {
+                // When removing a table, we need to find its ID from the existing tables
                 if discrepancies.mismatched_tables.iter().any(|change| {
                     matches!(change, OlapChange::Table(TableChange::Removed(table)) if table.name == table_name)
                 }) {
                     debug!("Removing table {} from inframap", table_name);
-                    infra_map.tables.remove(&table_name);
-                    updated_tables.push(table_name);
+                    // Find the table ID from the mismatched_tables
+                    if let Some(OlapChange::Table(TableChange::Removed(table))) = discrepancies
+                        .mismatched_tables
+                        .iter()
+                        .find(|change| matches!(change, OlapChange::Table(TableChange::Removed(table)) if table.name == table_name))
+                    {
+                        infra_map.tables.remove(&table.id());
+                        updated_tables.push(table_name);
+                    }
                 } else {
                     debug!("No changes needed for table {}", table_name);
                 }

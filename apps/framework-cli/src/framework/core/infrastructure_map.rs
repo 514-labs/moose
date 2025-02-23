@@ -300,7 +300,10 @@ impl InfrastructureMap {
                     };
 
                     // Only push changes if there are actual differences to report
-                    if !column_changes.is_empty() || table.order_by != target_table.order_by {
+                    if !column_changes.is_empty()
+                        || table.order_by != target_table.order_by
+                        || table.deduplicate != target_table.deduplicate
+                    {
                         olap_changes.push(OlapChange::Table(TableChange::Updated {
                             name: table.name.clone(),
                             column_changes,

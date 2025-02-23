@@ -1656,7 +1656,11 @@ mod tests {
 
         assert_eq!(updated_tables.len(), 1);
         assert_eq!(updated_tables[0], table_name);
-        assert!(infra_map.tables.contains_key(table_name));
+        assert!(infra_map.tables.contains_key(&test_table.id()));
+        assert_eq!(
+            infra_map.tables.get(&test_table.id()).unwrap().name,
+            table_name
+        );
     }
 
     #[tokio::test]

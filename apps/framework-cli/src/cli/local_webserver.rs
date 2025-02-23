@@ -1324,10 +1324,7 @@ async fn validate_admin_auth(
     }
 }
 
-fn find_table_definition<'a>(
-    table_name: &str,
-    discrepancies: &'a InfraDiscrepancies,
-) -> Option<Table> {
+fn find_table_definition(table_name: &str, discrepancies: &InfraDiscrepancies) -> Option<Table> {
     debug!("Looking for table definition: {}", table_name);
 
     if discrepancies

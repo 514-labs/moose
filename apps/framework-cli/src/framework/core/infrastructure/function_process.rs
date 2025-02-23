@@ -163,6 +163,29 @@ impl FunctionProcess {
             special_fields: Default::default(),
         }
     }
+
+    pub fn from_proto(proto: ProtoFunctionProcess) -> Self {
+        FunctionProcess {
+            name: proto.name,
+            source_topic: proto.source_topic,
+            source_columns: proto
+                .source_columns
+                .into_iter()
+                .map(Column::from_proto)
+                .collect(),
+            target_topic: proto.target_topic,
+            target_topic_config: proto.target_topic_config,
+            target_columns: proto
+                .target_columns
+                .into_iter()
+                .map(Column::from_proto)
+                .collect(),
+            executable: PathBuf::from(proto.executable),
+            parallel_process_count: proto.parallel_process_count.unwrap_or(1) as usize,
+            version: proto.version,
+            source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
+        }
+    }
 }
 
 /**

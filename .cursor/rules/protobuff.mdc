@@ -1,0 +1,6 @@
+---
+description: Best practices to edit and build .proto files
+globs: *.proto
+---
+
+DO NOT MAKE BREAKING CHANGES

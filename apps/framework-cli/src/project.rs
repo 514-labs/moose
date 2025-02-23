@@ -69,70 +69,125 @@ use crate::utilities::git::GitConfig;
 use crate::utilities::PathExt;
 use crate::utilities::_true;
 
+/// Represents errors that can occur during project file operations
 #[derive(Debug, thiserror::Error)]
 #[error("Failed to create or delete project files")]
 #[non_exhaustive]
 pub enum ProjectFileError {
+    /// Error when creating the internal directory structure
     InternalDirCreationFailed(std::io::Error),
+    /// Generic error with custom message
     #[error("Failed to create project files: {message}")]
-    Other {
-        message: String,
-    },
+    Other { message: String },
+    /// Standard IO error
     IO(#[from] std::io::Error),
+    /// TypeScript project specific error
     TSProjectFileError(#[from] typescript_project::TSProjectFileError),
+    /// Python project specific error
     PythonProjectError(#[from] python_project::PythonProjectError),
+    /// JSON serialization error
     JSONSerde(#[from] serde_json::Error),
+    /// TOML serialization error
     TOMLSerde(#[from] toml::ser::Error),
 }
 
-// We have explored using a Generic associated Types as well as
-// Dynamic Dispatch to handle the different types of projects
-// the approach with enums is the one that is the simplest to put into practice and
-// maintain. With Copilot - it also has the advantage that the boiler plate is really fast to write
+/// Configuration for JWT authentication
 #[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct Project {
-    pub language: SupportedLanguages,
+pub struct JwtConfig {
+    /// Whether to enforce JWT on all consumption APIs
     #[serde(default)]
-    pub redpanda_config: RedpandaConfig,
-    pub clickhouse_config: ClickHouseConfig,
-    pub http_server_config: LocalWebserverConfig,
+    pub enforce_on_all_consumptions_apis: bool,
+    /// Whether to enforce JWT on all ingestion APIs
     #[serde(default)]
-    pub redis_config: RedisConfig,
-    #[serde(default)]
-    pub git_config: GitConfig,
-
-    #[serde(default)]
-    pub temporal_config: TemporalConfig,
-
-    // This part of the configuration for the project is dynamic and not saved
-    // to disk. It is loaded from the language specific configuration file or the currently
-    // running command
-    #[serde(skip)]
-    pub language_project_config: LanguageProjectConfig,
-    #[serde(skip)]
-    pub project_location: PathBuf,
-    #[serde(skip, default = "Project::default_production")]
-    pub is_production: bool,
-
-    #[serde(default = "HashMap::new")]
-    pub supported_old_versions: HashMap<Version, String>,
-    #[serde(default)]
-    pub jwt: Option<JwtConfig>,
-
-    #[serde(default, skip_serializing_if = "Vec::is_empty")]
-    pub cron_jobs: Vec<CronJob>,
-
-    #[serde(default)]
-    pub features: ProjectFeatures,
+    pub enforce_on_all_ingest_apis: bool,
+    /// Secret key for JWT signing
+    pub secret: String,
+    /// JWT issuer
+    pub issuer: String,
+    /// JWT audience
+    pub audience: String,
 }
 
+/// Language-specific project configuration
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub enum LanguageProjectConfig {
+    /// TypeScript project configuration
+    Typescript(TypescriptProject),
+    /// Python project configuration
+    Python(PythonProject),
+}
+
+impl Default for LanguageProjectConfig {
+    fn default() -> Self {
+        LanguageProjectConfig::Typescript(TypescriptProject::default())
+    }
+}
+
+/// Authentication configuration for the project
+#[derive(Debug, Serialize, Deserialize, Clone, Default)]
+pub struct AuthenticationConfig {
+    /// Optional admin API key for authentication
+    #[serde(default)]
+    pub admin_api_key: Option<String>,
+}
+
+/// Feature flags for the project
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct ProjectFeatures {
+    /// Whether streaming engine is enabled
     #[serde(default = "_true")]
     pub streaming_engine: bool,
 
+    /// Whether workflows are enabled
     #[serde(default)]
     pub workflows: bool,
+}
+
+/// Represents a user's Moose project
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Project {
+    /// Programming language used in the project
+    pub language: SupportedLanguages,
+    /// RedPanda streaming configuration
+    #[serde(default)]
+    pub redpanda_config: RedpandaConfig,
+    /// ClickHouse database configuration
+    pub clickhouse_config: ClickHouseConfig,
+    /// HTTP server configuration for local development
+    pub http_server_config: LocalWebserverConfig,
+    /// Redis configuration
+    #[serde(default)]
+    pub redis_config: RedisConfig,
+    /// Git configuration
+    #[serde(default)]
+    pub git_config: GitConfig,
+    /// Temporal workflow configuration
+    #[serde(default)]
+    pub temporal_config: TemporalConfig,
+    /// Language-specific project configuration (not serialized)
+    #[serde(skip)]
+    pub language_project_config: LanguageProjectConfig,
+    /// Project root directory location (not serialized)
+    #[serde(skip)]
+    pub project_location: PathBuf,
+    /// Whether the project is running in production mode
+    #[serde(skip, default = "Project::default_production")]
+    pub is_production: bool,
+    /// Map of supported old versions and their locations
+    #[serde(default = "HashMap::new")]
+    pub supported_old_versions: HashMap<Version, String>,
+    /// JWT configuration
+    #[serde(default)]
+    pub jwt: Option<JwtConfig>,
+    /// Authentication configuration
+    #[serde(default)]
+    pub authentication: AuthenticationConfig,
+    /// List of configured cron jobs
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub cron_jobs: Vec<CronJob>,
+    /// Feature flags
+    #[serde(default)]
+    pub features: ProjectFeatures,
 }
 
 impl Default for ProjectFeatures {
@@ -144,36 +199,15 @@ impl Default for ProjectFeatures {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub struct JwtConfig {
-    #[serde(default)]
-    pub enforce_on_all_consumptions_apis: bool,
-    #[serde(default)]
-    pub enforce_on_all_ingest_apis: bool,
-    pub secret: String,
-    pub issuer: String,
-    pub audience: String,
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub enum LanguageProjectConfig {
-    Typescript(TypescriptProject),
-    Python(PythonProject),
-}
-
-impl Default for LanguageProjectConfig {
-    fn default() -> Self {
-        LanguageProjectConfig::Typescript(TypescriptProject::default())
-    }
-}
-
 static STREAMING_FUNCTION_RENAME_WARNING: Once = Once::new();
 
 impl Project {
+    /// Returns the default production state (false)
     pub fn default_production() -> bool {
         false
     }
 
+    /// Returns the project name based on the language configuration
     pub fn name(&self) -> String {
         match &self.language_project_config {
             LanguageProjectConfig::Typescript(p) => p.name.clone(),
@@ -181,6 +215,12 @@ impl Project {
         }
     }
 
+    /// Creates a new project with the specified parameters
+    ///
+    /// # Arguments
+    /// * `dir_location` - The directory where the project will be created
+    /// * `name` - The name of the project
+    /// * `language` - The programming language to use
     pub fn new(dir_location: &Path, name: String, language: SupportedLanguages) -> Project {
         let mut location = dir_location.to_path_buf();
 
@@ -212,13 +252,16 @@ impl Project {
             jwt: None,
             cron_jobs: Vec::new(),
             features: Default::default(),
+            authentication: AuthenticationConfig::default(),
         }
     }
 
+    /// Sets whether the project is running in production mode
     pub fn set_is_production_env(&mut self, is_production: bool) {
         self.is_production = is_production;
     }
 
+    /// Loads a project from the specified directory
     pub fn load(directory: &PathBuf) -> Result<Project, ConfigError> {
         let mut project_file = directory.clone();
 
@@ -256,11 +299,13 @@ impl Project {
         Ok(project_config)
     }
 
+    /// Loads a project from the current directory
     pub fn load_from_current_dir() -> Result<Project, ConfigError> {
         let current_dir = std::env::current_dir().expect("Failed to get the current directory");
         Project::load(&current_dir)
     }
 
+    /// Writes the project configuration to disk
     pub fn write_to_disk(&self) -> Result<(), ProjectFileError> {
         // Write to disk what is common to all project types, the moose.config.toml
         let project_file = self.project_location.join(PROJECT_CONFIG_FILE);
@@ -276,6 +321,7 @@ impl Project {
         }
     }
 
+    /// Sets up the application directory structure
     pub fn setup_app_dir(&self) -> Result<(), ProjectFileError> {
         let app_dir = self.app_dir();
         std::fs::create_dir_all(&app_dir)?;
@@ -298,6 +344,7 @@ impl Project {
         Ok(())
     }
 
+    /// Creates base application files with optional sample code
     pub fn create_base_app_files(&self, no_samples: bool) -> Result<(), std::io::Error> {
         // Common file paths
         let readme_file_path = self.project_location.join("README.md");
@@ -386,6 +433,7 @@ impl Project {
         Ok(())
     }
 
+    /// Helper function to write file content
     fn write_file(&self, path: &PathBuf, content: String) -> Result<(), std::io::Error> {
         let mut file = std::fs::File::create(path)?;
         let content = if let Some(without_starting_empty_line) = content.strip_prefix('\n') {
@@ -397,6 +445,7 @@ impl Project {
         Ok(())
     }
 
+    /// Creates VSCode configuration files
     pub fn create_vscode_files(&self) -> Result<(), ProjectFileError> {
         let vscode_dir = self.vscode_dir();
 
@@ -422,6 +471,7 @@ impl Project {
         Ok(())
     }
 
+    /// Returns the path to the app directory
     pub fn app_dir(&self) -> PathBuf {
         let mut app_dir = self.project_location.clone();
         app_dir.push(APP_DIR);
@@ -434,6 +484,7 @@ impl Project {
         app_dir
     }
 
+    /// Returns the path to the scripts directory
     pub fn scripts_dir(&self) -> PathBuf {
         let mut scripts_dir = self.app_dir();
         scripts_dir.push(SCRIPTS_DIR);
@@ -445,6 +496,7 @@ impl Project {
         scripts_dir
     }
 
+    /// Returns the path to the data models directory
     pub fn data_models_dir(&self) -> PathBuf {
         let mut schemas_dir = self.app_dir();
         schemas_dir.push(SCHEMAS_DIR);
@@ -457,7 +509,7 @@ impl Project {
         schemas_dir
     }
 
-    // Will start to be more useful when we version more than just the data models
+    /// Returns the path to the versioned data model directory
     pub fn versioned_data_model_dir(&self, version: &str) -> Result<PathBuf, ProjectFileError> {
         if version == self.cur_version().as_str() {
             Ok(self.data_models_dir())
@@ -466,6 +518,7 @@ impl Project {
         }
     }
 
+    /// Returns the path to the streaming functions directory
     pub fn streaming_func_dir(&self) -> PathBuf {
         let functions_dir = self.app_dir().join(FUNCTIONS_DIR);
 
@@ -485,6 +538,7 @@ impl Project {
         functions_dir
     }
 
+    /// Returns the path to the blocks directory
     pub fn blocks_dir(&self) -> PathBuf {
         let blocks_dir = self.app_dir().join(BLOCKS_DIR);
 
@@ -496,6 +550,7 @@ impl Project {
         blocks_dir
     }
 
+    /// Returns the path to the consumption directory
     pub fn consumption_dir(&self) -> PathBuf {
         let apis_dir = self.app_dir().join(CONSUMPTION_DIR);
 
@@ -507,6 +562,7 @@ impl Project {
         apis_dir
     }
 
+    /// Returns the path to the VSCode directory
     pub fn vscode_dir(&self) -> PathBuf {
         let mut vscode_dir = self.project_location.clone();
         vscode_dir.push(VSCODE_DIR);
@@ -519,8 +575,7 @@ impl Project {
         vscode_dir
     }
 
-    // This is a Result of io::Error because the caller
-    // can be returning a Result of io::Error or a Routine Failure
+    /// Returns the path to the internal directory
     pub fn internal_dir(&self) -> Result<PathBuf, ProjectFileError> {
         let mut internal_dir = self.project_location.clone();
         internal_dir.push(CLI_PROJECT_INTERNAL_DIR);
@@ -545,11 +600,13 @@ impl Project {
         Ok(internal_dir)
     }
 
+    /// Deletes the internal directory
     pub fn delete_internal_dir(&self) -> Result<(), ProjectFileError> {
         let internal_dir = self.internal_dir()?;
         Ok(std::fs::remove_dir_all(internal_dir)?)
     }
 
+    /// Returns the location of an old version
     pub fn old_version_location(&self, version: &str) -> Result<PathBuf, ProjectFileError> {
         let mut old_base_path = self.internal_dir()?;
         old_base_path.push(CLI_INTERNAL_VERSIONS_DIR);
@@ -558,6 +615,7 @@ impl Project {
         Ok(old_base_path)
     }
 
+    /// Deletes all old versions
     pub fn delete_old_versions(&self) -> Result<(), ProjectFileError> {
         let mut old_versions = self.internal_dir()?;
         old_versions.push(CLI_INTERNAL_VERSIONS_DIR);
@@ -569,6 +627,7 @@ impl Project {
         Ok(())
     }
 
+    /// Returns the current version
     pub fn cur_version(&self) -> &Version {
         match &self.language_project_config {
             LanguageProjectConfig::Typescript(package_json) => &package_json.version,
@@ -576,6 +635,7 @@ impl Project {
         }
     }
 
+    /// Returns sorted list of old versions
     pub fn old_versions_sorted(&self) -> Vec<String> {
         self.supported_old_versions
             .keys()
@@ -584,12 +644,14 @@ impl Project {
             .collect()
     }
 
+    /// Returns all versions including current
     pub fn versions(&self) -> Vec<String> {
         let mut versions = self.old_versions_sorted();
         versions.push(self.cur_version().to_string());
         versions
     }
 
+    /// Returns a map of functions and their associated models
     pub fn get_functions(&self) -> HashMap<String, Vec<String>> {
         let mut functions_map = HashMap::new();
 
@@ -628,6 +690,7 @@ impl Project {
         functions_map
     }
 
+    /// Processes function input for a directory entry
     fn process_function_input(&self, entry: &std::fs::DirEntry) -> Option<(String, Vec<String>)> {
         let input_model = entry.file_name().to_string_lossy().into_owned();
         let mut output_models = Vec::new();
@@ -647,6 +710,7 @@ impl Project {
         }
     }
 
+    /// Processes function output for a directory entry
     fn process_function_output(&self, entry: &std::fs::DirEntry) -> Option<String> {
         if let Ok(file_type) = entry.file_type() {
             if file_type.is_dir() {
@@ -659,11 +723,7 @@ impl Project {
         None
     }
 
-    /**
-     * Check if the project is running in a docker constainer we built from the CLI
-     * The docker container will have a special environment variable that is set by the build
-     * image that we can check for. DOCKER_IMAGE=true
-     */
+    /// Checks if the project is running in a docker container
     pub fn is_docker_image(&self) -> bool {
         std::env::var("DOCKER_IMAGE").unwrap_or("false".to_string()) == "true"
     }

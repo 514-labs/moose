@@ -23,6 +23,14 @@ impl ConsumptionQueryParam {
             special_fields: Default::default(),
         }
     }
+
+    pub fn from_proto(proto: ProtoConsumptionQueryParam) -> Self {
+        ConsumptionQueryParam {
+            name: proto.name,
+            data_type: ColumnType::from_proto(proto.data_type.unwrap()),
+            required: proto.required,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Default)]

@@ -81,6 +81,16 @@ impl TopicToTableSyncProcess {
             special_fields: Default::default(),
         }
     }
+
+    pub fn from_proto(proto: ProtoTopicToTableSyncProcess) -> Self {
+        TopicToTableSyncProcess {
+            source_topic_id: proto.source_topic_id,
+            target_table_id: proto.target_table_id,
+            columns: proto.columns.into_iter().map(Column::from_proto).collect(),
+            version: Version::from_string(proto.version),
+            source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
+        }
+    }
 }
 
 impl TopicToTopicSyncProcess {
@@ -121,6 +131,14 @@ impl TopicToTopicSyncProcess {
             target_topic_id: self.target_topic_id.clone(),
             source_primitive: MessageField::some(self.source_primitive.to_proto()),
             special_fields: Default::default(),
+        }
+    }
+
+    pub fn from_proto(proto: ProtoTopicToTopicSyncProcess) -> Self {
+        TopicToTopicSyncProcess {
+            source_topic_id: proto.source_topic_id,
+            target_topic_id: proto.target_topic_id,
+            source_primitive: PrimitiveSignature::from_proto(proto.source_primitive.unwrap()),
         }
     }
 }

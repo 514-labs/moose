@@ -120,7 +120,6 @@ message FunctionProcess {
 message InitialDataLoad {
   Table table = 1;
   string topic = 2;
-  // unset means completed
   optional uint64 progress = 3;
 }
 

@@ -2,6 +2,7 @@ use super::display::Message;
 use super::display::MessageType;
 use super::routines::auth::validate_auth_token;
 use super::settings::Settings;
+use crate::infrastructure::redis::redis_client::RedisClient;
 use crate::metrics::MetricEvent;
 
 use crate::cli::display::with_spinner;
@@ -46,6 +47,7 @@ use serde::Serialize;
 use serde::{Deserialize, Deserializer};
 use serde_json::Deserializer as JsonDeserializer;
 use tokio::spawn;
+use tokio::sync::Mutex;
 
 use crate::framework::data_model::model::DataModel;
 use crate::utilities::validate_passthrough::{DataModelArrayVisitor, DataModelVisitor};
@@ -219,6 +221,8 @@ struct RouteService {
     is_prod: bool,
     metrics: Arc<Metrics>,
     http_client: Arc<Client>,
+    project: Arc<Project>,
+    redis_client: Arc<Mutex<RedisClient>>,
 }
 #[derive(Clone)]
 struct ManagementService<I: InfraMapProvider + Clone> {
@@ -249,6 +253,8 @@ impl Service<Request<Incoming>> for RouteService {
                 req,
                 route_table: self.route_table,
             },
+            self.project.clone(),
+            self.redis_client.clone(),
         ))
     }
 }
@@ -287,12 +293,86 @@ fn options_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     Ok(response)
 }
 
-fn health_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+async fn health_route() -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let response = Response::builder()
         .status(StatusCode::OK)
         .body(Full::new(Bytes::from("Success")))
         .unwrap();
     Ok(response)
+}
+
+async fn admin_reality_check_route(
+    req: Request<hyper::body::Incoming>,
+    admin_api_key: &Option<String>,
+    project: &Project,
+    redis_client: &Arc<Mutex<RedisClient>>,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
+    let bearer_token = auth_header
+        .and_then(|header_value| header_value.to_str().ok())
+        .and_then(|header_str| header_str.strip_prefix("Bearer "));
+
+    // Check API key authentication
+    if let Some(key) = admin_api_key.as_ref() {
+        if !validate_token(bearer_token, key).await {
+            return Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
+                .body(Full::new(Bytes::from(
+                    "Unauthorized: Invalid or missing token",
+                )));
+        }
+    } else {
+        return Response::builder()
+            .status(StatusCode::UNAUTHORIZED)
+            .body(Full::new(Bytes::from(
+                "Unauthorized: Admin API key not configured",
+            )));
+    }
+
+    // Create OLAP client and reality checker
+    let olap_client =
+        crate::infrastructure::olap::clickhouse::create_client(project.clickhouse_config.clone());
+    let reality_checker =
+        crate::framework::core::infra_reality_checker::InfraRealityChecker::new(olap_client);
+
+    // Load infrastructure map from Redis
+    let redis_guard = redis_client.lock().await;
+    let infra_map = match InfrastructureMap::get_from_redis(&redis_guard).await {
+        Ok(map) => map,
+        Err(e) => {
+            return Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Full::new(Bytes::from(format!(
+                    "Failed to get infrastructure map: {}",
+                    e
+                ))))
+        }
+    };
+
+    // Perform reality check
+    match reality_checker.check_reality(project, &infra_map).await {
+        Ok(discrepancies) => {
+            let response = serde_json::json!({
+                "status": "success",
+                "discrepancies": {
+                    "unmapped_tables": discrepancies.unmapped_tables,
+                    "missing_tables": discrepancies.missing_tables,
+                    "mismatched_tables": discrepancies.mismatched_tables,
+                }
+            });
+
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .header("Content-Type", "application/json")
+                .body(Full::new(Bytes::from(response.to_string())))?)
+        }
+        Err(e) => Ok(Response::builder()
+            .status(StatusCode::INTERNAL_SERVER_ERROR)
+            .body(Full::new(Bytes::from(format!(
+                "{{\"status\": \"error\", \"message\": \"{}\"}}",
+                e
+            ))))?),
+    }
 }
 
 async fn log_route(req: Request<Incoming>) -> Response<Full<Bytes>> {
@@ -710,6 +790,8 @@ async fn router(
     metrics: Arc<Metrics>,
     http_client: Arc<Client>,
     request: RouterRequest,
+    project: Arc<Project>,
+    redis_client: Arc<Mutex<RedisClient>>,
 ) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
     let now = Instant::now();
 
@@ -772,8 +854,16 @@ async fn router(
                 }
             }
         }
-        (&hyper::Method::GET, ["health"]) => health_route(),
-
+        (&hyper::Method::GET, ["health"]) => health_route().await,
+        (&hyper::Method::GET, ["admin", "reality-check"]) => {
+            admin_reality_check_route(
+                req,
+                &project.authentication.admin_api_key,
+                &project,
+                &redis_client,
+            )
+            .await
+        }
         (&hyper::Method::OPTIONS, _) => options_route(),
         _ => route_not_found_response(),
     };
@@ -1043,6 +1133,12 @@ impl Webserver {
             is_prod: project.is_production,
             http_client,
             metrics: metrics.clone(),
+            project: project.clone(),
+            redis_client: Arc::new(Mutex::new(
+                RedisClient::new(project.name(), project.redis_config.clone())
+                    .await
+                    .unwrap(),
+            )),
         };
 
         let management_service = ManagementService {

@@ -23,4 +23,10 @@ impl OrchestrationWorker {
             special_fields: Default::default(),
         }
     }
+
+    pub fn from_proto(proto: ProtoOrchestrationWorker) -> Self {
+        OrchestrationWorker {
+            supported_language: SupportedLanguages::from_proto(proto.supported_language),
+        }
+    }
 }

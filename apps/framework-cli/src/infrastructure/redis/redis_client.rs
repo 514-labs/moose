@@ -8,7 +8,7 @@
 use anyhow::{Context, Result};
 use log::{error, info, warn};
 use redis::aio::Connection as RedisConnection;
-use redis::{AsyncCommands, Client, RedisError, Script, ToRedisArgs};
+use redis::{AsyncCommands, Client, FromRedisValue, RedisError, Script, ToRedisArgs};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -443,6 +443,20 @@ impl RedisClient {
             .await
             .context("Failed to set value in Redis")?;
         Ok(())
+    }
+
+    pub async fn get_with_service_prefix<V: FromRedisValue + Send + Sync>(
+        &self,
+        key: &str,
+    ) -> Result<Option<V>> {
+        let value: Option<V> = self
+            .connection
+            .lock()
+            .await
+            .get::<_, V>(self.service_prefix(&[key]))
+            .await
+            .ok();
+        Ok(value)
     }
 
     pub async fn register_message_handler(&self, callback: Arc<dyn Fn(String) + Send + Sync>) {

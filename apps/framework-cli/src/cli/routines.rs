@@ -356,7 +356,17 @@ async fn leadership_tasks(
     Ok(())
 }
 
-// Starts the file watcher and the webserver
+/// Starts the application in development mode.
+/// This mode is optimized for development workflows and includes additional debugging features.
+///
+/// # Arguments
+/// * `project` - Arc wrapped Project instance containing configuration
+/// * `metrics` - Arc wrapped Metrics instance for monitoring
+/// * `redis_client` - Arc and Mutex wrapped RedisClient for caching
+/// * `settings` - Reference to application Settings
+///
+/// # Returns
+/// * `anyhow::Result<()>` - Success or error result
 pub async fn start_development_mode(
     project: Arc<Project>,
     metrics: Arc<Metrics>,
@@ -461,7 +471,17 @@ pub async fn start_development_mode(
     Ok(())
 }
 
-// Starts the webserver in production mode
+/// Starts the application in production mode.
+/// This mode is optimized for production use with appropriate security and performance settings.
+///
+/// # Arguments
+/// * `settings` - Reference to application Settings
+/// * `project` - Arc wrapped Project instance containing configuration
+/// * `metrics` - Arc wrapped Metrics instance for monitoring
+/// * `redis_client` - Arc and Mutex wrapped RedisClient for caching
+///
+/// # Returns
+/// * `anyhow::Result<()>` - Success or error result
 pub async fn start_production_mode(
     settings: &Settings,
     project: Arc<Project>,

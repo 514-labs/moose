@@ -1298,6 +1298,15 @@ impl IntegrationError {
     }
 }
 
+/// Validates the admin authentication by checking the provided bearer token against the admin API key.
+///
+/// # Arguments
+/// * `auth_header` - Optional HeaderValue containing the Authorization header
+/// * `admin_api_key` - Optional String containing the configured admin API key
+///
+/// # Returns
+/// * `Ok(())` if authentication is successful
+/// * `Err(IntegrationError)` if authentication fails or admin API key is not configured
 async fn validate_admin_auth(
     auth_header: Option<&HeaderValue>,
     admin_api_key: &Option<String>,
@@ -1324,6 +1333,16 @@ async fn validate_admin_auth(
     }
 }
 
+/// Searches for a table definition in the provided discrepancies based on the table name.
+/// This function looks for the table in unmapped tables, added tables, updated tables, and removed tables.
+///
+/// # Arguments
+/// * `table_name` - Name of the table to find
+/// * `discrepancies` - InfraDiscrepancies containing the differences between reality and infrastructure map
+///
+/// # Returns
+/// * `Some(Table)` if the table definition is found
+/// * `None` if the table is not found or is marked for removal
 fn find_table_definition(table_name: &str, discrepancies: &InfraDiscrepancies) -> Option<Table> {
     debug!("Looking for table definition: {}", table_name);
 
@@ -1380,6 +1399,16 @@ fn find_table_definition(table_name: &str, discrepancies: &InfraDiscrepancies) -
     }
 }
 
+/// Updates the infrastructure map with the provided tables based on the discrepancies.
+/// This function handles adding new tables, updating existing ones, and removing tables as needed.
+///
+/// # Arguments
+/// * `tables_to_update` - Vector of table names to update
+/// * `discrepancies` - InfraDiscrepancies containing the differences between reality and infrastructure map
+/// * `infra_map` - Mutable reference to the infrastructure map to update
+///
+/// # Returns
+/// * Vector of strings containing the names of tables that were successfully updated
 async fn update_inframap_tables(
     tables_to_update: Vec<String>,
     discrepancies: &InfraDiscrepancies,
@@ -1432,6 +1461,16 @@ async fn update_inframap_tables(
     updated_tables
 }
 
+/// Stores the updated infrastructure map in both Redis and ClickHouse.
+///
+/// # Arguments
+/// * `infra_map` - Reference to the infrastructure map to store
+/// * `redis_guard` - Reference to the Redis client
+/// * `project` - Reference to the project configuration
+///
+/// # Returns
+/// * `Ok(())` if storage is successful
+/// * `Err(IntegrationError)` if storage fails in either Redis or ClickHouse
 async fn store_updated_inframap(
     infra_map: &InfrastructureMap,
     redis_guard: &RedisClient,
@@ -1475,6 +1514,19 @@ async fn store_updated_inframap(
     Ok(())
 }
 
+/// Handles the admin integration changes route, which allows administrators to integrate
+/// infrastructure changes into the system. This route validates authentication, processes
+/// the requested table changes, and updates both the in-memory infrastructure map and
+/// persisted storage (Redis and ClickHouse).
+///
+/// # Arguments
+/// * `req` - The incoming HTTP request
+/// * `admin_api_key` - Optional admin API key for authentication
+/// * `project` - Reference to the project configuration
+/// * `redis_client` - Reference to the Redis client wrapped in Arc<Mutex>
+///
+/// # Returns
+/// * Result containing the HTTP response with either success or error information
 async fn admin_integrate_changes_route(
     req: Request<hyper::body::Incoming>,
     admin_api_key: &Option<String>,

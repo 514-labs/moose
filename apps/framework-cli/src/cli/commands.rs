@@ -58,7 +58,7 @@ pub enum Commands {
     Dev {},
     /// Start a remote environment for use in cloud deployments
     Prod {},
-    /// Generates sdk for your data models
+    /// Generates helpers for your data models (i.e. sdk, api tokens)
     Generate(GenerateArgs),
     /// Clears all temporary data and stops development infrastructure
     Clean {},

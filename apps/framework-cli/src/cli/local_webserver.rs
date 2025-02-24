@@ -71,6 +71,11 @@ use tokio::net::TcpListener;
 use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
+use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
+use crate::framework::core::infrastructure::table::Table;
+use crate::framework::core::infrastructure_map::{OlapChange, TableChange};
+use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_infrastructure_map};
+
 pub struct RouterRequest {
     req: Request<hyper::body::Incoming>,
     route_table: &'static RwLock<HashMap<PathBuf, RouteMeta>>,
@@ -842,7 +847,15 @@ async fn router(
             )
             .await
         }
-
+        (&hyper::Method::POST, ["admin", "integrate-changes"]) => {
+            admin_integrate_changes_route(
+                req,
+                &project.authentication.admin_api_key,
+                &project,
+                &redis_client,
+            )
+            .await
+        }
         (&hyper::Method::GET, ["consumption", _rt]) => {
             match get_consumption_api_res(http_client, req, host, consumption_apis, is_prod).await {
                 Ok(response) => Ok(response),
@@ -1248,4 +1261,483 @@ async fn shutdown(settings: &Settings, project: &Project, graceful: GracefulShut
         );
     }
     std::process::exit(0);
+}
+
+#[derive(Debug, Deserialize)]
+struct IntegrateChangesRequest {
+    tables: Vec<String>,
+}
+
+#[derive(Debug, Serialize)]
+struct IntegrateChangesResponse {
+    status: String,
+    message: String,
+    updated_tables: Vec<String>,
+}
+
+#[derive(Debug)]
+enum IntegrationError {
+    Unauthorized(String),
+    BadRequest(String),
+    InternalError(String),
+}
+
+impl IntegrationError {
+    fn to_response(&self) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+        match self {
+            IntegrationError::Unauthorized(msg) => Response::builder()
+                .status(StatusCode::UNAUTHORIZED)
+                .body(Full::new(Bytes::from(msg.clone()))),
+            IntegrationError::BadRequest(msg) => Response::builder()
+                .status(StatusCode::BAD_REQUEST)
+                .body(Full::new(Bytes::from(msg.clone()))),
+            IntegrationError::InternalError(msg) => Response::builder()
+                .status(StatusCode::INTERNAL_SERVER_ERROR)
+                .body(Full::new(Bytes::from(msg.clone()))),
+        }
+    }
+}
+
+/// Validates the admin authentication by checking the provided bearer token against the admin API key.
+///
+/// # Arguments
+/// * `auth_header` - Optional HeaderValue containing the Authorization header
+/// * `admin_api_key` - Optional String containing the configured admin API key
+///
+/// # Returns
+/// * `Ok(())` if authentication is successful
+/// * `Err(IntegrationError)` if authentication fails or admin API key is not configured
+async fn validate_admin_auth(
+    auth_header: Option<&HeaderValue>,
+    admin_api_key: &Option<String>,
+) -> Result<(), IntegrationError> {
+    debug!("Validating admin authentication");
+    let bearer_token = auth_header
+        .and_then(|header_value| header_value.to_str().ok())
+        .and_then(|header_str| header_str.strip_prefix("Bearer "));
+
+    if let Some(key) = admin_api_key {
+        if !validate_token(bearer_token, key).await {
+            debug!("Token validation failed");
+            return Err(IntegrationError::Unauthorized(
+                "Unauthorized: Invalid or missing token".to_string(),
+            ));
+        }
+        debug!("Token validation successful");
+        Ok(())
+    } else {
+        debug!("No admin API key configured");
+        Err(IntegrationError::Unauthorized(
+            "Unauthorized: Admin API key not configured".to_string(),
+        ))
+    }
+}
+
+/// Searches for a table definition in the provided discrepancies based on the table name.
+/// This function looks for the table in unmapped tables, added tables, updated tables, and removed tables.
+///
+/// # Arguments
+/// * `table_name` - Name of the table to find
+/// * `discrepancies` - InfraDiscrepancies containing the differences between reality and infrastructure map
+///
+/// # Returns
+/// * `Some(Table)` if the table definition is found
+/// * `None` if the table is not found or is marked for removal
+fn find_table_definition(table_name: &str, discrepancies: &InfraDiscrepancies) -> Option<Table> {
+    debug!("Looking for table definition: {}", table_name);
+
+    if discrepancies
+        .unmapped_tables
+        .iter()
+        .any(|table| table.name == table_name)
+    {
+        debug!(
+            "Table {} is unmapped, looking for its definition",
+            table_name
+        );
+        // First try to find it in unmapped_tables
+        if let Some(table) = discrepancies
+            .unmapped_tables
+            .iter()
+            .find(|table| table.name == table_name)
+        {
+            return Some(table.clone());
+        }
+        // If not found in unmapped_tables, look for added tables
+        discrepancies
+            .mismatched_tables
+            .iter()
+            .find(|change| matches!(change, OlapChange::Table(TableChange::Added(table)) if table.name == table_name))
+            .and_then(|change| match change {
+                OlapChange::Table(TableChange::Added(table)) => Some(table.clone()),
+                _ => None,
+            })
+    } else {
+        debug!("Table {} is mapped, checking for updates", table_name);
+        // Look for updated or removed tables
+        match discrepancies
+            .mismatched_tables
+            .iter()
+            .find(|change| match change {
+                OlapChange::Table(TableChange::Updated { before, .. }) => before.name == table_name,
+                OlapChange::Table(TableChange::Removed(table)) => table.name == table_name,
+                _ => false,
+            }) {
+            Some(OlapChange::Table(TableChange::Updated { before, .. })) => {
+                debug!("Found updated definition for table {}", table_name);
+                Some(before.clone())
+            }
+            Some(OlapChange::Table(TableChange::Removed(_))) => {
+                debug!("Table {} is marked for removal", table_name);
+                None
+            }
+            _ => {
+                debug!("No changes found for table {}", table_name);
+                None
+            }
+        }
+    }
+}
+
+/// Updates the infrastructure map with the provided tables based on the discrepancies.
+/// This function handles adding new tables, updating existing ones, and removing tables as needed.
+///
+/// # Arguments
+/// * `tables_to_update` - Vector of table names to update
+/// * `discrepancies` - InfraDiscrepancies containing the differences between reality and infrastructure map
+/// * `infra_map` - Mutable reference to the infrastructure map to update
+///
+/// # Returns
+/// * Vector of strings containing the names of tables that were successfully updated
+async fn update_inframap_tables(
+    tables_to_update: Vec<String>,
+    discrepancies: &InfraDiscrepancies,
+    infra_map: &mut InfrastructureMap,
+) -> Vec<String> {
+    debug!("Updating inframap tables");
+    let mut updated_tables = Vec::new();
+
+    for table_name in tables_to_update {
+        debug!("Processing table: {}", table_name);
+
+        match find_table_definition(&table_name, discrepancies) {
+            Some(table) => {
+                debug!("Updating table {} in inframap", table_name);
+                // Use table.id() as the key for the HashMap
+                infra_map.tables.insert(table.id(), table);
+                updated_tables.push(table_name);
+            }
+            None => {
+                // When removing a table, we need to find its ID from the existing tables
+                if discrepancies.mismatched_tables.iter().any(|change| {
+                    matches!(change, OlapChange::Table(TableChange::Removed(table)) if table.name == table_name)
+                }) {
+                    debug!("Removing table {} from inframap", table_name);
+                    // Find the table ID from the mismatched_tables
+                    if let Some(OlapChange::Table(TableChange::Removed(table))) = discrepancies
+                        .mismatched_tables
+                        .iter()
+                        .find(|change| matches!(change, OlapChange::Table(TableChange::Removed(table)) if table.name == table_name))
+                    {
+                        infra_map.tables.remove(&table.id());
+                        updated_tables.push(table_name);
+                    }
+                } else {
+                    debug!("No changes needed for table {}", table_name);
+                    // Check if this table is in unmapped_tables
+                    if let Some(table) = discrepancies.unmapped_tables.iter().find(|t| t.name == table_name) {
+                        debug!("Found unmapped table {}, adding to inframap", table_name);
+                        infra_map.tables.insert(table.id(), table.clone());
+                        updated_tables.push(table_name);
+                    } else {
+                        debug!("Table {} is not unmapped", table_name);
+                    }
+                }
+            }
+        }
+    }
+
+    debug!("Updated {} tables", updated_tables.len());
+    updated_tables
+}
+
+/// Stores the updated infrastructure map in both Redis and ClickHouse.
+///
+/// # Arguments
+/// * `infra_map` - Reference to the infrastructure map to store
+/// * `redis_guard` - Reference to the Redis client
+/// * `project` - Reference to the project configuration
+///
+/// # Returns
+/// * `Ok(())` if storage is successful
+/// * `Err(IntegrationError)` if storage fails in either Redis or ClickHouse
+async fn store_updated_inframap(
+    infra_map: &InfrastructureMap,
+    redis_guard: &RedisClient,
+    project: &Project,
+) -> Result<(), IntegrationError> {
+    debug!("Storing updated inframap");
+
+    // Store in Redis
+    if let Err(e) = infra_map.store_in_redis(redis_guard).await {
+        debug!("Failed to store inframap in Redis: {}", e);
+        return Err(IntegrationError::InternalError(format!(
+            "Failed to store updated inframap in Redis: {}",
+            e
+        )));
+    }
+    debug!("Successfully stored inframap in Redis");
+
+    // Store in ClickHouse
+    let mut client = match get_pool(&project.clickhouse_config).get_handle().await {
+        Ok(client) => client,
+        Err(e) => {
+            debug!("Failed to connect to ClickHouse: {}", e);
+            return Err(IntegrationError::InternalError(format!(
+                "Failed to connect to ClickHouse: {}",
+                e
+            )));
+        }
+    };
+
+    if let Err(e) =
+        store_infrastructure_map(&mut client, &project.clickhouse_config, infra_map).await
+    {
+        debug!("Failed to store inframap in ClickHouse: {}", e);
+        return Err(IntegrationError::InternalError(format!(
+            "Failed to store updated inframap in ClickHouse: {}",
+            e
+        )));
+    }
+    debug!("Successfully stored inframap in ClickHouse");
+
+    Ok(())
+}
+
+/// Handles the admin integration changes route, which allows administrators to integrate
+/// infrastructure changes into the system. This route validates authentication, processes
+/// the requested table changes, and updates both the in-memory infrastructure map and
+/// persisted storage (Redis and ClickHouse).
+///
+/// # Arguments
+/// * `req` - The incoming HTTP request
+/// * `admin_api_key` - Optional admin API key for authentication
+/// * `project` - Reference to the project configuration
+/// * `redis_client` - Reference to the Redis client wrapped in Arc<Mutex>
+///
+/// # Returns
+/// * Result containing the HTTP response with either success or error information
+async fn admin_integrate_changes_route(
+    req: Request<hyper::body::Incoming>,
+    admin_api_key: &Option<String>,
+    project: &Project,
+    redis_client: &Arc<Mutex<RedisClient>>,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    debug!("Starting admin_integrate_changes_route");
+
+    // Validate authentication
+    if let Err(e) = validate_admin_auth(
+        req.headers().get(hyper::header::AUTHORIZATION),
+        admin_api_key,
+    )
+    .await
+    {
+        return e.to_response();
+    }
+
+    // Parse request body
+    let body = to_reader(req).await;
+    let request: IntegrateChangesRequest =
+        match serde_json::from_reader::<_, IntegrateChangesRequest>(body) {
+            Ok(req) => {
+                debug!(
+                    "Successfully parsed request body. Tables to integrate: {:?}",
+                    req.tables
+                );
+                req
+            }
+            Err(e) => {
+                debug!("Failed to parse request body: {}", e);
+                return IntegrationError::BadRequest(format!("Invalid request body: {}", e))
+                    .to_response();
+            }
+        };
+
+    // Get reality check
+    let olap_client =
+        crate::infrastructure::olap::clickhouse::create_client(project.clickhouse_config.clone());
+    let reality_checker =
+        crate::framework::core::infra_reality_checker::InfraRealityChecker::new(olap_client);
+
+    let redis_guard = redis_client.lock().await;
+    let mut infra_map = match InfrastructureMap::get_from_redis(&redis_guard).await {
+        Ok(map) => map,
+        Err(e) => {
+            return IntegrationError::InternalError(format!(
+                "Failed to get infrastructure map: {}",
+                e
+            ))
+            .to_response();
+        }
+    };
+
+    let discrepancies = match reality_checker.check_reality(project, &infra_map).await {
+        Ok(d) => d,
+        Err(e) => {
+            return IntegrationError::InternalError(format!("Failed to check reality: {}", e))
+                .to_response();
+        }
+    };
+
+    // Update tables in inframap
+    let updated_tables =
+        update_inframap_tables(request.tables, &discrepancies, &mut infra_map).await;
+
+    if updated_tables.is_empty() {
+        return IntegrationError::BadRequest(
+            "None of the specified tables were found in reality check discrepancies".to_string(),
+        )
+        .to_response();
+    }
+
+    // Store updated inframap
+    if let Err(e) = store_updated_inframap(&infra_map, &redis_guard, project).await {
+        return e.to_response();
+    }
+
+    // Prepare success response
+    let response = IntegrateChangesResponse {
+        status: "success".to_string(),
+        message: "Successfully integrated changes into inframap".to_string(),
+        updated_tables,
+    };
+
+    debug!("Preparing success response: {:?}", response);
+    match serde_json::to_string(&response) {
+        Ok(json) => Response::builder()
+            .status(StatusCode::OK)
+            .header("Content-Type", "application/json")
+            .body(Full::new(Bytes::from(json))),
+        Err(e) => IntegrationError::InternalError(format!("Failed to serialize response: {}", e))
+            .to_response(),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::framework::core::infrastructure::consumption_webserver::ConsumptionApiWebServer;
+    use crate::framework::core::infrastructure::olap_process::OlapProcess;
+    use crate::framework::core::infrastructure::table::{Column, ColumnType, Table};
+    use crate::framework::core::infrastructure_map::{
+        OlapChange, PrimitiveSignature, PrimitiveTypes, TableChange,
+    };
+    use crate::framework::versions::Version;
+    use std::collections::HashMap;
+
+    fn create_test_table(name: &str) -> Table {
+        Table {
+            name: name.to_string(),
+            columns: vec![Column {
+                name: "id".to_string(),
+                data_type: ColumnType::Int,
+                required: true,
+                unique: true,
+                primary_key: true,
+                default: None,
+            }],
+            order_by: vec!["id".to_string()],
+            deduplicate: false,
+            version: Version::from_string("1.0.0".to_string()),
+            source_primitive: PrimitiveSignature {
+                name: "test".to_string(),
+                primitive_type: PrimitiveTypes::DataModel,
+            },
+        }
+    }
+
+    fn create_test_infra_map() -> InfrastructureMap {
+        let block_db_processes = OlapProcess {};
+        let consumption_api_web_server = ConsumptionApiWebServer {};
+
+        InfrastructureMap {
+            tables: HashMap::new(),
+            topics: HashMap::new(),
+            api_endpoints: HashMap::new(),
+            views: HashMap::new(),
+            topic_to_table_sync_processes: HashMap::new(),
+            topic_to_topic_sync_processes: HashMap::new(),
+            function_processes: HashMap::new(),
+            block_db_processes,
+            consumption_api_web_server,
+            initial_data_loads: HashMap::new(),
+            orchestration_workers: HashMap::new(),
+        }
+    }
+
+    #[tokio::test]
+    async fn test_find_table_definition() {
+        let table = create_test_table("test_table");
+        let discrepancies = InfraDiscrepancies {
+            unmapped_tables: vec![table.clone()],
+            missing_tables: vec![],
+            mismatched_tables: vec![OlapChange::Table(TableChange::Added(table.clone()))],
+        };
+
+        let result = find_table_definition("test_table", &discrepancies);
+        assert!(result.is_some());
+        assert_eq!(result.unwrap().name, "test_table");
+    }
+
+    #[tokio::test]
+    async fn test_update_inframap_tables() {
+        let table_name = "test_table";
+        let test_table = create_test_table(table_name);
+
+        let discrepancies = InfraDiscrepancies {
+            unmapped_tables: vec![test_table.clone()],
+            missing_tables: vec![],
+            mismatched_tables: vec![OlapChange::Table(TableChange::Added(test_table.clone()))],
+        };
+
+        let mut infra_map = create_test_infra_map();
+
+        let tables_to_update = vec![table_name.to_string()];
+        let updated_tables =
+            update_inframap_tables(tables_to_update, &discrepancies, &mut infra_map).await;
+
+        assert_eq!(updated_tables.len(), 1);
+        assert_eq!(updated_tables[0], table_name);
+        assert!(infra_map.tables.contains_key(&test_table.id()));
+        assert_eq!(
+            infra_map.tables.get(&test_table.id()).unwrap().name,
+            table_name
+        );
+    }
+
+    #[tokio::test]
+    async fn test_update_inframap_tables_unmapped() {
+        let table_name = "unmapped_table";
+        let test_table = create_test_table(table_name);
+
+        let discrepancies = InfraDiscrepancies {
+            unmapped_tables: vec![test_table.clone()],
+            missing_tables: vec![],
+            mismatched_tables: vec![OlapChange::Table(TableChange::Added(test_table.clone()))],
+        };
+
+        let mut infra_map = create_test_infra_map();
+
+        let tables_to_update = vec![table_name.to_string()];
+        let updated_tables =
+            update_inframap_tables(tables_to_update, &discrepancies, &mut infra_map).await;
+
+        assert_eq!(updated_tables.len(), 1);
+        assert_eq!(updated_tables[0], table_name);
+        assert!(infra_map.tables.contains_key(&test_table.id()));
+        assert_eq!(
+            infra_map.tables.get(&test_table.id()).unwrap().name,
+            table_name
+        );
+    }
 }

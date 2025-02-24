@@ -1,4 +1,5 @@
 use crate::{
+    framework::core::infrastructure::table::Table,
     framework::core::infrastructure_map::{InfrastructureMap, OlapChange},
     infrastructure::olap::{OlapChangesError, OlapOperations},
     project::Project,
@@ -7,22 +8,31 @@ use log::debug;
 use std::collections::HashMap;
 use thiserror::Error;
 
+/// Represents errors that can occur during infrastructure reality checking.
 #[derive(Debug, Error)]
 #[non_exhaustive]
 pub enum RealityCheckError {
+    /// Error occurred while checking OLAP infrastructure
     #[error("Failed to check OLAP infrastructure: {0}")]
     OlapCheck(#[from] OlapChangesError),
+
+    /// Error occurred while loading the infrastructure map
     #[error("Failed to load infrastructure map: {0}")]
     InfraMapLoad(#[from] std::io::Error),
+
+    /// Error occurred during database operations
     #[error("Database error: {0}")]
     DatabaseError(String),
 }
 
-/// Represents discrepancies found between actual infrastructure and documented map
+/// Represents discrepancies found between actual infrastructure and documented map.
+/// This struct holds information about tables that exist in reality but not in the map,
+/// tables that are in the map but don't exist in reality, and tables that exist in both
+/// but have structural differences.
 #[derive(Debug)]
 pub struct InfraDiscrepancies {
     /// Tables that exist in reality but are not in the map
-    pub unmapped_tables: Vec<String>,
+    pub unmapped_tables: Vec<Table>,
     /// Tables that are in the map but don't exist in reality
     pub missing_tables: Vec<String>,
     /// Tables that exist in both but have structural differences
@@ -30,6 +40,7 @@ pub struct InfraDiscrepancies {
 }
 
 impl InfraDiscrepancies {
+    /// Returns true if there are no discrepancies between reality and the infrastructure map
     pub fn is_empty(&self) -> bool {
         self.unmapped_tables.is_empty()
             && self.missing_tables.is_empty()
@@ -37,7 +48,9 @@ impl InfraDiscrepancies {
     }
 }
 
-/// The Infrastructure Reality Checker compares actual infrastructure state with the infrastructure map
+/// The Infrastructure Reality Checker compares actual infrastructure state with the infrastructure map.
+/// It uses an OLAP client to query the actual state of the infrastructure and compares it with
+/// the documented state in the infrastructure map.
 pub struct InfraRealityChecker<T: OlapOperations> {
     olap_client: T,
 }
@@ -103,9 +116,9 @@ impl<T: OlapOperations> InfraRealityChecker<T> {
         );
 
         // Find unmapped tables (exist in reality but not in map)
-        let unmapped_tables: Vec<String> = actual_table_map
-            .keys()
-            .filter(|name| !mapped_table_map.contains_key(*name))
+        let unmapped_tables: Vec<Table> = actual_table_map
+            .values()
+            .filter(|table| !mapped_table_map.contains_key(&table.name))
             .cloned()
             .collect();
         debug!(
@@ -296,7 +309,7 @@ mod tests {
 
         // Should find one unmapped table
         assert_eq!(discrepancies.unmapped_tables.len(), 1);
-        assert_eq!(discrepancies.unmapped_tables[0], "test_table");
+        assert_eq!(discrepancies.unmapped_tables[0].name, "test_table");
         assert!(discrepancies.missing_tables.is_empty());
         assert!(discrepancies.mismatched_tables.is_empty());
 

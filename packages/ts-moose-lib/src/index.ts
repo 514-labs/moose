@@ -26,6 +26,7 @@ export type DataModelConfig<T> = Partial<{
     enabled?: boolean;
     order_by_fields?: (keyof T)[];
     deduplicate?: boolean;
+    name?: string;
   };
   parallelism?: number;
 }>;

@@ -188,6 +188,8 @@ impl InfraChanges {
     }
 }
 
+// TODO we should not expose the internals of the infrastructure map.
+// We should have apis to be able to change it.
 /// Represents the complete infrastructure map of the system, containing all components and their relationships
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfrastructureMap {
@@ -231,6 +233,15 @@ pub struct InfrastructureMap {
 }
 
 impl InfrastructureMap {
+    /// Compare tables between two infrastructure maps and compute the differences.
+    /// This function identifies added, removed, and updated tables by comparing
+    /// the source and target table maps. Changes are collected in the provided
+    /// changes vector.
+    ///
+    /// # Arguments
+    /// * `source_tables` - HashMap of source tables to compare from
+    /// * `target_tables` - HashMap of target tables to compare against
+    /// * `changes` - Mutable vector to collect the identified changes
     pub fn diff_tables(
         self_tables: &HashMap<String, Table>,
         target_tables: &HashMap<String, Table>,
@@ -239,17 +250,77 @@ impl InfrastructureMap {
         for (id, table) in self_tables {
             if let Some(target_table) = target_tables.get(id) {
                 if table != target_table {
+                    // Debug logging to identify what's different
+                    if table.name != target_table.name {
+                        log::debug!(
+                            "Table {} differs in name: {} vs {}",
+                            id,
+                            table.name,
+                            target_table.name
+                        );
+                    }
+                    if table.columns != target_table.columns {
+                        log::debug!("Table {} differs in columns", id);
+                    }
+                    if table.order_by != target_table.order_by {
+                        log::debug!(
+                            "Table {} differs in order_by: {:?} vs {:?}",
+                            id,
+                            table.order_by,
+                            target_table.order_by
+                        );
+                    }
+                    if table.deduplicate != target_table.deduplicate {
+                        log::debug!(
+                            "Table {} differs in deduplicate: {} vs {}",
+                            id,
+                            table.deduplicate,
+                            target_table.deduplicate
+                        );
+                    }
+                    if table.version != target_table.version {
+                        log::debug!(
+                            "Table {} differs in version: {} vs {}",
+                            id,
+                            table.version,
+                            target_table.version
+                        );
+                    }
+                    if table.source_primitive != target_table.source_primitive {
+                        log::debug!(
+                            "Table {} differs in source_primitive: {:?} vs {:?}",
+                            id,
+                            table.source_primitive,
+                            target_table.source_primitive
+                        );
+                    }
+
                     let column_changes = compute_table_diff(table, target_table);
-                    olap_changes.push(OlapChange::Table(TableChange::Updated {
-                        name: table.name.clone(),
-                        column_changes,
-                        order_by_change: OrderByChange {
+                    let order_by_change = if table.order_by != target_table.order_by {
+                        OrderByChange {
                             before: table.order_by.clone(),
                             after: target_table.order_by.clone(),
-                        },
-                        before: table.clone(),
-                        after: target_table.clone(),
-                    }));
+                        }
+                    } else {
+                        OrderByChange {
+                            before: vec![],
+                            after: vec![],
+                        }
+                    };
+
+                    // Only push changes if there are actual differences to report
+                    if !column_changes.is_empty()
+                        || table.order_by != target_table.order_by
+                        || table.deduplicate != target_table.deduplicate
+                    {
+                        olap_changes.push(OlapChange::Table(TableChange::Updated {
+                            name: table.name.clone(),
+                            column_changes,
+                            order_by_change,
+                            before: table.clone(),
+                            after: target_table.clone(),
+                        }));
+                    }
                 }
             } else {
                 olap_changes.push(OlapChange::Table(TableChange::Removed(table.clone())));
@@ -333,9 +404,13 @@ impl InfrastructureMap {
         let mut function_processes = HashMap::new();
         let mut initial_data_loads = HashMap::new();
 
-        let mut data_models_that_have_not_changed_with_new_version = Vec::new();
+        // Process data models that have changes in their latest version
+        // This ensures we create new infrastructure for updated data models first
+        let mut data_models_that_have_not_changed_with_new_version = vec![];
 
+        // Iterate through data models and process those that have changes
         for data_model in primitive_map.data_models_iter() {
+            // Check if the data model has changed compared to its previous version
             if primitive_map
                 .datamodels
                 .has_data_model_changed_with_previous_version(
@@ -346,6 +421,7 @@ impl InfrastructureMap {
                 let topic = Topic::from_data_model(data_model);
                 let api_endpoint = ApiEndpoint::from_data_model(data_model, &topic);
 
+                // If storage is enabled for this data model, create necessary infrastructure
                 if data_model.config.storage.enabled {
                     let table = data_model.to_table();
                     let topic_to_table_sync_process = TopicToTableSyncProcess::new(&topic, &table);
@@ -357,20 +433,21 @@ impl InfrastructureMap {
                     );
                 }
 
+                // If streaming engine is enabled, create topics and API endpoints
                 if project.features.streaming_engine {
                     topics.insert(topic.id(), topic);
                     api_endpoints.insert(api_endpoint.id(), api_endpoint);
                 }
             } else {
-                // We wait to have processed all the datamodels to process the ones that don't have changes
-                // That way we can refer to infrastructure that was created by those older versions.
+                // Store unchanged data models for later processing
+                // This allows us to reference infrastructure created by older versions
                 data_models_that_have_not_changed_with_new_version.push(data_model);
             }
         }
 
-        // We process the data models that have not changed with their registered versions.
-        // For the ones that require storage, we have views that points to the oldest table that has the data
-        // with the same schema. We also reused the same topic that was created for the previous version.
+        // Process data models that haven't changed with their registered versions
+        // For those requiring storage, we create views pointing to the oldest table
+        // that has the data with the same schema. We also reuse existing topics.
         for data_model in data_models_that_have_not_changed_with_new_version {
             match primitive_map
                 .datamodels

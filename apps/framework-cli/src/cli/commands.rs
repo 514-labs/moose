@@ -51,9 +51,18 @@ pub enum Commands {
         #[arg(long, default_value = "false")]
         write_infra_map: bool,
     },
-    /// [Not Ready] Displays the changes that will be applied to the infrastructure during the next deployment
-    /// to production, consdering the current state of the project
-    Plan {},
+    /// Displays the changes that will be applied to the infrastructure during the next deployment
+    /// to production, considering the current state of the project
+    Plan {
+        /// URL of the remote Moose instance (default: http://localhost:4000)
+        #[arg(long)]
+        url: Option<String>,
+
+        /// API token for authentication with the remote Moose instance
+        /// This token will be sent as a Bearer token in the Authorization header
+        #[arg(long)]
+        token: Option<String>,
+    },
     /// Starts a local development environment to build your data-intensive app or service
     Dev {},
     /// Start a remote environment for use in cloud deployments

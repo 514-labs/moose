@@ -28,7 +28,6 @@ use routines::datamodel::parse_and_generate;
 use routines::docker_packager::{build_dockerfile, create_dockerfile};
 use routines::ls::{list_db, list_streaming};
 use routines::metrics_console::run_console;
-use routines::plan;
 use routines::ps::show_processes;
 use routines::scripts::{
     get_workflow_status, init_workflow, list_workflows, pause_workflow, run_workflow,
@@ -557,7 +556,7 @@ async fn top_command_handler(
                 "production infrastructure".to_string(),
             )))
         }
-        Commands::Plan {} => {
+        Commands::Plan { url, token } => {
             info!("Running plan command");
             let project = load_project()?;
 
@@ -568,7 +567,10 @@ async fn top_command_handler(
             );
 
             check_project_name(&project.name())?;
-            plan(&project).await.map_err(|e| {
+
+            let result = routines::remote_plan(&project, &url, &token).await;
+
+            result.map_err(|e| {
                 RoutineFailure::error(Message {
                     action: "Plan".to_string(),
                     details: format!("Failed to plan changes: {:?}", e),

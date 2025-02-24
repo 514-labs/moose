@@ -91,20 +91,20 @@ impl PrimitiveTypes {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ColumnChange {
     Added(Column),
     Removed(Column),
     Updated { before: Column, after: Column },
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct OrderByChange {
     pub before: Vec<String>,
     pub after: Vec<String>,
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::large_enum_variant)]
 pub enum TableChange {
     Added(Table),
@@ -118,7 +118,7 @@ pub enum TableChange {
     },
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum Change<T: Serialize> {
     Added(Box<T>),
     Removed(Box<T>),
@@ -126,7 +126,7 @@ pub enum Change<T: Serialize> {
 }
 
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum InfraChange {
     Olap(OlapChange),
     Streaming(StreamingChange),
@@ -134,24 +134,24 @@ pub enum InfraChange {
     Process(ProcessChange),
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[allow(clippy::large_enum_variant)]
 pub enum OlapChange {
     Table(TableChange),
     View(Change<View>),
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum StreamingChange {
     Topic(Change<Topic>),
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ApiChange {
     ApiEndpoint(Change<ApiEndpoint>),
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ProcessChange {
     TopicToTableSyncProcess(Change<TopicToTableSyncProcess>),
     TopicToTopicSyncProcess(Change<TopicToTopicSyncProcess>),
@@ -161,7 +161,7 @@ pub enum ProcessChange {
     OrchestrationWorker(Change<OrchestrationWorker>),
 }
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct InfraChanges {
     pub olap_changes: Vec<OlapChange>,
     pub processes_changes: Vec<ProcessChange>,
@@ -170,7 +170,7 @@ pub struct InfraChanges {
     pub initial_data_loads: Vec<InitialDataLoadChange>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum InitialDataLoadChange {
     Addition(InitialDataLoad),
     Resumption {
@@ -188,8 +188,6 @@ impl InfraChanges {
     }
 }
 
-// TODO we should not expose the internals of the infrastructure map.
-// We should have apis to be able to change it.
 /// Represents the complete infrastructure map of the system, containing all components and their relationships
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InfrastructureMap {

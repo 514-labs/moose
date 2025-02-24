@@ -9,8 +9,14 @@ use crate::cli::display::with_spinner;
 use crate::framework::controller::RouteMeta;
 
 use crate::framework::core::infrastructure::api_endpoint::APIType;
+use crate::framework::core::infrastructure::topic::Topic;
+use crate::framework::core::infrastructure::view::View;
 use crate::framework::core::infrastructure_map::Change;
 use crate::framework::core::infrastructure_map::{ApiChange, InfrastructureMap};
+use crate::framework::core::infrastructure_map::{
+    ColumnChange, InfraChanges, InitialDataLoadChange, OlapChange, ProcessChange, StreamingChange,
+    TableChange,
+};
 use crate::metrics::Metrics;
 use crate::utilities::auth::{get_claims, validate_jwt};
 
@@ -72,8 +78,8 @@ use tokio::sync::mpsc;
 use tokio::sync::RwLock;
 
 use crate::framework::core::infra_reality_checker::InfraDiscrepancies;
+use crate::framework::core::infrastructure::api_endpoint::ApiEndpoint;
 use crate::framework::core::infrastructure::table::Table;
-use crate::framework::core::infrastructure_map::{OlapChange, TableChange};
 use crate::infrastructure::olap::clickhouse_alt_client::{get_pool, store_infrastructure_map};
 
 pub struct RouterRequest {
@@ -856,6 +862,9 @@ async fn router(
             )
             .await
         }
+        (&hyper::Method::POST, ["admin", "plan"]) => {
+            admin_plan_route(req, &project.authentication.admin_api_key, &redis_client).await
+        }
         (&hyper::Method::GET, ["consumption", _rt]) => {
             match get_consumption_api_res(http_client, req, host, consumption_apis, is_prod).await {
                 Ok(response) => Ok(response),
@@ -1620,6 +1629,119 @@ async fn admin_integrate_changes_route(
             .body(Full::new(Bytes::from(json))),
         Err(e) => IntegrationError::InternalError(format!("Failed to serialize response: {}", e))
             .to_response(),
+    }
+}
+
+/// Request structure for the admin plan endpoint
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PlanRequest {
+    // The client-generated inframap
+    pub infra_map: InfrastructureMap,
+}
+
+/// Response structure for the admin plan endpoint
+#[derive(Debug, Serialize, Deserialize)]
+pub struct PlanResponse {
+    pub status: String,
+    // Changes that would be applied if the plan is executed
+    pub changes: InfraChanges,
+}
+
+/// Handles the admin plan endpoint, which compares a submitted infrastructure map
+/// with the server's current state and returns the changes that would be applied
+async fn admin_plan_route(
+    req: Request<hyper::body::Incoming>,
+    admin_api_key: &Option<String>,
+    redis_client: &Arc<Mutex<RedisClient>>,
+) -> Result<Response<Full<Bytes>>, hyper::http::Error> {
+    // Validate admin authentication
+    let auth_header = req.headers().get(hyper::header::AUTHORIZATION);
+    match validate_admin_auth(auth_header, admin_api_key).await {
+        Ok(_) => {
+            // Authentication successful, proceed with plan calculation
+            let body = req.into_body();
+            let bytes = match body.collect().await {
+                Ok(collected) => collected.to_bytes(),
+                Err(e) => {
+                    error!("Failed to read request body: {}", e);
+                    return Ok(Response::builder()
+                        .status(StatusCode::BAD_REQUEST)
+                        .body(Full::new(Bytes::from("Failed to read request body")))
+                        .unwrap());
+                }
+            };
+
+            // Deserialize the request body into a PlanRequest
+            let plan_request: PlanRequest = match serde_json::from_slice(&bytes) {
+                Ok(plan_request) => plan_request,
+                Err(e) => {
+                    error!("Failed to deserialize plan request: {}", e);
+                    return Ok(Response::builder()
+                        .status(StatusCode::BAD_REQUEST)
+                        .body(Full::new(Bytes::from(format!(
+                            "Invalid request format: {}",
+                            e
+                        ))))
+                        .unwrap());
+                }
+            };
+
+            let redis_guard = match redis_client.try_lock() {
+                Ok(guard) => guard,
+                Err(_) => {
+                    error!("Failed to acquire lock on Redis client");
+                    return Ok(Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Full::new(Bytes::from(
+                            "Failed to acquire lock on Redis client",
+                        )))
+                        .unwrap());
+                }
+            };
+
+            let current_infra_map = match InfrastructureMap::get_from_redis(&redis_guard).await {
+                Ok(infra_map) => infra_map,
+                Err(e) => {
+                    error!("Failed to retrieve infrastructure map from Redis: {}", e);
+                    return Ok(Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Full::new(Bytes::from(format!(
+                            "Failed to retrieve infrastructure map from Redis: {}",
+                            e
+                        ))))
+                        .unwrap());
+                }
+            };
+
+            // Calculate the changes between the submitted infrastructure map and the current one
+            let changes = current_infra_map.diff(&plan_request.infra_map);
+
+            // Prepare the response
+            let response = PlanResponse {
+                status: "success".to_string(),
+                changes: changes.into(),
+            };
+
+            // Serialize the response to JSON
+            let json_response = match serde_json::to_string(&response) {
+                Ok(json) => json,
+                Err(e) => {
+                    error!("Failed to serialize plan response: {}", e);
+                    return Ok(Response::builder()
+                        .status(StatusCode::INTERNAL_SERVER_ERROR)
+                        .body(Full::new(Bytes::from("Internal server error")))
+                        .unwrap());
+                }
+            };
+
+            // Return the response
+            Ok(Response::builder()
+                .status(StatusCode::OK)
+                .header("Content-Type", "application/json")
+                .body(Full::new(Bytes::from(json_response)))
+                .unwrap())
+        }
+        Err(e) => e.to_response(),
     }
 }
 
